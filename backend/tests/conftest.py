@@ -4,9 +4,20 @@ Pytest configuration and fixtures for Vitora HMIS tests.
 This file contains shared fixtures and configuration for all tests.
 """
 
+import os
 from collections.abc import Generator
 
+import django
 import pytest
+from django.core.management import call_command
+
+# Set Django settings module for tests
+os.environ.setdefault("DJANGO_ENV", "test")
+os.environ.setdefault("DJANGO_SETTINGS_MODULE", "hmis.settings")
+
+# Setup Django
+django.setup()
+
 
 # ============================================================================
 # Pytest Configuration
@@ -22,13 +33,21 @@ def pytest_configure(config):
 
 
 # ============================================================================
-# Django Settings (will be used when Django is set up)
+# Django Database Fixtures
 # ============================================================================
 
-# @pytest.fixture(scope="session")
-# def django_db_setup():
-#     """Set up test database."""
-#     pass
+
+@pytest.fixture(scope="session")
+def django_db_setup(django_db_blocker):
+    """Set up test database with migrations."""
+    with django_db_blocker.unblock():
+        call_command("migrate", "--run-syncdb", verbosity=0)
+
+
+@pytest.fixture(autouse=True)
+def enable_db_access_for_all_tests(db):
+    """Enable database access for all tests."""
+    pass
 
 
 # ============================================================================

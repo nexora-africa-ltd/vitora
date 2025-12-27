@@ -20,6 +20,7 @@ pydantic = "^2.5"
 pydantic-settings = "^2.1"
 cryptography = "^42.0"
 pillow = "^10.2"
+django-extensions = "^3.2"
 
 [tool.poetry.group.dev.dependencies]
 # Testing
@@ -54,7 +55,7 @@ ipython = "^8.20"
 ipdb = "^0.13"
 
 [tool.pytest.ini_options]
-# DJANGO_SETTINGS_MODULE = "hmis.settings.test"  # Uncomment when Django is set up
+DJANGO_SETTINGS_MODULE = "hmis.settings"
 python_files = ["test_*.py", "*_test.py", "tests.py"]
 python_classes = ["Test*"]
 python_functions = ["test_*"]
@@ -63,11 +64,11 @@ addopts = [
     "-v",
     "--tb=short",
     "--strict-markers",
-    # "--cov=hmis",  # Uncomment when code exists
-    # "--cov-report=term-missing",
-    # "--cov-report=html",
-    # "--cov-report=xml",
-    # "--cov-fail-under=80",
+    "--cov=hmis",
+    "--cov-report=term-missing",
+    "--cov-report=html",
+    "--cov-report=xml",
+    "--cov-fail-under=80",
 ]
 markers = [
     "unit: Unit tests",
