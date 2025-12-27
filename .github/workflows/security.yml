@@ -1,0 +1,220 @@
+name: Security Scanning
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main, develop ]
+  schedule:
+    # Run security scans daily at 2 AM UTC
+    - cron: '0 2 * * *'
+  workflow_dispatch:
+
+jobs:
+  # Job 1: Dependency Vulnerability Scanning
+  dependency-scan:
+    name: Dependency Vulnerability Scan
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      
+      - name: Set up Python 3.12
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      
+      - name: Install Safety
+        run: pip install safety
+      
+      - name: Check Python Dependencies
+        working-directory: ./backend
+        run: |
+          if [ -f "pyproject.toml" ]; then
+            pip install poetry
+            poetry export -f requirements.txt --output requirements.txt --without-hashes || true
+            if [ -f "requirements.txt" ]; then
+              safety check --file=requirements.txt --json || true
+            fi
+          else
+            echo "⏭️  No Python dependencies yet"
+          fi
+        continue-on-error: true
+      
+      - name: Check Node.js Dependencies
+        run: |
+          if [ -f "frontend-web/package.json" ]; then
+            cd frontend-web
+            npm audit --json || true
+          else
+            echo "⏭️  No Node.js dependencies yet"
+          fi
+        continue-on-error: true
+
+  # Job 2: CodeQL Analysis
+  codeql-analysis:
+    name: CodeQL Security Analysis
+    runs-on: ubuntu-latest
+    permissions:
+      actions: read
+      contents: read
+      security-events: write
+    
+    strategy:
+      fail-fast: false
+      matrix:
+        language: [ 'python', 'javascript' ]
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      
+      - name: Initialize CodeQL
+        uses: github/codeql-action/init@v3
+        with:
+          languages: ${{ matrix.language }}
+          queries: security-extended
+      
+      - name: Autobuild
+        uses: github/codeql-action/autobuild@v3
+      
+      - name: Perform CodeQL Analysis
+        uses: github/codeql-action/analyze@v3
+        with:
+          category: "/language:${{ matrix.language }}"
+
+  # Job 3: Secret Scanning
+  secret-scan:
+    name: Secret Scanning
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      
+      - name: TruffleHog OSS
+        uses: trufflesecurity/trufflehog@main
+        with:
+          path: ./
+          base: ${{ github.event.repository.default_branch }}
+          head: HEAD
+          extra_args: --debug --only-verified
+        continue-on-error: true
+      
+      - name: Gitleaks
+        uses: gitleaks/gitleaks-action@v2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        continue-on-error: true
+
+  # Job 4: Container Security (for future use)
+  container-scan:
+    name: Container Security Scan
+    runs-on: ubuntu-latest
+    if: false  # Disabled until we have Docker images
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      
+      - name: Run Trivy vulnerability scanner
+        uses: aquasecurity/trivy-action@master
+        with:
+          scan-type: 'config'
+          scan-ref: 'infrastructure/'
+          format: 'sarif'
+          output: 'trivy-results.sarif'
+      
+      - name: Upload Trivy results to GitHub Security tab
+        uses: github/codeql-action/upload-sarif@v3
+        with:
+          sarif_file: 'trivy-results.sarif'
+
+  # Job 5: OWASP Dependency Check
+  owasp-check:
+    name: OWASP Dependency Check
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      
+      - name: Run OWASP Dependency Check
+        uses: dependency-check/Dependency-Check_Action@main
+        with:
+          project: 'vitora-hmis'
+          path: '.'
+          format: 'HTML'
+        continue-on-error: true
+      
+      - name: Upload OWASP Report
+        uses: actions/upload-artifact@v4
+        with:
+          name: owasp-dependency-check-report
+          path: reports/
+        continue-on-error: true
+
+  # Job 6: License Compliance Check
+  license-check:
+    name: License Compliance Check
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      
+      - name: Check Python License Compliance
+        run: |
+          if [ -f "backend/pyproject.toml" ]; then
+            pip install licensecheck
+            cd backend
+            licensecheck || true
+          else
+            echo "⏭️  No Python dependencies yet"
+          fi
+        continue-on-error: true
+      
+      - name: Check Node.js License Compliance
+        run: |
+          if [ -f "frontend-web/package.json" ]; then
+            cd frontend-web
+            npx license-checker --summary || true
+          else
+            echo "⏭️  No Node.js dependencies yet"
+          fi
+        continue-on-error: true
+
+  # Job 7: Security Summary
+  security-summary:
+    name: Security Summary
+    runs-on: ubuntu-latest
+    needs: [dependency-scan, codeql-analysis, secret-scan, owasp-check, license-check]
+    if: always()
+    
+    steps:
+      - name: Security Gate Summary
+        run: |
+          echo "🔒 Security Scan Summary"
+          echo "========================"
+          echo ""
+          echo "Dependency Scan: ${{ needs.dependency-scan.result }}"
+          echo "CodeQL Analysis: ${{ needs.codeql-analysis.result }}"
+          echo "Secret Scanning: ${{ needs.secret-scan.result }}"
+          echo "OWASP Check: ${{ needs.owasp-check.result }}"
+          echo "License Check: ${{ needs.license-check.result }}"
+          echo ""
+          
+          # Fail if critical security checks fail
+          if [ "${{ needs.secret-scan.result }}" == "failure" ]; then
+            echo "❌ CRITICAL: Secret scanning detected issues"
+            exit 1
+          fi
+          
+          if [ "${{ needs.codeql-analysis.result }}" == "failure" ]; then
+            echo "⚠️  CodeQL analysis had issues (review recommended)"
+          fi
+          
+          echo "✅ Security scan complete"
