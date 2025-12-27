@@ -94,18 +94,18 @@ This roadmap outlines the complete development journey for Vitora HMIS from Janu
 **TDD Focus**: Test models and API endpoints before implementation
 
 **Tasks**:
-- [ ] **Write tests first**: Patient model tests (MRN generation, validation)
-- [ ] Implement Patient model to pass tests
-- [ ] **Write tests first**: Encounter model tests (vitals validation)
-- [ ] Implement Encounter model to pass tests
-- [ ] **Write tests first**: API endpoint tests for patient CRUD
-- [ ] Implement patient API endpoints to pass tests
-- [ ] Configure SQLite and PostgreSQL settings with tests
-- [ ] Set up Django migrations with rollback tests
+- [x] **Write tests first**: Patient model tests (MRN generation, validation)
+- [x] Implement Patient model to pass tests
+- [x] **Write tests first**: Encounter model tests (vitals validation)
+- [x] Implement Encounter model to pass tests
+- [x] **Write tests first**: API endpoint tests for patient CRUD
+- [x] Implement patient API endpoints to pass tests
+- [x] Configure SQLite and PostgreSQL settings with tests
+- [x] Set up Django migrations with rollback tests
 
 **Deliverables**:
 - Django backend with Patient and Encounter models
-- Comprehensive test suite (≥80% coverage)
+- Comprehensive test suite (≥80% coverage) - **88.34% achieved**
 - API documentation (auto-generated from tests)
 - Database migration scripts
 
