@@ -5,7 +5,7 @@ Following TDD principles, these tests are written BEFORE the implementation.
 They define the expected behavior of the Encounter model.
 """
 
-from datetime import date, datetime
+from datetime import date
 
 import pytest
 from django.core.exceptions import ValidationError
@@ -70,9 +70,7 @@ class TestEncounterModel:
             gender="M",
         )
 
-        encounter = Encounter(
-            patient=patient, encounter_type="INVALID", chief_complaint="Test"
-        )
+        encounter = Encounter(patient=patient, encounter_type="INVALID", chief_complaint="Test")
 
         with pytest.raises(ValidationError):
             encounter.full_clean()
@@ -396,3 +394,184 @@ class TestEncounterModel:
 
         assert encounter1.patient == encounter2.patient
         assert Encounter.objects.filter(patient=patient).count() == 2
+
+    def test_vitals_respiratory_rate_validation(self):
+        """Test respiratory rate validation."""
+        from hmis.apps.encounters.models import Encounter
+        from hmis.apps.patients.models import Patient
+
+        patient = Patient.objects.create(
+            first_name="John",
+            last_name="Doe",
+            date_of_birth=date(1990, 1, 1),
+            gender="M",
+        )
+
+        # Valid respiratory rate
+        encounter = Encounter(
+            patient=patient,
+            encounter_type="OPD",
+            chief_complaint="Checkup",
+            respiratory_rate=18,
+        )
+        encounter.full_clean()  # Should not raise
+
+        # Too low
+        encounter_low = Encounter(
+            patient=patient,
+            encounter_type="OPD",
+            chief_complaint="Checkup",
+            respiratory_rate=5,
+        )
+        with pytest.raises(ValidationError):
+            encounter_low.full_clean()
+
+        # Too high
+        encounter_high = Encounter(
+            patient=patient,
+            encounter_type="OPD",
+            chief_complaint="Checkup",
+            respiratory_rate=50,
+        )
+        with pytest.raises(ValidationError):
+            encounter_high.full_clean()
+
+    def test_vitals_weight_validation(self):
+        """Test weight validation."""
+        from hmis.apps.encounters.models import Encounter
+        from hmis.apps.patients.models import Patient
+
+        patient = Patient.objects.create(
+            first_name="John",
+            last_name="Doe",
+            date_of_birth=date(1990, 1, 1),
+            gender="M",
+        )
+
+        # Valid weight
+        encounter = Encounter(
+            patient=patient,
+            encounter_type="OPD",
+            chief_complaint="Checkup",
+            weight=70.5,
+        )
+        encounter.full_clean()  # Should not raise
+
+        # Invalid - too high
+        encounter_high = Encounter(
+            patient=patient,
+            encounter_type="OPD",
+            chief_complaint="Checkup",
+            weight=350.0,
+        )
+        with pytest.raises(ValidationError):
+            encounter_high.full_clean()
+
+    def test_vitals_height_validation(self):
+        """Test height validation."""
+        from hmis.apps.encounters.models import Encounter
+        from hmis.apps.patients.models import Patient
+
+        patient = Patient.objects.create(
+            first_name="John",
+            last_name="Doe",
+            date_of_birth=date(1990, 1, 1),
+            gender="M",
+        )
+
+        # Valid height
+        encounter = Encounter(
+            patient=patient,
+            encounter_type="OPD",
+            chief_complaint="Checkup",
+            height=175.0,
+        )
+        encounter.full_clean()  # Should not raise
+
+        # Invalid - too high
+        encounter_high = Encounter(
+            patient=patient,
+            encounter_type="OPD",
+            chief_complaint="Checkup",
+            height=300.0,
+        )
+        with pytest.raises(ValidationError):
+            encounter_high.full_clean()
+
+    def test_critical_respiratory_rate_alerts(self):
+        """Test alerts for critical respiratory rate."""
+        from hmis.apps.encounters.models import Encounter
+        from hmis.apps.patients.models import Patient
+
+        patient = Patient.objects.create(
+            first_name="John",
+            last_name="Doe",
+            date_of_birth=date(1990, 1, 1),
+            gender="M",
+        )
+
+        # High respiratory rate
+        encounter_high = Encounter.objects.create(
+            patient=patient,
+            encounter_type="OPD",
+            chief_complaint="Breathing difficulty",
+            respiratory_rate=30,
+        )
+        assert encounter_high.has_critical_vitals() is True
+        alerts = encounter_high.get_alerts()
+        assert "respiratory" in alerts.lower()
+
+        # Low respiratory rate
+        encounter_low = Encounter.objects.create(
+            patient=patient,
+            encounter_type="OPD",
+            chief_complaint="Sedation",
+            respiratory_rate=10,
+        )
+        assert encounter_low.has_critical_vitals() is True
+        alerts = encounter_low.get_alerts()
+        assert "respiratory" in alerts.lower()
+
+    def test_low_temperature_alert(self):
+        """Test alert for hypothermia."""
+        from hmis.apps.encounters.models import Encounter
+        from hmis.apps.patients.models import Patient
+
+        patient = Patient.objects.create(
+            first_name="John",
+            last_name="Doe",
+            date_of_birth=date(1990, 1, 1),
+            gender="M",
+        )
+
+        encounter = Encounter.objects.create(
+            patient=patient,
+            encounter_type="EMERGENCY",
+            chief_complaint="Exposure",
+            temperature=35.0,
+        )
+        assert encounter.has_critical_vitals() is True
+        alerts = encounter.get_alerts()
+        assert "hypothermia" in alerts.lower() or "low temperature" in alerts.lower()
+
+    def test_low_pulse_alert(self):
+        """Test alert for bradycardia."""
+        from hmis.apps.encounters.models import Encounter
+        from hmis.apps.patients.models import Patient
+
+        patient = Patient.objects.create(
+            first_name="John",
+            last_name="Doe",
+            date_of_birth=date(1990, 1, 1),
+            gender="M",
+        )
+
+        encounter = Encounter.objects.create(
+            patient=patient,
+            encounter_type="OPD",
+            chief_complaint="Weakness",
+            pulse=45,
+        )
+        assert encounter.has_critical_vitals() is True
+        alerts = encounter.get_alerts()
+        assert "bradycardia" in alerts.lower() or "low pulse" in alerts.lower()
