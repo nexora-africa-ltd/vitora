@@ -25,9 +25,7 @@ def generate_mrn():
     prefix = f"MRN-{today}-"
 
     # Find the highest MRN for today
-    latest_patient = (
-        Patient.objects.filter(mrn__startswith=prefix).order_by("-mrn").first()
-    )
+    latest_patient = Patient.objects.filter(mrn__startswith=prefix).order_by("-mrn").first()
 
     if latest_patient:
         # Extract the sequence number and increment
@@ -75,9 +73,7 @@ class Patient(models.Model):
     first_name = models.CharField(max_length=100, help_text="Patient's first name")
     last_name = models.CharField(max_length=100, help_text="Patient's last name")
     date_of_birth = models.DateField(help_text="Patient's date of birth")
-    gender = models.CharField(
-        max_length=1, choices=GENDER_CHOICES, help_text="Patient's gender"
-    )
+    gender = models.CharField(max_length=1, choices=GENDER_CHOICES, help_text="Patient's gender")
 
     # Optional fields
     middle_name = models.CharField(
@@ -86,12 +82,8 @@ class Patient(models.Model):
     phone_number = models.CharField(
         max_length=20, blank=True, default="", help_text="Patient's phone number"
     )
-    email = models.EmailField(
-        blank=True, default="", help_text="Patient's email address"
-    )
-    address = models.TextField(
-        blank=True, default="", help_text="Patient's physical address"
-    )
+    email = models.EmailField(blank=True, default="", help_text="Patient's email address")
+    address = models.TextField(blank=True, default="", help_text="Patient's physical address")
     national_id = models.CharField(
         max_length=50, blank=True, default="", help_text="Patient's national ID number"
     )
@@ -111,6 +103,10 @@ class Patient(models.Model):
         ]
         verbose_name = "Patient"
         verbose_name_plural = "Patients"
+
+    def __str__(self) -> str:
+        """String representation of the patient."""
+        return f"{self.mrn} - {self.full_name}"
 
     def save(self, *args, **kwargs):
         """Override save to auto-generate MRN if not set."""
@@ -161,7 +157,3 @@ class Patient(models.Model):
             - ((today.month, today.day) < (self.date_of_birth.month, self.date_of_birth.day))
         )
         return age
-
-    def __str__(self) -> str:
-        """String representation of the patient."""
-        return f"{self.mrn} - {self.full_name}"

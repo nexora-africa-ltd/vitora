@@ -18,17 +18,17 @@ class PatientAdmin(admin.ModelAdmin):
     ordering = ["-created_at"]
 
     fieldsets = (
-        ("Personal Information", {
-            "fields": ("first_name", "middle_name", "last_name", "date_of_birth", "gender")
-        }),
-        ("Contact Information", {
-            "fields": ("phone_number", "email", "address")
-        }),
-        ("Identification", {
-            "fields": ("mrn", "national_id")
-        }),
-        ("Timestamps", {
-            "fields": ("created_at", "updated_at"),
-            "classes": ("collapse",),
-        }),
+        (
+            "Personal Information",
+            {"fields": ("first_name", "middle_name", "last_name", "date_of_birth", "gender")},
+        ),
+        ("Contact Information", {"fields": ("phone_number", "email", "address")}),
+        ("Identification", {"fields": ("mrn", "national_id")}),
+        (
+            "Timestamps",
+            {
+                "fields": ("created_at", "updated_at"),
+                "classes": ("collapse",),
+            },
+        ),
     )

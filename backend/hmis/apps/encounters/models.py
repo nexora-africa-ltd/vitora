@@ -47,9 +47,7 @@ class Encounter(models.Model):
     encounter_type = models.CharField(
         max_length=20, choices=ENCOUNTER_TYPE_CHOICES, help_text="Type of encounter"
     )
-    encounter_date = models.DateField(
-        default=date.today, help_text="Date of the encounter"
-    )
+    encounter_date = models.DateField(default=date.today, help_text="Date of the encounter")
     chief_complaint = models.TextField(help_text="Patient's chief complaint")
 
     # Vital signs (optional)
@@ -60,9 +58,7 @@ class Encounter(models.Model):
         blank=True,
         help_text="Body temperature in Celsius",
     )
-    pulse = models.IntegerField(
-        null=True, blank=True, help_text="Pulse rate (beats per minute)"
-    )
+    pulse = models.IntegerField(null=True, blank=True, help_text="Pulse rate (beats per minute)")
     blood_pressure = models.CharField(
         max_length=20,
         blank=True,
@@ -106,23 +102,21 @@ class Encounter(models.Model):
         verbose_name = "Encounter"
         verbose_name_plural = "Encounters"
 
+    def __str__(self) -> str:
+        """String representation of the encounter."""
+        return f"{self.patient.mrn} - {self.encounter_type} - {self.encounter_date}"
+
     def clean(self):
         """Validate the model fields."""
         super().clean()
 
         # Validate temperature range (35-45°C)
-        if self.temperature is not None:
-            if self.temperature < 35.0 or self.temperature > 45.0:
-                raise ValidationError(
-                    {"temperature": "Temperature must be between 35°C and 45°C."}
-                )
+        if self.temperature is not None and (self.temperature < 35.0 or self.temperature > 45.0):
+            raise ValidationError({"temperature": "Temperature must be between 35°C and 45°C."})
 
         # Validate pulse range (30-200 bpm)
-        if self.pulse is not None:
-            if self.pulse < 30 or self.pulse > 200:
-                raise ValidationError(
-                    {"pulse": "Pulse must be between 30 and 200 beats per minute."}
-                )
+        if self.pulse is not None and (self.pulse < 30 or self.pulse > 200):
+            raise ValidationError({"pulse": "Pulse must be between 30 and 200 beats per minute."})
 
         # Validate blood pressure format
         if self.blood_pressure:
@@ -135,27 +129,22 @@ class Encounter(models.Model):
                 )
 
         # Validate respiratory rate (8-40 breaths/min)
-        if self.respiratory_rate is not None:
-            if self.respiratory_rate < 8 or self.respiratory_rate > 40:
-                raise ValidationError(
-                    {
-                        "respiratory_rate": "Respiratory rate must be between 8 and 40 breaths per minute."
-                    }
-                )
+        if self.respiratory_rate is not None and (
+            self.respiratory_rate < 8 or self.respiratory_rate > 40
+        ):
+            raise ValidationError(
+                {
+                    "respiratory_rate": "Respiratory rate must be between 8 and 40 breaths per minute."
+                }
+            )
 
         # Validate weight (positive value, reasonable range 0.5-300 kg)
-        if self.weight is not None:
-            if self.weight <= 0 or self.weight > 300:
-                raise ValidationError(
-                    {"weight": "Weight must be between 0.5 and 300 kg."}
-                )
+        if self.weight is not None and (self.weight <= 0 or self.weight > 300):
+            raise ValidationError({"weight": "Weight must be between 0.5 and 300 kg."})
 
         # Validate height (positive value, reasonable range 20-250 cm)
-        if self.height is not None:
-            if self.height <= 0 or self.height > 250:
-                raise ValidationError(
-                    {"height": "Height must be between 20 and 250 cm."}
-                )
+        if self.height is not None and (self.height <= 0 or self.height > 250):
+            raise ValidationError({"height": "Height must be between 20 and 250 cm."})
 
     def has_critical_vitals(self) -> bool:
         """
@@ -165,19 +154,18 @@ class Encounter(models.Model):
             bool: True if any vital signs are critical
         """
         # Critical temperature: < 36°C or > 39°C
-        if self.temperature is not None:
-            if self.temperature < 36.0 or self.temperature > 39.0:
-                return True
+        if self.temperature is not None and (self.temperature < 36.0 or self.temperature > 39.0):
+            return True
 
         # Critical pulse: < 50 or > 120 bpm
-        if self.pulse is not None:
-            if self.pulse < 50 or self.pulse > 120:
-                return True
+        if self.pulse is not None and (self.pulse < 50 or self.pulse > 120):
+            return True
 
         # Critical respiratory rate: < 12 or > 25 breaths/min
-        if self.respiratory_rate is not None:
-            if self.respiratory_rate < 12 or self.respiratory_rate > 25:
-                return True
+        if self.respiratory_rate is not None and (
+            self.respiratory_rate < 12 or self.respiratory_rate > 25
+        ):
+            return True
 
         return False
 
@@ -209,7 +197,3 @@ class Encounter(models.Model):
                 alerts.append("Low respiratory rate (bradypnea)")
 
         return ", ".join(alerts) if alerts else ""
-
-    def __str__(self) -> str:
-        """String representation of the encounter."""
-        return f"{self.patient.mrn} - {self.encounter_type} - {self.encounter_date}"

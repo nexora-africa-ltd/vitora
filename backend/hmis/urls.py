@@ -8,11 +8,13 @@ from django.contrib import admin
 from django.urls import include, path
 from rest_framework import routers
 
+from hmis.apps.patients.views import PatientViewSet
+
 # Create a router for API endpoints
 router = routers.DefaultRouter()
 
-# API URL patterns will be registered here as we add viewsets
-# Example: router.register(r'patients', PatientViewSet)
+# Register viewsets
+router.register(r"patients", PatientViewSet, basename="patient")
 
 urlpatterns = [
     path("admin/", admin.site.urls),
