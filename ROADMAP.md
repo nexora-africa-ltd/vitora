@@ -71,14 +71,14 @@ This roadmap outlines the complete development journey for Vitora HMIS from Janu
 **TDD Focus**: Set up testing infrastructure before any code
 
 **Tasks**:
-- [ ] Vision refinement workshop with Kenyan clinicians
-- [ ] Review and incorporate consultant feedback from PDF
-- [ ] Define MVP scope and acceptance criteria
-- [ ] Set up GitHub repository with branch protection
-- [ ] Configure CI/CD pipeline with test gates
-- [ ] Install Pytest, coverage tools, linters (Ruff, Black)
-- [ ] Create test templates and TDD guidelines document
-- [ ] Define coding standards and review process
+- [x] Vision refinement workshop with Kenyan clinicians
+- [x] Review and incorporate consultant feedback from PDF
+- [x] Define MVP scope and acceptance criteria
+- [x] Set up GitHub repository with branch protection
+- [x] Configure CI/CD pipeline with test gates
+- [x] Install Pytest, coverage tools, linters (Ruff, Black)
+- [x] Create test templates and TDD guidelines document
+- [x] Define coding standards and review process
 
 **Deliverables**:
 - Project charter document
