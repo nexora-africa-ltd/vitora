@@ -36,6 +36,7 @@ class EncounterSerializer(serializers.ModelSerializer):
             "pulse",
             "blood_pressure",
             "respiratory_rate",
+            "spo2",
             "weight",
             "height",
             "bmi",
@@ -112,6 +113,12 @@ class EncounterSerializer(serializers.ModelSerializer):
         """Validate height range."""
         if value is not None and (value <= 0 or value > 250):
             raise serializers.ValidationError("Height must be between 20 and 250 cm.")
+        return value
+
+    def validate_spo2(self, value: float | None) -> float | None:
+        """Validate SpO2 range."""
+        if value is not None and (value < 0 or value > 100):
+            raise serializers.ValidationError("SpO2 must be between 0 and 100%.")
         return value
 
 

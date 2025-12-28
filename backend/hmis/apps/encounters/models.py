@@ -82,6 +82,13 @@ class Encounter(models.Model):
         blank=True,
         help_text="Patient height in cm",
     )
+    spo2 = models.DecimalField(
+        max_digits=5,
+        decimal_places=2,
+        null=True,
+        blank=True,
+        help_text="Oxygen saturation percentage (SpO2)",
+    )
 
     # Clinical notes
     notes = models.TextField(blank=True, default="", help_text="Additional clinical notes")
@@ -146,6 +153,10 @@ class Encounter(models.Model):
         if self.height is not None and (self.height <= 0 or self.height > 250):
             raise ValidationError({"height": "Height must be between 20 and 250 cm."})
 
+        # Validate SpO2 (0-100%)
+        if self.spo2 is not None and (self.spo2 < 0 or self.spo2 > 100):
+            raise ValidationError({"spo2": "SpO2 must be between 0 and 100%."})
+
     def has_critical_vitals(self) -> bool:
         """
         Check if any vital signs are in critical ranges.
@@ -165,6 +176,10 @@ class Encounter(models.Model):
         if self.respiratory_rate is not None and (
             self.respiratory_rate < 12 or self.respiratory_rate > 25
         ):
+            return True
+
+        # Critical SpO2: < 95% (hypoxemia)
+        if self.spo2 is not None and self.spo2 < 95:
             return True
 
         return False
@@ -195,5 +210,11 @@ class Encounter(models.Model):
                 alerts.append("High respiratory rate (tachypnea)")
             elif self.respiratory_rate < 12:
                 alerts.append("Low respiratory rate (bradypnea)")
+
+        if self.spo2 is not None:
+            if self.spo2 < 90:
+                alerts.append("Severe hypoxemia (SpO2 < 90%)")
+            elif self.spo2 < 95:
+                alerts.append("Low oxygen saturation (hypoxemia)")
 
         return ", ".join(alerts) if alerts else ""
