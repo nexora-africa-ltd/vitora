@@ -296,7 +296,7 @@ This roadmap outlines the complete development journey for Vitora HMIS from Janu
 - [ ] **Write tests first**: Registered-by tracking tests
 - [ ] Implement registered_by FK and auto-assignment in views
 - [ ] **Write tests first**: Medical history tests (in Encounter model)
-- [ ] Implement medical history fields in Encounter (allergies, chronic_conditions, medications, past_surgeries)
+- [ ] Implement medical history fields in Encounter (allergies, chronic_conditions, medications, past_surgeries, drug_use)
 - [ ] **Write tests first**: SpO2 vital sign tests (validation 0-100%, critical < 95%)
 - [ ] Implement SpO2 field in Encounter model with critical alert
 - [ ] Update patient registration UI with new fields
