@@ -113,6 +113,25 @@ class Patient(models.Model):
         help_text="Staff member who registered this patient",
     )
 
+    # Referral source tracking
+    REFERRAL_SOURCE_CHOICES = [
+        ("self", "Self"),
+        ("clinic", "Clinic"),
+        ("other_facility", "Other Facility"),
+    ]
+    referral_source = models.CharField(
+        max_length=20,
+        choices=REFERRAL_SOURCE_CHOICES,
+        default="self",
+        help_text="How the patient was referred to this facility",
+    )
+    referred_from_facility = models.CharField(
+        max_length=200,
+        blank=True,
+        default="",
+        help_text="Name of facility patient was referred from (if applicable)",
+    )
+
     # Timestamps
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
@@ -158,6 +177,14 @@ class Patient(models.Model):
                 validator(self.email)
             except ValidationError as e:
                 raise ValidationError({"email": e.message}) from e
+
+        # Validate referred_from_facility is provided when referral_source is 'other_facility'
+        if self.referral_source == "other_facility" and not self.referred_from_facility:
+            raise ValidationError(
+                {
+                    "referred_from_facility": "Facility name is required when referral source is 'Other Facility'."
+                }
+            )
 
     @property
     def full_name(self) -> str:
