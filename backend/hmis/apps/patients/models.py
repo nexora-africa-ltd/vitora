@@ -176,3 +176,89 @@ class Patient(models.Model):
             - ((today.month, today.day) < (self.date_of_birth.month, self.date_of_birth.day))
         )
         return age
+
+
+class EmergencyContact(models.Model):
+    """
+    Emergency contact for a patient.
+
+    Stores next of kin / emergency contact information for patients.
+    A patient can have multiple emergency contacts.
+
+    Attributes:
+        patient: The patient this contact belongs to
+        full_name: Contact's full name (required)
+        relationship: Relationship to patient (required)
+        phone_number: Primary phone number (required)
+        alternative_phone: Alternative phone number (optional)
+        created_at: Timestamp when the record was created
+        updated_at: Timestamp when the record was last updated
+    """
+
+    RELATIONSHIP_CHOICES = [
+        ("spouse", "Spouse"),
+        ("parent", "Parent"),
+        ("child", "Child"),
+        ("sibling", "Sibling"),
+        ("friend", "Friend"),
+        ("other", "Other"),
+    ]
+
+    patient = models.ForeignKey(
+        Patient,
+        on_delete=models.CASCADE,
+        related_name="emergency_contacts",
+        help_text="The patient this emergency contact belongs to",
+    )
+    full_name = models.CharField(
+        max_length=200,
+        help_text="Contact's full name",
+    )
+    relationship = models.CharField(
+        max_length=50,
+        choices=RELATIONSHIP_CHOICES,
+        help_text="Relationship to patient",
+    )
+    phone_number = models.CharField(
+        max_length=20,
+        help_text="Primary phone number",
+    )
+    alternative_phone = models.CharField(
+        max_length=20,
+        blank=True,
+        default="",
+        help_text="Alternative phone number",
+    )
+
+    # Timestamps
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        """Meta options for EmergencyContact model."""
+
+        ordering = ["-created_at"]
+        verbose_name = "Emergency Contact"
+        verbose_name_plural = "Emergency Contacts"
+
+    def __str__(self) -> str:
+        """String representation of the emergency contact."""
+        return f"{self.full_name} ({self.relationship}) - {self.patient.mrn}"
+
+    def clean(self):
+        """Validate the model fields."""
+        super().clean()
+
+        errors = {}
+
+        if not self.full_name or not self.full_name.strip():
+            errors["full_name"] = "Full name is required."
+
+        if not self.relationship or not self.relationship.strip():
+            errors["relationship"] = "Relationship is required."
+
+        if not self.phone_number or not self.phone_number.strip():
+            errors["phone_number"] = "Phone number is required."
+
+        if errors:
+            raise ValidationError(errors)
