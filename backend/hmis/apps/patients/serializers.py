@@ -51,6 +51,8 @@ class PatientSerializer(serializers.ModelSerializer):
             "email",
             "address",
             "national_id",
+            "referral_source",
+            "referred_from_facility",
             "registered_by",
             "registered_by_username",
             "created_at",
@@ -72,3 +74,15 @@ class PatientSerializer(serializers.ModelSerializer):
         if value and value > date.today():
             raise serializers.ValidationError("Date of birth cannot be in the future.")
         return value
+
+    def validate(self, data):
+        """Cross-field validation."""
+        referral_source = data.get("referral_source", self.instance.referral_source if self.instance else "self")
+        referred_from_facility = data.get("referred_from_facility", "")
+
+        if referral_source == "other_facility" and not referred_from_facility:
+            raise serializers.ValidationError(
+                {"referred_from_facility": "Facility name is required when referral source is 'Other Facility'."}
+            )
+
+        return data
