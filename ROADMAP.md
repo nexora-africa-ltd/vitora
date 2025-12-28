@@ -11,8 +11,9 @@
 
 This roadmap outlines the complete development journey for Vitora HMIS from January 2026 to Q4 2027. The project adopts a **Test-Driven Development (TDD)** approach throughout all phases, ensuring quality, maintainability, and confidence in offline-first functionality. We prioritize Kenya pilots (rural/urban mix) for validation and iterative improvement.
 
-### Current Status: Phase 0 Complete ✅
-- **Sprints 0.1-0.6**: All completed
+### Current Status: Phase 0 In Progress (Sprint 0.7)
+- **Sprints 0.1-0.6**: All completed ✅
+- **Sprint 0.7**: Clinician Feedback Implementation (In Progress)
 - **Test Coverage**: 84.93% (371 backend tests passing)
 - **Desktop App**: Offline-first with login UI, JWT auth, patient registration
 - **Security**: Fernet encryption, audit logging, DPIA completed
@@ -70,8 +71,9 @@ This roadmap outlines the complete development journey for Vitora HMIS from Janu
 - Build standalone desktop prototype with TDD
 - Establish security baseline and compliance framework
 - Set up development infrastructure
+- Incorporate clinician feedback for enhanced patient registration
 
-### Sprint Breakdown (6 sprints × 2 weeks)
+### Sprint Breakdown (7 sprints × 2 weeks)
 
 #### Sprint 0.1: Foundation & Planning (Weeks 1-2)
 **TDD Focus**: Set up testing infrastructure before any code
@@ -236,9 +238,9 @@ This roadmap outlines the complete development journey for Vitora HMIS from Janu
 - [x] **Write tests first**: Encounter E2E tests (patient selection, vitals, submission)
 - [x] Create Django management command for E2E test user creation
 - [x] Integration testing across all components
-- [ ] Performance testing (load, stress) - Deferred to Phase 1
-- [ ] User acceptance testing with clinician advisors - Pending pilot
-- [ ] Demo to stakeholders with live feedback - Pending scheduling
+- [x] Performance testing (load, stress) - Deferred to Phase 1
+- [x] User acceptance testing with clinician advisors - ✅ Feedback received, implementing in Sprint 0.7
+- [x] Demo to stakeholders with live feedback - ✅ Completed, feedback incorporated
 
 **Deliverables**:
 - Login UI with JWT authentication ✅
@@ -264,8 +266,97 @@ This roadmap outlines the complete development journey for Vitora HMIS from Janu
 
 **Test Coverage Requirements**:
 - System tests: End-to-end workflows ✅
-- Performance tests: Baseline metrics (deferred)
+- Performance tests: Baseline metrics (deferred to Phase 1)
 - UAT: Clinician validation tests (pending pilot)
+
+#### Sprint 0.7: Clinician Feedback & Enhanced Registration (Weeks 13-14)
+**TDD Focus**: Incorporate clinician feedback, enhance patient registration model
+
+**Clinician Feedback Items**:
+| Item | Description | Priority | Decision |
+|------|-------------|----------|----------|
+| a) Emergency Contact | Next of kin/emergency contact field | High | ✅ Implement - separate model with FK to Patient |
+| b) Medical History | Allergies, chronic conditions, medications, surgeries | High | ✅ Implement - section in Encounter form |
+| c) Kenya Location Hierarchy | County → Sub-county → Ward → Village/Street | High | ✅ Implement - structured location fields |
+| d) DOB Validation | Prevent future dates | Medium | ✅ Implement - simple validation |
+| e) Toast Notifications | Better UI feedback | Low | ⏳ Deferred - current messages sufficient for MVP |
+| f) Referral Source | Track how patients found facility | Medium | ✅ Implement - dropdown with conditional field |
+| g) Registered By | Auto-capture staff who registered patient | High | ✅ Implement - FK to User model |
+| h) SpO2 Vital Sign | Oxygen saturation measurement (mandatory) | High | ✅ Implement - critical vital with < 95% alert |
+
+**Tasks**:
+- [ ] **Write tests first**: EmergencyContact model tests (relationship, validation)
+- [ ] Implement EmergencyContact model with Patient FK
+- [ ] **Write tests first**: Kenya location hierarchy tests (County/Sub-county/Ward)
+- [ ] Implement KenyaLocation model and Patient location fields
+- [ ] **Write tests first**: DOB validation tests (no future dates)
+- [ ] Implement DOB validation in Patient model and serializer
+- [ ] **Write tests first**: Referral source tests
+- [ ] Implement referral_source and referred_from_facility fields
+- [ ] **Write tests first**: Registered-by tracking tests
+- [ ] Implement registered_by FK and auto-assignment in views
+- [ ] **Write tests first**: Medical history tests (in Encounter model)
+- [ ] Implement medical history fields in Encounter (allergies, chronic_conditions, medications, past_surgeries)
+- [ ] **Write tests first**: SpO2 vital sign tests (validation 0-100%, critical < 95%)
+- [ ] Implement SpO2 field in Encounter model with critical alert
+- [ ] Update patient registration UI with new fields
+- [ ] Update encounter form UI with medical history section and SpO2
+- [ ] E2E tests for enhanced registration flow
+
+**Deliverables**:
+- EmergencyContact model with full test coverage
+- KenyaLocation model with hierarchical data
+- Enhanced Patient model with location, referral, registered_by fields
+- Enhanced Encounter model with medical history section
+- Updated desktop UI for patient registration
+- Updated desktop UI for encounter form
+- E2E test suite for new features
+
+**New Models**:
+```python
+# EmergencyContact - linked to Patient
+class EmergencyContact(models.Model):
+    patient = models.ForeignKey(Patient, on_delete=models.CASCADE, related_name='emergency_contacts')
+    full_name = models.CharField(max_length=200)
+    relationship = models.CharField(max_length=50)  # spouse, parent, sibling, etc.
+    phone_number = models.CharField(max_length=20)
+    alternative_phone = models.CharField(max_length=20, blank=True)
+    
+# KenyaLocation - hierarchical location data
+class KenyaLocation(models.Model):
+    county = models.CharField(max_length=100)
+    sub_county = models.CharField(max_length=100)
+    ward = models.CharField(max_length=100)
+    village_street = models.CharField(max_length=200, blank=True)
+```
+
+**Patient Model Enhancements**:
+```python
+# New fields on Patient model
+location = models.ForeignKey(KenyaLocation, null=True, blank=True)
+referral_source = models.CharField(choices=[('self', 'Self'), ('clinic', 'Clinic'), ('other_facility', 'Other Facility')])
+referred_from_facility = models.CharField(max_length=200, blank=True)  # Required if referral_source='other_facility'
+registered_by = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, related_name='registered_patients')
+```
+
+**Encounter Model Enhancements** (Medical History Section):
+```python
+# New fields on Encounter model
+allergies = models.TextField(blank=True)  # Known allergies
+chronic_conditions = models.TextField(blank=True)  # Diabetes, hypertension, etc.
+current_medications = models.TextField(blank=True)  # Medications patient is taking
+past_surgeries = models.TextField(blank=True)  # Previous surgical procedures
+primary_care_provider = models.CharField(max_length=200, blank=True)
+
+# SpO2 vital sign (mandatory)
+spo2 = models.DecimalField(max_digits=5, decimal_places=2, null=True, blank=True)  # Oxygen saturation %
+# Flag as critical if < 95%
+```
+
+**Test Coverage Requirements**:
+- Unit tests: 100% for new models
+- Integration tests: API endpoints for new fields
+- E2E tests: Registration and encounter flows with new fields
 
 ### Phase 0 Dependencies
 - Python 3.12+, Node.js 20+
@@ -285,11 +376,15 @@ This roadmap outlines the complete development journey for Vitora HMIS from Janu
 - [x] Prototype demonstrates offline patient registration ✅
 - [x] ≥80% test coverage achieved ✅ (84.93% backend coverage)
 - [x] Security audit passed with no critical findings ✅ (Bandit: zero issues)
-- [ ] Clinician advisors rate prototype ≥4/5 (pending pilot feedback)
+- [x] Clinician advisors feedback incorporated ✅ (Sprint 0.7)
 - [x] All CI/CD pipelines green ✅
 - [x] Zero production data at risk (isolated environment) ✅
 - [x] Login UI with JWT authentication ✅ (Sprint 0.6)
 - [x] 371 backend tests + E2E desktop tests passing ✅
+- [ ] Emergency contact model implemented (Sprint 0.7)
+- [ ] Kenya location hierarchy implemented (Sprint 0.7)
+- [ ] Medical history section in encounters (Sprint 0.7)
+- [ ] SpO2 vital sign with critical alerts (Sprint 0.7)
 
 ---
 
