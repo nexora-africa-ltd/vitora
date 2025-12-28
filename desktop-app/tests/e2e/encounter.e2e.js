@@ -113,55 +113,55 @@ test.describe('Patient Selection for Encounter', () => {
 });
 
 test.describe('Encounter Form', () => {
+  let patientName;
+  
   test.beforeEach(async () => {
     // First register a patient to use
     await window.locator('[data-tab="register"]').click();
     await window.waitForSelector('#register-tab.active', { timeout: 5000 });
     
-    // Register a test patient
+    // Register a test patient with unique name
     const timestamp = Date.now();
-    await window.locator('#first-name').fill(`EncounterTest${timestamp}`);
+    patientName = `EncounterTest${timestamp}`;
+    await window.locator('#first-name').fill(patientName);
     await window.locator('#last-name').fill('Patient');
     await window.locator('#date-of-birth').fill('1980-05-15');
     await window.locator('#gender').selectOption('M');
     await window.locator('#submit-btn').click();
     
+    // Wait for success message
     await window.waitForSelector('.message.success', { timeout: 10000 });
     
-    // Now navigate to encounter tab
+    // Navigate to encounter tab
     await window.locator('[data-tab="encounter"]').click();
     await window.waitForSelector('#encounter-tab.active', { timeout: 5000 });
     
-    // Search and select the patient
-    await window.locator('#patient-search').fill(`EncounterTest${timestamp}`);
+    // Search for the patient we just registered
+    await window.locator('#patient-search').fill(patientName);
     await window.locator('#patient-search-btn').click();
-    await window.waitForTimeout(2000);
     
-    // Click on the first result if found
-    const firstResult = window.locator('.patient-search-item').first();
-    if (await firstResult.isVisible()) {
-      await firstResult.click();
-    }
+    // Wait for search results to appear
+    await window.waitForSelector('.patient-search-item', { state: 'visible', timeout: 10000 });
+    
+    // Click on the first result
+    await window.locator('.patient-search-item').first().click();
+    
+    // Wait for the selected patient to appear and form to be visible
+    await window.waitForSelector('#selected-patient', { state: 'visible', timeout: 5000 });
+    await window.waitForSelector('#encounter-form', { state: 'visible', timeout: 5000 });
   });
   
   test('should display encounter form after patient selection', async () => {
-    // If patient was selected, form should be visible
-    const encounterForm = window.locator('#encounter-form');
-    const selectedPatient = window.locator('#selected-patient');
-    
-    if (await selectedPatient.isVisible()) {
-      await expect(encounterForm).toBeVisible();
-      await expect(window.locator('#encounter-type')).toBeVisible();
-      await expect(window.locator('#encounter-date')).toBeVisible();
-      await expect(window.locator('#chief-complaint')).toBeVisible();
-    }
+    // Form should be visible after patient selection in beforeEach
+    await expect(window.locator('#encounter-form')).toBeVisible();
+    await expect(window.locator('#selected-patient')).toBeVisible();
+    await expect(window.locator('#encounter-type')).toBeVisible();
+    await expect(window.locator('#encounter-date')).toBeVisible();
+    await expect(window.locator('#chief-complaint')).toBeVisible();
   });
   
   test('should display vitals input fields', async () => {
-    // Wait for encounter form to be visible (patient was selected in beforeEach)
-    await window.waitForSelector('#encounter-form', { state: 'visible', timeout: 10000 });
-    
-    // Check all vital sign fields
+    // All vital sign fields should be visible
     await expect(window.locator('#temperature')).toBeVisible();
     await expect(window.locator('#pulse')).toBeVisible();
     await expect(window.locator('#blood-pressure')).toBeVisible();
@@ -171,15 +171,6 @@ test.describe('Encounter Form', () => {
   });
   
   test('should calculate BMI when weight and height are entered', async () => {
-    const selectedPatient = window.locator('#selected-patient');
-    
-    try {
-      await selectedPatient.waitFor({ state: 'visible', timeout: 5000 });
-    } catch {
-      test.skip('No patient available to select');
-      return;
-    }
-    
     await window.locator('#weight').fill('70');
     await window.locator('#height').fill('175');
     
@@ -192,10 +183,6 @@ test.describe('Encounter Form', () => {
   });
   
   test('should allow changing selected patient', async () => {
-    // Wait for encounter form to be visible (patient was selected in beforeEach)
-    await window.waitForSelector('#encounter-form', { state: 'visible', timeout: 10000 });
-    await window.waitForSelector('#selected-patient', { state: 'visible', timeout: 5000 });
-    
     // Click change button
     await window.locator('#change-patient-btn').click();
     
