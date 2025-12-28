@@ -90,6 +90,38 @@ class Encounter(models.Model):
         help_text="Oxygen saturation percentage (SpO2)",
     )
 
+    # Medical History Section
+    allergies = models.TextField(
+        blank=True,
+        default="",
+        help_text="Known allergies (medications, food, environmental)",
+    )
+    chronic_conditions = models.TextField(
+        blank=True,
+        default="",
+        help_text="Chronic conditions (e.g., Diabetes, Hypertension, Asthma)",
+    )
+    current_medications = models.TextField(
+        blank=True,
+        default="",
+        help_text="Current medications with dosage",
+    )
+    past_surgeries = models.TextField(
+        blank=True,
+        default="",
+        help_text="Past surgical procedures with dates",
+    )
+    family_history = models.TextField(
+        blank=True,
+        default="",
+        help_text="Relevant family medical history",
+    )
+    social_history = models.TextField(
+        blank=True,
+        default="",
+        help_text="Social history (smoking, alcohol, occupation, lifestyle)",
+    )
+
     # Clinical notes
     notes = models.TextField(blank=True, default="", help_text="Additional clinical notes")
 
