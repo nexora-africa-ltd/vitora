@@ -80,12 +80,12 @@ class Patient(models.Model):
         max_length=100, blank=True, default="", help_text="Patient's middle name"
     )
     phone_number = models.CharField(
-        max_length=20, blank=True, default="", help_text="Patient's phone number"
+        max_length=20, blank=True, null=True, help_text="Patient's phone number"
     )
     email = models.EmailField(blank=True, default="", help_text="Patient's email address")
     address = models.TextField(blank=True, default="", help_text="Patient's physical address")
     national_id = models.CharField(
-        max_length=50, blank=True, default="", help_text="Patient's national ID number"
+        max_length=50, blank=True, null=True, help_text="Patient's national ID number"
     )
 
     # Privacy & Consent (Kenya Data Protection Act compliance)

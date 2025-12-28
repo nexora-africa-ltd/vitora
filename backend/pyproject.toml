@@ -15,6 +15,7 @@ django-cors-headers = "^4.3"
 django-filter = "^23.5"
 psycopg2-binary = "^2.9"
 celery = {extras = ["redis"], version = "^5.3"}
+requests = "^2.31"
 python-dotenv = "^1.0"
 pydantic = "^2.5"
 pydantic-settings = "^2.1"
