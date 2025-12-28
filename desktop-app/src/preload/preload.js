@@ -3,6 +3,8 @@
  * 
  * This script runs in a privileged context and exposes safe APIs
  * to the renderer process through contextBridge.
+ * 
+ * Sprint 0.6: Added authentication token management
  */
 
 const { contextBridge, ipcRenderer } = require('electron');
@@ -27,5 +29,30 @@ contextBridge.exposeInMainWorld('electronAPI', {
    */
   getBackendUrl: () => {
     return ipcRenderer.invoke('get-backend-url');
+  },
+  
+  /**
+   * Store authentication tokens securely
+   * @param {object} tokens - { accessToken, refreshToken, user }
+   * @returns {Promise<void>}
+   */
+  storeTokens: (tokens) => {
+    return ipcRenderer.invoke('store-tokens', tokens);
+  },
+  
+  /**
+   * Get stored authentication tokens
+   * @returns {Promise<object|null>} Stored tokens or null
+   */
+  getStoredTokens: () => {
+    return ipcRenderer.invoke('get-stored-tokens');
+  },
+  
+  /**
+   * Clear stored authentication tokens (logout)
+   * @returns {Promise<void>}
+   */
+  clearTokens: () => {
+    return ipcRenderer.invoke('clear-tokens');
   }
 });

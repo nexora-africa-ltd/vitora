@@ -8,13 +8,59 @@
   <link rel="stylesheet" href="styles.css">
 </head>
 <body>
-  <div class="container">
+  <!-- Login Container -->
+  <div id="login-container" class="login-container">
+    <div class="login-box">
+      <div class="login-header">
+        <h1>🏥 Vitora HMIS</h1>
+        <p class="subtitle">Reliable Healthcare, Anywhere</p>
+      </div>
+      
+      <form id="login-form">
+        <div class="form-group">
+          <label for="login-username">Username</label>
+          <input type="text" id="login-username" name="username" required 
+                 placeholder="Enter your username" autocomplete="username">
+        </div>
+        
+        <div class="form-group">
+          <label for="login-password">Password</label>
+          <input type="password" id="login-password" name="password" required 
+                 placeholder="Enter your password" autocomplete="current-password">
+        </div>
+        
+        <div id="login-error" class="login-error" style="display: none;"></div>
+        
+        <button type="submit" class="btn btn-primary btn-block" id="login-btn">
+          <span id="login-btn-text">Sign In</span>
+          <span id="login-spinner" class="spinner" style="display: none;"></span>
+        </button>
+      </form>
+      
+      <div class="login-footer">
+        <p>Kenya Data Protection Act 2019 Compliant</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- Main Application Container (hidden until login) -->
+  <div id="main-container" class="container" style="display: none;">
     <header>
-      <h1>🏥 Vitora HMIS</h1>
-      <p class="subtitle">Reliable Healthcare, Anywhere</p>
-      <div id="offline-indicator" class="offline-indicator" style="display: none;">
-        <span class="offline-dot"></span>
-        <span>Offline Mode</span>
+      <div class="header-content">
+        <div class="header-left">
+          <h1>🏥 Vitora HMIS</h1>
+          <p class="subtitle">Reliable Healthcare, Anywhere</p>
+        </div>
+        <div class="header-right">
+          <div id="offline-indicator" class="offline-indicator" style="display: none;">
+            <span class="offline-dot"></span>
+            <span>Offline Mode</span>
+          </div>
+          <div class="user-info">
+            <span id="current-user" class="current-user"></span>
+            <button id="logout-btn" class="btn btn-secondary btn-sm">Logout</button>
+          </div>
+        </div>
       </div>
     </header>
 

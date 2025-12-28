@@ -1,15 +1,274 @@
 /**
  * Vitora HMIS Desktop - Renderer Process
  * 
- * This file handles the UI logic for patient registration, encounter management,
- * and offline status detection.
+ * This file handles the UI logic for authentication, patient registration,
+ * encounter management, and offline status detection.
+ * 
+ * Sprint 0.6: Added authentication flow
  */
+
+// ====================
+// Authentication State
+// ====================
+let authState = {
+  isAuthenticated: false,
+  accessToken: null,
+  refreshToken: null,
+  user: null
+};
 
 // ====================
 // State Management
 // ====================
 let selectedPatient = null;
 let isOnline = true;
+
+// ====================
+// DOM Elements - Auth
+// ====================
+const loginContainer = document.getElementById('login-container');
+const mainContainer = document.getElementById('main-container');
+const loginForm = document.getElementById('login-form');
+const loginError = document.getElementById('login-error');
+const loginBtn = document.getElementById('login-btn');
+const loginBtnText = document.getElementById('login-btn-text');
+const loginSpinner = document.getElementById('login-spinner');
+const logoutBtn = document.getElementById('logout-btn');
+const currentUserSpan = document.getElementById('current-user');
+
+// ====================
+// Authentication Functions
+// ====================
+
+/**
+ * Initialize the app - check for existing session
+ */
+async function initializeApp() {
+  // Try to restore session from stored tokens
+  const storedTokens = await window.electronAPI.getStoredTokens();
+  
+  if (storedTokens && storedTokens.accessToken) {
+    authState.accessToken = storedTokens.accessToken;
+    authState.refreshToken = storedTokens.refreshToken;
+    authState.user = storedTokens.user;
+    
+    // Verify the token is still valid
+    const isValid = await verifyToken(storedTokens.accessToken);
+    
+    if (isValid) {
+      authState.isAuthenticated = true;
+      showMainApp();
+      return;
+    } else if (storedTokens.refreshToken) {
+      // Try to refresh the token
+      const refreshed = await refreshAccessToken(storedTokens.refreshToken);
+      if (refreshed) {
+        authState.isAuthenticated = true;
+        showMainApp();
+        return;
+      }
+    }
+  }
+  
+  // No valid session, show login
+  showLoginScreen();
+}
+
+/**
+ * Verify if an access token is still valid
+ */
+async function verifyToken(token) {
+  try {
+    const response = await window.electronAPI.apiRequest('POST', '/api/token/verify/', { token });
+    return response.success;
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * Refresh the access token using the refresh token
+ */
+async function refreshAccessToken(refreshToken) {
+  try {
+    const response = await window.electronAPI.apiRequest('POST', '/api/token/refresh/', { 
+      refresh: refreshToken 
+    });
+    
+    if (response.success && response.data.access) {
+      authState.accessToken = response.data.access;
+      await window.electronAPI.storeTokens({
+        accessToken: response.data.access,
+        refreshToken: authState.refreshToken,
+        user: authState.user
+      });
+      return true;
+    }
+    return false;
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * Handle login form submission
+ */
+async function handleLogin(e) {
+  e.preventDefault();
+  
+  const username = document.getElementById('login-username').value;
+  const password = document.getElementById('login-password').value;
+  
+  // Show loading state
+  setLoginLoading(true);
+  hideLoginError();
+  
+  try {
+    const response = await window.electronAPI.apiRequest('POST', '/api/token/', {
+      username,
+      password
+    });
+    
+    if (response.success && response.data.access) {
+      // Store tokens
+      authState.accessToken = response.data.access;
+      authState.refreshToken = response.data.refresh;
+      authState.user = { username };
+      authState.isAuthenticated = true;
+      
+      // Persist tokens
+      await window.electronAPI.storeTokens({
+        accessToken: response.data.access,
+        refreshToken: response.data.refresh,
+        user: { username }
+      });
+      
+      // Show main app
+      showMainApp();
+      
+      // Clear login form
+      loginForm.reset();
+    } else {
+      showLoginError('Invalid username or password');
+    }
+  } catch (error) {
+    const errorMsg = error.response?.data?.detail || 'Login failed. Please try again.';
+    showLoginError(errorMsg);
+  } finally {
+    setLoginLoading(false);
+  }
+}
+
+/**
+ * Handle logout
+ */
+async function handleLogout() {
+  // Clear auth state
+  authState = {
+    isAuthenticated: false,
+    accessToken: null,
+    refreshToken: null,
+    user: null
+  };
+  
+  // Clear stored tokens
+  await window.electronAPI.clearTokens();
+  
+  // Show login screen
+  showLoginScreen();
+}
+
+/**
+ * Show the login screen
+ */
+function showLoginScreen() {
+  loginContainer.style.display = 'flex';
+  mainContainer.style.display = 'none';
+}
+
+/**
+ * Show the main application
+ */
+function showMainApp() {
+  loginContainer.style.display = 'none';
+  mainContainer.style.display = 'block';
+  
+  // Update user display
+  if (authState.user && authState.user.username) {
+    currentUserSpan.textContent = authState.user.username;
+  }
+  
+  // Initialize the app
+  initializeMainApp();
+}
+
+/**
+ * Set login button loading state
+ */
+function setLoginLoading(loading) {
+  loginBtn.disabled = loading;
+  loginBtnText.textContent = loading ? 'Signing in...' : 'Sign In';
+  loginSpinner.style.display = loading ? 'inline-block' : 'none';
+}
+
+/**
+ * Show login error message
+ */
+function showLoginError(message) {
+  loginError.textContent = message;
+  loginError.style.display = 'block';
+}
+
+/**
+ * Hide login error message
+ */
+function hideLoginError() {
+  loginError.style.display = 'none';
+}
+
+// Event listeners for auth
+loginForm.addEventListener('submit', handleLogin);
+logoutBtn.addEventListener('click', handleLogout);
+
+// ====================
+// Token Refresh Timer
+// ====================
+let tokenRefreshInterval = null;
+
+function startTokenRefreshTimer() {
+  // Refresh token every 25 minutes (access token expires at 30 min)
+  tokenRefreshInterval = setInterval(async () => {
+    if (authState.isAuthenticated && authState.refreshToken) {
+      const refreshed = await refreshAccessToken(authState.refreshToken);
+      if (!refreshed) {
+        // Token refresh failed, logout user
+        handleLogout();
+      }
+    }
+  }, 25 * 60 * 1000); // 25 minutes
+}
+
+function stopTokenRefreshTimer() {
+  if (tokenRefreshInterval) {
+    clearInterval(tokenRefreshInterval);
+    tokenRefreshInterval = null;
+  }
+}
+
+// ====================
+// Main App Initialization
+// ====================
+function initializeMainApp() {
+  startTokenRefreshTimer();
+  
+  // Update online status
+  setTimeout(updateOnlineStatus, 1000);
+  
+  // Load patients if on list tab
+  if (document.getElementById('list-tab').classList.contains('active')) {
+    loadPatients();
+  }
+}
 
 // ====================
 // Offline Indicator
@@ -607,13 +866,14 @@ function escapeHtml(text) {
   return div.innerHTML.replace(/'/g, "\\'").replace(/"/g, '\\"');
 }
 
-// Load patients on initial page load if on list tab
-if (document.getElementById('list-tab').classList.contains('active')) {
-  loadPatients();
-}
-
 // Make functions globally available for onclick handlers
 window.viewPatientDetails = viewPatientDetails;
 window.startEncounter = startEncounter;
 window.selectPatient = selectPatient;
 window.closeModal = closeModal;
+
+// ====================
+// App Initialization
+// ====================
+// Initialize the app when DOM is ready
+document.addEventListener('DOMContentLoaded', initializeApp);

@@ -6,6 +6,7 @@
  * - SQLite database initialization
  * - Main application window
  * - IPC communication between renderer and backend
+ * - Authentication token management (Sprint 0.6)
  */
 
 const { app, BrowserWindow, ipcMain } = require('electron');
@@ -14,14 +15,72 @@ const { spawn } = require('child_process');
 const axios = require('axios');
 const Store = require('electron-store');
 
-// Store for persistent settings
-const store = new Store();
+// Store for persistent settings and auth tokens
+const store = new Store({
+  encryptionKey: 'vitora-hmis-secret-key-2025', // Encrypt sensitive data
+  schema: {
+    auth: {
+      type: 'object',
+      properties: {
+        accessToken: { type: 'string' },
+        refreshToken: { type: 'string' },
+        user: { type: 'object' }
+      }
+    }
+  }
+});
 
 // Global references
 let mainWindow = null;
 let backendProcess = null;
 const BACKEND_PORT = 8000;
 const BACKEND_URL = `http://127.0.0.1:${BACKEND_PORT}`;
+
+/**
+ * Get stored access token for authenticated requests
+ */
+function getAccessToken() {
+  return store.get('auth.accessToken');
+}
+
+/**
+ * Create test user for development/E2E testing
+ */
+async function createTestUser() {
+  return new Promise((resolve) => {
+    const backendPath = path.join(__dirname, '..', '..', '..', 'backend');
+    const pythonCmd = process.platform === 'win32' ? 'python' : 'python3';
+    const managePath = path.join(backendPath, 'manage.py');
+    
+    console.log('[Backend] Creating test user...');
+    
+    const createUserProcess = spawn(pythonCmd, [managePath, 'create_test_user'], {
+      cwd: backendPath,
+      env: {
+        ...process.env,
+        DJANGO_ENV: 'development',
+        DJANGO_SETTINGS_MODULE: 'hmis.settings'
+      },
+      stdio: 'pipe'
+    });
+    
+    createUserProcess.stdout.on('data', (data) => {
+      console.log(`[Backend] ${data.toString().trim()}`);
+    });
+    
+    createUserProcess.stderr.on('data', (data) => {
+      // Don't log as error - Django sends some info to stderr
+      console.log(`[Backend] ${data.toString().trim()}`);
+    });
+    
+    createUserProcess.on('close', () => {
+      resolve();
+    });
+    
+    // Timeout after 10 seconds
+    setTimeout(resolve, 10000);
+  });
+}
 
 /**
  * Start Django backend server
@@ -185,6 +244,9 @@ async function initialize() {
   try {
     console.log('[App] Initializing Vitora HMIS...');
     
+    // Create test user for development/E2E testing
+    await createTestUser();
+    
     // Start backend server
     await startBackend();
     
@@ -239,13 +301,26 @@ app.on('before-quit', async (event) => {
 ipcMain.handle('api-request', async (event, { method, endpoint, data }) => {
   try {
     const url = `${BACKEND_URL}${endpoint}`;
+    
+    // Build headers - include auth token if available (except for token endpoints)
+    const headers = {
+      'Content-Type': 'application/json'
+    };
+    
+    // Add Authorization header for non-auth endpoints
+    const isAuthEndpoint = endpoint.includes('/api/token');
+    if (!isAuthEndpoint) {
+      const accessToken = getAccessToken();
+      if (accessToken) {
+        headers['Authorization'] = `Bearer ${accessToken}`;
+      }
+    }
+    
     const response = await axios({
       method,
       url,
       data,
-      headers: {
-        'Content-Type': 'application/json'
-      }
+      headers
     });
     return { success: true, data: response.data };
   } catch (error) {
@@ -261,11 +336,56 @@ ipcMain.handle('get-backend-url', () => {
   return BACKEND_URL;
 });
 
+// Token management IPC handlers (Sprint 0.6)
+ipcMain.handle('store-tokens', async (event, tokens) => {
+  try {
+    if (tokens.accessToken) {
+      store.set('auth.accessToken', tokens.accessToken);
+    }
+    if (tokens.refreshToken) {
+      store.set('auth.refreshToken', tokens.refreshToken);
+    }
+    if (tokens.user) {
+      store.set('auth.user', tokens.user);
+    }
+    return { success: true };
+  } catch (error) {
+    console.error('[IPC] Failed to store tokens:', error);
+    return { success: false, error: error.message };
+  }
+});
+
+ipcMain.handle('get-stored-tokens', async () => {
+  try {
+    return {
+      accessToken: store.get('auth.accessToken'),
+      refreshToken: store.get('auth.refreshToken'),
+      user: store.get('auth.user')
+    };
+  } catch (error) {
+    console.error('[IPC] Failed to get tokens:', error);
+    return null;
+  }
+});
+
+ipcMain.handle('clear-tokens', async () => {
+  try {
+    store.delete('auth.accessToken');
+    store.delete('auth.refreshToken');
+    store.delete('auth.user');
+    return { success: true };
+  } catch (error) {
+    console.error('[IPC] Failed to clear tokens:', error);
+    return { success: false, error: error.message };
+  }
+});
+
 // Export for testing
 module.exports = {
   startBackend,
   stopBackend,
   checkBackendHealth,
   createWindow,
+  getAccessToken,
   BACKEND_URL
 };
