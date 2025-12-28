@@ -300,38 +300,44 @@ test.describe('Encounter Management Flow', () => {
 });
 
 test.describe('Patient Details Modal', () => {
-  test('should open patient details modal from patient list', async () => {
-    // First, go to patient list
+  test.beforeEach(async () => {
+    // First, register a patient so we have something in the list
+    await window.locator('[data-tab="register"]').click();
+    await window.waitForSelector('#register-tab.active', { timeout: 5000 });
+    
+    const timestamp = Date.now();
+    await window.locator('#first-name').fill(`ModalTest${timestamp}`);
+    await window.locator('#last-name').fill('Patient');
+    await window.locator('#date-of-birth').fill('1985-05-15');
+    await window.locator('#gender').selectOption('F');
+    await window.locator('#submit-btn').click();
+    
+    await window.waitForSelector('.message.success', { timeout: 10000 });
+    
+    // Now go to patient list - this triggers loadPatients()
     await window.locator('[data-tab="list"]').click();
     await window.waitForSelector('#list-tab.active', { timeout: 5000 });
-    await window.waitForTimeout(2000); // Wait for patients to load
     
+    // Wait for patient cards to appear
+    await window.waitForSelector('.patient-card', { state: 'visible', timeout: 10000 });
+  });
+
+  test('should open patient details modal from patient list', async () => {
     // Click on View Details for first patient
-    const viewDetailsBtn = window.locator('.btn-view').first();
-    if (await viewDetailsBtn.isVisible()) {
-      await viewDetailsBtn.click();
-      
-      // Wait for modal to appear
-      await window.waitForSelector('#patient-modal', { timeout: 5000 });
-      await expect(window.locator('#patient-modal')).toBeVisible();
-      
-      // Verify modal content
-      await expect(window.locator('.patient-details-header h2')).toBeVisible();
-      await expect(window.locator('.encounter-history h3')).toBeVisible();
-    }
+    await window.locator('.btn-view').first().click();
+    
+    // Wait for modal to appear
+    await window.waitForSelector('#patient-modal', { state: 'visible', timeout: 5000 });
+    await expect(window.locator('#patient-modal')).toBeVisible();
+    
+    // Verify modal content
+    await expect(window.locator('.patient-details-header h2')).toBeVisible();
+    await expect(window.locator('.encounter-history h3')).toBeVisible();
   });
 
   test('should close modal when clicking close button', async () => {
-    // Open modal first
-    await window.locator('[data-tab="list"]').click();
-    await window.waitForSelector('#list-tab.active', { timeout: 5000 });
-    await window.waitForTimeout(2000);
-    
-    // Wait for patient cards to load
-    const viewDetailsBtn = window.locator('.btn-view').first();
-    await viewDetailsBtn.waitFor({ state: 'visible', timeout: 10000 });
-    
-    await viewDetailsBtn.click();
+    // Open modal
+    await window.locator('.btn-view').first().click();
     await window.waitForSelector('#patient-modal', { state: 'visible', timeout: 5000 });
     
     // Click close button
@@ -339,49 +345,32 @@ test.describe('Patient Details Modal', () => {
     
     // Wait for modal to be hidden
     await window.waitForSelector('#patient-modal', { state: 'hidden', timeout: 5000 });
-    
-    // Modal should be hidden
     await expect(window.locator('#patient-modal')).not.toBeVisible();
   });
 
   test('should show encounter history in patient details modal', async () => {
-    // Open modal for a patient with encounters
-    await window.locator('[data-tab="list"]').click();
-    await window.waitForSelector('#list-tab.active', { timeout: 5000 });
-    await window.waitForTimeout(2000);
+    // Open modal
+    await window.locator('.btn-view').first().click();
+    await window.waitForSelector('#patient-modal', { state: 'visible', timeout: 5000 });
     
-    const viewDetailsBtn = window.locator('.btn-view').first();
-    if (await viewDetailsBtn.isVisible()) {
-      await viewDetailsBtn.click();
-      await window.waitForSelector('#patient-modal', { timeout: 5000 });
-      
-      // Check for encounter history section
-      await expect(window.locator('.encounter-history')).toBeVisible();
-      
-      // The count should be displayed
-      const historyHeader = await window.locator('.encounter-history h3').textContent();
-      expect(historyHeader).toContain('Encounter History');
-    }
+    // Check for encounter history section
+    await expect(window.locator('.encounter-history')).toBeVisible();
+    
+    // The count should be displayed
+    const historyHeader = await window.locator('.encounter-history h3').textContent();
+    expect(historyHeader).toContain('Encounter History');
   });
 
   test('should start new encounter from patient details modal', async () => {
-    // Open modal first
-    await window.locator('[data-tab="list"]').click();
-    await window.waitForSelector('#list-tab.active', { timeout: 5000 });
-    await window.waitForTimeout(2000);
-    
-    // Wait for patient cards to load
-    const viewDetailsBtn = window.locator('.btn-view').first();
-    await viewDetailsBtn.waitFor({ state: 'visible', timeout: 10000 });
-    
-    await viewDetailsBtn.click();
+    // Open modal
+    await window.locator('.btn-view').first().click();
     await window.waitForSelector('#patient-modal', { state: 'visible', timeout: 5000 });
     
-    // Wait for modal content to load (has New Encounter button)
-    await window.waitForSelector('.patient-details-header .view-encounters-btn', { state: 'visible', timeout: 5000 });
+    // Wait for modal content to fully load (has New Encounter button)
+    await window.waitForSelector('.view-encounters-btn', { state: 'visible', timeout: 5000 });
     
     // Click New Encounter button in modal
-    await window.locator('.patient-details-header .view-encounters-btn').click();
+    await window.locator('.view-encounters-btn').click();
     
     // Should switch to encounter tab with patient selected
     await window.waitForSelector('#encounter-tab.active', { timeout: 5000 });
