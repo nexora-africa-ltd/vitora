@@ -2,6 +2,8 @@
 Serializers for the patients app.
 """
 
+from datetime import date
+
 from rest_framework import serializers
 
 from .models import EmergencyContact, Patient
@@ -29,6 +31,9 @@ class PatientSerializer(serializers.ModelSerializer):
 
     age = serializers.ReadOnlyField()
     full_name = serializers.ReadOnlyField()
+    registered_by_username = serializers.CharField(
+        source="registered_by.username", read_only=True
+    )
 
     class Meta:
         model = Patient
@@ -46,7 +51,24 @@ class PatientSerializer(serializers.ModelSerializer):
             "email",
             "address",
             "national_id",
+            "registered_by",
+            "registered_by_username",
             "created_at",
             "updated_at",
         ]
-        read_only_fields = ["id", "mrn", "created_at", "updated_at", "age", "full_name"]
+        read_only_fields = [
+            "id",
+            "mrn",
+            "created_at",
+            "updated_at",
+            "age",
+            "full_name",
+            "registered_by",
+            "registered_by_username",
+        ]
+
+    def validate_date_of_birth(self, value):
+        """Validate date of birth is not in the future."""
+        if value and value > date.today():
+            raise serializers.ValidationError("Date of birth cannot be in the future.")
+        return value

@@ -103,6 +103,16 @@ class Patient(models.Model):
         help_text="Date and time when consent was given",
     )
 
+    # Staff registration tracking
+    registered_by = models.ForeignKey(
+        "auth.User",
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="registered_patients",
+        help_text="Staff member who registered this patient",
+    )
+
     # Timestamps
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
