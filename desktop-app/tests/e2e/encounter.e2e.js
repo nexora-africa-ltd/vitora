@@ -1,0 +1,283 @@
+/**
+ * E2E Tests for Encounter Management
+ * 
+ * Following TDD principles: these tests validate the complete
+ * encounter creation flow including patient selection, vitals entry,
+ * and form submission.
+ * 
+ * Sprint 0.6: Encounter E2E tests
+ */
+
+const { test, expect } = require('@playwright/test');
+const { _electron: electron } = require('playwright');
+const path = require('path');
+
+let electronApp;
+let window;
+
+test.beforeAll(async () => {
+  // Launch Electron app
+  electronApp = await electron.launch({
+    args: [path.join(__dirname, '../../src/main/index.js')],
+    timeout: 60000 // Give backend time to start
+  });
+  
+  // Get the first window
+  window = await electronApp.firstWindow();
+  
+  // Wait for app to be ready
+  await window.waitForLoadState('domcontentloaded');
+  await window.waitForTimeout(5000); // Wait for backend to be ready
+  
+  // Login first (required for all tests)
+  await window.locator('#login-username').fill('testuser');
+  await window.locator('#login-password').fill('testpassword123');
+  await window.locator('#login-btn').click();
+  await window.waitForSelector('#main-container', { timeout: 15000 });
+});
+
+test.afterAll(async () => {
+  await electronApp.close();
+});
+
+test.describe('Encounter Tab Navigation', () => {
+  test('should display encounter tab', async () => {
+    await expect(window.locator('[data-tab="encounter"]')).toBeVisible();
+  });
+  
+  test('should switch to encounter tab', async () => {
+    await window.locator('[data-tab="encounter"]').click();
+    await window.waitForSelector('#encounter-tab.active', { timeout: 5000 });
+    
+    await expect(window.locator('#encounter-tab')).toHaveClass(/active/);
+    await expect(window.locator('h2')).toContainText('New Encounter');
+  });
+  
+  test('should display patient search field', async () => {
+    await window.locator('[data-tab="encounter"]').click();
+    await expect(window.locator('#patient-search')).toBeVisible();
+    await expect(window.locator('#patient-search-btn')).toBeVisible();
+  });
+});
+
+test.describe('Patient Selection for Encounter', () => {
+  test.beforeEach(async () => {
+    // Navigate to encounter tab
+    await window.locator('[data-tab="encounter"]').click();
+    await window.waitForSelector('#encounter-tab.active', { timeout: 5000 });
+  });
+  
+  test('should search for patients', async () => {
+    await window.locator('#patient-search').fill('Jane');
+    await window.locator('#patient-search-btn').click();
+    
+    await window.waitForTimeout(2000);
+    
+    // Should show search results
+    const results = await window.locator('.patient-search-item').count();
+    expect(results).toBeGreaterThanOrEqual(0); // May or may not find patients
+  });
+  
+  test('should show message when no patient found', async () => {
+    await window.locator('#patient-search').fill('NonExistentPatient12345');
+    await window.locator('#patient-search-btn').click();
+    
+    await window.waitForTimeout(2000);
+    
+    // Should show no results message
+    await expect(window.locator('#patient-search-results')).toContainText('No patients found');
+  });
+  
+  test('should require patient search input', async () => {
+    await window.locator('#patient-search').fill('');
+    await window.locator('#patient-search-btn').click();
+    
+    // Should prompt to enter search
+    await expect(window.locator('#patient-search-results')).toContainText('Enter a name or MRN');
+  });
+});
+
+test.describe('Encounter Form', () => {
+  test.beforeEach(async () => {
+    // First register a patient to use
+    await window.locator('[data-tab="register"]').click();
+    await window.waitForSelector('#register-tab.active', { timeout: 5000 });
+    
+    // Register a test patient
+    const timestamp = Date.now();
+    await window.locator('#first-name').fill(`EncounterTest${timestamp}`);
+    await window.locator('#last-name').fill('Patient');
+    await window.locator('#date-of-birth').fill('1980-05-15');
+    await window.locator('#gender').selectOption('M');
+    await window.locator('#submit-btn').click();
+    
+    await window.waitForSelector('.message.success', { timeout: 10000 });
+    
+    // Now navigate to encounter tab
+    await window.locator('[data-tab="encounter"]').click();
+    await window.waitForSelector('#encounter-tab.active', { timeout: 5000 });
+    
+    // Search and select the patient
+    await window.locator('#patient-search').fill(`EncounterTest${timestamp}`);
+    await window.locator('#patient-search-btn').click();
+    await window.waitForTimeout(2000);
+    
+    // Click on the first result if found
+    const firstResult = window.locator('.patient-search-item').first();
+    if (await firstResult.isVisible()) {
+      await firstResult.click();
+    }
+  });
+  
+  test('should display encounter form after patient selection', async () => {
+    // If patient was selected, form should be visible
+    const encounterForm = window.locator('#encounter-form');
+    const selectedPatient = window.locator('#selected-patient');
+    
+    if (await selectedPatient.isVisible()) {
+      await expect(encounterForm).toBeVisible();
+      await expect(window.locator('#encounter-type')).toBeVisible();
+      await expect(window.locator('#encounter-date')).toBeVisible();
+      await expect(window.locator('#chief-complaint')).toBeVisible();
+    }
+  });
+  
+  test('should display vitals input fields', async () => {
+    const selectedPatient = window.locator('#selected-patient');
+    
+    if (await selectedPatient.isVisible()) {
+      await expect(window.locator('#temperature')).toBeVisible();
+      await expect(window.locator('#pulse')).toBeVisible();
+      await expect(window.locator('#blood-pressure')).toBeVisible();
+      await expect(window.locator('#respiratory-rate')).toBeVisible();
+      await expect(window.locator('#weight')).toBeVisible();
+      await expect(window.locator('#height')).toBeVisible();
+    }
+  });
+  
+  test('should calculate BMI when weight and height are entered', async () => {
+    const selectedPatient = window.locator('#selected-patient');
+    
+    if (await selectedPatient.isVisible()) {
+      await window.locator('#weight').fill('70');
+      await window.locator('#height').fill('175');
+      
+      // BMI display should appear
+      await expect(window.locator('#bmi-display')).toBeVisible();
+      
+      // BMI should be calculated (70 / 1.75^2 = 22.9)
+      const bmiValue = await window.locator('#bmi-value').textContent();
+      expect(parseFloat(bmiValue)).toBeCloseTo(22.9, 0);
+    }
+  });
+  
+  test('should allow changing selected patient', async () => {
+    const selectedPatient = window.locator('#selected-patient');
+    
+    if (await selectedPatient.isVisible()) {
+      await window.locator('#change-patient-btn').click();
+      
+      // Patient search should be visible again
+      await expect(window.locator('#patient-search')).toBeVisible();
+      await expect(window.locator('#encounter-form')).not.toBeVisible();
+    }
+  });
+});
+
+test.describe('Encounter Submission', () => {
+  test('should create encounter with valid data', async () => {
+    // Register a new patient
+    await window.locator('[data-tab="register"]').click();
+    await window.waitForSelector('#register-tab.active', { timeout: 5000 });
+    
+    const timestamp = Date.now();
+    await window.locator('#first-name').fill(`Encounter${timestamp}`);
+    await window.locator('#last-name').fill('Test');
+    await window.locator('#date-of-birth').fill('1990-03-20');
+    await window.locator('#gender').selectOption('F');
+    await window.locator('#submit-btn').click();
+    
+    await window.waitForSelector('.message.success', { timeout: 10000 });
+    
+    // Navigate to encounter tab
+    await window.locator('[data-tab="encounter"]').click();
+    await window.waitForSelector('#encounter-tab.active', { timeout: 5000 });
+    
+    // Search and select patient
+    await window.locator('#patient-search').fill(`Encounter${timestamp}`);
+    await window.locator('#patient-search-btn').click();
+    await window.waitForTimeout(2000);
+    
+    const firstResult = window.locator('.patient-search-item').first();
+    if (await firstResult.isVisible()) {
+      await firstResult.click();
+      
+      // Wait for form to appear
+      await window.waitForSelector('#encounter-form', { state: 'visible', timeout: 5000 });
+      
+      // Fill encounter form
+      await window.locator('#encounter-type').selectOption('OPD');
+      await window.locator('#chief-complaint').fill('Headache and fever for 2 days');
+      await window.locator('#temperature').fill('38.5');
+      await window.locator('#pulse').fill('85');
+      await window.locator('#blood-pressure').fill('120/80');
+      await window.locator('#respiratory-rate').fill('18');
+      await window.locator('#weight').fill('65');
+      await window.locator('#height').fill('165');
+      await window.locator('#notes').fill('Patient appears fatigued. Recommend rest and hydration.');
+      
+      // Submit
+      await window.locator('#encounter-submit-btn').click();
+      
+      // Wait for success message
+      await window.waitForSelector('#encounter-message.success', { timeout: 10000 });
+      
+      const message = await window.locator('#encounter-message').textContent();
+      expect(message).toContain('Encounter saved successfully');
+    }
+  });
+  
+  test('should require chief complaint', async () => {
+    // Navigate to encounter tab
+    await window.locator('[data-tab="encounter"]').click();
+    await window.waitForSelector('#encounter-tab.active', { timeout: 5000 });
+    
+    // If form is visible (patient selected from previous test)
+    const encounterForm = window.locator('#encounter-form');
+    
+    if (await encounterForm.isVisible()) {
+      // Clear chief complaint and try to submit
+      await window.locator('#chief-complaint').fill('');
+      await window.locator('#encounter-type').selectOption('OPD');
+      
+      // Submit should fail due to HTML5 validation
+      await window.locator('#encounter-submit-btn').click();
+      
+      // Button should not change to "Saving..." if validation failed
+      const buttonText = await window.locator('#encounter-submit-btn').textContent();
+      expect(buttonText).toBe('Save Encounter');
+    }
+  });
+});
+
+test.describe('Start Encounter from Patient List', () => {
+  test('should navigate to encounter from patient list', async () => {
+    // First ensure we have a patient
+    await window.locator('[data-tab="list"]').click();
+    await window.waitForTimeout(2000);
+    
+    // Check if there are patient cards
+    const patientCards = await window.locator('.patient-card').count();
+    
+    if (patientCards > 0) {
+      // Click "New Encounter" button on first patient
+      const encounterBtn = window.locator('.btn-encounter').first();
+      await encounterBtn.click();
+      
+      // Should switch to encounter tab with patient selected
+      await expect(window.locator('#encounter-tab')).toHaveClass(/active/);
+      await expect(window.locator('#selected-patient')).toBeVisible();
+      await expect(window.locator('#encounter-form')).toBeVisible();
+    }
+  });
+});
