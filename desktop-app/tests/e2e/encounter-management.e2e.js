@@ -131,21 +131,39 @@ test.describe('Encounter Management Flow', () => {
   });
 
   test.describe('Vital Signs Entry', () => {
+    let patientName;
+    
     test.beforeEach(async () => {
+      // First register a patient to ensure one exists
+      await window.locator('[data-tab="register"]').click();
+      await window.waitForSelector('#register-tab.active', { timeout: 5000 });
+      
+      const timestamp = Date.now();
+      patientName = `VitalsTest${timestamp}`;
+      await window.locator('#first-name').fill(patientName);
+      await window.locator('#last-name').fill('Patient');
+      await window.locator('#date-of-birth').fill('1980-05-15');
+      await window.locator('#gender').selectOption('M');
+      await window.locator('#submit-btn').click();
+      
+      await window.waitForSelector('.message.success', { timeout: 10000 });
+      
       // Navigate to encounter tab
       await window.locator('[data-tab="encounter"]').click();
       await window.waitForSelector('#encounter-tab.active', { timeout: 5000 });
       
-      // Select a patient so the form is visible
-      await window.locator('#patient-search').fill('Test');
+      // Search and select the patient we just created
+      await window.locator('#patient-search').fill(patientName);
       await window.locator('#patient-search-btn').click();
       await window.waitForTimeout(2000);
       
+      // Click on the first search result
       const patientItem = window.locator('.patient-search-item').first();
-      if (await patientItem.isVisible()) {
-        await patientItem.click();
-        await window.waitForSelector('#encounter-form', { state: 'visible', timeout: 5000 });
-      }
+      await patientItem.waitFor({ state: 'visible', timeout: 10000 });
+      await patientItem.click();
+      
+      // Wait for form to be visible
+      await window.waitForSelector('#encounter-form', { state: 'visible', timeout: 5000 });
     });
 
     test('should calculate BMI when height and weight entered', async () => {
