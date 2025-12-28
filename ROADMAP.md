@@ -14,9 +14,19 @@ This roadmap outlines the complete development journey for Vitora HMIS from Janu
 ### Current Status: Phase 0 In Progress (Sprint 0.7)
 - **Sprints 0.1-0.6**: All completed ✅
 - **Sprint 0.7**: Clinician Feedback Implementation (In Progress)
-- **Test Coverage**: 84.93% (371 backend tests passing)
+- **Test Coverage**: 84.44% (424 backend tests passing)
 - **Desktop App**: Offline-first with login UI, JWT auth, patient registration
 - **Security**: Fernet encryption, audit logging, DPIA completed
+
+**Sprint 0.7 Progress**:
+- ✅ Emergency Contact model (16 tests)
+- ✅ SpO2 vital sign (13 tests)
+- ✅ DOB validation (6 tests)
+- ✅ Registered-by tracking (6 tests)
+- ✅ Referral source tracking (12 tests)
+- ⏳ Medical History section (pending)
+- ⏳ Kenya Location Hierarchy (pending)
+- ⏳ Frontend UI updates (pending)
 
 ### Key Metrics
 - **Total Effort**: 15-20 person-years
@@ -285,20 +295,20 @@ This roadmap outlines the complete development journey for Vitora HMIS from Janu
 | h) SpO2 Vital Sign | Oxygen saturation measurement (mandatory) | High | ✅ Implement - critical vital with < 95% alert |
 
 **Tasks**:
-- [ ] **Write tests first**: EmergencyContact model tests (relationship, validation)
-- [ ] Implement EmergencyContact model with Patient FK
+- [x] **Write tests first**: EmergencyContact model tests (relationship, validation) ✅
+- [x] Implement EmergencyContact model with Patient FK ✅
 - [ ] **Write tests first**: Kenya location hierarchy tests (County/Sub-county/Ward)
 - [ ] Implement KenyaLocation model and Patient location fields
-- [ ] **Write tests first**: DOB validation tests (no future dates)
-- [ ] Implement DOB validation in Patient model and serializer
-- [ ] **Write tests first**: Referral source tests
-- [ ] Implement referral_source and referred_from_facility fields
-- [ ] **Write tests first**: Registered-by tracking tests
-- [ ] Implement registered_by FK and auto-assignment in views
+- [x] **Write tests first**: DOB validation tests (no future dates) ✅
+- [x] Implement DOB validation in Patient model and serializer ✅
+- [x] **Write tests first**: Referral source tests ✅
+- [x] Implement referral_source and referred_from_facility fields ✅
+- [x] **Write tests first**: Registered-by tracking tests ✅
+- [x] Implement registered_by FK and auto-assignment in views ✅
 - [ ] **Write tests first**: Medical history tests (in Encounter model)
 - [ ] Implement medical history fields in Encounter (allergies, chronic_conditions, medications, past_surgeries, drug_use)
-- [ ] **Write tests first**: SpO2 vital sign tests (validation 0-100%, critical < 95%)
-- [ ] Implement SpO2 field in Encounter model with critical alert
+- [x] **Write tests first**: SpO2 vital sign tests (validation 0-100%, critical < 95%) ✅
+- [x] Implement SpO2 field in Encounter model with critical alert ✅
 - [ ] Update patient registration UI with new fields
 - [ ] Update encounter form UI with medical history section and SpO2
 - [ ] E2E tests for enhanced registration flow
