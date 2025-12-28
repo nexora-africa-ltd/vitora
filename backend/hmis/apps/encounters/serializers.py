@@ -40,6 +40,14 @@ class EncounterSerializer(serializers.ModelSerializer):
             "weight",
             "height",
             "bmi",
+            # Medical History
+            "allergies",
+            "chronic_conditions",
+            "current_medications",
+            "past_surgeries",
+            "family_history",
+            "social_history",
+            # Notes and metadata
             "notes",
             "has_critical_vitals",
             "alerts",
