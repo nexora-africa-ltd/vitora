@@ -1,0 +1,113 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline';">
+  <title>Vitora HMIS - Patient Registration</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <div class="container">
+    <header>
+      <h1>🏥 Vitora HMIS</h1>
+      <p class="subtitle">Offline-First Hospital Management System</p>
+    </header>
+
+    <nav class="tabs">
+      <button class="tab active" data-tab="register">Register Patient</button>
+      <button class="tab" data-tab="list">Patient List</button>
+    </nav>
+
+    <!-- Patient Registration Form -->
+    <div id="register-tab" class="tab-content active">
+      <h2>Patient Registration</h2>
+      
+      <form id="patient-form">
+        <div class="form-row">
+          <div class="form-group">
+            <label for="first-name">First Name *</label>
+            <input type="text" id="first-name" name="first_name" required>
+          </div>
+          
+          <div class="form-group">
+            <label for="middle-name">Middle Name</label>
+            <input type="text" id="middle-name" name="middle_name">
+          </div>
+          
+          <div class="form-group">
+            <label for="last-name">Last Name *</label>
+            <input type="text" id="last-name" name="last_name" required>
+          </div>
+        </div>
+
+        <div class="form-row">
+          <div class="form-group">
+            <label for="date-of-birth">Date of Birth *</label>
+            <input type="date" id="date-of-birth" name="date_of_birth" required>
+          </div>
+          
+          <div class="form-group">
+            <label for="gender">Gender *</label>
+            <select id="gender" name="gender" required>
+              <option value="">Select...</option>
+              <option value="M">Male</option>
+              <option value="F">Female</option>
+              <option value="O">Other</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="form-row">
+          <div class="form-group">
+            <label for="phone-number">Phone Number</label>
+            <input type="tel" id="phone-number" name="phone_number" placeholder="+254712345678">
+          </div>
+          
+          <div class="form-group">
+            <label for="email">Email</label>
+            <input type="email" id="email" name="email" placeholder="patient@example.com">
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label for="national-id">National ID</label>
+          <input type="text" id="national-id" name="national_id">
+        </div>
+
+        <div class="form-group">
+          <label for="address">Address</label>
+          <textarea id="address" name="address" rows="3" placeholder="Patient's physical address"></textarea>
+        </div>
+
+        <div class="form-actions">
+          <button type="submit" class="btn btn-primary" id="submit-btn">
+            Register Patient
+          </button>
+          <button type="button" class="btn btn-secondary" id="clear-btn">
+            Clear Form
+          </button>
+        </div>
+      </form>
+
+      <div id="message" class="message" style="display: none;"></div>
+    </div>
+
+    <!-- Patient List -->
+    <div id="list-tab" class="tab-content">
+      <h2>Patient List</h2>
+      
+      <div class="search-bar">
+        <input type="text" id="search-input" placeholder="Search by name, MRN, or phone...">
+        <button class="btn btn-primary" id="search-btn">Search</button>
+      </div>
+
+      <div id="patient-list" class="patient-list">
+        <p class="loading">Loading patients...</p>
+      </div>
+    </div>
+  </div>
+
+  <script src="app.js"></script>
+</body>
+</html>
