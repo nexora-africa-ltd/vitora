@@ -28,5 +28,13 @@ CELERY_TASK_EAGER_PROPAGATES = True
 # Email backend for tests
 EMAIL_BACKEND = "django.core.mail.backends.locmem.EmailBackend"
 
+# Sync settings for tests
+SYNC_ENABLED = False
+SYNC_SERVER_URL = "http://test-server.example.com"
+
+# Encryption key for tests (NOT for production use)
+ENCRYPTION_KEY = "test-encryption-key-only-for-testing"
+FIELD_ENCRYPTION_KEY = "dGVzdC1maWVsZC1lbmNyeXB0aW9uLWtleS0xMjM0NQ=="
+
 # Logging - reduce verbosity in tests
 LOGGING["loggers"]["django"]["level"] = "WARNING"  # noqa: F405
