@@ -94,18 +94,18 @@ This roadmap outlines the complete development journey for Vitora HMIS from Janu
 **TDD Focus**: Test models and API endpoints before implementation
 
 **Tasks**:
-- [ ] **Write tests first**: Patient model tests (MRN generation, validation)
-- [ ] Implement Patient model to pass tests
-- [ ] **Write tests first**: Encounter model tests (vitals validation)
-- [ ] Implement Encounter model to pass tests
-- [ ] **Write tests first**: API endpoint tests for patient CRUD
-- [ ] Implement patient API endpoints to pass tests
-- [ ] Configure SQLite and PostgreSQL settings with tests
-- [ ] Set up Django migrations with rollback tests
+- [x] **Write tests first**: Patient model tests (MRN generation, validation)
+- [x] Implement Patient model to pass tests
+- [x] **Write tests first**: Encounter model tests (vitals validation)
+- [x] Implement Encounter model to pass tests
+- [x] **Write tests first**: API endpoint tests for patient CRUD
+- [x] Implement patient API endpoints to pass tests
+- [x] Configure SQLite and PostgreSQL settings with tests
+- [x] Set up Django migrations with rollback tests
 
 **Deliverables**:
 - Django backend with Patient and Encounter models
-- Comprehensive test suite (≥80% coverage)
+- Comprehensive test suite (≥80% coverage) - **88.34% achieved**
 - API documentation (auto-generated from tests)
 - Database migration scripts
 
@@ -118,25 +118,25 @@ This roadmap outlines the complete development journey for Vitora HMIS from Janu
 **TDD Focus**: Test Electron integration and local server startup
 
 **Tasks**:
-- [ ] **Write tests first**: Backend startup/shutdown tests
-- [ ] Implement Electron main process with backend integration
-- [ ] **Write tests first**: Window management tests
-- [ ] Implement basic window and navigation
-- [ ] **Write tests first**: Local database connection tests
-- [ ] Integrate SQLite with Electron app
-- [ ] **Write tests first**: Patient registration UI tests (E2E)
-- [ ] Build patient registration form
+- [x] **Write tests first**: Backend startup/shutdown tests
+- [x] Implement Electron main process with backend integration
+- [x] **Write tests first**: Window management tests
+- [x] Implement basic window and navigation
+- [x] **Write tests first**: Local database connection tests
+- [x] Integrate SQLite with Electron app
+- [x] **Write tests first**: Patient registration UI tests (E2E)
+- [x] Build patient registration form
 
 **Deliverables**:
-- Electron desktop app prototype
-- Working patient registration offline
-- E2E test suite with Playwright
-- Packaging scripts for Windows/Mac/Linux
+- Electron desktop app prototype ✅
+- Working patient registration offline ✅
+- E2E test suite with Playwright ✅
+- Packaging scripts for Windows/Mac/Linux ✅
 
 **Test Coverage Requirements**:
-- E2E tests: Critical user flows (register patient, view patient)
-- Integration tests: Electron ↔ Backend communication
-- Unit tests: Main process logic
+- E2E tests: Critical user flows (register patient, view patient) ✅
+- Integration tests: Electron ↔ Backend communication ✅
+- Unit tests: Main process logic ✅
 
 #### Sprint 0.4: Security Baseline (Weeks 7-8)
 **TDD Focus**: Security tests and compliance validation
