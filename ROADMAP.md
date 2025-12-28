@@ -118,25 +118,25 @@ This roadmap outlines the complete development journey for Vitora HMIS from Janu
 **TDD Focus**: Test Electron integration and local server startup
 
 **Tasks**:
-- [ ] **Write tests first**: Backend startup/shutdown tests
-- [ ] Implement Electron main process with backend integration
-- [ ] **Write tests first**: Window management tests
-- [ ] Implement basic window and navigation
-- [ ] **Write tests first**: Local database connection tests
-- [ ] Integrate SQLite with Electron app
-- [ ] **Write tests first**: Patient registration UI tests (E2E)
-- [ ] Build patient registration form
+- [x] **Write tests first**: Backend startup/shutdown tests
+- [x] Implement Electron main process with backend integration
+- [x] **Write tests first**: Window management tests
+- [x] Implement basic window and navigation
+- [x] **Write tests first**: Local database connection tests
+- [x] Integrate SQLite with Electron app
+- [x] **Write tests first**: Patient registration UI tests (E2E)
+- [x] Build patient registration form
 
 **Deliverables**:
-- Electron desktop app prototype
-- Working patient registration offline
-- E2E test suite with Playwright
-- Packaging scripts for Windows/Mac/Linux
+- Electron desktop app prototype ✅
+- Working patient registration offline ✅
+- E2E test suite with Playwright ✅
+- Packaging scripts for Windows/Mac/Linux ✅
 
 **Test Coverage Requirements**:
-- E2E tests: Critical user flows (register patient, view patient)
-- Integration tests: Electron ↔ Backend communication
-- Unit tests: Main process logic
+- E2E tests: Critical user flows (register patient, view patient) ✅
+- Integration tests: Electron ↔ Backend communication ✅
+- Unit tests: Main process logic ✅
 
 #### Sprint 0.4: Security Baseline (Weeks 7-8)
 **TDD Focus**: Security tests and compliance validation
