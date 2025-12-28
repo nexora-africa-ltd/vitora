@@ -5,6 +5,7 @@ The `urlpatterns` list routes URLs to views.
 """
 
 from django.contrib import admin
+from django.http import JsonResponse
 from django.urls import include, path
 from rest_framework import routers
 from rest_framework_simplejwt.views import TokenRefreshView, TokenVerifyView
@@ -12,6 +13,16 @@ from rest_framework_simplejwt.views import TokenRefreshView, TokenVerifyView
 from hmis.apps.core.views import AuditedTokenObtainPairView, AuditLogViewSet
 from hmis.apps.encounters.views import EncounterViewSet
 from hmis.apps.patients.views import PatientViewSet
+
+
+def health_check(request):
+    """Simple health check endpoint for monitoring."""
+    return JsonResponse({
+        "status": "healthy",
+        "service": "vitora-hmis",
+        "version": "0.1.0"
+    })
+
 
 # Create a router for API endpoints
 router = routers.DefaultRouter()
@@ -22,6 +33,7 @@ router.register(r"encounters", EncounterViewSet, basename="encounter")
 router.register(r"auditlogs", AuditLogViewSet, basename="auditlog")
 
 urlpatterns = [
+    path("", health_check, name="health_check"),
     path("admin/", admin.site.urls),
     path("api/", include(router.urls)),
     path("api-auth/", include("rest_framework.urls", namespace="rest_framework")),
