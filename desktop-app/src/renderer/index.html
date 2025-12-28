@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline';">
-  <title>Vitora HMIS - Patient Registration</title>
+  <title>Vitora HMIS - Hospital Management</title>
   <link rel="stylesheet" href="styles.css">
 </head>
 <body>
@@ -12,11 +12,16 @@
     <header>
       <h1>🏥 Vitora HMIS</h1>
       <p class="subtitle">Offline-First Hospital Management System</p>
+      <div id="offline-indicator" class="offline-indicator" style="display: none;">
+        <span class="offline-dot"></span>
+        <span>Offline Mode</span>
+      </div>
     </header>
 
     <nav class="tabs">
       <button class="tab active" data-tab="register">Register Patient</button>
       <button class="tab" data-tab="list">Patient List</button>
+      <button class="tab" data-tab="encounter">New Encounter</button>
     </nav>
 
     <!-- Patient Registration Form -->
@@ -104,6 +109,128 @@
 
       <div id="patient-list" class="patient-list">
         <p class="loading">Loading patients...</p>
+      </div>
+    </div>
+
+    <!-- New Encounter Tab -->
+    <div id="encounter-tab" class="tab-content">
+      <h2>New Encounter</h2>
+      
+      <!-- Patient Selection -->
+      <div class="patient-selection">
+        <div class="form-group">
+          <label for="patient-search">Select Patient *</label>
+          <div class="search-bar">
+            <input type="text" id="patient-search" placeholder="Search patient by name or MRN...">
+            <button class="btn btn-primary" id="patient-search-btn">Search</button>
+          </div>
+        </div>
+        <div id="patient-search-results" class="patient-search-results"></div>
+        <div id="selected-patient" class="selected-patient" style="display: none;">
+          <div class="selected-patient-info">
+            <strong id="selected-patient-name"></strong>
+            <span id="selected-patient-mrn" class="mrn"></span>
+          </div>
+          <button class="btn btn-secondary btn-sm" id="change-patient-btn">Change</button>
+        </div>
+      </div>
+
+      <!-- Encounter Form -->
+      <form id="encounter-form" style="display: none;">
+        <h3>Encounter Details</h3>
+        
+        <div class="form-row">
+          <div class="form-group">
+            <label for="encounter-type">Encounter Type *</label>
+            <select id="encounter-type" name="encounter_type" required>
+              <option value="">Select...</option>
+              <option value="OPD">Outpatient (OPD)</option>
+              <option value="EMERGENCY">Emergency</option>
+              <option value="INPATIENT">Inpatient</option>
+            </select>
+          </div>
+          
+          <div class="form-group">
+            <label for="encounter-date">Date *</label>
+            <input type="date" id="encounter-date" name="encounter_date" required>
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label for="chief-complaint">Chief Complaint *</label>
+          <textarea id="chief-complaint" name="chief_complaint" rows="3" required 
+                    placeholder="Describe the patient's main complaint..."></textarea>
+        </div>
+
+        <h3>Vital Signs</h3>
+        <div class="vitals-section">
+          <div class="form-row">
+            <div class="form-group">
+              <label for="temperature">Temperature (°C)</label>
+              <input type="number" id="temperature" name="temperature" step="0.1" min="30" max="45" placeholder="37.0">
+            </div>
+            
+            <div class="form-group">
+              <label for="pulse">Pulse (bpm)</label>
+              <input type="number" id="pulse" name="pulse" min="30" max="200" placeholder="75">
+            </div>
+            
+            <div class="form-group">
+              <label for="respiratory-rate">Respiratory Rate</label>
+              <input type="number" id="respiratory-rate" name="respiratory_rate" min="5" max="60" placeholder="16">
+            </div>
+          </div>
+
+          <div class="form-row">
+            <div class="form-group">
+              <label for="blood-pressure">Blood Pressure (mmHg)</label>
+              <input type="text" id="blood-pressure" name="blood_pressure" placeholder="120/80">
+            </div>
+            
+            <div class="form-group">
+              <label for="weight">Weight (kg)</label>
+              <input type="number" id="weight" name="weight" step="0.1" min="0" max="500" placeholder="70.0">
+            </div>
+            
+            <div class="form-group">
+              <label for="height">Height (cm)</label>
+              <input type="number" id="height" name="height" step="0.1" min="0" max="300" placeholder="170.0">
+            </div>
+          </div>
+
+          <div id="bmi-display" class="bmi-display" style="display: none;">
+            <span class="label">Calculated BMI:</span>
+            <span id="bmi-value" class="value"></span>
+            <span id="bmi-category" class="bmi-category"></span>
+          </div>
+        </div>
+
+        <h3>Clinical Notes</h3>
+        <div class="form-group">
+          <label for="notes">Notes</label>
+          <textarea id="notes" name="notes" rows="4" placeholder="Additional clinical observations..."></textarea>
+        </div>
+
+        <div class="form-actions">
+          <button type="submit" class="btn btn-primary" id="encounter-submit-btn">
+            Save Encounter
+          </button>
+          <button type="button" class="btn btn-secondary" id="encounter-clear-btn">
+            Clear Form
+          </button>
+        </div>
+      </form>
+
+      <div id="encounter-message" class="message" style="display: none;"></div>
+    </div>
+
+    <!-- Patient Details Modal -->
+    <div id="patient-modal" class="modal" style="display: none;">
+      <div class="modal-content">
+        <span class="close-modal">&times;</span>
+        <div id="patient-modal-content">
+          <!-- Patient details will be loaded here -->
+        </div>
       </div>
     </div>
   </div>
