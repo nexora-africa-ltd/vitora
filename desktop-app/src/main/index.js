@@ -83,6 +83,44 @@ async function createTestUser() {
 }
 
 /**
+ * Create superuser for admin access
+ */
+async function createSuperuser() {
+  return new Promise((resolve) => {
+    const backendPath = path.join(__dirname, '..', '..', '..', 'backend');
+    const poetryCmd = 'poetry';
+    
+    console.log('[Backend] Creating superuser...');
+    
+    const createSuperuserProcess = spawn(poetryCmd, ['run', 'python', 'manage.py', 'create_superuser'], {
+      cwd: backendPath,
+      env: {
+        ...process.env,
+        DJANGO_ENV: 'development',
+        DJANGO_SETTINGS_MODULE: 'hmis.settings'
+      },
+      stdio: 'pipe',
+      shell: true
+    });
+    
+    createSuperuserProcess.stdout.on('data', (data) => {
+      console.log(`[Backend] ${data.toString().trim()}`);
+    });
+    
+    createSuperuserProcess.stderr.on('data', (data) => {
+      console.log(`[Backend] ${data.toString().trim()}`);
+    });
+    
+    createSuperuserProcess.on('close', () => {
+      resolve();
+    });
+    
+    // Timeout after 10 seconds
+    setTimeout(resolve, 10000);
+  });
+}
+
+/**
  * Start Django backend server
  */
 async function startBackend() {
@@ -245,6 +283,9 @@ async function initialize() {
   try {
     console.log('[App] Initializing Vitora HMIS...');
     
+    // Create superuser for admin access
+    await createSuperuser();
+    
     // Create test user for development/E2E testing
     await createTestUser();
     
@@ -388,5 +429,6 @@ module.exports = {
   checkBackendHealth,
   createWindow,
   getAccessToken,
+  createSuperuser,
   BACKEND_URL
 };
