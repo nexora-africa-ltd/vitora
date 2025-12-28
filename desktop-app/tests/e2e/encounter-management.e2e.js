@@ -223,7 +223,7 @@ test.describe('Encounter Management Flow', () => {
       }
       
       // Fill encounter form
-      await window.locator('#encounter-type').selectOption('outpatient');
+      await window.locator('#encounter-type').selectOption('OPD');
       
       const today = new Date().toISOString().split('T')[0];
       await window.locator('#encounter-date').fill(today);
@@ -261,6 +261,23 @@ test.describe('Encounter Management Flow', () => {
     test('should clear form after clear button click', async () => {
       await window.locator('[data-tab="encounter"]').click();
       await window.waitForSelector('#encounter-tab.active', { timeout: 5000 });
+      
+      // Need a patient selected to access the encounter form
+      const selectedPatient = window.locator('#selected-patient');
+      if (!(await selectedPatient.isVisible())) {
+        // Try to select a patient first
+        await window.locator('#patient-search').fill('John');
+        await window.locator('#patient-search-btn').click();
+        await window.waitForTimeout(2000);
+        
+        const patientItem = window.locator('.patient-search-item').first();
+        if (!(await patientItem.isVisible())) {
+          test.skip('No patients available to test form clearing');
+          return;
+        }
+        await patientItem.click();
+        await window.waitForTimeout(500);
+      }
       
       // Fill some fields
       await window.locator('#temperature').fill('38.0');
