@@ -2,7 +2,8 @@
 Core models for Vitora HMIS.
 
 This module contains shared models used across the application,
-including the AuditLog model for Kenya Data Protection Act compliance.
+including the AuditLog model for Kenya Data Protection Act compliance,
+and sync-related models for offline-first functionality.
 """
 
 from django.conf import settings
@@ -180,3 +181,394 @@ class TimeStampedModel(models.Model):
         """Meta options for TimeStampedModel."""
 
         abstract = True
+
+
+class SyncQueue(models.Model):
+    """
+    Queue for tracking local changes that need to be synced.
+
+    This model stores all CREATE, UPDATE, and DELETE operations
+    made while offline for later synchronization.
+
+    Sprint 0.5: Offline Sync Logic
+    """
+
+    OPERATION_CHOICES = [
+        ("CREATE", "Create"),
+        ("UPDATE", "Update"),
+        ("DELETE", "Delete"),
+    ]
+
+    STATUS_CHOICES = [
+        ("PENDING", "Pending"),
+        ("SYNCING", "Syncing"),
+        ("SYNCED", "Synced"),
+        ("FAILED", "Failed"),
+        ("CONFLICT", "Conflict"),
+    ]
+
+    operation = models.CharField(
+        max_length=10,
+        choices=OPERATION_CHOICES,
+        db_index=True,
+        help_text="Type of operation to sync",
+    )
+    model_name = models.CharField(
+        max_length=100,
+        db_index=True,
+        help_text="Name of the model being synced",
+    )
+    record_id = models.BigIntegerField(
+        null=True,
+        blank=True,
+        db_index=True,
+        help_text="ID of the record (null for new records)",
+    )
+    data = models.JSONField(
+        default=dict,
+        help_text="Serialized data for the operation",
+    )
+    status = models.CharField(
+        max_length=10,
+        choices=STATUS_CHOICES,
+        default="PENDING",
+        db_index=True,
+        help_text="Current sync status",
+    )
+    retry_count = models.PositiveIntegerField(
+        default=0,
+        help_text="Number of sync attempts",
+    )
+    error_message = models.TextField(
+        blank=True,
+        default="",
+        help_text="Error message if sync failed",
+    )
+    created_at = models.DateTimeField(
+        auto_now_add=True,
+        db_index=True,
+        help_text="When the entry was queued",
+    )
+    synced_at = models.DateTimeField(
+        null=True,
+        blank=True,
+        help_text="When the entry was successfully synced",
+    )
+
+    class Meta:
+        """Meta options for SyncQueue model."""
+
+        ordering = ["created_at"]
+        indexes = [
+            models.Index(fields=["status", "created_at"]),
+            models.Index(fields=["model_name", "record_id"]),
+        ]
+        verbose_name = "Sync Queue Entry"
+        verbose_name_plural = "Sync Queue Entries"
+
+    def __str__(self) -> str:
+        """String representation of the sync queue entry."""
+        return f"{self.operation} {self.model_name}:{self.record_id} [{self.status}]"
+
+    def mark_syncing(self):
+        """Mark the entry as currently syncing."""
+        self.status = "SYNCING"
+        self.save(update_fields=["status"])
+
+    def mark_synced(self):
+        """Mark the entry as successfully synced."""
+        self.status = "SYNCED"
+        self.synced_at = timezone.now()
+        self.save(update_fields=["status", "synced_at"])
+
+    def mark_failed(self, error_message: str):
+        """Mark the entry as failed with error message."""
+        self.status = "FAILED"
+        self.error_message = error_message
+        self.retry_count += 1
+        self.save(update_fields=["status", "error_message", "retry_count"])
+
+    def mark_conflict(self):
+        """Mark the entry as having a conflict."""
+        self.status = "CONFLICT"
+        self.save(update_fields=["status"])
+
+
+class SyncConflict(models.Model):
+    """
+    Record of sync conflicts for audit and resolution.
+
+    This model tracks conflicts between local and remote changes
+    for manual or automatic resolution.
+
+    Sprint 0.5: Offline Sync Logic
+    """
+
+    RESOLUTION_STRATEGIES = [
+        ("LAST_WRITE_WINS", "Last Write Wins"),
+        ("LOCAL_WINS", "Local Wins"),
+        ("REMOTE_WINS", "Remote Wins"),
+        ("MANUAL", "Manual Resolution"),
+        ("MERGED", "Merged"),
+    ]
+
+    STATUS_CHOICES = [
+        ("PENDING", "Pending Resolution"),
+        ("RESOLVED", "Resolved"),
+        ("DISMISSED", "Dismissed"),
+    ]
+
+    model_name = models.CharField(
+        max_length=100,
+        db_index=True,
+        help_text="Name of the model with conflict",
+    )
+    record_id = models.BigIntegerField(
+        null=True,
+        blank=True,
+        db_index=True,
+        help_text="ID of the record with conflict",
+    )
+    field_name = models.CharField(
+        max_length=100,
+        blank=True,
+        default="",
+        help_text="Specific field with conflict (if field-level)",
+    )
+    local_data = models.JSONField(
+        default=dict,
+        help_text="Local version of the data",
+    )
+    remote_data = models.JSONField(
+        default=dict,
+        help_text="Remote version of the data",
+    )
+    resolved_data = models.JSONField(
+        default=dict,
+        blank=True,
+        help_text="Final resolved data",
+    )
+    resolution_strategy = models.CharField(
+        max_length=20,
+        choices=RESOLUTION_STRATEGIES,
+        default="LAST_WRITE_WINS",
+        help_text="Strategy used to resolve the conflict",
+    )
+    status = models.CharField(
+        max_length=10,
+        choices=STATUS_CHOICES,
+        default="PENDING",
+        db_index=True,
+        help_text="Current resolution status",
+    )
+    detected_at = models.DateTimeField(
+        auto_now_add=True,
+        db_index=True,
+        help_text="When the conflict was detected",
+    )
+    resolved_at = models.DateTimeField(
+        null=True,
+        blank=True,
+        help_text="When the conflict was resolved",
+    )
+    resolved_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="resolved_conflicts",
+        help_text="User who resolved the conflict (if manual)",
+    )
+
+    class Meta:
+        """Meta options for SyncConflict model."""
+
+        ordering = ["-detected_at"]
+        indexes = [
+            models.Index(fields=["status", "detected_at"]),
+            models.Index(fields=["model_name", "record_id"]),
+        ]
+        verbose_name = "Sync Conflict"
+        verbose_name_plural = "Sync Conflicts"
+
+    def __str__(self) -> str:
+        """String representation of the sync conflict."""
+        return f"Conflict on {self.model_name}:{self.record_id} [{self.status}]"
+
+    def resolve(self, resolved_data: dict, strategy: str, user=None):
+        """Resolve the conflict with the given data."""
+        self.resolved_data = resolved_data
+        self.resolution_strategy = strategy
+        self.status = "RESOLVED"
+        self.resolved_at = timezone.now()
+        self.resolved_by = user
+        self.save()
+
+
+class NetworkStatus(models.Model):
+    """
+    Track network connectivity status over time.
+
+    This model records connectivity changes for monitoring
+    and analytics purposes.
+
+    Sprint 0.5: Offline Sync Logic
+    """
+
+    is_online = models.BooleanField(
+        default=True,
+        help_text="Whether the system is currently online",
+    )
+    last_check = models.DateTimeField(
+        default=timezone.now,
+        db_index=True,
+        help_text="When the status was last checked",
+    )
+    latency_ms = models.PositiveIntegerField(
+        null=True,
+        blank=True,
+        help_text="Network latency in milliseconds",
+    )
+    server_url = models.URLField(
+        blank=True,
+        default="",
+        help_text="Server URL that was checked",
+    )
+
+    class Meta:
+        """Meta options for NetworkStatus model."""
+
+        ordering = ["-last_check"]
+        verbose_name = "Network Status"
+        verbose_name_plural = "Network Status Entries"
+
+    def __str__(self) -> str:
+        """String representation of the network status."""
+        status = "Online" if self.is_online else "Offline"
+        return f"{status} at {self.last_check.isoformat()}"
+
+
+class SyncableModel(models.Model):
+    """
+    Abstract base model for models that support offline sync.
+
+    Adds version tracking and sync metadata fields.
+    """
+
+    version = models.PositiveIntegerField(
+        default=1,
+        help_text="Version number for conflict detection",
+    )
+    sync_status = models.CharField(
+        max_length=20,
+        default="local",
+        help_text="Sync status: local, synced, pending",
+    )
+    last_synced_at = models.DateTimeField(
+        null=True,
+        blank=True,
+        help_text="When the record was last synced",
+    )
+    server_id = models.BigIntegerField(
+        null=True,
+        blank=True,
+        help_text="ID on the remote server (if different)",
+    )
+
+    class Meta:
+        """Meta options for SyncableModel."""
+
+        abstract = True
+
+    def increment_version(self):
+        """Increment the version number on update."""
+        self.version += 1
+
+    def mark_synced(self, server_id: int = None):
+        """Mark the record as synced."""
+        self.sync_status = "synced"
+        self.last_synced_at = timezone.now()
+        if server_id:
+            self.server_id = server_id
+        self.save(update_fields=["sync_status", "last_synced_at", "server_id"])
+
+
+class SyncMetrics(models.Model):
+    """
+    Model for tracking sync task metrics.
+
+    Records performance metrics and statistics for sync operations.
+
+    Sprint 0.5: Offline Sync Logic
+    """
+
+    task_id = models.CharField(
+        max_length=255,
+        unique=True,
+        help_text="Celery task ID",
+    )
+    task_name = models.CharField(
+        max_length=255,
+        help_text="Name of the task",
+    )
+    started_at = models.DateTimeField(
+        help_text="When the task started",
+    )
+    completed_at = models.DateTimeField(
+        null=True,
+        blank=True,
+        help_text="When the task completed",
+    )
+    duration_ms = models.PositiveIntegerField(
+        default=0,
+        help_text="Duration in milliseconds",
+    )
+    entries_processed = models.PositiveIntegerField(
+        default=0,
+        help_text="Number of entries processed",
+    )
+    entries_succeeded = models.PositiveIntegerField(
+        default=0,
+        help_text="Number of entries successfully synced",
+    )
+    entries_failed = models.PositiveIntegerField(
+        default=0,
+        help_text="Number of entries that failed",
+    )
+    entries_conflicts = models.PositiveIntegerField(
+        default=0,
+        help_text="Number of entries with conflicts",
+    )
+    status = models.CharField(
+        max_length=20,
+        default="running",
+        help_text="Task status (running, completed, failed)",
+    )
+    error_message = models.TextField(
+        blank=True,
+        default="",
+        help_text="Error message if task failed",
+    )
+    created_at = models.DateTimeField(
+        auto_now_add=True,
+        help_text="When the record was created",
+    )
+
+    class Meta:
+        """Meta options for SyncMetrics."""
+
+        verbose_name = "Sync Metrics"
+        verbose_name_plural = "Sync Metrics"
+        ordering = ["-created_at"]
+
+    def __str__(self):
+        """Return string representation."""
+        return f"{self.task_name} ({self.task_id})"
+
+    def calculate_duration(self):
+        """Calculate and set duration from started_at and completed_at."""
+        if self.started_at and self.completed_at:
+            delta = self.completed_at - self.started_at
+            self.duration_ms = int(delta.total_seconds() * 1000)
+            return self.duration_ms
+        return 0
