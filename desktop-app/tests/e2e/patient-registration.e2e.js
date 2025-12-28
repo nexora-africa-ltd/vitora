@@ -12,6 +12,24 @@ const path = require('path');
 let electronApp;
 let window;
 
+/**
+ * Helper function to login
+ */
+async function login(win) {
+  // Wait for login screen
+  await win.waitForSelector('#login-container', { timeout: 10000 });
+  
+  // Fill in credentials
+  await win.locator('#login-username').fill('testuser');
+  await win.locator('#login-password').fill('testpassword123');
+  
+  // Click login
+  await win.locator('#login-btn').click();
+  
+  // Wait for main app to appear
+  await win.waitForSelector('#main-container', { state: 'visible', timeout: 15000 });
+}
+
 test.beforeAll(async () => {
   // Launch Electron app
   electronApp = await electron.launch({
@@ -25,6 +43,9 @@ test.beforeAll(async () => {
   // Wait for app to be ready
   await window.waitForLoadState('domcontentloaded');
   await window.waitForTimeout(5000); // Wait for backend to be ready
+  
+  // Login first
+  await login(window);
 });
 
 test.afterAll(async () => {
