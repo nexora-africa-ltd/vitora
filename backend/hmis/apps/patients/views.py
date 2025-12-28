@@ -74,23 +74,29 @@ class PatientViewSet(viewsets.ModelViewSet):
         return response
 
     def create(self, request, *args, **kwargs):
-        """Override create to add audit logging."""
-        response = super().create(request, *args, **kwargs)
+        """Override create to add audit logging and set registered_by."""
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        # Set registered_by to current user
+        serializer.save(registered_by=request.user)
 
-        if response.status_code == 201:
-            # Log the create action
-            AuditLog.log(
-                action="patient_create",
-                user=request.user,
-                resource_type="Patient",
-                resource_id=response.data.get("id"),
-                ip_address=get_client_ip(request),
-                user_agent=request.META.get("HTTP_USER_AGENT", ""),
-                patient_id=response.data.get("id"),
-                details={"patient_mrn": response.data.get("mrn")},
-            )
+        # Log the create action
+        AuditLog.log(
+            action="patient_create",
+            user=request.user,
+            resource_type="Patient",
+            resource_id=serializer.instance.id,
+            ip_address=get_client_ip(request),
+            user_agent=request.META.get("HTTP_USER_AGENT", ""),
+            patient_id=serializer.instance.id,
+            details={
+                "patient_mrn": serializer.instance.mrn,
+                "registered_by": request.user.username,
+            },
+        )
 
-        return response
+        headers = self.get_success_headers(serializer.data)
+        return Response(serializer.data, status=status.HTTP_201_CREATED, headers=headers)
 
     def update(self, request, *args, **kwargs):
         """Override update to add audit logging."""
