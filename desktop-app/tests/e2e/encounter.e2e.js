@@ -65,7 +65,7 @@ test.describe('Encounter Tab Navigation', () => {
     await window.waitForSelector('#encounter-tab.active', { timeout: 5000 });
     
     await expect(window.locator('#encounter-tab')).toHaveClass(/active/);
-    await expect(window.locator('h2')).toContainText('New Encounter');
+    await expect(window.locator('#encounter-tab h2')).toContainText('New Encounter');
   });
   
   test('should display patient search field', async () => {
@@ -160,42 +160,58 @@ test.describe('Encounter Form', () => {
   test('should display vitals input fields', async () => {
     const selectedPatient = window.locator('#selected-patient');
     
-    if (await selectedPatient.isVisible()) {
-      await expect(window.locator('#temperature')).toBeVisible();
-      await expect(window.locator('#pulse')).toBeVisible();
-      await expect(window.locator('#blood-pressure')).toBeVisible();
-      await expect(window.locator('#respiratory-rate')).toBeVisible();
-      await expect(window.locator('#weight')).toBeVisible();
-      await expect(window.locator('#height')).toBeVisible();
+    // Wait for patient selection with timeout, skip if no patients available
+    try {
+      await selectedPatient.waitFor({ state: 'visible', timeout: 5000 });
+    } catch {
+      test.skip('No patient available to select');
+      return;
     }
+    
+    await expect(window.locator('#temperature')).toBeVisible();
+    await expect(window.locator('#pulse')).toBeVisible();
+    await expect(window.locator('#blood-pressure')).toBeVisible();
+    await expect(window.locator('#respiratory-rate')).toBeVisible();
+    await expect(window.locator('#weight')).toBeVisible();
+    await expect(window.locator('#height')).toBeVisible();
   });
   
   test('should calculate BMI when weight and height are entered', async () => {
     const selectedPatient = window.locator('#selected-patient');
     
-    if (await selectedPatient.isVisible()) {
-      await window.locator('#weight').fill('70');
-      await window.locator('#height').fill('175');
-      
-      // BMI display should appear
-      await expect(window.locator('#bmi-display')).toBeVisible();
-      
-      // BMI should be calculated (70 / 1.75^2 = 22.9)
-      const bmiValue = await window.locator('#bmi-value').textContent();
-      expect(parseFloat(bmiValue)).toBeCloseTo(22.9, 0);
+    try {
+      await selectedPatient.waitFor({ state: 'visible', timeout: 5000 });
+    } catch {
+      test.skip('No patient available to select');
+      return;
     }
+    
+    await window.locator('#weight').fill('70');
+    await window.locator('#height').fill('175');
+    
+    // BMI display should appear
+    await expect(window.locator('#bmi-display')).toBeVisible();
+    
+    // BMI should be calculated (70 / 1.75^2 = 22.9)
+    const bmiValue = await window.locator('#bmi-value').textContent();
+    expect(parseFloat(bmiValue)).toBeCloseTo(22.9, 0);
   });
   
   test('should allow changing selected patient', async () => {
     const selectedPatient = window.locator('#selected-patient');
     
-    if (await selectedPatient.isVisible()) {
-      await window.locator('#change-patient-btn').click();
-      
-      // Patient search should be visible again
-      await expect(window.locator('#patient-search')).toBeVisible();
-      await expect(window.locator('#encounter-form')).not.toBeVisible();
+    try {
+      await selectedPatient.waitFor({ state: 'visible', timeout: 5000 });
+    } catch {
+      test.skip('No patient available to select');
+      return;
     }
+    
+    await window.locator('#change-patient-btn').click();
+    
+    // Patient search should be visible again
+    await expect(window.locator('#patient-search')).toBeVisible();
+    await expect(window.locator('#encounter-form')).not.toBeVisible();
   });
 });
 

@@ -54,8 +54,9 @@ test.afterAll(async () => {
 
 test.describe('Patient Registration Flow', () => {
   test('should display patient registration form', async () => {
-    // Check that the form is visible
-    await expect(window.locator('h1')).toContainText('Vitora HMIS');
+    // Check that the main container is visible (not login)
+    await expect(window.locator('#main-container')).toBeVisible();
+    await expect(window.locator('#main-container h1')).toContainText('Vitora HMIS');
     await expect(window.locator('#patient-form')).toBeVisible();
     
     // Check form fields
