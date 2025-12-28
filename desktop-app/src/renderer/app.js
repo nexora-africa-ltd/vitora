@@ -310,6 +310,22 @@ setTimeout(updateOnlineStatus, 1000);
 // ====================
 // Tab Navigation
 // ====================
+function resetEncounterSelection() {
+  selectedPatient = null;
+
+  // Reset patient selection UI
+  patientSearchInput.style.display = 'block';
+  patientSearchBtn.style.display = 'inline-block';
+  patientSearchInput.value = '';
+  patientSearchResults.innerHTML = '';
+  selectedPatientDiv.style.display = 'none';
+
+  // Reset encounter form UI
+  encounterForm.reset();
+  encounterForm.style.display = 'none';
+  bmiDisplay.style.display = 'none';
+}
+
 document.querySelectorAll('.tab').forEach(tab => {
   tab.addEventListener('click', () => {
     const tabName = tab.dataset.tab;
@@ -328,6 +344,10 @@ document.querySelectorAll('.tab').forEach(tab => {
     if (tabName === 'list') {
       loadPatients();
     } else if (tabName === 'encounter') {
+      // Switching to encounter tab should start in patient-search mode.
+      // This avoids leaking selected patient state across flows/tests.
+      resetEncounterSelection();
+
       // Set today's date as default
       const today = new Date().toISOString().split('T')[0];
       document.getElementById('encounter-date').value = today;

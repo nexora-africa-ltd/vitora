@@ -131,9 +131,26 @@ test.describe('Encounter Management Flow', () => {
   });
 
   test.describe('Vital Signs Entry', () => {
-    test('should calculate BMI when height and weight entered', async () => {
+    test.beforeEach(async () => {
+      // Navigate to encounter tab
       await window.locator('[data-tab="encounter"]').click();
       await window.waitForSelector('#encounter-tab.active', { timeout: 5000 });
+      
+      // Select a patient so the form is visible
+      await window.locator('#patient-search').fill('Test');
+      await window.locator('#patient-search-btn').click();
+      await window.waitForTimeout(2000);
+      
+      const patientItem = window.locator('.patient-search-item').first();
+      if (await patientItem.isVisible()) {
+        await patientItem.click();
+        await window.waitForSelector('#encounter-form', { state: 'visible', timeout: 5000 });
+      }
+    });
+
+    test('should calculate BMI when height and weight entered', async () => {
+      // Ensure form is visible
+      await window.waitForSelector('#encounter-form', { state: 'visible', timeout: 5000 });
       
       // Enter weight and height
       await window.locator('#weight').fill('70');
@@ -156,8 +173,8 @@ test.describe('Encounter Management Flow', () => {
     });
 
     test('should show BMI categories correctly', async () => {
-      await window.locator('[data-tab="encounter"]').click();
-      await window.waitForSelector('#encounter-tab.active', { timeout: 5000 });
+      // Ensure form is visible
+      await window.waitForSelector('#encounter-form', { state: 'visible', timeout: 5000 });
       
       // Test underweight (BMI < 18.5)
       await window.locator('#weight').fill('50');
@@ -180,8 +197,8 @@ test.describe('Encounter Management Flow', () => {
     });
 
     test('should accept valid vital signs', async () => {
-      await window.locator('[data-tab="encounter"]').click();
-      await window.waitForSelector('#encounter-tab.active', { timeout: 5000 });
+      // Ensure form is visible
+      await window.waitForSelector('#encounter-form', { state: 'visible', timeout: 5000 });
       
       // Enter valid vitals
       await window.locator('#temperature').fill('37.5');
@@ -301,6 +318,13 @@ test.describe('Encounter Management Flow', () => {
 
 test.describe('Patient Details Modal', () => {
   test.beforeEach(async () => {
+    // Ensure any open modal is closed first (prevents blocking clicks)
+    const modal = window.locator('#patient-modal');
+    if (await modal.isVisible()) {
+      await window.locator('.close-modal').click();
+      await window.waitForSelector('#patient-modal', { state: 'hidden', timeout: 5000 });
+    }
+    
     // First, register a patient so we have something in the list
     await window.locator('[data-tab="register"]').click();
     await window.waitForSelector('#register-tab.active', { timeout: 5000 });
