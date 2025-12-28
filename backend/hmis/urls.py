@@ -12,7 +12,7 @@ from rest_framework_simplejwt.views import TokenRefreshView, TokenVerifyView
 
 from hmis.apps.core.views import AuditedTokenObtainPairView, AuditLogViewSet
 from hmis.apps.encounters.views import EncounterViewSet
-from hmis.apps.patients.views import PatientViewSet
+from hmis.apps.patients.views import EmergencyContactViewSet, PatientViewSet
 
 
 def health_check(request):
@@ -36,6 +36,19 @@ urlpatterns = [
     path("", health_check, name="health_check"),
     path("admin/", admin.site.urls),
     path("api/", include(router.urls)),
+    # Nested route for emergency contacts under patients
+    path(
+        "api/patients/<int:patient_pk>/emergency-contacts/",
+        EmergencyContactViewSet.as_view({"get": "list", "post": "create"}),
+        name="patient-emergency-contacts-list",
+    ),
+    path(
+        "api/patients/<int:patient_pk>/emergency-contacts/<int:pk>/",
+        EmergencyContactViewSet.as_view(
+            {"get": "retrieve", "put": "update", "patch": "partial_update", "delete": "destroy"}
+        ),
+        name="patient-emergency-contacts-detail",
+    ),
     path("api-auth/", include("rest_framework.urls", namespace="rest_framework")),
     # JWT Authentication endpoints (using custom view with audit logging)
     path("api/token/", AuditedTokenObtainPairView.as_view(), name="token_obtain_pair"),

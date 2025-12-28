@@ -4,7 +4,24 @@ Serializers for the patients app.
 
 from rest_framework import serializers
 
-from .models import Patient
+from .models import EmergencyContact, Patient
+
+
+class EmergencyContactSerializer(serializers.ModelSerializer):
+    """Serializer for the EmergencyContact model."""
+
+    class Meta:
+        model = EmergencyContact
+        fields = [
+            "id",
+            "full_name",
+            "relationship",
+            "phone_number",
+            "alternative_phone",
+            "created_at",
+            "updated_at",
+        ]
+        read_only_fields = ["id", "created_at", "updated_at"]
 
 
 class PatientSerializer(serializers.ModelSerializer):

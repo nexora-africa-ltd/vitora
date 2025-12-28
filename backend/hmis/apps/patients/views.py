@@ -2,15 +2,17 @@
 Views for the patients app.
 """
 
+from django.shortcuts import get_object_or_404
 from django_filters.rest_framework import DjangoFilterBackend
-from rest_framework import filters, viewsets
+from rest_framework import filters, status, viewsets
 from rest_framework.permissions import IsAuthenticated
+from rest_framework.response import Response
 
 from hmis.apps.core.models import AuditLog
 from hmis.apps.core.permissions import SensitiveAccessPermission, get_client_ip
 
-from .models import Patient
-from .serializers import PatientSerializer
+from .models import EmergencyContact, Patient
+from .serializers import EmergencyContactSerializer, PatientSerializer
 
 
 class PatientViewSet(viewsets.ModelViewSet):
@@ -139,5 +141,76 @@ class PatientViewSet(viewsets.ModelViewSet):
                 patient_id=patient_id,
                 details={"patient_mrn": patient_mrn},
             )
+
+        return response
+
+
+class EmergencyContactViewSet(viewsets.ModelViewSet):
+    """
+    ViewSet for EmergencyContact model.
+
+    Provides CRUD operations for emergency contacts nested under patients.
+    URL pattern: /api/patients/{patient_id}/emergency-contacts/
+    """
+
+    serializer_class = EmergencyContactSerializer
+    permission_classes = [IsAuthenticated]
+
+    def get_queryset(self):
+        """Get emergency contacts for a specific patient."""
+        patient_id = self.kwargs.get("patient_pk")
+        return EmergencyContact.objects.filter(patient_id=patient_id)
+
+    def get_patient(self):
+        """Get the patient from URL kwargs."""
+        patient_id = self.kwargs.get("patient_pk")
+        return get_object_or_404(Patient, pk=patient_id)
+
+    def create(self, request, *args, **kwargs):
+        """Create an emergency contact for the patient."""
+        patient = self.get_patient()
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        serializer.save(patient=patient)
+
+        # Log the action
+        AuditLog.log(
+            action="emergency_contact_create",
+            user=request.user,
+            resource_type="EmergencyContact",
+            resource_id=serializer.instance.id,
+            ip_address=get_client_ip(request),
+            user_agent=request.META.get("HTTP_USER_AGENT", ""),
+            patient_id=patient.id,
+            details={
+                "patient_mrn": patient.mrn,
+                "contact_name": serializer.instance.full_name,
+            },
+        )
+
+        return Response(serializer.data, status=status.HTTP_201_CREATED)
+
+    def destroy(self, request, *args, **kwargs):
+        """Delete an emergency contact with audit logging."""
+        instance = self.get_object()
+        patient = instance.patient
+        contact_name = instance.full_name
+
+        response = super().destroy(request, *args, **kwargs)
+
+        # Log the deletion
+        AuditLog.log(
+            action="emergency_contact_delete",
+            user=request.user,
+            resource_type="EmergencyContact",
+            resource_id=instance.id,
+            ip_address=get_client_ip(request),
+            user_agent=request.META.get("HTTP_USER_AGENT", ""),
+            patient_id=patient.id,
+            details={
+                "patient_mrn": patient.mrn,
+                "contact_name": contact_name,
+            },
+        )
 
         return response
