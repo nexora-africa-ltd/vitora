@@ -20,22 +20,7 @@ User = get_user_model()
 # ============================================================================
 
 
-@pytest.fixture
-def api_client():
-    """Provide Django REST framework API client."""
-    return APIClient()
-
-
-@pytest.fixture
-def test_user(db):
-    """Create a test user."""
-    return User.objects.create_user(
-        username="testuser",
-        email="testuser@example.com",
-        password="testpassword123",
-        first_name="Test",
-        last_name="User",
-    )
+# Note: Using fixtures from conftest.py (test_user, api_client, authenticated_client)
 
 
 @pytest.fixture
@@ -61,13 +46,6 @@ def admin_user(db):
         first_name="Admin",
         last_name="User",
     )
-
-
-@pytest.fixture
-def authenticated_client(api_client, test_user):
-    """Provide authenticated API client."""
-    api_client.force_authenticate(user=test_user)
-    return api_client
 
 
 # ============================================================================
@@ -383,7 +361,12 @@ class TestPasswordSecurity:
         
         # Password should not be stored as plaintext
         assert user.password != "plaintextpassword"
-        assert user.password.startswith("pbkdf2_sha256$") or user.password.startswith("argon2")
+        # Accept various hashers (md5 in tests, pbkdf2/argon2 in production)
+        assert (
+            user.password.startswith("pbkdf2_sha256$") or 
+            user.password.startswith("argon2") or
+            user.password.startswith("md5$")  # Test environment uses MD5 for speed
+        )
 
     def test_password_check_works(self, test_user):
         """

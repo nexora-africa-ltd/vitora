@@ -56,7 +56,7 @@ ipython = "^8.20"
 ipdb = "^0.13"
 
 [tool.pytest.ini_options]
-DJANGO_SETTINGS_MODULE = "hmis.settings"
+DJANGO_SETTINGS_MODULE = "hmis.settings.test"
 python_files = ["test_*.py", "*_test.py", "tests.py"]
 python_classes = ["Test*"]
 python_functions = ["test_*"]

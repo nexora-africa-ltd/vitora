@@ -189,13 +189,14 @@ function stopBackend() {
 
 /**
  * Check if backend is healthy
+ * Uses the root health check endpoint which returns JSON status
  */
 async function checkBackendHealth() {
   try {
-    const response = await axios.get(`${BACKEND_URL}/api/patients/`, {
+    const response = await axios.get(`${BACKEND_URL}/`, {
       timeout: 5000
     });
-    return response.status === 200;
+    return response.status === 200 && response.data.status === 'healthy';
   } catch (error) {
     console.log('[Backend] Health check failed:', error.message);
     return false;
