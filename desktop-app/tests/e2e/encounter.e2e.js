@@ -158,16 +158,10 @@ test.describe('Encounter Form', () => {
   });
   
   test('should display vitals input fields', async () => {
-    const selectedPatient = window.locator('#selected-patient');
+    // Wait for encounter form to be visible (patient was selected in beforeEach)
+    await window.waitForSelector('#encounter-form', { state: 'visible', timeout: 10000 });
     
-    // Wait for patient selection with timeout, skip if no patients available
-    try {
-      await selectedPatient.waitFor({ state: 'visible', timeout: 5000 });
-    } catch {
-      test.skip('No patient available to select');
-      return;
-    }
-    
+    // Check all vital sign fields
     await expect(window.locator('#temperature')).toBeVisible();
     await expect(window.locator('#pulse')).toBeVisible();
     await expect(window.locator('#blood-pressure')).toBeVisible();
@@ -198,16 +192,15 @@ test.describe('Encounter Form', () => {
   });
   
   test('should allow changing selected patient', async () => {
-    const selectedPatient = window.locator('#selected-patient');
+    // Wait for encounter form to be visible (patient was selected in beforeEach)
+    await window.waitForSelector('#encounter-form', { state: 'visible', timeout: 10000 });
+    await window.waitForSelector('#selected-patient', { state: 'visible', timeout: 5000 });
     
-    try {
-      await selectedPatient.waitFor({ state: 'visible', timeout: 5000 });
-    } catch {
-      test.skip('No patient available to select');
-      return;
-    }
-    
+    // Click change button
     await window.locator('#change-patient-btn').click();
+    
+    // Wait for form to be hidden
+    await window.waitForSelector('#encounter-form', { state: 'hidden', timeout: 5000 });
     
     // Patient search should be visible again
     await expect(window.locator('#patient-search')).toBeVisible();
