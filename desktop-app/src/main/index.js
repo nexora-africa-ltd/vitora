@@ -33,7 +33,7 @@ const store = new Store({
 // Global references
 let mainWindow = null;
 let backendProcess = null;
-const BACKEND_PORT = 8000;
+const BACKEND_PORT = 9090;
 const BACKEND_URL = `http://127.0.0.1:${BACKEND_PORT}`;
 
 /**
@@ -49,19 +49,19 @@ function getAccessToken() {
 async function createTestUser() {
   return new Promise((resolve) => {
     const backendPath = path.join(__dirname, '..', '..', '..', 'backend');
-    const pythonCmd = process.platform === 'win32' ? 'python' : 'python3';
-    const managePath = path.join(backendPath, 'manage.py');
+    const poetryCmd = 'poetry';
     
     console.log('[Backend] Creating test user...');
     
-    const createUserProcess = spawn(pythonCmd, [managePath, 'create_test_user'], {
+    const createUserProcess = spawn(poetryCmd, ['run', 'python', 'manage.py', 'create_test_user'], {
       cwd: backendPath,
       env: {
         ...process.env,
         DJANGO_ENV: 'development',
         DJANGO_SETTINGS_MODULE: 'hmis.settings'
       },
-      stdio: 'pipe'
+      stdio: 'pipe',
+      shell: true
     });
     
     createUserProcess.stdout.on('data', (data) => {
@@ -103,14 +103,14 @@ async function startBackend() {
       PYTHONUNBUFFERED: '1'
     };
     
-    // Start Django using manage.py
-    const pythonCmd = process.platform === 'win32' ? 'python' : 'python3';
-    const managePath = path.join(backendPath, 'manage.py');
+    // Start Django using Poetry
+    const poetryCmd = 'poetry';
     
-    backendProcess = spawn(pythonCmd, [managePath, 'runserver', `127.0.0.1:${BACKEND_PORT}`, '--noreload'], {
+    backendProcess = spawn(poetryCmd, ['run', 'python', 'manage.py', 'runserver', `0.0.0.0:${BACKEND_PORT}`, '--noreload'], {
       cwd: backendPath,
       env: env,
-      stdio: 'pipe'
+      stdio: 'pipe',
+      shell: true
     });
     
     backendProcess.stdout.on('data', (data) => {
