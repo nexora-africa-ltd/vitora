@@ -83,6 +83,96 @@ def mock_settings(monkeypatch) -> Generator[None, None, None]:
 
 
 # ============================================================================
+# API Client Fixtures
+# ============================================================================
+
+
+@pytest.fixture
+def api_client():
+    """Provide Django REST framework API client."""
+    from rest_framework.test import APIClient
+
+    return APIClient()
+
+
+@pytest.fixture
+def test_user(db):
+    """Create and return a test user."""
+    from django.contrib.auth import get_user_model
+
+    User = get_user_model()
+    user = User.objects.create_user(
+        username="testuser",
+        email="test@example.com",
+        password="testpassword123",
+    )
+    return user
+
+
+@pytest.fixture
+def authenticated_client(api_client, test_user):
+    """Provide authenticated API client."""
+    api_client.force_authenticate(user=test_user)
+    return api_client
+
+
+# ============================================================================
+# Patient Test Fixtures
+# ============================================================================
+
+
+@pytest.fixture
+def patient_data():
+    """Sample patient data for tests."""
+    return {
+        "first_name": "John",
+        "last_name": "Doe",
+        "date_of_birth": "1990-01-15",
+        "gender": "M",
+    }
+
+
+@pytest.fixture
+def sample_patient(db, test_user):
+    """Create a sample patient for testing."""
+    from hmis.apps.patients.models import Patient
+
+    return Patient.objects.create(
+        first_name="Jane",
+        last_name="Smith",
+        date_of_birth="1985-05-20",
+        gender="F",
+    )
+
+
+# ============================================================================
+# Encounter Test Fixtures
+# ============================================================================
+
+
+@pytest.fixture
+def encounter_data(sample_patient):
+    """Sample encounter data for tests."""
+    return {
+        "patient": sample_patient.id,
+        "encounter_type": "OPD",
+        "chief_complaint": "Test complaint",
+    }
+
+
+@pytest.fixture
+def sample_encounter(db, sample_patient):
+    """Create a sample encounter for testing."""
+    from hmis.apps.encounters.models import Encounter
+
+    return Encounter.objects.create(
+        patient=sample_patient,
+        encounter_type="OPD",
+        chief_complaint="Headache for 2 days",
+    )
+
+
+# ============================================================================
 # Database Fixtures (will be activated when Django is set up)
 # ============================================================================
 
@@ -107,30 +197,6 @@ def mock_settings(monkeypatch) -> Generator[None, None, None]:
 #         encounter_type="OPD",
 #         chief_complaint="Headache"
 #     )
-
-
-# ============================================================================
-# API Client Fixtures (will be activated when Django is set up)
-# ============================================================================
-
-# @pytest.fixture
-# def api_client():
-#     """Provide Django REST framework API client."""
-#     from rest_framework.test import APIClient
-#     return APIClient()
-
-
-# @pytest.fixture
-# def authenticated_client(api_client, db):
-#     """Provide authenticated API client."""
-#     from django.contrib.auth import get_user_model
-#     User = get_user_model()
-#     user = User.objects.create_user(
-#         username="testuser",
-#         password="testpass123"
-#     )
-#     api_client.force_authenticate(user=user)
-#     return api_client
 
 
 # ============================================================================

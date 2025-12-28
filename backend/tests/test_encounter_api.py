@@ -9,16 +9,36 @@ from datetime import date
 from decimal import Decimal
 
 import pytest
+from django.contrib.auth import get_user_model
 from rest_framework import status
 from rest_framework.test import APIClient
 
 pytestmark = pytest.mark.django_db
+
+User = get_user_model()
 
 
 @pytest.fixture
 def api_client():
     """Provide REST framework API client."""
     return APIClient()
+
+
+@pytest.fixture
+def auth_user(db):
+    """Create a test user for authentication."""
+    return User.objects.create_user(
+        username="encounteruser",
+        password="encounterpassword123",
+        email="encounteruser@test.com",
+    )
+
+
+@pytest.fixture
+def auth_client(api_client, auth_user):
+    """Provide authenticated API client."""
+    api_client.force_authenticate(user=auth_user)
+    return api_client
 
 
 @pytest.fixture
@@ -67,7 +87,7 @@ def sample_encounter_with_vitals(sample_patient):
 class TestEncounterAPIEndpoints:
     """Test Encounter API CRUD operations."""
 
-    def test_list_encounters(self, api_client, sample_patient):
+    def test_list_encounters(self, auth_client, sample_patient):
         """Test GET /api/encounters/ - List all encounters."""
         from hmis.apps.encounters.models import Encounter
 
@@ -83,30 +103,30 @@ class TestEncounterAPIEndpoints:
             chief_complaint="Chest pain",
         )
 
-        response = api_client.get("/api/encounters/")
+        response = auth_client.get("/api/encounters/")
 
         assert response.status_code == status.HTTP_200_OK
         assert len(response.data["results"]) == 2
 
-    def test_list_encounters_empty(self, api_client):
+    def test_list_encounters_empty(self, auth_client):
         """Test GET /api/encounters/ - Empty list when no encounters."""
-        response = api_client.get("/api/encounters/")
+        response = auth_client.get("/api/encounters/")
 
         assert response.status_code == status.HTTP_200_OK
         assert len(response.data["results"]) == 0
 
-    def test_create_encounter(self, api_client, sample_encounter_data):
+    def test_create_encounter(self, auth_client, sample_encounter_data):
         """Test POST /api/encounters/ - Create a new encounter."""
-        response = api_client.post("/api/encounters/", sample_encounter_data, format="json")
+        response = auth_client.post("/api/encounters/", sample_encounter_data, format="json")
 
         assert response.status_code == status.HTTP_201_CREATED
         assert response.data["encounter_type"] == "OPD"
         assert response.data["chief_complaint"] == "Headache and fever"
         assert response.data["id"] is not None
 
-    def test_create_encounter_with_vitals(self, api_client, sample_encounter_with_vitals):
+    def test_create_encounter_with_vitals(self, auth_client, sample_encounter_with_vitals):
         """Test POST /api/encounters/ - Create encounter with vital signs."""
-        response = api_client.post(
+        response = auth_client.post(
             "/api/encounters/", sample_encounter_with_vitals, format="json"
         )
 
@@ -119,7 +139,7 @@ class TestEncounterAPIEndpoints:
         # BMI should be calculated: 70 / (1.75^2) = 22.9
         assert response.data["bmi"] == 22.9
 
-    def test_create_encounter_missing_required_field(self, api_client, sample_patient):
+    def test_create_encounter_missing_required_field(self, auth_client, sample_patient):
         """Test POST /api/encounters/ - Fail when required field is missing."""
         invalid_data = {
             "patient": sample_patient.id,
@@ -127,12 +147,12 @@ class TestEncounterAPIEndpoints:
             # Missing chief_complaint
         }
 
-        response = api_client.post("/api/encounters/", invalid_data, format="json")
+        response = auth_client.post("/api/encounters/", invalid_data, format="json")
 
         assert response.status_code == status.HTTP_400_BAD_REQUEST
         assert "chief_complaint" in response.data
 
-    def test_create_encounter_invalid_patient(self, api_client):
+    def test_create_encounter_invalid_patient(self, auth_client):
         """Test POST /api/encounters/ - Fail with invalid patient ID."""
         invalid_data = {
             "patient": 99999,  # Non-existent patient
@@ -140,11 +160,11 @@ class TestEncounterAPIEndpoints:
             "chief_complaint": "Test",
         }
 
-        response = api_client.post("/api/encounters/", invalid_data, format="json")
+        response = auth_client.post("/api/encounters/", invalid_data, format="json")
 
         assert response.status_code == status.HTTP_400_BAD_REQUEST
 
-    def test_retrieve_encounter(self, api_client, sample_patient):
+    def test_retrieve_encounter(self, auth_client, sample_patient):
         """Test GET /api/encounters/{id}/ - Retrieve a specific encounter."""
         from hmis.apps.encounters.models import Encounter
 
@@ -155,20 +175,20 @@ class TestEncounterAPIEndpoints:
             temperature=Decimal("38.5"),
         )
 
-        response = api_client.get(f"/api/encounters/{encounter.id}/")
+        response = auth_client.get(f"/api/encounters/{encounter.id}/")
 
         assert response.status_code == status.HTTP_200_OK
         assert response.data["encounter_type"] == "OPD"
         assert response.data["chief_complaint"] == "Headache"
         assert response.data["patient_mrn"] == sample_patient.mrn
 
-    def test_retrieve_nonexistent_encounter(self, api_client):
+    def test_retrieve_nonexistent_encounter(self, auth_client):
         """Test GET /api/encounters/{id}/ - Fail when encounter doesn't exist."""
-        response = api_client.get("/api/encounters/999999/")
+        response = auth_client.get("/api/encounters/999999/")
 
         assert response.status_code == status.HTTP_404_NOT_FOUND
 
-    def test_update_encounter(self, api_client, sample_patient):
+    def test_update_encounter(self, auth_client, sample_patient):
         """Test PUT /api/encounters/{id}/ - Update an encounter."""
         from hmis.apps.encounters.models import Encounter
 
@@ -185,7 +205,7 @@ class TestEncounterAPIEndpoints:
             "notes": "Prescribed medication",
         }
 
-        response = api_client.put(
+        response = auth_client.put(
             f"/api/encounters/{encounter.id}/", update_data, format="json"
         )
 
@@ -193,7 +213,7 @@ class TestEncounterAPIEndpoints:
         assert response.data["chief_complaint"] == "Headache with nausea"
         assert response.data["notes"] == "Prescribed medication"
 
-    def test_partial_update_encounter(self, api_client, sample_patient):
+    def test_partial_update_encounter(self, auth_client, sample_patient):
         """Test PATCH /api/encounters/{id}/ - Partial update an encounter."""
         from hmis.apps.encounters.models import Encounter
 
@@ -203,7 +223,7 @@ class TestEncounterAPIEndpoints:
             chief_complaint="Headache",
         )
 
-        response = api_client.patch(
+        response = auth_client.patch(
             f"/api/encounters/{encounter.id}/",
             {"notes": "Follow-up recommended"},
             format="json",
@@ -213,7 +233,7 @@ class TestEncounterAPIEndpoints:
         assert response.data["notes"] == "Follow-up recommended"
         assert response.data["chief_complaint"] == "Headache"  # Unchanged
 
-    def test_delete_encounter(self, api_client, sample_patient):
+    def test_delete_encounter(self, auth_client, sample_patient):
         """Test DELETE /api/encounters/{id}/ - Delete an encounter."""
         from hmis.apps.encounters.models import Encounter
 
@@ -224,7 +244,7 @@ class TestEncounterAPIEndpoints:
         )
         encounter_id = encounter.id
 
-        response = api_client.delete(f"/api/encounters/{encounter_id}/")
+        response = auth_client.delete(f"/api/encounters/{encounter_id}/")
 
         assert response.status_code == status.HTTP_204_NO_CONTENT
         assert not Encounter.objects.filter(id=encounter_id).exists()
@@ -234,7 +254,7 @@ class TestEncounterAPIEndpoints:
 class TestEncounterAPIFiltering:
     """Test Encounter API filtering and search capabilities."""
 
-    def test_filter_by_patient(self, api_client):
+    def test_filter_by_patient(self, auth_client):
         """Test filtering encounters by patient ID."""
         from hmis.apps.encounters.models import Encounter
         from hmis.apps.patients.models import Patient
@@ -262,14 +282,14 @@ class TestEncounterAPIFiltering:
             patient=patient2, encounter_type="OPD", chief_complaint="Cough"
         )
 
-        response = api_client.get(f"/api/encounters/?patient={patient1.id}")
+        response = auth_client.get(f"/api/encounters/?patient={patient1.id}")
 
         assert response.status_code == status.HTTP_200_OK
         assert len(response.data["results"]) == 2
         for encounter in response.data["results"]:
             assert encounter["patient"] == patient1.id
 
-    def test_filter_by_patient_mrn(self, api_client, sample_patient):
+    def test_filter_by_patient_mrn(self, auth_client, sample_patient):
         """Test filtering encounters by patient MRN."""
         from hmis.apps.encounters.models import Encounter
 
@@ -277,12 +297,12 @@ class TestEncounterAPIFiltering:
             patient=sample_patient, encounter_type="OPD", chief_complaint="Test"
         )
 
-        response = api_client.get(f"/api/encounters/?patient_mrn={sample_patient.mrn}")
+        response = auth_client.get(f"/api/encounters/?patient_mrn={sample_patient.mrn}")
 
         assert response.status_code == status.HTTP_200_OK
         assert len(response.data["results"]) == 1
 
-    def test_filter_by_encounter_type(self, api_client, sample_patient):
+    def test_filter_by_encounter_type(self, auth_client, sample_patient):
         """Test filtering encounters by type."""
         from hmis.apps.encounters.models import Encounter
 
@@ -293,13 +313,13 @@ class TestEncounterAPIFiltering:
             patient=sample_patient, encounter_type="EMERGENCY", chief_complaint="Test2"
         )
 
-        response = api_client.get("/api/encounters/?encounter_type=EMERGENCY")
+        response = auth_client.get("/api/encounters/?encounter_type=EMERGENCY")
 
         assert response.status_code == status.HTTP_200_OK
         assert len(response.data["results"]) == 1
         assert response.data["results"][0]["encounter_type"] == "EMERGENCY"
 
-    def test_search_by_chief_complaint(self, api_client, sample_patient):
+    def test_search_by_chief_complaint(self, auth_client, sample_patient):
         """Test searching encounters by chief complaint."""
         from hmis.apps.encounters.models import Encounter
 
@@ -310,13 +330,13 @@ class TestEncounterAPIFiltering:
             patient=sample_patient, encounter_type="OPD", chief_complaint="Chest pain"
         )
 
-        response = api_client.get("/api/encounters/?search=headache")
+        response = auth_client.get("/api/encounters/?search=headache")
 
         assert response.status_code == status.HTTP_200_OK
         assert len(response.data["results"]) == 1
         assert "headache" in response.data["results"][0]["chief_complaint"].lower()
 
-    def test_ordering_by_date(self, api_client, sample_patient):
+    def test_ordering_by_date(self, auth_client, sample_patient):
         """Test ordering encounters by date."""
         from hmis.apps.encounters.models import Encounter
 
@@ -334,7 +354,7 @@ class TestEncounterAPIFiltering:
         )
 
         # Default ordering is -encounter_date (descending)
-        response = api_client.get("/api/encounters/")
+        response = auth_client.get("/api/encounters/")
 
         assert response.status_code == status.HTTP_200_OK
         assert len(response.data["results"]) == 2
@@ -346,7 +366,7 @@ class TestEncounterAPIFiltering:
 class TestEncounterAPIValidation:
     """Test Encounter API validation rules."""
 
-    def test_invalid_temperature(self, api_client, sample_patient):
+    def test_invalid_temperature(self, auth_client, sample_patient):
         """Test validation for temperature out of range."""
         invalid_data = {
             "patient": sample_patient.id,
@@ -355,12 +375,12 @@ class TestEncounterAPIValidation:
             "temperature": 50.0,  # Invalid: > 45°C
         }
 
-        response = api_client.post("/api/encounters/", invalid_data, format="json")
+        response = auth_client.post("/api/encounters/", invalid_data, format="json")
 
         assert response.status_code == status.HTTP_400_BAD_REQUEST
         assert "temperature" in response.data
 
-    def test_invalid_pulse(self, api_client, sample_patient):
+    def test_invalid_pulse(self, auth_client, sample_patient):
         """Test validation for pulse out of range."""
         invalid_data = {
             "patient": sample_patient.id,
@@ -369,12 +389,12 @@ class TestEncounterAPIValidation:
             "pulse": 250,  # Invalid: > 200
         }
 
-        response = api_client.post("/api/encounters/", invalid_data, format="json")
+        response = auth_client.post("/api/encounters/", invalid_data, format="json")
 
         assert response.status_code == status.HTTP_400_BAD_REQUEST
         assert "pulse" in response.data
 
-    def test_invalid_blood_pressure_format(self, api_client, sample_patient):
+    def test_invalid_blood_pressure_format(self, auth_client, sample_patient):
         """Test validation for blood pressure format."""
         invalid_data = {
             "patient": sample_patient.id,
@@ -383,12 +403,12 @@ class TestEncounterAPIValidation:
             "blood_pressure": "120-80",  # Invalid format (should be 120/80)
         }
 
-        response = api_client.post("/api/encounters/", invalid_data, format="json")
+        response = auth_client.post("/api/encounters/", invalid_data, format="json")
 
         assert response.status_code == status.HTTP_400_BAD_REQUEST
         assert "blood_pressure" in response.data
 
-    def test_invalid_encounter_type(self, api_client, sample_patient):
+    def test_invalid_encounter_type(self, auth_client, sample_patient):
         """Test validation for invalid encounter type."""
         invalid_data = {
             "patient": sample_patient.id,
@@ -396,12 +416,12 @@ class TestEncounterAPIValidation:
             "chief_complaint": "Test",
         }
 
-        response = api_client.post("/api/encounters/", invalid_data, format="json")
+        response = auth_client.post("/api/encounters/", invalid_data, format="json")
 
         assert response.status_code == status.HTTP_400_BAD_REQUEST
         assert "encounter_type" in response.data
 
-    def test_invalid_weight(self, api_client, sample_patient):
+    def test_invalid_weight(self, auth_client, sample_patient):
         """Test validation for weight out of range."""
         invalid_data = {
             "patient": sample_patient.id,
@@ -410,7 +430,7 @@ class TestEncounterAPIValidation:
             "weight": -10,  # Invalid: negative
         }
 
-        response = api_client.post("/api/encounters/", invalid_data, format="json")
+        response = auth_client.post("/api/encounters/", invalid_data, format="json")
 
         assert response.status_code == status.HTTP_400_BAD_REQUEST
         assert "weight" in response.data
@@ -420,7 +440,7 @@ class TestEncounterAPIValidation:
 class TestEncounterAPICriticalVitals:
     """Test critical vitals detection in API responses."""
 
-    def test_has_critical_vitals_flag(self, api_client, sample_patient):
+    def test_has_critical_vitals_flag(self, auth_client, sample_patient):
         """Test that critical vitals are flagged in response."""
         from hmis.apps.encounters.models import Encounter
 
@@ -431,13 +451,13 @@ class TestEncounterAPICriticalVitals:
             temperature=Decimal("40.0"),  # Critical: > 39°C
         )
 
-        response = api_client.get(f"/api/encounters/{encounter.id}/")
+        response = auth_client.get(f"/api/encounters/{encounter.id}/")
 
         assert response.status_code == status.HTTP_200_OK
         assert response.data["has_critical_vitals"] is True
         assert "fever" in response.data["alerts"].lower()
 
-    def test_normal_vitals_not_flagged(self, api_client, sample_patient):
+    def test_normal_vitals_not_flagged(self, auth_client, sample_patient):
         """Test that normal vitals are not flagged."""
         from hmis.apps.encounters.models import Encounter
 
@@ -450,13 +470,13 @@ class TestEncounterAPICriticalVitals:
             respiratory_rate=16,
         )
 
-        response = api_client.get(f"/api/encounters/{encounter.id}/")
+        response = auth_client.get(f"/api/encounters/{encounter.id}/")
 
         assert response.status_code == status.HTTP_200_OK
         assert response.data["has_critical_vitals"] is False
         assert response.data["alerts"] == ""
 
-    def test_bmi_calculation(self, api_client, sample_patient):
+    def test_bmi_calculation(self, auth_client, sample_patient):
         """Test BMI is calculated correctly."""
         from hmis.apps.encounters.models import Encounter
 
@@ -468,13 +488,13 @@ class TestEncounterAPICriticalVitals:
             height=Decimal("180.0"),
         )
 
-        response = api_client.get(f"/api/encounters/{encounter.id}/")
+        response = auth_client.get(f"/api/encounters/{encounter.id}/")
 
         assert response.status_code == status.HTTP_200_OK
         # BMI = 80 / (1.8^2) = 24.7
         assert response.data["bmi"] == 24.7
 
-    def test_bmi_null_when_missing_data(self, api_client, sample_patient):
+    def test_bmi_null_when_missing_data(self, auth_client, sample_patient):
         """Test BMI is null when weight or height missing."""
         from hmis.apps.encounters.models import Encounter
 
@@ -486,7 +506,7 @@ class TestEncounterAPICriticalVitals:
             # Missing height
         )
 
-        response = api_client.get(f"/api/encounters/{encounter.id}/")
+        response = auth_client.get(f"/api/encounters/{encounter.id}/")
 
         assert response.status_code == status.HTTP_200_OK
         assert response.data["bmi"] is None
@@ -496,7 +516,7 @@ class TestEncounterAPICriticalVitals:
 class TestEncounterAPIPagination:
     """Test Encounter API pagination."""
 
-    def test_pagination(self, api_client, sample_patient):
+    def test_pagination(self, auth_client, sample_patient):
         """Test that encounters are paginated."""
         from hmis.apps.encounters.models import Encounter
 
@@ -508,7 +528,7 @@ class TestEncounterAPIPagination:
                 chief_complaint=f"Test complaint {i}",
             )
 
-        response = api_client.get("/api/encounters/")
+        response = auth_client.get("/api/encounters/")
 
         assert response.status_code == status.HTTP_200_OK
         assert "count" in response.data

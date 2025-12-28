@@ -88,6 +88,21 @@ class Patient(models.Model):
         max_length=50, blank=True, default="", help_text="Patient's national ID number"
     )
 
+    # Privacy & Consent (Kenya Data Protection Act compliance)
+    is_sensitive = models.BooleanField(
+        default=False,
+        help_text="Marks patient record as sensitive (HIV, GBV, Mental Health)",
+    )
+    consent_given = models.BooleanField(
+        default=False,
+        help_text="Whether patient has given consent for data processing",
+    )
+    consent_date = models.DateTimeField(
+        null=True,
+        blank=True,
+        help_text="Date and time when consent was given",
+    )
+
     # Timestamps
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
@@ -100,9 +115,13 @@ class Patient(models.Model):
             models.Index(fields=["mrn"]),
             models.Index(fields=["last_name", "first_name"]),
             models.Index(fields=["date_of_birth"]),
+            models.Index(fields=["is_sensitive"]),
         ]
         verbose_name = "Patient"
         verbose_name_plural = "Patients"
+        permissions = [
+            ("view_sensitive_patient", "Can view sensitive patient records"),
+        ]
 
     def __str__(self) -> str:
         """String representation of the patient."""
