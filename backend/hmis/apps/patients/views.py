@@ -2,14 +2,20 @@
 Views for the patients app.
 """
 
+from datetime import datetime
+
+from django.db.models import Count, Max, Min
 from django.shortcuts import get_object_or_404
 from django_filters.rest_framework import DjangoFilterBackend
 from rest_framework import filters, status, viewsets
+from rest_framework.decorators import action
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 
 from hmis.apps.core.models import AuditLog
 from hmis.apps.core.permissions import SensitiveAccessPermission, get_client_ip
+from hmis.apps.encounters.models import Encounter
+from hmis.apps.encounters.serializers import EncounterListSerializer
 
 from .models import EmergencyContact, Patient
 from .serializers import EmergencyContactSerializer, PatientSerializer
@@ -149,6 +155,99 @@ class PatientViewSet(viewsets.ModelViewSet):
             )
 
         return response
+
+    @action(detail=True, methods=["get"], url_path="encounter-timeline")
+    def encounter_timeline(self, request, pk=None):
+        """
+        Get patient encounter timeline with statistics.
+
+        Returns:
+            - patient: Patient information
+            - encounters: List of encounters ordered by date
+            - statistics: Summary statistics
+        """
+        patient = self.get_object()
+
+        # Get encounters for this patient
+        encounters = Encounter.objects.filter(patient=patient)
+
+        # Apply date filters if provided
+        start_date = request.query_params.get("start_date")
+        end_date = request.query_params.get("end_date")
+
+        if start_date:
+            try:
+                start = datetime.strptime(start_date, "%Y-%m-%d").date()
+                encounters = encounters.filter(encounter_date__gte=start)
+            except ValueError:
+                pass  # Invalid date format, ignore filter
+
+        if end_date:
+            try:
+                end = datetime.strptime(end_date, "%Y-%m-%d").date()
+                encounters = encounters.filter(encounter_date__lte=end)
+            except ValueError:
+                pass  # Invalid date format, ignore filter
+
+        encounters = encounters.order_by("-encounter_date")
+
+        # Calculate statistics
+        stats = encounters.aggregate(
+            total_count=Count("id"),
+            first_encounter=Min("encounter_date"),
+            last_encounter=Max("encounter_date"),
+        )
+
+        # Encounter type breakdown
+        type_breakdown = encounters.values("encounter_type").annotate(
+            count=Count("id")
+        )
+
+        # Count critical vitals encounters
+        critical_count = sum(1 for e in encounters if e.has_critical_vitals())
+
+        # Serialize encounters
+        encounter_serializer = EncounterListSerializer(encounters, many=True)
+
+        # Build response
+        timeline_data = {
+            "patient": {
+                "id": patient.id,
+                "mrn": patient.mrn,
+                "full_name": patient.full_name,
+                "date_of_birth": patient.date_of_birth,
+                "age": patient.age,
+                "gender": patient.gender,
+            },
+            "encounters": encounter_serializer.data,
+            "statistics": {
+                "total_encounters": stats["total_count"] or 0,
+                "first_encounter_date": stats["first_encounter"],
+                "last_encounter_date": stats["last_encounter"],
+                "encounters_with_critical_vitals": critical_count,
+                "encounter_type_breakdown": {
+                    item["encounter_type"]: item["count"]
+                    for item in type_breakdown
+                },
+            },
+        }
+
+        # Log the timeline view
+        AuditLog.log(
+            action="patient_timeline_view",
+            user=request.user,
+            resource_type="Patient",
+            resource_id=patient.id,
+            ip_address=get_client_ip(request),
+            user_agent=request.META.get("HTTP_USER_AGENT", ""),
+            patient_id=patient.id,
+            details={
+                "patient_mrn": patient.mrn,
+                "encounters_returned": len(encounter_serializer.data),
+            },
+        )
+
+        return Response(timeline_data)
 
 
 class EmergencyContactViewSet(viewsets.ModelViewSet):

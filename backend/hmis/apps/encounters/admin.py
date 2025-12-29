@@ -4,7 +4,123 @@ Django admin configuration for encounters app.
 
 from django.contrib import admin
 
-from .models import Encounter
+from .models import (
+    Diagnosis,
+    Encounter,
+    ICD10Code,
+    TreatmentPlan,
+    TreatmentPlanTemplate,
+)
+
+
+class DiagnosisInline(admin.TabularInline):
+    """Inline admin for diagnoses in encounter."""
+
+    model = Diagnosis
+    extra = 0
+    fields = [
+        "icd10_code",
+        "diagnosis_type",
+        "certainty",
+        "is_confirmed",
+        "diagnosed_by",
+        "notes",
+    ]
+    autocomplete_fields = ["icd10_code", "diagnosed_by"]
+    readonly_fields = ["created_at"]
+
+
+class TreatmentPlanInline(admin.StackedInline):
+    """Inline admin for treatment plan in encounter."""
+
+    model = TreatmentPlan
+    extra = 0
+    fields = [
+        "template",
+        "clinical_notes",
+        "follow_up_instructions",
+        "follow_up_date",
+        "lifestyle_recommendations",
+        "referral_notes",
+        "patient_education",
+    ]
+    autocomplete_fields = ["template"]
+
+
+@admin.register(ICD10Code)
+class ICD10CodeAdmin(admin.ModelAdmin):
+    """Admin configuration for ICD10Code model."""
+
+    list_display = [
+        "code",
+        "short_description",
+        "category",
+        "chapter",
+        "is_billable",
+        "is_active",
+    ]
+    list_filter = ["chapter", "category", "is_billable", "is_active"]
+    search_fields = ["code", "description", "short_description", "category"]
+    ordering = ["code"]
+
+    fieldsets = (
+        (
+            "Code Information",
+            {"fields": ("code", "short_description", "description", "long_description")},
+        ),
+        (
+            "Classification",
+            {"fields": ("category", "chapter", "is_billable", "is_active")},
+        ),
+    )
+
+
+@admin.register(TreatmentPlanTemplate)
+class TreatmentPlanTemplateAdmin(admin.ModelAdmin):
+    """Admin configuration for TreatmentPlanTemplate model."""
+
+    list_display = [
+        "name",
+        "department",
+        "follow_up_days",
+        "is_active",
+        "created_by",
+        "created_at",
+    ]
+    list_filter = ["department", "is_active", "created_at"]
+    search_fields = ["name", "description", "department"]
+    filter_horizontal = ["diagnosis_codes"]
+    ordering = ["name"]
+    readonly_fields = ["created_at", "updated_at"]
+
+    fieldsets = (
+        (
+            "Template Information",
+            {"fields": ("name", "description", "department", "is_active")},
+        ),
+        (
+            "Associated Diagnoses",
+            {"fields": ("diagnosis_codes",)},
+        ),
+        (
+            "Default Values",
+            {
+                "fields": (
+                    "default_medications",
+                    "default_procedures",
+                    "default_instructions",
+                    "follow_up_days",
+                )
+            },
+        ),
+        (
+            "Metadata",
+            {
+                "fields": ("created_by", "created_at", "updated_at"),
+                "classes": ("collapse",),
+            },
+        ),
+    )
 
 
 @admin.register(Encounter)
@@ -32,6 +148,7 @@ class EncounterAdmin(admin.ModelAdmin):
     readonly_fields = ["created_at", "updated_at"]
     ordering = ["-encounter_date", "-created_at"]
     autocomplete_fields = ["patient"]
+    inlines = [DiagnosisInline, TreatmentPlanInline]
 
     fieldsets = (
         (

@@ -12,7 +12,17 @@ class ICD10CodeSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = ICD10Code
-        fields = ["id", "code", "description", "category", "chapter", "is_active"]
+        fields = [
+            "id",
+            "code",
+            "short_description",
+            "description",
+            "long_description",
+            "category",
+            "chapter",
+            "is_billable",
+            "is_active",
+        ]
         read_only_fields = ["id"]
 
 
@@ -21,6 +31,9 @@ class DiagnosisSerializer(serializers.ModelSerializer):
 
     icd10_code_display = serializers.CharField(source="icd10_code.code", read_only=True)
     icd10_description = serializers.CharField(source="icd10_code.description", read_only=True)
+    diagnosed_by_name = serializers.CharField(
+        source="diagnosed_by.get_full_name", read_only=True
+    )
 
     class Meta:
         model = Diagnosis
@@ -34,10 +47,14 @@ class DiagnosisSerializer(serializers.ModelSerializer):
             "free_text_diagnosis",
             "notes",
             "is_confirmed",
+            "certainty",
+            "diagnosed_by",
+            "diagnosed_by_name",
+            "diagnosed_at",
             "created_at",
             "updated_at",
         ]
-        read_only_fields = ["id", "created_at", "updated_at"]
+        read_only_fields = ["id", "diagnosed_at", "created_at", "updated_at"]
 
     def validate(self, data):
         """Validate that either ICD-10 code or free text is provided."""
@@ -72,6 +89,9 @@ class DiagnosisNestedSerializer(serializers.ModelSerializer):
 
     icd10_code_display = serializers.CharField(source="icd10_code.code", read_only=True)
     icd10_description = serializers.CharField(source="icd10_code.description", read_only=True)
+    diagnosed_by_name = serializers.CharField(
+        source="diagnosed_by.get_full_name", read_only=True
+    )
 
     class Meta:
         model = Diagnosis
@@ -83,6 +103,9 @@ class DiagnosisNestedSerializer(serializers.ModelSerializer):
             "diagnosis_type",
             "free_text_diagnosis",
             "is_confirmed",
+            "certainty",
+            "diagnosed_by",
+            "diagnosed_by_name",
         ]
 
 
