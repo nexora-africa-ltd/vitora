@@ -12,7 +12,7 @@ from rest_framework.views import APIView
 from hmis.apps.core.models import AuditLog
 from hmis.apps.core.permissions import get_client_ip
 
-from .models import Diagnosis, Encounter, ICD10Code, Medication, TreatmentPlan
+from .models import Diagnosis, Encounter, ICD10Code, Medication, TreatmentPlan, TreatmentPlanTemplate
 from .serializers import (
     DiagnosisSerializer,
     EncounterListSerializer,
@@ -20,6 +20,7 @@ from .serializers import (
     ICD10CodeSerializer,
     MedicationSerializer,
     TreatmentPlanSerializer,
+    TreatmentPlanTemplateSerializer,
 )
 
 
@@ -42,6 +43,72 @@ class ICD10CodeViewSet(viewsets.ReadOnlyModelViewSet):
     search_fields = ["code", "description", "category"]
     ordering_fields = ["code", "description"]
     ordering = ["code"]
+
+
+class TreatmentPlanTemplateViewSet(viewsets.ModelViewSet):
+    """
+    ViewSet for Treatment Plan Templates.
+
+    Provides CRUD operations and template suggestions by diagnosis.
+
+    Endpoints:
+    - GET /api/treatment-templates/ - List templates
+    - POST /api/treatment-templates/ - Create template
+    - GET /api/treatment-templates/{id}/ - Retrieve template
+    - PUT /api/treatment-templates/{id}/ - Update template
+    - DELETE /api/treatment-templates/{id}/ - Delete template
+    - GET /api/treatment-templates/suggest/?diagnosis=<code> - Suggest by diagnosis
+    """
+
+    queryset = TreatmentPlanTemplate.objects.filter(is_active=True)
+    serializer_class = TreatmentPlanTemplateSerializer
+    permission_classes = [IsAuthenticated]
+    filter_backends = [DjangoFilterBackend, filters.SearchFilter, filters.OrderingFilter]
+    filterset_fields = ["department", "is_active"]
+    search_fields = ["name", "description", "department"]
+    ordering_fields = ["name", "created_at"]
+    ordering = ["name"]
+
+    def get_queryset(self):
+        """Filter templates, optionally including inactive ones."""
+        queryset = TreatmentPlanTemplate.objects.all()
+        # By default, only show active templates
+        if not self.request.query_params.get("include_inactive"):
+            queryset = queryset.filter(is_active=True)
+        return queryset
+
+    def perform_create(self, serializer):
+        """Set created_by on creation."""
+        serializer.save(created_by=self.request.user)
+
+    @action(detail=False, methods=["get"])
+    def suggest(self, request):
+        """
+        Suggest templates based on diagnosis code.
+
+        Query params:
+        - diagnosis: ICD-10 code to match against template diagnosis_codes
+        """
+        diagnosis_code = request.query_params.get("diagnosis", "")
+        if not diagnosis_code:
+            return Response(
+                {"detail": "diagnosis parameter is required."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        # Find templates linked to this diagnosis code
+        templates = TreatmentPlanTemplate.objects.filter(
+            is_active=True,
+            diagnosis_codes__code__iexact=diagnosis_code,
+        ).distinct()
+
+        page = self.paginate_queryset(templates)
+        if page is not None:
+            serializer = self.get_serializer(page, many=True)
+            return self.get_paginated_response(serializer.data)
+
+        serializer = self.get_serializer(templates, many=True)
+        return Response({"results": serializer.data})
 
 
 class DiagnosisViewSet(viewsets.ModelViewSet):
@@ -426,6 +493,69 @@ class TreatmentPlanView(APIView):
     def put(self, request, encounter_pk):
         """Full update of treatment plan."""
         return self.patch(request, encounter_pk)
+
+
+class ApplyTemplateView(APIView):
+    """
+    Apply a treatment plan template to an encounter.
+
+    Endpoint:
+    - POST /api/encounters/{encounter_id}/treatment-plan/apply-template/
+    """
+
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request, encounter_pk):
+        """Apply template to treatment plan."""
+        # Get encounter
+        try:
+            encounter = Encounter.objects.get(pk=encounter_pk)
+        except Encounter.DoesNotExist:
+            return Response(
+                {"detail": "Encounter not found."},
+                status=status.HTTP_404_NOT_FOUND,
+            )
+
+        # Get template ID from request
+        template_id = request.data.get("template_id")
+        if not template_id:
+            return Response(
+                {"detail": "template_id is required."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        # Get template
+        try:
+            template = TreatmentPlanTemplate.objects.get(pk=template_id, is_active=True)
+        except TreatmentPlanTemplate.DoesNotExist:
+            return Response(
+                {"detail": "Template not found."},
+                status=status.HTTP_404_NOT_FOUND,
+            )
+
+        # Get or create treatment plan
+        plan, created = TreatmentPlan.objects.get_or_create(
+            encounter=encounter,
+            defaults={"created_by": request.user},
+        )
+
+        # Apply template
+        plan.apply_template(template)
+
+        # Audit log
+        AuditLog.log(
+            action="treatment_plan_apply_template",
+            user=request.user,
+            resource_type="TreatmentPlan",
+            resource_id=plan.id,
+            ip_address=get_client_ip(request),
+            user_agent=request.META.get("HTTP_USER_AGENT", ""),
+            patient_id=encounter.patient_id,
+            details={"template_id": template_id, "template_name": template.name},
+        )
+
+        serializer = TreatmentPlanSerializer(plan)
+        return Response(serializer.data, status=status.HTTP_200_OK)
 
 
 class MedicationViewSet(viewsets.ModelViewSet):

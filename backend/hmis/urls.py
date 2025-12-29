@@ -18,10 +18,12 @@ from hmis.apps.core.views import (
     WardViewSet,
 )
 from hmis.apps.encounters.views import (
+    ApplyTemplateView,
     DiagnosisViewSet,
     EncounterViewSet,
     ICD10CodeViewSet,
     MedicationViewSet,
+    TreatmentPlanTemplateViewSet,
     TreatmentPlanView,
 )
 from hmis.apps.patients.views import EmergencyContactViewSet, PatientViewSet
@@ -40,6 +42,7 @@ router.register(r"patients", PatientViewSet, basename="patient")
 router.register(r"encounters", EncounterViewSet, basename="encounter")
 router.register(r"auditlogs", AuditLogViewSet, basename="auditlog")
 router.register(r"icd10-codes", ICD10CodeViewSet, basename="icd10code")
+router.register(r"treatment-templates", TreatmentPlanTemplateViewSet, basename="treatmenttemplate")
 
 # Location routes under /api/locations/
 location_router = routers.DefaultRouter()
@@ -83,6 +86,12 @@ urlpatterns = [
         "api/encounters/<int:encounter_pk>/treatment-plan/",
         TreatmentPlanView.as_view(),
         name="encounter-treatment-plan",
+    ),
+    # Apply template to treatment plan
+    path(
+        "api/encounters/<int:encounter_pk>/treatment-plan/apply-template/",
+        ApplyTemplateView.as_view(),
+        name="encounter-treatment-plan-apply-template",
     ),
     # Medications under treatment plan
     path(

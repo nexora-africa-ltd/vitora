@@ -1182,10 +1182,12 @@ class TreatmentPlan(models.Model):
     Treatment plan for an encounter.
 
     Each encounter can have one treatment plan that includes
-    clinical notes, follow-up instructions, and medications.
+    clinical notes, follow-up instructions, medications, procedures,
+    diet recommendations, activity restrictions, and referral information.
     """
 
     STATUS_CHOICES = [
+        ("DRAFT", "Draft"),
         ("ACTIVE", "Active"),
         ("COMPLETED", "Completed"),
         ("CANCELLED", "Cancelled"),
@@ -1210,6 +1212,11 @@ class TreatmentPlan(models.Model):
         default="",
         help_text="Prescribed medications (JSON format for template imports)",
     )
+    procedures_json = models.TextField(
+        blank=True,
+        default="",
+        help_text="Planned procedures (JSON format)",
+    )
     clinical_notes = models.TextField(
         blank=True,
         default="",
@@ -1225,11 +1232,54 @@ class TreatmentPlan(models.Model):
         blank=True,
         help_text="Scheduled follow-up date",
     )
+    diet_recommendations = models.TextField(
+        blank=True,
+        default="",
+        help_text="Dietary recommendations for the patient",
+    )
+    activity_restrictions = models.TextField(
+        blank=True,
+        default="",
+        help_text="Activity restrictions and limitations",
+    )
+    # Referral fields
+    referral_needed = models.BooleanField(
+        default=False,
+        help_text="Whether a referral is needed",
+    )
+    referral_specialty = models.CharField(
+        max_length=100,
+        blank=True,
+        default="",
+        help_text="Specialty for referral",
+    )
+    referral_notes = models.TextField(
+        blank=True,
+        default="",
+        help_text="Notes for the referral",
+    )
     status = models.CharField(
         max_length=20,
         choices=STATUS_CHOICES,
         default="ACTIVE",
         help_text="Status of the treatment plan",
+    )
+    # Tracking fields
+    created_by = models.ForeignKey(
+        "auth.User",
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="created_treatment_plans",
+        help_text="User who created this plan",
+    )
+    approved_by = models.ForeignKey(
+        "auth.User",
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="approved_treatment_plans",
+        help_text="User who approved this plan",
     )
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
@@ -1247,6 +1297,11 @@ class TreatmentPlan(models.Model):
         """Check if treatment plan has a follow-up scheduled."""
         return self.follow_up_date is not None
 
+    @property
+    def has_referral(self) -> bool:
+        """Check if treatment plan has a referral."""
+        return self.referral_needed and bool(self.referral_specialty)
+
     def apply_template(self, template: "TreatmentPlanTemplate"):
         """
         Apply a treatment plan template to populate default values.
@@ -1259,6 +1314,8 @@ class TreatmentPlan(models.Model):
         self.template = template
         if template.default_medications:
             self.medications_json = template.default_medications
+        if template.default_procedures:
+            self.procedures_json = template.default_procedures
         if template.default_instructions:
             self.follow_up_instructions = template.default_instructions
         if template.follow_up_days:
@@ -1275,6 +1332,24 @@ class TreatmentPlan(models.Model):
             if existing.exists():
                 raise ValidationError(
                     "This encounter already has a treatment plan."
+                )
+
+        # Validate status transitions
+        if self.pk:
+            old_instance = TreatmentPlan.objects.get(pk=self.pk)
+            if old_instance.status in ("COMPLETED", "CANCELLED") and self.status == "ACTIVE":
+                raise ValidationError(
+                    f"Cannot reactivate a {old_instance.status.lower()} treatment plan."
+                )
+
+        # Validate procedures JSON format if provided
+        if self.procedures_json:
+            import json
+            try:
+                json.loads(self.procedures_json)
+            except json.JSONDecodeError:
+                raise ValidationError(
+                    {"procedures_json": "Invalid JSON format for procedures."}
                 )
 
     def save(self, *args, **kwargs):

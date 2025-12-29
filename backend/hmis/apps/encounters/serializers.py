@@ -4,7 +4,7 @@ Serializers for the encounters app.
 
 from rest_framework import serializers
 
-from .models import Diagnosis, Encounter, ICD10Code, Medication, TreatmentPlan
+from .models import Diagnosis, Encounter, ICD10Code, Medication, TreatmentPlan, TreatmentPlanTemplate
 
 
 class ICD10CodeSerializer(serializers.ModelSerializer):
@@ -162,27 +162,80 @@ class MedicationNestedSerializer(serializers.ModelSerializer):
         ]
 
 
+class TreatmentPlanTemplateSerializer(serializers.ModelSerializer):
+    """Serializer for TreatmentPlanTemplate."""
+
+    diagnosis_codes_display = serializers.SerializerMethodField()
+    created_by_name = serializers.CharField(source="created_by.get_full_name", read_only=True)
+
+    class Meta:
+        model = TreatmentPlanTemplate
+        fields = [
+            "id",
+            "name",
+            "description",
+            "diagnosis_codes",
+            "diagnosis_codes_display",
+            "default_medications",
+            "default_procedures",
+            "default_instructions",
+            "follow_up_days",
+            "department",
+            "is_active",
+            "created_by",
+            "created_by_name",
+            "created_at",
+            "updated_at",
+        ]
+        read_only_fields = ["id", "created_at", "updated_at"]
+
+    def get_diagnosis_codes_display(self, obj):
+        """Return diagnosis codes as list of code strings."""
+        return [code.code for code in obj.diagnosis_codes.all()]
+
+
 class TreatmentPlanSerializer(serializers.ModelSerializer):
     """Serializer for TreatmentPlan."""
 
     medications = MedicationNestedSerializer(many=True, read_only=True)
     has_follow_up = serializers.ReadOnlyField()
+    has_referral = serializers.ReadOnlyField()
+    template_name = serializers.CharField(source="template.name", read_only=True)
+    created_by_name = serializers.CharField(source="created_by.get_full_name", read_only=True)
+    approved_by_name = serializers.CharField(source="approved_by.get_full_name", read_only=True)
 
     class Meta:
         model = TreatmentPlan
         fields = [
             "id",
             "encounter",
+            "template",
+            "template_name",
             "clinical_notes",
+            "medications_json",
+            "procedures_json",
             "follow_up_instructions",
             "follow_up_date",
+            "diet_recommendations",
+            "activity_restrictions",
+            "referral_needed",
+            "referral_specialty",
+            "referral_notes",
             "status",
             "has_follow_up",
+            "has_referral",
             "medications",
+            "created_by",
+            "created_by_name",
+            "approved_by",
+            "approved_by_name",
             "created_at",
             "updated_at",
         ]
-        read_only_fields = ["id", "has_follow_up", "medications", "created_at", "updated_at"]
+        read_only_fields = [
+            "id", "has_follow_up", "has_referral", "medications",
+            "created_at", "updated_at"
+        ]
 
 
 class EncounterSerializer(serializers.ModelSerializer):
