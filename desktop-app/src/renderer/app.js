@@ -316,6 +316,11 @@ function initializeMainApp() {
   if (document.getElementById('list-tab').classList.contains('active')) {
     loadPatients();
   }
+  
+  // Load counties for patient registration form
+  if (document.getElementById('register-tab').classList.contains('active')) {
+    loadCounties();
+  }
 }
 
 // ====================
@@ -399,8 +404,147 @@ document.querySelectorAll('.tab').forEach(tab => {
       // Set today's date as default
       const today = new Date().toISOString().split('T')[0];
       document.getElementById('encounter-date').value = today;
+    } else if (tabName === 'register') {
+      // Load counties when switching to register tab
+      loadCounties();
     }
   });
+});
+
+// ====================
+// Kenya Location Hierarchy (Cascading Dropdowns)
+// ====================
+const countySelect = document.getElementById('county');
+const subCountySelect = document.getElementById('sub-county');
+const wardSelect = document.getElementById('ward');
+
+/**
+ * Load all counties from the API
+ */
+async function loadCounties() {
+  try {
+    const response = await window.electronAPI.apiRequest('GET', '/api/locations/counties/');
+    
+    if (response.success) {
+      const counties = response.data.results || response.data || [];
+      
+      // Clear and populate county dropdown
+      countySelect.innerHTML = '<option value="">Select County...</option>';
+      counties.forEach(county => {
+        const option = document.createElement('option');
+        option.value = county.id;
+        option.textContent = county.name;
+        countySelect.appendChild(option);
+      });
+    }
+  } catch (error) {
+    console.error('Failed to load counties:', error);
+  }
+}
+
+/**
+ * Load sub-counties for a selected county
+ */
+async function loadSubCounties(countyId) {
+  subCountySelect.innerHTML = '<option value="">Loading...</option>';
+  subCountySelect.disabled = true;
+  wardSelect.innerHTML = '<option value="">Select Ward (Optional)...</option>';
+  wardSelect.disabled = true;
+  
+  if (!countyId) {
+    subCountySelect.innerHTML = '<option value="">Select Sub-County...</option>';
+    return;
+  }
+  
+  try {
+    const response = await window.electronAPI.apiRequest('GET', `/api/locations/sub-counties/?county=${countyId}`);
+    
+    if (response.success) {
+      const subCounties = response.data.results || response.data || [];
+      
+      subCountySelect.innerHTML = '<option value="">Select Sub-County...</option>';
+      subCounties.forEach(subCounty => {
+        const option = document.createElement('option');
+        option.value = subCounty.id;
+        option.textContent = subCounty.name;
+        subCountySelect.appendChild(option);
+      });
+      subCountySelect.disabled = false;
+    }
+  } catch (error) {
+    console.error('Failed to load sub-counties:', error);
+    subCountySelect.innerHTML = '<option value="">Failed to load</option>';
+  }
+}
+
+/**
+ * Load wards for a selected sub-county
+ */
+async function loadWards(subCountyId) {
+  wardSelect.innerHTML = '<option value="">Loading...</option>';
+  wardSelect.disabled = true;
+  
+  if (!subCountyId) {
+    wardSelect.innerHTML = '<option value="">Select Ward (Optional)...</option>';
+    return;
+  }
+  
+  try {
+    const response = await window.electronAPI.apiRequest('GET', `/api/locations/wards/?sub_county=${subCountyId}`);
+    
+    if (response.success) {
+      const wards = response.data.results || response.data || [];
+      
+      wardSelect.innerHTML = '<option value="">Select Ward (Optional)...</option>';
+      wards.forEach(ward => {
+        const option = document.createElement('option');
+        option.value = ward.id;
+        option.textContent = ward.name;
+        wardSelect.appendChild(option);
+      });
+      wardSelect.disabled = false;
+    }
+  } catch (error) {
+    console.error('Failed to load wards:', error);
+    wardSelect.innerHTML = '<option value="">Failed to load</option>';
+  }
+}
+
+// County change event - load sub-counties
+countySelect.addEventListener('change', () => {
+  loadSubCounties(countySelect.value);
+});
+
+// Sub-county change event - load wards
+subCountySelect.addEventListener('change', () => {
+  loadWards(subCountySelect.value);
+});
+
+// ====================
+// Referral Source Toggle
+// ====================
+const referralSourceSelect = document.getElementById('referral-source');
+const referredFromGroup = document.getElementById('referred-from-facility-group');
+
+referralSourceSelect.addEventListener('change', () => {
+  if (referralSourceSelect.value === 'other_facility') {
+    referredFromGroup.style.display = 'block';
+    referredFromGroup.classList.remove('hidden');
+  } else {
+    referredFromGroup.style.display = 'none';
+    referredFromGroup.classList.add('hidden');
+    document.getElementById('referred-from-facility').value = '';
+  }
+});
+
+// ====================
+// Medical History Toggle
+// ====================
+const medicalHistoryToggle = document.getElementById('medical-history-toggle');
+const medicalHistorySection = document.getElementById('medical-history-section');
+
+medicalHistoryToggle.addEventListener('click', () => {
+  medicalHistorySection.classList.toggle('collapsed');
 });
 
 // ====================
@@ -410,6 +554,26 @@ const patientForm = document.getElementById('patient-form');
 const messageDiv = document.getElementById('message');
 const submitBtn = document.getElementById('submit-btn');
 const clearBtn = document.getElementById('clear-btn');
+
+/**
+ * Reset patient form including cascading dropdowns
+ */
+function resetPatientForm() {
+  patientForm.reset();
+  
+  // Reset cascading dropdowns
+  subCountySelect.innerHTML = '<option value="">Select Sub-County...</option>';
+  subCountySelect.disabled = true;
+  wardSelect.innerHTML = '<option value="">Select Ward (Optional)...</option>';
+  wardSelect.disabled = true;
+  
+  // Reset referral source visibility
+  referredFromGroup.style.display = 'none';
+  referredFromGroup.classList.add('hidden');
+  
+  // Hide message
+  hideMessage(messageDiv);
+}
 
 patientForm.addEventListener('submit', async (e) => {
   e.preventDefault();
@@ -432,7 +596,9 @@ patientForm.addEventListener('submit', async (e) => {
     
     if (response.success) {
       showMessage('success', `Patient registered successfully! MRN: ${response.data.mrn}`, messageDiv);
-      patientForm.reset();
+      resetPatientForm();
+      // Reload counties for next registration
+      loadCounties();
     } else {
       const errorMessage = formatErrorMessage(response.error);
       showMessage('error', `Failed to register patient: ${errorMessage}`, messageDiv);
@@ -446,8 +612,8 @@ patientForm.addEventListener('submit', async (e) => {
 });
 
 clearBtn.addEventListener('click', () => {
-  patientForm.reset();
-  hideMessage(messageDiv);
+  resetPatientForm();
+  loadCounties();
 });
 
 // ====================
@@ -684,7 +850,7 @@ encounterForm.addEventListener('submit', async (e) => {
   Object.keys(data).forEach(key => {
     if (data[key] === '') {
       delete data[key];
-    } else if (['temperature', 'pulse', 'respiratory_rate', 'weight', 'height'].includes(key)) {
+    } else if (['temperature', 'pulse', 'respiratory_rate', 'weight', 'height', 'spo2'].includes(key)) {
       data[key] = parseFloat(data[key]);
     }
   });
@@ -797,6 +963,94 @@ async function viewPatientDetails(patientId) {
         ` : ''}
       </div>
       
+      ${(patient.county_name || patient.sub_county_name || patient.village) ? `
+      <div class="patient-section">
+        <h4>Location</h4>
+        <div class="patient-info-grid">
+          ${patient.county_name ? `
+          <div class="info-item">
+            <span class="info-label">County</span>
+            <span class="info-value">${patient.county_name}</span>
+          </div>
+          ` : ''}
+          ${patient.sub_county_name ? `
+          <div class="info-item">
+            <span class="info-label">Sub-County</span>
+            <span class="info-value">${patient.sub_county_name}</span>
+          </div>
+          ` : ''}
+          ${patient.ward_name ? `
+          <div class="info-item">
+            <span class="info-label">Ward</span>
+            <span class="info-value">${patient.ward_name}</span>
+          </div>
+          ` : ''}
+          ${patient.village ? `
+          <div class="info-item">
+            <span class="info-label">Village/Estate</span>
+            <span class="info-value">${patient.village}</span>
+          </div>
+          ` : ''}
+        </div>
+      </div>
+      ` : ''}
+      
+      ${patient.emergency_contact_name ? `
+      <div class="patient-section">
+        <h4>Emergency Contact</h4>
+        <div class="patient-info-grid">
+          <div class="info-item">
+            <span class="info-label">Name</span>
+            <span class="info-value">${patient.emergency_contact_name}</span>
+          </div>
+          ${patient.emergency_contact_phone ? `
+          <div class="info-item">
+            <span class="info-label">Phone</span>
+            <span class="info-value">${patient.emergency_contact_phone}</span>
+          </div>
+          ` : ''}
+          ${patient.emergency_contact_relationship ? `
+          <div class="info-item">
+            <span class="info-label">Relationship</span>
+            <span class="info-value">${formatRelationship(patient.emergency_contact_relationship)}</span>
+          </div>
+          ` : ''}
+        </div>
+      </div>
+      ` : ''}
+      
+      ${hasMedicalHistory(patient) ? `
+      <div class="patient-section">
+        <h4>Medical History</h4>
+        <div class="medical-history-grid">
+          ${patient.allergies ? `
+          <div class="history-item">
+            <span class="history-label">Allergies</span>
+            <span class="history-value">${patient.allergies}</span>
+          </div>
+          ` : ''}
+          ${patient.chronic_conditions ? `
+          <div class="history-item">
+            <span class="history-label">Chronic Conditions</span>
+            <span class="history-value">${patient.chronic_conditions}</span>
+          </div>
+          ` : ''}
+          ${patient.current_medications ? `
+          <div class="history-item">
+            <span class="history-label">Current Medications</span>
+            <span class="history-value">${patient.current_medications}</span>
+          </div>
+          ` : ''}
+          ${patient.past_surgeries ? `
+          <div class="history-item">
+            <span class="history-label">Past Surgeries</span>
+            <span class="history-value">${patient.past_surgeries}</span>
+          </div>
+          ` : ''}
+        </div>
+      </div>
+      ` : ''}
+      
       <div class="encounter-history">
         <h3>Encounter History (${encounters.length})</h3>
         ${encounters.length === 0 ? 
@@ -852,6 +1106,12 @@ function renderEncounterCard(encounter) {
           <span class="vital-value">${encounter.respiratory_rate}</span>
         </div>
         ` : ''}
+        ${encounter.spo2 ? `
+        <div class="vital-item">
+          <span class="vital-label">SpO2</span>
+          <span class="vital-value ${parseFloat(encounter.spo2) < 95 ? 'critical' : ''}">${encounter.spo2}%</span>
+        </div>
+        ` : ''}
         ${encounter.bmi ? `
         <div class="vital-item">
           <span class="vital-label">BMI</span>
@@ -866,6 +1126,14 @@ function renderEncounterCard(encounter) {
         ${encounter.chief_complaint}
       </div>
       
+      ${hasEncounterMedicalHistory(encounter) ? `
+      <div class="encounter-medical-history">
+        ${encounter.allergies ? `<div class="history-brief"><span class="history-label">Allergies:</span> ${encounter.allergies}</div>` : ''}
+        ${encounter.chronic_conditions ? `<div class="history-brief"><span class="history-label">Conditions:</span> ${encounter.chronic_conditions}</div>` : ''}
+        ${encounter.current_medications ? `<div class="history-brief"><span class="history-label">Medications:</span> ${encounter.current_medications}</div>` : ''}
+      </div>
+      ` : ''}
+      
       ${encounter.notes ? `
       <div class="encounter-complaint">
         <span class="label">Notes: </span>
@@ -876,9 +1144,16 @@ function renderEncounterCard(encounter) {
   `;
 }
 
+function hasEncounterMedicalHistory(encounter) {
+  return encounter.allergies || encounter.chronic_conditions || 
+         encounter.current_medications || encounter.past_surgeries ||
+         encounter.family_history || encounter.social_history;
+}
+
 function hasVitals(encounter) {
   return encounter.temperature || encounter.pulse || encounter.blood_pressure || 
-         encounter.respiratory_rate || encounter.weight || encounter.height;
+         encounter.respiratory_rate || encounter.weight || encounter.height ||
+         encounter.spo2;
 }
 
 // ====================
@@ -926,6 +1201,23 @@ function formatDate(dateString) {
     month: 'long', 
     day: 'numeric' 
   });
+}
+
+function formatRelationship(relationship) {
+  const relationshipMap = {
+    'spouse': 'Spouse',
+    'parent': 'Parent',
+    'sibling': 'Sibling',
+    'child': 'Child',
+    'friend': 'Friend',
+    'other': 'Other'
+  };
+  return relationshipMap[relationship] || relationship;
+}
+
+function hasMedicalHistory(patient) {
+  return patient.allergies || patient.chronic_conditions || 
+         patient.current_medications || patient.past_surgeries;
 }
 
 function escapeHtml(text) {

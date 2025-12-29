@@ -82,61 +82,208 @@
       <h2>Patient Registration</h2>
       
       <form id="patient-form">
-        <div class="form-row">
-          <div class="form-group">
-            <label for="first-name">First Name *</label>
-            <input type="text" id="first-name" name="first_name" required>
-          </div>
+        <!-- Personal Information Section -->
+        <fieldset class="form-section">
+          <legend>Personal Information</legend>
           
-          <div class="form-group">
-            <label for="middle-name">Middle Name</label>
-            <input type="text" id="middle-name" name="middle_name">
+          <div class="form-row">
+            <div class="form-group">
+              <label for="first-name">First Name *</label>
+              <input type="text" id="first-name" name="first_name" required>
+            </div>
+            
+            <div class="form-group">
+              <label for="middle-name">Middle Name</label>
+              <input type="text" id="middle-name" name="middle_name">
+            </div>
+            
+            <div class="form-group">
+              <label for="last-name">Last Name *</label>
+              <input type="text" id="last-name" name="last_name" required>
+            </div>
           </div>
+
+          <div class="form-row">
+            <div class="form-group">
+              <label for="date-of-birth">Date of Birth *</label>
+              <input type="date" id="date-of-birth" name="date_of_birth" required>
+            </div>
+            
+            <div class="form-group">
+              <label for="gender">Gender *</label>
+              <select id="gender" name="gender" required>
+                <option value="">Select...</option>
+                <option value="M">Male</option>
+                <option value="F">Female</option>
+                <option value="O">Other</option>
+              </select>
+            </div>
+            
+            <div class="form-group">
+              <label for="national-id">National ID</label>
+              <input type="text" id="national-id" name="national_id">
+            </div>
+          </div>
+
+          <div class="form-row">
+            <div class="form-group">
+              <label for="phone-number">Phone Number</label>
+              <input type="tel" id="phone-number" name="phone_number" placeholder="+254712345678">
+            </div>
+            
+            <div class="form-group">
+              <label for="email">Email</label>
+              <input type="email" id="email" name="email" placeholder="patient@example.com">
+            </div>
+          </div>
+        </fieldset>
+
+        <!-- Location Section - Kenya Administrative Hierarchy -->
+        <fieldset class="form-section">
+          <legend>Location</legend>
           
-          <div class="form-group">
-            <label for="last-name">Last Name *</label>
-            <input type="text" id="last-name" name="last_name" required>
+          <div class="form-row">
+            <div class="form-group">
+              <label for="county">County *</label>
+              <select id="county" name="county" required>
+                <option value="">Select County...</option>
+              </select>
+            </div>
+            
+            <div class="form-group">
+              <label for="sub-county">Sub-County *</label>
+              <select id="sub-county" name="sub_county" required disabled>
+                <option value="">Select Sub-County...</option>
+              </select>
+            </div>
           </div>
-        </div>
 
-        <div class="form-row">
-          <div class="form-group">
-            <label for="date-of-birth">Date of Birth *</label>
-            <input type="date" id="date-of-birth" name="date_of_birth" required>
+          <div class="form-row">
+            <div class="form-group">
+              <label for="ward">Ward</label>
+              <select id="ward" name="ward" disabled>
+                <option value="">Select Ward (Optional)...</option>
+              </select>
+            </div>
+            
+            <div class="form-group">
+              <label for="village">Village/Estate</label>
+              <input type="text" id="village" name="village" placeholder="Enter village or estate name">
+            </div>
           </div>
+
+          <div class="form-group">
+            <label for="address">Physical Address</label>
+            <textarea id="address" name="address" rows="2" placeholder="Detailed physical address"></textarea>
+          </div>
+        </fieldset>
+
+        <!-- Referral Source Section -->
+        <fieldset class="form-section">
+          <legend>Referral Information</legend>
           
-          <div class="form-group">
-            <label for="gender">Gender *</label>
-            <select id="gender" name="gender" required>
-              <option value="">Select...</option>
-              <option value="M">Male</option>
-              <option value="F">Female</option>
-              <option value="O">Other</option>
-            </select>
+          <div class="form-row">
+            <div class="form-group">
+              <label for="referral-source">Referral Source</label>
+              <select id="referral-source" name="referral_source">
+                <option value="self">Self</option>
+                <option value="clinic">Clinic</option>
+                <option value="other_facility">Other Facility</option>
+              </select>
+            </div>
+            
+            <div class="form-group" id="referred-from-facility-group" style="display: none;">
+              <label for="referred-from-facility">Referred From *</label>
+              <input type="text" id="referred-from-facility" name="referred_from_facility" 
+                     placeholder="Name of referring facility">
+            </div>
           </div>
-        </div>
+        </fieldset>
 
-        <div class="form-row">
-          <div class="form-group">
-            <label for="phone-number">Phone Number</label>
-            <input type="tel" id="phone-number" name="phone_number" placeholder="+254712345678">
-          </div>
+        <!-- Emergency Contact Section -->
+        <fieldset class="form-section" id="emergency-contact-section">
+          <legend>Emergency Contact</legend>
           
-          <div class="form-group">
-            <label for="email">Email</label>
-            <input type="email" id="email" name="email" placeholder="patient@example.com">
+          <div class="form-row">
+            <div class="form-group">
+              <label for="emergency-contact-name">Contact Name</label>
+              <input type="text" id="emergency-contact-name" name="emergency_contact_name" 
+                     placeholder="Full name of emergency contact">
+            </div>
+            
+            <div class="form-group">
+              <label for="emergency-contact-phone">Contact Phone</label>
+              <input type="tel" id="emergency-contact-phone" name="emergency_contact_phone" 
+                     placeholder="+254712345678">
+            </div>
+            
+            <div class="form-group">
+              <label for="emergency-contact-relationship">Relationship</label>
+              <select id="emergency-contact-relationship" name="emergency_contact_relationship">
+                <option value="">Select...</option>
+                <option value="spouse">Spouse</option>
+                <option value="parent">Parent</option>
+                <option value="sibling">Sibling</option>
+                <option value="child">Child</option>
+                <option value="friend">Friend</option>
+                <option value="other">Other</option>
+              </select>
+            </div>
           </div>
-        </div>
+        </fieldset>
 
-        <div class="form-group">
-          <label for="national-id">National ID</label>
-          <input type="text" id="national-id" name="national_id">
-        </div>
+        <!-- Medical History Section (Collapsible) -->
+        <fieldset class="form-section collapsible" id="medical-history-section">
+          <legend>
+            <button type="button" class="toggle-btn" id="medical-history-toggle">
+              <span class="toggle-icon">▼</span> Medical History
+            </button>
+          </legend>
+          
+          <div id="medical-history-fields" class="collapsible-content">
+            <div class="form-row">
+              <div class="form-group">
+                <label for="allergies">Allergies</label>
+                <textarea id="allergies" name="allergies" rows="2" 
+                          placeholder="List known allergies (e.g., Penicillin, Peanuts)"></textarea>
+              </div>
+              
+              <div class="form-group">
+                <label for="chronic-conditions">Chronic Conditions</label>
+                <textarea id="chronic-conditions" name="chronic_conditions" rows="2" 
+                          placeholder="List chronic conditions (e.g., Diabetes, Hypertension)"></textarea>
+              </div>
+            </div>
 
-        <div class="form-group">
-          <label for="address">Address</label>
-          <textarea id="address" name="address" rows="3" placeholder="Patient's physical address"></textarea>
-        </div>
+            <div class="form-row">
+              <div class="form-group">
+                <label for="current-medications">Current Medications</label>
+                <textarea id="current-medications" name="current_medications" rows="2" 
+                          placeholder="List current medications and dosages"></textarea>
+              </div>
+              
+              <div class="form-group">
+                <label for="past-surgeries">Past Surgeries</label>
+                <textarea id="past-surgeries" name="past_surgeries" rows="2" 
+                          placeholder="List previous surgeries with dates"></textarea>
+              </div>
+            </div>
+
+            <div class="form-row">
+              <div class="form-group">
+                <label for="family-history">Family History</label>
+                <textarea id="family-history" name="family_history" rows="2" 
+                          placeholder="Relevant family medical history"></textarea>
+              </div>
+              
+              <div class="form-group">
+                <label for="social-history">Social History</label>
+                <textarea id="social-history" name="social_history" rows="2" 
+                          placeholder="Smoking, alcohol use, occupation, etc."></textarea>
+              </div>
+            </div>
+          </div>
+        </fieldset>
 
         <div class="form-actions">
           <button type="submit" class="btn btn-primary" id="submit-btn">
@@ -232,6 +379,11 @@
               <label for="respiratory-rate">Respiratory Rate</label>
               <input type="number" id="respiratory-rate" name="respiratory_rate" min="5" max="60" placeholder="16">
             </div>
+            
+            <div class="form-group">
+              <label for="spo2">SpO2 (%)</label>
+              <input type="number" id="spo2" name="spo2" min="0" max="100" placeholder="98">
+            </div>
           </div>
 
           <div class="form-row">
@@ -255,6 +407,52 @@
             <span class="label">Calculated BMI:</span>
             <span id="bmi-value" class="value"></span>
             <span id="bmi-category" class="bmi-category"></span>
+          </div>
+        </div>
+
+        <!-- Medical History Section (per-encounter) -->
+        <h3>Medical History</h3>
+        <div class="medical-history-encounter">
+          <div class="form-row">
+            <div class="form-group">
+              <label for="encounter-allergies">Allergies</label>
+              <textarea id="encounter-allergies" name="allergies" rows="2" 
+                        placeholder="Known allergies (medications, food, environmental)"></textarea>
+            </div>
+            
+            <div class="form-group">
+              <label for="encounter-chronic-conditions">Chronic Conditions</label>
+              <textarea id="encounter-chronic-conditions" name="chronic_conditions" rows="2" 
+                        placeholder="Chronic conditions (e.g., Diabetes, Hypertension, Asthma)"></textarea>
+            </div>
+          </div>
+
+          <div class="form-row">
+            <div class="form-group">
+              <label for="encounter-current-medications">Current Medications</label>
+              <textarea id="encounter-current-medications" name="current_medications" rows="2" 
+                        placeholder="Current medications with dosage"></textarea>
+            </div>
+            
+            <div class="form-group">
+              <label for="encounter-past-surgeries">Past Surgeries</label>
+              <textarea id="encounter-past-surgeries" name="past_surgeries" rows="2" 
+                        placeholder="Previous surgeries with dates"></textarea>
+            </div>
+          </div>
+
+          <div class="form-row">
+            <div class="form-group">
+              <label for="encounter-family-history">Family History</label>
+              <textarea id="encounter-family-history" name="family_history" rows="2" 
+                        placeholder="Relevant family medical history"></textarea>
+            </div>
+            
+            <div class="form-group">
+              <label for="encounter-social-history">Social History</label>
+              <textarea id="encounter-social-history" name="social_history" rows="2" 
+                        placeholder="Smoking, alcohol use, occupation, lifestyle"></textarea>
+            </div>
           </div>
         </div>
 
