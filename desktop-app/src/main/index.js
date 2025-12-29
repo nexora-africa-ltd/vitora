@@ -44,6 +44,85 @@ function getAccessToken() {
 }
 
 /**
+ * Run Django migrations to ensure database is up to date
+ */
+async function runMigrations() {
+  return new Promise((resolve) => {
+    const backendPath = path.join(__dirname, '..', '..', '..', 'backend');
+    const poetryCmd = 'poetry';
+    
+    console.log('[Backend] Running migrations...');
+    
+    const migrateProcess = spawn(poetryCmd, ['run', 'python', 'manage.py', 'migrate', '--noinput'], {
+      cwd: backendPath,
+      env: {
+        ...process.env,
+        DJANGO_ENV: 'development',
+        DJANGO_SETTINGS_MODULE: 'hmis.settings'
+      },
+      stdio: 'pipe',
+      shell: true
+    });
+    
+    migrateProcess.stdout.on('data', (data) => {
+      console.log(`[Backend] ${data.toString().trim()}`);
+    });
+    
+    migrateProcess.stderr.on('data', (data) => {
+      console.log(`[Backend] ${data.toString().trim()}`);
+    });
+    
+    migrateProcess.on('close', (code) => {
+      console.log(`[Backend] Migrations completed with code ${code}`);
+      resolve();
+    });
+    
+    // Timeout after 30 seconds
+    setTimeout(resolve, 30000);
+  });
+}
+
+/**
+ * Import Kenya location data (counties, sub-counties, wards)
+ */
+async function importKenyaLocations() {
+  return new Promise((resolve) => {
+    const backendPath = path.join(__dirname, '..', '..', '..', 'backend');
+    const csvPath = path.join(backendPath, 'data', 'kenya_locations.csv');
+    const poetryCmd = 'poetry';
+    
+    console.log('[Backend] Importing Kenya locations data...');
+    
+    const importProcess = spawn(poetryCmd, ['run', 'python', 'manage.py', 'import_kenya_locations', csvPath], {
+      cwd: backendPath,
+      env: {
+        ...process.env,
+        DJANGO_ENV: 'development',
+        DJANGO_SETTINGS_MODULE: 'hmis.settings'
+      },
+      stdio: 'pipe',
+      shell: true
+    });
+    
+    importProcess.stdout.on('data', (data) => {
+      console.log(`[Backend] ${data.toString().trim()}`);
+    });
+    
+    importProcess.stderr.on('data', (data) => {
+      console.log(`[Backend] ${data.toString().trim()}`);
+    });
+    
+    importProcess.on('close', (code) => {
+      console.log(`[Backend] Kenya locations import completed with code ${code}`);
+      resolve();
+    });
+    
+    // Timeout after 60 seconds (large CSV file)
+    setTimeout(resolve, 60000);
+  });
+}
+
+/**
  * Create test user for development/E2E testing
  */
 async function createTestUser() {
@@ -283,6 +362,12 @@ async function initialize() {
   try {
     console.log('[App] Initializing Vitora HMIS...');
     
+    // Run database migrations first
+    await runMigrations();
+    
+    // Import Kenya location data (counties, sub-counties, wards)
+    await importKenyaLocations();
+    
     // Create superuser for admin access
     await createSuperuser();
     
@@ -430,5 +515,7 @@ module.exports = {
   createWindow,
   getAccessToken,
   createSuperuser,
+  runMigrations,
+  importKenyaLocations,
   BACKEND_URL
 };
