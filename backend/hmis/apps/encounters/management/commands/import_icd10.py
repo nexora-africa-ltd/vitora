@@ -56,7 +56,7 @@ class Command(BaseCommand):
         error_count = 0
 
         # Read and import CSV
-        with open(csv_file, "r", encoding="utf-8") as f:
+        with open(csv_file, encoding="utf-8") as f:
             reader = csv.DictReader(f)
 
             # Validate required columns
@@ -80,7 +80,9 @@ class Command(BaseCommand):
                     if existing:
                         if update_existing:
                             existing.short_description = short_description
-                            existing.description = short_description  # Use short as main description
+                            existing.description = (
+                                short_description  # Use short as main description
+                            )
                             existing.long_description = long_description
                             existing.category = category
                             existing.chapter = chapter
@@ -103,19 +105,19 @@ class Command(BaseCommand):
                         created_count += 1
 
                 except ValueError as e:
-                    self.stderr.write(
-                        self.style.ERROR(f"Row {row_num}: Invalid data - {e}")
-                    )
+                    self.stderr.write(self.style.ERROR(f"Row {row_num}: Invalid data - {e}"))
                     error_count += 1
                 except Exception as e:
                     self.stderr.write(
-                        self.style.ERROR(f"Row {row_num}: Error importing {row.get('code', 'unknown')} - {e}")
+                        self.style.ERROR(
+                            f"Row {row_num}: Error importing {row.get('code', 'unknown')} - {e}"
+                        )
                     )
                     error_count += 1
 
         # Summary
         self.stdout.write("")
-        self.stdout.write(self.style.SUCCESS(f"Import complete:"))
+        self.stdout.write(self.style.SUCCESS("Import complete:"))
         self.stdout.write(f"  Created: {created_count}")
         self.stdout.write(f"  Updated: {updated_count}")
         self.stdout.write(f"  Skipped: {skipped_count}")

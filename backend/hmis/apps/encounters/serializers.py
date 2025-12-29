@@ -4,7 +4,14 @@ Serializers for the encounters app.
 
 from rest_framework import serializers
 
-from .models import Diagnosis, Encounter, ICD10Code, Medication, TreatmentPlan, TreatmentPlanTemplate
+from .models import (
+    Diagnosis,
+    Encounter,
+    ICD10Code,
+    Medication,
+    TreatmentPlan,
+    TreatmentPlanTemplate,
+)
 
 
 class ICD10CodeSerializer(serializers.ModelSerializer):
@@ -31,9 +38,7 @@ class DiagnosisSerializer(serializers.ModelSerializer):
 
     icd10_code_display = serializers.CharField(source="icd10_code.code", read_only=True)
     icd10_description = serializers.CharField(source="icd10_code.description", read_only=True)
-    diagnosed_by_name = serializers.CharField(
-        source="diagnosed_by.get_full_name", read_only=True
-    )
+    diagnosed_by_name = serializers.CharField(source="diagnosed_by.get_full_name", read_only=True)
 
     class Meta:
         model = Diagnosis
@@ -96,9 +101,7 @@ class DiagnosisNestedSerializer(serializers.ModelSerializer):
 
     icd10_code_display = serializers.CharField(source="icd10_code.code", read_only=True)
     icd10_description = serializers.CharField(source="icd10_code.description", read_only=True)
-    diagnosed_by_name = serializers.CharField(
-        source="diagnosed_by.get_full_name", read_only=True
-    )
+    diagnosed_by_name = serializers.CharField(source="diagnosed_by.get_full_name", read_only=True)
 
     class Meta:
         model = Diagnosis
@@ -233,8 +236,12 @@ class TreatmentPlanSerializer(serializers.ModelSerializer):
             "updated_at",
         ]
         read_only_fields = [
-            "id", "has_follow_up", "has_referral", "medications",
-            "created_at", "updated_at"
+            "id",
+            "has_follow_up",
+            "has_referral",
+            "medications",
+            "created_at",
+            "updated_at",
         ]
 
 

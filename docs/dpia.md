@@ -1,10 +1,10 @@
 # Data Protection Impact Assessment (DPIA)
 
-**Project**: Vitora HMIS (Hospital Management Information System)  
-**Version**: 1.0  
-**Date**: December 28, 2025  
-**Status**: APPROVED  
-**Regulatory Framework**: Kenya Data Protection Act (2019)  
+**Project**: Vitora HMIS (Hospital Management Information System)
+**Version**: 1.0
+**Date**: December 28, 2025
+**Status**: APPROVED
+**Regulatory Framework**: Kenya Data Protection Act (2019)
 **Assessment Owner**: Data Protection Officer (DPO)
 
 ---
@@ -129,7 +129,7 @@ Under Kenya Data Protection Act Section 30, processing is lawful based on:
 
 #### 3.2.1 Patient Identification Data
 
-**Risk**: Unauthorized disclosure could enable identity theft  
+**Risk**: Unauthorized disclosure could enable identity theft
 **Controls**:
 - Encrypted database storage (SQLCipher)
 - Authentication required for all access
@@ -137,7 +137,7 @@ Under Kenya Data Protection Act Section 30, processing is lawful based on:
 
 #### 3.2.2 Clinical Health Data
 
-**Risk**: Breach could cause significant harm to patients  
+**Risk**: Breach could cause significant harm to patients
 **Controls**:
 - Role-based access control (RBAC)
 - Audit logging of all access
@@ -145,7 +145,7 @@ Under Kenya Data Protection Act Section 30, processing is lawful based on:
 
 #### 3.2.3 Special Category Data (HIV, GBV, Mental Health)
 
-**Risk**: Disclosure could cause severe harm, discrimination, or danger  
+**Risk**: Disclosure could cause severe harm, discrimination, or danger
 **Controls**:
 - `is_sensitive` flag requiring special permission
 - Separate `view_sensitive_patient` permission
@@ -508,7 +508,6 @@ DPIA must be updated when:
 
 ---
 
-**Document Status**: APPROVED for Phase 0  
-**Next Review**: March 2026  
+**Document Status**: APPROVED for Phase 0
+**Next Review**: March 2026
 **Document Owner**: Data Protection Officer
-

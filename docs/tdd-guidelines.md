@@ -1,7 +1,7 @@
 # Test-Driven Development (TDD) Guidelines for Vitora HMIS
 
-**Version**: 1.0  
-**Last Updated**: December 27, 2025  
+**Version**: 1.0
+**Last Updated**: December 27, 2025
 **Status**: Active
 
 ---
@@ -78,7 +78,7 @@ from hmis.utils import generate_mrn
 def test_mrn_generation_format():
     """MRN should follow format: KE-{SITE_CODE}-{YYYYMMDD}-{SEQUENCE}"""
     mrn = generate_mrn(site_code="NAI01", date="2026-01-15")
-    
+
     assert mrn.startswith("KE-NAI01-20260115-")
     assert len(mrn) == 24  # KE-NAI01-20260115-0001
     assert mrn[-4:].isdigit()  # Last 4 chars are sequence number
@@ -87,7 +87,7 @@ def test_mrn_uniqueness():
     """Each MRN must be globally unique"""
     mrn1 = generate_mrn(site_code="NAI01")
     mrn2 = generate_mrn(site_code="NAI01")
-    
+
     assert mrn1 != mrn2
 
 def test_mrn_persistence():
@@ -97,7 +97,7 @@ def test_mrn_persistence():
         last_name="Doe",
         date_of_birth="1990-01-01"
     )
-    
+
     assert patient.mrn is not None
     assert patient.mrn.startswith("KE-")
 ```
@@ -114,7 +114,7 @@ from django.db import transaction
 def generate_mrn(site_code: str, date: str = None) -> str:
     """
     Generate unique Medical Record Number.
-    
+
     Format: KE-{SITE_CODE}-{YYYYMMDD}-{SEQUENCE}
     Example: KE-NAI01-20260115-0001
     """
@@ -122,7 +122,7 @@ def generate_mrn(site_code: str, date: str = None) -> str:
         date = datetime.now().strftime("%Y%m%d")
     else:
         date = datetime.strptime(date, "%Y-%m-%d").strftime("%Y%m%d")
-    
+
     with transaction.atomic():
         # Get next sequence number for this site+date
         from hmis.models import MRNSequence
@@ -132,9 +132,9 @@ def generate_mrn(site_code: str, date: str = None) -> str:
         )[0]
         seq.sequence += 1
         seq.save()
-        
+
         sequence_str = str(seq.sequence).zfill(4)
-    
+
     return f"KE-{site_code}-{date}-{sequence_str}"
 ```
 
@@ -154,21 +154,21 @@ MRN_SEQUENCE_LENGTH = 4
 def generate_mrn(site_code: str, date: Optional[str] = None) -> str:
     """
     Generate unique Medical Record Number following Kenya HMIS standard.
-    
+
     Args:
         site_code: Facility code (e.g., "NAI01" for Nairobi site 1)
         date: Optional date string in YYYY-MM-DD format (defaults to today)
-    
+
     Returns:
         str: Unique MRN in format KE-{SITE_CODE}-{YYYYMMDD}-{SEQUENCE}
-        
+
     Examples:
         >>> generate_mrn("NAI01", "2026-01-15")
         'KE-NAI01-20260115-0001'
     """
     date_str = _format_date(date)
     sequence = _get_next_sequence(site_code, date_str)
-    
+
     return MRN_FORMAT.format(
         site_code=site_code,
         date=date_str,
@@ -212,7 +212,7 @@ from hmis.models import Patient
 @pytest.mark.django_db
 class TestPatientModel:
     """Test suite for Patient model."""
-    
+
     def test_create_patient_with_required_fields(self):
         """Patient can be created with minimum required fields."""
         patient = Patient.objects.create(
@@ -221,11 +221,11 @@ class TestPatientModel:
             date_of_birth="1985-05-20",
             gender="F"
         )
-        
+
         assert patient.id is not None
         assert patient.mrn is not None
         assert patient.created_at is not None
-    
+
     def test_mrn_auto_generated_on_save(self):
         """MRN is automatically generated when patient is saved."""
         patient = Patient(
@@ -235,11 +235,11 @@ class TestPatientModel:
             gender="M"
         )
         assert patient.mrn is None  # Before save
-        
+
         patient.save()
         assert patient.mrn is not None  # After save
         assert patient.mrn.startswith("KE-")
-    
+
     def test_mrn_uniqueness(self):
         """MRN must be unique across all patients."""
         patient1 = Patient.objects.create(
@@ -248,7 +248,7 @@ class TestPatientModel:
             date_of_birth="1990-01-01",
             gender="M"
         )
-        
+
         # Attempting to create patient with same MRN should fail
         with pytest.raises(IntegrityError):
             Patient.objects.create(
@@ -258,7 +258,7 @@ class TestPatientModel:
                 gender="F",
                 mrn=patient1.mrn
             )
-    
+
     def test_patient_age_calculation(self):
         """Patient age is correctly calculated from date_of_birth."""
         from datetime import date
@@ -268,11 +268,11 @@ class TestPatientModel:
             date_of_birth=date(2000, 1, 1),
             gender="M"
         )
-        
+
         # Age as of 2026-01-15
         expected_age = 26
         assert patient.age == expected_age
-    
+
     def test_sensitive_data_flag(self):
         """Patients can be flagged as having sensitive data."""
         patient = Patient.objects.create(
@@ -282,9 +282,9 @@ class TestPatientModel:
             gender="F",
             is_sensitive=True
         )
-        
+
         assert patient.is_sensitive is True
-    
+
     def test_patient_str_representation(self):
         """Patient string representation includes name and MRN."""
         patient = Patient.objects.create(
@@ -293,11 +293,11 @@ class TestPatientModel:
             date_of_birth="1990-01-01",
             gender="M"
         )
-        
+
         str_repr = str(patient)
         assert "John Doe" in str_repr
         assert patient.mrn in str_repr
-    
+
     @pytest.mark.parametrize("gender", ["M", "F", "O", "U"])
     def test_valid_gender_choices(self, gender):
         """Patient accepts valid gender choices."""
@@ -307,9 +307,9 @@ class TestPatientModel:
             date_of_birth="1990-01-01",
             gender=gender
         )
-        
+
         assert patient.gender == gender
-    
+
     def test_invalid_gender_raises_error(self):
         """Invalid gender choice raises ValidationError."""
         patient = Patient(
@@ -318,7 +318,7 @@ class TestPatientModel:
             date_of_birth="1990-01-01",
             gender="X"  # Invalid choice
         )
-        
+
         with pytest.raises(ValidationError):
             patient.full_clean()
 ```
@@ -338,12 +338,12 @@ User = get_user_model()
 @pytest.mark.django_db
 class TestPatientAPI:
     """Test suite for Patient API endpoints."""
-    
+
     @pytest.fixture
     def api_client(self):
         """Provide authenticated API client."""
         return APIClient()
-    
+
     @pytest.fixture
     def authenticated_user(self):
         """Create and return authenticated user."""
@@ -353,13 +353,13 @@ class TestPatientAPI:
             password="testpass123"
         )
         return user
-    
+
     @pytest.fixture
     def auth_client(self, api_client, authenticated_user):
         """Provide API client with authentication."""
         api_client.force_authenticate(user=authenticated_user)
         return api_client
-    
+
     def test_create_patient_success(self, auth_client):
         """Authenticated user can create a patient."""
         data = {
@@ -369,14 +369,14 @@ class TestPatientAPI:
             "gender": "F",
             "phone_number": "+254712345678"
         }
-        
+
         response = auth_client.post("/api/v1/patients/", data, format="json")
-        
+
         assert response.status_code == status.HTTP_201_CREATED
         assert response.data["first_name"] == "Jane"
         assert response.data["mrn"] is not None
         assert "id" in response.data
-    
+
     def test_create_patient_unauthenticated(self, api_client):
         """Unauthenticated request returns 401."""
         data = {
@@ -385,24 +385,24 @@ class TestPatientAPI:
             "date_of_birth": "1990-05-15",
             "gender": "F"
         }
-        
+
         response = api_client.post("/api/v1/patients/", data, format="json")
         assert response.status_code == status.HTTP_401_UNAUTHORIZED
-    
+
     def test_create_patient_missing_required_fields(self, auth_client):
         """Creating patient without required fields returns 400."""
         data = {
             "first_name": "Jane"
             # Missing: last_name, date_of_birth, gender
         }
-        
+
         response = auth_client.post("/api/v1/patients/", data, format="json")
-        
+
         assert response.status_code == status.HTTP_400_BAD_REQUEST
         assert "last_name" in response.data
         assert "date_of_birth" in response.data
         assert "gender" in response.data
-    
+
     def test_list_patients(self, auth_client):
         """Authenticated user can list patients."""
         # Create test patients
@@ -414,61 +414,61 @@ class TestPatientAPI:
             first_name="Patient", last_name="Two",
             date_of_birth="1985-05-20", gender="F"
         )
-        
+
         response = auth_client.get("/api/v1/patients/")
-        
+
         assert response.status_code == status.HTTP_200_OK
         assert len(response.data["results"]) == 2
-    
+
     def test_retrieve_patient_by_id(self, auth_client):
         """Authenticated user can retrieve patient by ID."""
         patient = Patient.objects.create(
             first_name="John", last_name="Doe",
             date_of_birth="1990-01-01", gender="M"
         )
-        
+
         response = auth_client.get(f"/api/v1/patients/{patient.id}/")
-        
+
         assert response.status_code == status.HTTP_200_OK
         assert response.data["id"] == patient.id
         assert response.data["mrn"] == patient.mrn
-    
+
     def test_search_patient_by_mrn(self, auth_client):
         """Authenticated user can search patient by MRN."""
         patient = Patient.objects.create(
             first_name="Search", last_name="Test",
             date_of_birth="1990-01-01", gender="M"
         )
-        
+
         response = auth_client.get(f"/api/v1/patients/?mrn={patient.mrn}")
-        
+
         assert response.status_code == status.HTTP_200_OK
         assert len(response.data["results"]) == 1
         assert response.data["results"][0]["mrn"] == patient.mrn
-    
+
     def test_update_patient(self, auth_client):
         """Authenticated user can update patient details."""
         patient = Patient.objects.create(
             first_name="Old", last_name="Name",
             date_of_birth="1990-01-01", gender="M"
         )
-        
+
         update_data = {
             "first_name": "New",
             "last_name": "Name",
             "date_of_birth": "1990-01-01",
             "gender": "M"
         }
-        
+
         response = auth_client.put(
             f"/api/v1/patients/{patient.id}/",
             update_data,
             format="json"
         )
-        
+
         assert response.status_code == status.HTTP_200_OK
         assert response.data["first_name"] == "New"
-    
+
     def test_cannot_update_mrn(self, auth_client):
         """MRN cannot be changed after creation."""
         patient = Patient.objects.create(
@@ -476,7 +476,7 @@ class TestPatientAPI:
             date_of_birth="1990-01-01", gender="M"
         )
         original_mrn = patient.mrn
-        
+
         update_data = {
             "first_name": "Test",
             "last_name": "Patient",
@@ -484,13 +484,13 @@ class TestPatientAPI:
             "gender": "M",
             "mrn": "KE-FAKE-20260101-9999"
         }
-        
+
         response = auth_client.put(
             f"/api/v1/patients/{patient.id}/",
             update_data,
             format="json"
         )
-        
+
         patient.refresh_from_db()
         assert patient.mrn == original_mrn  # MRN unchanged
 ```
@@ -509,7 +509,7 @@ from django.core.exceptions import ValidationError
 
 class TestKenyanPhoneValidator:
     """Test suite for Kenyan phone number validation."""
-    
+
     @pytest.mark.parametrize("phone_number", [
         "+254712345678",
         "+254722345678",
@@ -521,7 +521,7 @@ class TestKenyanPhoneValidator:
         """Valid Kenyan phone numbers pass validation."""
         # Should not raise exception
         validate_kenyan_phone(phone_number)
-    
+
     @pytest.mark.parametrize("phone_number,expected_error", [
         ("+255712345678", "must start with +254"),
         ("+2547123456", "must be 13 characters"),
@@ -533,12 +533,12 @@ class TestKenyanPhoneValidator:
         """Invalid phone numbers raise ValidationError."""
         with pytest.raises(ValidationError) as exc_info:
             validate_kenyan_phone(phone_number)
-        
+
         assert expected_error in str(exc_info.value).lower()
 
 class TestVitalSignsValidator:
     """Test suite for vital signs validation."""
-    
+
     def test_valid_vital_signs(self):
         """Valid vital signs pass validation."""
         vitals = {
@@ -549,10 +549,10 @@ class TestVitalSignsValidator:
             "respiratory_rate": 16,
             "oxygen_saturation": 98
         }
-        
+
         # Should not raise exception
         validate_vital_signs(vitals)
-    
+
     def test_temperature_out_of_range(self):
         """Temperature outside safe range raises ValidationError."""
         vitals = {
@@ -561,12 +561,12 @@ class TestVitalSignsValidator:
             "diastolic_bp": 80,
             "heart_rate": 75
         }
-        
+
         with pytest.raises(ValidationError) as exc_info:
             validate_vital_signs(vitals)
-        
+
         assert "temperature" in str(exc_info.value).lower()
-    
+
     def test_blood_pressure_validation(self):
         """Systolic BP must be greater than diastolic BP."""
         vitals = {
@@ -575,10 +575,10 @@ class TestVitalSignsValidator:
             "diastolic_bp": 120,  # Higher than systolic
             "heart_rate": 75
         }
-        
+
         with pytest.raises(ValidationError) as exc_info:
             validate_vital_signs(vitals)
-        
+
         assert "systolic" in str(exc_info.value).lower()
         assert "diastolic" in str(exc_info.value).lower()
 ```
@@ -599,7 +599,7 @@ User = get_user_model()
 @pytest.mark.integration
 class TestPatientWorkflow:
     """Integration tests for complete patient workflows."""
-    
+
     @pytest.fixture
     def setup_environment(self):
         """Set up test environment with users and auth."""
@@ -610,14 +610,14 @@ class TestPatientWorkflow:
         )
         client = APIClient()
         client.force_authenticate(user=user)
-        
+
         return {"user": user, "client": client}
-    
+
     def test_complete_patient_registration_and_encounter(self, setup_environment):
         """Test complete flow: Register patient → Create encounter → Record vitals."""
         client = setup_environment["client"]
         user = setup_environment["user"]
-        
+
         # Step 1: Register new patient
         patient_data = {
             "first_name": "Jane",
@@ -626,12 +626,12 @@ class TestPatientWorkflow:
             "gender": "F",
             "phone_number": "+254712345678"
         }
-        
+
         response = client.post("/api/v1/patients/", patient_data, format="json")
         assert response.status_code == status.HTTP_201_CREATED
         patient_id = response.data["id"]
         patient_mrn = response.data["mrn"]
-        
+
         # Step 2: Create encounter for patient
         encounter_data = {
             "patient": patient_id,
@@ -639,11 +639,11 @@ class TestPatientWorkflow:
             "chief_complaint": "Fever and headache",
             "provider": user.id
         }
-        
+
         response = client.post("/api/v1/encounters/", encounter_data, format="json")
         assert response.status_code == status.HTTP_201_CREATED
         encounter_id = response.data["id"]
-        
+
         # Step 3: Record vital signs
         vitals_data = {
             "encounter": encounter_id,
@@ -654,14 +654,14 @@ class TestPatientWorkflow:
             "respiratory_rate": 18,
             "oxygen_saturation": 97
         }
-        
+
         response = client.post("/api/v1/vitals/", vitals_data, format="json")
         assert response.status_code == status.HTTP_201_CREATED
-        
+
         # Step 4: Verify data integrity
         patient = Patient.objects.get(id=patient_id)
         assert patient.mrn == patient_mrn
-        
+
         encounter = Encounter.objects.get(id=encounter_id)
         assert encounter.patient == patient
         assert encounter.vitals.count() == 1
@@ -683,10 +683,10 @@ User = get_user_model()
 
 class UserFactory(DjangoModelFactory):
     """Factory for creating test users."""
-    
+
     class Meta:
         model = User
-    
+
     username = factory.Sequence(lambda n: f"user{n}")
     email = factory.LazyAttribute(lambda obj: f"{obj.username}@test.com")
     password = factory.PostGenerationMethodCall('set_password', 'testpass123')
@@ -695,10 +695,10 @@ class UserFactory(DjangoModelFactory):
 
 class PatientFactory(DjangoModelFactory):
     """Factory for creating test patients."""
-    
+
     class Meta:
         model = Patient
-    
+
     first_name = factory.Faker('first_name')
     last_name = factory.Faker('last_name')
     date_of_birth = factory.Faker('date_of_birth', minimum_age=0, maximum_age=100)
@@ -709,10 +709,10 @@ class PatientFactory(DjangoModelFactory):
 
 class EncounterFactory(DjangoModelFactory):
     """Factory for creating test encounters."""
-    
+
     class Meta:
         model = Encounter
-    
+
     patient = factory.SubFactory(PatientFactory)
     provider = factory.SubFactory(UserFactory)
     encounter_type = factory.Faker('random_element', elements=["outpatient", "inpatient", "emergency"])
@@ -931,7 +931,7 @@ def test_patient():
     assert patient.mrn is not None
     assert patient.age == 26
     assert str(patient) == "John Doe (KE-...)"
-    
+
     # Also testing update
     patient.first_name = "Jane"
     patient.save()
@@ -1004,12 +1004,12 @@ from unittest.mock import patch
 
 def test_send_patient_notification():
     patient = Patient.objects.create(...)
-    
+
     with patch('hmis.utils.sms.send_sms') as mock_sms:
         mock_sms.return_value = {"success": True}
-        
+
         result = send_sms_notification(patient.phone_number, "Welcome")
-        
+
         assert result["success"]
         mock_sms.assert_called_once_with(
             patient.phone_number,
@@ -1023,19 +1023,19 @@ def test_send_patient_notification():
 def test_patient_age_calculation():
     """Test age calculation for various scenarios."""
     from datetime import date
-    
+
     # Happy path
     patient = Patient.objects.create(date_of_birth=date(2000, 1, 1))
     assert patient.age == 26
-    
+
     # Edge case: Born today
     patient_today = Patient.objects.create(date_of_birth=date.today())
     assert patient_today.age == 0
-    
+
     # Edge case: Very old patient
     patient_old = Patient.objects.create(date_of_birth=date(1900, 1, 1))
     assert patient_old.age == 126
-    
+
     # Error case: Future date
     with pytest.raises(ValidationError):
         Patient.objects.create(date_of_birth=date(2030, 1, 1))
@@ -1080,10 +1080,10 @@ def test_patient_creation():
         "date_of_birth": "1990-01-01",
         "gender": "M"
     }
-    
+
     # Act - Perform the action
     patient = Patient.objects.create(**patient_data)
-    
+
     # Assert - Verify the result
     assert patient.id is not None
     assert patient.first_name == "John"
@@ -1102,10 +1102,10 @@ def test_patient_search_by_mrn_returns_correct_patient():
         gender="M"
     )
     mrn = patient.mrn
-    
+
     # When: We search for the patient by MRN
     found_patient = Patient.objects.get(mrn=mrn)
-    
+
     # Then: The correct patient is returned
     assert found_patient.id == patient.id
     assert found_patient.first_name == "John"
@@ -1133,14 +1133,14 @@ def test_patient_api_response_structure(auth_client, snapshot):
     """Verify API response structure hasn't changed."""
     patient = PatientFactory()
     response = auth_client.get(f"/api/v1/patients/{patient.id}/")
-    
+
     # Remove dynamic fields
     data = response.data.copy()
     data.pop("id")
     data.pop("mrn")
     data.pop("created_at")
     data.pop("updated_at")
-    
+
     # Compare to snapshot
     assert data == snapshot
 ```
@@ -1177,14 +1177,14 @@ graph LR
    def test_patient_consent_can_be_recorded():
        """Patient can record consent for data sharing."""
        patient = Patient.objects.create(...)
-       
+
        consent = PatientConsent.objects.create(
            patient=patient,
            consent_type="data_sharing",
            consented=True,
            consented_at=timezone.now()
        )
-       
+
        assert consent.patient == patient
        assert consent.consented is True
    ```
@@ -1223,7 +1223,7 @@ graph LR
            ('research', 'Research Participation'),
            ('marketing', 'Marketing Communications'),
        ]
-       
+
        patient = models.ForeignKey(
            Patient,
            on_delete=models.CASCADE,
@@ -1235,7 +1235,7 @@ graph LR
        )
        consented = models.BooleanField(default=False)
        consented_at = models.DateTimeField(auto_now_add=True)
-       
+
        class Meta:
            unique_together = ('patient', 'consent_type')
    ```
@@ -1260,7 +1260,7 @@ graph LR
    - Add PatientConsent model with consent types
    - Implement consent recording functionality
    - Add tests for consent creation and validation
-   
+
    Tests: 15 passed
    Coverage: 92%"
    ```
@@ -1364,7 +1364,7 @@ def test_patient_creation():
 def test_patient_age_calculation_for_adult():
     """Patient age is correctly calculated for adults."""
     from datetime import date
-    
+
     # Arrange
     birth_date = date(1990, 1, 1)
     patient = Patient.objects.create(
@@ -1373,10 +1373,10 @@ def test_patient_age_calculation_for_adult():
         date_of_birth=birth_date,
         gender="M"
     )
-    
+
     # Act
     age = patient.age
-    
+
     # Assert
     expected_age = 36  # As of 2026
     assert age == expected_age, f"Expected age {expected_age}, got {age}"
@@ -1539,8 +1539,7 @@ ptw  # pytest-watch
 
 ---
 
-**Document Owner**: Engineering Team  
-**Last Review**: December 27, 2025  
-**Next Review**: March 1, 2026  
+**Document Owner**: Engineering Team
+**Last Review**: December 27, 2025
+**Next Review**: March 1, 2026
 **Questions?**: Contact @engineering-lead or post in #dev-testing Slack channel
-

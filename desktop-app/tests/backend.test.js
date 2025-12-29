@@ -1,6 +1,6 @@
 /**
  * Tests for backend integration
- * 
+ *
  * Following TDD principles: these tests are written to validate
  * backend server startup, shutdown, and health checking.
  */
@@ -44,7 +44,7 @@ describe('Backend Integration Tests', () => {
       // This test validates that startBackend function exists and can be called
       expect(typeof startBackend).toBe('function');
     });
-    
+
     it('should resolve when backend starts successfully', async () => {
       // Mock successful server start
       const { spawn } = require('child_process');
@@ -55,9 +55,9 @@ describe('Backend Integration Tests', () => {
         pid: 12345,
         exitCode: null
       };
-      
+
       spawn.mockReturnValue(mockProcess);
-      
+
       // Simulate server started message
       setTimeout(() => {
         const stdoutCallback = mockProcess.stdout.on.mock.calls.find(
@@ -67,11 +67,11 @@ describe('Backend Integration Tests', () => {
           stdoutCallback(Buffer.from('Starting development server at http://127.0.0.1:8000/'));
         }
       }, 100);
-      
+
       await expect(startBackend()).resolves.toBeUndefined();
     });
   });
-  
+
   describe('stopBackend', () => {
     it('should stop the Django backend server', async () => {
       expect(typeof stopBackend).toBe('function');
@@ -79,15 +79,15 @@ describe('Backend Integration Tests', () => {
       // We're primarily verifying the function exists and is callable
     });
   });
-  
+
   describe('checkBackendHealth', () => {
     it('should return true when backend is healthy', async () => {
       const axios = require('axios');
-      axios.get = jest.fn().mockResolvedValue({ 
-        status: 200, 
-        data: { status: 'healthy' } 
+      axios.get = jest.fn().mockResolvedValue({
+        status: 200,
+        data: { status: 'healthy' }
       });
-      
+
       const healthy = await checkBackendHealth();
       expect(healthy).toBe(true);
       expect(axios.get).toHaveBeenCalledWith(
@@ -95,11 +95,11 @@ describe('Backend Integration Tests', () => {
         expect.any(Object)
       );
     });
-    
+
     it('should return false when backend is not responding', async () => {
       const axios = require('axios');
       axios.get = jest.fn().mockRejectedValue(new Error('Connection refused'));
-      
+
       const healthy = await checkBackendHealth();
       expect(healthy).toBe(false);
     });

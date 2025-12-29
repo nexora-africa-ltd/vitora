@@ -1,7 +1,7 @@
 # Sprint 0.4: Security Baseline - Deliverables
 
-**Sprint Duration**: Weeks 7-8  
-**Status**: ✅ COMPLETED  
+**Sprint Duration**: Weeks 7-8
+**Status**: ✅ COMPLETED
 **Date**: December 28, 2025
 
 ---
@@ -20,7 +20,7 @@ Sprint 0.4 successfully implemented the security baseline for Vitora HMIS, inclu
 | DPIA Documentation | ✅ Complete | N/A | N/A |
 | Bandit Security Scan | ✅ Complete | 0 issues | N/A |
 
-**Total Tests**: 140 passing  
+**Total Tests**: 140 passing
 **Test Coverage**: 84.40% (exceeds 80% requirement)
 
 ---
@@ -338,8 +338,7 @@ Per ROADMAP.md, Sprint 0.5 focuses on **Offline Sync Logic**:
 
 ---
 
-**Sprint Status**: ✅ COMPLETED  
-**Next Sprint**: 0.5 - Offline Sync Logic  
-**Document Owner**: Engineering Lead  
+**Sprint Status**: ✅ COMPLETED
+**Next Sprint**: 0.5 - Offline Sync Logic
+**Document Owner**: Engineering Lead
 **Last Updated**: December 28, 2025
-

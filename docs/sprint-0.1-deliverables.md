@@ -1,7 +1,7 @@
 # Sprint 0.1: Foundation & Planning - Deliverables
 
-**Sprint Duration**: Weeks 1-2  
-**Status**: In Progress  
+**Sprint Duration**: Weeks 1-2
+**Status**: In Progress
 **Date**: December 27, 2025
 
 ---
@@ -14,7 +14,7 @@
 The vision refinement workshop has been completed with input from Kenyan clinicians and stakeholders.
 
 ### Task 2: Review and Incorporate Consultant Feedback from PDF
-**Status**: ✅ COMPLETED  
+**Status**: ✅ COMPLETED
 **Source**: `Nex HMIS CONSULTANTS INPUT.pdf`
 
 ---
@@ -46,16 +46,16 @@ This document reviews consultant feedback from `Nex HMIS CONSULTANTS INPUT.pdf` 
    - Patient model with MRN generation, national ID, consent tracking, and is_sensitive flag
    - Encounter model with vitals (temperature, BP, pulse, etc.) and diagnoses
    - PharmacyStock model with reorder_level and needs_reorder property
-   
+
 2. **README.md Section 9**: Security implementation includes:
    - Role-based access control (RBAC)
    - Audit logging with TimeStampedModel
    - SensitiveAccessPermission for HIV/GBV/Mental Health records
-   
+
 3. **README.md Section 10**: Interoperability section covers:
    - SHA claims submission support
    - KHIS/DHIS2 automated reporting with KHISExporter
-   
+
 4. **README.md Section 13**: AI/ML Roadmap includes:
    - No-show prediction models
    - Sepsis early warning systems
@@ -79,17 +79,17 @@ This document reviews consultant feedback from `Nex HMIS CONSULTANTS INPUT.pdf` 
    - Offline-first with Service Workers and IndexedDB
    - Patient search with offline caching
    - Intuitive UI with TailwindCSS
-   
+
 2. **README.md Section 7**: Mobile app for:
    - Rural outreach clinics
    - Ward rounds without WiFi
    - Offline-first data persistence
-   
+
 3. **README.md Section 10**: Interoperability includes:
    - FHIR R4 compliance for data sharing
    - LOINC for lab observations (planned)
    - ICD-10 for diagnoses
-   
+
 4. **ROADMAP.md Phase 1**: Sprint 1.7-1.8 implements React Native mobile app with:
    - Offline patient lookup
    - Mobile vitals entry
@@ -130,17 +130,17 @@ This document reviews consultant feedback from `Nex HMIS CONSULTANTS INPUT.pdf` 
    - README.md emphasizes SQLite for standalone mode
    - Desktop app (Electron) runs completely offline
    - Queue-based sync for when connectivity returns
-   
+
 2. **Automated Reporting**:
    - KHIS/DHIS2 automated export (ROADMAP.md Phase 2, Sprint 2.7-2.8)
    - Reduces manual reporting burden
    - Data quality checks built-in
-   
+
 3. **Mobile for Outreach**:
    - React Native app with offline SQLite
    - Use cases documented: rural outreach, ward rounds, community health worker visits
    - Background sync when network available
-   
+
 4. **Training Support**:
    - ROADMAP.md Phase 1, Sprint 1.11-1.12 includes on-site training
    - Training materials as deliverable
@@ -167,21 +167,21 @@ This document reviews consultant feedback from `Nex HMIS CONSULTANTS INPUT.pdf` 
    - KHIS indicators mapping
    - Sensitive access restrictions
    - Affordability (Raspberry Pi-compatible, SQLite)
-   
+
 2. **README.md Section 9**: Security & Privacy:
    - Kenya Data Protection Act (2019) compliance
    - Consent management with timestamps
    - Data minimization principles
    - Right to access and erasure
    - Data breach protocol
-   
+
 3. **Patient Model** (README.md Section 4.1.1):
    - `national_id` field
    - `passport_number` field
    - `phone_number` field
    - `consent_given` and `consent_date` tracking
    - `is_sensitive` flag for HIV/GBV/Mental Health
-   
+
 4. **ROADMAP.md Phase 2**: Sprint 2.1-2.2 dedicated to SHA claims integration
 5. **ROADMAP.md Phase 2**: Sprint 2.7-2.8 dedicated to KHIS/DHIS2 reporting
 
@@ -190,28 +190,28 @@ This document reviews consultant feedback from `Nex HMIS CONSULTANTS INPUT.pdf` 
 ## Gaps Identified and Addressed
 
 ### Gap 1: Explicit M-Pesa Integration Details
-**Original State**: M-Pesa mentioned but not detailed  
-**Action Taken**: 
+**Original State**: M-Pesa mentioned but not detailed
+**Action Taken**:
 - Added M-Pesa to billing implementation in README.md Section 4.1 (Billing Model)
 - ROADMAP.md Phase 1, Sprint 1.5-1.6 includes M-Pesa integration with mock for testing
 - Added M-Pesa sandbox access to Phase 1 dependencies
 
 ### Gap 2: Standardized Clinical Codes
-**Original State**: Limited mention of coding standards  
+**Original State**: Limited mention of coding standards
 **Action Taken**:
 - README.md Section 10.4 now includes ICD-10, LOINC, SNOMED CT (planned)
 - ROADMAP.md Phase 4 includes terminology service integration
 - Ensures accuracy as requested by clinicians
 
 ### Gap 3: Training Materials
-**Original State**: Not explicitly mentioned  
+**Original State**: Not explicitly mentioned
 **Action Taken**:
 - ROADMAP.md Phase 1, Sprint 1.11-1.12 includes training materials as deliverable
 - On-site training for clinical staff included
 - User documentation added to Definition of Done checklist
 
 ### Gap 4: Lab Integration
-**Original State**: Lab delays mentioned as pain point but solution not clear  
+**Original State**: Lab delays mentioned as pain point but solution not clear
 **Action Taken**:
 - README.md Section 8 includes lab results in Encounter observations
 - FHIR Observation resources for lab results
@@ -351,13 +351,13 @@ AI and advanced capabilities:
    - Document Red-Green-Refactor workflow
    - Create test templates for models, APIs, E2E
    - Define coverage requirements (80% minimum)
-   
+
 2. **Set Up CI/CD Pipeline** (Task 5)
    - GitHub Actions workflow for pytest
    - Automated coverage reporting
    - Linting with Ruff and Black
    - Security scanning with Bandit
-   
+
 3. **Define MVP Scope** (Task 3)
    - Phase 0 scope finalization
    - Acceptance criteria for prototype
@@ -411,7 +411,7 @@ The project is now fully aligned with consultant vision and ready to proceed wit
 
 ---
 
-**Document Status**: APPROVED for Sprint 0.1 Task 2  
-**Next Sprint Task**: Task 3 - Define MVP scope and acceptance criteria  
-**Approved By**: Engineering Lead  
+**Document Status**: APPROVED for Sprint 0.1 Task 2
+**Next Sprint Task**: Task 3 - Define MVP scope and acceptance criteria
+**Approved By**: Engineering Lead
 **Date**: December 27, 2025

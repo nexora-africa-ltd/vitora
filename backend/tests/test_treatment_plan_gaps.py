@@ -10,9 +10,8 @@ Closes gaps identified:
 6. Missing model fields
 """
 
-from datetime import date, timedelta
-from decimal import Decimal
 import json
+from datetime import date, timedelta
 
 import pytest
 from django.contrib.auth import get_user_model
@@ -199,7 +198,9 @@ class TestTreatmentPlanTemplateAPI:
         assert response.status_code == 200
         assert response.data["follow_up_days"] == 10
 
-    def test_suggest_templates_by_diagnosis(self, authenticated_client, sample_template, sample_icd10_code):
+    def test_suggest_templates_by_diagnosis(
+        self, authenticated_client, sample_template, sample_icd10_code
+    ):
         """Test GET /api/treatment-templates/suggest/?diagnosis=<code> - Suggest by diagnosis."""
         response = authenticated_client.get(
             f"/api/treatment-templates/suggest/?diagnosis={sample_icd10_code.code}"
@@ -326,10 +327,12 @@ class TestTreatmentPlanValidation:
         """Test medications_json accepts valid JSON."""
         from hmis.apps.encounters.models import TreatmentPlan
 
-        valid_json = json.dumps([
-            {"name": "Drug A", "dosage": "10mg", "frequency": "BD"},
-            {"name": "Drug B", "dosage": "5mg", "frequency": "OD"},
-        ])
+        valid_json = json.dumps(
+            [
+                {"name": "Drug A", "dosage": "10mg", "frequency": "BD"},
+                {"name": "Drug B", "dosage": "5mg", "frequency": "OD"},
+            ]
+        )
 
         plan = TreatmentPlan.objects.create(
             encounter=sample_encounter,
@@ -344,10 +347,12 @@ class TestTreatmentPlanValidation:
         """Test procedures_json accepts valid JSON."""
         from hmis.apps.encounters.models import TreatmentPlan
 
-        valid_json = json.dumps([
-            {"name": "Blood Test", "notes": "FBC + RFT"},
-            {"name": "X-Ray", "notes": "Chest PA"},
-        ])
+        valid_json = json.dumps(
+            [
+                {"name": "Blood Test", "notes": "FBC + RFT"},
+                {"name": "X-Ray", "notes": "Chest PA"},
+            ]
+        )
 
         plan = TreatmentPlan.objects.create(
             encounter=sample_encounter,
@@ -433,8 +438,9 @@ class TestTreatmentPlanWorkflow:
 
     def test_completed_plan_cannot_be_reactivated(self, sample_encounter):
         """Test COMPLETED plan cannot go back to ACTIVE."""
-        from hmis.apps.encounters.models import TreatmentPlan
         from django.core.exceptions import ValidationError
+
+        from hmis.apps.encounters.models import TreatmentPlan
 
         plan = TreatmentPlan.objects.create(
             encounter=sample_encounter,
@@ -447,8 +453,9 @@ class TestTreatmentPlanWorkflow:
 
     def test_cancelled_plan_cannot_be_reactivated(self, sample_encounter):
         """Test CANCELLED plan cannot go back to ACTIVE."""
-        from hmis.apps.encounters.models import TreatmentPlan
         from django.core.exceptions import ValidationError
+
+        from hmis.apps.encounters.models import TreatmentPlan
 
         plan = TreatmentPlan.objects.create(
             encounter=sample_encounter,

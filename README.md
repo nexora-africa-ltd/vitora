@@ -1,35 +1,35 @@
-# Vitora HMIS 
+# Vitora HMIS
 > Vitora HMIS — Built for Care Without Limits
 
 ---
 
 # Kenya HMIS (Hospital Management Information System)
-_Comprehensive Technical Blueprint & Implementation Guide (Kenya-Tailored)_  
+_Comprehensive Technical Blueprint & Implementation Guide (Kenya-Tailored)_
 _Last Updated: December 27, 2025_
 
 ---
 
 ## Table of Contents
 
-1. Project Overview  
-2. Folder & File Structure  
-3. Local Development Setup  
-4. Backend (Django + DRF) Implementation Plan  
-5. Frontend (Next.js) Implementation Plan  
-6. Desktop App (Electron/PyQt) Implementation Plan  
-7. Mobile App (React Native) Implementation Plan  
-8. Database Schema (Core Modules)  
-9. Security & Privacy (Kenya Data Protection Act Alignment)  
-10. Interoperability (FHIR, KHIS/DHIS2, SHA)  
-11. Testing Strategy & Quality Gates  
-12. Deployment & Operations (Docker / Kubernetes / Monitoring)  
-13. Future AI/ML Integration Roadmap  
-14. Appendix  
-   - A. Sample .env Files  
-   - B. API Endpoint Inventory (REST + FHIR)  
-   - C. KHIS/DHIS2 Indicator Mapping (Starter)  
-   - D. Role Matrix (Sample)  
-   - E. Definition of Done Checklist  
+1. Project Overview
+2. Folder & File Structure
+3. Local Development Setup
+4. Backend (Django + DRF) Implementation Plan
+5. Frontend (Next.js) Implementation Plan
+6. Desktop App (Electron/PyQt) Implementation Plan
+7. Mobile App (React Native) Implementation Plan
+8. Database Schema (Core Modules)
+9. Security & Privacy (Kenya Data Protection Act Alignment)
+10. Interoperability (FHIR, KHIS/DHIS2, SHA)
+11. Testing Strategy & Quality Gates
+12. Deployment & Operations (Docker / Kubernetes / Monitoring)
+13. Future AI/ML Integration Roadmap
+14. Appendix
+   - A. Sample .env Files
+   - B. API Endpoint Inventory (REST + FHIR)
+   - C. KHIS/DHIS2 Indicator Mapping (Starter)
+   - D. Role Matrix (Sample)
+   - E. Definition of Done Checklist
 
 ---
 
@@ -76,10 +76,10 @@ A modular-monolith Hospital Management Information System tailored for Kenya, co
 - **Affordability**: Standalone mode requires minimal hardware (e.g., Raspberry Pi-compatible for rural clinics); cloud optional with low-cost providers like AWS Africa.
 
 ### 1.4 Phased Delivery (High Level)
-1. **Phase 0** – Inception & Readiness (Infrastructure, Security, Standalone Desktop Prototype).  
-2. **Phase 1** – Clinical Core (PAS, Encounters, Orders, Pharmacy, Basic Billing; Offline Desktop/Mobile).  
-3. **Phase 2** – Claims, Theatre, Inventory, Reporting v1; Cloud Sync Introduction.  
-4. **Phase 3** – MCH/Immunization, Imaging, BI Mart; Multi-Site Hybrid.  
+1. **Phase 0** – Inception & Readiness (Infrastructure, Security, Standalone Desktop Prototype).
+2. **Phase 1** – Clinical Core (PAS, Encounters, Orders, Pharmacy, Basic Billing; Offline Desktop/Mobile).
+3. **Phase 2** – Claims, Theatre, Inventory, Reporting v1; Cloud Sync Introduction.
+4. **Phase 3** – MCH/Immunization, Imaging, BI Mart; Multi-Site Hybrid.
 5. **Phase 4** – AI/Advanced Analytics; Global Scaling.
 
 ---
@@ -263,7 +263,7 @@ cd vitora
 cp .env.example .env
 # For standalone: Use SQLite (default)
 docker compose -f infrastructure/standalone-compose.yml up -d --build  # Runs local backend + desktop
-# Or without Docker: 
+# Or without Docker:
 cd backend
 poetry install
 poetry run python manage.py migrate
@@ -354,18 +354,18 @@ class Patient(TimeStampedModel):
     national_id = models.CharField(max_length=20, blank=True, null=True, db_index=True)
     passport_number = models.CharField(max_length=20, blank=True, null=True)
     phone_number = models.CharField(max_length=15, blank=True, null=True)
-    
+
     first_name = models.CharField(max_length=100)
     middle_name = models.CharField(max_length=100, blank=True)
     last_name = models.CharField(max_length=100)
     date_of_birth = models.DateField()
     gender = models.CharField(max_length=10, choices=[('M', 'Male'), ('F', 'Female'), ('O', 'Other')])
-    
+
     # Consent & Privacy
     consent_given = models.BooleanField(default=False)
     consent_date = models.DateTimeField(null=True, blank=True)
     is_sensitive = models.BooleanField(default=False)  # HIV, GBV, Mental Health
-    
+
     # Sync metadata
     sync_status = models.CharField(max_length=20, default='synced')
     last_synced_at = models.DateTimeField(null=True, blank=True)
@@ -378,7 +378,7 @@ class Encounter(TimeStampedModel):
     patient = models.ForeignKey('patients.Patient', on_delete=models.CASCADE)
     encounter_type = models.CharField(max_length=50)  # OPD, IPD, Emergency
     encounter_date = models.DateTimeField(auto_now_add=True)
-    
+
     # Vitals
     temperature = models.DecimalField(max_digits=4, decimal_places=1, null=True, blank=True)
     blood_pressure_systolic = models.IntegerField(null=True, blank=True)
@@ -388,7 +388,7 @@ class Encounter(TimeStampedModel):
     weight = models.DecimalField(max_digits=5, decimal_places=2, null=True, blank=True)
     height = models.DecimalField(max_digits=5, decimal_places=2, null=True, blank=True)
     spo2 = models.DecimalField(max_digits=5, decimal_places=2, null=True, blank=True)  # Oxygen saturation
-    
+
     # Medical History (captured per encounter)
     allergies = models.TextField(blank=True)
     chronic_conditions = models.TextField(blank=True)
@@ -396,17 +396,17 @@ class Encounter(TimeStampedModel):
     past_surgeries = models.TextField(blank=True)
     family_history = models.TextField(blank=True)
     social_history = models.TextField(blank=True)
-    
+
     # Clinical notes
     chief_complaint = models.TextField()
     notes = models.TextField(blank=True)
-    
+
     # Sync
     sync_status = models.CharField(max_length=20, default='synced')
-    
+
     def has_critical_vitals(self) -> bool:
         """Check for critical vital signs (temp, pulse, RR, SpO2)."""
-    
+
     def get_alerts(self) -> str:
         """Return alert messages for abnormal vitals."""
 
@@ -468,7 +468,7 @@ class PharmacyStock(TimeStampedModel):
     reorder_level = models.IntegerField(default=10)
     unit_price = models.DecimalField(max_digits=10, decimal_places=2)
     expiry_date = models.DateField(null=True, blank=True)
-    
+
     @property
     def needs_reorder(self):
         return self.quantity_in_stock <= self.reorder_level
@@ -484,7 +484,7 @@ class ClinicalTemplate(models.Model):
         ('assessment', 'Assessment Template'),
         ('procedure', 'Procedure Template'),
     ]
-    
+
     name = models.CharField(max_length=200)
     template_type = models.CharField(max_length=20, choices=TEMPLATE_TYPE_CHOICES)
     specialty = models.CharField(max_length=100, blank=True)
@@ -611,7 +611,7 @@ let backendProcess = null;
 function startBackend() {
   const pythonPath = path.join(__dirname, '../backend/manage.py');
   backendProcess = spawn('python', [pythonPath, 'runserver', '--noreload']);
-  
+
   backendProcess.stdout.on('data', (data) => {
     console.log(`Backend: ${data}`);
   });
@@ -872,7 +872,7 @@ All schemas work with both SQLite and PostgreSQL:
 
 #### Data Protection
 - **In Transit**: TLS 1.3 for all network communications
-- **At Rest**: 
+- **At Rest**:
   - SQLCipher for SQLite encryption (standalone mode)
   - PostgreSQL encryption at rest (cloud mode)
 - **Sensitive Data**: Additional access controls for HIV/GBV/Mental Health records
@@ -885,7 +885,7 @@ class TimeStampedModel(models.Model):
     updated_at = models.DateTimeField(auto_now=True)
     created_by = models.ForeignKey(User, related_name='+', null=True)
     updated_by = models.ForeignKey(User, related_name='+', null=True)
-    
+
     class Meta:
         abstract = True
 ```
@@ -991,7 +991,7 @@ class TestPatientModel(TestCase):
             gender="M"
         )
         assert patient.mrn.startswith("MRN")
-        
+
     def test_sensitive_patient_access(self):
         """Test sensitive patient record permissions."""
         pass
@@ -1072,7 +1072,7 @@ Cloud:
 
 #### Monitoring
 - **Standalone**: Local logs + file-based monitoring
-- **Cloud**: 
+- **Cloud**:
   - Prometheus metrics
   - Grafana dashboards
   - Loki for log aggregation
@@ -1311,6 +1311,6 @@ For support, please contact: [support email or link]
 
 ---
 
-**Last Updated**: December 27, 2025  
-**Version**: 0.1.0  
+**Last Updated**: December 27, 2025
+**Version**: 0.1.0
 **Status**: Phase 0 - Initial Development

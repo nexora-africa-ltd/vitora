@@ -2,6 +2,7 @@
 Management command to create a superuser for Vitora HMIS.
 Used for initial setup and admin access.
 """
+
 from django.contrib.auth import get_user_model
 from django.core.management.base import BaseCommand
 from django.db import IntegrityError

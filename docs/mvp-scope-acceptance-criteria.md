@@ -1,9 +1,9 @@
 # Sprint 0.1 Task 3: MVP Scope and Acceptance Criteria
 
-**Document Version**: 1.0  
-**Date**: December 27, 2025  
-**Status**: APPROVED  
-**Sprint**: 0.1 (Weeks 1-2)  
+**Document Version**: 1.0
+**Date**: December 27, 2025
+**Status**: APPROVED
+**Sprint**: 0.1 (Weeks 1-2)
 **Phase**: Phase 0 - Inception & Readiness
 
 ---
@@ -315,8 +315,8 @@ These are desirable but not required for MVP acceptance:
 ### Epic 1: Patient Management
 
 #### US-1.1: Register New Patient
-**As a** clinic receptionist  
-**I want to** register a new patient in the system  
+**As a** clinic receptionist
+**I want to** register a new patient in the system
 **So that** I can track their medical records
 
 **Acceptance Criteria**:
@@ -326,8 +326,8 @@ These are desirable but not required for MVP acceptance:
 - Can record consent
 
 #### US-1.2: Search for Existing Patient
-**As a** clinic staff member  
-**I want to** search for an existing patient  
+**As a** clinic staff member
+**I want to** search for an existing patient
 **So that** I can access their records quickly
 
 **Acceptance Criteria**:
@@ -336,8 +336,8 @@ These are desirable but not required for MVP acceptance:
 - Can click result to view patient details
 
 #### US-1.3: View Patient Details
-**As a** clinician  
-**I want to** view a patient's complete information  
+**As a** clinician
+**I want to** view a patient's complete information
 **So that** I can provide informed care
 
 **Acceptance Criteria**:
@@ -348,8 +348,8 @@ These are desirable but not required for MVP acceptance:
 ### Epic 2: Encounter Management
 
 #### US-2.1: Record Patient Vitals
-**As a** nurse  
-**I want to** record patient vitals during consultation  
+**As a** nurse
+**I want to** record patient vitals during consultation
 **So that** the doctor has current health indicators
 
 **Acceptance Criteria**:
@@ -359,8 +359,8 @@ These are desirable but not required for MVP acceptance:
 - BMI is auto-calculated
 
 #### US-2.2: Document Clinical Encounter
-**As a** doctor  
-**I want to** document a patient consultation  
+**As a** doctor
+**I want to** document a patient consultation
 **So that** there's a record of the visit
 
 **Acceptance Criteria**:
@@ -370,8 +370,8 @@ These are desirable but not required for MVP acceptance:
 - Encounter is linked to patient
 
 #### US-2.3: Review Encounter History
-**As a** clinician  
-**I want to** view a patient's past encounters  
+**As a** clinician
+**I want to** view a patient's past encounters
 **So that** I can understand their medical history
 
 **Acceptance Criteria**:
@@ -382,8 +382,8 @@ These are desirable but not required for MVP acceptance:
 ### Epic 3: Offline Operation
 
 #### US-3.1: Work Without Internet
-**As a** rural clinic staff member  
-**I want to** use the system without internet  
+**As a** rural clinic staff member
+**I want to** use the system without internet
 **So that** I can continue working during outages
 
 **Acceptance Criteria**:
@@ -480,28 +480,28 @@ For the Phase 0 demo to stakeholders, the following scenarios will be demonstrat
 ## MVP Out-of-Scope Decisions
 
 ### Why No Cloud Sync in Phase 0?
-**Decision**: Focus on proving offline-first architecture first  
-**Rationale**: 
+**Decision**: Focus on proving offline-first architecture first
+**Rationale**:
 - Sync logic is complex and requires conflict resolution
 - Core offline functionality must be rock-solid before adding sync
 - Phase 0 is about proving the concept, Phase 1 adds sync
 
 ### Why No Mobile App in Phase 0?
-**Decision**: Desktop prototype only  
+**Decision**: Desktop prototype only
 **Rationale**:
 - Desktop app proves the architecture
 - Mobile app can reuse backend APIs (Phase 1)
 - Focus resources on getting core functionality right
 
 ### Why No Billing/Pharmacy in Phase 0?
-**Decision**: Patient + Encounters only  
+**Decision**: Patient + Encounters only
 **Rationale**:
 - MVP should prove core clinical workflow
 - Financial modules add complexity
 - Phase 1 will add these incrementally
 
 ### Why Single User in Phase 0?
-**Decision**: Single admin user, no RBAC  
+**Decision**: Single admin user, no RBAC
 **Rationale**:
 - Multi-user adds complexity (session management, permissions)
 - Phase 0 is about proving technical feasibility
@@ -678,7 +678,7 @@ The Phase 0 MVP is considered DONE when:
 
 ---
 
-**Document Status**: APPROVED  
-**Next Action**: Begin Sprint 0.1 Task 4 (GitHub repository setup)  
-**Document Owner**: Engineering Lead  
+**Document Status**: APPROVED
+**Next Action**: Begin Sprint 0.1 Task 4 (GitHub repository setup)
+**Document Owner**: Engineering Lead
 **Last Updated**: December 27, 2025

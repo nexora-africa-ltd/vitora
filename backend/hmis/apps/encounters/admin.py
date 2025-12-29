@@ -4,13 +4,7 @@ Django admin configuration for encounters app.
 
 from django.contrib import admin
 
-from .models import (
-    Diagnosis,
-    Encounter,
-    ICD10Code,
-    TreatmentPlan,
-    TreatmentPlanTemplate,
-)
+from .models import Diagnosis, Encounter, ICD10Code, TreatmentPlan, TreatmentPlanTemplate
 
 
 class DiagnosisInline(admin.TabularInline):

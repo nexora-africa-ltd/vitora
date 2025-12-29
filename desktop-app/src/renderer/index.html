@@ -18,28 +18,28 @@
         <h1><svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="#ee44a7" stroke-width="0.75" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-heart-pulse-icon lucide-heart-pulse"><path d="M2 9.5a5.5 5.5 0 0 1 9.591-3.676.56.56 0 0 0 .818 0A5.49 5.49 0 0 1 22 9.5c0 2.29-1.5 4-3 5.5l-5.492 5.313a2 2 0 0 1-3 .019L5 15c-1.5-1.5-3-3.2-3-5.5"/><path d="M3.22 13H9.5l.5-1 2 4.5 2-7 1.5 3.5h5.27"/></svg> Vitora HMIS</h1>
         <p class="subtitle">Reliable Healthcare, Anywhere</p>
       </div>
-      
+
       <form id="login-form">
         <div class="form-group">
           <label for="login-username">Username</label>
-          <input type="text" id="login-username" name="username" required 
+          <input type="text" id="login-username" name="username" required
                  placeholder="Enter your username" autocomplete="username">
         </div>
-        
+
         <div class="form-group">
           <label for="login-password">Password</label>
-          <input type="password" id="login-password" name="password" required 
+          <input type="password" id="login-password" name="password" required
                  placeholder="Enter your password" autocomplete="current-password">
         </div>
-        
+
         <div id="login-error" class="login-error" style="display: none;"></div>
-        
+
         <button type="submit" class="btn btn-primary btn-block" id="login-btn">
           <span id="login-btn-text">Sign In</span>
           <span id="login-spinner" class="spinner" style="display: none;"></span>
         </button>
       </form>
-      
+
       <div class="login-footer">
         <p>Kenya Data Protection Act 2019 Compliant</p>
       </div>
@@ -83,23 +83,23 @@
     <!-- Patient Registration Form -->
     <div id="register-tab" class="tab-content active">
       <h2>Patient Registration</h2>
-      
+
       <form id="patient-form">
         <!-- Personal Information Section -->
         <fieldset class="form-section">
           <legend>Personal Information</legend>
-          
+
           <div class="form-row">
             <div class="form-group">
               <label for="first-name">First Name *</label>
               <input type="text" id="first-name" name="first_name" required>
             </div>
-            
+
             <div class="form-group">
               <label for="middle-name">Middle Name</label>
               <input type="text" id="middle-name" name="middle_name">
             </div>
-            
+
             <div class="form-group">
               <label for="last-name">Last Name *</label>
               <input type="text" id="last-name" name="last_name" required>
@@ -111,7 +111,7 @@
               <label for="date-of-birth">Date of Birth *</label>
               <input type="date" id="date-of-birth" name="date_of_birth" required max="">
             </div>
-            
+
             <div class="form-group">
               <label for="gender">Gender *</label>
               <select id="gender" name="gender" required>
@@ -121,7 +121,7 @@
                 <option value="O">Other</option>
               </select>
             </div>
-            
+
             <div class="form-group">
               <label for="national-id">National ID</label>
               <input type="text" id="national-id" name="national_id">
@@ -133,7 +133,7 @@
               <label for="phone-number">Phone Number</label>
               <input type="tel" id="phone-number" name="phone_number" placeholder="+254712345678">
             </div>
-            
+
             <div class="form-group">
               <label for="email">Email</label>
               <input type="email" id="email" name="email" placeholder="patient@example.com">
@@ -144,7 +144,7 @@
         <!-- Location Section - Kenya Administrative Hierarchy -->
         <fieldset class="form-section">
           <legend>Location</legend>
-          
+
           <div class="form-row">
             <div class="form-group">
               <label for="county">County *</label>
@@ -152,7 +152,7 @@
                 <option value="">Select County...</option>
               </select>
             </div>
-            
+
             <div class="form-group">
               <label for="sub-county">Sub-County *</label>
               <select id="sub-county" name="sub_county" required disabled>
@@ -168,7 +168,7 @@
                 <option value="">Select Ward (Optional)...</option>
               </select>
             </div>
-            
+
             <div class="form-group">
               <label for="village">Village/Estate</label>
               <input type="text" id="village" name="village" placeholder="Enter village or estate name">
@@ -184,7 +184,7 @@
         <!-- Referral Source Section -->
         <fieldset class="form-section">
           <legend>Referral Information</legend>
-          
+
           <div class="form-row">
             <div class="form-group">
               <label for="referral-source">Referral Source</label>
@@ -194,16 +194,16 @@
                 <option value="other_facility">Other Facility</option>
               </select>
             </div>
-            
+
             <div class="form-group">
               <!-- Placeholder to maintain grid alignment -->
             </div>
           </div>
-          
+
           <div class="form-row" id="referred-from-facility-group" style="display: none;">
             <div class="form-group">
               <label for="referred-from-facility">Referred From *</label>
-              <input type="text" id="referred-from-facility" name="referred_from_facility" 
+              <input type="text" id="referred-from-facility" name="referred_from_facility"
                      placeholder="Name of referring facility">
             </div>
           </div>
@@ -212,20 +212,20 @@
         <!-- Emergency Contact Section -->
         <fieldset class="form-section" id="emergency-contact-section">
           <legend>Emergency Contact</legend>
-          
+
           <div class="form-row">
             <div class="form-group">
               <label for="emergency-contact-name">Contact Name</label>
-              <input type="text" id="emergency-contact-name" name="emergency_contact_name" 
+              <input type="text" id="emergency-contact-name" name="emergency_contact_name"
                      placeholder="Full name of emergency contact">
             </div>
-            
+
             <div class="form-group">
               <label for="emergency-contact-phone">Contact Phone</label>
-              <input type="tel" id="emergency-contact-phone" name="emergency_contact_phone" 
+              <input type="tel" id="emergency-contact-phone" name="emergency_contact_phone"
                      placeholder="+254712345678">
             </div>
-            
+
             <div class="form-group">
               <label for="emergency-contact-relationship">Relationship</label>
               <select id="emergency-contact-relationship" name="emergency_contact_relationship">
@@ -257,7 +257,7 @@
     <!-- Patient List -->
     <div id="list-tab" class="tab-content">
       <h2>Patient List</h2>
-      
+
       <div class="search-bar">
         <input type="text" id="search-input" placeholder="Search by name, MRN, or phone...">
         <button class="btn btn-primary" id="search-btn">Search</button>
@@ -271,7 +271,7 @@
     <!-- New Encounter Tab -->
     <div id="encounter-tab" class="tab-content">
       <h2>New Encounter</h2>
-      
+
       <!-- Patient Selection -->
       <div class="patient-selection">
         <div class="form-group">
@@ -294,7 +294,7 @@
       <!-- Encounter Form -->
       <form id="encounter-form" style="display: none;">
         <h3>Encounter Details</h3>
-        
+
         <div class="form-row">
           <div class="form-group">
             <label for="encounter-type">Encounter Type *</label>
@@ -305,7 +305,7 @@
               <option value="INPATIENT">Inpatient</option>
             </select>
           </div>
-          
+
           <div class="form-group">
             <label for="encounter-date">Date *</label>
             <input type="date" id="encounter-date" name="encounter_date" required>
@@ -314,7 +314,7 @@
 
         <div class="form-group">
           <label for="chief-complaint">Chief Complaint *</label>
-          <textarea id="chief-complaint" name="chief_complaint" rows="3" required 
+          <textarea id="chief-complaint" name="chief_complaint" rows="3" required
                     placeholder="Describe the patient's main complaint..."></textarea>
         </div>
 
@@ -325,17 +325,17 @@
               <label for="temperature">Temperature (°C)</label>
               <input type="number" id="temperature" name="temperature" step="0.1" min="30" max="45" placeholder="37.0">
             </div>
-            
+
             <div class="form-group">
               <label for="pulse">Pulse (bpm)</label>
               <input type="number" id="pulse" name="pulse" min="30" max="200" placeholder="75">
             </div>
-            
+
             <div class="form-group">
               <label for="respiratory-rate">Respiratory Rate</label>
               <input type="number" id="respiratory-rate" name="respiratory_rate" min="5" max="60" placeholder="16">
             </div>
-            
+
             <div class="form-group">
               <label for="spo2">SpO2 (%)</label>
               <input type="number" id="spo2" name="spo2" min="0" max="100" placeholder="98">
@@ -347,12 +347,12 @@
               <label for="blood-pressure">Blood Pressure (mmHg)</label>
               <input type="text" id="blood-pressure" name="blood_pressure" placeholder="120/80">
             </div>
-            
+
             <div class="form-group">
               <label for="weight">Weight (kg)</label>
               <input type="number" id="weight" name="weight" step="0.1" min="0" max="500" placeholder="70.0">
             </div>
-            
+
             <div class="form-group">
               <label for="height">Height (cm)</label>
               <input type="number" id="height" name="height" step="0.1" min="0" max="300" placeholder="170.0">
@@ -372,13 +372,13 @@
           <div class="form-row">
             <div class="form-group">
               <label for="encounter-allergies">Allergies</label>
-              <textarea id="encounter-allergies" name="allergies" rows="2" 
+              <textarea id="encounter-allergies" name="allergies" rows="2"
                         placeholder="Known allergies (medications, food, environmental)"></textarea>
             </div>
-            
+
             <div class="form-group">
               <label for="encounter-chronic-conditions">Chronic Conditions</label>
-              <textarea id="encounter-chronic-conditions" name="chronic_conditions" rows="2" 
+              <textarea id="encounter-chronic-conditions" name="chronic_conditions" rows="2"
                         placeholder="Chronic conditions (e.g., Diabetes, Hypertension, Asthma)"></textarea>
             </div>
           </div>
@@ -386,13 +386,13 @@
           <div class="form-row">
             <div class="form-group">
               <label for="encounter-current-medications">Current Medications</label>
-              <textarea id="encounter-current-medications" name="current_medications" rows="2" 
+              <textarea id="encounter-current-medications" name="current_medications" rows="2"
                         placeholder="Current medications with dosage"></textarea>
             </div>
-            
+
             <div class="form-group">
               <label for="encounter-past-surgeries">Past Surgeries</label>
-              <textarea id="encounter-past-surgeries" name="past_surgeries" rows="2" 
+              <textarea id="encounter-past-surgeries" name="past_surgeries" rows="2"
                         placeholder="Previous surgeries with dates"></textarea>
             </div>
           </div>
@@ -400,13 +400,13 @@
           <div class="form-row">
             <div class="form-group">
               <label for="encounter-family-history">Family History</label>
-              <textarea id="encounter-family-history" name="family_history" rows="2" 
+              <textarea id="encounter-family-history" name="family_history" rows="2"
                         placeholder="Relevant family medical history"></textarea>
             </div>
-            
+
             <div class="form-group">
               <label for="encounter-social-history">Social History</label>
-              <textarea id="encounter-social-history" name="social_history" rows="2" 
+              <textarea id="encounter-social-history" name="social_history" rows="2"
                         placeholder="Smoking, alcohol use, occupation, lifestyle"></textarea>
             </div>
           </div>

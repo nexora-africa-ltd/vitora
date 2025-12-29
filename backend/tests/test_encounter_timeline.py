@@ -12,7 +12,6 @@ Tests cover:
 from datetime import date, timedelta
 
 import pytest
-from django.core.exceptions import ValidationError
 
 pytestmark = pytest.mark.django_db
 
@@ -212,9 +211,7 @@ class TestEncounterTimelineAPI:
         plan = TreatmentPlan.objects.create(
             encounter=sample_encounter, clinical_notes="Rest recommended"
         )
-        Medication.objects.create(
-            treatment_plan=plan, name="Ibuprofen", dosage="400mg"
-        )
+        Medication.objects.create(treatment_plan=plan, name="Ibuprofen", dosage="400mg")
 
         # Get encounter detail
         response = authenticated_client.get(f"/api/encounters/{sample_encounter.id}/")
@@ -259,9 +256,9 @@ class TestPatientClinicalSummary:
             chief_complaint="Latest visit",
         )
 
-        last_encounter = Encounter.objects.filter(patient=sample_patient).order_by(
-            "-encounter_date"
-        ).first()
+        last_encounter = (
+            Encounter.objects.filter(patient=sample_patient).order_by("-encounter_date").first()
+        )
 
         assert last_encounter.id == latest.id
         assert last_encounter.encounter_date == date.today()

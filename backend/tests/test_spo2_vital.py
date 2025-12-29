@@ -109,10 +109,24 @@ class TestSpO2VitalSign:
 class TestSpO2CriticalAlerts:
     """Test suite for SpO2 critical alerts."""
 
-    def test_spo2_below_95_is_critical(self, sample_patient):
-        """Test that SpO2 below 95% triggers critical alert."""
+    def test_spo2_below_90_is_critical(self, sample_patient):
+        """Test that SpO2 below 90% triggers critical alert (urgent evaluation needed)."""
         from hmis.apps.encounters.models import Encounter
 
+        encounter = Encounter(
+            patient=sample_patient,
+            encounter_type="OPD",
+            chief_complaint="Breathing difficulty",
+            spo2=88,  # <90% is critical for all ages
+        )
+
+        assert encounter.has_critical_vitals() is True
+
+    def test_spo2_90_to_94_is_warning_not_critical(self, sample_patient):
+        """Test that SpO2 90-94% is warning (mildly low), not critical."""
+        from hmis.apps.encounters.models import Encounter
+
+        # 92% should be warning (mildly low), not critical
         encounter = Encounter(
             patient=sample_patient,
             encounter_type="OPD",
@@ -120,7 +134,10 @@ class TestSpO2CriticalAlerts:
             spo2=92,
         )
 
-        assert encounter.has_critical_vitals() is True
+        # Should NOT be critical (critical is <90%)
+        assert encounter.has_critical_vitals() is False
+        # But should have warning status
+        assert encounter.get_vital_status("spo2") == "warning"
 
     def test_spo2_95_and_above_is_not_critical(self, sample_patient):
         """Test that SpO2 >= 95% is not critical."""
@@ -139,18 +156,19 @@ class TestSpO2CriticalAlerts:
         assert encounter.has_critical_vitals() is False
 
     def test_spo2_alert_message(self, sample_patient):
-        """Test SpO2 alert message content."""
+        """Test SpO2 alert message content for critical level."""
         from hmis.apps.encounters.models import Encounter
 
         encounter = Encounter(
             patient=sample_patient,
             encounter_type="OPD",
             chief_complaint="Respiratory distress",
-            spo2=88,
+            spo2=88,  # Critical level (<90%)
         )
 
         alerts = encounter.get_alerts()
-        assert "Low oxygen saturation" in alerts or "hypoxemia" in alerts.lower()
+        # Should show critical hypoxemia message
+        assert "hypoxemia" in alerts.lower() or "spo2" in alerts.lower()
 
     def test_spo2_severe_hypoxemia_alert(self, sample_patient):
         """Test severe hypoxemia alert for very low SpO2."""

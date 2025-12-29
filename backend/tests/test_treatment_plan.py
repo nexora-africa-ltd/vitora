@@ -10,7 +10,6 @@ Tests cover:
 """
 
 from datetime import date, timedelta
-from decimal import Decimal
 
 import pytest
 from django.core.exceptions import ValidationError
@@ -258,7 +257,9 @@ class TestTreatmentPlanAPI:
             follow_up_instructions="Come back in a week",
         )
 
-        response = authenticated_client.get(f"/api/encounters/{sample_encounter.id}/treatment-plan/")
+        response = authenticated_client.get(
+            f"/api/encounters/{sample_encounter.id}/treatment-plan/"
+        )
 
         assert response.status_code == 200
         assert "clinical_notes" in response.data
@@ -353,7 +354,11 @@ class TestTreatmentPlanAPI:
 
         assert response.status_code == 200
         # Handle paginated response
-        results = response.data.get("results", response.data) if isinstance(response.data, dict) else response.data
+        results = (
+            response.data.get("results", response.data)
+            if isinstance(response.data, dict)
+            else response.data
+        )
         assert len(results) == 2
 
 

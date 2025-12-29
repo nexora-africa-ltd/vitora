@@ -1,7 +1,7 @@
 # Sprint 0.5: Offline Sync Logic - Deliverables
 
-**Sprint Duration**: Weeks 9-10  
-**Status**: ✅ COMPLETED  
+**Sprint Duration**: Weeks 9-10
+**Status**: ✅ COMPLETED
 **Date**: December 28, 2025
 
 ---
@@ -398,7 +398,7 @@ This sprint strictly followed TDD:
 
 ---
 
-**Document Status**: APPROVED  
-**Sprint Status**: ✅ COMPLETED  
-**Document Owner**: Engineering Lead  
+**Document Status**: APPROVED
+**Sprint Status**: ✅ COMPLETED
+**Document Owner**: Engineering Lead
 **Last Updated**: December 28, 2025

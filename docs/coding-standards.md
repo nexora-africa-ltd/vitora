@@ -1,8 +1,8 @@
 # Coding Standards & Review Process for Vitora HMIS
 
-**Version**: 1.0  
-**Last Updated**: December 27, 2025  
-**Status**: Active  
+**Version**: 1.0
+**Last Updated**: December 27, 2025
+**Status**: Active
 **Enforcement**: Required for all contributions
 
 ---
@@ -57,7 +57,7 @@ Standards are enforced through:
 
 ### 1. Code for Humans First
 
-> "Programs must be written for people to read, and only incidentally for machines to execute."  
+> "Programs must be written for people to read, and only incidentally for machines to execute."
 > — Harold Abelson
 
 **Guidelines**:
@@ -76,11 +76,11 @@ def proc_pt(p, t):
 def count_patients_registered_after_date(patients_queryset, cutoff_date):
     """
     Count patients registered after a specific date.
-    
+
     Args:
         patients_queryset: QuerySet of Patient objects
         cutoff_date: Date to filter by (inclusive)
-    
+
     Returns:
         int: Count of patients registered after cutoff_date
     """
@@ -121,10 +121,10 @@ def validate_patient_required_fields(data):
     """Validate required fields for patient creation/update."""
     required_fields = ['first_name', 'last_name', 'date_of_birth']
     missing_fields = [
-        field for field in required_fields 
+        field for field in required_fields
         if not data.get(field)
     ]
-    
+
     if missing_fields:
         raise ValidationError(
             f"Required fields missing: {', '.join(missing_fields)}"
@@ -230,7 +230,7 @@ class Patient(models.Model):
     def save(self, *args, **kwargs):
         self._generate_mrn_if_needed()
         super().save(*args, **kwargs)
-    
+
     def _generate_mrn_if_needed(self):
         """Private method - not part of public API."""
         if not self.mrn:
@@ -280,11 +280,11 @@ from django.utils.translation import gettext_lazy as _
 class Patient(models.Model):
     """
     Patient master record following Kenya HMIS standards.
-    
+
     Stores patient demographics, identifiers, and consent information.
     All PII fields are encrypted at rest (see Security Standards).
     """
-    
+
     # Primary Identifier
     mrn = models.CharField(
         _("Medical Record Number"),
@@ -293,7 +293,7 @@ class Patient(models.Model):
         db_index=True,
         help_text="Auto-generated unique identifier: KE-{SITE}-{DATE}-{SEQ}"
     )
-    
+
     # Demographics
     first_name = models.CharField(
         _("First Name"),
@@ -309,7 +309,7 @@ class Patient(models.Model):
         _("Date of Birth"),
         db_index=True
     )
-    
+
     GENDER_CHOICES = [
         ('M', _('Male')),
         ('F', _('Female')),
@@ -321,7 +321,7 @@ class Patient(models.Model):
         max_length=1,
         choices=GENDER_CHOICES
     )
-    
+
     # Kenya-specific identifiers
     national_id = models.CharField(
         _("National ID"),
@@ -331,14 +331,14 @@ class Patient(models.Model):
         db_index=True,
         help_text="Kenyan National ID number"
     )
-    
+
     # Privacy & Consent
     is_sensitive = models.BooleanField(
         _("Sensitive Case"),
         default=False,
         help_text="HIV/GBV/VIP - requires additional access controls"
     )
-    
+
     # Audit fields
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
@@ -347,7 +347,7 @@ class Patient(models.Model):
         on_delete=models.PROTECT,
         related_name='patients_created'
     )
-    
+
     class Meta:
         verbose_name = _("Patient")
         verbose_name_plural = _("Patients")
@@ -356,20 +356,20 @@ class Patient(models.Model):
             models.Index(fields=['last_name', 'first_name']),
             models.Index(fields=['date_of_birth']),
         ]
-    
+
     def __str__(self) -> str:
         return f"{self.first_name} {self.last_name} ({self.mrn})"
-    
+
     @property
     def age(self) -> int:
         """Calculate patient age in years."""
         from datetime import date
         today = date.today()
         return today.year - self.date_of_birth.year - (
-            (today.month, today.day) < 
+            (today.month, today.day) <
             (self.date_of_birth.month, self.date_of_birth.day)
         )
-    
+
     def save(self, *args, **kwargs):
         """Override save to auto-generate MRN."""
         if not self.mrn:
@@ -393,7 +393,7 @@ from django_filters.rest_framework import DjangoFilterBackend
 class PatientViewSet(viewsets.ModelViewSet):
     """
     API endpoints for patient management.
-    
+
     Endpoints:
     - GET /api/v1/patients/ - List patients (paginated)
     - POST /api/v1/patients/ - Create patient
@@ -402,7 +402,7 @@ class PatientViewSet(viewsets.ModelViewSet):
     - DELETE /api/v1/patients/{id}/ - Delete patient
     - GET /api/v1/patients/search/ - Search patients (custom action)
     """
-    
+
     queryset = Patient.objects.select_related('facility', 'created_by')
     serializer_class = PatientSerializer
     permission_classes = [permissions.IsAuthenticated]
@@ -415,37 +415,37 @@ class PatientViewSet(viewsets.ModelViewSet):
     search_fields = ['first_name', 'last_name', 'mrn', 'national_id']
     ordering_fields = ['created_at', 'last_name', 'date_of_birth']
     ordering = ['-created_at']
-    
+
     def get_queryset(self):
         """Filter queryset based on user permissions."""
         queryset = super().get_queryset()
-        
+
         # Non-admin users can only see their facility's patients
         if not self.request.user.is_superuser:
             queryset = queryset.filter(
                 facility=self.request.user.profile.facility
             )
-        
+
         # Sensitive cases require special permission
         if not self.request.user.has_perm('hmis.view_sensitive_patient'):
             queryset = queryset.filter(is_sensitive=False)
-        
+
         return queryset
-    
+
     @action(detail=False, methods=['get'])
     def search(self, request):
         """
         Advanced patient search.
-        
+
         Query params:
         - q: Search query (name, MRN, national ID)
         - age_min: Minimum age
         - age_max: Maximum age
         """
         queryset = self.get_queryset()
-        
+
         # Search logic...
-        
+
         page = self.paginate_queryset(queryset)
         serializer = self.get_serializer(page, many=True)
         return self.get_paginated_response(serializer.data)
@@ -459,13 +459,13 @@ from hmis.models import Patient
 
 class PatientSerializer(serializers.ModelSerializer):
     """Serializer for Patient model."""
-    
+
     age = serializers.IntegerField(read_only=True)
     created_by_name = serializers.CharField(
         source='created_by.get_full_name',
         read_only=True
     )
-    
+
     class Meta:
         model = Patient
         fields = [
@@ -476,7 +476,7 @@ class PatientSerializer(serializers.ModelSerializer):
             'created_by_name'
         ]
         read_only_fields = ['id', 'mrn', 'created_at', 'updated_at']
-    
+
     def validate_national_id(self, value):
         """Validate Kenyan National ID format."""
         if value and len(value) not in [7, 8]:
@@ -484,7 +484,7 @@ class PatientSerializer(serializers.ModelSerializer):
                 "Kenyan National ID must be 7 or 8 digits"
             )
         return value
-    
+
     def validate_date_of_birth(self, value):
         """Ensure date of birth is not in the future."""
         from datetime import date
@@ -493,7 +493,7 @@ class PatientSerializer(serializers.ModelSerializer):
                 "Date of birth cannot be in the future"
             )
         return value
-    
+
     def create(self, validated_data):
         """Create patient with audit trail."""
         validated_data['created_by'] = self.context['request'].user
@@ -618,7 +618,7 @@ import { Patient, PatientCreateData } from '../types/patient';
 
 export class PatientService {
   private baseUrl = '/api/v1/patients';
-  
+
   async listPatients(params?: {
     search?: string;
     page?: number;
@@ -629,25 +629,25 @@ export class PatientService {
     const response = await fetch(
       `${this.baseUrl}/?${queryParams}`
     );
-    
+
     if (!response.ok) {
       throw new Error('Failed to fetch patients');
     }
-    
+
     return response.json();
   }
-  
+
   async createPatient(data: PatientCreateData): Promise<Patient> {
     const response = await fetch(this.baseUrl, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(data),
     });
-    
+
     if (!response.ok) {
       throw new Error('Failed to create patient');
     }
-    
+
     return response.json();
   }
 }
@@ -675,19 +675,19 @@ export const PatientList: React.FC<PatientListProps> = ({
 }) => {
   const { patients, loading, error, fetchPatients } = usePatients();
   const [searchQuery, setSearchQuery] = useState('');
-  
+
   useEffect(() => {
     fetchPatients({ facilityId, search: searchQuery });
   }, [facilityId, searchQuery]);
-  
+
   if (loading) {
     return <div className={styles.loading}>Loading patients...</div>;
   }
-  
+
   if (error) {
     return <div className={styles.error}>Error: {error.message}</div>;
   }
-  
+
   return (
     <div className={styles.container}>
       <input
@@ -697,7 +697,7 @@ export const PatientList: React.FC<PatientListProps> = ({
         onChange={(e) => setSearchQuery(e.target.value)}
         className={styles.searchInput}
       />
-      
+
       <div className={styles.list}>
         {patients.map((patient) => (
           <div
@@ -731,16 +731,16 @@ export function usePatients() {
   const [patients, setPatients] = useState<Patient[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<Error | null>(null);
-  
+
   const patientService = new PatientService();
-  
+
   const fetchPatients = useCallback(async (params?: {
     facilityId?: number;
     search?: string;
   }) => {
     setLoading(true);
     setError(null);
-    
+
     try {
       const response = await patientService.listPatients(params);
       setPatients(response.results);
@@ -750,7 +750,7 @@ export function usePatients() {
       setLoading(false);
     }
   }, []);
-  
+
   return { patients, loading, error, fetchPatients };
 }
 ```
@@ -774,19 +774,19 @@ from django.db import migrations, models
 class Migration(migrations.Migration):
     """
     Add patient consent tracking for data sharing.
-    
+
     This migration adds a new PatientConsent model to track:
     - Data sharing consent
     - Research participation consent
     - Marketing consent
-    
+
     Rollback: Safe to rollback, no data loss.
     """
-    
+
     dependencies = [
         ('hmis', '0014_previous_migration'),
     ]
-    
+
     operations = [
         migrations.CreateModel(
             name='PatientConsent',
@@ -855,7 +855,7 @@ active_patients = Patient.objects.filter(is_active=True)
 ```python
 class Patient(models.Model):
     ...
-    
+
     class Meta:
         indexes = [
             models.Index(fields=['last_name', 'first_name']),  # Search by name
@@ -967,17 +967,17 @@ from rest_framework import permissions
 class CanViewSensitivePatient(permissions.BasePermission):
     """
     Permission to view sensitive patient records.
-    
+
     Requires specific permission and audit log entry.
     """
-    
+
     def has_object_permission(self, request, view, obj):
         if not obj.is_sensitive:
             return True
-        
+
         if not request.user.has_perm('hmis.view_sensitive_patient'):
             return False
-        
+
         # Log sensitive access
         from hmis.models import AuditLog
         AuditLog.objects.create(
@@ -986,7 +986,7 @@ class CanViewSensitivePatient(permissions.BasePermission):
             patient=obj,
             ip_address=request.META.get('REMOTE_ADDR')
         )
-        
+
         return True
 ```
 
@@ -1004,7 +1004,7 @@ class PatientSerializer(serializers.ModelSerializer):
         """Validate Kenyan phone format."""
         validate_kenyan_phone(value)
         return value
-    
+
     def validate(self, data):
         """Cross-field validation."""
         if data.get('national_id'):
@@ -1077,7 +1077,7 @@ class Patient(models.Model):
     # Encrypted fields
     national_id = encrypt(models.CharField(max_length=20, blank=True))
     hiv_status = encrypt(models.CharField(max_length=20, blank=True))
-    
+
     # Audit sensitive access
     is_sensitive = models.BooleanField(default=False)
 ```
@@ -1123,28 +1123,28 @@ def calculate_patient_risk_score(
 ) -> float:
     """
     Calculate patient risk score for sepsis prediction.
-    
+
     Uses multi-factor model combining:
     - Vital signs (temperature, HR, BP, RR)
     - Lab values (WBC, lactate, procalcitonin)
     - Demographics (age, comorbidities)
-    
+
     Args:
         patient: Patient object with loaded vitals and labs
         include_demographics: Whether to factor in age/comorbidities
-    
+
     Returns:
         float: Risk score between 0.0 (low risk) and 1.0 (high risk)
-    
+
     Raises:
         ValueError: If patient has no recent vitals
-        
+
     Examples:
         >>> patient = Patient.objects.get(mrn="KE-NAI01-20260115-0001")
         >>> risk = calculate_patient_risk_score(patient)
         >>> print(f"Risk: {risk:.2%}")
         Risk: 15.30%
-    
+
     References:
         - Sepsis-3 criteria (JAMA 2016)
         - SOFA score calculation
@@ -1478,13 +1478,13 @@ repos:
     rev: 23.12.0
     hooks:
       - id: black
-  
+
   - repo: https://github.com/charliermarsh/ruff-pre-commit
     rev: v0.1.9
     hooks:
       - id: ruff
         args: [--fix]
-  
+
   - repo: https://github.com/pre-commit/mirrors-mypy
     rev: v1.8.0
     hooks:
@@ -1534,7 +1534,7 @@ from untyped_library import some_function
 
 ---
 
-**Document Owner**: Engineering Lead  
-**Last Review**: December 27, 2025  
-**Next Review**: March 1, 2026  
+**Document Owner**: Engineering Lead
+**Last Review**: December 27, 2025
+**Next Review**: March 1, 2026
 **Questions?**: Contact @engineering-lead or post in #dev-standards Slack channel

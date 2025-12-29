@@ -1,9 +1,9 @@
 /**
  * Vitora HMIS Desktop - Renderer Process
- * 
+ *
  * This file handles the UI logic for authentication, patient registration,
  * encounter management, offline status detection, and theme management.
- * 
+ *
  * Sprint 0.6: Added authentication flow and dark mode
  */
 
@@ -19,10 +19,10 @@ function initializeTheme() {
   // Check for saved theme preference or use system preference
   const savedTheme = localStorage.getItem(THEME_KEY);
   const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
-  
+
   const theme = savedTheme || (prefersDark ? 'dark' : 'light');
   setTheme(theme);
-  
+
   // Listen for system theme changes
   window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', (e) => {
     if (!localStorage.getItem(THEME_KEY)) {
@@ -36,13 +36,13 @@ function initializeTheme() {
  */
 function setTheme(theme) {
   const body = document.body;
-  
+
   if (theme === 'dark') {
     body.classList.add('dark-mode');
   } else {
     body.classList.remove('dark-mode');
   }
-  
+
   localStorage.setItem(THEME_KEY, theme);
 }
 
@@ -94,15 +94,15 @@ const currentUserSpan = document.getElementById('current-user');
 async function initializeApp() {
   // Try to restore session from stored tokens
   const storedTokens = await window.electronAPI.getStoredTokens();
-  
+
   if (storedTokens && storedTokens.accessToken) {
     authState.accessToken = storedTokens.accessToken;
     authState.refreshToken = storedTokens.refreshToken;
     authState.user = storedTokens.user;
-    
+
     // Verify the token is still valid
     const isValid = await verifyToken(storedTokens.accessToken);
-    
+
     if (isValid) {
       authState.isAuthenticated = true;
       showMainApp();
@@ -117,7 +117,7 @@ async function initializeApp() {
       }
     }
   }
-  
+
   // No valid session, show login
   showLoginScreen();
 }
@@ -139,10 +139,10 @@ async function verifyToken(token) {
  */
 async function refreshAccessToken(refreshToken) {
   try {
-    const response = await window.electronAPI.apiRequest('POST', '/api/token/refresh/', { 
-      refresh: refreshToken 
+    const response = await window.electronAPI.apiRequest('POST', '/api/token/refresh/', {
+      refresh: refreshToken
     });
-    
+
     if (response.success && response.data.access) {
       authState.accessToken = response.data.access;
       await window.electronAPI.storeTokens({
@@ -163,37 +163,37 @@ async function refreshAccessToken(refreshToken) {
  */
 async function handleLogin(e) {
   e.preventDefault();
-  
+
   const username = document.getElementById('login-username').value;
   const password = document.getElementById('login-password').value;
-  
+
   // Show loading state
   setLoginLoading(true);
   hideLoginError();
-  
+
   try {
     const response = await window.electronAPI.apiRequest('POST', '/api/token/', {
       username,
       password
     });
-    
+
     if (response.success && response.data.access) {
       // Store tokens
       authState.accessToken = response.data.access;
       authState.refreshToken = response.data.refresh;
       authState.user = { username };
       authState.isAuthenticated = true;
-      
+
       // Persist tokens
       await window.electronAPI.storeTokens({
         accessToken: response.data.access,
         refreshToken: response.data.refresh,
         user: { username }
       });
-      
+
       // Show main app
       showMainApp();
-      
+
       // Clear login form
       loginForm.reset();
     } else {
@@ -218,10 +218,10 @@ async function handleLogout() {
     refreshToken: null,
     user: null
   };
-  
+
   // Clear stored tokens
   await window.electronAPI.clearTokens();
-  
+
   // Show login screen
   showLoginScreen();
 }
@@ -240,12 +240,12 @@ function showLoginScreen() {
 function showMainApp() {
   loginContainer.style.display = 'none';
   mainContainer.style.display = 'block';
-  
+
   // Update user display
   if (authState.user && authState.user.username) {
     currentUserSpan.textContent = authState.user.username;
   }
-  
+
   // Initialize the app
   initializeMainApp();
 }
@@ -308,15 +308,15 @@ function stopTokenRefreshTimer() {
 // ====================
 function initializeMainApp() {
   startTokenRefreshTimer();
-  
+
   // Update online status
   setTimeout(updateOnlineStatus, 1000);
-  
+
   // Load patients if on list tab
   if (document.getElementById('list-tab').classList.contains('active')) {
     loadPatients();
   }
-  
+
   // Load counties for patient registration form
   if (document.getElementById('register-tab').classList.contains('active')) {
     loadCounties();
@@ -384,17 +384,17 @@ function resetEncounterSelection() {
 document.querySelectorAll('.tab').forEach(tab => {
   tab.addEventListener('click', () => {
     const tabName = tab.dataset.tab;
-    
+
     // Update tab buttons
     document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
     tab.classList.add('active');
-    
+
     // Update tab content
     document.querySelectorAll('.tab-content').forEach(content => {
       content.classList.remove('active');
     });
     document.getElementById(`${tabName}-tab`).classList.add('active');
-    
+
     // Load data for the active tab
     if (tabName === 'list') {
       loadPatients();
@@ -426,10 +426,10 @@ const wardSelect = document.getElementById('ward');
 async function loadCounties() {
   try {
     const response = await window.electronAPI.apiRequest('GET', '/api/locations/counties/');
-    
+
     if (response.success) {
       const counties = response.data.results || response.data || [];
-      
+
       // Clear and populate county dropdown
       countySelect.innerHTML = '<option value="">Select County...</option>';
       counties.forEach(county => {
@@ -452,18 +452,18 @@ async function loadSubCounties(countyId) {
   subCountySelect.disabled = true;
   wardSelect.innerHTML = '<option value="">Select Ward (Optional)...</option>';
   wardSelect.disabled = true;
-  
+
   if (!countyId) {
     subCountySelect.innerHTML = '<option value="">Select Sub-County...</option>';
     return;
   }
-  
+
   try {
     const response = await window.electronAPI.apiRequest('GET', `/api/locations/sub-counties/?county=${countyId}`);
-    
+
     if (response.success) {
       const subCounties = response.data.results || response.data || [];
-      
+
       subCountySelect.innerHTML = '<option value="">Select Sub-County...</option>';
       subCounties.forEach(subCounty => {
         const option = document.createElement('option');
@@ -485,18 +485,18 @@ async function loadSubCounties(countyId) {
 async function loadWards(subCountyId) {
   wardSelect.innerHTML = '<option value="">Loading...</option>';
   wardSelect.disabled = true;
-  
+
   if (!subCountyId) {
     wardSelect.innerHTML = '<option value="">Select Ward (Optional)...</option>';
     return;
   }
-  
+
   try {
     const response = await window.electronAPI.apiRequest('GET', `/api/locations/wards/?sub_county=${subCountyId}`);
-    
+
     if (response.success) {
       const wards = response.data.results || response.data || [];
-      
+
       wardSelect.innerHTML = '<option value="">Select Ward (Optional)...</option>';
       wards.forEach(ward => {
         const option = document.createElement('option');
@@ -552,40 +552,40 @@ const clearBtn = document.getElementById('clear-btn');
  */
 function resetPatientForm() {
   patientForm.reset();
-  
+
   // Reset cascading dropdowns
   subCountySelect.innerHTML = '<option value="">Select Sub-County...</option>';
   subCountySelect.disabled = true;
   wardSelect.innerHTML = '<option value="">Select Ward (Optional)...</option>';
   wardSelect.disabled = true;
-  
+
   // Reset referral source visibility
   referredFromGroup.style.display = 'none';
   referredFromGroup.classList.add('hidden');
-  
+
   // Hide message
   hideMessage(messageDiv);
 }
 
 patientForm.addEventListener('submit', async (e) => {
   e.preventDefault();
-  
+
   submitBtn.disabled = true;
   submitBtn.textContent = 'Registering...';
-  
+
   const formData = new FormData(patientForm);
   const data = Object.fromEntries(formData.entries());
-  
+
   // Remove empty fields
   Object.keys(data).forEach(key => {
     if (data[key] === '') {
       delete data[key];
     }
   });
-  
+
   try {
     const response = await window.electronAPI.apiRequest('POST', '/api/patients/', data);
-    
+
     if (response.success) {
       showMessage('success', `Patient registered successfully! MRN: ${response.data.mrn}`, messageDiv);
       resetPatientForm();
@@ -627,15 +627,15 @@ searchInput.addEventListener('keypress', (e) => {
 
 async function loadPatients(searchQuery = '') {
   patientListDiv.innerHTML = '<p class="loading">Loading patients...</p>';
-  
+
   try {
     let endpoint = '/api/patients/';
     if (searchQuery) {
       endpoint += `?search=${encodeURIComponent(searchQuery)}`;
     }
-    
+
     const response = await window.electronAPI.apiRequest('GET', endpoint);
-    
+
     if (response.success) {
       displayPatients(response.data.results || []);
     } else {
@@ -651,7 +651,7 @@ function displayPatients(patients) {
     patientListDiv.innerHTML = '<p class="no-results">No patients found.</p>';
     return;
   }
-  
+
   const html = patients.map(patient => `
     <div class="patient-card" data-patient-id="${patient.id}">
       <div class="patient-header">
@@ -684,7 +684,7 @@ function displayPatients(patients) {
       </div>
     </div>
   `).join('');
-  
+
   patientListDiv.innerHTML = html;
 }
 
@@ -716,12 +716,12 @@ async function searchPatientsForEncounter(query) {
     patientSearchResults.innerHTML = '<p class="no-results">Enter a name or MRN to search.</p>';
     return;
   }
-  
+
   patientSearchResults.innerHTML = '<p class="loading">Searching...</p>';
-  
+
   try {
     const response = await window.electronAPI.apiRequest('GET', `/api/patients/?search=${encodeURIComponent(query)}`);
-    
+
     if (response.success && response.data.results.length > 0) {
       const html = response.data.results.map(patient => `
         <div class="patient-search-item" onclick="selectPatient(${patient.id}, '${escapeHtml(patient.full_name)}', '${patient.mrn}')">
@@ -742,10 +742,10 @@ async function searchPatientsForEncounter(query) {
 
 function selectPatient(id, name, mrn) {
   selectedPatient = { id, name, mrn };
-  
+
   document.getElementById('selected-patient-name').textContent = name;
   document.getElementById('selected-patient-mrn').textContent = `MRN: ${mrn}`;
-  
+
   patientSearchResults.innerHTML = '';
   patientSearchInput.style.display = 'none';
   patientSearchBtn.style.display = 'none';
@@ -771,15 +771,15 @@ function startEncounter(patientId, patientName, patientMrn) {
   // Switch to encounter tab
   document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
   document.querySelector('[data-tab="encounter"]').classList.add('active');
-  
+
   document.querySelectorAll('.tab-content').forEach(content => {
     content.classList.remove('active');
   });
   document.getElementById('encounter-tab').classList.add('active');
-  
+
   // Select the patient
   selectPatient(patientId, patientName, patientMrn);
-  
+
   // Set today's date
   const today = new Date().toISOString().split('T')[0];
   document.getElementById('encounter-date').value = today;
@@ -1122,11 +1122,11 @@ const bmiCategory = document.getElementById('bmi-category');
 function calculateBMI() {
   const weight = parseFloat(weightInput.value);
   const height = parseFloat(heightInput.value);
-  
+
   if (weight && height && height > 0) {
     const heightInMeters = height / 100;
     const bmi = (weight / (heightInMeters * heightInMeters)).toFixed(1);
-    
+
     bmiValue.textContent = bmi;
     bmiCategory.textContent = getBMICategory(bmi);
     bmiCategory.className = 'bmi-category ' + getBMICategoryClass(bmi);
@@ -1156,15 +1156,15 @@ heightInput.addEventListener('input', calculateBMI);
 // Encounter form submission
 encounterForm.addEventListener('submit', async (e) => {
   e.preventDefault();
-  
+
   if (!selectedPatient) {
     showMessage('error', 'Please select a patient first.', encounterMessageDiv);
     return;
   }
-  
+
   encounterSubmitBtn.disabled = true;
   encounterSubmitBtn.textContent = 'Saving...';
-  
+
   const formData = new FormData(encounterForm);
   const data = Object.fromEntries(formData.entries());
   data.patient = selectedPatient.id;
@@ -1180,7 +1180,7 @@ encounterForm.addEventListener('submit', async (e) => {
     referralSpecialty: referralSpecialtySelect?.value || '',
     referralNotes: referralNotesTextarea?.value || '',
   };
-  
+
   // Remove empty fields and convert numbers
   Object.keys(data).forEach(key => {
     if (data[key] === '') {
@@ -1189,10 +1189,10 @@ encounterForm.addEventListener('submit', async (e) => {
       data[key] = parseFloat(data[key]);
     }
   });
-  
+
   try {
     const response = await window.electronAPI.apiRequest('POST', '/api/encounters/', data);
-    
+
     if (response.success) {
       const encounterId = response.data?.id;
 
@@ -1217,7 +1217,7 @@ encounterForm.addEventListener('submit', async (e) => {
       encounterForm.reset();
       bmiDisplay.style.display = 'none';
       resetTreatmentPlanBuilder();
-      
+
       // Reset patient selection for next encounter
       document.getElementById('change-patient-btn').click();
     } else {
@@ -1258,22 +1258,22 @@ function closeModal() {
 async function viewPatientDetails(patientId) {
   patientModal.style.display = 'flex';
   patientModalContent.innerHTML = '<p class="loading">Loading patient details...</p>';
-  
+
   try {
     // Fetch patient details
     const patientResponse = await window.electronAPI.apiRequest('GET', `/api/patients/${patientId}/`);
-    
+
     if (!patientResponse.success) {
       patientModalContent.innerHTML = '<p class="error">Failed to load patient details.</p>';
       return;
     }
-    
+
     const patient = patientResponse.data;
-    
+
     // Fetch patient encounters
     const encountersResponse = await window.electronAPI.apiRequest('GET', `/api/encounters/?patient=${patientId}`);
     const encounters = encountersResponse.success ? (encountersResponse.data.results || []) : [];
-    
+
     patientModalContent.innerHTML = `
       <div class="patient-details-header">
         <div>
@@ -1284,7 +1284,7 @@ async function viewPatientDetails(patientId) {
           New Encounter
         </button>
       </div>
-      
+
       <div class="patient-info-grid">
         <div class="info-item">
           <span class="info-label">Date of Birth</span>
@@ -1317,7 +1317,7 @@ async function viewPatientDetails(patientId) {
         </div>
         ` : ''}
       </div>
-      
+
       ${(patient.county_name || patient.sub_county_name || patient.village) ? `
       <div class="patient-section">
         <h4>Location</h4>
@@ -1349,7 +1349,7 @@ async function viewPatientDetails(patientId) {
         </div>
       </div>
       ` : ''}
-      
+
       ${patient.emergency_contact_name ? `
       <div class="patient-section">
         <h4>Emergency Contact</h4>
@@ -1373,10 +1373,10 @@ async function viewPatientDetails(patientId) {
         </div>
       </div>
       ` : ''}
-      
+
       <div class="encounter-history">
         <h3>Encounter History (${encounters.length})</h3>
-        ${encounters.length === 0 ? 
+        ${encounters.length === 0 ?
           '<p class="no-results">No encounters recorded.</p>' :
           encounters.map(encounter => renderEncounterCard(encounter)).join('')
         }
@@ -1389,20 +1389,20 @@ async function viewPatientDetails(patientId) {
 
 function renderEncounterCard(encounter) {
   const hasCritical = encounter.has_critical_vitals;
-  
+
   return `
     <div class="encounter-card ${hasCritical ? 'critical' : ''}">
       <div class="encounter-header">
         <span class="encounter-type ${encounter.encounter_type}">${encounter.encounter_type}</span>
         <span class="encounter-date">${formatDate(encounter.encounter_date)}</span>
       </div>
-      
+
       ${hasCritical ? `
       <div class="critical-alert">
         ⚠️ ${encounter.alerts}
       </div>
       ` : ''}
-      
+
       ${hasVitals(encounter) ? `
       <div class="encounter-vitals">
         ${encounter.temperature ? `
@@ -1443,12 +1443,12 @@ function renderEncounterCard(encounter) {
         ` : ''}
       </div>
       ` : ''}
-      
+
       <div class="encounter-complaint">
         <span class="label">Chief Complaint: </span>
         ${encounter.chief_complaint}
       </div>
-      
+
       ${hasEncounterMedicalHistory(encounter) ? `
       <div class="encounter-medical-history">
         ${encounter.allergies ? `<div class="history-brief"><span class="history-label">Allergies:</span> ${encounter.allergies}</div>` : ''}
@@ -1456,7 +1456,7 @@ function renderEncounterCard(encounter) {
         ${encounter.current_medications ? `<div class="history-brief"><span class="history-label">Medications:</span> ${encounter.current_medications}</div>` : ''}
       </div>
       ` : ''}
-      
+
       ${encounter.notes ? `
       <div class="encounter-complaint">
         <span class="label">Notes: </span>
@@ -1468,13 +1468,13 @@ function renderEncounterCard(encounter) {
 }
 
 function hasEncounterMedicalHistory(encounter) {
-  return encounter.allergies || encounter.chronic_conditions || 
+  return encounter.allergies || encounter.chronic_conditions ||
          encounter.current_medications || encounter.past_surgeries ||
          encounter.family_history || encounter.social_history;
 }
 
 function hasVitals(encounter) {
-  return encounter.temperature || encounter.pulse || encounter.blood_pressure || 
+  return encounter.temperature || encounter.pulse || encounter.blood_pressure ||
          encounter.respiratory_rate || encounter.weight || encounter.height ||
          encounter.spo2;
 }
@@ -1507,7 +1507,7 @@ const toastTitles = {
 function showToast(type, message, duration = 5000) {
   const toast = document.createElement('div');
   toast.className = `toast ${type}`;
-  
+
   toast.innerHTML = `
     <div class="toast-icon">${toastIcons[type] || toastIcons.info}</div>
     <div class="toast-content">
@@ -1519,17 +1519,17 @@ function showToast(type, message, duration = 5000) {
     </button>
     <div class="toast-progress" style="animation-duration: ${duration}ms;"></div>
   `;
-  
+
   // Add close button functionality
   const closeBtn = toast.querySelector('.toast-close');
   closeBtn.addEventListener('click', () => removeToast(toast));
-  
+
   // Add to container
   toastContainer.appendChild(toast);
-  
+
   // Auto-remove after duration
   setTimeout(() => removeToast(toast), duration);
-  
+
   return toast;
 }
 
@@ -1538,7 +1538,7 @@ function showToast(type, message, duration = 5000) {
  */
 function removeToast(toast) {
   if (!toast || !toast.parentNode) return;
-  
+
   toast.style.animation = 'slideOut 0.3s ease-in forwards';
   setTimeout(() => {
     if (toast.parentNode) {
@@ -1557,7 +1557,7 @@ function removeToast(toast) {
 function showMessage(type, text, targetDiv) {
   // Show toast notification
   showToast(type, text);
-  
+
   // Also update the legacy message div for compatibility
   if (targetDiv) {
     targetDiv.className = `message ${type}`;
@@ -1575,13 +1575,13 @@ function formatErrorMessage(error) {
   if (typeof error === 'string') {
     return error;
   }
-  
+
   if (typeof error === 'object') {
     return Object.entries(error)
       .map(([field, messages]) => `${field}: ${Array.isArray(messages) ? messages.join(', ') : messages}`)
       .join('; ');
   }
-  
+
   return 'Unknown error';
 }
 
@@ -1596,10 +1596,10 @@ function formatGender(gender) {
 
 function formatDate(dateString) {
   const date = new Date(dateString);
-  return date.toLocaleDateString('en-US', { 
-    year: 'numeric', 
-    month: 'long', 
-    day: 'numeric' 
+  return date.toLocaleDateString('en-US', {
+    year: 'numeric',
+    month: 'long',
+    day: 'numeric'
   });
 }
 
@@ -1638,20 +1638,20 @@ window.showToast = showToast;
 async function initApp() {
   // Initialize theme first
   initializeTheme();
-  
+
   // Setup theme toggle button
   const themeToggleBtn = document.getElementById('theme-toggle-btn');
   if (themeToggleBtn) {
     themeToggleBtn.addEventListener('click', toggleTheme);
   }
-  
+
   // Set max date for date of birth (cannot be in the future)
   const dobInput = document.getElementById('date-of-birth');
   if (dobInput) {
     const today = new Date().toISOString().split('T')[0];
     dobInput.setAttribute('max', today);
   }
-  
+
   // Initialize authentication
   await initializeApp();
 }

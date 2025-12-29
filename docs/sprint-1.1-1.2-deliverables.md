@@ -1,8 +1,8 @@
 # Sprint 1.1-1.2: Encounter Management - Deliverables
 
-**Sprint Duration**: Weeks 1-4 (Phase 1)  
-**Status**: 🔄 PLANNED  
-**Target Start**: April 2026  
+**Sprint Duration**: Weeks 1-4 (Phase 1)
+**Status**: 🔄 PLANNED
+**Target Start**: April 2026
 **TDD Focus**: Test vital signs validation and clinical workflows
 
 ---
@@ -72,22 +72,22 @@ Sprint 1.1-1.2 builds upon the Phase 0 foundation to deliver a production-ready 
 ```python
 class Encounter(models.Model):
     # ... existing fields ...
-    
+
     def get_vital_status(self, vital_name: str) -> str:
         """Return 'normal', 'warning', or 'critical' for a vital sign."""
-        
+
     def get_all_vital_statuses(self) -> dict:
         """Return status dict for all recorded vitals."""
-        
+
     def calculate_bmi(self) -> Optional[Decimal]:
         """Calculate BMI from weight and height."""
-        
+
     def get_bmi_category(self) -> str:
         """Return BMI category: underweight/normal/overweight/obese."""
-        
+
     def get_map(self) -> Optional[int]:
         """Calculate Mean Arterial Pressure from BP."""
-        
+
     def get_vitals_summary(self) -> dict:
         """Return comprehensive vitals summary with statuses and alerts."""
 ```
@@ -102,7 +102,7 @@ class TestVitalSignRanges:
     def test_temperature_warning_high(self): ...
     def test_temperature_critical_hypothermia(self): ...
     def test_temperature_critical_hyperthermia(self): ...
-    
+
 class TestBloodPressureValidation:
     def test_bp_systolic_normal(self): ...
     def test_bp_systolic_prehypertension(self): ...
@@ -111,7 +111,7 @@ class TestBloodPressureValidation:
     def test_bp_diastolic_validation(self): ...
     def test_bp_parse_format(self): ...
     def test_mean_arterial_pressure_calculation(self): ...
-    
+
 class TestBMICalculation:
     def test_bmi_calculation_normal(self): ...
     def test_bmi_category_underweight(self): ...
@@ -119,14 +119,14 @@ class TestBMICalculation:
     def test_bmi_category_overweight(self): ...
     def test_bmi_category_obese(self): ...
     def test_bmi_null_when_missing_data(self): ...
-    
+
 class TestVitalStatusMethods:
     def test_get_vital_status_returns_normal(self): ...
     def test_get_vital_status_returns_warning(self): ...
     def test_get_vital_status_returns_critical(self): ...
     def test_get_all_vital_statuses(self): ...
     def test_get_vitals_summary_comprehensive(self): ...
-    
+
 class TestPediatricVitals:
     def test_pediatric_pulse_ranges(self): ...  # Higher normal for children
     def test_pediatric_respiratory_rate(self): ...
@@ -143,7 +143,7 @@ class TestPediatricVitals:
 ```python
 class ICD10Code(models.Model):
     """ICD-10 diagnosis code reference table."""
-    
+
     code = models.CharField(max_length=10, unique=True, db_index=True)
     short_description = models.CharField(max_length=255)
     long_description = models.TextField(blank=True)
@@ -151,7 +151,7 @@ class ICD10Code(models.Model):
     category = models.CharField(max_length=100)  # e.g., "Acute upper respiratory infections"
     is_billable = models.BooleanField(default=True)  # Terminal code for billing
     is_active = models.BooleanField(default=True)
-    
+
     class Meta:
         verbose_name = "ICD-10 Code"
         verbose_name_plural = "ICD-10 Codes"
@@ -164,7 +164,7 @@ class ICD10Code(models.Model):
 
 class Diagnosis(models.Model):
     """Diagnosis entry linked to an encounter."""
-    
+
     DIAGNOSIS_TYPE_CHOICES = [
         ('principal', 'Principal Diagnosis'),
         ('secondary', 'Secondary Diagnosis'),
@@ -172,14 +172,14 @@ class Diagnosis(models.Model):
         ('discharge', 'Discharge Diagnosis'),
         ('differential', 'Differential Diagnosis'),
     ]
-    
+
     CERTAINTY_CHOICES = [
         ('confirmed', 'Confirmed'),
         ('provisional', 'Provisional'),
         ('ruled_out', 'Ruled Out'),
         ('suspected', 'Suspected'),
     ]
-    
+
     encounter = models.ForeignKey(
         'Encounter',
         on_delete=models.CASCADE,
@@ -207,7 +207,7 @@ class Diagnosis(models.Model):
         null=True
     )
     diagnosed_at = models.DateTimeField(auto_now_add=True)
-    
+
     class Meta:
         verbose_name = "Diagnosis"
         verbose_name_plural = "Diagnoses"
@@ -246,7 +246,7 @@ class TestICD10CodeModel:
     def test_icd10_code_search_by_description(self): ...
     def test_icd10_billable_filter(self): ...
     def test_icd10_chapter_grouping(self): ...
-    
+
 class TestDiagnosisModel:
     def test_diagnosis_creation(self): ...
     def test_diagnosis_requires_encounter(self): ...
@@ -256,7 +256,7 @@ class TestDiagnosisModel:
     def test_only_one_principal_diagnosis(self): ...
     def test_multiple_secondary_diagnoses_allowed(self): ...
     def test_diagnosis_tracks_clinician(self): ...
-    
+
 class TestDiagnosisAPI:
     def test_search_icd10_codes(self): ...
     def test_search_icd10_partial_match(self): ...
@@ -267,7 +267,7 @@ class TestDiagnosisAPI:
     def test_delete_diagnosis(self): ...
     def test_list_encounter_diagnoses(self): ...
     def test_common_diagnoses_endpoint(self): ...
-    
+
 class TestDiagnosisValidation:
     def test_invalid_icd10_code_rejected(self): ...
     def test_inactive_icd10_code_warning(self): ...
@@ -289,7 +289,7 @@ class TestDiagnosisValidation:
 ```python
 class TreatmentPlanTemplate(models.Model):
     """Reusable treatment plan templates."""
-    
+
     name = models.CharField(max_length=200)
     description = models.TextField(blank=True)
     diagnosis_codes = models.ManyToManyField(
@@ -319,7 +319,7 @@ class TreatmentPlanTemplate(models.Model):
     created_by = models.ForeignKey('auth.User', on_delete=models.SET_NULL, null=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
-    
+
     class Meta:
         verbose_name = "Treatment Plan Template"
         verbose_name_plural = "Treatment Plan Templates"
@@ -327,14 +327,14 @@ class TreatmentPlanTemplate(models.Model):
 
 class TreatmentPlan(models.Model):
     """Treatment plan for an encounter."""
-    
+
     STATUS_CHOICES = [
         ('draft', 'Draft'),
         ('active', 'Active'),
         ('completed', 'Completed'),
         ('cancelled', 'Cancelled'),
     ]
-    
+
     encounter = models.OneToOneField(
         'Encounter',
         on_delete=models.CASCADE,
@@ -351,7 +351,7 @@ class TreatmentPlan(models.Model):
         choices=STATUS_CHOICES,
         default='draft'
     )
-    
+
     # Treatment details
     medications = models.TextField(
         blank=True,
@@ -364,16 +364,16 @@ class TreatmentPlan(models.Model):
     patient_instructions = models.TextField(blank=True)
     diet_recommendations = models.TextField(blank=True)
     activity_restrictions = models.TextField(blank=True)
-    
+
     # Follow-up
     follow_up_date = models.DateField(null=True, blank=True)
     follow_up_notes = models.TextField(blank=True)
-    
+
     # Referrals
     referral_needed = models.BooleanField(default=False)
     referral_specialty = models.CharField(max_length=100, blank=True)
     referral_notes = models.TextField(blank=True)
-    
+
     # Tracking
     created_by = models.ForeignKey(
         'auth.User',
@@ -390,11 +390,11 @@ class TreatmentPlan(models.Model):
     )
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
-    
+
     class Meta:
         verbose_name = "Treatment Plan"
         verbose_name_plural = "Treatment Plans"
-    
+
     def apply_template(self, template: TreatmentPlanTemplate):
         """Apply a template to populate default values."""
         self.template = template
@@ -428,27 +428,27 @@ class TestTreatmentPlanTemplateModel:
     def test_template_with_diagnosis_codes(self): ...
     def test_template_default_values(self): ...
     def test_template_active_filter(self): ...
-    
+
 class TestTreatmentPlanModel:
     def test_treatment_plan_creation(self): ...
     def test_treatment_plan_one_per_encounter(self): ...
     def test_treatment_plan_status_transitions(self): ...
     def test_apply_template_populates_fields(self): ...
     def test_follow_up_date_calculation(self): ...
-    
+
 class TestTreatmentPlanAPI:
     def test_create_treatment_plan(self): ...
     def test_update_treatment_plan(self): ...
     def test_get_treatment_plan(self): ...
     def test_apply_template_endpoint(self): ...
     def test_suggest_templates_by_diagnosis(self): ...
-    
+
 class TestTreatmentPlanValidation:
     def test_medications_json_format(self): ...
     def test_procedures_json_format(self): ...
     def test_follow_up_date_not_in_past(self): ...
     def test_approval_requires_different_user(self): ...
-    
+
 class TestTreatmentPlanWorkflow:
     def test_draft_to_active_transition(self): ...
     def test_active_to_completed_transition(self): ...
@@ -529,17 +529,17 @@ class TestEncounterTimelineAPI:
     def test_timeline_includes_diagnoses(self): ...
     def test_timeline_includes_treatment_plan(self): ...
     def test_timeline_patient_statistics(self): ...
-    
+
 class TestTimelinePermissions:
     def test_timeline_requires_authentication(self): ...
     def test_sensitive_patient_timeline_restricted(self): ...
     def test_timeline_audit_logged(self): ...
-    
+
 class TestTimelinePerformance:
     def test_timeline_pagination(self): ...
     def test_timeline_select_related_optimization(self): ...
     def test_timeline_large_history_performance(self): ...
-    
+
 class TestTimelineEdgeCases:
     def test_timeline_empty_for_new_patient(self): ...
     def test_timeline_handles_incomplete_encounters(self): ...
@@ -556,14 +556,14 @@ class TestTimelineEdgeCases:
 ```python
 class ClinicalTemplate(models.Model):
     """Master clinical template for common conditions."""
-    
+
     TEMPLATE_TYPE_CHOICES = [
         ('encounter', 'Encounter Template'),
         ('note', 'Clinical Note Template'),
         ('assessment', 'Assessment Template'),
         ('procedure', 'Procedure Template'),
     ]
-    
+
     name = models.CharField(max_length=200)
     template_type = models.CharField(max_length=20, choices=TEMPLATE_TYPE_CHOICES)
     specialty = models.CharField(max_length=100, blank=True)
@@ -579,7 +579,7 @@ class ClinicalTemplate(models.Model):
 
 class TemplateSection(models.Model):
     """Reusable template sections."""
-    
+
     template = models.ForeignKey(
         ClinicalTemplate,
         on_delete=models.CASCADE,
@@ -612,18 +612,18 @@ class TestClinicalTemplateModel:
     def test_template_json_content_validation(self): ...
     def test_template_usage_tracking(self): ...
     def test_system_template_protection(self): ...
-    
+
 class TestTemplateSections:
     def test_section_ordering(self): ...
     def test_required_sections_validation(self): ...
     def test_section_fields_json_structure(self): ...
-    
+
 class TestTemplateAPI:
     def test_list_templates_by_type(self): ...
     def test_list_templates_by_specialty(self): ...
     def test_create_user_template(self): ...
     def test_clone_system_template(self): ...
-    
+
 class TestTemplateUsage:
     def test_apply_template_to_encounter(self): ...
     def test_template_usage_count_increment(self): ...
@@ -713,7 +713,7 @@ class TreatmentPlanTemplateAdmin(admin.ModelAdmin):
     search_fields = ['name', 'description']
     filter_horizontal = ['diagnosis_codes']  # ManyToMany widget
     readonly_fields = ['created_by', 'created_at', 'updated_at']
-    
+
     def save_model(self, request, obj, form, change):
         if not change:
             obj.created_by = request.user
@@ -738,12 +738,12 @@ class ClinicalTemplateAdmin(admin.ModelAdmin):
     search_fields = ['name', 'description']
     readonly_fields = ['usage_count', 'created_by', 'created_at', 'updated_at']
     inlines = [TemplateSectionInline]
-    
+
     def save_model(self, request, obj, form, change):
         if not change:
             obj.created_by = request.user
         super().save_model(request, obj, form, change)
-    
+
     def has_delete_permission(self, request, obj=None):
         # Prevent deletion of system templates
         if obj and obj.is_system:
@@ -1043,31 +1043,31 @@ test.describe('Encounter Management E2E', () => {
   test('complete encounter workflow with vitals', async ({ page }) => {
     // Login → Select patient → Create encounter → Enter vitals → Verify color coding
   });
-  
+
   test('add ICD-10 diagnosis with search', async ({ page }) => {
     // Search "malaria" → Select code → Verify added to list
   });
-  
+
   test('create treatment plan from template', async ({ page }) => {
     // Select template → Apply → Verify fields populated
   });
-  
+
   test('view patient encounter timeline', async ({ page }) => {
     // Open patient details → View timeline → Verify encounters listed
   });
-  
+
   test('filter timeline by date range', async ({ page }) => {
     // Set date filters → Verify filtered results
   });
-  
+
   test('critical vitals show alert banner', async ({ page }) => {
     // Enter critical SpO2 (85%) → Verify alert displays
   });
-  
+
   test('BMI calculates and categorizes correctly', async ({ page }) => {
     // Enter weight/height → Verify BMI display and category
   });
-  
+
   test('encounter saves with diagnosis and treatment plan', async ({ page }) => {
     // Full workflow → Save → Reload → Verify all data persisted
   });
@@ -1200,6 +1200,6 @@ test('complete encounter workflow', async ({ page }) => {
 
 ---
 
-*Document Version: 1.0*  
-*Created: December 29, 2025*  
+*Document Version: 1.0*
+*Created: December 29, 2025*
 *Author: Vitora HMIS Development Team*

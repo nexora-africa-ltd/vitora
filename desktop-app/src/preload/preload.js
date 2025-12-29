@@ -1,9 +1,9 @@
 /**
  * Vitora HMIS Desktop - Preload Script
- * 
+ *
  * This script runs in a privileged context and exposes safe APIs
  * to the renderer process through contextBridge.
- * 
+ *
  * Sprint 0.6: Added authentication token management
  */
 
@@ -22,7 +22,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
   apiRequest: (method, endpoint, data) => {
     return ipcRenderer.invoke('api-request', { method, endpoint, data });
   },
-  
+
   /**
    * Get the backend URL
    * @returns {Promise<string>} Backend URL
@@ -30,7 +30,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
   getBackendUrl: () => {
     return ipcRenderer.invoke('get-backend-url');
   },
-  
+
   /**
    * Store authentication tokens securely
    * @param {object} tokens - { accessToken, refreshToken, user }
@@ -39,7 +39,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
   storeTokens: (tokens) => {
     return ipcRenderer.invoke('store-tokens', tokens);
   },
-  
+
   /**
    * Get stored authentication tokens
    * @returns {Promise<object|null>} Stored tokens or null
@@ -47,7 +47,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
   getStoredTokens: () => {
     return ipcRenderer.invoke('get-stored-tokens');
   },
-  
+
   /**
    * Clear stored authentication tokens (logout)
    * @returns {Promise<void>}

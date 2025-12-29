@@ -12,20 +12,20 @@ jobs:
   backend-tests:
     name: Backend Tests & Quality Gates
     runs-on: ubuntu-latest
-    
+
     strategy:
       matrix:
         python-version: ['3.12']
-    
+
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
-      
+
       - name: Set up Python ${{ matrix.python-version }}
         uses: actions/setup-python@v5
         with:
           python-version: ${{ matrix.python-version }}
-      
+
       - name: Cache Poetry dependencies
         uses: actions/cache@v4
         with:
@@ -35,19 +35,19 @@ jobs:
           key: ${{ runner.os }}-poetry-${{ hashFiles('backend/pyproject.toml') }}
           restore-keys: |
             ${{ runner.os }}-poetry-
-      
+
       - name: Install Poetry
         run: |
           curl -sSL https://install.python-poetry.org | python3 -
           echo "$HOME/.local/bin" >> $GITHUB_PATH
-      
+
       - name: Install dependencies
         working-directory: ./backend
         run: |
           poetry config virtualenvs.in-project true
           poetry install --no-interaction --no-ansi
         if: hashFiles('backend/pyproject.toml') != ''
-      
+
       - name: Run Ruff Linter
         working-directory: ./backend
         run: |
@@ -57,7 +57,7 @@ jobs:
             echo "⏭️  Skipping: No backend code yet"
           fi
         continue-on-error: false
-      
+
       - name: Run Black Formatter Check
         working-directory: ./backend
         run: |
@@ -67,7 +67,7 @@ jobs:
             echo "⏭️  Skipping: No backend code yet"
           fi
         continue-on-error: false
-      
+
       - name: Run Pytest with Coverage
         working-directory: ./backend
         run: |
@@ -77,7 +77,7 @@ jobs:
             echo "⏭️  Skipping: No tests yet"
           fi
         continue-on-error: true
-      
+
       - name: Upload coverage to Codecov
         uses: codecov/codecov-action@v4
         with:
@@ -86,7 +86,7 @@ jobs:
           name: backend-coverage
         if: hashFiles('backend/coverage.xml') != ''
         continue-on-error: true
-      
+
       - name: Run mypy Type Checking
         working-directory: ./backend
         run: |
@@ -102,19 +102,19 @@ jobs:
   security-scan:
     name: Security Scanning
     runs-on: ubuntu-latest
-    
+
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
-      
+
       - name: Set up Python 3.12
         uses: actions/setup-python@v5
         with:
           python-version: '3.12'
-      
+
       - name: Install Bandit
         run: pip install bandit[toml]
-      
+
       - name: Run Bandit Security Scan
         run: |
           if [ -d "backend/hmis" ]; then
@@ -124,7 +124,7 @@ jobs:
             echo "⏭️  Skipping: No backend code yet"
           fi
         continue-on-error: true
-      
+
       - name: Upload Bandit Report
         uses: actions/upload-artifact@v4
         with:
@@ -132,7 +132,7 @@ jobs:
           path: bandit-report.json
         if: hashFiles('bandit-report.json') != ''
         continue-on-error: true
-      
+
       - name: Run Trivy vulnerability scanner
         uses: aquasecurity/trivy-action@master
         with:
@@ -141,7 +141,7 @@ jobs:
           format: 'sarif'
           output: 'trivy-results.sarif'
         continue-on-error: true
-      
+
       - name: Upload Trivy results to GitHub Security tab
         uses: github/codeql-action/upload-sarif@v3
         with:
@@ -153,15 +153,15 @@ jobs:
   frontend-tests:
     name: Frontend Tests & Quality Gates
     runs-on: ubuntu-latest
-    
+
     strategy:
       matrix:
         node-version: ['20.x']
-    
+
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
-      
+
       - name: Set up Node.js ${{ matrix.node-version }}
         uses: actions/setup-node@v4
         with:
@@ -171,29 +171,29 @@ jobs:
             frontend-web/package-lock.json
             desktop-app/package-lock.json
         if: hashFiles('frontend-web/package.json', 'desktop-app/package.json') != ''
-      
+
       - name: Install Frontend Dependencies
         working-directory: ./frontend-web
         run: npm ci
         if: hashFiles('frontend-web/package.json') != ''
-      
+
       - name: Run ESLint
         working-directory: ./frontend-web
         run: npm run lint
         if: hashFiles('frontend-web/package.json') != ''
         continue-on-error: true
-      
+
       - name: Run Frontend Tests
         working-directory: ./frontend-web
         run: npm test -- --coverage --watchAll=false
         if: hashFiles('frontend-web/package.json') != ''
         continue-on-error: true
-      
+
       - name: Install Desktop App Dependencies
         working-directory: ./desktop-app
         run: npm ci
         if: hashFiles('desktop-app/package.json') != ''
-      
+
       - name: Build Desktop App
         working-directory: ./desktop-app
         run: npm run build
@@ -204,11 +204,11 @@ jobs:
   documentation-check:
     name: Documentation Quality Check
     runs-on: ubuntu-latest
-    
+
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
-      
+
       - name: Check README exists
         run: |
           if [ ! -f "README.md" ]; then
@@ -216,7 +216,7 @@ jobs:
             exit 1
           fi
           echo "✅ README.md exists"
-      
+
       - name: Check ROADMAP exists
         run: |
           if [ ! -f "ROADMAP.md" ]; then
@@ -224,7 +224,7 @@ jobs:
           else
             echo "✅ ROADMAP.md exists"
           fi
-      
+
       - name: Check docs directory
         run: |
           if [ ! -d "docs" ]; then
@@ -233,7 +233,7 @@ jobs:
             echo "✅ docs/ directory exists"
             ls -la docs/
           fi
-      
+
       - name: Markdown Lint
         uses: nosborn/github-action-markdown-cli@v3.3.0
         with:
@@ -247,15 +247,15 @@ jobs:
     runs-on: ubuntu-latest
     needs: [backend-tests, frontend-tests]
     if: always()
-    
+
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
-      
+
       - name: Validate Project Structure
         run: |
           echo "Validating project structure..."
-          
+
           # Check for required directories (may not exist yet in Phase 0)
           for dir in backend frontend-web desktop-app mobile-app infrastructure docs; do
             if [ -d "$dir" ]; then
@@ -264,7 +264,7 @@ jobs:
               echo "⏭️  $dir/ not yet created (expected in early phases)"
             fi
           done
-          
+
           # Check for documentation
           if [ -f "README.md" ]; then
             echo "✅ README.md exists"
@@ -272,7 +272,7 @@ jobs:
             echo "❌ README.md missing"
             exit 1
           fi
-      
+
       - name: Check for TODOs and FIXMEs
         run: |
           echo "Scanning for TODO and FIXME comments..."
@@ -289,15 +289,15 @@ jobs:
     runs-on: ubuntu-latest
     needs: [backend-tests, frontend-tests]
     if: always()
-    
+
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
-      
+
       - name: Download artifacts
         uses: actions/download-artifact@v4
         continue-on-error: true
-      
+
       - name: Coverage Summary
         run: |
           echo "📊 Coverage Summary"
@@ -316,7 +316,7 @@ jobs:
     runs-on: ubuntu-latest
     needs: [backend-tests, security-scan, frontend-tests, documentation-check]
     if: always()
-    
+
     steps:
       - name: Check Job Status
         run: |
@@ -328,15 +328,15 @@ jobs:
           echo "Frontend Tests: ${{ needs.frontend-tests.result }}"
           echo "Documentation: ${{ needs.documentation-check.result }}"
           echo ""
-          
+
           # In Phase 0, we allow some jobs to be skipped
           if [ "${{ needs.backend-tests.result }}" == "failure" ]; then
             echo "❌ Backend tests failed"
             exit 1
           fi
-          
+
           if [ "${{ needs.security-scan.result }}" == "failure" ]; then
             echo "⚠️  Security scan had issues (non-blocking in Phase 0)"
           fi
-          
+
           echo "✅ Quality gate passed (Phase 0 criteria)"

@@ -1,8 +1,8 @@
 /**
  * E2E Tests for Sprint 0.7 UI Enhancements
- * 
+ *
  * Following TDD principles: Write tests FIRST, then implement.
- * 
+ *
  * Tests cover:
  * - Kenya Location Hierarchy (County → Sub-county → Ward → Village)
  * - Emergency Contact fields
@@ -34,7 +34,7 @@ test.beforeAll(async () => {
     args: [path.join(__dirname, '../../src/main/index.js')],
     timeout: 60000
   });
-  
+
   window = await electronApp.firstWindow();
   await window.waitForLoadState('domcontentloaded');
   await window.waitForTimeout(5000);
@@ -52,7 +52,7 @@ test.describe('Kenya Location Hierarchy', () => {
   test('should display county dropdown', async () => {
     // Navigate to register tab
     await window.locator('.tab[data-tab="register"]').click();
-    
+
     // Check county dropdown exists
     await expect(window.locator('#county')).toBeVisible();
     await expect(window.locator('label[for="county"]')).toContainText('County');
@@ -76,7 +76,7 @@ test.describe('Kenya Location Hierarchy', () => {
   test('should load counties on form load', async () => {
     // Wait for counties to load
     await window.waitForTimeout(1000);
-    
+
     // Check that county dropdown has options
     const countyOptions = await window.locator('#county option').count();
     expect(countyOptions).toBeGreaterThan(1); // More than just placeholder
@@ -85,14 +85,14 @@ test.describe('Kenya Location Hierarchy', () => {
   test('should filter sub-counties when county is selected', async () => {
     // Select a county (Mombasa - code 1)
     await window.locator('#county').selectOption({ label: 'Mombasa' });
-    
+
     // Wait for sub-counties to load
     await window.waitForTimeout(500);
-    
+
     // Check that sub-county dropdown has options
     const subCountyOptions = await window.locator('#sub-county option').count();
     expect(subCountyOptions).toBeGreaterThan(1);
-    
+
     // Verify sub-counties belong to Mombasa (e.g., Changamwe, Jomvu)
     const html = await window.locator('#sub-county').innerHTML();
     expect(html).toMatch(/Changamwe|Jomvu|Kisauni/);
@@ -102,13 +102,13 @@ test.describe('Kenya Location Hierarchy', () => {
     // Ensure county is selected first
     await window.locator('#county').selectOption({ label: 'Mombasa' });
     await window.waitForTimeout(500);
-    
+
     // Select a sub-county
     await window.locator('#sub-county').selectOption({ label: 'Changamwe' });
-    
+
     // Wait for wards to load
     await window.waitForTimeout(500);
-    
+
     // Check that ward dropdown has options
     const wardOptions = await window.locator('#ward option').count();
     expect(wardOptions).toBeGreaterThan(1);
@@ -117,7 +117,7 @@ test.describe('Kenya Location Hierarchy', () => {
   test('should allow typing in village field', async () => {
     const village = 'Mikindani Estate';
     await window.locator('#village').fill(village);
-    
+
     const value = await window.locator('#village').inputValue();
     expect(value).toBe(village);
   });
@@ -126,7 +126,7 @@ test.describe('Kenya Location Hierarchy', () => {
     // Check required attribute
     const countyRequired = await window.locator('#county').getAttribute('required');
     const subCountyRequired = await window.locator('#sub-county').getAttribute('required');
-    
+
     expect(countyRequired).not.toBeNull();
     expect(subCountyRequired).not.toBeNull();
   });
@@ -135,7 +135,7 @@ test.describe('Kenya Location Hierarchy', () => {
     // Check that ward and village don't have required attribute
     const wardRequired = await window.locator('#ward').getAttribute('required');
     const villageRequired = await window.locator('#village').getAttribute('required');
-    
+
     expect(wardRequired).toBeNull();
     expect(villageRequired).toBeNull();
   });
@@ -147,7 +147,7 @@ test.describe('Kenya Location Hierarchy', () => {
 test.describe('Emergency Contact Fields', () => {
   test('should display emergency contact section', async () => {
     await window.locator('.tab[data-tab="register"]').click();
-    
+
     // Check section exists
     await expect(window.locator('#emergency-contact-section')).toBeVisible();
   });
@@ -169,7 +169,7 @@ test.describe('Emergency Contact Fields', () => {
 
   test('should have relationship options', async () => {
     const options = await window.locator('#emergency-contact-relationship option').allTextContents();
-    
+
     expect(options).toContain('Spouse');
     expect(options).toContain('Parent');
     expect(options).toContain('Sibling');
@@ -182,7 +182,7 @@ test.describe('Emergency Contact Fields', () => {
     const nameRequired = await window.locator('#emergency-contact-name').getAttribute('required');
     const phoneRequired = await window.locator('#emergency-contact-phone').getAttribute('required');
     const relationRequired = await window.locator('#emergency-contact-relationship').getAttribute('required');
-    
+
     expect(nameRequired).toBeNull();
     expect(phoneRequired).toBeNull();
     expect(relationRequired).toBeNull();
@@ -195,14 +195,14 @@ test.describe('Emergency Contact Fields', () => {
 test.describe('Referral Source Fields', () => {
   test('should display referral source dropdown', async () => {
     await window.locator('.tab[data-tab="register"]').click();
-    
+
     await expect(window.locator('#referral-source')).toBeVisible();
     await expect(window.locator('label[for="referral-source"]')).toContainText('Referral Source');
   });
 
   test('should have referral source options', async () => {
     const options = await window.locator('#referral-source option').allTextContents();
-    
+
     expect(options).toContain('Self');
     expect(options).toContain('Clinic');
     expect(options).toContain('Other Facility');
@@ -215,7 +215,7 @@ test.describe('Referral Source Fields', () => {
 
   test('referred from facility should be hidden when referral source is self', async () => {
     await window.locator('#referral-source').selectOption('self');
-    
+
     // Field should be hidden or disabled
     const facilityGroup = window.locator('#referred-from-facility-group');
     await expect(facilityGroup).toHaveClass(/hidden|disabled/);
@@ -223,7 +223,7 @@ test.describe('Referral Source Fields', () => {
 
   test('referred from facility should be visible when referral source is other_facility', async () => {
     await window.locator('#referral-source').selectOption('other_facility');
-    
+
     // Field should be visible
     const facilityGroup = window.locator('#referred-from-facility-group');
     await expect(facilityGroup).not.toHaveClass(/hidden/);
@@ -237,7 +237,7 @@ test.describe('Referral Source Fields', () => {
 test.describe('Medical History Section', () => {
   test('should display medical history section', async () => {
     await window.locator('.tab[data-tab="register"]').click();
-    
+
     await expect(window.locator('#medical-history-section')).toBeVisible();
   });
 
@@ -272,9 +272,9 @@ test.describe('Medical History Section', () => {
   });
 
   test('medical history fields should be optional', async () => {
-    const fields = ['#allergies', '#chronic-conditions', '#current-medications', 
+    const fields = ['#allergies', '#chronic-conditions', '#current-medications',
                     '#past-surgeries', '#family-history', '#social-history'];
-    
+
     for (const field of fields) {
       const required = await window.locator(field).getAttribute('required');
       expect(required).toBeNull();
@@ -284,12 +284,12 @@ test.describe('Medical History Section', () => {
   test('should be able to toggle medical history section', async () => {
     // Check for collapsible section
     const toggleBtn = window.locator('#medical-history-toggle');
-    
+
     if (await toggleBtn.isVisible()) {
       // Click to collapse
       await toggleBtn.click();
       await expect(window.locator('#medical-history-fields')).toBeHidden();
-      
+
       // Click to expand
       await toggleBtn.click();
       await expect(window.locator('#medical-history-fields')).toBeVisible();
@@ -304,18 +304,18 @@ test.describe('SpO2 Vital Sign', () => {
   test('should display SpO2 field in encounter form', async () => {
     // Navigate to encounter tab
     await window.locator('.tab[data-tab="encounter"]').click();
-    
+
     // Search and select a patient first
     await window.locator('#patient-search').fill('John');
     await window.locator('#patient-search-btn').click();
     await window.waitForTimeout(1000);
-    
+
     // Select first patient
     const firstResult = window.locator('.patient-search-item').first();
     if (await firstResult.isVisible()) {
       await firstResult.click();
     }
-    
+
     // Check SpO2 field exists
     await expect(window.locator('#spo2')).toBeVisible();
     await expect(window.locator('label[for="spo2"]')).toContainText('SpO2');
@@ -330,14 +330,14 @@ test.describe('SpO2 Vital Sign', () => {
   test('SpO2 should have valid range (0-100)', async () => {
     const minAttr = await window.locator('#spo2').getAttribute('min');
     const maxAttr = await window.locator('#spo2').getAttribute('max');
-    
+
     expect(parseInt(minAttr)).toBe(0);
     expect(parseInt(maxAttr)).toBe(100);
   });
 
   test('should accept valid SpO2 value', async () => {
     await window.locator('#spo2').fill('98');
-    
+
     const value = await window.locator('#spo2').inputValue();
     expect(value).toBe('98');
   });
@@ -349,61 +349,61 @@ test.describe('SpO2 Vital Sign', () => {
 test.describe('Complete Patient Registration with New Fields', () => {
   test('should register patient with location and referral info', async () => {
     await window.locator('.tab[data-tab="register"]').click();
-    
+
     // Clear form first
     await window.locator('#clear-btn').click();
-    
+
     // Basic info
     await window.locator('#first-name').fill('Alice');
     await window.locator('#last-name').fill('Wanjiku');
     await window.locator('#date-of-birth').fill('1988-05-15');
     await window.locator('#gender').selectOption('F');
     await window.locator('#phone-number').fill('+254722123456');
-    
+
     // Location - wait for dropdowns to load
     await window.locator('#county').selectOption({ label: 'Mombasa' });
     await window.waitForTimeout(500);
     await window.locator('#sub-county').selectOption({ label: 'Changamwe' });
     await window.waitForTimeout(500);
-    
+
     // Ward is optional, but let's select one
     const wardOptions = await window.locator('#ward option').count();
     if (wardOptions > 1) {
       await window.locator('#ward').selectOption({ index: 1 });
     }
-    
+
     await window.locator('#village').fill('Mikindani');
-    
+
     // Referral source
     await window.locator('#referral-source').selectOption('clinic');
-    
+
     // Submit
     await window.locator('#submit-btn').click();
-    
+
     // Wait for success
     await window.waitForSelector('.message.success', { timeout: 10000 });
-    
+
     const message = await window.locator('.message.success').textContent();
     expect(message).toContain('Patient registered successfully');
   });
 
   test('should show error when county is missing', async () => {
     await window.locator('#clear-btn').click();
-    
+
     // Fill only required basic fields, skip county
     await window.locator('#first-name').fill('Test');
     await window.locator('#last-name').fill('Patient');
     await window.locator('#date-of-birth').fill('1990-01-01');
     await window.locator('#gender').selectOption('M');
-    
+
     // Don't select county or sub-county
-    
+
     // Try to submit
     await window.locator('#submit-btn').click();
-    
+
     // Should show validation error
     await window.waitForTimeout(1000);
-    
+
     // Check for error message or validation state
     const countyInvalid = await window.locator('#county:invalid').count();
     expect(countyInvalid).toBeGreaterThan(0);

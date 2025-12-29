@@ -1,8 +1,8 @@
 /**
  * Unit Tests for Sprint 0.7 Frontend Features
- * 
+ *
  * Tests for the helper functions and UI logic added in Sprint 0.7
- * 
+ *
  * Note: DOM interaction tests are covered in E2E tests (Playwright)
  */
 
@@ -57,7 +57,7 @@ describe('Sprint 0.7 Helper Functions', () => {
   // ====================
   describe('hasMedicalHistory', () => {
     const hasMedicalHistory = (patient) => {
-      return patient.allergies || patient.chronic_conditions || 
+      return patient.allergies || patient.chronic_conditions ||
              patient.current_medications || patient.past_surgeries;
     };
 
@@ -156,8 +156,8 @@ describe('Sprint 0.7 Helper Functions', () => {
 
     test('should accept today\'s date (newborn)', () => {
       const today = new Date();
-      const todayStr = today.getFullYear() + '-' + 
-        String(today.getMonth() + 1).padStart(2, '0') + '-' + 
+      const todayStr = today.getFullYear() + '-' +
+        String(today.getMonth() + 1).padStart(2, '0') + '-' +
         String(today.getDate()).padStart(2, '0');
       expect(isValidDOB(todayStr)).toBe(true);
     });
@@ -165,8 +165,8 @@ describe('Sprint 0.7 Helper Functions', () => {
     test('should reject future date', () => {
       const tomorrow = new Date();
       tomorrow.setDate(tomorrow.getDate() + 1);
-      const tomorrowStr = tomorrow.getFullYear() + '-' + 
-        String(tomorrow.getMonth() + 1).padStart(2, '0') + '-' + 
+      const tomorrowStr = tomorrow.getFullYear() + '-' +
+        String(tomorrow.getMonth() + 1).padStart(2, '0') + '-' +
         String(tomorrow.getDate()).padStart(2, '0');
       expect(isValidDOB(tomorrowStr)).toBe(false);
     });

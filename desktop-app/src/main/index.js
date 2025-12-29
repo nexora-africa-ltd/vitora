@@ -1,6 +1,6 @@
 /**
  * Vitora HMIS Desktop - Main Process
- * 
+ *
  * This file manages:
  * - Django backend server lifecycle
  * - SQLite database initialization
@@ -50,9 +50,9 @@ async function runMigrations() {
   return new Promise((resolve) => {
     const backendPath = path.join(__dirname, '..', '..', '..', 'backend');
     const poetryCmd = 'poetry';
-    
+
     console.log('[Backend] Running migrations...');
-    
+
     const migrateProcess = spawn(poetryCmd, ['run', 'python', 'manage.py', 'migrate', '--noinput'], {
       cwd: backendPath,
       env: {
@@ -63,20 +63,20 @@ async function runMigrations() {
       stdio: 'pipe',
       shell: true
     });
-    
+
     migrateProcess.stdout.on('data', (data) => {
       console.log(`[Backend] ${data.toString().trim()}`);
     });
-    
+
     migrateProcess.stderr.on('data', (data) => {
       console.log(`[Backend] ${data.toString().trim()}`);
     });
-    
+
     migrateProcess.on('close', (code) => {
       console.log(`[Backend] Migrations completed with code ${code}`);
       resolve();
     });
-    
+
     // Timeout after 30 seconds
     setTimeout(resolve, 30000);
   });
@@ -90,9 +90,9 @@ async function importKenyaLocations() {
     const backendPath = path.join(__dirname, '..', '..', '..', 'backend');
     const csvPath = path.join(backendPath, 'data', 'kenya_locations.csv');
     const poetryCmd = 'poetry';
-    
+
     console.log('[Backend] Importing Kenya locations data...');
-    
+
     const importProcess = spawn(poetryCmd, ['run', 'python', 'manage.py', 'import_kenya_locations', csvPath], {
       cwd: backendPath,
       env: {
@@ -103,20 +103,20 @@ async function importKenyaLocations() {
       stdio: 'pipe',
       shell: true
     });
-    
+
     importProcess.stdout.on('data', (data) => {
       console.log(`[Backend] ${data.toString().trim()}`);
     });
-    
+
     importProcess.stderr.on('data', (data) => {
       console.log(`[Backend] ${data.toString().trim()}`);
     });
-    
+
     importProcess.on('close', (code) => {
       console.log(`[Backend] Kenya locations import completed with code ${code}`);
       resolve();
     });
-    
+
     // Timeout after 60 seconds (large CSV file)
     setTimeout(resolve, 60000);
   });
@@ -129,9 +129,9 @@ async function createTestUser() {
   return new Promise((resolve) => {
     const backendPath = path.join(__dirname, '..', '..', '..', 'backend');
     const poetryCmd = 'poetry';
-    
+
     console.log('[Backend] Creating test user...');
-    
+
     const createUserProcess = spawn(poetryCmd, ['run', 'python', 'manage.py', 'create_test_user'], {
       cwd: backendPath,
       env: {
@@ -142,20 +142,20 @@ async function createTestUser() {
       stdio: 'pipe',
       shell: true
     });
-    
+
     createUserProcess.stdout.on('data', (data) => {
       console.log(`[Backend] ${data.toString().trim()}`);
     });
-    
+
     createUserProcess.stderr.on('data', (data) => {
       // Don't log as error - Django sends some info to stderr
       console.log(`[Backend] ${data.toString().trim()}`);
     });
-    
+
     createUserProcess.on('close', () => {
       resolve();
     });
-    
+
     // Timeout after 10 seconds
     setTimeout(resolve, 10000);
   });
@@ -168,9 +168,9 @@ async function createSuperuser() {
   return new Promise((resolve) => {
     const backendPath = path.join(__dirname, '..', '..', '..', 'backend');
     const poetryCmd = 'poetry';
-    
+
     console.log('[Backend] Creating superuser...');
-    
+
     const createSuperuserProcess = spawn(poetryCmd, ['run', 'python', 'manage.py', 'create_superuser'], {
       cwd: backendPath,
       env: {
@@ -181,19 +181,19 @@ async function createSuperuser() {
       stdio: 'pipe',
       shell: true
     });
-    
+
     createSuperuserProcess.stdout.on('data', (data) => {
       console.log(`[Backend] ${data.toString().trim()}`);
     });
-    
+
     createSuperuserProcess.stderr.on('data', (data) => {
       console.log(`[Backend] ${data.toString().trim()}`);
     });
-    
+
     createSuperuserProcess.on('close', () => {
       resolve();
     });
-    
+
     // Timeout after 10 seconds
     setTimeout(resolve, 10000);
   });
@@ -205,13 +205,13 @@ async function createSuperuser() {
 async function startBackend() {
   return new Promise((resolve, reject) => {
     const isDev = process.argv.includes('--dev');
-    
+
     // Path to backend directory
     const backendPath = path.join(__dirname, '..', '..', '..', 'backend');
-    
+
     console.log('[Backend] Starting Django server...');
     console.log('[Backend] Backend path:', backendPath);
-    
+
     // Set environment for development
     const env = {
       ...process.env,
@@ -219,20 +219,20 @@ async function startBackend() {
       DJANGO_SETTINGS_MODULE: 'hmis.settings',
       PYTHONUNBUFFERED: '1'
     };
-    
+
     // Start Django using Poetry
     const poetryCmd = 'poetry';
-    
+
     backendProcess = spawn(poetryCmd, ['run', 'python', 'manage.py', 'runserver', `0.0.0.0:${BACKEND_PORT}`, '--noreload'], {
       cwd: backendPath,
       env: env,
       stdio: 'pipe',
       shell: true
     });
-    
+
     backendProcess.stdout.on('data', (data) => {
       console.log(`[Backend] ${data.toString().trim()}`);
-      
+
       // Check if server started successfully
       if (data.toString().includes('Starting development server')) {
         console.log('[Backend] Server started successfully');
@@ -240,7 +240,7 @@ async function startBackend() {
         setTimeout(() => resolve(), 2000);
       }
     });
-    
+
     backendProcess.stderr.on('data', (data) => {
       const message = data.toString().trim();
       // Django sends some info to stderr, so only log warnings/errors
@@ -248,17 +248,17 @@ async function startBackend() {
         console.error(`[Backend] ${message}`);
       }
     });
-    
+
     backendProcess.on('error', (error) => {
       console.error('[Backend] Failed to start:', error);
       reject(error);
     });
-    
+
     backendProcess.on('exit', (code) => {
       console.log(`[Backend] Process exited with code ${code}`);
       backendProcess = null;
     });
-    
+
     // Timeout if server doesn't start within 30 seconds
     setTimeout(() => {
       if (backendProcess && backendProcess.exitCode === null) {
@@ -276,20 +276,20 @@ function stopBackend() {
   return new Promise((resolve) => {
     if (backendProcess) {
       console.log('[Backend] Stopping Django server...');
-      
+
       backendProcess.on('exit', () => {
         console.log('[Backend] Server stopped');
         backendProcess = null;
         resolve();
       });
-      
+
       // Kill the process
       if (process.platform === 'win32') {
         spawn('taskkill', ['/pid', backendProcess.pid, '/f', '/t']);
       } else {
         backendProcess.kill('SIGTERM');
       }
-      
+
       // Force kill after 5 seconds if not stopped
       setTimeout(() => {
         if (backendProcess) {
@@ -336,20 +336,20 @@ function createWindow() {
     title: 'Vitora HMIS',
     show: false // Don't show until ready
   });
-  
+
   // Load the app UI
   mainWindow.loadFile(path.join(__dirname, '..', 'renderer', 'index.html'));
-  
+
   // Show window when ready
   mainWindow.once('ready-to-show', () => {
     mainWindow.show();
   });
-  
+
   // Open DevTools in development
   if (process.argv.includes('--dev')) {
     mainWindow.webContents.openDevTools();
   }
-  
+
   mainWindow.on('closed', () => {
     mainWindow = null;
   });
@@ -361,22 +361,22 @@ function createWindow() {
 async function initialize() {
   try {
     console.log('[App] Initializing Vitora HMIS...');
-    
+
     // Run database migrations first
     await runMigrations();
-    
+
     // Import Kenya location data (counties, sub-counties, wards)
     await importKenyaLocations();
-    
+
     // Create superuser for admin access
     await createSuperuser();
-    
+
     // Create test user for development/E2E testing
     await createTestUser();
-    
+
     // Start backend server
     await startBackend();
-    
+
     // Wait for backend to be healthy
     let healthy = false;
     let attempts = 0;
@@ -385,18 +385,18 @@ async function initialize() {
       healthy = await checkBackendHealth();
       attempts++;
     }
-    
+
     if (!healthy) {
       console.error('[App] Backend failed to start properly');
       app.quit();
       return;
     }
-    
+
     console.log('[App] Backend is healthy');
-    
+
     // Create main window
     createWindow();
-    
+
   } catch (error) {
     console.error('[App] Initialization failed:', error);
     app.quit();
@@ -428,12 +428,12 @@ app.on('before-quit', async (event) => {
 ipcMain.handle('api-request', async (event, { method, endpoint, data }) => {
   try {
     const url = `${BACKEND_URL}${endpoint}`;
-    
+
     // Build headers - include auth token if available (except for token endpoints)
     const headers = {
       'Content-Type': 'application/json'
     };
-    
+
     // Add Authorization header for non-auth endpoints
     const isAuthEndpoint = endpoint.includes('/api/token');
     if (!isAuthEndpoint) {
@@ -442,7 +442,7 @@ ipcMain.handle('api-request', async (event, { method, endpoint, data }) => {
         headers['Authorization'] = `Bearer ${accessToken}`;
       }
     }
-    
+
     const response = await axios({
       method,
       url,
@@ -452,9 +452,9 @@ ipcMain.handle('api-request', async (event, { method, endpoint, data }) => {
     return { success: true, data: response.data };
   } catch (error) {
     console.error('[IPC] API request failed:', error.message);
-    return { 
-      success: false, 
-      error: error.response?.data || error.message 
+    return {
+      success: false,
+      error: error.response?.data || error.message
     };
   }
 });

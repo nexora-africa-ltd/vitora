@@ -1,6 +1,6 @@
 /**
  * E2E Tests for Sprint 0.7 Features - Clinician Feedback Implementation
- * 
+ *
  * Following TDD principles: these tests validate the new features added in Sprint 0.7:
  * a) Emergency Contact (name, phone, relationship)
  * b) Medical History (allergies, conditions, medications, surgeries, family/social)
@@ -43,7 +43,7 @@ test.beforeAll(async () => {
     args: [path.join(__dirname, '../../src/main/index.js')],
     timeout: 60000
   });
-  
+
   window = await electronApp.firstWindow();
   await window.waitForLoadState('domcontentloaded');
   await window.waitForTimeout(5000);
@@ -120,15 +120,15 @@ test.describe('Kenya Location Hierarchy', () => {
     await window.waitForTimeout(1000);
     await window.locator('#county').selectOption({ index: 1 });
     await window.waitForTimeout(1000);
-    
+
     // Select a sub-county
     await window.locator('#sub-county').selectOption({ index: 1 });
     await window.waitForTimeout(500);
-    
+
     // Change county - sub-county should reset
     await window.locator('#county').selectOption({ index: 2 });
     await window.waitForTimeout(1000);
-    
+
     const subCountyValue = await window.locator('#sub-county').inputValue();
     expect(subCountyValue).toBe('');
   });
@@ -164,7 +164,7 @@ test.describe('Emergency Contact Section', () => {
     await window.locator('#emergency-contact-name').fill('Jane Doe');
     await window.locator('#emergency-contact-phone').fill('+254722334455');
     await window.locator('#emergency-contact-relationship').selectOption('spouse');
-    
+
     await expect(window.locator('#emergency-contact-name')).toHaveValue('Jane Doe');
     await expect(window.locator('#emergency-contact-phone')).toHaveValue('+254722334455');
     await expect(window.locator('#emergency-contact-relationship')).toHaveValue('spouse');
@@ -194,7 +194,7 @@ test.describe('Medical History Section in Patient Form', () => {
     if (await section.evaluate(el => el.classList.contains('collapsed'))) {
       await window.locator('#medical-history-toggle').click();
     }
-    
+
     await expect(window.locator('#allergies')).toBeVisible();
     await expect(window.locator('#chronic-conditions')).toBeVisible();
     await expect(window.locator('#current-medications')).toBeVisible();
@@ -209,10 +209,10 @@ test.describe('Medical History Section in Patient Form', () => {
     if (await section.evaluate(el => el.classList.contains('collapsed'))) {
       await window.locator('#medical-history-toggle').click();
     }
-    
+
     await window.locator('#allergies').fill('Penicillin, Peanuts');
     await window.locator('#chronic-conditions').fill('Type 2 Diabetes, Hypertension');
-    
+
     await expect(window.locator('#allergies')).toHaveValue('Penicillin, Peanuts');
     await expect(window.locator('#chronic-conditions')).toHaveValue('Type 2 Diabetes, Hypertension');
   });
@@ -253,7 +253,7 @@ test.describe('Referral Source Section', () => {
   test('should hide "Referred From" field when switching back to "self"', async () => {
     await window.locator('#referral-source').selectOption('other_facility');
     await expect(window.locator('#referred-from-facility-group')).toBeVisible();
-    
+
     await window.locator('#referral-source').selectOption('self');
     await expect(window.locator('#referred-from-facility-group')).toBeHidden();
   });
@@ -278,23 +278,23 @@ test.describe('Date of Birth Validation', () => {
     const tomorrow = new Date();
     tomorrow.setDate(tomorrow.getDate() + 1);
     const tomorrowStr = tomorrow.toISOString().split('T')[0];
-    
+
     await window.locator('#date-of-birth').fill(tomorrowStr);
-    
+
     // Fill in minimum required fields
     await window.locator('#first-name').fill('Test');
     await window.locator('#last-name').fill('Patient');
     await window.locator('#gender').selectOption('M');
-    
+
     // Wait for counties to load and select location
     await window.waitForTimeout(1000);
     await window.locator('#county').selectOption({ index: 1 });
     await window.waitForTimeout(1000);
     await window.locator('#sub-county').selectOption({ index: 1 });
-    
+
     // Submit form
     await window.locator('#submit-btn').click();
-    
+
     // Should show error message about DOB
     await window.waitForTimeout(1000);
     const message = await window.locator('#message');
@@ -341,7 +341,7 @@ test.describe('Complete Patient Registration with Sprint 0.7 Fields', () => {
   test('should successfully register patient with all new fields', async () => {
     await navigateToTab(window, 'register');
     await window.waitForTimeout(1000);
-    
+
     // Personal Information
     await window.locator('#first-name').fill('Test');
     await window.locator('#middle-name').fill('Sprint07');
@@ -350,7 +350,7 @@ test.describe('Complete Patient Registration with Sprint 0.7 Fields', () => {
     await window.locator('#gender').selectOption('F');
     await window.locator('#phone-number').fill('+254700123456');
     await window.locator('#email').fill('test.sprint07@example.com');
-    
+
     // Kenya Location
     await window.locator('#county').selectOption({ index: 1 });
     await window.waitForTimeout(1000);
@@ -358,15 +358,15 @@ test.describe('Complete Patient Registration with Sprint 0.7 Fields', () => {
     await window.waitForTimeout(1000);
     await window.locator('#ward').selectOption({ index: 1 });
     await window.locator('#village').fill('Kibera');
-    
+
     // Referral Source
     await window.locator('#referral-source').selectOption('clinic');
-    
+
     // Emergency Contact
     await window.locator('#emergency-contact-name').fill('John Emergency');
     await window.locator('#emergency-contact-phone').fill('+254711999888');
     await window.locator('#emergency-contact-relationship').selectOption('spouse');
-    
+
     // Medical History (expand if collapsed)
     const section = window.locator('#medical-history-section');
     if (await section.evaluate(el => el.classList.contains('collapsed'))) {
@@ -374,13 +374,13 @@ test.describe('Complete Patient Registration with Sprint 0.7 Fields', () => {
     }
     await window.locator('#allergies').fill('None known');
     await window.locator('#chronic-conditions').fill('Asthma');
-    
+
     // Submit form
     await window.locator('#submit-btn').click();
-    
+
     // Wait for response
     await window.waitForTimeout(2000);
-    
+
     // Check success message
     const message = window.locator('#message');
     await expect(message).toBeVisible();
@@ -398,22 +398,22 @@ test.describe('Toast Notifications', () => {
   test('should show success message after patient registration', async () => {
     await navigateToTab(window, 'register');
     await window.waitForTimeout(1000);
-    
+
     // Fill minimum required fields
     await window.locator('#first-name').fill('Toast');
     await window.locator('#last-name').fill('Test');
     await window.locator('#date-of-birth').fill('1985-01-01');
     await window.locator('#gender').selectOption('M');
-    
+
     // Select location
     await window.locator('#county').selectOption({ index: 1 });
     await window.waitForTimeout(1000);
     await window.locator('#sub-county').selectOption({ index: 1 });
-    
+
     // Submit
     await window.locator('#submit-btn').click();
     await window.waitForTimeout(2000);
-    
+
     // Check for success message
     const message = window.locator('#message');
     await expect(message).toBeVisible();
@@ -422,7 +422,7 @@ test.describe('Toast Notifications', () => {
 
   test('should show error message for invalid data', async () => {
     await navigateToTab(window, 'register');
-    
+
     // Submit without filling required fields - browser validation should prevent
     // But we can test for API errors
     await window.locator('#first-name').fill('Error');
@@ -430,14 +430,14 @@ test.describe('Toast Notifications', () => {
     await window.locator('#date-of-birth').fill('1985-01-01');
     await window.locator('#gender').selectOption('M');
     // Don't fill county/sub-county which are required
-    
+
     // Remove required attribute temporarily for testing
     await window.locator('#county').evaluate(el => el.removeAttribute('required'));
     await window.locator('#sub-county').evaluate(el => el.removeAttribute('required'));
-    
+
     await window.locator('#submit-btn').click();
     await window.waitForTimeout(2000);
-    
+
     // Check for error message
     const message = window.locator('#message');
     await expect(message).toBeVisible();
@@ -453,7 +453,7 @@ test.describe('Form Reset Functionality', () => {
   test('should clear all fields including new Sprint 0.7 fields', async () => {
     await navigateToTab(window, 'register');
     await window.waitForTimeout(1000);
-    
+
     // Fill some fields
     await window.locator('#first-name').fill('Reset');
     await window.locator('#last-name').fill('Test');
@@ -461,11 +461,11 @@ test.describe('Form Reset Functionality', () => {
     await window.waitForTimeout(500);
     await window.locator('#emergency-contact-name').fill('Emergency Test');
     await window.locator('#village').fill('Test Village');
-    
+
     // Click clear button
     await window.locator('#clear-btn').click();
     await window.waitForTimeout(500);
-    
+
     // Verify fields are cleared
     await expect(window.locator('#first-name')).toHaveValue('');
     await expect(window.locator('#last-name')).toHaveValue('');

@@ -1,9 +1,9 @@
 # Security Scan Report
 
-**Project**: Vitora HMIS  
-**Scan Date**: December 28, 2025  
-**Tool**: Bandit 1.9.2  
-**Scope**: `hmis/` and `tests/` directories  
+**Project**: Vitora HMIS
+**Scan Date**: December 28, 2025
+**Tool**: Bandit 1.9.2
+**Scope**: `hmis/` and `tests/` directories
 **Status**: ✅ PASSED (No production code issues)
 
 ---
@@ -52,8 +52,8 @@ All 38 production files passed security scanning with zero findings:
 
 ### B106: Hardcoded Password in Function Argument
 
-**Severity**: Low  
-**Confidence**: Medium  
+**Severity**: Low
+**Confidence**: Medium
 **CWE**: CWE-259 (Use of Hard-coded Password)
 
 **Locations**:
@@ -73,8 +73,8 @@ These are intentional hardcoded passwords in test fixtures. This is standard pra
 
 ### B101: Assert Used
 
-**Severity**: Low  
-**Confidence**: High  
+**Severity**: Low
+**Confidence**: High
 **CWE**: CWE-703 (Improper Check or Handling of Exceptional Conditions)
 
 **Locations**: Multiple instances in test files (`tests/test_*.py`)
@@ -205,7 +205,6 @@ Files skipped (0):
 
 ---
 
-**Document Status**: APPROVED  
-**Next Scan**: January 2026 (Monthly)  
+**Document Status**: APPROVED
+**Next Scan**: January 2026 (Monthly)
 **Document Owner**: Security Lead
-
