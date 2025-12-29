@@ -19,7 +19,7 @@ User = get_user_model()
 class TestDOBValidation:
     """Test suite for Date of Birth validation."""
 
-    def test_valid_dob_in_past(self, test_user):
+    def test_valid_dob_in_past(self, sample_county, sample_sub_county):
         """Test that DOB in the past is valid."""
         from hmis.apps.patients.models import Patient
 
@@ -28,11 +28,13 @@ class TestDOBValidation:
             last_name="Patient",
             date_of_birth=date(1990, 1, 1),
             gender="M",
+            county=sample_county,
+            sub_county=sample_sub_county,
         )
         # Should not raise
         patient.full_clean()
 
-    def test_valid_dob_today(self, test_user):
+    def test_valid_dob_today(self, sample_county, sample_sub_county):
         """Test that DOB today (newborn) is valid."""
         from hmis.apps.patients.models import Patient
 
@@ -41,11 +43,13 @@ class TestDOBValidation:
             last_name="Baby",
             date_of_birth=date.today(),
             gender="F",
+            county=sample_county,
+            sub_county=sample_sub_county,
         )
         # Should not raise
         patient.full_clean()
 
-    def test_invalid_dob_in_future(self, test_user):
+    def test_invalid_dob_in_future(self, sample_county, sample_sub_county):
         """Test that DOB in the future is invalid."""
         from hmis.apps.patients.models import Patient
 
@@ -55,6 +59,8 @@ class TestDOBValidation:
             last_name="Patient",
             date_of_birth=future_date,
             gender="M",
+            county=sample_county,
+            sub_county=sample_sub_county,
         )
 
         with pytest.raises(ValidationError) as exc_info:
@@ -63,7 +69,7 @@ class TestDOBValidation:
         assert "date_of_birth" in str(exc_info.value)
         assert "future" in str(exc_info.value).lower()
 
-    def test_invalid_dob_far_future(self, test_user):
+    def test_invalid_dob_far_future(self, sample_county, sample_sub_county):
         """Test that DOB far in the future is invalid."""
         from hmis.apps.patients.models import Patient
 
@@ -73,6 +79,8 @@ class TestDOBValidation:
             last_name="Patient",
             date_of_birth=future_date,
             gender="F",
+            county=sample_county,
+            sub_county=sample_sub_county,
         )
 
         with pytest.raises(ValidationError) as exc_info:
@@ -119,13 +127,17 @@ class TestRegisteredByTracking:
 
         assert hasattr(Patient, "registered_by")
 
-    def test_registered_by_auto_set_on_api_create(self, authenticated_client, test_user):
+    def test_registered_by_auto_set_on_api_create(
+        self, authenticated_client, test_user, sample_county, sample_sub_county
+    ):
         """Test registered_by is auto-set to authenticated user on create."""
         data = {
             "first_name": "New",
             "last_name": "Patient",
             "date_of_birth": "1990-01-01",
             "gender": "M",
+            "county": sample_county.id,
+            "sub_county": sample_sub_county.id,
         }
 
         response = authenticated_client.post("/api/patients/", data, format="json")
@@ -134,7 +146,9 @@ class TestRegisteredByTracking:
         assert response.data["registered_by"] == test_user.id
         assert response.data["registered_by_username"] == test_user.username
 
-    def test_registered_by_not_changed_on_update(self, authenticated_client, test_user):
+    def test_registered_by_not_changed_on_update(
+        self, authenticated_client, test_user, sample_county, sample_sub_county
+    ):
         """Test registered_by is not changed when patient is updated."""
         from hmis.apps.patients.models import Patient
 
@@ -149,6 +163,8 @@ class TestRegisteredByTracking:
             date_of_birth="1985-05-15",
             gender="F",
             registered_by=other_user,
+            county=sample_county,
+            sub_county=sample_sub_county,
         )
 
         # Update the patient as test_user
@@ -164,7 +180,7 @@ class TestRegisteredByTracking:
         assert patient.registered_by == other_user
 
     def test_registered_by_displayed_in_patient_details(
-        self, authenticated_client, test_user
+        self, authenticated_client, test_user, sample_county, sample_sub_county
     ):
         """Test registered_by info is included in patient details."""
         from hmis.apps.patients.models import Patient
@@ -175,6 +191,8 @@ class TestRegisteredByTracking:
             date_of_birth="1990-01-01",
             gender="M",
             registered_by=test_user,
+            county=sample_county,
+            sub_county=sample_sub_county,
         )
 
         response = authenticated_client.get(f"/api/patients/{patient.id}/")
@@ -184,7 +202,7 @@ class TestRegisteredByTracking:
         assert "registered_by_username" in response.data
         assert response.data["registered_by_username"] == test_user.username
 
-    def test_registered_by_is_optional(self):
+    def test_registered_by_is_optional(self, sample_county, sample_sub_county):
         """Test registered_by can be null (for migrated data)."""
         from hmis.apps.patients.models import Patient
 
@@ -194,11 +212,15 @@ class TestRegisteredByTracking:
             date_of_birth="1980-01-01",
             gender="M",
             registered_by=None,
+            county=sample_county,
+            sub_county=sample_sub_county,
         )
 
         assert patient.registered_by is None
 
-    def test_registered_by_preserved_when_user_deleted(self, test_user):
+    def test_registered_by_preserved_when_user_deleted(
+        self, test_user, sample_county, sample_sub_county
+    ):
         """Test patient record preserved when registering user is deleted."""
         from hmis.apps.patients.models import Patient
 
@@ -208,6 +230,8 @@ class TestRegisteredByTracking:
             date_of_birth="1990-01-01",
             gender="M",
             registered_by=test_user,
+            county=sample_county,
+            sub_county=sample_sub_county,
         )
         patient_id = patient.id
 

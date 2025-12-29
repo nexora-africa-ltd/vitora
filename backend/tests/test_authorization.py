@@ -78,7 +78,21 @@ def admin_user(db):
 
 
 @pytest.fixture
-def sample_patient(db):
+def auth_sample_county(db):
+    """Create a sample county for authorization tests."""
+    from hmis.apps.core.models import County
+    return County.objects.create(code=99, name="TestCounty")
+
+
+@pytest.fixture
+def auth_sample_sub_county(db, auth_sample_county):
+    """Create a sample sub-county for authorization tests."""
+    from hmis.apps.core.models import SubCounty
+    return SubCounty.objects.create(county=auth_sample_county, name="TestSubCounty")
+
+
+@pytest.fixture
+def sample_patient(db, auth_sample_county, auth_sample_sub_county):
     """Create a sample patient for testing."""
     from hmis.apps.patients.models import Patient
     
@@ -88,11 +102,13 @@ def sample_patient(db):
         date_of_birth="1990-01-15",
         gender="M",
         phone_number="+254712345678",
+        county=auth_sample_county,
+        sub_county=auth_sample_sub_county,
     )
 
 
 @pytest.fixture
-def sensitive_patient(db):
+def sensitive_patient(db, auth_sample_county, auth_sample_sub_county):
     """Create a patient marked as sensitive (HIV/GBV case)."""
     from hmis.apps.patients.models import Patient
     
@@ -103,6 +119,8 @@ def sensitive_patient(db):
         gender="F",
         phone_number="+254723456789",
         is_sensitive=True,  # This field needs to be added to model
+        county=auth_sample_county,
+        sub_county=auth_sample_sub_county,
     )
 
 
@@ -115,7 +133,9 @@ def sensitive_patient(db):
 class TestRoleBasedAccess:
     """Tests for role-based access control."""
 
-    def test_receptionist_can_create_patient(self, api_client, receptionist_user):
+    def test_receptionist_can_create_patient(
+        self, api_client, receptionist_user, auth_sample_county, auth_sample_sub_county
+    ):
         """
         Test that receptionist can create new patients.
         
@@ -130,6 +150,8 @@ class TestRoleBasedAccess:
             "last_name": "Patient",
             "date_of_birth": "2000-01-01",
             "gender": "F",
+            "county": auth_sample_county.id,
+            "sub_county": auth_sample_sub_county.id,
         }
         
         response = api_client.post(url, data, format="json")
@@ -450,7 +472,7 @@ class TestObjectLevelPermissions:
     """Tests for object-level permission checks."""
 
     def test_user_cannot_delete_other_user_created_patient(
-        self, api_client, receptionist_user, nurse_user, db
+        self, api_client, receptionist_user, nurse_user, auth_sample_county, auth_sample_sub_county, db
     ):
         """
         Test that users cannot delete patients created by others (if implemented).
@@ -467,6 +489,8 @@ class TestObjectLevelPermissions:
             "last_name": "Test",
             "date_of_birth": "1990-01-01",
             "gender": "M",
+            "county": auth_sample_county.id,
+            "sub_county": auth_sample_sub_county.id,
         }
         response = api_client.post(url, data, format="json")
         patient_id = response.data["id"]

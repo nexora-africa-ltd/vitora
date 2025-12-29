@@ -157,7 +157,9 @@ class TestAuditLogModel:
 class TestPatientAuditLogs:
     """Tests for patient-related audit logs."""
 
-    def test_patient_creation_is_logged(self, api_client, test_user, db):
+    def test_patient_creation_is_logged(
+        self, api_client, test_user, sample_county, sample_sub_county, db
+    ):
         """
         Test that patient creation generates an audit log.
         
@@ -174,6 +176,8 @@ class TestPatientAuditLogs:
             "last_name": "Patient",
             "date_of_birth": "1990-01-01",
             "gender": "M",
+            "county": sample_county.id,
+            "sub_county": sample_sub_county.id,
         }
         
         initial_count = AuditLog.objects.filter(action="patient_create").count()
