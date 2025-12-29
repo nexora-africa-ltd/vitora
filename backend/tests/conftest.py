@@ -122,18 +122,44 @@ def authenticated_client(api_client, test_user):
 
 
 @pytest.fixture
-def patient_data():
+def sample_county(db):
+    """Create a sample county for testing."""
+    from hmis.apps.core.models import County
+
+    return County.objects.create(code=1, name="Mombasa")
+
+
+@pytest.fixture
+def sample_sub_county(db, sample_county):
+    """Create a sample sub-county for testing."""
+    from hmis.apps.core.models import SubCounty
+
+    return SubCounty.objects.create(county=sample_county, name="Changamwe")
+
+
+@pytest.fixture
+def sample_ward(db, sample_sub_county):
+    """Create a sample ward for testing."""
+    from hmis.apps.core.models import Ward
+
+    return Ward.objects.create(sub_county=sample_sub_county, name="Port Reitz")
+
+
+@pytest.fixture
+def patient_data(sample_county, sample_sub_county):
     """Sample patient data for tests."""
     return {
         "first_name": "John",
         "last_name": "Doe",
         "date_of_birth": "1990-01-15",
         "gender": "M",
+        "county": sample_county.id,
+        "sub_county": sample_sub_county.id,
     }
 
 
 @pytest.fixture
-def sample_patient(db, test_user):
+def sample_patient(db, test_user, sample_county, sample_sub_county):
     """Create a sample patient for testing."""
     from hmis.apps.patients.models import Patient
 
@@ -142,6 +168,8 @@ def sample_patient(db, test_user):
         last_name="Smith",
         date_of_birth="1985-05-20",
         gender="F",
+        county=sample_county,
+        sub_county=sample_sub_county,
     )
 
 

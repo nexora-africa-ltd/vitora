@@ -41,13 +41,15 @@ def auth_client(api_client, auth_user):
 
 
 @pytest.fixture
-def sample_patient_data():
+def sample_patient_data(sample_county, sample_sub_county):
     """Provide sample patient data for creating patients."""
     return {
         "first_name": "John",
         "last_name": "Doe",
         "date_of_birth": "1990-01-01",
         "gender": "M",
+        "county": sample_county.id,
+        "sub_county": sample_sub_county.id,
     }
 
 
@@ -55,16 +57,26 @@ def sample_patient_data():
 class TestPatientAPIEndpoints:
     """Test Patient API CRUD operations."""
 
-    def test_list_patients(self, auth_client):
+    def test_list_patients(self, auth_client, sample_county, sample_sub_county):
         """Test GET /api/patients/ - List all patients."""
         from hmis.apps.patients.models import Patient
 
         # Create some test patients
         Patient.objects.create(
-            first_name="John", last_name="Doe", date_of_birth=date(1990, 1, 1), gender="M"
+            first_name="John",
+            last_name="Doe",
+            date_of_birth=date(1990, 1, 1),
+            gender="M",
+            county=sample_county,
+            sub_county=sample_sub_county,
         )
         Patient.objects.create(
-            first_name="Jane", last_name="Smith", date_of_birth=date(1985, 5, 15), gender="F"
+            first_name="Jane",
+            last_name="Smith",
+            date_of_birth=date(1985, 5, 15),
+            gender="F",
+            county=sample_county,
+            sub_county=sample_sub_county,
         )
 
         response = auth_client.get("/api/patients/")
@@ -233,7 +245,9 @@ class TestPatientAPIEndpoints:
         # MRN should be auto-generated, not the one we provided
         assert response.data["mrn"] != "CUSTOM-MRN-123"
 
-    def test_create_patient_with_optional_fields(self, auth_client):
+    def test_create_patient_with_optional_fields(
+        self, auth_client, sample_county, sample_sub_county
+    ):
         """Test creating patient with all fields including optional ones."""
         full_data = {
             "first_name": "John",
@@ -245,6 +259,8 @@ class TestPatientAPIEndpoints:
             "email": "john.doe@example.com",
             "address": "123 Main St, Nairobi",
             "national_id": "12345678",
+            "county": sample_county.id,
+            "sub_county": sample_sub_county.id,
         }
 
         response = auth_client.post("/api/patients/", full_data, format="json")
@@ -256,12 +272,17 @@ class TestPatientAPIEndpoints:
         assert response.data["address"] == "123 Main St, Nairobi"
         assert response.data["national_id"] == "12345678"
 
-    def test_patient_age_in_response(self, auth_client):
+    def test_patient_age_in_response(self, auth_client, sample_county, sample_sub_county):
         """Test that patient age is included in API response."""
         from hmis.apps.patients.models import Patient
 
         patient = Patient.objects.create(
-            first_name="John", last_name="Doe", date_of_birth=date(1990, 1, 1), gender="M"
+            first_name="John",
+            last_name="Doe",
+            date_of_birth=date(1990, 1, 1),
+            gender="M",
+            county=sample_county,
+            sub_county=sample_sub_county,
         )
 
         response = auth_client.get(f"/api/patients/{patient.id}/")
@@ -270,12 +291,17 @@ class TestPatientAPIEndpoints:
         assert "age" in response.data
         assert isinstance(response.data["age"], int)
 
-    def test_patient_full_name_in_response(self, auth_client):
+    def test_patient_full_name_in_response(self, auth_client, sample_county, sample_sub_county):
         """Test that patient full name is included in API response."""
         from hmis.apps.patients.models import Patient
 
         patient = Patient.objects.create(
-            first_name="John", last_name="Doe", date_of_birth=date(1990, 1, 1), gender="M"
+            first_name="John",
+            last_name="Doe",
+            date_of_birth=date(1990, 1, 1),
+            gender="M",
+            county=sample_county,
+            sub_county=sample_sub_county,
         )
 
         response = auth_client.get(f"/api/patients/{patient.id}/")

@@ -10,7 +10,13 @@ from django.urls import include, path
 from rest_framework import routers
 from rest_framework_simplejwt.views import TokenRefreshView, TokenVerifyView
 
-from hmis.apps.core.views import AuditedTokenObtainPairView, AuditLogViewSet
+from hmis.apps.core.views import (
+    AuditedTokenObtainPairView,
+    AuditLogViewSet,
+    CountyViewSet,
+    SubCountyViewSet,
+    WardViewSet,
+)
 from hmis.apps.encounters.views import EncounterViewSet
 from hmis.apps.patients.views import EmergencyContactViewSet, PatientViewSet
 
@@ -32,10 +38,17 @@ router.register(r"patients", PatientViewSet, basename="patient")
 router.register(r"encounters", EncounterViewSet, basename="encounter")
 router.register(r"auditlogs", AuditLogViewSet, basename="auditlog")
 
+# Location routes under /api/locations/
+location_router = routers.DefaultRouter()
+location_router.register(r"counties", CountyViewSet, basename="county")
+location_router.register(r"sub-counties", SubCountyViewSet, basename="subcounty")
+location_router.register(r"wards", WardViewSet, basename="ward")
+
 urlpatterns = [
     path("", health_check, name="health_check"),
     path("admin/", admin.site.urls),
     path("api/", include(router.urls)),
+    path("api/locations/", include(location_router.urls)),
     # Nested route for emergency contacts under patients
     path(
         "api/patients/<int:patient_pk>/emergency-contacts/",

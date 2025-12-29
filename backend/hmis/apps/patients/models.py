@@ -132,6 +132,38 @@ class Patient(models.Model):
         help_text="Name of facility patient was referred from (if applicable)",
     )
 
+    # Kenya Location Hierarchy
+    county = models.ForeignKey(
+        "core.County",
+        on_delete=models.PROTECT,
+        null=True,
+        blank=True,
+        related_name="patients",
+        help_text="Patient's county of residence",
+    )
+    sub_county = models.ForeignKey(
+        "core.SubCounty",
+        on_delete=models.PROTECT,
+        null=True,
+        blank=True,
+        related_name="patients",
+        help_text="Patient's sub-county of residence",
+    )
+    ward = models.ForeignKey(
+        "core.Ward",
+        on_delete=models.PROTECT,
+        null=True,
+        blank=True,
+        related_name="patients",
+        help_text="Patient's ward of residence (optional)",
+    )
+    village = models.CharField(
+        max_length=200,
+        blank=True,
+        default="",
+        help_text="Patient's village/estate (optional, free text)",
+    )
+
     # Timestamps
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
@@ -185,6 +217,12 @@ class Patient(models.Model):
                     "referred_from_facility": "Facility name is required when referral source is 'Other Facility'."
                 }
             )
+
+        # Validate county and sub_county are provided (mandatory)
+        if not self.county_id:
+            raise ValidationError({"county": "County is required."})
+        if not self.sub_county_id:
+            raise ValidationError({"sub_county": "Sub-county is required."})
 
     @property
     def full_name(self) -> str:

@@ -34,6 +34,10 @@ class PatientSerializer(serializers.ModelSerializer):
     registered_by_username = serializers.CharField(
         source="registered_by.username", read_only=True
     )
+    # Location display names (read-only)
+    county_name = serializers.CharField(source="county.name", read_only=True)
+    sub_county_name = serializers.CharField(source="sub_county.name", read_only=True)
+    ward_name = serializers.CharField(source="ward.name", read_only=True, allow_null=True)
 
     class Meta:
         model = Patient
@@ -51,6 +55,15 @@ class PatientSerializer(serializers.ModelSerializer):
             "email",
             "address",
             "national_id",
+            # Location fields
+            "county",
+            "county_name",
+            "sub_county",
+            "sub_county_name",
+            "ward",
+            "ward_name",
+            "village",
+            # Other fields
             "referral_source",
             "referred_from_facility",
             "registered_by",
@@ -67,6 +80,9 @@ class PatientSerializer(serializers.ModelSerializer):
             "full_name",
             "registered_by",
             "registered_by_username",
+            "county_name",
+            "sub_county_name",
+            "ward_name",
         ]
 
     def validate_date_of_birth(self, value):
@@ -84,5 +100,16 @@ class PatientSerializer(serializers.ModelSerializer):
             raise serializers.ValidationError(
                 {"referred_from_facility": "Facility name is required when referral source is 'Other Facility'."}
             )
+
+        # Validate county and sub_county are provided
+        county = data.get("county")
+        sub_county = data.get("sub_county")
+        
+        # For new patients (no instance), both are required
+        if not self.instance:
+            if not county:
+                raise serializers.ValidationError({"county": "County is required."})
+            if not sub_county:
+                raise serializers.ValidationError({"sub_county": "Sub-county is required."})
 
         return data

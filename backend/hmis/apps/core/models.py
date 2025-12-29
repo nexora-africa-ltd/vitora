@@ -572,3 +572,101 @@ class SyncMetrics(models.Model):
             self.duration_ms = int(delta.total_seconds() * 1000)
             return self.duration_ms
         return 0
+
+
+# ============================================================================
+# Kenya Location Hierarchy Models
+# ============================================================================
+
+
+class County(models.Model):
+    """
+    Kenya County model (47 counties).
+
+    Represents the first level of Kenya's administrative hierarchy.
+    """
+
+    code = models.PositiveSmallIntegerField(
+        unique=True,
+        help_text="County code (1-47)",
+    )
+    name = models.CharField(
+        max_length=100,
+        unique=True,
+        help_text="County name",
+    )
+
+    class Meta:
+        """Meta options for County."""
+
+        verbose_name = "County"
+        verbose_name_plural = "Counties"
+        ordering = ["name"]
+
+    def __str__(self) -> str:
+        """Return county name."""
+        return self.name
+
+
+class SubCounty(models.Model):
+    """
+    Kenya Sub-County model.
+
+    Represents the second level of Kenya's administrative hierarchy.
+    Each sub-county belongs to one county.
+    """
+
+    county = models.ForeignKey(
+        County,
+        on_delete=models.CASCADE,
+        related_name="sub_counties",
+        help_text="Parent county",
+    )
+    name = models.CharField(
+        max_length=100,
+        help_text="Sub-county name",
+    )
+
+    class Meta:
+        """Meta options for SubCounty."""
+
+        verbose_name = "Sub-County"
+        verbose_name_plural = "Sub-Counties"
+        ordering = ["name"]
+        unique_together = ["county", "name"]
+
+    def __str__(self) -> str:
+        """Return sub-county and county name."""
+        return f"{self.name}, {self.county.name}"
+
+
+class Ward(models.Model):
+    """
+    Kenya Ward model.
+
+    Represents the third level of Kenya's administrative hierarchy.
+    Each ward belongs to one sub-county.
+    """
+
+    sub_county = models.ForeignKey(
+        SubCounty,
+        on_delete=models.CASCADE,
+        related_name="wards",
+        help_text="Parent sub-county",
+    )
+    name = models.CharField(
+        max_length=100,
+        help_text="Ward name",
+    )
+
+    class Meta:
+        """Meta options for Ward."""
+
+        verbose_name = "Ward"
+        verbose_name_plural = "Wards"
+        ordering = ["name"]
+        unique_together = ["sub_county", "name"]
+
+    def __str__(self) -> str:
+        """Return ward and sub-county name."""
+        return f"{self.name}, {self.sub_county.name}"

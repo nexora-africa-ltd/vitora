@@ -101,7 +101,7 @@ class TestPatientModel:
 
         assert patient.age == 30
 
-    def test_gender_validation(self):
+    def test_gender_validation(self, sample_county, sample_sub_county):
         """Test that gender field only accepts valid choices."""
         from hmis.apps.patients.models import Patient
 
@@ -112,10 +112,12 @@ class TestPatientModel:
                 last_name="Patient",
                 date_of_birth=date(1990, 1, 1),
                 gender=gender,
+                county=sample_county,
+                sub_county=sample_sub_county,
             )
             patient.full_clean()  # Should not raise
 
-    def test_invalid_gender_raises_error(self):
+    def test_invalid_gender_raises_error(self, sample_county, sample_sub_county):
         """Test that invalid gender raises validation error."""
         from hmis.apps.patients.models import Patient
 
@@ -124,6 +126,8 @@ class TestPatientModel:
             last_name="Patient",
             date_of_birth=date(1990, 1, 1),
             gender="X",  # Invalid gender
+            county=sample_county,
+            sub_county=sample_sub_county,
         )
 
         with pytest.raises(ValidationError):
