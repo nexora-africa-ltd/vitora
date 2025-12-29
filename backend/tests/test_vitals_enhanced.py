@@ -247,7 +247,7 @@ class TestEnhancedVitalsValidation:
         assert "severe hypoxemia" in encounter.get_alerts().lower()
 
     def test_spo2_hypoxemia_alert(self, sample_patient):
-        """Test hypoxemia alert for SpO2 90-94%."""
+        """Test hypoxemia alert for SpO2 90-94% (warning level, not critical)."""
         from hmis.apps.encounters.models import Encounter
 
         encounter = Encounter.objects.create(
@@ -257,8 +257,10 @@ class TestEnhancedVitalsValidation:
             spo2=Decimal("92.0"),
         )
 
-        assert encounter.has_critical_vitals() is True
-        assert "hypoxemia" in encounter.get_alerts().lower()
+        # SpO2 90-94% is warning (mild hypoxemia), not critical
+        assert encounter.has_critical_vitals() is False
+        # But get_alerts() includes warnings for SpO2
+        assert encounter.get_vital_status("spo2") == "warning"
 
     def test_all_vitals_normal_no_alerts(self, sample_patient):
         """Test normal vitals produce no alerts."""

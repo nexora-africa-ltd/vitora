@@ -285,34 +285,17 @@ class Encounter(models.Model):
         """
         Check if any vital signs are in critical ranges.
 
+        Uses age-appropriate ranges for pediatric patients.
+
         Returns:
             bool: True if any vital signs are critical
         """
-        # Critical temperature: < 36°C or > 39°C
-        if self.temperature is not None and (self.temperature < 36.0 or self.temperature > 39.0):
-            return True
+        # Check each vital using the age-aware get_vital_status method
+        vitals_to_check = ["temperature", "pulse", "respiratory_rate", "spo2", "bp_systolic", "bp_diastolic"]
 
-        # Critical pulse: < 50 or > 120 bpm
-        if self.pulse is not None and (self.pulse < 50 or self.pulse > 120):
-            return True
-
-        # Critical respiratory rate: < 12 or > 25 breaths/min
-        if self.respiratory_rate is not None and (
-            self.respiratory_rate < 12 or self.respiratory_rate > 25
-        ):
-            return True
-
-        # Critical SpO2: < 95% (hypoxemia)
-        if self.spo2 is not None and self.spo2 < 95:
-            return True
-
-        # Critical blood pressure: Hypertensive crisis (>=180/120) or Hypotension (<90/60)
-        systolic = self.get_systolic_bp()
-        diastolic = self.get_diastolic_bp()
-        if systolic is not None and diastolic is not None:
-            if systolic >= 180 or diastolic >= 120:
-                return True
-            if systolic < 90 or diastolic < 60:
+        for vital in vitals_to_check:
+            status = self.get_vital_status(vital)
+            if status == "critical":
                 return True
 
         return False
@@ -321,43 +304,63 @@ class Encounter(models.Model):
         """
         Get alert messages for critical vital signs.
 
+        Uses age-appropriate ranges for pediatric patients.
+
         Returns:
             str: Alert messages for critical vitals
         """
         alerts = []
+        age_suffix = " (pediatric)" if self.is_pediatric_patient() else ""
 
+        # Temperature alerts (same for all ages)
         if self.temperature is not None:
-            if self.temperature > 39.0:
-                alerts.append("High temperature (fever)")
-            elif self.temperature < 36.0:
-                alerts.append("Low temperature (hypothermia)")
+            temp_status = self.get_vital_status("temperature")
+            if temp_status == "critical":
+                if self.temperature > 38.0:
+                    alerts.append(f"High temperature (fever){age_suffix}")
+                else:
+                    alerts.append(f"Low temperature (hypothermia){age_suffix}")
 
+        # Pulse alerts
         if self.pulse is not None:
-            if self.pulse > 120:
-                alerts.append("High pulse rate (tachycardia)")
-            elif self.pulse < 50:
-                alerts.append("Low pulse rate (bradycardia)")
+            pulse_status = self.get_vital_status("pulse")
+            if pulse_status == "critical":
+                ranges = self._get_vital_ranges_for_patient()["pulse"]
+                if self.pulse > ranges["normal"][1]:
+                    alerts.append(f"High pulse rate (tachycardia){age_suffix}")
+                else:
+                    alerts.append(f"Low pulse rate (bradycardia){age_suffix}")
 
+        # Respiratory rate alerts
         if self.respiratory_rate is not None:
-            if self.respiratory_rate > 25:
-                alerts.append("High respiratory rate (tachypnea)")
-            elif self.respiratory_rate < 12:
-                alerts.append("Low respiratory rate (bradypnea)")
+            rr_status = self.get_vital_status("respiratory_rate")
+            if rr_status == "critical":
+                ranges = self._get_vital_ranges_for_patient()["respiratory_rate"]
+                if self.respiratory_rate > ranges["normal"][1]:
+                    alerts.append(f"High respiratory rate (tachypnea){age_suffix}")
+                else:
+                    alerts.append(f"Low respiratory rate (bradypnea){age_suffix}")
 
+        # SpO2 alerts (same thresholds for all ages)
         if self.spo2 is not None:
-            if self.spo2 < 90:
-                alerts.append("Severe hypoxemia (SpO2 < 90%)")
-            elif self.spo2 < 95:
-                alerts.append("Low oxygen saturation (hypoxemia)")
+            spo2_status = self.get_vital_status("spo2")
+            if spo2_status == "critical":
+                if float(self.spo2) < 90:
+                    alerts.append(f"Severe hypoxemia (SpO2 < 90%){age_suffix}")
+                else:
+                    alerts.append(f"Low oxygen saturation (hypoxemia){age_suffix}")
 
         # Blood pressure alerts
         systolic = self.get_systolic_bp()
         diastolic = self.get_diastolic_bp()
-        if systolic is not None and diastolic is not None:
-            if systolic >= 180 or diastolic >= 120:
-                alerts.append("Hypertensive crisis (BP >= 180/120)")
-            elif systolic < 90 or diastolic < 60:
-                alerts.append("Hypotension (low blood pressure)")
+        if systolic is not None:
+            bp_status = self.get_vital_status("bp_systolic")
+            if bp_status == "critical":
+                ranges = self._get_vital_ranges_for_patient()["bp_systolic"]
+                if systolic > ranges["normal"][1]:
+                    alerts.append(f"Hypertensive crisis{age_suffix}")
+                else:
+                    alerts.append(f"Hypotension (low blood pressure){age_suffix}")
 
         return ", ".join(alerts) if alerts else ""
 
@@ -425,7 +428,7 @@ class Encounter(models.Model):
         else:
             return "Obese"
 
-    # Vital sign ranges for status classification
+    # Vital sign ranges for status classification (Adult defaults)
     VITAL_RANGES = {
         "temperature": {
             "unit": "°C",
@@ -446,40 +449,336 @@ class Encounter(models.Model):
         "bp_systolic": {
             "unit": "mmHg",
             "normal": (90, 120),
-            "warning_low": (80, 89),
+            "warning_low": None,  # No warning, jump to critical
             "warning_high": (121, 139),
-            "critical_low": 80,
+            "critical_low": 90,  # <90 is hypotension
             "critical_high": 140,
         },
         "bp_diastolic": {
             "unit": "mmHg",
             "normal": (60, 80),
-            "warning_low": (50, 59),
+            "warning_low": None,  # No warning, jump to critical
             "warning_high": (81, 89),
-            "critical_low": 50,
+            "critical_low": 60,  # <60 is hypotension
             "critical_high": 90,
         },
         "respiratory_rate": {
             "unit": "/min",
             "normal": (12, 20),
-            "warning_low": (10, 11),
+            "warning_low": None,  # No warning, <12 is critical
             "warning_high": (21, 25),
-            "critical_low": 10,
+            "critical_low": 12,  # <12 is bradypnea (critical)
             "critical_high": 25,
         },
         "spo2": {
             "unit": "%",
             "normal": (95, 100),
-            "warning_low": (90, 94),
+            "warning_low": (90, 94),  # Mild hypoxemia
             "warning_high": None,
-            "critical_low": 90,
+            "critical_low": 90,  # <90% is severe hypoxemia (critical)
             "critical_high": None,
         },
     }
 
+    # Pediatric vital sign ranges by age group
+    # Based on PALS (Pediatric Advanced Life Support) guidelines
+    PEDIATRIC_VITAL_RANGES = {
+        "newborn": {  # 0-28 days
+            "pulse": {
+                "unit": "bpm",
+                "normal": (100, 205),
+                "warning_low": (90, 99),
+                "warning_high": (206, 220),
+                "critical_low": 90,
+                "critical_high": 220,
+            },
+            "respiratory_rate": {
+                "unit": "/min",
+                "normal": (30, 60),
+                "warning_low": (26, 29),
+                "warning_high": (61, 64),
+                "critical_low": 26,
+                "critical_high": 64,
+            },
+            "bp_systolic": {
+                "unit": "mmHg",
+                "normal": (60, 90),
+                "warning_low": (50, 59),
+                "warning_high": (91, 105),
+                "critical_low": 50,
+                "critical_high": 105,
+            },
+            "bp_diastolic": {
+                "unit": "mmHg",
+                "normal": (30, 60),
+                "warning_low": (20, 29),
+                "warning_high": (61, 70),
+                "critical_low": 20,
+                "critical_high": 70,
+            },
+        },
+        "infant": {  # 1-12 months
+            "pulse": {
+                "unit": "bpm",
+                "normal": (100, 180),
+                "warning_low": (80, 99),
+                "warning_high": (181, 200),
+                "critical_low": 80,
+                "critical_high": 200,
+            },
+            "respiratory_rate": {
+                "unit": "/min",
+                "normal": (30, 53),
+                "warning_low": (25, 29),
+                "warning_high": (54, 65),
+                "critical_low": 25,
+                "critical_high": 65,
+            },
+            "bp_systolic": {
+                "unit": "mmHg",
+                "normal": (72, 104),
+                "warning_low": (65, 71),
+                "warning_high": (105, 115),
+                "critical_low": 65,
+                "critical_high": 115,
+            },
+            "bp_diastolic": {
+                "unit": "mmHg",
+                "normal": (37, 56),
+                "warning_low": (30, 36),
+                "warning_high": (57, 70),
+                "critical_low": 30,
+                "critical_high": 70,
+            },
+        },
+        "toddler": {  # 1-3 years
+            "pulse": {
+                "unit": "bpm",
+                "normal": (98, 140),
+                "warning_low": (85, 97),
+                "warning_high": (141, 160),
+                "critical_low": 85,
+                "critical_high": 160,
+            },
+            "respiratory_rate": {
+                "unit": "/min",
+                "normal": (22, 37),
+                "warning_low": (18, 21),
+                "warning_high": (38, 45),
+                "critical_low": 18,
+                "critical_high": 45,
+            },
+            "bp_systolic": {
+                "unit": "mmHg",
+                "normal": (86, 106),
+                "warning_low": (75, 85),
+                "warning_high": (107, 120),
+                "critical_low": 75,
+                "critical_high": 120,
+            },
+            "bp_diastolic": {
+                "unit": "mmHg",
+                "normal": (42, 63),
+                "warning_low": (35, 41),
+                "warning_high": (64, 75),
+                "critical_low": 35,
+                "critical_high": 75,
+            },
+        },
+        "preschool": {  # 3-6 years
+            "pulse": {
+                "unit": "bpm",
+                "normal": (80, 120),
+                "warning_low": (70, 79),
+                "warning_high": (121, 140),
+                "critical_low": 70,
+                "critical_high": 140,
+            },
+            "respiratory_rate": {
+                "unit": "/min",
+                "normal": (20, 28),
+                "warning_low": (16, 19),
+                "warning_high": (29, 35),
+                "critical_low": 16,
+                "critical_high": 35,
+            },
+            "bp_systolic": {
+                "unit": "mmHg",
+                "normal": (89, 112),
+                "warning_low": (80, 88),
+                "warning_high": (113, 125),
+                "critical_low": 80,
+                "critical_high": 125,
+            },
+            "bp_diastolic": {
+                "unit": "mmHg",
+                "normal": (46, 72),
+                "warning_low": (40, 45),
+                "warning_high": (73, 85),
+                "critical_low": 40,
+                "critical_high": 85,
+            },
+        },
+        "school_age": {  # 6-12 years
+            "pulse": {
+                "unit": "bpm",
+                "normal": (75, 118),
+                "warning_low": (65, 74),
+                "warning_high": (119, 135),
+                "critical_low": 65,
+                "critical_high": 135,
+            },
+            "respiratory_rate": {
+                "unit": "/min",
+                "normal": (18, 25),
+                "warning_low": (14, 17),
+                "warning_high": (26, 32),
+                "critical_low": 14,
+                "critical_high": 32,
+            },
+            "bp_systolic": {
+                "unit": "mmHg",
+                "normal": (97, 120),
+                "warning_low": (85, 96),
+                "warning_high": (121, 135),
+                "critical_low": 85,
+                "critical_high": 135,
+            },
+            "bp_diastolic": {
+                "unit": "mmHg",
+                "normal": (57, 80),
+                "warning_low": (50, 56),
+                "warning_high": (81, 90),
+                "critical_low": 50,
+                "critical_high": 90,
+            },
+        },
+        "adolescent": {  # 12-18 years (approaching adult values)
+            "pulse": {
+                "unit": "bpm",
+                "normal": (60, 100),
+                "warning_low": (50, 59),
+                "warning_high": (101, 120),
+                "critical_low": 50,
+                "critical_high": 120,
+            },
+            "respiratory_rate": {
+                "unit": "/min",
+                "normal": (12, 20),
+                "warning_low": (10, 11),
+                "warning_high": (21, 25),
+                "critical_low": 10,
+                "critical_high": 25,
+            },
+            "bp_systolic": {
+                "unit": "mmHg",
+                "normal": (90, 120),
+                "warning_low": (80, 89),
+                "warning_high": (121, 139),
+                "critical_low": 80,
+                "critical_high": 140,
+            },
+            "bp_diastolic": {
+                "unit": "mmHg",
+                "normal": (60, 80),
+                "warning_low": (50, 59),
+                "warning_high": (81, 89),
+                "critical_low": 50,
+                "critical_high": 90,
+            },
+        },
+    }
+
+    # Age thresholds in days for pediatric age groups
+    PEDIATRIC_AGE_THRESHOLDS = {
+        "newborn": (0, 28),  # 0-28 days
+        "infant": (29, 365),  # 1-12 months
+        "toddler": (366, 1095),  # 1-3 years
+        "preschool": (1096, 2190),  # 3-6 years
+        "school_age": (2191, 4380),  # 6-12 years
+        "adolescent": (4381, 6570),  # 12-18 years
+    }
+
+    def get_patient_age_days(self) -> int:
+        """
+        Calculate patient's age in days at time of encounter.
+
+        Returns:
+            int: Patient's age in days
+        """
+        if not self.patient or not self.patient.date_of_birth:
+            return 0
+        encounter_date = self.encounter_date or date.today()
+        delta = encounter_date - self.patient.date_of_birth
+        return delta.days
+
+    def get_patient_age_years(self) -> int:
+        """
+        Calculate patient's age in years at time of encounter.
+
+        Returns:
+            int: Patient's age in complete years
+        """
+        return self.get_patient_age_days() // 365
+
+    def is_pediatric_patient(self) -> bool:
+        """
+        Check if patient is pediatric (under 18 years).
+
+        Returns:
+            bool: True if patient is under 18, False otherwise
+        """
+        return self.get_patient_age_years() < 18
+
+    def get_pediatric_age_group(self) -> str | None:
+        """
+        Determine the pediatric age group for the patient.
+
+        Returns:
+            str | None: Age group name ('newborn', 'infant', 'toddler',
+                       'preschool', 'school_age', 'adolescent') or None if adult
+        """
+        if not self.is_pediatric_patient():
+            return None
+
+        age_days = self.get_patient_age_days()
+
+        for group, (min_days, max_days) in self.PEDIATRIC_AGE_THRESHOLDS.items():
+            if min_days <= age_days <= max_days:
+                return group
+
+        return None
+
+    def _get_vital_ranges_for_patient(self) -> dict:
+        """
+        Get appropriate vital sign ranges based on patient age.
+
+        Returns pediatric ranges for children, adult ranges for adults.
+
+        Returns:
+            dict: Vital sign ranges appropriate for patient's age
+        """
+        age_group = self.get_pediatric_age_group()
+
+        if age_group is None:
+            # Adult patient - use default ranges
+            return self.VITAL_RANGES
+
+        # Pediatric patient - merge pediatric ranges with defaults
+        # (temperature and SpO2 are same across ages)
+        pediatric_ranges = self.PEDIATRIC_VITAL_RANGES.get(age_group, {})
+        merged_ranges = self.VITAL_RANGES.copy()
+
+        for vital_name, ranges in pediatric_ranges.items():
+            merged_ranges[vital_name] = ranges
+
+        return merged_ranges
+
     def get_vital_status(self, vital_name: str) -> str | None:
         """
         Get status ('normal', 'warning', 'critical') for a specific vital sign.
+
+        Uses age-appropriate ranges for pediatric patients.
 
         Args:
             vital_name: Name of the vital sign (temperature, pulse, bp_systolic,
@@ -514,7 +813,9 @@ class Encounter(models.Model):
         if value is None:
             return None
 
-        ranges = self.VITAL_RANGES[vital_name]
+        # Get age-appropriate ranges (pediatric or adult)
+        all_ranges = self._get_vital_ranges_for_patient()
+        ranges = all_ranges[vital_name]
 
         # Check critical first
         if ranges.get("critical_low") and value < ranges["critical_low"]:
