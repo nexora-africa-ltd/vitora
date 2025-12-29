@@ -53,31 +53,6 @@ class PatientAdmin(admin.ModelAdmin):
             {"fields": ("referral_source", "referred_from_facility", "registered_by")},
         ),
         (
-            "Emergency Contact (Direct)",
-            {
-                "fields": (
-                    "emergency_contact_name",
-                    "emergency_contact_phone",
-                    "emergency_contact_relationship",
-                ),
-                "classes": ("collapse",),
-            },
-        ),
-        (
-            "Medical History",
-            {
-                "fields": (
-                    "allergies",
-                    "chronic_conditions",
-                    "current_medications",
-                    "past_surgeries",
-                    "family_history",
-                    "social_history",
-                ),
-                "classes": ("collapse",),
-            },
-        ),
-        (
             "Privacy & Consent",
             {
                 "fields": ("is_sensitive", "consent_given", "consent_date"),

@@ -538,16 +538,6 @@ referralSourceSelect.addEventListener('change', () => {
 });
 
 // ====================
-// Medical History Toggle
-// ====================
-const medicalHistoryToggle = document.getElementById('medical-history-toggle');
-const medicalHistorySection = document.getElementById('medical-history-section');
-
-medicalHistoryToggle.addEventListener('click', () => {
-  medicalHistorySection.classList.toggle('collapsed');
-});
-
-// ====================
 // Patient Registration
 // ====================
 const patientForm = document.getElementById('patient-form');
@@ -1019,38 +1009,6 @@ async function viewPatientDetails(patientId) {
       </div>
       ` : ''}
       
-      ${hasMedicalHistory(patient) ? `
-      <div class="patient-section">
-        <h4>Medical History</h4>
-        <div class="medical-history-grid">
-          ${patient.allergies ? `
-          <div class="history-item">
-            <span class="history-label">Allergies</span>
-            <span class="history-value">${patient.allergies}</span>
-          </div>
-          ` : ''}
-          ${patient.chronic_conditions ? `
-          <div class="history-item">
-            <span class="history-label">Chronic Conditions</span>
-            <span class="history-value">${patient.chronic_conditions}</span>
-          </div>
-          ` : ''}
-          ${patient.current_medications ? `
-          <div class="history-item">
-            <span class="history-label">Current Medications</span>
-            <span class="history-value">${patient.current_medications}</span>
-          </div>
-          ` : ''}
-          ${patient.past_surgeries ? `
-          <div class="history-item">
-            <span class="history-label">Past Surgeries</span>
-            <span class="history-value">${patient.past_surgeries}</span>
-          </div>
-          ` : ''}
-        </div>
-      </div>
-      ` : ''}
-      
       <div class="encounter-history">
         <h3>Encounter History (${encounters.length})</h3>
         ${encounters.length === 0 ? 
@@ -1290,11 +1248,6 @@ function formatRelationship(relationship) {
     'other': 'Other'
   };
   return relationshipMap[relationship] || relationship;
-}
-
-function hasMedicalHistory(patient) {
-  return patient.allergies || patient.chronic_conditions || 
-         patient.current_medications || patient.past_surgeries;
 }
 
 function escapeHtml(text) {
