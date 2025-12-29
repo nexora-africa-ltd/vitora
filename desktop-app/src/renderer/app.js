@@ -1249,6 +1249,13 @@ async function initApp() {
     themeToggleBtn.addEventListener('click', toggleTheme);
   }
   
+  // Set max date for date of birth (cannot be in the future)
+  const dobInput = document.getElementById('date-of-birth');
+  if (dobInput) {
+    const today = new Date().toISOString().split('T')[0];
+    dobInput.setAttribute('max', today);
+  }
+  
   // Initialize authentication
   await initializeApp();
 }
