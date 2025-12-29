@@ -1157,14 +1157,91 @@ function hasVitals(encounter) {
 }
 
 // ====================
+// Toast Notification System
+// ====================
+const toastContainer = document.getElementById('toast-container');
+
+const toastIcons = {
+  success: `<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>`,
+  error: `<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></svg>`,
+  warning: `<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>`,
+  info: `<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg>`
+};
+
+const toastTitles = {
+  success: 'Success',
+  error: 'Error',
+  warning: 'Warning',
+  info: 'Info'
+};
+
+/**
+ * Show a toast notification
+ * @param {string} type - 'success', 'error', 'warning', or 'info'
+ * @param {string} message - The message to display
+ * @param {number} duration - Duration in ms (default 5000)
+ */
+function showToast(type, message, duration = 5000) {
+  const toast = document.createElement('div');
+  toast.className = `toast ${type}`;
+  
+  toast.innerHTML = `
+    <div class="toast-icon">${toastIcons[type] || toastIcons.info}</div>
+    <div class="toast-content">
+      <div class="toast-title">${toastTitles[type] || 'Notice'}</div>
+      <div class="toast-message">${escapeHtml(message)}</div>
+    </div>
+    <button class="toast-close" aria-label="Close">
+      <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+    </button>
+    <div class="toast-progress" style="animation-duration: ${duration}ms;"></div>
+  `;
+  
+  // Add close button functionality
+  const closeBtn = toast.querySelector('.toast-close');
+  closeBtn.addEventListener('click', () => removeToast(toast));
+  
+  // Add to container
+  toastContainer.appendChild(toast);
+  
+  // Auto-remove after duration
+  setTimeout(() => removeToast(toast), duration);
+  
+  return toast;
+}
+
+/**
+ * Remove a toast with animation
+ */
+function removeToast(toast) {
+  if (!toast || !toast.parentNode) return;
+  
+  toast.style.animation = 'slideOut 0.3s ease-in forwards';
+  setTimeout(() => {
+    if (toast.parentNode) {
+      toast.parentNode.removeChild(toast);
+    }
+  }, 300);
+}
+
+// ====================
 // Helper Functions
 // ====================
+
+/**
+ * Show message (legacy function - now uses toast)
+ */
 function showMessage(type, text, targetDiv) {
-  targetDiv.className = `message ${type}`;
-  targetDiv.textContent = text;
-  targetDiv.style.display = 'block';
+  // Show toast notification
+  showToast(type, text);
   
-  setTimeout(() => hideMessage(targetDiv), 5000);
+  // Also update the legacy message div for compatibility
+  if (targetDiv) {
+    targetDiv.className = `message ${type}`;
+    targetDiv.textContent = text;
+    targetDiv.style.display = 'block';
+    setTimeout(() => hideMessage(targetDiv), 5000);
+  }
 }
 
 function hideMessage(targetDiv) {
@@ -1231,6 +1308,7 @@ window.viewPatientDetails = viewPatientDetails;
 window.startEncounter = startEncounter;
 window.selectPatient = selectPatient;
 window.closeModal = closeModal;
+window.showToast = showToast;
 
 // ====================
 // App Initialization
