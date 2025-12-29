@@ -134,11 +134,7 @@ class IsAdminUser(permissions.BasePermission):
 
     def has_permission(self, request, view):
         """Check if user is admin."""
-        return (
-            request.user
-            and request.user.is_authenticated
-            and request.user.is_staff
-        )
+        return request.user and request.user.is_authenticated and request.user.is_staff
 
 
 class AuditLogPermission(permissions.BasePermission):
@@ -163,10 +159,7 @@ class AuditLogPermission(permissions.BasePermission):
 
     def has_object_permission(self, request, view, obj):
         """Check if user can access specific audit log."""
-        return (
-            request.method in permissions.SAFE_METHODS
-            and request.user.is_superuser
-        )
+        return request.method in permissions.SAFE_METHODS and request.user.is_superuser
 
 
 class PatientPermission(permissions.BasePermission):

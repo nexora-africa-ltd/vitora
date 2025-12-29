@@ -8,9 +8,10 @@ These tests validate that the system can detect network connectivity
 changes and respond appropriately.
 """
 
+from datetime import timedelta
+from unittest.mock import patch
+
 import pytest
-from unittest.mock import Mock, patch, MagicMock
-from datetime import datetime, timedelta
 from django.utils import timezone
 
 
@@ -96,8 +97,9 @@ class TestConnectivityChecker:
 
     def test_check_connectivity_offline(self):
         """Should detect when offline."""
-        from hmis.apps.core.sync import ConnectivityChecker
         import requests
+
+        from hmis.apps.core.sync import ConnectivityChecker
 
         checker = ConnectivityChecker()
 
@@ -109,8 +111,9 @@ class TestConnectivityChecker:
 
     def test_check_connectivity_with_timeout(self):
         """Should handle connection timeouts gracefully."""
-        from hmis.apps.core.sync import ConnectivityChecker
         import requests
+
+        from hmis.apps.core.sync import ConnectivityChecker
 
         checker = ConnectivityChecker(timeout=1)
 
@@ -129,7 +132,7 @@ class TestConnectivityChecker:
         with patch("hmis.apps.core.sync.requests.get") as mock_get:
             mock_get.return_value.status_code = 200
             checker.check()
-            
+
             # Latency should be recorded
             assert checker.latency_ms is not None
 
@@ -140,7 +143,7 @@ class TestConnectivityCallbacks:
 
     def test_callback_on_connection_lost(self):
         """Callback should fire when connection is lost."""
-        from hmis.apps.core.sync import ConnectivityMonitor, ConnectivityChecker
+        from hmis.apps.core.sync import ConnectivityMonitor
 
         callback_called = {"called": False, "was_online": None}
 
@@ -155,6 +158,7 @@ class TestConnectivityCallbacks:
         # Simulate going offline
         with patch("hmis.apps.core.sync.requests.get") as mock_get:
             import requests
+
             mock_get.side_effect = requests.exceptions.ConnectionError()
             monitor.check_and_notify()
 
@@ -211,7 +215,7 @@ class TestSyncTriggerOnConnectivity:
     @pytest.mark.django_db
     def test_sync_triggered_when_coming_online(self):
         """Background sync should trigger when coming online."""
-        from hmis.apps.core.sync import ConnectivityMonitor, SyncManager
+        from hmis.apps.core.sync import ConnectivityMonitor
 
         sync_triggered = {"triggered": False}
 
@@ -247,6 +251,7 @@ class TestSyncTriggerOnConnectivity:
 
         with patch("hmis.apps.core.sync.requests.get") as mock_get:
             import requests
+
             mock_get.side_effect = requests.exceptions.ConnectionError()
             monitor.check_and_notify()  # Now offline
 
@@ -273,8 +278,9 @@ class TestNetworkQualityMetrics:
     @pytest.mark.django_db
     def test_average_latency_calculation(self):
         """Should calculate average latency over time."""
-        from hmis.apps.core.models import NetworkStatus
         from django.db.models import Avg
+
+        from hmis.apps.core.models import NetworkStatus
 
         # Create multiple status entries
         for latency in [50, 100, 150, 200, 250]:
@@ -315,8 +321,8 @@ class TestOfflineFirstBehavior:
     @pytest.mark.django_db
     def test_operations_work_offline(self):
         """Core operations should work when offline."""
-        from hmis.apps.patients.models import Patient
         from hmis.apps.core.sync import ConnectivityChecker
+        from hmis.apps.patients.models import Patient
 
         # Simulate being offline
         with patch.object(ConnectivityChecker, "is_online", return_value=False):
@@ -334,9 +340,9 @@ class TestOfflineFirstBehavior:
     @pytest.mark.django_db
     def test_changes_queued_when_offline(self):
         """Changes made offline should be queued for sync."""
-        from hmis.apps.patients.models import Patient
         from hmis.apps.core.models import SyncQueue
         from hmis.apps.core.sync import ConnectivityChecker
+        from hmis.apps.patients.models import Patient
 
         initial_queue_count = SyncQueue.objects.count()
 

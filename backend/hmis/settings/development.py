@@ -5,7 +5,6 @@ These settings are used for local development.
 """
 
 import os
-from cryptography.fernet import Fernet
 
 from .base import *  # noqa: F401, F403
 
@@ -19,8 +18,7 @@ CORS_ALLOW_ALL_ORIGINS = True
 # Encryption key for sensitive data (generate a new one for production!)
 # To generate: python -c "from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())"
 ENCRYPTION_KEY = os.getenv(
-    "ENCRYPTION_KEY",
-    "zPvPKpZGcLmqPJ3L2oXZBCH_gJGWl5C6FZp8YMfFgFA="  # Default for dev only!
+    "ENCRYPTION_KEY", "zPvPKpZGcLmqPJ3L2oXZBCH_gJGWl5C6FZp8YMfFgFA="  # Default for dev only!
 )
 FIELD_ENCRYPTION_KEY = ENCRYPTION_KEY
 

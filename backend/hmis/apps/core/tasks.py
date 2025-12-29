@@ -28,11 +28,13 @@ def calculate_retry_delay(retry_count: int, base_delay: int = 60) -> int:
     """
     # Exponential backoff: 60s, 120s, 240s, 480s...
     # Cap at 1 hour (3600 seconds)
-    delay = base_delay * (2 ** retry_count)
+    delay = base_delay * (2**retry_count)
     return min(delay, 3600)
 
 
-def sync_to_server(operation: str, model_name: str, data: dict | None = None, record_id: int | None = None) -> dict:
+def sync_to_server(
+    operation: str, model_name: str, data: dict | None = None, record_id: int | None = None
+) -> dict:
     """
     Wrapper to sync data to the server.
 
@@ -48,6 +50,7 @@ def sync_to_server(operation: str, model_name: str, data: dict | None = None, re
         dict: Sync result
     """
     from hmis.apps.core.sync import sync_to_server as _sync_to_server
+
     return _sync_to_server(
         operation=operation,
         model_name=model_name,
@@ -306,9 +309,7 @@ def full_sync():
         logger.warning("Cannot perform full sync while offline")
         return {"status": "offline"}
 
-    SyncQueue.objects.filter(
-        status__in=["PENDING", "FAILED"]
-    ).count()
+    SyncQueue.objects.filter(status__in=["PENDING", "FAILED"]).count()
 
     # Process in batches but don't limit total
     manager = SyncManager(connectivity_checker=checker)

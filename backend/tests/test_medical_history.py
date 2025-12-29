@@ -6,7 +6,6 @@ Item b) Medical History: Allergies, chronic conditions, medications, surgeries, 
 """
 
 import pytest
-from django.core.exceptions import ValidationError
 
 
 @pytest.mark.django_db
@@ -198,9 +197,7 @@ class TestMedicalHistoryAPI:
         assert response.data["chronic_conditions"] == "Asthma"
         assert response.data["current_medications"] == "Salbutamol inhaler PRN"
 
-    def test_medical_history_in_encounter_response(
-        self, authenticated_client, sample_patient
-    ):
+    def test_medical_history_in_encounter_response(self, authenticated_client, sample_patient):
         """Test medical history fields included in encounter response."""
         from hmis.apps.encounters.models import Encounter
 
@@ -222,9 +219,7 @@ class TestMedicalHistoryAPI:
         assert "family_history" in response.data
         assert "social_history" in response.data
 
-    def test_update_medical_history_via_api(
-        self, authenticated_client, sample_patient
-    ):
+    def test_update_medical_history_via_api(self, authenticated_client, sample_patient):
         """Test updating medical history via API."""
         from hmis.apps.encounters.models import Encounter
 
@@ -248,9 +243,7 @@ class TestMedicalHistoryAPI:
         assert "Penicillin" in response.data["allergies"]
         assert "Type 2 Diabetes" in response.data["chronic_conditions"]
 
-    def test_medical_history_empty_strings_allowed(
-        self, authenticated_client, sample_patient
-    ):
+    def test_medical_history_empty_strings_allowed(self, authenticated_client, sample_patient):
         """Test that empty strings are allowed for medical history fields."""
         data = {
             "patient": sample_patient.id,

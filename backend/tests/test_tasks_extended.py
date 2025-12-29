@@ -4,10 +4,10 @@ Tests for additional Celery tasks coverage.
 Sprint 0.6: Coverage improvement tests for tasks.py
 """
 
-import pytest
 from datetime import timedelta
 from unittest.mock import MagicMock, patch
 
+import pytest
 from django.utils import timezone
 
 from hmis.apps.core.models import SyncQueue
@@ -19,12 +19,14 @@ class TestCalculateRetryDelay:
     def test_initial_delay(self):
         """First retry should use base delay."""
         from hmis.apps.core.tasks import calculate_retry_delay
+
         delay = calculate_retry_delay(0, base_delay=60)
         assert delay == 60
 
     def test_exponential_backoff(self):
         """Delay should increase exponentially."""
         from hmis.apps.core.tasks import calculate_retry_delay
+
         assert calculate_retry_delay(1, base_delay=60) == 120
         assert calculate_retry_delay(2, base_delay=60) == 240
         assert calculate_retry_delay(3, base_delay=60) == 480
@@ -32,12 +34,14 @@ class TestCalculateRetryDelay:
     def test_cap_at_one_hour(self):
         """Delay should never exceed 1 hour."""
         from hmis.apps.core.tasks import calculate_retry_delay
+
         delay = calculate_retry_delay(10, base_delay=60)
         assert delay == 3600  # 1 hour max
 
     def test_custom_base_delay(self):
         """Should use custom base delay."""
         from hmis.apps.core.tasks import calculate_retry_delay
+
         delay = calculate_retry_delay(0, base_delay=30)
         assert delay == 30
 
@@ -49,6 +53,7 @@ class TestSyncToServerWrapper:
     def test_sync_to_server_calls_underlying(self, mock_sync):
         """Should call underlying sync function."""
         from hmis.apps.core.tasks import sync_to_server
+
         mock_sync.return_value = {"success": True}
 
         result = sync_to_server("CREATE", "Patient", {"name": "Test"}, None)
@@ -64,7 +69,7 @@ class TestSyncEntryToServer:
     def test_sync_entry_extracts_fields(self, mock_sync):
         """Should extract fields from entry and call sync_to_server."""
         from hmis.apps.core.tasks import sync_entry_to_server
-        
+
         mock_entry = MagicMock()
         mock_entry.operation = "CREATE"
         mock_entry.model_name = "Patient"
@@ -100,6 +105,7 @@ class TestProcessSyncQueueTask:
     def test_process_queue_is_callable(self):
         """Verify process_sync_queue is importable and callable."""
         from hmis.apps.core.tasks import process_sync_queue
+
         assert callable(process_sync_queue)
 
 
@@ -110,6 +116,7 @@ class TestCheckConnectivityTask:
     def test_check_connectivity_is_callable(self):
         """Verify check_connectivity is importable."""
         from hmis.apps.core.tasks import check_connectivity
+
         assert callable(check_connectivity)
 
 
@@ -120,7 +127,7 @@ class TestSyncSingleEntryTask:
     def test_sync_nonexistent_entry(self):
         """Should return error for non-existent entry."""
         from hmis.apps.core.tasks import sync_single_entry
-        
+
         result = sync_single_entry(99999)
 
         assert result["success"] is False
@@ -249,6 +256,7 @@ class TestRetryFailedEntriesTask:
     def test_retry_failed_entries_is_callable(self):
         """Verify retry_failed_entries is importable."""
         from hmis.apps.core.tasks import retry_failed_entries
+
         assert callable(retry_failed_entries)
 
     def test_reset_failed_entries(self):
@@ -291,6 +299,7 @@ class TestFullSyncTask:
     def test_full_sync_is_callable(self):
         """Verify full_sync is importable."""
         from hmis.apps.core.tasks import full_sync
+
         assert callable(full_sync)
 
     @patch("hmis.apps.core.sync.get_connectivity_checker")

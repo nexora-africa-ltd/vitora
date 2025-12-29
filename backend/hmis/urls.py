@@ -23,11 +23,7 @@ from hmis.apps.patients.views import EmergencyContactViewSet, PatientViewSet
 
 def health_check(request):
     """Simple health check endpoint for monitoring."""
-    return JsonResponse({
-        "status": "healthy",
-        "service": "vitora-hmis",
-        "version": "0.1.0"
-    })
+    return JsonResponse({"status": "healthy", "service": "vitora-hmis", "version": "0.1.0"})
 
 
 # Create a router for API endpoints

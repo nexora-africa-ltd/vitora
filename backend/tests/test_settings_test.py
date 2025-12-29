@@ -4,9 +4,6 @@ Tests for test settings configuration.
 Sprint 0.6: Coverage improvement tests for settings/test.py (0% -> 100%)
 """
 
-import os
-import pytest
-
 
 class TestTestSettings:
     """Tests for test environment settings."""

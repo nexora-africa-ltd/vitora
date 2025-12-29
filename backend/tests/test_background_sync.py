@@ -8,10 +8,9 @@ These tests validate that background sync tasks execute correctly
 and handle various scenarios including failures and retries.
 """
 
+from unittest.mock import MagicMock, patch
+
 import pytest
-from unittest.mock import Mock, patch, MagicMock
-from datetime import datetime, timedelta
-from django.utils import timezone
 
 
 @pytest.mark.unit
@@ -37,7 +36,6 @@ class TestSyncTaskDefinition:
 
     def test_sync_task_has_rate_limit(self):
         """Sync task should have rate limiting to prevent overload."""
-        from hmis.apps.core.tasks import process_sync_queue
 
         # Check for rate limit configuration
         # rate_limit = getattr(process_sync_queue, 'rate_limit', None)
@@ -50,8 +48,8 @@ class TestProcessSyncQueue:
     @pytest.mark.django_db
     def test_process_empty_queue(self):
         """Processing empty queue should complete without error."""
-        from hmis.apps.core.tasks import process_sync_queue
         from hmis.apps.core.models import SyncQueue
+        from hmis.apps.core.tasks import process_sync_queue
 
         # Clear queue
         SyncQueue.objects.all().delete()
@@ -63,8 +61,8 @@ class TestProcessSyncQueue:
     @pytest.mark.django_db
     def test_process_single_entry(self):
         """Should process a single queue entry."""
-        from hmis.apps.core.tasks import process_sync_queue
         from hmis.apps.core.models import SyncQueue
+        from hmis.apps.core.tasks import process_sync_queue
 
         entry = SyncQueue.objects.create(
             operation="CREATE",
@@ -85,9 +83,10 @@ class TestProcessSyncQueue:
     @pytest.mark.django_db
     def test_process_multiple_entries_in_order(self):
         """Should process entries in FIFO order."""
-        from hmis.apps.core.tasks import process_sync_queue
-        from hmis.apps.core.models import SyncQueue
         import time
+
+        from hmis.apps.core.models import SyncQueue
+        from hmis.apps.core.tasks import process_sync_queue
 
         # Create entries in order
         entries = []
@@ -117,8 +116,8 @@ class TestProcessSyncQueue:
     @pytest.mark.django_db
     def test_failed_entry_marked_appropriately(self, settings):
         """Failed entries should be marked with error details."""
-        from hmis.apps.core.tasks import process_sync_queue
         from hmis.apps.core.models import SyncQueue
+        from hmis.apps.core.tasks import process_sync_queue
 
         # Enable sync for this test
         settings.SYNC_ENABLED = True
@@ -149,8 +148,8 @@ class TestProcessSyncQueue:
     @pytest.mark.django_db
     def test_successful_entry_marked_synced(self, settings):
         """Successful entries should be marked as synced."""
-        from hmis.apps.core.tasks import process_sync_queue
         from hmis.apps.core.models import SyncQueue
+        from hmis.apps.core.tasks import process_sync_queue
 
         # Enable sync for this test
         settings.SYNC_ENABLED = True
@@ -182,9 +181,9 @@ class TestSyncTaskRetries:
     @pytest.mark.django_db
     def test_retry_on_network_error(self):
         """Task should retry on network errors."""
-        from hmis.apps.core.tasks import process_sync_queue
+
         from hmis.apps.core.models import SyncQueue
-        import socket
+        from hmis.apps.core.tasks import process_sync_queue
 
         entry = SyncQueue.objects.create(
             operation="CREATE",
@@ -195,7 +194,7 @@ class TestSyncTaskRetries:
 
         with patch(
             "hmis.apps.core.tasks.sync_to_server",
-            side_effect=socket.error("Network unreachable"),
+            side_effect=OSError("Network unreachable"),
         ):
             # Task should handle error gracefully
             process_sync_queue.apply()
@@ -207,8 +206,8 @@ class TestSyncTaskRetries:
     @pytest.mark.django_db
     def test_max_retries_respected(self):
         """Should not retry beyond max attempts."""
-        from hmis.apps.core.tasks import process_sync_queue
         from hmis.apps.core.models import SyncQueue
+        from hmis.apps.core.tasks import process_sync_queue
 
         max_retries = 3
 
@@ -268,8 +267,8 @@ class TestBatchProcessing:
     @pytest.mark.django_db
     def test_batch_size_limit(self):
         """Should process entries in batches."""
-        from hmis.apps.core.tasks import process_sync_queue
         from hmis.apps.core.models import SyncQueue
+        from hmis.apps.core.tasks import process_sync_queue
 
         batch_size = 100
 
@@ -297,8 +296,8 @@ class TestBatchProcessing:
     @pytest.mark.django_db
     def test_batch_transaction_handling(self):
         """Batch processing should handle transactions properly."""
-        from hmis.apps.core.tasks import process_sync_queue
         from hmis.apps.core.models import SyncQueue
+        from hmis.apps.core.tasks import process_sync_queue
 
         # Create batch of entries
         for i in range(5):
@@ -331,9 +330,10 @@ class TestSyncMetrics:
     @pytest.mark.django_db
     def test_sync_duration_tracked(self):
         """Sync task should track duration."""
-        from hmis.apps.core.tasks import process_sync_queue
-        from hmis.apps.core.models import SyncQueue, SyncMetrics
         import time
+
+        from hmis.apps.core.models import SyncQueue
+        from hmis.apps.core.tasks import process_sync_queue
 
         SyncQueue.objects.create(
             operation="CREATE",
@@ -384,7 +384,6 @@ class TestSyncWithRealCelery:
     @pytest.mark.slow
     def test_async_task_execution(self):
         """Task should execute asynchronously."""
-        from hmis.apps.core.tasks import process_sync_queue
 
         # This test requires a running Celery worker
         # result = process_sync_queue.delay()
@@ -394,7 +393,6 @@ class TestSyncWithRealCelery:
     @pytest.mark.slow
     def test_task_result_retrieval(self):
         """Should be able to retrieve task results."""
-        from hmis.apps.core.tasks import process_sync_queue
 
         # result = process_sync_queue.delay()
         # result.get(timeout=10)  # Wait for completion

@@ -5,7 +5,6 @@ Sprint 0.6: Coverage improvement tests for settings/production.py (0% -> 100%)
 """
 
 import os
-import pytest
 
 
 class TestProductionSettings:
@@ -37,7 +36,9 @@ class TestProductionSettings:
 
             # Re-import to get fresh values
             import importlib
+
             from hmis.settings import production
+
             importlib.reload(production)
 
             assert "example.com" in production.ALLOWED_HOSTS
@@ -68,7 +69,9 @@ class TestProductionSettings:
             os.environ["DB_PORT"] = "5433"
 
             import importlib
+
             from hmis.settings import production
+
             importlib.reload(production)
 
             assert production.DATABASES["default"]["NAME"] == "test_db"
@@ -107,7 +110,9 @@ class TestProductionSettings:
             os.environ["CORS_ALLOWED_ORIGINS"] = "https://app.example.com,https://admin.example.com"
 
             import importlib
+
             from hmis.settings import production
+
             importlib.reload(production)
 
             assert "https://app.example.com" in production.CORS_ALLOWED_ORIGINS
@@ -138,7 +143,9 @@ class TestProductionSettings:
             os.environ["EMAIL_HOST_PASSWORD"] = "secret123"
 
             import importlib
+
             from hmis.settings import production
+
             importlib.reload(production)
 
             assert production.EMAIL_HOST == "smtp.sendgrid.net"
@@ -163,7 +170,10 @@ class TestProductionSettings:
         from hmis.settings import production
 
         assert "file" in production.LOGGING["handlers"]
-        assert production.LOGGING["handlers"]["file"]["class"] == "logging.handlers.RotatingFileHandler"
+        assert (
+            production.LOGGING["handlers"]["file"]["class"]
+            == "logging.handlers.RotatingFileHandler"
+        )
 
     def test_log_file_from_env(self):
         """Log file path should be configurable."""
@@ -173,7 +183,9 @@ class TestProductionSettings:
             os.environ["LOG_FILE"] = "/custom/path/app.log"
 
             import importlib
+
             from hmis.settings import production
+
             importlib.reload(production)
 
             assert production.LOGGING["handlers"]["file"]["filename"] == "/custom/path/app.log"

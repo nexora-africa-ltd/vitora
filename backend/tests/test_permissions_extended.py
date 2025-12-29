@@ -4,18 +4,19 @@ Extended tests for permissions module.
 Sprint 0.6: Coverage improvement tests for core/permissions.py (62% -> 95%+)
 """
 
-import pytest
 from unittest.mock import MagicMock, patch
+
+import pytest
 from django.contrib.auth import get_user_model
 from django.test import RequestFactory
 
 from hmis.apps.core.permissions import (
-    get_client_ip,
-    IsAuthenticatedOrReadOnly,
-    SensitiveAccessPermission,
-    IsAdminUser,
     AuditLogPermission,
+    IsAdminUser,
+    IsAuthenticatedOrReadOnly,
     PatientPermission,
+    SensitiveAccessPermission,
+    get_client_ip,
 )
 from hmis.apps.patients.models import Patient
 
@@ -97,18 +98,14 @@ class TestSensitiveAccessPermission:
     def user(self, django_user_model):
         """Create a test user."""
         return django_user_model.objects.create_user(
-            username="testuser",
-            email="test@example.com",
-            password="testpass123"
+            username="testuser", email="test@example.com", password="testpass123"
         )
 
     @pytest.fixture
     def superuser(self, django_user_model):
         """Create a superuser."""
         return django_user_model.objects.create_superuser(
-            username="admin",
-            email="admin@example.com",
-            password="adminpass123"
+            username="admin", email="admin@example.com", password="adminpass123"
         )
 
     @pytest.fixture
@@ -232,9 +229,7 @@ class TestIsAdminUser:
     def test_denies_regular_user(self, django_user_model):
         """Should deny non-staff users."""
         user = django_user_model.objects.create_user(
-            username="regular",
-            email="regular@example.com",
-            password="testpass"
+            username="regular", email="regular@example.com", password="testpass"
         )
 
         factory = RequestFactory()
@@ -247,10 +242,7 @@ class TestIsAdminUser:
     def test_allows_staff_user(self, django_user_model):
         """Should allow staff users."""
         user = django_user_model.objects.create_user(
-            username="staff",
-            email="staff@example.com",
-            password="testpass",
-            is_staff=True
+            username="staff", email="staff@example.com", password="testpass", is_staff=True
         )
 
         factory = RequestFactory()
@@ -278,9 +270,7 @@ class TestAuditLogPermission:
     def test_denies_regular_user(self, django_user_model):
         """Should deny non-superusers."""
         user = django_user_model.objects.create_user(
-            username="regular",
-            email="regular@example.com",
-            password="testpass"
+            username="regular", email="regular@example.com", password="testpass"
         )
 
         factory = RequestFactory()
@@ -293,9 +283,7 @@ class TestAuditLogPermission:
     def test_allows_superuser_read(self, django_user_model):
         """Should allow superusers to read."""
         user = django_user_model.objects.create_superuser(
-            username="admin",
-            email="admin@example.com",
-            password="testpass"
+            username="admin", email="admin@example.com", password="testpass"
         )
 
         factory = RequestFactory()
@@ -308,9 +296,7 @@ class TestAuditLogPermission:
     def test_denies_superuser_post(self, django_user_model):
         """Should deny even superusers from modifying."""
         user = django_user_model.objects.create_superuser(
-            username="admin",
-            email="admin@example.com",
-            password="testpass"
+            username="admin", email="admin@example.com", password="testpass"
         )
 
         factory = RequestFactory()
@@ -323,9 +309,7 @@ class TestAuditLogPermission:
     def test_denies_superuser_delete(self, django_user_model):
         """Should deny delete operations."""
         user = django_user_model.objects.create_superuser(
-            username="admin",
-            email="admin@example.com",
-            password="testpass"
+            username="admin", email="admin@example.com", password="testpass"
         )
 
         factory = RequestFactory()
@@ -338,9 +322,7 @@ class TestAuditLogPermission:
     def test_has_object_permission_superuser_read(self, django_user_model):
         """has_object_permission should allow superuser read."""
         user = django_user_model.objects.create_superuser(
-            username="admin",
-            email="admin@example.com",
-            password="testpass"
+            username="admin", email="admin@example.com", password="testpass"
         )
 
         factory = RequestFactory()
@@ -353,9 +335,7 @@ class TestAuditLogPermission:
     def test_has_object_permission_denies_non_superuser(self, django_user_model):
         """has_object_permission should deny non-superusers."""
         user = django_user_model.objects.create_user(
-            username="regular",
-            email="regular@example.com",
-            password="testpass"
+            username="regular", email="regular@example.com", password="testpass"
         )
 
         factory = RequestFactory()
@@ -405,9 +385,7 @@ class TestPatientPermission:
     def test_allows_authenticated_user(self, django_user_model):
         """Should allow authenticated users."""
         user = django_user_model.objects.create_user(
-            username="user",
-            email="user@example.com",
-            password="testpass"
+            username="user", email="user@example.com", password="testpass"
         )
 
         factory = RequestFactory()
@@ -420,9 +398,7 @@ class TestPatientPermission:
     def test_allows_access_to_normal_patient(self, django_user_model, normal_patient):
         """Should allow access to non-sensitive patients."""
         user = django_user_model.objects.create_user(
-            username="user",
-            email="user@example.com",
-            password="testpass"
+            username="user", email="user@example.com", password="testpass"
         )
 
         factory = RequestFactory()
@@ -435,9 +411,7 @@ class TestPatientPermission:
     def test_superuser_can_access_sensitive(self, django_user_model, sensitive_patient):
         """Superuser should access sensitive patients."""
         user = django_user_model.objects.create_superuser(
-            username="admin",
-            email="admin@example.com",
-            password="testpass"
+            username="admin", email="admin@example.com", password="testpass"
         )
 
         factory = RequestFactory()
@@ -450,9 +424,7 @@ class TestPatientPermission:
     def test_regular_user_denied_sensitive(self, django_user_model, sensitive_patient):
         """Regular user should be denied sensitive patients."""
         user = django_user_model.objects.create_user(
-            username="user",
-            email="user@example.com",
-            password="testpass"
+            username="user", email="user@example.com", password="testpass"
         )
 
         factory = RequestFactory()

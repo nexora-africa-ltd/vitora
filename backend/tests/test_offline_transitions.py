@@ -8,9 +8,10 @@ These tests validate that the system behaves correctly during
 connectivity state transitions.
 """
 
+from datetime import date, timedelta
+from unittest.mock import patch
+
 import pytest
-from unittest.mock import Mock, patch, MagicMock
-from datetime import date, datetime, timedelta
 from django.utils import timezone
 
 
@@ -21,9 +22,9 @@ class TestOfflineToOnlineTransition:
     @pytest.mark.django_db
     def test_queued_creates_sync_on_reconnect(self):
         """CREATE operations queued offline should sync when online."""
-        from hmis.apps.patients.models import Patient
         from hmis.apps.core.models import SyncQueue
         from hmis.apps.core.sync import SyncManager
+        from hmis.apps.patients.models import Patient
 
         # Simulate offline creation
         patient = Patient.objects.create(
@@ -61,9 +62,9 @@ class TestOfflineToOnlineTransition:
     @pytest.mark.django_db
     def test_queued_updates_sync_on_reconnect(self):
         """UPDATE operations queued offline should sync when online."""
-        from hmis.apps.patients.models import Patient
         from hmis.apps.core.models import SyncQueue
         from hmis.apps.core.sync import SyncManager
+        from hmis.apps.patients.models import Patient
 
         # Create patient (assume already synced)
         patient = Patient.objects.create(
@@ -92,9 +93,9 @@ class TestOfflineToOnlineTransition:
     @pytest.mark.django_db
     def test_queued_deletes_sync_on_reconnect(self):
         """DELETE operations queued offline should sync when online."""
-        from hmis.apps.patients.models import Patient
         from hmis.apps.core.models import SyncQueue
         from hmis.apps.core.sync import SyncManager
+        from hmis.apps.patients.models import Patient
 
         # Create and delete patient while offline
         patient = Patient.objects.create(
@@ -126,8 +127,8 @@ class TestOnlineToOfflineTransition:
     @pytest.mark.django_db
     def test_operations_continue_when_going_offline(self):
         """Operations should continue to work when going offline."""
-        from hmis.apps.patients.models import Patient
         from hmis.apps.core.sync import ConnectivityMonitor
+        from hmis.apps.patients.models import Patient
 
         # Start online
         with patch.object(ConnectivityMonitor, "is_online", return_value=True):
@@ -152,9 +153,9 @@ class TestOnlineToOfflineTransition:
     @pytest.mark.django_db
     def test_sync_gracefully_stops_when_going_offline(self):
         """Sync process should gracefully handle going offline mid-sync."""
+
         from hmis.apps.core.models import SyncQueue
         from hmis.apps.core.sync import SyncManager
-        import socket
 
         # Create multiple entries to sync
         for i in range(5):
@@ -171,14 +172,14 @@ class TestOnlineToOfflineTransition:
         def fail_after_two(*args, **kwargs):
             call_count["count"] += 1
             if call_count["count"] > 2:
-                raise socket.error("Network unreachable")
+                raise OSError("Network unreachable")
             return {"success": True}
 
         with patch("hmis.apps.core.sync.sync_to_server", side_effect=fail_after_two):
             # Should not crash, should handle gracefully
             try:
                 SyncManager.process_pending_entries()
-            except socket.error:
+            except OSError:
                 pass  # Expected when implementation doesn't catch
 
         # First two should be synced (or implementation may handle differently)
@@ -191,9 +192,8 @@ class TestMultipleTransitions:
     @pytest.mark.django_db
     def test_offline_online_offline_cycle(self):
         """System should handle offline → online → offline cycle."""
-        from hmis.apps.patients.models import Patient
-        from hmis.apps.core.models import SyncQueue
         from hmis.apps.core.sync import ConnectivityMonitor
+        from hmis.apps.patients.models import Patient
 
         # Phase 1: Offline - create patient
         with patch.object(ConnectivityMonitor, "is_online", return_value=False):
@@ -253,8 +253,8 @@ class TestDataConsistencyAcrossTransitions:
     @pytest.mark.django_db
     def test_no_duplicate_creates_on_sync(self):
         """Syncing should not create duplicate records."""
-        from hmis.apps.patients.models import Patient
         from hmis.apps.core.models import SyncQueue
+        from hmis.apps.patients.models import Patient
 
         # Create patient offline
         patient = Patient.objects.create(
@@ -281,9 +281,10 @@ class TestDataConsistencyAcrossTransitions:
     @pytest.mark.django_db
     def test_updates_applied_in_order(self):
         """Multiple updates should be applied in correct order."""
-        from hmis.apps.patients.models import Patient
-        from hmis.apps.core.models import SyncQueue
         import time
+
+        from hmis.apps.core.models import SyncQueue
+        from hmis.apps.patients.models import Patient
 
         patient = Patient.objects.create(
             first_name="Original",
@@ -315,8 +316,8 @@ class TestDataConsistencyAcrossTransitions:
     @pytest.mark.django_db
     def test_delete_after_update_handled_correctly(self):
         """Delete after update should result in deletion."""
-        from hmis.apps.patients.models import Patient
         from hmis.apps.core.models import SyncQueue
+        from hmis.apps.patients.models import Patient
 
         patient = Patient.objects.create(
             first_name="ToDelete",
@@ -379,16 +380,13 @@ class TestSyncStateRecovery:
         )
 
         # On reconnect, should continue from SYNCING entries
-        pending_or_syncing = SyncQueue.objects.filter(
-            status__in=["PENDING", "SYNCING"]
-        ).count()
+        pending_or_syncing = SyncQueue.objects.filter(status__in=["PENDING", "SYNCING"]).count()
         assert pending_or_syncing == 2
 
     @pytest.mark.django_db
     def test_reset_stale_syncing_entries(self):
         """Entries stuck in SYNCING state should be reset."""
         from hmis.apps.core.models import SyncQueue
-        from hmis.apps.core.sync import SyncManager
 
         # Create entry that's been SYNCING for too long
         stale_entry = SyncQueue.objects.create(
@@ -431,7 +429,6 @@ class TestTransitionCallbacks:
 
     def test_callback_on_conflict_detected(self):
         """Callback should fire when conflict is detected."""
-        from hmis.apps.core.sync import SyncManager
 
         callback_called = {"called": False, "conflict": None}
 
@@ -464,7 +461,6 @@ class TestEdgeCases:
     def test_large_queue_on_reconnect(self):
         """Should handle large queue on reconnection."""
         from hmis.apps.core.models import SyncQueue
-        from hmis.apps.core.sync import SyncManager
 
         # Create large queue
         for i in range(1000):
@@ -483,8 +479,8 @@ class TestEdgeCases:
     @pytest.mark.django_db
     def test_concurrent_local_and_sync_operations(self):
         """Should handle concurrent local writes during sync."""
-        from hmis.apps.patients.models import Patient
         from hmis.apps.core.models import SyncQueue
+        from hmis.apps.patients.models import Patient
 
         # Start with some pending entries
         SyncQueue.objects.create(

@@ -8,9 +8,9 @@ These tests validate that sensitive data is properly encrypted at rest
 and that encryption/decryption operations work correctly.
 """
 
-import pytest
 from datetime import date
-from django.test import TestCase, override_settings
+
+import pytest
 from django.db import connection
 
 
@@ -26,9 +26,7 @@ class TestEncryptionConfiguration:
 
     def test_encryption_key_is_valid_length(self, settings):
         """Encryption key should be of valid length for AES-256."""
-        key = getattr(
-            settings, "FIELD_ENCRYPTION_KEY", getattr(settings, "ENCRYPTION_KEY", None)
-        )
+        key = getattr(settings, "FIELD_ENCRYPTION_KEY", getattr(settings, "ENCRYPTION_KEY", None))
         assert key is not None, "Encryption key is not set"
         # Fernet keys are 32 bytes, base64 encoded (44 characters with padding)
         # Or raw key should be 32 bytes for AES-256
@@ -61,9 +59,7 @@ class TestSensitiveFieldEncryption:
 
         # Check raw database value (should be encrypted, not plaintext)
         with connection.cursor() as cursor:
-            cursor.execute(
-                "SELECT national_id FROM patients_patient WHERE id = %s", [patient.id]
-            )
+            cursor.execute("SELECT national_id FROM patients_patient WHERE id = %s", [patient.id])
             raw_value = cursor.fetchone()[0]
 
             # If encryption is working, raw value should NOT equal plaintext
@@ -208,12 +204,13 @@ class TestDatabaseEncryptionAtRest:
     def test_database_file_is_not_plaintext_readable(self, settings):
         """
         Database file should not contain plaintext sensitive data.
-        
+
         Note: This test validates that encryption is working at some level.
         The exact implementation (SQLCipher vs field-level) determines behavior.
         """
-        from hmis.apps.patients.models import Patient
         import os
+
+        from hmis.apps.patients.models import Patient
 
         # Skip if using PostgreSQL (different encryption mechanism)
         if "postgresql" in settings.DATABASES["default"]["ENGINE"]:
@@ -271,7 +268,7 @@ class TestEncryptionWithSync:
     def test_encryption_key_rotation_compatibility(self):
         """
         System should handle encryption key rotation gracefully.
-        
+
         Note: This is a forward-looking test for when key rotation is implemented.
         """
         # This test documents the expected behavior for key rotation
