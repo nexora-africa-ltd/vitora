@@ -161,10 +161,17 @@ class PatientViewSet(viewsets.ModelViewSet):
         """
         Get patient encounter timeline with statistics.
 
+        Query Parameters:
+            - start_date: Filter encounters from this date (YYYY-MM-DD)
+            - end_date: Filter encounters until this date (YYYY-MM-DD)
+            - encounter_type: Filter by type (comma-separated: OPD,IPD,EMERGENCY)
+            - page: Page number for pagination
+            - page_size: Results per page (default 20, max 100)
+
         Returns:
             - patient: Patient information
-            - encounters: List of encounters ordered by date
-            - statistics: Summary statistics
+            - timeline: List of encounters ordered by date (newest first)
+            - statistics: Summary statistics including most common diagnosis
         """
         patient = self.get_object()
 
@@ -189,6 +196,12 @@ class PatientViewSet(viewsets.ModelViewSet):
             except ValueError:
                 pass  # Invalid date format, ignore filter
 
+        # Apply encounter type filter
+        encounter_type = request.query_params.get("encounter_type")
+        if encounter_type:
+            types = [t.strip().upper() for t in encounter_type.split(",")]
+            encounters = encounters.filter(encounter_type__in=types)
+
         encounters = encounters.order_by("-encounter_date")
 
         # Calculate statistics
@@ -204,22 +217,69 @@ class PatientViewSet(viewsets.ModelViewSet):
         # Count critical vitals encounters
         critical_count = sum(1 for e in encounters if e.has_critical_vitals())
 
+        # Calculate most common diagnosis
+        from hmis.apps.encounters.models import Diagnosis
+
+        most_common_diag = (
+            Diagnosis.objects.filter(encounter__patient=patient)
+            .values("icd10_code__code", "icd10_code__description")
+            .annotate(count=Count("id"))
+            .order_by("-count")
+            .first()
+        )
+        most_common_diagnosis = None
+        if most_common_diag and most_common_diag["icd10_code__code"]:
+            most_common_diagnosis = {
+                "code": most_common_diag["icd10_code__code"],
+                "description": most_common_diag["icd10_code__description"],
+                "count": most_common_diag["count"],
+            }
+
         def build_vitals_summary(encounter: Encounter) -> dict:
+            """Build vitals summary with status for each vital."""
             summary: dict[str, object] = {}
             if encounter.temperature is not None:
-                summary["temperature"] = str(encounter.temperature)
+                summary["temperature"] = {
+                    "value": str(encounter.temperature),
+                    "status": encounter.get_vital_status("temperature"),
+                    "unit": "°C",
+                }
             if encounter.pulse is not None:
-                summary["pulse"] = encounter.pulse
+                summary["pulse"] = {
+                    "value": encounter.pulse,
+                    "status": encounter.get_vital_status("pulse"),
+                    "unit": "bpm",
+                }
             if encounter.blood_pressure:
-                summary["blood_pressure"] = encounter.blood_pressure
+                summary["blood_pressure"] = {
+                    "value": encounter.blood_pressure,
+                    "status": encounter.get_vital_status("bp_systolic"),
+                    "unit": "mmHg",
+                }
             if encounter.respiratory_rate is not None:
-                summary["respiratory_rate"] = encounter.respiratory_rate
+                summary["respiratory_rate"] = {
+                    "value": encounter.respiratory_rate,
+                    "status": encounter.get_vital_status("respiratory_rate"),
+                    "unit": "/min",
+                }
             if encounter.spo2 is not None:
-                summary["spo2"] = float(encounter.spo2)
+                summary["spo2"] = {
+                    "value": float(encounter.spo2),
+                    "status": encounter.get_vital_status("spo2"),
+                    "unit": "%",
+                }
             if encounter.weight is not None:
-                summary["weight"] = str(encounter.weight)
+                summary["weight"] = {
+                    "value": str(encounter.weight),
+                    "status": "normal",  # Weight doesn't have clinical thresholds
+                    "unit": "kg",
+                }
             if encounter.height is not None:
-                summary["height"] = str(encounter.height)
+                summary["height"] = {
+                    "value": str(encounter.height),
+                    "status": "normal",  # Height doesn't have clinical thresholds
+                    "unit": "cm",
+                }
             return summary
 
         def build_diagnoses(encounter: Encounter) -> list[dict]:
@@ -230,14 +290,37 @@ class PatientViewSet(viewsets.ModelViewSet):
                         "id": diagnosis.id,
                         "diagnosis_type": diagnosis.diagnosis_type,
                         "code": diagnosis.icd10_code.code if diagnosis.icd10_code else None,
-                        "description": diagnosis.icd10_code.description if diagnosis.icd10_code else None,
+                        "description": (
+                            diagnosis.icd10_code.description if diagnosis.icd10_code else None
+                        ),
                         "free_text_diagnosis": diagnosis.free_text_diagnosis,
                     }
                 )
             return diagnoses
 
+        def build_treatment_plan(encounter: Encounter) -> dict | None:
+            """Build treatment plan summary."""
+            try:
+                plan = encounter.treatment_plan
+                return {
+                    "status": plan.status.lower() if plan.status else None,
+                    "medications_count": plan.medications.count(),
+                    "follow_up_date": plan.follow_up_date,
+                }
+            except Encounter.treatment_plan.RelatedObjectDoesNotExist:
+                return None
+
+        def build_alerts(encounter: Encounter) -> list[str]:
+            """Build alerts list from encounter."""
+            alerts_str = encounter.get_alerts()
+            if alerts_str:
+                return [a.strip() for a in alerts_str.split(",") if a.strip()]
+            return []
+
         timeline_items = []
-        for encounter in encounters.select_related("patient"):
+        for encounter in encounters.select_related("patient").prefetch_related(
+            "diagnoses__icd10_code", "treatment_plan__medications"
+        ):
             timeline_items.append(
                 {
                     "encounter_id": encounter.id,
@@ -247,6 +330,8 @@ class PatientViewSet(viewsets.ModelViewSet):
                     "has_critical_vitals": encounter.has_critical_vitals(),
                     "vitals_summary": build_vitals_summary(encounter),
                     "diagnoses": build_diagnoses(encounter),
+                    "treatment_plan": build_treatment_plan(encounter),
+                    "alerts": build_alerts(encounter),
                 }
             )
 
@@ -269,6 +354,7 @@ class PatientViewSet(viewsets.ModelViewSet):
                 "by_type": {
                     item["encounter_type"]: item["count"] for item in type_breakdown
                 },
+                "most_common_diagnosis": most_common_diagnosis,
             },
         }
 
