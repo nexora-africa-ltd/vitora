@@ -122,10 +122,18 @@ vitora/
               generate_mrn.py
         encounters/
           __init__.py
-          models.py
+          models.py  # Encounter, ICD10Code, Diagnosis, TreatmentPlan
           serializers.py
           views.py
           urls.py
+          admin.py
+        clinical_templates/  # Phase 1: Sprint 1.1-1.2
+          __init__.py
+          models.py  # ClinicalTemplate, TemplateSection
+          serializers.py
+          views.py
+          urls.py
+          admin.py
         pharmacy/
           __init__.py
           models.py
@@ -379,14 +387,75 @@ class Encounter(TimeStampedModel):
     respiratory_rate = models.IntegerField(null=True, blank=True)
     weight = models.DecimalField(max_digits=5, decimal_places=2, null=True, blank=True)
     height = models.DecimalField(max_digits=5, decimal_places=2, null=True, blank=True)
+    spo2 = models.DecimalField(max_digits=5, decimal_places=2, null=True, blank=True)  # Oxygen saturation
+    
+    # Medical History (captured per encounter)
+    allergies = models.TextField(blank=True)
+    chronic_conditions = models.TextField(blank=True)
+    current_medications = models.TextField(blank=True)
+    past_surgeries = models.TextField(blank=True)
+    family_history = models.TextField(blank=True)
+    social_history = models.TextField(blank=True)
     
     # Clinical notes
     chief_complaint = models.TextField()
-    diagnosis = models.TextField(blank=True)
-    treatment_plan = models.TextField(blank=True)
+    notes = models.TextField(blank=True)
     
     # Sync
     sync_status = models.CharField(max_length=20, default='synced')
+    
+    def has_critical_vitals(self) -> bool:
+        """Check for critical vital signs (temp, pulse, RR, SpO2)."""
+    
+    def get_alerts(self) -> str:
+        """Return alert messages for abnormal vitals."""
+
+
+class ICD10Code(models.Model):
+    """ICD-10 diagnosis code reference table (Phase 1: Sprint 1.1-1.2)."""
+    code = models.CharField(max_length=10, unique=True, db_index=True)
+    short_description = models.CharField(max_length=255)
+    long_description = models.TextField(blank=True)
+    chapter = models.CharField(max_length=100)
+    category = models.CharField(max_length=100)
+    is_billable = models.BooleanField(default=True)
+    is_active = models.BooleanField(default=True)
+
+
+class Diagnosis(models.Model):
+    """Diagnosis entry linked to an encounter (Phase 1: Sprint 1.1-1.2)."""
+    encounter = models.ForeignKey(Encounter, on_delete=models.CASCADE, related_name='diagnoses')
+    icd10_code = models.ForeignKey(ICD10Code, on_delete=models.PROTECT)
+    diagnosis_type = models.CharField(max_length=20)  # principal, secondary, differential
+    certainty = models.CharField(max_length=20)  # confirmed, provisional, suspected
+    clinical_notes = models.TextField(blank=True)
+    diagnosed_by = models.ForeignKey('auth.User', on_delete=models.SET_NULL, null=True)
+    diagnosed_at = models.DateTimeField(auto_now_add=True)
+
+
+class TreatmentPlanTemplate(models.Model):
+    """Reusable treatment plan templates (Phase 1: Sprint 1.1-1.2)."""
+    name = models.CharField(max_length=200)
+    diagnosis_codes = models.ManyToManyField(ICD10Code, blank=True)
+    default_medications = models.JSONField(blank=True, null=True)
+    default_procedures = models.JSONField(blank=True, null=True)
+    default_instructions = models.TextField(blank=True)
+    follow_up_days = models.PositiveIntegerField(null=True, blank=True)
+    department = models.CharField(max_length=100, blank=True)
+    is_active = models.BooleanField(default=True)
+
+
+class TreatmentPlan(models.Model):
+    """Treatment plan for an encounter (Phase 1: Sprint 1.1-1.2)."""
+    encounter = models.OneToOneField(Encounter, on_delete=models.CASCADE, related_name='treatment_plan')
+    template = models.ForeignKey(TreatmentPlanTemplate, on_delete=models.SET_NULL, null=True, blank=True)
+    status = models.CharField(max_length=20, default='draft')  # draft, active, completed, cancelled
+    medications = models.JSONField(blank=True, null=True)
+    procedures = models.JSONField(blank=True, null=True)
+    patient_instructions = models.TextField(blank=True)
+    follow_up_date = models.DateField(null=True, blank=True)
+    referral_needed = models.BooleanField(default=False)
+    referral_specialty = models.CharField(max_length=100, blank=True)
 ```
 
 #### 4.1.3 PharmacyStock Model (`hmis/apps/pharmacy/models.py`)
@@ -404,6 +473,49 @@ class PharmacyStock(TimeStampedModel):
     def needs_reorder(self):
         return self.quantity_in_stock <= self.reorder_level
 ```
+
+#### 4.1.4 Clinical Templates (`hmis/apps/clinical_templates/models.py`)
+```python
+class ClinicalTemplate(models.Model):
+    """Master clinical template for common conditions (Phase 1: Sprint 1.1-1.2)."""
+    TEMPLATE_TYPE_CHOICES = [
+        ('encounter', 'Encounter Template'),
+        ('note', 'Clinical Note Template'),
+        ('assessment', 'Assessment Template'),
+        ('procedure', 'Procedure Template'),
+    ]
+    
+    name = models.CharField(max_length=200)
+    template_type = models.CharField(max_length=20, choices=TEMPLATE_TYPE_CHOICES)
+    specialty = models.CharField(max_length=100, blank=True)
+    description = models.TextField(blank=True)
+    content = models.JSONField()  # Template structure as JSON
+    is_system = models.BooleanField(default=False)  # System vs user-created
+    is_active = models.BooleanField(default=True)
+    usage_count = models.PositiveIntegerField(default=0)
+    created_by = models.ForeignKey('auth.User', on_delete=models.SET_NULL, null=True)
+
+
+class TemplateSection(models.Model):
+    """Reusable template sections."""
+    template = models.ForeignKey(ClinicalTemplate, on_delete=models.CASCADE, related_name='sections')
+    name = models.CharField(max_length=100)
+    order = models.PositiveIntegerField(default=0)
+    is_required = models.BooleanField(default=False)
+    fields = models.JSONField()  # Section fields definition
+```
+
+**Pre-built Kenya-specific Templates**:
+1. General OPD Visit
+2. Antenatal Care (ANC)
+3. Child Wellness Check
+4. Chronic Disease Follow-up (Diabetes, Hypertension)
+5. Emergency Triage
+6. HIV/AIDS Care (sensitive access)
+7. Malaria Assessment
+8. Respiratory Infection
+9. Diarrheal Disease
+10. Trauma Assessment
 
 ### 4.2 Serializers & Validation
 Located in respective app `serializers.py` files using Django REST Framework serializers with custom validation.
@@ -650,12 +762,74 @@ export const initDatabase = () => {
 | bp_diastolic | INTEGER | - | mmHg |
 | pulse | INTEGER | - | bpm |
 | respiratory_rate | INTEGER | - | breaths/min |
+| spo2 | DECIMAL(5,2) | - | Oxygen saturation % |
 | weight | DECIMAL(5,2) | - | kg |
 | height | DECIMAL(5,2) | - | cm |
 | chief_complaint | TEXT | NOT NULL | Main complaint |
-| diagnosis | TEXT | - | Diagnosis notes |
-| treatment_plan | TEXT | - | Treatment plan |
+| allergies | TEXT | - | Known allergies |
+| chronic_conditions | TEXT | - | Chronic conditions |
+| current_medications | TEXT | - | Current medications |
+| past_surgeries | TEXT | - | Past surgeries |
+| family_history | TEXT | - | Family history |
+| social_history | TEXT | - | Social history |
+| notes | TEXT | - | Clinical notes |
 | sync_status | VARCHAR(20) | DEFAULT 'synced' | Sync state |
+| created_at | TIMESTAMP | NOT NULL | Record creation |
+| updated_at | TIMESTAMP | NOT NULL | Last update |
+
+#### encounters_icd10code (Phase 1: Sprint 1.1-1.2)
+| Field | Type | Constraints | Description |
+|-------|------|-------------|-------------|
+| id | UUID | PK | Primary identifier |
+| code | VARCHAR(10) | UNIQUE, INDEX | ICD-10 code (e.g., J06.9) |
+| short_description | VARCHAR(255) | NOT NULL | Short description |
+| long_description | TEXT | - | Full description |
+| chapter | VARCHAR(100) | INDEX | ICD-10 chapter |
+| category | VARCHAR(100) | - | Code category |
+| is_billable | BOOLEAN | DEFAULT TRUE | Terminal billing code |
+| is_active | BOOLEAN | DEFAULT TRUE | Active/deprecated |
+
+#### encounters_diagnosis (Phase 1: Sprint 1.1-1.2)
+| Field | Type | Constraints | Description |
+|-------|------|-------------|-------------|
+| id | UUID | PK | Primary identifier |
+| encounter_id | UUID | FK → encounters | Encounter reference |
+| icd10_code_id | UUID | FK → icd10code | ICD-10 code reference |
+| diagnosis_type | VARCHAR(20) | NOT NULL | principal/secondary/differential |
+| certainty | VARCHAR(20) | DEFAULT 'confirmed' | confirmed/provisional/suspected |
+| clinical_notes | TEXT | - | Additional notes |
+| diagnosed_by_id | UUID | FK → users | Clinician who diagnosed |
+| diagnosed_at | TIMESTAMP | NOT NULL | Diagnosis timestamp |
+
+#### encounters_treatmentplan (Phase 1: Sprint 1.1-1.2)
+| Field | Type | Constraints | Description |
+|-------|------|-------------|-------------|
+| id | UUID | PK | Primary identifier |
+| encounter_id | UUID | FK → encounters, UNIQUE | One plan per encounter |
+| template_id | UUID | FK → templates | Template used (optional) |
+| status | VARCHAR(20) | DEFAULT 'draft' | draft/active/completed/cancelled |
+| medications | JSON | - | Prescribed medications |
+| procedures | JSON | - | Planned procedures |
+| patient_instructions | TEXT | - | Instructions for patient |
+| follow_up_date | DATE | - | Follow-up appointment |
+| referral_needed | BOOLEAN | DEFAULT FALSE | Referral flag |
+| referral_specialty | VARCHAR(100) | - | Specialty if referred |
+| created_at | TIMESTAMP | NOT NULL | Record creation |
+| updated_at | TIMESTAMP | NOT NULL | Last update |
+
+#### clinical_templates_clinicaltemplate (Phase 1: Sprint 1.1-1.2)
+| Field | Type | Constraints | Description |
+|-------|------|-------------|-------------|
+| id | UUID | PK | Primary identifier |
+| name | VARCHAR(200) | NOT NULL | Template name |
+| template_type | VARCHAR(20) | NOT NULL | encounter/note/assessment/procedure |
+| specialty | VARCHAR(100) | - | Medical specialty |
+| description | TEXT | - | Template description |
+| content | JSON | NOT NULL | Template structure |
+| is_system | BOOLEAN | DEFAULT FALSE | System vs user template |
+| is_active | BOOLEAN | DEFAULT TRUE | Active/inactive |
+| usage_count | INTEGER | DEFAULT 0 | Times used |
+| created_by_id | UUID | FK → users | Creator |
 | created_at | TIMESTAMP | NOT NULL | Record creation |
 | updated_at | TIMESTAMP | NOT NULL | Last update |
 
