@@ -377,6 +377,8 @@ function resetEncounterSelection() {
   encounterForm.reset();
   encounterForm.style.display = 'none';
   bmiDisplay.style.display = 'none';
+
+  resetTreatmentPlanBuilder();
 }
 
 document.querySelectorAll('.tab').forEach(tab => {
@@ -749,6 +751,8 @@ function selectPatient(id, name, mrn) {
   patientSearchBtn.style.display = 'none';
   selectedPatientDiv.style.display = 'flex';
   encounterForm.style.display = 'block';
+
+  initializeTreatmentPlanBuilder();
 }
 
 document.getElementById('change-patient-btn').addEventListener('click', () => {
@@ -758,6 +762,8 @@ document.getElementById('change-patient-btn').addEventListener('click', () => {
   patientSearchInput.value = '';
   selectedPatientDiv.style.display = 'none';
   encounterForm.style.display = 'none';
+
+  resetTreatmentPlanBuilder();
 });
 
 // Start encounter from patient list
@@ -777,6 +783,333 @@ function startEncounter(patientId, patientName, patientMrn) {
   // Set today's date
   const today = new Date().toISOString().split('T')[0];
   document.getElementById('encounter-date').value = today;
+}
+
+// ====================
+// Treatment Plan Builder (Encounter Tab)
+// ====================
+const treatmentTemplateSelect = document.getElementById('treatment-template-select');
+const applyTemplateBtn = document.getElementById('apply-template-btn');
+const templatePreview = document.getElementById('template-preview');
+const templatePreviewName = document.getElementById('template-preview-name');
+const templatePreviewDepartment = document.getElementById('template-preview-department');
+const templatePreviewDescription = document.getElementById('template-preview-description');
+const templatePreviewInstructions = document.getElementById('template-preview-instructions');
+const templatePreviewMedications = document.getElementById('template-preview-medications');
+const medicationRowsTbody = document.getElementById('medication-rows');
+const addMedicationRowBtn = document.getElementById('add-medication-row-btn');
+const followUpDateInput = document.getElementById('follow-up-date');
+const followUpPreset7Btn = document.getElementById('follow-up-preset-7');
+const followUpPreset14Btn = document.getElementById('follow-up-preset-14');
+const followUpPreset30Btn = document.getElementById('follow-up-preset-30');
+const instructionsEditor = document.getElementById('patient-instructions-editor');
+const referralNeededCheckbox = document.getElementById('referral-needed');
+const referralFieldsDiv = document.getElementById('referral-fields');
+const referralSpecialtySelect = document.getElementById('referral-specialty');
+const referralNotesTextarea = document.getElementById('referral-notes');
+
+let treatmentTemplatesById = new Map();
+let hasLoadedTemplates = false;
+
+function getTodayIsoDate() {
+  return new Date().toISOString().split('T')[0];
+}
+
+function addDaysToIsoDate(baseIsoDate, days) {
+  const base = baseIsoDate ? new Date(baseIsoDate) : new Date();
+  const result = new Date(base);
+  result.setDate(result.getDate() + days);
+  return result.toISOString().split('T')[0];
+}
+
+function safeJsonParseArray(value) {
+  if (!value) return [];
+  try {
+    const parsed = JSON.parse(value);
+    return Array.isArray(parsed) ? parsed : [];
+  } catch {
+    return [];
+  }
+}
+
+function renderTemplateDropdown(templates) {
+  treatmentTemplateSelect.innerHTML = '<option value="">Select template...</option>';
+  if (!templates.length) {
+    const option = document.createElement('option');
+    option.value = '';
+    option.textContent = 'No templates available';
+    option.disabled = true;
+    treatmentTemplateSelect.appendChild(option);
+    return;
+  }
+
+  templates.forEach((t) => {
+    const option = document.createElement('option');
+    option.value = String(t.id);
+    option.textContent = t.name;
+    treatmentTemplateSelect.appendChild(option);
+  });
+}
+
+async function loadTreatmentTemplates() {
+  if (hasLoadedTemplates) return;
+  hasLoadedTemplates = true;
+
+  try {
+    const response = await window.electronAPI.apiRequest('GET', '/api/treatment-templates/');
+    if (!response.success) {
+      renderTemplateDropdown([]);
+      return;
+    }
+
+    const templates = response.data?.results || response.data || [];
+    treatmentTemplatesById = new Map(templates.map((t) => [String(t.id), t]));
+    renderTemplateDropdown(templates);
+  } catch {
+    renderTemplateDropdown([]);
+  }
+}
+
+function clearTemplatePreview() {
+  templatePreview.style.display = 'none';
+  templatePreviewName.textContent = '';
+  templatePreviewDepartment.textContent = '';
+  templatePreviewDescription.textContent = '';
+  templatePreviewInstructions.textContent = '';
+  templatePreviewMedications.textContent = '';
+}
+
+function showTemplatePreview(template) {
+  if (!template) {
+    clearTemplatePreview();
+    return;
+  }
+
+  templatePreviewName.textContent = template.name || '';
+  templatePreviewDepartment.textContent = template.department ? `Department: ${template.department}` : '';
+  templatePreviewDescription.textContent = template.description || '';
+  templatePreviewInstructions.textContent = template.default_instructions || '';
+
+  const meds = safeJsonParseArray(template.default_medications);
+  if (!meds.length) {
+    templatePreviewMedications.textContent = 'None';
+  } else {
+    templatePreviewMedications.textContent = meds
+      .map((m) => {
+        const name = m.name || '';
+        const dosage = m.dosage ? ` ${m.dosage}` : '';
+        const freq = m.frequency ? `, ${m.frequency}` : '';
+        const duration = m.duration ? `, ${m.duration}` : '';
+        return `${name}${dosage}${freq}${duration}`.trim();
+      })
+      .filter(Boolean)
+      .join('\n');
+  }
+
+  templatePreview.style.display = 'block';
+}
+
+function createMedicationRow(values = {}) {
+  const row = document.createElement('tr');
+  row.innerHTML = `
+    <td><input type="text" class="medication-name" placeholder="e.g., Amoxicillin" value="${escapeAttribute(values.name || '')}"></td>
+    <td><input type="text" class="medication-dosage" placeholder="e.g., 500mg" value="${escapeAttribute(values.dosage || '')}"></td>
+    <td><input type="text" class="medication-frequency" placeholder="e.g., TDS" value="${escapeAttribute(values.frequency || '')}"></td>
+    <td><input type="text" class="medication-duration" placeholder="e.g., 7 days" value="${escapeAttribute(values.duration || '')}"></td>
+    <td><button type="button" class="btn btn-secondary btn-sm remove-medication-row-btn">Remove</button></td>
+  `;
+
+  row.querySelector('button.remove-medication-row-btn').addEventListener('click', () => {
+    row.remove();
+  });
+
+  return row;
+}
+
+function escapeAttribute(value) {
+  return String(value)
+    .replaceAll('&', '&amp;')
+    .replaceAll('"', '&quot;')
+    .replaceAll('<', '&lt;')
+    .replaceAll('>', '&gt;');
+}
+
+function setFollowUpMinToday() {
+  const today = getTodayIsoDate();
+  followUpDateInput.min = today;
+  if (followUpDateInput.value && followUpDateInput.value < today) {
+    followUpDateInput.value = today;
+  }
+}
+
+function applyTemplateLocally(template) {
+  if (!template) return;
+
+  // Fill medications
+  medicationRowsTbody.innerHTML = '';
+  const meds = safeJsonParseArray(template.default_medications);
+  meds.forEach((m) => {
+    medicationRowsTbody.appendChild(createMedicationRow({
+      name: m.name || '',
+      dosage: m.dosage || '',
+      frequency: m.frequency || '',
+      duration: m.duration || '',
+    }));
+  });
+
+  // Follow-up date based on follow_up_days
+  if (template.follow_up_days) {
+    followUpDateInput.value = addDaysToIsoDate(getTodayIsoDate(), Number(template.follow_up_days));
+  }
+
+  // Instructions
+  instructionsEditor.textContent = template.default_instructions || '';
+}
+
+function getMedicationsFromRows() {
+  const rows = Array.from(medicationRowsTbody.querySelectorAll('tr'));
+  const meds = rows.map((row) => {
+    const name = row.querySelector('input.medication-name')?.value?.trim() || '';
+    const dosage = row.querySelector('input.medication-dosage')?.value?.trim() || '';
+    const frequency = row.querySelector('input.medication-frequency')?.value?.trim() || '';
+    const duration = row.querySelector('input.medication-duration')?.value?.trim() || '';
+    return { name, dosage, frequency, duration };
+  });
+
+  return meds.filter((m) => m.name || m.dosage || m.frequency || m.duration);
+}
+
+function buildTreatmentPlanPayload(encounterId) {
+  const templateId = treatmentTemplateSelect.value ? Number(treatmentTemplateSelect.value) : null;
+  const medications = getMedicationsFromRows();
+  const followUpDate = followUpDateInput.value || null;
+  const followUpInstructions = (instructionsEditor.innerHTML || '').trim();
+  const referralNeeded = Boolean(referralNeededCheckbox.checked);
+  const referralSpecialty = referralNeeded ? (referralSpecialtySelect.value || '') : '';
+  const referralNotes = referralNeeded ? (referralNotesTextarea.value || '') : '';
+
+  const hasAnyData = Boolean(
+    templateId ||
+    medications.length ||
+    followUpDate ||
+    followUpInstructions ||
+    referralNeeded
+  );
+
+  if (!hasAnyData) return null;
+
+  const payload = {
+    encounter: encounterId,
+    status: 'ACTIVE',
+    medications_json: medications.length ? JSON.stringify(medications) : '',
+    follow_up_date: followUpDate,
+    follow_up_instructions: followUpInstructions,
+    referral_needed: referralNeeded,
+    referral_specialty: referralSpecialty,
+    referral_notes: referralNotes,
+  };
+
+  if (templateId) payload.template = templateId;
+  return payload;
+}
+
+async function upsertTreatmentPlan(encounterId, payload) {
+  const url = `/api/encounters/${encounterId}/treatment-plan/`;
+
+  try {
+    const createResponse = await window.electronAPI.apiRequest('POST', url, payload);
+    if (createResponse.success) return { success: true, created: true };
+
+    // If a plan already exists, PATCH it.
+    const patchResponse = await window.electronAPI.apiRequest('PATCH', url, payload);
+    return { success: Boolean(patchResponse.success), created: false };
+  } catch {
+    try {
+      const patchResponse = await window.electronAPI.apiRequest('PATCH', url, payload);
+      return { success: Boolean(patchResponse.success), created: false };
+    } catch {
+      return { success: false, created: false };
+    }
+  }
+}
+
+function resetTreatmentPlanBuilder() {
+  if (!treatmentTemplateSelect) return;
+
+  treatmentTemplateSelect.value = '';
+  clearTemplatePreview();
+  medicationRowsTbody.innerHTML = '';
+  followUpDateInput.value = '';
+  instructionsEditor.innerHTML = '';
+  referralNeededCheckbox.checked = false;
+  referralFieldsDiv.style.display = 'none';
+  referralSpecialtySelect.value = '';
+  referralNotesTextarea.value = '';
+  setFollowUpMinToday();
+}
+
+function initializeTreatmentPlanBuilder() {
+  if (!treatmentTemplateSelect) return;
+
+  setFollowUpMinToday();
+  loadTreatmentTemplates();
+}
+
+// Template selection updates preview
+if (treatmentTemplateSelect) {
+  treatmentTemplateSelect.addEventListener('change', () => {
+    const template = treatmentTemplatesById.get(String(treatmentTemplateSelect.value));
+    showTemplatePreview(template);
+  });
+}
+
+// Apply template button fills values locally
+if (applyTemplateBtn) {
+  applyTemplateBtn.addEventListener('click', () => {
+    const template = treatmentTemplatesById.get(String(treatmentTemplateSelect.value));
+    showTemplatePreview(template);
+    applyTemplateLocally(template);
+  });
+}
+
+if (addMedicationRowBtn) {
+  addMedicationRowBtn.addEventListener('click', () => {
+    medicationRowsTbody.appendChild(createMedicationRow());
+  });
+}
+
+function wireFollowUpPreset(btn, days) {
+  if (!btn) return;
+  btn.addEventListener('click', () => {
+    followUpDateInput.value = addDaysToIsoDate(getTodayIsoDate(), days);
+  });
+}
+
+wireFollowUpPreset(followUpPreset7Btn, 7);
+wireFollowUpPreset(followUpPreset14Btn, 14);
+wireFollowUpPreset(followUpPreset30Btn, 30);
+
+// Simple rich text toolbar
+document.querySelectorAll('[data-rte-cmd]').forEach((btn) => {
+  btn.addEventListener('click', () => {
+    const cmd = btn.getAttribute('data-rte-cmd');
+    if (!cmd) return;
+    instructionsEditor.focus();
+    document.execCommand(cmd, false, null);
+  });
+});
+
+// Referral toggle
+if (referralNeededCheckbox) {
+  referralNeededCheckbox.addEventListener('change', () => {
+    if (referralNeededCheckbox.checked) {
+      referralFieldsDiv.style.display = 'block';
+    } else {
+      referralFieldsDiv.style.display = 'none';
+      referralSpecialtySelect.value = '';
+      referralNotesTextarea.value = '';
+    }
+  });
 }
 
 // BMI Calculation
@@ -835,6 +1168,18 @@ encounterForm.addEventListener('submit', async (e) => {
   const formData = new FormData(encounterForm);
   const data = Object.fromEntries(formData.entries());
   data.patient = selectedPatient.id;
+
+  // Capture treatment plan payload BEFORE we mutate/reset the form
+  // (encounterId will be added after encounter creation)
+  const treatmentPlanDraft = {
+    templateId: treatmentTemplateSelect?.value ? Number(treatmentTemplateSelect.value) : null,
+    medications: getMedicationsFromRows(),
+    followUpDate: followUpDateInput?.value || null,
+    followUpInstructions: (instructionsEditor?.innerHTML || '').trim(),
+    referralNeeded: Boolean(referralNeededCheckbox?.checked),
+    referralSpecialty: referralSpecialtySelect?.value || '',
+    referralNotes: referralNotesTextarea?.value || '',
+  };
   
   // Remove empty fields and convert numbers
   Object.keys(data).forEach(key => {
@@ -849,9 +1194,29 @@ encounterForm.addEventListener('submit', async (e) => {
     const response = await window.electronAPI.apiRequest('POST', '/api/encounters/', data);
     
     if (response.success) {
+      const encounterId = response.data?.id;
+
+      // Save treatment plan (if any) after encounter creation
+      if (encounterId) {
+        const payload = buildTreatmentPlanPayload(encounterId);
+        if (payload) {
+          // Use captured draft values instead of reading the DOM after resets
+          payload.template = treatmentPlanDraft.templateId || payload.template;
+          payload.medications_json = treatmentPlanDraft.medications.length ? JSON.stringify(treatmentPlanDraft.medications) : '';
+          payload.follow_up_date = treatmentPlanDraft.followUpDate;
+          payload.follow_up_instructions = treatmentPlanDraft.followUpInstructions;
+          payload.referral_needed = treatmentPlanDraft.referralNeeded;
+          payload.referral_specialty = treatmentPlanDraft.referralNeeded ? treatmentPlanDraft.referralSpecialty : '';
+          payload.referral_notes = treatmentPlanDraft.referralNeeded ? treatmentPlanDraft.referralNotes : '';
+
+          await upsertTreatmentPlan(encounterId, payload);
+        }
+      }
+
       showMessage('success', `Encounter saved successfully for ${selectedPatient.name}`, encounterMessageDiv);
       encounterForm.reset();
       bmiDisplay.style.display = 'none';
+      resetTreatmentPlanBuilder();
       
       // Reset patient selection for next encounter
       document.getElementById('change-patient-btn').click();

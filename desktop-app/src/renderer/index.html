@@ -418,6 +418,115 @@
           <textarea id="notes" name="notes" rows="4" placeholder="Additional clinical observations..."></textarea>
         </div>
 
+        <h3>Treatment Plan</h3>
+        <fieldset class="form-section">
+          <legend>Treatment Plan Builder</legend>
+
+          <div class="form-row">
+            <div class="form-group">
+              <label for="treatment-template-select">Template</label>
+              <select id="treatment-template-select">
+                <option value="">Select template...</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label>&nbsp;</label>
+              <button type="button" class="btn btn-secondary" id="apply-template-btn">Apply Template</button>
+            </div>
+          </div>
+
+          <div id="template-preview" class="template-preview" style="display: none;">
+            <div class="template-preview-header">
+              <strong id="template-preview-name"></strong>
+              <span id="template-preview-department" class="template-preview-meta"></span>
+            </div>
+            <div id="template-preview-description" class="template-preview-description"></div>
+            <div class="template-preview-grid">
+              <div>
+                <span class="template-preview-label">Default instructions</span>
+                <div id="template-preview-instructions" class="template-preview-box"></div>
+              </div>
+              <div>
+                <span class="template-preview-label">Default medications</span>
+                <div id="template-preview-medications" class="template-preview-box"></div>
+              </div>
+            </div>
+          </div>
+
+          <div class="form-group">
+            <label>Medications</label>
+            <div class="medication-table-wrap">
+              <table class="medication-table" aria-label="Medications">
+                <thead>
+                  <tr>
+                    <th>Drug Name</th>
+                    <th>Dosage</th>
+                    <th>Frequency</th>
+                    <th>Duration</th>
+                    <th></th>
+                  </tr>
+                </thead>
+                <tbody id="medication-rows"></tbody>
+              </table>
+            </div>
+            <div class="medication-actions">
+              <button type="button" class="btn btn-secondary btn-sm" id="add-medication-row-btn">Add Medication</button>
+            </div>
+          </div>
+
+          <div class="form-row">
+            <div class="form-group">
+              <label for="follow-up-date">Follow-up Date</label>
+              <input type="date" id="follow-up-date" min="">
+            </div>
+            <div class="form-group">
+              <label>Quick presets</label>
+              <div class="preset-buttons">
+                <button type="button" class="btn btn-secondary btn-sm" id="follow-up-preset-7">1 week</button>
+                <button type="button" class="btn btn-secondary btn-sm" id="follow-up-preset-14">2 weeks</button>
+                <button type="button" class="btn btn-secondary btn-sm" id="follow-up-preset-30">1 month</button>
+              </div>
+            </div>
+          </div>
+
+          <div class="form-group">
+            <label for="patient-instructions-editor">Patient Instructions</label>
+            <div class="rte-toolbar" role="toolbar" aria-label="Formatting">
+              <button type="button" class="btn btn-secondary btn-sm" data-rte-cmd="bold">Bold</button>
+              <button type="button" class="btn btn-secondary btn-sm" data-rte-cmd="italic">Italic</button>
+              <button type="button" class="btn btn-secondary btn-sm" data-rte-cmd="underline">Underline</button>
+            </div>
+            <div id="patient-instructions-editor" class="rte-editor" contenteditable="true"></div>
+          </div>
+
+          <div class="form-group">
+            <label>
+              <input type="checkbox" id="referral-needed">
+              Referral needed
+            </label>
+          </div>
+
+          <div id="referral-fields" class="referral-fields" style="display: none;">
+            <div class="form-row">
+              <div class="form-group">
+                <label for="referral-specialty">Specialty</label>
+                <select id="referral-specialty">
+                  <option value="">Select specialty...</option>
+                  <option value="Cardiology">Cardiology</option>
+                  <option value="Neurology">Neurology</option>
+                  <option value="Orthopedics">Orthopedics</option>
+                  <option value="Oncology">Oncology</option>
+                  <option value="Other">Other</option>
+                </select>
+              </div>
+              <div class="form-group">
+                <label for="referral-notes">Referral Notes</label>
+                <textarea id="referral-notes" rows="3" placeholder="Reason for referral, key findings, and urgency..."></textarea>
+              </div>
+            </div>
+          </div>
+        </fieldset>
+
         <div class="form-actions">
           <button type="submit" class="btn btn-primary" id="encounter-submit-btn">
             Save Encounter
