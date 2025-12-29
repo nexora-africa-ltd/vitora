@@ -2,10 +2,58 @@
  * Vitora HMIS Desktop - Renderer Process
  * 
  * This file handles the UI logic for authentication, patient registration,
- * encounter management, and offline status detection.
+ * encounter management, offline status detection, and theme management.
  * 
- * Sprint 0.6: Added authentication flow
+ * Sprint 0.6: Added authentication flow and dark mode
  */
+
+// ====================
+// Theme Management
+// ====================
+const THEME_KEY = 'vitora_theme';
+
+/**
+ * Initialize theme on app start
+ */
+function initializeTheme() {
+  // Check for saved theme preference or use system preference
+  const savedTheme = localStorage.getItem(THEME_KEY);
+  const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+  
+  const theme = savedTheme || (prefersDark ? 'dark' : 'light');
+  setTheme(theme);
+  
+  // Listen for system theme changes
+  window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', (e) => {
+    if (!localStorage.getItem(THEME_KEY)) {
+      setTheme(e.matches ? 'dark' : 'light');
+    }
+  });
+}
+
+/**
+ * Set the theme
+ */
+function setTheme(theme) {
+  const body = document.body;
+  
+  if (theme === 'dark') {
+    body.classList.add('dark-mode');
+  } else {
+    body.classList.remove('dark-mode');
+  }
+  
+  localStorage.setItem(THEME_KEY, theme);
+}
+
+/**
+ * Toggle theme
+ */
+function toggleTheme() {
+  const currentTheme = document.body.classList.contains('dark-mode') ? 'dark' : 'light';
+  const newTheme = currentTheme === 'dark' ? 'light' : 'dark';
+  setTheme(newTheme);
+}
 
 // ====================
 // Authentication State
@@ -895,5 +943,23 @@ window.closeModal = closeModal;
 // ====================
 // App Initialization
 // ====================
+
+/**
+ * Main initialization function
+ */
+async function initApp() {
+  // Initialize theme first
+  initializeTheme();
+  
+  // Setup theme toggle button
+  const themeToggleBtn = document.getElementById('theme-toggle-btn');
+  if (themeToggleBtn) {
+    themeToggleBtn.addEventListener('click', toggleTheme);
+  }
+  
+  // Initialize authentication
+  await initializeApp();
+}
+
 // Initialize the app when DOM is ready
-document.addEventListener('DOMContentLoaded', initializeApp);
+document.addEventListener('DOMContentLoaded', initApp);
