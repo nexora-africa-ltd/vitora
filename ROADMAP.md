@@ -1,7 +1,7 @@
 # Vitora HMIS - Comprehensive Development Roadmap
 
-**Version**: 1.1  
-**Last Updated**: December 28, 2025  
+**Version**: 1.2  
+**Last Updated**: December 29, 2025  
 **Target Completion**: Q4 2027  
 **Methodology**: Test-Driven Development (TDD) with Agile Sprints
 
@@ -11,22 +11,23 @@
 
 This roadmap outlines the complete development journey for Vitora HMIS from January 2026 to Q4 2027. The project adopts a **Test-Driven Development (TDD)** approach throughout all phases, ensuring quality, maintainability, and confidence in offline-first functionality. We prioritize Kenya pilots (rural/urban mix) for validation and iterative improvement.
 
-### Current Status: Phase 0 In Progress (Sprint 0.7)
-- **Sprints 0.1-0.6**: All completed ✅
-- **Sprint 0.7**: Clinician Feedback Implementation (In Progress)
-- **Test Coverage**: 84.44% (424 backend tests passing)
-- **Desktop App**: Offline-first with login UI, JWT auth, patient registration
+### Current Status: Phase 0 COMPLETE ✅
+- **Sprints 0.1-0.7**: All completed ✅
+- **Test Coverage**: 82.21% backend (467 tests), 66 frontend tests
+- **Desktop App**: Offline-first with login UI, JWT auth, patient registration, encounters
 - **Security**: Fernet encryption, audit logging, DPIA completed
 
-**Sprint 0.7 Progress**:
-- ✅ Emergency Contact model (16 tests)
-- ✅ SpO2 vital sign (13 tests)
-- ✅ DOB validation (6 tests)
-- ✅ Registered-by tracking (6 tests)
-- ✅ Referral source tracking (12 tests)
-- ⏳ Medical History section (pending)
-- ⏳ Kenya Location Hierarchy (pending)
-- ⏳ Frontend UI updates (pending)
+**Sprint 0.7 Completed** (Clinician Feedback Implementation):
+- ✅ Emergency Contact model (16 tests) - name, phone, relationship
+- ✅ SpO2 vital sign (13 tests) - with critical alerts <95%
+- ✅ DOB validation (6 tests) - no future dates
+- ✅ Registered-by tracking (6 tests) - auto-set to authenticated user
+- ✅ Referral source tracking (12 tests) - self/clinic/other_facility
+- ✅ Medical History section (18 tests) - in Encounter model
+- ✅ Kenya Location Hierarchy (25 tests) - County → Sub-County → Ward
+- ✅ Frontend UI updates (48 unit tests + E2E tests)
+- ✅ Django Admin registrations for all models
+- ✅ Dark mode E2E tests
 
 ### Key Metrics
 - **Total Effort**: 15-20 person-years
@@ -279,88 +280,139 @@ This roadmap outlines the complete development journey for Vitora HMIS from Janu
 - Performance tests: Baseline metrics (deferred to Phase 1)
 - UAT: Clinician validation tests (pending pilot)
 
-#### Sprint 0.7: Clinician Feedback & Enhanced Registration (Weeks 13-14)
+#### Sprint 0.7: Clinician Feedback & Enhanced Registration (Weeks 13-14) ✅ COMPLETED
 **TDD Focus**: Incorporate clinician feedback, enhance patient registration model
 
 **Clinician Feedback Items**:
-| Item | Description | Priority | Decision |
-|------|-------------|----------|----------|
-| a) Emergency Contact | Next of kin/emergency contact field | High | ✅ Implement - separate model with FK to Patient |
-| b) Medical History | Allergies, chronic conditions, medications, surgeries | High | ✅ Implement - section in Encounter form |
-| c) Kenya Location Hierarchy | County → Sub-county → Ward → Village/Street | High | ✅ Implement - structured location fields |
-| d) DOB Validation | Prevent future dates | Medium | ✅ Implement - simple validation |
-| e) Toast Notifications | Better UI feedback | Low | ⏳ Deferred - current messages sufficient for MVP |
-| f) Referral Source | Track how patients found facility | Medium | ✅ Implement - dropdown with conditional field |
-| g) Registered By | Auto-capture staff who registered patient | High | ✅ Implement - FK to User model |
-| h) SpO2 Vital Sign | Oxygen saturation measurement (mandatory) | High | ✅ Implement - critical vital with < 95% alert |
+| Item | Description | Priority | Status |
+|------|-------------|----------|--------|
+| a) Emergency Contact | Next of kin/emergency contact field | High | ✅ Implemented - EmergencyContact model + direct Patient fields |
+| b) Medical History | Allergies, chronic conditions, medications, surgeries | High | ✅ Implemented - 6 fields in Encounter model |
+| c) Kenya Location Hierarchy | County → Sub-county → Ward → Village/Street | High | ✅ Implemented - 3 models with cascading API |
+| d) DOB Validation | Prevent future dates | Medium | ✅ Implemented - model + serializer validation |
+| e) Toast Notifications | Better UI feedback | Low | ✅ Implemented - success/error messages with auto-hide |
+| f) Referral Source | Track how patients found facility | Medium | ✅ Implemented - dropdown with conditional field |
+| g) Registered By | Auto-capture staff who registered patient | High | ✅ Implemented - FK to User, auto-assigned |
+| h) SpO2 Vital Sign | Oxygen saturation measurement | High | ✅ Implemented - with critical alerts <95% |
 
 **Tasks**:
 - [x] **Write tests first**: EmergencyContact model tests (relationship, validation) ✅
 - [x] Implement EmergencyContact model with Patient FK ✅
-- [ ] **Write tests first**: Kenya location hierarchy tests (County/Sub-county/Ward)
-- [ ] Implement KenyaLocation model and Patient location fields
+- [x] **Write tests first**: Kenya location hierarchy tests (County/Sub-county/Ward) ✅
+- [x] Implement County, SubCounty, Ward models with cascading API ✅
 - [x] **Write tests first**: DOB validation tests (no future dates) ✅
 - [x] Implement DOB validation in Patient model and serializer ✅
 - [x] **Write tests first**: Referral source tests ✅
 - [x] Implement referral_source and referred_from_facility fields ✅
 - [x] **Write tests first**: Registered-by tracking tests ✅
 - [x] Implement registered_by FK and auto-assignment in views ✅
-- [ ] **Write tests first**: Medical history tests (in Encounter model)
-- [ ] Implement medical history fields in Encounter (allergies, chronic_conditions, medications, past_surgeries, drug_use)
+- [x] **Write tests first**: Medical history tests (in Encounter model) ✅
+- [x] Implement medical history fields in Encounter (allergies, chronic_conditions, current_medications, past_surgeries, family_history, social_history) ✅
 - [x] **Write tests first**: SpO2 vital sign tests (validation 0-100%, critical < 95%) ✅
 - [x] Implement SpO2 field in Encounter model with critical alert ✅
-- [ ] Update patient registration UI with new fields
-- [ ] Update encounter form UI with medical history section and SpO2
-- [ ] E2E tests for enhanced registration flow
+- [x] Update patient registration UI with new fields ✅
+- [x] Update encounter form UI with medical history section and SpO2 ✅
+- [x] E2E tests for enhanced registration flow ✅
+- [x] Django Admin registrations for all new models ✅
+- [x] Dark mode E2E tests ✅
 
 **Deliverables**:
-- EmergencyContact model with full test coverage
-- KenyaLocation model with hierarchical data
-- Enhanced Patient model with location, referral, registered_by fields
-- Enhanced Encounter model with medical history section
-- Updated desktop UI for patient registration
-- Updated desktop UI for encounter form
-- E2E test suite for new features
+- EmergencyContact model with full test coverage ✅
+- Kenya Location models (County, SubCounty, Ward) with cascading API ✅
+- Enhanced Patient model with location, referral, registered_by fields ✅
+- Enhanced Encounter model with medical history section ✅
+- Updated desktop UI for patient registration ✅
+- Updated desktop UI for encounter form ✅
+- E2E test suite for new features ✅
+- Django Admin for all models (County, SubCounty, Ward, EmergencyContact, SyncQueue, SyncConflict, NetworkStatus, SyncMetrics) ✅
 
-**New Models**:
+**Test Results**:
+- test_emergency_contact.py: 16/16 passed ✅
+- test_medical_history.py: 18/18 passed ✅  
+- test_kenya_location.py: 25/25 passed ✅
+- test_dob_validation.py: 6/6 passed ✅
+- test_referral_source.py: 12/12 passed ✅
+- test_registered_by.py: 6/6 passed ✅
+- test_spo2_vital.py: 13/13 passed ✅
+- sprint-0.7-features.test.js: 48/48 passed ✅
+- dark-mode.e2e.js: E2E suite ready ✅
+- **Total Sprint 0.7 Tests: 144+ tests** ✅
+
+**Key Components Implemented**:
+1. **EmergencyContact Model**: Separate model with Patient FK + inline admin
+2. **Patient Direct Fields**: emergency_contact_name/phone/relationship for quick access
+3. **Kenya Location Models**: County (47), SubCounty (289), Ward (1448) with data import
+4. **Cascading API**: /api/locations/counties/, sub-counties/, wards/ endpoints
+5. **Medical History**: 6 fields in Encounter (allergies, chronic_conditions, current_medications, past_surgeries, family_history, social_history)
+6. **SpO2 Vital Sign**: With has_critical_vitals() and get_alerts() methods
+7. **Frontend UI**: Cascading location dropdowns, emergency contact section, medical history in encounter form
+8. **Django Admin**: All models registered with appropriate fieldsets and filters
+9. **Dark Mode**: Theme toggle with localStorage persistence
+
+**New Models** (Implemented ✅):
 ```python
-# EmergencyContact - linked to Patient
+# EmergencyContact - linked to Patient (patients/models.py)
 class EmergencyContact(models.Model):
     patient = models.ForeignKey(Patient, on_delete=models.CASCADE, related_name='emergency_contacts')
-    full_name = models.CharField(max_length=200)
-    relationship = models.CharField(max_length=50)  # spouse, parent, sibling, etc.
-    phone_number = models.CharField(max_length=20)
-    alternative_phone = models.CharField(max_length=20, blank=True)
+    name = models.CharField(max_length=200)
+    phone = models.CharField(max_length=20)
+    relationship = models.CharField(max_length=50, choices=RELATIONSHIP_CHOICES)
+    is_primary = models.BooleanField(default=False)
     
-# KenyaLocation - hierarchical location data
-class KenyaLocation(models.Model):
-    county = models.CharField(max_length=100)
-    sub_county = models.CharField(max_length=100)
-    ward = models.CharField(max_length=100)
-    village_street = models.CharField(max_length=200, blank=True)
+# Kenya Location Hierarchy (core/models.py)
+class County(models.Model):
+    code = models.IntegerField(unique=True)  # Kenya county code (1-47)
+    name = models.CharField(max_length=100)
+
+class SubCounty(models.Model):
+    county = models.ForeignKey(County, on_delete=models.CASCADE, related_name='sub_counties')
+    name = models.CharField(max_length=100)
+
+class Ward(models.Model):
+    sub_county = models.ForeignKey(SubCounty, on_delete=models.CASCADE, related_name='wards')
+    name = models.CharField(max_length=100)
 ```
 
-**Patient Model Enhancements**:
+**Patient Model Enhancements** (Implemented ✅):
 ```python
-# New fields on Patient model
-location = models.ForeignKey(KenyaLocation, null=True, blank=True)
+# Location fields (FKs to Kenya hierarchy)
+county = models.ForeignKey(County, on_delete=models.SET_NULL, null=True)
+sub_county = models.ForeignKey(SubCounty, on_delete=models.SET_NULL, null=True)
+ward = models.ForeignKey(Ward, on_delete=models.SET_NULL, null=True, blank=True)
+village = models.CharField(max_length=200, blank=True)
+
+# Referral tracking
 referral_source = models.CharField(choices=[('self', 'Self'), ('clinic', 'Clinic'), ('other_facility', 'Other Facility')])
-referred_from_facility = models.CharField(max_length=200, blank=True)  # Required if referral_source='other_facility'
-registered_by = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, related_name='registered_patients')
+referred_from_facility = models.CharField(max_length=200, blank=True)
+registered_by = models.ForeignKey(User, on_delete=models.SET_NULL, null=True)
+
+# Emergency contact (direct fields + separate model)
+emergency_contact_name = models.CharField(max_length=200, blank=True)
+emergency_contact_phone = models.CharField(max_length=20, blank=True)
+emergency_contact_relationship = models.CharField(max_length=50, blank=True)
 ```
 
-**Encounter Model Enhancements** (Medical History Section):
+**Encounter Model Enhancements** (Implemented ✅):
 ```python
-# New fields on Encounter model
+# Medical History fields
 allergies = models.TextField(blank=True)  # Known allergies
 chronic_conditions = models.TextField(blank=True)  # Diabetes, hypertension, etc.
-current_medications = models.TextField(blank=True)  # Medications patient is taking
+current_medications = models.TextField(blank=True)  # Medications with dosage
 past_surgeries = models.TextField(blank=True)  # Previous surgical procedures
-primary_care_provider = models.CharField(max_length=200, blank=True)
+family_history = models.TextField(blank=True)  # Family medical history
+social_history = models.TextField(blank=True)  # Smoking, alcohol, occupation
 
-# SpO2 vital sign (mandatory)
-spo2 = models.DecimalField(max_digits=5, decimal_places=2, null=True, blank=True)  # Oxygen saturation %
-# Flag as critical if < 95%
+# SpO2 vital sign with critical alert
+spo2 = models.DecimalField(max_digits=5, decimal_places=2, null=True, blank=True)
+# has_critical_vitals() method returns True if SpO2 < 95%
+# get_alerts() returns "Low oxygen saturation (hypoxemia)" or "Severe hypoxemia (SpO2 < 90%)"
+```
+
+**API Endpoints** (Implemented ✅):
+```
+GET /api/locations/counties/          # List all 47 Kenya counties
+GET /api/locations/sub-counties/?county=<id>  # Cascading sub-counties
+GET /api/locations/wards/?sub_county=<id>     # Cascading wards
 ```
 
 **Test Coverage Requirements**:
@@ -382,19 +434,29 @@ spo2 = models.DecimalField(max_digits=5, decimal_places=2, null=True, blank=True
 | TDD adoption resistance | Medium | Medium | Training sessions, pair programming, clear benefits demo |
 | Infrastructure setup delays | Medium | Low | Use Docker for consistency, automate setup |
 
-### Phase 0 Success Metrics
+### Phase 0 Success Metrics - ALL ACHIEVED ✅
 - [x] Prototype demonstrates offline patient registration ✅
-- [x] ≥80% test coverage achieved ✅ (84.93% backend coverage)
+- [x] ≥80% test coverage achieved ✅ (82.21% backend, 467 tests)
 - [x] Security audit passed with no critical findings ✅ (Bandit: zero issues)
 - [x] Clinician advisors feedback incorporated ✅ (Sprint 0.7)
 - [x] All CI/CD pipelines green ✅
 - [x] Zero production data at risk (isolated environment) ✅
 - [x] Login UI with JWT authentication ✅ (Sprint 0.6)
-- [x] 371 backend tests + E2E desktop tests passing ✅
-- [ ] Emergency contact model implemented (Sprint 0.7)
-- [ ] Kenya location hierarchy implemented (Sprint 0.7)
-- [ ] Medical history section in encounters (Sprint 0.7)
-- [ ] SpO2 vital sign with critical alerts (Sprint 0.7)
+- [x] 467 backend tests + 66 frontend tests passing ✅
+- [x] Emergency contact model implemented ✅ (16 tests)
+- [x] Kenya location hierarchy implemented ✅ (25 tests, 47 counties)
+- [x] Medical history section in encounters ✅ (18 tests)
+- [x] SpO2 vital sign with critical alerts ✅ (13 tests)
+- [x] Dark mode with theme persistence ✅ (E2E tests)
+- [x] Django Admin for all models ✅
+
+**Phase 0 Final Test Summary**:
+| Component | Tests | Coverage |
+|-----------|-------|----------|
+| Backend (Django) | 467 | 82.21% |
+| Frontend (Jest) | 66 | - |
+| E2E (Playwright) | 6 suites | - |
+| **Total** | **533+** | **80%+ enforced** |
 
 ---
 
