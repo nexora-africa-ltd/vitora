@@ -106,7 +106,7 @@ class SyncQueueAdmin(admin.ModelAdmin):
     ]
     list_filter = ["operation", "model_name", "status", "created_at"]
     search_fields = ["model_name", "record_id"]
-    readonly_fields = ["created_at", "last_attempted_at"]
+    readonly_fields = ["created_at", "synced_at"]
     date_hierarchy = "created_at"
     ordering = ["-created_at"]
 
@@ -119,11 +119,11 @@ class SyncConflictAdmin(admin.ModelAdmin):
         "id",
         "model_name",
         "record_id",
-        "conflict_type",
-        "resolved",
+        "resolution_strategy",
+        "status",
         "detected_at",
     ]
-    list_filter = ["model_name", "conflict_type", "resolved", "detected_at"]
+    list_filter = ["model_name", "resolution_strategy", "status", "detected_at"]
     search_fields = ["model_name", "record_id"]
     readonly_fields = ["detected_at", "resolved_at"]
     date_hierarchy = "detected_at"
@@ -134,8 +134,9 @@ class SyncConflictAdmin(admin.ModelAdmin):
 class NetworkStatusAdmin(admin.ModelAdmin):
     """Admin configuration for NetworkStatus model."""
 
-    list_display = ["id", "is_online", "last_checked", "last_online"]
-    readonly_fields = ["last_checked", "last_online"]
+    list_display = ["id", "is_online", "last_check", "latency_ms"]
+    list_filter = ["is_online"]
+    readonly_fields = ["last_check"]
 
     def has_add_permission(self, request):
         """Only allow one NetworkStatus record."""
@@ -148,22 +149,26 @@ class SyncMetricsAdmin(admin.ModelAdmin):
 
     list_display = [
         "id",
-        "sync_started_at",
-        "sync_completed_at",
-        "records_pushed",
-        "records_pulled",
-        "conflicts_detected",
-        "success",
+        "task_name",
+        "started_at",
+        "completed_at",
+        "entries_processed",
+        "entries_succeeded",
+        "status",
     ]
-    list_filter = ["success", "sync_started_at"]
+    list_filter = ["status", "started_at"]
     readonly_fields = [
-        "sync_started_at",
-        "sync_completed_at",
-        "records_pushed",
-        "records_pulled",
-        "conflicts_detected",
-        "conflicts_resolved",
+        "task_id",
+        "task_name",
+        "started_at",
+        "completed_at",
+        "duration_ms",
+        "entries_processed",
+        "entries_succeeded",
+        "entries_failed",
+        "entries_conflicts",
+        "status",
         "error_message",
     ]
-    date_hierarchy = "sync_started_at"
-    ordering = ["-sync_started_at"]
+    date_hierarchy = "created_at"
+    ordering = ["-created_at"]

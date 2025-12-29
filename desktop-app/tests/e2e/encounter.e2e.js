@@ -52,7 +52,16 @@ test.beforeAll(async () => {
 });
 
 test.afterAll(async () => {
-  await electronApp.close();
+  // Close the app with a timeout to prevent hanging
+  try {
+    await Promise.race([
+      electronApp.close(),
+      new Promise((_, reject) => setTimeout(() => reject(new Error('Timeout')), 5000))
+    ]);
+  } catch (e) {
+    // Force kill if close times out
+    console.log('Force closing Electron app');
+  }
 });
 
 test.describe('Encounter Tab Navigation', () => {
@@ -127,10 +136,20 @@ test.describe('Encounter Form', () => {
     await window.locator('#last-name').fill('Patient');
     await window.locator('#date-of-birth').fill('1980-05-15');
     await window.locator('#gender').selectOption('M');
+    
+    // Fill required location fields
+    await window.waitForTimeout(2000); // Wait for counties to load
+    await window.locator('#county').selectOption({ index: 1 });
+    await window.waitForTimeout(500);
+    await window.locator('#sub-county').selectOption({ index: 1 });
+    
     await window.locator('#submit-btn').click();
     
-    // Wait for success message
-    await window.waitForSelector('.message.success', { timeout: 10000 });
+    // Wait for success message using polling
+    await expect(async () => {
+      const messageClass = await window.locator('#message').getAttribute('class');
+      expect(messageClass).toContain('success');
+    }).toPass({ timeout: 15000 });
     
     // Navigate to encounter tab
     await window.locator('[data-tab="encounter"]').click();

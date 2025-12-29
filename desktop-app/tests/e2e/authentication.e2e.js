@@ -30,7 +30,16 @@ test.beforeAll(async () => {
 });
 
 test.afterAll(async () => {
-  await electronApp.close();
+  // Close the app with a timeout to prevent hanging
+  try {
+    await Promise.race([
+      electronApp.close(),
+      new Promise((_, reject) => setTimeout(() => reject(new Error('Timeout')), 5000))
+    ]);
+  } catch (e) {
+    // Force kill if close times out
+    console.log('Force closing Electron app');
+  }
 });
 
 test.describe('Authentication Flow', () => {

@@ -13,7 +13,7 @@ class EmergencyContactInline(admin.TabularInline):
     model = EmergencyContact
     extra = 0
     max_num = 3
-    fields = ["name", "phone", "relationship", "is_primary"]
+    fields = ["full_name", "phone_number", "relationship", "alternative_phone"]
 
 
 @admin.register(Patient)
@@ -98,8 +98,8 @@ class PatientAdmin(admin.ModelAdmin):
 class EmergencyContactAdmin(admin.ModelAdmin):
     """Admin configuration for EmergencyContact model."""
 
-    list_display = ["patient", "name", "phone", "relationship", "is_primary"]
-    list_filter = ["relationship", "is_primary"]
-    search_fields = ["patient__mrn", "patient__first_name", "patient__last_name", "name", "phone"]
-    ordering = ["-patient__created_at"]
+    list_display = ["patient", "full_name", "phone_number", "relationship"]
+    list_filter = ["relationship"]
+    search_fields = ["patient__mrn", "patient__first_name", "patient__last_name", "full_name", "phone_number"]
+    ordering = ["-created_at"]
     autocomplete_fields = ["patient"]
