@@ -35,7 +35,12 @@ Sprint 1.1-1.2 builds upon the Phase 0 foundation to deliver a production-ready 
 | test_encounter_timeline.py | 20 | 100% |
 | test_clinical_templates.py | 15 | 100% |
 | test_encounter_api_enhanced.py | 25 | 100% |
-| **Total** | **150+** | **≥85%** |
+| test_admin_registrations.py | 5 | 100% |
+| **Backend Total** | **155** | **≥85%** |
+| sprint-1.1-1.2-features.test.js | 30 | - |
+| encounter-management.e2e.js | 8 | - |
+| **Frontend Total** | **38** | - |
+| **Grand Total** | **193** | - |
 
 ---
 
@@ -663,6 +668,104 @@ class TestTemplateUsage:
 
 ---
 
+## Django Admin Registrations
+
+### Encounters App Admin (`hmis/apps/encounters/admin.py`)
+
+```python
+@admin.register(ICD10Code)
+class ICD10CodeAdmin(admin.ModelAdmin):
+    """Admin for ICD-10 reference codes."""
+    list_display = ['code', 'short_description', 'chapter', 'is_billable', 'is_active']
+    list_filter = ['chapter', 'is_billable', 'is_active']
+    search_fields = ['code', 'short_description', 'long_description']
+    ordering = ['code']
+    readonly_fields = ['code']  # Codes shouldn't be edited
+
+
+class DiagnosisInline(admin.TabularInline):
+    """Inline diagnosis on Encounter admin."""
+    model = Diagnosis
+    extra = 1
+    autocomplete_fields = ['icd10_code']
+    readonly_fields = ['diagnosed_by', 'diagnosed_at']
+
+
+class TreatmentPlanInline(admin.StackedInline):
+    """Inline treatment plan on Encounter admin."""
+    model = TreatmentPlan
+    extra = 0
+    max_num = 1
+    readonly_fields = ['created_by', 'created_at', 'updated_at']
+
+
+# Update existing EncounterAdmin to include inlines
+class EncounterAdmin(admin.ModelAdmin):
+    # ... existing config ...
+    inlines = [DiagnosisInline, TreatmentPlanInline]
+
+
+@admin.register(TreatmentPlanTemplate)
+class TreatmentPlanTemplateAdmin(admin.ModelAdmin):
+    """Admin for treatment plan templates."""
+    list_display = ['name', 'department', 'follow_up_days', 'is_active', 'created_by']
+    list_filter = ['department', 'is_active']
+    search_fields = ['name', 'description']
+    filter_horizontal = ['diagnosis_codes']  # ManyToMany widget
+    readonly_fields = ['created_by', 'created_at', 'updated_at']
+    
+    def save_model(self, request, obj, form, change):
+        if not change:
+            obj.created_by = request.user
+        super().save_model(request, obj, form, change)
+```
+
+### Clinical Templates App Admin (`hmis/apps/clinical_templates/admin.py`)
+
+```python
+class TemplateSectionInline(admin.TabularInline):
+    """Inline sections on ClinicalTemplate admin."""
+    model = TemplateSection
+    extra = 1
+    ordering = ['order']
+
+
+@admin.register(ClinicalTemplate)
+class ClinicalTemplateAdmin(admin.ModelAdmin):
+    """Admin for clinical templates."""
+    list_display = ['name', 'template_type', 'specialty', 'is_system', 'is_active', 'usage_count']
+    list_filter = ['template_type', 'specialty', 'is_system', 'is_active']
+    search_fields = ['name', 'description']
+    readonly_fields = ['usage_count', 'created_by', 'created_at', 'updated_at']
+    inlines = [TemplateSectionInline]
+    
+    def save_model(self, request, obj, form, change):
+        if not change:
+            obj.created_by = request.user
+        super().save_model(request, obj, form, change)
+    
+    def has_delete_permission(self, request, obj=None):
+        # Prevent deletion of system templates
+        if obj and obj.is_system:
+            return False
+        return super().has_delete_permission(request, obj)
+```
+
+### Admin Test Coverage (5 tests)
+
+```python
+# tests/test_admin_registrations.py
+
+class TestEncounterAdminRegistrations:
+    def test_icd10code_admin_registered(self): ...
+    def test_diagnosis_inline_on_encounter(self): ...
+    def test_treatment_plan_inline_on_encounter(self): ...
+    def test_treatment_template_admin_registered(self): ...
+    def test_clinical_template_admin_registered(self): ...
+```
+
+---
+
 ## Data Imports
 
 ### ICD-10 Codes Import
@@ -811,27 +914,165 @@ TEMPLATE_MAX_FIELDS_PER_SECTION = 50
 
 ### Desktop App Updates (Electron)
 
-1. **Vitals Entry Form**
-   - Color-coded input fields (normal/warning/critical)
-   - Real-time BMI calculation
-   - Visual alerts for critical values
+#### 1. Vitals Entry Form Enhancement
+**Files**: `desktop-app/src/renderer/index.html`, `desktop-app/src/renderer/app.js`, `desktop-app/src/renderer/styles.css`
 
-2. **Diagnosis Search**
-   - Autocomplete ICD-10 search
-   - Recent/common codes quick-select
-   - Chapter browser for discovery
+**Features**:
+- Color-coded input fields (green=normal, yellow=warning, red=critical)
+- Real-time BMI calculation display
+- Visual alerts banner for critical values
+- Vital status indicators next to each field
+- Auto-calculate MAP from blood pressure
 
-3. **Treatment Plan Builder**
-   - Template selection dropdown
-   - Medication entry with dosage
-   - Follow-up date picker
-   - Patient instruction editor
+**Implementation Tasks**:
+- [ ] Add CSS classes for vital status colors (`.vital-normal`, `.vital-warning`, `.vital-critical`)
+- [ ] Create `calculateBMI()` function in app.js
+- [ ] Create `getVitalStatus(vital, value)` function
+- [ ] Add real-time validation on vital input blur
+- [ ] Display critical alerts banner when `has_critical_vitals`
+- [ ] Show BMI category badge (underweight/normal/overweight/obese)
 
-4. **Encounter Timeline View**
-   - Chronological encounter cards
-   - Expandable details
-   - Filter controls
-   - Statistics dashboard
+#### 2. Diagnosis Search Component
+**Files**: `desktop-app/src/renderer/index.html`, `desktop-app/src/renderer/app.js`
+
+**Features**:
+- Autocomplete ICD-10 search (debounced, 300ms)
+- Recent/common codes quick-select buttons
+- Chapter browser accordion for discovery
+- Multiple diagnosis support (principal + secondary)
+- Diagnosis certainty dropdown
+
+**Implementation Tasks**:
+- [ ] Create `searchICD10(query)` API function
+- [ ] Build autocomplete dropdown component
+- [ ] Add "Add Diagnosis" button with modal
+- [ ] Display diagnosis list with remove option
+- [ ] Principal diagnosis indicator/badge
+- [ ] Store recent searches in localStorage
+
+#### 3. Treatment Plan Builder
+**Files**: `desktop-app/src/renderer/index.html`, `desktop-app/src/renderer/app.js`
+
+**Features**:
+- Template selection dropdown with preview
+- Medication entry with drug name, dosage, frequency, duration
+- Follow-up date picker with quick presets (1 week, 2 weeks, 1 month)
+- Patient instruction rich text editor
+- Referral section (specialty dropdown + notes)
+
+**Implementation Tasks**:
+- [ ] Create treatment plan form section in encounter tab
+- [ ] Fetch and populate template dropdown
+- [ ] "Apply Template" button to auto-fill fields
+- [ ] Dynamic medication list (add/remove rows)
+- [ ] Follow-up date picker with min=today validation
+- [ ] Referral checkbox to show/hide referral fields
+
+#### 4. Encounter Timeline View
+**Files**: `desktop-app/src/renderer/index.html`, `desktop-app/src/renderer/app.js`, `desktop-app/src/renderer/styles.css`
+
+**Features**:
+- Chronological encounter cards (newest first)
+- Expandable/collapsible details
+- Filter by date range and encounter type
+- Patient statistics summary card
+- Visual timeline connector lines
+
+**Implementation Tasks**:
+- [ ] Create timeline container in patient details modal
+- [ ] Fetch `/api/patients/<id>/encounter-timeline/` on patient view
+- [ ] Build encounter card component with expand/collapse
+- [ ] Add date range filter inputs
+- [ ] Add encounter type checkboxes filter
+- [ ] Display statistics summary (total encounters, by type, common diagnosis)
+- [ ] Infinite scroll or pagination for large histories
+
+### Frontend Test Coverage (30 tests)
+
+```javascript
+// desktop-app/tests/sprint-1.1-1.2-features.test.js
+
+describe('Vitals Entry Enhancement', () => {
+  test('calculateBMI returns correct value', () => {});
+  test('getBMICategory returns underweight for BMI < 18.5', () => {});
+  test('getBMICategory returns normal for BMI 18.5-24.9', () => {});
+  test('getBMICategory returns overweight for BMI 25-29.9', () => {});
+  test('getBMICategory returns obese for BMI >= 30', () => {});
+  test('getVitalStatus returns normal for in-range values', () => {});
+  test('getVitalStatus returns warning for borderline values', () => {});
+  test('getVitalStatus returns critical for out-of-range values', () => {});
+  test('vital input shows correct color class', () => {});
+  test('critical alert banner displays when has_critical_vitals', () => {});
+});
+
+describe('ICD-10 Diagnosis Search', () => {
+  test('searchICD10 calls API with query', () => {});
+  test('autocomplete shows results after typing', () => {});
+  test('selecting result adds to diagnosis list', () => {});
+  test('can add multiple secondary diagnoses', () => {});
+  test('can remove diagnosis from list', () => {});
+  test('principal diagnosis shows badge', () => {});
+  test('recent searches stored in localStorage', () => {});
+});
+
+describe('Treatment Plan Builder', () => {
+  test('template dropdown loads templates', () => {});
+  test('apply template populates form fields', () => {});
+  test('can add medication row', () => {});
+  test('can remove medication row', () => {});
+  test('follow-up date cannot be in past', () => {});
+  test('referral fields show when checkbox checked', () => {});
+});
+
+describe('Encounter Timeline', () => {
+  test('timeline loads on patient view', () => {});
+  test('encounters sorted newest first', () => {});
+  test('encounter card expands on click', () => {});
+  test('date filter restricts results', () => {});
+  test('type filter restricts results', () => {});
+  test('statistics summary displays correctly', () => {});
+});
+```
+
+### E2E Tests (Playwright) - 8 tests
+
+```javascript
+// desktop-app/tests/e2e/encounter-management.e2e.js
+
+test.describe('Encounter Management E2E', () => {
+  test('complete encounter workflow with vitals', async ({ page }) => {
+    // Login → Select patient → Create encounter → Enter vitals → Verify color coding
+  });
+  
+  test('add ICD-10 diagnosis with search', async ({ page }) => {
+    // Search "malaria" → Select code → Verify added to list
+  });
+  
+  test('create treatment plan from template', async ({ page }) => {
+    // Select template → Apply → Verify fields populated
+  });
+  
+  test('view patient encounter timeline', async ({ page }) => {
+    // Open patient details → View timeline → Verify encounters listed
+  });
+  
+  test('filter timeline by date range', async ({ page }) => {
+    // Set date filters → Verify filtered results
+  });
+  
+  test('critical vitals show alert banner', async ({ page }) => {
+    // Enter critical SpO2 (85%) → Verify alert displays
+  });
+  
+  test('BMI calculates and categorizes correctly', async ({ page }) => {
+    // Enter weight/height → Verify BMI display and category
+  });
+  
+  test('encounter saves with diagnosis and treatment plan', async ({ page }) => {
+    // Full workflow → Save → Reload → Verify all data persisted
+  });
+});
+```
 
 ---
 
@@ -881,19 +1122,32 @@ test('complete encounter workflow', async ({ page }) => {
 
 ### Sprint 1.1-1.2 Definition of Done
 
-- [ ] All 150+ tests passing
+**Backend (155 tests)**:
+- [ ] All 155 backend tests passing
 - [ ] ≥85% code coverage for new modules
 - [ ] ICD-10 codes imported (70,000+)
 - [ ] 10 clinical templates loaded
+- [ ] Django Admin registered for all new models
 - [ ] API documentation updated (OpenAPI/Swagger)
-- [ ] Desktop app UI updated for new features
-- [ ] E2E tests for critical workflows
 - [ ] Performance: ICD-10 search < 200ms
 - [ ] Performance: Timeline load < 500ms (100 encounters)
 - [ ] Security: Sensitive patient encounters protected
 - [ ] Audit: All clinical actions logged
+
+**Frontend (38 tests)**:
+- [ ] All 30 Jest unit tests passing
+- [ ] All 8 Playwright E2E tests passing
+- [ ] Vitals form with color-coded status indicators
+- [ ] ICD-10 diagnosis search with autocomplete
+- [ ] Treatment plan builder with template support
+- [ ] Encounter timeline view with filters
+- [ ] Critical vitals alert banner
+- [ ] BMI calculation and category display
+
+**Release**:
 - [ ] Code review completed
 - [ ] Demo to stakeholders
+- [ ] Tag release: `v0.2.0-encounter-management`
 
 ---
 
