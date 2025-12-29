@@ -11,7 +11,6 @@ from datetime import date
 from decimal import Decimal
 
 import pytest
-from django.core.exceptions import ValidationError
 
 pytestmark = pytest.mark.django_db
 

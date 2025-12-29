@@ -199,15 +199,56 @@ class PatientViewSet(viewsets.ModelViewSet):
         )
 
         # Encounter type breakdown
-        type_breakdown = encounters.values("encounter_type").annotate(
-            count=Count("id")
-        )
+        type_breakdown = encounters.values("encounter_type").annotate(count=Count("id"))
 
         # Count critical vitals encounters
         critical_count = sum(1 for e in encounters if e.has_critical_vitals())
 
-        # Serialize encounters
-        encounter_serializer = EncounterListSerializer(encounters, many=True)
+        def build_vitals_summary(encounter: Encounter) -> dict:
+            summary: dict[str, object] = {}
+            if encounter.temperature is not None:
+                summary["temperature"] = str(encounter.temperature)
+            if encounter.pulse is not None:
+                summary["pulse"] = encounter.pulse
+            if encounter.blood_pressure:
+                summary["blood_pressure"] = encounter.blood_pressure
+            if encounter.respiratory_rate is not None:
+                summary["respiratory_rate"] = encounter.respiratory_rate
+            if encounter.spo2 is not None:
+                summary["spo2"] = float(encounter.spo2)
+            if encounter.weight is not None:
+                summary["weight"] = str(encounter.weight)
+            if encounter.height is not None:
+                summary["height"] = str(encounter.height)
+            return summary
+
+        def build_diagnoses(encounter: Encounter) -> list[dict]:
+            diagnoses = []
+            for diagnosis in encounter.diagnoses.select_related("icd10_code").all():
+                diagnoses.append(
+                    {
+                        "id": diagnosis.id,
+                        "diagnosis_type": diagnosis.diagnosis_type,
+                        "code": diagnosis.icd10_code.code if diagnosis.icd10_code else None,
+                        "description": diagnosis.icd10_code.description if diagnosis.icd10_code else None,
+                        "free_text_diagnosis": diagnosis.free_text_diagnosis,
+                    }
+                )
+            return diagnoses
+
+        timeline_items = []
+        for encounter in encounters.select_related("patient"):
+            timeline_items.append(
+                {
+                    "encounter_id": encounter.id,
+                    "encounter_date": encounter.encounter_date,
+                    "encounter_type": encounter.encounter_type,
+                    "chief_complaint": encounter.chief_complaint,
+                    "has_critical_vitals": encounter.has_critical_vitals(),
+                    "vitals_summary": build_vitals_summary(encounter),
+                    "diagnoses": build_diagnoses(encounter),
+                }
+            )
 
         # Build response
         timeline_data = {
@@ -219,15 +260,14 @@ class PatientViewSet(viewsets.ModelViewSet):
                 "age": patient.age,
                 "gender": patient.gender,
             },
-            "encounters": encounter_serializer.data,
+            "timeline": timeline_items,
             "statistics": {
                 "total_encounters": stats["total_count"] or 0,
                 "first_encounter_date": stats["first_encounter"],
                 "last_encounter_date": stats["last_encounter"],
                 "encounters_with_critical_vitals": critical_count,
-                "encounter_type_breakdown": {
-                    item["encounter_type"]: item["count"]
-                    for item in type_breakdown
+                "by_type": {
+                    item["encounter_type"]: item["count"] for item in type_breakdown
                 },
             },
         }
@@ -243,7 +283,7 @@ class PatientViewSet(viewsets.ModelViewSet):
             patient_id=patient.id,
             details={
                 "patient_mrn": patient.mrn,
-                "encounters_returned": len(encounter_serializer.data),
+                "encounters_returned": len(timeline_items),
             },
         )
 

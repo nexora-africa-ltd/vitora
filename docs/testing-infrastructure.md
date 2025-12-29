@@ -1,8 +1,8 @@
 # Testing Infrastructure Setup Guide
 
-**Version**: 1.0  
-**Date**: December 27, 2025  
-**Sprint**: 0.1 Task 6  
+**Version**: 1.0
+**Date**: December 27, 2025
+**Sprint**: 0.1 Task 6
 **Status**: ACTIVE
 
 ---
@@ -363,10 +363,10 @@ def test_something():
     """Test docstring."""
     # Arrange
     expected = "result"
-    
+
     # Act
     actual = some_function()
-    
+
     # Assert
     assert actual == expected
 ```
@@ -429,7 +429,7 @@ def test_exception():
 def test_with_mock(mocker):
     mock_func = mocker.patch('module.function')
     mock_func.return_value = "mocked"
-    
+
     result = call_function_that_uses_mocked()
     assert result == "mocked"
 ```
@@ -501,14 +501,14 @@ import pytest
 def test_patient_mrn_generation():
     """Test that MRN is auto-generated."""
     from hmis.apps.patients.models import Patient
-    
+
     patient = Patient.objects.create(
         first_name="John",
         last_name="Doe",
         date_of_birth="1990-01-01",
         gender="M"
     )
-    
+
     assert patient.mrn is not None
     assert patient.mrn.startswith("MRN-")
 ```
@@ -531,7 +531,7 @@ class Patient(models.Model):
     last_name = models.CharField(max_length=100)
     date_of_birth = models.DateField()
     gender = models.CharField(max_length=10)
-    
+
     def save(self, *args, **kwargs):
         if not self.mrn:
             self.mrn = f"MRN-{uuid.uuid4().hex[:8]}"
@@ -556,7 +556,7 @@ def generate_mrn():
 
 class Patient(models.Model):
     # ... fields ...
-    
+
     def save(self, *args, **kwargs):
         if not self.mrn:
             self.mrn = generate_mrn()
@@ -683,7 +683,7 @@ After Task 6 completion:
 
 ---
 
-**Document Status**: APPROVED  
-**Next Action**: Begin Sprint 0.1 Task 7 (Test templates and TDD guidelines)  
-**Document Owner**: Engineering Lead  
+**Document Status**: APPROVED
+**Next Action**: Begin Sprint 0.1 Task 7 (Test templates and TDD guidelines)
+**Document Owner**: Engineering Lead
 **Last Updated**: December 27, 2025

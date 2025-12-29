@@ -14,7 +14,6 @@ from django.core.exceptions import ValidationError
 from django.core.validators import RegexValidator
 from django.db import models
 
-
 # ICD-10 code format validator
 icd10_code_validator = RegexValidator(
     regex=r"^[A-Z]\d{2}(\.\d{1,2})?$",
@@ -297,7 +296,14 @@ class Encounter(models.Model):
             bool: True if any vital signs are critical
         """
         # Check each vital using the age-aware get_vital_status method
-        vitals_to_check = ["temperature", "pulse", "respiratory_rate", "spo2", "bp_systolic", "bp_diastolic"]
+        vitals_to_check = [
+            "temperature",
+            "pulse",
+            "respiratory_rate",
+            "spo2",
+            "bp_systolic",
+            "bp_diastolic",
+        ]
 
         for vital in vitals_to_check:
             status = self.get_vital_status(vital)
@@ -347,14 +353,14 @@ class Encounter(models.Model):
                 else:
                     alerts.append(f"Low respiratory rate (bradypnea){age_suffix}")
 
-        # SpO2 alerts (same thresholds for all ages)
+        # SpO2 alerts (critical threshold same for all ages: <90%)
         if self.spo2 is not None:
+            spo2_val = float(self.spo2)
             spo2_status = self.get_vital_status("spo2")
             if spo2_status == "critical":
-                if float(self.spo2) < 90:
-                    alerts.append(f"Severe hypoxemia (SpO2 < 90%){age_suffix}")
-                else:
-                    alerts.append(f"Low oxygen saturation (hypoxemia){age_suffix}")
+                alerts.append(f"CRITICAL: Severe hypoxemia (SpO2 {spo2_val:.0f}% < 90%) - urgent evaluation needed{age_suffix}")
+            elif spo2_status == "warning" and spo2_val < 92:
+                alerts.append(f"Low oxygen saturation (SpO2 {spo2_val:.0f}%) - medical advice recommended{age_suffix}")
 
         # Blood pressure alerts
         systolic = self.get_systolic_bp()
@@ -412,7 +418,7 @@ class Encounter(models.Model):
         if not self.weight or not self.height:
             return None
         height_m = float(self.height) / 100  # Convert cm to m
-        bmi = float(self.weight) / (height_m ** 2)
+        bmi = float(self.weight) / (height_m**2)
         return round(bmi, 1)
 
     def get_bmi_classification(self) -> str | None:
@@ -433,6 +439,57 @@ class Encounter(models.Model):
             return "Overweight"
         else:
             return "Obese"
+
+    def get_spo2_interpretation(self) -> dict | None:
+        """
+        Get SpO2 interpretation with age-appropriate classification and disclaimer.
+
+        Returns:
+            dict | None: Dictionary with classification, status, message and disclaimer,
+                        or None if SpO2 not recorded.
+        """
+        if self.spo2 is None:
+            return None
+
+        spo2_val = float(self.spo2)
+        status = self.get_vital_status("spo2")
+        age_group = self.get_pediatric_age_group()
+
+        # Determine classification based on value
+        if spo2_val >= 97:
+            classification = "Normal (Ideal)"
+        elif spo2_val >= 95:
+            classification = "Normal"
+        elif spo2_val >= 92:
+            classification = "Mildly low - monitor"
+        elif spo2_val >= 90:
+            classification = "Low - medical advice recommended"
+        else:
+            classification = "CRITICAL - urgent evaluation needed"
+
+        # Build interpretation message
+        if age_group == "infant":
+            age_note = "For infants (<1yr): values 92-94% are borderline and often monitored closely."
+        elif age_group in ("newborn", "toddler", "preschool", "school_age", "adolescent"):
+            age_note = "Children may compensate well even with low SpO2. Watch for symptoms: fast breathing, chest retractions, blue lips/nails, lethargy."
+        else:
+            age_note = "Adults: persistent SpO2 <92% or any reading <90% warrants medical attention."
+
+        return {
+            "value": spo2_val,
+            "status": status,
+            "classification": classification,
+            "age_group_note": age_note,
+            "altitude_disclaimer": (
+                "Note: SpO2 readings can be affected by altitude. At higher elevations (>2500m/8000ft), "
+                "normal SpO2 may be 1-5% lower than at sea level. Patients acclimatized to high altitude "
+                "may have baseline SpO2 of 90-95% which is normal for their location."
+            ),
+            "when_to_seek_help": (
+                "Seek medical help if: SpO2 persistently below 92%, any reading below 90%, "
+                "rapid drop from normal, breathing difficulty, chest pain, confusion, or bluish color."
+            ),
+        }
 
     # Vital sign ranges for status classification (Adult defaults)
     VITAL_RANGES = {
@@ -479,10 +536,32 @@ class Encounter(models.Model):
         "spo2": {
             "unit": "%",
             "normal": (95, 100),
-            "warning_low": (90, 94),  # Mild hypoxemia
+            "warning_low": (90, 94),  # Mildly low - monitor, especially if symptoms
             "warning_high": None,
-            "critical_low": 90,  # <90% is severe hypoxemia (critical)
+            "critical_low": 90,  # <90% is critical - requires urgent evaluation
             "critical_high": None,
+        },
+    }
+
+    # Age-specific SpO2 ranges (used in addition to base ranges)
+    # Note: SpO2 interpretation should also consider altitude
+    SPO2_AGE_RANGES = {
+        "infant": {  # < 1 year
+            "normal": (95, 100),
+            "borderline": (92, 94),  # Often monitored closely
+            "critical": 90,  # <90% requires urgent care
+        },
+        "child": {  # 1-17 years
+            "normal": (95, 100),
+            "mildly_low": (92, 94),  # Monitor, especially if symptoms
+            "low": (90, 91),  # Medical advice recommended
+            "critical": 90,  # <90% requires urgent evaluation
+        },
+        "adult": {  # ≥18 years
+            "normal": (95, 100),
+            "mildly_low": (92, 94),  # Monitor, especially if symptoms
+            "low": (90, 91),  # Medical advice recommended
+            "critical": 90,  # <90% requires urgent evaluation
         },
     }
 
@@ -715,7 +794,15 @@ class Encounter(models.Model):
         if not self.patient or not self.patient.date_of_birth:
             return 0
         encounter_date = self.encounter_date or date.today()
-        delta = encounter_date - self.patient.date_of_birth
+
+        dob = self.patient.date_of_birth
+        if isinstance(dob, str):
+            try:
+                dob = date.fromisoformat(dob)
+            except ValueError:
+                return 0
+
+        delta = encounter_date - dob
         return delta.days
 
     def get_patient_age_years(self) -> int:
@@ -1133,7 +1220,7 @@ class Diagnosis(models.Model):
     @classmethod
     def order_by_type_priority(cls, queryset):
         """Order diagnoses by type priority (PRIMARY first, then SECONDARY, etc.)."""
-        from django.db.models import Case, When, Value, IntegerField
+        from django.db.models import Case, IntegerField, Value, When
 
         return queryset.annotate(
             type_priority=Case(
@@ -1156,9 +1243,7 @@ class Diagnosis(models.Model):
 
         # Either ICD-10 code or free text must be provided
         if not self.icd10_code and not self.free_text_diagnosis:
-            raise ValidationError(
-                "Either ICD-10 code or free-text diagnosis must be provided."
-            )
+            raise ValidationError("Either ICD-10 code or free-text diagnosis must be provided.")
 
         # Check for existing primary diagnosis
         if self.diagnosis_type == "PRIMARY":
@@ -1330,9 +1415,7 @@ class TreatmentPlan(models.Model):
         if not self.pk:
             existing = TreatmentPlan.objects.filter(encounter=self.encounter)
             if existing.exists():
-                raise ValidationError(
-                    "This encounter already has a treatment plan."
-                )
+                raise ValidationError("This encounter already has a treatment plan.")
 
         # Validate status transitions
         if self.pk:
@@ -1345,12 +1428,11 @@ class TreatmentPlan(models.Model):
         # Validate procedures JSON format if provided
         if self.procedures_json:
             import json
+
             try:
                 json.loads(self.procedures_json)
             except json.JSONDecodeError:
-                raise ValidationError(
-                    {"procedures_json": "Invalid JSON format for procedures."}
-                )
+                raise ValidationError({"procedures_json": "Invalid JSON format for procedures."})
 
     def save(self, *args, **kwargs):
         """Save with validation."""

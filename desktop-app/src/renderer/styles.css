@@ -13,29 +13,29 @@
   --bg-button-secondary: #f0f0f0;
   --bg-input: #ffffff;
   --bg-card-hover: #f9f9f9;
-  
+
   --text-primary: #333333;
   --text-secondary: #666666;
   --text-tertiary: #888888;
   --text-label: #555555;
   --text-white: #ffffff;
-  
+
   --border-primary: #dddddd;
   --border-secondary: #e0e0e0;
   --border-focus: #667eea;
-  
+
   --shadow-sm: 0 2px 4px rgba(0, 0, 0, 0.1);
   --shadow-md: 0 4px 6px rgba(0, 0, 0, 0.1);
   --shadow-lg: 0 4px 8px rgba(0, 0, 0, 0.1);
-  
+
   --accent-primary: #667eea;
   --accent-secondary: #764ba2;
   --accent-pink: #ee44a7;
-  
+
   --success-bg: #d4edda;
   --success-text: #155724;
   --success-border: #c3e6cb;
-  
+
   --error-bg: #f8d7da;
   --error-text: #721c24;
   --error-border: #f5c6cb;
@@ -51,29 +51,29 @@ body.dark-mode {
   --bg-button-secondary: #3a3a3a;
   --bg-input: #2d2d2d;
   --bg-card-hover: #333333;
-  
+
   --text-primary: #e0e0e0;
   --text-secondary: #b0b0b0;
   --text-tertiary: #909090;
   --text-label: #a0a0a0;
   --text-white: #ffffff;
-  
+
   --border-primary: #404040;
   --border-secondary: #383838;
   --border-focus: #667eea;
-  
+
   --shadow-sm: 0 2px 4px rgba(0, 0, 0, 0.3);
   --shadow-md: 0 4px 6px rgba(0, 0, 0, 0.3);
   --shadow-lg: 0 4px 8px rgba(0, 0, 0, 0.3);
-  
+
   --accent-primary: #7a8ef0;
   --accent-secondary: #8c5fb8;
   --accent-pink: #ff5cb8;
-  
+
   --success-bg: #1e4620;
   --success-text: #7fd488;
   --success-border: #2d5f2f;
-  
+
   --error-bg: #4d1f21;
   --error-text: #f5a8ac;
   --error-border: #6d2e30;
@@ -761,19 +761,19 @@ body.dark-mode .toast.info {
   .container {
     padding: 10px;
   }
-  
+
   header h1 {
     font-size: 2em;
   }
-  
+
   .form-row {
     grid-template-columns: 1fr;
   }
-  
+
   .patient-list {
     grid-template-columns: 1fr;
   }
-  
+
   .patient-details {
     grid-template-columns: 1fr;
   }
@@ -1557,11 +1557,11 @@ body.dark-mode .btn-view:hover {
     flex-direction: column;
     text-align: center;
   }
-  
+
   .header-left {
     text-align: center;
   }
-  
+
   .header-right {
     width: 100%;
     justify-content: center;

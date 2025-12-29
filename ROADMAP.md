@@ -1,8 +1,8 @@
 # Vitora HMIS - Comprehensive Development Roadmap
 
-**Version**: 1.2  
-**Last Updated**: December 29, 2025  
-**Target Completion**: Q4 2027  
+**Version**: 1.2
+**Last Updated**: December 29, 2025
+**Target Completion**: Q4 2027
 **Methodology**: Test-Driven Development (TDD) with Agile Sprints
 
 ---
@@ -328,7 +328,7 @@ This roadmap outlines the complete development journey for Vitora HMIS from Janu
 
 **Test Results**:
 - test_emergency_contact.py: 16/16 passed ✅
-- test_medical_history.py: 18/18 passed ✅  
+- test_medical_history.py: 18/18 passed ✅
 - test_kenya_location.py: 25/25 passed ✅
 - test_dob_validation.py: 6/6 passed ✅
 - test_referral_source.py: 12/12 passed ✅
@@ -358,7 +358,7 @@ class EmergencyContact(models.Model):
     phone = models.CharField(max_length=20)
     relationship = models.CharField(max_length=50, choices=RELATIONSHIP_CHOICES)
     is_primary = models.BooleanField(default=False)
-    
+
 # Kenya Location Hierarchy (core/models.py)
 class County(models.Model):
     code = models.IntegerField(unique=True)  # Kenya county code (1-47)
@@ -663,7 +663,7 @@ def test_sha_claim_validation():
     claim = Claim(patient=patient, services=[service])
     assert claim.validate() == True
     assert claim.calculate_amount() == 1500.00
-    
+
 # Then implement
 ```
 
@@ -1138,13 +1138,13 @@ Track these metrics per sprint:
 def test_record_vitals_for_patient():
     patient = Patient.objects.create(mrn="MRN001", name="John Doe")
     encounter = Encounter.objects.create(patient=patient)
-    
+
     # Should accept valid vitals
     encounter.temperature = 37.5
     encounter.pulse = 80
     encounter.blood_pressure = "120/80"
     encounter.save()
-    
+
     assert encounter.temperature == 37.5
     assert encounter.has_critical_vitals() == False
 
@@ -1167,12 +1167,12 @@ $ pytest tests/test_vitals.py
 class Encounter(models.Model):
     temperature = models.DecimalField(...)
     pulse = models.IntegerField(...)
-    
+
     def has_critical_vitals(self):
-        return (self.temperature >= 39.0 or 
-                self.pulse >= 120 or 
+        return (self.temperature >= 39.0 or
+                self.pulse >= 120 or
                 self.pulse <= 50)
-    
+
     def get_alerts(self):
         alerts = []
         if self.temperature >= 39.0:
@@ -1317,7 +1317,7 @@ Vitora HMIS will be considered successful if by Q4 2027:
 
 ### User Stories
 1. As a [role], I want [feature] so that [benefit]
-   - **Acceptance Criteria**: 
+   - **Acceptance Criteria**:
      - Criterion 1
      - Criterion 2
    - **TDD Tests** (write first):

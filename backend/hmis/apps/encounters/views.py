@@ -12,7 +12,14 @@ from rest_framework.views import APIView
 from hmis.apps.core.models import AuditLog
 from hmis.apps.core.permissions import get_client_ip
 
-from .models import Diagnosis, Encounter, ICD10Code, Medication, TreatmentPlan, TreatmentPlanTemplate
+from .models import (
+    Diagnosis,
+    Encounter,
+    ICD10Code,
+    Medication,
+    TreatmentPlan,
+    TreatmentPlanTemplate,
+)
 from .serializers import (
     DiagnosisSerializer,
     EncounterListSerializer,
@@ -626,4 +633,3 @@ class MedicationViewSet(viewsets.ModelViewSet):
 
         headers = self.get_success_headers(serializer.data)
         return Response(serializer.data, status=status.HTTP_201_CREATED, headers=headers)
-

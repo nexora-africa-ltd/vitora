@@ -17,7 +17,6 @@ from datetime import date, timedelta
 from decimal import Decimal
 
 import pytest
-from django.contrib.admin.sites import AdminSite
 from django.contrib.auth import get_user_model
 from django.core.exceptions import ValidationError
 from django.db import IntegrityError
@@ -190,9 +189,7 @@ class TestDiagnosisCertaintyField:
 class TestDiagnosisDiagnosedByField:
     """Test Diagnosis diagnosed_by field implementation."""
 
-    def test_diagnosis_has_diagnosed_by_field(
-        self, sample_encounter, sample_icd10_code, test_user
-    ):
+    def test_diagnosis_has_diagnosed_by_field(self, sample_encounter, sample_icd10_code, test_user):
         """Test that Diagnosis model has diagnosed_by field."""
         from hmis.apps.encounters.models import Diagnosis
 
@@ -217,9 +214,7 @@ class TestDiagnosisDiagnosedByField:
         )
         assert diagnosis.diagnosed_by is None
 
-    def test_diagnosed_by_set_null_on_user_delete(
-        self, sample_encounter, sample_icd10_code
-    ):
+    def test_diagnosed_by_set_null_on_user_delete(self, sample_encounter, sample_icd10_code):
         """Test diagnosed_by is set to NULL when user is deleted."""
         from hmis.apps.encounters.models import Diagnosis
 
@@ -269,9 +264,7 @@ class TestDiagnosisDiagnosedByField:
 class TestDiagnosisPrincipalConstraint:
     """Test database-level unique constraint for principal diagnosis."""
 
-    def test_only_one_principal_diagnosis_db_constraint(
-        self, sample_encounter, sample_icd10_code
-    ):
+    def test_only_one_principal_diagnosis_db_constraint(self, sample_encounter, sample_icd10_code):
         """Test DB constraint prevents multiple principal diagnoses."""
         from hmis.apps.encounters.models import Diagnosis, ICD10Code
 
@@ -834,7 +827,6 @@ class TestAdminRegistrations:
         """Test Diagnosis is accessible as inline on Encounter admin."""
         from django.contrib import admin
 
-        from hmis.apps.encounters.admin import EncounterAdmin
         from hmis.apps.encounters.models import Encounter
 
         admin_instance = admin.site._registry.get(Encounter)
@@ -848,7 +840,6 @@ class TestAdminRegistrations:
         """Test TreatmentPlan is accessible as inline on Encounter admin."""
         from django.contrib import admin
 
-        from hmis.apps.encounters.admin import EncounterAdmin
         from hmis.apps.encounters.models import Encounter
 
         admin_instance = admin.site._registry.get(Encounter)
@@ -1036,9 +1027,7 @@ class TestPatientTimelineAPI:
         assert "timeline" in response.data
         assert isinstance(response.data["timeline"], list)
 
-    def test_timeline_encounters_ordered_by_date(
-        self, authenticated_client, sample_patient
-    ):
+    def test_timeline_encounters_ordered_by_date(self, authenticated_client, sample_patient):
         """Test timeline encounters are ordered newest first."""
         from hmis.apps.encounters.models import Encounter
 
@@ -1064,9 +1053,7 @@ class TestPatientTimelineAPI:
         assert timeline[0]["encounter_id"] == new.id
         assert timeline[1]["encounter_id"] == old.id
 
-    def test_timeline_includes_vitals_summary(
-        self, authenticated_client, sample_patient
-    ):
+    def test_timeline_includes_vitals_summary(self, authenticated_client, sample_patient):
         """Test timeline includes vitals summary for each encounter."""
         from hmis.apps.encounters.models import Encounter
 
@@ -1118,9 +1105,7 @@ class TestPatientTimelineAPI:
         assert "diagnoses" in encounter_data
         assert len(encounter_data["diagnoses"]) == 1
 
-    def test_timeline_includes_statistics(
-        self, authenticated_client, sample_patient
-    ):
+    def test_timeline_includes_statistics(self, authenticated_client, sample_patient):
         """Test timeline response includes statistics."""
         from hmis.apps.encounters.models import Encounter
 
@@ -1172,9 +1157,7 @@ class TestPatientTimelineAPI:
     def test_timeline_requires_authentication(self, sample_patient):
         """Test timeline endpoint requires authentication."""
         client = APIClient()  # Not authenticated
-        response = client.get(
-            f"/api/patients/{sample_patient.id}/encounter-timeline/"
-        )
+        response = client.get(f"/api/patients/{sample_patient.id}/encounter-timeline/")
         assert response.status_code == 401
 
     def test_timeline_nonexistent_patient_returns_404(self, authenticated_client):
@@ -1224,9 +1207,7 @@ class TestDiagnosisAPIEnhancements:
             certainty="suspected",
         )
 
-        response = authenticated_client.get(
-            f"/api/encounters/{sample_encounter.id}/diagnoses/"
-        )
+        response = authenticated_client.get(f"/api/encounters/{sample_encounter.id}/diagnoses/")
 
         assert response.status_code == 200
         results = response.data.get("results", response.data)
@@ -1245,9 +1226,7 @@ class TestDiagnosisAPIEnhancements:
             diagnosed_by=test_user,
         )
 
-        response = authenticated_client.get(
-            f"/api/encounters/{sample_encounter.id}/diagnoses/"
-        )
+        response = authenticated_client.get(f"/api/encounters/{sample_encounter.id}/diagnoses/")
 
         assert response.status_code == 200
         results = response.data.get("results", response.data)

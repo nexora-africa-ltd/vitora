@@ -6,16 +6,11 @@ Tests for: API endpoints, validation, import command, and edge cases.
 """
 
 import io
-import os
-import tempfile
 from datetime import date
-from decimal import Decimal
-from unittest.mock import patch
 
 import pytest
 from django.core.exceptions import ValidationError
 from django.core.management import call_command
-from rest_framework import status
 
 pytestmark = pytest.mark.django_db
 
@@ -187,9 +182,15 @@ class TestICD10APIExtended:
         from hmis.apps.encounters.models import ICD10Code
 
         # Create codes in different chapters
-        ICD10Code.objects.create(code="A09", description="GI infection", category="Infectious", chapter=1)
-        ICD10Code.objects.create(code="J18.9", description="Pneumonia", category="Respiratory", chapter=10)
-        ICD10Code.objects.create(code="I10", description="Hypertension", category="Circulatory", chapter=9)
+        ICD10Code.objects.create(
+            code="A09", description="GI infection", category="Infectious", chapter=1
+        )
+        ICD10Code.objects.create(
+            code="J18.9", description="Pneumonia", category="Respiratory", chapter=10
+        )
+        ICD10Code.objects.create(
+            code="I10", description="Hypertension", category="Circulatory", chapter=9
+        )
 
         # Filter by chapter 10
         response = authenticated_client.get("/api/icd10-codes/?chapter=10")
@@ -202,10 +203,18 @@ class TestICD10APIExtended:
         """Test searching ICD-10 codes with partial code match."""
         from hmis.apps.encounters.models import ICD10Code
 
-        ICD10Code.objects.create(code="J18.0", description="Bronchopneumonia", category="Respiratory", chapter=10)
-        ICD10Code.objects.create(code="J18.1", description="Lobar pneumonia", category="Respiratory", chapter=10)
-        ICD10Code.objects.create(code="J18.9", description="Pneumonia unspecified", category="Respiratory", chapter=10)
-        ICD10Code.objects.create(code="A09", description="GI infection", category="Infectious", chapter=1)
+        ICD10Code.objects.create(
+            code="J18.0", description="Bronchopneumonia", category="Respiratory", chapter=10
+        )
+        ICD10Code.objects.create(
+            code="J18.1", description="Lobar pneumonia", category="Respiratory", chapter=10
+        )
+        ICD10Code.objects.create(
+            code="J18.9", description="Pneumonia unspecified", category="Respiratory", chapter=10
+        )
+        ICD10Code.objects.create(
+            code="A09", description="GI infection", category="Infectious", chapter=1
+        )
 
         # Search for "J18"
         response = authenticated_client.get("/api/icd10-codes/?search=J18")
@@ -217,7 +226,9 @@ class TestICD10APIExtended:
         """Test ICD-10 search is case insensitive."""
         from hmis.apps.encounters.models import ICD10Code
 
-        ICD10Code.objects.create(code="B54", description="Unspecified Malaria", category="Protozoal", chapter=1)
+        ICD10Code.objects.create(
+            code="B54", description="Unspecified Malaria", category="Protozoal", chapter=1
+        )
 
         # Search lowercase
         response = authenticated_client.get("/api/icd10-codes/?search=malaria")
@@ -232,7 +243,9 @@ class TestICD10APIExtended:
 
         ICD10Code.objects.create(code="Z99.9", description="Z code", category="Factors", chapter=21)
         ICD10Code.objects.create(code="A09", description="A code", category="Infectious", chapter=1)
-        ICD10Code.objects.create(code="J18.9", description="J code", category="Respiratory", chapter=10)
+        ICD10Code.objects.create(
+            code="J18.9", description="J code", category="Respiratory", chapter=10
+        )
 
         response = authenticated_client.get("/api/icd10-codes/")
 
@@ -244,8 +257,12 @@ class TestICD10APIExtended:
         """Test inactive ICD-10 codes are not returned by default."""
         from hmis.apps.encounters.models import ICD10Code
 
-        ICD10Code.objects.create(code="A09", description="Active", category="Infectious", chapter=1, is_active=True)
-        ICD10Code.objects.create(code="B99", description="Inactive", category="Infectious", chapter=1, is_active=False)
+        ICD10Code.objects.create(
+            code="A09", description="Active", category="Infectious", chapter=1, is_active=True
+        )
+        ICD10Code.objects.create(
+            code="B99", description="Inactive", category="Infectious", chapter=1, is_active=False
+        )
 
         response = authenticated_client.get("/api/icd10-codes/")
 
@@ -298,7 +315,9 @@ class TestDiagnosisAPIExtended:
         assert response.data["diagnosis_type"] == "PRIMARY"
         assert response.data["notes"] == "Updated notes - confirmed malaria"
 
-    def test_partial_update_diagnosis(self, authenticated_client, sample_encounter, sample_icd10_code):
+    def test_partial_update_diagnosis(
+        self, authenticated_client, sample_encounter, sample_icd10_code
+    ):
         """Test PATCH /api/encounters/{id}/diagnoses/{id}/ - Partial update."""
         from hmis.apps.encounters.models import Diagnosis
 
@@ -345,11 +364,19 @@ class TestDiagnosisAPIExtended:
         """Test filtering diagnoses by type."""
         from hmis.apps.encounters.models import Diagnosis, ICD10Code
 
-        code1 = ICD10Code.objects.create(code="A09", description="GI", category="Infectious", chapter=1)
-        code2 = ICD10Code.objects.create(code="J18.9", description="Pneumonia", category="Respiratory", chapter=10)
+        code1 = ICD10Code.objects.create(
+            code="A09", description="GI", category="Infectious", chapter=1
+        )
+        code2 = ICD10Code.objects.create(
+            code="J18.9", description="Pneumonia", category="Respiratory", chapter=10
+        )
 
-        Diagnosis.objects.create(encounter=sample_encounter, icd10_code=code1, diagnosis_type="PRIMARY")
-        Diagnosis.objects.create(encounter=sample_encounter, icd10_code=code2, diagnosis_type="SECONDARY")
+        Diagnosis.objects.create(
+            encounter=sample_encounter, icd10_code=code1, diagnosis_type="PRIMARY"
+        )
+        Diagnosis.objects.create(
+            encounter=sample_encounter, icd10_code=code2, diagnosis_type="SECONDARY"
+        )
 
         # Filter by SECONDARY
         response = authenticated_client.get(
@@ -429,7 +456,9 @@ class TestDiagnosisValidation:
         )
         assert diagnosis.id is not None
 
-    def test_duplicate_primary_diagnosis_raises_validation_error(self, sample_encounter, sample_icd10_code):
+    def test_duplicate_primary_diagnosis_raises_validation_error(
+        self, sample_encounter, sample_icd10_code
+    ):
         """Test adding second PRIMARY diagnosis raises validation error."""
         from hmis.apps.encounters.models import Diagnosis, ICD10Code
 
@@ -514,9 +543,15 @@ class TestICD10CodeExtended:
         """Test filtering billable ICD-10 codes."""
         from hmis.apps.encounters.models import ICD10Code
 
-        ICD10Code.objects.create(code="A09", description="Billable", category="Test", chapter=1, is_billable=True)
-        ICD10Code.objects.create(code="A00", description="Category", category="Test", chapter=1, is_billable=False)
-        ICD10Code.objects.create(code="B54", description="Billable 2", category="Test", chapter=1, is_billable=True)
+        ICD10Code.objects.create(
+            code="A09", description="Billable", category="Test", chapter=1, is_billable=True
+        )
+        ICD10Code.objects.create(
+            code="A00", description="Category", category="Test", chapter=1, is_billable=False
+        )
+        ICD10Code.objects.create(
+            code="B54", description="Billable 2", category="Test", chapter=1, is_billable=True
+        )
 
         billable = ICD10Code.objects.filter(is_billable=True)
         assert billable.count() == 2
@@ -527,7 +562,9 @@ class TestICD10CodeExtended:
 
         ICD10Code.objects.create(code="A09", description="GI", category="Infectious", chapter=1)
         ICD10Code.objects.create(code="B54", description="Malaria", category="Protozoal", chapter=1)
-        ICD10Code.objects.create(code="J18.9", description="Pneumonia", category="Respiratory", chapter=10)
+        ICD10Code.objects.create(
+            code="J18.9", description="Pneumonia", category="Respiratory", chapter=10
+        )
         ICD10Code.objects.create(code="I10", description="HTN", category="Circulatory", chapter=9)
 
         chapter_1 = ICD10Code.objects.filter(chapter=1)

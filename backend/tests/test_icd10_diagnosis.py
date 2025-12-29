@@ -106,9 +106,15 @@ class TestICD10CodeModel:
         """Test searching ICD-10 codes by code."""
         from hmis.apps.encounters.models import ICD10Code
 
-        ICD10Code.objects.create(code="A09", description="Gastroenteritis", category="Infectious", chapter=1)
-        ICD10Code.objects.create(code="A00", description="Cholera", category="Infectious", chapter=1)
-        ICD10Code.objects.create(code="B20", description="HIV disease", category="Infectious", chapter=1)
+        ICD10Code.objects.create(
+            code="A09", description="Gastroenteritis", category="Infectious", chapter=1
+        )
+        ICD10Code.objects.create(
+            code="A00", description="Cholera", category="Infectious", chapter=1
+        )
+        ICD10Code.objects.create(
+            code="B20", description="HIV disease", category="Infectious", chapter=1
+        )
 
         results = ICD10Code.objects.filter(code__icontains="A0")
         assert results.count() == 2
@@ -117,9 +123,21 @@ class TestICD10CodeModel:
         """Test searching ICD-10 codes by description."""
         from hmis.apps.encounters.models import ICD10Code
 
-        ICD10Code.objects.create(code="J18.9", description="Pneumonia, unspecified organism", category="Respiratory", chapter=10)
-        ICD10Code.objects.create(code="J12.9", description="Viral pneumonia, unspecified", category="Respiratory", chapter=10)
-        ICD10Code.objects.create(code="A09", description="Gastroenteritis", category="Infectious", chapter=1)
+        ICD10Code.objects.create(
+            code="J18.9",
+            description="Pneumonia, unspecified organism",
+            category="Respiratory",
+            chapter=10,
+        )
+        ICD10Code.objects.create(
+            code="J12.9",
+            description="Viral pneumonia, unspecified",
+            category="Respiratory",
+            chapter=10,
+        )
+        ICD10Code.objects.create(
+            code="A09", description="Gastroenteritis", category="Infectious", chapter=1
+        )
 
         results = ICD10Code.objects.filter(description__icontains="pneumonia")
         assert results.count() == 2
@@ -192,8 +210,12 @@ class TestDiagnosisModel:
         """Test an encounter can have multiple diagnoses."""
         from hmis.apps.encounters.models import Diagnosis, ICD10Code
 
-        code1 = ICD10Code.objects.create(code="J18.9", description="Pneumonia", category="Respiratory", chapter=10)
-        code2 = ICD10Code.objects.create(code="R50.9", description="Fever", category="Symptoms", chapter=18)
+        code1 = ICD10Code.objects.create(
+            code="J18.9", description="Pneumonia", category="Respiratory", chapter=10
+        )
+        code2 = ICD10Code.objects.create(
+            code="R50.9", description="Fever", category="Symptoms", chapter=18
+        )
 
         Diagnosis.objects.create(
             encounter=sample_encounter,
@@ -212,7 +234,9 @@ class TestDiagnosisModel:
         """Test only one primary diagnosis allowed per encounter."""
         from hmis.apps.encounters.models import Diagnosis, ICD10Code
 
-        code2 = ICD10Code.objects.create(code="R50.9", description="Fever", category="Symptoms", chapter=18)
+        code2 = ICD10Code.objects.create(
+            code="R50.9", description="Fever", category="Symptoms", chapter=18
+        )
 
         Diagnosis.objects.create(
             encounter=sample_encounter,
@@ -233,14 +257,26 @@ class TestDiagnosisModel:
         """Test diagnoses are ordered by type (PRIMARY first) using order_by_type_priority."""
         from hmis.apps.encounters.models import Diagnosis, ICD10Code
 
-        code1 = ICD10Code.objects.create(code="J18.9", description="Pneumonia", category="Respiratory", chapter=10)
-        code2 = ICD10Code.objects.create(code="R50.9", description="Fever", category="Symptoms", chapter=18)
-        code3 = ICD10Code.objects.create(code="A09", description="Gastro", category="Infectious", chapter=1)
+        code1 = ICD10Code.objects.create(
+            code="J18.9", description="Pneumonia", category="Respiratory", chapter=10
+        )
+        code2 = ICD10Code.objects.create(
+            code="R50.9", description="Fever", category="Symptoms", chapter=18
+        )
+        code3 = ICD10Code.objects.create(
+            code="A09", description="Gastro", category="Infectious", chapter=1
+        )
 
         # Create in non-sorted order
-        Diagnosis.objects.create(encounter=sample_encounter, icd10_code=code2, diagnosis_type="DIFFERENTIAL")
-        Diagnosis.objects.create(encounter=sample_encounter, icd10_code=code1, diagnosis_type="PRIMARY")
-        Diagnosis.objects.create(encounter=sample_encounter, icd10_code=code3, diagnosis_type="SECONDARY")
+        Diagnosis.objects.create(
+            encounter=sample_encounter, icd10_code=code2, diagnosis_type="DIFFERENTIAL"
+        )
+        Diagnosis.objects.create(
+            encounter=sample_encounter, icd10_code=code1, diagnosis_type="PRIMARY"
+        )
+        Diagnosis.objects.create(
+            encounter=sample_encounter, icd10_code=code3, diagnosis_type="SECONDARY"
+        )
 
         # Use the order_by_type_priority method for proper ordering
         diagnoses = list(Diagnosis.order_by_type_priority(sample_encounter.diagnoses.all()))
@@ -273,7 +309,9 @@ class TestDiagnosisModel:
 class TestDiagnosisAPI:
     """Test Diagnosis API endpoints."""
 
-    def test_list_diagnoses_for_encounter(self, authenticated_client, sample_encounter, sample_icd10_code):
+    def test_list_diagnoses_for_encounter(
+        self, authenticated_client, sample_encounter, sample_icd10_code
+    ):
         """Test GET /api/encounters/{id}/diagnoses/ - List diagnoses."""
         from hmis.apps.encounters.models import Diagnosis
 
@@ -287,7 +325,11 @@ class TestDiagnosisAPI:
 
         assert response.status_code == 200
         # Handle paginated response
-        results = response.data.get("results", response.data) if isinstance(response.data, dict) else response.data
+        results = (
+            response.data.get("results", response.data)
+            if isinstance(response.data, dict)
+            else response.data
+        )
         assert len(results) == 1
 
     def test_create_diagnosis(self, authenticated_client, sample_encounter, sample_icd10_code):
@@ -311,9 +353,15 @@ class TestDiagnosisAPI:
         """Test GET /api/icd10-codes/?search=term - Search ICD-10 codes."""
         from hmis.apps.encounters.models import ICD10Code
 
-        ICD10Code.objects.create(code="J18.9", description="Pneumonia, unspecified", category="Respiratory", chapter=10)
-        ICD10Code.objects.create(code="J12.9", description="Viral pneumonia", category="Respiratory", chapter=10)
-        ICD10Code.objects.create(code="A09", description="Gastroenteritis", category="Infectious", chapter=1)
+        ICD10Code.objects.create(
+            code="J18.9", description="Pneumonia, unspecified", category="Respiratory", chapter=10
+        )
+        ICD10Code.objects.create(
+            code="J12.9", description="Viral pneumonia", category="Respiratory", chapter=10
+        )
+        ICD10Code.objects.create(
+            code="A09", description="Gastroenteritis", category="Infectious", chapter=1
+        )
 
         response = authenticated_client.get("/api/icd10-codes/?search=pneumonia")
 
@@ -351,7 +399,9 @@ class TestEncounterWithDiagnoses:
         """Test getting primary diagnosis from encounter."""
         from hmis.apps.encounters.models import Diagnosis, ICD10Code
 
-        code = ICD10Code.objects.create(code="J18.9", description="Pneumonia", category="Respiratory", chapter=10)
+        code = ICD10Code.objects.create(
+            code="J18.9", description="Pneumonia", category="Respiratory", chapter=10
+        )
         Diagnosis.objects.create(
             encounter=sample_encounter,
             icd10_code=code,
@@ -366,11 +416,19 @@ class TestEncounterWithDiagnoses:
         """Test getting all diagnosis codes as comma-separated string."""
         from hmis.apps.encounters.models import Diagnosis, ICD10Code
 
-        code1 = ICD10Code.objects.create(code="J18.9", description="Pneumonia", category="Respiratory", chapter=10)
-        code2 = ICD10Code.objects.create(code="R50.9", description="Fever", category="Symptoms", chapter=18)
+        code1 = ICD10Code.objects.create(
+            code="J18.9", description="Pneumonia", category="Respiratory", chapter=10
+        )
+        code2 = ICD10Code.objects.create(
+            code="R50.9", description="Fever", category="Symptoms", chapter=18
+        )
 
-        Diagnosis.objects.create(encounter=sample_encounter, icd10_code=code1, diagnosis_type="PRIMARY")
-        Diagnosis.objects.create(encounter=sample_encounter, icd10_code=code2, diagnosis_type="SECONDARY")
+        Diagnosis.objects.create(
+            encounter=sample_encounter, icd10_code=code1, diagnosis_type="PRIMARY"
+        )
+        Diagnosis.objects.create(
+            encounter=sample_encounter, icd10_code=code2, diagnosis_type="SECONDARY"
+        )
 
         codes = sample_encounter.get_diagnosis_codes_display()
         assert "J18.9" in codes
