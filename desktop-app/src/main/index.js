@@ -33,7 +33,7 @@ const store = new Store({
 // Global references
 let mainWindow = null;
 let backendProcess = null;
-const BACKEND_PORT = 9090;
+const BACKEND_PORT = 9088;
 const BACKEND_URL = `http://127.0.0.1:${BACKEND_PORT}`;
 
 /**
