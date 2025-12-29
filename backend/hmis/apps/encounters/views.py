@@ -135,6 +135,39 @@ class DiagnosisViewSet(viewsets.ModelViewSet):
 
         return response
 
+    def update(self, request, *args, **kwargs):
+        """Update diagnosis with audit logging."""
+        partial = kwargs.pop("partial", False)
+        instance = self.get_object()
+
+        # Add encounter to data if not provided
+        data = request.data.copy()
+        if "encounter" not in data:
+            data["encounter"] = instance.encounter_id
+
+        serializer = self.get_serializer(instance, data=data, partial=partial)
+        serializer.is_valid(raise_exception=True)
+        self.perform_update(serializer)
+
+        # Audit log
+        AuditLog.log(
+            action="diagnosis_update",
+            user=request.user,
+            resource_type="Diagnosis",
+            resource_id=instance.id,
+            ip_address=get_client_ip(request),
+            user_agent=request.META.get("HTTP_USER_AGENT", ""),
+            patient_id=instance.encounter.patient_id,
+            details={"diagnosis_type": serializer.data.get("diagnosis_type")},
+        )
+
+        return Response(serializer.data)
+
+    def partial_update(self, request, *args, **kwargs):
+        """Partial update diagnosis."""
+        kwargs["partial"] = True
+        return self.update(request, *args, **kwargs)
+
 
 class EncounterViewSet(viewsets.ModelViewSet):
     """

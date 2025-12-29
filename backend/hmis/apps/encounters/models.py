@@ -102,6 +102,12 @@ class ICD10Code(models.Model):
                     }
                 )
 
+    def save(self, *args, **kwargs):
+        """Ensure code is uppercased on save."""
+        if self.code:
+            self.code = self.code.upper()
+        super().save(*args, **kwargs)
+
 
 class Encounter(models.Model):
     """

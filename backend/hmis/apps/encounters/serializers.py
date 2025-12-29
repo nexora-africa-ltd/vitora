@@ -58,8 +58,17 @@ class DiagnosisSerializer(serializers.ModelSerializer):
 
     def validate(self, data):
         """Validate that either ICD-10 code or free text is provided."""
-        icd10_code = data.get("icd10_code")
-        free_text = data.get("free_text_diagnosis", "")
+        instance = getattr(self, "instance", None)
+
+        # For partial updates, use instance values as defaults
+        if instance:
+            icd10_code = data.get("icd10_code", instance.icd10_code)
+            free_text = data.get("free_text_diagnosis", instance.free_text_diagnosis)
+            encounter = data.get("encounter", instance.encounter)
+        else:
+            icd10_code = data.get("icd10_code")
+            free_text = data.get("free_text_diagnosis", "")
+            encounter = data.get("encounter")
 
         if not icd10_code and not free_text:
             raise serializers.ValidationError(
@@ -68,8 +77,6 @@ class DiagnosisSerializer(serializers.ModelSerializer):
 
         # Check for existing primary diagnosis when adding a new primary
         if data.get("diagnosis_type") == "PRIMARY":
-            encounter = data.get("encounter")
-            instance = getattr(self, "instance", None)
             existing_primary = Diagnosis.objects.filter(
                 encounter=encounter,
                 diagnosis_type="PRIMARY",
