@@ -993,7 +993,7 @@ class TestTreatmentPlanWithTemplate:
         plan.apply_template(template)
 
         assert plan.template == template
-        assert "Paracetamol" in plan.medications
+        assert "Paracetamol" in plan.medications_json
         assert plan.follow_up_instructions == "Take with water"
         assert plan.follow_up_date == date.today() + timedelta(days=14)
 
