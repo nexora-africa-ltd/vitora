@@ -1082,8 +1082,8 @@ body.dark-mode .btn-view:hover {
   gap: 5px;
 }
 
-.current-user::before {
-  content: '👤 ';
+.user-icon {
+  flex-shrink: 0;
 }
 
 .btn-sm {
