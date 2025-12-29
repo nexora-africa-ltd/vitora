@@ -126,9 +126,7 @@ class TestEncounterAPIEndpoints:
 
     def test_create_encounter_with_vitals(self, auth_client, sample_encounter_with_vitals):
         """Test POST /api/encounters/ - Create encounter with vital signs."""
-        response = auth_client.post(
-            "/api/encounters/", sample_encounter_with_vitals, format="json"
-        )
+        response = auth_client.post("/api/encounters/", sample_encounter_with_vitals, format="json")
 
         assert response.status_code == status.HTTP_201_CREATED
         assert response.data["temperature"] == "37.5"
@@ -205,9 +203,7 @@ class TestEncounterAPIEndpoints:
             "notes": "Prescribed medication",
         }
 
-        response = auth_client.put(
-            f"/api/encounters/{encounter.id}/", update_data, format="json"
-        )
+        response = auth_client.put(f"/api/encounters/{encounter.id}/", update_data, format="json")
 
         assert response.status_code == status.HTTP_200_OK
         assert response.data["chief_complaint"] == "Headache with nausea"
@@ -272,15 +268,11 @@ class TestEncounterAPIFiltering:
             gender="F",
         )
 
-        Encounter.objects.create(
-            patient=patient1, encounter_type="OPD", chief_complaint="Headache"
-        )
+        Encounter.objects.create(patient=patient1, encounter_type="OPD", chief_complaint="Headache")
         Encounter.objects.create(
             patient=patient1, encounter_type="EMERGENCY", chief_complaint="Fever"
         )
-        Encounter.objects.create(
-            patient=patient2, encounter_type="OPD", chief_complaint="Cough"
-        )
+        Encounter.objects.create(patient=patient2, encounter_type="OPD", chief_complaint="Cough")
 
         response = auth_client.get(f"/api/encounters/?patient={patient1.id}")
 

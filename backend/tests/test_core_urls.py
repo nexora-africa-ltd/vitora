@@ -5,7 +5,7 @@ Sprint 0.6: Coverage improvement tests for core/urls.py (0% -> 100%)
 """
 
 import pytest
-from django.urls import reverse, resolve
+from django.urls import resolve
 
 from hmis.apps.core.urls import router, urlpatterns
 from hmis.apps.core.views import AuditLogViewSet
@@ -17,6 +17,7 @@ class TestCoreURLConfiguration:
     def test_router_is_configured(self):
         """Router should be a DRF router."""
         from rest_framework.routers import DefaultRouter
+
         assert isinstance(router, DefaultRouter)
 
     def test_auditlog_registered_in_router(self):

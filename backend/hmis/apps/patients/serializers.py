@@ -31,9 +31,7 @@ class PatientSerializer(serializers.ModelSerializer):
 
     age = serializers.ReadOnlyField()
     full_name = serializers.ReadOnlyField()
-    registered_by_username = serializers.CharField(
-        source="registered_by.username", read_only=True
-    )
+    registered_by_username = serializers.CharField(source="registered_by.username", read_only=True)
     # Location display names (read-only)
     county_name = serializers.CharField(source="county.name", read_only=True)
     sub_county_name = serializers.CharField(source="sub_county.name", read_only=True)
@@ -93,18 +91,22 @@ class PatientSerializer(serializers.ModelSerializer):
 
     def validate(self, data):
         """Cross-field validation."""
-        referral_source = data.get("referral_source", self.instance.referral_source if self.instance else "self")
+        referral_source = data.get(
+            "referral_source", self.instance.referral_source if self.instance else "self"
+        )
         referred_from_facility = data.get("referred_from_facility", "")
 
         if referral_source == "other_facility" and not referred_from_facility:
             raise serializers.ValidationError(
-                {"referred_from_facility": "Facility name is required when referral source is 'Other Facility'."}
+                {
+                    "referred_from_facility": "Facility name is required when referral source is 'Other Facility'."
+                }
             )
 
         # Validate county and sub_county are provided
         county = data.get("county")
         sub_county = data.get("sub_county")
-        
+
         # For new patients (no instance), both are required
         if not self.instance:
             if not county:

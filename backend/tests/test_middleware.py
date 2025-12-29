@@ -161,9 +161,7 @@ class TestMiddlewareIntegration:
         """Should work with actual Django client and views."""
         # Create a user
         user = django_user_model.objects.create_user(
-            username="testuser",
-            email="test@example.com",
-            password="testpass123"
+            username="testuser", email="test@example.com", password="testpass123"
         )
 
         # Login

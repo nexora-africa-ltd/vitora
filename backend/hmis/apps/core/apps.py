@@ -2,6 +2,8 @@
 App configuration for the core app.
 """
 
+import contextlib
+
 from django.apps import AppConfig
 
 
@@ -15,7 +17,5 @@ class CoreConfig(AppConfig):
     def ready(self):
         """Import signal handlers when app is ready."""
         # Import signals to register them
-        try:
+        with contextlib.suppress(ImportError):
             from hmis.apps.core import signals  # noqa: F401
-        except ImportError:
-            pass

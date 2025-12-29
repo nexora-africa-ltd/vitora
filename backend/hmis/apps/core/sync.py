@@ -144,9 +144,7 @@ class ConnectivityMonitor:
         Args:
             new_status: The new connectivity status
         """
-        logger.info(
-            f"Connectivity changed: {'online' if new_status else 'offline'}"
-        )
+        logger.info(f"Connectivity changed: {'online' if new_status else 'offline'}")
         for callback in self._callbacks:
             try:
                 callback(new_status)
@@ -228,14 +226,14 @@ class SyncManager:
             status="PENDING",
         )
 
-        logger.debug(
-            f"Queued {operation} for {model_name}:{record_id}"
-        )
+        logger.debug(f"Queued {operation} for {model_name}:{record_id}")
 
         return entry
 
     @classmethod
-    def process_pending_entries(cls, batch_size: int = None, connectivity_checker: "ConnectivityChecker" = None) -> dict:
+    def process_pending_entries(
+        cls, batch_size: int = None, connectivity_checker: "ConnectivityChecker" = None
+    ) -> dict:
         """
         Process pending entries in the sync queue.
 
@@ -282,7 +280,7 @@ class SyncManager:
         pending_entries = SyncQueue.objects.filter(
             status__in=["PENDING", "FAILED"],
             retry_count__lt=self.max_retries,
-        ).order_by("created_at")[:self.batch_size]
+        ).order_by("created_at")[: self.batch_size]
 
         results = {
             "processed": 0,
@@ -361,16 +359,9 @@ class SyncManager:
 
         from hmis.apps.core.models import SyncQueue
 
-        status_counts = (
-            SyncQueue.objects
-            .values("status")
-            .annotate(count=Count("id"))
-        )
+        status_counts = SyncQueue.objects.values("status").annotate(count=Count("id"))
 
-        return {
-            item["status"]: item["count"]
-            for item in status_counts
-        }
+        return {item["status"]: item["count"] for item in status_counts}
 
 
 def detect_conflict(local_data: dict, remote_data: dict) -> bool:
@@ -603,9 +594,7 @@ def record_conflict(
         status="PENDING",
     )
 
-    logger.warning(
-        f"Conflict recorded for {model_name}:{record_id}"
-    )
+    logger.warning(f"Conflict recorded for {model_name}:{record_id}")
 
     return conflict
 
@@ -640,6 +629,7 @@ def resolve_sync_conflict(
 
     # Record the conflict for audit
     from hmis.apps.core.models import SyncConflict
+
     SyncConflict.objects.create(
         model_name=queue_entry.model_name,
         record_id=queue_entry.record_id,

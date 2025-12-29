@@ -4,12 +4,10 @@ Extended tests for sync.py module to improve coverage.
 Sprint 0.6: Coverage improvement tests for core/sync.py (58% -> 85%+)
 """
 
-import pytest
-from datetime import timedelta
 from unittest.mock import MagicMock, patch
 
+import pytest
 import requests
-from django.utils import timezone
 
 from hmis.apps.core.models import SyncQueue
 from hmis.apps.core.sync import (
@@ -17,10 +15,10 @@ from hmis.apps.core.sync import (
     ConnectivityMonitor,
     SyncManager,
     detect_conflict,
-    resolve_conflict_last_write_wins,
-    merge_changes_field_level,
-    sync_to_server,
     get_connectivity_checker,
+    merge_changes_field_level,
+    resolve_conflict_last_write_wins,
+    sync_to_server,
 )
 
 
@@ -29,7 +27,7 @@ class TestConnectivityCheckerExtended:
 
     def test_check_without_server_url(self):
         """Should return False when no server URL configured."""
-        with patch.object(ConnectivityChecker, '__init__', lambda self, *args, **kwargs: None):
+        with patch.object(ConnectivityChecker, "__init__", lambda self, *args, **kwargs: None):
             checker = ConnectivityChecker.__new__(ConnectivityChecker)
             checker.server_url = ""
             checker.timeout = 5
@@ -209,7 +207,7 @@ class TestSyncManagerExtended:
             data={"first_name": "Test"},
         )
 
-        assert entry.id is not None
+        assert entry.pk is not None
         assert entry.status == "PENDING"
         assert entry.model_name == "Patient"
 
@@ -319,7 +317,8 @@ class TestSyncManagerExtended:
     def test_trigger_background_sync_with_celery(self):
         """Should trigger Celery task when available."""
         from hmis.apps.core.tasks import process_sync_queue
-        with patch.object(process_sync_queue, 'delay') as mock_delay:
+
+        with patch.object(process_sync_queue, "delay") as mock_delay:
             checker = MagicMock()
             manager = SyncManager(connectivity_checker=checker)
             manager.trigger_background_sync()
@@ -332,9 +331,9 @@ class TestSyncManagerExtended:
         checker.check.return_value = False
 
         manager = SyncManager(connectivity_checker=checker)
-        
+
         # Verify trigger_background_sync is callable
-        assert hasattr(manager, 'trigger_background_sync')
+        assert hasattr(manager, "trigger_background_sync")
         assert callable(manager.trigger_background_sync)
 
     def test_get_queue_status(self):

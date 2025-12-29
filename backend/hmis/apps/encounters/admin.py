@@ -79,7 +79,11 @@ class EncounterAdmin(admin.ModelAdmin):
     @admin.display(description="Chief Complaint", ordering="chief_complaint")
     def chief_complaint_short(self, obj):
         """Return truncated chief complaint."""
-        return obj.chief_complaint[:50] + "..." if len(obj.chief_complaint) > 50 else obj.chief_complaint
+        return (
+            obj.chief_complaint[:50] + "..."
+            if len(obj.chief_complaint) > 50
+            else obj.chief_complaint
+        )
 
     @admin.display(description="Critical", boolean=True)
     def has_critical_vitals(self, obj):

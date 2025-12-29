@@ -211,9 +211,7 @@ class TestReferralSourceAPI:
         assert response.status_code == 400
         assert "referred_from_facility" in response.data
 
-    def test_referral_source_in_patient_response(
-        self, authenticated_client, sample_patient
-    ):
+    def test_referral_source_in_patient_response(self, authenticated_client, sample_patient):
         """Test referral source fields included in patient response."""
         response = authenticated_client.get(f"/api/patients/{sample_patient.id}/")
 

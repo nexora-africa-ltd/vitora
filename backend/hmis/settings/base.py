@@ -147,7 +147,7 @@ REST_FRAMEWORK = {
 }
 
 # Simple JWT settings
-from datetime import timedelta
+from datetime import timedelta  # noqa: E402
 
 SIMPLE_JWT = {
     "ACCESS_TOKEN_LIFETIME": timedelta(minutes=30),

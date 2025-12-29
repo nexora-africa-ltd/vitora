@@ -100,6 +100,12 @@ class EmergencyContactAdmin(admin.ModelAdmin):
 
     list_display = ["patient", "full_name", "phone_number", "relationship"]
     list_filter = ["relationship"]
-    search_fields = ["patient__mrn", "patient__first_name", "patient__last_name", "full_name", "phone_number"]
+    search_fields = [
+        "patient__mrn",
+        "patient__first_name",
+        "patient__last_name",
+        "full_name",
+        "phone_number",
+    ]
     ordering = ["-created_at"]
     autocomplete_fields = ["patient"]

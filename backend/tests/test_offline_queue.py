@@ -8,11 +8,10 @@ These tests validate that changes made while offline are properly queued
 and can be synchronized when connectivity is restored.
 """
 
+from datetime import date
+
 import pytest
-from datetime import date, datetime, timedelta
 from django.utils import timezone
-from django.db import transaction
-import json
 
 
 @pytest.mark.unit
@@ -185,15 +184,9 @@ class TestSyncQueueManager:
         """Should retrieve entries filtered by model name."""
         from hmis.apps.core.models import SyncQueue
 
-        SyncQueue.objects.create(
-            operation="CREATE", model_name="Patient", record_id=1, data={}
-        )
-        SyncQueue.objects.create(
-            operation="CREATE", model_name="Encounter", record_id=1, data={}
-        )
-        SyncQueue.objects.create(
-            operation="CREATE", model_name="Patient", record_id=2, data={}
-        )
+        SyncQueue.objects.create(operation="CREATE", model_name="Patient", record_id=1, data={})
+        SyncQueue.objects.create(operation="CREATE", model_name="Encounter", record_id=1, data={})
+        SyncQueue.objects.create(operation="CREATE", model_name="Patient", record_id=2, data={})
 
         patient_entries = SyncQueue.objects.filter(model_name="Patient")
         assert patient_entries.count() == 2
@@ -201,8 +194,9 @@ class TestSyncQueueManager:
     @pytest.mark.django_db
     def test_queue_ordering_by_timestamp(self):
         """Entries should be ordered by creation timestamp (FIFO)."""
-        from hmis.apps.core.models import SyncQueue
         import time
+
+        from hmis.apps.core.models import SyncQueue
 
         entry1 = SyncQueue.objects.create(
             operation="CREATE", model_name="Patient", record_id=1, data={}
@@ -227,9 +221,7 @@ class TestSyncQueueManager:
         from hmis.apps.core.models import SyncQueue
 
         entries = [
-            SyncQueue.objects.create(
-                operation="CREATE", model_name="Patient", record_id=i, data={}
-            )
+            SyncQueue.objects.create(operation="CREATE", model_name="Patient", record_id=i, data={})
             for i in range(5)
         ]
 
@@ -247,8 +239,8 @@ class TestAutoQueueOnModelChange:
     @pytest.mark.django_db
     def test_patient_create_is_queued(self, settings):
         """Creating a patient should add entry to sync queue."""
-        from hmis.apps.patients.models import Patient
         from hmis.apps.core.models import SyncQueue
+        from hmis.apps.patients.models import Patient
 
         # Enable sync queue (would be a setting in real implementation)
         initial_count = SyncQueue.objects.count()
@@ -268,8 +260,8 @@ class TestAutoQueueOnModelChange:
     @pytest.mark.django_db
     def test_patient_update_is_queued(self):
         """Updating a patient should add entry to sync queue."""
-        from hmis.apps.patients.models import Patient
         from hmis.apps.core.models import SyncQueue
+        from hmis.apps.patients.models import Patient
 
         patient = Patient.objects.create(
             first_name="Queue",
@@ -290,8 +282,8 @@ class TestAutoQueueOnModelChange:
     @pytest.mark.django_db
     def test_patient_delete_is_queued(self):
         """Deleting a patient should add entry to sync queue."""
-        from hmis.apps.patients.models import Patient
         from hmis.apps.core.models import SyncQueue
+        from hmis.apps.patients.models import Patient
 
         patient = Patient.objects.create(
             first_name="Queue",
@@ -318,7 +310,6 @@ class TestQueueProcessing:
     def test_process_queue_entry(self):
         """Should be able to process a single queue entry."""
         from hmis.apps.core.models import SyncQueue
-        from hmis.apps.core.sync import process_queue_entry
 
         entry = SyncQueue.objects.create(
             operation="CREATE",

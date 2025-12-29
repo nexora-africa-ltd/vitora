@@ -103,9 +103,7 @@ class AuditedTokenObtainPairView(TokenObtainPairView):
             username = request.data.get("username")
             try:
                 user = User.objects.get(username=username)
-                user_logged_in.send(
-                    sender=self.__class__, request=request, user=user
-                )
+                user_logged_in.send(sender=self.__class__, request=request, user=user)
             except User.DoesNotExist:
                 pass
         else:

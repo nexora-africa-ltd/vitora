@@ -5,7 +5,6 @@ Sprint 0.6: Coverage improvement tests for settings/__init__.py (63% -> 100%)
 """
 
 import os
-import pytest
 from importlib import reload
 
 
@@ -22,6 +21,7 @@ class TestSettingsInit:
 
             # Import settings
             from hmis import settings
+
             reload(settings)
 
             # Should use development settings (DEBUG=True)
@@ -43,6 +43,7 @@ class TestSettingsInit:
             os.environ["ALLOWED_HOSTS"] = "example.com"
 
             from hmis import settings
+
             reload(settings)
 
             assert settings.DEBUG is False
@@ -65,6 +66,7 @@ class TestSettingsInit:
             os.environ["DJANGO_ENV"] = "test"
 
             from hmis import settings
+
             reload(settings)
 
             # Test settings have DEBUG=False for more realistic testing
@@ -84,6 +86,7 @@ class TestSettingsInit:
             os.environ["DJANGO_ENV"] = "development"
 
             from hmis import settings
+
             reload(settings)
 
             assert settings.ENVIRONMENT == "development"

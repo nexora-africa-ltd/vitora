@@ -6,7 +6,9 @@ Usage:
 """
 
 import csv
+
 from django.core.management.base import BaseCommand
+
 from hmis.apps.core.models import County, SubCounty, Ward
 
 
@@ -52,9 +54,9 @@ class Command(BaseCommand):
         self.stdout.write(f"Reading from {csv_file}...")
 
         try:
-            with open(csv_file, "r", encoding="utf-8-sig") as f:  # utf-8-sig handles BOM
+            with open(csv_file, encoding="utf-8-sig") as f:  # utf-8-sig handles BOM
                 reader = csv.DictReader(f)
-                
+
                 for row in reader:
                     county_code = int(row["code"])
                     county_name = row["county"].strip()

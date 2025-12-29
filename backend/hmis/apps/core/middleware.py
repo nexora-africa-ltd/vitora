@@ -5,8 +5,6 @@ This module contains middleware that automatically logs
 user actions for Kenya Data Protection Act compliance.
 """
 
-from .models import AuditLog
-
 
 def get_client_ip(request):
     """

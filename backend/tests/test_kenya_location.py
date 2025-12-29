@@ -254,9 +254,7 @@ class TestLocationAPI:
         SubCounty.objects.create(county=county, name="Changamwe")
         SubCounty.objects.create(county=county, name="Jomvu")
 
-        response = authenticated_client.get(
-            f"/api/locations/sub-counties/?county={county.id}"
-        )
+        response = authenticated_client.get(f"/api/locations/sub-counties/?county={county.id}")
 
         assert response.status_code == 200
         assert len(response.data) == 2
@@ -270,9 +268,7 @@ class TestLocationAPI:
         Ward.objects.create(sub_county=sub_county, name="Port Reitz")
         Ward.objects.create(sub_county=sub_county, name="Kipevu")
 
-        response = authenticated_client.get(
-            f"/api/locations/wards/?sub_county={sub_county.id}"
-        )
+        response = authenticated_client.get(f"/api/locations/wards/?sub_county={sub_county.id}")
 
         assert response.status_code == 200
         assert len(response.data) == 2

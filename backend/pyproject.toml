@@ -141,8 +141,15 @@ exclude = [
 
 [tool.ruff.per-file-ignores]
 "__init__.py" = ["F401"]
-"tests/*" = ["S101", "ARG"]
-"**/tests/**" = ["S101", "ARG"]
+"tests/*" = ["S101", "S105", "S106", "ARG", "F841", "SIM105", "SIM117"]
+"**/tests/**" = ["S101", "S105", "S106", "ARG", "F841", "SIM105", "SIM117"]
+"hmis/apps/*/admin.py" = ["ARG002"]  # Django admin methods require these signatures
+"hmis/apps/*/views.py" = ["ARG002"]  # Django view methods require these signatures
+"hmis/apps/core/permissions.py" = ["ARG002"]  # DRF permission methods require these signatures
+"hmis/apps/core/signals.py" = ["ARG001"]  # Django signal handlers require these signatures
+"hmis/apps/core/management/commands/*.py" = ["ARG002"]  # Management command methods require these signatures
+"hmis/urls.py" = ["ARG001"]  # View functions may require request argument
+"hmis/celery.py" = ["T201"]  # Print is acceptable in celery debug
 
 [tool.ruff.isort]
 known-first-party = ["hmis"]

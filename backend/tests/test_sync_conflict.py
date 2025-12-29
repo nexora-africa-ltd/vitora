@@ -8,10 +8,9 @@ These tests validate that conflicts between local and remote changes
 are detected and resolved correctly.
 """
 
+from datetime import date
+
 import pytest
-from datetime import date, datetime, timedelta
-from django.utils import timezone
-import json
 
 
 @pytest.mark.unit
@@ -221,7 +220,6 @@ class TestConflictResolutionWorkflow:
     @pytest.mark.django_db
     def test_automatic_conflict_resolution(self):
         """Conflicts should be automatically resolved using configured strategy."""
-        from hmis.apps.core.sync import resolve_sync_conflict
         from hmis.apps.core.models import SyncQueue
 
         # Create a queue entry that would cause conflict
@@ -266,7 +264,7 @@ class TestConflictResolutionWorkflow:
     @pytest.mark.django_db
     def test_conflict_resolution_audit_trail(self):
         """Conflict resolution should be logged in audit trail."""
-        from hmis.apps.core.models import SyncConflict, AuditLog
+        from hmis.apps.core.models import SyncConflict
 
         conflict = SyncConflict.objects.create(
             model_name="Patient",
@@ -295,7 +293,6 @@ class TestConflictScenarios:
     @pytest.mark.django_db
     def test_concurrent_patient_update(self):
         """Handle concurrent updates to the same patient."""
-        from hmis.apps.core.sync import detect_and_resolve_conflict
 
         # Scenario: Two users update same patient while one is offline
         base_version = {
@@ -379,7 +376,7 @@ class TestVersionTracking:
         # Patient model may not have version field directly, that's OK
         # Version tracking is done at the sync layer via SyncQueue.data
         from hmis.apps.core.models import SyncQueue
-        
+
         # Version can be stored in sync queue data when needed
         assert SyncQueue.objects.model is not None
 
