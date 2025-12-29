@@ -1,0 +1,203 @@
+code,short_description,long_description,category,chapter,is_billable
+A00.0,Cholera due to V. cholerae 01 biovar cholerae,Cholera due to Vibrio cholerae 01 biovar cholerae,Intestinal infectious diseases,1,true
+A00.1,Cholera due to V. cholerae 01 biovar eltor,Cholera due to Vibrio cholerae 01 biovar eltor,Intestinal infectious diseases,1,true
+A00.9,Cholera unspecified,Cholera unspecified,Intestinal infectious diseases,1,true
+A01.0,Typhoid fever,Typhoid fever,Intestinal infectious diseases,1,true
+A01.1,Paratyphoid fever A,Paratyphoid fever A,Intestinal infectious diseases,1,true
+A01.2,Paratyphoid fever B,Paratyphoid fever B,Intestinal infectious diseases,1,true
+A01.3,Paratyphoid fever C,Paratyphoid fever C,Intestinal infectious diseases,1,true
+A01.4,Paratyphoid fever unspecified,Paratyphoid fever unspecified,Intestinal infectious diseases,1,true
+A02.0,Salmonella enteritis,Salmonella enteritis,Intestinal infectious diseases,1,true
+A02.1,Salmonella sepsis,Salmonella sepsis,Intestinal infectious diseases,1,true
+A03.0,Shigellosis due to Shigella dysenteriae,Shigellosis due to Shigella dysenteriae,Intestinal infectious diseases,1,true
+A03.9,Shigellosis unspecified,Shigellosis unspecified,Intestinal infectious diseases,1,true
+A04.0,Enteropathogenic E. coli infection,Enteropathogenic Escherichia coli infection,Intestinal infectious diseases,1,true
+A04.5,Campylobacter enteritis,Campylobacter enteritis,Intestinal infectious diseases,1,true
+A05.0,Foodborne staphylococcal intoxication,Foodborne staphylococcal intoxication,Intestinal infectious diseases,1,true
+A05.9,Bacterial foodborne intoxication unspecified,Bacterial foodborne intoxication unspecified,Intestinal infectious diseases,1,true
+A06.0,Acute amebic dysentery,Acute amebic dysentery,Intestinal infectious diseases,1,true
+A06.9,Amebiasis unspecified,Amebiasis unspecified,Intestinal infectious diseases,1,true
+A07.1,Giardiasis,Giardiasis [lambliasis],Intestinal infectious diseases,1,true
+A08.0,Rotaviral enteritis,Rotaviral enteritis,Intestinal infectious diseases,1,true
+A09,Infectious gastroenteritis and colitis unspecified,Infectious gastroenteritis and colitis unspecified,Intestinal infectious diseases,1,true
+A15.0,Tuberculosis of lung,Tuberculosis of lung confirmed by sputum microscopy,Tuberculosis,1,true
+A15.3,Tuberculosis of lung confirmed by other means,Tuberculosis of lung confirmed by unspecified means,Tuberculosis,1,true
+A16.0,Tuberculosis of lung bacteriologically negative,Tuberculosis of lung bacteriologically and histologically negative,Tuberculosis,1,true
+A16.2,Tuberculosis of lung without bacteriological confirmation,Tuberculosis of lung without mention of bacteriological or histological confirmation,Tuberculosis,1,true
+A17.0,Tuberculous meningitis,Tuberculous meningitis,Tuberculosis,1,true
+A18.0,Tuberculosis of bones and joints,Tuberculosis of bones and joints,Tuberculosis,1,true
+A19.0,Acute miliary tuberculosis single site,Acute miliary tuberculosis of a single specified site,Tuberculosis,1,true
+A19.9,Miliary tuberculosis unspecified,Miliary tuberculosis unspecified,Tuberculosis,1,true
+A30.9,Leprosy unspecified,Leprosy unspecified,Other bacterial diseases,1,true
+A33,Tetanus neonatorum,Tetanus neonatorum,Other bacterial diseases,1,true
+A35,Other tetanus,Other tetanus,Other bacterial diseases,1,true
+A36.0,Pharyngeal diphtheria,Pharyngeal diphtheria,Other bacterial diseases,1,true
+A37.0,Whooping cough due to B. pertussis,Whooping cough due to Bordetella pertussis,Other bacterial diseases,1,true
+A38,Scarlet fever,Scarlet fever,Other bacterial diseases,1,true
+A39.0,Meningococcal meningitis,Meningococcal meningitis,Other bacterial diseases,1,true
+A40.0,Sepsis due to streptococcus group A,Sepsis due to streptococcus group A,Other bacterial diseases,1,true
+A41.0,Sepsis due to Staphylococcus aureus,Sepsis due to Staphylococcus aureus,Other bacterial diseases,1,true
+A41.9,Sepsis unspecified organism,Sepsis unspecified organism,Other bacterial diseases,1,true
+A46,Erysipelas,Erysipelas,Other bacterial diseases,1,true
+A49.0,Staphylococcal infection unspecified site,Staphylococcal infection unspecified site,Other bacterial diseases,1,true
+A49.1,Streptococcal infection unspecified site,Streptococcal and enterococcal infection unspecified site,Other bacterial diseases,1,true
+B00.9,Herpesviral infection unspecified,Herpesviral infection unspecified,Viral infections,1,true
+B01.9,Varicella without complication,Varicella without complication,Viral infections,1,true
+B02.9,Zoster without complication,Zoster without complication,Viral infections,1,true
+B05.9,Measles without complication,Measles without complication,Viral infections,1,true
+B06.9,Rubella without complication,Rubella without complication,Viral infections,1,true
+B15.9,Hepatitis A without hepatic coma,Hepatitis A without hepatic coma,Viral infections,1,true
+B16.9,Acute hepatitis B without delta-agent,Acute hepatitis B without delta-agent and without hepatic coma,Viral infections,1,true
+B17.1,Acute hepatitis C,Acute hepatitis C,Viral infections,1,true
+B18.1,Chronic viral hepatitis B without delta-agent,Chronic viral hepatitis B without delta-agent,Viral infections,1,true
+B20,HIV disease resulting in infectious diseases,Human immunodeficiency virus [HIV] disease resulting in infectious and parasitic diseases,HIV disease,1,true
+B21,HIV disease resulting in malignant neoplasms,Human immunodeficiency virus [HIV] disease resulting in malignant neoplasms,HIV disease,1,true
+B22,HIV disease resulting in other specified diseases,Human immunodeficiency virus [HIV] disease resulting in other specified diseases,HIV disease,1,true
+B23.0,Acute HIV infection syndrome,Acute HIV infection syndrome,HIV disease,1,true
+B24,Unspecified HIV disease,Unspecified human immunodeficiency virus [HIV] disease,HIV disease,1,true
+B25.9,Cytomegaloviral disease unspecified,Cytomegaloviral disease unspecified,Viral infections,1,true
+B26.9,Mumps without complication,Mumps without complication,Viral infections,1,true
+B34.9,Viral infection unspecified,Viral infection unspecified,Viral infections,1,true
+B35.0,Tinea barbae and tinea capitis,Tinea barbae and tinea capitis,Mycoses,1,true
+B35.1,Tinea unguium,Tinea unguium,Mycoses,1,true
+B35.3,Tinea pedis,Tinea pedis,Mycoses,1,true
+B35.4,Tinea corporis,Tinea corporis,Mycoses,1,true
+B36.0,Pityriasis versicolor,Pityriasis versicolor,Mycoses,1,true
+B37.0,Candidal stomatitis,Candidal stomatitis,Mycoses,1,true
+B37.9,Candidiasis unspecified,Candidiasis unspecified,Mycoses,1,true
+B50.9,Plasmodium falciparum malaria unspecified,Plasmodium falciparum malaria unspecified,Protozoal diseases,1,true
+B51.9,Plasmodium vivax malaria unspecified,Plasmodium vivax malaria without complication,Protozoal diseases,1,true
+B52.9,Plasmodium malariae malaria unspecified,Plasmodium malariae malaria without complication,Protozoal diseases,1,true
+B53.0,Plasmodium ovale malaria,Plasmodium ovale malaria,Protozoal diseases,1,true
+B54,Unspecified malaria,Unspecified malaria,Protozoal diseases,1,true
+B55.0,Visceral leishmaniasis,Visceral leishmaniasis,Protozoal diseases,1,true
+B55.1,Cutaneous leishmaniasis,Cutaneous leishmaniasis,Protozoal diseases,1,true
+B56.9,African trypanosomiasis unspecified,African trypanosomiasis unspecified,Protozoal diseases,1,true
+B65.0,Schistosomiasis due to S. haematobium,Schistosomiasis due to Schistosoma haematobium [urinary schistosomiasis],Helminthiases,1,true
+B65.1,Schistosomiasis due to S. mansoni,Schistosomiasis due to Schistosoma mansoni [intestinal schistosomiasis],Helminthiases,1,true
+B68.0,Taenia solium taeniasis,Taenia solium taeniasis,Helminthiases,1,true
+B69.0,Cysticercosis of CNS,Cysticercosis of central nervous system,Helminthiases,1,true
+B76.0,Ancylostomiasis,Ancylostomiasis,Helminthiases,1,true
+B77.9,Ascariasis unspecified,Ascariasis unspecified,Helminthiases,1,true
+B79,Trichuriasis,Trichuriasis,Helminthiases,1,true
+B80,Enterobiasis,Enterobiasis,Helminthiases,1,true
+B82.0,Intestinal helminthiasis unspecified,Intestinal helminthiasis unspecified,Helminthiases,1,true
+B86,Scabies,Scabies,Infestations,1,true
+B87.9,Myiasis unspecified,Myiasis unspecified,Infestations,1,true
+D50.9,Iron deficiency anemia unspecified,Iron deficiency anemia unspecified,Nutritional anemias,3,true
+D64.9,Anemia unspecified,Anemia unspecified,Other anemias,3,true
+E10.9,Type 1 diabetes mellitus without complications,Type 1 diabetes mellitus without complications,Diabetes mellitus,4,true
+E11.9,Type 2 diabetes mellitus without complications,Type 2 diabetes mellitus without complications,Diabetes mellitus,4,true
+E40,Kwashiorkor,Kwashiorkor,Malnutrition,4,true
+E41,Nutritional marasmus,Nutritional marasmus,Malnutrition,4,true
+E42,Marasmic kwashiorkor,Marasmic kwashiorkor,Malnutrition,4,true
+E43,Unspecified severe protein-calorie malnutrition,Unspecified severe protein-calorie malnutrition,Malnutrition,4,true
+E44.0,Moderate protein-calorie malnutrition,Moderate protein-calorie malnutrition,Malnutrition,4,true
+E44.1,Mild protein-calorie malnutrition,Mild protein-calorie malnutrition,Malnutrition,4,true
+E46,Unspecified protein-calorie malnutrition,Unspecified protein-calorie malnutrition,Malnutrition,4,true
+E50.9,Vitamin A deficiency unspecified,Vitamin A deficiency unspecified,Vitamin deficiencies,4,true
+E55.9,Vitamin D deficiency unspecified,Vitamin D deficiency unspecified,Vitamin deficiencies,4,true
+E86,Volume depletion,Volume depletion,Fluid and electrolyte disorders,4,true
+F10.2,Alcohol dependence syndrome,Mental and behavioural disorders due to use of alcohol dependence syndrome,Mental disorders due to substance use,5,true
+F19.9,Mental disorder due to multiple drug use unspecified,Mental and behavioural disorders due to multiple drug use unspecified mental and behavioural disorder,Mental disorders due to substance use,5,true
+F32.9,Depressive episode unspecified,Depressive episode unspecified,Mood disorders,5,true
+F41.9,Anxiety disorder unspecified,Anxiety disorder unspecified,Anxiety disorders,5,true
+G00.9,Bacterial meningitis unspecified,Bacterial meningitis unspecified,Inflammatory diseases of CNS,6,true
+G03.9,Meningitis unspecified,Meningitis unspecified,Inflammatory diseases of CNS,6,true
+G40.9,Epilepsy unspecified,Epilepsy unspecified,Episodic and paroxysmal disorders,6,true
+G43.9,Migraine unspecified,Migraine unspecified,Episodic and paroxysmal disorders,6,true
+H10.9,Conjunctivitis unspecified,Conjunctivitis unspecified,Disorders of conjunctiva,7,true
+H66.9,Otitis media unspecified,Otitis media unspecified,Diseases of middle ear,8,true
+I10,Essential primary hypertension,Essential (primary) hypertension,Hypertensive diseases,9,true
+I11.9,Hypertensive heart disease without heart failure,Hypertensive heart disease without heart failure,Hypertensive diseases,9,true
+I20.9,Angina pectoris unspecified,Angina pectoris unspecified,Ischemic heart diseases,9,true
+I21.9,Acute myocardial infarction unspecified,Acute myocardial infarction unspecified,Ischemic heart diseases,9,true
+I25.9,Chronic ischemic heart disease unspecified,Chronic ischemic heart disease unspecified,Ischemic heart diseases,9,true
+I50.9,Heart failure unspecified,Heart failure unspecified,Heart failure,9,true
+I64,Stroke not specified as hemorrhage or infarction,Stroke not specified as hemorrhage or infarction,Cerebrovascular diseases,9,true
+J00,Acute nasopharyngitis (common cold),Acute nasopharyngitis [common cold],Acute upper respiratory infections,10,true
+J02.9,Acute pharyngitis unspecified,Acute pharyngitis unspecified,Acute upper respiratory infections,10,true
+J03.9,Acute tonsillitis unspecified,Acute tonsillitis unspecified,Acute upper respiratory infections,10,true
+J04.0,Acute laryngitis,Acute laryngitis,Acute upper respiratory infections,10,true
+J06.9,Acute upper respiratory infection unspecified,Acute upper respiratory infection unspecified,Acute upper respiratory infections,10,true
+J10.1,Influenza with other respiratory manifestations,Influenza with other respiratory manifestations due to identified influenza virus,Influenza and pneumonia,10,true
+J11.1,Influenza with other respiratory manifestations unidentified virus,Influenza with other respiratory manifestations virus not identified,Influenza and pneumonia,10,true
+J12.9,Viral pneumonia unspecified,Viral pneumonia unspecified,Influenza and pneumonia,10,true
+J13,Pneumonia due to Streptococcus pneumoniae,Pneumonia due to Streptococcus pneumoniae,Influenza and pneumonia,10,true
+J15.9,Bacterial pneumonia unspecified,Unspecified bacterial pneumonia,Influenza and pneumonia,10,true
+J18.0,Bronchopneumonia unspecified organism,Bronchopneumonia unspecified organism,Influenza and pneumonia,10,true
+J18.9,Pneumonia unspecified organism,Pneumonia unspecified organism,Influenza and pneumonia,10,true
+J20.9,Acute bronchitis unspecified,Acute bronchitis unspecified,Other acute lower respiratory infections,10,true
+J21.9,Acute bronchiolitis unspecified,Acute bronchiolitis unspecified,Other acute lower respiratory infections,10,true
+J22,Unspecified acute lower respiratory infection,Unspecified acute lower respiratory infection,Other acute lower respiratory infections,10,true
+J40,Bronchitis not specified as acute or chronic,Bronchitis not specified as acute or chronic,Chronic lower respiratory diseases,10,true
+J44.9,Chronic obstructive pulmonary disease unspecified,Chronic obstructive pulmonary disease unspecified,Chronic lower respiratory diseases,10,true
+J45.9,Asthma unspecified,Asthma unspecified,Chronic lower respiratory diseases,10,true
+J46,Status asthmaticus,Status asthmaticus,Chronic lower respiratory diseases,10,true
+J90,Pleural effusion NEC,Pleural effusion not elsewhere classified,Diseases of pleura,10,true
+K02.9,Dental caries unspecified,Dental caries unspecified,Diseases of oral cavity,11,true
+K04.7,Periapical abscess without sinus,Periapical abscess without sinus,Diseases of oral cavity,11,true
+K25.9,Gastric ulcer unspecified,Gastric ulcer unspecified as acute or chronic without hemorrhage or perforation,Diseases of esophagus stomach and duodenum,11,true
+K26.9,Duodenal ulcer unspecified,Duodenal ulcer unspecified as acute or chronic without hemorrhage or perforation,Diseases of esophagus stomach and duodenum,11,true
+K29.7,Gastritis unspecified,Gastritis unspecified,Diseases of esophagus stomach and duodenum,11,true
+K30,Functional dyspepsia,Functional dyspepsia,Diseases of esophagus stomach and duodenum,11,true
+K35.8,Acute appendicitis other and unspecified,Acute appendicitis other and unspecified,Diseases of appendix,11,true
+K40.9,Inguinal hernia unspecified without obstruction,Unilateral or unspecified inguinal hernia without obstruction or gangrene,Hernia,11,true
+K52.9,Noninfective gastroenteritis and colitis unspecified,Noninfective gastroenteritis and colitis unspecified,Noninfective enteritis and colitis,11,true
+K59.0,Constipation,Constipation,Other functional intestinal disorders,11,true
+K59.1,Functional diarrhea,Functional diarrhea,Other functional intestinal disorders,11,true
+K70.9,Alcoholic liver disease unspecified,Alcoholic liver disease unspecified,Diseases of liver,11,true
+K74.6,Other and unspecified cirrhosis of liver,Other and unspecified cirrhosis of liver,Diseases of liver,11,true
+K76.0,Fatty liver NEC,Fatty (change of) liver not elsewhere classified,Diseases of liver,11,true
+K80.2,Calculus of gallbladder without cholecystitis,Calculus of gallbladder without cholecystitis,Disorders of gallbladder,11,true
+K81.0,Acute cholecystitis,Acute cholecystitis,Disorders of gallbladder,11,true
+L02.9,Cutaneous abscess furuncle and carbuncle unspecified,Cutaneous abscess furuncle and carbuncle unspecified,Infections of the skin,12,true
+L03.9,Cellulitis unspecified,Cellulitis unspecified,Infections of the skin,12,true
+L08.9,Local infection of skin and subcutaneous tissue unspecified,Local infection of the skin and subcutaneous tissue unspecified,Infections of the skin,12,true
+L20.9,Atopic dermatitis unspecified,Atopic dermatitis unspecified,Dermatitis and eczema,12,true
+L30.9,Dermatitis unspecified,Dermatitis unspecified,Dermatitis and eczema,12,true
+L50.9,Urticaria unspecified,Urticaria unspecified,Urticaria and erythema,12,true
+M54.5,Low back pain,Low back pain,Dorsopathies,13,true
+M79.3,Panniculitis unspecified,Panniculitis unspecified,Soft tissue disorders,13,true
+N10,Acute tubulo-interstitial nephritis,Acute tubulo-interstitial nephritis,Renal tubulo-interstitial diseases,14,true
+N18.9,Chronic kidney disease unspecified,Chronic kidney disease unspecified,Renal failure,14,true
+N30.0,Acute cystitis,Acute cystitis,Other diseases of urinary system,14,true
+N39.0,Urinary tract infection site not specified,Urinary tract infection site not specified,Other diseases of urinary system,14,true
+N76.0,Acute vaginitis,Acute vaginitis,Inflammatory diseases of female pelvic organs,14,true
+O03.9,Spontaneous abortion complete or unspecified without complication,Spontaneous abortion complete or unspecified without complication,Pregnancy with abortive outcome,15,true
+O14.9,Pre-eclampsia unspecified,Pre-eclampsia unspecified,Edema proteinuria and hypertensive disorders in pregnancy,15,true
+O46.9,Antepartum hemorrhage unspecified,Antepartum hemorrhage unspecified,Hemorrhage in early pregnancy,15,true
+O60.1,Preterm labor with preterm delivery,Preterm labor with preterm delivery,Complications of labor and delivery,15,true
+O72.0,Third-stage hemorrhage,Third-stage hemorrhage,Complications of labor and delivery,15,true
+O80,Encounter for full-term uncomplicated delivery,Encounter for full-term uncomplicated delivery,Delivery,15,true
+O99.0,Anemia complicating pregnancy childbirth and puerperium,Anemia complicating pregnancy childbirth and the puerperium,Other obstetric conditions,15,true
+P07.3,Other preterm infants,Other preterm infants,Disorders related to short gestation,16,true
+P22.0,Respiratory distress syndrome of newborn,Respiratory distress syndrome of newborn,Respiratory conditions of newborn,16,true
+P36.9,Bacterial sepsis of newborn unspecified,Bacterial sepsis of newborn unspecified,Infections specific to perinatal period,16,true
+P59.9,Neonatal jaundice unspecified,Neonatal jaundice unspecified,Hemorrhagic and hematological disorders of newborn,16,true
+R05,Cough,Cough,Symptoms involving respiratory system,18,true
+R06.0,Dyspnea,Dyspnea,Symptoms involving respiratory system,18,true
+R10.4,Other and unspecified abdominal pain,Other and unspecified abdominal pain,Symptoms involving digestive system,18,true
+R11,Nausea and vomiting,Nausea and vomiting,Symptoms involving digestive system,18,true
+R19.7,Diarrhea unspecified,Diarrhea unspecified,Symptoms involving digestive system,18,true
+R50.9,Fever unspecified,Fever unspecified,General symptoms and signs,18,true
+R51,Headache,Headache,General symptoms and signs,18,true
+R53,Malaise and fatigue,Malaise and fatigue,General symptoms and signs,18,true
+R56.0,Febrile convulsions,Febrile convulsions,Symptoms involving nervous system,18,true
+S00.9,Superficial injury of head unspecified,Superficial injury of head part unspecified,Injuries to the head,19,true
+S01.9,Open wound of head unspecified,Open wound of head part unspecified,Injuries to the head,19,true
+S06.0,Concussion,Concussion,Injuries to the head,19,true
+S52.9,Fracture of forearm unspecified,Fracture of forearm part unspecified,Injuries to elbow and forearm,19,true
+S82.9,Fracture of lower leg unspecified,Fracture of lower leg part unspecified,Injuries to knee and lower leg,19,true
+T14.9,Injury unspecified,Injury unspecified,Injuries,19,true
+T30.0,Burn of unspecified body region unspecified degree,Burn of unspecified body region unspecified degree,Burns,19,true
+T63.4,Venom of other arthropods,Venom of other arthropods,Effects of venomous animals,19,true
+T78.4,Allergy unspecified,Allergy unspecified,Effects of foreign body,19,true
+W54,Bitten or struck by dog,Bitten or struck by dog,Exposure to animate mechanical forces,20,true
+X58,Exposure to other specified factors,Exposure to other specified factors,Exposure to other and unspecified factors,20,true
+Z00.0,Encounter for general adult medical examination,Encounter for general adult medical examination,Persons encountering health services for examinations,21,true
+Z00.1,Encounter for newborn infant and child health examination,Encounter for routine child health examination,Persons encountering health services for examinations,21,true
+Z23,Encounter for immunization,Encounter for immunization,Persons encountering health services for specific procedures,21,true
+Z34.9,Encounter for supervision of normal pregnancy unspecified,Encounter for supervision of normal pregnancy unspecified,Pregnant state,21,true
+Z38.0,Singleton liveborn in hospital,Singleton liveborn infant delivered in hospital,Liveborn infants,21,true
+Z71.1,Person with feared health complaint,Person with feared health complaint in whom no diagnosis is made,Persons encountering health services for counseling,21,true
