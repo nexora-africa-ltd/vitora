@@ -17,7 +17,13 @@ from hmis.apps.core.views import (
     SubCountyViewSet,
     WardViewSet,
 )
-from hmis.apps.encounters.views import EncounterViewSet
+from hmis.apps.encounters.views import (
+    DiagnosisViewSet,
+    EncounterViewSet,
+    ICD10CodeViewSet,
+    MedicationViewSet,
+    TreatmentPlanView,
+)
 from hmis.apps.patients.views import EmergencyContactViewSet, PatientViewSet
 
 
@@ -33,6 +39,7 @@ router = routers.DefaultRouter()
 router.register(r"patients", PatientViewSet, basename="patient")
 router.register(r"encounters", EncounterViewSet, basename="encounter")
 router.register(r"auditlogs", AuditLogViewSet, basename="auditlog")
+router.register(r"icd10-codes", ICD10CodeViewSet, basename="icd10code")
 
 # Location routes under /api/locations/
 location_router = routers.DefaultRouter()
@@ -57,6 +64,38 @@ urlpatterns = [
             {"get": "retrieve", "put": "update", "patch": "partial_update", "delete": "destroy"}
         ),
         name="patient-emergency-contacts-detail",
+    ),
+    # Nested route for diagnoses under encounters
+    path(
+        "api/encounters/<int:encounter_pk>/diagnoses/",
+        DiagnosisViewSet.as_view({"get": "list", "post": "create"}),
+        name="encounter-diagnoses-list",
+    ),
+    path(
+        "api/encounters/<int:encounter_pk>/diagnoses/<int:pk>/",
+        DiagnosisViewSet.as_view(
+            {"get": "retrieve", "put": "update", "patch": "partial_update", "delete": "destroy"}
+        ),
+        name="encounter-diagnoses-detail",
+    ),
+    # Treatment plan route (single per encounter)
+    path(
+        "api/encounters/<int:encounter_pk>/treatment-plan/",
+        TreatmentPlanView.as_view(),
+        name="encounter-treatment-plan",
+    ),
+    # Medications under treatment plan
+    path(
+        "api/encounters/<int:encounter_pk>/treatment-plan/medications/",
+        MedicationViewSet.as_view({"get": "list", "post": "create"}),
+        name="encounter-medications-list",
+    ),
+    path(
+        "api/encounters/<int:encounter_pk>/treatment-plan/medications/<int:pk>/",
+        MedicationViewSet.as_view(
+            {"get": "retrieve", "put": "update", "patch": "partial_update", "delete": "destroy"}
+        ),
+        name="encounter-medications-detail",
     ),
     path("api-auth/", include("rest_framework.urls", namespace="rest_framework")),
     # JWT Authentication endpoints (using custom view with audit logging)
