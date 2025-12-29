@@ -43,9 +43,20 @@ class ICD10Code(models.Model):
         validators=[icd10_code_validator],
         help_text="ICD-10 code (e.g., A09, J18.9)",
     )
+    short_description = models.CharField(
+        max_length=255,
+        blank=True,
+        default="",
+        help_text="Short description of the diagnosis",
+    )
     description = models.CharField(
         max_length=500,
         help_text="Full description of the diagnosis",
+    )
+    long_description = models.TextField(
+        blank=True,
+        default="",
+        help_text="Detailed long description of the diagnosis",
     )
     category = models.CharField(
         max_length=200,
@@ -53,6 +64,10 @@ class ICD10Code(models.Model):
     )
     chapter = models.IntegerField(
         help_text="ICD-10 chapter number (1-22)",
+    )
+    is_billable = models.BooleanField(
+        default=True,
+        help_text="Whether this is a billable/terminal code",
     )
     is_active = models.BooleanField(
         default=True,
@@ -66,6 +81,7 @@ class ICD10Code(models.Model):
         indexes = [
             models.Index(fields=["code"]),
             models.Index(fields=["chapter"]),
+            models.Index(fields=["short_description"]),
         ]
 
     def __str__(self) -> str:
@@ -409,6 +425,213 @@ class Encounter(models.Model):
         else:
             return "Obese"
 
+    # Vital sign ranges for status classification
+    VITAL_RANGES = {
+        "temperature": {
+            "unit": "°C",
+            "normal": (36.1, 37.2),
+            "warning_low": (35.5, 36.0),
+            "warning_high": (37.3, 38.0),
+            "critical_low": 35.5,
+            "critical_high": 38.0,
+        },
+        "pulse": {
+            "unit": "bpm",
+            "normal": (60, 100),
+            "warning_low": (50, 59),
+            "warning_high": (101, 120),
+            "critical_low": 50,
+            "critical_high": 120,
+        },
+        "bp_systolic": {
+            "unit": "mmHg",
+            "normal": (90, 120),
+            "warning_low": (80, 89),
+            "warning_high": (121, 139),
+            "critical_low": 80,
+            "critical_high": 140,
+        },
+        "bp_diastolic": {
+            "unit": "mmHg",
+            "normal": (60, 80),
+            "warning_low": (50, 59),
+            "warning_high": (81, 89),
+            "critical_low": 50,
+            "critical_high": 90,
+        },
+        "respiratory_rate": {
+            "unit": "/min",
+            "normal": (12, 20),
+            "warning_low": (10, 11),
+            "warning_high": (21, 25),
+            "critical_low": 10,
+            "critical_high": 25,
+        },
+        "spo2": {
+            "unit": "%",
+            "normal": (95, 100),
+            "warning_low": (90, 94),
+            "warning_high": None,
+            "critical_low": 90,
+            "critical_high": None,
+        },
+    }
+
+    def get_vital_status(self, vital_name: str) -> str | None:
+        """
+        Get status ('normal', 'warning', 'critical') for a specific vital sign.
+
+        Args:
+            vital_name: Name of the vital sign (temperature, pulse, bp_systolic,
+                       bp_diastolic, respiratory_rate, spo2)
+
+        Returns:
+            str | None: 'normal', 'warning', or 'critical', or None if not recorded
+
+        Raises:
+            ValueError: If vital_name is not recognized
+        """
+        valid_vitals = list(self.VITAL_RANGES.keys())
+        if vital_name not in valid_vitals:
+            raise ValueError(f"Unknown vital: {vital_name}. Valid options: {valid_vitals}")
+
+        # Get the value
+        if vital_name == "temperature":
+            value = float(self.temperature) if self.temperature else None
+        elif vital_name == "pulse":
+            value = self.pulse
+        elif vital_name == "bp_systolic":
+            value = self.get_systolic_bp()
+        elif vital_name == "bp_diastolic":
+            value = self.get_diastolic_bp()
+        elif vital_name == "respiratory_rate":
+            value = self.respiratory_rate
+        elif vital_name == "spo2":
+            value = float(self.spo2) if self.spo2 else None
+        else:
+            value = None
+
+        if value is None:
+            return None
+
+        ranges = self.VITAL_RANGES[vital_name]
+
+        # Check critical first
+        if ranges.get("critical_low") and value < ranges["critical_low"]:
+            return "critical"
+        if ranges.get("critical_high") and value > ranges["critical_high"]:
+            return "critical"
+
+        # Check warning
+        if ranges.get("warning_low"):
+            low_min, low_max = ranges["warning_low"]
+            if low_min <= value <= low_max:
+                return "warning"
+        if ranges.get("warning_high"):
+            high_min, high_max = ranges["warning_high"]
+            if high_min <= value <= high_max:
+                return "warning"
+
+        # Check normal
+        normal_min, normal_max = ranges["normal"]
+        if normal_min <= value <= normal_max:
+            return "normal"
+
+        # Edge cases - classify as warning if not clearly critical
+        return "warning"
+
+    def get_all_vital_statuses(self) -> dict:
+        """
+        Get status dict for all recorded vitals.
+
+        Returns:
+            dict: Dictionary with vital name as key and dict with
+                  'value', 'status', 'unit' as value (or None if not recorded)
+        """
+        statuses = {}
+
+        # Temperature
+        if self.temperature:
+            statuses["temperature"] = {
+                "value": float(self.temperature),
+                "status": self.get_vital_status("temperature"),
+                "unit": "°C",
+            }
+        else:
+            statuses["temperature"] = None
+
+        # Pulse
+        if self.pulse:
+            statuses["pulse"] = {
+                "value": self.pulse,
+                "status": self.get_vital_status("pulse"),
+                "unit": "bpm",
+            }
+        else:
+            statuses["pulse"] = None
+
+        # Blood pressure systolic
+        systolic = self.get_systolic_bp()
+        if systolic:
+            statuses["bp_systolic"] = {
+                "value": systolic,
+                "status": self.get_vital_status("bp_systolic"),
+                "unit": "mmHg",
+            }
+        else:
+            statuses["bp_systolic"] = None
+
+        # Blood pressure diastolic
+        diastolic = self.get_diastolic_bp()
+        if diastolic:
+            statuses["bp_diastolic"] = {
+                "value": diastolic,
+                "status": self.get_vital_status("bp_diastolic"),
+                "unit": "mmHg",
+            }
+        else:
+            statuses["bp_diastolic"] = None
+
+        # Respiratory rate
+        if self.respiratory_rate:
+            statuses["respiratory_rate"] = {
+                "value": self.respiratory_rate,
+                "status": self.get_vital_status("respiratory_rate"),
+                "unit": "/min",
+            }
+        else:
+            statuses["respiratory_rate"] = None
+
+        # SpO2
+        if self.spo2:
+            statuses["spo2"] = {
+                "value": float(self.spo2),
+                "status": self.get_vital_status("spo2"),
+                "unit": "%",
+            }
+        else:
+            statuses["spo2"] = None
+
+        return statuses
+
+    def get_map(self) -> int | None:
+        """
+        Calculate Mean Arterial Pressure from blood pressure.
+
+        MAP = DBP + 1/3(SBP - DBP)
+
+        Returns:
+            int | None: MAP value rounded to nearest integer, or None if BP not recorded
+        """
+        systolic = self.get_systolic_bp()
+        diastolic = self.get_diastolic_bp()
+
+        if systolic is None or diastolic is None:
+            return None
+
+        map_value = diastolic + (systolic - diastolic) / 3
+        return round(map_value)
+
     def get_vitals_summary(self) -> str:
         """
         Get a formatted summary of all vital signs.
@@ -512,6 +735,13 @@ class Diagnosis(models.Model):
         ("WORKING", "Working Diagnosis"),
     ]
 
+    CERTAINTY_CHOICES = [
+        ("confirmed", "Confirmed"),
+        ("provisional", "Provisional"),
+        ("ruled_out", "Ruled Out"),
+        ("suspected", "Suspected"),
+    ]
+
     # Ordering priority for diagnosis types
     DIAGNOSIS_TYPE_PRIORITY = {
         "PRIMARY": 0,
@@ -554,6 +784,24 @@ class Diagnosis(models.Model):
         default=False,
         help_text="Whether the diagnosis has been confirmed",
     )
+    certainty = models.CharField(
+        max_length=20,
+        choices=CERTAINTY_CHOICES,
+        default="confirmed",
+        help_text="Level of diagnostic certainty",
+    )
+    diagnosed_by = models.ForeignKey(
+        "auth.User",
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="diagnoses_made",
+        help_text="Clinician who made the diagnosis",
+    )
+    diagnosed_at = models.DateTimeField(
+        auto_now_add=True,
+        help_text="When the diagnosis was made",
+    )
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
@@ -565,6 +813,14 @@ class Diagnosis(models.Model):
         verbose_name_plural = "Diagnoses"
         indexes = [
             models.Index(fields=["encounter", "diagnosis_type"]),
+        ]
+        constraints = [
+            # Only one principal/primary diagnosis per encounter
+            models.UniqueConstraint(
+                fields=["encounter"],
+                condition=models.Q(diagnosis_type="PRIMARY"),
+                name="unique_primary_diagnosis_per_encounter",
+            ),
         ]
 
     @classmethod
@@ -634,6 +890,19 @@ class TreatmentPlan(models.Model):
         related_name="treatment_plan",
         help_text="Encounter this treatment plan belongs to",
     )
+    template = models.ForeignKey(
+        "TreatmentPlanTemplate",
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="treatment_plans",
+        help_text="Template used to create this plan",
+    )
+    medications_json = models.TextField(
+        blank=True,
+        default="",
+        help_text="Prescribed medications (JSON format for template imports)",
+    )
     clinical_notes = models.TextField(
         blank=True,
         default="",
@@ -671,6 +940,24 @@ class TreatmentPlan(models.Model):
         """Check if treatment plan has a follow-up scheduled."""
         return self.follow_up_date is not None
 
+    def apply_template(self, template: "TreatmentPlanTemplate"):
+        """
+        Apply a treatment plan template to populate default values.
+
+        Args:
+            template: TreatmentPlanTemplate instance to apply
+        """
+        from datetime import timedelta
+
+        self.template = template
+        if template.default_medications:
+            self.medications_json = template.default_medications
+        if template.default_instructions:
+            self.follow_up_instructions = template.default_instructions
+        if template.follow_up_days:
+            self.follow_up_date = date.today() + timedelta(days=template.follow_up_days)
+        self.save()
+
     def clean(self):
         """Validate treatment plan constraints."""
         super().clean()
@@ -687,6 +974,79 @@ class TreatmentPlan(models.Model):
         """Save with validation."""
         self.full_clean()
         super().save(*args, **kwargs)
+
+
+class TreatmentPlanTemplate(models.Model):
+    """
+    Reusable treatment plan templates.
+
+    Templates can be linked to specific diagnoses and contain
+    default medications, instructions, and follow-up schedules.
+    """
+
+    name = models.CharField(
+        max_length=200,
+        help_text="Template name",
+    )
+    description = models.TextField(
+        blank=True,
+        default="",
+        help_text="Template description",
+    )
+    diagnosis_codes = models.ManyToManyField(
+        ICD10Code,
+        blank=True,
+        related_name="treatment_templates",
+        help_text="Suggested diagnoses for this template",
+    )
+    default_medications = models.TextField(
+        blank=True,
+        default="",
+        help_text="Default medications (JSON format)",
+    )
+    default_procedures = models.TextField(
+        blank=True,
+        default="",
+        help_text="Default procedures (JSON format)",
+    )
+    default_instructions = models.TextField(
+        blank=True,
+        default="",
+        help_text="Default patient instructions",
+    )
+    follow_up_days = models.PositiveIntegerField(
+        null=True,
+        blank=True,
+        help_text="Suggested follow-up in days",
+    )
+    department = models.CharField(
+        max_length=100,
+        blank=True,
+        default="",
+        help_text="Department this template is for",
+    )
+    is_active = models.BooleanField(
+        default=True,
+        help_text="Whether this template is currently active",
+    )
+    created_by = models.ForeignKey(
+        "auth.User",
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="created_treatment_templates",
+        help_text="User who created this template",
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ["name"]
+        verbose_name = "Treatment Plan Template"
+        verbose_name_plural = "Treatment Plan Templates"
+
+    def __str__(self) -> str:
+        return self.name
 
 
 class Medication(models.Model):
