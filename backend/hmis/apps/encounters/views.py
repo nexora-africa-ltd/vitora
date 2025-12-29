@@ -3,14 +3,137 @@ Views for the encounters app.
 """
 
 from django_filters.rest_framework import DjangoFilterBackend
-from rest_framework import filters, viewsets
+from rest_framework import filters, status, viewsets
+from rest_framework.decorators import action
 from rest_framework.permissions import IsAuthenticated
+from rest_framework.response import Response
+from rest_framework.views import APIView
 
 from hmis.apps.core.models import AuditLog
 from hmis.apps.core.permissions import get_client_ip
 
-from .models import Encounter
-from .serializers import EncounterListSerializer, EncounterSerializer
+from .models import Diagnosis, Encounter, ICD10Code, Medication, TreatmentPlan
+from .serializers import (
+    DiagnosisSerializer,
+    EncounterListSerializer,
+    EncounterSerializer,
+    ICD10CodeSerializer,
+    MedicationSerializer,
+    TreatmentPlanSerializer,
+)
+
+
+class ICD10CodeViewSet(viewsets.ReadOnlyModelViewSet):
+    """
+    ViewSet for ICD-10 codes (read-only).
+
+    Provides search and filtering for ICD-10 code lookup.
+
+    Endpoints:
+    - GET /api/icd10-codes/ - List/search ICD-10 codes
+    - GET /api/icd10-codes/{id}/ - Retrieve an ICD-10 code
+    """
+
+    queryset = ICD10Code.objects.filter(is_active=True)
+    serializer_class = ICD10CodeSerializer
+    permission_classes = [IsAuthenticated]
+    filter_backends = [DjangoFilterBackend, filters.SearchFilter, filters.OrderingFilter]
+    filterset_fields = ["chapter", "category"]
+    search_fields = ["code", "description", "category"]
+    ordering_fields = ["code", "description"]
+    ordering = ["code"]
+
+
+class DiagnosisViewSet(viewsets.ModelViewSet):
+    """
+    ViewSet for Diagnosis model.
+
+    Provides CRUD operations for encounter diagnoses.
+
+    Endpoints:
+    - GET /api/encounters/{encounter_id}/diagnoses/ - List diagnoses
+    - POST /api/encounters/{encounter_id}/diagnoses/ - Create diagnosis
+    - GET /api/encounters/{encounter_id}/diagnoses/{id}/ - Retrieve
+    - PUT /api/encounters/{encounter_id}/diagnoses/{id}/ - Update
+    - DELETE /api/encounters/{encounter_id}/diagnoses/{id}/ - Delete
+    """
+
+    serializer_class = DiagnosisSerializer
+    permission_classes = [IsAuthenticated]
+    filter_backends = [DjangoFilterBackend, filters.OrderingFilter]
+    filterset_fields = ["diagnosis_type", "is_confirmed"]
+    ordering_fields = ["diagnosis_type", "created_at"]
+    ordering = ["created_at"]
+
+    def get_queryset(self):
+        """Filter diagnoses by encounter."""
+        encounter_id = self.kwargs.get("encounter_pk")
+        return Diagnosis.objects.filter(encounter_id=encounter_id).select_related("icd10_code")
+
+    def get_serializer_context(self):
+        """Add encounter to serializer context."""
+        context = super().get_serializer_context()
+        context["encounter_pk"] = self.kwargs.get("encounter_pk")
+        return context
+
+    def create(self, request, *args, **kwargs):
+        """Create diagnosis with encounter from URL."""
+        encounter_pk = self.kwargs.get("encounter_pk")
+
+        # Verify encounter exists
+        try:
+            encounter = Encounter.objects.get(pk=encounter_pk)
+        except Encounter.DoesNotExist:
+            return Response(
+                {"detail": "Encounter not found."},
+                status=status.HTTP_404_NOT_FOUND,
+            )
+
+        # Add encounter to data
+        data = request.data.copy()
+        data["encounter"] = encounter_pk
+
+        serializer = self.get_serializer(data=data)
+        serializer.is_valid(raise_exception=True)
+        self.perform_create(serializer)
+
+        # Audit log
+        AuditLog.log(
+            action="diagnosis_create",
+            user=request.user,
+            resource_type="Diagnosis",
+            resource_id=serializer.data.get("id"),
+            ip_address=get_client_ip(request),
+            user_agent=request.META.get("HTTP_USER_AGENT", ""),
+            patient_id=encounter.patient_id,
+            details={"diagnosis_type": serializer.data.get("diagnosis_type")},
+        )
+
+        headers = self.get_success_headers(serializer.data)
+        return Response(serializer.data, status=status.HTTP_201_CREATED, headers=headers)
+
+    def destroy(self, request, *args, **kwargs):
+        """Delete diagnosis with audit logging."""
+        diagnosis = self.get_object()
+        diagnosis_id = diagnosis.id
+        patient_id = diagnosis.encounter.patient_id
+        diagnosis_type = diagnosis.diagnosis_type
+
+        response = super().destroy(request, *args, **kwargs)
+
+        if response.status_code == 204:
+            AuditLog.log(
+                action="diagnosis_delete",
+                user=request.user,
+                resource_type="Diagnosis",
+                resource_id=diagnosis_id,
+                ip_address=get_client_ip(request),
+                user_agent=request.META.get("HTTP_USER_AGENT", ""),
+                patient_id=patient_id,
+                details={"diagnosis_type": diagnosis_type},
+            )
+
+        return response
 
 
 class EncounterViewSet(viewsets.ModelViewSet):
@@ -155,3 +278,189 @@ class EncounterViewSet(viewsets.ModelViewSet):
             )
 
         return response
+
+
+class TreatmentPlanView(APIView):
+    """
+    View for Treatment Plan operations.
+
+    Supports GET, POST, PUT, PATCH for single treatment plan per encounter.
+
+    Endpoints:
+    - GET /api/encounters/{encounter_id}/treatment-plan/ - Get treatment plan
+    - POST /api/encounters/{encounter_id}/treatment-plan/ - Create treatment plan
+    - PUT/PATCH /api/encounters/{encounter_id}/treatment-plan/ - Update treatment plan
+    """
+
+    permission_classes = [IsAuthenticated]
+
+    def _get_encounter(self, encounter_pk):
+        """Get encounter or return 404."""
+        try:
+            return Encounter.objects.get(pk=encounter_pk)
+        except Encounter.DoesNotExist:
+            return None
+
+    def get(self, request, encounter_pk):
+        """Get treatment plan for encounter."""
+        encounter = self._get_encounter(encounter_pk)
+        if not encounter:
+            return Response(
+                {"detail": "Encounter not found."},
+                status=status.HTTP_404_NOT_FOUND,
+            )
+
+        try:
+            plan = TreatmentPlan.objects.get(encounter=encounter)
+            serializer = TreatmentPlanSerializer(plan)
+            return Response(serializer.data)
+        except TreatmentPlan.DoesNotExist:
+            return Response(
+                {"detail": "Treatment plan not found."},
+                status=status.HTTP_404_NOT_FOUND,
+            )
+
+    def post(self, request, encounter_pk):
+        """Create treatment plan for encounter."""
+        encounter = self._get_encounter(encounter_pk)
+        if not encounter:
+            return Response(
+                {"detail": "Encounter not found."},
+                status=status.HTTP_404_NOT_FOUND,
+            )
+
+        # Check if plan already exists
+        if TreatmentPlan.objects.filter(encounter=encounter).exists():
+            return Response(
+                {"detail": "Treatment plan already exists for this encounter."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        data = request.data.copy()
+        data["encounter"] = encounter_pk
+
+        serializer = TreatmentPlanSerializer(data=data)
+        serializer.is_valid(raise_exception=True)
+        serializer.save()
+
+        # Audit log
+        AuditLog.log(
+            action="treatment_plan_create",
+            user=request.user,
+            resource_type="TreatmentPlan",
+            resource_id=serializer.data.get("id"),
+            ip_address=get_client_ip(request),
+            user_agent=request.META.get("HTTP_USER_AGENT", ""),
+            patient_id=encounter.patient_id,
+        )
+
+        return Response(serializer.data, status=status.HTTP_201_CREATED)
+
+    def patch(self, request, encounter_pk):
+        """Partially update treatment plan."""
+        encounter = self._get_encounter(encounter_pk)
+        if not encounter:
+            return Response(
+                {"detail": "Encounter not found."},
+                status=status.HTTP_404_NOT_FOUND,
+            )
+
+        try:
+            plan = TreatmentPlan.objects.get(encounter=encounter)
+        except TreatmentPlan.DoesNotExist:
+            return Response(
+                {"detail": "Treatment plan not found."},
+                status=status.HTTP_404_NOT_FOUND,
+            )
+
+        serializer = TreatmentPlanSerializer(plan, data=request.data, partial=True)
+        serializer.is_valid(raise_exception=True)
+        serializer.save()
+
+        # Audit log
+        AuditLog.log(
+            action="treatment_plan_update",
+            user=request.user,
+            resource_type="TreatmentPlan",
+            resource_id=plan.id,
+            ip_address=get_client_ip(request),
+            user_agent=request.META.get("HTTP_USER_AGENT", ""),
+            patient_id=encounter.patient_id,
+        )
+
+        return Response(serializer.data)
+
+    def put(self, request, encounter_pk):
+        """Full update of treatment plan."""
+        return self.patch(request, encounter_pk)
+
+
+class MedicationViewSet(viewsets.ModelViewSet):
+    """
+    ViewSet for Medication model.
+
+    Provides CRUD operations for treatment plan medications.
+
+    Endpoints:
+    - GET /api/encounters/{encounter_id}/treatment-plan/medications/ - List
+    - POST /api/encounters/{encounter_id}/treatment-plan/medications/ - Create
+    - GET /api/encounters/{encounter_id}/treatment-plan/medications/{id}/ - Retrieve
+    - PUT /api/encounters/{encounter_id}/treatment-plan/medications/{id}/ - Update
+    - DELETE /api/encounters/{encounter_id}/treatment-plan/medications/{id}/ - Delete
+    """
+
+    serializer_class = MedicationSerializer
+    permission_classes = [IsAuthenticated]
+    filter_backends = [filters.OrderingFilter]
+    ordering_fields = ["name", "created_at"]
+    ordering = ["name"]
+
+    def _get_treatment_plan(self, encounter_pk):
+        """Get treatment plan for encounter."""
+        try:
+            encounter = Encounter.objects.get(pk=encounter_pk)
+            return TreatmentPlan.objects.get(encounter=encounter)
+        except (Encounter.DoesNotExist, TreatmentPlan.DoesNotExist):
+            return None
+
+    def get_queryset(self):
+        """Filter medications by treatment plan."""
+        encounter_pk = self.kwargs.get("encounter_pk")
+        plan = self._get_treatment_plan(encounter_pk)
+        if plan:
+            return Medication.objects.filter(treatment_plan=plan)
+        return Medication.objects.none()
+
+    def create(self, request, *args, **kwargs):
+        """Create medication with treatment plan from URL."""
+        encounter_pk = self.kwargs.get("encounter_pk")
+        plan = self._get_treatment_plan(encounter_pk)
+
+        if not plan:
+            return Response(
+                {"detail": "Treatment plan not found for this encounter."},
+                status=status.HTTP_404_NOT_FOUND,
+            )
+
+        data = request.data.copy()
+        data["treatment_plan"] = plan.id
+
+        serializer = self.get_serializer(data=data)
+        serializer.is_valid(raise_exception=True)
+        self.perform_create(serializer)
+
+        # Audit log
+        AuditLog.log(
+            action="medication_create",
+            user=request.user,
+            resource_type="Medication",
+            resource_id=serializer.data.get("id"),
+            ip_address=get_client_ip(request),
+            user_agent=request.META.get("HTTP_USER_AGENT", ""),
+            patient_id=plan.encounter.patient_id,
+            details={"medication_name": serializer.data.get("name")},
+        )
+
+        headers = self.get_success_headers(serializer.data)
+        return Response(serializer.data, status=status.HTTP_201_CREATED, headers=headers)
+
