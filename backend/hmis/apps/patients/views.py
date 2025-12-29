@@ -165,14 +165,23 @@ class PatientViewSet(viewsets.ModelViewSet):
             - start_date: Filter encounters from this date (YYYY-MM-DD)
             - end_date: Filter encounters until this date (YYYY-MM-DD)
             - encounter_type: Filter by type (comma-separated: OPD,IPD,EMERGENCY)
-            - page: Page number for pagination
+            - page: Page number for pagination (enables pagination)
             - page_size: Results per page (default 20, max 100)
+            - include_vitals: Include vitals_summary (default: true)
+            - include_diagnoses: Include diagnoses (default: true)
+            - include_treatment: Include treatment_plan (default: true)
+            - include_alerts: Include alerts (default: true)
 
         Returns:
             - patient: Patient information
             - timeline: List of encounters ordered by date (newest first)
             - statistics: Summary statistics including most common diagnosis
+            - pagination: Pagination info (only when page param provided)
         """
+        from datetime import timedelta
+
+        from hmis.apps.encounters.models import Diagnosis, TreatmentPlan
+
         patient = self.get_object()
 
         # Get encounters for this patient
@@ -204,9 +213,15 @@ class PatientViewSet(viewsets.ModelViewSet):
 
         encounters = encounters.order_by("-encounter_date")
 
-        # Calculate statistics
+        # Parse include toggles (default all to True)
+        include_vitals = request.query_params.get("include_vitals", "true").lower() == "true"
+        include_diagnoses = request.query_params.get("include_diagnoses", "true").lower() == "true"
+        include_treatment = request.query_params.get("include_treatment", "true").lower() == "true"
+        include_alerts = request.query_params.get("include_alerts", "true").lower() == "true"
+
+        # Calculate statistics (before pagination)
+        total_count = encounters.count()
         stats = encounters.aggregate(
-            total_count=Count("id"),
             first_encounter=Min("encounter_date"),
             last_encounter=Max("encounter_date"),
         )
@@ -218,8 +233,6 @@ class PatientViewSet(viewsets.ModelViewSet):
         critical_count = sum(1 for e in encounters if e.has_critical_vitals())
 
         # Calculate most common diagnosis
-        from hmis.apps.encounters.models import Diagnosis
-
         most_common_diag = (
             Diagnosis.objects.filter(encounter__patient=patient)
             .values("icd10_code__code", "icd10_code__description")
@@ -234,6 +247,77 @@ class PatientViewSet(viewsets.ModelViewSet):
                 "description": most_common_diag["icd10_code__description"],
                 "count": most_common_diag["count"],
             }
+
+        # Calculate follow-up compliance
+        def calculate_followup_compliance() -> dict | None:
+            """Calculate follow-up compliance rate."""
+            plans_with_followup = TreatmentPlan.objects.filter(
+                encounter__patient=patient,
+                follow_up_date__isnull=False
+            ).select_related("encounter")
+
+            if not plans_with_followup.exists():
+                return None
+
+            scheduled = 0
+            completed = 0
+
+            for plan in plans_with_followup:
+                scheduled += 1
+                followup_window_start = plan.follow_up_date - timedelta(days=7)
+                followup_window_end = plan.follow_up_date + timedelta(days=7)
+
+                # Check if a subsequent encounter exists in the window
+                followup_exists = Encounter.objects.filter(
+                    patient=patient,
+                    encounter_date__gte=followup_window_start,
+                    encounter_date__lte=followup_window_end,
+                    encounter_date__gt=plan.encounter.encounter_date  # Must be after original
+                ).exists()
+
+                if followup_exists:
+                    completed += 1
+
+            if scheduled == 0:
+                return None
+
+            return {
+                "rate": round((completed / scheduled) * 100, 1),
+                "completed": completed,
+                "scheduled": scheduled,
+            }
+
+        # Apply pagination if page param provided
+        pagination_info = None
+        page = request.query_params.get("page")
+        
+        # Add select_related and prefetch_related before pagination
+        encounters = encounters.select_related("patient").prefetch_related(
+            "diagnoses__icd10_code", "treatment_plan__medications"
+        )
+        
+        if page:
+            try:
+                page_num = int(page)
+                page_size = int(request.query_params.get("page_size", 20))
+                page_size = min(page_size, 100)  # Cap at 100
+
+                total_pages = (total_count + page_size - 1) // page_size if total_count > 0 else 1
+                offset = (page_num - 1) * page_size
+
+                # Slice the queryset for pagination (convert to list to preserve order)
+                encounters = list(encounters[offset:offset + page_size])
+
+                pagination_info = {
+                    "page": page_num,
+                    "page_size": page_size,
+                    "total_pages": total_pages,
+                    "total_items": total_count,
+                    "has_next": page_num < total_pages,
+                    "has_previous": page_num > 1,
+                }
+            except ValueError:
+                pass  # Invalid page number, ignore pagination
 
         def build_vitals_summary(encounter: Encounter) -> dict:
             """Build vitals summary with status for each vital."""
@@ -318,22 +402,26 @@ class PatientViewSet(viewsets.ModelViewSet):
             return []
 
         timeline_items = []
-        for encounter in encounters.select_related("patient").prefetch_related(
-            "diagnoses__icd10_code", "treatment_plan__medications"
-        ):
-            timeline_items.append(
-                {
-                    "encounter_id": encounter.id,
-                    "encounter_date": encounter.encounter_date,
-                    "encounter_type": encounter.encounter_type,
-                    "chief_complaint": encounter.chief_complaint,
-                    "has_critical_vitals": encounter.has_critical_vitals(),
-                    "vitals_summary": build_vitals_summary(encounter),
-                    "diagnoses": build_diagnoses(encounter),
-                    "treatment_plan": build_treatment_plan(encounter),
-                    "alerts": build_alerts(encounter),
-                }
-            )
+        for encounter in encounters:
+            timeline_item = {
+                "encounter_id": encounter.id,
+                "encounter_date": encounter.encounter_date,
+                "encounter_type": encounter.encounter_type,
+                "chief_complaint": encounter.chief_complaint,
+                "has_critical_vitals": encounter.has_critical_vitals(),
+            }
+
+            # Conditionally include optional fields based on toggles
+            if include_vitals:
+                timeline_item["vitals_summary"] = build_vitals_summary(encounter)
+            if include_diagnoses:
+                timeline_item["diagnoses"] = build_diagnoses(encounter)
+            if include_treatment:
+                timeline_item["treatment_plan"] = build_treatment_plan(encounter)
+            if include_alerts:
+                timeline_item["alerts"] = build_alerts(encounter)
+
+            timeline_items.append(timeline_item)
 
         # Build response
         timeline_data = {
@@ -347,7 +435,7 @@ class PatientViewSet(viewsets.ModelViewSet):
             },
             "timeline": timeline_items,
             "statistics": {
-                "total_encounters": stats["total_count"] or 0,
+                "total_encounters": total_count,
                 "first_encounter_date": stats["first_encounter"],
                 "last_encounter_date": stats["last_encounter"],
                 "encounters_with_critical_vitals": critical_count,
@@ -355,8 +443,13 @@ class PatientViewSet(viewsets.ModelViewSet):
                     item["encounter_type"]: item["count"] for item in type_breakdown
                 },
                 "most_common_diagnosis": most_common_diagnosis,
+                "follow_up_compliance": calculate_followup_compliance(),
             },
         }
+
+        # Add pagination info if pagination was applied
+        if pagination_info:
+            timeline_data["pagination"] = pagination_info
 
         # Log the timeline view
         AuditLog.log(
