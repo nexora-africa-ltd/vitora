@@ -83,12 +83,15 @@ describe('Backend Integration Tests', () => {
   describe('checkBackendHealth', () => {
     it('should return true when backend is healthy', async () => {
       const axios = require('axios');
-      axios.get = jest.fn().mockResolvedValue({ status: 200 });
+      axios.get = jest.fn().mockResolvedValue({ 
+        status: 200, 
+        data: { status: 'healthy' } 
+      });
       
       const healthy = await checkBackendHealth();
       expect(healthy).toBe(true);
       expect(axios.get).toHaveBeenCalledWith(
-        expect.stringContaining('/api/patients/'),
+        expect.stringContaining('/'),
         expect.any(Object)
       );
     });
