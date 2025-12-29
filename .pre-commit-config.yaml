@@ -1,0 +1,72 @@
+# Pre-commit hooks for Vitora HMIS
+# Matches the "All Quality Checks (Pre-commit)" section in backend/README.md.
+#
+# Install once:
+#   cd backend && poetry install
+#   poetry run pre-commit install
+#   poetry run pre-commit install --hook-type pre-push
+#
+# Run manually:
+#   poetry run pre-commit run --all-files
+
+repos:
+  # Basic hygiene
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v5.0.0
+    hooks:
+      - id: end-of-file-fixer
+      - id: trailing-whitespace
+      - id: check-merge-conflict
+      - id: check-yaml
+
+  # Python: Ruff (lint + import rules)
+  - repo: https://github.com/astral-sh/ruff-pre-commit
+    rev: v0.8.6
+    hooks:
+      - id: ruff
+        args: [--fix]
+        files: ^backend/.*\.py$
+      - id: ruff-format
+        files: ^backend/.*\.py$
+
+  # Python: Black
+  - repo: https://github.com/psf/black
+    rev: 24.10.0
+    hooks:
+      - id: black
+        files: ^backend/.*\.py$
+
+  # Python: isort
+  - repo: https://github.com/pycqa/isort
+    rev: 5.13.2
+    hooks:
+      - id: isort
+        files: ^backend/.*\.py$
+
+  # Python: mypy
+  - repo: https://github.com/pre-commit/mirrors-mypy
+    rev: v1.14.1
+    hooks:
+      - id: mypy
+        files: ^backend/.*\.py$
+        additional_dependencies:
+          - django-stubs
+          - djangorestframework-stubs
+          - types-python-dateutil
+
+  # Python: bandit security scan
+  - repo: https://github.com/PyCQA/bandit
+    rev: 1.7.10
+    hooks:
+      - id: bandit
+        args: [-r, backend/hmis, -c, backend/pyproject.toml]
+
+  # Python: tests + coverage on push (keeps commit fast but blocks bad pushes)
+  - repo: local
+    hooks:
+      - id: backend-pytest-cov
+        name: backend pytest + coverage (>=80%)
+        entry: bash -lc 'cd backend && poetry run pytest --cov=hmis --cov-fail-under=80'
+        language: system
+        pass_filenames: false
+        stages: [pre-push]

@@ -54,6 +54,7 @@ sphinx-rtd-theme = "^2.0"
 # Development Tools
 ipython = "^8.20"
 ipdb = "^0.13"
+pre-commit = "^4.5.1"
 
 [tool.pytest.ini_options]
 DJANGO_SETTINGS_MODULE = "hmis.settings.test"
