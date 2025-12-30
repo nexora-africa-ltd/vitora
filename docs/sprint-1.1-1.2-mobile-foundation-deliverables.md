@@ -140,16 +140,16 @@ Sprint 1.1-1.2 Track B establishes the React Native mobile application foundatio
 - [x] ✅ **Checkpoint**: All UI components render correctly
 
 #### Day 15: Patient Components
-- [ ] Create `components/patients/PatientCard.tsx`
-- [ ] Create `components/patients/PatientList.tsx`
-- [ ] Create `components/patients/PatientSearch.tsx`
-- [ ] Create `components/patients/PatientForm.tsx`
-- [ ] Create `hooks/usePatients.ts` with TanStack Query
-- [ ] Create `hooks/usePatient.ts` for single patient
-- [ ] Create `hooks/useCreatePatient.ts` mutation
-- [ ] Create `hooks/useUpdatePatient.ts` mutation
-- [ ] Write 10 patient component tests
-- [ ] ✅ **Checkpoint**: Patient list renders with search
+- [x] Create `components/patients/PatientCard.tsx`
+- [x] Create `components/patients/PatientList.tsx`
+- [x] Create `components/patients/PatientSearch.tsx`
+- [x] Create `components/patients/PatientForm.tsx`
+- [x] Create `hooks/usePatients.ts` with TanStack Query
+- [x] Create `hooks/usePatient.ts` for single patient
+- [x] Create `hooks/useCreatePatient.ts` mutation
+- [x] Create `hooks/useUpdatePatient.ts` mutation
+- [x] Write 10 patient component tests (18 tests written)
+- [x] ✅ **Checkpoint**: Patient list renders with search
 
 ### Week 4: Sync Foundation & Polish
 
