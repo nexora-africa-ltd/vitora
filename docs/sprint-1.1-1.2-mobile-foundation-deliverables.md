@@ -100,15 +100,15 @@ Sprint 1.1-1.2 Track B establishes the React Native mobile application foundatio
 - [x] ✅ **Checkpoint**: Login works, session persists
 
 #### Day 10: API Client with Interceptors
-- [ ] Install axios
-- [ ] Create `lib/api/client.ts` with base configuration
-- [ ] Implement request interceptor for auth header injection
-- [ ] Implement response interceptor for 401 handling
-- [ ] Implement token refresh queue (concurrent request handling)
-- [ ] Create `lib/api/patients.ts` with CRUD methods
-- [ ] Create `lib/api/locations.ts` for counties/sub-counties
-- [ ] Write 12 API client tests
-- [ ] ✅ **Checkpoint**: API calls work with auto token refresh
+- [x] Install axios
+- [x] Create `lib/api/client.ts` with base configuration
+- [x] Implement request interceptor for auth header injection
+- [x] Implement response interceptor for 401 handling
+- [x] Implement token refresh queue (concurrent request handling)
+- [x] Create `lib/api/patients.ts` with CRUD methods
+- [x] Create `lib/api/locations.ts` for counties/sub-counties
+- [x] Write 12 API client tests (37 tests written - 16 client + 11 patients + 10 locations)
+- [x] ✅ **Checkpoint**: API calls work with auto token refresh
 
 ### Week 3: Navigation & UI Components
 
