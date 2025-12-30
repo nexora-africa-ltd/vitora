@@ -113,31 +113,31 @@ Sprint 1.1-1.2 Track B establishes the React Native mobile application foundatio
 ### Week 3: Navigation & UI Components
 
 #### Day 11-12: Navigation Structure
-- [ ] Install expo-router
-- [ ] Create `app/_layout.tsx` root layout with providers
-- [ ] Create `app/index.tsx` entry redirect
-- [ ] Create `app/(auth)/_layout.tsx` auth group layout
-- [ ] Create `app/(auth)/login.tsx` login screen
-- [ ] Create `app/(main)/_layout.tsx` with auth guard
-- [ ] Create `app/(main)/index.tsx` dashboard
-- [ ] Create `app/(main)/patients/index.tsx` patient list
-- [ ] Create `app/(main)/patients/[id].tsx` patient detail
-- [ ] Create `app/(main)/settings.tsx` settings screen
-- [ ] Write 10 navigation tests
-- [ ] ✅ **Checkpoint**: Navigation works with auth protection
+- [x] Install expo-router (already included in project)
+- [x] Create `app/_layout.tsx` root layout with providers
+- [x] Create `app/index.tsx` entry redirect
+- [x] Create `app/(auth)/_layout.tsx` auth group layout
+- [x] Create `app/(auth)/login.tsx` login screen
+- [x] Create `app/(main)/_layout.tsx` with auth guard
+- [x] Create `app/(main)/index.tsx` dashboard
+- [x] Create `app/(main)/patients/index.tsx` patient list
+- [x] Create `app/(main)/patients/[id].tsx` patient detail
+- [x] Create `app/(main)/settings.tsx` settings screen
+- [x] Write 10 navigation tests (25 tests written)
+- [x] ✅ **Checkpoint**: Navigation works with auth protection
 
 #### Day 13-14: Core UI Components
-- [ ] Create `components/ui/Button.tsx` (primary/secondary/danger)
-- [ ] Create `components/ui/Input.tsx` (text/phone/date)
-- [ ] Create `components/ui/Card.tsx` base card
-- [ ] Create `components/ui/LoadingSpinner.tsx`
-- [ ] Create `components/ui/EmptyState.tsx`
-- [ ] Create `components/ui/ErrorBoundary.tsx`
-- [ ] Create `components/ui/OfflineBanner.tsx`
-- [ ] Create `constants/colors.ts` design tokens
-- [ ] Create `constants/theme.ts` theme configuration
-- [ ] Write 15 component tests
-- [ ] ✅ **Checkpoint**: All UI components render correctly
+- [x] Create `components/ui/Button.tsx` (primary/secondary/danger)
+- [x] Create `components/ui/Input.tsx` (text/phone/date)
+- [x] Create `components/ui/Card.tsx` base card
+- [x] Create `components/ui/LoadingSpinner.tsx`
+- [x] Create `components/ui/EmptyState.tsx`
+- [x] Create `components/ui/ErrorBoundary.tsx`
+- [x] Create `components/ui/OfflineBanner.tsx`
+- [x] Create `constants/colors.ts` design tokens (already existed)
+- [x] Create `constants/theme.ts` theme configuration (already existed)
+- [x] Write 15 component tests (24 tests written)
+- [x] ✅ **Checkpoint**: All UI components render correctly
 
 #### Day 15: Patient Components
 - [ ] Create `components/patients/PatientCard.tsx`
