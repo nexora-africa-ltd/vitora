@@ -78,15 +78,15 @@ Sprint 1.1-1.2 Track B establishes the React Native mobile application foundatio
 ### Week 2: Authentication & API Client
 
 #### Day 6-7: Secure Token Storage
-- [ ] Install expo-secure-store
-- [ ] Create `lib/auth/storage.ts` with token methods
-- [ ] Implement `setTokens()` for access + refresh tokens
-- [ ] Implement `getAccessToken()` and `getRefreshToken()`
-- [ ] Implement `setUser()` and `getUser()`
-- [ ] Implement `clearAll()` for logout
-- [ ] Implement `isAuthenticated()` check
-- [ ] Write 6 secure storage tests
-- [ ] ✅ **Checkpoint**: Tokens persist across app restarts
+- [x] Install expo-secure-store
+- [x] Create `lib/auth/storage.ts` with token methods
+- [x] Implement `setTokens()` for access + refresh tokens
+- [x] Implement `getAccessToken()` and `getRefreshToken()`
+- [x] Implement `setUser()` and `getUser()`
+- [x] Implement `clearAll()` for logout
+- [x] Implement `isAuthenticated()` check
+- [x] Write 6 secure storage tests (17 tests written)
+- [x] ✅ **Checkpoint**: Tokens persist across app restarts
 
 #### Day 8-9: Auth Context & Login Flow
 - [ ] Create `lib/auth/context.tsx` AuthProvider
