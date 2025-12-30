@@ -64,16 +64,16 @@ Sprint 1.1-1.2 Track B establishes the React Native mobile application foundatio
 - [x] ✅ **Checkpoint**: Database initializes, models work
 
 #### Day 5: Patient Repository
-- [ ] Create `lib/db/repositories/patientRepository.ts`
-- [ ] Implement `getAll()` with pagination
-- [ ] Implement `search()` by name/MRN/phone
-- [ ] Implement `getById()` and `getByMrn()`
-- [ ] Implement `create()` with sync queue integration
-- [ ] Implement `update()` with sync queue integration
-- [ ] Implement `delete()` (soft delete) with sync queue
-- [ ] Implement `getUnsyncedCount()`
-- [ ] Write 20 patient storage tests
-- [ ] ✅ **Checkpoint**: All CRUD operations work offline
+- [x] Create `lib/db/repositories/patientRepository.ts`
+- [x] Implement `getAll()` with pagination
+- [x] Implement `search()` by name/MRN/phone
+- [x] Implement `getById()` and `getByMrn()`
+- [x] Implement `create()` with sync queue integration
+- [x] Implement `update()` with sync queue integration
+- [x] Implement `delete()` (soft delete) with sync queue
+- [x] Implement `getUnsyncedCount()`
+- [x] Write 20 patient storage tests (22 tests written)
+- [x] ✅ **Checkpoint**: All CRUD operations work offline
 
 ### Week 2: Authentication & API Client
 
