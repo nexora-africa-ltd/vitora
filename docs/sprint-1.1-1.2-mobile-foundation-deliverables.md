@@ -52,16 +52,16 @@ Sprint 1.1-1.2 Track B establishes the React Native mobile application foundatio
 - [x] ✅ **Checkpoint**: `npm test` passes, app launches on emulator
 
 #### Day 3-4: WatermelonDB Setup
-- [ ] Install WatermelonDB and expo-sqlite dependencies
-- [ ] Create `lib/db/schema.ts` with patients table schema
-- [ ] Create `lib/db/schema.ts` with sync_queue table schema
-- [ ] Create `lib/db/schema.ts` with counties/sub_counties tables
-- [ ] Create `lib/db/models/Patient.ts` model class
-- [ ] Create `lib/db/models/SyncQueue.ts` model class
-- [ ] Create `lib/db/index.ts` database initialization
-- [ ] Create `lib/db/context.tsx` DatabaseProvider
-- [ ] Write 15 database tests (schema, CRUD, persistence)
-- [ ] ✅ **Checkpoint**: Database initializes, models work
+- [x] Install WatermelonDB and expo-sqlite dependencies
+- [x] Create `lib/db/schema.ts` with patients table schema
+- [x] Create `lib/db/schema.ts` with sync_queue table schema
+- [x] Create `lib/db/schema.ts` with counties/sub_counties tables
+- [x] Create `lib/db/models/Patient.ts` model class
+- [x] Create `lib/db/models/SyncQueue.ts` model class
+- [x] Create `lib/db/index.ts` database initialization
+- [x] Create `lib/db/context.tsx` DatabaseProvider
+- [x] Write 15 database tests (schema, CRUD, persistence)
+- [x] ✅ **Checkpoint**: Database initializes, models work
 
 #### Day 5: Patient Repository
 - [ ] Create `lib/db/repositories/patientRepository.ts`
