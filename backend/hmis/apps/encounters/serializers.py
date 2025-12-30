@@ -264,6 +264,10 @@ class EncounterSerializer(serializers.ModelSerializer):
     patient_mrn = serializers.CharField(source="patient.mrn", read_only=True)
     patient_name = serializers.CharField(source="patient.full_name", read_only=True)
 
+    # Status-related fields
+    finalized_by = serializers.PrimaryKeyRelatedField(read_only=True)
+    finalized_by_username = serializers.CharField(source="finalized_by.username", read_only=True, allow_null=True)
+
     class Meta:
         model = Encounter
         fields = [
@@ -297,6 +301,12 @@ class EncounterSerializer(serializers.ModelSerializer):
             "notes",
             "has_critical_vitals",
             "alerts",
+            # Status workflow (Sprint 1.1-1.2)
+            "status",
+            "finalized_by",
+            "finalized_by_username",
+            "finalized_at",
+            "cancellation_reason",
             "created_at",
             "updated_at",
         ]
@@ -311,6 +321,12 @@ class EncounterSerializer(serializers.ModelSerializer):
             "systolic_bp",
             "diastolic_bp",
             "vitals_summary",
+            # Status fields are read-only - use actions to change status
+            "status",
+            "finalized_by",
+            "finalized_by_username",
+            "finalized_at",
+            "cancellation_reason",
             "created_at",
             "updated_at",
         ]
@@ -418,6 +434,9 @@ class EncounterListSerializer(serializers.ModelSerializer):
             "encounter_date",
             "chief_complaint",
             "has_critical_vitals",
+            # Status workflow (Sprint 1.1-1.2)
+            "status",
+            "finalized_at",
             "created_at",
         ]
         read_only_fields = fields
