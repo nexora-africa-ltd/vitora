@@ -1,0 +1,122 @@
+{
+    "name": "Gender-Based Violence Assessment",
+    "template_type": "assessment",
+    "specialty": "GBV/Forensic",
+    "description": "Gender-based violence assessment - Comprehensive documentation for GBV survivors (Sensitive)",
+    "content": {
+        "title": "Gender-Based Violence Assessment",
+        "version": "1.0",
+        "sections": [
+            {
+                "name": "Incident Details",
+                "order": 1,
+                "fields": [
+                    {"name": "incident_date", "type": "date", "required": true, "label": "Date of Incident"},
+                    {"name": "incident_time", "type": "text", "required": false, "label": "Approximate Time"},
+                    {"name": "reported_within_72hrs", "type": "boolean", "required": true, "label": "Reported Within 72 Hours"},
+                    {"name": "incident_location_type", "type": "select", "options": ["Home", "Workplace", "Public Place", "School", "Other"], "required": true, "label": "Location Type"},
+                    {"name": "incident_description", "type": "textarea", "required": true, "label": "Brief Description of Incident"},
+                    {"name": "perpetrator_known", "type": "boolean", "required": true, "label": "Perpetrator Known to Survivor"},
+                    {"name": "perpetrator_relationship", "type": "select", "options": ["Spouse/Partner", "Former Partner", "Family Member", "Acquaintance", "Stranger", "Authority Figure", "Other"], "required": false, "label": "Relationship to Perpetrator"},
+                    {"name": "weapon_used", "type": "boolean", "required": false, "label": "Weapon Used"},
+                    {"name": "weapon_type", "type": "text", "required": false, "label": "Type of Weapon (if any)"}
+                ]
+            },
+            {
+                "name": "Type of Violence",
+                "order": 2,
+                "fields": [
+                    {"name": "physical_violence", "type": "boolean", "required": true, "label": "Physical Violence"},
+                    {"name": "sexual_violence", "type": "boolean", "required": true, "label": "Sexual Violence"},
+                    {"name": "psychological_violence", "type": "boolean", "required": false, "label": "Psychological/Emotional Violence"},
+                    {"name": "economic_violence", "type": "boolean", "required": false, "label": "Economic Violence"},
+                    {"name": "forced_marriage", "type": "boolean", "required": false, "label": "Forced Marriage"},
+                    {"name": "fgm", "type": "boolean", "required": false, "label": "Female Genital Mutilation"},
+                    {"name": "denial_of_resources", "type": "boolean", "required": false, "label": "Denial of Resources/Opportunities"}
+                ]
+            },
+            {
+                "name": "Medical History",
+                "order": 3,
+                "fields": [
+                    {"name": "last_menstrual_period", "type": "date", "required": false, "label": "Last Menstrual Period (if applicable)"},
+                    {"name": "contraception_use", "type": "select", "options": ["None", "Oral Contraceptives", "Injectable", "Implant", "IUD", "Condoms", "Other"], "required": false, "label": "Contraception Use"},
+                    {"name": "hiv_status_known", "type": "select", "options": ["Positive", "Negative", "Unknown"], "required": false, "label": "Known HIV Status (Pre-incident)"},
+                    {"name": "hiv_test_date", "type": "date", "required": false, "label": "Last HIV Test Date"},
+                    {"name": "pregnant", "type": "select", "options": ["Yes", "No", "Unsure"], "required": false, "label": "Currently Pregnant"},
+                    {"name": "previous_gbv", "type": "boolean", "required": false, "label": "Previous GBV History"},
+                    {"name": "chronic_conditions", "type": "textarea", "required": false, "label": "Relevant Medical Conditions"}
+                ]
+            },
+            {
+                "name": "Physical Examination",
+                "order": 4,
+                "fields": [
+                    {"name": "general_appearance", "type": "textarea", "required": true, "label": "General Appearance and Demeanor"},
+                    {"name": "vital_signs_documented", "type": "boolean", "required": true, "label": "Vital Signs Documented"},
+                    {"name": "injuries_present", "type": "boolean", "required": true, "label": "Physical Injuries Present"},
+                    {"name": "injury_description", "type": "textarea", "required": false, "label": "Description of Injuries"},
+                    {"name": "injury_locations", "type": "multiselect", "options": ["Head/Face", "Neck", "Chest", "Abdomen", "Back", "Upper Limbs", "Lower Limbs", "Genital Area", "Other"], "required": false, "label": "Injury Locations"},
+                    {"name": "injury_types", "type": "multiselect", "options": ["Bruising", "Lacerations", "Burns", "Bite Marks", "Strangulation Marks", "Fractures", "Other"], "required": false, "label": "Types of Injuries"},
+                    {"name": "photos_taken", "type": "boolean", "required": false, "label": "Photographs of Injuries Taken"},
+                    {"name": "body_map_completed", "type": "boolean", "required": false, "label": "Body Map Completed"}
+                ]
+            },
+            {
+                "name": "Investigations and Evidence",
+                "order": 5,
+                "fields": [
+                    {"name": "pregnancy_test", "type": "select", "options": ["Positive", "Negative", "Not Done", "N/A"], "required": false, "label": "Pregnancy Test Result"},
+                    {"name": "hiv_test_offered", "type": "boolean", "required": true, "label": "HIV Test Offered"},
+                    {"name": "hiv_test_result", "type": "select", "options": ["Positive", "Negative", "Declined", "Pending"], "required": false, "label": "HIV Test Result"},
+                    {"name": "sti_screening", "type": "boolean", "required": false, "label": "STI Screening Done"},
+                    {"name": "forensic_samples_collected", "type": "boolean", "required": false, "label": "Forensic Samples Collected"},
+                    {"name": "samples_type", "type": "multiselect", "options": ["High Vaginal Swab", "Anal Swab", "Oral Swab", "Blood", "Urine", "Fingernail Scrapings", "Clothing", "Other"], "required": false, "label": "Types of Samples"},
+                    {"name": "chain_of_custody", "type": "boolean", "required": false, "label": "Chain of Custody Maintained"}
+                ]
+            },
+            {
+                "name": "Treatment Provided",
+                "order": 6,
+                "fields": [
+                    {"name": "wound_care", "type": "boolean", "required": false, "label": "Wound Care Provided"},
+                    {"name": "emergency_contraception", "type": "select", "options": ["Given", "Not Indicated", "Declined", "Too Late (>120hrs)"], "required": false, "label": "Emergency Contraception"},
+                    {"name": "sti_prophylaxis", "type": "boolean", "required": false, "label": "STI Prophylaxis Given"},
+                    {"name": "pep_eligible", "type": "boolean", "required": true, "label": "PEP Eligible"},
+                    {"name": "pep_given", "type": "boolean", "required": false, "label": "PEP Given"},
+                    {"name": "pep_declined_reason", "type": "textarea", "required": false, "label": "Reason if PEP Declined"},
+                    {"name": "hepatitis_b_vaccine", "type": "boolean", "required": false, "label": "Hepatitis B Vaccine Given"},
+                    {"name": "tetanus_toxoid", "type": "boolean", "required": false, "label": "Tetanus Toxoid Given"},
+                    {"name": "analgesia", "type": "boolean", "required": false, "label": "Pain Relief Given"},
+                    {"name": "other_medications", "type": "textarea", "required": false, "label": "Other Medications Prescribed"}
+                ]
+            },
+            {
+                "name": "Psychosocial Support",
+                "order": 7,
+                "fields": [
+                    {"name": "psychological_first_aid", "type": "boolean", "required": true, "label": "Psychological First Aid Provided"},
+                    {"name": "emotional_state", "type": "select", "options": ["Calm", "Distressed", "Anxious", "Fearful", "Dissociated", "Angry", "Other"], "required": false, "label": "Emotional State"},
+                    {"name": "safety_assessment", "type": "select", "options": ["Safe to Return Home", "Unsafe - Needs Shelter", "Uncertain"], "required": true, "label": "Safety Assessment"},
+                    {"name": "counseling_referral", "type": "boolean", "required": true, "label": "Referred for Counseling"},
+                    {"name": "shelter_referral", "type": "boolean", "required": false, "label": "Shelter/Safe House Referral"},
+                    {"name": "support_person_present", "type": "boolean", "required": false, "label": "Support Person Present"}
+                ]
+            },
+            {
+                "name": "Referrals and Follow-up",
+                "order": 8,
+                "fields": [
+                    {"name": "police_report", "type": "select", "options": ["Filed", "Declined", "Planning to File", "N/A"], "required": false, "label": "Police Report Status"},
+                    {"name": "p3_form_completed", "type": "boolean", "required": false, "label": "P3 Form Completed"},
+                    {"name": "legal_referral", "type": "boolean", "required": false, "label": "Referred for Legal Services"},
+                    {"name": "social_services_referral", "type": "boolean", "required": false, "label": "Social Services Referral"},
+                    {"name": "follow_up_date", "type": "date", "required": true, "label": "Follow-up Appointment Date"},
+                    {"name": "follow_up_plan", "type": "textarea", "required": false, "label": "Follow-up Plan"},
+                    {"name": "consent_for_referrals", "type": "boolean", "required": true, "label": "Consent for External Referrals Obtained"},
+                    {"name": "additional_notes", "type": "textarea", "required": false, "label": "Additional Notes"}
+                ]
+            }
+        ]
+    }
+}
