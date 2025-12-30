@@ -401,6 +401,17 @@ class Encounter(TimeStampedModel):
     chief_complaint = models.TextField()
     notes = models.TextField(blank=True)
 
+    # Encounter Status (Phase 1: Sprint 1.1-1.2)
+    STATUS_CHOICES = [
+        ('DRAFT', 'Draft'),           # Started, not finalized
+        ('IN_PROGRESS', 'In Progress'), # Active - patient being seen
+        ('COMPLETED', 'Completed'),    # Finalized - no more edits
+        ('CANCELLED', 'Cancelled'),    # Voided encounter
+    ]
+    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='DRAFT')
+    finalized_by = models.ForeignKey('auth.User', on_delete=models.SET_NULL, null=True, blank=True, related_name='finalized_encounters')
+    finalized_at = models.DateTimeField(null=True, blank=True)
+
     # Sync
     sync_status = models.CharField(max_length=20, default='synced')
 
@@ -409,6 +420,18 @@ class Encounter(TimeStampedModel):
 
     def get_alerts(self) -> str:
         """Return alert messages for abnormal vitals."""
+
+    def can_edit(self) -> bool:
+        """Returns True if encounter is not yet finalized (DRAFT or IN_PROGRESS)."""
+        return self.status in ('DRAFT', 'IN_PROGRESS')
+
+    def finalize(self, user):
+        """Mark encounter as completed. Only users with can_finalize_encounters role permission can do this."""
+        from django.utils import timezone
+        self.status = 'COMPLETED'
+        self.finalized_by = user
+        self.finalized_at = timezone.now()
+        self.save()
 
 
 class ICD10Code(models.Model):
@@ -456,6 +479,105 @@ class TreatmentPlan(models.Model):
     follow_up_date = models.DateField(null=True, blank=True)
     referral_needed = models.BooleanField(default=False)
     referral_specialty = models.CharField(max_length=100, blank=True)
+```
+
+#### 4.1.5 Lab/Investigations Models (`hmis/apps/lab/models.py`)
+```python
+class LabOrder(TimeStampedModel):
+    """Lab/Investigation order with in-house vs external workflow (Phase 1: Sprint 1.3-1.6)."""
+    ORDER_TYPE_CHOICES = [
+        ('IN_HOUSE', 'In-house'),
+        ('EXTERNAL', 'External/Referral'),
+    ]
+    STATUS_CHOICES = [
+        ('ORDERED', 'Ordered'),
+        ('IN_PROGRESS', 'In Progress'),
+        ('COMPLETED', 'Completed'),
+        ('CANCELLED', 'Cancelled'),
+    ]
+    
+    encounter = models.ForeignKey(Encounter, on_delete=models.CASCADE, related_name='lab_orders')
+    test_name = models.CharField(max_length=200)
+    loinc_code = models.CharField(max_length=20, blank=True)  # LOINC standardization
+    order_type = models.CharField(max_length=20, choices=ORDER_TYPE_CHOICES)
+    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='ORDERED')
+    priority = models.CharField(max_length=20, default='routine')  # routine, urgent, stat
+    ordered_by = models.ForeignKey('auth.User', on_delete=models.SET_NULL, null=True, related_name='lab_orders')
+    ordered_at = models.DateTimeField(auto_now_add=True)
+    
+    # External lab details
+    external_lab_name = models.CharField(max_length=200, blank=True)
+    requisition_pdf = models.FileField(upload_to='lab_requisitions/', blank=True)
+    
+    # Clinical details
+    clinical_notes = models.TextField(blank=True)
+    specimen_type = models.CharField(max_length=100, blank=True)  # blood, urine, stool, etc.
+
+
+class LabResult(TimeStampedModel):
+    """Lab result linked to a LabOrder (Phase 1: Sprint 1.3-1.6)."""
+    order = models.OneToOneField(LabOrder, on_delete=models.CASCADE, related_name='result')
+    result_value = models.TextField()
+    unit = models.CharField(max_length=50, blank=True)
+    reference_range = models.CharField(max_length=100, blank=True)
+    is_abnormal = models.BooleanField(default=False)
+    result_date = models.DateTimeField()
+    resulted_by = models.ForeignKey('auth.User', on_delete=models.SET_NULL, null=True, related_name='lab_results')
+    verified_by = models.ForeignKey('auth.User', on_delete=models.SET_NULL, null=True, related_name='verified_results')
+    attachments = models.JSONField(default=list)  # For scanned results from external labs
+    interpretation = models.TextField(blank=True)  # Lab tech/pathologist notes
+
+
+class LOINCCode(models.Model):
+    """LOINC code reference table for standardized lab test codes."""
+    code = models.CharField(max_length=20, unique=True, db_index=True)
+    long_name = models.CharField(max_length=500)
+    short_name = models.CharField(max_length=100)
+    class_type = models.CharField(max_length=100)  # Chemistry, Hematology, etc.
+    is_active = models.BooleanField(default=True)
+```
+
+#### 4.1.6 RBAC Models (`hmis/apps/core/models.py`)
+```python
+class Department(models.Model):
+    """Hospital department for role scoping (Phase 1: Sprint 1.1-1.8)."""
+    name = models.CharField(max_length=100)
+    code = models.CharField(max_length=20, unique=True)
+    description = models.TextField(blank=True)
+    is_active = models.BooleanField(default=True)
+
+
+class Role(models.Model):
+    """System roles with granular permissions (Phase 1: Sprint 1.1-1.8)."""
+    ROLE_CHOICES = [
+        ('ADMIN', 'Administrator'),
+        ('DOCTOR', 'Doctor/Clinician'),
+        ('NURSE', 'Nurse'),
+        ('PHARMACIST', 'Pharmacist'),
+        ('LAB_TECH', 'Lab Technician'),
+        ('RECEPTIONIST', 'Receptionist'),
+        ('BILLING_CLERK', 'Billing Clerk'),
+        ('DATA_CLERK', 'Data Entry Clerk'),
+    ]
+    name = models.CharField(max_length=50, choices=ROLE_CHOICES, unique=True)
+    display_name = models.CharField(max_length=100)
+    permissions = models.ManyToManyField('auth.Permission', blank=True)
+    can_access_sensitive = models.BooleanField(default=False)  # HIV, GBV, Mental Health
+    can_prescribe = models.BooleanField(default=False)  # Medication prescriptions
+    can_order_labs = models.BooleanField(default=False)  # Lab/investigation orders
+    can_finalize_encounters = models.BooleanField(default=False)  # Complete encounter status
+
+
+class StaffProfile(models.Model):
+    """Extended user profile with role and department (Phase 1: Sprint 1.1-1.8)."""
+    user = models.OneToOneField('auth.User', on_delete=models.CASCADE, related_name='staff_profile')
+    role = models.ForeignKey(Role, on_delete=models.PROTECT)
+    departments = models.ManyToManyField(Department)  # Multi-department support
+    employee_id = models.CharField(max_length=50, unique=True)
+    license_number = models.CharField(max_length=50, blank=True)  # Medical/nursing license
+    license_expiry = models.DateField(null=True, blank=True)
+    is_active = models.BooleanField(default=True)
+    hire_date = models.DateField(null=True, blank=True)
 ```
 
 #### 4.1.3 PharmacyStock Model (`hmis/apps/pharmacy/models.py`)
@@ -522,8 +644,24 @@ Located in respective app `serializers.py` files using Django REST Framework ser
 
 ### 4.3 ViewSets & Permissions
 RESTful API endpoints with custom permissions:
-- `SensitiveAccessPermission`: Restricts access to sensitive patient records
-- `RoleBasedPermission`: Enforces role-based access control
+- `SensitiveAccessPermission`: Restricts access to sensitive patient records (HIV, GBV, Mental Health)
+- `RoleBasedPermission`: Enforces role-based access control based on permission matrix
+- `DepartmentScopedPermission`: Filters data based on user's assigned departments
+- `LabOrderPermission`: Controls who can order labs (doctors) vs enter results (lab techs)
+
+#### Permission Matrix (Enforced via RoleBasedPermission)
+
+| Role | Patients | Encounters | Lab Orders | Lab Results | Pharmacy | Billing | Reports | Sensitive |
+|------|----------|------------|------------|-------------|----------|---------|---------|----------|
+| Admin | Full | Full | Full | Full | Full | Full | Full | Yes |
+| Doctor | View, Edit | Full | Create, View | View | View | View | View | Yes* |
+| Nurse | View, Edit | Create, View, Edit | View | View | View | - | View | No |
+| Lab Tech | View | View | View | Full | - | - | View | No |
+| Pharmacist | View | View | - | - | Full | View | View | No |
+| Receptionist | Create, View, Edit | View | - | - | - | Create | - | No |
+| Billing Clerk | View | View | - | - | - | Full | View | No |
+
+*Doctors require explicit `view_sensitive_patient` permission for HIV/GBV/Mental Health records
 
 ### 4.4 SQLite/PostgreSQL Switch
 Settings support both databases via environment variable:
