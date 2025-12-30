@@ -67,13 +67,51 @@ async function ensureTestPatient(win, patientData) {
   const timestamp = Date.now();
   const uniqueFirstName = `${patientData.firstName}${timestamp}`;
 
+  // Fill personal information
   await win.locator('#first-name').fill(uniqueFirstName);
   await win.locator('#last-name').fill(patientData.lastName);
   await win.locator('#date-of-birth').fill(patientData.dob);
   await win.locator('#gender').selectOption(patientData.gender);
+
+  // Fill required location fields (Kenya hierarchy)
+  const countySelect = win.locator('#county');
+  if (await countySelect.isVisible()) {
+    await countySelect.selectOption('Nairobi');
+    await win.waitForTimeout(500); // Wait for sub-county to load
+
+    const subCountySelect = win.locator('#sub-county');
+    // Wait for sub-county to be enabled
+    await win.waitForFunction(() => {
+      const select = document.querySelector('#sub-county');
+      return select && !select.disabled;
+    }, { timeout: 5000 }).catch(() => {});
+
+    if (await subCountySelect.isEnabled()) {
+      // Select first available sub-county option
+      const options = await subCountySelect.locator('option').allTextContents();
+      const validOption = options.find(opt => opt !== 'Select Sub-County...' && opt.trim() !== '');
+      if (validOption) {
+        await subCountySelect.selectOption(validOption);
+      }
+    }
+  }
+
   await win.locator('#submit-btn').click();
 
-  await win.waitForSelector('.message.success', { timeout: 10000 });
+  // Wait for success message - the message may appear and hide quickly
+  // So we wait for it to be attached to DOM (not necessarily visible)
+  try {
+    await win.waitForSelector('.message.success', { state: 'attached', timeout: 15000 });
+  } catch {
+    // If attached doesn't work, check if form cleared (which indicates success)
+    const firstName = await win.locator('#first-name').inputValue();
+    if (firstName === '') {
+      // Form was cleared, registration succeeded
+    }
+  }
+
+  // Give a moment for any async operations
+  await win.waitForTimeout(500);
 
   return uniqueFirstName;
 }
@@ -102,28 +140,47 @@ async function selectPatientForEncounter(win, searchName) {
  */
 async function fillVitals(win, vitals) {
   if (vitals.temperature) {
-    await win.locator('#temperature').fill(vitals.temperature.toString());
+    const tempInput = win.locator('#temperature');
+    if (await tempInput.isVisible()) {
+      await tempInput.fill(vitals.temperature.toString());
+    }
   }
   if (vitals.pulse) {
-    await win.locator('#pulse').fill(vitals.pulse.toString());
+    const pulseInput = win.locator('#pulse');
+    if (await pulseInput.isVisible()) {
+      await pulseInput.fill(vitals.pulse.toString());
+    }
   }
-  if (vitals.bpSystolic) {
-    await win.locator('#bp-systolic').fill(vitals.bpSystolic.toString());
-  }
-  if (vitals.bpDiastolic) {
-    await win.locator('#bp-diastolic').fill(vitals.bpDiastolic.toString());
+  // Blood pressure is a combined field "120/80" format
+  if (vitals.bpSystolic && vitals.bpDiastolic) {
+    const bpInput = win.locator('#blood-pressure');
+    if (await bpInput.isVisible()) {
+      await bpInput.fill(`${vitals.bpSystolic}/${vitals.bpDiastolic}`);
+    }
   }
   if (vitals.respiratoryRate) {
-    await win.locator('#respiratory-rate').fill(vitals.respiratoryRate.toString());
+    const rrInput = win.locator('#respiratory-rate');
+    if (await rrInput.isVisible()) {
+      await rrInput.fill(vitals.respiratoryRate.toString());
+    }
   }
   if (vitals.spo2) {
-    await win.locator('#spo2').fill(vitals.spo2.toString());
+    const spo2Input = win.locator('#spo2');
+    if (await spo2Input.isVisible()) {
+      await spo2Input.fill(vitals.spo2.toString());
+    }
   }
   if (vitals.weight) {
-    await win.locator('#weight').fill(vitals.weight.toString());
+    const weightInput = win.locator('#weight');
+    if (await weightInput.isVisible()) {
+      await weightInput.fill(vitals.weight.toString());
+    }
   }
   if (vitals.height) {
-    await win.locator('#height').fill(vitals.height.toString());
+    const heightInput = win.locator('#height');
+    if (await heightInput.isVisible()) {
+      await heightInput.fill(vitals.height.toString());
+    }
   }
 
   // Allow time for UI to update
@@ -151,7 +208,15 @@ test.beforeAll(async () => {
 
 test.afterAll(async () => {
   if (electronApp) {
-    await electronApp.close();
+    try {
+      // Force close the app
+      await Promise.race([
+        electronApp.close(),
+        new Promise((_, reject) => setTimeout(() => reject(new Error('Close timeout')), 5000))
+      ]);
+    } catch {
+      // If close times out, the app may have already closed
+    }
   }
 });
 

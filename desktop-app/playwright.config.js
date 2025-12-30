@@ -7,6 +7,7 @@ module.exports = defineConfig({
   retries: process.env.CI ? 2 : 0,
   workers: 1,
   reporter: 'html',
+  globalTeardown: undefined, // Prevent global teardown timeout issues
   use: {
     trace: 'on-first-retry',
     screenshot: 'only-on-failure',
