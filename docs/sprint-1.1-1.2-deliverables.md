@@ -1233,44 +1233,52 @@ describe('Encounter Timeline', () => {
 });
 ```
 
-### E2E Tests (Playwright) - 8 tests
+### E2E Tests (Playwright) - 8 tests ✅ IMPLEMENTED
+
+**Test File**: `desktop-app/tests/e2e/sprint-1.1-1.2-documented.e2e.js`
+**Status**: All 8 documented E2E tests created
 
 ```javascript
-// desktop-app/tests/e2e/encounter-management.e2e.js
+// desktop-app/tests/e2e/sprint-1.1-1.2-documented.e2e.js
 
-test.describe('Encounter Management E2E', () => {
+test.describe('Encounter Management E2E - Sprint 1.1-1.2', () => {
   test('complete encounter workflow with vitals', async ({ page }) => {
     // Login → Select patient → Create encounter → Enter vitals → Verify color coding
-  });
+  });  // ✅
 
   test('add ICD-10 diagnosis with search', async ({ page }) => {
     // Search "malaria" → Select code → Verify added to list
-  });
+  });  // ✅
 
   test('create treatment plan from template', async ({ page }) => {
     // Select template → Apply → Verify fields populated
-  });
+  });  // ✅
 
   test('view patient encounter timeline', async ({ page }) => {
     // Open patient details → View timeline → Verify encounters listed
-  });
+  });  // ✅
 
   test('filter timeline by date range', async ({ page }) => {
     // Set date filters → Verify filtered results
-  });
+  });  // ✅
 
   test('critical vitals show alert banner', async ({ page }) => {
     // Enter critical SpO2 (85%) → Verify alert displays
-  });
+  });  // ✅
 
   test('BMI calculates and categorizes correctly', async ({ page }) => {
     // Enter weight/height → Verify BMI display and category
-  });
+  });  // ✅
 
   test('encounter saves with diagnosis and treatment plan', async ({ page }) => {
     // Full workflow → Save → Reload → Verify all data persisted
-  });
+  });  // ✅
 });
+```
+
+**Run E2E Tests**:
+```bash
+cd desktop-app && npm run test:e2e -- tests/e2e/sprint-1.1-1.2-documented.e2e.js
 ```
 
 ---
@@ -1302,7 +1310,7 @@ pytest tests/test_vitals*.py tests/test_diagnosis*.py tests/test_treatment*.py \
 
 ### E2E Tests (Playwright)
 ```javascript
-// desktop-app/tests/e2e/encounter-management.e2e.js
+// desktop-app/tests/e2e/sprint-1.1-1.2-documented.e2e.js
 
 test('complete encounter workflow', async ({ page }) => {
   // 1. Login
@@ -1334,14 +1342,14 @@ test('complete encounter workflow', async ({ page }) => {
 - [ ] Audit: All clinical actions logged
 
 **Frontend (38 tests)**:
-- [ ] All 30 Jest unit tests passing
-- [ ] All 8 Playwright E2E tests passing
-- [ ] Vitals form with color-coded status indicators
-- [ ] ICD-10 diagnosis search with autocomplete
-- [ ] Treatment plan builder with template support
-- [ ] Encounter timeline view with filters
-- [ ] Critical vitals alert banner
-- [ ] BMI calculation and category display
+- [x] All 30 Jest unit tests passing ✅
+- [x] All 8 Playwright E2E tests created ✅
+- [x] Vitals form with color-coded status indicators ✅
+- [x] ICD-10 diagnosis search with autocomplete ✅
+- [x] Treatment plan builder with template support ✅
+- [x] Encounter timeline view with filters ✅
+- [x] Critical vitals alert banner ✅
+- [x] BMI calculation and category display ✅
 
 **Release**:
 - [ ] Code review completed
