@@ -1408,6 +1408,312 @@ body.dark-mode .critical-vital-item {
   60%, 100% { content: '...'; }
 }
 
+/* ====================
+   Encounter Timeline View (Sprint 1.1-1.2)
+   ==================== */
+
+/* Timeline Container */
+.timeline-container {
+  position: relative;
+  padding-left: 24px;
+}
+
+.timeline-container::before {
+  content: '';
+  position: absolute;
+  left: 8px;
+  top: 0;
+  bottom: 0;
+  width: 2px;
+  background: var(--border-color);
+}
+
+/* Timeline Statistics */
+.timeline-statistics {
+  display: flex;
+  gap: 24px;
+  padding: 16px;
+  margin-bottom: 20px;
+  background: var(--bg-secondary);
+  border-radius: 8px;
+  border: 1px solid var(--border-color);
+}
+
+.timeline-statistics .stat-item {
+  text-align: center;
+  flex: 1;
+}
+
+.timeline-statistics .stat-value {
+  display: block;
+  font-size: 28px;
+  font-weight: 700;
+  color: var(--accent-color);
+}
+
+.timeline-statistics .stat-label {
+  display: block;
+  font-size: 12px;
+  color: var(--text-secondary);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+/* Timeline Encounter Card */
+.timeline-encounter-card {
+  position: relative;
+  background: var(--bg-primary);
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+  margin-bottom: 16px;
+  overflow: hidden;
+  transition: box-shadow 0.2s ease, transform 0.2s ease;
+}
+
+.timeline-encounter-card::before {
+  content: '';
+  position: absolute;
+  left: -20px;
+  top: 24px;
+  width: 12px;
+  height: 12px;
+  background: var(--bg-primary);
+  border: 2px solid var(--accent-color);
+  border-radius: 50%;
+}
+
+.timeline-encounter-card:hover {
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+  transform: translateX(4px);
+}
+
+.timeline-encounter-card.critical {
+  border-left: 4px solid #dc3545;
+}
+
+.timeline-encounter-card.critical::before {
+  border-color: #dc3545;
+  background: #dc3545;
+}
+
+.timeline-encounter-card.expanded {
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.15);
+}
+
+/* Timeline Connector */
+.timeline-connector {
+  position: absolute;
+  left: -14px;
+  top: 36px;
+  bottom: -24px;
+  width: 2px;
+  background: var(--border-color);
+}
+
+/* Timeline Card Header */
+.timeline-card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 12px 16px;
+  background: var(--bg-secondary);
+  border-bottom: 1px solid var(--border-color);
+}
+
+.timeline-date {
+  display: flex;
+  flex-direction: column;
+}
+
+.timeline-date .date {
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.timeline-date .time {
+  font-size: 12px;
+  color: var(--text-secondary);
+}
+
+.timeline-type {
+  padding: 4px 12px;
+  border-radius: 12px;
+  font-size: 12px;
+  font-weight: 600;
+  text-transform: uppercase;
+}
+
+.timeline-type.type-opd {
+  background: #e3f2fd;
+  color: #1565c0;
+}
+
+.timeline-type.type-emergency {
+  background: #ffebee;
+  color: #c62828;
+}
+
+.timeline-type.type-inpatient {
+  background: #e8f5e9;
+  color: #2e7d32;
+}
+
+body.dark-mode .timeline-type.type-opd {
+  background: rgba(33, 150, 243, 0.2);
+}
+
+body.dark-mode .timeline-type.type-emergency {
+  background: rgba(244, 67, 54, 0.2);
+}
+
+body.dark-mode .timeline-type.type-inpatient {
+  background: rgba(76, 175, 80, 0.2);
+}
+
+/* Timeline Card Body */
+.timeline-card-body {
+  padding: 16px;
+}
+
+.timeline-complaint {
+  font-size: 15px;
+  color: var(--text-primary);
+  margin-bottom: 8px;
+}
+
+.timeline-diagnosis {
+  font-size: 13px;
+  color: var(--accent-color);
+  font-weight: 500;
+  margin-bottom: 8px;
+}
+
+.timeline-vitals {
+  font-size: 12px;
+  color: var(--text-secondary);
+  padding: 8px 12px;
+  background: var(--bg-secondary);
+  border-radius: 4px;
+}
+
+/* Timeline Card Footer */
+.timeline-card-footer {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 12px 16px;
+  border-top: 1px solid var(--border-color);
+  background: var(--bg-secondary);
+}
+
+.timeline-card-footer .clinician {
+  font-size: 13px;
+  color: var(--text-secondary);
+}
+
+.btn-expand {
+  padding: 6px 12px;
+  font-size: 12px;
+  background: transparent;
+  border: 1px solid var(--border-color);
+  color: var(--text-primary);
+  border-radius: 4px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.btn-expand:hover {
+  background: var(--accent-color);
+  color: white;
+  border-color: var(--accent-color);
+}
+
+/* Timeline Filters */
+.timeline-filters {
+  display: flex;
+  gap: 16px;
+  margin-bottom: 20px;
+  flex-wrap: wrap;
+  align-items: flex-end;
+}
+
+.timeline-filters .filter-group {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.timeline-filters .filter-group label {
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--text-secondary);
+}
+
+.timeline-filters input[type="date"] {
+  padding: 8px 12px;
+  border: 1px solid var(--border-color);
+  border-radius: 4px;
+  font-size: 13px;
+  background: var(--bg-primary);
+  color: var(--text-primary);
+}
+
+.timeline-type-filters {
+  display: flex;
+  gap: 8px;
+}
+
+.timeline-type-filters label {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 6px 12px;
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-color);
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 13px;
+  transition: all 0.15s ease;
+}
+
+.timeline-type-filters label:hover {
+  border-color: var(--accent-color);
+}
+
+.timeline-type-filters input[type="checkbox"] {
+  width: 16px;
+  height: 16px;
+}
+
+.timeline-type-filters input[type="checkbox"]:checked + span {
+  color: var(--accent-color);
+  font-weight: 600;
+}
+
+/* Timeline Empty State */
+.timeline-empty {
+  text-align: center;
+  padding: 40px 20px;
+  color: var(--text-secondary);
+}
+
+.timeline-empty p {
+  font-size: 16px;
+  margin-bottom: 8px;
+}
+
+/* Month Group Header */
+.timeline-month-header {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text-secondary);
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  padding: 8px 0;
+  margin-bottom: 12px;
+  border-bottom: 1px solid var(--border-color);
+}
+
 /* Encounter History */
 .encounter-history {
   margin-top: 30px;
