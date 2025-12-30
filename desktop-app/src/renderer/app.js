@@ -689,6 +689,59 @@ clearBtn.addEventListener('click', () => {
 const searchInput = document.getElementById('search-input');
 const searchBtn = document.getElementById('search-btn');
 const patientListDiv = document.getElementById('patient-list');
+const viewToggle = document.getElementById('view-toggle');
+const resultsInfo = document.getElementById('results-info');
+
+// Current view mode (list or grid)
+let currentViewMode = 'list';
+
+// Initialize view mode from localStorage
+function initializeViewMode() {
+  if (typeof window !== 'undefined' && window.PatientListView) {
+    currentViewMode = window.PatientListView.getCurrentViewMode();
+    updateViewToggleButtons();
+  }
+}
+
+// Update toggle button active states
+function updateViewToggleButtons() {
+  if (!viewToggle) return;
+
+  const listBtn = viewToggle.querySelector('.btn-view-list');
+  const gridBtn = viewToggle.querySelector('.btn-view-grid');
+
+  if (listBtn && gridBtn) {
+    listBtn.classList.toggle('active', currentViewMode === 'list');
+    gridBtn.classList.toggle('active', currentViewMode === 'grid');
+  }
+}
+
+// Handle view toggle click
+if (viewToggle) {
+  viewToggle.addEventListener('click', (e) => {
+    const button = e.target.closest('button[data-view]');
+    if (!button) return;
+
+    const newMode = button.dataset.view;
+    if (newMode === currentViewMode) return;
+
+    currentViewMode = newMode;
+
+    if (typeof window !== 'undefined' && window.PatientListView) {
+      window.PatientListView.setViewMode(newMode);
+    }
+
+    updateViewToggleButtons();
+
+    // Re-render patient list with new view mode
+    if (cachedPatients.length > 0) {
+      displayPatients(cachedPatients);
+    }
+  });
+}
+
+// Cache patients for view toggle re-rendering
+let cachedPatients = [];
 
 searchBtn.addEventListener('click', () => {
   loadPatients(searchInput.value);
@@ -702,6 +755,7 @@ searchInput.addEventListener('keypress', (e) => {
 
 async function loadPatients(searchQuery = '') {
   patientListDiv.innerHTML = '<p class="loading">Loading patients...</p>';
+  if (resultsInfo) resultsInfo.textContent = '';
 
   try {
     let endpoint = '/api/patients/';
@@ -712,7 +766,16 @@ async function loadPatients(searchQuery = '') {
     const response = await window.electronAPI.apiRequest('GET', endpoint);
 
     if (response.success) {
-      displayPatients(response.data.results || []);
+      const patients = response.data.results || [];
+      cachedPatients = patients;
+      displayPatients(patients);
+
+      // Show results count
+      if (resultsInfo) {
+        const count = patients.length;
+        const totalCount = response.data.count || count;
+        resultsInfo.textContent = `Showing ${count} of ${totalCount} patient${totalCount !== 1 ? 's' : ''}`;
+      }
     } else {
       patientListDiv.innerHTML = '<p class="error">Failed to load patients.</p>';
     }
@@ -727,6 +790,13 @@ function displayPatients(patients) {
     return;
   }
 
+  // Use the PatientListView module if available
+  if (typeof window !== 'undefined' && window.PatientListView) {
+    patientListDiv.innerHTML = window.PatientListView.buildPatientViewHTML(patients, currentViewMode);
+    return;
+  }
+
+  // Fallback to original list view
   const html = patients.map(patient => `
     <div class="patient-card" data-patient-id="${patient.id}">
       <div class="patient-header">
@@ -762,6 +832,9 @@ function displayPatients(patients) {
 
   patientListDiv.innerHTML = html;
 }
+
+// Initialize view mode on load
+initializeViewMode();
 
 // ====================
 // Encounter Management

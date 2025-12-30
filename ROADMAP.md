@@ -491,6 +491,8 @@ GET /api/locations/wards/?sub_county=<id>     # Cascading wards
 - [x] Implement Encounter status field and transitions ✅
 - [x] **Write tests first**: Status badge display tests ✅
 - [x] Implement status badges in encounter list and timeline views ✅
+- [x] **Write tests first**: Patient list view toggle tests (list/grid) ✅
+- [x] Implement toggleable list/grid view for patient list ✅
 
 **Track B: Mobile App Foundation (Parallel)**
 - [ ] **Write tests first**: React Native setup tests
