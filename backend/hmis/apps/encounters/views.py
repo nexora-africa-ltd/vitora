@@ -2,6 +2,7 @@
 Views for the encounters app.
 """
 
+from django.core.exceptions import ValidationError
 from django_filters.rest_framework import DjangoFilterBackend
 from rest_framework import filters, status, viewsets
 from rest_framework.decorators import action
@@ -278,35 +279,6 @@ class EncounterViewSet(viewsets.ModelViewSet):
             return EncounterListSerializer
         return EncounterSerializer
 
-    def get_queryset(self):
-        """
-        Optionally filter encounters by patient.
-
-        Also filters out encounters for sensitive patients if user lacks permission.
-
-        Query params:
-        - patient_id: Filter by patient ID
-        - patient_mrn: Filter by patient MRN
-        """
-        queryset = super().get_queryset()
-        user = self.request.user
-
-        # Filter out encounters for sensitive patients unless user has permission
-        if not user.is_superuser and not user.has_perm("patients.view_sensitive_patient"):
-            queryset = queryset.filter(patient__is_sensitive=False)
-
-        # Filter by patient_id if provided
-        patient_id = self.request.query_params.get("patient_id")
-        if patient_id:
-            queryset = queryset.filter(patient_id=patient_id)
-
-        # Filter by patient MRN if provided
-        patient_mrn = self.request.query_params.get("patient_mrn")
-        if patient_mrn:
-            queryset = queryset.filter(patient__mrn=patient_mrn)
-
-        return queryset
-
     def retrieve(self, request, *args, **kwargs):
         """Override retrieve to add audit logging."""
         response = super().retrieve(request, *args, **kwargs)
@@ -344,8 +316,15 @@ class EncounterViewSet(viewsets.ModelViewSet):
         return response
 
     def update(self, request, *args, **kwargs):
-        """Override update to add audit logging."""
+        """Override update to check if encounter can be edited and add audit logging."""
         encounter = self.get_object()
+
+        # Check if encounter can be edited
+        if not encounter.can_edit():
+            return Response(
+                {"detail": f"Encounter with status '{encounter.status}' cannot be edited."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
 
         response = super().update(request, *args, **kwargs)
 
@@ -385,6 +364,113 @@ class EncounterViewSet(viewsets.ModelViewSet):
             )
 
         return response
+
+    # =========================================================================
+    # Status Workflow Actions (Sprint 1.1-1.2)
+    # =========================================================================
+
+    @action(detail=True, methods=["post"])
+    def start_progress(self, request, pk=None):
+        """
+        Start progress on a draft encounter.
+
+        Transitions encounter from DRAFT to IN_PROGRESS.
+
+        POST /api/encounters/{id}/start_progress/
+        """
+        encounter = self.get_object()
+
+        try:
+            encounter.start_progress()
+            serializer = self.get_serializer(encounter)
+            return Response(serializer.data)
+        except ValidationError as e:
+            return Response(
+                {"detail": str(e.message if hasattr(e, "message") else e)},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+    @action(detail=True, methods=["post"])
+    def finalize(self, request, pk=None):
+        """
+        Finalize/complete an encounter.
+
+        Transitions encounter to COMPLETED status.
+        Records the user who finalized and timestamp.
+
+        POST /api/encounters/{id}/finalize/
+        """
+        encounter = self.get_object()
+
+        try:
+            encounter.finalize(request.user)
+            serializer = self.get_serializer(encounter)
+            return Response(serializer.data)
+        except ValidationError as e:
+            return Response(
+                {"detail": str(e.message if hasattr(e, "message") else e)},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+    @action(detail=True, methods=["post"])
+    def cancel(self, request, pk=None):
+        """
+        Cancel an encounter.
+
+        Transitions encounter to CANCELLED status.
+        Optionally accepts a reason for cancellation.
+
+        POST /api/encounters/{id}/cancel/
+        Body: {"reason": "Patient left before consultation"}
+        """
+        encounter = self.get_object()
+        reason = request.data.get("reason", "")
+
+        try:
+            encounter.cancel(reason=reason)
+            serializer = self.get_serializer(encounter)
+            return Response(serializer.data)
+        except ValidationError as e:
+            return Response(
+                {"detail": str(e.message if hasattr(e, "message") else e)},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+    def get_queryset(self):
+        """
+        Optionally filter encounters by patient and status.
+
+        Also filters out encounters for sensitive patients if user lacks permission.
+
+        Query params:
+        - patient_id: Filter by patient ID
+        - patient_mrn: Filter by patient MRN
+        - status: Filter by status (comma-separated for multiple)
+        """
+        queryset = Encounter.objects.select_related("patient", "finalized_by").all()
+        user = self.request.user
+
+        # Filter out encounters for sensitive patients unless user has permission
+        if not user.is_superuser and not user.has_perm("patients.view_sensitive_patient"):
+            queryset = queryset.filter(patient__is_sensitive=False)
+
+        # Filter by patient_id if provided
+        patient_id = self.request.query_params.get("patient_id")
+        if patient_id:
+            queryset = queryset.filter(patient_id=patient_id)
+
+        # Filter by patient MRN if provided
+        patient_mrn = self.request.query_params.get("patient_mrn")
+        if patient_mrn:
+            queryset = queryset.filter(patient__mrn=patient_mrn)
+
+        # Filter by status if provided (comma-separated)
+        status_filter = self.request.query_params.get("status")
+        if status_filter:
+            statuses = [s.strip().upper() for s in status_filter.split(",")]
+            queryset = queryset.filter(status__in=statuses)
+
+        return queryset
 
 
 class TreatmentPlanView(APIView):

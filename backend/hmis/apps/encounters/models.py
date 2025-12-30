@@ -222,6 +222,38 @@ class Encounter(models.Model):
     # Clinical notes
     notes = models.TextField(blank=True, default="", help_text="Additional clinical notes")
 
+    # Encounter Status (Sprint 1.1-1.2)
+    STATUS_CHOICES = [
+        ("DRAFT", "Draft"),
+        ("IN_PROGRESS", "In Progress"),
+        ("COMPLETED", "Completed"),
+        ("CANCELLED", "Cancelled"),
+    ]
+    status = models.CharField(
+        max_length=20,
+        choices=STATUS_CHOICES,
+        default="DRAFT",
+        help_text="Encounter status: DRAFT, IN_PROGRESS, COMPLETED, or CANCELLED",
+    )
+    finalized_by = models.ForeignKey(
+        "auth.User",
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="finalized_encounters",
+        help_text="User who finalized/completed this encounter",
+    )
+    finalized_at = models.DateTimeField(
+        null=True,
+        blank=True,
+        help_text="Timestamp when the encounter was finalized/completed",
+    )
+    cancellation_reason = models.TextField(
+        blank=True,
+        default="",
+        help_text="Reason for cancellation (if status is CANCELLED)",
+    )
+
     # Timestamps
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
@@ -439,6 +471,140 @@ class Encounter(models.Model):
             return "Overweight"
         else:
             return "Obese"
+
+    # =========================================================================
+    # Encounter Status Workflow Methods (Sprint 1.1-1.2)
+    # =========================================================================
+
+    # Valid status transitions
+    VALID_TRANSITIONS = {
+        "DRAFT": {"IN_PROGRESS", "COMPLETED", "CANCELLED"},
+        "IN_PROGRESS": {"COMPLETED", "CANCELLED"},
+        "COMPLETED": set(),  # Terminal state - no transitions allowed
+        "CANCELLED": set(),  # Terminal state - no transitions allowed
+    }
+
+    def can_edit(self) -> bool:
+        """
+        Check if the encounter can be edited.
+
+        Only DRAFT and IN_PROGRESS encounters can be edited.
+        COMPLETED and CANCELLED encounters are immutable.
+
+        Returns:
+            bool: True if the encounter can be edited, False otherwise
+        """
+        return self.status in ("DRAFT", "IN_PROGRESS")
+
+    def is_valid_transition(self, new_status: str) -> bool:
+        """
+        Check if a status transition is valid.
+
+        Args:
+            new_status: The target status to transition to
+
+        Returns:
+            bool: True if the transition is valid, False otherwise
+        """
+        return new_status in self.VALID_TRANSITIONS.get(self.status, set())
+
+    def start_progress(self) -> None:
+        """
+        Transition encounter from DRAFT to IN_PROGRESS.
+
+        Raises:
+            ValidationError: If the encounter is not in DRAFT status
+        """
+        from django.core.exceptions import ValidationError
+
+        if self.status != "DRAFT":
+            raise ValidationError(
+                f"Cannot start progress on encounter with status '{self.status}'. "
+                "Only DRAFT encounters can be started."
+            )
+
+        self.status = "IN_PROGRESS"
+        self.save(update_fields=["status", "updated_at"])
+
+    def finalize(self, user) -> None:
+        """
+        Finalize/complete the encounter.
+
+        Sets status to COMPLETED, records the finalizing user and timestamp.
+        Creates an audit log entry for the status change.
+
+        Args:
+            user: The user who is finalizing the encounter
+
+        Raises:
+            ValidationError: If the encounter is already COMPLETED or CANCELLED
+        """
+        from django.core.exceptions import ValidationError
+        from django.utils import timezone
+
+        from hmis.apps.core.models import AuditLog
+
+        if self.status == "COMPLETED":
+            raise ValidationError(
+                "Encounter is already completed. Completed encounters cannot be finalized again."
+            )
+
+        if self.status == "CANCELLED":
+            raise ValidationError(
+                "Cannot finalize a cancelled encounter. Cancelled encounters are terminal."
+            )
+
+        old_status = self.status
+        self.status = "COMPLETED"
+        self.finalized_by = user
+        self.finalized_at = timezone.now()
+        self.save(update_fields=["status", "finalized_by", "finalized_at", "updated_at"])
+
+        # Create audit log entry
+        AuditLog.log(
+            action="encounter_finalize",
+            user=user,
+            resource_type="Encounter",
+            resource_id=self.id,
+            ip_address=None,
+            user_agent="",
+            patient_id=self.patient_id,
+            details={
+                "old_status": old_status,
+                "new_status": "COMPLETED",
+                "encounter_type": self.encounter_type,
+            },
+        )
+
+    def cancel(self, reason: str = "") -> None:
+        """
+        Cancel the encounter.
+
+        Sets status to CANCELLED and records the reason.
+        Creates an audit log entry for the status change.
+
+        Args:
+            reason: The reason for cancellation
+
+        Raises:
+            ValidationError: If the encounter is already COMPLETED
+        """
+        from django.core.exceptions import ValidationError
+
+        if self.status == "COMPLETED":
+            raise ValidationError(
+                "Cannot cancel a completed encounter. "
+                "Completed encounters require a correction workflow."
+            )
+
+        if self.status == "CANCELLED":
+            # Already cancelled, no action needed
+            return
+
+        old_status = self.status
+        self.status = "CANCELLED"
+        self.cancellation_reason = reason
+        self.save(update_fields=["status", "cancellation_reason", "updated_at"])
 
     def get_spo2_interpretation(self) -> dict | None:
         """

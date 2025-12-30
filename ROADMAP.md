@@ -487,8 +487,8 @@ GET /api/locations/wards/?sub_county=<id>     # Cascading wards
 - [x] Implement treatment plan templates ✅
 - [x] **Write tests first**: Encounter history tests ✅
 - [x] Implement encounter timeline view ✅
-- [ ] **Write tests first**: Encounter status workflow tests (draft → in_progress → completed)
-- [ ] Implement Encounter status field and transitions
+- [x] **Write tests first**: Encounter status workflow tests (draft → in_progress → completed) ✅
+- [x] Implement Encounter status field and transitions ✅
 - [ ] **Write tests first**: Status badge display tests
 - [ ] Implement status badges in encounter list and timeline views
 
