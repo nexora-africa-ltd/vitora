@@ -463,3 +463,100 @@ class TestKenyaTemplatesLoading:
         template = ClinicalTemplate.objects.get(name="Malaria Assessment")
         assert template.specialty == "Internal Medicine"
         assert "Symptoms" in [s["name"] for s in template.content["sections"]]
+
+    def test_tb_assessment_template_exists(self):
+        """Test that TB assessment template JSON file exists."""
+        from pathlib import Path
+        
+        templates_dir = Path(__file__).parent.parent / "data" / "clinical_templates"
+        tb_file = templates_dir / "tb_assessment.json"
+        
+        assert tb_file.exists(), f"TB assessment template not found at {tb_file}"
+
+    def test_tb_assessment_template_loads_correctly(self, db):
+        """Test that TB assessment template can be loaded from actual file."""
+        from pathlib import Path
+        from hmis.apps.clinical_templates.models import ClinicalTemplate
+        
+        templates_dir = Path(__file__).parent.parent / "data" / "clinical_templates"
+        
+        out = StringIO()
+        call_command("load_clinical_templates", f"--dir={templates_dir}", stdout=out)
+        
+        template = ClinicalTemplate.objects.get(name="TB Assessment")
+        assert template.template_type == "assessment"
+        assert template.specialty == "Internal Medicine"
+        
+        section_names = [s["name"] for s in template.content["sections"]]
+        assert "Symptoms" in section_names
+        assert "Investigations" in section_names
+
+    def test_gbv_assessment_template_exists(self):
+        """Test that GBV assessment template JSON file exists."""
+        from pathlib import Path
+        
+        templates_dir = Path(__file__).parent.parent / "data" / "clinical_templates"
+        gbv_file = templates_dir / "gbv_assessment.json"
+        
+        assert gbv_file.exists(), f"GBV assessment template not found at {gbv_file}"
+
+    def test_gbv_assessment_template_is_sensitive(self, db):
+        """Test that GBV template is marked as sensitive specialty."""
+        from pathlib import Path
+        from hmis.apps.clinical_templates.models import ClinicalTemplate
+        
+        templates_dir = Path(__file__).parent.parent / "data" / "clinical_templates"
+        
+        out = StringIO()
+        call_command("load_clinical_templates", f"--dir={templates_dir}", stdout=out)
+        
+        template = ClinicalTemplate.objects.get(name="Gender-Based Violence Assessment")
+        assert "GBV" in template.specialty or "Forensic" in template.specialty
+
+    def test_sexual_assault_template_exists(self):
+        """Test that sexual assault (PRC) template JSON file exists."""
+        from pathlib import Path
+        
+        templates_dir = Path(__file__).parent.parent / "data" / "clinical_templates"
+        sa_file = templates_dir / "sexual_assault.json"
+        
+        assert sa_file.exists(), f"Sexual assault template not found at {sa_file}"
+
+    def test_sexual_assault_template_has_prc_sections(self, db):
+        """Test that sexual assault template includes PRC form sections."""
+        from pathlib import Path
+        from hmis.apps.clinical_templates.models import ClinicalTemplate
+        
+        templates_dir = Path(__file__).parent.parent / "data" / "clinical_templates"
+        
+        out = StringIO()
+        call_command("load_clinical_templates", f"--dir={templates_dir}", stdout=out)
+        
+        template = ClinicalTemplate.objects.get(name="Sexual Assault (PRC)")
+        section_names = [s["name"] for s in template.content["sections"]]
+        assert "PEP Provision" in section_names
+        assert "Medical Examination" in section_names
+
+    def test_rta_template_exists(self):
+        """Test that road traffic accident template JSON file exists."""
+        from pathlib import Path
+        
+        templates_dir = Path(__file__).parent.parent / "data" / "clinical_templates"
+        rta_file = templates_dir / "road_traffic_accident.json"
+        
+        assert rta_file.exists(), f"RTA template not found at {rta_file}"
+
+    def test_rta_template_has_trauma_sections(self, db):
+        """Test that RTA template includes trauma assessment sections."""
+        from pathlib import Path
+        from hmis.apps.clinical_templates.models import ClinicalTemplate
+        
+        templates_dir = Path(__file__).parent.parent / "data" / "clinical_templates"
+        
+        out = StringIO()
+        call_command("load_clinical_templates", f"--dir={templates_dir}", stdout=out)
+        
+        template = ClinicalTemplate.objects.get(name="Road Traffic Accident")
+        section_names = [s["name"] for s in template.content["sections"]]
+        assert "Primary Survey (ATLS)" in section_names
+        assert "Accident Details" in section_names

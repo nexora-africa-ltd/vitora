@@ -1,0 +1,145 @@
+{
+    "name": "Road Traffic Accident",
+    "template_type": "assessment",
+    "specialty": "Emergency Medicine",
+    "description": "Road Traffic Accident (RTA) assessment - ATLS-based trauma assessment for motor vehicle crash victims",
+    "content": {
+        "title": "Road Traffic Accident Assessment",
+        "version": "1.0",
+        "sections": [
+            {
+                "name": "Accident Details",
+                "order": 1,
+                "fields": [
+                    {"name": "accident_date", "type": "date", "required": true, "label": "Date of Accident"},
+                    {"name": "accident_time", "type": "text", "required": false, "label": "Time of Accident"},
+                    {"name": "arrival_time", "type": "text", "required": true, "label": "Time of Arrival at Facility"},
+                    {"name": "accident_location", "type": "text", "required": false, "label": "Location/Road of Accident"},
+                    {"name": "victim_type", "type": "select", "options": ["Driver", "Passenger (Front)", "Passenger (Rear)", "Pedestrian", "Cyclist", "Motorcyclist", "Motorcycle Passenger", "Other"], "required": true, "label": "Victim Type"},
+                    {"name": "vehicle_type", "type": "select", "options": ["Car/Sedan", "SUV/Pickup", "Matatu/Bus", "Truck/Lorry", "Motorcycle", "Bicycle", "Pedestrian", "Other"], "required": true, "label": "Vehicle Type"},
+                    {"name": "collision_type", "type": "select", "options": ["Head-on", "Rear-end", "Side Impact (T-bone)", "Rollover", "Single Vehicle", "Multi-vehicle", "Pedestrian Hit", "Motorcycle Fall", "Other"], "required": false, "label": "Collision Type"},
+                    {"name": "estimated_speed_kph", "type": "number", "required": false, "label": "Estimated Speed (km/h)", "min": 0},
+                    {"name": "seatbelt_used", "type": "select", "options": ["Yes", "No", "Unknown", "N/A"], "required": false, "label": "Seatbelt Used"},
+                    {"name": "helmet_used", "type": "select", "options": ["Yes", "No", "Unknown", "N/A"], "required": false, "label": "Helmet Used (if applicable)"},
+                    {"name": "airbag_deployed", "type": "select", "options": ["Yes", "No", "Unknown", "N/A"], "required": false, "label": "Airbag Deployed"},
+                    {"name": "ejected_from_vehicle", "type": "boolean", "required": false, "label": "Ejected from Vehicle"},
+                    {"name": "entrapment", "type": "boolean", "required": false, "label": "Entrapment/Extrication Required"},
+                    {"name": "alcohol_suspected", "type": "select", "options": ["Yes", "No", "Unknown"], "required": false, "label": "Alcohol/Drug Involvement Suspected"}
+                ]
+            },
+            {
+                "name": "Pre-Hospital Care",
+                "order": 2,
+                "fields": [
+                    {"name": "prehospital_care", "type": "select", "options": ["None", "Bystander First Aid", "EMS/Ambulance", "Police Transport", "Private Vehicle"], "required": true, "label": "Pre-hospital Care/Transport"},
+                    {"name": "gcs_at_scene", "type": "number", "required": false, "label": "GCS at Scene (if known)", "min": 3, "max": 15},
+                    {"name": "loss_of_consciousness", "type": "select", "options": ["None", "Brief (<5 min)", "Prolonged (>5 min)", "Unknown"], "required": false, "label": "Loss of Consciousness"},
+                    {"name": "amnesia", "type": "select", "options": ["None", "Retrograde", "Anterograde", "Both"], "required": false, "label": "Amnesia"},
+                    {"name": "immobilization_applied", "type": "boolean", "required": false, "label": "Spinal Immobilization Applied"},
+                    {"name": "interventions_prehospital", "type": "multiselect", "options": ["Oxygen", "IV Access", "Splinting", "Bleeding Control", "CPR", "Airway Adjunct", "None"], "required": false, "label": "Pre-hospital Interventions"}
+                ]
+            },
+            {
+                "name": "Primary Survey (ATLS)",
+                "order": 3,
+                "fields": [
+                    {"name": "airway", "type": "select", "options": ["Patent", "Partially Obstructed", "Obstructed"], "required": true, "label": "A - Airway"},
+                    {"name": "airway_intervention", "type": "select", "options": ["None Required", "Suction", "Jaw Thrust/Chin Lift", "OPA/NPA", "Intubation", "Surgical Airway"], "required": false, "label": "Airway Intervention"},
+                    {"name": "c_spine_precautions", "type": "boolean", "required": true, "label": "C-Spine Precautions Maintained"},
+                    {"name": "breathing", "type": "select", "options": ["Adequate", "Labored", "Inadequate", "Absent"], "required": true, "label": "B - Breathing"},
+                    {"name": "breath_sounds", "type": "select", "options": ["Equal Bilateral", "Decreased Left", "Decreased Right", "Absent Left", "Absent Right"], "required": false, "label": "Breath Sounds"},
+                    {"name": "spo2", "type": "number", "required": true, "label": "SpO2 (%)", "min": 0, "max": 100},
+                    {"name": "respiratory_rate", "type": "number", "required": true, "label": "Respiratory Rate (/min)", "min": 0},
+                    {"name": "oxygen_given", "type": "boolean", "required": false, "label": "Oxygen Administered"},
+                    {"name": "circulation", "type": "select", "options": ["Stable", "Compensated Shock", "Decompensated Shock", "Cardiac Arrest"], "required": true, "label": "C - Circulation"},
+                    {"name": "pulse_rate", "type": "number", "required": true, "label": "Pulse Rate (bpm)", "min": 0},
+                    {"name": "pulse_quality", "type": "select", "options": ["Strong Regular", "Weak Regular", "Irregular", "Absent"], "required": false, "label": "Pulse Quality"},
+                    {"name": "blood_pressure", "type": "text", "required": true, "label": "Blood Pressure (mmHg)"},
+                    {"name": "capillary_refill", "type": "select", "options": ["<2 seconds", "2-3 seconds", ">3 seconds"], "required": false, "label": "Capillary Refill"},
+                    {"name": "external_hemorrhage", "type": "select", "options": ["None", "Minor - Controlled", "Major - Controlled", "Major - Uncontrolled"], "required": true, "label": "External Hemorrhage"},
+                    {"name": "iv_access", "type": "select", "options": ["None", "1 Large Bore IV", "2 Large Bore IVs", "IO Access"], "required": false, "label": "IV Access"},
+                    {"name": "fluids_given", "type": "text", "required": false, "label": "IV Fluids Given"},
+                    {"name": "disability", "type": "select", "options": ["Alert", "Verbal Response", "Pain Response", "Unresponsive"], "required": true, "label": "D - Disability (AVPU)"},
+                    {"name": "gcs_total", "type": "number", "required": true, "label": "GCS Total", "min": 3, "max": 15},
+                    {"name": "gcs_eye", "type": "number", "required": false, "label": "GCS Eye", "min": 1, "max": 4},
+                    {"name": "gcs_verbal", "type": "number", "required": false, "label": "GCS Verbal", "min": 1, "max": 5},
+                    {"name": "gcs_motor", "type": "number", "required": false, "label": "GCS Motor", "min": 1, "max": 6},
+                    {"name": "pupils", "type": "select", "options": ["Equal and Reactive", "Unequal", "Fixed Dilated", "Fixed Constricted", "Non-reactive"], "required": true, "label": "Pupil Response"},
+                    {"name": "exposure", "type": "boolean", "required": true, "label": "E - Exposure (Fully Exposed)"},
+                    {"name": "temperature", "type": "number", "required": false, "label": "Temperature (°C)"},
+                    {"name": "hypothermia_prevention", "type": "boolean", "required": false, "label": "Hypothermia Prevention Measures"}
+                ]
+            },
+            {
+                "name": "Secondary Survey",
+                "order": 4,
+                "fields": [
+                    {"name": "head_examination", "type": "textarea", "required": false, "label": "Head Examination Findings"},
+                    {"name": "scalp_lacerations", "type": "boolean", "required": false, "label": "Scalp Lacerations"},
+                    {"name": "skull_fracture_signs", "type": "multiselect", "options": ["Battle's Sign", "Raccoon Eyes", "CSF Rhinorrhea", "CSF Otorrhea", "Hemotympanum", "None"], "required": false, "label": "Signs of Skull Fracture"},
+                    {"name": "face_examination", "type": "textarea", "required": false, "label": "Face Examination"},
+                    {"name": "neck_examination", "type": "textarea", "required": false, "label": "Neck Examination"},
+                    {"name": "c_spine_tenderness", "type": "boolean", "required": false, "label": "C-Spine Tenderness"},
+                    {"name": "chest_examination", "type": "textarea", "required": false, "label": "Chest Examination"},
+                    {"name": "chest_injuries", "type": "multiselect", "options": ["Rib Fractures", "Flail Chest", "Pneumothorax", "Hemothorax", "Pulmonary Contusion", "Cardiac Contusion", "None Apparent"], "required": false, "label": "Chest Injuries Suspected"},
+                    {"name": "abdomen_examination", "type": "textarea", "required": false, "label": "Abdominal Examination"},
+                    {"name": "abdominal_tenderness", "type": "multiselect", "options": ["RUQ", "LUQ", "RLQ", "LLQ", "Periumbilical", "Suprapubic", "Guarding", "Rigidity", "None"], "required": false, "label": "Abdominal Tenderness"},
+                    {"name": "pelvis_examination", "type": "select", "options": ["Stable", "Unstable/Tender", "Not Assessed"], "required": false, "label": "Pelvis Stability"},
+                    {"name": "perineum_examination", "type": "textarea", "required": false, "label": "Perineum/GU Examination"},
+                    {"name": "back_examination", "type": "textarea", "required": false, "label": "Back Examination (Log Roll)"},
+                    {"name": "extremities_examination", "type": "textarea", "required": true, "label": "Extremities Examination"},
+                    {"name": "fractures_suspected", "type": "multiselect", "options": ["Upper Limb", "Lower Limb", "Pelvis", "Spine", "None Apparent"], "required": false, "label": "Fractures Suspected"},
+                    {"name": "neurovascular_status", "type": "select", "options": ["Intact All Limbs", "Deficit Present", "Cannot Assess"], "required": false, "label": "Neurovascular Status"},
+                    {"name": "neurological_examination", "type": "textarea", "required": false, "label": "Neurological Examination"}
+                ]
+            },
+            {
+                "name": "Investigations",
+                "order": 5,
+                "fields": [
+                    {"name": "blood_group", "type": "select", "options": ["A+", "A-", "B+", "B-", "AB+", "AB-", "O+", "O-", "Pending"], "required": false, "label": "Blood Group"},
+                    {"name": "crossmatch_units", "type": "number", "required": false, "label": "Units Cross-matched", "min": 0},
+                    {"name": "hemoglobin", "type": "number", "required": false, "label": "Hemoglobin (g/dL)"},
+                    {"name": "hematocrit", "type": "number", "required": false, "label": "Hematocrit (%)"},
+                    {"name": "blood_glucose", "type": "number", "required": false, "label": "Blood Glucose (mmol/L)"},
+                    {"name": "xrays_ordered", "type": "multiselect", "options": ["C-Spine", "Chest", "Pelvis", "Extremities", "None"], "required": false, "label": "X-Rays Ordered"},
+                    {"name": "ct_scan_ordered", "type": "multiselect", "options": ["Head", "C-Spine", "Chest", "Abdomen/Pelvis", "Pan-Scan", "None"], "required": false, "label": "CT Scan Ordered"},
+                    {"name": "fast_scan", "type": "select", "options": ["Positive", "Negative", "Indeterminate", "Not Done"], "required": false, "label": "FAST Scan Result"},
+                    {"name": "efast_findings", "type": "textarea", "required": false, "label": "eFAST Findings"},
+                    {"name": "urinalysis", "type": "select", "options": ["Normal", "Hematuria", "Not Done"], "required": false, "label": "Urinalysis"},
+                    {"name": "blood_alcohol_level", "type": "number", "required": false, "label": "Blood Alcohol Level (if tested)"}
+                ]
+            },
+            {
+                "name": "Injuries Identified",
+                "order": 6,
+                "fields": [
+                    {"name": "injury_severity_score", "type": "number", "required": false, "label": "Injury Severity Score (ISS)", "min": 0, "max": 75},
+                    {"name": "injuries_list", "type": "textarea", "required": true, "label": "List of Injuries Identified"},
+                    {"name": "polytrauma", "type": "boolean", "required": false, "label": "Polytrauma (Multiple System Injuries)"},
+                    {"name": "life_threatening_injuries", "type": "multiselect", "options": ["Airway Obstruction", "Tension Pneumothorax", "Open Pneumothorax", "Massive Hemothorax", "Flail Chest", "Cardiac Tamponade", "Massive Hemorrhage", "Severe TBI", "None Identified"], "required": false, "label": "Life-Threatening Injuries"}
+                ]
+            },
+            {
+                "name": "Management and Disposition",
+                "order": 7,
+                "fields": [
+                    {"name": "blood_transfusion", "type": "boolean", "required": false, "label": "Blood Transfusion Given"},
+                    {"name": "units_transfused", "type": "number", "required": false, "label": "Units Transfused", "min": 0},
+                    {"name": "procedures_done", "type": "multiselect", "options": ["Chest Tube", "Splinting", "Wound Closure", "Fracture Reduction", "Urinary Catheter", "NG Tube", "None"], "required": false, "label": "Procedures Done in ED"},
+                    {"name": "tetanus_prophylaxis", "type": "boolean", "required": false, "label": "Tetanus Prophylaxis Given"},
+                    {"name": "antibiotics", "type": "boolean", "required": false, "label": "Antibiotics Given"},
+                    {"name": "analgesia", "type": "text", "required": false, "label": "Analgesia Given"},
+                    {"name": "disposition", "type": "select", "options": ["Discharged", "Observation (Short Stay)", "Admitted - General Ward", "Admitted - HDU", "Admitted - ICU", "Operating Theatre", "Referred to Higher Center", "Died in ED", "Absconded"], "required": true, "label": "Disposition"},
+                    {"name": "surgical_consultation", "type": "multiselect", "options": ["General Surgery", "Orthopedics", "Neurosurgery", "Cardiothoracic", "Plastic Surgery", "None Required"], "required": false, "label": "Surgical Consultations"},
+                    {"name": "operation_required", "type": "boolean", "required": false, "label": "Operation Required"},
+                    {"name": "referral_facility", "type": "text", "required": false, "label": "Referred To (if applicable)"},
+                    {"name": "police_notified", "type": "boolean", "required": false, "label": "Police Notified"},
+                    {"name": "p3_form_issued", "type": "boolean", "required": false, "label": "P3 Form Issued"},
+                    {"name": "next_of_kin_notified", "type": "boolean", "required": false, "label": "Next of Kin Notified"},
+                    {"name": "clinician_notes", "type": "textarea", "required": false, "label": "Additional Notes"}
+                ]
+            }
+        ]
+    }
+}

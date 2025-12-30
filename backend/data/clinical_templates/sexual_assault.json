@@ -1,0 +1,178 @@
+{
+    "name": "Sexual Assault (PRC)",
+    "template_type": "assessment",
+    "specialty": "GBV/Forensic",
+    "description": "Post-Rape Care (PRC) Form - Kenya National Guidelines aligned for sexual assault survivors",
+    "content": {
+        "title": "Sexual Assault Assessment (PRC)",
+        "version": "1.0",
+        "sections": [
+            {
+                "name": "Survivor Information",
+                "order": 1,
+                "fields": [
+                    {"name": "prc_number", "type": "text", "required": true, "label": "PRC Number"},
+                    {"name": "date_of_assault", "type": "date", "required": true, "label": "Date of Assault"},
+                    {"name": "time_of_assault", "type": "text", "required": false, "label": "Approximate Time of Assault"},
+                    {"name": "hours_since_assault", "type": "number", "required": true, "label": "Hours Since Assault", "min": 0},
+                    {"name": "within_72_hours", "type": "boolean", "required": true, "label": "Within 72 Hours (PEP Eligible)"},
+                    {"name": "within_120_hours", "type": "boolean", "required": false, "label": "Within 120 Hours (EC Eligible)"},
+                    {"name": "presenting_complaint", "type": "textarea", "required": true, "label": "Presenting Complaint"},
+                    {"name": "accompanied_by", "type": "select", "options": ["Alone", "Family Member", "Friend", "Police", "Social Worker", "Other"], "required": false, "label": "Accompanied By"}
+                ]
+            },
+            {
+                "name": "Assault Details",
+                "order": 2,
+                "fields": [
+                    {"name": "location_of_assault", "type": "text", "required": false, "label": "Location of Assault"},
+                    {"name": "number_of_assailants", "type": "number", "required": false, "label": "Number of Assailants", "min": 1},
+                    {"name": "assailant_known", "type": "boolean", "required": true, "label": "Assailant Known"},
+                    {"name": "assailant_relationship", "type": "select", "options": ["Stranger", "Acquaintance", "Partner/Spouse", "Ex-Partner", "Family Member", "Authority Figure", "Multiple/Mixed", "Unknown"], "required": false, "label": "Relationship to Assailant"},
+                    {"name": "penetration_type", "type": "multiselect", "options": ["Vaginal", "Anal", "Oral", "Object Used", "Attempted/Uncertain"], "required": true, "label": "Type of Penetration"},
+                    {"name": "condom_used_by_assailant", "type": "select", "options": ["Yes", "No", "Unknown"], "required": false, "label": "Condom Used by Assailant"},
+                    {"name": "ejaculation", "type": "select", "options": ["Yes", "No", "Unknown"], "required": false, "label": "Ejaculation Occurred"},
+                    {"name": "physical_force_used", "type": "boolean", "required": true, "label": "Physical Force Used"},
+                    {"name": "threats_used", "type": "boolean", "required": false, "label": "Threats/Intimidation Used"},
+                    {"name": "weapons_used", "type": "boolean", "required": false, "label": "Weapons Used"},
+                    {"name": "drugged", "type": "select", "options": ["Yes", "Suspected", "No", "Unknown"], "required": false, "label": "Drugged/Intoxicated by Assailant"}
+                ]
+            },
+            {
+                "name": "Post-Assault Actions",
+                "order": 3,
+                "fields": [
+                    {"name": "bathed_since", "type": "boolean", "required": true, "label": "Bathed/Showered Since Assault"},
+                    {"name": "changed_clothes", "type": "boolean", "required": true, "label": "Changed Clothes Since"},
+                    {"name": "urinated_since", "type": "boolean", "required": false, "label": "Urinated Since"},
+                    {"name": "defecated_since", "type": "boolean", "required": false, "label": "Defecated Since"},
+                    {"name": "douched", "type": "boolean", "required": false, "label": "Vaginal Douching"},
+                    {"name": "brushed_teeth", "type": "boolean", "required": false, "label": "Brushed Teeth/Gargled (if oral assault)"},
+                    {"name": "clothes_available", "type": "boolean", "required": false, "label": "Clothes Worn During Assault Available"}
+                ]
+            },
+            {
+                "name": "Medical History",
+                "order": 4,
+                "fields": [
+                    {"name": "last_menstrual_period", "type": "date", "required": false, "label": "Last Menstrual Period"},
+                    {"name": "menstrual_status", "type": "select", "options": ["Regular Cycles", "Irregular", "Post-Menopausal", "Pre-Menarche", "Pregnant", "N/A"], "required": false, "label": "Menstrual Status"},
+                    {"name": "last_consensual_intercourse", "type": "text", "required": false, "label": "Last Consensual Intercourse (Date if known)"},
+                    {"name": "contraception", "type": "select", "options": ["None", "Oral Pills", "Injectable", "Implant", "IUD", "Condoms", "Other"], "required": false, "label": "Current Contraception"},
+                    {"name": "known_hiv_status", "type": "select", "options": ["Positive (on ART)", "Positive (not on ART)", "Negative", "Unknown"], "required": true, "label": "Known HIV Status"},
+                    {"name": "hepatitis_b_status", "type": "select", "options": ["Vaccinated", "Positive", "Negative", "Unknown"], "required": false, "label": "Hepatitis B Status"},
+                    {"name": "allergies", "type": "textarea", "required": false, "label": "Known Allergies"},
+                    {"name": "current_medications", "type": "textarea", "required": false, "label": "Current Medications"}
+                ]
+            },
+            {
+                "name": "Medical Examination",
+                "order": 5,
+                "fields": [
+                    {"name": "general_condition", "type": "select", "options": ["Stable", "Distressed but Stable", "Requires Immediate Attention"], "required": true, "label": "General Condition"},
+                    {"name": "mental_state", "type": "select", "options": ["Alert and Oriented", "Distressed/Anxious", "Withdrawn", "Dissociated", "Intoxicated"], "required": true, "label": "Mental State"},
+                    {"name": "injuries_documented", "type": "boolean", "required": true, "label": "Injuries Documented"},
+                    {"name": "extragenital_injuries", "type": "textarea", "required": false, "label": "Extra-genital Injuries"},
+                    {"name": "genital_injuries", "type": "textarea", "required": false, "label": "Genital/Anal Injuries"},
+                    {"name": "injury_body_map", "type": "boolean", "required": false, "label": "Body Map Diagram Completed"},
+                    {"name": "photographs_taken", "type": "boolean", "required": false, "label": "Photographs Taken (with consent)"},
+                    {"name": "speculum_exam", "type": "select", "options": ["Done - Normal", "Done - Abnormal", "Deferred", "Not Indicated"], "required": false, "label": "Speculum Examination"},
+                    {"name": "speculum_findings", "type": "textarea", "required": false, "label": "Speculum Findings"}
+                ]
+            },
+            {
+                "name": "Evidence Collection",
+                "order": 6,
+                "fields": [
+                    {"name": "consent_for_evidence", "type": "boolean", "required": true, "label": "Consent for Evidence Collection"},
+                    {"name": "forensic_kit_used", "type": "boolean", "required": false, "label": "Forensic Evidence Kit Used"},
+                    {"name": "high_vaginal_swab", "type": "boolean", "required": false, "label": "High Vaginal Swab Collected"},
+                    {"name": "endocervical_swab", "type": "boolean", "required": false, "label": "Endocervical Swab Collected"},
+                    {"name": "anal_swab", "type": "boolean", "required": false, "label": "Anal Swab Collected"},
+                    {"name": "oral_swab", "type": "boolean", "required": false, "label": "Oral Swab Collected"},
+                    {"name": "blood_samples", "type": "boolean", "required": false, "label": "Blood Samples Collected"},
+                    {"name": "urine_sample", "type": "boolean", "required": false, "label": "Urine Sample Collected"},
+                    {"name": "clothing_collected", "type": "boolean", "required": false, "label": "Clothing Collected as Evidence"},
+                    {"name": "fingernail_scrapings", "type": "boolean", "required": false, "label": "Fingernail Scrapings Collected"},
+                    {"name": "chain_of_custody_maintained", "type": "boolean", "required": true, "label": "Chain of Custody Maintained"},
+                    {"name": "evidence_handover_to", "type": "text", "required": false, "label": "Evidence Handed Over To"}
+                ]
+            },
+            {
+                "name": "Laboratory Tests",
+                "order": 7,
+                "fields": [
+                    {"name": "pregnancy_test", "type": "select", "options": ["Positive", "Negative", "Not Done", "N/A"], "required": true, "label": "Pregnancy Test"},
+                    {"name": "hiv_test_done", "type": "boolean", "required": true, "label": "HIV Test Done (Baseline)"},
+                    {"name": "hiv_result", "type": "select", "options": ["Positive", "Negative", "Indeterminate", "Declined"], "required": false, "label": "HIV Test Result"},
+                    {"name": "hepatitis_b_test", "type": "select", "options": ["Positive", "Negative", "Not Done"], "required": false, "label": "Hepatitis B Surface Antigen"},
+                    {"name": "vdrl_rpr", "type": "select", "options": ["Reactive", "Non-Reactive", "Not Done"], "required": false, "label": "VDRL/RPR (Syphilis)"},
+                    {"name": "urinalysis", "type": "select", "options": ["Normal", "Abnormal", "Not Done"], "required": false, "label": "Urinalysis"},
+                    {"name": "blood_alcohol_drug", "type": "boolean", "required": false, "label": "Blood Alcohol/Drug Screen Done"}
+                ]
+            },
+            {
+                "name": "PEP Provision",
+                "order": 8,
+                "fields": [
+                    {"name": "pep_eligible", "type": "boolean", "required": true, "label": "PEP Eligible (<72 hours, HIV-)"},
+                    {"name": "pep_offered", "type": "boolean", "required": true, "label": "PEP Offered"},
+                    {"name": "pep_given", "type": "boolean", "required": true, "label": "PEP Given"},
+                    {"name": "pep_regimen", "type": "select", "options": ["TDF/3TC/DTG", "TDF/3TC + ATV/r", "AZT/3TC + LPV/r", "Other"], "required": false, "label": "PEP Regimen"},
+                    {"name": "pep_starter_pack_given", "type": "boolean", "required": false, "label": "Starter Pack Given (3-7 days)"},
+                    {"name": "pep_counseling_done", "type": "boolean", "required": false, "label": "PEP Adherence Counseling Done"},
+                    {"name": "pep_declined_reason", "type": "textarea", "required": false, "label": "Reason if PEP Declined/Not Given"}
+                ]
+            },
+            {
+                "name": "Other Prophylaxis",
+                "order": 9,
+                "fields": [
+                    {"name": "emergency_contraception", "type": "select", "options": ["Given (Levonorgestrel)", "Given (Ulipristal)", "Given (IUD)", "Not Indicated", "Declined", "Too Late (>120hrs)"], "required": true, "label": "Emergency Contraception"},
+                    {"name": "sti_prophylaxis", "type": "boolean", "required": true, "label": "STI Prophylaxis Given"},
+                    {"name": "sti_regimen", "type": "text", "required": false, "label": "STI Prophylaxis Regimen"},
+                    {"name": "hepatitis_b_vaccine", "type": "select", "options": ["Given", "Already Vaccinated", "Not Given"], "required": false, "label": "Hepatitis B Vaccine"},
+                    {"name": "tetanus_toxoid", "type": "select", "options": ["Given", "Already Immunized", "Not Indicated"], "required": false, "label": "Tetanus Toxoid"},
+                    {"name": "wound_care", "type": "boolean", "required": false, "label": "Wound Care Provided"},
+                    {"name": "analgesia", "type": "boolean", "required": false, "label": "Analgesia Prescribed"}
+                ]
+            },
+            {
+                "name": "Psychosocial Support",
+                "order": 10,
+                "fields": [
+                    {"name": "psychological_first_aid", "type": "boolean", "required": true, "label": "Psychological First Aid Given"},
+                    {"name": "safety_assessed", "type": "boolean", "required": true, "label": "Safety Assessment Done"},
+                    {"name": "safe_to_go_home", "type": "boolean", "required": true, "label": "Safe to Return Home"},
+                    {"name": "shelter_needed", "type": "boolean", "required": false, "label": "Shelter/Safe House Needed"},
+                    {"name": "counseling_referral", "type": "boolean", "required": true, "label": "Referred for Counseling"},
+                    {"name": "support_person_identified", "type": "boolean", "required": false, "label": "Support Person Identified"}
+                ]
+            },
+            {
+                "name": "Referrals and Documentation",
+                "order": 11,
+                "fields": [
+                    {"name": "p3_form_completed", "type": "boolean", "required": true, "label": "P3 Form Completed"},
+                    {"name": "police_report_filed", "type": "select", "options": ["Yes", "No - Declined", "No - Planning to File", "N/A"], "required": false, "label": "Police Report Status"},
+                    {"name": "ob_number", "type": "text", "required": false, "label": "OB Number (if reported)"},
+                    {"name": "legal_aid_referral", "type": "boolean", "required": false, "label": "Legal Aid Referral"},
+                    {"name": "social_services_referral", "type": "boolean", "required": false, "label": "Social Services Referral"},
+                    {"name": "consent_for_referrals", "type": "boolean", "required": true, "label": "Consent for Referrals"}
+                ]
+            },
+            {
+                "name": "Follow-up Plan",
+                "order": 12,
+                "fields": [
+                    {"name": "follow_up_date", "type": "date", "required": true, "label": "Follow-up Appointment Date"},
+                    {"name": "follow_up_instructions", "type": "textarea", "required": true, "label": "Instructions Given to Survivor"},
+                    {"name": "hiv_retest_date", "type": "date", "required": false, "label": "HIV Re-test Date (6 weeks, 3 months)"},
+                    {"name": "pep_completion_date", "type": "date", "required": false, "label": "PEP Completion Date (28 days)"},
+                    {"name": "contact_number", "type": "text", "required": false, "label": "Contact Number (with consent)"},
+                    {"name": "clinician_notes", "type": "textarea", "required": false, "label": "Clinician Notes"}
+                ]
+            }
+        ]
+    }
+}

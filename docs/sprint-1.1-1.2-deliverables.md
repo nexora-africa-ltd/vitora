@@ -11,7 +11,7 @@
 
 Sprint 1.1-1.2 builds upon the Phase 0 foundation to deliver a production-ready Encounter Management module. This sprint focuses on enhanced vital signs validation, ICD-10 diagnosis coding, treatment plan templates, and encounter timeline views. Following TDD methodology, all tests are written BEFORE implementation.
 
-**Final Results**: 910 tests passing, 85.84% coverage
+**Final Results**: 918 tests passing, 85.84% coverage
 
 ---
 
@@ -44,14 +44,14 @@ Sprint 1.1-1.2 builds upon the Phase 0 foundation to deliver a production-ready 
 | **Phase 2 Deferred Items** | | |
 | test_clinical_templates.py | 31 | ✅ Complete |
 | test_clinical_templates_api.py | 35 | ✅ Complete |
-| test_clinical_templates_admin.py | 19 | ✅ Complete |
+| test_clinical_templates_admin.py | 27 | ✅ Complete |
 | test_template_json_validation.py | 17 | ✅ Complete |
 | test_pediatric_vitals.py | 35 | ✅ Complete |
 | test_patient_age_category.py | 26 | ✅ Complete |
 | test_map_status.py | 21 | ✅ Complete |
-| **Phase 2 Total** | **184** | ✅ |
+| **Phase 2 Total** | **192** | ✅ |
 | | | |
-| **Project Total** | **910** | ✅ |
+| **Project Total** | **918** | ✅ |
 | **Coverage** | **85.84%** | ✅ ≥80% |
 
 ---
@@ -239,8 +239,9 @@ class Diagnosis(models.Model):
 
 **API Endpoints** (✅ Implemented):
 ```
-GET  /api/icd10/search/?q=<query>        # ✅ Search ICD-10 codes
-GET  /api/icd10/<code>/                  # ✅ Get code details
+GET  /api/icd10-codes/                   # ✅ List/Search ICD-10 codes
+GET  /api/icd10-codes/?search=<query>    # ✅ Search by code, description, category
+GET  /api/icd10-codes/<id>/              # ✅ Get code details
 
 POST /api/encounters/<id>/diagnoses/     # ✅ Add diagnosis
 GET  /api/encounters/<id>/diagnoses/     # ✅ List encounter diagnoses
@@ -678,7 +679,7 @@ GET    /api/clinical-templates/popular/      # Most used templates
 GET    /api/clinical-templates/by_specialty/ # Group by specialty
 ```
 
-**Pre-built Templates** (Kenya-specific, ✅ Implemented):
+**Pre-built Templates** (Kenya-specific, ✅ Implemented - 14 templates):
 1. ✅ **General OPD Visit** - `general_opd.json`
 2. ✅ **Antenatal Care (ANC)** - `anc_visit.json`
 3. ✅ **Child Wellness Check** - `child_wellness.json`
@@ -689,6 +690,10 @@ GET    /api/clinical-templates/by_specialty/ # Group by specialty
 8. ✅ **Respiratory Infection** - `respiratory_infection.json`
 9. ✅ **Diarrheal Disease** - `diarrheal_disease.json`
 10. ✅ **Trauma Assessment** - `trauma_assessment.json`
+11. ✅ **TB Assessment** - `tb_assessment.json` (Kenya National TB Program aligned)
+12. ✅ **Gender-Based Violence** - `gbv_assessment.json` (Sensitive - comprehensive GBV documentation)
+13. ✅ **Sexual Assault (PRC)** - `sexual_assault.json` (Post-Rape Care Form aligned)
+14. ✅ **Road Traffic Accident** - `road_traffic_accident.json` (ATLS-based trauma assessment)
 
 **JSON Schema Validation** (✅ Implemented):
 - `hmis/apps/clinical_templates/schemas.py`
@@ -721,12 +726,12 @@ class TestNestedSectionsAPI:               # ✅ 2 tests
 class TestTemplateAPIPagination:           # ✅ 2 tests
 class TestTemplateListSerializer:          # ✅ 1 test
 
-# tests/test_clinical_templates_admin.py (19 tests)
+# tests/test_clinical_templates_admin.py (27 tests)
 class TestClinicalTemplateAdminRegistration:  # ✅ 2 tests
 class TestSystemTemplateAdminProtection:      # ✅ 2 tests
 class TestClinicalTemplateAdminFields:        # ✅ 5 tests
 class TestLoadClinicalTemplatesCommand:       # ✅ 8 tests
-class TestKenyaTemplatesLoading:              # ✅ 2 tests
+class TestKenyaTemplatesLoading:              # ✅ 10 tests (TB, GBV, Sexual Assault, RTA)
 
 # tests/test_template_json_validation.py (17 tests)
 class TestValidTemplateContent:            # ✅ 3 tests
@@ -971,7 +976,7 @@ python manage.py import_icd10 data/icd10_codes.csv
 # Source: WHO ICD-10 or CMS ICD-10-CM
 ```
 
-### Clinical Templates Import ⚠️ DEFERRED
+### Clinical Templates Import ✅ IMPLEMENTED
 ```bash
 # Management command (Phase 2)
 python manage.py load_clinical_templates
@@ -992,7 +997,7 @@ python manage.py load_clinical_templates
 # hmis/settings/base.py (additions)
 
 # Vitals Configuration
-VITALS_RANGES = {
+VITAL_RANGES = {
     'temperature': {
         'unit': '°C',
         'normal': (36.1, 37.2),
@@ -1037,16 +1042,16 @@ TEMPLATE_MAX_FIELDS_PER_SECTION = 50
 | Method | Endpoint | Description |
 |--------|----------|-------------|
 | GET | `/api/encounters/<id>/vitals-summary/` | Comprehensive vitals with status |
-| GET | `/api/icd10/search/` | Search ICD-10 codes |
-| GET | `/api/icd10/chapters/` | List ICD-10 chapters |
-| GET | `/api/icd10/common/` | Frequently used codes |
+| GET | `/api/icd10-codes/` | List ICD-10 codes |
+| GET | `/api/icd10-codes/?search=<query>` | Search ICD-10 codes by code/description |
+| GET | `/api/icd10-codes/<id>/` | Get ICD-10 code details |
 | POST | `/api/encounters/<id>/diagnoses/` | Add diagnosis |
 | GET | `/api/encounters/<id>/diagnoses/` | List diagnoses |
 | POST | `/api/encounters/<id>/treatment-plan/` | Create treatment plan |
 | GET | `/api/encounters/<id>/treatment-plan/` | Get treatment plan |
 | POST | `/api/encounters/<id>/treatment-plan/apply-template/` | Apply template |
 | GET | `/api/treatment-templates/` | List templates |
-| GET | `/api/treatment-templates/suggest/` | Suggest by diagnosis |
+| GET | `/api/treatment-templates/suggest/?diagnosis=<code>` | Suggest by diagnosis |
 | GET | `/api/patients/<id>/encounter-timeline/` | Patient encounter history |
 | GET | `/api/clinical-templates/` | List clinical templates |
 | POST | `/api/clinical-templates/` | Create user template |

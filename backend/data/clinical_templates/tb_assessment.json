@@ -1,0 +1,83 @@
+{
+    "name": "TB Assessment",
+    "template_type": "assessment",
+    "specialty": "Internal Medicine",
+    "description": "Kenya National TB Program - Tuberculosis assessment and management protocol",
+    "content": {
+        "title": "TB Assessment",
+        "version": "1.0",
+        "sections": [
+            {
+                "name": "Symptoms",
+                "order": 1,
+                "fields": [
+                    {"name": "cough_duration_weeks", "type": "number", "required": true, "label": "Cough Duration (Weeks)", "min": 0},
+                    {"name": "cough_over_2_weeks", "type": "boolean", "required": true, "label": "Cough ≥2 Weeks"},
+                    {"name": "productive_cough", "type": "boolean", "required": false, "label": "Productive Cough"},
+                    {"name": "hemoptysis", "type": "boolean", "required": false, "label": "Hemoptysis (Blood in Sputum)"},
+                    {"name": "night_sweats", "type": "boolean", "required": false, "label": "Night Sweats"},
+                    {"name": "fever", "type": "boolean", "required": false, "label": "Fever"},
+                    {"name": "weight_loss", "type": "boolean", "required": false, "label": "Significant Weight Loss"},
+                    {"name": "weight_loss_kg", "type": "number", "required": false, "label": "Weight Loss (kg)", "min": 0},
+                    {"name": "loss_of_appetite", "type": "boolean", "required": false, "label": "Loss of Appetite"},
+                    {"name": "fatigue", "type": "boolean", "required": false, "label": "Fatigue/Malaise"},
+                    {"name": "chest_pain", "type": "boolean", "required": false, "label": "Chest Pain"}
+                ]
+            },
+            {
+                "name": "Risk Factors",
+                "order": 2,
+                "fields": [
+                    {"name": "hiv_status", "type": "select", "options": ["Positive", "Negative", "Unknown", "Not Tested"], "required": true, "label": "HIV Status"},
+                    {"name": "tb_contact_history", "type": "boolean", "required": true, "label": "TB Contact History"},
+                    {"name": "previous_tb", "type": "boolean", "required": false, "label": "Previous TB Treatment"},
+                    {"name": "previous_tb_year", "type": "number", "required": false, "label": "Year of Previous TB"},
+                    {"name": "diabetes", "type": "boolean", "required": false, "label": "Diabetes"},
+                    {"name": "malnutrition", "type": "boolean", "required": false, "label": "Malnutrition"},
+                    {"name": "immunosuppressive_therapy", "type": "boolean", "required": false, "label": "Immunosuppressive Therapy"},
+                    {"name": "silicosis", "type": "boolean", "required": false, "label": "Silicosis/Occupational Exposure"},
+                    {"name": "smoking", "type": "boolean", "required": false, "label": "Smoking History"},
+                    {"name": "alcohol", "type": "boolean", "required": false, "label": "Alcohol Use"}
+                ]
+            },
+            {
+                "name": "Investigations",
+                "order": 3,
+                "fields": [
+                    {"name": "sputum_smear", "type": "select", "options": ["Positive", "Negative", "Not Done"], "required": true, "label": "Sputum Smear (ZN/Auramine)"},
+                    {"name": "smear_grade", "type": "select", "options": ["Scanty (1-9 AFB)", "1+ (10-99 AFB)", "2+ (1-10 AFB/field)", "3+ (>10 AFB/field)", "N/A"], "required": false, "label": "Smear Grade"},
+                    {"name": "genexpert_result", "type": "select", "options": ["MTB Detected", "MTB Not Detected", "Invalid", "Not Done"], "required": true, "label": "GeneXpert Result"},
+                    {"name": "rif_resistance", "type": "select", "options": ["Detected", "Not Detected", "Indeterminate", "N/A"], "required": false, "label": "Rifampicin Resistance"},
+                    {"name": "culture_result", "type": "select", "options": ["Positive", "Negative", "Contaminated", "Pending", "Not Done"], "required": false, "label": "Culture Result"},
+                    {"name": "dst_result", "type": "textarea", "required": false, "label": "DST Results (Drug Susceptibility)"},
+                    {"name": "chest_xray", "type": "select", "options": ["Suggestive of PTB", "Normal", "Other Pathology", "Not Done"], "required": false, "label": "Chest X-Ray"},
+                    {"name": "xray_findings", "type": "textarea", "required": false, "label": "X-Ray Findings"}
+                ]
+            },
+            {
+                "name": "Classification",
+                "order": 4,
+                "fields": [
+                    {"name": "tb_type", "type": "select", "options": ["Pulmonary TB (Bacteriologically Confirmed)", "Pulmonary TB (Clinically Diagnosed)", "Extra-Pulmonary TB"], "required": true, "label": "TB Type"},
+                    {"name": "eptb_site", "type": "select", "options": ["Lymph Node", "Pleural", "Meningitis", "Abdominal", "Bone/Joint", "Genitourinary", "Disseminated", "Other"], "required": false, "label": "EPTB Site (if applicable)"},
+                    {"name": "patient_category", "type": "select", "options": ["New", "Relapse", "Treatment After Failure", "Treatment After Loss to Follow-up", "Other Previously Treated", "Unknown"], "required": true, "label": "Patient Category"},
+                    {"name": "drug_resistance_type", "type": "select", "options": ["Drug-Susceptible", "RR-TB", "MDR-TB", "Pre-XDR-TB", "XDR-TB", "Unknown"], "required": true, "label": "Drug Resistance Classification"}
+                ]
+            },
+            {
+                "name": "Treatment Protocol",
+                "order": 5,
+                "fields": [
+                    {"name": "treatment_regimen", "type": "select", "options": ["2RHZE/4RH (New DS-TB)", "2RHZES/1RHZE/5RHE (Retreatment)", "Shorter MDR-TB Regimen", "Longer MDR-TB Regimen", "Individualized"], "required": true, "label": "Treatment Regimen"},
+                    {"name": "treatment_start_date", "type": "date", "required": true, "label": "Treatment Start Date"},
+                    {"name": "treatment_supporter", "type": "text", "required": false, "label": "DOT Supporter Name"},
+                    {"name": "treatment_supporter_phone", "type": "text", "required": false, "label": "DOT Supporter Phone"},
+                    {"name": "art_status", "type": "select", "options": ["On ART", "Started ART", "Not on ART (HIV-)", "ART Deferred", "Declined"], "required": false, "label": "ART Status (if HIV+)"},
+                    {"name": "cpt_given", "type": "boolean", "required": false, "label": "Cotrimoxazole Preventive Therapy Given"},
+                    {"name": "nutritional_support", "type": "boolean", "required": false, "label": "Nutritional Support Provided"},
+                    {"name": "notes", "type": "textarea", "required": false, "label": "Additional Notes"}
+                ]
+            }
+        ]
+    }
+}
