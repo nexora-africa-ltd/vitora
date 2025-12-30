@@ -1,0 +1,90 @@
+{
+    "name": "Diarrheal Disease Assessment",
+    "template_type": "assessment",
+    "specialty": "Pediatrics",
+    "description": "Pediatric focus - Diarrheal disease assessment with WHO dehydration classification",
+    "content": {
+        "title": "Diarrheal Disease Assessment",
+        "version": "1.0",
+        "sections": [
+            {
+                "name": "Diarrhea History",
+                "order": 1,
+                "fields": [
+                    {"name": "duration_days", "type": "number", "required": true, "label": "Duration (Days)", "min": 0},
+                    {"name": "stools_per_day", "type": "number", "required": true, "label": "Stools per Day", "min": 0},
+                    {"name": "blood_in_stool", "type": "boolean", "required": true, "label": "Blood in Stool (Dysentery)"},
+                    {"name": "stool_character", "type": "select", "options": ["Watery", "Loose", "Mucoid", "Rice-Water", "Bloody"], "required": false, "label": "Stool Character"},
+                    {"name": "vomiting", "type": "boolean", "required": false, "label": "Vomiting"},
+                    {"name": "fever", "type": "boolean", "required": false, "label": "Fever"},
+                    {"name": "abdominal_pain", "type": "boolean", "required": false, "label": "Abdominal Pain/Cramping"}
+                ]
+            },
+            {
+                "name": "Dehydration Assessment",
+                "order": 2,
+                "fields": [
+                    {"name": "general_condition", "type": "select", "options": ["Well/Alert", "Restless/Irritable", "Lethargic/Unconscious"], "required": true, "label": "General Condition"},
+                    {"name": "eyes", "type": "select", "options": ["Normal", "Sunken"], "required": true, "label": "Eyes"},
+                    {"name": "tears", "type": "select", "options": ["Present", "Absent"], "required": false, "label": "Tears When Crying"},
+                    {"name": "mouth_tongue", "type": "select", "options": ["Moist", "Dry", "Very Dry"], "required": true, "label": "Mouth and Tongue"},
+                    {"name": "thirst", "type": "select", "options": ["Drinks Normally", "Thirsty - Drinks Eagerly", "Unable to Drink/Drinking Poorly"], "required": true, "label": "Thirst"},
+                    {"name": "skin_pinch", "type": "select", "options": ["Goes Back Quickly", "Goes Back Slowly", "Goes Back Very Slowly (>2 sec)"], "required": true, "label": "Skin Pinch"},
+                    {"name": "capillary_refill", "type": "select", "options": ["<2 seconds", "2-3 seconds", ">3 seconds"], "required": false, "label": "Capillary Refill"},
+                    {"name": "urine_output", "type": "select", "options": ["Normal", "Reduced", "None for >6 hours"], "required": false, "label": "Urine Output"}
+                ]
+            },
+            {
+                "name": "Dehydration Classification",
+                "order": 3,
+                "fields": [
+                    {"name": "dehydration_status", "type": "select", "options": ["No Dehydration (Plan A)", "Some Dehydration (Plan B)", "Severe Dehydration (Plan C)"], "required": true, "label": "Dehydration Status"},
+                    {"name": "weight_loss_percent", "type": "number", "required": false, "label": "Estimated Weight Loss (%)"},
+                    {"name": "weight_kg", "type": "number", "required": false, "label": "Current Weight (kg)"}
+                ]
+            },
+            {
+                "name": "Associated Findings",
+                "order": 4,
+                "fields": [
+                    {"name": "malnutrition", "type": "select", "options": ["None", "MAM", "SAM"], "required": false, "label": "Malnutrition Status"},
+                    {"name": "other_infections", "type": "multiselect", "options": ["Pneumonia", "Malaria", "Measles", "UTI", "Ear Infection", "None"], "required": false, "label": "Other Infections"},
+                    {"name": "recent_antibiotics", "type": "boolean", "required": false, "label": "Recent Antibiotic Use"},
+                    {"name": "measles_last_3_months", "type": "boolean", "required": false, "label": "Measles in Last 3 Months"}
+                ]
+            },
+            {
+                "name": "ORS/Rehydration Plan",
+                "order": 5,
+                "fields": [
+                    {"name": "rehydration_plan", "type": "select", "options": ["Plan A - Home", "Plan B - ORS at Facility", "Plan C - IV Fluids"], "required": true, "label": "Rehydration Plan"},
+                    {"name": "ors_amount_ml", "type": "number", "required": false, "label": "ORS Amount (mL)"},
+                    {"name": "iv_fluid_type", "type": "select", "options": ["Not Needed", "Ringers Lactate", "Normal Saline", "Half-Strength Darrows"], "required": false, "label": "IV Fluid Type"},
+                    {"name": "iv_volume_ml", "type": "number", "required": false, "label": "IV Volume (mL)"},
+                    {"name": "zinc_given", "type": "boolean", "required": true, "label": "Zinc Supplementation Given"},
+                    {"name": "zinc_dose", "type": "select", "options": ["10mg daily (under 6 months)", "20mg daily (6 months and above)"], "required": false, "label": "Zinc Dose"}
+                ]
+            },
+            {
+                "name": "Antibiotic Treatment",
+                "order": 6,
+                "fields": [
+                    {"name": "antibiotic_indicated", "type": "boolean", "required": true, "label": "Antibiotic Indicated"},
+                    {"name": "antibiotic_indication", "type": "select", "options": ["Not Indicated", "Dysentery (Bloody Diarrhea)", "Cholera Suspected", "Severe Dehydration with Suspected Sepsis"], "required": false, "label": "Indication for Antibiotic"},
+                    {"name": "antibiotic_given", "type": "select", "options": ["None", "Ciprofloxacin", "Azithromycin", "Ceftriaxone", "Metronidazole", "Other"], "required": false, "label": "Antibiotic Given"}
+                ]
+            },
+            {
+                "name": "Counseling & Follow-up",
+                "order": 7,
+                "fields": [
+                    {"name": "feeding_advice", "type": "boolean", "required": true, "label": "Feeding Advice Given (Continue Feeding/Breastfeeding)"},
+                    {"name": "when_to_return", "type": "boolean", "required": true, "label": "When to Return Immediately Explained"},
+                    {"name": "ors_home_use", "type": "boolean", "required": true, "label": "ORS for Home Use Given"},
+                    {"name": "follow_up", "type": "select", "options": ["Return in 2 days", "Return if worse", "Admitted"], "required": true, "label": "Follow-up Plan"},
+                    {"name": "disposition", "type": "select", "options": ["Discharged Home", "Observed at Facility", "Admitted", "Referred"], "required": true, "label": "Disposition"}
+                ]
+            }
+        ]
+    }
+}

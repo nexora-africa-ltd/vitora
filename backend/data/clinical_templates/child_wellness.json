@@ -1,0 +1,77 @@
+{
+    "name": "Child Wellness Check",
+    "template_type": "encounter",
+    "specialty": "Pediatrics",
+    "description": "Pediatric well-child visit for growth monitoring, immunization, and development assessment",
+    "content": {
+        "title": "Child Wellness Check",
+        "version": "1.0",
+        "sections": [
+            {
+                "name": "Growth Parameters",
+                "order": 1,
+                "fields": [
+                    {"name": "weight_kg", "type": "number", "required": true, "label": "Weight (kg)", "min": 0},
+                    {"name": "height_cm", "type": "number", "required": true, "label": "Height/Length (cm)", "min": 0},
+                    {"name": "head_circumference", "type": "number", "required": false, "label": "Head Circumference (cm)", "min": 0},
+                    {"name": "muac", "type": "number", "required": false, "label": "MUAC (cm)", "min": 0},
+                    {"name": "weight_for_age", "type": "select", "options": ["Normal", "Underweight", "Severely Underweight", "Overweight"], "required": false, "label": "Weight-for-Age Z-Score"},
+                    {"name": "height_for_age", "type": "select", "options": ["Normal", "Stunted", "Severely Stunted", "Tall"], "required": false, "label": "Height-for-Age Z-Score"},
+                    {"name": "weight_for_height", "type": "select", "options": ["Normal", "Wasted", "Severely Wasted", "Overweight", "Obese"], "required": false, "label": "Weight-for-Height Z-Score"}
+                ]
+            },
+            {
+                "name": "Development Milestones",
+                "order": 2,
+                "fields": [
+                    {"name": "gross_motor", "type": "select", "options": ["Appropriate", "Delayed", "Advanced"], "required": false, "label": "Gross Motor"},
+                    {"name": "fine_motor", "type": "select", "options": ["Appropriate", "Delayed", "Advanced"], "required": false, "label": "Fine Motor"},
+                    {"name": "language", "type": "select", "options": ["Appropriate", "Delayed", "Advanced"], "required": false, "label": "Language"},
+                    {"name": "social", "type": "select", "options": ["Appropriate", "Delayed", "Advanced"], "required": false, "label": "Social/Emotional"},
+                    {"name": "milestone_concerns", "type": "textarea", "required": false, "label": "Developmental Concerns"}
+                ]
+            },
+            {
+                "name": "Immunizations",
+                "order": 3,
+                "fields": [
+                    {"name": "immunization_status", "type": "select", "options": ["Up to Date", "Behind Schedule", "Not Started"], "required": true, "label": "Immunization Status"},
+                    {"name": "vaccines_due", "type": "multiselect", "options": ["BCG", "OPV", "Pentavalent", "PCV", "Rotavirus", "Measles", "Yellow Fever", "Vitamin A"], "required": false, "label": "Vaccines Due Today"},
+                    {"name": "vaccines_given", "type": "multiselect", "options": ["BCG", "OPV", "Pentavalent", "PCV", "Rotavirus", "Measles", "Yellow Fever", "Vitamin A"], "required": false, "label": "Vaccines Given"},
+                    {"name": "adverse_reactions", "type": "textarea", "required": false, "label": "Previous Adverse Reactions"}
+                ]
+            },
+            {
+                "name": "Nutrition",
+                "order": 4,
+                "fields": [
+                    {"name": "feeding_type", "type": "select", "options": ["Exclusive Breastfeeding", "Mixed Feeding", "Formula Only", "Complementary Feeding", "Family Foods"], "required": false, "label": "Current Feeding"},
+                    {"name": "breastfeeding_status", "type": "select", "options": ["Breastfeeding", "Weaned", "Never Breastfed"], "required": false, "label": "Breastfeeding Status"},
+                    {"name": "dietary_diversity", "type": "select", "options": ["Adequate", "Inadequate"], "required": false, "label": "Dietary Diversity"},
+                    {"name": "nutrition_counseling", "type": "boolean", "required": false, "label": "Nutrition Counseling Done"}
+                ]
+            },
+            {
+                "name": "Physical Examination",
+                "order": 5,
+                "fields": [
+                    {"name": "general_appearance", "type": "select", "options": ["Well", "Ill", "Severely Ill"], "required": true, "label": "General Appearance"},
+                    {"name": "pallor", "type": "boolean", "required": false, "label": "Pallor Present"},
+                    {"name": "jaundice", "type": "boolean", "required": false, "label": "Jaundice Present"},
+                    {"name": "dehydration", "type": "select", "options": ["None", "Some", "Severe"], "required": false, "label": "Dehydration Status"},
+                    {"name": "findings", "type": "textarea", "required": false, "label": "Other Findings"}
+                ]
+            },
+            {
+                "name": "Assessment & Plan",
+                "order": 6,
+                "fields": [
+                    {"name": "assessment", "type": "textarea", "required": true, "label": "Assessment"},
+                    {"name": "interventions", "type": "textarea", "required": false, "label": "Interventions"},
+                    {"name": "next_visit", "type": "date", "required": false, "label": "Next Visit Date"},
+                    {"name": "referral_needed", "type": "boolean", "required": false, "label": "Referral Needed"}
+                ]
+            }
+        ]
+    }
+}

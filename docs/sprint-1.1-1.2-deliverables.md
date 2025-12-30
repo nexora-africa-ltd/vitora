@@ -1253,7 +1253,7 @@ test('complete encounter workflow', async ({ page }) => {
 
 ## Post-Sprint Checklist
 
-- [x] Update ROADMAP.md with completion status
+- [ ] Update ROADMAP.md with completion status
 - [x] Update sprint-1.1-1.2-deliverables.md with test results
 - [x] Update test coverage (84.93%)
 - [ ] Tag release: `v0.2.0-encounter-management`

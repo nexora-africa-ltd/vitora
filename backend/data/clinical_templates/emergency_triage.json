@@ -1,0 +1,61 @@
+{
+    "name": "Emergency Triage (ETAT)",
+    "template_type": "assessment",
+    "specialty": "Emergency Medicine",
+    "description": "Emergency Triage Assessment and Treatment - Quick assessment for emergency patients",
+    "content": {
+        "title": "Emergency Triage Assessment",
+        "version": "1.0",
+        "sections": [
+            {
+                "name": "ABCDE Assessment",
+                "order": 1,
+                "fields": [
+                    {"name": "airway", "type": "select", "options": ["Patent", "Partially Obstructed", "Obstructed"], "required": true, "label": "A - Airway"},
+                    {"name": "airway_intervention", "type": "text", "required": false, "label": "Airway Intervention"},
+                    {"name": "breathing", "type": "select", "options": ["Normal", "Labored", "Absent"], "required": true, "label": "B - Breathing"},
+                    {"name": "oxygen_saturation", "type": "number", "required": false, "label": "SpO2 (%)", "min": 0, "max": 100},
+                    {"name": "circulation", "type": "select", "options": ["Stable", "Compensated Shock", "Decompensated Shock"], "required": true, "label": "C - Circulation"},
+                    {"name": "capillary_refill", "type": "select", "options": ["<2 seconds", "2-3 seconds", ">3 seconds"], "required": false, "label": "Capillary Refill"},
+                    {"name": "disability", "type": "select", "options": ["Alert", "Verbal", "Pain", "Unresponsive"], "required": true, "label": "D - Disability (AVPU)"},
+                    {"name": "gcs", "type": "number", "required": false, "label": "GCS Score", "min": 3, "max": 15},
+                    {"name": "exposure", "type": "textarea", "required": false, "label": "E - Exposure/Examination Findings"}
+                ]
+            },
+            {
+                "name": "Triage Category",
+                "order": 2,
+                "fields": [
+                    {"name": "triage_category", "type": "select", "options": ["Red - Resuscitation", "Orange - Emergency", "Yellow - Urgent", "Green - Standard", "Blue - Dead on Arrival"], "required": true, "label": "Triage Category"},
+                    {"name": "chief_complaint", "type": "text", "required": true, "label": "Chief Complaint"},
+                    {"name": "mechanism", "type": "text", "required": false, "label": "Mechanism (if trauma)"}
+                ]
+            },
+            {
+                "name": "Danger Signs (Pediatric)",
+                "order": 3,
+                "fields": [
+                    {"name": "convulsing", "type": "boolean", "required": false, "label": "Convulsing Now"},
+                    {"name": "unconscious", "type": "boolean", "required": false, "label": "Unconscious/Lethargic"},
+                    {"name": "severe_respiratory_distress", "type": "boolean", "required": false, "label": "Severe Respiratory Distress"},
+                    {"name": "severe_dehydration", "type": "boolean", "required": false, "label": "Severe Dehydration/Shock"},
+                    {"name": "severe_malnutrition", "type": "boolean", "required": false, "label": "Severe Malnutrition (Visible Wasting)"},
+                    {"name": "severe_pallor", "type": "boolean", "required": false, "label": "Severe Pallor"}
+                ]
+            },
+            {
+                "name": "Immediate Actions",
+                "order": 4,
+                "fields": [
+                    {"name": "iv_access", "type": "boolean", "required": false, "label": "IV Access Established"},
+                    {"name": "oxygen_given", "type": "boolean", "required": false, "label": "Oxygen Administered"},
+                    {"name": "fluids_given", "type": "boolean", "required": false, "label": "IV Fluids Started"},
+                    {"name": "blood_glucose", "type": "number", "required": false, "label": "Blood Glucose (mmol/L)"},
+                    {"name": "glucose_given", "type": "boolean", "required": false, "label": "Glucose Given (if hypoglycemic)"},
+                    {"name": "immediate_medications", "type": "textarea", "required": false, "label": "Immediate Medications Given"},
+                    {"name": "disposition", "type": "select", "options": ["Resuscitation Bay", "Emergency Ward", "Observation", "Admitted", "Referred", "Discharged"], "required": true, "label": "Disposition"}
+                ]
+            }
+        ]
+    }
+}

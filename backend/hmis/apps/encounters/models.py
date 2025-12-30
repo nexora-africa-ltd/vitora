@@ -1006,7 +1006,32 @@ class Encounter(models.Model):
         else:
             statuses["spo2"] = None
 
+        # Include MAP in statuses
+        map_value = self.get_map()
+        if map_value is not None:
+            statuses["map"] = {
+                "value": map_value,
+                "status": self.get_map_status(),
+                "unit": "mmHg",
+            }
+        else:
+            statuses["map"] = None
+
         return statuses
+
+    # MAP (Mean Arterial Pressure) ranges
+    # Normal: 70-100 mmHg
+    # Low: 60-69 mmHg
+    # High: 101-130 mmHg
+    # Critical low: <60 mmHg (organ perfusion compromised)
+    # Critical high: >130 mmHg (hypertensive emergency)
+    MAP_RANGES = {
+        "normal": (70, 100),
+        "low": (60, 69),
+        "high": (101, 130),
+        "critical_low": 60,
+        "critical_high": 130,
+    }
 
     def get_map(self) -> int | None:
         """
@@ -1025,6 +1050,48 @@ class Encounter(models.Model):
 
         map_value = diastolic + (systolic - diastolic) / 3
         return round(map_value)
+
+    def get_map_status(self) -> str | None:
+        """
+        Get status classification for Mean Arterial Pressure.
+
+        Status values:
+        - 'normal': 70-100 mmHg
+        - 'low': 60-69 mmHg
+        - 'high': 101-130 mmHg
+        - 'critical': <60 or >130 mmHg
+
+        Returns:
+            str | None: 'normal', 'low', 'high', or 'critical', or None if BP not recorded
+        """
+        map_value = self.get_map()
+
+        if map_value is None:
+            return None
+
+        # Check critical first
+        if map_value < self.MAP_RANGES["critical_low"]:
+            return "critical"
+        if map_value > self.MAP_RANGES["critical_high"]:
+            return "critical"
+
+        # Check normal
+        normal_min, normal_max = self.MAP_RANGES["normal"]
+        if normal_min <= map_value <= normal_max:
+            return "normal"
+
+        # Check low
+        low_min, low_max = self.MAP_RANGES["low"]
+        if low_min <= map_value <= low_max:
+            return "low"
+
+        # Check high
+        high_min, high_max = self.MAP_RANGES["high"]
+        if high_min <= map_value <= high_max:
+            return "high"
+
+        # Edge case - shouldn't happen but classify as critical
+        return "critical"
 
     def get_vitals_summary(self) -> str:
         """

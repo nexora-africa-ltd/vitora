@@ -1,0 +1,83 @@
+{
+    "name": "Antenatal Care (ANC) Visit",
+    "template_type": "encounter",
+    "specialty": "Obstetrics",
+    "description": "Maternal and Child Health - Standard antenatal care visit template",
+    "content": {
+        "title": "Antenatal Care Visit",
+        "version": "1.0",
+        "sections": [
+            {
+                "name": "Visit Information",
+                "order": 1,
+                "fields": [
+                    {"name": "visit_number", "type": "number", "required": true, "label": "ANC Visit Number", "min": 1},
+                    {"name": "lmp", "type": "date", "required": false, "label": "Last Menstrual Period (LMP)"},
+                    {"name": "edd", "type": "date", "required": false, "label": "Expected Date of Delivery (EDD)"},
+                    {"name": "gestational_age_weeks", "type": "number", "required": true, "label": "Gestational Age (Weeks)", "min": 0, "max": 45}
+                ]
+            },
+            {
+                "name": "Maternal Assessment",
+                "order": 2,
+                "fields": [
+                    {"name": "complaints", "type": "textarea", "required": false, "label": "Current Complaints"},
+                    {"name": "fundal_height", "type": "number", "required": false, "label": "Fundal Height (cm)"},
+                    {"name": "presentation", "type": "select", "options": ["Cephalic", "Breech", "Transverse", "Oblique", "Not Determined"], "required": false, "label": "Fetal Presentation"},
+                    {"name": "edema", "type": "select", "options": ["None", "Pedal", "Facial", "Generalized"], "required": false, "label": "Edema"},
+                    {"name": "pallor", "type": "boolean", "required": false, "label": "Pallor Present"}
+                ]
+            },
+            {
+                "name": "Fetal Assessment",
+                "order": 3,
+                "fields": [
+                    {"name": "fetal_heart_rate", "type": "number", "required": false, "label": "Fetal Heart Rate (bpm)", "min": 100, "max": 180},
+                    {"name": "fetal_movements", "type": "select", "options": ["Present - Normal", "Present - Reduced", "Absent"], "required": false, "label": "Fetal Movements"},
+                    {"name": "liquor", "type": "select", "options": ["Adequate", "Reduced", "Increased"], "required": false, "label": "Liquor Volume"}
+                ]
+            },
+            {
+                "name": "Risk Factors",
+                "order": 4,
+                "fields": [
+                    {"name": "high_risk", "type": "boolean", "required": true, "label": "High Risk Pregnancy"},
+                    {"name": "risk_factors", "type": "multiselect", "options": ["Previous C-Section", "Previous Stillbirth", "Previous PPH", "Hypertension", "Diabetes", "HIV Positive", "Twins/Multiple", "Advanced Maternal Age", "Grand Multipara", "Teenage Pregnancy", "Rh Negative"], "required": false, "label": "Risk Factors"},
+                    {"name": "danger_signs_counseling", "type": "boolean", "required": false, "label": "Danger Signs Counseling Done"}
+                ]
+            },
+            {
+                "name": "Investigations",
+                "order": 5,
+                "fields": [
+                    {"name": "hemoglobin", "type": "number", "required": false, "label": "Hemoglobin (g/dL)"},
+                    {"name": "blood_group", "type": "select", "options": ["A+", "A-", "B+", "B-", "AB+", "AB-", "O+", "O-"], "required": false, "label": "Blood Group"},
+                    {"name": "hiv_status", "type": "select", "options": ["Positive", "Negative", "Unknown", "Not Tested"], "required": false, "label": "HIV Status"},
+                    {"name": "vdrl", "type": "select", "options": ["Reactive", "Non-Reactive", "Not Done"], "required": false, "label": "VDRL/Syphilis"},
+                    {"name": "urinalysis", "type": "text", "required": false, "label": "Urinalysis Result"}
+                ]
+            },
+            {
+                "name": "Interventions",
+                "order": 6,
+                "fields": [
+                    {"name": "tetanus_toxoid", "type": "select", "options": ["TT1", "TT2", "TT3", "TT4", "TT5", "Fully Protected", "Not Given"], "required": false, "label": "Tetanus Toxoid"},
+                    {"name": "iron_folate", "type": "boolean", "required": false, "label": "Iron/Folate Given"},
+                    {"name": "ipt_malaria", "type": "select", "options": ["IPT1", "IPT2", "IPT3", "Not Given"], "required": false, "label": "IPT (Malaria Prophylaxis)"},
+                    {"name": "deworming", "type": "boolean", "required": false, "label": "Deworming Done"},
+                    {"name": "itn_given", "type": "boolean", "required": false, "label": "ITN (Bed Net) Given"}
+                ]
+            },
+            {
+                "name": "Plan",
+                "order": 7,
+                "fields": [
+                    {"name": "birth_plan", "type": "textarea", "required": false, "label": "Birth Plan Discussion"},
+                    {"name": "next_appointment", "type": "date", "required": false, "label": "Next Appointment"},
+                    {"name": "referral_needed", "type": "boolean", "required": false, "label": "Referral Needed"},
+                    {"name": "referral_reason", "type": "textarea", "required": false, "label": "Referral Reason"}
+                ]
+            }
+        ]
+    }
+}

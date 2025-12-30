@@ -1,0 +1,73 @@
+{
+    "name": "Respiratory Infection Assessment",
+    "template_type": "assessment",
+    "specialty": "Internal Medicine",
+    "description": "Common presentation - Respiratory tract infection assessment including pneumonia classification",
+    "content": {
+        "title": "Respiratory Infection Assessment",
+        "version": "1.0",
+        "sections": [
+            {
+                "name": "Respiratory Symptoms",
+                "order": 1,
+                "fields": [
+                    {"name": "cough", "type": "boolean", "required": true, "label": "Cough Present"},
+                    {"name": "cough_duration_days", "type": "number", "required": false, "label": "Cough Duration (Days)", "min": 0},
+                    {"name": "cough_character", "type": "select", "options": ["Dry", "Productive - Clear", "Productive - Yellow/Green", "Productive - Blood-Tinged"], "required": false, "label": "Cough Character"},
+                    {"name": "difficulty_breathing", "type": "boolean", "required": true, "label": "Difficulty Breathing"},
+                    {"name": "chest_pain", "type": "boolean", "required": false, "label": "Chest Pain"},
+                    {"name": "fever", "type": "boolean", "required": false, "label": "Fever"},
+                    {"name": "sore_throat", "type": "boolean", "required": false, "label": "Sore Throat"},
+                    {"name": "runny_nose", "type": "boolean", "required": false, "label": "Runny Nose/Nasal Congestion"}
+                ]
+            },
+            {
+                "name": "SpO2 & Respiratory Assessment",
+                "order": 2,
+                "fields": [
+                    {"name": "spo2", "type": "number", "required": true, "label": "SpO2 (%)", "min": 0, "max": 100},
+                    {"name": "respiratory_rate", "type": "number", "required": true, "label": "Respiratory Rate (/min)", "min": 0},
+                    {"name": "fast_breathing", "type": "boolean", "required": false, "label": "Fast Breathing for Age"},
+                    {"name": "chest_indrawing", "type": "boolean", "required": false, "label": "Chest Indrawing"},
+                    {"name": "nasal_flaring", "type": "boolean", "required": false, "label": "Nasal Flaring"},
+                    {"name": "grunting", "type": "boolean", "required": false, "label": "Grunting"},
+                    {"name": "cyanosis", "type": "boolean", "required": false, "label": "Central Cyanosis"},
+                    {"name": "stridor", "type": "boolean", "required": false, "label": "Stridor"},
+                    {"name": "wheeze", "type": "boolean", "required": false, "label": "Wheeze"}
+                ]
+            },
+            {
+                "name": "Chest Examination",
+                "order": 3,
+                "fields": [
+                    {"name": "air_entry", "type": "select", "options": ["Equal Bilateral", "Reduced - Left", "Reduced - Right", "Reduced - Bilateral"], "required": false, "label": "Air Entry"},
+                    {"name": "breath_sounds", "type": "select", "options": ["Normal", "Bronchial", "Diminished"], "required": false, "label": "Breath Sounds"},
+                    {"name": "added_sounds", "type": "multiselect", "options": ["None", "Crackles - Fine", "Crackles - Coarse", "Rhonchi", "Pleural Rub"], "required": false, "label": "Added Sounds"},
+                    {"name": "percussion", "type": "select", "options": ["Normal", "Dull", "Stony Dull", "Hyper-resonant"], "required": false, "label": "Percussion Note"}
+                ]
+            },
+            {
+                "name": "Classification",
+                "order": 4,
+                "fields": [
+                    {"name": "diagnosis", "type": "select", "options": ["URTI (Common Cold)", "Pharyngitis/Tonsillitis", "Bronchitis", "Pneumonia - Non-Severe", "Pneumonia - Severe", "Very Severe Pneumonia/Disease", "Bronchiolitis", "Asthma Exacerbation", "COPD Exacerbation", "Suspected TB"], "required": true, "label": "Classification/Diagnosis"},
+                    {"name": "danger_signs", "type": "multiselect", "options": ["Unable to Drink/Breastfeed", "Vomits Everything", "Convulsions", "Lethargy/Unconscious", "Stridor at Rest", "Severe Malnutrition", "SpO2 <90%"], "required": false, "label": "General Danger Signs"},
+                    {"name": "severity", "type": "select", "options": ["Mild", "Moderate", "Severe"], "required": true, "label": "Severity"}
+                ]
+            },
+            {
+                "name": "Treatment Plan",
+                "order": 5,
+                "fields": [
+                    {"name": "treatment_setting", "type": "select", "options": ["Outpatient", "Inpatient"], "required": true, "label": "Treatment Setting"},
+                    {"name": "antibiotics", "type": "select", "options": ["None Indicated", "Amoxicillin", "Amoxicillin-Clavulanate", "Azithromycin", "Ceftriaxone", "Other"], "required": false, "label": "Antibiotic"},
+                    {"name": "oxygen_therapy", "type": "boolean", "required": false, "label": "Oxygen Therapy Needed"},
+                    {"name": "bronchodilator", "type": "boolean", "required": false, "label": "Bronchodilator Given"},
+                    {"name": "supportive_care", "type": "multiselect", "options": ["Antipyretics", "Increased Fluids", "Nasal Saline", "Steam Inhalation", "Rest"], "required": false, "label": "Supportive Care"},
+                    {"name": "follow_up", "type": "select", "options": ["2 days", "5 days", "1 week", "As Needed"], "required": false, "label": "Follow-up"},
+                    {"name": "referral", "type": "boolean", "required": false, "label": "Referral Needed"}
+                ]
+            }
+        ]
+    }
+}
