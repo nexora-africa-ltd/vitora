@@ -466,15 +466,16 @@ GET /api/locations/wards/?sub_county=<id>     # Cascading wards
 - Production-ready PAS (Patient Administration System)
 - Complete encounter management with vitals
 - Basic pharmacy and billing modules
-- Offline desktop + mobile app
+- **Mobile app (parallel track from Sprint 1.1)** - early start for community health workers
+- Offline desktop + mobile app integration
 - Kenya pilot deployments (2 sites: 1 rural, 1 urban)
 
 ### Sprint Breakdown (12 sprints × 2 weeks)
 
-#### Sprint 1.1-1.2: Encounter Management (Weeks 1-4)
-**TDD Focus**: Test vital signs validation and clinical workflows
+#### Sprint 1.1-1.2: Encounter Management + Mobile Foundation (Weeks 1-4)
+**TDD Focus**: Test vital signs validation, clinical workflows, and mobile offline storage
 
-**Tasks**:
+**Track A: Encounter Management (Desktop)**
 - [ ] **Write tests first**: Vitals validation tests (ranges, units)
 - [ ] Implement vitals capture form
 - [ ] **Write tests first**: Diagnosis entry tests (ICD-10 validation)
@@ -484,9 +485,21 @@ GET /api/locations/wards/?sub_county=<id>     # Cascading wards
 - [ ] **Write tests first**: Encounter history tests
 - [ ] Implement encounter timeline view
 
+**Track B: Mobile App Foundation (Parallel)**
+- [ ] **Write tests first**: React Native setup tests
+- [ ] Scaffold React Native app with Expo
+- [ ] **Write tests first**: SQLite mobile storage tests
+- [ ] Implement WatermelonDB/Expo SQLite setup
+- [ ] **Write tests first**: Mobile patient list tests (offline)
+- [ ] Implement offline patient lookup
+- [ ] **Write tests first**: Mobile auth tests
+- [ ] Implement JWT auth for mobile
+
 **Deliverables**:
 - Encounter module with vitals, diagnosis, treatment
 - Clinical templates library
+- React Native app scaffold (Android focus)
+- Mobile offline patient lookup
 - Test suite with ≥85% coverage
 
 **TDD Approach**:
@@ -538,24 +551,27 @@ def test_vital_signs_validation():
 - Receipt generation
 - Financial reports
 
-#### Sprint 1.7-1.8: Mobile App Foundation (Weeks 13-16)
-**TDD Focus**: Test mobile offline storage and sync
+#### Sprint 1.7-1.8: Mobile Features & Pharmacy Integration (Weeks 13-16)
+**TDD Focus**: Test mobile clinical workflows and pharmacy features
 
 **Tasks**:
-- [ ] **Write tests first**: SQLite mobile tests
-- [ ] Implement WatermelonDB setup
-- [ ] **Write tests first**: Patient search tests (offline)
-- [ ] Implement mobile patient lookup
-- [ ] **Write tests first**: Vitals entry tests (mobile)
-- [ ] Implement mobile vitals capture
-- [ ] **Write tests first**: Mobile sync tests
-- [ ] Implement background sync
+- [ ] **Write tests first**: Mobile vitals entry tests
+- [ ] Implement mobile vitals capture with offline queue
+- [ ] **Write tests first**: Mobile encounter creation tests
+- [ ] Implement mobile encounter workflow
+- [ ] **Write tests first**: Mobile prescription viewing tests
+- [ ] Implement prescription list in mobile app
+- [ ] **Write tests first**: Mobile-desktop sync conflict tests
+- [ ] Implement cross-device conflict resolution
+- [ ] **Write tests first**: Push notification tests
+- [ ] Implement critical alert notifications (SpO2, etc.)
 
 **Deliverables**:
-- React Native app (Android focus)
-- Offline patient lookup
-- Mobile vitals entry
-- Background sync
+- Mobile vitals entry with validation
+- Mobile encounter creation
+- Prescription viewing on mobile
+- Cross-device sync with conflict resolution
+- Push notifications for critical alerts
 
 #### Sprint 1.9-1.10: Integration & Testing (Weeks 17-20)
 **TDD Focus**: System-wide integration tests
@@ -631,6 +647,7 @@ def test_vital_signs_validation():
 - Advanced inventory with suppliers
 - KHIS/DHIS2 automated reporting
 - Cloud sync introduction (optional)
+- **Web frontend (Next.js)** for browser-based access (cloud-connected sites)
 - Scale to 5 additional sites
 
 ### Sprint Breakdown (12 sprints × 2 weeks)
@@ -736,10 +753,10 @@ def test_opd_attendance_calculation():
     assert indicator.value == 50
 ```
 
-#### Sprint 2.9-2.10: Cloud Sync (Optional) (Weeks 17-20)
-**TDD Focus**: Test cloud connectivity and data synchronization
+#### Sprint 2.9-2.10: Cloud Sync & Web Frontend Foundation (Weeks 17-20)
+**TDD Focus**: Test cloud connectivity, data synchronization, and web app foundation
 
-**Tasks**:
+**Track A: Cloud Sync**
 - [ ] **Write tests first**: Cloud authentication tests
 - [ ] Implement OAuth2 cloud authentication
 - [ ] **Write tests first**: Cloud database sync tests
@@ -748,19 +765,41 @@ def test_opd_attendance_calculation():
 - [ ] Implement conflict resolution for cloud sync
 - [ ] **Write tests first**: Sync status monitoring tests
 - [ ] Implement sync dashboard
-- [ ] **Write tests first**: Bandwidth optimization tests
-- [ ] Implement delta sync (only changes)
+
+**Track B: Web Frontend Foundation (Next.js)**
+- [ ] **Write tests first**: Next.js setup and routing tests
+- [ ] Scaffold Next.js 14+ app with TypeScript
+- [ ] **Write tests first**: Auth flow tests (login, logout, refresh)
+- [ ] Implement JWT authentication with refresh tokens
+- [ ] **Write tests first**: Patient list/search tests
+- [ ] Implement patient dashboard with search
+- [ ] **Write tests first**: API client tests
+- [ ] Implement TanStack Query for data fetching
+- [ ] Set up TailwindCSS + shadcn/ui component library
 
 **Deliverables**:
 - Cloud backend infrastructure
 - Bi-directional sync engine
-- Conflict resolution UI
-- Sync monitoring dashboard
+- Next.js web app with authentication
+- Patient dashboard (list, search, view)
+- Responsive design (mobile-first)
 
-#### Sprint 2.11-2.12: Expansion & Stabilization (Weeks 21-24)
-**TDD Focus**: Test scalability and multi-site scenarios
+#### Sprint 2.11-2.12: Web Frontend Features & Expansion (Weeks 21-24)
+**TDD Focus**: Test web app features, scalability, and multi-site scenarios
 
-**Tasks**:
+**Track A: Web Frontend Features**
+- [ ] **Write tests first**: Encounter management tests (web)
+- [ ] Implement encounter creation/editing in web app
+- [ ] **Write tests first**: Vitals display tests with alerts
+- [ ] Implement vitals dashboard with critical alerts
+- [ ] **Write tests first**: Billing overview tests
+- [ ] Implement billing summary view
+- [ ] **Write tests first**: Reports/analytics tests
+- [ ] Implement basic reporting dashboard
+- [ ] **Write tests first**: Responsive design tests (Playwright)
+- [ ] Ensure mobile-responsive web experience
+
+**Track B: Multi-Site Expansion**
 - [ ] Deploy to 5 new sites (3 rural, 2 urban)
 - [ ] **Write tests first**: Multi-site data isolation tests
 - [ ] Implement tenant isolation (if multi-tenant)
@@ -768,12 +807,12 @@ def test_opd_attendance_calculation():
 - [ ] **Write tests first**: Site-to-site sync tests
 - [ ] Optimize sync for low-bandwidth
 - [ ] Collect feedback from all sites
-- [ ] Bug fixes and performance optimization
 
 **Deliverables**:
+- Web app with full clinical workflows
+- Reporting dashboard
 - 7 total operational sites
 - Multi-site deployment playbook
-- Performance optimization report
 - Phase 2 retrospective
 
 ### Phase 2 Dependencies
@@ -798,6 +837,8 @@ def test_opd_attendance_calculation():
 - [ ] KHIS reports automated for all sites
 - [ ] Cloud sync (if enabled) success rate ≥98%
 - [ ] <5% sync conflicts
+- [ ] Web frontend accessible from 3+ cloud-connected sites
+- [ ] Web app Lighthouse score ≥90 (performance)
 - [ ] User satisfaction ≥4/5 across all sites
 
 ---
