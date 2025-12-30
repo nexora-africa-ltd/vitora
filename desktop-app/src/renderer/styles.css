@@ -1807,6 +1807,13 @@ body.dark-mode .encounter-card.critical {
   margin-bottom: 15px;
 }
 
+.encounter-header-left {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
 .encounter-type {
   padding: 4px 12px;
   border-radius: 15px;
@@ -2389,4 +2396,216 @@ body.dark-mode .btn-view:hover {
     width: 100%;
     justify-content: center;
   }
+}
+
+/* ====================
+   Encounter Status Badges (Sprint 1.1-1.2)
+   ==================== */
+.encounter-status {
+  padding: 3px 10px;
+  border-radius: 12px;
+  font-size: 0.75em;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.encounter-status.DRAFT {
+  background: #fff3cd;
+  color: #856404;
+  border: 1px solid #ffc107;
+}
+
+.encounter-status.IN_PROGRESS {
+  background: #cce5ff;
+  color: #004085;
+  border: 1px solid #007bff;
+}
+
+.encounter-status.COMPLETED {
+  background: #d4edda;
+  color: #155724;
+  border: 1px solid #28a745;
+}
+
+.encounter-status.CANCELLED {
+  background: #f5f5f5;
+  color: #6c757d;
+  border: 1px solid #6c757d;
+  text-decoration: line-through;
+}
+
+body.dark-mode .encounter-status.DRAFT {
+  background: rgba(255, 193, 7, 0.2);
+  color: #ffc107;
+  border-color: #ffc107;
+}
+
+body.dark-mode .encounter-status.IN_PROGRESS {
+  background: rgba(0, 123, 255, 0.2);
+  color: #4dabf7;
+  border-color: #4dabf7;
+}
+
+body.dark-mode .encounter-status.COMPLETED {
+  background: rgba(40, 167, 69, 0.2);
+  color: #51cf66;
+  border-color: #51cf66;
+}
+
+body.dark-mode .encounter-status.CANCELLED {
+  background: rgba(108, 117, 125, 0.2);
+  color: #adb5bd;
+  border-color: #6c757d;
+}
+
+/* Status Icons */
+.encounter-status::before {
+  content: '';
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  display: inline-block;
+}
+
+.encounter-status.DRAFT::before {
+  background: #ffc107;
+}
+
+.encounter-status.IN_PROGRESS::before {
+  background: #007bff;
+  animation: pulse 1.5s infinite;
+}
+
+.encounter-status.COMPLETED::before {
+  background: #28a745;
+}
+
+.encounter-status.CANCELLED::before {
+  background: #6c757d;
+}
+
+@keyframes pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.5; }
+}
+
+/* Encounter Status Actions */
+.encounter-actions {
+  display: flex;
+  gap: 8px;
+  margin-top: 12px;
+  padding-top: 12px;
+  border-top: 1px solid var(--border-color, #e0e0e0);
+  flex-wrap: wrap;
+}
+
+body.dark-mode .encounter-actions {
+  border-top-color: var(--border-primary);
+}
+
+.btn-status-action {
+  padding: 6px 12px;
+  border-radius: 4px;
+  font-size: 0.8em;
+  font-weight: 500;
+  cursor: pointer;
+  border: none;
+  transition: all 0.2s ease;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.btn-status-action:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.btn-start-progress {
+  background: #007bff;
+  color: white;
+}
+
+.btn-start-progress:hover:not(:disabled) {
+  background: #0056b3;
+}
+
+.btn-finalize {
+  background: #28a745;
+  color: white;
+}
+
+.btn-finalize:hover:not(:disabled) {
+  background: #1e7e34;
+}
+
+.btn-cancel-encounter {
+  background: transparent;
+  color: #dc3545;
+  border: 1px solid #dc3545;
+}
+
+.btn-cancel-encounter:hover:not(:disabled) {
+  background: #dc3545;
+  color: white;
+}
+
+/* Finalized info */
+.finalized-info {
+  font-size: 0.8em;
+  color: #666;
+  margin-top: 8px;
+  font-style: italic;
+}
+
+body.dark-mode .finalized-info {
+  color: var(--text-secondary);
+}
+
+/* Status filter in timeline */
+.status-filter {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-bottom: 16px;
+}
+
+.status-filter-btn {
+  padding: 6px 14px;
+  border-radius: 20px;
+  font-size: 0.85em;
+  cursor: pointer;
+  background: var(--bg-secondary, #f5f5f5);
+  border: 1px solid var(--border-color, #e0e0e0);
+  color: var(--text-primary, #333);
+  transition: all 0.2s ease;
+}
+
+.status-filter-btn:hover {
+  background: var(--bg-tertiary, #e9e9e9);
+}
+
+.status-filter-btn.active {
+  background: var(--primary-color, #007bff);
+  border-color: var(--primary-color, #007bff);
+  color: white;
+}
+
+body.dark-mode .status-filter-btn {
+  background: var(--bg-tertiary);
+  border-color: var(--border-primary);
+  color: var(--text-primary);
+}
+
+body.dark-mode .status-filter-btn:hover {
+  background: var(--bg-quaternary);
+}
+
+body.dark-mode .status-filter-btn.active {
+  background: var(--primary-color);
+  border-color: var(--primary-color);
 }

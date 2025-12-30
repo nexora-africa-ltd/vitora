@@ -1843,13 +1843,179 @@ async function viewPatientDetails(patientId) {
   }
 }
 
-function renderEncounterCard(encounter) {
-  const hasCritical = encounter.has_critical_vitals;
+/**
+ * Get status display label
+ * @param {string} status - Status code
+ * @returns {string} Human-readable status label
+ */
+function getStatusLabel(status) {
+  const labels = {
+    DRAFT: 'Draft',
+    IN_PROGRESS: 'In Progress',
+    COMPLETED: 'Completed',
+    CANCELLED: 'Cancelled',
+  };
+  return labels[status] || status;
+}
+
+/**
+ * Check if encounter can be edited based on status
+ * @param {string} status - Encounter status
+ * @returns {boolean} True if encounter can be edited
+ */
+function canEditEncounter(status) {
+  return status === 'DRAFT' || status === 'IN_PROGRESS';
+}
+
+/**
+ * Start progress on a draft encounter
+ * @param {number} encounterId - Encounter ID
+ */
+async function startEncounterProgress(encounterId) {
+  try {
+    const response = await window.electronAPI.apiRequest(
+      'POST',
+      `/api/encounters/${encounterId}/start_progress/`
+    );
+    if (response.success) {
+      showToast('Encounter started', 'success');
+      // Refresh the view
+      if (selectedPatient) {
+        await openPatientModal(selectedPatient.id);
+      }
+    } else {
+      showToast(response.message || 'Failed to start progress', 'error');
+    }
+  } catch (error) {
+    showToast(`Error: ${error.message}`, 'error');
+  }
+}
+
+/**
+ * Finalize/complete an encounter
+ * @param {number} encounterId - Encounter ID
+ */
+async function finalizeEncounter(encounterId) {
+  if (!confirm('Are you sure you want to finalize this encounter? This action cannot be undone.')) {
+    return;
+  }
+  try {
+    const response = await window.electronAPI.apiRequest(
+      'POST',
+      `/api/encounters/${encounterId}/finalize/`
+    );
+    if (response.success) {
+      showToast('Encounter finalized successfully', 'success');
+      // Refresh the view
+      if (selectedPatient) {
+        await openPatientModal(selectedPatient.id);
+      }
+    } else {
+      showToast(response.message || 'Failed to finalize encounter', 'error');
+    }
+  } catch (error) {
+    showToast(`Error: ${error.message}`, 'error');
+  }
+}
+
+/**
+ * Cancel an encounter
+ * @param {number} encounterId - Encounter ID
+ */
+async function cancelEncounter(encounterId) {
+  const reason = prompt('Please provide a reason for cancellation:');
+  if (reason === null) return; // User cancelled the prompt
+
+  try {
+    const response = await window.electronAPI.apiRequest(
+      'POST',
+      `/api/encounters/${encounterId}/cancel/`,
+      { reason: reason || '' }
+    );
+    if (response.success) {
+      showToast('Encounter cancelled', 'warning');
+      // Refresh the view
+      if (selectedPatient) {
+        await openPatientModal(selectedPatient.id);
+      }
+    } else {
+      showToast(response.message || 'Failed to cancel encounter', 'error');
+    }
+  } catch (error) {
+    showToast(`Error: ${error.message}`, 'error');
+  }
+}
+
+/**
+ * Build status action buttons HTML based on current status
+ * @param {object} encounter - Encounter object
+ * @returns {string} HTML string for action buttons
+ */
+function buildStatusActionsHTML(encounter) {
+  const status = encounter.status || 'DRAFT';
+  const actions = [];
+
+  if (status === 'DRAFT') {
+    actions.push(`
+      <button class="btn-status-action btn-start-progress" onclick="startEncounterProgress(${encounter.id})">
+        ▶ Start Progress
+      </button>
+    `);
+    actions.push(`
+      <button class="btn-status-action btn-finalize" onclick="finalizeEncounter(${encounter.id})">
+        ✓ Finalize
+      </button>
+    `);
+    actions.push(`
+      <button class="btn-status-action btn-cancel-encounter" onclick="cancelEncounter(${encounter.id})">
+        ✕ Cancel
+      </button>
+    `);
+  } else if (status === 'IN_PROGRESS') {
+    actions.push(`
+      <button class="btn-status-action btn-finalize" onclick="finalizeEncounter(${encounter.id})">
+        ✓ Finalize
+      </button>
+    `);
+    actions.push(`
+      <button class="btn-status-action btn-cancel-encounter" onclick="cancelEncounter(${encounter.id})">
+        ✕ Cancel
+      </button>
+    `);
+  }
+  // COMPLETED and CANCELLED have no actions (terminal states)
+
+  if (actions.length === 0) return '';
 
   return `
-    <div class="encounter-card ${hasCritical ? 'critical' : ''}">
+    <div class="encounter-actions">
+      ${actions.join('')}
+    </div>
+  `;
+}
+
+function renderEncounterCard(encounter) {
+  const hasCritical = encounter.has_critical_vitals;
+  const status = encounter.status || 'DRAFT';
+  const statusLabel = getStatusLabel(status);
+
+  // Build finalized info if applicable
+  let finalizedInfo = '';
+  if (status === 'COMPLETED' && encounter.finalized_at) {
+    const finalizedDate = formatDate(encounter.finalized_at);
+    const finalizedBy = encounter.finalized_by_username || 'Unknown';
+    finalizedInfo = `<div class="finalized-info">Finalized on ${finalizedDate} by ${finalizedBy}</div>`;
+  } else if (status === 'CANCELLED' && encounter.cancellation_reason) {
+    finalizedInfo = `<div class="finalized-info">Cancelled: ${escapeHtml(encounter.cancellation_reason)}</div>`;
+  }
+
+  return `
+    <div class="encounter-card ${hasCritical ? 'critical' : ''} status-${status.toLowerCase()}" data-encounter-id="${encounter.id}" data-status="${status}">
       <div class="encounter-header">
-        <span class="encounter-type ${encounter.encounter_type}">${encounter.encounter_type}</span>
+        <div class="encounter-header-left">
+          <span class="encounter-type ${encounter.encounter_type}">${encounter.encounter_type}</span>
+          <span class="encounter-status ${status}">${statusLabel}</span>
+        </div>
         <span class="encounter-date">${formatDate(encounter.encounter_date)}</span>
       </div>
 
@@ -1919,6 +2085,9 @@ function renderEncounterCard(encounter) {
         ${encounter.notes}
       </div>
       ` : ''}
+
+      ${finalizedInfo}
+      ${buildStatusActionsHTML(encounter)}
     </div>
   `;
 }
