@@ -464,26 +464,33 @@ GET /api/locations/wards/?sub_county=<id>     # Cascading wards
 
 ### Goals
 - Production-ready PAS (Patient Administration System)
-- Complete encounter management with vitals
+- Complete encounter management with vitals and **encounter status workflow** (draft → completed)
 - Basic pharmacy and billing modules
+- **Lab/Investigations module** with in-house and external workflow support
+- **Role-Based Access Control (RBAC)** with department scoping
 - **Mobile app (parallel track from Sprint 1.1)** - early start for community health workers
+- **Web frontend (Next.js)** - moved from Phase 2 for early stakeholder feedback
 - Offline desktop + mobile app integration
 - Kenya pilot deployments (2 sites: 1 rural, 1 urban)
 
 ### Sprint Breakdown (12 sprints × 2 weeks)
 
 #### Sprint 1.1-1.2: Encounter Management + Mobile Foundation (Weeks 1-4)
-**TDD Focus**: Test vital signs validation, clinical workflows, and mobile offline storage
+**TDD Focus**: Test vital signs validation, clinical workflows, encounter status, and mobile offline storage
 
 **Track A: Encounter Management (Desktop)**
-- [ ] **Write tests first**: Vitals validation tests (ranges, units)
-- [ ] Implement vitals capture form
-- [ ] **Write tests first**: Diagnosis entry tests (ICD-10 validation)
-- [ ] Implement diagnosis capture with code lookup
-- [ ] **Write tests first**: Treatment plan tests
-- [ ] Implement treatment plan templates
-- [ ] **Write tests first**: Encounter history tests
-- [ ] Implement encounter timeline view
+- [x] **Write tests first**: Vitals validation tests (ranges, units) ✅
+- [x] Implement vitals capture form ✅
+- [x] **Write tests first**: Diagnosis entry tests (ICD-10 validation) ✅
+- [x] Implement diagnosis capture with code lookup ✅
+- [x] **Write tests first**: Treatment plan tests ✅
+- [x] Implement treatment plan templates ✅
+- [x] **Write tests first**: Encounter history tests ✅
+- [x] Implement encounter timeline view ✅
+- [ ] **Write tests first**: Encounter status workflow tests (draft → in_progress → completed)
+- [ ] Implement Encounter status field and transitions
+- [ ] **Write tests first**: Status badge display tests
+- [ ] Implement status badges in encounter list and timeline views
 
 **Track B: Mobile App Foundation (Parallel)**
 - [ ] **Write tests first**: React Native setup tests
@@ -495,8 +502,17 @@ GET /api/locations/wards/?sub_county=<id>     # Cascading wards
 - [ ] **Write tests first**: Mobile auth tests
 - [ ] Implement JWT auth for mobile
 
+**Track C: RBAC Foundation**
+- [ ] **Write tests first**: Role and StaffProfile model tests
+- [ ] Implement Department, Role, StaffProfile models
+- [ ] **Write tests first**: RoleBasedPermission class tests
+- [ ] Implement basic role-based permission checking
+- [ ] Update Django Admin for role assignment
+
 **Deliverables**:
-- Encounter module with vitals, diagnosis, treatment
+- Encounter module with vitals, diagnosis, treatment, and **status workflow**
+- **Status badges** in UI (draft/in-progress/completed/cancelled)
+- **RBAC foundation** (Role, Department, StaffProfile models)
 - Clinical templates library
 - React Native app scaffold (Android focus)
 - Mobile offline patient lookup
@@ -513,10 +529,10 @@ def test_vital_signs_validation():
 # Then implement to pass the test
 ```
 
-#### Sprint 1.3-1.4: Pharmacy Module (Weeks 5-8)
-**TDD Focus**: Test inventory tracking and stock alerts
+#### Sprint 1.3-1.4: Pharmacy Module + Lab Foundation + Web Frontend (Weeks 5-8)
+**TDD Focus**: Test inventory tracking, stock alerts, lab orders, and web frontend foundation
 
-**Tasks**:
+**Track A: Pharmacy Module**
 - [ ] **Write tests first**: Stock level tests, reorder alerts
 - [ ] Implement pharmacy inventory model
 - [ ] **Write tests first**: Drug dispensing tests with validations
@@ -526,16 +542,38 @@ def test_vital_signs_validation():
 - [ ] **Write tests first**: Prescription tests
 - [ ] Implement prescription management
 
+**Track B: Lab/Investigations Foundation**
+- [ ] **Write tests first**: LabOrder model tests (in-house vs external)
+- [ ] Implement LabOrder model with order_type field
+- [ ] **Write tests first**: LabResult model tests
+- [ ] Implement LabResult model linked to LabOrder
+- [ ] **Write tests first**: Lab order API tests
+- [ ] Implement lab order creation from encounter
+- [ ] **Write tests first**: LOINC code lookup tests
+- [ ] Implement basic LOINC code reference table
+
+**Track C: Web Frontend Foundation (Next.js) - Moved from Phase 2**
+- [ ] **Write tests first**: Next.js setup and routing tests
+- [ ] Scaffold Next.js 14+ app with TypeScript
+- [ ] **Write tests first**: Auth flow tests (login, logout, refresh)
+- [ ] Implement JWT authentication with refresh tokens
+- [ ] **Write tests first**: Patient list/search tests (read-only)
+- [ ] Implement patient dashboard with search
+- [ ] Set up TailwindCSS + shadcn/ui component library
+
 **Deliverables**:
 - Pharmacy stock management
 - Drug dispensing system
 - Prescription tracking
 - Low stock/expiry alerts
+- **LabOrder and LabResult models** with in-house/external support
+- **Next.js web app scaffold** with authentication
+- **Patient dashboard (read-only)** for stakeholder demos
 
-#### Sprint 1.5-1.6: Billing Basics (Weeks 9-12)
-**TDD Focus**: Test billing calculations and payment recording
+#### Sprint 1.5-1.6: Billing Basics + Lab Workflow + Web Dashboard (Weeks 9-12)
+**TDD Focus**: Test billing calculations, payment recording, lab workflows, and web dashboard
 
-**Tasks**:
+**Track A: Billing Module**
 - [ ] **Write tests first**: Invoice generation tests
 - [ ] Implement billing invoice system
 - [ ] **Write tests first**: Payment processing tests (cash, M-Pesa)
@@ -545,16 +583,42 @@ def test_vital_signs_validation():
 - [ ] **Write tests first**: Billing report tests
 - [ ] Implement basic financial reports
 
+**Track B: Lab Workflow Completion**
+- [ ] **Write tests first**: In-house lab workflow tests
+- [ ] Implement lab queue for in-house orders (status: ordered → in_progress → completed)
+- [ ] **Write tests first**: External lab requisition tests
+- [ ] Implement PDF requisition generation for external labs
+- [ ] **Write tests first**: Lab result entry tests
+- [ ] Implement lab result entry form (manual for external results)
+- [ ] **Write tests first**: Lab result notification tests
+- [ ] Implement clinician notification when results available
+- [ ] **Write tests first**: Lab result attachment tests
+- [ ] Implement scanned result attachment support
+
+**Track C: Web Frontend Dashboard**
+- [ ] **Write tests first**: Encounter view tests (web)
+- [ ] Implement encounter details view (read-only)
+- [ ] **Write tests first**: Patient timeline tests (web)
+- [ ] Implement patient encounter history in web app
+- [ ] **Write tests first**: Reporting dashboard tests
+- [ ] Implement basic reporting dashboard for stakeholders
+- [ ] **Write tests first**: Responsive design tests (Playwright)
+- [ ] Ensure mobile-responsive web experience
+
 **Deliverables**:
 - Billing module with invoicing
 - M-Pesa integration stub (for testing)
 - Receipt generation
 - Financial reports
+- **Complete lab workflow** (in-house queue + external PDF requisitions)
+- **Lab result entry** with attachments
+- **Web dashboard** with patient/encounter views
+- **Stakeholder demo portal** (read-only web access)
 
-#### Sprint 1.7-1.8: Mobile Features & Pharmacy Integration (Weeks 13-16)
-**TDD Focus**: Test mobile clinical workflows and pharmacy features
+#### Sprint 1.7-1.8: Mobile Features + RBAC Enforcement + Pharmacy Integration (Weeks 13-16)
+**TDD Focus**: Test mobile clinical workflows, RBAC enforcement, and pharmacy features
 
-**Tasks**:
+**Track A: Mobile Features**
 - [ ] **Write tests first**: Mobile vitals entry tests
 - [ ] Implement mobile vitals capture with offline queue
 - [ ] **Write tests first**: Mobile encounter creation tests
@@ -566,12 +630,36 @@ def test_vital_signs_validation():
 - [ ] **Write tests first**: Push notification tests
 - [ ] Implement critical alert notifications (SpO2, etc.)
 
+**Track B: RBAC Full Implementation**
+- [ ] **Write tests first**: Permission matrix enforcement tests
+- [ ] Implement full RoleBasedPermission with action/resource matrix
+- [ ] **Write tests first**: Department-based filtering tests
+- [ ] Implement department-scoped data access
+- [ ] **Write tests first**: Role-based UI rendering tests
+- [ ] Implement UI element visibility based on role
+- [ ] **Write tests first**: Role assignment API tests
+- [ ] Implement role management endpoints
+- [ ] **Write tests first**: Audit log for role changes
+- [ ] Log all role/permission modifications
+
+**Track C: Lab Integration with Roles**
+- [ ] **Write tests first**: Lab technician role tests
+- [ ] Implement lab technician permissions (result entry only)
+- [ ] **Write tests first**: Doctor lab order tests
+- [ ] Ensure only authorized roles can order labs
+- [ ] **Write tests first**: Lab result viewing permissions
+- [ ] Implement role-based lab result access
+
 **Deliverables**:
 - Mobile vitals entry with validation
 - Mobile encounter creation
 - Prescription viewing on mobile
 - Cross-device sync with conflict resolution
 - Push notifications for critical alerts
+- **Full RBAC enforcement** with permission matrix
+- **Department-based data filtering**
+- **Role-based UI rendering** (Desktop + Web + Mobile)
+- **Lab module integrated with RBAC**
 
 #### Sprint 1.9-1.10: Integration & Testing (Weeks 17-20)
 **TDD Focus**: System-wide integration tests
@@ -636,6 +724,10 @@ def test_vital_signs_validation():
 - [ ] User satisfaction ≥4/5
 - [ ] Daily active users ≥20 per pilot site
 - [ ] All TDD practices followed (tests written first)
+- [ ] **Web frontend accessible** for stakeholder demos
+- [ ] **RBAC enforced** across all platforms (Desktop, Mobile, Web)
+- [ ] **Lab orders processed** (≥50 in-house, ≥20 external during pilots)
+- [ ] **Encounter status workflow adopted** (≥90% encounters have proper status)
 
 ---
 
@@ -647,7 +739,8 @@ def test_vital_signs_validation():
 - Advanced inventory with suppliers
 - KHIS/DHIS2 automated reporting
 - Cloud sync introduction (optional)
-- **Web frontend (Next.js)** for browser-based access (cloud-connected sites)
+- **Web frontend enhancements** (full clinical workflows, moved foundation to Phase 1)
+- Scale to 5 additional sites
 - Scale to 5 additional sites
 
 ### Sprint Breakdown (12 sprints × 2 weeks)
@@ -753,8 +846,8 @@ def test_opd_attendance_calculation():
     assert indicator.value == 50
 ```
 
-#### Sprint 2.9-2.10: Cloud Sync & Web Frontend Foundation (Weeks 17-20)
-**TDD Focus**: Test cloud connectivity, data synchronization, and web app foundation
+#### Sprint 2.9-2.10: Cloud Sync & Web Frontend Enhancements (Weeks 17-20)
+**TDD Focus**: Test cloud connectivity, data synchronization, and web app clinical features
 
 **Track A: Cloud Sync**
 - [ ] **Write tests first**: Cloud authentication tests
@@ -766,38 +859,35 @@ def test_opd_attendance_calculation():
 - [ ] **Write tests first**: Sync status monitoring tests
 - [ ] Implement sync dashboard
 
-**Track B: Web Frontend Foundation (Next.js)**
-- [ ] **Write tests first**: Next.js setup and routing tests
-- [ ] Scaffold Next.js 14+ app with TypeScript
-- [ ] **Write tests first**: Auth flow tests (login, logout, refresh)
-- [ ] Implement JWT authentication with refresh tokens
-- [ ] **Write tests first**: Patient list/search tests
-- [ ] Implement patient dashboard with search
-- [ ] **Write tests first**: API client tests
-- [ ] Implement TanStack Query for data fetching
-- [ ] Set up TailwindCSS + shadcn/ui component library
+**Track B: Web Frontend Clinical Features (Building on Phase 1 foundation)**
+- [ ] **Write tests first**: Encounter creation tests (web)
+- [ ] Implement full encounter creation/editing in web app
+- [ ] **Write tests first**: Lab order management tests (web)
+- [ ] Implement lab order workflow in web app
+- [ ] **Write tests first**: Billing integration tests (web)
+- [ ] Implement billing views in web app
+- [ ] **Write tests first**: Real-time notification tests
+- [ ] Implement WebSocket notifications for critical alerts
 
 **Deliverables**:
 - Cloud backend infrastructure
 - Bi-directional sync engine
-- Next.js web app with authentication
-- Patient dashboard (list, search, view)
+- **Web app with full clinical workflows** (encounter creation, lab orders)
+- **Real-time notifications** for critical vitals
 - Responsive design (mobile-first)
 
-#### Sprint 2.11-2.12: Web Frontend Features & Expansion (Weeks 21-24)
-**TDD Focus**: Test web app features, scalability, and multi-site scenarios
+#### Sprint 2.11-2.12: Advanced Web Features & Multi-Site Expansion (Weeks 21-24)
+**TDD Focus**: Test advanced web features, scalability, and multi-site scenarios
 
-**Track A: Web Frontend Features**
-- [ ] **Write tests first**: Encounter management tests (web)
-- [ ] Implement encounter creation/editing in web app
-- [ ] **Write tests first**: Vitals display tests with alerts
-- [ ] Implement vitals dashboard with critical alerts
-- [ ] **Write tests first**: Billing overview tests
-- [ ] Implement billing summary view
-- [ ] **Write tests first**: Reports/analytics tests
-- [ ] Implement basic reporting dashboard
-- [ ] **Write tests first**: Responsive design tests (Playwright)
-- [ ] Ensure mobile-responsive web experience
+**Track A: Advanced Web Frontend Features**
+- [ ] **Write tests first**: Advanced reporting tests (web)
+- [ ] Implement comprehensive analytics dashboard
+- [ ] **Write tests first**: Role-based dashboard tests
+- [ ] Implement role-specific home screens (Doctor vs Nurse vs Admin)
+- [ ] **Write tests first**: Audit log viewer tests
+- [ ] Implement audit trail viewer for administrators
+- [ ] **Write tests first**: Print/export tests
+- [ ] Implement PDF export and print functionality
 
 **Track B: Multi-Site Expansion**
 - [ ] Deploy to 5 new sites (3 rural, 2 urban)
@@ -809,8 +899,10 @@ def test_opd_attendance_calculation():
 - [ ] Collect feedback from all sites
 
 **Deliverables**:
-- Web app with full clinical workflows
-- Reporting dashboard
+- Advanced analytics dashboard
+- Role-specific web interfaces
+- Audit trail viewer
+- PDF export functionality
 - 7 total operational sites
 - Multi-site deployment playbook
 - Phase 2 retrospective
