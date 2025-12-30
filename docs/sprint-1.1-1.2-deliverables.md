@@ -11,7 +11,7 @@
 
 Sprint 1.1-1.2 builds upon the Phase 0 foundation to deliver a production-ready Encounter Management module. This sprint focuses on enhanced vital signs validation, ICD-10 diagnosis coding, treatment plan templates, and encounter timeline views. Following TDD methodology, all tests are written BEFORE implementation.
 
-**Final Results**: 760 tests passing, 84.93% coverage
+**Final Results**: 910 tests passing, 85.84% coverage
 
 ---
 
@@ -40,8 +40,19 @@ Sprint 1.1-1.2 builds upon the Phase 0 foundation to deliver a production-ready 
 | test_patient_timeline_api.py | 57 | ✅ Complete |
 | test_admin_registrations.py | 5 | ✅ Complete |
 | **Sprint 1.1-1.2 Total** | **136** | ✅ |
-| **Project Total** | **760** | ✅ |
-| **Coverage** | **84.93%** | ✅ ≥80% |
+| | | |
+| **Phase 2 Deferred Items** | | |
+| test_clinical_templates.py | 31 | ✅ Complete |
+| test_clinical_templates_api.py | 35 | ✅ Complete |
+| test_clinical_templates_admin.py | 19 | ✅ Complete |
+| test_template_json_validation.py | 17 | ✅ Complete |
+| test_pediatric_vitals.py | 35 | ✅ Complete |
+| test_patient_age_category.py | 26 | ✅ Complete |
+| test_map_status.py | 21 | ✅ Complete |
+| **Phase 2 Total** | **184** | ✅ |
+| | | |
+| **Project Total** | **910** | ✅ |
+| **Coverage** | **85.84%** | ✅ ≥80% |
 
 ---
 
@@ -93,7 +104,11 @@ class Encounter(models.Model):
 
     def get_map(self) -> Optional[int]:
         """Calculate Mean Arterial Pressure from BP."""
-        # ⚠️ Deferred to Phase 2
+        # ✅ Implemented (Phase 2)
+
+    def get_map_status(self) -> str | None:
+        """Return MAP status: normal, low, high, critical."""
+        # ✅ Implemented (Phase 2)
 
     def get_vitals_summary(self) -> dict:
         """Return comprehensive vitals summary with statuses and alerts."""
@@ -604,13 +619,14 @@ class TestTimelineFollowupCompliance:            # 9 tests (BONUS)
 
 ---
 
-### 5. Clinical Templates Library ⚠️ DEFERRED
+### 5. Clinical Templates Library ✅ IMPLEMENTED (Phase 2)
 
-**Status**: ⚠️ Deferred to Phase 2
+**Status**: ✅ COMPLETE (Implemented in Phase 2 Deferred Items)
+**Completed**: December 30, 2025
 
-**Rationale**: Focus on core encounter management in Sprint 1.1-1.2. Clinical templates require additional UX research for Kenya-specific workflows.
+**Module**: `hmis/apps/clinical_templates/`
 
-**Models** (Planned for Phase 2):
+**Models Implemented**:
 ```python
 class ClinicalTemplate(models.Model):
     """Master clinical template for common conditions."""
@@ -649,43 +665,158 @@ class TemplateSection(models.Model):
     fields = models.JSONField(help_text="Section fields definition")
 ```
 
-**Pre-built Templates** (Kenya-specific, planned for Phase 2):
-1. **General OPD Visit** - Standard outpatient template
-2. **Antenatal Care (ANC)** - MCH focused
-3. **Child Wellness Check** - Pediatric template
-4. **Chronic Disease Follow-up** - Diabetes, Hypertension
-5. **Emergency Triage** - Quick assessment
-6. **HIV/AIDS Care** - Sensitive access controlled
-7. **Malaria Assessment** - Endemic disease
-8. **Respiratory Infection** - Common presentation
-9. **Diarrheal Disease** - Pediatric focus
-10. **Trauma Assessment** - Emergency template
+**API Endpoints** (✅ Implemented):
+```
+GET    /api/clinical-templates/              # List templates (paginated)
+POST   /api/clinical-templates/              # Create user template
+GET    /api/clinical-templates/<id>/         # Retrieve template with sections
+PUT    /api/clinical-templates/<id>/         # Update own template
+DELETE /api/clinical-templates/<id>/         # Delete own template (system protected)
+POST   /api/clinical-templates/<id>/clone/   # Clone system template
+POST   /api/clinical-templates/<id>/apply/   # Apply to encounter
+GET    /api/clinical-templates/popular/      # Most used templates
+GET    /api/clinical-templates/by_specialty/ # Group by specialty
+```
 
-**Test Coverage** (Planned for Phase 2):
+**Pre-built Templates** (Kenya-specific, ✅ Implemented):
+1. ✅ **General OPD Visit** - `general_opd.json`
+2. ✅ **Antenatal Care (ANC)** - `anc_visit.json`
+3. ✅ **Child Wellness Check** - `child_wellness.json`
+4. ✅ **Chronic Disease Follow-up** - `chronic_followup.json`
+5. ✅ **Emergency Triage** - `emergency_triage.json`
+6. ✅ **HIV/AIDS Care** - `hiv_care.json`
+7. ✅ **Malaria Assessment** - `malaria_assessment.json`
+8. ✅ **Respiratory Infection** - `respiratory_infection.json`
+9. ✅ **Diarrheal Disease** - `diarrheal_disease.json`
+10. ✅ **Trauma Assessment** - `trauma_assessment.json`
+
+**JSON Schema Validation** (✅ Implemented):
+- `hmis/apps/clinical_templates/schemas.py`
+- `validate_template_content()` function
+- Max 20 sections, max 50 fields per section
+- Field types: text, textarea, number, boolean, date, select, multiselect
+
+**Management Command** (✅ Implemented):
+```bash
+python manage.py load_clinical_templates --dir data/clinical_templates/
+python manage.py load_clinical_templates --update  # Update existing
+```
+
+**Test Coverage** (✅ Implemented - 150 tests):
 ```python
-# tests/test_clinical_templates.py
+# tests/test_clinical_templates.py (31 tests)
+class TestClinicalTemplateModel:           # ✅ 14 tests
+class TestTemplateSectionModel:            # ✅ 8 tests
+class TestTemplateQueries:                 # ✅ 5 tests
+class TestTemplateMetaOptions:             # ✅ 4 tests
 
-class TestClinicalTemplateModel:
-    def test_template_creation(self): ...
-    def test_template_json_content_validation(self): ...
-    def test_template_usage_tracking(self): ...
-    def test_system_template_protection(self): ...
+# tests/test_clinical_templates_api.py (35 tests)
+class TestListTemplatesAPI:                # ✅ 10 tests
+class TestRetrieveTemplateAPI:             # ✅ 3 tests
+class TestCreateTemplateAPI:               # ✅ 6 tests
+class TestUpdateTemplateAPI:               # ✅ 3 tests
+class TestDeleteTemplateAPI:               # ✅ 3 tests
+class TestTemplateCustomActions:           # ✅ 5 tests
+class TestNestedSectionsAPI:               # ✅ 2 tests
+class TestTemplateAPIPagination:           # ✅ 2 tests
+class TestTemplateListSerializer:          # ✅ 1 test
 
-class TestTemplateSections:
-    def test_section_ordering(self): ...
-    def test_required_sections_validation(self): ...
-    def test_section_fields_json_structure(self): ...
+# tests/test_clinical_templates_admin.py (19 tests)
+class TestClinicalTemplateAdminRegistration:  # ✅ 2 tests
+class TestSystemTemplateAdminProtection:      # ✅ 2 tests
+class TestClinicalTemplateAdminFields:        # ✅ 5 tests
+class TestLoadClinicalTemplatesCommand:       # ✅ 8 tests
+class TestKenyaTemplatesLoading:              # ✅ 2 tests
 
-class TestTemplateAPI:
-    def test_list_templates_by_type(self): ...
-    def test_list_templates_by_specialty(self): ...
-    def test_create_user_template(self): ...
-    def test_clone_system_template(self): ...
+# tests/test_template_json_validation.py (17 tests)
+class TestValidTemplateContent:            # ✅ 3 tests
+class TestInvalidTemplateContent:          # ✅ 6 tests
+class TestSectionLimits:                   # ✅ 2 tests
+class TestSchemaEdgeCases:                 # ✅ 4 tests
+class TestSchemaValidationFunction:        # ✅ 4 tests
+```
 
-class TestTemplateUsage:
-    def test_apply_template_to_encounter(self): ...
-    def test_template_usage_count_increment(self): ...
-    def test_popular_templates_ranking(self): ...
+---
+
+### 6. Pediatric-specific Vital Ranges ✅ IMPLEMENTED (Phase 2)
+
+**Status**: ✅ COMPLETE (Implemented in Phase 2 Deferred Items)
+**Completed**: December 30, 2025
+
+**Module**: `hmis/apps/encounters/models.py`, `hmis/apps/patients/models.py`
+
+**Age Categories** (✅ Implemented via `Patient.get_age_category()`):
+| Category | Age Range |
+|----------|-----------|
+| newborn | 0-28 days |
+| infant | 1-12 months |
+| toddler | 1-3 years |
+| preschool | 3-6 years |
+| school_age | 6-12 years |
+| adolescent | 12-18 years |
+| adult | 18+ years |
+
+**Pediatric Vital Ranges** (✅ Implemented in `Encounter.PEDIATRIC_VITAL_RANGES`):
+- Different normal/warning/critical thresholds for each age group
+- Covers: pulse, respiratory_rate, bp_systolic, bp_diastolic
+
+**Test Coverage** (61 tests):
+```python
+# tests/test_pediatric_vitals.py (35 tests)
+class TestPediatricPulseRanges:            # ✅ 9 tests
+class TestPediatricRespiratoryRate:        # ✅ 8 tests
+class TestPediatricBloodPressure:          # ✅ 5 tests
+class TestPediatricUtilityMethods:         # ✅ 10 tests
+class TestPediatricVitalStatusIntegration: # ✅ 3 tests
+
+# tests/test_patient_age_category.py (26 tests)
+class TestPatientAgeCategoryMethod:        # ✅ 14 tests
+class TestAgeCalculationAccuracy:          # ✅ 2 tests
+class TestAgeCategoryDisplay:              # ✅ 2 tests
+class TestAgeCategoryEdgeCases:            # ✅ 3 tests
+class TestAgeCategoryVitalsIntegration:    # ✅ 2 tests
+class TestAgeCategoryConstants:            # ✅ 3 tests
+```
+
+---
+
+### 7. Mean Arterial Pressure (MAP) Calculation ✅ IMPLEMENTED (Phase 2)
+
+**Status**: ✅ COMPLETE (Implemented in Phase 2 Deferred Items)
+**Completed**: December 30, 2025
+
+**Module**: `hmis/apps/encounters/models.py`
+
+**Formula**: MAP = Diastolic + (1/3 × (Systolic - Diastolic))
+
+**Methods Implemented**:
+```python
+def get_map(self) -> Optional[int]:
+    """Calculate Mean Arterial Pressure from blood pressure."""
+
+def get_map_status(self) -> str | None:
+    """Return MAP status: normal, low, high, critical, or None."""
+```
+
+**MAP Status Thresholds**:
+| Status | Range |
+|--------|-------|
+| critical (low) | <60 mmHg |
+| low | 60-69 mmHg |
+| normal | 70-100 mmHg |
+| high | 101-130 mmHg |
+| critical (high) | >130 mmHg |
+
+**Integration**: MAP included in `get_all_vital_statuses()` response
+
+**Test Coverage** (21 tests in `test_map_status.py`):
+```python
+class TestGetMAPStatusMethod:              # ✅ 10 tests
+class TestMAPStatusRanges:                 # ✅ 2 tests
+class TestMAPInVitalsSummary:              # ✅ 2 tests
+class TestMAPCriticalAlerts:               # ✅ 2 tests
+class TestPediatricMAPStatus:              # ✅ 2 tests
+class TestMAPEdgeCases:                    # ✅ 3 tests
 ```
 
 ---
@@ -778,9 +909,38 @@ class TreatmentPlanTemplateAdmin(admin.ModelAdmin):
         super().save_model(request, obj, form, change)
 ```
 
-### Clinical Templates App Admin ⚠️ DEFERRED
+### Clinical Templates App Admin ✅ IMPLEMENTED (Phase 2)
 
-Deferred to Phase 2 along with Clinical Templates Library.
+**Module**: `hmis/apps/clinical_templates/admin.py`
+
+```python
+class TemplateSectionInline(admin.TabularInline):
+    """Inline template sections on ClinicalTemplate admin."""
+    model = TemplateSection
+    extra = 1
+    ordering = ['order']
+
+
+@admin.register(ClinicalTemplate)
+class ClinicalTemplateAdmin(admin.ModelAdmin):
+    """Admin for clinical templates. ✅ IMPLEMENTED"""
+    list_display = ['name', 'template_type', 'specialty', 'is_system', 'is_active', 'usage_count']
+    list_filter = ['template_type', 'specialty', 'is_system', 'is_active']
+    search_fields = ['name', 'description']
+    readonly_fields = ['usage_count', 'created_by', 'created_at', 'updated_at']
+    inlines = [TemplateSectionInline]
+
+    def save_model(self, request, obj, form, change):
+        if not change:
+            obj.created_by = request.user
+        super().save_model(request, obj, form, change)
+
+    def has_delete_permission(self, request, obj=None):
+        # Protect system templates from deletion
+        if obj and obj.is_system:
+            return False
+        return super().has_delete_permission(request, obj)
+```
 
 ### Admin Test Coverage (5 tests) ✅ IMPLEMENTED
 
