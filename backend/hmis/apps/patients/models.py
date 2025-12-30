@@ -252,6 +252,83 @@ class Patient(models.Model):
         )
         return age
 
+    # Age category thresholds in days
+    AGE_CATEGORY_THRESHOLDS = {
+        "newborn": (0, 28),  # 0-28 days
+        "infant": (29, 365),  # 1-12 months
+        "toddler": (366, 1095),  # 1-3 years
+        "preschool": (1096, 2190),  # 3-6 years
+        "school_age": (2191, 4380),  # 6-12 years
+        "adolescent": (4381, 6570),  # 12-18 years
+    }
+
+    VALID_AGE_CATEGORIES = [
+        "newborn",
+        "infant",
+        "toddler",
+        "preschool",
+        "school_age",
+        "adolescent",
+        "adult",
+    ]
+
+    def get_age_in_days(self) -> int:
+        """
+        Calculate patient's age in days.
+
+        Returns:
+            int: Patient's age in days
+        """
+        if not self.date_of_birth:
+            return 0
+        today = date.today()
+        delta = today - self.date_of_birth
+        return delta.days
+
+    def get_age_category(self) -> str:
+        """
+        Get patient's age category for clinical decision support.
+
+        Categories:
+        - newborn: 0-28 days
+        - infant: 1-12 months
+        - toddler: 1-3 years
+        - preschool: 3-6 years
+        - school_age: 6-12 years
+        - adolescent: 12-18 years
+        - adult: 18+ years
+
+        Returns:
+            str: Age category (newborn/infant/toddler/preschool/school_age/adolescent/adult)
+        """
+        age_days = self.get_age_in_days()
+
+        for category, (min_days, max_days) in self.AGE_CATEGORY_THRESHOLDS.items():
+            if min_days <= age_days <= max_days:
+                return category
+
+        # If over 18 years (6570 days), return adult
+        return "adult"
+
+    def get_age_category_display(self) -> str:
+        """
+        Get human-readable age category display name.
+
+        Returns:
+            str: Capitalized age category name
+        """
+        category = self.get_age_category()
+        display_names = {
+            "newborn": "Newborn",
+            "infant": "Infant",
+            "toddler": "Toddler",
+            "preschool": "Preschool",
+            "school_age": "School Age",
+            "adolescent": "Adolescent",
+            "adult": "Adult",
+        }
+        return display_names.get(category, category.replace("_", " ").title())
+
 
 class EmergencyContact(models.Model):
     """

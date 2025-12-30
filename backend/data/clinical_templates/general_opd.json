@@ -1,0 +1,63 @@
+{
+    "name": "General OPD Assessment",
+    "template_type": "encounter",
+    "specialty": "General Practice",
+    "description": "Standard outpatient department assessment template for routine visits",
+    "content": {
+        "title": "General OPD Assessment",
+        "version": "1.0",
+        "sections": [
+            {
+                "name": "Chief Complaint",
+                "order": 1,
+                "fields": [
+                    {"name": "complaint", "type": "text", "required": true, "label": "Main Complaint"},
+                    {"name": "duration", "type": "text", "required": false, "label": "Duration"},
+                    {"name": "severity", "type": "select", "options": ["Mild", "Moderate", "Severe"], "required": false, "label": "Severity"}
+                ]
+            },
+            {
+                "name": "History of Present Illness",
+                "order": 2,
+                "fields": [
+                    {"name": "onset", "type": "text", "required": false, "label": "Onset"},
+                    {"name": "character", "type": "textarea", "required": false, "label": "Character/Quality"},
+                    {"name": "aggravating_factors", "type": "textarea", "required": false, "label": "Aggravating Factors"},
+                    {"name": "relieving_factors", "type": "textarea", "required": false, "label": "Relieving Factors"},
+                    {"name": "associated_symptoms", "type": "textarea", "required": false, "label": "Associated Symptoms"}
+                ]
+            },
+            {
+                "name": "Physical Examination",
+                "order": 3,
+                "fields": [
+                    {"name": "general_appearance", "type": "text", "required": true, "label": "General Appearance"},
+                    {"name": "heent", "type": "textarea", "required": false, "label": "HEENT"},
+                    {"name": "chest", "type": "textarea", "required": false, "label": "Chest/Lungs"},
+                    {"name": "cardiovascular", "type": "textarea", "required": false, "label": "Cardiovascular"},
+                    {"name": "abdomen", "type": "textarea", "required": false, "label": "Abdomen"},
+                    {"name": "extremities", "type": "textarea", "required": false, "label": "Extremities"},
+                    {"name": "neurological", "type": "textarea", "required": false, "label": "Neurological"}
+                ]
+            },
+            {
+                "name": "Assessment",
+                "order": 4,
+                "fields": [
+                    {"name": "clinical_impression", "type": "textarea", "required": true, "label": "Clinical Impression"},
+                    {"name": "differential_diagnosis", "type": "textarea", "required": false, "label": "Differential Diagnosis"}
+                ]
+            },
+            {
+                "name": "Plan",
+                "order": 5,
+                "fields": [
+                    {"name": "investigations", "type": "textarea", "required": false, "label": "Investigations"},
+                    {"name": "medications", "type": "textarea", "required": false, "label": "Medications"},
+                    {"name": "patient_education", "type": "textarea", "required": false, "label": "Patient Education"},
+                    {"name": "follow_up", "type": "text", "required": false, "label": "Follow-up"}
+                ]
+            }
+        ]
+    }
+}

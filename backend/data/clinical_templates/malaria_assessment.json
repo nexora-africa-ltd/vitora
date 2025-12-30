@@ -1,0 +1,55 @@
+{
+    "name": "Malaria Assessment",
+    "template_type": "assessment",
+    "specialty": "Internal Medicine",
+    "description": "Kenya endemic disease - Malaria assessment and treatment protocol",
+    "content": {
+        "title": "Malaria Assessment",
+        "version": "1.0",
+        "sections": [
+            {
+                "name": "Symptoms",
+                "order": 1,
+                "fields": [
+                    {"name": "fever", "type": "boolean", "required": true, "label": "Fever"},
+                    {"name": "chills", "type": "boolean", "required": false, "label": "Chills/Rigors"},
+                    {"name": "headache", "type": "boolean", "required": false, "label": "Headache"},
+                    {"name": "body_aches", "type": "boolean", "required": false, "label": "Body Aches/Malaise"},
+                    {"name": "nausea_vomiting", "type": "boolean", "required": false, "label": "Nausea/Vomiting"},
+                    {"name": "diarrhea", "type": "boolean", "required": false, "label": "Diarrhea"},
+                    {"name": "duration_days", "type": "number", "required": true, "label": "Duration (Days)", "min": 0}
+                ]
+            },
+            {
+                "name": "RDT/Microscopy",
+                "order": 2,
+                "fields": [
+                    {"name": "rdt_result", "type": "select", "options": ["Positive", "Negative", "Invalid", "Not Done"], "required": true, "label": "RDT Result"},
+                    {"name": "microscopy_done", "type": "boolean", "required": false, "label": "Microscopy Done"},
+                    {"name": "microscopy_result", "type": "select", "options": ["Positive", "Negative", "Not Done"], "required": false, "label": "Microscopy Result"},
+                    {"name": "parasite_species", "type": "select", "options": ["P. falciparum", "P. vivax", "P. malariae", "P. ovale", "Mixed"], "required": false, "label": "Parasite Species"},
+                    {"name": "parasite_count", "type": "number", "required": false, "label": "Parasite Count (/μL)"}
+                ]
+            },
+            {
+                "name": "Severity Assessment",
+                "order": 3,
+                "fields": [
+                    {"name": "classification", "type": "select", "options": ["Uncomplicated", "Severe"], "required": true, "label": "Classification"},
+                    {"name": "danger_signs", "type": "multiselect", "options": ["Prostration", "Impaired consciousness", "Respiratory distress", "Multiple convulsions", "Circulatory collapse/Shock", "Clinical jaundice", "Abnormal bleeding", "Pulmonary edema", "Severe anemia (Hb<5g/dL)", "Hypoglycemia", "Renal impairment"], "required": false, "label": "Danger Signs"},
+                    {"name": "gcs_score", "type": "number", "required": false, "label": "GCS Score", "min": 3, "max": 15}
+                ]
+            },
+            {
+                "name": "Treatment Protocol",
+                "order": 4,
+                "fields": [
+                    {"name": "treatment_setting", "type": "select", "options": ["Outpatient", "Inpatient - Ward", "Inpatient - HDU/ICU"], "required": true, "label": "Treatment Setting"},
+                    {"name": "antimalarial_regimen", "type": "select", "options": ["AL (Artemether-Lumefantrine)", "ASAQ (Artesunate-Amodiaquine)", "IV Artesunate", "IM Artesunate", "Quinine"], "required": true, "label": "Antimalarial Regimen"},
+                    {"name": "supportive_care", "type": "multiselect", "options": ["IV Fluids", "Antipyretics", "Antiemetics", "Blood Transfusion", "Oxygen Therapy", "Glucose"], "required": false, "label": "Supportive Care"},
+                    {"name": "notes", "type": "textarea", "required": false, "label": "Additional Notes"}
+                ]
+            }
+        ]
+    }
+}

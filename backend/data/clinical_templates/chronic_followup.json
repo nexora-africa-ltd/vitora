@@ -1,0 +1,79 @@
+{
+    "name": "Chronic Disease Follow-up",
+    "template_type": "encounter",
+    "specialty": "Internal Medicine",
+    "description": "Follow-up template for chronic conditions: Diabetes, Hypertension, and other NCDs",
+    "content": {
+        "title": "Chronic Disease Follow-up",
+        "version": "1.0",
+        "sections": [
+            {
+                "name": "Visit Details",
+                "order": 1,
+                "fields": [
+                    {"name": "chronic_conditions", "type": "multiselect", "options": ["Type 2 Diabetes", "Type 1 Diabetes", "Hypertension", "Heart Failure", "COPD", "Asthma", "Chronic Kidney Disease", "Epilepsy", "Other"], "required": true, "label": "Chronic Conditions"},
+                    {"name": "time_since_diagnosis", "type": "text", "required": false, "label": "Time Since Diagnosis"}
+                ]
+            },
+            {
+                "name": "Current Medications",
+                "order": 2,
+                "fields": [
+                    {"name": "current_medications", "type": "textarea", "required": true, "label": "Current Medications with Dosage"},
+                    {"name": "medication_changes", "type": "textarea", "required": false, "label": "Recent Medication Changes"},
+                    {"name": "side_effects", "type": "textarea", "required": false, "label": "Side Effects Reported"}
+                ]
+            },
+            {
+                "name": "Compliance Assessment",
+                "order": 3,
+                "fields": [
+                    {"name": "medication_adherence", "type": "select", "options": ["Excellent (>90%)", "Good (75-90%)", "Fair (50-75%)", "Poor (<50%)"], "required": true, "label": "Medication Adherence"},
+                    {"name": "missed_doses", "type": "text", "required": false, "label": "Missed Doses (Last Month)"},
+                    {"name": "adherence_barriers", "type": "multiselect", "options": ["Cost", "Side Effects", "Forgetfulness", "Too Many Pills", "Feeling Well", "Access Issues", "Other"], "required": false, "label": "Adherence Barriers"},
+                    {"name": "lifestyle_compliance", "type": "select", "options": ["Excellent", "Good", "Fair", "Poor"], "required": false, "label": "Lifestyle Compliance (Diet/Exercise)"}
+                ]
+            },
+            {
+                "name": "Control Parameters",
+                "order": 4,
+                "fields": [
+                    {"name": "fasting_glucose", "type": "number", "required": false, "label": "Fasting Blood Glucose (mmol/L)"},
+                    {"name": "random_glucose", "type": "number", "required": false, "label": "Random Blood Glucose (mmol/L)"},
+                    {"name": "hba1c", "type": "number", "required": false, "label": "HbA1c (%)"},
+                    {"name": "bp_home_readings", "type": "text", "required": false, "label": "Home BP Readings"},
+                    {"name": "peak_flow", "type": "number", "required": false, "label": "Peak Flow (L/min)"},
+                    {"name": "control_status", "type": "select", "options": ["Well Controlled", "Partially Controlled", "Uncontrolled"], "required": true, "label": "Overall Control Status"}
+                ]
+            },
+            {
+                "name": "Complications Screening",
+                "order": 5,
+                "fields": [
+                    {"name": "complications_present", "type": "multiselect", "options": ["Retinopathy", "Neuropathy", "Nephropathy", "Foot Ulcers", "CAD/Stroke", "Heart Failure", "None"], "required": false, "label": "Known Complications"},
+                    {"name": "new_symptoms", "type": "textarea", "required": false, "label": "New Symptoms"},
+                    {"name": "foot_exam", "type": "select", "options": ["Normal", "Abnormal", "Not Done"], "required": false, "label": "Foot Examination"},
+                    {"name": "eye_exam_date", "type": "date", "required": false, "label": "Last Eye Examination"}
+                ]
+            },
+            {
+                "name": "Investigations",
+                "order": 6,
+                "fields": [
+                    {"name": "investigations_ordered", "type": "multiselect", "options": ["FBS", "RBS", "HbA1c", "Lipid Profile", "Renal Function", "Liver Function", "Urine ACR", "ECG", "Fundoscopy"], "required": false, "label": "Investigations Ordered"},
+                    {"name": "investigation_results", "type": "textarea", "required": false, "label": "Results Summary"}
+                ]
+            },
+            {
+                "name": "Plan",
+                "order": 7,
+                "fields": [
+                    {"name": "medication_adjustments", "type": "textarea", "required": false, "label": "Medication Adjustments"},
+                    {"name": "lifestyle_advice", "type": "textarea", "required": false, "label": "Lifestyle Advice Given"},
+                    {"name": "follow_up_interval", "type": "select", "options": ["2 weeks", "1 month", "2 months", "3 months", "6 months"], "required": true, "label": "Follow-up Interval"},
+                    {"name": "referral", "type": "text", "required": false, "label": "Referrals (if any)"}
+                ]
+            }
+        ]
+    }
+}

@@ -1,0 +1,95 @@
+{
+    "name": "Trauma Assessment",
+    "template_type": "assessment",
+    "specialty": "Emergency Medicine",
+    "description": "Emergency trauma assessment including mechanism of injury and primary/secondary survey",
+    "content": {
+        "title": "Trauma Assessment",
+        "version": "1.0",
+        "sections": [
+            {
+                "name": "Mechanism of Injury",
+                "order": 1,
+                "fields": [
+                    {"name": "mechanism", "type": "select", "options": ["RTA - Pedestrian", "RTA - Passenger", "RTA - Driver", "RTA - Motorcycle/Boda", "RTA - Bicycle", "Fall from Height", "Fall - Same Level", "Assault - Blunt", "Assault - Sharp/Penetrating", "Gunshot", "Animal Attack", "Burns", "Drowning/Near-Drowning", "Other"], "required": true, "label": "Mechanism of Injury"},
+                    {"name": "mechanism_details", "type": "textarea", "required": false, "label": "Mechanism Details"},
+                    {"name": "time_of_injury", "type": "text", "required": false, "label": "Time of Injury"},
+                    {"name": "protective_equipment", "type": "multiselect", "options": ["Seatbelt", "Helmet", "None", "Unknown"], "required": false, "label": "Protective Equipment"},
+                    {"name": "loss_of_consciousness", "type": "boolean", "required": false, "label": "Loss of Consciousness"},
+                    {"name": "loc_duration", "type": "text", "required": false, "label": "LOC Duration"}
+                ]
+            },
+            {
+                "name": "Primary Survey (ABCDE)",
+                "order": 2,
+                "fields": [
+                    {"name": "airway", "type": "select", "options": ["Patent", "At Risk", "Compromised"], "required": true, "label": "A - Airway"},
+                    {"name": "c_spine", "type": "select", "options": ["Immobilized", "Not Immobilized", "Cleared"], "required": true, "label": "C-Spine Status"},
+                    {"name": "breathing", "type": "select", "options": ["Normal", "Labored", "Assisted", "Absent"], "required": true, "label": "B - Breathing"},
+                    {"name": "spo2", "type": "number", "required": false, "label": "SpO2 (%)", "min": 0, "max": 100},
+                    {"name": "circulation", "type": "select", "options": ["Stable", "Unstable - Compensated", "Unstable - Decompensated"], "required": true, "label": "C - Circulation"},
+                    {"name": "pulse_character", "type": "select", "options": ["Strong Regular", "Weak", "Thready", "Absent"], "required": false, "label": "Pulse Character"},
+                    {"name": "external_hemorrhage", "type": "select", "options": ["None", "Controlled", "Uncontrolled"], "required": false, "label": "External Hemorrhage"},
+                    {"name": "disability_gcs", "type": "number", "required": true, "label": "D - GCS Score", "min": 3, "max": 15},
+                    {"name": "pupils", "type": "select", "options": ["PERL", "Unequal", "Fixed Dilated", "Fixed Constricted"], "required": false, "label": "Pupils"},
+                    {"name": "exposure_temp", "type": "number", "required": false, "label": "E - Temperature (°C)"}
+                ]
+            },
+            {
+                "name": "Secondary Survey - Head/Neck",
+                "order": 3,
+                "fields": [
+                    {"name": "scalp_injury", "type": "select", "options": ["None", "Laceration", "Contusion", "Hematoma", "Open Fracture"], "required": false, "label": "Scalp Injury"},
+                    {"name": "facial_injury", "type": "boolean", "required": false, "label": "Facial Injury"},
+                    {"name": "facial_details", "type": "text", "required": false, "label": "Facial Injury Details"},
+                    {"name": "battle_sign", "type": "boolean", "required": false, "label": "Battle's Sign"},
+                    {"name": "raccoon_eyes", "type": "boolean", "required": false, "label": "Raccoon Eyes"},
+                    {"name": "csf_leak", "type": "boolean", "required": false, "label": "CSF Leak (Ear/Nose)"},
+                    {"name": "neck_tenderness", "type": "boolean", "required": false, "label": "Cervical Spine Tenderness"},
+                    {"name": "tracheal_deviation", "type": "boolean", "required": false, "label": "Tracheal Deviation"}
+                ]
+            },
+            {
+                "name": "Secondary Survey - Chest/Abdomen/Pelvis",
+                "order": 4,
+                "fields": [
+                    {"name": "chest_injury", "type": "multiselect", "options": ["None", "Rib Fractures", "Flail Chest", "Pneumothorax", "Hemothorax", "Open Wound", "Contusion"], "required": false, "label": "Chest Injuries"},
+                    {"name": "abdominal_injury", "type": "select", "options": ["None Apparent", "Tenderness", "Guarding", "Rigidity", "Distension", "Open Wound"], "required": false, "label": "Abdominal Assessment"},
+                    {"name": "pelvic_stability", "type": "select", "options": ["Stable", "Unstable", "Not Tested"], "required": false, "label": "Pelvic Stability"},
+                    {"name": "perineal_injury", "type": "boolean", "required": false, "label": "Perineal Injury"},
+                    {"name": "urethral_blood", "type": "boolean", "required": false, "label": "Blood at Urethral Meatus"}
+                ]
+            },
+            {
+                "name": "Secondary Survey - Extremities",
+                "order": 5,
+                "fields": [
+                    {"name": "upper_limb_injury", "type": "textarea", "required": false, "label": "Upper Limb Injuries"},
+                    {"name": "lower_limb_injury", "type": "textarea", "required": false, "label": "Lower Limb Injuries"},
+                    {"name": "open_fractures", "type": "boolean", "required": false, "label": "Open Fractures Present"},
+                    {"name": "neurovascular_intact", "type": "boolean", "required": false, "label": "Neurovascular Status Intact"},
+                    {"name": "compartment_syndrome", "type": "boolean", "required": false, "label": "Concern for Compartment Syndrome"}
+                ]
+            },
+            {
+                "name": "Imaging Required",
+                "order": 6,
+                "fields": [
+                    {"name": "imaging_ordered", "type": "multiselect", "options": ["CT Head", "CT C-Spine", "CT Chest", "CT Abdomen/Pelvis", "Chest X-ray", "Pelvic X-ray", "Extremity X-rays", "FAST Scan", "None"], "required": false, "label": "Imaging Ordered"},
+                    {"name": "fast_result", "type": "select", "options": ["Not Done", "Negative", "Positive - Free Fluid", "Indeterminate"], "required": false, "label": "FAST Result"}
+                ]
+            },
+            {
+                "name": "Interventions & Disposition",
+                "order": 7,
+                "fields": [
+                    {"name": "interventions", "type": "multiselect", "options": ["IV Access", "IV Fluids", "Blood Transfusion", "Intubation", "Chest Tube", "Wound Care", "Splinting", "Tetanus Prophylaxis", "Antibiotics", "Pain Management"], "required": false, "label": "Interventions Performed"},
+                    {"name": "tetanus_status", "type": "select", "options": ["Up to Date", "TT Given", "TIG Given", "Both Given"], "required": false, "label": "Tetanus Status"},
+                    {"name": "disposition", "type": "select", "options": ["Discharged", "Observation", "Admitted - Ward", "Admitted - HDU/ICU", "Theatre", "Referred", "Died"], "required": true, "label": "Disposition"},
+                    {"name": "surgical_consult", "type": "boolean", "required": false, "label": "Surgical Consult Required"},
+                    {"name": "police_case", "type": "boolean", "required": false, "label": "Police Case (P3 Form)"}
+                ]
+            }
+        ]
+    }
+}

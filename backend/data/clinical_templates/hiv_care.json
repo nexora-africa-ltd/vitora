@@ -1,0 +1,86 @@
+{
+    "name": "HIV Care and Treatment",
+    "template_type": "encounter",
+    "specialty": "HIV/AIDS",
+    "description": "HIV/AIDS care and treatment follow-up template (Sensitive record)",
+    "content": {
+        "title": "HIV Care and Treatment Visit",
+        "version": "1.0",
+        "metadata": {
+            "is_sensitive": true,
+            "requires_consent": true
+        },
+        "sections": [
+            {
+                "name": "Visit Information",
+                "order": 1,
+                "fields": [
+                    {"name": "visit_type", "type": "select", "options": ["Routine Follow-up", "ART Initiation", "Treatment Failure", "Adverse Event", "Missed Appointment"], "required": true, "label": "Visit Type"},
+                    {"name": "art_status", "type": "select", "options": ["On ART", "ART Naive", "ART Interrupted", "Second Line", "Third Line"], "required": true, "label": "ART Status"},
+                    {"name": "months_on_art", "type": "number", "required": false, "label": "Months on Current Regimen"}
+                ]
+            },
+            {
+                "name": "WHO Clinical Staging",
+                "order": 2,
+                "fields": [
+                    {"name": "who_stage", "type": "select", "options": ["Stage 1", "Stage 2", "Stage 3", "Stage 4"], "required": true, "label": "WHO Clinical Stage"},
+                    {"name": "stage_defining_conditions", "type": "multiselect", "options": ["Asymptomatic", "PGL", "Weight Loss <10%", "Weight Loss >10%", "Chronic Diarrhea", "Persistent Fever", "Oral Candidiasis", "Oral Hairy Leukoplakia", "Pulmonary TB", "Severe Bacterial Infections", "PCP", "Toxoplasmosis", "Cryptococcal Meningitis", "Kaposi Sarcoma", "HIV Wasting", "Extrapulmonary TB", "Other OI"], "required": false, "label": "Stage-Defining Conditions"}
+                ]
+            },
+            {
+                "name": "ART Regimen",
+                "order": 3,
+                "fields": [
+                    {"name": "current_regimen", "type": "select", "options": ["TDF/3TC/DTG", "TDF/3TC/EFV", "ABC/3TC/DTG", "ABC/3TC/LPV/r", "AZT/3TC/NVP", "AZT/3TC/EFV", "Other First Line", "Other Second Line", "Other Third Line"], "required": true, "label": "Current ART Regimen"},
+                    {"name": "regimen_line", "type": "select", "options": ["First Line", "Second Line", "Third Line"], "required": true, "label": "Regimen Line"},
+                    {"name": "adherence", "type": "select", "options": ["Good (>95%)", "Fair (85-95%)", "Poor (<85%)"], "required": true, "label": "ART Adherence"},
+                    {"name": "missed_doses", "type": "number", "required": false, "label": "Missed Doses (Last 30 Days)"},
+                    {"name": "adherence_barriers", "type": "multiselect", "options": ["Side Effects", "Stigma", "Travel", "Forgot", "Felt Better", "Stock Out", "Other"], "required": false, "label": "Adherence Barriers"}
+                ]
+            },
+            {
+                "name": "Viral Load & CD4",
+                "order": 4,
+                "fields": [
+                    {"name": "viral_load", "type": "number", "required": false, "label": "Viral Load (copies/mL)"},
+                    {"name": "vl_date", "type": "date", "required": false, "label": "VL Date"},
+                    {"name": "vl_suppression", "type": "select", "options": ["Suppressed (<1000)", "Not Suppressed (≥1000)", "Pending"], "required": false, "label": "VL Suppression Status"},
+                    {"name": "cd4_count", "type": "number", "required": false, "label": "CD4 Count (cells/μL)"},
+                    {"name": "cd4_date", "type": "date", "required": false, "label": "CD4 Date"}
+                ]
+            },
+            {
+                "name": "OI Screening",
+                "order": 5,
+                "fields": [
+                    {"name": "tb_screening", "type": "select", "options": ["No Symptoms", "Presumptive TB", "Confirmed TB", "On TB Treatment"], "required": true, "label": "TB Screening Result"},
+                    {"name": "tb_symptoms", "type": "multiselect", "options": ["Cough >2 weeks", "Fever", "Night Sweats", "Weight Loss", "None"], "required": false, "label": "TB Symptoms"},
+                    {"name": "ipt_status", "type": "select", "options": ["Not Started", "On IPT", "Completed", "Contraindicated"], "required": false, "label": "IPT Status"},
+                    {"name": "ctx_prophylaxis", "type": "boolean", "required": false, "label": "On Cotrimoxazole Prophylaxis"},
+                    {"name": "other_oi", "type": "textarea", "required": false, "label": "Other OI/Conditions"}
+                ]
+            },
+            {
+                "name": "Psychosocial",
+                "order": 6,
+                "fields": [
+                    {"name": "disclosure_status", "type": "select", "options": ["Full Disclosure", "Partial Disclosure", "Not Disclosed"], "required": false, "label": "Disclosure Status"},
+                    {"name": "support_group", "type": "boolean", "required": false, "label": "In Support Group"},
+                    {"name": "mental_health", "type": "select", "options": ["No Concerns", "Anxiety", "Depression", "Needs Referral"], "required": false, "label": "Mental Health Screening"},
+                    {"name": "partner_status", "type": "select", "options": ["Positive", "Negative", "Unknown", "No Partner", "Not Disclosed"], "required": false, "label": "Partner HIV Status"}
+                ]
+            },
+            {
+                "name": "Plan",
+                "order": 7,
+                "fields": [
+                    {"name": "art_refill_months", "type": "select", "options": ["1 month", "2 months", "3 months", "6 months"], "required": false, "label": "ART Refill Duration"},
+                    {"name": "investigations_ordered", "type": "multiselect", "options": ["Viral Load", "CD4", "CBC", "LFT", "RFT", "Lipid Profile", "Chest X-ray", "GeneXpert"], "required": false, "label": "Investigations Ordered"},
+                    {"name": "next_appointment", "type": "date", "required": false, "label": "Next Appointment"},
+                    {"name": "referrals", "type": "text", "required": false, "label": "Referrals"}
+                ]
+            }
+        ]
+    }
+}
