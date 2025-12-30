@@ -6,7 +6,16 @@ module.exports = {
   testMatch: ['**/__tests__/**/*.test.ts?(x)', '**/?(*.)+(spec|test).ts?(x)'],
   testPathIgnorePatterns: ['/node_modules/', '/.expo/', '/dist/'],
   transform: {
-    '^.+\\.(ts|tsx)$': ['ts-jest', { tsconfig: 'tsconfig.json' }],
+    '^.+\\.(ts|tsx)$': ['ts-jest', {
+      tsconfig: {
+        jsx: 'react',
+        esModuleInterop: true,
+        allowSyntheticDefaultImports: true,
+      },
+      diagnostics: {
+        ignoreCodes: [6133, 2307],
+      },
+    }],
     '^.+\\.(js|jsx)$': 'babel-jest',
   },
   transformIgnorePatterns: [
@@ -20,6 +29,8 @@ module.exports = {
     '^@/constants/(.*)$': '<rootDir>/constants/$1',
   },
   testEnvironment: 'node',
+  // Run tests serially to avoid SQLite database conflicts
+  maxWorkers: 1,
   collectCoverageFrom: [
     'constants/**/*.{ts,tsx}',
     'lib/**/*.{ts,tsx}',

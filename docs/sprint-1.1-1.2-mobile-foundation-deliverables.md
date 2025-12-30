@@ -89,15 +89,15 @@ Sprint 1.1-1.2 Track B establishes the React Native mobile application foundatio
 - [x] ✅ **Checkpoint**: Tokens persist across app restarts
 
 #### Day 8-9: Auth Context & Login Flow
-- [ ] Create `lib/auth/context.tsx` AuthProvider
-- [ ] Implement `restoreSession()` on app start
-- [ ] Implement `login(username, password)` method
-- [ ] Implement `logout()` method
-- [ ] Implement `refreshSession()` method
-- [ ] Create `useAuth()` hook
-- [ ] Create `lib/api/auth.ts` with login/refresh/verify APIs
-- [ ] Write 12 auth flow tests
-- [ ] ✅ **Checkpoint**: Login works, session persists
+- [x] Create `lib/auth/context.tsx` AuthProvider
+- [x] Implement `restoreSession()` on app start
+- [x] Implement `login(username, password)` method
+- [x] Implement `logout()` method
+- [x] Implement `refreshSession()` method
+- [x] Create `useAuth()` hook
+- [x] Create `lib/api/auth.ts` with login/refresh/verify APIs
+- [x] Write 12 auth flow tests (22 tests written - 13 context + 9 API)
+- [x] ✅ **Checkpoint**: Login works, session persists
 
 #### Day 10: API Client with Interceptors
 - [ ] Install axios
