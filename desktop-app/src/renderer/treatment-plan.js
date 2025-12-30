@@ -398,34 +398,72 @@ function buildTreatmentPlanPayload(encounterId) {
 // ====================
 // Module Exports
 // ====================
-module.exports = {
-  // Constants
-  FREQUENCY_OPTIONS,
-  FOLLOW_UP_PRESETS,
-  REFERRAL_SPECIALTIES,
+// For Node.js/Jest testing
+if (typeof module !== 'undefined' && module.exports) {
+  module.exports = {
+    // Constants
+    FREQUENCY_OPTIONS,
+    FOLLOW_UP_PRESETS,
+    REFERRAL_SPECIALTIES,
 
-  // Template Functions
-  fetchTreatmentTemplates,
-  applyTemplate,
+    // Template Functions
+    fetchTreatmentTemplates,
+    applyTemplate,
 
-  // Medication Functions
-  addMedication,
-  removeMedication,
-  getMedications,
-  clearMedications,
-  validateMedication,
-  formatMedicationDisplay,
+    // Medication Functions
+    addMedication,
+    removeMedication,
+    getMedications,
+    clearMedications,
+    validateMedication,
+    formatMedicationDisplay,
 
-  // Follow-Up Functions
-  calculateFollowUpDate,
-  setFollowUpDate,
+    // Follow-Up Functions
+    calculateFollowUpDate,
+    setFollowUpDate,
 
-  // Instructions & Referral
-  setInstructions,
-  setReferral,
+    // Instructions & Referral
+    setInstructions,
+    setReferral,
 
-  // State Management
-  getTreatmentPlanData,
-  clearTreatmentPlan,
-  buildTreatmentPlanPayload,
-};
+    // State Management
+    getTreatmentPlanData,
+    clearTreatmentPlan,
+    buildTreatmentPlanPayload,
+  };
+}
+
+// For browser - expose globally
+if (typeof window !== 'undefined') {
+  window.TreatmentPlanModule = {
+    // Constants
+    FREQUENCY_OPTIONS,
+    FOLLOW_UP_PRESETS,
+    REFERRAL_SPECIALTIES,
+
+    // Template Functions
+    fetchTreatmentTemplates,
+    applyTemplate,
+
+    // Medication Functions
+    addMedication,
+    removeMedication,
+    getMedications,
+    clearMedications,
+    validateMedication,
+    formatMedicationDisplay,
+
+    // Follow-Up Functions
+    calculateFollowUpDate,
+    setFollowUpDate,
+
+    // Instructions & Referral
+    setInstructions,
+    setReferral,
+
+    // State Management
+    getTreatmentPlanData,
+    clearTreatmentPlan,
+    buildTreatmentPlanPayload,
+  };
+}

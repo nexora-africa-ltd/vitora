@@ -298,35 +298,75 @@ function getCommonDiagnoses() {
 // ====================
 // Module Exports
 // ====================
-module.exports = {
-  // Constants
-  CERTAINTY_LEVELS,
-  RECENT_SEARCHES_KEY,
-  MAX_RECENT_SEARCHES,
+// For Node.js/Jest testing
+if (typeof module !== 'undefined' && module.exports) {
+  module.exports = {
+    // Constants
+    CERTAINTY_LEVELS,
+    RECENT_SEARCHES_KEY,
+    MAX_RECENT_SEARCHES,
 
-  // Utility
-  debounce,
-  setLocalStorage,
+    // Utility
+    debounce,
+    setLocalStorage,
 
-  // ICD-10 Search
-  searchICD10,
-  formatICD10Result,
+    // ICD-10 Search
+    searchICD10,
+    formatICD10Result,
 
-  // Recent Searches
-  getRecentSearches,
-  addRecentSearch,
-  clearRecentSearches,
+    // Recent Searches
+    getRecentSearches,
+    addRecentSearch,
+    clearRecentSearches,
 
-  // Diagnosis List
-  createDiagnosisList,
-  addDiagnosis,
-  removeDiagnosis,
-  setPrincipalDiagnosis,
-  getDiagnosisPayload,
+    // Diagnosis List
+    createDiagnosisList,
+    addDiagnosis,
+    removeDiagnosis,
+    setPrincipalDiagnosis,
+    getDiagnosisPayload,
 
-  // Certainty
-  isValidCertainty,
+    // Certainty
+    isValidCertainty,
 
-  // Common Diagnoses
-  getCommonDiagnoses,
-};
+    // Common Diagnoses
+    getCommonDiagnoses,
+  };
+}
+
+// For browser - expose globally
+if (typeof window !== 'undefined') {
+  window.DiagnosisModule = {
+    // Constants
+    CERTAINTY_LEVELS,
+    COMMON_DIAGNOSES,
+    RECENT_SEARCHES_KEY,
+    MAX_RECENT_SEARCHES,
+
+    // Utility
+    debounce,
+    setLocalStorage,
+
+    // ICD-10 Search
+    searchICD10,
+    formatICD10Result,
+
+    // Recent Searches
+    getRecentSearches,
+    addRecentSearch,
+    clearRecentSearches,
+
+    // Diagnosis List
+    createDiagnosisList,
+    addDiagnosis,
+    removeDiagnosis,
+    setPrincipalDiagnosis,
+    getDiagnosisPayload,
+
+    // Certainty
+    isValidCertainty,
+
+    // Common Diagnoses
+    getCommonDiagnoses,
+  };
+}
