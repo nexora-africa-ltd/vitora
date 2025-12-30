@@ -4,7 +4,7 @@
  * Functions for displaying patient encounter history with
  * filtering, sorting, statistics, and expandable details.
  *
- * Sprint 1.1-1.2: Encounter Timeline View
+ * Sprint 1.1-1.2: Encounter Timeline View with Status Workflow
  */
 
 // ====================
@@ -21,6 +21,21 @@ const ENCOUNTER_TYPE_LABELS = {
   TELEMEDICINE: 'Telemedicine',
   HOME_VISIT: 'Home Visit',
 };
+
+/**
+ * Encounter status display labels (Sprint 1.1-1.2)
+ */
+const ENCOUNTER_STATUS_LABELS = {
+  DRAFT: 'Draft',
+  IN_PROGRESS: 'In Progress',
+  COMPLETED: 'Completed',
+  CANCELLED: 'Cancelled',
+};
+
+/**
+ * Valid encounter statuses
+ */
+const ENCOUNTER_STATUSES = ['DRAFT', 'IN_PROGRESS', 'COMPLETED', 'CANCELLED'];
 
 /**
  * Month names for date formatting
@@ -118,6 +133,11 @@ function formatEncounterCard(encounter) {
   // Get type label
   const typeLabel = ENCOUNTER_TYPE_LABELS[encounter.encounter_type] || encounter.encounter_type;
 
+  // Get status info (Sprint 1.1-1.2)
+  const status = encounter.status || 'DRAFT';
+  const statusLabel = ENCOUNTER_STATUS_LABELS[status] || status;
+  const isEditable = canEditEncounter(status);
+
   // Get principal diagnosis
   const principalDiagnosis = encounter.diagnoses && encounter.diagnoses.length > 0
     ? (encounter.diagnoses.find(d => d.is_principal) || encounter.diagnoses[0]).description
@@ -136,6 +156,9 @@ function formatEncounterCard(encounter) {
     formattedDate,
     formattedTime,
     typeLabel,
+    status,
+    statusLabel,
+    isEditable,
     principalDiagnosis,
     diagnosisCount: encounter.diagnoses ? encounter.diagnoses.length : 0,
     vitalsSummary,
@@ -237,6 +260,42 @@ function filterByType(encounters, types) {
   return encounters.filter(encounter =>
     upperTypes.includes(encounter.encounter_type.toUpperCase())
   );
+}
+
+/**
+ * Filter encounters by status (Sprint 1.1-1.2)
+ * @param {Array} encounters - Array of encounters
+ * @param {Array} statuses - Array of statuses to include (e.g., ['DRAFT', 'IN_PROGRESS'])
+ * @returns {Array} Filtered encounters
+ */
+function filterByStatus(encounters, statuses) {
+  if (!encounters || encounters.length === 0) return [];
+  if (!statuses || statuses.length === 0) return encounters;
+
+  const upperStatuses = statuses.map(s => s.toUpperCase());
+
+  return encounters.filter(encounter => {
+    const status = (encounter.status || 'DRAFT').toUpperCase();
+    return upperStatuses.includes(status);
+  });
+}
+
+/**
+ * Get status display label
+ * @param {string} status - Status code
+ * @returns {string} Human-readable status label
+ */
+function getStatusLabel(status) {
+  return ENCOUNTER_STATUS_LABELS[status] || status;
+}
+
+/**
+ * Check if encounter can be edited based on status
+ * @param {string} status - Encounter status
+ * @returns {boolean} True if encounter can be edited
+ */
+function canEditEncounter(status) {
+  return status === 'DRAFT' || status === 'IN_PROGRESS';
 }
 
 // ====================
@@ -422,16 +481,20 @@ function buildTimelineHTML(encounters, statistics) {
     const isExpanded = isEncounterExpanded(encounter.id);
     const criticalClass = formatted.isCritical ? 'critical' : '';
     const expandedClass = isExpanded ? 'expanded' : '';
+    const statusClass = `status-${formatted.status.toLowerCase()}`;
 
     return `
-      <div class="timeline-encounter-card ${criticalClass} ${expandedClass}" data-encounter-id="${encounter.id}">
+      <div class="timeline-encounter-card ${criticalClass} ${expandedClass} ${statusClass}" data-encounter-id="${encounter.id}" data-status="${formatted.status}">
         ${index < encounters.length - 1 ? '<div class="timeline-connector"></div>' : ''}
         <div class="timeline-card-header">
           <div class="timeline-date">
             <span class="date">${formatted.formattedDate}</span>
             <span class="time">${formatted.formattedTime}</span>
           </div>
-          <span class="timeline-type type-${encounter.encounter_type.toLowerCase()}">${formatted.typeLabel}</span>
+          <div class="timeline-badges">
+            <span class="timeline-type type-${encounter.encounter_type.toLowerCase()}">${formatted.typeLabel}</span>
+            <span class="encounter-status ${formatted.status}">${formatted.statusLabel}</span>
+          </div>
         </div>
         <div class="timeline-card-body">
           <div class="timeline-complaint">${encounter.chief_complaint}</div>
@@ -454,6 +517,28 @@ function buildTimelineHTML(encounters, statistics) {
   `;
 }
 
+/**
+ * Build status filter buttons HTML
+ * @param {Array} activeStatuses - Currently active status filters
+ * @returns {string} HTML string
+ */
+function buildStatusFilterHTML(activeStatuses = []) {
+  const buttons = ENCOUNTER_STATUSES.map(status => {
+    const isActive = activeStatuses.length === 0 || activeStatuses.includes(status);
+    const activeClass = isActive ? 'active' : '';
+    const label = ENCOUNTER_STATUS_LABELS[status];
+
+    return `<button class="status-filter-btn ${activeClass}" data-status="${status}">${label}</button>`;
+  });
+
+  return `
+    <div class="status-filter">
+      <button class="status-filter-btn ${activeStatuses.length === 0 ? 'active' : ''}" data-status="ALL">All</button>
+      ${buttons.join('')}
+    </div>
+  `;
+}
+
 // ====================
 // Module Exports
 // ====================
@@ -462,6 +547,8 @@ if (typeof module !== 'undefined' && module.exports) {
   module.exports = {
     // Constants
     ENCOUNTER_TYPE_LABELS,
+    ENCOUNTER_STATUS_LABELS,
+    ENCOUNTER_STATUSES,
 
     // API Functions
     fetchEncounterTimeline,
@@ -474,6 +561,11 @@ if (typeof module !== 'undefined' && module.exports) {
     sortEncounters,
     filterByDateRange,
     filterByType,
+    filterByStatus,
+
+    // Status Helpers
+    getStatusLabel,
+    canEditEncounter,
 
     // Statistics
     calculateStatistics,
@@ -487,6 +579,7 @@ if (typeof module !== 'undefined' && module.exports) {
 
     // HTML Building
     buildTimelineHTML,
+    buildStatusFilterHTML,
   };
 }
 
@@ -495,6 +588,8 @@ if (typeof window !== 'undefined') {
   window.TimelineModule = {
     // Constants
     ENCOUNTER_TYPE_LABELS,
+    ENCOUNTER_STATUS_LABELS,
+    ENCOUNTER_STATUSES,
 
     // API Functions
     fetchEncounterTimeline,
@@ -507,6 +602,11 @@ if (typeof window !== 'undefined') {
     sortEncounters,
     filterByDateRange,
     filterByType,
+    filterByStatus,
+
+    // Status Helpers
+    getStatusLabel,
+    canEditEncounter,
 
     // Statistics
     calculateStatistics,
@@ -520,5 +620,6 @@ if (typeof window !== 'undefined') {
 
     // HTML Building
     buildTimelineHTML,
+    buildStatusFilterHTML,
   };
 }
