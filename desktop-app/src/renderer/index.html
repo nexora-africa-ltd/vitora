@@ -320,32 +320,45 @@
 
         <h3>Vital Signs</h3>
         <div class="vitals-section">
+          <!-- Critical Alerts Banner -->
+          <div id="vitals-critical-alerts" class="vitals-critical-alerts" style="display: none;">
+            <span class="alert-icon">⚠️</span>
+            <div class="alert-message">
+              <strong>Critical Values Detected:</strong>
+              <span id="critical-alerts-list"></span>
+            </div>
+          </div>
+
           <div class="form-row">
             <div class="form-group">
-              <label for="temperature">Temperature (°C)</label>
+              <label for="temperature">Temperature (°C) <span class="vital-status-indicator" id="temp-status"></span></label>
               <input type="number" id="temperature" name="temperature" step="0.1" min="30" max="45" placeholder="37.0">
             </div>
 
             <div class="form-group">
-              <label for="pulse">Pulse (bpm)</label>
+              <label for="pulse">Pulse (bpm) <span class="vital-status-indicator" id="pulse-status"></span></label>
               <input type="number" id="pulse" name="pulse" min="30" max="200" placeholder="75">
             </div>
 
             <div class="form-group">
-              <label for="respiratory-rate">Respiratory Rate</label>
+              <label for="respiratory-rate">Respiratory Rate <span class="vital-status-indicator" id="rr-status"></span></label>
               <input type="number" id="respiratory-rate" name="respiratory_rate" min="5" max="60" placeholder="16">
             </div>
 
             <div class="form-group">
-              <label for="spo2">SpO2 (%)</label>
+              <label for="spo2">SpO2 (%) <span class="vital-status-indicator" id="spo2-status"></span></label>
               <input type="number" id="spo2" name="spo2" min="0" max="100" placeholder="98">
             </div>
           </div>
 
           <div class="form-row">
             <div class="form-group">
-              <label for="blood-pressure">Blood Pressure (mmHg)</label>
+              <label for="blood-pressure">Blood Pressure (mmHg) <span class="vital-status-indicator" id="bp-status"></span></label>
               <input type="text" id="blood-pressure" name="blood_pressure" placeholder="120/80">
+              <span id="map-display" class="map-display">
+                <span class="map-label">MAP:</span>
+                <span id="map-value" class="map-value"></span>
+              </span>
             </div>
 
             <div class="form-group">
@@ -416,6 +429,33 @@
         <div class="form-group">
           <label for="notes">Notes</label>
           <textarea id="notes" name="notes" rows="4" placeholder="Additional clinical observations..."></textarea>
+        </div>
+
+        <!-- ICD-10 Diagnosis Search (Sprint 1.1-1.2) -->
+        <h3>Diagnosis</h3>
+        <div class="diagnosis-section">
+          <div class="form-group">
+            <label for="diagnosis-search">Search ICD-10 Diagnosis</label>
+            <div class="diagnosis-search-container">
+              <input type="text" id="diagnosis-search" class="diagnosis-search-input"
+                     placeholder="Search by code or description (e.g., A09, malaria, diabetes)..."
+                     autocomplete="off">
+              <div id="diagnosis-autocomplete" class="diagnosis-autocomplete"></div>
+            </div>
+          </div>
+
+          <!-- Recent/Common Diagnoses Quick Select -->
+          <div id="diagnosis-quick-select" class="diagnosis-quick-select">
+            <!-- Populated dynamically from localStorage -->
+          </div>
+
+          <!-- Selected Diagnoses List -->
+          <div id="diagnosis-list" class="diagnosis-list">
+            <!-- Diagnoses will be added here -->
+          </div>
+
+          <!-- Hidden input to store selected diagnoses JSON -->
+          <input type="hidden" id="diagnoses-json" name="diagnoses_json" value="[]">
         </div>
 
         <h3>Treatment Plan</h3>
