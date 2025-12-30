@@ -35,6 +35,192 @@ Sprint 1.1-1.2 Track B establishes the React Native mobile application foundatio
 
 ---
 
+## 📋 Task Checklist
+
+### Week 1: Project Setup & Database Foundation
+
+#### Day 1-2: Project Scaffold
+- [x] Create `mobile-app/` directory in project root
+- [x] Initialize Expo project with TypeScript template (`npx create-expo-app`)
+- [x] Configure `tsconfig.json` with strict mode and path aliases
+- [x] Set up ESLint + Prettier with project rules
+- [x] Configure `babel.config.js` with required plugins
+- [x] Add `.env` file with `API_BASE_URL` configuration
+- [x] Create `constants/config.ts` for environment variables
+- [x] Set up Jest with React Native Testing Library
+- [x] Write 8 setup tests (verify scaffold works)
+- [x] ✅ **Checkpoint**: `npm test` passes, app launches on emulator
+
+#### Day 3-4: WatermelonDB Setup
+- [ ] Install WatermelonDB and expo-sqlite dependencies
+- [ ] Create `lib/db/schema.ts` with patients table schema
+- [ ] Create `lib/db/schema.ts` with sync_queue table schema
+- [ ] Create `lib/db/schema.ts` with counties/sub_counties tables
+- [ ] Create `lib/db/models/Patient.ts` model class
+- [ ] Create `lib/db/models/SyncQueue.ts` model class
+- [ ] Create `lib/db/index.ts` database initialization
+- [ ] Create `lib/db/context.tsx` DatabaseProvider
+- [ ] Write 15 database tests (schema, CRUD, persistence)
+- [ ] ✅ **Checkpoint**: Database initializes, models work
+
+#### Day 5: Patient Repository
+- [ ] Create `lib/db/repositories/patientRepository.ts`
+- [ ] Implement `getAll()` with pagination
+- [ ] Implement `search()` by name/MRN/phone
+- [ ] Implement `getById()` and `getByMrn()`
+- [ ] Implement `create()` with sync queue integration
+- [ ] Implement `update()` with sync queue integration
+- [ ] Implement `delete()` (soft delete) with sync queue
+- [ ] Implement `getUnsyncedCount()`
+- [ ] Write 20 patient storage tests
+- [ ] ✅ **Checkpoint**: All CRUD operations work offline
+
+### Week 2: Authentication & API Client
+
+#### Day 6-7: Secure Token Storage
+- [ ] Install expo-secure-store
+- [ ] Create `lib/auth/storage.ts` with token methods
+- [ ] Implement `setTokens()` for access + refresh tokens
+- [ ] Implement `getAccessToken()` and `getRefreshToken()`
+- [ ] Implement `setUser()` and `getUser()`
+- [ ] Implement `clearAll()` for logout
+- [ ] Implement `isAuthenticated()` check
+- [ ] Write 6 secure storage tests
+- [ ] ✅ **Checkpoint**: Tokens persist across app restarts
+
+#### Day 8-9: Auth Context & Login Flow
+- [ ] Create `lib/auth/context.tsx` AuthProvider
+- [ ] Implement `restoreSession()` on app start
+- [ ] Implement `login(username, password)` method
+- [ ] Implement `logout()` method
+- [ ] Implement `refreshSession()` method
+- [ ] Create `useAuth()` hook
+- [ ] Create `lib/api/auth.ts` with login/refresh/verify APIs
+- [ ] Write 12 auth flow tests
+- [ ] ✅ **Checkpoint**: Login works, session persists
+
+#### Day 10: API Client with Interceptors
+- [ ] Install axios
+- [ ] Create `lib/api/client.ts` with base configuration
+- [ ] Implement request interceptor for auth header injection
+- [ ] Implement response interceptor for 401 handling
+- [ ] Implement token refresh queue (concurrent request handling)
+- [ ] Create `lib/api/patients.ts` with CRUD methods
+- [ ] Create `lib/api/locations.ts` for counties/sub-counties
+- [ ] Write 12 API client tests
+- [ ] ✅ **Checkpoint**: API calls work with auto token refresh
+
+### Week 3: Navigation & UI Components
+
+#### Day 11-12: Navigation Structure
+- [ ] Install expo-router
+- [ ] Create `app/_layout.tsx` root layout with providers
+- [ ] Create `app/index.tsx` entry redirect
+- [ ] Create `app/(auth)/_layout.tsx` auth group layout
+- [ ] Create `app/(auth)/login.tsx` login screen
+- [ ] Create `app/(main)/_layout.tsx` with auth guard
+- [ ] Create `app/(main)/index.tsx` dashboard
+- [ ] Create `app/(main)/patients/index.tsx` patient list
+- [ ] Create `app/(main)/patients/[id].tsx` patient detail
+- [ ] Create `app/(main)/settings.tsx` settings screen
+- [ ] Write 10 navigation tests
+- [ ] ✅ **Checkpoint**: Navigation works with auth protection
+
+#### Day 13-14: Core UI Components
+- [ ] Create `components/ui/Button.tsx` (primary/secondary/danger)
+- [ ] Create `components/ui/Input.tsx` (text/phone/date)
+- [ ] Create `components/ui/Card.tsx` base card
+- [ ] Create `components/ui/LoadingSpinner.tsx`
+- [ ] Create `components/ui/EmptyState.tsx`
+- [ ] Create `components/ui/ErrorBoundary.tsx`
+- [ ] Create `components/ui/OfflineBanner.tsx`
+- [ ] Create `constants/colors.ts` design tokens
+- [ ] Create `constants/theme.ts` theme configuration
+- [ ] Write 15 component tests
+- [ ] ✅ **Checkpoint**: All UI components render correctly
+
+#### Day 15: Patient Components
+- [ ] Create `components/patients/PatientCard.tsx`
+- [ ] Create `components/patients/PatientList.tsx`
+- [ ] Create `components/patients/PatientSearch.tsx`
+- [ ] Create `components/patients/PatientForm.tsx`
+- [ ] Create `hooks/usePatients.ts` with TanStack Query
+- [ ] Create `hooks/usePatient.ts` for single patient
+- [ ] Create `hooks/useCreatePatient.ts` mutation
+- [ ] Create `hooks/useUpdatePatient.ts` mutation
+- [ ] Write 10 patient component tests
+- [ ] ✅ **Checkpoint**: Patient list renders with search
+
+### Week 4: Sync Foundation & Polish
+
+#### Day 16-17: Sync Queue
+- [ ] Create `lib/sync/queue.ts` sync queue manager
+- [ ] Implement `add()` for queuing operations
+- [ ] Implement `getPending()` and `getPendingCount()`
+- [ ] Implement `markSyncing()`, `markSynced()`, `markFailed()`
+- [ ] Implement `clearSynced()` cleanup
+- [ ] Create `hooks/useOfflineStatus.ts` network detection
+- [ ] Create `hooks/useSyncStatus.ts` pending count hook
+- [ ] Write 15 sync queue tests
+- [ ] ✅ **Checkpoint**: Changes queue correctly for sync
+
+#### Day 18-19: Integration & Polish
+- [ ] Integrate sync queue with patient repository
+- [ ] Add offline indicator to all screens
+- [ ] Add pull-to-refresh on patient list
+- [ ] Add loading states to all async operations
+- [ ] Add error handling with user-friendly messages
+- [ ] Test complete offline workflow
+- [ ] Test complete online workflow
+- [ ] Test offline-to-online transition
+- [ ] ✅ **Checkpoint**: Full offline/online flow works
+
+#### Day 20: Build & Documentation
+- [ ] Configure `app.json` for Android build
+- [ ] Run `eas build --platform android --profile preview`
+- [ ] Test APK on physical Android device
+- [ ] Verify app size < 30MB
+- [ ] Verify startup time < 3s
+- [ ] Update `mobile-app/README.md` with setup instructions
+- [ ] Document known limitations
+- [ ] Create demo video showing offline capability
+- [ ] ✅ **Checkpoint**: APK installs and runs on device
+
+---
+
+### 🎯 Sprint Completion Checklist
+
+#### Code Quality
+- [ ] All 123+ tests passing
+- [ ] Test coverage ≥ 80%
+- [ ] No ESLint errors or warnings
+- [ ] No TypeScript errors
+- [ ] All components have prop types
+
+#### Functionality
+- [ ] App launches on Android emulator
+- [ ] App launches on physical Android device
+- [ ] Login flow works end-to-end
+- [ ] Patient list displays correctly
+- [ ] Patient search works offline
+- [ ] Patient detail view shows all fields
+- [ ] Offline banner appears when disconnected
+- [ ] Changes queue for sync when offline
+
+#### Performance
+- [ ] App startup < 3 seconds
+- [ ] Patient list loads < 500ms (100 patients)
+- [ ] Search response < 200ms
+- [ ] APK size < 30MB
+
+#### Documentation
+- [ ] README.md with setup instructions
+- [ ] All public functions have JSDoc comments
+- [ ] Architecture decisions documented
+- [ ] Known issues documented
+
+---
+
 ## Components to Implement
 
 ### 1. React Native Project Scaffold
