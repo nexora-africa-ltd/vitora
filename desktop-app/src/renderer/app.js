@@ -629,8 +629,21 @@ function resetPatientForm() {
   hideMessage(messageDiv);
 }
 
+// Prevent Enter key from submitting patient form
+patientForm.addEventListener('keydown', (e) => {
+  if (e.key === 'Enter' && e.target.tagName !== 'TEXTAREA') {
+    e.preventDefault();
+  }
+});
+
 patientForm.addEventListener('submit', async (e) => {
   e.preventDefault();
+
+  // Show confirmation dialog before saving
+  const confirmed = confirm('Are you sure you want to register this patient?');
+  if (!confirmed) {
+    return;
+  }
 
   submitBtn.disabled = true;
   submitBtn.textContent = 'Registering...';
@@ -918,7 +931,7 @@ async function loadTreatmentTemplates() {
   hasLoadedTemplates = true;
 
   try {
-    const response = await window.electronAPI.apiRequest('GET', '/api/treatment-templates/');
+    const response = await window.electronAPI.apiRequest('GET', '/api/clinical-templates/');
     if (!response.success) {
       renderTemplateDropdown([]);
       return;
@@ -1583,12 +1596,25 @@ document.addEventListener('DOMContentLoaded', setupVitalInputListeners);
 weightInput.addEventListener('input', calculateBMI);
 heightInput.addEventListener('input', calculateBMI);
 
+// Prevent Enter key from submitting encounter form
+encounterForm.addEventListener('keydown', (e) => {
+  if (e.key === 'Enter' && e.target.tagName !== 'TEXTAREA') {
+    e.preventDefault();
+  }
+});
+
 // Encounter form submission
 encounterForm.addEventListener('submit', async (e) => {
   e.preventDefault();
 
   if (!selectedPatient) {
     showMessage('error', 'Please select a patient first.', encounterMessageDiv);
+    return;
+  }
+
+  // Show confirmation dialog before saving
+  const confirmed = confirm(`Are you sure you want to save this encounter for ${selectedPatient.name}?`);
+  if (!confirmed) {
     return;
   }
 
@@ -2059,6 +2085,244 @@ window.closeModal = closeModal;
 window.showToast = showToast;
 
 // ====================
+// ICD-10 Diagnosis Search Integration
+// ====================
+let currentDiagnosisList = [];
+const diagnosisSearchInput = document.getElementById('diagnosis-search');
+const diagnosisAutocomplete = document.getElementById('diagnosis-autocomplete');
+const diagnosisListContainer = document.getElementById('diagnosis-list');
+const diagnosesJsonInput = document.getElementById('diagnoses-json');
+const diagnosisQuickSelect = document.getElementById('diagnosis-quick-select');
+
+/**
+ * Wrapper for API requests to pass to diagnosis module
+ */
+async function diagnosisApiRequest(method, endpoint) {
+  return await window.electronAPI.apiRequest(method, endpoint);
+}
+
+/**
+ * Render the autocomplete results
+ */
+function renderAutocompleteResults(results) {
+  if (!diagnosisAutocomplete) return;
+
+  if (!results || results.length === 0) {
+    diagnosisAutocomplete.innerHTML = '';
+    diagnosisAutocomplete.style.display = 'none';
+    return;
+  }
+
+  diagnosisAutocomplete.innerHTML = results.map(result => `
+    <div class="autocomplete-item" data-id="${result.id}" data-code="${result.code}" data-description="${escapeHtml(result.description || result.short_description || '')}">
+      <span class="icd-code">${result.code}</span>
+      <span class="icd-description">${result.description || result.short_description || ''}</span>
+    </div>
+  `).join('');
+  diagnosisAutocomplete.style.display = 'block';
+
+  // Add click handlers to results
+  diagnosisAutocomplete.querySelectorAll('.autocomplete-item').forEach(item => {
+    item.addEventListener('click', () => {
+      const diagnosis = {
+        id: parseInt(item.dataset.id),
+        code: item.dataset.code,
+        description: item.dataset.description
+      };
+      addDiagnosisToList(diagnosis);
+      diagnosisSearchInput.value = '';
+      diagnosisAutocomplete.style.display = 'none';
+    });
+  });
+}
+
+/**
+ * Add diagnosis to the current list
+ */
+function addDiagnosisToList(diagnosis) {
+  if (!window.DiagnosisModule) {
+    console.error('DiagnosisModule not loaded');
+    return;
+  }
+
+  currentDiagnosisList = window.DiagnosisModule.addDiagnosis(currentDiagnosisList, diagnosis);
+  window.DiagnosisModule.addRecentSearch(diagnosis);
+  renderDiagnosisList();
+  updateDiagnosesJson();
+}
+
+/**
+ * Remove diagnosis from the list
+ */
+function removeDiagnosisFromList(code) {
+  if (!window.DiagnosisModule) return;
+
+  currentDiagnosisList = window.DiagnosisModule.removeDiagnosis(currentDiagnosisList, code);
+  renderDiagnosisList();
+  updateDiagnosesJson();
+}
+
+/**
+ * Set a diagnosis as principal
+ */
+function setDiagnosisAsPrincipal(code) {
+  if (!window.DiagnosisModule) return;
+
+  currentDiagnosisList = window.DiagnosisModule.setPrincipalDiagnosis(currentDiagnosisList, code);
+  renderDiagnosisList();
+  updateDiagnosesJson();
+}
+
+/**
+ * Render the current diagnosis list
+ */
+function renderDiagnosisList() {
+  if (!diagnosisListContainer) return;
+
+  if (currentDiagnosisList.length === 0) {
+    diagnosisListContainer.innerHTML = '<p class="no-diagnoses">No diagnoses added yet. Search above to add.</p>';
+    return;
+  }
+
+  diagnosisListContainer.innerHTML = currentDiagnosisList.map(d => `
+    <div class="diagnosis-item ${d.is_principal ? 'principal' : ''}">
+      <div class="diagnosis-info">
+        <span class="icd-code">${d.code}</span>
+        <span class="icd-description">${d.description}</span>
+        ${d.is_principal ? '<span class="principal-badge">Principal</span>' : ''}
+      </div>
+      <div class="diagnosis-actions">
+        ${!d.is_principal ? `<button type="button" class="btn btn-secondary btn-sm" onclick="setDiagnosisAsPrincipal('${d.code}')">Set Principal</button>` : ''}
+        <button type="button" class="btn btn-secondary btn-sm" onclick="removeDiagnosisFromList('${d.code}')">Remove</button>
+      </div>
+    </div>
+  `).join('');
+}
+
+/**
+ * Update the hidden JSON input with diagnosis payload
+ */
+function updateDiagnosesJson() {
+  if (!diagnosesJsonInput || !window.DiagnosisModule) return;
+
+  const payload = window.DiagnosisModule.getDiagnosisPayload(currentDiagnosisList);
+  diagnosesJsonInput.value = JSON.stringify(payload);
+}
+
+/**
+ * Render quick select buttons for common and recent diagnoses
+ */
+function renderQuickSelect() {
+  if (!diagnosisQuickSelect || !window.DiagnosisModule) return;
+
+  const recent = window.DiagnosisModule.getRecentSearches();
+  const common = window.DiagnosisModule.getCommonDiagnoses();
+
+  let html = '';
+
+  if (recent.length > 0) {
+    html += '<div class="quick-select-group"><span class="quick-select-label">Recent:</span>';
+    html += recent.slice(0, 5).map(d => `
+      <button type="button" class="btn btn-secondary btn-sm quick-select-btn" data-id="${d.id}" data-code="${d.code}" data-description="${escapeHtml(d.description)}">
+        ${d.code}
+      </button>
+    `).join('');
+    html += '</div>';
+  }
+
+  html += '<div class="quick-select-group"><span class="quick-select-label">Common:</span>';
+  html += common.slice(0, 5).map(d => `
+    <button type="button" class="btn btn-secondary btn-sm quick-select-btn" data-code="${d.code}" data-description="${escapeHtml(d.description)}">
+      ${d.code}
+    </button>
+  `).join('');
+  html += '</div>';
+
+  diagnosisQuickSelect.innerHTML = html;
+
+  // Add click handlers
+  diagnosisQuickSelect.querySelectorAll('.quick-select-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const diagnosis = {
+        id: btn.dataset.id ? parseInt(btn.dataset.id) : null,
+        code: btn.dataset.code,
+        description: btn.dataset.description
+      };
+      // If no id, we need to search for it first
+      if (!diagnosis.id) {
+        searchAndAddDiagnosis(diagnosis.code);
+      } else {
+        addDiagnosisToList(diagnosis);
+      }
+    });
+  });
+}
+
+/**
+ * Search for a diagnosis by code and add it
+ */
+async function searchAndAddDiagnosis(code) {
+  if (!window.DiagnosisModule) return;
+
+  const results = await window.DiagnosisModule.searchICD10(code, diagnosisApiRequest);
+  if (results.length > 0) {
+    const match = results.find(r => r.code === code) || results[0];
+    addDiagnosisToList(match);
+  }
+}
+
+/**
+ * Initialize diagnosis search functionality
+ */
+function initDiagnosisSearch() {
+  if (!diagnosisSearchInput || !window.DiagnosisModule) {
+    console.warn('Diagnosis search elements or DiagnosisModule not available');
+    return;
+  }
+
+  // Debounced search function
+  const debouncedSearch = window.DiagnosisModule.debounce(async (query) => {
+    if (query.length < 2) {
+      renderAutocompleteResults([]);
+      return;
+    }
+
+    const results = await window.DiagnosisModule.searchICD10(query, diagnosisApiRequest);
+    renderAutocompleteResults(results);
+  }, 300);
+
+  // Input handler
+  diagnosisSearchInput.addEventListener('input', (e) => {
+    debouncedSearch(e.target.value);
+  });
+
+  // Hide autocomplete on click outside
+  document.addEventListener('click', (e) => {
+    if (!e.target.closest('.diagnosis-search-container')) {
+      if (diagnosisAutocomplete) {
+        diagnosisAutocomplete.style.display = 'none';
+      }
+    }
+  });
+
+  // Render quick select on load
+  renderQuickSelect();
+
+  // Reset diagnosis list when encounter form is reset
+  encounterClearBtn.addEventListener('click', () => {
+    currentDiagnosisList = [];
+    renderDiagnosisList();
+    updateDiagnosesJson();
+    renderQuickSelect();
+  });
+}
+
+// Make diagnosis functions globally available
+window.addDiagnosisToList = addDiagnosisToList;
+window.removeDiagnosisFromList = removeDiagnosisFromList;
+window.setDiagnosisAsPrincipal = setDiagnosisAsPrincipal;
+
+// ====================
 // App Initialization
 // ====================
 
@@ -2081,6 +2345,9 @@ async function initApp() {
     const today = new Date().toISOString().split('T')[0];
     dobInput.setAttribute('max', today);
   }
+
+  // Initialize diagnosis search
+  initDiagnosisSearch();
 
   // Initialize authentication
   await initializeApp();

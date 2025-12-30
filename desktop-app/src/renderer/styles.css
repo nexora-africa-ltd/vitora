@@ -1256,29 +1256,35 @@ body.dark-mode .critical-vital-item {
   display: block;
 }
 
-.diagnosis-autocomplete-item {
+.diagnosis-autocomplete-item,
+.autocomplete-item {
   padding: 10px 12px;
   cursor: pointer;
   border-bottom: 1px solid var(--border-color);
   transition: background-color 0.15s ease;
 }
 
-.diagnosis-autocomplete-item:last-child {
+.diagnosis-autocomplete-item:last-child,
+.autocomplete-item:last-child {
   border-bottom: none;
 }
 
 .diagnosis-autocomplete-item:hover,
-.diagnosis-autocomplete-item.selected {
+.diagnosis-autocomplete-item.selected,
+.autocomplete-item:hover,
+.autocomplete-item.selected {
   background: var(--bg-secondary);
 }
 
-.diagnosis-code {
+.diagnosis-code,
+.icd-code {
   font-weight: 600;
   color: var(--accent-color);
   margin-right: 8px;
 }
 
-.diagnosis-description {
+.diagnosis-description,
+.icd-description {
   color: var(--text-primary);
 }
 
@@ -1295,6 +1301,27 @@ body.dark-mode .critical-vital-item {
   flex-wrap: wrap;
   gap: 8px;
   margin-top: 10px;
+}
+
+.quick-select-group {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 8px;
+  width: 100%;
+}
+
+.quick-select-label {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-secondary);
+  min-width: 60px;
+}
+
+.quick-select-btn {
+  font-size: 11px;
+  padding: 4px 10px;
 }
 
 .diagnosis-quick-btn {
@@ -1319,6 +1346,13 @@ body.dark-mode .critical-vital-item {
   margin-top: 16px;
 }
 
+.no-diagnoses {
+  color: var(--text-secondary);
+  font-style: italic;
+  padding: 12px;
+  text-align: center;
+}
+
 .diagnosis-item {
   display: flex;
   align-items: center;
@@ -1333,6 +1367,30 @@ body.dark-mode .critical-vital-item {
 .diagnosis-item.principal {
   border-left: 4px solid var(--accent-color);
   background: rgba(238, 68, 167, 0.05);
+}
+
+.diagnosis-info {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.diagnosis-actions {
+  display: flex;
+  gap: 8px;
+}
+
+.principal-badge {
+  display: inline-block;
+  padding: 2px 8px;
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  background: var(--accent-color);
+  color: white;
+  border-radius: 4px;
 }
 
 .diagnosis-item-info {

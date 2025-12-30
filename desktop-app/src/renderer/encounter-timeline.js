@@ -457,32 +457,68 @@ function buildTimelineHTML(encounters, statistics) {
 // ====================
 // Module Exports
 // ====================
-module.exports = {
-  // Constants
-  ENCOUNTER_TYPE_LABELS,
+// For Node.js/Jest testing
+if (typeof module !== 'undefined' && module.exports) {
+  module.exports = {
+    // Constants
+    ENCOUNTER_TYPE_LABELS,
 
-  // API Functions
-  fetchEncounterTimeline,
+    // API Functions
+    fetchEncounterTimeline,
 
-  // Formatting Functions
-  formatEncounterCard,
-  formatRelativeTime,
+    // Formatting Functions
+    formatEncounterCard,
+    formatRelativeTime,
 
-  // Sorting & Filtering
-  sortEncounters,
-  filterByDateRange,
-  filterByType,
+    // Sorting & Filtering
+    sortEncounters,
+    filterByDateRange,
+    filterByType,
 
-  // Statistics
-  calculateStatistics,
-  groupEncountersByMonth,
+    // Statistics
+    calculateStatistics,
+    groupEncountersByMonth,
 
-  // Expansion State
-  toggleEncounterExpand,
-  getExpandedEncounters,
-  isEncounterExpanded,
-  clearExpandedEncounters,
+    // Expansion State
+    toggleEncounterExpand,
+    getExpandedEncounters,
+    isEncounterExpanded,
+    clearExpandedEncounters,
 
-  // HTML Building
-  buildTimelineHTML,
-};
+    // HTML Building
+    buildTimelineHTML,
+  };
+}
+
+// For browser - expose globally
+if (typeof window !== 'undefined') {
+  window.TimelineModule = {
+    // Constants
+    ENCOUNTER_TYPE_LABELS,
+
+    // API Functions
+    fetchEncounterTimeline,
+
+    // Formatting Functions
+    formatEncounterCard,
+    formatRelativeTime,
+
+    // Sorting & Filtering
+    sortEncounters,
+    filterByDateRange,
+    filterByType,
+
+    // Statistics
+    calculateStatistics,
+    groupEncountersByMonth,
+
+    // Expansion State
+    toggleEncounterExpand,
+    getExpandedEncounters,
+    isEncounterExpanded,
+    clearExpandedEncounters,
+
+    // HTML Building
+    buildTimelineHTML,
+  };
+}

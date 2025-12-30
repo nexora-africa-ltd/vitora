@@ -286,24 +286,52 @@ function getCriticalVitalsList(vitals) {
 // ====================
 // Module Exports
 // ====================
-module.exports = {
-  // Constants
-  VITAL_RANGES,
-  BMI_CATEGORIES,
+// For Node.js/Jest testing
+if (typeof module !== 'undefined' && module.exports) {
+  module.exports = {
+    // Constants
+    VITAL_RANGES,
+    BMI_CATEGORIES,
 
-  // BMI Functions
-  calculateBMIValue,
-  getBMICategoryObj,
+    // BMI Functions
+    calculateBMIValue,
+    getBMICategoryObj,
 
-  // Blood Pressure & MAP
-  calculateMAP,
-  parseBloodPressure,
+    // Blood Pressure & MAP
+    calculateMAP,
+    parseBloodPressure,
 
-  // Vital Status
-  getVitalStatus,
-  getVitalCssClass,
+    // Vital Status
+    getVitalStatus,
+    getVitalCssClass,
 
-  // Critical Alerts
-  hasCriticalVitals,
-  getCriticalVitalsList,
-};
+    // Critical Alerts
+    hasCriticalVitals,
+    getCriticalVitalsList,
+  };
+}
+
+// For browser - expose globally
+if (typeof window !== 'undefined') {
+  window.VitalsModule = {
+    // Constants
+    VITAL_RANGES,
+    BMI_CATEGORIES,
+
+    // BMI Functions
+    calculateBMIValue,
+    getBMICategoryObj,
+
+    // Blood Pressure & MAP
+    calculateMAP,
+    parseBloodPressure,
+
+    // Vital Status
+    getVitalStatus,
+    getVitalCssClass,
+
+    // Critical Alerts
+    hasCriticalVitals,
+    getCriticalVitalsList,
+  };
+}

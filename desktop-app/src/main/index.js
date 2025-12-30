@@ -220,6 +220,85 @@ async function createSuperuser() {
 }
 
 /**
+ * Import ICD-10 codes from CSV file
+ */
+async function importICD10Codes() {
+  return new Promise((resolve) => {
+    const backendPath = path.join(__dirname, '..', '..', '..', 'backend');
+    const csvPath = path.join(backendPath, 'data', 'icd10_kenya_common.csv');
+    const poetryCmd = 'poetry';
+
+    console.log('[Backend] Importing ICD-10 codes...');
+
+    const importProcess = spawn(poetryCmd, ['run', 'python', 'manage.py', 'import_icd10', csvPath], {
+      cwd: backendPath,
+      env: {
+        ...process.env,
+        DJANGO_ENV: 'development',
+        DJANGO_SETTINGS_MODULE: 'hmis.settings'
+      },
+      stdio: 'pipe',
+      shell: true
+    });
+
+    importProcess.stdout.on('data', (data) => {
+      console.log(`[Backend] ${data.toString().trim()}`);
+    });
+
+    importProcess.stderr.on('data', (data) => {
+      console.log(`[Backend] ${data.toString().trim()}`);
+    });
+
+    importProcess.on('close', (code) => {
+      console.log(`[Backend] ICD-10 import completed with code ${code}`);
+      resolve();
+    });
+
+    // Timeout after 60 seconds
+    setTimeout(resolve, 60000);
+  });
+}
+
+/**
+ * Load clinical templates from JSON files
+ */
+async function loadClinicalTemplates() {
+  return new Promise((resolve) => {
+    const backendPath = path.join(__dirname, '..', '..', '..', 'backend');
+    const poetryCmd = 'poetry';
+
+    console.log('[Backend] Loading clinical templates...');
+
+    const loadProcess = spawn(poetryCmd, ['run', 'python', 'manage.py', 'load_clinical_templates'], {
+      cwd: backendPath,
+      env: {
+        ...process.env,
+        DJANGO_ENV: 'development',
+        DJANGO_SETTINGS_MODULE: 'hmis.settings'
+      },
+      stdio: 'pipe',
+      shell: true
+    });
+
+    loadProcess.stdout.on('data', (data) => {
+      console.log(`[Backend] ${data.toString().trim()}`);
+    });
+
+    loadProcess.stderr.on('data', (data) => {
+      console.log(`[Backend] ${data.toString().trim()}`);
+    });
+
+    loadProcess.on('close', (code) => {
+      console.log(`[Backend] Clinical templates load completed with code ${code}`);
+      resolve();
+    });
+
+    // Timeout after 30 seconds
+    setTimeout(resolve, 30000);
+  });
+}
+
+/**
  * Start Django backend server
  */
 async function startBackend() {
@@ -388,6 +467,12 @@ async function initialize() {
     // Import Kenya location data (counties, sub-counties, wards)
     await importKenyaLocations();
 
+    // Import ICD-10 diagnosis codes
+    await importICD10Codes();
+
+    // Load clinical templates
+    await loadClinicalTemplates();
+
     // Create superuser for admin access
     await createSuperuser();
 
@@ -538,6 +623,8 @@ module.exports = {
   createTestUser,
   runMigrations,
   importKenyaLocations,
+  importICD10Codes,
+  loadClinicalTemplates,
   initialize,
   BACKEND_URL,
   // Test helpers
