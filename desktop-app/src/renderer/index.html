@@ -604,6 +604,46 @@
         <div id="patient-modal-content">
           <!-- Patient details will be loaded here -->
         </div>
+
+        <!-- Encounter Timeline Section -->
+        <div id="patient-timeline-section" class="patient-timeline-section" style="display: none;">
+          <h3>Encounter History</h3>
+
+          <!-- Timeline Filters -->
+          <div class="timeline-filters">
+            <div class="filter-group">
+              <label for="timeline-start-date">From</label>
+              <input type="date" id="timeline-start-date">
+            </div>
+            <div class="filter-group">
+              <label for="timeline-end-date">To</label>
+              <input type="date" id="timeline-end-date">
+            </div>
+            <div class="filter-group">
+              <label>Type</label>
+              <div class="timeline-type-filters">
+                <label>
+                  <input type="checkbox" value="OPD" checked>
+                  <span>OPD</span>
+                </label>
+                <label>
+                  <input type="checkbox" value="EMERGENCY" checked>
+                  <span>Emergency</span>
+                </label>
+                <label>
+                  <input type="checkbox" value="INPATIENT" checked>
+                  <span>Inpatient</span>
+                </label>
+              </div>
+            </div>
+            <button type="button" class="btn btn-secondary btn-sm" id="apply-timeline-filters">Apply</button>
+          </div>
+
+          <!-- Timeline Content -->
+          <div id="timeline-content">
+            <p class="loading">Loading encounter history...</p>
+          </div>
+        </div>
       </div>
     </div>
   </div>

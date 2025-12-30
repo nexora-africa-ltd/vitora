@@ -1185,7 +1185,7 @@ TEMPLATE_MAX_FIELDS_PER_SECTION = 50
 ### Frontend Test Coverage (30 tests)
 
 ```javascript
-// desktop-app/tests/sprint-1.1-1.2-features.test.js
+// desktop-app/tests/**
 
 describe('Vitals Entry Enhancement', () => {
   test('calculateBMI returns correct value', () => {});
