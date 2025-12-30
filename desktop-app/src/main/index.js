@@ -37,6 +37,26 @@ const BACKEND_PORT = 9088;
 const BACKEND_URL = `http://127.0.0.1:${BACKEND_PORT}`;
 
 /**
+ * Test helpers - only used for testing private state
+ * @private
+ */
+function _setBackendProcessForTesting(process) {
+  backendProcess = process;
+}
+
+function _setMainWindowForTesting(window) {
+  mainWindow = window;
+}
+
+function _getBackendProcess() {
+  return backendProcess;
+}
+
+function _getMainWindow() {
+  return mainWindow;
+}
+
+/**
  * Get stored access token for authenticated requests
  */
 function getAccessToken() {
@@ -515,7 +535,14 @@ module.exports = {
   createWindow,
   getAccessToken,
   createSuperuser,
+  createTestUser,
   runMigrations,
   importKenyaLocations,
-  BACKEND_URL
+  initialize,
+  BACKEND_URL,
+  // Test helpers
+  _setBackendProcessForTesting,
+  _setMainWindowForTesting,
+  _getBackendProcess,
+  _getMainWindow
 };
