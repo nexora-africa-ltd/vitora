@@ -931,7 +931,7 @@ async function loadTreatmentTemplates() {
   hasLoadedTemplates = true;
 
   try {
-    const response = await window.electronAPI.apiRequest('GET', '/api/clinical-templates/');
+    const response = await window.electronAPI.apiRequest('GET', '/api/treatment-templates/');
     if (!response.success) {
       renderTemplateDropdown([]);
       return;
