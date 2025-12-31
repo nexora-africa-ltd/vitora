@@ -577,3 +577,159 @@ class PrescriptionItem(models.Model):
     def remaining_quantity(self) -> int:
         """Get remaining quantity to be dispensed."""
         return self.quantity - self.quantity_dispensed
+
+
+class Dispensing(models.Model):
+    """Drug dispensing record."""
+
+    prescription_item = models.ForeignKey(
+        PrescriptionItem,
+        on_delete=models.PROTECT,
+        related_name="dispensings",
+        null=True,
+        blank=True,
+    )
+
+    # Direct dispense (OTC, emergency)
+    patient = models.ForeignKey(
+        "patients.Patient", on_delete=models.PROTECT, related_name="dispensings"
+    )
+    drug = models.ForeignKey(Drug, on_delete=models.PROTECT)
+
+    # Batch tracking (FEFO)
+    batch = models.ForeignKey(
+        StockBatch, on_delete=models.PROTECT, related_name="dispensings"
+    )
+
+    # Quantities
+    quantity_dispensed = models.PositiveIntegerField()
+    quantity_returned = models.PositiveIntegerField(default=0)
+
+    # Pricing
+    unit_price = models.DecimalField(max_digits=10, decimal_places=2)
+    total_price = models.DecimalField(max_digits=12, decimal_places=2)
+    discount = models.DecimalField(max_digits=10, decimal_places=2, default=0)
+
+    # Instructions given
+    instructions_given = models.TextField(blank=True)
+    patient_counseled = models.BooleanField(default=False)
+
+    # Dispensed by
+    dispensed_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.PROTECT,
+        related_name="dispensings",
+    )
+    dispensed_at = models.DateTimeField(auto_now_add=True)
+
+    # Verification (for controlled substances)
+    verified_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="verified_dispensings",
+    )
+    verified_at = models.DateTimeField(null=True, blank=True)
+
+    # Notes
+    notes = models.TextField(blank=True)
+
+    # Tracking
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ["-dispensed_at"]
+
+    def __str__(self):
+        return f"{self.drug.generic_name} - {self.quantity_dispensed} {self.drug.unit} to {self.patient}"
+
+    def clean(self):
+        """Validate dispensing before save."""
+        super().clean()
+        
+        # Validate quantity against available stock
+        if self.quantity_dispensed > self.batch.quantity_available:
+            raise ValidationError(
+                f"Cannot dispense {self.quantity_dispensed} units. "
+                f"Only {self.batch.quantity_available} available in batch."
+            )
+
+    def save(self, *args, **kwargs):
+        """Override save to update batch stock."""
+        is_new = self.pk is None
+        
+        if is_new:
+            # Full clean validation
+            self.full_clean()
+            
+            # Reduce batch stock
+            self.batch.dispense(self.quantity_dispensed)
+            
+            # Update prescription item if linked
+            if self.prescription_item:
+                self.prescription_item.quantity_dispensed += self.quantity_dispensed
+                self.prescription_item.save()
+                
+                # Update prescription status
+                self.prescription_item.prescription.update_status()
+        
+        super().save(*args, **kwargs)
+
+    def process_return(self, quantity: int, reason: str) -> None:
+        """
+        Handle drug returns.
+        
+        Args:
+            quantity: Amount being returned
+            reason: Reason for return
+        """
+        if quantity > self.quantity_dispensed - self.quantity_returned:
+            raise ValueError(
+                f"Cannot return {quantity} units. "
+                f"Only {self.quantity_dispensed - self.quantity_returned} were dispensed."
+            )
+        
+        # Update return quantity
+        self.quantity_returned += quantity
+        
+        # Update notes
+        if self.notes:
+            self.notes += f"\n\nReturn: {quantity} units - {reason}"
+        else:
+            self.notes = f"Return: {quantity} units - {reason}"
+        
+        self.save()
+        
+        # Restore batch stock
+        self.batch.return_stock(quantity)
+        
+        # Update prescription item if linked
+        if self.prescription_item:
+            self.prescription_item.quantity_dispensed -= quantity
+            self.prescription_item.save()
+            
+            # Update prescription status
+            self.prescription_item.prescription.update_status()
+
+    def requires_verification(self) -> bool:
+        """Check if drug requires second pharmacist verification."""
+        return self.drug.is_controlled
+
+    def verify(self, user) -> None:
+        """
+        Second pharmacist verification for controlled drugs.
+        
+        Args:
+            user: User performing verification (must be different from dispenser)
+        """
+        if user == self.dispensed_by:
+            raise ValueError("Verification must be performed by a different user.")
+        
+        self.verified_by = user
+        self.verified_at = timezone.now()
+        self.save()
+
+    def calculate_total(self) -> Decimal:
+        """Calculate total price: (unit_price × quantity) - discount."""
+        return (self.unit_price * self.quantity_dispensed) - self.discount

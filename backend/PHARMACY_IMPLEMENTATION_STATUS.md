@@ -73,13 +73,19 @@
 
 ## Remaining Work
 
-### 📋 Phase 5: Prescription Models (NOT STARTED)
+### ✅ Phase 5: Prescription Models (COMPLETE - 15/15 tests)
 **Required:** 15 tests + implementation
-- [ ] Prescription model linked to encounters
-- [ ] PrescriptionItem model for individual drugs
-- [ ] Prescription validity tracking (30-day default)
-- [ ] Status tracking (Pending, Partial, Dispensed, Cancelled, Expired)
-- [ ] Clinical notes for pharmacist
+- [x] Prescription model linked to encounters
+- [x] PrescriptionItem model for individual drugs
+- [x] Prescription validity tracking (30-day default)
+- [x] Status tracking (Pending, Partial, Dispensed, Cancelled, Expired)
+- [x] Clinical notes for pharmacist
+- [x] Auto-status updates based on dispensing
+- [x] Cancellation workflow with reasons
+- [x] Generic substitution flag
+- [x] Methods: `is_valid()`, `is_fully_dispensed()`, `get_remaining_items()`, `cancel(reason)`, `update_status()`
+
+**Migration:** `0003_prescription_prescriptionitem.py`
 
 ### 📋 Phase 6: Dispensing Model (NOT STARTED)
 **Required:** 16 tests + implementation
@@ -143,7 +149,7 @@
 
 ### 📋 Phase 11: Remaining Migrations (PARTIAL)
 - [x] Initial models migration
-- [ ] Prescription/PrescriptionItem migration
+- [x] Prescription/PrescriptionItem migration
 - [ ] Dispensing migration
 - [ ] StockAdjustment migration
 
@@ -169,21 +175,21 @@
 ## Statistics
 
 ### Tests Status
-- **Written**: 43/117 (37%)
-- **Passing**: 43/43 (100%) ✅
-- **Remaining**: 74 tests
+- **Written**: 58/117 (50%)
+- **Passing**: 58/58 (100%) ✅
+- **Remaining**: 59 tests
 
 ### Models Status
-- **Complete**: Drug, StockBatch, StockAlert (3/7 models)
-- **Remaining**: Prescription, PrescriptionItem, Dispensing, StockAdjustment (4/7 models)
+- **Complete**: Drug, StockBatch, StockAlert, Prescription, PrescriptionItem (5/7 models)
+- **Remaining**: Dispensing, StockAdjustment (2/7 models)
 
 ### Code Coverage
-- **Current Module Coverage**: ~50% (pharmacy models only)
+- **Current Module Coverage**: ~60% (pharmacy models)
 - **Target Coverage**: ≥85%
 
 ### Sprint Progress
-- **Phases Complete**: 4/14 (29%)
-- **Time Estimate Remaining**: ~6-8 hours of focused work
+- **Phases Complete**: 5/14 (36%)
+- **Time Estimate Remaining**: ~4-6 hours of focused work
 
 ---
 
