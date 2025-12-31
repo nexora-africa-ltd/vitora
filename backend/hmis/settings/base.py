@@ -39,6 +39,7 @@ INSTALLED_APPS = [
     "hmis.apps.patients",
     "hmis.apps.encounters",
     "hmis.apps.clinical_templates",
+    "hmis.apps.laboratory",
 ]
 
 MIDDLEWARE = [
