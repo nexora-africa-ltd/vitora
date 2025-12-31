@@ -70,7 +70,7 @@ SYNC_MAX_RETRIES = int(os.getenv("SYNC_MAX_RETRIES", "3"))
 
 # Development-specific apps
 INSTALLED_APPS += [  # noqa: F405
-    "django_extensions",
+    "django_extensions"
 ]
 
 # Enhanced logging for development

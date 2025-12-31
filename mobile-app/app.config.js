@@ -1,0 +1,63 @@
+/**
+ * Expo app configuration
+ * 
+ * This uses app.config.js to allow dynamic configuration
+ * based on environment variables (set in eas.json)
+ */
+
+export default {
+  expo: {
+    name: "Vitora HMIS",
+    slug: "vitora-hmis",
+    version: "0.1.0",
+    orientation: "portrait",
+    icon: "./assets/icon.png",
+    userInterfaceStyle: "automatic",
+    newArchEnabled: false,
+    scheme: "vitora",
+    splash: {
+      image: "./assets/splash-icon.png",
+      resizeMode: "contain",
+      backgroundColor: "#0D9488"
+    },
+    ios: {
+      supportsTablet: true,
+      bundleIdentifier: "com.nexora.vitora",
+      buildNumber: "1"
+    },
+    android: {
+      adaptiveIcon: {
+        foregroundImage: "./assets/adaptive-icon.png",
+        backgroundColor: "#0D9488"
+      },
+      package: "com.nexora.vitora",
+      versionCode: 1,
+      permissions: [
+        "android.permission.INTERNET",
+        "android.permission.ACCESS_NETWORK_STATE"
+      ]
+    },
+    web: {
+      favicon: "./assets/favicon.png",
+      bundler: "metro"
+    },
+    plugins: [
+      "expo-router",
+      "expo-secure-store"
+    ],
+    experiments: {
+      typedRoutes: true
+    },
+    extra: {
+      router: {
+        origin: false
+      },
+      eas: {
+        projectId: "3a7c3b7f-144d-4108-ae21-340fdc77ca00"
+      },
+      // API URL from environment variable (set in eas.json per profile)
+      apiBaseUrl: process.env.API_BASE_URL || "http://localhost:8000"
+    },
+    owner: "thande788"
+  }
+};
