@@ -7,7 +7,10 @@ from django.contrib import admin
 from .models import (
     AuditLog,
     County,
+    Department,
     NetworkStatus,
+    Role,
+    StaffProfile,
     SubCounty,
     SyncConflict,
     SyncMetrics,
@@ -172,3 +175,286 @@ class SyncMetricsAdmin(admin.ModelAdmin):
     ]
     date_hierarchy = "created_at"
     ordering = ["-created_at"]
+
+
+# ============================================================================
+# RBAC Admin (Sprint 1.1-1.2 Track C - Phase 4)
+# ============================================================================
+
+
+@admin.register(Department)
+class DepartmentAdmin(admin.ModelAdmin):
+    """Admin configuration for Department model."""
+
+    list_display = [
+        "code",
+        "name",
+        "department_type",
+        "parent",
+        "get_staff_count",
+        "is_active",
+    ]
+    list_filter = ["department_type", "is_active", "parent"]
+    search_fields = ["name", "code"]
+    ordering = ["name"]
+    readonly_fields = ["created_at", "updated_at"]
+
+    fieldsets = (
+        (
+            "Basic Information",
+            {
+                "fields": (
+                    "code",
+                    "name",
+                    "department_type",
+                    "is_active",
+                )
+            },
+        ),
+        (
+            "Hierarchy",
+            {
+                "fields": (
+                    "parent",
+                    "head",
+                )
+            },
+        ),
+        (
+            "Timestamps",
+            {
+                "fields": (
+                    "created_at",
+                    "updated_at",
+                ),
+                "classes": ("collapse",),
+            },
+        ),
+    )
+
+    @admin.display(description="Staff Count")
+    def get_staff_count(self, obj):
+        """Display number of active staff in department."""
+        return obj.get_staff_count()
+
+
+@admin.register(Role)
+class RoleAdmin(admin.ModelAdmin):
+    """Admin configuration for Role model."""
+
+    list_display = [
+        "code",
+        "name",
+        "category",
+        "hierarchy_level",
+        "requires_license",
+        "license_body",
+        "is_active",
+    ]
+    list_filter = ["category", "requires_license", "is_active", "hierarchy_level"]
+    search_fields = ["name", "code", "license_body"]
+    ordering = ["hierarchy_level", "name"]
+    readonly_fields = ["created_at", "updated_at"]
+
+    fieldsets = (
+        (
+            "Basic Information",
+            {
+                "fields": (
+                    "code",
+                    "name",
+                    "category",
+                    "description",
+                    "is_active",
+                )
+            },
+        ),
+        (
+            "Hierarchy",
+            {
+                "fields": (
+                    "hierarchy_level",
+                    "parent_role",
+                )
+            },
+        ),
+        (
+            "Permissions",
+            {
+                "fields": (
+                    "permissions_matrix",
+                    "django_group",
+                )
+            },
+        ),
+        (
+            "License Requirements (Kenya)",
+            {
+                "fields": (
+                    "requires_license",
+                    "license_body",
+                ),
+                "classes": ("collapse",),
+            },
+        ),
+        (
+            "Timestamps",
+            {
+                "fields": (
+                    "created_at",
+                    "updated_at",
+                ),
+                "classes": ("collapse",),
+            },
+        ),
+    )
+
+
+@admin.register(StaffProfile)
+class StaffProfileAdmin(admin.ModelAdmin):
+    """Admin configuration for StaffProfile model."""
+
+    list_display = [
+        "employee_id",
+        "get_user_full_name",
+        "primary_role",
+        "primary_department",
+        "employment_status",
+        "is_license_valid_display",
+    ]
+    list_filter = [
+        "primary_role",
+        "primary_department",
+        "employment_status",
+        "primary_role__requires_license",
+        "license_verified",
+    ]
+    search_fields = [
+        "employee_id",
+        "user__username",
+        "user__first_name",
+        "user__last_name",
+        "user__email",
+        "license_number",
+    ]
+    ordering = ["user__last_name", "user__first_name"]
+    readonly_fields = ["created_at", "updated_at", "is_license_valid_display"]
+    filter_horizontal = ["secondary_roles", "secondary_departments"]
+
+    actions = ["activate_staff", "deactivate_staff", "suspend_staff"]
+
+    fieldsets = (
+        (
+            "User & Identity",
+            {
+                "fields": (
+                    "user",
+                    "employee_id",
+                    "title",
+                )
+            },
+        ),
+        (
+            "Role & Department",
+            {
+                "fields": (
+                    "primary_role",
+                    "secondary_roles",
+                    "primary_department",
+                    "secondary_departments",
+                )
+            },
+        ),
+        (
+            "Professional Details (Kenya)",
+            {
+                "fields": (
+                    "license_number",
+                    "license_expiry",
+                    "license_verified",
+                    "is_license_valid_display",
+                    "specialization",
+                )
+            },
+        ),
+        (
+            "Contact Information",
+            {
+                "fields": (
+                    "phone_number",
+                    "emergency_contact_name",
+                    "emergency_contact_phone",
+                ),
+                "classes": ("collapse",),
+            },
+        ),
+        (
+            "Employment",
+            {
+                "fields": (
+                    "employment_status",
+                    "date_joined",
+                    "date_left",
+                    "supervisor",
+                )
+            },
+        ),
+        (
+            "Timestamps",
+            {
+                "fields": (
+                    "created_at",
+                    "updated_at",
+                ),
+                "classes": ("collapse",),
+            },
+        ),
+    )
+
+    @admin.display(description="Full Name")
+    def get_user_full_name(self, obj):
+        """Display user's full name with title."""
+        return obj.get_full_name()
+
+    @admin.display(description="License Valid", boolean=True)
+    def is_license_valid_display(self, obj):
+        """Display license validity status."""
+        if not obj.primary_role.requires_license:
+            return None  # N/A
+        return obj.is_license_valid()
+
+    @admin.action(description="Activate selected staff")
+    def activate_staff(self, request, queryset):
+        """Bulk action to activate staff."""
+        updated = queryset.update(employment_status="ACTIVE")
+        self.message_user(
+            request,
+            f"{updated} staff member(s) activated successfully.",
+        )
+
+    @admin.action(description="Deactivate selected staff")
+    def deactivate_staff(self, request, queryset):
+        """Bulk action to deactivate staff."""
+        from datetime import date
+
+        updated = 0
+        for staff in queryset:
+            staff.employment_status = "TERMINATED"
+            if not staff.date_left:
+                staff.date_left = date.today()
+            staff.save()
+            updated += 1
+
+        self.message_user(
+            request,
+            f"{updated} staff member(s) deactivated successfully.",
+        )
+
+    @admin.action(description="Suspend selected staff")
+    def suspend_staff(self, request, queryset):
+        """Bulk action to suspend staff."""
+        updated = queryset.update(employment_status="SUSPENDED")
+        self.message_user(
+            request,
+            f"{updated} staff member(s) suspended successfully.",
+        )
