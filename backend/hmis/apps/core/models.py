@@ -1096,7 +1096,7 @@ class StaffProfile(models.Model):
         """
         Check if staff has permission for action on resource.
 
-        Aggregates permissions from all roles.
+        Aggregates permissions from all roles (including inherited).
 
         Args:
             action: Action to check
@@ -1106,7 +1106,10 @@ class StaffProfile(models.Model):
             bool: True if permission granted from any role
         """
         for role in self.get_all_roles():
-            if role.has_permission(action, resource):
+            # Use get_all_permissions to include inherited permissions
+            all_perms = role.get_all_permissions()
+            resource_perms = all_perms.get(resource, {})
+            if resource_perms.get(action, False):
                 return True
         return False
 

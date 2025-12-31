@@ -185,3 +185,167 @@ class PatientPermission(permissions.BasePermission):
             return True
 
         return request.user.has_perm("patients.view_sensitive_patient")
+
+
+class RoleBasedPermission(permissions.BasePermission):
+    """
+    Permission class that checks role-based access.
+
+    Uses the permission matrix from user's StaffProfile roles.
+    Falls back to Django permissions if no StaffProfile exists.
+    """
+
+    # Map HTTP methods to actions
+    ACTION_MAP = {
+        "GET": "read",
+        "HEAD": "read",
+        "OPTIONS": "read",
+        "POST": "create",
+        "PUT": "update",
+        "PATCH": "update",
+        "DELETE": "delete",
+    }
+
+    def has_permission(self, request, view):
+        """
+        Check if user has permission for this action on this resource.
+
+        Args:
+            request: The HTTP request
+            view: The view being accessed
+
+        Returns:
+            bool: True if permission granted
+        """
+        # Check authentication
+        if not request.user or not request.user.is_authenticated:
+            return False
+
+        # Superusers always have permission
+        if request.user.is_superuser:
+            return True
+
+        # Get resource name from view
+        resource = self._get_resource_name(view)
+        action = self.ACTION_MAP.get(request.method, "read")
+
+        # Check StaffProfile permissions
+        try:
+            profile = request.user.staff_profile
+
+            # Check if license is required and valid
+            if profile.primary_role.requires_license:
+                if not profile.license_number:
+                    return False
+                if not profile.is_license_valid():
+                    return False
+
+            # Check permission
+            return profile.has_permission(action, resource)
+
+        except AttributeError:
+            # No StaffProfile - fallback to Django permissions
+            return self._check_django_permission(request.user, action, resource)
+
+    def has_object_permission(self, request, view, obj):
+        """
+        Check object-level permissions (e.g., department-based, sensitive data).
+
+        Args:
+            request: The HTTP request
+            view: The view being accessed
+            obj: The object being accessed
+
+        Returns:
+            bool: True if permission granted
+        """
+        # First check basic permission
+        if not self.has_permission(request, view):
+            return False
+
+        # Check for sensitive patient access
+        is_sensitive = getattr(obj, "is_sensitive", False)
+        if is_sensitive:
+            try:
+                profile = request.user.staff_profile
+                # Get resource name
+                resource = self._get_resource_name(view)
+                # Check if has view_sensitive permission
+                has_sensitive_perm = profile.has_permission("view_sensitive", resource)
+                if not has_sensitive_perm:
+                    return False
+            except AttributeError:
+                # No StaffProfile - check Django permission
+                if not request.user.has_perm("patients.view_sensitive_patient"):
+                    return False
+
+        return True
+
+    def _get_resource_name(self, view):
+        """
+        Get resource name from view.
+
+        Args:
+            view: The view
+
+        Returns:
+            str: Resource name (e.g., "Patient", "Encounter")
+        """
+        # Try to get model name from queryset
+        if hasattr(view, "get_queryset"):
+            try:
+                queryset = view.get_queryset()
+                if hasattr(queryset, "model"):
+                    return queryset.model.__name__
+            except Exception:
+                pass
+
+        # Try to get from serializer
+        if hasattr(view, "get_serializer_class"):
+            try:
+                serializer_class = view.get_serializer_class()
+                if hasattr(serializer_class, "Meta") and hasattr(
+                    serializer_class.Meta, "model"
+                ):
+                    return serializer_class.Meta.model.__name__
+            except Exception:
+                pass
+
+        # Fallback to view basename
+        if hasattr(view, "basename"):
+            return view.basename.capitalize()
+
+        return "Unknown"
+
+    def _check_django_permission(self, user, action, resource):
+        """
+        Fallback to Django permissions if no StaffProfile.
+
+        Args:
+            user: The user
+            action: The action (create, read, update, delete)
+            resource: The resource type
+
+        Returns:
+            bool: True if Django permission exists
+        """
+        # Map actions to Django permission codenames
+        action_map = {
+            "create": "add",
+            "read": "view",
+            "update": "change",
+            "delete": "delete",
+        }
+
+        django_action = action_map.get(action, "view")
+        resource_lower = resource.lower()
+
+        # Try to check Django permission
+        # Format: app_label.action_model
+        # We'll try common app labels
+        for app_label in ["patients", "encounters", "core"]:
+            perm = f"{app_label}.{django_action}_{resource_lower}"
+            if user.has_perm(perm):
+                return True
+
+        return False
