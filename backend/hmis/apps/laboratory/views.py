@@ -3,24 +3,23 @@ Views for laboratory API endpoints.
 """
 
 from django.db import models
-from rest_framework import viewsets, status
-from rest_framework.decorators import action
-from rest_framework.response import Response
-from rest_framework.permissions import IsAuthenticated
 from django_filters import rest_framework as filters
+from rest_framework import status, viewsets
+from rest_framework.decorators import action
+from rest_framework.permissions import IsAuthenticated
+from rest_framework.response import Response
 
-from .models import TestCatalog, LabOrder, LabOrderItem, LabResult, LOINCCode
+from .models import LabOrder, LabResult, LOINCCode, TestCatalog
 from .serializers import (
-    TestCatalogSerializer,
-    TestCatalogDetailSerializer,
-    LabOrderSerializer,
     LabOrderCreateSerializer,
-    LabOrderItemSerializer,
-    LabResultSerializer,
+    LabOrderSerializer,
     LabResultCreateSerializer,
+    LabResultSerializer,
     LOINCCodeSerializer,
+    TestCatalogDetailSerializer,
+    TestCatalogSerializer,
 )
-from .services import LabWorkflowService, LabAlertService
+from .services import LabAlertService, LabWorkflowService
 
 
 class TestCatalogViewSet(viewsets.ReadOnlyModelViewSet):
@@ -39,19 +38,19 @@ class TestCatalogViewSet(viewsets.ReadOnlyModelViewSet):
 
     def get_queryset(self):
         queryset = super().get_queryset()
-        
+
         # Search by name or code
         search = self.request.query_params.get("q", None)
         if search:
             queryset = queryset.filter(
                 models.Q(name__icontains=search) | models.Q(code__icontains=search)
             )
-        
+
         # Filter by category
         category = self.request.query_params.get("category", None)
         if category:
             queryset = queryset.filter(category=category)
-        
+
         return queryset
 
 
@@ -73,7 +72,7 @@ class LabOrderViewSet(viewsets.ModelViewSet):
 
     def get_queryset(self):
         queryset = super().get_queryset()
-        
+
         # Filter by date range
         date_from = self.request.query_params.get("date_from", None)
         date_to = self.request.query_params.get("date_to", None)
@@ -81,7 +80,7 @@ class LabOrderViewSet(viewsets.ModelViewSet):
             queryset = queryset.filter(ordered_at__gte=date_from)
         if date_to:
             queryset = queryset.filter(ordered_at__lte=date_to)
-        
+
         return queryset
 
     @action(detail=True, methods=["post"])

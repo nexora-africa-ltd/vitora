@@ -3,7 +3,8 @@ Serializers for laboratory models.
 """
 
 from rest_framework import serializers
-from .models import TestCatalog, LabOrder, LabOrderItem, LabResult, LOINCCode
+
+from .models import LabOrder, LabOrderItem, LabResult, LOINCCode, TestCatalog
 
 
 class TestCatalogSerializer(serializers.ModelSerializer):
@@ -171,11 +172,11 @@ class LabResultCreateSerializer(serializers.ModelSerializer):
     def create(self, validated_data):
         entered_by = self.context["request"].user
         result = LabResult.objects.create(entered_by=entered_by, **validated_data)
-        
+
         # Auto-flag numeric results
         if result.numeric_value is not None:
             result.auto_flag_result()
-        
+
         return result
 
 
