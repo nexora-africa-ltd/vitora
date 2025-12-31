@@ -2,12 +2,12 @@
  * Patient List Screen
  *
  * Displays list of patients with search functionality.
- * Works offline using WatermelonDB.
+ * Works offline using WatermelonDB with sync capability.
  *
  * @module app/(main)/patients/index
  */
 
-import React, { useState } from 'react';
+import React, { useState, useCallback } from 'react';
 import {
   View,
   Text,
@@ -16,48 +16,71 @@ import {
   TouchableOpacity,
   StyleSheet,
   ActivityIndicator,
+  RefreshControl,
+  Alert,
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { colors } from '../../../constants/colors';
-
-// Placeholder patient type until we connect to the database
-interface PatientItem {
-  id: string;
-  mrn: string;
-  firstName: string;
-  lastName: string;
-  dateOfBirth: string;
-  gender: string;
-}
+import { usePatients } from '../../../hooks/usePatients';
+import { useSyncStatus } from '../../../hooks/useSyncStatus';
+import { useOfflineStatus } from '../../../hooks/useOfflineStatus';
+import { syncProcessor } from '../../../lib/sync/processor';
+import type { Patient } from '../../../lib/api/patients';
 
 /**
- * Patient list screen with search
+ * Patient list screen with search and pull-to-refresh
  */
-export default function PatientList(): React.JSX.Element {
+export default function PatientListScreen(): React.JSX.Element {
   const router = useRouter();
   const [searchQuery, setSearchQuery] = useState('');
-  const [isLoading] = useState(false);
-
-  // Placeholder data - will be replaced with actual data from repository
-  const patients: PatientItem[] = [];
+  const [isRefreshing, setIsRefreshing] = useState(false);
+  
+  // Data hooks
+  const { data: patients = [], isLoading, error, refetch } = usePatients({ search: searchQuery });
+  const { pendingCount, hasPending, refreshStatus } = useSyncStatus();
+  const { isOffline } = useOfflineStatus();
 
   const handlePatientPress = (patientId: string) => {
     router.push(`/(main)/patients/${patientId}`);
   };
 
-  const renderPatientItem = ({ item }: { item: PatientItem }) => (
+  const handleRefresh = useCallback(async () => {
+    setIsRefreshing(true);
+    try {
+      // If online, try to sync pending changes first
+      if (!isOffline && hasPending) {
+        const result = await syncProcessor.processQueue({ checkNetwork: true });
+        if (result.failed > 0) {
+          Alert.alert(
+            'Sync Partially Complete',
+            `${result.succeeded} changes synced, ${result.failed} failed.`
+          );
+        }
+      }
+      
+      // Refresh data
+      await refetch();
+      await refreshStatus();
+    } catch (err) {
+      console.error('Refresh failed:', err);
+    } finally {
+      setIsRefreshing(false);
+    }
+  }, [isOffline, hasPending, refetch, refreshStatus]);
+
+  const renderPatientItem = ({ item }: { item: Patient }) => (
     <TouchableOpacity
       style={styles.patientCard}
-      onPress={() => handlePatientPress(item.id)}
+      onPress={() => handlePatientPress(item.id.toString())}
       testID={`patient-item-${item.id}`}
     >
       <View style={styles.patientInfo}>
         <Text style={styles.patientName}>
-          {item.firstName} {item.lastName}
+          {item.first_name} {item.last_name}
         </Text>
         <Text style={styles.patientMrn}>MRN: {item.mrn}</Text>
         <Text style={styles.patientDetails}>
-          {item.gender} • DOB: {item.dateOfBirth}
+          {item.gender === 'M' ? 'Male' : item.gender === 'F' ? 'Female' : 'Other'} • DOB: {item.date_of_birth}
         </Text>
       </View>
       <Text style={styles.chevron}>›</Text>
@@ -66,17 +89,35 @@ export default function PatientList(): React.JSX.Element {
 
   const renderEmptyState = () => (
     <View style={styles.emptyState}>
-      <Text style={styles.emptyStateText}>No patients found</Text>
+      <Text style={styles.emptyStateText}>
+        {error ? 'Error loading patients' : 'No patients found'}
+      </Text>
       <Text style={styles.emptyStateSubtext}>
-        {searchQuery
-          ? 'Try a different search term'
-          : 'Add patients to get started'}
+        {error
+          ? 'Pull down to retry'
+          : searchQuery
+            ? 'Try a different search term'
+            : 'Add patients to get started'}
       </Text>
     </View>
   );
 
+  const renderSyncBadge = () => {
+    if (!hasPending) return null;
+    return (
+      <View style={styles.syncBadge}>
+        <Text style={styles.syncBadgeText}>
+          {pendingCount} pending {isOffline ? '(offline)' : ''}
+        </Text>
+      </View>
+    );
+  };
+
   return (
     <View style={styles.container}>
+      {/* Sync Status Badge */}
+      {renderSyncBadge()}
+
       {/* Search Bar */}
       <View style={styles.searchContainer}>
         <TextInput
@@ -85,23 +126,49 @@ export default function PatientList(): React.JSX.Element {
           onChangeText={setSearchQuery}
           placeholder="Search by name, MRN, or phone..."
           placeholderTextColor={colors.text.tertiary}
-          testID="patient-search-input"
-        />
-      </View>
-
-      {/* Patient List */}
-      {isLoading ? (
-        <View style={styles.loadingContainer}>
-          <ActivityIndicator size="large" color={colors.primary[500]} />
-        </View>
-      ) : (
-        <FlatList
-          data={patients}
-          keyExtractor={(item) => item.id}
-          renderItem={renderPatientItem}
-          ListEmptyComponent={renderEmptyState}
-          contentContainerStyle={
-            patients.length === 0 ? styles.emptyListContainer : undefined
+   yncBadge: {
+    backgroundColor: colors.warning[100],
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderBottomWidth: 1,
+    borderBottomColor: colors.warning[200],
+  },
+  syncBadgeText: {
+    fontSize: 12,
+    color: colors.warning[700],
+    textAlign: 'center',
+  },
+  searchContainer: {
+    padding: 16,
+    backgroundColor: colors.background.secondary,
+    borderBottomWidth: 1,
+    borderBottomColor: colors.border.default,
+  },
+  searchInput: {
+    backgroundColor: colors.background.primary,
+    borderWidth: 1,
+    borderColor: colors.border.default,
+    borderRadius: 8,
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    fontSize: 16,
+    color: colors.text.primary,
+  },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  loadingText: {
+    marginTop: 12,
+    fontSize: 14,
+    color: colors.text.secondary={
+            <RefreshControl
+              refreshing={isRefreshing}
+              onRefresh={handleRefresh}
+              colors={[colors.primary[500]]}
+              tintColor={colors.primary[500]}
+            />
           }
           testID="patient-list"
         />
@@ -111,7 +178,7 @@ export default function PatientList(): React.JSX.Element {
       <TouchableOpacity
         style={styles.fab}
         onPress={() => {
-          // TODO: Navigate to add patient screen
+          router.push('/(main)/patients/new' as never);
         }}
         testID="add-patient-button"
       >
