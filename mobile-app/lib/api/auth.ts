@@ -55,39 +55,34 @@ export async function login(
   refresh: string;
   user: UserData;
 }> {
-  try {
-    // Use axios directly with full URL and ngrok header for login
-    // (login happens before apiClient is configured with auth token)
-    const response = await axios.post<LoginResponse>(
-      `${API_CONFIG.BASE_URL}${API_ENDPOINTS.LOGIN}`,
-      { username, password },
-      {
-        headers: {
-          'Content-Type': 'application/json',
-          Accept: 'application/json',
-          'ngrok-skip-browser-warning': 'true',
-        },
-        timeout: API_CONFIG.TIMEOUT,
-      }
-    );
-
-    // Transform backend response to match our UserData interface
-    return {
-      access: response.data.access,
-      refresh: response.data.refresh,
-      user: {
-        id: response.data.user?.id || '1',
-        username: response.data.user?.username || username,
-        email: response.data.user?.email || '',
-        firstName: response.data.user?.first_name || '',
-        lastName: response.data.user?.last_name || '',
-        role: response.data.user?.role || 'user',
+  // Use axios directly with full URL and ngrok header for login
+  // (login happens before apiClient is configured with auth token)
+  const response = await axios.post<LoginResponse>(
+    `${API_CONFIG.BASE_URL}${API_ENDPOINTS.LOGIN}`,
+    { username, password },
+    {
+      headers: {
+        'Content-Type': 'application/json',
+        Accept: 'application/json',
+        'ngrok-skip-browser-warning': 'true',
       },
-    };
-  } catch (error) {
-    // Re-throw axios errors
-    throw error;
-  }
+      timeout: API_CONFIG.TIMEOUT,
+    }
+  );
+
+  // Transform backend response to match our UserData interface
+  return {
+    access: response.data.access,
+    refresh: response.data.refresh,
+    user: {
+      id: response.data.user?.id || '1',
+      username: response.data.user?.username || username,
+      email: response.data.user?.email || '',
+      firstName: response.data.user?.first_name || '',
+      lastName: response.data.user?.last_name || '',
+      role: response.data.user?.role || 'user',
+    },
+  };
 }
 
 /**
@@ -100,28 +95,23 @@ export async function refresh(refreshToken: string): Promise<{
   access: string;
   refresh: string;
 }> {
-  try {
-    const response = await axios.post<RefreshResponse>(
-      `${API_CONFIG.BASE_URL}${API_ENDPOINTS.REFRESH}`,
-      { refresh: refreshToken },
-      {
-        headers: {
-          'Content-Type': 'application/json',
-          Accept: 'application/json',
-          'ngrok-skip-browser-warning': 'true',
-        },
-        timeout: API_CONFIG.TIMEOUT,
-      }
-    );
+  const response = await axios.post<RefreshResponse>(
+    `${API_CONFIG.BASE_URL}${API_ENDPOINTS.REFRESH}`,
+    { refresh: refreshToken },
+    {
+      headers: {
+        'Content-Type': 'application/json',
+        Accept: 'application/json',
+        'ngrok-skip-browser-warning': 'true',
+      },
+      timeout: API_CONFIG.TIMEOUT,
+    }
+  );
 
-    return {
-      access: response.data.access,
-      refresh: response.data.refresh,
-    };
-  } catch (error) {
-    // Re-throw axios errors
-    throw error;
-  }
+  return {
+    access: response.data.access,
+    refresh: response.data.refresh,
+  };
 }
 
 /**
@@ -144,7 +134,7 @@ export async function verifyToken(token: string): Promise<boolean> {
       }
     );
     return true;
-  } catch (error) {
+  } catch {
     return false;
   }
 }

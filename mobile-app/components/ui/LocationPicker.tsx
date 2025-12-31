@@ -42,7 +42,7 @@ interface PickerModalProps {
   visible: boolean;
   onClose: () => void;
   title: string;
-  items: Array<{ id: number; name: string }>;
+  items: { id: number; name: string }[];
   onSelect: (item: { id: number; name: string }) => void;
   loading?: boolean;
   searchPlaceholder?: string;
@@ -154,7 +154,7 @@ export function LocationPicker({
       }
     };
     loadCounties();
-  }, []);
+  }, [countyId]);
 
   // Load sub-counties when county changes
   useEffect(() => {
@@ -180,7 +180,7 @@ export function LocationPicker({
       }
     };
     loadSubCounties();
-  }, [countyId]);
+  }, [countyId, subCountyId]);
 
   const handleCountySelect = (item: { id: number; name: string }) => {
     setSelectedCountyName(item.name);
