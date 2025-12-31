@@ -805,7 +805,7 @@ class VitoraHMIS(QMainWindow):
     def __init__(self):
         super().__init__()
         self.browser = QWebEngineView()
-        self.browser.setUrl(QUrl("http://localhost:8000"))
+        self.browser.setUrl(QUrl("http://localhost:9088"))
         self.setCentralWidget(self.browser)
         self.setWindowTitle("Vitora HMIS")
         self.setGeometry(100, 100, 1200, 800)

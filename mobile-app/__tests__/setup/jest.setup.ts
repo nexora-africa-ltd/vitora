@@ -16,7 +16,7 @@ jest.mock('expo-constants', () => ({
     name: 'Vitora HMIS',
     version: '1.0.0',
     extra: {
-      apiBaseUrl: 'http://localhost:8000',
+      apiBaseUrl: 'http://localhost:9088',
     },
   },
   default: {
@@ -24,7 +24,7 @@ jest.mock('expo-constants', () => ({
       name: 'Vitora HMIS',
       version: '1.0.0',
       extra: {
-        apiBaseUrl: 'http://localhost:8000',
+        apiBaseUrl: 'http://localhost:9088',
       },
     },
   },

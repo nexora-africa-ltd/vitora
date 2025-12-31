@@ -130,7 +130,7 @@ desktop-app/
 ## Backend Integration
 
 The desktop app automatically:
-1. Starts Django development server on `http://127.0.0.1:8000`
+1. Starts Django development server on `http://127.0.0.1:9088`
 2. Waits for backend to be healthy
 3. Creates main window once backend is ready
 4. Stops backend server when app quits
