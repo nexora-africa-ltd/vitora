@@ -10,6 +10,7 @@
 import { useQuery, UseQueryResult } from '@tanstack/react-query';
 import {
   patientsApi,
+  Patient,
   PatientListResponse,
   PatientListParams,
 } from '@/lib/api/patients';
@@ -38,5 +39,21 @@ export function usePatients(
   return useQuery({
     queryKey: patientKeys.list(params),
     queryFn: () => patientsApi.list(params),
+  });
+}
+
+/**
+ * Hook for fetching a single patient by ID
+ *
+ * @param id - Patient ID
+ * @returns Query result with patient data
+ */
+export function usePatient(
+  id: number | null
+): UseQueryResult<Patient, Error> {
+  return useQuery({
+    queryKey: patientKeys.detail(id ?? 0),
+    queryFn: () => patientsApi.get(id!),
+    enabled: id !== null && id > 0,
   });
 }
