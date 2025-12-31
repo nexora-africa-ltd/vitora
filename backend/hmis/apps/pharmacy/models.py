@@ -437,3 +437,143 @@ class StockAlert(models.Model):
         
         return alerts
 
+
+
+class Prescription(models.Model):
+    """Prescription for a patient encounter."""
+
+    PRESCRIPTION_STATUS = [
+        ("PENDING", "Pending"),
+        ("PARTIAL", "Partially Dispensed"),
+        ("DISPENSED", "Fully Dispensed"),
+        ("CANCELLED", "Cancelled"),
+        ("EXPIRED", "Expired"),
+    ]
+
+    # Links
+    encounter = models.ForeignKey(
+        "encounters.Encounter", on_delete=models.PROTECT, related_name="prescriptions"
+    )
+    patient = models.ForeignKey(
+        "patients.Patient", on_delete=models.PROTECT, related_name="prescriptions"
+    )
+
+    # Prescriber
+    prescribed_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.PROTECT,
+        related_name="prescriptions_written",
+    )
+    prescribed_at = models.DateTimeField(auto_now_add=True)
+
+    # Validity
+    valid_until = models.DateField()  # Typically 30 days from prescription
+
+    # Status
+    status = models.CharField(
+        max_length=20, choices=PRESCRIPTION_STATUS, default="PENDING"
+    )
+
+    # Notes
+    clinical_notes = models.TextField(blank=True)  # For pharmacist
+
+    # Tracking
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ["-prescribed_at"]
+
+    def __str__(self):
+        return f"Prescription for {self.patient} - {self.prescribed_at.date()}"
+
+    def is_valid(self) -> bool:
+        """Check if prescription has not expired."""
+        return self.valid_until >= date.today() and self.status != "EXPIRED"
+
+    def is_fully_dispensed(self) -> bool:
+        """Check if all items have been fully dispensed."""
+        for item in self.items.all():
+            if not item.is_cancelled and item.quantity_dispensed < item.quantity:
+                return False
+        return True
+
+    def get_remaining_items(self) -> List["PrescriptionItem"]:
+        """Get items that are not fully dispensed."""
+        return [
+            item
+            for item in self.items.all()
+            if not item.is_cancelled and item.quantity_dispensed < item.quantity
+        ]
+
+    def cancel(self, reason: str) -> None:
+        """Cancel prescription with reason."""
+        self.status = "CANCELLED"
+        for item in self.items.all():
+            item.cancel(reason)
+        self.save()
+
+    def update_status(self) -> None:
+        """Auto-update status based on items."""
+        if self.status == "CANCELLED":
+            return
+        
+        total_items = self.items.filter(is_cancelled=False).count()
+        if total_items == 0:
+            return
+        
+        fully_dispensed = sum(
+            1 for item in self.items.filter(is_cancelled=False)
+            if item.quantity_dispensed >= item.quantity
+        )
+        partially_dispensed = sum(
+            1 for item in self.items.filter(is_cancelled=False)
+            if 0 < item.quantity_dispensed < item.quantity
+        )
+        
+        if fully_dispensed == total_items:
+            self.status = "DISPENSED"
+        elif partially_dispensed > 0 or fully_dispensed > 0:
+            self.status = "PARTIAL"
+        else:
+            self.status = "PENDING"
+        
+        self.save()
+
+
+class PrescriptionItem(models.Model):
+    """Individual drug item in a prescription."""
+
+    prescription = models.ForeignKey(
+        Prescription, on_delete=models.CASCADE, related_name="items"
+    )
+    drug = models.ForeignKey(Drug, on_delete=models.PROTECT)
+
+    # Dosage instructions
+    quantity = models.PositiveIntegerField()  # Total quantity to dispense
+    dosage = models.CharField(max_length=100)  # e.g., "1 tablet"
+    frequency = models.CharField(max_length=100)  # e.g., "3 times daily"
+    duration = models.CharField(max_length=50)  # e.g., "7 days"
+    route = models.CharField(max_length=50, blank=True)  # e.g., "Oral", "IV"
+    instructions = models.TextField(blank=True)  # e.g., "Take after meals"
+
+    # Dispensing tracking
+    quantity_dispensed = models.PositiveIntegerField(default=0)
+    is_substitutable = models.BooleanField(default=True)  # Allow generic substitution
+
+    # Status
+    is_cancelled = models.BooleanField(default=False)
+    cancellation_reason = models.TextField(blank=True)
+
+    def __str__(self):
+        return f"{self.drug.generic_name} - {self.quantity} {self.drug.unit}"
+
+    def cancel(self, reason: str) -> None:
+        """Cancel prescription item with reason."""
+        self.is_cancelled = True
+        self.cancellation_reason = reason
+        self.save()
+
+    def remaining_quantity(self) -> int:
+        """Get remaining quantity to be dispensed."""
+        return self.quantity - self.quantity_dispensed
