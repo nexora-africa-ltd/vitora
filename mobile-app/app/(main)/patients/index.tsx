@@ -92,8 +92,12 @@ export default function PatientListScreen(): React.JSX.Element {
     container: {
       backgroundColor: themeColors.background.primary,
     },
-    searchInput: {
+    searchContainer: {
       backgroundColor: themeColors.background.secondary,
+      borderBottomColor: themeColors.border,
+    },
+    searchInput: {
+      backgroundColor: themeColors.card,
       color: themeColors.text.primary,
       borderColor: themeColors.border,
     },
@@ -121,7 +125,7 @@ export default function PatientListScreen(): React.JSX.Element {
       {renderSyncBadge()}
 
       {/* Search Bar */}
-      <View style={styles.searchContainer}>
+      <View style={[styles.searchContainer, dynamicStyles.searchContainer]}>
         <TextInput
           style={[styles.searchInput, dynamicStyles.searchInput]}
           value={searchQuery}
@@ -134,8 +138,24 @@ export default function PatientListScreen(): React.JSX.Element {
 
       {/* Loading State */}
       {isLoading && !isRefreshing ? (
-        <View style={styles.loadingContainer}>
+        <View style={[styles.loadingContainer, dynamicStyles.container]}>
           <ActivityIndicator size="large" color={colors.primary[500]} />
+          <Text style={[styles.loadingText, { color: themeColors.text.secondary }]}>
+            Loading patients...
+          </Text>
+        </View>
+      ) : error ? (
+        <View style={[styles.errorContainer, dynamicStyles.container]}>
+          <Text style={styles.errorIcon}>⚠️</Text>
+          <Text style={[styles.errorTitle, dynamicStyles.emptyStateText]}>
+            Failed to load patients
+          </Text>
+          <Text style={[styles.errorMessage, dynamicStyles.emptyStateSubtext]}>
+            {error.message || 'Check your connection and try again'}
+          </Text>
+          <TouchableOpacity style={styles.retryButton} onPress={() => refetch()}>
+            <Text style={styles.retryButtonText}>Retry</Text>
+          </TouchableOpacity>
         </View>
       ) : (
         <FlatList
@@ -163,14 +183,12 @@ export default function PatientListScreen(): React.JSX.Element {
           ListEmptyComponent={
             <View style={styles.emptyState}>
               <Text style={[styles.emptyStateText, dynamicStyles.emptyStateText]}>
-                {error ? 'Error loading patients' : 'No patients found'}
+                No patients found
               </Text>
               <Text style={[styles.emptyStateSubtext, dynamicStyles.emptyStateSubtext]}>
-                {error
-                  ? 'Pull down to retry'
-                  : searchQuery
-                    ? 'Try a different search term'
-                    : 'Add patients to get started'}
+                {searchQuery
+                  ? 'Try a different search term'
+                  : 'Add patients to get started'}
               </Text>
             </View>
           }
@@ -236,6 +254,41 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
+  },
+  loadingText: {
+    marginTop: 12,
+    fontSize: 14,
+  },
+  errorContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 24,
+  },
+  errorIcon: {
+    fontSize: 48,
+    marginBottom: 16,
+  },
+  errorTitle: {
+    fontSize: 18,
+    fontWeight: '600',
+    marginBottom: 8,
+  },
+  errorMessage: {
+    fontSize: 14,
+    textAlign: 'center',
+    marginBottom: 20,
+  },
+  retryButton: {
+    backgroundColor: colors.primary[500],
+    paddingHorizontal: 24,
+    paddingVertical: 12,
+    borderRadius: 8,
+  },
+  retryButtonText: {
+    color: colors.white,
+    fontSize: 16,
+    fontWeight: '600',
   },
   patientCard: {
     flexDirection: 'row',
