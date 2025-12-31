@@ -124,8 +124,9 @@ export function LocationPicker({
 }: LocationPickerProps): React.JSX.Element {
   const [counties, setCounties] = useState<County[]>([]);
   const [subCounties, setSubCounties] = useState<SubCounty[]>([]);
-  const [loadingCounties, setLoadingCounties] = useState(false);
+  const [loadingCounties, setLoadingCounties] = useState(true);
   const [loadingSubCounties, setLoadingSubCounties] = useState(false);
+  const [loadError, setLoadError] = useState<string | null>(null);
   const [countyModalVisible, setCountyModalVisible] = useState(false);
   const [subCountyModalVisible, setSubCountyModalVisible] = useState(false);
   const [selectedCountyName, setSelectedCountyName] = useState('');
@@ -135,6 +136,7 @@ export function LocationPicker({
   useEffect(() => {
     const loadCounties = async () => {
       setLoadingCounties(true);
+      setLoadError(null);
       try {
         const data = await locationsApi.getCounties();
         setCounties(data);
@@ -143,8 +145,10 @@ export function LocationPicker({
           const county = data.find((c) => c.id === countyId);
           if (county) setSelectedCountyName(county.name);
         }
-      } catch (error) {
+      } catch (error: unknown) {
         console.error('Failed to load counties:', error);
+        const errMsg = error instanceof Error ? error.message : 'Failed to load counties';
+        setLoadError(errMsg);
       } finally {
         setLoadingCounties(false);
       }
@@ -192,6 +196,24 @@ export function LocationPicker({
 
   return (
     <View style={styles.container} testID={testID}>
+      {/* Error Banner */}
+      {loadError && (
+        <View style={styles.errorBanner}>
+          <Text style={styles.errorBannerText}>⚠️ {loadError}</Text>
+          <TouchableOpacity
+            onPress={() => {
+              setLoadError(null);
+              setLoadingCounties(true);
+              locationsApi.getCounties(true).then(setCounties).catch(() => {
+                setLoadError('Failed to load counties. Check your connection.');
+              }).finally(() => setLoadingCounties(false));
+            }}
+          >
+            <Text style={styles.retryText}>Retry</Text>
+          </TouchableOpacity>
+        </View>
+      )}
+
       {/* County Picker */}
       <View style={styles.fieldContainer}>
         <Text style={styles.label}>County *</Text>
@@ -199,15 +221,20 @@ export function LocationPicker({
           style={[styles.pickerButton, countyError && styles.pickerButtonError]}
           onPress={() => setCountyModalVisible(true)}
           testID={`${testID}-county-picker`}
+          disabled={loadingCounties}
         >
-          <Text
-            style={[
-              styles.pickerButtonText,
-              !selectedCountyName && styles.placeholderText,
-            ]}
-          >
-            {selectedCountyName || 'Select County'}
-          </Text>
+          {loadingCounties ? (
+            <Text style={styles.placeholderText}>Loading counties...</Text>
+          ) : (
+            <Text
+              style={[
+                styles.pickerButtonText,
+                !selectedCountyName && styles.placeholderText,
+              ]}
+            >
+              {selectedCountyName || 'Select County'}
+            </Text>
+          )}
           <Text style={styles.chevron}>▼</Text>
         </TouchableOpacity>
         {countyError && <Text style={styles.errorText}>{countyError}</Text>}
@@ -314,6 +341,25 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: colors.semantic.error,
     marginTop: 4,
+  },
+  errorBanner: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    backgroundColor: colors.semantic.error,
+    padding: 12,
+    borderRadius: 8,
+    marginBottom: 12,
+  },
+  errorBannerText: {
+    flex: 1,
+    color: colors.white,
+    fontSize: 14,
+  },
+  retryText: {
+    color: colors.white,
+    fontWeight: '600',
+    marginLeft: 12,
   },
 });
 

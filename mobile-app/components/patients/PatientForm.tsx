@@ -22,6 +22,7 @@ import { theme } from '@/constants/theme';
 import { Input } from '@/components/ui/Input';
 import { Button } from '@/components/ui/Button';
 import { LocationPicker } from '@/components/ui/LocationPicker';
+import { DatePicker } from '@/components/ui/DatePicker';
 import type { Patient, CreatePatientData } from '@/lib/api/patients';
 
 export interface PatientFormProps {
@@ -196,12 +197,13 @@ export function PatientForm({
           testID="input-last-name"
         />
 
-        <Input
+        <DatePicker
           label="Date of Birth *"
           value={formData.date_of_birth}
-          onChangeText={(v) => updateField('date_of_birth', v)}
+          onChange={(v) => updateField('date_of_birth', v)}
           error={errors.date_of_birth}
           placeholder="YYYY-MM-DD"
+          maxDate={new Date().toISOString().split('T')[0]}
           testID="input-dob"
         />
 
