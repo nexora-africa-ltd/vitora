@@ -13,6 +13,7 @@ from decimal import Decimal
 from django.contrib.auth import get_user_model
 from django.core.exceptions import ValidationError
 from django.db import models
+from django.utils import timezone
 
 User = get_user_model()
 
@@ -362,7 +363,7 @@ class LabOrder(models.Model):
         self.status_changed_by = user
 
         if new_status == "COMPLETED":
-            self.completed_at = datetime.now()
+            self.completed_at = timezone.now()
 
         self.save()
 
@@ -374,7 +375,7 @@ class LabOrder(models.Model):
             user: User who collected the specimen
         """
         self.specimen_collected = True
-        self.specimen_collected_at = datetime.now()
+        self.specimen_collected_at = timezone.now()
         self.specimen_collected_by = user
         self.update_status("SPECIMEN_COLLECTED", user)
 
@@ -601,5 +602,5 @@ class LabResult(models.Model):
         """
         self.verification_status = "VERIFIED"
         self.verified_by = user
-        self.verified_at = datetime.now()
+        self.verified_at = timezone.now()
         self.save()
