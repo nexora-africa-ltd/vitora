@@ -7,9 +7,8 @@ lab orders, order items, results, and LOINC codes for interoperability.
 Sprint 1.3-1.4 Track B: Lab/Investigations Foundation
 """
 
-from datetime import datetime
-
 import logging
+from datetime import datetime
 
 from django.contrib.auth import get_user_model
 from django.core.exceptions import ValidationError
