@@ -1,0 +1,605 @@
+"""
+Laboratory models for Vitora HMIS.
+
+This module defines models for laboratory test management including test catalog,
+lab orders, order items, results, and LOINC codes for interoperability.
+
+Sprint 1.3-1.4 Track B: Lab/Investigations Foundation
+"""
+
+from datetime import datetime, timedelta
+from decimal import Decimal
+
+from django.contrib.auth import get_user_model
+from django.core.exceptions import ValidationError
+from django.db import models
+
+User = get_user_model()
+
+
+def generate_lab_order_number():
+    """
+    Generate a unique laboratory order number.
+
+    Format: LAB-YYYYMMDD-XXXX
+    Where XXXX is a 4-digit sequential number for the day.
+
+    Returns:
+        str: A unique lab order number string
+    """
+    today = datetime.now().strftime("%Y%m%d")
+    prefix = f"LAB-{today}-"
+
+    # Find the highest order number for today
+    latest_order = LabOrder.objects.filter(order_number__startswith=prefix).order_by("-order_number").first()
+
+    if latest_order:
+        # Extract the sequence number and increment
+        last_sequence = int(latest_order.order_number.split("-")[-1])
+        sequence = last_sequence + 1
+    else:
+        # First order of the day
+        sequence = 1
+
+    return f"{prefix}{sequence:04d}"
+
+
+class TestCatalog(models.Model):
+    """Laboratory test master catalog."""
+
+    TEST_CATEGORIES = [
+        ("HEMATOLOGY", "Hematology"),
+        ("CHEMISTRY", "Clinical Chemistry"),
+        ("MICROBIOLOGY", "Microbiology"),
+        ("SEROLOGY", "Serology"),
+        ("PARASITOLOGY", "Parasitology"),
+        ("IMMUNOLOGY", "Immunology"),
+        ("URINALYSIS", "Urinalysis"),
+        ("HISTOPATHOLOGY", "Histopathology"),
+        ("CYTOLOGY", "Cytology"),
+        ("MOLECULAR", "Molecular Diagnostics"),
+        ("OTHER", "Other"),
+    ]
+
+    SPECIMEN_TYPES = [
+        ("BLOOD", "Whole Blood"),
+        ("SERUM", "Serum"),
+        ("PLASMA", "Plasma"),
+        ("URINE", "Urine"),
+        ("STOOL", "Stool"),
+        ("CSF", "Cerebrospinal Fluid"),
+        ("SPUTUM", "Sputum"),
+        ("SWAB", "Swab"),
+        ("TISSUE", "Tissue"),
+        ("ASPIRATE", "Aspirate"),
+        ("OTHER", "Other"),
+    ]
+
+    RESULT_TYPES = [
+        ("NUMERIC", "Numeric Value"),
+        ("TEXT", "Text Result"),
+        ("OPTIONS", "Predefined Options"),
+        ("PANEL", "Multi-component Panel"),
+    ]
+
+    # Identity
+    code = models.CharField(max_length=50, unique=True, help_text="Internal test code")
+    name = models.CharField(max_length=200, help_text="Full test name")
+    short_name = models.CharField(max_length=50, help_text="Test abbreviation")
+    loinc_code = models.CharField(
+        max_length=20, null=True, blank=True, help_text="LOINC code for interoperability"
+    )
+
+    # Classification
+    category = models.CharField(max_length=30, choices=TEST_CATEGORIES)
+    specimen_type = models.CharField(max_length=20, choices=SPECIMEN_TYPES)
+
+    # Requirements
+    requires_fasting = models.BooleanField(default=False)
+    special_instructions = models.TextField(blank=True)
+    turnaround_hours = models.IntegerField(default=24, help_text="Expected turnaround time in hours")
+
+    # Availability
+    available_in_house = models.BooleanField(default=True)
+    external_lab_partner = models.CharField(max_length=100, blank=True)
+
+    # Pricing
+    cost = models.DecimalField(max_digits=10, decimal_places=2, default=0)
+    sha_claimable = models.BooleanField(default=True, help_text="Covered by Kenya SHA")
+
+    # Result configuration
+    result_type = models.CharField(max_length=20, choices=RESULT_TYPES)
+    result_unit = models.CharField(max_length=30, blank=True, help_text='e.g., "mg/dL", "mmol/L"')
+    normal_range_male = models.CharField(max_length=50, blank=True, help_text='e.g., "4.5-5.5"')
+    normal_range_female = models.CharField(max_length=50, blank=True)
+    normal_range_child = models.CharField(max_length=50, blank=True)
+    result_options = models.JSONField(default=list, blank=True, help_text="For OPTIONS type results")
+
+    # Panel components (for PANEL type)
+    is_panel = models.BooleanField(default=False)
+    panel_components = models.ManyToManyField("self", symmetrical=False, blank=True)
+
+    # Status
+    is_active = models.BooleanField(default=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        verbose_name = "Test Catalog"
+        verbose_name_plural = "Test Catalogs"
+        ordering = ["category", "name"]
+        indexes = [
+            models.Index(fields=["code"]),
+            models.Index(fields=["loinc_code"]),
+            models.Index(fields=["category"]),
+        ]
+
+    def __str__(self):
+        return f"{self.code} - {self.name}"
+
+    def get_normal_range(self, patient):
+        """
+        Get appropriate normal range based on patient's gender and age.
+
+        Args:
+            patient: Patient instance
+
+        Returns:
+            str: Normal range string or empty string if not defined
+        """
+        from hmis.apps.patients.models import Patient
+
+        if not isinstance(patient, Patient):
+            return ""
+
+        # Check age first (child takes precedence)
+        age = patient.age if hasattr(patient, "age") else None
+        if age is not None and age < 18 and self.normal_range_child:
+            return self.normal_range_child
+
+        # Then check gender
+        if patient.gender == "M" and self.normal_range_male:
+            return self.normal_range_male
+        elif patient.gender == "F" and self.normal_range_female:
+            return self.normal_range_female
+
+        # Fallback to male range if no gender-specific range
+        return self.normal_range_male or self.normal_range_female or ""
+
+    def is_result_abnormal(self, value, patient):
+        """
+        Check if a numeric result is outside normal range.
+
+        Args:
+            value: Numeric test result
+            patient: Patient instance
+
+        Returns:
+            bool: True if result is abnormal, False otherwise
+        """
+        normal_range = self.get_normal_range(patient)
+        if not normal_range or value is None:
+            return False
+
+        try:
+            value = float(value)
+            # Parse range (e.g., "4.5-5.5")
+            if "-" in normal_range:
+                low, high = normal_range.split("-")
+                low_val = float(low.strip())
+                high_val = float(high.strip())
+                return value < low_val or value > high_val
+        except (ValueError, AttributeError):
+            pass
+
+        return False
+
+    def get_panel_tests(self):
+        """
+        Get component tests if this is a panel.
+
+        Returns:
+            QuerySet: Panel component tests
+        """
+        if self.is_panel:
+            return self.panel_components.all()
+        return TestCatalog.objects.none()
+
+
+class LOINCCode(models.Model):
+    """LOINC code reference for lab test interoperability."""
+
+    code = models.CharField(max_length=20, unique=True, primary_key=True)
+    component = models.CharField(max_length=200, help_text="What is measured")
+    property = models.CharField(max_length=50, help_text="Mass, volume, etc.")
+    time_aspect = models.CharField(max_length=50, help_text="Point vs duration")
+    system = models.CharField(max_length=100, help_text="Specimen type")
+    scale_type = models.CharField(max_length=50, help_text="Quantitative, ordinal, etc.")
+    method_type = models.CharField(max_length=100, blank=True)
+    long_common_name = models.CharField(max_length=300)
+    short_name = models.CharField(max_length=100)
+
+    class Meta:
+        verbose_name = "LOINC Code"
+        verbose_name_plural = "LOINC Codes"
+        ordering = ["code"]
+
+    def __str__(self):
+        return f"{self.code} - {self.short_name}"
+
+
+class LabOrder(models.Model):
+    """Laboratory test order from clinical encounter."""
+
+    ORDER_TYPES = [
+        ("IN_HOUSE", "In-House Processing"),
+        ("EXTERNAL", "External Lab Referral"),
+    ]
+
+    ORDER_STATUS = [
+        ("DRAFT", "Draft"),
+        ("ORDERED", "Ordered"),
+        ("SPECIMEN_COLLECTED", "Specimen Collected"),
+        ("IN_PROGRESS", "In Progress"),
+        ("COMPLETED", "Completed"),
+        ("CANCELLED", "Cancelled"),
+        ("REJECTED", "Rejected"),
+    ]
+
+    PRIORITY_LEVELS = [
+        ("ROUTINE", "Routine"),
+        ("URGENT", "Urgent"),
+        ("STAT", "STAT (Immediate)"),
+    ]
+
+    # Valid status transitions
+    STATUS_TRANSITIONS = {
+        "DRAFT": ["ORDERED", "CANCELLED"],
+        "ORDERED": ["SPECIMEN_COLLECTED", "CANCELLED", "REJECTED"],
+        "SPECIMEN_COLLECTED": ["IN_PROGRESS", "REJECTED"],
+        "IN_PROGRESS": ["COMPLETED"],
+        "COMPLETED": [],
+        "CANCELLED": [],
+        "REJECTED": [],
+    }
+
+    # Identity
+    order_number = models.CharField(max_length=30, unique=True, editable=False)
+
+    # Relationships
+    patient = models.ForeignKey("patients.Patient", on_delete=models.PROTECT, related_name="lab_orders")
+    encounter = models.ForeignKey("encounters.Encounter", on_delete=models.PROTECT, related_name="lab_orders")
+    ordered_by = models.ForeignKey(User, on_delete=models.PROTECT, related_name="lab_orders")
+
+    # Order details
+    order_type = models.CharField(max_length=20, choices=ORDER_TYPES, default="IN_HOUSE")
+    external_lab = models.CharField(max_length=100, blank=True, help_text="External lab name if applicable")
+    priority = models.CharField(max_length=20, choices=PRIORITY_LEVELS, default="ROUTINE")
+    clinical_notes = models.TextField(blank=True, help_text="Clinical context for laboratory")
+
+    # Status tracking
+    status = models.CharField(max_length=30, choices=ORDER_STATUS, default="DRAFT")
+    status_changed_at = models.DateTimeField(auto_now=True)
+    status_changed_by = models.ForeignKey(
+        User, null=True, on_delete=models.SET_NULL, related_name="lab_status_changes"
+    )
+
+    # Specimen tracking
+    specimen_collected = models.BooleanField(default=False)
+    specimen_collected_at = models.DateTimeField(null=True, blank=True)
+    specimen_collected_by = models.ForeignKey(
+        User, null=True, blank=True, on_delete=models.SET_NULL, related_name="specimens_collected"
+    )
+
+    # External lab details
+    external_requisition_sent = models.BooleanField(default=False)
+    external_requisition_date = models.DateTimeField(null=True, blank=True)
+    external_accession_number = models.CharField(max_length=50, blank=True)
+
+    # Billing
+    total_cost = models.DecimalField(max_digits=10, decimal_places=2, default=0)
+    is_paid = models.BooleanField(default=False)
+
+    # Timestamps
+    ordered_at = models.DateTimeField(auto_now_add=True)
+    completed_at = models.DateTimeField(null=True, blank=True)
+
+    # Audit
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        verbose_name = "Lab Order"
+        verbose_name_plural = "Lab Orders"
+        ordering = ["-ordered_at"]
+        indexes = [
+            models.Index(fields=["order_number"]),
+            models.Index(fields=["patient"]),
+            models.Index(fields=["status"]),
+            models.Index(fields=["ordered_at"]),
+        ]
+
+    def __str__(self):
+        return f"{self.order_number} - {self.patient}"
+
+    def save(self, *args, **kwargs):
+        """Override save to auto-generate order number."""
+        if not self.order_number:
+            self.order_number = generate_lab_order_number()
+        super().save(*args, **kwargs)
+
+    def calculate_total_cost(self):
+        """
+        Calculate total cost from all order items.
+
+        Returns:
+            Decimal: Total cost of all tests in the order
+        """
+        total = sum(item.unit_cost for item in self.items.all())
+        self.total_cost = total
+        self.save(update_fields=["total_cost"])
+        return total
+
+    def update_status(self, new_status, user):
+        """
+        Update order status with validation.
+
+        Args:
+            new_status: New status value
+            user: User making the change
+
+        Raises:
+            ValidationError: If status transition is invalid
+        """
+        if new_status not in dict(self.ORDER_STATUS):
+            raise ValidationError(f"Invalid status: {new_status}")
+
+        valid_transitions = self.STATUS_TRANSITIONS.get(self.status, [])
+        if new_status not in valid_transitions:
+            raise ValidationError(f"Cannot transition from {self.status} to {new_status}")
+
+        self.status = new_status
+        self.status_changed_by = user
+
+        if new_status == "COMPLETED":
+            self.completed_at = datetime.now()
+
+        self.save()
+
+    def mark_specimen_collected(self, user):
+        """
+        Record specimen collection.
+
+        Args:
+            user: User who collected the specimen
+        """
+        self.specimen_collected = True
+        self.specimen_collected_at = datetime.now()
+        self.specimen_collected_by = user
+        self.update_status("SPECIMEN_COLLECTED", user)
+
+    def get_pending_results(self):
+        """
+        Get order items without results.
+
+        Returns:
+            QuerySet: Order items that don't have results yet
+        """
+        return self.items.filter(result__isnull=True)
+
+    def is_complete(self):
+        """
+        Check if all tests have results.
+
+        Returns:
+            bool: True if all order items have results
+        """
+        return self.items.exists() and not self.get_pending_results().exists()
+
+    def get_turnaround_time(self):
+        """
+        Calculate time from order to completion.
+
+        Returns:
+            timedelta or None: Time taken from order to completion
+        """
+        if self.completed_at:
+            return self.completed_at - self.ordered_at
+        return None
+
+
+class LabOrderItem(models.Model):
+    """Individual test within a lab order."""
+
+    ITEM_STATUS = [
+        ("PENDING", "Pending"),
+        ("IN_PROGRESS", "In Progress"),
+        ("COMPLETED", "Completed"),
+        ("CANCELLED", "Cancelled"),
+    ]
+
+    lab_order = models.ForeignKey(LabOrder, on_delete=models.CASCADE, related_name="items")
+    test = models.ForeignKey(TestCatalog, on_delete=models.PROTECT)
+
+    # Status
+    status = models.CharField(max_length=20, choices=ITEM_STATUS, default="PENDING")
+
+    # Pricing at time of order (snapshot)
+    unit_cost = models.DecimalField(max_digits=10, decimal_places=2)
+
+    # Special instructions for this specific test
+    special_instructions = models.TextField(blank=True)
+
+    # Timestamps
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        verbose_name = "Lab Order Item"
+        verbose_name_plural = "Lab Order Items"
+        ordering = ["created_at"]
+
+    def __str__(self):
+        return f"{self.lab_order.order_number} - {self.test.name}"
+
+    def save(self, *args, **kwargs):
+        """Override save to auto-populate unit_cost from test catalog."""
+        if not self.unit_cost:
+            self.unit_cost = self.test.cost
+        super().save(*args, **kwargs)
+
+    def has_result(self):
+        """
+        Check if result exists for this item.
+
+        Returns:
+            bool: True if result exists
+        """
+        return hasattr(self, "result")
+
+
+class LabResult(models.Model):
+    """Laboratory test result."""
+
+    RESULT_FLAGS = [
+        ("NORMAL", "Normal"),
+        ("LOW", "Low"),
+        ("HIGH", "High"),
+        ("CRITICAL_LOW", "Critical Low"),
+        ("CRITICAL_HIGH", "Critical High"),
+        ("ABNORMAL", "Abnormal"),
+        ("POSITIVE", "Positive"),
+        ("NEGATIVE", "Negative"),
+    ]
+
+    VERIFICATION_STATUS = [
+        ("UNVERIFIED", "Unverified"),
+        ("VERIFIED", "Verified"),
+        ("REJECTED", "Rejected"),
+    ]
+
+    # Relationships
+    order_item = models.OneToOneField(LabOrderItem, on_delete=models.CASCADE, related_name="result")
+
+    # Result data
+    numeric_value = models.DecimalField(max_digits=15, decimal_places=4, null=True, blank=True)
+    text_value = models.TextField(blank=True)
+    option_value = models.CharField(max_length=100, blank=True, help_text="For predefined options")
+
+    # Interpretation
+    result_flag = models.CharField(max_length=20, choices=RESULT_FLAGS, blank=True)
+    interpretation = models.TextField(blank=True, help_text="Pathologist notes")
+
+    # Verification
+    verification_status = models.CharField(max_length=20, choices=VERIFICATION_STATUS, default="UNVERIFIED")
+    verified_by = models.ForeignKey(
+        User, null=True, blank=True, on_delete=models.SET_NULL, related_name="verified_results"
+    )
+    verified_at = models.DateTimeField(null=True, blank=True)
+
+    # Result entry
+    entered_by = models.ForeignKey(User, on_delete=models.PROTECT, related_name="entered_results")
+    entered_at = models.DateTimeField(auto_now_add=True)
+
+    # External results
+    is_external_result = models.BooleanField(default=False)
+    external_result_attachment = models.FileField(upload_to="lab_results/", null=True, blank=True)
+    external_result_date = models.DateField(null=True, blank=True)
+
+    # Audit
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        verbose_name = "Lab Result"
+        verbose_name_plural = "Lab Results"
+        ordering = ["-entered_at"]
+        indexes = [
+            models.Index(fields=["verification_status"]),
+        ]
+
+    def __str__(self):
+        return f"Result for {self.order_item.test.name}"
+
+    def auto_flag_result(self):
+        """
+        Automatically determine flag based on normal ranges.
+
+        This method checks the numeric value against the patient's normal range
+        and sets appropriate flags (NORMAL, LOW, HIGH, CRITICAL_LOW, CRITICAL_HIGH).
+        """
+        if self.numeric_value is None:
+            return
+
+        test = self.order_item.test
+        patient = self.order_item.lab_order.patient
+        normal_range = test.get_normal_range(patient)
+
+        if not normal_range or "-" not in normal_range:
+            return
+
+        try:
+            low, high = normal_range.split("-")
+            low_val = float(low.strip())
+            high_val = float(high.strip())
+            value = float(self.numeric_value)
+
+            # Calculate critical thresholds (20% beyond normal)
+            range_width = high_val - low_val
+            critical_low = low_val - (range_width * 0.2)
+            critical_high = high_val + (range_width * 0.2)
+
+            if value < critical_low:
+                self.result_flag = "CRITICAL_LOW"
+            elif value < low_val:
+                self.result_flag = "LOW"
+            elif value > critical_high:
+                self.result_flag = "CRITICAL_HIGH"
+            elif value > high_val:
+                self.result_flag = "HIGH"
+            else:
+                self.result_flag = "NORMAL"
+
+            self.save(update_fields=["result_flag"])
+        except (ValueError, AttributeError):
+            pass
+
+    def is_critical(self):
+        """
+        Check if result is critically abnormal.
+
+        Returns:
+            bool: True if result is critically low or high
+        """
+        return self.result_flag in ["CRITICAL_LOW", "CRITICAL_HIGH"]
+
+    def get_formatted_value(self):
+        """
+        Return result with unit.
+
+        Returns:
+            str: Formatted result value with unit
+        """
+        test = self.order_item.test
+
+        if self.numeric_value is not None:
+            unit = test.result_unit or ""
+            return f"{self.numeric_value} {unit}".strip()
+        elif self.text_value:
+            return self.text_value
+        elif self.option_value:
+            return self.option_value
+
+        return ""
+
+    def verify(self, user):
+        """
+        Mark result as verified.
+
+        Args:
+            user: User verifying the result
+        """
+        self.verification_status = "VERIFIED"
+        self.verified_by = user
+        self.verified_at = datetime.now()
+        self.save()
