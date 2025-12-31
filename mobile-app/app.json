@@ -6,7 +6,7 @@
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "automatic",
-    "newArchEnabled": true,
+    "newArchEnabled": false,
     "scheme": "vitora",
     "splash": {
       "image": "./assets/splash-icon.png",
@@ -50,15 +50,9 @@
         "origin": false
       },
       "eas": {
-        "projectId": "b2c3d4e5-f6a7-8b9c-0d1e-2f3a4b5c6d7e"
+        "projectId": "3a7c3b7f-144d-4108-ae21-340fdc77ca00"
       }
     },
-    "runtimeVersion": {
-      "policy": "appVersion"
-    },
-    "updates": {
-      "url": "https://u.expo.dev/b2c3d4e5-f6a7-8b9c-0d1e-2f3a4b5c6d7e"
-    },
-    "owner": "nexora-africa-ltd"
+    "owner": "thande788"
   }
 }

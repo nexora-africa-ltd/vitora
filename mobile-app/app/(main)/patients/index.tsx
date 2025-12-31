@@ -34,9 +34,15 @@ export default function PatientListScreen(): React.JSX.Element {
   const router = useRouter();
   const [searchQuery, setSearchQuery] = useState('');
   const [isRefreshing, setIsRefreshing] = useState(false);
-  
+
   // Data hooks
-  const { data: patients = [], isLoading, error, refetch } = usePatients({ search: searchQuery });
+  const {
+    data: patientsResponse,
+    isLoading,
+    error,
+    refetch,
+  } = usePatients({ search: searchQuery });
+  const patients = patientsResponse?.results ?? [];
   const { pendingCount, hasPending, refreshStatus } = useSyncStatus();
   const { isOffline } = useOfflineStatus();
 
@@ -57,7 +63,7 @@ export default function PatientListScreen(): React.JSX.Element {
           );
         }
       }
-      
+
       // Refresh data
       await refetch();
       await refreshStatus();
@@ -80,7 +86,8 @@ export default function PatientListScreen(): React.JSX.Element {
         </Text>
         <Text style={styles.patientMrn}>MRN: {item.mrn}</Text>
         <Text style={styles.patientDetails}>
-          {item.gender === 'M' ? 'Male' : item.gender === 'F' ? 'Female' : 'Other'} • DOB: {item.date_of_birth}
+          {item.gender === 'M' ? 'Male' : item.gender === 'F' ? 'Female' : 'Other'} • DOB:{' '}
+          {item.date_of_birth}
         </Text>
       </View>
       <Text style={styles.chevron}>›</Text>
@@ -126,7 +133,52 @@ export default function PatientListScreen(): React.JSX.Element {
           onChangeText={setSearchQuery}
           placeholder="Search by name, MRN, or phone..."
           placeholderTextColor={colors.text.tertiary}
-   yncBadge: {
+          testID="patient-search-input"
+        />
+      </View>
+
+      {/* Loading State */}
+      {isLoading && !isRefreshing ? (
+        <View style={styles.loadingContainer}>
+          <ActivityIndicator size="large" color={colors.primary[500]} />
+        </View>
+      ) : (
+        <FlatList
+          data={patients}
+          keyExtractor={(item) => item.id.toString()}
+          renderItem={renderPatientItem}
+          ListEmptyComponent={renderEmptyState}
+          contentContainerStyle={patients.length === 0 ? styles.emptyListContent : undefined}
+          refreshControl={
+            <RefreshControl
+              refreshing={isRefreshing}
+              onRefresh={handleRefresh}
+              tintColor={colors.primary[500]}
+              colors={[colors.primary[500]]}
+            />
+          }
+          testID="patient-list"
+        />
+      )}
+
+      {/* Add Patient FAB */}
+      <TouchableOpacity
+        style={styles.fab}
+        onPress={() => router.push('/(main)/patients/new')}
+        testID="add-patient-fab"
+      >
+        <Text style={styles.fabText}>+</Text>
+      </TouchableOpacity>
+    </View>
+  );
+}
+
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+    backgroundColor: colors.background.primary,
+  },
+  syncBadge: {
     backgroundColor: colors.warning[100],
     paddingHorizontal: 12,
     paddingVertical: 6,
@@ -159,71 +211,13 @@ export default function PatientListScreen(): React.JSX.Element {
     justifyContent: 'center',
     alignItems: 'center',
   },
-  loadingText: {
-    marginTop: 12,
-    fontSize: 14,
-    color: colors.text.secondary={
-            <RefreshControl
-              refreshing={isRefreshing}
-              onRefresh={handleRefresh}
-              colors={[colors.primary[500]]}
-              tintColor={colors.primary[500]}
-            />
-          }
-          testID="patient-list"
-        />
-      )}
-
-      {/* Add Patient FAB */}
-      <TouchableOpacity
-        style={styles.fab}
-        onPress={() => {
-          router.push('/(main)/patients/new' as never);
-        }}
-        testID="add-patient-button"
-      >
-        <Text style={styles.fabText}>+</Text>
-      </TouchableOpacity>
-    </View>
-  );
-}
-
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: colors.background.primary,
-  },
-  searchContainer: {
-    padding: 16,
-    backgroundColor: colors.background.secondary,
-    borderBottomWidth: 1,
-    borderBottomColor: colors.border.default,
-  },
-  searchInput: {
-    backgroundColor: colors.background.primary,
-    borderWidth: 1,
-    borderColor: colors.border.default,
-    borderRadius: 8,
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    fontSize: 16,
-    color: colors.text.primary,
-  },
-  loadingContainer: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
   patientCard: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: colors.background.secondary,
-    marginHorizontal: 16,
-    marginTop: 12,
+    backgroundColor: colors.background.primary,
     padding: 16,
-    borderRadius: 8,
-    borderWidth: 1,
-    borderColor: colors.border.default,
+    borderBottomWidth: 1,
+    borderBottomColor: colors.border.default,
   },
   patientInfo: {
     flex: 1,
@@ -246,10 +240,6 @@ const styles = StyleSheet.create({
   chevron: {
     fontSize: 24,
     color: colors.text.tertiary,
-    marginLeft: 8,
-  },
-  emptyListContainer: {
-    flex: 1,
   },
   emptyState: {
     flex: 1,
@@ -260,13 +250,16 @@ const styles = StyleSheet.create({
   emptyStateText: {
     fontSize: 18,
     fontWeight: '600',
-    color: colors.text.secondary,
+    color: colors.text.primary,
     marginBottom: 8,
   },
   emptyStateSubtext: {
     fontSize: 14,
-    color: colors.text.tertiary,
+    color: colors.text.secondary,
     textAlign: 'center',
+  },
+  emptyListContent: {
+    flexGrow: 1,
   },
   fab: {
     position: 'absolute',
@@ -279,7 +272,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     elevation: 4,
-    shadowColor: colors.black,
+    shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.25,
     shadowRadius: 4,
@@ -287,6 +280,6 @@ const styles = StyleSheet.create({
   fabText: {
     fontSize: 28,
     color: colors.white,
-    fontWeight: '300',
+    fontWeight: '600',
   },
 });

@@ -1,0 +1,37 @@
+# EAS Build ignore file
+# These files are not needed for production builds
+
+# Test files and coverage
+__tests__/
+coverage/
+*.test.ts
+*.test.tsx
+*.spec.ts
+*.spec.tsx
+jest.config.js
+
+# Local database files
+*.db
+*.sqlite
+vitora_hmis.db
+
+# Documentation
+*.md
+docs/
+
+# IDE and editor
+.vscode/
+.idea/
+
+# Environment files (use EAS secrets instead)
+.env
+.env.local
+.env.development
+
+# Git
+.git/
+.gitignore
+
+# Temporary files
+*.log
+*.tmp
