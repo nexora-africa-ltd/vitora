@@ -7,13 +7,36 @@
  * @module lib/theme/context
  */
 
-import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
+import React, { createContext, useContext, useState, useEffect, useCallback, useMemo } from 'react';
 import { useColorScheme } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { colors } from '../../constants/colors';
 
 const THEME_STORAGE_KEY = 'vitora_theme_mode';
 
 type ThemeMode = 'light' | 'dark' | 'system';
+
+/**
+ * Theme-aware color palette
+ */
+export interface ThemeColors {
+  background: {
+    primary: string;
+    secondary: string;
+  };
+  text: {
+    primary: string;
+    secondary: string;
+    tertiary: string;
+  };
+  border: string;
+  card: string;
+  // Include static colors
+  primary: typeof colors.primary;
+  secondary: typeof colors.secondary;
+  semantic: typeof colors.semantic;
+  neutral: typeof colors.neutral;
+}
 
 interface ThemeContextState {
   /** Current resolved theme (light or dark) */
@@ -24,6 +47,8 @@ interface ThemeContextState {
   toggleTheme: () => void;
   /** Set specific theme mode */
   setThemeMode: (mode: ThemeMode) => void;
+  /** Theme-aware colors */
+  themeColors: ThemeColors;
 }
 
 const ThemeContext = createContext<ThemeContextState | undefined>(undefined);
@@ -62,6 +87,25 @@ export function ThemeProvider({ children }: ThemeProviderProps): React.JSX.Eleme
     ? systemColorScheme === 'dark' 
     : themeMode === 'dark';
 
+  // Generate theme-aware colors
+  const themeColors = useMemo<ThemeColors>(() => ({
+    background: {
+      primary: isDark ? colors.background.dark : colors.background.primary,
+      secondary: isDark ? colors.background.paperDark : colors.background.secondary,
+    },
+    text: {
+      primary: isDark ? colors.text.primaryDark : colors.text.primary,
+      secondary: isDark ? colors.text.secondaryDark : colors.text.secondary,
+      tertiary: isDark ? colors.neutral[500] : colors.text.tertiary,
+    },
+    border: isDark ? colors.neutral[700] : colors.border.default,
+    card: isDark ? colors.neutral[800] : colors.white,
+    primary: colors.primary,
+    secondary: colors.secondary,
+    semantic: colors.semantic,
+    neutral: colors.neutral,
+  }), [isDark]);
+
   // Save theme preference
   const setThemeMode = useCallback(async (mode: ThemeMode) => {
     setThemeModeState(mode);
@@ -90,6 +134,7 @@ export function ThemeProvider({ children }: ThemeProviderProps): React.JSX.Eleme
         themeMode,
         toggleTheme,
         setThemeMode,
+        themeColors,
       }}
     >
       {children}

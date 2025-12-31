@@ -12,6 +12,7 @@ import React from 'react';
 import { View, ActivityIndicator, StyleSheet } from 'react-native';
 import { Redirect, Stack } from 'expo-router';
 import { useAuth } from '../../lib/auth/context';
+import { useTheme } from '../../lib/theme/context';
 import { useOfflineStatus } from '../../hooks/useOfflineStatus';
 import { colors } from '../../constants/colors';
 import { OfflineBanner } from '../../components/ui/OfflineBanner';
@@ -21,12 +22,13 @@ import { OfflineBanner } from '../../components/ui/OfflineBanner';
  */
 export default function MainLayout(): React.JSX.Element {
   const { isAuthenticated, isLoading } = useAuth();
+  const { themeColors, isDark } = useTheme();
   const { isOffline } = useOfflineStatus();
 
   // Show loading while checking auth
   if (isLoading) {
     return (
-      <View style={styles.loadingContainer}>
+      <View style={[styles.loadingContainer, { backgroundColor: themeColors.background.primary }]}>
         <ActivityIndicator size="large" color={colors.primary[500]} />
       </View>
     );
@@ -39,19 +41,19 @@ export default function MainLayout(): React.JSX.Element {
 
   // Render main app layout for authenticated users
   return (
-    <View style={styles.container}>
+    <View style={[styles.container, { backgroundColor: themeColors.background.primary }]}>
       <OfflineBanner isOffline={isOffline} />
       <Stack
         screenOptions={{
           headerStyle: {
-            backgroundColor: colors.primary[500],
+            backgroundColor: isDark ? colors.neutral[900] : colors.primary[500],
           },
           headerTintColor: colors.white,
           headerTitleStyle: {
             fontWeight: '600',
           },
           contentStyle: {
-            backgroundColor: colors.background.primary,
+            backgroundColor: themeColors.background.primary,
           },
           animation: 'slide_from_right',
         }}
