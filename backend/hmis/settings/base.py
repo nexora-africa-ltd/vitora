@@ -39,6 +39,7 @@ INSTALLED_APPS = [
     "hmis.apps.patients",
     "hmis.apps.encounters",
     "hmis.apps.clinical_templates",
+    "hmis.apps.pharmacy",
 ]
 
 MIDDLEWARE = [
@@ -181,6 +182,25 @@ CELERY_ACCEPT_CONTENT = ["json"]
 CELERY_TASK_SERIALIZER = "json"
 CELERY_RESULT_SERIALIZER = "json"
 CELERY_TIMEZONE = TIME_ZONE
+
+# Pharmacy Configuration
+PHARMACY_SETTINGS = {
+    "DEFAULT_PRESCRIPTION_VALIDITY_DAYS": 30,
+    "LOW_STOCK_THRESHOLD_DAYS": 14,  # Alert when stock lasts less than X days
+    "EXPIRY_WARNING_DAYS": 90,  # Alert when expiring within X days
+    "CRITICAL_EXPIRY_DAYS": 30,  # Critical alert when expiring within X days
+    "CONTROLLED_DRUG_VERIFICATION": True,  # Require second pharmacist
+    "ALLOW_OTC_DISPENSING": True,  # Allow dispensing without prescription
+    "FEFO_ENABLED": True,  # Use First Expiry First Out
+}
+
+# Drug Schedules
+DRUG_SCHEDULES = {
+    "OTC": {"requires_prescription": False, "requires_verification": False},
+    "POM": {"requires_prescription": True, "requires_verification": False},
+    "P": {"requires_prescription": False, "requires_verification": False},
+    "CD": {"requires_prescription": True, "requires_verification": True},
+}
 
 # Logging
 LOGGING = {
