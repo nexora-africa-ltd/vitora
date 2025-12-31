@@ -14,6 +14,9 @@ from hmis.apps.core.views import (
     AuditedTokenObtainPairView,
     AuditLogViewSet,
     CountyViewSet,
+    DepartmentViewSet,
+    RoleViewSet,
+    StaffProfileViewSet,
     SubCountyViewSet,
     WardViewSet,
 )
@@ -43,6 +46,11 @@ router.register(r"encounters", EncounterViewSet, basename="encounter")
 router.register(r"auditlogs", AuditLogViewSet, basename="auditlog")
 router.register(r"icd10-codes", ICD10CodeViewSet, basename="icd10code")
 router.register(r"treatment-templates", TreatmentPlanTemplateViewSet, basename="treatmenttemplate")
+
+# RBAC endpoints
+router.register(r"departments", DepartmentViewSet, basename="department")
+router.register(r"roles", RoleViewSet, basename="role")
+router.register(r"staff", StaffProfileViewSet, basename="staffprofile")
 
 # Location routes under /api/locations/
 location_router = routers.DefaultRouter()
