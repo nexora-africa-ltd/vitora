@@ -2,6 +2,8 @@
 Views for laboratory API endpoints.
 """
 
+import logging
+
 from django.db import models
 from django_filters import rest_framework as filters
 from rest_framework import status, viewsets
@@ -20,8 +22,6 @@ from .serializers import (
     TestCatalogSerializer,
 )
 from .services import LabAlertService, LabWorkflowService
-
-import logging
 
 logger = logging.getLogger(__name__)
 
