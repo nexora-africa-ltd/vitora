@@ -733,3 +733,100 @@ class Dispensing(models.Model):
     def calculate_total(self) -> Decimal:
         """Calculate total price: (unit_price × quantity) - discount."""
         return (self.unit_price * self.quantity_dispensed) - self.discount
+
+
+class StockAdjustment(models.Model):
+    """Record of stock adjustment (non-dispensing)."""
+
+    ADJUSTMENT_TYPES = [
+        ("DAMAGE", "Damaged Stock"),
+        ("LOSS", "Stock Loss/Theft"),
+        ("EXPIRED", "Expired Stock"),
+        ("RETURN_SUPPLIER", "Return to Supplier"),
+        ("TRANSFER_OUT", "Transfer Out"),
+        ("TRANSFER_IN", "Transfer In"),
+        ("COUNT_CORRECTION", "Physical Count Correction"),
+        ("SAMPLE", "Sample/Demo"),
+    ]
+
+    batch = models.ForeignKey(
+        StockBatch, on_delete=models.PROTECT, related_name="adjustments"
+    )
+    adjustment_type = models.CharField(max_length=20, choices=ADJUSTMENT_TYPES)
+
+    quantity = models.IntegerField()  # Positive = increase, Negative = decrease
+    reason = models.TextField()
+
+    # Documentation
+    reference_number = models.CharField(
+        max_length=50, blank=True
+    )  # e.g., return note number
+
+    adjusted_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.PROTECT,
+        related_name="stock_adjustments",
+    )
+    adjusted_at = models.DateTimeField(auto_now_add=True)
+
+    # Approval (for significant adjustments)
+    requires_approval = models.BooleanField(default=False)
+    approved_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="approved_adjustments",
+    )
+    approved_at = models.DateTimeField(null=True, blank=True)
+
+    class Meta:
+        ordering = ["-adjusted_at"]
+
+    def __str__(self):
+        return f"{self.adjustment_type} - {self.quantity} units on {self.batch.batch_number}"
+
+    def clean(self):
+        """Validate adjustment before save."""
+        super().clean()
+
+        # Check if negative adjustment would make stock go below zero
+        if self.quantity < 0:
+            new_quantity = self.batch.quantity_available + self.quantity
+            if new_quantity < 0:
+                raise ValidationError(
+                    f"Cannot adjust by {self.quantity}. "
+                    f"Would result in negative stock ({new_quantity})."
+                )
+
+    def save(self, *args, **kwargs):
+        """Override save to update batch stock."""
+        is_new = self.pk is None
+
+        if is_new:
+            # Full clean validation
+            self.full_clean()
+
+            # Update batch stock
+            if self.quantity < 0:
+                # Negative adjustment - reduce stock
+                self.batch.quantity_available += self.quantity
+                self.batch.quantity_damaged += abs(self.quantity)
+            else:
+                # Positive adjustment - increase stock
+                self.batch.quantity_available += self.quantity
+
+            self.batch.save()
+
+        super().save(*args, **kwargs)
+
+    def approve(self, user) -> None:
+        """
+        Approve adjustment.
+
+        Args:
+            user: User approving the adjustment
+        """
+        self.approved_by = user
+        self.approved_at = timezone.now()
+        self.save()
