@@ -45,8 +45,10 @@ export async function setTokens(
   accessToken: string,
   refreshToken: string
 ): Promise<void> {
+  console.log('[Storage] Storing tokens...');
   await SecureStore.setItemAsync(KEYS.ACCESS_TOKEN, accessToken);
   await SecureStore.setItemAsync(KEYS.REFRESH_TOKEN, refreshToken);
+  console.log('[Storage] Tokens stored successfully');
 }
 
 /**
@@ -54,7 +56,9 @@ export async function setTokens(
  * @returns Access token or null if not found
  */
 export async function getAccessToken(): Promise<string | null> {
-  return await SecureStore.getItemAsync(KEYS.ACCESS_TOKEN);
+  const token = await SecureStore.getItemAsync(KEYS.ACCESS_TOKEN);
+  console.log('[Storage] getAccessToken:', token ? 'found' : 'not found');
+  return token;
 }
 
 /**
