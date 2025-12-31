@@ -495,14 +495,14 @@ GET /api/locations/wards/?sub_county=<id>     # Cascading wards
 - [x] Implement toggleable list/grid view for patient list ✅
 
 **Track B: Mobile App Foundation (Parallel)**
-- [ ] **Write tests first**: React Native setup tests
-- [ ] Scaffold React Native app with Expo
-- [ ] **Write tests first**: SQLite mobile storage tests
-- [ ] Implement WatermelonDB/Expo SQLite setup
-- [ ] **Write tests first**: Mobile patient list tests (offline)
-- [ ] Implement offline patient lookup
-- [ ] **Write tests first**: Mobile auth tests
-- [ ] Implement JWT auth for mobile
+- [x] **Write tests first**: React Native setup tests
+- [x] Scaffold React Native app with Expo
+- [x] **Write tests first**: SQLite mobile storage tests
+- [x] Implement WatermelonDB/Expo SQLite setup
+- [x] **Write tests first**: Mobile patient list tests (offline)
+- [x] Implement offline patient lookup
+- [x] **Write tests first**: Mobile auth tests
+- [x] Implement JWT auth for mobile
 
 **Track C: RBAC Foundation**
 - [ ] **Write tests first**: Role and StaffProfile model tests
