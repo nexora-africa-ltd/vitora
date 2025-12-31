@@ -87,29 +87,35 @@
 
 **Migration:** `0003_prescription_prescriptionitem.py`
 
-### 📋 Phase 6: Dispensing Model (NOT STARTED)
+### ✅ Phase 6: Dispensing Model (COMPLETE - 16/16 tests)
 **Required:** 16 tests + implementation
-- [ ] Dispensing record with batch traceability
-- [ ] FEFO-based batch selection
-- [ ] Quantity and pricing tracking
-- [ ] Controlled drug verification workflow
-- [ ] Patient counseling documentation
-- [ ] Return processing
+- [x] Dispensing record with batch traceability
+- [x] FEFO-based batch selection
+- [x] Quantity and pricing tracking
+- [x] Controlled drug verification workflow
+- [x] Patient counseling documentation
+- [x] Return processing
 
-### 📋 Phase 7: StockAdjustment Model (NOT STARTED)
+**Migration:** `0004_dispensing.py`
+
+### ✅ Phase 7: StockAdjustment Model (COMPLETE - 8/8 tests)
 **Required:** 8 tests + implementation
-- [ ] Non-dispensing stock changes (damage, loss, returns)
-- [ ] Adjustment types (8 types including transfers)
-- [ ] Approval workflow for significant adjustments
-- [ ] Reference number tracking
+- [x] Non-dispensing stock changes (damage, loss, returns)
+- [x] Adjustment types (8 types including transfers)
+- [x] Approval workflow for significant adjustments
+- [x] Reference number tracking
 
-### 📋 Phase 8: FEFO Dispensing Service (NOT STARTED)
+**Migration:** `0005_stockadjustment.py`
+
+### ✅ Phase 8: FEFO Dispensing Service (COMPLETE - 10/10 tests)
 **Required:** 10 tests + implementation
-- [ ] `FEFODispenser` service class
-- [ ] `get_batches_for_dispensing()` method
-- [ ] `dispense()` method with batch selection
-- [ ] Insufficient stock error handling
-- [ ] Multi-batch dispensing support
+- [x] `FEFODispenser` service class
+- [x] `get_batches_for_dispensing()` method
+- [x] `dispense()` method with batch selection
+- [x] Insufficient stock error handling
+- [x] Multi-batch dispensing support
+
+**Service:** `FEFODispenser` in `services.py`
 
 ### 📋 Phase 9: API Endpoints (NOT STARTED)
 **Required:** 34 tests + implementation
@@ -175,21 +181,21 @@
 ## Statistics
 
 ### Tests Status
-- **Written**: 58/117 (50%)
-- **Passing**: 58/58 (100%) ✅
-- **Remaining**: 59 tests
+- **Written**: 92/117 (79%)
+- **Passing**: 92/92 (100%) ✅
+- **Remaining**: 25 tests
 
 ### Models Status
-- **Complete**: Drug, StockBatch, StockAlert, Prescription, PrescriptionItem (5/7 models)
-- **Remaining**: Dispensing, StockAdjustment (2/7 models)
+- **Complete**: Drug, StockBatch, StockAlert, Prescription, PrescriptionItem, Dispensing, StockAdjustment (7/7 models) ✅
+- **Services Complete**: FEFODispenser ✅
 
 ### Code Coverage
-- **Current Module Coverage**: ~60% (pharmacy models)
+- **Current Module Coverage**: ~75% (pharmacy models and services)
 - **Target Coverage**: ≥85%
 
 ### Sprint Progress
-- **Phases Complete**: 5/14 (36%)
-- **Time Estimate Remaining**: ~4-6 hours of focused work
+- **Phases Complete**: 8/14 (57%)
+- **Time Estimate Remaining**: ~2-3 hours of focused work
 
 ---
 
