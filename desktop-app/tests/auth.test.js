@@ -161,7 +161,7 @@ describe('Token Management', () => {
 
       axios.post = jest.fn().mockResolvedValue(mockResponse);
 
-      const response = await axios.post('http://127.0.0.1:8000/api/token/', {
+      const response = await axios.post('http://127.0.0.1:9088/api/token/', {
         username: 'testuser',
         password: 'testpassword123'
       });
@@ -169,7 +169,7 @@ describe('Token Management', () => {
       expect(response.data.access).toBe('access_token_123');
       expect(response.data.refresh).toBe('refresh_token_456');
       expect(axios.post).toHaveBeenCalledWith(
-        'http://127.0.0.1:8000/api/token/',
+        'http://127.0.0.1:9088/api/token/',
         { username: 'testuser', password: 'testpassword123' }
       );
     });
@@ -185,7 +185,7 @@ describe('Token Management', () => {
       axios.post = jest.fn().mockRejectedValue(mockError);
 
       await expect(
-        axios.post('http://127.0.0.1:8000/api/token/', {
+        axios.post('http://127.0.0.1:9088/api/token/', {
           username: 'wronguser',
           password: 'wrongpassword'
         })
@@ -203,13 +203,13 @@ describe('Token Management', () => {
 
       axios.post = jest.fn().mockResolvedValue(mockResponse);
 
-      const response = await axios.post('http://127.0.0.1:8000/api/token/refresh/', {
+      const response = await axios.post('http://127.0.0.1:9088/api/token/refresh/', {
         refresh: 'refresh_token_456'
       });
 
       expect(response.data.access).toBe('new_access_token_789');
       expect(axios.post).toHaveBeenCalledWith(
-        'http://127.0.0.1:8000/api/token/refresh/',
+        'http://127.0.0.1:9088/api/token/refresh/',
         { refresh: 'refresh_token_456' }
       );
     });
@@ -225,7 +225,7 @@ describe('Token Management', () => {
       axios.post = jest.fn().mockRejectedValue(mockError);
 
       await expect(
-        axios.post('http://127.0.0.1:8000/api/token/refresh/', {
+        axios.post('http://127.0.0.1:9088/api/token/refresh/', {
           refresh: 'invalid_refresh_token'
         })
       ).rejects.toEqual(mockError);
@@ -238,14 +238,14 @@ describe('Token Management', () => {
 
       const accessToken = 'valid_access_token';
 
-      await axios.get('http://127.0.0.1:8000/api/patients/', {
+      await axios.get('http://127.0.0.1:9088/api/patients/', {
         headers: {
           'Authorization': `Bearer ${accessToken}`
         }
       });
 
       expect(axios.get).toHaveBeenCalledWith(
-        'http://127.0.0.1:8000/api/patients/',
+        'http://127.0.0.1:9088/api/patients/',
         {
           headers: {
             'Authorization': 'Bearer valid_access_token'
@@ -265,7 +265,7 @@ describe('Token Management', () => {
       axios.get = jest.fn().mockRejectedValue(mockError);
 
       await expect(
-        axios.get('http://127.0.0.1:8000/api/patients/')
+        axios.get('http://127.0.0.1:9088/api/patients/')
       ).rejects.toEqual(mockError);
     });
   });

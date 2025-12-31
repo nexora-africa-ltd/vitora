@@ -569,7 +569,7 @@ describe('Main Process - index.js', () => {
           call => call[0] === 'data'
         )?.[1];
         if (stdoutCallback) {
-          stdoutCallback(Buffer.from('Starting development server at http://127.0.0.1:8000/'));
+          stdoutCallback(Buffer.from('Starting development server at http://127.0.0.1:9088/'));
         }
       }, 50);
 

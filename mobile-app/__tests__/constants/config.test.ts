@@ -24,7 +24,7 @@ describe('Configuration Module', () => {
 
     test('should have default API_BASE_URL', () => {
       const { API_BASE_URL } = require('../../constants/config');
-      expect(API_BASE_URL).toBe('http://localhost:8000');
+      expect(API_BASE_URL).toBe('http://localhost:9088');
     });
   });
 

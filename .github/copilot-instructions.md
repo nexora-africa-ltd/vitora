@@ -142,7 +142,7 @@ poetry install
 poetry shell  # Activate virtual environment
 
 # Run development server
-python manage.py runserver  # Default: http://127.0.0.1:8000
+python manage.py runserver  # Default: http://127.0.0.1:9088
 
 # Database operations
 python manage.py migrate                          # Apply migrations
@@ -591,7 +591,7 @@ patient_data = {
 ### 8. Desktop App Ports
 
 ```
-Backend (Django):  http://127.0.0.1:8000  (dev) or http://127.0.0.1:9088 (Electron)
+Backend (Django):  http://127.0.0.1:9088  (dev) or http://127.0.0.1:9088 (Electron)
 Electron spawns backend on port 9088 when running via `npm run dev`
 ```
 
@@ -704,7 +704,7 @@ docker run -p 6379:6379 redis  # Start Redis container
 
 ```bash
 # Backend port 8000 in use
-lsof -i :8000 && kill -9 <PID>
+lsof -i :9088 && kill -9 <PID>
 
 # Electron won't start
 rm -rf node_modules && npm install

@@ -10,7 +10,7 @@ import Constants from 'expo-constants';
  * API configuration
  */
 export const API_BASE_URL =
-  Constants.expoConfig?.extra?.apiBaseUrl || process.env.API_BASE_URL || 'http://localhost:8000';
+  Constants.expoConfig?.extra?.apiBaseUrl || process.env.API_BASE_URL || 'http://localhost:9088';
 
 export const API_TIMEOUT = Number(process.env.API_TIMEOUT) || 30000;
 

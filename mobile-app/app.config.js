@@ -64,7 +64,7 @@ export default {
         projectId: "3a7c3b7f-144d-4108-ae21-340fdc77ca00"
       },
       // API URL from environment variable (set in eas.json per profile)
-      apiBaseUrl: process.env.API_BASE_URL || "http://localhost:8000"
+      apiBaseUrl: process.env.API_BASE_URL || "http://localhost:9088"
     },
     owner: "thande788"
   }

@@ -114,9 +114,9 @@ Create a `.env` file based on `.env.example`:
 
 ```bash
 # .env
-API_BASE_URL=http://localhost:8000
+API_BASE_URL=http://localhost:9088
 # For physical device, use your machine's IP:
-# API_BASE_URL=http://192.168.1.100:8000
+# API_BASE_URL=http://192.168.1.100:9088
 ```
 
 ### 3. Start Backend Server
@@ -128,7 +128,7 @@ The mobile app requires the Django backend running:
 cd ../backend
 poetry install
 poetry shell
-python manage.py runserver 0.0.0.0:8000
+python manage.py runserver 0.0.0.0:9088
 ```
 
 ### 4. Start Development Server
@@ -345,7 +345,7 @@ npx expo run:android --variant release
 
 | Variable | Description | Default |
 |----------|-------------|---------|
-| `API_BASE_URL` | Backend API URL | `http://localhost:8000` |
+| `API_BASE_URL` | Backend API URL | `http://localhost:9088` |
 
 ### App Configuration (`app.json`)
 
@@ -483,7 +483,7 @@ npx expo start --clear
 ```
 
 #### Network Connection to Backend
-1. Ensure backend is running on `0.0.0.0:8000`
+1. Ensure backend is running on `0.0.0.0:9088`
 2. For physical device, use machine's IP in `.env`
 3. Check firewall allows port 8000
 
