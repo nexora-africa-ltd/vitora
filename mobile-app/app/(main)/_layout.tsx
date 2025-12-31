@@ -70,6 +70,13 @@ export default function MainLayout(): React.JSX.Element {
           }}
         />
         <Stack.Screen
+          name="patients/new"
+          options={{
+            title: 'Add Patient',
+            presentation: 'modal',
+          }}
+        />
+        <Stack.Screen
           name="patients/[id]"
           options={{
             title: 'Patient Details',

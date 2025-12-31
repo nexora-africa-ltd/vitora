@@ -4,18 +4,22 @@
  * Provides all context providers for the application:
  * - AuthProvider for authentication state
  * - QueryClientProvider for TanStack Query
+ * - ThemeProvider for dark/light mode
  * - Safe area handling
  *
  * @module app/_layout
  */
 
-import React from 'react';
+import React, { useEffect } from 'react';
 import { View, Text, StyleSheet } from 'react-native';
 import { Slot } from 'expo-router';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { AuthProvider } from '../lib/auth/context';
+import { ThemeProvider } from '../lib/theme/context';
 import { StatusBar } from 'expo-status-bar';
+import * as NavigationBar from 'expo-navigation-bar';
+import { Platform } from 'react-native';
 
 // Create a client with default options
 const queryClient = new QueryClient({
@@ -85,14 +89,24 @@ const errorStyles = StyleSheet.create({
  * Root layout component that wraps the entire app with providers
  */
 export default function RootLayout(): React.JSX.Element {
+  // Hide Android navigation bar for immersive experience
+  useEffect(() => {
+    if (Platform.OS === 'android') {
+      NavigationBar.setVisibilityAsync('hidden');
+      NavigationBar.setBehaviorAsync('overlay-swipe');
+    }
+  }, []);
+
   return (
     <ErrorBoundary>
       <SafeAreaProvider>
         <QueryClientProvider client={queryClient}>
-          <AuthProvider>
-            <StatusBar style="auto" />
-            <Slot />
-          </AuthProvider>
+          <ThemeProvider>
+            <AuthProvider>
+              <StatusBar style="auto" />
+              <Slot />
+            </AuthProvider>
+          </ThemeProvider>
         </QueryClientProvider>
       </SafeAreaProvider>
     </ErrorBoundary>
