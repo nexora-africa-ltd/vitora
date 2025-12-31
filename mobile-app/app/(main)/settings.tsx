@@ -18,6 +18,7 @@ import {
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useAuth } from '../../lib/auth/context';
+import { useTheme } from '../../lib/theme/context';
 import { colors } from '../../constants/colors';
 import { APP_VERSION } from '../../constants/config';
 
@@ -27,9 +28,9 @@ import { APP_VERSION } from '../../constants/config';
 export default function Settings(): React.JSX.Element {
   const router = useRouter();
   const { user, logout } = useAuth();
+  const { isDark, toggleTheme } = useTheme();
 
   const [autoSync, setAutoSync] = React.useState(true);
-  const [darkMode, setDarkMode] = React.useState(false);
 
   const handleLogout = async () => {
     Alert.alert('Logout', 'Are you sure you want to logout?', [
@@ -118,8 +119,8 @@ export default function Settings(): React.JSX.Element {
         <Text style={styles.sectionTitle}>Appearance</Text>
         <SettingToggle
           label="Dark Mode"
-          value={darkMode}
-          onValueChange={setDarkMode}
+          value={isDark}
+          onValueChange={toggleTheme}
         />
       </View>
 

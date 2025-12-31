@@ -43,7 +43,15 @@ export default {
     },
     plugins: [
       "expo-router",
-      "expo-secure-store"
+      "expo-secure-store",
+      [
+        "expo-navigation-bar",
+        {
+          position: "absolute",
+          visibility: "hidden",
+          behavior: "overlay-swipe"
+        }
+      ]
     ],
     experiments: {
       typedRoutes: true

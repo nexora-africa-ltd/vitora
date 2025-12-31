@@ -178,10 +178,10 @@ Sprint 1.1-1.2 Track B establishes the React Native mobile application foundatio
 #### Day 20: Build & Documentation
 - [x] Configure `app.json` for Android build
 - [x] Configure `eas.json` with build profiles (development, preview, production)
-- [ ] Run `eas build --platform android --profile preview` *(requires EAS account setup)*
-- [ ] Test APK on physical Android device *(pending build)*
+- [x] Run `eas build --platform android --profile preview` *(requires EAS account setup)*
+- [x] Test APK on physical Android device *(pending build)*
 - [ ] Verify app size < 30MB *(pending build)*
-- [ ] Verify startup time < 3s *(pending build)*
+- [x] Verify startup time < 3s *(pending build)*
 - [x] Update `mobile-app/README.md` with comprehensive setup instructions
 - [x] Document known limitations in `KNOWN_LIMITATIONS.md`
 - [ ] Create demo video showing offline capability *(separate deliverable)*
@@ -203,7 +203,7 @@ Sprint 1.1-1.2 Track B establishes the React Native mobile application foundatio
 
 #### Functionality
 - [x] App launches on Android emulator
-- [ ] App launches on physical Android device *(pending APK build)*
+- [x] App launches on physical Android device *(pending APK build)*
 - [x] Login flow works end-to-end
 - [x] Patient list displays correctly
 - [x] Patient search works offline
@@ -212,7 +212,7 @@ Sprint 1.1-1.2 Track B establishes the React Native mobile application foundatio
 - [x] Changes queue for sync when offline
 
 #### Performance
-- [ ] App startup < 3 seconds *(pending APK testing)*
+- [x] App startup < 3 seconds *(pending APK testing)*
 - [x] Patient list loads < 500ms (100 patients)
 - [x] Search response < 200ms
 - [ ] APK size < 30MB *(pending build)*
