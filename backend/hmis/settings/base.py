@@ -210,3 +210,35 @@ LOGGING = {
         },
     },
 }
+
+# ============================================================================
+# RBAC Configuration (Sprint 1.1-1.2 Track C - Phase 6)
+# ============================================================================
+
+# RBAC Feature Flags
+RBAC_ENABLED = True
+RBAC_STRICT_MODE = True  # Deny if no explicit permission (vs allow)
+RBAC_CACHE_TIMEOUT = 300  # Cache permission checks for 5 minutes
+
+# Kenya Professional License Bodies
+# These are the official regulatory bodies for healthcare professionals in Kenya
+KENYA_LICENSE_BODIES = {
+    'KMPDB': 'Kenya Medical Practitioners and Dentists Board',
+    'NCK': 'Nursing Council of Kenya',
+    'KMLTTB': 'Kenya Medical Laboratory Technicians and Technologists Board',
+    'PPB': 'Pharmacy and Poisons Board',
+    'COK': 'Clinical Officers Council',
+}
+
+# RBAC Hierarchy Levels
+# Lower numbers = higher authority
+# Used for permission inheritance and organizational structure
+RBAC_HIERARCHY_LEVELS = {
+    'ADMIN': 0,
+    'MANAGEMENT': 1,
+    'CLINICAL_SENIOR': 2,
+    'CLINICAL': 3,
+    'TECHNICAL': 4,
+    'ADMINISTRATIVE': 5,
+    'COMMUNITY': 6,
+}
