@@ -21,6 +21,10 @@ from .serializers import (
 )
 from .services import LabAlertService, LabWorkflowService
 
+import logging
+
+logger = logging.getLogger(__name__)
+
 
 class TestCatalogViewSet(viewsets.ReadOnlyModelViewSet):
     """
@@ -91,8 +95,12 @@ class LabOrderViewSet(viewsets.ModelViewSet):
             order = LabWorkflowService.submit_order(order, request.user)
             serializer = self.get_serializer(order)
             return Response(serializer.data)
-        except Exception as e:
-            return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
+        except Exception:
+            logger.exception("Error submitting lab order %s", order.pk)
+            return Response(
+                {"error": "Unable to submit this lab order at this time."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
 
     @action(detail=True, methods=["post"])
     def collect_specimen(self, request, pk=None):
@@ -102,8 +110,12 @@ class LabOrderViewSet(viewsets.ModelViewSet):
             order = LabWorkflowService.collect_specimen(order, request.user)
             serializer = self.get_serializer(order)
             return Response(serializer.data)
-        except Exception as e:
-            return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
+        except Exception:
+            logger.exception("Error recording specimen collection for lab order %s", order.pk)
+            return Response(
+                {"error": "Unable to record specimen collection at this time."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
 
     @action(detail=True, methods=["post"])
     def cancel(self, request, pk=None):
@@ -114,8 +126,12 @@ class LabOrderViewSet(viewsets.ModelViewSet):
             order = LabWorkflowService.cancel_order(order, request.user, reason)
             serializer = self.get_serializer(order)
             return Response(serializer.data)
-        except Exception as e:
-            return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
+        except Exception:
+            logger.exception("Error cancelling lab order %s", order.pk)
+            return Response(
+                {"error": "Unable to cancel this lab order at this time."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
 
     @action(detail=True, methods=["get"])
     def results(self, request, pk=None):
