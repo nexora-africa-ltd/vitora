@@ -57,8 +57,12 @@ interface FormErrors {
   last_name?: string;
   date_of_birth?: string;
   gender?: string;
+  phone_number?: string;
+  national_id?: string;
   county?: string;
   sub_county?: string;
+  emergency_contact_name?: string;
+  emergency_contact_phone?: string;
 }
 
 const initialFormData: FormData = {
@@ -116,22 +120,101 @@ export function PatientForm({
   const validate = (): boolean => {
     const newErrors: FormErrors = {};
 
+    // Name validation: minimum 2 characters, no punctuation except hyphen/apostrophe
+    const nameRegex = /^[a-zA-Z][a-zA-Z'-]{1,}$/;
+    const forbiddenChars = /[0-9!@#$%^&*()_+=\[\]{}|\\:;"<>,.?\/~`]/;
+    
     if (!formData.first_name.trim()) {
       newErrors.first_name = 'First name is required';
+    } else if (formData.first_name.trim().length < 2) {
+      newErrors.first_name = 'First name must be at least 2 characters';
+    } else if (forbiddenChars.test(formData.first_name)) {
+      newErrors.first_name = 'First name cannot contain numbers or special characters';
+    } else if (!nameRegex.test(formData.first_name.trim())) {
+      newErrors.first_name = 'First name must start with a letter';
     }
+
     if (!formData.last_name.trim()) {
       newErrors.last_name = 'Last name is required';
+    } else if (formData.last_name.trim().length < 2) {
+      newErrors.last_name = 'Last name must be at least 2 characters';
+    } else if (forbiddenChars.test(formData.last_name)) {
+      newErrors.last_name = 'Last name cannot contain numbers or special characters';
+    } else if (!nameRegex.test(formData.last_name.trim())) {
+      newErrors.last_name = 'Last name must start with a letter';
     }
+
+    // Date of birth validation
     if (!formData.date_of_birth.trim()) {
       newErrors.date_of_birth = 'Date of birth is required';
     } else {
-      const dob = new Date(formData.date_of_birth);
-      if (isNaN(dob.getTime())) {
+      // Validate format YYYY-MM-DD
+      const dateRegex = /^\d{4}-\d{2}-\d{2}$/;
+      if (!dateRegex.test(formData.date_of_birth)) {
         newErrors.date_of_birth = 'Invalid date format (use YYYY-MM-DD)';
-      } else if (dob > new Date()) {
-        newErrors.date_of_birth = 'Date of birth cannot be in the future';
+      } else {
+        const dob = new Date(formData.date_of_birth);
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+        
+        if (isNaN(dob.getTime())) {
+          newErrors.date_of_birth = 'Invalid date';
+        } else if (dob > today) {
+          newErrors.date_of_birth = 'Date of birth cannot be in the future';
+        } else {
+          // Check reasonable age (not older than 150 years)
+          const minDate = new Date();
+          minDate.setFullYear(minDate.getFullYear() - 150);
+          if (dob < minDate) {
+            newErrors.date_of_birth = 'Please enter a valid date of birth';
+          }
+          
+          // Check month and day are valid
+          const [year, month, day] = formData.date_of_birth.split('-').map(Number);
+          const testDate = new Date(year, month - 1, day);
+          if (testDate.getMonth() !== month - 1 || testDate.getDate() !== day) {
+            newErrors.date_of_birth = 'Invalid date (check month and day)';
+          }
+        }
       }
     }
+
+    // Phone number validation (Kenya format)
+    if (formData.phone_number && formData.phone_number.trim()) {
+      const phoneRegex = /^(\+254|0)[17]\d{8}$/;
+      const cleanPhone = formData.phone_number.replace(/[\s-]/g, '');
+      if (!phoneRegex.test(cleanPhone)) {
+        newErrors.phone_number = 'Invalid phone number (use +254... or 07...)';
+      }
+    }
+
+    // National ID validation (Kenya format: 8 digits)
+    if (formData.national_id && formData.national_id.trim()) {
+      const idRegex = /^\d{7,8}$/;
+      if (!idRegex.test(formData.national_id.trim())) {
+        newErrors.national_id = 'National ID must be 7-8 digits';
+      }
+    }
+
+    // Emergency contact name validation
+    if (formData.emergency_contact_name && formData.emergency_contact_name.trim()) {
+      if (formData.emergency_contact_name.trim().length < 2) {
+        newErrors.emergency_contact_name = 'Name must be at least 2 characters';
+      } else if (forbiddenChars.test(formData.emergency_contact_name)) {
+        newErrors.emergency_contact_name = 'Name cannot contain numbers or special characters';
+      }
+    }
+
+    // Emergency contact phone validation
+    if (formData.emergency_contact_phone && formData.emergency_contact_phone.trim()) {
+      const phoneRegex = /^(\+254|0)[17]\d{8}$/;
+      const cleanPhone = formData.emergency_contact_phone.replace(/[\s-]/g, '');
+      if (!phoneRegex.test(cleanPhone)) {
+        newErrors.emergency_contact_phone = 'Invalid phone number';
+      }
+    }
+
+    // Location validation
     if (!formData.county) {
       newErrors.county = 'County is required';
     }
@@ -228,8 +311,9 @@ export function PatientForm({
           label="Phone Number"
           value={formData.phone_number}
           onChangeText={(v) => updateField('phone_number', v)}
-          placeholder="+254..."
+          placeholder="+254... or 07..."
           keyboardType="phone-pad"
+          error={errors.phone_number}
           testID="input-phone"
         />
 
@@ -237,7 +321,9 @@ export function PatientForm({
           label="National ID"
           value={formData.national_id}
           onChangeText={(v) => updateField('national_id', v)}
-          placeholder="Enter National ID"
+          placeholder="Enter National ID (7-8 digits)"
+          keyboardType="number-pad"
+          error={errors.national_id}
           testID="input-national-id"
         />
 
@@ -260,6 +346,7 @@ export function PatientForm({
           value={formData.emergency_contact_name}
           onChangeText={(v) => updateField('emergency_contact_name', v)}
           placeholder="Enter contact name"
+          error={errors.emergency_contact_name}
           testID="input-emergency-name"
         />
 
@@ -267,8 +354,9 @@ export function PatientForm({
           label="Contact Phone"
           value={formData.emergency_contact_phone}
           onChangeText={(v) => updateField('emergency_contact_phone', v)}
-          placeholder="+254..."
+          placeholder="+254... or 07..."
           keyboardType="phone-pad"
+          error={errors.emergency_contact_phone}
           testID="input-emergency-phone"
         />
 

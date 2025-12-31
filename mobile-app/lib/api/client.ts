@@ -56,6 +56,8 @@ export const configureApiClient = (
   baseURL: string,
   timeout: number = 30000
 ): AxiosInstance => {
+  console.log('[API Client] Configuring with baseURL:', baseURL);
+  
   apiClient = axios.create({
     baseURL,
     timeout,
@@ -69,13 +71,19 @@ export const configureApiClient = (
   // Register request interceptor for auth header injection
   apiClient.interceptors.request.use(
     async (config: InternalAxiosRequestConfig) => {
-      const token = await getAccessToken();
-      if (token && config.headers) {
-        config.headers.Authorization = `Bearer ${token}`;
+      try {
+        const token = await getAccessToken();
+        console.log('[API Client] Token available:', !!token, 'for URL:', config.url);
+        if (token && config.headers) {
+          config.headers.Authorization = `Bearer ${token}`;
+        }
+      } catch (err) {
+        console.error('[API Client] Error getting access token:', err);
       }
       return config;
     },
     (error: AxiosError) => {
+      console.error('[API Client] Request interceptor error:', error);
       return Promise.reject(error);
     }
   );
@@ -87,6 +95,7 @@ export const configureApiClient = (
       return response;
     },
     async (error: AxiosError) => {
+      console.log('[API Client] Response error:', error.response?.status, error.config?.url);
       const originalRequest = error.config as InternalAxiosRequestConfig & {
         _retry?: boolean;
       };

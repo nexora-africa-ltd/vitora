@@ -108,16 +108,24 @@ export function AuthProvider({ children }: AuthProviderProps) {
   const login = useCallback(async (username: string, password: string) => {
     try {
       setIsLoading(true);
+      console.log('[Auth] Attempting login for:', username);
       const response = await authApi.login(username, password);
       
+      console.log('[Auth] Login successful, storing tokens...');
       // Store tokens and user data
       await storage.setTokens(response.access, response.refresh);
       await storage.setUser(response.user);
       
+      // Verify tokens were stored
+      const storedToken = await storage.getAccessToken();
+      console.log('[Auth] Token stored successfully:', !!storedToken);
+      
       // Update state
       setUser(response.user);
       setIsAuthenticated(true);
+      console.log('[Auth] Authentication state updated');
     } catch (error) {
+      console.error('[Auth] Login failed:', error);
       setUser(null);
       setIsAuthenticated(false);
       throw error;
