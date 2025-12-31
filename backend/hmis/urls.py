@@ -108,6 +108,8 @@ urlpatterns = [
     ),
     # Clinical Templates API
     path("api/", include("hmis.apps.clinical_templates.urls")),
+    # Laboratory API
+    path("api/lab/", include("hmis.apps.laboratory.urls")),
     path("api-auth/", include("rest_framework.urls", namespace="rest_framework")),
     # JWT Authentication endpoints (using custom view with audit logging)
     path("api/token/", AuditedTokenObtainPairView.as_view(), name="token_obtain_pair"),
