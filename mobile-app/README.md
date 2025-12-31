@@ -487,6 +487,58 @@ npx expo start --clear
 2. For physical device, use machine's IP in `.env`
 3. Check firewall allows port 8000
 
+#### Testing with ngrok (Remote Backend Access)
+
+When testing the mobile app on a physical device against a locally running backend, you can use [ngrok](https://ngrok.com/) to expose your backend:
+
+```bash
+# Start backend on port 9088
+cd backend && poetry run python manage.py runserver 0.0.0.0:9088
+
+# In another terminal, start ngrok
+ngrok http 9088
+```
+
+**Important Configuration Notes:**
+
+1. **ngrok Browser Warning**: Free ngrok accounts show an interstitial warning page. Mobile apps cannot handle this, so you MUST add the `ngrok-skip-browser-warning` header to all API requests:
+   ```typescript
+   // In axios client configuration
+   headers: {
+     'ngrok-skip-browser-warning': 'true',
+   }
+   ```
+
+2. **Dynamic API URL**: The app uses `app.config.js` (not `app.json`) to read the `API_BASE_URL` from environment variables at build time. This allows EAS builds to use different URLs per profile.
+
+3. **EAS Build Profiles** (in `eas.json`):
+   ```json
+   {
+     "preview": {
+       "env": {
+         "API_BASE_URL": "https://your-subdomain.ngrok-free.dev"
+       }
+     }
+   }
+   ```
+
+4. **CORS & CSRF**: Ensure your Django backend allows the ngrok domain:
+   ```python
+   # settings/development.py
+   ALLOWED_HOSTS = ["*", ".ngrok-free.dev", ".ngrok.io"]
+   CORS_ALLOW_ALL_ORIGINS = True
+   CORS_ALLOW_HEADERS = [..., "ngrok-skip-browser-warning"]
+   # For JWT-based auth, CSRF can be disabled in development
+   ```
+
+5. **Verify the flow works** before building:
+   ```bash
+   curl -H "ngrok-skip-browser-warning: true" \
+        -H "Content-Type: application/json" \
+        -X POST https://your-subdomain.ngrok-free.dev/api/token/ \
+        -d '{"username":"testuser","password":"testpassword123"}'
+   ```
+
 ### Debug Mode
 
 ```bash
