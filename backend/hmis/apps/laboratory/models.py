@@ -7,8 +7,7 @@ lab orders, order items, results, and LOINC codes for interoperability.
 Sprint 1.3-1.4 Track B: Lab/Investigations Foundation
 """
 
-from datetime import datetime, timedelta
-from decimal import Decimal
+from datetime import datetime
 
 from django.contrib.auth import get_user_model
 from django.core.exceptions import ValidationError
@@ -32,7 +31,9 @@ def generate_lab_order_number():
     prefix = f"LAB-{today}-"
 
     # Find the highest order number for today
-    latest_order = LabOrder.objects.filter(order_number__startswith=prefix).order_by("-order_number").first()
+    latest_order = (
+        LabOrder.objects.filter(order_number__startswith=prefix).order_by("-order_number").first()
+    )
 
     if latest_order:
         # Extract the sequence number and increment
@@ -98,7 +99,9 @@ class TestCatalog(models.Model):
     # Requirements
     requires_fasting = models.BooleanField(default=False)
     special_instructions = models.TextField(blank=True)
-    turnaround_hours = models.IntegerField(default=24, help_text="Expected turnaround time in hours")
+    turnaround_hours = models.IntegerField(
+        default=24, help_text="Expected turnaround time in hours"
+    )
 
     # Availability
     available_in_house = models.BooleanField(default=True)
@@ -114,7 +117,9 @@ class TestCatalog(models.Model):
     normal_range_male = models.CharField(max_length=50, blank=True, help_text='e.g., "4.5-5.5"')
     normal_range_female = models.CharField(max_length=50, blank=True)
     normal_range_child = models.CharField(max_length=50, blank=True)
-    result_options = models.JSONField(default=list, blank=True, help_text="For OPTIONS type results")
+    result_options = models.JSONField(
+        default=list, blank=True, help_text="For OPTIONS type results"
+    )
 
     # Panel components (for PANEL type)
     is_panel = models.BooleanField(default=False)
@@ -268,13 +273,19 @@ class LabOrder(models.Model):
     order_number = models.CharField(max_length=30, unique=True, editable=False)
 
     # Relationships
-    patient = models.ForeignKey("patients.Patient", on_delete=models.PROTECT, related_name="lab_orders")
-    encounter = models.ForeignKey("encounters.Encounter", on_delete=models.PROTECT, related_name="lab_orders")
+    patient = models.ForeignKey(
+        "patients.Patient", on_delete=models.PROTECT, related_name="lab_orders"
+    )
+    encounter = models.ForeignKey(
+        "encounters.Encounter", on_delete=models.PROTECT, related_name="lab_orders"
+    )
     ordered_by = models.ForeignKey(User, on_delete=models.PROTECT, related_name="lab_orders")
 
     # Order details
     order_type = models.CharField(max_length=20, choices=ORDER_TYPES, default="IN_HOUSE")
-    external_lab = models.CharField(max_length=100, blank=True, help_text="External lab name if applicable")
+    external_lab = models.CharField(
+        max_length=100, blank=True, help_text="External lab name if applicable"
+    )
     priority = models.CharField(max_length=20, choices=PRIORITY_LEVELS, default="ROUTINE")
     clinical_notes = models.TextField(blank=True, help_text="Clinical context for laboratory")
 
@@ -492,7 +503,9 @@ class LabResult(models.Model):
     interpretation = models.TextField(blank=True, help_text="Pathologist notes")
 
     # Verification
-    verification_status = models.CharField(max_length=20, choices=VERIFICATION_STATUS, default="UNVERIFIED")
+    verification_status = models.CharField(
+        max_length=20, choices=VERIFICATION_STATUS, default="UNVERIFIED"
+    )
     verified_by = models.ForeignKey(
         User, null=True, blank=True, on_delete=models.SET_NULL, related_name="verified_results"
     )

@@ -5,12 +5,13 @@ This module provides service layer for laboratory workflow management,
 critical result alerts, and business logic.
 """
 
+from datetime import timedelta
+
 from django.core.exceptions import ValidationError
 from django.db.models import Q, QuerySet
 from django.utils import timezone
-from datetime import timedelta
 
-from .models import LabOrder, LabResult
+from .models import LabOrder
 
 
 class LabWorkflowService:

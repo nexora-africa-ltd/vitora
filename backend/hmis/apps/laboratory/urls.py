@@ -2,15 +2,10 @@
 URL configuration for laboratory app.
 """
 
-from django.urls import path, include
+from django.urls import include, path
 from rest_framework.routers import DefaultRouter
 
-from .views import (
-    TestCatalogViewSet,
-    LabOrderViewSet,
-    LabResultViewSet,
-    LOINCCodeViewSet,
-)
+from .views import LabOrderViewSet, LabResultViewSet, LOINCCodeViewSet, TestCatalogViewSet
 
 router = DefaultRouter()
 router.register(r"tests", TestCatalogViewSet, basename="test-catalog")
