@@ -165,15 +165,15 @@ Sprint 1.1-1.2 Track B establishes the React Native mobile application foundatio
 - [x] ✅ **Checkpoint**: Changes queue correctly for sync
 
 #### Day 18-19: Integration & Polish
-- [ ] Integrate sync queue with patient repository
-- [ ] Add offline indicator to all screens
-- [ ] Add pull-to-refresh on patient list
-- [ ] Add loading states to all async operations
-- [ ] Add error handling with user-friendly messages
-- [ ] Test complete offline workflow
-- [ ] Test complete online workflow
-- [ ] Test offline-to-online transition
-- [ ] ✅ **Checkpoint**: Full offline/online flow works
+- [x] Integrate sync queue with patient repository
+- [x] Add offline indicator to all screens
+- [x] Add pull-to-refresh on patient list
+- [x] Add loading states to all async operations
+- [x] Add error handling with user-friendly messages
+- [x] Test complete offline workflow
+- [x] Test complete online workflow
+- [x] Test offline-to-online transition
+- [x] ✅ **Checkpoint**: Full offline/online flow works (229 tests)
 
 #### Day 20: Build & Documentation
 - [ ] Configure `app.json` for Android build
