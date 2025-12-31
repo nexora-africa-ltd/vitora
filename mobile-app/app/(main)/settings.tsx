@@ -28,9 +28,19 @@ import { APP_VERSION } from '../../constants/config';
 export default function Settings(): React.JSX.Element {
   const router = useRouter();
   const { user, logout } = useAuth();
-  const { isDark, toggleTheme } = useTheme();
+  const { isDark, toggleTheme, themeColors } = useTheme();
 
   const [autoSync, setAutoSync] = React.useState(true);
+
+  // Dynamic styles based on theme
+  const dynamicStyles = {
+    container: { backgroundColor: themeColors.background.primary },
+    section: { backgroundColor: themeColors.card, borderColor: themeColors.border },
+    sectionTitle: { color: themeColors.text.secondary },
+    settingLabel: { color: themeColors.text.primary },
+    settingValue: { color: themeColors.text.secondary },
+    footerText: { color: themeColors.text.secondary },
+  };
 
   const handleLogout = async () => {
     Alert.alert('Logout', 'Are you sure you want to logout?', [
@@ -56,12 +66,12 @@ export default function Settings(): React.JSX.Element {
     onPress?: () => void;
   }) => (
     <TouchableOpacity
-      style={styles.settingRow}
+      style={[styles.settingRow, { borderBottomColor: themeColors.border }]}
       onPress={onPress}
       disabled={!onPress}
     >
-      <Text style={styles.settingLabel}>{label}</Text>
-      {value && <Text style={styles.settingValue}>{value}</Text>}
+      <Text style={[styles.settingLabel, dynamicStyles.settingLabel]}>{label}</Text>
+      {value && <Text style={[styles.settingValue, dynamicStyles.settingValue]}>{value}</Text>}
     </TouchableOpacity>
   );
 
@@ -74,8 +84,8 @@ export default function Settings(): React.JSX.Element {
     value: boolean;
     onValueChange: (value: boolean) => void;
   }) => (
-    <View style={styles.settingRow}>
-      <Text style={styles.settingLabel}>{label}</Text>
+    <View style={[styles.settingRow, { borderBottomColor: themeColors.border }]}>
+      <Text style={[styles.settingLabel, dynamicStyles.settingLabel]}>{label}</Text>
       <Switch
         value={value}
         onValueChange={onValueChange}
@@ -89,17 +99,17 @@ export default function Settings(): React.JSX.Element {
   );
 
   return (
-    <ScrollView style={styles.container}>
+    <ScrollView style={[styles.container, dynamicStyles.container]}>
       {/* User Section */}
-      <View style={styles.section}>
-        <Text style={styles.sectionTitle}>Account</Text>
+      <View style={[styles.section, dynamicStyles.section]}>
+        <Text style={[styles.sectionTitle, dynamicStyles.sectionTitle]}>Account</Text>
         <SettingRow label="Username" value={user?.username || 'Unknown'} />
         <SettingRow label="User ID" value={user?.id?.toString() || '--'} />
       </View>
 
       {/* Sync Settings */}
-      <View style={styles.section}>
-        <Text style={styles.sectionTitle}>Sync</Text>
+      <View style={[styles.section, dynamicStyles.section]}>
+        <Text style={[styles.sectionTitle, dynamicStyles.sectionTitle]}>Sync</Text>
         <SettingToggle
           label="Auto-sync when online"
           value={autoSync}
@@ -115,8 +125,8 @@ export default function Settings(): React.JSX.Element {
       </View>
 
       {/* Appearance */}
-      <View style={styles.section}>
-        <Text style={styles.sectionTitle}>Appearance</Text>
+      <View style={[styles.section, dynamicStyles.section]}>
+        <Text style={[styles.sectionTitle, dynamicStyles.sectionTitle]}>Appearance</Text>
         <SettingToggle
           label="Dark Mode"
           value={isDark}
@@ -125,14 +135,14 @@ export default function Settings(): React.JSX.Element {
       </View>
 
       {/* About */}
-      <View style={styles.section}>
-        <Text style={styles.sectionTitle}>About</Text>
+      <View style={[styles.section, dynamicStyles.section]}>
+        <Text style={[styles.sectionTitle, dynamicStyles.sectionTitle]}>About</Text>
         <SettingRow label="App Version" value={APP_VERSION} />
         <SettingRow label="Build" value="Phase 1 - Mobile Foundation" />
       </View>
 
       {/* Logout */}
-      <View style={styles.section}>
+      <View style={[styles.section, dynamicStyles.section]}>
         <TouchableOpacity
           style={styles.logoutButton}
           onPress={handleLogout}
@@ -144,8 +154,8 @@ export default function Settings(): React.JSX.Element {
 
       {/* Footer */}
       <View style={styles.footer}>
-        <Text style={styles.footerText}>Vitora HMIS</Text>
-        <Text style={styles.footerSubtext}>
+        <Text style={[styles.footerText, dynamicStyles.footerText]}>Vitora HMIS</Text>
+        <Text style={[styles.footerSubtext, dynamicStyles.footerText]}>
           Secure Healthcare for Kenya
         </Text>
       </View>

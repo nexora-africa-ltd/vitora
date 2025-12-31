@@ -6,6 +6,7 @@
  * - QueryClientProvider for TanStack Query
  * - ThemeProvider for dark/light mode
  * - Safe area handling
+ * - API client initialization
  *
  * @module app/_layout
  */
@@ -20,6 +21,11 @@ import { ThemeProvider } from '../lib/theme/context';
 import { StatusBar } from 'expo-status-bar';
 import * as NavigationBar from 'expo-navigation-bar';
 import { Platform } from 'react-native';
+import { configureApiClient } from '../lib/api/client';
+import { API_BASE_URL, API_TIMEOUT } from '../constants/config';
+
+// Initialize API client on app start
+configureApiClient(API_BASE_URL, API_TIMEOUT);
 
 // Create a client with default options
 const queryClient = new QueryClient({

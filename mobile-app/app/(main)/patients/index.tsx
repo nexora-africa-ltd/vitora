@@ -21,6 +21,7 @@ import {
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { colors } from '../../../constants/colors';
+import { useTheme } from '../../../lib/theme/context';
 import { usePatients } from '../../../hooks/usePatients';
 import { useSyncStatus } from '../../../hooks/useSyncStatus';
 import { useOfflineStatus } from '../../../hooks/useOfflineStatus';
@@ -32,6 +33,7 @@ import type { Patient } from '../../../lib/api/patients';
  */
 export default function PatientListScreen(): React.JSX.Element {
   const router = useRouter();
+  const { themeColors } = useTheme();
   const [searchQuery, setSearchQuery] = useState('');
   const [isRefreshing, setIsRefreshing] = useState(false);
 
@@ -74,41 +76,6 @@ export default function PatientListScreen(): React.JSX.Element {
     }
   }, [isOffline, hasPending, refetch, refreshStatus]);
 
-  const renderPatientItem = ({ item }: { item: Patient }) => (
-    <TouchableOpacity
-      style={styles.patientCard}
-      onPress={() => handlePatientPress(item.id.toString())}
-      testID={`patient-item-${item.id}`}
-    >
-      <View style={styles.patientInfo}>
-        <Text style={styles.patientName}>
-          {item.first_name} {item.last_name}
-        </Text>
-        <Text style={styles.patientMrn}>MRN: {item.mrn}</Text>
-        <Text style={styles.patientDetails}>
-          {item.gender === 'M' ? 'Male' : item.gender === 'F' ? 'Female' : 'Other'} • DOB:{' '}
-          {item.date_of_birth}
-        </Text>
-      </View>
-      <Text style={styles.chevron}>›</Text>
-    </TouchableOpacity>
-  );
-
-  const renderEmptyState = () => (
-    <View style={styles.emptyState}>
-      <Text style={styles.emptyStateText}>
-        {error ? 'Error loading patients' : 'No patients found'}
-      </Text>
-      <Text style={styles.emptyStateSubtext}>
-        {error
-          ? 'Pull down to retry'
-          : searchQuery
-            ? 'Try a different search term'
-            : 'Add patients to get started'}
-      </Text>
-    </View>
-  );
-
   const renderSyncBadge = () => {
     if (!hasPending) return null;
     return (
@@ -120,19 +87,47 @@ export default function PatientListScreen(): React.JSX.Element {
     );
   };
 
+  // Dynamic styles based on theme
+  const dynamicStyles = {
+    container: {
+      backgroundColor: themeColors.background.primary,
+    },
+    searchInput: {
+      backgroundColor: themeColors.background.secondary,
+      color: themeColors.text.primary,
+      borderColor: themeColors.border,
+    },
+    patientCard: {
+      backgroundColor: themeColors.card,
+      borderColor: themeColors.border,
+    },
+    patientName: {
+      color: themeColors.text.primary,
+    },
+    patientDetails: {
+      color: themeColors.text.secondary,
+    },
+    emptyStateText: {
+      color: themeColors.text.primary,
+    },
+    emptyStateSubtext: {
+      color: themeColors.text.secondary,
+    },
+  };
+
   return (
-    <View style={styles.container}>
+    <View style={[styles.container, dynamicStyles.container]}>
       {/* Sync Status Badge */}
       {renderSyncBadge()}
 
       {/* Search Bar */}
       <View style={styles.searchContainer}>
         <TextInput
-          style={styles.searchInput}
+          style={[styles.searchInput, dynamicStyles.searchInput]}
           value={searchQuery}
           onChangeText={setSearchQuery}
           placeholder="Search by name, MRN, or phone..."
-          placeholderTextColor={colors.text.tertiary}
+          placeholderTextColor={themeColors.text.tertiary}
           testID="patient-search-input"
         />
       </View>
@@ -146,8 +141,39 @@ export default function PatientListScreen(): React.JSX.Element {
         <FlatList
           data={patients}
           keyExtractor={(item) => item.id.toString()}
-          renderItem={renderPatientItem}
-          ListEmptyComponent={renderEmptyState}
+          renderItem={({ item }: { item: Patient }) => (
+            <TouchableOpacity
+              style={[styles.patientCard, dynamicStyles.patientCard]}
+              onPress={() => handlePatientPress(item.id.toString())}
+              testID={`patient-item-${item.id}`}
+            >
+              <View style={styles.patientInfo}>
+                <Text style={[styles.patientName, dynamicStyles.patientName]}>
+                  {item.first_name} {item.last_name}
+                </Text>
+                <Text style={[styles.patientMrn, dynamicStyles.patientDetails]}>MRN: {item.mrn}</Text>
+                <Text style={[styles.patientDetails, dynamicStyles.patientDetails]}>
+                  {item.gender === 'M' ? 'Male' : item.gender === 'F' ? 'Female' : 'Other'} • DOB:{' '}
+                  {item.date_of_birth}
+                </Text>
+              </View>
+              <Text style={[styles.chevron, dynamicStyles.patientDetails]}>›</Text>
+            </TouchableOpacity>
+          )}
+          ListEmptyComponent={
+            <View style={styles.emptyState}>
+              <Text style={[styles.emptyStateText, dynamicStyles.emptyStateText]}>
+                {error ? 'Error loading patients' : 'No patients found'}
+              </Text>
+              <Text style={[styles.emptyStateSubtext, dynamicStyles.emptyStateSubtext]}>
+                {error
+                  ? 'Pull down to retry'
+                  : searchQuery
+                    ? 'Try a different search term'
+                    : 'Add patients to get started'}
+              </Text>
+            </View>
+          }
           contentContainerStyle={patients.length === 0 ? styles.emptyListContent : undefined}
           refreshControl={
             <RefreshControl

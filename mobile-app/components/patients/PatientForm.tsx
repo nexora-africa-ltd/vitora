@@ -21,6 +21,7 @@ import { colors } from '@/constants/colors';
 import { theme } from '@/constants/theme';
 import { Input } from '@/components/ui/Input';
 import { Button } from '@/components/ui/Button';
+import { LocationPicker } from '@/components/ui/LocationPicker';
 import type { Patient, CreatePatientData } from '@/lib/api/patients';
 
 export interface PatientFormProps {
@@ -43,8 +44,8 @@ interface FormData {
   gender: 'M' | 'F' | 'O';
   phone_number: string;
   national_id: string;
-  county: string;
-  sub_county: string;
+  county: number | null;
+  sub_county: number | null;
   emergency_contact_name: string;
   emergency_contact_phone: string;
   emergency_contact_relationship: string;
@@ -66,8 +67,8 @@ const initialFormData: FormData = {
   gender: 'M',
   phone_number: '',
   national_id: '',
-  county: '',
-  sub_county: '',
+  county: null,
+  sub_county: null,
   emergency_contact_name: '',
   emergency_contact_phone: '',
   emergency_contact_relationship: '',
@@ -94,8 +95,8 @@ export function PatientForm({
         gender: patient.gender,
         phone_number: patient.phone_number || '',
         national_id: patient.national_id || '',
-        county: patient.county.toString(),
-        sub_county: patient.sub_county.toString(),
+        county: patient.county,
+        sub_county: patient.sub_county,
         emergency_contact_name: patient.emergency_contact_name || '',
         emergency_contact_phone: patient.emergency_contact_phone || '',
         emergency_contact_relationship: patient.emergency_contact_relationship || '',
@@ -103,7 +104,7 @@ export function PatientForm({
     }
   }, [patient]);
 
-  const updateField = (field: keyof FormData, value: string) => {
+  const updateField = <K extends keyof FormData>(field: K, value: FormData[K]) => {
     setFormData((prev) => ({ ...prev, [field]: value }));
     // Clear error when field is modified
     if (errors[field as keyof FormErrors]) {
@@ -130,10 +131,10 @@ export function PatientForm({
         newErrors.date_of_birth = 'Date of birth cannot be in the future';
       }
     }
-    if (!formData.county.trim()) {
+    if (!formData.county) {
       newErrors.county = 'County is required';
     }
-    if (!formData.sub_county.trim()) {
+    if (!formData.sub_county) {
       newErrors.sub_county = 'Sub-county is required';
     }
 
@@ -151,8 +152,8 @@ export function PatientForm({
       last_name: formData.last_name.trim(),
       date_of_birth: formData.date_of_birth,
       gender: formData.gender,
-      county: parseInt(formData.county, 10),
-      sub_county: parseInt(formData.sub_county, 10),
+      county: formData.county!,
+      sub_county: formData.sub_county!,
       phone_number: formData.phone_number || null,
       national_id: formData.national_id || null,
       emergency_contact_name: formData.emergency_contact_name || undefined,
@@ -240,24 +241,14 @@ export function PatientForm({
 
         <Text style={styles.sectionTitle}>Location *</Text>
 
-        <Input
-          label="County ID"
-          value={formData.county}
-          onChangeText={(v) => updateField('county', v)}
-          error={errors.county}
-          placeholder="Enter county ID (1-47)"
-          keyboardType="numeric"
-          testID="input-county"
-        />
-
-        <Input
-          label="Sub-County ID"
-          value={formData.sub_county}
-          onChangeText={(v) => updateField('sub_county', v)}
-          error={errors.sub_county}
-          placeholder="Enter sub-county ID"
-          keyboardType="numeric"
-          testID="input-sub-county"
+        <LocationPicker
+          countyId={formData.county}
+          subCountyId={formData.sub_county}
+          onCountyChange={(id) => updateField('county', id)}
+          onSubCountyChange={(id) => updateField('sub_county', id)}
+          countyError={errors.county}
+          subCountyError={errors.sub_county}
+          testID="location-picker"
         />
 
         <Text style={styles.sectionTitle}>Emergency Contact</Text>
