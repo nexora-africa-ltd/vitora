@@ -176,7 +176,7 @@ Sprint 1.1-1.2 Track B establishes the React Native mobile application foundatio
 - [x] ✅ **Checkpoint**: Full offline/online flow works (229 tests)
 
 #### Day 20: Build & Documentation
-- [ ] Configure `app.json` for Android build
+- [x] Configure `app.json` for Android build
 - [ ] Run `eas build --platform android --profile preview`
 - [ ] Test APK on physical Android device
 - [ ] Verify app size < 30MB
