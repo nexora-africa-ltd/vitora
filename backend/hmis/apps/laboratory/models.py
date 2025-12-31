@@ -9,10 +9,14 @@ Sprint 1.3-1.4 Track B: Lab/Investigations Foundation
 
 from datetime import datetime
 
+import logging
+
 from django.contrib.auth import get_user_model
 from django.core.exceptions import ValidationError
 from django.db import models
 from django.utils import timezone
+
+logger = logging.getLogger(__name__)
 
 User = get_user_model()
 
@@ -196,7 +200,13 @@ class TestCatalog(models.Model):
                 high_val = float(high.strip())
                 return value < low_val or value > high_val
         except (ValueError, AttributeError):
-            pass
+            # If the range or value cannot be parsed, treat the result as not abnormal
+            logger.debug(
+                "Unable to parse normal range '%s' or value '%s' for test '%s'; treating as not abnormal.",
+                normal_range,
+                value,
+                getattr(self, "name", self.pk),
+            )
 
         return False
 
