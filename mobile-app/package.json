@@ -1,6 +1,6 @@
 {
   "name": "mobile-app",
-  "version": "1.0.0",
+  "version": "0.1.0",
   "main": "index.ts",
   "scripts": {
     "start": "expo start",
@@ -14,7 +14,11 @@
     "lint:fix": "eslint . --ext .ts,.tsx --fix",
     "format": "prettier --write \"**/*.{ts,tsx,js,jsx,json,md}\"",
     "format:check": "prettier --check \"**/*.{ts,tsx,js,jsx,json,md}\"",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "build:dev": "eas build --platform android --profile development",
+    "build:preview": "eas build --platform android --profile preview",
+    "build:prod": "eas build --platform android --profile production",
+    "build:local": "expo run:android --variant release"
   },
   "dependencies": {
     "@nozbe/watermelondb": "^0.28.0",
@@ -48,6 +52,7 @@
     "babel-plugin-module-resolver": "^5.0.2",
     "babel-preset-expo": "^54.0.9",
     "better-sqlite3": "^12.5.0",
+    "eas-cli": "^16.28.0",
     "eslint": "^9.39.2",
     "eslint-config-expo": "^10.0.0",
     "eslint-config-prettier": "^10.1.8",
