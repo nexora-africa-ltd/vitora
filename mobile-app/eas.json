@@ -4,11 +4,14 @@
     "appVersionSource": "remote"
   },
   "build": {
+    "base": {
+      "node": "20.18.0"
+    },
     "development": {
+      "extends": "base",
       "developmentClient": true,
       "distribution": "internal",
       "android": {
-        "gradleCommand": ":app:assembleDebug",
         "buildType": "apk"
       },
       "env": {
@@ -16,22 +19,23 @@
       }
     },
     "preview": {
+      "extends": "base",
       "distribution": "internal",
       "android": {
-        "buildType": "apk",
-        "gradleCommand": ":app:assembleRelease"
+        "buildType": "apk"
       },
       "env": {
-        "API_BASE_URL": "https://api.vitora.ke"
+        "API_BASE_URL": "https://nonsolidly-municipal-sharita.ngrok-free.dev"
       }
     },
     "production": {
+      "extends": "base",
       "autoIncrement": true,
       "android": {
         "buildType": "app-bundle"
       },
       "env": {
-        "API_BASE_URL": "https://api.vitora.ke"
+        "API_BASE_URL": "https://api.vitora.nexora.africa"
       }
     }
   },

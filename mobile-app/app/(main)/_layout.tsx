@@ -34,7 +34,12 @@ export default function MainLayout(): React.JSX.Element {
 
   // Redirect to login if not authenticated
   if (!isAuthenticated) {
-    rView style={styles.container}>
+    return <Redirect href="/(auth)/login" />;
+  }
+
+  // Render main app layout for authenticated users
+  return (
+    <View style={styles.container}>
       <OfflineBanner isOffline={isOffline} />
       <Stack
         screenOptions={{
@@ -85,10 +90,6 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
   },
-  );
-}
-
-const styles = StyleSheet.create({
   loadingContainer: {
     flex: 1,
     justifyContent: 'center',

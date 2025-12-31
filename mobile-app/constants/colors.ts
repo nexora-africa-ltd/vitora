@@ -5,6 +5,10 @@
  */
 
 export const colors = {
+  // Base colors
+  white: '#FFFFFF',
+  black: '#000000',
+
   // Brand colors
   primary: {
     50: '#E8F5E9',
@@ -34,6 +38,13 @@ export const colors = {
   },
 
   // Semantic colors
+  semantic: {
+    success: '#4CAF50',
+    warning: '#FF9800',
+    error: '#F44336',
+    info: '#2196F3',
+  },
+
   success: {
     light: '#81C784',
     main: '#4CAF50',
@@ -41,6 +52,14 @@ export const colors = {
   },
 
   warning: {
+    50: '#FFF8E1',
+    100: '#FFECB3',
+    200: '#FFE082',
+    300: '#FFD54F',
+    400: '#FFCA28',
+    500: '#FFC107',
+    600: '#FFB300',
+    700: '#FFA000',
     light: '#FFB74D',
     main: '#FF9800',
     dark: '#F57C00',
@@ -84,6 +103,8 @@ export const colors = {
   // Background colors
   background: {
     default: '#FFFFFF',
+    primary: '#FFFFFF',
+    secondary: '#F5F5F5',
     paper: '#F5F5F5',
     dark: '#121212',
     paperDark: '#1E1E1E',
@@ -93,10 +114,18 @@ export const colors = {
   text: {
     primary: '#212121',
     secondary: '#757575',
+    tertiary: '#9E9E9E',
     disabled: '#BDBDBD',
     hint: '#9E9E9E',
     primaryDark: '#FFFFFF',
     secondaryDark: '#B0B0B0',
+  },
+
+  // Border colors
+  border: {
+    default: '#E0E0E0',
+    light: '#EEEEEE',
+    dark: '#BDBDBD',
   },
 
   // Status colors for sync

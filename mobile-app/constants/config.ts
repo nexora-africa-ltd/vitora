@@ -86,9 +86,18 @@ export const SYNC_CONFIG = {
   AUTO_SYNC_INTERVAL_MS: 60000, // 1 minute
 } as const;
 
+/**
+ * API Config object for convenience
+ */
+export const API_CONFIG = {
+  BASE_URL: API_BASE_URL,
+  TIMEOUT: API_TIMEOUT,
+} as const;
+
 export default {
   API_BASE_URL,
   API_TIMEOUT,
+  API_CONFIG,
   IS_DEVELOPMENT,
   IS_PRODUCTION,
   ENABLE_OFFLINE_MODE,
