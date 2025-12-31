@@ -1,6 +1,11 @@
 /**
  * Design tokens for Vitora HMIS Mobile App.
  *
+ * Color palette based on #3D000F (Deep Burgundy) as primary.
+ * - Primary: Deep burgundy - professional, authoritative
+ * - Secondary: Teal - healthcare trust, calm
+ * - Accent: Warm gold - warmth, Kenya sun
+ *
  * @module constants/colors
  */
 
@@ -9,94 +14,108 @@ export const colors = {
   white: '#FFFFFF',
   black: '#000000',
 
-  // Brand colors
+  // Brand colors - Deep Burgundy
   primary: {
-    50: '#E8F5E9',
-    100: '#C8E6C9',
-    200: '#A5D6A7',
-    300: '#81C784',
-    400: '#66BB6A',
-    500: '#4CAF50', // Main primary
-    600: '#43A047',
-    700: '#388E3C',
-    800: '#2E7D32',
-    900: '#1B5E20',
+    50: '#F9E6E9',
+    100: '#F0BFC7',
+    200: '#E69AA6',
+    300: '#D97485',
+    400: '#CC4F64',
+    500: '#3D000F', // Main primary - Deep Burgundy
+    600: '#370010',
+    700: '#30000D',
+    800: '#29000B',
+    900: '#1F0008',
   },
 
-  // Secondary (blue for healthcare)
+  // Secondary - Teal (healthcare trust)
   secondary: {
-    50: '#E3F2FD',
-    100: '#BBDEFB',
-    200: '#90CAF9',
-    300: '#64B5F6',
-    400: '#42A5F5',
-    500: '#2196F3', // Main secondary
-    600: '#1E88E5',
-    700: '#1976D2',
-    800: '#1565C0',
-    900: '#0D47A1',
+    50: '#E6F2F4',
+    100: '#C0DFE4',
+    200: '#99CCD4',
+    300: '#73B8C4',
+    400: '#4DA5B4',
+    500: '#1A4D5C', // Main secondary - Teal
+    600: '#174552',
+    700: '#143C48',
+    800: '#11333E',
+    900: '#0D262E',
+  },
+
+  // Accent - Warm Gold (Kenya sun, warmth)
+  accent: {
+    50: '#FDF6ED',
+    100: '#FAE9D1',
+    200: '#F5D5A8',
+    300: '#EFC17F',
+    400: '#EAAD56',
+    500: '#D4A574', // Main accent - Warm Gold
+    600: '#C49462',
+    700: '#B38350',
+    800: '#A3733E',
+    900: '#8A6034',
   },
 
   // Semantic colors
   semantic: {
-    success: '#4CAF50',
-    warning: '#FF9800',
-    error: '#F44336',
-    info: '#2196F3',
+    success: '#2E7D4A',
+    warning: '#E6A023',
+    error: '#C62828',
+    info: '#1A4D5C',
   },
 
   success: {
-    light: '#81C784',
-    main: '#4CAF50',
-    dark: '#388E3C',
+    light: '#5FAD76',
+    main: '#2E7D4A',
+    dark: '#1E5432',
   },
 
   warning: {
-    50: '#FFF8E1',
-    100: '#FFECB3',
-    200: '#FFE082',
-    300: '#FFD54F',
-    400: '#FFCA28',
-    500: '#FFC107',
-    600: '#FFB300',
-    700: '#FFA000',
+    50: '#FFF8E6',
+    100: '#FFEDB8',
+    200: '#FFE18A',
+    300: '#FFD55C',
+    400: '#FFCA2E',
+    500: '#E6A023',
+    600: '#D4931D',
+    700: '#C28617',
     light: '#FFB74D',
-    main: '#FF9800',
-    dark: '#F57C00',
+    main: '#E6A023',
+    dark: '#C28617',
   },
 
   error: {
-    light: '#E57373',
-    main: '#F44336',
-    dark: '#D32F2F',
+    light: '#EF5350',
+    main: '#C62828',
+    dark: '#8E0000',
   },
 
   info: {
-    light: '#64B5F6',
-    main: '#2196F3',
-    dark: '#1976D2',
+    light: '#4DA5B4',
+    main: '#1A4D5C',
+    dark: '#0D262E',
   },
 
   // Critical alerts (for vitals like SpO2 < 95%)
   critical: {
-    light: '#FF8A80',
-    main: '#FF5252',
-    dark: '#D50000',
+    light: '#EF5350',
+    main: '#C62828',
+    dark: '#8E0000',
   },
 
   // Neutral colors
   neutral: {
     0: '#FFFFFF',
-    50: '#FAFAFA',
-    100: '#F5F5F5',
-    200: '#EEEEEE',
-    300: '#E0E0E0',
-    400: '#BDBDBD',
-    500: '#9E9E9E',
-    600: '#757575',
-    700: '#616161',
-    800: '#424242',
-    900: '#212121',
+    50: '#FAF9F9',
+    100: '#F5F4F4',
+    200: '#EDEBEB',
+    300: '#DDD9D9',
+    400: '#B8B2B2',
+    500: '#948C8C',
+    600: '#706868',
+    700: '#5A5252',
+    800: '#3D3636',
+    900: '#211C1C',
     1000: '#000000',
   },
 
@@ -104,44 +123,44 @@ export const colors = {
   background: {
     default: '#FFFFFF',
     primary: '#FFFFFF',
-    secondary: '#F5F5F5',
-    paper: '#F5F5F5',
-    dark: '#121212',
-    paperDark: '#1E1E1E',
+    secondary: '#FAF9F9',
+    paper: '#F5F4F4',
+    dark: '#1A1516',
+    paperDark: '#2A2324',
   },
 
   // Text colors
   text: {
-    primary: '#212121',
-    secondary: '#757575',
-    tertiary: '#9E9E9E',
-    disabled: '#BDBDBD',
-    hint: '#9E9E9E',
+    primary: '#211C1C',
+    secondary: '#706868',
+    tertiary: '#948C8C',
+    disabled: '#B8B2B2',
+    hint: '#948C8C',
     primaryDark: '#FFFFFF',
-    secondaryDark: '#B0B0B0',
+    secondaryDark: '#B8B2B2',
   },
 
   // Border colors
   border: {
-    default: '#E0E0E0',
-    light: '#EEEEEE',
-    dark: '#BDBDBD',
+    default: '#DDD9D9',
+    light: '#EDEBEB',
+    dark: '#B8B2B2',
   },
 
   // Status colors for sync
   sync: {
-    pending: '#FF9800',
-    syncing: '#2196F3',
-    synced: '#4CAF50',
-    failed: '#F44336',
-    conflict: '#9C27B0',
+    pending: '#E6A023',
+    syncing: '#1A4D5C',
+    synced: '#2E7D4A',
+    failed: '#C62828',
+    conflict: '#7B1FA2',
   },
 
   // Gender colors (for patient cards)
   gender: {
-    male: '#42A5F5',
-    female: '#EC407A',
-    other: '#AB47BC',
+    male: '#1A4D5C',
+    female: '#D4A574',
+    other: '#7B1FA2',
   },
 } as const;
 
