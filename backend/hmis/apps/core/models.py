@@ -670,3 +670,465 @@ class Ward(models.Model):
     def __str__(self) -> str:
         """Return ward and sub-county name."""
         return f"{self.name}, {self.sub_county.name}"
+
+
+# ============================================================================
+# RBAC Models (Sprint 1.1-1.2 Track C)
+# ============================================================================
+
+
+class Department(models.Model):
+    """
+    Hospital department for staff organization and access control.
+
+    Supports hierarchical structure for complex organizational charts.
+    Each department can have a head (StaffProfile) and multiple staff members.
+    """
+
+    DEPARTMENT_TYPES = [
+        ("CLINICAL", "Clinical"),
+        ("ADMINISTRATIVE", "Administrative"),
+        ("SUPPORT", "Support"),
+        ("LABORATORY", "Laboratory"),
+        ("PHARMACY", "Pharmacy"),
+        ("RADIOLOGY", "Radiology"),
+        ("RECORDS", "Medical Records"),
+    ]
+
+    code = models.CharField(
+        max_length=20,
+        unique=True,
+        help_text="Unique department code (e.g., OPD, IPD, LAB)",
+    )
+    name = models.CharField(
+        max_length=100,
+        help_text="Department name",
+    )
+    department_type = models.CharField(
+        max_length=20,
+        choices=DEPARTMENT_TYPES,
+        help_text="Type of department",
+    )
+    parent = models.ForeignKey(
+        "self",
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        help_text="Parent department for hierarchical structure",
+    )
+    head = models.ForeignKey(
+        "StaffProfile",
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name="headed_departments",
+        help_text="Department head",
+    )
+    is_active = models.BooleanField(
+        default=True,
+        help_text="Whether this department is active",
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        """Meta options for Department."""
+
+        verbose_name = "Department"
+        verbose_name_plural = "Departments"
+        ordering = ["name"]
+
+    def __str__(self) -> str:
+        """Return department name."""
+        return f"{self.name} ({self.code})"
+
+    def get_staff_count(self) -> int:
+        """
+        Get count of active staff in this department.
+
+        Returns:
+            int: Number of staff with this as primary department
+        """
+        return self.primary_staff.filter(employment_status="ACTIVE").count()
+
+    def get_hierarchy(self) -> list:
+        """
+        Get full parent chain from root to this department.
+
+        Returns:
+            list: List of departments from root to self
+        """
+        hierarchy = []
+        current = self
+        while current is not None:
+            hierarchy.insert(0, current)
+            current = current.parent
+        return hierarchy
+
+    def get_subdepartments(self):
+        """
+        Get child departments.
+
+        Returns:
+            QuerySet: Child departments
+        """
+        return self.department_set.all()
+
+
+class Role(models.Model):
+    """
+    Hospital role with hierarchical permissions.
+
+    Defines role-based access control with flexible JSON permission matrix.
+    Can be linked to Django Groups for standard permission fallback.
+    Supports Kenya-specific requirements like license tracking.
+    """
+
+    ROLE_CATEGORIES = [
+        ("CLINICAL", "Clinical Staff"),
+        ("ADMINISTRATIVE", "Administrative Staff"),
+        ("TECHNICAL", "Technical Staff"),
+        ("MANAGEMENT", "Management"),
+    ]
+
+    code = models.CharField(
+        max_length=30,
+        unique=True,
+        help_text="Unique role code (e.g., DOCTOR, NURSE)",
+    )
+    name = models.CharField(
+        max_length=100,
+        help_text="Role name",
+    )
+    category = models.CharField(
+        max_length=20,
+        choices=ROLE_CATEGORIES,
+        help_text="Role category",
+    )
+    description = models.TextField(
+        blank=True,
+        help_text="Role description",
+    )
+
+    # Permission matrix (JSON for flexibility)
+    permissions_matrix = models.JSONField(
+        default=dict,
+        help_text="Permission matrix with resources and actions",
+    )
+
+    # Hierarchy
+    hierarchy_level = models.PositiveIntegerField(
+        default=0,
+        help_text="Hierarchy level (0=highest)",
+    )
+    parent_role = models.ForeignKey(
+        "self",
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        help_text="Parent role for permission inheritance",
+    )
+
+    # Linked Django Group (for standard permissions)
+    django_group = models.OneToOneField(
+        "auth.Group",
+        on_delete=models.CASCADE,
+        null=True,
+        blank=True,
+        help_text="Linked Django Group for standard permissions",
+    )
+
+    # Kenya-specific
+    requires_license = models.BooleanField(
+        default=False,
+        help_text="Whether this role requires a medical license",
+    )
+    license_body = models.CharField(
+        max_length=100,
+        blank=True,
+        help_text="Licensing body (e.g., KMPDB, NCK)",
+    )
+
+    is_active = models.BooleanField(
+        default=True,
+        help_text="Whether this role is active",
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        """Meta options for Role."""
+
+        verbose_name = "Role"
+        verbose_name_plural = "Roles"
+        ordering = ["hierarchy_level", "name"]
+
+    def __str__(self) -> str:
+        """Return role name."""
+        return f"{self.name} ({self.code})"
+
+    def has_permission(self, action: str, resource: str) -> bool:
+        """
+        Check if role has permission for action on resource.
+
+        Args:
+            action: Action to check (create, read, update, delete, etc.)
+            resource: Resource type (Patient, Encounter, etc.)
+
+        Returns:
+            bool: True if permission granted
+        """
+        if not self.permissions_matrix:
+            return False
+
+        resource_perms = self.permissions_matrix.get(resource, {})
+        return resource_perms.get(action, False)
+
+    def get_all_permissions(self) -> dict:
+        """
+        Get all permissions including inherited from parent.
+
+        Returns:
+            dict: Combined permission matrix
+        """
+        if not self.parent_role:
+            return self.permissions_matrix.copy()
+
+        # Start with parent permissions
+        all_perms = self.parent_role.get_all_permissions()
+
+        # Override/extend with this role's permissions
+        for resource, actions in self.permissions_matrix.items():
+            if resource not in all_perms:
+                all_perms[resource] = {}
+            all_perms[resource].update(actions)
+
+        return all_perms
+
+    def can_access_department(self, department) -> bool:
+        """
+        Check if role can access department.
+
+        Args:
+            department: Department to check
+
+        Returns:
+            bool: True if access allowed
+        """
+        # For now, all roles can access all departments
+        # This can be extended with department-specific rules
+        return True
+
+
+class StaffProfile(models.Model):
+    """
+    Extended profile for hospital staff members.
+
+    Links users to roles and departments for role-based access control.
+    Tracks Kenya-specific requirements like license verification and employment status.
+    """
+
+    EMPLOYMENT_STATUS = [
+        ("ACTIVE", "Active"),
+        ("ON_LEAVE", "On Leave"),
+        ("SUSPENDED", "Suspended"),
+        ("TERMINATED", "Terminated"),
+    ]
+
+    user = models.OneToOneField(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name="staff_profile",
+        help_text="Linked user account",
+    )
+
+    # Identity
+    employee_id = models.CharField(
+        max_length=50,
+        unique=True,
+        help_text="Unique employee ID (e.g., VH-2026-001)",
+    )
+    title = models.CharField(
+        max_length=20,
+        blank=True,
+        help_text="Title (e.g., Dr., Nurse)",
+    )
+
+    # Role and Department
+    primary_role = models.ForeignKey(
+        Role,
+        on_delete=models.PROTECT,
+        related_name="primary_staff",
+        help_text="Primary role",
+    )
+    secondary_roles = models.ManyToManyField(
+        Role,
+        blank=True,
+        related_name="secondary_staff",
+        help_text="Additional roles",
+    )
+    primary_department = models.ForeignKey(
+        Department,
+        on_delete=models.PROTECT,
+        related_name="primary_staff",
+        help_text="Primary department",
+    )
+    secondary_departments = models.ManyToManyField(
+        Department,
+        blank=True,
+        related_name="secondary_staff",
+        help_text="Additional departments",
+    )
+
+    # Professional details (Kenya-specific)
+    license_number = models.CharField(
+        max_length=50,
+        blank=True,
+        help_text="Professional license number",
+    )
+    license_expiry = models.DateField(
+        null=True,
+        blank=True,
+        help_text="License expiry date",
+    )
+    license_verified = models.BooleanField(
+        default=False,
+        help_text="Whether license has been verified by admin",
+    )
+    specialization = models.CharField(
+        max_length=100,
+        blank=True,
+        help_text="Medical specialization",
+    )
+
+    # Contact
+    phone_number = models.CharField(
+        max_length=20,
+        blank=True,
+        help_text="Contact phone number",
+    )
+    emergency_contact_name = models.CharField(
+        max_length=100,
+        blank=True,
+        help_text="Emergency contact name",
+    )
+    emergency_contact_phone = models.CharField(
+        max_length=20,
+        blank=True,
+        help_text="Emergency contact phone",
+    )
+
+    # Employment
+    employment_status = models.CharField(
+        max_length=20,
+        choices=EMPLOYMENT_STATUS,
+        default="ACTIVE",
+        help_text="Current employment status",
+    )
+    date_joined = models.DateField(
+        help_text="Date joined the organization",
+    )
+    date_left = models.DateField(
+        null=True,
+        blank=True,
+        help_text="Date left the organization",
+    )
+
+    # Supervisor
+    supervisor = models.ForeignKey(
+        "self",
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name="supervisees",
+        help_text="Direct supervisor",
+    )
+
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        """Meta options for StaffProfile."""
+
+        verbose_name = "Staff Profile"
+        verbose_name_plural = "Staff Profiles"
+        ordering = ["user__last_name", "user__first_name"]
+
+    def __str__(self) -> str:
+        """Return formatted name."""
+        return self.get_full_name()
+
+    def get_full_name(self) -> str:
+        """
+        Get full name with title.
+
+        Returns:
+            str: Title + User's full name
+        """
+        full_name = self.user.get_full_name() or self.user.username
+        if self.title:
+            return f"{self.title} {full_name}"
+        return full_name
+
+    def get_all_roles(self) -> list:
+        """
+        Get primary + secondary roles.
+
+        Returns:
+            list: All roles
+        """
+        roles = [self.primary_role]
+        roles.extend(list(self.secondary_roles.all()))
+        return roles
+
+    def get_all_departments(self) -> list:
+        """
+        Get primary + secondary departments.
+
+        Returns:
+            list: All departments
+        """
+        departments = [self.primary_department]
+        departments.extend(list(self.secondary_departments.all()))
+        return departments
+
+    def has_permission(self, action: str, resource: str) -> bool:
+        """
+        Check if staff has permission for action on resource.
+
+        Aggregates permissions from all roles.
+
+        Args:
+            action: Action to check
+            resource: Resource type
+
+        Returns:
+            bool: True if permission granted from any role
+        """
+        for role in self.get_all_roles():
+            if role.has_permission(action, resource):
+                return True
+        return False
+
+    def is_license_valid(self) -> bool:
+        """
+        Check if license is valid (not expired).
+
+        Returns:
+            bool: True if no expiry or not yet expired
+        """
+        if not self.license_expiry:
+            return True
+
+        from datetime import date
+
+        return self.license_expiry >= date.today()
+
+    def get_supervisees(self):
+        """
+        Get direct reports.
+
+        Returns:
+            QuerySet: StaffProfiles supervised by this staff
+        """
+        return self.supervisees.all()
