@@ -154,15 +154,15 @@ Sprint 1.1-1.2 Track B establishes the React Native mobile application foundatio
 ### Week 4: Sync Foundation & Polish
 
 #### Day 16-17: Sync Queue
-- [ ] Create `lib/sync/queue.ts` sync queue manager
-- [ ] Implement `add()` for queuing operations
-- [ ] Implement `getPending()` and `getPendingCount()`
-- [ ] Implement `markSyncing()`, `markSynced()`, `markFailed()`
-- [ ] Implement `clearSynced()` cleanup
-- [ ] Create `hooks/useOfflineStatus.ts` network detection
-- [ ] Create `hooks/useSyncStatus.ts` pending count hook
-- [ ] Write 15 sync queue tests
-- [ ] ✅ **Checkpoint**: Changes queue correctly for sync
+- [x] Create `lib/sync/queue.ts` sync queue manager
+- [x] Implement `add()` for queuing operations
+- [x] Implement `getPending()` and `getPendingCount()`
+- [x] Implement `markSyncing()`, `markSynced()`, `markFailed()`
+- [x] Implement `clearSynced()` cleanup
+- [x] Create `hooks/useOfflineStatus.ts` network detection
+- [x] Create `hooks/useSyncStatus.ts` pending count hook
+- [x] Write 15 sync queue tests (21 tests written)
+- [x] ✅ **Checkpoint**: Changes queue correctly for sync
 
 #### Day 18-19: Integration & Polish
 - [ ] Integrate sync queue with patient repository
