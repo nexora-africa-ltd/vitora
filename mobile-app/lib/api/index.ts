@@ -15,7 +15,7 @@ export {
 } from './client';
 
 // Auth API
-export { authApi, LoginCredentials, TokenResponse, UserData } from './auth';
+export { login, refresh, verifyToken as verify } from './auth';
 
 // Patients API
 export {
