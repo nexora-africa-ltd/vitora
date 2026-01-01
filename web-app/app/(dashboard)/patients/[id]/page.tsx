@@ -1,0 +1,218 @@
+'use client';
+
+import { useParams, useRouter } from 'next/navigation';
+import Link from 'next/link';
+import { ArrowLeft, Edit, Trash2, Phone, Mail, MapPin, User, Calendar, AlertTriangle } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Badge } from '@/components/ui/badge';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Skeleton } from '@/components/ui/skeleton';
+import { usePatient, usePatientEmergencyContacts } from '@/lib/hooks/use-patients';
+import { calculateAge, formatDate, formatPhoneNumber } from '@/lib/utils/format';
+import { PatientEncounters } from '@/components/patients/patient-encounters';
+import { EmergencyContactsList } from '@/components/patients/emergency-contacts-list';
+
+export default function PatientDetailPage() {
+  const params = useParams();
+  const router = useRouter();
+  const patientId = Number(params.id);
+
+  const { data: patient, isLoading, error } = usePatient(patientId);
+  const { data: emergencyContacts } = usePatientEmergencyContacts(patientId);
+
+  if (isLoading) {
+    return <PatientDetailSkeleton />;
+  }
+
+  if (error || !patient) {
+    return (
+      <div className="text-center py-12">
+        <h2 className="text-xl font-semibold">Patient not found</h2>
+        <p className="text-muted-foreground mt-2">
+          The patient you&apos;re looking for doesn&apos;t exist or has been removed.
+        </p>
+        <Button onClick={() => router.push('/patients')} className="mt-4">
+          Back to Patients
+        </Button>
+      </div>
+    );
+  }
+
+  const genderLabels: Record<string, string> = { M: 'Male', F: 'Female', O: 'Other' };
+
+  return (
+    <div className="space-y-6">
+      {/* Header */}
+      <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
+        <div className="flex items-start gap-4">
+          <Button variant="ghost" size="icon" onClick={() => router.back()}>
+            <ArrowLeft className="h-5 w-5" />
+          </Button>
+          <div>
+            <div className="flex items-center gap-2">
+              <h1 className="text-3xl font-bold">
+                {patient.first_name} {patient.last_name}
+              </h1>
+              {patient.is_sensitive && (
+                <Badge variant="destructive">
+                  <AlertTriangle className="h-3 w-3 mr-1" />
+                  Sensitive
+                </Badge>
+              )}
+            </div>
+            <p className="text-muted-foreground">MRN: {patient.mrn}</p>
+          </div>
+        </div>
+
+        <div className="flex gap-2">
+          <Button variant="outline" asChild>
+            <Link href={`/patients/${patient.id}/edit`}>
+              <Edit className="h-4 w-4 mr-2" />
+              Edit
+            </Link>
+          </Button>
+          <Button variant="outline" className="text-destructive">
+            <Trash2 className="h-4 w-4 mr-2" />
+            Delete
+          </Button>
+        </div>
+      </div>
+
+      {/* Patient Info Cards */}
+      <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+        {/* Basic Info */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-lg">Basic Information</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            <InfoRow icon={User} label="Gender" value={genderLabels[patient.gender]} />
+            <InfoRow
+              icon={Calendar}
+              label="Date of Birth"
+              value={`${formatDate(patient.date_of_birth)} (${calculateAge(patient.date_of_birth)} years)`}
+            />
+            <InfoRow icon={Phone} label="Phone" value={formatPhoneNumber(patient.phone_number || '')} />
+            <InfoRow icon={Mail} label="Email" value={patient.email || '—'} />
+          </CardContent>
+        </Card>
+
+        {/* Address */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-lg">Address</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            <InfoRow icon={MapPin} label="County" value={patient.county_name || '—'} />
+            <InfoRow icon={MapPin} label="Sub-County" value={patient.sub_county_name || '—'} />
+            <InfoRow icon={MapPin} label="Ward" value={patient.ward_name || '—'} />
+            <InfoRow icon={MapPin} label="Village" value={patient.village || '—'} />
+          </CardContent>
+        </Card>
+
+        {/* Emergency Contact */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-lg">Emergency Contact</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            <InfoRow icon={User} label="Name" value={patient.emergency_contact_name || '—'} />
+            <InfoRow
+              icon={Phone}
+              label="Phone"
+              value={formatPhoneNumber(patient.emergency_contact_phone || '')}
+            />
+            <InfoRow
+              icon={User}
+              label="Relationship"
+              value={patient.emergency_contact_relationship || '—'}
+            />
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Tabs for encounters and more */}
+      <Tabs defaultValue="encounters" className="space-y-4">
+        <TabsList>
+          <TabsTrigger value="encounters">Encounters</TabsTrigger>
+          <TabsTrigger value="emergency-contacts">Emergency Contacts</TabsTrigger>
+          <TabsTrigger value="prescriptions">Prescriptions</TabsTrigger>
+          <TabsTrigger value="lab-results">Lab Results</TabsTrigger>
+        </TabsList>
+
+        <TabsContent value="encounters">
+          <PatientEncounters patientId={patientId} />
+        </TabsContent>
+
+        <TabsContent value="emergency-contacts">
+          <EmergencyContactsList contacts={emergencyContacts || []} />
+        </TabsContent>
+
+        <TabsContent value="prescriptions">
+          <Card>
+            <CardContent className="py-8 text-center text-muted-foreground">
+              Prescriptions will be displayed here
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        <TabsContent value="lab-results">
+          <Card>
+            <CardContent className="py-8 text-center text-muted-foreground">
+              Lab results will be displayed here
+            </CardContent>
+          </Card>
+        </TabsContent>
+      </Tabs>
+    </div>
+  );
+}
+
+function InfoRow({
+  icon: Icon,
+  label,
+  value,
+}: {
+  icon: React.ComponentType<{ className?: string }>;
+  label: string;
+  value: string;
+}) {
+  return (
+    <div className="flex items-center gap-3">
+      <Icon className="h-4 w-4 text-muted-foreground shrink-0" />
+      <div className="min-w-0">
+        <p className="text-xs text-muted-foreground">{label}</p>
+        <p className="text-sm font-medium truncate">{value || '—'}</p>
+      </div>
+    </div>
+  );
+}
+
+function PatientDetailSkeleton() {
+  return (
+    <div className="space-y-6">
+      <div className="flex items-start gap-4">
+        <Skeleton className="h-10 w-10" />
+        <div className="space-y-2">
+          <Skeleton className="h-8 w-48" />
+          <Skeleton className="h-4 w-32" />
+        </div>
+      </div>
+      <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+        {[1, 2, 3].map((i) => (
+          <Card key={i}>
+            <CardHeader>
+              <Skeleton className="h-6 w-32" />
+            </CardHeader>
+            <CardContent className="space-y-3">
+              {[1, 2, 3, 4].map((j) => (
+                <Skeleton key={j} className="h-8 w-full" />
+              ))}
+            </CardContent>
+          </Card>
+        ))}
+      </div>
+    </div>
+  );
+}
