@@ -40,8 +40,8 @@ class DrugSerializer(serializers.ModelSerializer):
             "keml_code",
             "requires_prescription",
             "is_controlled",
-            "reorder_level",
-            "reorder_quantity",
+            "default_reorder_level",
+            "default_reorder_quantity",
             "reference_price",
             "is_active",
             "display_name",
@@ -56,9 +56,9 @@ class StockBatchSerializer(serializers.ModelSerializer):
     """Serializer for StockBatch model."""
 
     drug_name = serializers.CharField(source="drug.generic_name", read_only=True)
-    days_to_expiry = serializers.IntegerField(source="days_to_expiry", read_only=True)
-    is_expired = serializers.BooleanField(source="is_expired", read_only=True)
-    is_low_stock = serializers.BooleanField(source="is_low_stock", read_only=True)
+    days_until_expiry = serializers.IntegerField(source="days_to_expiry", read_only=True)
+    is_expired_status = serializers.BooleanField(source="is_expired", read_only=True)
+    is_low_stock_status = serializers.BooleanField(source="is_low_stock", read_only=True)
 
     class Meta:
         model = StockBatch
@@ -73,14 +73,14 @@ class StockBatchSerializer(serializers.ModelSerializer):
             "quantity_damaged",
             "quantity_expired",
             "expiry_date",
-            "days_to_expiry",
-            "is_expired",
-            "is_low_stock",
+            "days_until_expiry",
+            "is_expired_status",
+            "is_low_stock_status",
             "status",
             "cost_price",
             "selling_price",
             "supplier",
-            "purchase_order_number",
+            "purchase_order",
             "received_date",
             "received_by",
             "created_at",
@@ -94,9 +94,9 @@ class StockBatchSerializer(serializers.ModelSerializer):
             "created_at",
             "updated_at",
             "drug_name",
-            "days_to_expiry",
-            "is_expired",
-            "is_low_stock",
+            "days_until_expiry",
+            "is_expired_status",
+            "is_low_stock_status",
         ]
 
 
@@ -131,7 +131,7 @@ class PrescriptionItemSerializer(serializers.ModelSerializer):
     """Serializer for PrescriptionItem model."""
 
     drug_name = serializers.CharField(source="drug.generic_name", read_only=True)
-    remaining_quantity = serializers.IntegerField(source="remaining_quantity", read_only=True)
+    remaining_qty = serializers.IntegerField(source="remaining_quantity", read_only=True)
 
     class Meta:
         model = PrescriptionItem
@@ -148,19 +148,15 @@ class PrescriptionItemSerializer(serializers.ModelSerializer):
             "instructions",
             "is_substitutable",
             "quantity_dispensed",
-            "remaining_quantity",
+            "remaining_qty",
             "is_cancelled",
             "cancellation_reason",
-            "created_at",
-            "updated_at",
         ]
         read_only_fields = [
             "id",
             "quantity_dispensed",
-            "created_at",
-            "updated_at",
             "drug_name",
-            "remaining_quantity",
+            "remaining_qty",
         ]
 
 
@@ -170,8 +166,8 @@ class PrescriptionSerializer(serializers.ModelSerializer):
     items = PrescriptionItemSerializer(many=True, read_only=True)
     patient_name = serializers.SerializerMethodField()
     prescriber_name = serializers.SerializerMethodField()
-    is_valid_prescription = serializers.BooleanField(source="is_valid", read_only=True)
-    is_fully_dispensed = serializers.BooleanField(source="is_fully_dispensed", read_only=True)
+    is_valid_prescription = serializers.SerializerMethodField()
+    is_fully_dispensed_status = serializers.BooleanField(source="is_fully_dispensed", read_only=True)
 
     class Meta:
         model = Prescription
@@ -185,9 +181,9 @@ class PrescriptionSerializer(serializers.ModelSerializer):
             "prescribed_at",
             "valid_until",
             "status",
-            "notes",
+            "clinical_notes",
             "is_valid_prescription",
-            "is_fully_dispensed",
+            "is_fully_dispensed_status",
             "items",
             "created_at",
             "updated_at",
@@ -200,7 +196,7 @@ class PrescriptionSerializer(serializers.ModelSerializer):
             "patient_name",
             "prescriber_name",
             "is_valid_prescription",
-            "is_fully_dispensed",
+            "is_fully_dispensed_status",
         ]
 
     def get_patient_name(self, obj):
@@ -210,6 +206,10 @@ class PrescriptionSerializer(serializers.ModelSerializer):
     def get_prescriber_name(self, obj):
         """Get prescriber full name."""
         return obj.prescribed_by.get_full_name() or obj.prescribed_by.username
+
+    def get_is_valid_prescription(self, obj):
+        """Get prescription validity status."""
+        return obj.is_valid()
 
 
 class DispensingSerializer(serializers.ModelSerializer):
