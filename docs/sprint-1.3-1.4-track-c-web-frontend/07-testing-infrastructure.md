@@ -734,7 +734,7 @@ export default defineConfig({
   // Shared settings for all projects
   use: {
     // Base URL for actions like `await page.goto('/')`
-    baseURL: 'http://localhost:3000',
+    baseURL: 'http://localhost:3009',
     
     // Collect trace when retrying the failed test
     trace: 'on-first-retry',
@@ -795,7 +795,7 @@ export default defineConfig({
   // Run your local dev server before starting the tests
   webServer: {
     command: 'npm run dev',
-    url: 'http://localhost:3000',
+    url: 'http://localhost:3009',
     reuseExistingServer: !process.env.CI,
     timeout: 120 * 1000,
   },
@@ -974,7 +974,7 @@ Add these scripts to package.json:
 ```json
 {
   "scripts": {
-    "dev": "next dev -p 3000",
+    "dev": "next dev -p 3009",
     "build": "next build",
     "start": "next start",
     "lint": "next lint",

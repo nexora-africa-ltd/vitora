@@ -32,7 +32,7 @@ npx create-next-app@14 web-app --typescript --tailwind --eslint --app --src-dir 
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "dev": "next dev -p 3000",
+    "dev": "next dev -p 3009",
     "build": "next build",
     "start": "next start",
     "lint": "next lint",
