@@ -831,3 +831,97 @@ class LabQueue(models.Model):
         if self.released_at:
             return self.released_at - self.created_at
         return None
+
+
+class LabResultTemplate(models.Model):
+    """Template for lab test parameters with reference ranges."""
+
+    id = models.BigAutoField(primary_key=True)
+
+    # Test identification
+    test_code = models.CharField(max_length=20, help_text="LOINC or internal test code")
+    test_name = models.CharField(max_length=200)
+
+    # Parameter details
+    parameter_code = models.CharField(max_length=20, help_text="LOINC component code")
+    parameter_name = models.CharField(max_length=100)
+    unit = models.CharField(max_length=50)
+
+    # Reference ranges by demographic
+    # Stored as JSON for flexibility
+    reference_ranges = models.JSONField(
+        default=dict,
+        help_text="Reference ranges by demographics: adult_male, adult_female, pediatric, default",
+    )
+    # Example: {
+    #   "adult_male": {"low": 4.5, "high": 5.5},
+    #   "adult_female": {"low": 4.0, "high": 5.0},
+    #   "pediatric": {"low": 3.5, "high": 5.0},
+    #   "default": {"low": 4.0, "high": 5.5}
+    # }
+
+    # Critical values
+    critical_low = models.DecimalField(
+        max_digits=12, decimal_places=4, null=True, blank=True, help_text="Critical low threshold"
+    )
+    critical_high = models.DecimalField(
+        max_digits=12, decimal_places=4, null=True, blank=True, help_text="Critical high threshold"
+    )
+
+    # Display
+    display_order = models.IntegerField(default=0, help_text="Order in which to display parameter")
+    is_active = models.BooleanField(default=True)
+
+    class Meta:
+        verbose_name = "Lab Result Template"
+        verbose_name_plural = "Lab Result Templates"
+        ordering = ["test_code", "display_order"]
+        unique_together = ["test_code", "parameter_code"]
+        indexes = [
+            models.Index(fields=["test_code"]),
+            models.Index(fields=["parameter_code"]),
+        ]
+
+    def __str__(self):
+        return f"{self.test_code} - {self.parameter_name}"
+
+    def get_reference_range(self, patient):
+        """
+        Get appropriate reference range for patient demographics.
+
+        Args:
+            patient: Patient instance
+
+        Returns:
+            tuple: (low, high) reference range values, or (None, None) if not found
+        """
+        from hmis.apps.patients.models import Patient
+
+        if not isinstance(patient, Patient):
+            return (None, None)
+
+        # Determine category based on age and gender
+        age = patient.age if hasattr(patient, "age") else None
+
+        # Check age first (pediatric takes precedence)
+        if age is not None and age < 18:
+            category = "pediatric"
+        elif patient.gender == "M":
+            category = "adult_male"
+        elif patient.gender == "F":
+            category = "adult_female"
+        else:
+            category = "default"
+
+        # Try to get the range for the determined category
+        range_data = self.reference_ranges.get(category)
+
+        # Fallback to default if category not found
+        if not range_data:
+            range_data = self.reference_ranges.get("default")
+
+        # Return the range values or (None, None)
+        if range_data:
+            return (range_data.get("low"), range_data.get("high"))
+
+        return (None, None)
