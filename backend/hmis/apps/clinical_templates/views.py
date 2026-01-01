@@ -2,7 +2,6 @@
 Views for Clinical Templates.
 """
 
-from django.db.models import Count
 from django_filters.rest_framework import DjangoFilterBackend
 from rest_framework import filters, status, viewsets
 from rest_framework.decorators import action

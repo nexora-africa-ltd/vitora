@@ -4,7 +4,7 @@ Views for Pharmacy app API endpoints.
 
 from datetime import date, timedelta
 
-from django.db.models import Count, F, Q, Sum
+from django.db.models import Sum
 from django_filters.rest_framework import DjangoFilterBackend
 from rest_framework import filters, status, viewsets
 from rest_framework.decorators import action
@@ -16,7 +16,6 @@ from hmis.apps.pharmacy.models import (
     Dispensing,
     Drug,
     Prescription,
-    PrescriptionItem,
     StockAdjustment,
     StockAlert,
     StockBatch,
@@ -24,7 +23,6 @@ from hmis.apps.pharmacy.models import (
 from hmis.apps.pharmacy.serializers import (
     DispensingSerializer,
     DrugSerializer,
-    PrescriptionItemSerializer,
     PrescriptionSerializer,
     StockAdjustmentSerializer,
     StockAlertSerializer,

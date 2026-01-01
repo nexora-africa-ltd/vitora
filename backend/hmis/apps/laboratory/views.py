@@ -8,15 +8,18 @@ from django.db import models
 from django_filters import rest_framework as filters
 from rest_framework import status, viewsets
 from rest_framework.decorators import action
+from rest_framework.parsers import FormParser, MultiPartParser
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 
-from .models import LabOrder, LabResult, LOINCCode, TestCatalog
+from .models import LabOrder, LabOrderItem, LabResult, LOINCCode, TestCatalog
 from .serializers import (
     LabOrderCreateSerializer,
+    LabOrderItemSerializer,
     LabOrderSerializer,
     LabResultCreateSerializer,
     LabResultSerializer,
+    LabResultVerifySerializer,
     LOINCCodeSerializer,
     TestCatalogDetailSerializer,
     TestCatalogSerializer,
@@ -75,13 +78,13 @@ class LabOrderViewSet(viewsets.ModelViewSet):
         if self.action == "create":
             return LabOrderCreateSerializer
         return LabOrderSerializer
-    
+
     def create(self, request, *args, **kwargs):
         """Create a new lab order."""
         serializer = self.get_serializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         order = serializer.save()
-        
+
         # Return the full order representation
         output_serializer = LabOrderSerializer(order)
         return Response(output_serializer.data, status=status.HTTP_201_CREATED)
@@ -149,13 +152,13 @@ class LabOrderViewSet(viewsets.ModelViewSet):
     def handle_results(self, request, order_number=None):
         """Handle results: GET to list, POST to create."""
         order = self.get_object()
-        
+
         if request.method == "GET":
             # List all results for this order
             results = LabResult.objects.filter(order_item__lab_order=order)
             serializer = LabResultSerializer(results, many=True)
             return Response(serializer.data)
-        
+
         # POST - Create a new result
         serializer = LabResultCreateSerializer(data=request.data, context={"request": request})
         if serializer.is_valid():
@@ -194,6 +197,76 @@ class LabOrderViewSet(viewsets.ModelViewSet):
         alerts = LabAlertService.check_critical_results(order)
         return Response({"alerts": alerts})
 
+    @action(detail=True, methods=["get", "post"], url_path="items")
+    def manage_items(self, request, order_number=None):
+        """Manage order items: GET to list, POST to add."""
+        order = self.get_object()
+
+        if request.method == "GET":
+            serializer = LabOrderItemSerializer(order.items.all(), many=True)
+            return Response(serializer.data)
+
+        # POST - Add a new item
+        test_code = request.data.get("test_code")
+        special_instructions = request.data.get("special_instructions", "")
+
+        if not test_code:
+            return Response(
+                {"error": "test_code is required"},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        try:
+            test = TestCatalog.objects.get(code=test_code)
+        except TestCatalog.DoesNotExist:
+            return Response(
+                {"error": f"Test with code '{test_code}' not found"},
+                status=status.HTTP_404_NOT_FOUND,
+            )
+
+        # Check for duplicate test
+        if order.items.filter(test=test).exists():
+            return Response(
+                {"error": f"Test '{test_code}' is already in this order"},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        item = LabOrderItem.objects.create(
+            lab_order=order,
+            test=test,
+            unit_cost=test.cost,
+            special_instructions=special_instructions,
+        )
+        order.calculate_total_cost()
+
+        serializer = LabOrderItemSerializer(item)
+        return Response(serializer.data, status=status.HTTP_201_CREATED)
+
+    @action(detail=True, methods=["delete"], url_path=r"items/(?P<item_id>\d+)")
+    def delete_item(self, request, order_number=None, item_id=None):
+        """Remove an item from the order."""
+        order = self.get_object()
+
+        try:
+            item = order.items.get(pk=item_id)
+        except LabOrderItem.DoesNotExist:
+            return Response(
+                {"error": "Item not found in this order"},
+                status=status.HTTP_404_NOT_FOUND,
+            )
+
+        # Only allow deletion if order is still in DRAFT status
+        if order.status != "DRAFT":
+            return Response(
+                {"error": "Can only remove items from draft orders"},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        item.delete()
+        order.calculate_total_cost()
+
+        return Response(status=status.HTTP_204_NO_CONTENT)
+
 
 class LabResultViewSet(viewsets.ModelViewSet):
     """
@@ -211,9 +284,35 @@ class LabResultViewSet(viewsets.ModelViewSet):
 
     @action(detail=True, methods=["post"])
     def verify(self, request, pk=None):
-        """Verify a result."""
+        """Verify or reject a result."""
         result = self.get_object()
-        result.verify(request.user)
+        serializer = LabResultVerifySerializer(data=request.data)
+
+        if not serializer.is_valid():
+            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+        approved = serializer.validated_data.get("approved", True)
+        comments = serializer.validated_data.get("comments", "")
+
+        if approved:
+            result.verify(request.user)
+            if comments:
+                result.interpretation = (
+                    f"{result.interpretation}\n\nVerification note: {comments}".strip()
+                )
+                result.save(update_fields=["interpretation"])
+        else:
+            # Reject the result
+            result.verification_status = "REJECTED"
+            result.verified_by = request.user
+            from django.utils import timezone
+            result.verified_at = timezone.now()
+            if comments:
+                result.interpretation = (
+                    f"{result.interpretation}\n\nRejection reason: {comments}".strip()
+                )
+            result.save()
+
         serializer = self.get_serializer(result)
         return Response(serializer.data)
 
@@ -223,6 +322,88 @@ class LabResultViewSet(viewsets.ModelViewSet):
         results = self.queryset.filter(verification_status="UNVERIFIED")
         serializer = self.get_serializer(results, many=True)
         return Response(serializer.data)
+
+    @action(
+        detail=True,
+        methods=["post"],
+        url_path="attachment",
+        parser_classes=[MultiPartParser, FormParser],
+    )
+    def upload_attachment(self, request, pk=None):
+        """Upload external result attachment."""
+        result = self.get_object()
+
+        if "file" not in request.FILES:
+            return Response(
+                {"error": "No file provided"},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        uploaded_file = request.FILES["file"]
+
+        # Validate file type
+        allowed_types = ["application/pdf", "image/jpeg", "image/png"]
+        if uploaded_file.content_type not in allowed_types:
+            return Response(
+                {"error": f"Invalid file type. Allowed types: {', '.join(allowed_types)}"},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        # Save the file
+        result.external_result_attachment = uploaded_file
+        result.is_external_result = True
+        result.save(update_fields=["external_result_attachment", "is_external_result"])
+
+        serializer = self.get_serializer(result)
+        return Response(serializer.data)
+
+
+class PatientLabOrderViewSet(viewsets.ReadOnlyModelViewSet):
+    """
+    ViewSet for listing lab orders by patient.
+    Used for nested route: /api/patients/{id}/lab-orders/
+    """
+
+    serializer_class = LabOrderSerializer
+    permission_classes = [IsAuthenticated]
+
+    def get_queryset(self):
+        patient_pk = self.kwargs.get("patient_pk")
+        return LabOrder.objects.filter(patient_id=patient_pk).select_related(
+            "patient", "encounter", "ordered_by"
+        )
+
+
+class EncounterLabOrderViewSet(viewsets.ReadOnlyModelViewSet):
+    """
+    ViewSet for listing lab orders by encounter.
+    Used for nested route: /api/encounters/{id}/lab-orders/
+    """
+
+    serializer_class = LabOrderSerializer
+    permission_classes = [IsAuthenticated]
+
+    def get_queryset(self):
+        encounter_pk = self.kwargs.get("encounter_pk")
+        return LabOrder.objects.filter(encounter_id=encounter_pk).select_related(
+            "patient", "encounter", "ordered_by"
+        )
+
+
+class PatientLabResultViewSet(viewsets.ReadOnlyModelViewSet):
+    """
+    ViewSet for listing lab results by patient.
+    Used for nested route: /api/patients/{id}/lab-results/
+    """
+
+    serializer_class = LabResultSerializer
+    permission_classes = [IsAuthenticated]
+
+    def get_queryset(self):
+        patient_pk = self.kwargs.get("patient_pk")
+        return LabResult.objects.filter(
+            order_item__lab_order__patient_id=patient_pk
+        ).select_related("order_item__test", "entered_by")
 
 
 class LOINCCodeViewSet(viewsets.ReadOnlyModelViewSet):

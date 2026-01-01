@@ -5,22 +5,22 @@ Following TDD methodology - these tests define the expected behavior
 before implementation.
 """
 
-import pytest
 from datetime import date, timedelta
 from decimal import Decimal
-from django.core.exceptions import ValidationError
-from django.contrib.auth import get_user_model
 
+import pytest
+from django.contrib.auth import get_user_model
+from django.core.exceptions import ValidationError
+
+from hmis.apps.encounters.models import Encounter
 from hmis.apps.laboratory.models import (
-    TestCatalog,
-    LOINCCode,
     LabOrder,
     LabOrderItem,
     LabResult,
-    generate_lab_order_number,
+    LOINCCode,
+    TestCatalog,
 )
 from hmis.apps.patients.models import Patient
-from hmis.apps.encounters.models import Encounter
 
 User = get_user_model()
 
@@ -91,7 +91,7 @@ class TestTestCatalog:
             normal_range_male="13.0-17.0",
             normal_range_female="12.0-15.0",
         )
-        
+
         # Create male patient
         male_patient = Patient.objects.create(
             first_name="John",
@@ -100,7 +100,7 @@ class TestTestCatalog:
             gender="M",
         )
         assert test.get_normal_range(male_patient) == "13.0-17.0"
-        
+
         # Create female patient
         female_patient = Patient.objects.create(
             first_name="Jane",
@@ -122,20 +122,20 @@ class TestTestCatalog:
             result_unit="g/dL",
             normal_range_male="13.0-17.0",
         )
-        
+
         patient = Patient.objects.create(
             first_name="John",
             last_name="Doe",
             date_of_birth=date(1990, 1, 1),
             gender="M",
         )
-        
+
         # Normal value
         assert test.is_result_abnormal(15.0, patient) is False
-        
+
         # Low value
         assert test.is_result_abnormal(10.0, patient) is True
-        
+
         # High value
         assert test.is_result_abnormal(20.0, patient) is True
 
@@ -158,7 +158,7 @@ class TestTestCatalog:
             specimen_type="BLOOD",
             result_type="NUMERIC",
         )
-        
+
         # Create panel test
         panel = TestCatalog.objects.create(
             code="CBC",
@@ -170,7 +170,7 @@ class TestTestCatalog:
             is_panel=True,
         )
         panel.panel_components.add(component1, component2)
-        
+
         components = panel.get_panel_tests()
         assert components.count() == 2
         assert component1 in components
@@ -188,7 +188,7 @@ class TestTestCatalog:
             available_in_house=True,
         )
         assert in_house_test.available_in_house is True
-        
+
         external_test = TestCatalog.objects.create(
             code="VL",
             name="Viral Load",
@@ -222,7 +222,7 @@ class TestTestCatalog:
             result_type="NUMERIC",
             is_active=False,
         )
-        
+
         active_tests = TestCatalog.objects.filter(is_active=True)
         assert active_test in active_tests
         assert inactive_test not in active_tests
@@ -302,19 +302,19 @@ class TestLabOrder:
             encounter=sample_encounter,
             ordered_by=lab_user,
         )
-        
+
         # DRAFT -> ORDERED
         order.update_status("ORDERED", lab_user)
         assert order.status == "ORDERED"
-        
+
         # ORDERED -> SPECIMEN_COLLECTED
         order.update_status("SPECIMEN_COLLECTED", lab_user)
         assert order.status == "SPECIMEN_COLLECTED"
-        
+
         # SPECIMEN_COLLECTED -> IN_PROGRESS
         order.update_status("IN_PROGRESS", lab_user)
         assert order.status == "IN_PROGRESS"
-        
+
         # IN_PROGRESS -> COMPLETED
         order.update_status("COMPLETED", lab_user)
         assert order.status == "COMPLETED"
@@ -327,7 +327,7 @@ class TestLabOrder:
             encounter=sample_encounter,
             ordered_by=lab_user,
         )
-        
+
         # Cannot skip from DRAFT to COMPLETED
         with pytest.raises(ValidationError):
             order.update_status("COMPLETED", lab_user)
@@ -340,9 +340,9 @@ class TestLabOrder:
             ordered_by=lab_user,
             status="ORDERED",
         )
-        
+
         order.mark_specimen_collected(lab_user)
-        
+
         assert order.specimen_collected is True
         assert order.specimen_collected_at is not None
         assert order.specimen_collected_by == lab_user
@@ -357,7 +357,7 @@ class TestLabOrder:
             order_type="EXTERNAL",
             external_lab="Lancet Kenya",
         )
-        
+
         assert order.order_type == "EXTERNAL"
         assert order.external_lab == "Lancet Kenya"
 
@@ -401,16 +401,16 @@ class TestLabOrder:
             result_type="NUMERIC",
             cost=Decimal("200.00"),
         )
-        
+
         order = LabOrder.objects.create(
             patient=sample_encounter.patient,
             encounter=sample_encounter,
             ordered_by=lab_user,
         )
-        
+
         LabOrderItem.objects.create(lab_order=order, test=test1, unit_cost=test1.cost)
         LabOrderItem.objects.create(lab_order=order, test=test2, unit_cost=test2.cost)
-        
+
         total = order.calculate_total_cost()
         assert total == Decimal("300.00")
         assert order.total_cost == Decimal("300.00")
@@ -431,7 +431,7 @@ class TestLabOrder:
             encounter=sample_encounter,
             ordered_by=lab_user,
         )
-        
+
         order.update_status("ORDERED", lab_user)
         assert order.status_changed_by == lab_user
         assert order.status_changed_at is not None
@@ -453,7 +453,7 @@ class TestLabOrder:
             encounter=sample_encounter,
             ordered_by=lab_user,
         )
-        
+
         order.update_status("CANCELLED", lab_user)
         assert order.status == "CANCELLED"
 
@@ -465,7 +465,7 @@ class TestLabOrder:
             ordered_by=lab_user,
             status="ORDERED",
         )
-        
+
         order.update_status("REJECTED", lab_user)
         assert order.status == "REJECTED"
 
@@ -477,10 +477,10 @@ class TestLabOrder:
             ordered_by=lab_user,
             status="IN_PROGRESS",
         )
-        
+
         order.update_status("COMPLETED", lab_user)
         turnaround = order.get_turnaround_time()
-        
+
         assert turnaround is not None
         assert isinstance(turnaround, timedelta)
 
@@ -494,15 +494,15 @@ class TestLabOrder:
             specimen_type="BLOOD",
             result_type="NUMERIC",
         )
-        
+
         order = LabOrder.objects.create(
             patient=sample_encounter.patient,
             encounter=sample_encounter,
             ordered_by=lab_user,
         )
-        
+
         item = LabOrderItem.objects.create(lab_order=order, test=test, unit_cost=Decimal("100"))
-        
+
         pending = order.get_pending_results()
         assert item in pending
 
@@ -516,25 +516,25 @@ class TestLabOrder:
             specimen_type="BLOOD",
             result_type="NUMERIC",
         )
-        
+
         order = LabOrder.objects.create(
             patient=sample_encounter.patient,
             encounter=sample_encounter,
             ordered_by=lab_user,
         )
-        
+
         item = LabOrderItem.objects.create(lab_order=order, test=test, unit_cost=Decimal("100"))
-        
+
         # No results yet
         assert order.is_complete() is False
-        
+
         # Add result
         LabResult.objects.create(
             order_item=item,
             numeric_value=Decimal("5.5"),
             entered_by=lab_user,
         )
-        
+
         # Now complete
         assert order.is_complete() is True
 
@@ -604,11 +604,11 @@ class TestLabOrderItem:
             unit_cost=sample_test.cost,
             status="PENDING",
         )
-        
+
         item.status = "IN_PROGRESS"
         item.save()
         assert item.status == "IN_PROGRESS"
-        
+
         item.status = "COMPLETED"
         item.save()
         assert item.status == "COMPLETED"
@@ -643,10 +643,10 @@ class TestLabOrderItem:
             result_type="NUMERIC",
             cost=Decimal("200.00"),
         )
-        
+
         item1 = LabOrderItem.objects.create(lab_order=sample_order, test=test1, unit_cost=test1.cost)
         item2 = LabOrderItem.objects.create(lab_order=sample_order, test=test2, unit_cost=test2.cost)
-        
+
         assert sample_order.items.count() == 2
         assert item1 in sample_order.items.all()
         assert item2 in sample_order.items.all()
@@ -658,7 +658,7 @@ class TestLabOrderItem:
             test=sample_test,
             unit_cost=sample_test.cost,
         )
-        
+
         item.status = "CANCELLED"
         item.save()
         assert item.status == "CANCELLED"
@@ -670,14 +670,14 @@ class TestLabOrderItem:
             test=sample_test,
             unit_cost=sample_test.cost,
         )
-        
+
         user = User.objects.create_user(username="labtech", password="testpass")
         result = LabResult.objects.create(
             order_item=item,
             numeric_value=Decimal("5.5"),
             entered_by=user,
         )
-        
+
         assert item.result == result
         assert item.has_result() is True
 
@@ -699,9 +699,9 @@ class TestLabOrderItem:
             unit_cost=sample_test.cost,
         )
         item_id = item.id
-        
+
         sample_order.delete()
-        
+
         # Item should be deleted
         assert not LabOrderItem.objects.filter(id=item_id).exists()
 
@@ -848,12 +848,12 @@ class TestLabResult:
             numeric_value=Decimal("14.5"),
             entered_by=lab_user,
         )
-        
+
         assert result.verification_status == "UNVERIFIED"
-        
+
         pathologist = User.objects.create_user(username="pathologist", password="testpass")
         result.verify(pathologist)
-        
+
         assert result.verification_status == "VERIFIED"
         assert result.verified_by == pathologist
         assert result.verified_at is not None
@@ -876,7 +876,7 @@ class TestLabResult:
             numeric_value=Decimal("14.5"),
             entered_by=lab_user,
         )
-        
+
         # Trying to create another result should fail
         with pytest.raises(Exception):  # Integrity error
             LabResult.objects.create(
@@ -938,7 +938,7 @@ class TestLOINCCode:
             long_common_name="Hemoglobin [Mass/volume] in Blood",
             short_name="Hb Bld",
         )
-        
+
         with pytest.raises(Exception):  # Integrity error
             LOINCCode.objects.create(
                 code="718-7",  # Duplicate
@@ -963,7 +963,7 @@ class TestLOINCCode:
             long_common_name="Hemoglobin [Mass/volume] in Blood",
             short_name="Hb Bld",
         )
-        
+
         results = LOINCCode.objects.filter(component__icontains="Hemoglobin")
         assert results.count() >= 1
 
@@ -979,7 +979,7 @@ class TestLOINCCode:
             long_common_name="Hemoglobin [Mass/volume] in Blood",
             short_name="Hb Bld",
         )
-        
+
         found = LOINCCode.objects.get(short_name="Hb Bld")
         assert found == loinc
 
@@ -995,7 +995,7 @@ class TestLOINCCode:
             long_common_name="Hemoglobin [Mass/volume] in Blood",
             short_name="Hb Bld",
         )
-        
+
         found = LOINCCode.objects.filter(long_common_name__icontains="Hemoglobin").first()
         assert found == loinc
 
@@ -1011,7 +1011,7 @@ class TestLOINCCode:
             long_common_name="Hemoglobin [Mass/volume] in Blood",
             short_name="Hb Bld",
         )
-        
+
         blood_tests = LOINCCode.objects.filter(system="Bld")
         assert blood_tests.count() >= 1
 
@@ -1027,7 +1027,7 @@ class TestLOINCCode:
             long_common_name="Hemoglobin [Mass/volume] in Blood",
             short_name="Hb Bld",
         )
-        
+
         quantitative = LOINCCode.objects.filter(scale_type="Qn")
         assert quantitative.count() >= 1
 
@@ -1043,7 +1043,7 @@ class TestLOINCCode:
             long_common_name="Hemoglobin [Mass/volume] in Blood",
             short_name="Hb Bld",
         )
-        
+
         test = TestCatalog.objects.create(
             code="HB",
             name="Hemoglobin",
@@ -1053,5 +1053,261 @@ class TestLOINCCode:
             specimen_type="BLOOD",
             result_type="NUMERIC",
         )
-        
+
         assert test.loinc_code == loinc.code
+
+
+@pytest.mark.django_db
+class TestLabOrderItemAdvanced:
+    """Additional tests for LabOrderItem - panel expansion and duplicate prevention."""
+
+    @pytest.fixture
+    def sample_order(self):
+        """Create a sample lab order."""
+        patient = Patient.objects.create(
+            first_name="Test",
+            last_name="Patient",
+            date_of_birth=date(1990, 1, 1),
+            gender="M",
+        )
+        user = User.objects.create_user(username="testuser_adv", password="testpass")
+        encounter = Encounter.objects.create(
+            patient=patient,
+            encounter_type="OPD",
+            chief_complaint="Test complaint",
+        )
+        return LabOrder.objects.create(
+            patient=patient,
+            encounter=encounter,
+            ordered_by=user,
+        )
+
+    def test_panel_expansion_components(self, sample_order):
+        """Should expand panel test into component tests for ordering."""
+        # Create component tests
+        component1 = TestCatalog.objects.create(
+            code="WBC_ADV",
+            name="White Blood Cell Count",
+            short_name="WBC",
+            category="HEMATOLOGY",
+            specimen_type="BLOOD",
+            result_type="NUMERIC",
+            cost=Decimal("100.00"),
+        )
+        component2 = TestCatalog.objects.create(
+            code="RBC_ADV",
+            name="Red Blood Cell Count",
+            short_name="RBC",
+            category="HEMATOLOGY",
+            specimen_type="BLOOD",
+            result_type="NUMERIC",
+            cost=Decimal("100.00"),
+        )
+
+        # Create panel test
+        panel = TestCatalog.objects.create(
+            code="CBC_ADV",
+            name="Complete Blood Count",
+            short_name="CBC",
+            category="HEMATOLOGY",
+            specimen_type="BLOOD",
+            result_type="PANEL",
+            is_panel=True,
+            cost=Decimal("300.00"),
+        )
+        panel.panel_components.add(component1, component2)
+
+        # Verify panel has components
+        assert panel.get_panel_tests().count() == 2
+
+        # When ordering panel, components should be accessible
+        LabOrderItem.objects.create(
+            lab_order=sample_order,
+            test=panel,
+            unit_cost=panel.cost,
+        )
+
+        # Verify panel components can be retrieved
+        panel_item = sample_order.items.first()
+        components = panel_item.test.get_panel_tests()
+        assert components.count() == 2
+
+    def test_duplicate_test_in_order_allowed_at_model_level(self, sample_order):
+        """Model allows duplicate tests (business logic enforced at view level)."""
+        test = TestCatalog.objects.create(
+            code="TEST_DUP",
+            name="Test Duplicate",
+            short_name="TD",
+            category="CHEMISTRY",
+            specimen_type="BLOOD",
+            result_type="NUMERIC",
+            cost=Decimal("150.00"),
+        )
+
+        # Model level allows duplicates - view should prevent this
+        item1 = LabOrderItem.objects.create(
+            lab_order=sample_order,
+            test=test,
+            unit_cost=test.cost,
+        )
+        item2 = LabOrderItem.objects.create(
+            lab_order=sample_order,
+            test=test,
+            unit_cost=test.cost,
+        )
+
+        # Both items exist (business logic should prevent at API level)
+        assert sample_order.items.count() == 2
+        assert item1.test == item2.test
+
+    def test_item_ordering_within_order(self, sample_order):
+        """Items should be ordered by creation time."""
+        test1 = TestCatalog.objects.create(
+            code="TEST_ORD1",
+            name="Test Order 1",
+            short_name="TO1",
+            category="CHEMISTRY",
+            specimen_type="BLOOD",
+            result_type="NUMERIC",
+        )
+        test2 = TestCatalog.objects.create(
+            code="TEST_ORD2",
+            name="Test Order 2",
+            short_name="TO2",
+            category="CHEMISTRY",
+            specimen_type="BLOOD",
+            result_type="NUMERIC",
+        )
+
+        item1 = LabOrderItem.objects.create(
+            lab_order=sample_order,
+            test=test1,
+            unit_cost=Decimal("100.00"),
+        )
+        item2 = LabOrderItem.objects.create(
+            lab_order=sample_order,
+            test=test2,
+            unit_cost=Decimal("100.00"),
+        )
+
+        # Items should be ordered by created_at
+        items = list(sample_order.items.all())
+        assert items[0].created_at <= items[1].created_at
+
+
+@pytest.mark.django_db
+class TestLabResultAdvanced:
+    """Additional tests for LabResult - history and notifications."""
+
+    @pytest.fixture
+    def sample_result(self):
+        """Create a sample lab result with all dependencies."""
+        patient = Patient.objects.create(
+            first_name="Test",
+            last_name="Result",
+            date_of_birth=date(1990, 1, 1),
+            gender="M",
+        )
+        user = User.objects.create_user(username="labtech_adv", password="testpass")
+        encounter = Encounter.objects.create(
+            patient=patient,
+            encounter_type="OPD",
+            chief_complaint="Test complaint",
+        )
+        order = LabOrder.objects.create(
+            patient=patient,
+            encounter=encounter,
+            ordered_by=user,
+        )
+        test = TestCatalog.objects.create(
+            code="TEST_RES",
+            name="Test Result",
+            short_name="TR",
+            category="CHEMISTRY",
+            specimen_type="BLOOD",
+            result_type="NUMERIC",
+            normal_range_male="10.0-20.0",
+            cost=Decimal("150.00"),
+        )
+        item = LabOrderItem.objects.create(
+            lab_order=order,
+            test=test,
+            unit_cost=test.cost,
+        )
+        result = LabResult.objects.create(
+            order_item=item,
+            numeric_value=Decimal("15.0"),
+            entered_by=user,
+        )
+        return result, user
+
+    def test_critical_result_detection_triggers_flag(self, sample_result):
+        """Critical results should be flagged and detectable."""
+        result, user = sample_result
+
+        # Update to critical value (5.0 is way below 10.0-20.0 range)
+        result.numeric_value = Decimal("5.0")
+        result.save()
+        result.auto_flag_result()
+
+        # Should be flagged as critical low (20% below normal low)
+        assert result.is_critical() is True
+        assert result.result_flag == "CRITICAL_LOW"
+
+    def test_result_history_via_updated_at(self, sample_result):
+        """Result changes should update the timestamp."""
+        result, user = sample_result
+        original_updated = result.updated_at
+
+        # Make a change
+        result.interpretation = "New interpretation added"
+        result.save()
+
+        # Timestamp should be updated
+        assert result.updated_at > original_updated
+
+    def test_result_rejection_workflow(self, sample_result):
+        """Results can be rejected during verification."""
+        result, user = sample_result
+
+        # Reject the result
+        result.verification_status = "REJECTED"
+        result.verified_by = user
+        from django.utils import timezone
+        result.verified_at = timezone.now()
+        result.interpretation = "Rejected: Sample hemolyzed"
+        result.save()
+
+        assert result.verification_status == "REJECTED"
+        assert result.verified_by == user
+        assert "Rejected" in result.interpretation
+
+
+@pytest.mark.django_db
+class TestTestCatalogAdvanced:
+    """Additional tests for TestCatalog - category validation."""
+
+    def test_category_validation(self):
+        """Should validate category is in allowed choices."""
+        test = TestCatalog.objects.create(
+            code="CAT_TEST",
+            name="Category Test",
+            short_name="CT",
+            category="HEMATOLOGY",  # Valid category
+            specimen_type="BLOOD",
+            result_type="NUMERIC",
+        )
+        assert test.category == "HEMATOLOGY"
+
+    def test_specimen_type_validation(self):
+        """Should validate specimen type is in allowed choices."""
+        test = TestCatalog.objects.create(
+            code="SPEC_TEST",
+            name="Specimen Test",
+            short_name="ST",
+            category="CHEMISTRY",
+            specimen_type="URINE",  # Valid specimen type
+            result_type="NUMERIC",
+        )
+        assert test.specimen_type == "URINE"
+

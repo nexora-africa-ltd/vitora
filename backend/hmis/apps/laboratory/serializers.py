@@ -128,12 +128,12 @@ class LabOrderCreateSerializer(serializers.ModelSerializer):
             test_code = item_data["test_code"]
             try:
                 test = TestCatalog.objects.get(code=test_code)
-            except TestCatalog.DoesNotExist:
+            except TestCatalog.DoesNotExist as e:
                 raise serializers.ValidationError(
                     {
                         "items": f"Test with code '{test_code}' not found in catalog."
                     }
-                )
+                ) from e
 
             special_instructions = item_data.get("special_instructions", "")
             LabOrderItem.objects.create(

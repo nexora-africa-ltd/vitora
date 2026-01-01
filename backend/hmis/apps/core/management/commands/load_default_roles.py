@@ -64,7 +64,7 @@ class Command(BaseCommand):
                             # Update existing role
                             # For permissions_matrix, merge instead of replace
                             existing_perms = existing_role.permissions_matrix.copy()
-                            
+
                             for key, value in role_data.items():
                                 if key != "code":  # Don't update code
                                     if key == "permissions_matrix":
@@ -126,7 +126,7 @@ class Command(BaseCommand):
         else:
             self.stdout.write(
                 self.style.SUCCESS(
-                    f"\nSuccessfully loaded default roles:"
+                    "\nSuccessfully loaded default roles:"
                 )
             )
             if created_count > 0:

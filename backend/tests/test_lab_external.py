@@ -4,8 +4,6 @@ Tests for external laboratory integration.
 Tests for PDF requisition generation and CSV result import.
 """
 
-import csv
-import io
 from datetime import date
 from decimal import Decimal
 
@@ -86,7 +84,7 @@ class TestExternalLabRequisition:
     def test_pdf_contains_order_number(self, sample_order):
         """PDF should be generated successfully with structure."""
         pdf_bytes = ExternalLabRequisition.generate_pdf(sample_order)
-        
+
         # Just verify PDF has valid structure - content is compressed
         assert pdf_bytes.startswith(b"%PDF")
         assert b"ReportLab" in pdf_bytes

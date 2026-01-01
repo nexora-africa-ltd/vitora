@@ -5,7 +5,6 @@ This module contains business logic services including:
 - FEFODispenser: First Expiry First Out dispensing logic
 """
 
-from typing import List, Tuple
 
 from django.contrib.auth import get_user_model
 from django.utils import timezone
@@ -23,7 +22,7 @@ class FEFODispenser:
     """First Expiry First Out dispensing logic."""
 
     @staticmethod
-    def get_batches_for_dispensing(drug, quantity: int) -> List[Tuple]:
+    def get_batches_for_dispensing(drug, quantity: int) -> list[tuple]:
         """
         Get batches to dispense from, prioritizing earliest expiry.
 
@@ -71,7 +70,7 @@ class FEFODispenser:
         return result
 
     @staticmethod
-    def dispense(drug, quantity: int, dispensed_by: User, **kwargs) -> List:
+    def dispense(drug, quantity: int, dispensed_by: User, **kwargs) -> list:
         """
         Dispense drug using FEFO logic.
         Creates dispensing records and updates batch quantities.

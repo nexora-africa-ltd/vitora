@@ -100,7 +100,7 @@ class Command(BaseCommand):
         Returns:
             str: 'created', 'updated', or 'skipped'
         """
-        with open(json_file, "r", encoding="utf-8") as f:
+        with open(json_file, encoding="utf-8") as f:
             data = json.load(f)
 
         name = data.get("name")

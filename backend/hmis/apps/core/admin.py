@@ -471,6 +471,7 @@ class StaffProfileAdmin(admin.ModelAdmin):
         """
         import csv
         from datetime import datetime
+
         from django.http import HttpResponse
 
         # Create the HttpResponse object with CSV header

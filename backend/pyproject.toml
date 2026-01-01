@@ -64,6 +64,10 @@ python_files = ["test_*.py", "*_test.py", "tests.py"]
 python_classes = ["Test*"]
 python_functions = ["test_*"]
 testpaths = ["tests"]
+# Ignore Django model classes that match Test* pattern (e.g., TestCatalog)
+filterwarnings = [
+    "ignore::pytest.PytestCollectionWarning",
+]
 addopts = [
     "-v",
     "--tb=short",

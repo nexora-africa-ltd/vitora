@@ -29,6 +29,11 @@ from hmis.apps.encounters.views import (
     TreatmentPlanTemplateViewSet,
     TreatmentPlanView,
 )
+from hmis.apps.laboratory.views import (
+    EncounterLabOrderViewSet,
+    PatientLabOrderViewSet,
+    PatientLabResultViewSet,
+)
 from hmis.apps.patients.views import EmergencyContactViewSet, PatientViewSet
 
 
@@ -118,6 +123,23 @@ urlpatterns = [
     path("api/", include("hmis.apps.clinical_templates.urls")),
     # Laboratory API
     path("api/lab/", include("hmis.apps.laboratory.urls")),
+    # Nested Lab routes under patients
+    path(
+        "api/patients/<int:patient_pk>/lab-orders/",
+        PatientLabOrderViewSet.as_view({"get": "list"}),
+        name="patient-lab-orders-list",
+    ),
+    path(
+        "api/patients/<int:patient_pk>/lab-results/",
+        PatientLabResultViewSet.as_view({"get": "list"}),
+        name="patient-lab-results-list",
+    ),
+    # Nested Lab routes under encounters
+    path(
+        "api/encounters/<int:encounter_pk>/lab-orders/",
+        EncounterLabOrderViewSet.as_view({"get": "list"}),
+        name="encounter-lab-orders-list",
+    ),
     # Pharmacy API
     path("api/pharmacy/", include("hmis.apps.pharmacy.urls", namespace="pharmacy")),
     path("api-auth/", include("rest_framework.urls", namespace="rest_framework")),

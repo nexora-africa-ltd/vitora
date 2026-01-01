@@ -15,7 +15,6 @@ from rest_framework.response import Response
 from hmis.apps.core.models import AuditLog
 from hmis.apps.core.permissions import SensitiveAccessPermission, get_client_ip
 from hmis.apps.encounters.models import Encounter
-from hmis.apps.encounters.serializers import EncounterListSerializer
 
 from .models import EmergencyContact, Patient
 from .serializers import EmergencyContactSerializer, PatientSerializer
@@ -469,19 +468,19 @@ class PatientViewSet(viewsets.ModelViewSet):
     def lab_results(self, request, pk=None):
         """
         Get all lab results for a patient.
-        
+
         Returns all verified lab results for this patient across all encounters.
         """
         from hmis.apps.laboratory.models import LabResult
         from hmis.apps.laboratory.serializers import LabResultSerializer
-        
+
         patient = self.get_object()
         results = LabResult.objects.filter(
             order_item__lab_order__patient=patient
         ).select_related(
             "order_item__test", "entered_by", "verified_by"
         ).order_by("-entered_at")
-        
+
         serializer = LabResultSerializer(results, many=True)
         return Response(serializer.data)
 
