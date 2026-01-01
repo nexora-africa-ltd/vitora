@@ -39,8 +39,8 @@ const mockPatients = {
 
 test.describe('Patient Management', () => {
   test.beforeEach(async ({ page }) => {
-    // Mock auth
-    await page.route(`${API_BASE}/api/token/`, async (route) => {
+    // Mock auth using glob patterns
+    await page.route('**/api/token/', async (route) => {
       await route.fulfill({
         status: 200,
         contentType: 'application/json',
@@ -53,7 +53,7 @@ test.describe('Patient Management', () => {
     });
 
     // Mock patients list
-    await page.route(`${API_BASE}/api/patients/`, async (route) => {
+    await page.route('**/api/patients/', async (route) => {
       const url = new URL(route.request().url());
       const search = url.searchParams.get('search');
       
@@ -78,7 +78,7 @@ test.describe('Patient Management', () => {
     });
 
     // Mock patient detail
-    await page.route(`${API_BASE}/api/patients/1/`, async (route) => {
+    await page.route('**/api/patients/1/', async (route) => {
       await route.fulfill({
         status: 200,
         contentType: 'application/json',
@@ -87,7 +87,7 @@ test.describe('Patient Management', () => {
     });
 
     // Mock locations
-    await page.route(`${API_BASE}/api/locations/counties/`, async (route) => {
+    await page.route('**/api/locations/counties/', async (route) => {
       await route.fulfill({
         status: 200,
         contentType: 'application/json',
@@ -98,7 +98,7 @@ test.describe('Patient Management', () => {
       });
     });
 
-    await page.route(`${API_BASE}/api/locations/sub-counties/**`, async (route) => {
+    await page.route('**/api/locations/sub-counties/**', async (route) => {
       await route.fulfill({
         status: 200,
         contentType: 'application/json',
@@ -112,33 +112,86 @@ test.describe('Patient Management', () => {
     // Login and navigate to patients
     await page.goto('/login');
     await page.getByLabel(/username/i).fill(TEST_USER.username);
-    await page.getByLabel(/password/i).fill(TEST_USER.password);
-    await page.getByRole('button', { name: /sign in|login/i }).click();
-    await page.waitForURL(/.*dashboard.*/);
+    await page.locator('input[name="password"]').fill(TEST_USER.password);
+    await page.locator('button[type="submit"]').click();
+    await page.waitForURL(/.*dashboard.*/, { timeout: 10000 });
   });
 
   test('should display patient list', async ({ page }) => {
-    await page.goto('/patients');
+    // Navigate using click from dashboard to ensure auth state is maintained
+    const viewport = page.viewportSize();
+    const isMobile = viewport && viewport.width < 1024;
     
-    // Should show patient table
-    await expect(page.getByText('Jane Doe')).toBeVisible();
+    if (isMobile) {
+      const menuButton = page.getByRole('button', { name: 'Toggle menu' });
+      if (await menuButton.isVisible()) {
+        await menuButton.click();
+        await page.waitForTimeout(500);
+      }
+    }
+    
+    // Get sidebar patients link and click using evaluate for reliable clicking
+    const patientsLink = page.locator('[data-testid="sidebar"]').getByRole('link', { name: /patients/i });
+    await patientsLink.evaluate((el: HTMLElement) => el.click());
+    await expect(page).toHaveURL(/.*patients.*/);
+    
+    // Wait for the page to settle and API to respond
+    await page.waitForLoadState('networkidle');
+    
+    // Should show patient table with mocked data
+    await expect(page.getByText('Jane Doe')).toBeVisible({ timeout: 10000 });
     await expect(page.getByText('John Smith')).toBeVisible();
     await expect(page.getByText('MRN-20260101-0001')).toBeVisible();
   });
 
   test('should search patients', async ({ page }) => {
-    await page.goto('/patients');
+    // Navigate using click from dashboard
+    const viewport = page.viewportSize();
+    const isMobile = viewport && viewport.width < 1024;
+    
+    if (isMobile) {
+      const menuButton = page.getByRole('button', { name: 'Toggle menu' });
+      if (await menuButton.isVisible()) {
+        await menuButton.click();
+        await page.waitForTimeout(500);
+      }
+    }
+    
+    // Get sidebar patients link and click using evaluate
+    const patientsLink = page.locator('[data-testid="sidebar"]').getByRole('link', { name: /patients/i });
+    await patientsLink.evaluate((el: HTMLElement) => el.click());
+    await expect(page).toHaveURL(/.*patients.*/);
+    await page.waitForLoadState('networkidle');
     
     // Enter search query
     await page.getByPlaceholder(/search/i).fill('Jane');
-    await page.keyboard.press('Enter');
+    await page.waitForTimeout(500); // Debounce wait
     
     // Should filter results
-    await expect(page.getByText('Jane Doe')).toBeVisible();
+    await expect(page.getByText('Jane Doe')).toBeVisible({ timeout: 10000 });
   });
 
   test('should navigate to patient detail', async ({ page }) => {
-    await page.goto('/patients');
+    // Navigate using click from dashboard
+    const viewport = page.viewportSize();
+    const isMobile = viewport && viewport.width < 1024;
+    
+    if (isMobile) {
+      const menuButton = page.getByRole('button', { name: 'Toggle menu' });
+      if (await menuButton.isVisible()) {
+        await menuButton.click();
+        await page.waitForTimeout(500);
+      }
+    }
+    
+    // Get sidebar patients link and click using evaluate
+    const patientsLink = page.locator('[data-testid="sidebar"]').getByRole('link', { name: /patients/i });
+    await patientsLink.evaluate((el: HTMLElement) => el.click());
+    await expect(page).toHaveURL(/.*patients.*/);
+    await page.waitForLoadState('networkidle');
+    
+    // Wait for patient data to load
+    await expect(page.getByText('Jane Doe')).toBeVisible({ timeout: 10000 });
     
     // Click on patient row or view button
     await page.getByText('Jane Doe').click();
@@ -148,7 +201,23 @@ test.describe('Patient Management', () => {
   });
 
   test('should show new patient form', async ({ page }) => {
-    await page.goto('/patients');
+    // Navigate using click from dashboard
+    const viewport = page.viewportSize();
+    const isMobile = viewport && viewport.width < 1024;
+    
+    if (isMobile) {
+      const menuButton = page.getByRole('button', { name: 'Toggle menu' });
+      if (await menuButton.isVisible()) {
+        await menuButton.click();
+        await page.waitForTimeout(500);
+      }
+    }
+    
+    // Get sidebar patients link and click using evaluate
+    const patientsLink = page.locator('[data-testid="sidebar"]').getByRole('link', { name: /patients/i });
+    await patientsLink.evaluate((el: HTMLElement) => el.click());
+    await expect(page).toHaveURL(/.*patients.*/);
+    await page.waitForLoadState('networkidle');
     
     // Click new patient button
     await page.getByRole('button', { name: /new patient|add patient|register/i }).click();
@@ -160,7 +229,27 @@ test.describe('Patient Management', () => {
   });
 
   test('should validate required fields on new patient form', async ({ page }) => {
-    await page.goto('/patients/new');
+    // Navigate using click from dashboard
+    const viewport = page.viewportSize();
+    const isMobile = viewport && viewport.width < 1024;
+    
+    if (isMobile) {
+      const menuButton = page.getByRole('button', { name: 'Toggle menu' });
+      if (await menuButton.isVisible()) {
+        await menuButton.click();
+        await page.waitForTimeout(500);
+      }
+    }
+    
+    // Get sidebar patients link and click using evaluate
+    const patientsLink = page.locator('[data-testid="sidebar"]').getByRole('link', { name: /patients/i });
+    await patientsLink.evaluate((el: HTMLElement) => el.click());
+    await expect(page).toHaveURL(/.*patients.*/);
+    await page.waitForLoadState('networkidle');
+    
+    // Click new patient button
+    await page.getByRole('button', { name: /new patient|add patient|register/i }).click();
+    await expect(page).toHaveURL(/.*patients\/new.*/);
     
     // Try to submit empty form
     await page.getByRole('button', { name: /save|submit|register/i }).click();

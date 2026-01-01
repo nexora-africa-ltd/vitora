@@ -16,6 +16,7 @@ export default function LoginPage() {
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [validationErrors, setValidationErrors] = useState<{username?: string; password?: string}>({});
   const { login } = useAuth();
   const router = useRouter();
   const { theme, setTheme } = useTheme();
@@ -23,6 +24,22 @@ export default function LoginPage() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
+    setValidationErrors({});
+    
+    // Client-side validation
+    const errors: {username?: string; password?: string} = {};
+    if (!username.trim()) {
+      errors.username = 'Username is required';
+    }
+    if (!password) {
+      errors.password = 'Password is required';
+    }
+    
+    if (Object.keys(errors).length > 0) {
+      setValidationErrors(errors);
+      return;
+    }
+    
     setIsLoading(true);
     try {
       await login(username, password);
@@ -118,15 +135,23 @@ export default function LoginPage() {
                 </label>
                 <Input
                   id="username"
+                  name="username"
                   type="text"
                   value={username}
-                  onChange={(e) => setUsername(e.target.value)}
+                  onChange={(e) => {
+                    setUsername(e.target.value);
+                    if (validationErrors.username) {
+                      setValidationErrors(prev => ({ ...prev, username: undefined }));
+                    }
+                  }}
                   placeholder="Enter your username"
                   autoComplete="username"
                   disabled={isLoading}
-                  required
                   className="h-11"
                 />
+                {validationErrors.username && (
+                  <p className="text-sm text-destructive">{validationErrors.username}</p>
+                )}
               </div>
               
               <div className="space-y-2">
@@ -136,13 +161,18 @@ export default function LoginPage() {
                 <div className="relative">
                   <Input
                     id="password"
+                    name="password"
                     type={showPassword ? 'text' : 'password'}
                     value={password}
-                    onChange={(e) => setPassword(e.target.value)}
+                    onChange={(e) => {
+                      setPassword(e.target.value);
+                      if (validationErrors.password) {
+                        setValidationErrors(prev => ({ ...prev, password: undefined }));
+                      }
+                    }}
                     placeholder="Enter your password"
                     autoComplete="current-password"
                     disabled={isLoading}
-                    required
                     className="h-11 pr-10"
                   />
                   <Button
@@ -163,6 +193,9 @@ export default function LoginPage() {
                     </span>
                   </Button>
                 </div>
+                {validationErrors.password && (
+                  <p className="text-sm text-destructive">{validationErrors.password}</p>
+                )}
               </div>
 
               <Button type="submit" className="w-full h-11" disabled={isLoading}>
