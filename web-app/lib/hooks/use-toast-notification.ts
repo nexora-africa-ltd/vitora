@@ -1,8 +1,9 @@
-import { useToast } from '@/components/ui/use-toast';
+import { useToast, toast } from '@/lib/hooks/use-toast';
 import { ApiError } from '@/lib/api/client';
 
 export function useToastNotification() {
-  const { toast } = useToast();
+  // Note: useToast is used for subscription to toast state
+  useToast();
 
   return {
     success: (title: string, description?: string) => {

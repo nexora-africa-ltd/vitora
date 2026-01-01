@@ -17,6 +17,7 @@ export function decodeToken(token: string): DecodedToken | null {
     if (parts.length !== 3) return null;
 
     const payload = parts[1];
+    if (!payload) return null;
     const decoded = JSON.parse(atob(payload));
     return decoded;
   } catch {
