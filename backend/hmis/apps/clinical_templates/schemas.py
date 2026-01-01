@@ -163,9 +163,7 @@ def _validate_field(field: dict, section_prefix: str, index: int) -> list:
         # Check that select/multiselect have options
         if field_type in ("select", "multiselect", "radio"):
             if "options" not in field or not field.get("options"):
-                errors.append(
-                    f"{prefix}: '{field_type}' field must have 'options' array"
-                )
+                errors.append(f"{prefix}: '{field_type}' field must have 'options' array")
 
     return errors
 

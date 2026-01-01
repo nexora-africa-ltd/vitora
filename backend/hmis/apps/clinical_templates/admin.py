@@ -37,20 +37,22 @@ class ClinicalTemplateAdmin(admin.ModelAdmin):
     ordering = ["name"]
 
     fieldsets = (
-        (None, {
-            "fields": ("name", "template_type", "specialty", "description")
-        }),
-        ("Content", {
-            "fields": ("content",),
-            "classes": ("collapse",),
-        }),
-        ("Status", {
-            "fields": ("is_system", "is_active", "usage_count")
-        }),
-        ("Metadata", {
-            "fields": ("created_by", "created_at", "updated_at"),
-            "classes": ("collapse",),
-        }),
+        (None, {"fields": ("name", "template_type", "specialty", "description")}),
+        (
+            "Content",
+            {
+                "fields": ("content",),
+                "classes": ("collapse",),
+            },
+        ),
+        ("Status", {"fields": ("is_system", "is_active", "usage_count")}),
+        (
+            "Metadata",
+            {
+                "fields": ("created_by", "created_at", "updated_at"),
+                "classes": ("collapse",),
+            },
+        ),
     )
 
     def save_model(self, request, obj, form, change):

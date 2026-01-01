@@ -373,7 +373,9 @@ class TestEncounterStatusAPI:
         assert response.status_code == http_status.HTTP_200_OK
         assert response.data["chief_complaint"] == "Updated complaint"
 
-    def test_update_completed_encounter_fails(self, authenticated_client, sample_patient, test_user):
+    def test_update_completed_encounter_fails(
+        self, authenticated_client, sample_patient, test_user
+    ):
         """PATCH /api/encounters/{id}/ should fail for COMPLETED encounters."""
         from hmis.apps.encounters.models import Encounter
 
@@ -391,8 +393,10 @@ class TestEncounterStatusAPI:
             {"chief_complaint": "Updated complaint"},
         )
         assert response.status_code == http_status.HTTP_400_BAD_REQUEST
-        assert "cannot be edited" in response.data.get("detail", "").lower() or \
-               "cannot be edited" in str(response.data).lower()
+        assert (
+            "cannot be edited" in response.data.get("detail", "").lower()
+            or "cannot be edited" in str(response.data).lower()
+        )
 
     def test_start_progress_action(self, authenticated_client, sample_patient):
         """POST /api/encounters/{id}/start_progress/ should transition to IN_PROGRESS."""

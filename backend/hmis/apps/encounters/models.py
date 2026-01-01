@@ -390,9 +390,13 @@ class Encounter(models.Model):
             spo2_val = float(self.spo2)
             spo2_status = self.get_vital_status("spo2")
             if spo2_status == "critical":
-                alerts.append(f"CRITICAL: Severe hypoxemia (SpO2 {spo2_val:.0f}% < 90%) - urgent evaluation needed{age_suffix}")
+                alerts.append(
+                    f"CRITICAL: Severe hypoxemia (SpO2 {spo2_val:.0f}% < 90%) - urgent evaluation needed{age_suffix}"
+                )
             elif spo2_status == "warning" and spo2_val < 92:
-                alerts.append(f"Low oxygen saturation (SpO2 {spo2_val:.0f}%) - medical advice recommended{age_suffix}")
+                alerts.append(
+                    f"Low oxygen saturation (SpO2 {spo2_val:.0f}%) - medical advice recommended{age_suffix}"
+                )
 
         # Blood pressure alerts
         systolic = self.get_systolic_bp()
@@ -635,11 +639,15 @@ class Encounter(models.Model):
 
         # Build interpretation message
         if age_group == "infant":
-            age_note = "For infants (<1yr): values 92-94% are borderline and often monitored closely."
+            age_note = (
+                "For infants (<1yr): values 92-94% are borderline and often monitored closely."
+            )
         elif age_group in ("newborn", "toddler", "preschool", "school_age", "adolescent"):
             age_note = "Children may compensate well even with low SpO2. Watch for symptoms: fast breathing, chest retractions, blue lips/nails, lethargy."
         else:
-            age_note = "Adults: persistent SpO2 <92% or any reading <90% warrants medical attention."
+            age_note = (
+                "Adults: persistent SpO2 <92% or any reading <90% warrants medical attention."
+            )
 
         return {
             "value": spo2_val,

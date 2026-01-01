@@ -266,7 +266,9 @@ class EncounterSerializer(serializers.ModelSerializer):
 
     # Status-related fields
     finalized_by = serializers.PrimaryKeyRelatedField(read_only=True)
-    finalized_by_username = serializers.CharField(source="finalized_by.username", read_only=True, allow_null=True)
+    finalized_by_username = serializers.CharField(
+        source="finalized_by.username", read_only=True, allow_null=True
+    )
 
     class Meta:
         model = Encounter

@@ -67,6 +67,7 @@ def authenticated_api_client(api_client, api_user):
 def authenticated_api_client2(api_client, api_user2):
     """Provide authenticated API client for second user."""
     from rest_framework.test import APIClient
+
     client = APIClient()
     client.force_authenticate(user=api_user2)
     return client
@@ -76,6 +77,7 @@ def authenticated_api_client2(api_client, api_user2):
 def admin_api_client(api_client, admin_user):
     """Provide authenticated admin API client."""
     from rest_framework.test import APIClient
+
     client = APIClient()
     client.force_authenticate(user=admin_user)
     return client
@@ -96,11 +98,9 @@ def valid_template_data():
                 {
                     "name": "Chief Complaint",
                     "order": 1,
-                    "fields": [
-                        {"name": "complaint", "type": "text", "required": True}
-                    ]
+                    "fields": [{"name": "complaint", "type": "text", "required": True}],
                 }
-            ]
+            ],
         },
     }
 
@@ -154,7 +154,7 @@ def system_template(db):
             "sections": [
                 {"name": "Symptoms", "order": 1, "fields": []},
                 {"name": "RDT Results", "order": 2, "fields": []},
-            ]
+            ],
         },
         is_system=True,
         is_active=True,
@@ -246,56 +246,68 @@ class TestListTemplatesAPI:
     def test_list_templates_authenticated(self, authenticated_api_client, user_template):
         """Test authenticated user can list templates."""
         response = authenticated_api_client.get("/api/clinical-templates/")
-        
+
         assert response.status_code == status.HTTP_200_OK
         assert "results" in response.data or isinstance(response.data, list)
 
     def test_list_templates_unauthenticated_fails(self, api_client):
         """Test unauthenticated request is rejected."""
         response = api_client.get("/api/clinical-templates/")
-        
+
         assert response.status_code == status.HTTP_401_UNAUTHORIZED
 
-    def test_list_templates_filters_by_type(self, authenticated_api_client, user_template, system_template):
+    def test_list_templates_filters_by_type(
+        self, authenticated_api_client, user_template, system_template
+    ):
         """Test filtering templates by template_type."""
         response = authenticated_api_client.get("/api/clinical-templates/?template_type=encounter")
-        
+
         assert response.status_code == status.HTTP_200_OK
         results = response.data.get("results", response.data)
         for template in results:
             assert template["template_type"] == "encounter"
 
-    def test_list_templates_filters_by_specialty(self, authenticated_api_client, user_template, system_template):
+    def test_list_templates_filters_by_specialty(
+        self, authenticated_api_client, user_template, system_template
+    ):
         """Test filtering templates by specialty."""
-        response = authenticated_api_client.get("/api/clinical-templates/?specialty=Internal%20Medicine")
-        
+        response = authenticated_api_client.get(
+            "/api/clinical-templates/?specialty=Internal%20Medicine"
+        )
+
         assert response.status_code == status.HTTP_200_OK
         results = response.data.get("results", response.data)
         for template in results:
             assert template["specialty"] == "Internal Medicine"
 
-    def test_list_templates_filters_by_is_active(self, authenticated_api_client, user_template, inactive_template):
+    def test_list_templates_filters_by_is_active(
+        self, authenticated_api_client, user_template, inactive_template
+    ):
         """Test filtering by active status."""
         response = authenticated_api_client.get("/api/clinical-templates/?is_active=true")
-        
+
         assert response.status_code == status.HTTP_200_OK
         results = response.data.get("results", response.data)
         for template in results:
             assert template["is_active"] is True
 
-    def test_list_templates_filters_by_is_system(self, authenticated_api_client, user_template, system_template):
+    def test_list_templates_filters_by_is_system(
+        self, authenticated_api_client, user_template, system_template
+    ):
         """Test filtering by system vs user templates."""
         response = authenticated_api_client.get("/api/clinical-templates/?is_system=true")
-        
+
         assert response.status_code == status.HTTP_200_OK
         results = response.data.get("results", response.data)
         for template in results:
             assert template["is_system"] is True
 
-    def test_list_templates_search_by_name(self, authenticated_api_client, user_template, system_template):
+    def test_list_templates_search_by_name(
+        self, authenticated_api_client, user_template, system_template
+    ):
         """Test searching templates by name."""
         response = authenticated_api_client.get("/api/clinical-templates/?search=Malaria")
-        
+
         assert response.status_code == status.HTTP_200_OK
         results = response.data.get("results", response.data)
         assert len(results) >= 1
@@ -304,23 +316,27 @@ class TestListTemplatesAPI:
     def test_list_templates_search_by_description(self, authenticated_api_client, user_template):
         """Test searching templates by description."""
         response = authenticated_api_client.get("/api/clinical-templates/?search=owned")
-        
+
         assert response.status_code == status.HTTP_200_OK
 
-    def test_list_templates_ordering_by_name(self, authenticated_api_client, user_template, system_template):
+    def test_list_templates_ordering_by_name(
+        self, authenticated_api_client, user_template, system_template
+    ):
         """Test ordering templates by name."""
         response = authenticated_api_client.get("/api/clinical-templates/?ordering=name")
-        
+
         assert response.status_code == status.HTTP_200_OK
         results = response.data.get("results", response.data)
         if len(results) > 1:
             names = [t["name"] for t in results]
             assert names == sorted(names)
 
-    def test_list_templates_ordering_by_usage_count(self, authenticated_api_client, user_template, system_template):
+    def test_list_templates_ordering_by_usage_count(
+        self, authenticated_api_client, user_template, system_template
+    ):
         """Test ordering templates by usage count (popularity)."""
         response = authenticated_api_client.get("/api/clinical-templates/?ordering=-usage_count")
-        
+
         assert response.status_code == status.HTTP_200_OK
 
 
@@ -333,10 +349,14 @@ class TestListTemplatesAPI:
 class TestRetrieveTemplateAPI:
     """Test retrieving a single template."""
 
-    def test_retrieve_template_with_sections(self, authenticated_api_client, template_with_sections):
+    def test_retrieve_template_with_sections(
+        self, authenticated_api_client, template_with_sections
+    ):
         """Test retrieving a template includes its sections."""
-        response = authenticated_api_client.get(f"/api/clinical-templates/{template_with_sections.id}/")
-        
+        response = authenticated_api_client.get(
+            f"/api/clinical-templates/{template_with_sections.id}/"
+        )
+
         assert response.status_code == status.HTTP_200_OK
         assert response.data["name"] == "Template With Sections"
         assert "sections" in response.data
@@ -345,13 +365,13 @@ class TestRetrieveTemplateAPI:
     def test_retrieve_template_unauthenticated_fails(self, api_client, user_template):
         """Test unauthenticated retrieval fails."""
         response = api_client.get(f"/api/clinical-templates/{user_template.id}/")
-        
+
         assert response.status_code == status.HTTP_401_UNAUTHORIZED
 
     def test_retrieve_nonexistent_template_404(self, authenticated_api_client):
         """Test retrieving non-existent template returns 404."""
         response = authenticated_api_client.get("/api/clinical-templates/99999/")
-        
+
         assert response.status_code == status.HTTP_404_NOT_FOUND
 
 
@@ -367,24 +387,22 @@ class TestCreateTemplateAPI:
     def test_create_user_template(self, authenticated_api_client, valid_template_data):
         """Test creating a user template."""
         response = authenticated_api_client.post(
-            "/api/clinical-templates/",
-            valid_template_data,
-            format="json"
+            "/api/clinical-templates/", valid_template_data, format="json"
         )
-        
+
         assert response.status_code == status.HTTP_201_CREATED
         assert response.data["name"] == valid_template_data["name"]
         assert response.data["is_system"] is False
         assert "id" in response.data
 
-    def test_create_template_sets_created_by(self, authenticated_api_client, api_user, valid_template_data):
+    def test_create_template_sets_created_by(
+        self, authenticated_api_client, api_user, valid_template_data
+    ):
         """Test that created_by is automatically set to current user."""
         response = authenticated_api_client.post(
-            "/api/clinical-templates/",
-            valid_template_data,
-            format="json"
+            "/api/clinical-templates/", valid_template_data, format="json"
         )
-        
+
         assert response.status_code == status.HTTP_201_CREATED
         assert response.data["created_by"] == api_user.id
 
@@ -395,13 +413,9 @@ class TestCreateTemplateAPI:
             "template_type": "encounter",
             "content": "not a valid json object",  # Should be dict
         }
-        
-        response = authenticated_api_client.post(
-            "/api/clinical-templates/",
-            data,
-            format="json"
-        )
-        
+
+        response = authenticated_api_client.post("/api/clinical-templates/", data, format="json")
+
         # Should fail validation - content must be a dict/object
         assert response.status_code == status.HTTP_400_BAD_REQUEST
 
@@ -412,25 +426,21 @@ class TestCreateTemplateAPI:
             "template_type": "invalid",
             "content": {"title": "Test", "sections": []},
         }
-        
-        response = authenticated_api_client.post(
-            "/api/clinical-templates/",
-            data,
-            format="json"
-        )
-        
+
+        response = authenticated_api_client.post("/api/clinical-templates/", data, format="json")
+
         assert response.status_code == status.HTTP_400_BAD_REQUEST
 
-    def test_create_system_template_requires_permission(self, authenticated_api_client, valid_template_data):
+    def test_create_system_template_requires_permission(
+        self, authenticated_api_client, valid_template_data
+    ):
         """Test that regular users cannot create system templates."""
         valid_template_data["is_system"] = True
-        
+
         response = authenticated_api_client.post(
-            "/api/clinical-templates/",
-            valid_template_data,
-            format="json"
+            "/api/clinical-templates/", valid_template_data, format="json"
         )
-        
+
         # Should either reject or ignore is_system=True for non-admin
         if response.status_code == status.HTTP_201_CREATED:
             # If created, is_system should be False
@@ -440,12 +450,8 @@ class TestCreateTemplateAPI:
 
     def test_create_template_unauthenticated_fails(self, api_client, valid_template_data):
         """Test unauthenticated template creation fails."""
-        response = api_client.post(
-            "/api/clinical-templates/",
-            valid_template_data,
-            format="json"
-        )
-        
+        response = api_client.post("/api/clinical-templates/", valid_template_data, format="json")
+
         assert response.status_code == status.HTTP_401_UNAUTHORIZED
 
 
@@ -464,13 +470,11 @@ class TestUpdateTemplateAPI:
             "name": "Updated Template Name",
             "description": "Updated description",
         }
-        
+
         response = authenticated_api_client.patch(
-            f"/api/clinical-templates/{user_template.id}/",
-            update_data,
-            format="json"
+            f"/api/clinical-templates/{user_template.id}/", update_data, format="json"
         )
-        
+
         assert response.status_code == status.HTTP_200_OK
         assert response.data["name"] == "Updated Template Name"
         assert response.data["description"] == "Updated description"
@@ -478,25 +482,21 @@ class TestUpdateTemplateAPI:
     def test_update_others_template_forbidden(self, authenticated_api_client, user2_template):
         """Test user cannot update another user's template."""
         update_data = {"name": "Hijacked Template"}
-        
+
         response = authenticated_api_client.patch(
-            f"/api/clinical-templates/{user2_template.id}/",
-            update_data,
-            format="json"
+            f"/api/clinical-templates/{user2_template.id}/", update_data, format="json"
         )
-        
+
         assert response.status_code == status.HTTP_403_FORBIDDEN
 
     def test_update_system_template_forbidden(self, authenticated_api_client, system_template):
         """Test regular users cannot update system templates."""
         update_data = {"name": "Hijacked System Template"}
-        
+
         response = authenticated_api_client.patch(
-            f"/api/clinical-templates/{system_template.id}/",
-            update_data,
-            format="json"
+            f"/api/clinical-templates/{system_template.id}/", update_data, format="json"
         )
-        
+
         assert response.status_code == status.HTTP_403_FORBIDDEN
 
 
@@ -512,33 +512,25 @@ class TestDeleteTemplateAPI:
     def test_delete_own_template(self, authenticated_api_client, user_template):
         """Test user can delete their own template."""
         template_id = user_template.id
-        
-        response = authenticated_api_client.delete(
-            f"/api/clinical-templates/{template_id}/"
-        )
-        
+
+        response = authenticated_api_client.delete(f"/api/clinical-templates/{template_id}/")
+
         assert response.status_code == status.HTTP_204_NO_CONTENT
-        
+
         # Verify deleted
-        response = authenticated_api_client.get(
-            f"/api/clinical-templates/{template_id}/"
-        )
+        response = authenticated_api_client.get(f"/api/clinical-templates/{template_id}/")
         assert response.status_code == status.HTTP_404_NOT_FOUND
 
     def test_delete_others_template_forbidden(self, authenticated_api_client, user2_template):
         """Test user cannot delete another user's template."""
-        response = authenticated_api_client.delete(
-            f"/api/clinical-templates/{user2_template.id}/"
-        )
-        
+        response = authenticated_api_client.delete(f"/api/clinical-templates/{user2_template.id}/")
+
         assert response.status_code == status.HTTP_403_FORBIDDEN
 
     def test_delete_system_template_forbidden(self, authenticated_api_client, system_template):
         """Test system templates cannot be deleted by regular users."""
-        response = authenticated_api_client.delete(
-            f"/api/clinical-templates/{system_template.id}/"
-        )
-        
+        response = authenticated_api_client.delete(f"/api/clinical-templates/{system_template.id}/")
+
         assert response.status_code == status.HTTP_403_FORBIDDEN
 
 
@@ -556,7 +548,7 @@ class TestTemplateCustomActions:
         response = authenticated_api_client.post(
             f"/api/clinical-templates/{system_template.id}/clone/"
         )
-        
+
         assert response.status_code == status.HTTP_201_CREATED
         assert response.data["is_system"] is False
         assert response.data["created_by"] == api_user.id
@@ -568,7 +560,7 @@ class TestTemplateCustomActions:
         response = authenticated_api_client.post(
             f"/api/clinical-templates/{system_template.id}/clone/"
         )
-        
+
         assert response.status_code == status.HTTP_201_CREATED
         assert response.data["content"] == system_template.content
 
@@ -577,26 +569,28 @@ class TestTemplateCustomActions:
     ):
         """Test applying a template to an encounter increments usage count."""
         initial_count = user_template.usage_count
-        
+
         response = authenticated_api_client.post(
             f"/api/clinical-templates/{user_template.id}/apply/",
             {"encounter_id": sample_encounter.id},
-            format="json"
+            format="json",
         )
-        
+
         assert response.status_code == status.HTTP_200_OK
-        
+
         # Refresh and check usage count incremented
         user_template.refresh_from_db()
         assert user_template.usage_count == initial_count + 1
 
-    def test_popular_templates_endpoint(self, authenticated_api_client, user_template, system_template):
+    def test_popular_templates_endpoint(
+        self, authenticated_api_client, user_template, system_template
+    ):
         """Test getting most popular templates by usage."""
         response = authenticated_api_client.get("/api/clinical-templates/popular/")
-        
+
         assert response.status_code == status.HTTP_200_OK
         results = response.data.get("results", response.data)
-        
+
         # Should be ordered by usage_count descending
         if len(results) > 1:
             counts = [t["usage_count"] for t in results]
@@ -605,7 +599,7 @@ class TestTemplateCustomActions:
     def test_by_specialty_endpoint(self, authenticated_api_client, user_template, system_template):
         """Test grouping templates by specialty."""
         response = authenticated_api_client.get("/api/clinical-templates/by-specialty/")
-        
+
         assert response.status_code == status.HTTP_200_OK
         assert isinstance(response.data, dict)
         # Should have specialties as keys
@@ -642,13 +636,9 @@ class TestNestedSectionsAPI:
                 },
             ],
         }
-        
-        response = authenticated_api_client.post(
-            "/api/clinical-templates/",
-            data,
-            format="json"
-        )
-        
+
+        response = authenticated_api_client.post("/api/clinical-templates/", data, format="json")
+
         assert response.status_code == status.HTTP_201_CREATED
         assert len(response.data["sections"]) == 2
         assert response.data["sections"][0]["name"] == "Section 1"
@@ -665,13 +655,11 @@ class TestNestedSectionsAPI:
                 }
             ]
         }
-        
+
         response = authenticated_api_client.patch(
-            f"/api/clinical-templates/{template_with_sections.id}/",
-            update_data,
-            format="json"
+            f"/api/clinical-templates/{template_with_sections.id}/", update_data, format="json"
         )
-        
+
         assert response.status_code == status.HTTP_200_OK
 
 
@@ -698,7 +686,7 @@ class TestTemplateAPIPagination:
             )
 
         response = authenticated_api_client.get("/api/clinical-templates/")
-        
+
         assert response.status_code == status.HTTP_200_OK
         # Should have pagination metadata
         assert "results" in response.data
@@ -719,7 +707,7 @@ class TestTemplateAPIPagination:
 
         # Default page should return results (may vary by pagination config)
         response = authenticated_api_client.get("/api/clinical-templates/")
-        
+
         assert response.status_code == status.HTTP_200_OK
         # Should have pagination info if paginated
         if "results" in response.data:
@@ -736,13 +724,15 @@ class TestTemplateAPIPagination:
 class TestTemplateListSerializer:
     """Test lightweight list serializer."""
 
-    def test_list_excludes_content_and_sections(self, authenticated_api_client, template_with_sections):
+    def test_list_excludes_content_and_sections(
+        self, authenticated_api_client, template_with_sections
+    ):
         """Test list view uses lightweight serializer without content."""
         response = authenticated_api_client.get("/api/clinical-templates/")
-        
+
         assert response.status_code == status.HTTP_200_OK
         results = response.data.get("results", response.data)
-        
+
         # List should not include full content for performance
         # (Implementation may vary - content might be included but sections excluded)
         if len(results) > 0:
