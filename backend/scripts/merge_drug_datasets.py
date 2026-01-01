@@ -399,8 +399,14 @@ def merge_datasets(keml: dict, market: dict) -> list:
         seen_drugs.add(drug_key)
         
         # Get therapeutic class from market data (detailed classification)
+        # Strip KEML code prefix (e.g., "7.2 Antibacterials" -> "Antibacterials")
         therapeutic_classes = list(market_data.get('classes', set()))
-        therapeutic_class = therapeutic_classes[0] if therapeutic_classes else keml_data.get('subcategory', '')
+        if therapeutic_classes:
+            therapeutic_class = therapeutic_classes[0]
+        else:
+            keml_subcat = keml_data.get('subcategory', '')
+            # Remove leading code pattern like "7.2 " or "33.1 "
+            therapeutic_class = re.sub(r'^\d+\.\d+\s+', '', keml_subcat)
         
         entry = {
             'code': generate_drug_code(keml_data['generic_name'], primary_strength, primary_form, code_counter),
@@ -417,7 +423,7 @@ def merge_datasets(keml: dict, market: dict) -> list:
             'is_narcotic': 'morphine' in key or 'fentanyl' in key or 'pethidine' in key,
             'keml_code': keml_data.get('keml_code', ''),
             'is_essential': True,
-            'nhif_code': '',  # Would need NHIF data
+            'sha_code': '',  # Would need sha data
             'default_reorder_level': get_default_reorder_level(category, lou),
             'default_reorder_quantity': get_default_reorder_quantity(category),
             'storage_requirements': get_storage_requirements(key, primary_form),
@@ -490,7 +496,7 @@ def merge_datasets(keml: dict, market: dict) -> list:
             'is_narcotic': 'morphine' in key or 'fentanyl' in key,
             'keml_code': '',
             'is_essential': False,  # Not on KEML
-            'nhif_code': '',
+            'sha_code': '',
             'default_reorder_level': get_default_reorder_level(category, ''),
             'default_reorder_quantity': get_default_reorder_quantity(category),
             'storage_requirements': get_storage_requirements(key, primary_form),
@@ -613,7 +619,7 @@ def main():
     fieldnames = [
         'code', 'generic_name', 'brand_names', 'category', 'therapeutic_class',
         'form', 'strength', 'unit', 'schedule', 'requires_prescription',
-        'is_controlled', 'is_narcotic', 'keml_code', 'is_essential', 'nhif_code',
+        'is_controlled', 'is_narcotic', 'keml_code', 'is_essential', 'sha_code',
         'default_reorder_level', 'default_reorder_quantity', 'storage_requirements',
         'reference_price', 'is_active', 'manufacturers', 'lou'
     ]
