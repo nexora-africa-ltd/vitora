@@ -48,10 +48,9 @@ describe('Sidebar', () => {
 
   it('should hide labels when collapsed', () => {
     render(<Sidebar {...defaultProps} collapsed={true} />);
-    // Labels should not be visible in collapsed state
-    const dashboardText = screen.queryByText('Dashboard');
-    // The text exists in tooltip but not in main view
-    expect(dashboardText).not.toBeVisible();
+    // In collapsed state, labels are not rendered (not even hidden via CSS)
+    // because of the {!collapsed && <span>...} logic
+    expect(screen.queryByText('Dashboard')).not.toBeInTheDocument();
   });
 
   it('should call onMobileClose when link clicked on mobile', () => {
