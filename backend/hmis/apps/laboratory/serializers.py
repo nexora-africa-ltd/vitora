@@ -41,6 +41,9 @@ class LabOrderItemSerializer(serializers.ModelSerializer):
 
     test_name = serializers.CharField(source="test.name", read_only=True)
     test_code = serializers.CharField(source="test.code", read_only=True)
+    test = serializers.PrimaryKeyRelatedField(
+        queryset=TestCatalog.objects.all(), write_only=True, required=False
+    )
 
     class Meta:
         model = LabOrderItem
@@ -92,10 +95,17 @@ class LabOrderSerializer(serializers.ModelSerializer):
         return obj.ordered_by.get_full_name() or obj.ordered_by.username
 
 
+class LabOrderItemCreateSerializer(serializers.Serializer):
+    """Serializer for creating order items."""
+
+    test_code = serializers.CharField()
+    special_instructions = serializers.CharField(required=False, allow_blank=True)
+
+
 class LabOrderCreateSerializer(serializers.ModelSerializer):
     """Create order with items."""
 
-    items = LabOrderItemSerializer(many=True, write_only=True)
+    items = LabOrderItemCreateSerializer(many=True, write_only=True)
 
     class Meta:
         model = LabOrder
@@ -115,9 +125,22 @@ class LabOrderCreateSerializer(serializers.ModelSerializer):
         order = LabOrder.objects.create(ordered_by=ordered_by, **validated_data)
 
         for item_data in items_data:
-            test = item_data["test"]
+            test_code = item_data["test_code"]
+            try:
+                test = TestCatalog.objects.get(code=test_code)
+            except TestCatalog.DoesNotExist:
+                raise serializers.ValidationError(
+                    {
+                        "items": f"Test with code '{test_code}' not found in catalog."
+                    }
+                )
+
+            special_instructions = item_data.get("special_instructions", "")
             LabOrderItem.objects.create(
-                lab_order=order, test=test, unit_cost=test.cost, **item_data
+                lab_order=order,
+                test=test,
+                unit_cost=test.cost,
+                special_instructions=special_instructions,
             )
 
         order.calculate_total_cost()
@@ -130,6 +153,9 @@ class LabResultSerializer(serializers.ModelSerializer):
     test_name = serializers.CharField(source="order_item.test.name", read_only=True)
     test_code = serializers.CharField(source="order_item.test.code", read_only=True)
     formatted_value = serializers.CharField(source="get_formatted_value", read_only=True)
+    numeric_value = serializers.DecimalField(
+        max_digits=15, decimal_places=4, required=False, allow_null=True, coerce_to_string=True
+    )
 
     class Meta:
         model = LabResult
@@ -178,6 +204,13 @@ class LabResultCreateSerializer(serializers.ModelSerializer):
             result.auto_flag_result()
 
         return result
+
+
+class LabResultVerifySerializer(serializers.Serializer):
+    """Verify result action."""
+
+    approved = serializers.BooleanField()
+    comments = serializers.CharField(required=False, allow_blank=True)
 
 
 class LOINCCodeSerializer(serializers.ModelSerializer):
