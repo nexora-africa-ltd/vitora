@@ -12,6 +12,16 @@ export type {
   EncounterListParams,
 } from './encounter';
 
+// Re-export patient types
+export type {
+  Patient as EnhancedPatient,
+  PatientCreateData,
+  PatientUpdateData,
+  EmergencyContact,
+  PatientListParams,
+  PatientEncounter,
+} from './patient';
+
 // User types
 export interface User {
   id: number;
