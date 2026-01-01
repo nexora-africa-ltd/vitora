@@ -32,7 +32,7 @@
   }
 
   .dark {
-    --background: 350 9% 9%;  /* background.dark #1A1516 */
+    --background: #080100;  /* background.dark #1A1516 */
     --foreground: 0 3% 96%;  /* neutral-100 */
     --card: 350 8% 12%;
     --card-foreground: 0 3% 96%;
