@@ -25,11 +25,11 @@ This document tracks the implementation of Sprint 1.5-1.6 Track B Lab Workflow c
 
 | Phase | Status | Tests | Coverage |
 |-------|--------|-------|----------|
-| **Phase 1: Core Models** | 🚧 25% | 14/56 | In Progress |
+| **Phase 1: Core Models** | 🚧 39% | 22/56 | In Progress |
 | **Phase 2: Services** | ⏳ Pending | 0/32 | Not Started |
 | **Phase 3: API Endpoints** | ⏳ Pending | 0/26 | Not Started |
 | **Phase 4: Reports** | ⏳ Pending | 0/8 | Not Started |
-| **TOTAL** | 🚧 12.5% | 14/112 | In Progress |
+| **TOTAL** | 🚧 19.6% | 22/112 | In Progress |
 
 **Legend**: ✅ Complete | 🚧 In Progress | ⏳ Pending
 
@@ -37,7 +37,7 @@ This document tracks the implementation of Sprint 1.5-1.6 Track B Lab Workflow c
 
 ## Phase 1: Core Models & Database (Weeks 9-10)
 
-**Target**: 56 tests | **Status**: 14/56 complete (25%)
+**Target**: 56 tests | **Status**: 22/56 complete (39%)
 
 ### 1.1 LabQueue Model ✅ COMPLETE
 
@@ -87,14 +87,20 @@ class LabQueue(models.Model):
 
 ---
 
-### 1.2 LabResultTemplate Model 🔄 NEXT
+### 1.2 LabResultTemplate Model ✅ COMPLETE
 
 **Target**: 8 tests  
-**Status**: ⏳ Not Started
+**Status**: ✅ All tests passing  
+**Tests**: 8/8 passing  
+**Files**:
+- Model: `backend/hmis/apps/laboratory/models.py`
+- Tests: `backend/tests/test_lab_result_template.py`
+- Migration: `0005_labresulttemplate.py`
 
 **Purpose**: Store reference ranges for lab parameters by demographics (age, gender)
 
-**Planned Implementation**:
+**Baseline Specification** (from deliverables doc):
+The implementation follows the code snippet provided in `docs/sprint-1.5-1.6-track-b-lab-workflow-deliverables.md` as the baseline specification.
 ```python
 class LabResultTemplate(models.Model):
     """Template for lab test parameters with reference ranges."""
@@ -121,17 +127,21 @@ class LabResultTemplate(models.Model):
     critical_high = models.DecimalField(null=True, blank=True)
 ```
 
-**Test Plan**:
-- [ ] Template creation with ranges
-- [ ] Get reference range for adult male
-- [ ] Get reference range for adult female
-- [ ] Get reference range for pediatric
-- [ ] Fallback to default range if missing
-- [ ] Critical value thresholds
-- [ ] Panel parameters ordered by display_order
-- [ ] Test code + parameter code uniqueness
+**Test Coverage**:
+- [x] Template creation with ranges
+- [x] Get reference range for adult male
+- [x] Get reference range for adult female
+- [x] Get reference range for pediatric
+- [x] Fallback to default range if missing
+- [x] Critical value thresholds
+- [x] Panel parameters ordered by display_order
+- [x] Test code + parameter code uniqueness
 
-**Data to Populate**:
+**Commits**:
+- `d417fab` - feat: Implement LabResultTemplate model with tests (Phase 1.2)
+
+**Data to Populate** (Future Task):
+The model is ready to receive reference range data for common lab panels:
 - CBC (Complete Blood Count): WBC, RBC, HGB, HCT, PLT, MCV, MCH, MCHC
 - Liver Function: ALT, AST, ALP, GGT, Bilirubin, Albumin
 - Kidney Function: Creatinine, BUN, eGFR, Uric Acid
@@ -140,6 +150,8 @@ class LabResultTemplate(models.Model):
 - Electrolytes: Na, K, Cl, CO2
 - Thyroid: TSH, T3, T4
 - Urinalysis: pH, Protein, Glucose, etc.
+
+*Note: Data population will be done as a separate task using management commands or fixtures.*
 
 ---
 
@@ -470,6 +482,19 @@ GET    /api/lab/results/pending-verification/       # Unverified criticals
 
 ## Implementation Guidelines
 
+### Baseline Specification Approach
+
+**All implementations follow the code snippets provided in the deliverables spec document as the baseline**:
+- Code snippets from `docs/sprint-1.5-1.6-track-b-lab-workflow-deliverables.md` serve as the foundation
+- Improvements are made while preserving the core structure and API
+- All baseline functionality is maintained and enhanced
+- Changes focus on:
+  - Better error handling and edge case coverage
+  - Enhanced documentation (help_text, docstrings)
+  - Performance optimizations (indexes, query optimization)
+  - Django best practices (verbose names, __str__ methods)
+  - Type safety and validation
+
 ### TDD Workflow (STRICTLY ENFORCED)
 
 ```
@@ -563,17 +588,23 @@ make test     # run all tests with coverage
 
 ## Change Log
 
-### 2026-01-02
-- **Phase 1.1 Complete**: Implemented LabQueue model with 14 tests (all passing)
-- Created migrations for LabQueue model
-- Implemented priority-based ordering
+### 2026-01-02 (Updated)
+- **Phase 1.1 Complete**: Implemented LabQueue model with 14 tests (all passing) ✅
+- **Phase 1.2 Complete**: Implemented LabResultTemplate model with 8 tests (all passing) ✅
+- Created migrations for both models
+- Implemented priority-based ordering for LabQueue
 - Added comprehensive workflow methods
-- **Next**: LabResultTemplate model (Phase 1.2)
+- Implemented demographic-based reference ranges for LabResultTemplate
+- **Added baseline specification approach**: All implementations follow code snippets from deliverables doc as baseline, with improvements for error handling, documentation, and performance
+- **Next**: Extended LabResult model (Phase 1.3)
 
-### 2026-01-01
+### 2026-01-02 (Initial)
 - Created initial implementation plan
 - Set up project structure
 - Defined 4-phase approach with 112 planned tests
+
+### 2026-01-01
+- Sprint 1.5-1.6 Track B kickoff
 
 ---
 
