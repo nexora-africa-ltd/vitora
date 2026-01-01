@@ -6,14 +6,16 @@ This module contains business logic services including:
 """
 
 from typing import List, Tuple
-from django.utils import timezone
+
 from django.contrib.auth import get_user_model
+from django.utils import timezone
 
 User = get_user_model()
 
 
 class InsufficientStockError(Exception):
     """Raised when there is insufficient stock to fulfill a dispensing request."""
+
     pass
 
 
@@ -101,4 +103,3 @@ class FEFODispenser:
             dispensings.append(dispensing)
 
         return dispensings
-

@@ -52,7 +52,9 @@ CSRF_TRUSTED_ORIGINS = [
 
 # Disable CSRF for API endpoints in development
 # This is safe because we use JWT authentication, not session cookies
-MIDDLEWARE = [m for m in MIDDLEWARE if m != "django.middleware.csrf.CsrfViewMiddleware"]  # noqa: F405
+MIDDLEWARE = [
+    m for m in MIDDLEWARE if m != "django.middleware.csrf.CsrfViewMiddleware"
+]  # noqa: F405
 
 # Encryption key for sensitive data (generate a new one for production!)
 # To generate: python -c "from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())"
@@ -69,9 +71,7 @@ SYNC_BATCH_SIZE = int(os.getenv("SYNC_BATCH_SIZE", "100"))
 SYNC_MAX_RETRIES = int(os.getenv("SYNC_MAX_RETRIES", "3"))
 
 # Development-specific apps
-INSTALLED_APPS += [  # noqa: F405
-    "django_extensions"
-]
+INSTALLED_APPS += ["django_extensions"]  # noqa: F405
 
 # Enhanced logging for development
 LOGGING["loggers"]["django"]["level"] = "DEBUG"  # noqa: F405

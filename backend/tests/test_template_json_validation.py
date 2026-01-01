@@ -23,10 +23,7 @@ pytestmark = pytest.mark.django_db
 @pytest.fixture
 def valid_minimal_content():
     """Minimal valid template content."""
-    return {
-        "title": "Minimal Template",
-        "sections": []
-    }
+    return {"title": "Minimal Template", "sections": []}
 
 
 @pytest.fixture
@@ -43,17 +40,22 @@ def valid_full_content():
                 "fields": [
                     {"name": "field1", "type": "text", "required": True, "label": "Field 1"},
                     {"name": "field2", "type": "number", "required": False, "min": 0, "max": 100},
-                ]
+                ],
             },
             {
                 "name": "Section 2",
                 "order": 2,
                 "fields": [
-                    {"name": "field3", "type": "select", "options": ["A", "B", "C"], "required": True},
+                    {
+                        "name": "field3",
+                        "type": "select",
+                        "options": ["A", "B", "C"],
+                        "required": True,
+                    },
                     {"name": "field4", "type": "boolean", "required": False},
-                ]
-            }
-        ]
+                ],
+            },
+        ],
     }
 
 
@@ -61,6 +63,7 @@ def valid_full_content():
 def template_user(db):
     """Create a user for template creation."""
     from django.contrib.auth import get_user_model
+
     User = get_user_model()
     return User.objects.create_user(
         username="schema_test_user",
@@ -88,11 +91,11 @@ class TestValidTemplateContent:
             content=valid_minimal_content,
             created_by=template_user,
         )
-        
+
         # Should not raise
         template.full_clean()
         template.save()
-        
+
         assert template.id is not None
 
     def test_valid_full_content_accepted(self, template_user, valid_full_content):
@@ -105,10 +108,10 @@ class TestValidTemplateContent:
             content=valid_full_content,
             created_by=template_user,
         )
-        
+
         template.full_clean()
         template.save()
-        
+
         assert template.id is not None
 
     def test_valid_content_with_all_field_types(self, template_user):
@@ -125,11 +128,21 @@ class TestValidTemplateContent:
                         {"name": "number_field", "type": "number", "required": False},
                         {"name": "boolean_field", "type": "boolean", "required": False},
                         {"name": "date_field", "type": "date", "required": False},
-                        {"name": "select_field", "type": "select", "options": ["A", "B"], "required": False},
-                        {"name": "multiselect_field", "type": "multiselect", "options": ["X", "Y", "Z"], "required": False},
-                    ]
+                        {
+                            "name": "select_field",
+                            "type": "select",
+                            "options": ["A", "B"],
+                            "required": False,
+                        },
+                        {
+                            "name": "multiselect_field",
+                            "type": "multiselect",
+                            "options": ["X", "Y", "Z"],
+                            "required": False,
+                        },
+                    ],
                 }
-            ]
+            ],
         }
 
         from hmis.apps.clinical_templates.models import ClinicalTemplate
@@ -140,7 +153,7 @@ class TestValidTemplateContent:
             content=content,
             created_by=template_user,
         )
-        
+
         template.full_clean()
         assert True  # If we get here, validation passed
 
@@ -158,9 +171,7 @@ class TestInvalidTemplateContent:
         """Test content without title is rejected."""
         from hmis.apps.clinical_templates.models import ClinicalTemplate
 
-        content = {
-            "sections": []
-        }
+        content = {"sections": []}
 
         template = ClinicalTemplate(
             name="No Title Template",
@@ -168,19 +179,17 @@ class TestInvalidTemplateContent:
             content=content,
             created_by=template_user,
         )
-        
+
         with pytest.raises(ValidationError) as exc_info:
             template.full_clean()
-        
+
         assert "content" in str(exc_info.value).lower() or "title" in str(exc_info.value).lower()
 
     def test_missing_sections_rejected(self, template_user):
         """Test content without sections is rejected."""
         from hmis.apps.clinical_templates.models import ClinicalTemplate
 
-        content = {
-            "title": "No Sections"
-        }
+        content = {"title": "No Sections"}
 
         template = ClinicalTemplate(
             name="No Sections Template",
@@ -188,10 +197,10 @@ class TestInvalidTemplateContent:
             content=content,
             created_by=template_user,
         )
-        
+
         with pytest.raises(ValidationError) as exc_info:
             template.full_clean()
-        
+
         assert "content" in str(exc_info.value).lower() or "sections" in str(exc_info.value).lower()
 
     def test_invalid_section_structure_rejected(self, template_user):
@@ -200,12 +209,7 @@ class TestInvalidTemplateContent:
 
         content = {
             "title": "Invalid Section",
-            "sections": [
-                {
-                    "order": 1,  # Missing 'name'
-                    "fields": []
-                }
-            ]
+            "sections": [{"order": 1, "fields": []}],  # Missing 'name'
         }
 
         template = ClinicalTemplate(
@@ -214,10 +218,10 @@ class TestInvalidTemplateContent:
             content=content,
             created_by=template_user,
         )
-        
+
         with pytest.raises(ValidationError) as exc_info:
             template.full_clean()
-        
+
         assert "content" in str(exc_info.value).lower() or "name" in str(exc_info.value).lower()
 
     def test_invalid_field_type_rejected(self, template_user):
@@ -230,11 +234,9 @@ class TestInvalidTemplateContent:
                 {
                     "name": "Section 1",
                     "order": 1,
-                    "fields": [
-                        {"name": "bad_field", "type": "invalid_type", "required": True}
-                    ]
+                    "fields": [{"name": "bad_field", "type": "invalid_type", "required": True}],
                 }
-            ]
+            ],
         }
 
         template = ClinicalTemplate(
@@ -243,10 +245,10 @@ class TestInvalidTemplateContent:
             content=content,
             created_by=template_user,
         )
-        
+
         with pytest.raises(ValidationError) as exc_info:
             template.full_clean()
-        
+
         assert "content" in str(exc_info.value).lower() or "type" in str(exc_info.value).lower()
 
     def test_select_without_options_rejected(self, template_user):
@@ -260,10 +262,14 @@ class TestInvalidTemplateContent:
                     "name": "Section 1",
                     "order": 1,
                     "fields": [
-                        {"name": "select_field", "type": "select", "required": True}  # Missing options
-                    ]
+                        {
+                            "name": "select_field",
+                            "type": "select",
+                            "required": True,
+                        }  # Missing options
+                    ],
                 }
-            ]
+            ],
         }
 
         template = ClinicalTemplate(
@@ -272,10 +278,10 @@ class TestInvalidTemplateContent:
             content=content,
             created_by=template_user,
         )
-        
+
         with pytest.raises(ValidationError) as exc_info:
             template.full_clean()
-        
+
         assert "content" in str(exc_info.value).lower() or "options" in str(exc_info.value).lower()
 
     def test_field_missing_name_rejected(self, template_user):
@@ -288,11 +294,9 @@ class TestInvalidTemplateContent:
                 {
                     "name": "Section 1",
                     "order": 1,
-                    "fields": [
-                        {"type": "text", "required": True}  # Missing 'name'
-                    ]
+                    "fields": [{"type": "text", "required": True}],  # Missing 'name'
                 }
-            ]
+            ],
         }
 
         template = ClinicalTemplate(
@@ -301,10 +305,10 @@ class TestInvalidTemplateContent:
             content=content,
             created_by=template_user,
         )
-        
+
         with pytest.raises(ValidationError) as exc_info:
             template.full_clean()
-        
+
         assert "content" in str(exc_info.value).lower() or "name" in str(exc_info.value).lower()
 
 
@@ -326,11 +330,8 @@ class TestSectionLimits:
             {"name": f"Section {i}", "order": i, "fields": []}
             for i in range(25)  # Assuming limit < 25
         ]
-        
-        content = {
-            "title": "Too Many Sections",
-            "sections": sections
-        }
+
+        content = {"title": "Too Many Sections", "sections": sections}
 
         template = ClinicalTemplate(
             name="Too Many Sections Template",
@@ -338,10 +339,10 @@ class TestSectionLimits:
             content=content,
             created_by=template_user,
         )
-        
+
         with pytest.raises(ValidationError) as exc_info:
             template.full_clean()
-        
+
         assert "sections" in str(exc_info.value).lower() or "maximum" in str(exc_info.value).lower()
 
     def test_max_fields_per_section_enforced(self, template_user):
@@ -353,12 +354,10 @@ class TestSectionLimits:
             {"name": f"field_{i}", "type": "text", "required": False}
             for i in range(55)  # Assuming limit < 55
         ]
-        
+
         content = {
             "title": "Too Many Fields",
-            "sections": [
-                {"name": "Big Section", "order": 1, "fields": fields}
-            ]
+            "sections": [{"name": "Big Section", "order": 1, "fields": fields}],
         }
 
         template = ClinicalTemplate(
@@ -367,10 +366,10 @@ class TestSectionLimits:
             content=content,
             created_by=template_user,
         )
-        
+
         with pytest.raises(ValidationError) as exc_info:
             template.full_clean()
-        
+
         assert "fields" in str(exc_info.value).lower() or "maximum" in str(exc_info.value).lower()
 
 
@@ -387,10 +386,7 @@ class TestSchemaEdgeCases:
         """Test that empty sections array is valid."""
         from hmis.apps.clinical_templates.models import ClinicalTemplate
 
-        content = {
-            "title": "Empty Sections",
-            "sections": []
-        }
+        content = {"title": "Empty Sections", "sections": []}
 
         template = ClinicalTemplate(
             name="Empty Sections Template",
@@ -398,7 +394,7 @@ class TestSchemaEdgeCases:
             content=content,
             created_by=template_user,
         )
-        
+
         template.full_clean()  # Should not raise
 
     def test_section_with_empty_fields_accepted(self, template_user):
@@ -407,9 +403,7 @@ class TestSchemaEdgeCases:
 
         content = {
             "title": "Empty Fields",
-            "sections": [
-                {"name": "Empty Section", "order": 1, "fields": []}
-            ]
+            "sections": [{"name": "Empty Section", "order": 1, "fields": []}],
         }
 
         template = ClinicalTemplate(
@@ -418,7 +412,7 @@ class TestSchemaEdgeCases:
             content=content,
             created_by=template_user,
         )
-        
+
         template.full_clean()  # Should not raise
 
     def test_unicode_in_content_accepted(self, template_user):
@@ -432,10 +426,15 @@ class TestSchemaEdgeCases:
                     "name": "Dalili",
                     "order": 1,
                     "fields": [
-                        {"name": "homa", "type": "boolean", "required": True, "label": "Homa (Fever)"}
-                    ]
+                        {
+                            "name": "homa",
+                            "type": "boolean",
+                            "required": True,
+                            "label": "Homa (Fever)",
+                        }
+                    ],
                 }
-            ]
+            ],
         }
 
         template = ClinicalTemplate(
@@ -444,10 +443,10 @@ class TestSchemaEdgeCases:
             content=content,
             created_by=template_user,
         )
-        
+
         template.full_clean()
         template.save()
-        
+
         assert template.id is not None
         assert template.content["title"] == "Uchunguzi wa Malaria"
 
@@ -460,7 +459,7 @@ class TestSchemaEdgeCases:
             "metadata": {
                 "author": "Test Author",
                 "version": "2.0",
-                "tags": ["kenya", "endemic", "malaria"]
+                "tags": ["kenya", "endemic", "malaria"],
             },
             "sections": [
                 {
@@ -472,14 +471,11 @@ class TestSchemaEdgeCases:
                             "type": "select",
                             "options": ["A", "B", "C"],
                             "required": True,
-                            "validation": {
-                                "min_selections": 1,
-                                "max_selections": 2
-                            }
+                            "validation": {"min_selections": 1, "max_selections": 2},
                         }
-                    ]
+                    ],
                 }
-            ]
+            ],
         }
 
         template = ClinicalTemplate(
@@ -488,10 +484,10 @@ class TestSchemaEdgeCases:
             content=content,
             created_by=template_user,
         )
-        
+
         template.full_clean()
         template.save()
-        
+
         # Verify nested structure preserved
         template.refresh_from_db()
         assert template.content["metadata"]["tags"] == ["kenya", "endemic", "malaria"]
@@ -509,33 +505,31 @@ class TestSchemaValidationFunction:
     def test_validate_template_content_function_exists(self):
         """Test that validation function exists."""
         from hmis.apps.clinical_templates.schemas import validate_template_content
-        
+
         assert callable(validate_template_content)
 
     def test_validate_returns_none_on_valid(self, valid_full_content):
         """Test validation returns None for valid content."""
         from hmis.apps.clinical_templates.schemas import validate_template_content
-        
+
         result = validate_template_content(valid_full_content)
         assert result is None  # No error
 
     def test_validate_raises_on_invalid(self):
         """Test validation raises error for invalid content."""
         from hmis.apps.clinical_templates.schemas import validate_template_content
-        
+
         invalid_content = {"invalid": "content"}
-        
+
         with pytest.raises(ValidationError):
             validate_template_content(invalid_content)
 
     def test_get_validation_errors_returns_list(self):
         """Test getting validation errors as list."""
         from hmis.apps.clinical_templates.schemas import get_validation_errors
-        
-        invalid_content = {
-            "title": "Missing sections"
-        }
-        
+
+        invalid_content = {"title": "Missing sections"}
+
         errors = get_validation_errors(invalid_content)
         assert isinstance(errors, list)
         assert len(errors) > 0

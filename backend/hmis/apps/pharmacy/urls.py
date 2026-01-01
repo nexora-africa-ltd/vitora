@@ -2,20 +2,20 @@
 URL configuration for Pharmacy app.
 """
 
-from django.urls import path, include
+from django.urls import include, path
 from rest_framework.routers import DefaultRouter
 
 from hmis.apps.pharmacy.views import (
-    DrugViewSet,
-    StockBatchViewSet,
-    StockAlertViewSet,
-    PrescriptionViewSet,
-    DispensingViewSet,
-    StockAdjustmentViewSet,
-    StockSummaryReportView,
-    ExpiryReportView,
     DispensingReportView,
+    DispensingViewSet,
+    DrugViewSet,
+    ExpiryReportView,
+    PrescriptionViewSet,
+    StockAdjustmentViewSet,
+    StockAlertViewSet,
+    StockBatchViewSet,
     StockMovementReportView,
+    StockSummaryReportView,
 )
 
 router = DefaultRouter()

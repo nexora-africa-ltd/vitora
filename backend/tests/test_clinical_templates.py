@@ -51,7 +51,7 @@ def valid_template_content():
                 "fields": [
                     {"name": "complaint", "type": "text", "required": True},
                     {"name": "duration", "type": "text", "required": False},
-                ]
+                ],
             },
             {
                 "name": "Physical Examination",
@@ -59,9 +59,9 @@ def valid_template_content():
                 "fields": [
                     {"name": "general_appearance", "type": "text", "required": True},
                     {"name": "findings", "type": "textarea", "required": False},
-                ]
+                ],
             },
-        ]
+        ],
     }
 
 
@@ -80,26 +80,49 @@ def malaria_template_content():
                     {"name": "chills", "type": "boolean", "required": False},
                     {"name": "headache", "type": "boolean", "required": False},
                     {"name": "duration_days", "type": "number", "required": True},
-                ]
+                ],
             },
             {
                 "name": "RDT/Microscopy",
                 "order": 2,
                 "fields": [
-                    {"name": "rdt_result", "type": "select", "options": ["Positive", "Negative", "Invalid"], "required": True},
+                    {
+                        "name": "rdt_result",
+                        "type": "select",
+                        "options": ["Positive", "Negative", "Invalid"],
+                        "required": True,
+                    },
                     {"name": "microscopy_done", "type": "boolean", "required": False},
                     {"name": "parasite_count", "type": "number", "required": False},
-                ]
+                ],
             },
             {
                 "name": "Severity",
                 "order": 3,
                 "fields": [
-                    {"name": "classification", "type": "select", "options": ["Uncomplicated", "Severe"], "required": True},
-                    {"name": "danger_signs", "type": "multiselect", "options": ["Prostration", "Impaired consciousness", "Respiratory distress", "Multiple convulsions", "Shock", "Jaundice", "Severe anemia"], "required": False},
-                ]
+                    {
+                        "name": "classification",
+                        "type": "select",
+                        "options": ["Uncomplicated", "Severe"],
+                        "required": True,
+                    },
+                    {
+                        "name": "danger_signs",
+                        "type": "multiselect",
+                        "options": [
+                            "Prostration",
+                            "Impaired consciousness",
+                            "Respiratory distress",
+                            "Multiple convulsions",
+                            "Shock",
+                            "Jaundice",
+                            "Severe anemia",
+                        ],
+                        "required": False,
+                    },
+                ],
             },
-        ]
+        ],
     }
 
 
@@ -173,7 +196,7 @@ class TestClinicalTemplateModel:
         from hmis.apps.clinical_templates.models import ClinicalTemplate
 
         valid_types = ["encounter", "note", "assessment", "procedure"]
-        
+
         for template_type in valid_types:
             template = ClinicalTemplate(
                 name=f"Test {template_type}",
@@ -196,13 +219,13 @@ class TestClinicalTemplateModel:
 
         with pytest.raises(ValidationError) as exc_info:
             template.full_clean()
-        
+
         assert "template_type" in str(exc_info.value)
 
     def test_template_json_content_field(self, sample_clinical_template):
         """Test that content is stored as JSON and retrievable."""
         content = sample_clinical_template.content
-        
+
         assert isinstance(content, dict)
         assert "title" in content
         assert "sections" in content
@@ -295,7 +318,9 @@ class TestClinicalTemplateModel:
 
         assert template.description == ""
 
-    def test_template_unique_name_within_type_not_enforced(self, template_user, valid_template_content):
+    def test_template_unique_name_within_type_not_enforced(
+        self, template_user, valid_template_content
+    ):
         """Test that duplicate names are allowed (different users may have same names)."""
         from hmis.apps.clinical_templates.models import ClinicalTemplate
 
@@ -319,10 +344,10 @@ class TestClinicalTemplateModel:
     def test_increment_usage_count(self, sample_clinical_template):
         """Test incrementing usage count method."""
         initial_count = sample_clinical_template.usage_count
-        
+
         sample_clinical_template.increment_usage()
         sample_clinical_template.refresh_from_db()
-        
+
         assert sample_clinical_template.usage_count == initial_count + 1
 
     def test_clone_template(self, sample_clinical_template, template_user):
@@ -402,7 +427,7 @@ class TestTemplateSectionModel:
         )
 
         sections = list(sample_clinical_template.sections.all())
-        
+
         assert sections[0].name == "Section 1"
         assert sections[1].name == "Section 2"
         assert sections[2].name == "Section 3"
@@ -480,7 +505,7 @@ class TestTemplateSectionModel:
             TemplateSection.objects.create(
                 template=sample_clinical_template,
                 name=f"Section {i+1}",
-                order=i+1,
+                order=i + 1,
                 fields=[],
             )
 
@@ -501,16 +526,22 @@ class TestTemplateQueries:
         from hmis.apps.clinical_templates.models import ClinicalTemplate
 
         ClinicalTemplate.objects.create(
-            name="Encounter 1", template_type="encounter",
-            content=valid_template_content, created_by=template_user
+            name="Encounter 1",
+            template_type="encounter",
+            content=valid_template_content,
+            created_by=template_user,
         )
         ClinicalTemplate.objects.create(
-            name="Note 1", template_type="note",
-            content=valid_template_content, created_by=template_user
+            name="Note 1",
+            template_type="note",
+            content=valid_template_content,
+            created_by=template_user,
         )
         ClinicalTemplate.objects.create(
-            name="Encounter 2", template_type="encounter",
-            content=valid_template_content, created_by=template_user
+            name="Encounter 2",
+            template_type="encounter",
+            content=valid_template_content,
+            created_by=template_user,
         )
 
         encounters = ClinicalTemplate.objects.filter(template_type="encounter")
@@ -524,16 +555,22 @@ class TestTemplateQueries:
         from hmis.apps.clinical_templates.models import ClinicalTemplate
 
         ClinicalTemplate.objects.create(
-            name="Pediatric 1", template_type="encounter", specialty="Pediatrics",
-            content=valid_template_content, created_by=template_user
+            name="Pediatric 1",
+            template_type="encounter",
+            specialty="Pediatrics",
+            content=valid_template_content,
+            created_by=template_user,
         )
         ClinicalTemplate.objects.create(
-            name="General 1", template_type="encounter", specialty="General Practice",
-            content=valid_template_content, created_by=template_user
+            name="General 1",
+            template_type="encounter",
+            specialty="General Practice",
+            content=valid_template_content,
+            created_by=template_user,
         )
 
         pediatric = ClinicalTemplate.objects.filter(specialty="Pediatrics")
-        
+
         assert pediatric.count() == 1
         assert pediatric.first().name == "Pediatric 1"
 
@@ -542,16 +579,22 @@ class TestTemplateQueries:
         from hmis.apps.clinical_templates.models import ClinicalTemplate
 
         ClinicalTemplate.objects.create(
-            name="Active", template_type="encounter", is_active=True,
-            content=valid_template_content, created_by=template_user
+            name="Active",
+            template_type="encounter",
+            is_active=True,
+            content=valid_template_content,
+            created_by=template_user,
         )
         ClinicalTemplate.objects.create(
-            name="Inactive", template_type="encounter", is_active=False,
-            content=valid_template_content, created_by=template_user
+            name="Inactive",
+            template_type="encounter",
+            is_active=False,
+            content=valid_template_content,
+            created_by=template_user,
         )
 
         active = ClinicalTemplate.objects.filter(is_active=True)
-        
+
         assert active.count() == 1
         assert active.first().name == "Active"
 
@@ -560,17 +603,23 @@ class TestTemplateQueries:
         from hmis.apps.clinical_templates.models import ClinicalTemplate
 
         ClinicalTemplate.objects.create(
-            name="System", template_type="encounter", is_system=True,
-            content=valid_template_content, created_by=None
+            name="System",
+            template_type="encounter",
+            is_system=True,
+            content=valid_template_content,
+            created_by=None,
         )
         ClinicalTemplate.objects.create(
-            name="User", template_type="encounter", is_system=False,
-            content=valid_template_content, created_by=template_user
+            name="User",
+            template_type="encounter",
+            is_system=False,
+            content=valid_template_content,
+            created_by=template_user,
         )
 
         system = ClinicalTemplate.objects.filter(is_system=True)
         user = ClinicalTemplate.objects.filter(is_system=False)
-        
+
         assert system.count() == 1
         assert user.count() == 1
 
@@ -579,20 +628,29 @@ class TestTemplateQueries:
         from hmis.apps.clinical_templates.models import ClinicalTemplate
 
         t1 = ClinicalTemplate.objects.create(
-            name="Popular", template_type="encounter", usage_count=100,
-            content=valid_template_content, created_by=template_user
+            name="Popular",
+            template_type="encounter",
+            usage_count=100,
+            content=valid_template_content,
+            created_by=template_user,
         )
         t2 = ClinicalTemplate.objects.create(
-            name="Less Popular", template_type="encounter", usage_count=10,
-            content=valid_template_content, created_by=template_user
+            name="Less Popular",
+            template_type="encounter",
+            usage_count=10,
+            content=valid_template_content,
+            created_by=template_user,
         )
         t3 = ClinicalTemplate.objects.create(
-            name="Most Popular", template_type="encounter", usage_count=500,
-            content=valid_template_content, created_by=template_user
+            name="Most Popular",
+            template_type="encounter",
+            usage_count=500,
+            content=valid_template_content,
+            created_by=template_user,
         )
 
         popular = ClinicalTemplate.objects.order_by("-usage_count")
-        
+
         assert list(popular) == [t3, t1, t2]
 
 
@@ -610,16 +668,20 @@ class TestTemplateMetaOptions:
         from hmis.apps.clinical_templates.models import ClinicalTemplate
 
         ClinicalTemplate.objects.create(
-            name="Zebra Template", template_type="encounter",
-            content=valid_template_content, created_by=template_user
+            name="Zebra Template",
+            template_type="encounter",
+            content=valid_template_content,
+            created_by=template_user,
         )
         ClinicalTemplate.objects.create(
-            name="Alpha Template", template_type="encounter",
-            content=valid_template_content, created_by=template_user
+            name="Alpha Template",
+            template_type="encounter",
+            content=valid_template_content,
+            created_by=template_user,
         )
 
         templates = list(ClinicalTemplate.objects.all())
-        
+
         assert templates[0].name == "Alpha Template"
         assert templates[1].name == "Zebra Template"
 
