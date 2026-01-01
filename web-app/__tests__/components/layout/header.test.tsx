@@ -1,6 +1,11 @@
 import { render, screen, fireEvent } from '@testing-library/react';
 import { Header } from '@/components/layout/header';
 
+// Mock next/navigation
+jest.mock('next/navigation', () => ({
+  usePathname: jest.fn(() => '/'),
+}));
+
 // Mock next-themes
 jest.mock('next-themes', () => ({
   useTheme: jest.fn(() => ({
