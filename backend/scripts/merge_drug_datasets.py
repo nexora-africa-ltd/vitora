@@ -398,11 +398,16 @@ def merge_datasets(keml: dict, market: dict) -> list:
             continue
         seen_drugs.add(drug_key)
         
+        # Get therapeutic class from market data (detailed classification)
+        therapeutic_classes = list(market_data.get('classes', set()))
+        therapeutic_class = therapeutic_classes[0] if therapeutic_classes else keml_data.get('subcategory', '')
+        
         entry = {
             'code': generate_drug_code(keml_data['generic_name'], primary_strength, primary_form, code_counter),
             'generic_name': keml_data['generic_name'],
             'brand_names': json.dumps(brands[:10]),
             'category': category,
+            'therapeutic_class': therapeutic_class,
             'form': primary_form,
             'strength': primary_strength,
             'unit': get_unit_for_form(primary_form),
@@ -462,6 +467,7 @@ def merge_datasets(keml: dict, market: dict) -> list:
             continue
         
         category = normalize_category(classes[0] if classes else '', '')
+        therapeutic_class = classes[0] if classes else ''
         is_controlled = any(ctrl in key for ctrl in CONTROLLED_INDICATORS)
         
         drug_key = f"{key}_{primary_strength}_{primary_form}"
@@ -474,6 +480,7 @@ def merge_datasets(keml: dict, market: dict) -> list:
             'generic_name': generic_name,
             'brand_names': json.dumps(brands),
             'category': category,
+            'therapeutic_class': therapeutic_class,
             'form': primary_form,
             'strength': primary_strength,
             'unit': get_unit_for_form(primary_form),
@@ -604,11 +611,11 @@ def main():
     # Write output
     print(f"\nWriting to {output_path}...")
     fieldnames = [
-        'code', 'generic_name', 'brand_names', 'category', 'form', 'strength',
-        'unit', 'schedule', 'requires_prescription', 'is_controlled', 'is_narcotic',
-        'keml_code', 'is_essential', 'nhif_code', 'default_reorder_level',
-        'default_reorder_quantity', 'storage_requirements', 'reference_price',
-        'is_active', 'manufacturers', 'lou'
+        'code', 'generic_name', 'brand_names', 'category', 'therapeutic_class',
+        'form', 'strength', 'unit', 'schedule', 'requires_prescription',
+        'is_controlled', 'is_narcotic', 'keml_code', 'is_essential', 'nhif_code',
+        'default_reorder_level', 'default_reorder_quantity', 'storage_requirements',
+        'reference_price', 'is_active', 'manufacturers', 'lou'
     ]
     
     with open(output_path, 'w', newline='', encoding='utf-8') as f:
