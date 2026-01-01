@@ -6,6 +6,12 @@
 
 ## 🏥 Project Overview
 
+### Product & Company Context
+
+**Vitora HMIS** is a **software product** developed by **Nexora Africa Ltd**, an IT company. 
+
+> ⚠️ **IMPORTANT**: Vitora is the **name of the software product**, NOT a healthcare facility. When creating placeholder facility names, use generic names like "Demo Health Facility", "Sample Clinic", or "[Facility Name]" - never use "Vitora" as a facility name.
+
 **Vitora HMIS** is an **offline-first Hospital Management Information System** built specifically for **Kenya's healthcare infrastructure**. It addresses the unique challenges of Kenyan healthcare facilities:
 
 - **Unreliable internet** in rural areas
