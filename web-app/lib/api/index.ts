@@ -5,3 +5,4 @@
 export { apiClient } from './client';
 export { encountersApi } from './encounters';
 export { locationsApi } from './locations';
+export { patientsApi } from './patients';
