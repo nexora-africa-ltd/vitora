@@ -4,11 +4,11 @@ Tests for StockAdjustment model.
 Following TDD approach: Write tests FIRST, then implement model.
 """
 
-import pytest
 from datetime import date, timedelta
 from decimal import Decimal
-from django.core.exceptions import ValidationError
 
+import pytest
+from django.core.exceptions import ValidationError
 
 # ============================================================================
 # StockAdjustment Model Tests (8 tests as per sprint deliverables)
@@ -21,12 +21,13 @@ class TestStockAdjustmentModel:
 
     def test_adjustment_creation_reduces_stock(self):
         """Negative adjustment should reduce batch stock."""
-        from hmis.apps.pharmacy.models import Drug, StockBatch, StockAdjustment
         from django.contrib.auth import get_user_model
-        
+
+        from hmis.apps.pharmacy.models import Drug, StockAdjustment, StockBatch
+
         User = get_user_model()
         user = User.objects.create_user(username="adjuster1", password="test123")
-        
+
         drug = Drug.objects.create(
             code="ADJ001",
             generic_name="Test Drug",
@@ -35,7 +36,7 @@ class TestStockAdjustmentModel:
             category="OTHER",
             unit="tablet",
         )
-        
+
         batch = StockBatch.objects.create(
             drug=drug,
             batch_number="ADJ001",
@@ -47,9 +48,9 @@ class TestStockAdjustmentModel:
             selling_price=Decimal("10.00"),
             received_by=user,
         )
-        
+
         initial_quantity = batch.quantity_available
-        
+
         # Create adjustment for damaged stock (negative adjustment)
         adjustment = StockAdjustment.objects.create(
             batch=batch,
@@ -58,19 +59,20 @@ class TestStockAdjustmentModel:
             reason="Water damage during storage",
             adjusted_by=user,
         )
-        
+
         batch.refresh_from_db()
         assert batch.quantity_available == initial_quantity - 50
         assert adjustment.quantity == -50
 
     def test_adjustment_creation_increases_stock(self):
         """Positive adjustment should increase batch stock."""
-        from hmis.apps.pharmacy.models import Drug, StockBatch, StockAdjustment
         from django.contrib.auth import get_user_model
-        
+
+        from hmis.apps.pharmacy.models import Drug, StockAdjustment, StockBatch
+
         User = get_user_model()
         user = User.objects.create_user(username="adjuster2", password="test123")
-        
+
         drug = Drug.objects.create(
             code="ADJ002",
             generic_name="Test Drug 2",
@@ -79,7 +81,7 @@ class TestStockAdjustmentModel:
             category="OTHER",
             unit="tablet",
         )
-        
+
         batch = StockBatch.objects.create(
             drug=drug,
             batch_number="ADJ002",
@@ -91,9 +93,9 @@ class TestStockAdjustmentModel:
             selling_price=Decimal("10.00"),
             received_by=user,
         )
-        
+
         initial_quantity = batch.quantity_available
-        
+
         # Create adjustment for transfer in (positive adjustment)
         adjustment = StockAdjustment.objects.create(
             batch=batch,
@@ -102,19 +104,20 @@ class TestStockAdjustmentModel:
             reason="Stock transfer from warehouse A",
             adjusted_by=user,
         )
-        
+
         batch.refresh_from_db()
         assert batch.quantity_available == initial_quantity + 100
         assert adjustment.quantity == 100
 
     def test_reason_required(self):
         """Adjustment must have a reason."""
-        from hmis.apps.pharmacy.models import Drug, StockBatch, StockAdjustment
         from django.contrib.auth import get_user_model
-        
+
+        from hmis.apps.pharmacy.models import Drug, StockAdjustment, StockBatch
+
         User = get_user_model()
         user = User.objects.create_user(username="adjuster3", password="test123")
-        
+
         drug = Drug.objects.create(
             code="ADJ003",
             generic_name="Test Drug 3",
@@ -123,7 +126,7 @@ class TestStockAdjustmentModel:
             category="OTHER",
             unit="tablet",
         )
-        
+
         batch = StockBatch.objects.create(
             drug=drug,
             batch_number="ADJ003",
@@ -135,7 +138,7 @@ class TestStockAdjustmentModel:
             selling_price=Decimal("10.00"),
             received_by=user,
         )
-        
+
         adjustment = StockAdjustment.objects.create(
             batch=batch,
             adjustment_type="DAMAGE",
@@ -143,19 +146,20 @@ class TestStockAdjustmentModel:
             reason="Broken bottles during handling",
             adjusted_by=user,
         )
-        
+
         assert adjustment.reason == "Broken bottles during handling"
         assert len(adjustment.reason) > 0
 
     def test_approval_workflow_for_large_adjustments(self):
         """Large adjustments should require approval."""
-        from hmis.apps.pharmacy.models import Drug, StockBatch, StockAdjustment
         from django.contrib.auth import get_user_model
-        
+
+        from hmis.apps.pharmacy.models import Drug, StockAdjustment, StockBatch
+
         User = get_user_model()
         user1 = User.objects.create_user(username="adjuster4", password="test123")
         user2 = User.objects.create_user(username="approver1", password="test123")
-        
+
         drug = Drug.objects.create(
             code="ADJ004",
             generic_name="Test Drug 4",
@@ -164,7 +168,7 @@ class TestStockAdjustmentModel:
             category="OTHER",
             unit="tablet",
         )
-        
+
         batch = StockBatch.objects.create(
             drug=drug,
             batch_number="ADJ004",
@@ -176,7 +180,7 @@ class TestStockAdjustmentModel:
             selling_price=Decimal("10.00"),
             received_by=user1,
         )
-        
+
         # Create large adjustment requiring approval
         adjustment = StockAdjustment.objects.create(
             batch=batch,
@@ -186,24 +190,25 @@ class TestStockAdjustmentModel:
             adjusted_by=user1,
             requires_approval=True,
         )
-        
+
         assert adjustment.requires_approval is True
         assert adjustment.approved_by is None
-        
+
         # Approve adjustment
         adjustment.approve(user2)
-        
+
         assert adjustment.approved_by == user2
         assert adjustment.approved_at is not None
 
     def test_reference_number_for_returns(self):
         """Return to supplier should have reference number."""
-        from hmis.apps.pharmacy.models import Drug, StockBatch, StockAdjustment
         from django.contrib.auth import get_user_model
-        
+
+        from hmis.apps.pharmacy.models import Drug, StockAdjustment, StockBatch
+
         User = get_user_model()
         user = User.objects.create_user(username="adjuster5", password="test123")
-        
+
         drug = Drug.objects.create(
             code="ADJ005",
             generic_name="Test Drug 5",
@@ -212,7 +217,7 @@ class TestStockAdjustmentModel:
             category="OTHER",
             unit="tablet",
         )
-        
+
         batch = StockBatch.objects.create(
             drug=drug,
             batch_number="ADJ005",
@@ -224,7 +229,7 @@ class TestStockAdjustmentModel:
             selling_price=Decimal("10.00"),
             received_by=user,
         )
-        
+
         # Return to supplier with reference number
         adjustment = StockAdjustment.objects.create(
             batch=batch,
@@ -234,18 +239,19 @@ class TestStockAdjustmentModel:
             reference_number="RN-2025-001",
             adjusted_by=user,
         )
-        
+
         assert adjustment.reference_number == "RN-2025-001"
         assert adjustment.adjustment_type == "RETURN_SUPPLIER"
 
     def test_adjustment_types_validation(self):
         """Adjustment type must be one of valid choices."""
-        from hmis.apps.pharmacy.models import Drug, StockBatch, StockAdjustment
         from django.contrib.auth import get_user_model
-        
+
+        from hmis.apps.pharmacy.models import Drug, StockAdjustment, StockBatch
+
         User = get_user_model()
         user = User.objects.create_user(username="adjuster6", password="test123")
-        
+
         drug = Drug.objects.create(
             code="ADJ006",
             generic_name="Test Drug 6",
@@ -254,7 +260,7 @@ class TestStockAdjustmentModel:
             category="OTHER",
             unit="tablet",
         )
-        
+
         batch = StockBatch.objects.create(
             drug=drug,
             batch_number="ADJ006",
@@ -266,7 +272,7 @@ class TestStockAdjustmentModel:
             selling_price=Decimal("10.00"),
             received_by=user,
         )
-        
+
         # Test valid adjustment types
         valid_types = [
             "DAMAGE",
@@ -278,7 +284,7 @@ class TestStockAdjustmentModel:
             "COUNT_CORRECTION",
             "SAMPLE",
         ]
-        
+
         for adj_type in valid_types:
             adjustment = StockAdjustment(
                 batch=batch,
@@ -291,12 +297,13 @@ class TestStockAdjustmentModel:
 
     def test_cannot_adjust_below_zero(self):
         """Negative adjustment should not reduce stock below zero."""
-        from hmis.apps.pharmacy.models import Drug, StockBatch, StockAdjustment
         from django.contrib.auth import get_user_model
-        
+
+        from hmis.apps.pharmacy.models import Drug, StockAdjustment, StockBatch
+
         User = get_user_model()
         user = User.objects.create_user(username="adjuster7", password="test123")
-        
+
         drug = Drug.objects.create(
             code="ADJ007",
             generic_name="Test Drug 7",
@@ -305,7 +312,7 @@ class TestStockAdjustmentModel:
             category="OTHER",
             unit="tablet",
         )
-        
+
         batch = StockBatch.objects.create(
             drug=drug,
             batch_number="ADJ007",
@@ -317,7 +324,7 @@ class TestStockAdjustmentModel:
             selling_price=Decimal("10.00"),
             received_by=user,
         )
-        
+
         # Try to adjust more than available
         adjustment = StockAdjustment(
             batch=batch,
@@ -326,19 +333,20 @@ class TestStockAdjustmentModel:
             reason="Attempting to adjust too much",
             adjusted_by=user,
         )
-        
+
         # Should raise error when validated
         with pytest.raises(ValidationError):
             adjustment.clean()
 
     def test_audit_trail_creation(self):
         """Adjustment should create audit trail."""
-        from hmis.apps.pharmacy.models import Drug, StockBatch, StockAdjustment
         from django.contrib.auth import get_user_model
-        
+
+        from hmis.apps.pharmacy.models import Drug, StockAdjustment, StockBatch
+
         User = get_user_model()
         user = User.objects.create_user(username="adjuster8", password="test123")
-        
+
         drug = Drug.objects.create(
             code="ADJ008",
             generic_name="Test Drug 8",
@@ -347,7 +355,7 @@ class TestStockAdjustmentModel:
             category="OTHER",
             unit="tablet",
         )
-        
+
         batch = StockBatch.objects.create(
             drug=drug,
             batch_number="ADJ008",
@@ -359,7 +367,7 @@ class TestStockAdjustmentModel:
             selling_price=Decimal("10.00"),
             received_by=user,
         )
-        
+
         adjustment = StockAdjustment.objects.create(
             batch=batch,
             adjustment_type="COUNT_CORRECTION",
@@ -367,7 +375,7 @@ class TestStockAdjustmentModel:
             reason="Physical count found 25 extra units",
             adjusted_by=user,
         )
-        
+
         # Verify audit trail
         assert adjustment.adjusted_by == user
         assert adjustment.adjusted_at is not None

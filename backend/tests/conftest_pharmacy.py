@@ -4,16 +4,17 @@ Pytest fixtures for pharmacy module tests.
 This file contains shared fixtures specific to pharmacy testing.
 """
 
-import pytest
 from datetime import date, timedelta
 from decimal import Decimal
+
+import pytest
 
 
 @pytest.fixture
 def sample_drug(db):
     """Create a sample drug for testing."""
     from hmis.apps.pharmacy.models import Drug
-    
+
     return Drug.objects.create(
         code="PARA500",
         generic_name="Paracetamol",
@@ -35,7 +36,7 @@ def sample_drug(db):
 def controlled_drug(db):
     """Create a controlled drug for testing."""
     from hmis.apps.pharmacy.models import Drug
-    
+
     return Drug.objects.create(
         code="MORPH10",
         generic_name="Morphine",
@@ -57,7 +58,7 @@ def controlled_drug(db):
 def antibiotic_drug(db):
     """Create an antibiotic drug for testing."""
     from hmis.apps.pharmacy.models import Drug
-    
+
     return Drug.objects.create(
         code="AMOX500",
         generic_name="Amoxicillin",
@@ -80,7 +81,7 @@ def antibiotic_drug(db):
 def stock_batch(db, sample_drug, test_user):
     """Create a sample stock batch for testing."""
     from hmis.apps.pharmacy.models import StockBatch
-    
+
     return StockBatch.objects.create(
         drug=sample_drug,
         batch_number="BATCH001",
@@ -101,7 +102,7 @@ def stock_batch(db, sample_drug, test_user):
 def expiring_batch(db, sample_drug, test_user):
     """Create a batch that's expiring soon for testing."""
     from hmis.apps.pharmacy.models import StockBatch
-    
+
     return StockBatch.objects.create(
         drug=sample_drug,
         batch_number="BATCH002",
@@ -122,7 +123,7 @@ def expiring_batch(db, sample_drug, test_user):
 def expired_batch(db, sample_drug, test_user):
     """Create an expired batch for testing."""
     from hmis.apps.pharmacy.models import StockBatch
-    
+
     return StockBatch.objects.create(
         drug=sample_drug,
         batch_number="BATCH003",
@@ -143,7 +144,7 @@ def expired_batch(db, sample_drug, test_user):
 def prescription(db, sample_encounter, sample_patient, test_user):
     """Create a sample prescription for testing."""
     from hmis.apps.pharmacy.models import Prescription
-    
+
     return Prescription.objects.create(
         encounter=sample_encounter,
         patient=sample_patient,
@@ -157,7 +158,7 @@ def prescription(db, sample_encounter, sample_patient, test_user):
 def prescription_item(db, prescription, sample_drug):
     """Create a sample prescription item for testing."""
     from hmis.apps.pharmacy.models import PrescriptionItem
-    
+
     return PrescriptionItem.objects.create(
         prescription=prescription,
         drug=sample_drug,
@@ -174,7 +175,7 @@ def prescription_item(db, prescription, sample_drug):
 def sample_stock_batch(db, sample_drug, test_user):
     """Alias for stock_batch fixture."""
     from hmis.apps.pharmacy.models import StockBatch
-    
+
     return StockBatch.objects.create(
         drug=sample_drug,
         batch_number="BATCH001",
@@ -195,7 +196,7 @@ def sample_stock_batch(db, sample_drug, test_user):
 def sample_dispensing(db, sample_patient, sample_drug, sample_stock_batch, test_user):
     """Create a sample dispensing for testing."""
     from hmis.apps.pharmacy.models import Dispensing
-    
+
     return Dispensing.objects.create(
         patient=sample_patient,
         drug=sample_drug,

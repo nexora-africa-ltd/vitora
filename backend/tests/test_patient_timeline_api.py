@@ -248,9 +248,7 @@ class TestPatientTimelineAPI:
     def test_timeline_requires_authentication(self, timeline_sample_patient):
         """Test timeline endpoint requires authentication."""
         client = APIClient()  # Not authenticated
-        response = client.get(
-            f"/api/patients/{timeline_sample_patient.id}/encounter-timeline/"
-        )
+        response = client.get(f"/api/patients/{timeline_sample_patient.id}/encounter-timeline/")
         assert response.status_code == 401
 
     def test_timeline_nonexistent_patient_returns_404(self, timeline_authenticated_client):
@@ -582,9 +580,7 @@ class TestTimelinePermissions:
         client = APIClient()
         client.force_authenticate(user=timeline_test_user)
 
-        response = client.get(
-            f"/api/patients/{timeline_sample_patient.id}/encounter-timeline/"
-        )
+        response = client.get(f"/api/patients/{timeline_sample_patient.id}/encounter-timeline/")
 
         # Should return 404 (patient not visible in filtered queryset)
         # This is the expected behavior as sensitive patients are excluded from queryset
@@ -614,9 +610,7 @@ class TestTimelinePermissions:
         client = APIClient()
         client.force_authenticate(user=timeline_test_user)
 
-        response = client.get(
-            f"/api/patients/{timeline_sample_patient.id}/encounter-timeline/"
-        )
+        response = client.get(f"/api/patients/{timeline_sample_patient.id}/encounter-timeline/")
 
         assert response.status_code == 200
 
@@ -1114,9 +1108,7 @@ class TestTimelinePagination:
 class TestTimelineIncludeToggles:
     """Test timeline endpoint include/exclude toggle parameters."""
 
-    def test_timeline_exclude_vitals(
-        self, timeline_authenticated_client, timeline_sample_patient
-    ):
+    def test_timeline_exclude_vitals(self, timeline_authenticated_client, timeline_sample_patient):
         """Test ?include_vitals=false omits vitals_summary."""
         from hmis.apps.encounters.models import Encounter
 
@@ -1191,9 +1183,7 @@ class TestTimelineIncludeToggles:
         assert response.status_code == 200
         assert "treatment_plan" not in response.data["timeline"][0]
 
-    def test_timeline_exclude_alerts(
-        self, timeline_authenticated_client, timeline_sample_patient
-    ):
+    def test_timeline_exclude_alerts(self, timeline_authenticated_client, timeline_sample_patient):
         """Test ?include_alerts=false omits alerts."""
         from hmis.apps.encounters.models import Encounter
 

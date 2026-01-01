@@ -96,9 +96,7 @@ class Drug(models.Model):
     storage_requirements = models.TextField(blank=True)
 
     # Pricing (reference only - actual price per batch)
-    reference_price = models.DecimalField(
-        max_digits=10, decimal_places=2, null=True, blank=True
-    )
+    reference_price = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True)
 
     # Status
     is_active = models.BooleanField(default=True)
@@ -122,9 +120,12 @@ class Drug(models.Model):
 
     def get_current_stock(self) -> int:
         """Get total available stock across all batches."""
-        return self.batches.filter(status="AVAILABLE").aggregate(
-            total=models.Sum("quantity_available")
-        )["total"] or 0
+        return (
+            self.batches.filter(status="AVAILABLE").aggregate(
+                total=models.Sum("quantity_available")
+            )["total"]
+            or 0
+        )
 
 
 class StockBatch(models.Model):
@@ -206,10 +207,10 @@ class StockBatch(models.Model):
     def dispense(self, quantity: int) -> None:
         """
         Reduce available stock by dispensing quantity.
-        
+
         Args:
             quantity: Amount to dispense
-            
+
         Raises:
             ValueError: If quantity exceeds available stock
         """
@@ -217,7 +218,7 @@ class StockBatch(models.Model):
             raise ValueError(
                 f"Cannot dispense {quantity} units. Only {self.quantity_available} available."
             )
-        
+
         self.quantity_available -= quantity
         self.quantity_dispensed += quantity
         self.save()
@@ -225,7 +226,7 @@ class StockBatch(models.Model):
     def return_stock(self, quantity: int) -> None:
         """
         Increase available stock from returns.
-        
+
         Args:
             quantity: Amount to return
         """
@@ -243,14 +244,16 @@ class StockBatch(models.Model):
     def mark_damaged(self, quantity: int, reason: str = "") -> None:
         """
         Mark quantity as damaged.
-        
+
         Args:
             quantity: Amount damaged
             reason: Reason for damage
         """
         if quantity > self.quantity_available:
-            raise ValueError(f"Cannot mark {quantity} as damaged. Only {self.quantity_available} available.")
-        
+            raise ValueError(
+                f"Cannot mark {quantity} as damaged. Only {self.quantity_available} available."
+            )
+
         self.quantity_damaged += quantity
         self.quantity_available -= quantity
         self.save()
@@ -279,9 +282,7 @@ class StockAlert(models.Model):
     ]
 
     drug = models.ForeignKey(Drug, on_delete=models.CASCADE, related_name="alerts")
-    batch = models.ForeignKey(
-        StockBatch, on_delete=models.CASCADE, null=True, blank=True
-    )
+    batch = models.ForeignKey(StockBatch, on_delete=models.CASCADE, null=True, blank=True)
 
     alert_type = models.CharField(max_length=20, choices=ALERT_TYPES)
     severity = models.CharField(max_length=10, choices=ALERT_SEVERITY)
@@ -336,13 +337,13 @@ class StockAlert(models.Model):
     def generate_low_stock_alerts(cls) -> List["StockAlert"]:
         """Generate alerts for drugs with low stock levels."""
         from django.conf import settings
-        
+
         alerts = []
-        
+
         # Get all drugs with total stock below reorder level
         for drug in Drug.objects.filter(is_active=True):
             total_stock = drug.get_current_stock()
-            
+
             if total_stock == 0:
                 # Out of stock - critical
                 alert, created = cls.objects.get_or_create(
@@ -352,7 +353,7 @@ class StockAlert(models.Model):
                     defaults={
                         "severity": "CRITICAL",
                         "message": f"{drug.generic_name} is completely out of stock",
-                    }
+                    },
                 )
                 if created:
                     alerts.append(alert)
@@ -365,30 +366,29 @@ class StockAlert(models.Model):
                     defaults={
                         "severity": "MEDIUM",
                         "message": f"{drug.generic_name} is below reorder level ({total_stock} remaining)",
-                    }
+                    },
                 )
                 if created:
                     alerts.append(alert)
-        
+
         return alerts
 
     @classmethod
     def generate_expiry_alerts(cls) -> List["StockAlert"]:
         """Generate alerts for expiring and expired batches."""
         from django.conf import settings
-        
+
         alerts = []
         expiry_warning_days = settings.PHARMACY_SETTINGS.get("EXPIRY_WARNING_DAYS", 90)
         critical_expiry_days = settings.PHARMACY_SETTINGS.get("CRITICAL_EXPIRY_DAYS", 30)
-        
+
         # Get batches expiring soon or expired
         today = date.today()
         warning_date = today + timedelta(days=expiry_warning_days)
         critical_date = today + timedelta(days=critical_expiry_days)
-        
+
         for batch in StockBatch.objects.filter(
-            status__in=["AVAILABLE", "LOW"],
-            quantity_available__gt=0
+            status__in=["AVAILABLE", "LOW"], quantity_available__gt=0
         ):
             if batch.expiry_date < today:
                 # Expired
@@ -400,7 +400,7 @@ class StockAlert(models.Model):
                     defaults={
                         "severity": "CRITICAL",
                         "message": f"Batch {batch.batch_number} has expired",
-                    }
+                    },
                 )
                 if created:
                     alerts.append(alert)
@@ -415,7 +415,7 @@ class StockAlert(models.Model):
                     defaults={
                         "severity": "HIGH",
                         "message": f"Batch {batch.batch_number} expiring in {days} days",
-                    }
+                    },
                 )
                 if created:
                     alerts.append(alert)
@@ -430,13 +430,12 @@ class StockAlert(models.Model):
                     defaults={
                         "severity": "MEDIUM",
                         "message": f"Batch {batch.batch_number} expiring in {days} days",
-                    }
+                    },
                 )
                 if created:
                     alerts.append(alert)
-        
-        return alerts
 
+        return alerts
 
 
 class Prescription(models.Model):
@@ -470,9 +469,7 @@ class Prescription(models.Model):
     valid_until = models.DateField()  # Typically 30 days from prescription
 
     # Status
-    status = models.CharField(
-        max_length=20, choices=PRESCRIPTION_STATUS, default="PENDING"
-    )
+    status = models.CharField(max_length=20, choices=PRESCRIPTION_STATUS, default="PENDING")
 
     # Notes
     clinical_notes = models.TextField(blank=True)  # For pharmacist
@@ -517,36 +514,36 @@ class Prescription(models.Model):
         """Auto-update status based on items."""
         if self.status == "CANCELLED":
             return
-        
+
         total_items = self.items.filter(is_cancelled=False).count()
         if total_items == 0:
             return
-        
+
         fully_dispensed = sum(
-            1 for item in self.items.filter(is_cancelled=False)
+            1
+            for item in self.items.filter(is_cancelled=False)
             if item.quantity_dispensed >= item.quantity
         )
         partially_dispensed = sum(
-            1 for item in self.items.filter(is_cancelled=False)
+            1
+            for item in self.items.filter(is_cancelled=False)
             if 0 < item.quantity_dispensed < item.quantity
         )
-        
+
         if fully_dispensed == total_items:
             self.status = "DISPENSED"
         elif partially_dispensed > 0 or fully_dispensed > 0:
             self.status = "PARTIAL"
         else:
             self.status = "PENDING"
-        
+
         self.save()
 
 
 class PrescriptionItem(models.Model):
     """Individual drug item in a prescription."""
 
-    prescription = models.ForeignKey(
-        Prescription, on_delete=models.CASCADE, related_name="items"
-    )
+    prescription = models.ForeignKey(Prescription, on_delete=models.CASCADE, related_name="items")
     drug = models.ForeignKey(Drug, on_delete=models.PROTECT)
 
     # Dosage instructions
@@ -597,9 +594,7 @@ class Dispensing(models.Model):
     drug = models.ForeignKey(Drug, on_delete=models.PROTECT)
 
     # Batch tracking (FEFO)
-    batch = models.ForeignKey(
-        StockBatch, on_delete=models.PROTECT, related_name="dispensings"
-    )
+    batch = models.ForeignKey(StockBatch, on_delete=models.PROTECT, related_name="dispensings")
 
     # Quantities
     quantity_dispensed = models.PositiveIntegerField()
@@ -647,7 +642,7 @@ class Dispensing(models.Model):
     def clean(self):
         """Validate dispensing before save."""
         super().clean()
-        
+
         # Validate quantity against available stock
         if self.quantity_dispensed > self.batch.quantity_available:
             raise ValidationError(
@@ -658,28 +653,28 @@ class Dispensing(models.Model):
     def save(self, *args, **kwargs):
         """Override save to update batch stock."""
         is_new = self.pk is None
-        
+
         if is_new:
             # Full clean validation
             self.full_clean()
-            
+
             # Reduce batch stock
             self.batch.dispense(self.quantity_dispensed)
-            
+
             # Update prescription item if linked
             if self.prescription_item:
                 self.prescription_item.quantity_dispensed += self.quantity_dispensed
                 self.prescription_item.save()
-                
+
                 # Update prescription status
                 self.prescription_item.prescription.update_status()
-        
+
         super().save(*args, **kwargs)
 
     def process_return(self, quantity: int, reason: str) -> None:
         """
         Handle drug returns.
-        
+
         Args:
             quantity: Amount being returned
             reason: Reason for return
@@ -689,26 +684,26 @@ class Dispensing(models.Model):
                 f"Cannot return {quantity} units. "
                 f"Only {self.quantity_dispensed - self.quantity_returned} were dispensed."
             )
-        
+
         # Update return quantity
         self.quantity_returned += quantity
-        
+
         # Update notes
         if self.notes:
             self.notes += f"\n\nReturn: {quantity} units - {reason}"
         else:
             self.notes = f"Return: {quantity} units - {reason}"
-        
+
         self.save()
-        
+
         # Restore batch stock
         self.batch.return_stock(quantity)
-        
+
         # Update prescription item if linked
         if self.prescription_item:
             self.prescription_item.quantity_dispensed -= quantity
             self.prescription_item.save()
-            
+
             # Update prescription status
             self.prescription_item.prescription.update_status()
 
@@ -719,13 +714,13 @@ class Dispensing(models.Model):
     def verify(self, user) -> None:
         """
         Second pharmacist verification for controlled drugs.
-        
+
         Args:
             user: User performing verification (must be different from dispenser)
         """
         if user == self.dispensed_by:
             raise ValueError("Verification must be performed by a different user.")
-        
+
         self.verified_by = user
         self.verified_at = timezone.now()
         self.save()
@@ -749,18 +744,14 @@ class StockAdjustment(models.Model):
         ("SAMPLE", "Sample/Demo"),
     ]
 
-    batch = models.ForeignKey(
-        StockBatch, on_delete=models.PROTECT, related_name="adjustments"
-    )
+    batch = models.ForeignKey(StockBatch, on_delete=models.PROTECT, related_name="adjustments")
     adjustment_type = models.CharField(max_length=20, choices=ADJUSTMENT_TYPES)
 
     quantity = models.IntegerField()  # Positive = increase, Negative = decrease
     reason = models.TextField()
 
     # Documentation
-    reference_number = models.CharField(
-        max_length=50, blank=True
-    )  # e.g., return note number
+    reference_number = models.CharField(max_length=50, blank=True)  # e.g., return note number
 
     adjusted_by = models.ForeignKey(
         settings.AUTH_USER_MODEL,

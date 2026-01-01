@@ -2,17 +2,17 @@
 Serializers for Pharmacy app.
 """
 
-from rest_framework import serializers
 from django.contrib.auth import get_user_model
+from rest_framework import serializers
 
 from hmis.apps.pharmacy.models import (
+    Dispensing,
     Drug,
-    StockBatch,
-    StockAlert,
     Prescription,
     PrescriptionItem,
-    Dispensing,
     StockAdjustment,
+    StockAlert,
+    StockBatch,
 )
 
 User = get_user_model()
@@ -167,7 +167,9 @@ class PrescriptionSerializer(serializers.ModelSerializer):
     patient_name = serializers.SerializerMethodField()
     prescriber_name = serializers.SerializerMethodField()
     is_valid_prescription = serializers.SerializerMethodField()
-    is_fully_dispensed_status = serializers.BooleanField(source="is_fully_dispensed", read_only=True)
+    is_fully_dispensed_status = serializers.BooleanField(
+        source="is_fully_dispensed", read_only=True
+    )
 
     class Meta:
         model = Prescription

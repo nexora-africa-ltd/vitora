@@ -2,30 +2,33 @@
 Views for Pharmacy app API endpoints.
 """
 
-from rest_framework import viewsets, status, filters
-from rest_framework.decorators import action
-from rest_framework.response import Response
-from rest_framework.permissions import IsAuthenticated
+from datetime import date, timedelta
+
+from django.db.models import Count, F, Q, Sum
 from django_filters.rest_framework import DjangoFilterBackend
-from django.db.models import Q
+from rest_framework import filters, status, viewsets
+from rest_framework.decorators import action
+from rest_framework.permissions import IsAuthenticated
+from rest_framework.response import Response
+from rest_framework.views import APIView
 
 from hmis.apps.pharmacy.models import (
+    Dispensing,
     Drug,
-    StockBatch,
-    StockAlert,
     Prescription,
     PrescriptionItem,
-    Dispensing,
     StockAdjustment,
+    StockAlert,
+    StockBatch,
 )
 from hmis.apps.pharmacy.serializers import (
-    DrugSerializer,
-    StockBatchSerializer,
-    StockAlertSerializer,
-    PrescriptionSerializer,
-    PrescriptionItemSerializer,
     DispensingSerializer,
+    DrugSerializer,
+    PrescriptionItemSerializer,
+    PrescriptionSerializer,
     StockAdjustmentSerializer,
+    StockAlertSerializer,
+    StockBatchSerializer,
 )
 from hmis.apps.pharmacy.services import FEFODispenser, InsufficientStockError
 
@@ -33,7 +36,7 @@ from hmis.apps.pharmacy.services import FEFODispenser, InsufficientStockError
 class DrugViewSet(viewsets.ModelViewSet):
     """
     ViewSet for Drug model.
-    
+
     Endpoints:
     - GET /api/pharmacy/drugs/ - List drugs with search and filtering
     - GET /api/pharmacy/drugs/{id}/ - Get drug details
@@ -41,7 +44,7 @@ class DrugViewSet(viewsets.ModelViewSet):
     - PATCH /api/pharmacy/drugs/{id}/ - Update drug (admin only)
     - DELETE /api/pharmacy/drugs/{id}/ - Delete drug (admin only)
     """
-    
+
     queryset = Drug.objects.all()
     serializer_class = DrugSerializer
     permission_classes = [IsAuthenticated]
@@ -55,14 +58,14 @@ class DrugViewSet(viewsets.ModelViewSet):
 class StockBatchViewSet(viewsets.ModelViewSet):
     """
     ViewSet for StockBatch model.
-    
+
     Endpoints:
     - GET /api/pharmacy/stock/ - List all stock batches
     - GET /api/pharmacy/stock/{id}/ - Get batch details
     - POST /api/pharmacy/stock/ - Receive new stock
     - PATCH /api/pharmacy/stock/{id}/ - Update batch
     """
-    
+
     queryset = StockBatch.objects.select_related("drug", "received_by").all()
     serializer_class = StockBatchSerializer
     permission_classes = [IsAuthenticated]
@@ -84,7 +87,7 @@ class StockBatchViewSet(viewsets.ModelViewSet):
                 {"error": "drug_id parameter is required"},
                 status=status.HTTP_400_BAD_REQUEST,
             )
-        
+
         batches = self.queryset.filter(drug_id=drug_id)
         serializer = self.get_serializer(batches, many=True)
         return Response(serializer.data)
@@ -93,14 +96,14 @@ class StockBatchViewSet(viewsets.ModelViewSet):
 class StockAlertViewSet(viewsets.ModelViewSet):
     """
     ViewSet for StockAlert model.
-    
+
     Endpoints:
     - GET /api/pharmacy/alerts/ - List alerts
     - GET /api/pharmacy/alerts/{id}/ - Get alert details
     - POST /api/pharmacy/alerts/{id}/acknowledge/ - Acknowledge alert
     - POST /api/pharmacy/alerts/{id}/resolve/ - Resolve alert
     """
-    
+
     queryset = StockAlert.objects.select_related("drug").all()
     serializer_class = StockAlertSerializer
     permission_classes = [IsAuthenticated]
@@ -147,7 +150,7 @@ class StockAlertViewSet(viewsets.ModelViewSet):
 class PrescriptionViewSet(viewsets.ModelViewSet):
     """
     ViewSet for Prescription model.
-    
+
     Endpoints:
     - GET /api/prescriptions/ - List prescriptions
     - GET /api/prescriptions/{id}/ - Get prescription details
@@ -155,10 +158,12 @@ class PrescriptionViewSet(viewsets.ModelViewSet):
     - PATCH /api/prescriptions/{id}/ - Update prescription
     - POST /api/prescriptions/{id}/cancel/ - Cancel prescription
     """
-    
-    queryset = Prescription.objects.select_related(
-        "patient", "encounter", "prescribed_by"
-    ).prefetch_related("items__drug").all()
+
+    queryset = (
+        Prescription.objects.select_related("patient", "encounter", "prescribed_by")
+        .prefetch_related("items__drug")
+        .all()
+    )
     serializer_class = PrescriptionSerializer
     permission_classes = [IsAuthenticated]
     filter_backends = [DjangoFilterBackend, filters.OrderingFilter]
@@ -188,7 +193,7 @@ class PrescriptionViewSet(viewsets.ModelViewSet):
                 {"error": "patient_id parameter is required"},
                 status=status.HTTP_400_BAD_REQUEST,
             )
-        
+
         prescriptions = self.queryset.filter(patient_id=patient_id)
         serializer = self.get_serializer(prescriptions, many=True)
         return Response(serializer.data)
@@ -197,7 +202,7 @@ class PrescriptionViewSet(viewsets.ModelViewSet):
 class DispensingViewSet(viewsets.ModelViewSet):
     """
     ViewSet for Dispensing model.
-    
+
     Endpoints:
     - GET /api/dispensings/ - List dispensings
     - GET /api/dispensings/{id}/ - Get dispensing details
@@ -206,7 +211,7 @@ class DispensingViewSet(viewsets.ModelViewSet):
     - POST /api/dispensings/{id}/return/ - Process return
     - POST /api/dispensings/{id}/verify/ - Verify controlled drug
     """
-    
+
     queryset = Dispensing.objects.select_related(
         "patient", "drug", "batch", "dispensed_by", "verified_by"
     ).all()
@@ -225,7 +230,7 @@ class DispensingViewSet(viewsets.ModelViewSet):
     def dispense(self, request):
         """
         Dispense drug using FEFO logic.
-        
+
         Expected payload:
         {
             "drug_id": 1,
@@ -248,9 +253,7 @@ class DispensingViewSet(viewsets.ModelViewSet):
         try:
             drug = Drug.objects.get(id=drug_id)
         except Drug.DoesNotExist:
-            return Response(
-                {"error": "Drug not found"}, status=status.HTTP_404_NOT_FOUND
-            )
+            return Response({"error": "Drug not found"}, status=status.HTTP_404_NOT_FOUND)
 
         try:
             # Use FEFO service to dispense
@@ -269,9 +272,7 @@ class DispensingViewSet(viewsets.ModelViewSet):
             return Response(serializer.data, status=status.HTTP_201_CREATED)
 
         except InsufficientStockError as e:
-            return Response(
-                {"error": str(e)}, status=status.HTTP_400_BAD_REQUEST
-            )
+            return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
         except Exception as e:
             return Response(
                 {"error": f"Dispensing failed: {str(e)}"},
@@ -296,9 +297,7 @@ class DispensingViewSet(viewsets.ModelViewSet):
             serializer = self.get_serializer(dispensing)
             return Response(serializer.data)
         except ValueError as e:
-            return Response(
-                {"error": str(e)}, status=status.HTTP_400_BAD_REQUEST
-            )
+            return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
 
     @action(detail=True, methods=["post"])
     def verify(self, request, pk=None):
@@ -316,21 +315,19 @@ class DispensingViewSet(viewsets.ModelViewSet):
             serializer = self.get_serializer(dispensing)
             return Response(serializer.data)
         except ValueError as e:
-            return Response(
-                {"error": str(e)}, status=status.HTTP_400_BAD_REQUEST
-            )
+            return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
 
 
 class StockAdjustmentViewSet(viewsets.ModelViewSet):
     """
     ViewSet for StockAdjustment model.
-    
+
     Endpoints:
     - GET /api/pharmacy/adjustments/ - List adjustments
     - GET /api/pharmacy/adjustments/{id}/ - Get adjustment details
     - POST /api/pharmacy/adjustments/ - Create adjustment
     """
-    
+
     queryset = StockAdjustment.objects.select_related(
         "batch__drug", "adjusted_by", "approved_by"
     ).all()
@@ -369,195 +366,214 @@ class StockAdjustmentViewSet(viewsets.ModelViewSet):
 
 # Report Views
 
-from rest_framework.views import APIView
-from datetime import date, timedelta
-from django.db.models import Sum, Count, F
-
 
 class StockSummaryReportView(APIView):
     """
     Stock summary report showing current inventory levels.
-    
+
     GET /api/pharmacy/reports/stock-summary/
     """
-    
+
     permission_classes = [IsAuthenticated]
-    
+
     def get(self, request):
         """Get stock summary for all drugs."""
         # Get all drugs with their stock batches
-        drugs_with_stock = Drug.objects.filter(is_active=True).prefetch_related('batches')
-        
+        drugs_with_stock = Drug.objects.filter(is_active=True).prefetch_related("batches")
+
         results = []
         for drug in drugs_with_stock:
             # Calculate total available quantity across all batches
-            batches = drug.batches.filter(status='AVAILABLE')
-            total_quantity = batches.aggregate(total=Sum('quantity_available'))['total'] or 0
-            
+            batches = drug.batches.filter(status="AVAILABLE")
+            total_quantity = batches.aggregate(total=Sum("quantity_available"))["total"] or 0
+
             batch_details = []
             for batch in batches:
-                batch_details.append({
-                    'batch_number': batch.batch_number,
-                    'quantity_available': batch.quantity_available,
-                    'expiry_date': batch.expiry_date,
-                    'days_to_expiry': batch.days_to_expiry(),
-                })
-            
-            results.append({
-                'drug_id': drug.id,
-                'drug_name': drug.get_display_name(),
-                'total_quantity': total_quantity,
-                'reorder_level': drug.default_reorder_level,
-                'is_below_reorder': total_quantity < drug.default_reorder_level if drug.default_reorder_level else False,
-                'batches': batch_details,
-            })
-        
-        return Response({'results': results})
+                batch_details.append(
+                    {
+                        "batch_number": batch.batch_number,
+                        "quantity_available": batch.quantity_available,
+                        "expiry_date": batch.expiry_date,
+                        "days_to_expiry": batch.days_to_expiry(),
+                    }
+                )
+
+            results.append(
+                {
+                    "drug_id": drug.id,
+                    "drug_name": drug.get_display_name(),
+                    "total_quantity": total_quantity,
+                    "reorder_level": drug.default_reorder_level,
+                    "is_below_reorder": total_quantity < drug.default_reorder_level
+                    if drug.default_reorder_level
+                    else False,
+                    "batches": batch_details,
+                }
+            )
+
+        return Response({"results": results})
 
 
 class ExpiryReportView(APIView):
     """
     Expiry report showing batches expiring soon.
-    
+
     GET /api/pharmacy/reports/expiry-report/?days=90
     """
-    
+
     permission_classes = [IsAuthenticated]
-    
+
     def get(self, request):
         """Get batches expiring within specified days (default 90)."""
-        days = int(request.query_params.get('days', 90))
+        days = int(request.query_params.get("days", 90))
         expiry_threshold = date.today() + timedelta(days=days)
-        
+
         # Get batches expiring within threshold
-        batches = StockBatch.objects.filter(
-            expiry_date__lte=expiry_threshold,
-            expiry_date__gte=date.today(),
-            status='AVAILABLE'
-        ).select_related('drug').order_by('expiry_date')
-        
+        batches = (
+            StockBatch.objects.filter(
+                expiry_date__lte=expiry_threshold, expiry_date__gte=date.today(), status="AVAILABLE"
+            )
+            .select_related("drug")
+            .order_by("expiry_date")
+        )
+
         results = []
         for batch in batches:
-            results.append({
-                'batch_id': batch.id,
-                'drug_name': batch.drug.get_display_name(),
-                'batch_number': batch.batch_number,
-                'expiry_date': batch.expiry_date,
-                'days_to_expiry': batch.days_to_expiry(),
-                'quantity_available': batch.quantity_available,
-                'status': batch.status,
-            })
-        
-        return Response({'results': results})
+            results.append(
+                {
+                    "batch_id": batch.id,
+                    "drug_name": batch.drug.get_display_name(),
+                    "batch_number": batch.batch_number,
+                    "expiry_date": batch.expiry_date,
+                    "days_to_expiry": batch.days_to_expiry(),
+                    "quantity_available": batch.quantity_available,
+                    "status": batch.status,
+                }
+            )
+
+        return Response({"results": results})
 
 
 class DispensingReportView(APIView):
     """
     Dispensing report showing drugs dispensed.
-    
+
     GET /api/pharmacy/reports/dispensing/?start_date=2025-01-01&end_date=2025-01-31
     """
-    
+
     permission_classes = [IsAuthenticated]
-    
+
     def get(self, request):
         """Get dispensing records with optional date range filtering."""
-        start_date = request.query_params.get('start_date')
-        end_date = request.query_params.get('end_date')
-        
-        dispensings = Dispensing.objects.select_related('drug', 'patient', 'batch', 'dispensed_by')
-        
+        start_date = request.query_params.get("start_date")
+        end_date = request.query_params.get("end_date")
+
+        dispensings = Dispensing.objects.select_related("drug", "patient", "batch", "dispensed_by")
+
         if start_date:
             dispensings = dispensings.filter(dispensed_at__date__gte=start_date)
         if end_date:
             dispensings = dispensings.filter(dispensed_at__date__lte=end_date)
-        
-        dispensings = dispensings.order_by('-dispensed_at')
-        
+
+        dispensings = dispensings.order_by("-dispensed_at")
+
         results = []
         for dispensing in dispensings:
-            results.append({
-                'dispensing_id': dispensing.id,
-                'drug_name': dispensing.drug.get_display_name(),
-                'quantity_dispensed': dispensing.quantity_dispensed,
-                'dispensed_date': dispensing.dispensed_at.date(),
-                'patient_name': f"{dispensing.patient.first_name} {dispensing.patient.last_name}",
-                'dispensed_by': dispensing.dispensed_by.get_full_name() or dispensing.dispensed_by.username,
-                'batch_number': dispensing.batch.batch_number,
-                'total_cost': dispensing.calculate_total(),
-            })
-        
-        return Response({'results': results})
+            results.append(
+                {
+                    "dispensing_id": dispensing.id,
+                    "drug_name": dispensing.drug.get_display_name(),
+                    "quantity_dispensed": dispensing.quantity_dispensed,
+                    "dispensed_date": dispensing.dispensed_at.date(),
+                    "patient_name": f"{dispensing.patient.first_name} {dispensing.patient.last_name}",
+                    "dispensed_by": dispensing.dispensed_by.get_full_name()
+                    or dispensing.dispensed_by.username,
+                    "batch_number": dispensing.batch.batch_number,
+                    "total_cost": dispensing.calculate_total(),
+                }
+            )
+
+        return Response({"results": results})
 
 
 class StockMovementReportView(APIView):
     """
     Stock movement report showing all inventory transactions.
-    
+
     GET /api/pharmacy/reports/movement/?start_date=2025-01-01&end_date=2025-01-31
     """
-    
+
     permission_classes = [IsAuthenticated]
-    
+
     def get(self, request):
         """Get stock movements (received, dispensed, adjusted)."""
-        start_date = request.query_params.get('start_date')
-        end_date = request.query_params.get('end_date')
-        
+        start_date = request.query_params.get("start_date")
+        end_date = request.query_params.get("end_date")
+
         movements = []
-        
+
         # Get stock receipts (batches received)
-        batches = StockBatch.objects.select_related('drug', 'received_by')
+        batches = StockBatch.objects.select_related("drug", "received_by")
         if start_date:
             batches = batches.filter(received_date__gte=start_date)
         if end_date:
             batches = batches.filter(received_date__lte=end_date)
-        
+
         for batch in batches:
-            movements.append({
-                'drug_name': batch.drug.get_display_name(),
-                'movement_type': 'RECEIVED',
-                'quantity': batch.quantity_received,
-                'date': batch.received_date,
-                'reference': f"Batch {batch.batch_number}",
-                'user': batch.received_by.get_full_name() or batch.received_by.username if batch.received_by else None,
-            })
-        
+            movements.append(
+                {
+                    "drug_name": batch.drug.get_display_name(),
+                    "movement_type": "RECEIVED",
+                    "quantity": batch.quantity_received,
+                    "date": batch.received_date,
+                    "reference": f"Batch {batch.batch_number}",
+                    "user": batch.received_by.get_full_name() or batch.received_by.username
+                    if batch.received_by
+                    else None,
+                }
+            )
+
         # Get dispensings
-        dispensings = Dispensing.objects.select_related('drug', 'dispensed_by')
+        dispensings = Dispensing.objects.select_related("drug", "dispensed_by")
         if start_date:
             dispensings = dispensings.filter(dispensed_at__date__gte=start_date)
         if end_date:
             dispensings = dispensings.filter(dispensed_at__date__lte=end_date)
-        
+
         for dispensing in dispensings:
-            movements.append({
-                'drug_name': dispensing.drug.get_display_name(),
-                'movement_type': 'DISPENSED',
-                'quantity': -dispensing.quantity_dispensed,  # Negative for dispensing
-                'date': dispensing.dispensed_at.date(),
-                'reference': f"Dispensing #{dispensing.id}",
-                'user': dispensing.dispensed_by.get_full_name() or dispensing.dispensed_by.username,
-            })
-        
+            movements.append(
+                {
+                    "drug_name": dispensing.drug.get_display_name(),
+                    "movement_type": "DISPENSED",
+                    "quantity": -dispensing.quantity_dispensed,  # Negative for dispensing
+                    "date": dispensing.dispensed_at.date(),
+                    "reference": f"Dispensing #{dispensing.id}",
+                    "user": dispensing.dispensed_by.get_full_name()
+                    or dispensing.dispensed_by.username,
+                }
+            )
+
         # Get adjustments
-        adjustments = StockAdjustment.objects.select_related('batch__drug', 'adjusted_by')
+        adjustments = StockAdjustment.objects.select_related("batch__drug", "adjusted_by")
         if start_date:
             adjustments = adjustments.filter(adjustment_date__gte=start_date)
         if end_date:
             adjustments = adjustments.filter(adjustment_date__lte=end_date)
-        
+
         for adjustment in adjustments:
-            movements.append({
-                'drug_name': adjustment.batch.drug.get_display_name(),
-                'movement_type': 'ADJUSTED',
-                'quantity': adjustment.quantity_change,
-                'date': adjustment.adjustment_date,
-                'reference': f"{adjustment.get_adjustment_type_display()} - {adjustment.reason}",
-                'user': adjustment.adjusted_by.get_full_name() or adjustment.adjusted_by.username,
-            })
-        
+            movements.append(
+                {
+                    "drug_name": adjustment.batch.drug.get_display_name(),
+                    "movement_type": "ADJUSTED",
+                    "quantity": adjustment.quantity_change,
+                    "date": adjustment.adjustment_date,
+                    "reference": f"{adjustment.get_adjustment_type_display()} - {adjustment.reason}",
+                    "user": adjustment.adjusted_by.get_full_name()
+                    or adjustment.adjusted_by.username,
+                }
+            )
+
         # Sort by date descending
-        movements.sort(key=lambda x: x['date'], reverse=True)
-        
-        return Response({'results': movements})
+        movements.sort(key=lambda x: x["date"], reverse=True)
+
+        return Response({"results": movements})

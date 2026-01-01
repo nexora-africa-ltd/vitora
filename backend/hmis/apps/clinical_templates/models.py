@@ -111,7 +111,9 @@ class ClinicalTemplate(models.Model):
         valid_types = [choice[0] for choice in self.TEMPLATE_TYPE_CHOICES]
         if self.template_type and self.template_type not in valid_types:
             raise ValidationError(
-                {"template_type": f"Invalid template type. Must be one of: {', '.join(valid_types)}"}
+                {
+                    "template_type": f"Invalid template type. Must be one of: {', '.join(valid_types)}"
+                }
             )
 
         # Validate content JSON schema
@@ -158,7 +160,9 @@ class ClinicalTemplate(models.Model):
                 name=section.name,
                 order=section.order,
                 is_required=section.is_required,
-                fields=section.fields.copy() if isinstance(section.fields, list) else section.fields,
+                fields=section.fields.copy()
+                if isinstance(section.fields, list)
+                else section.fields,
             )
 
         return cloned

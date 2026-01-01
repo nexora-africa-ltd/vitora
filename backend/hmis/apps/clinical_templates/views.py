@@ -10,10 +10,7 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 
 from .models import ClinicalTemplate
-from .serializers import (
-    ClinicalTemplateListSerializer,
-    ClinicalTemplateSerializer,
-)
+from .serializers import ClinicalTemplateListSerializer, ClinicalTemplateSerializer
 
 
 class ClinicalTemplateViewSet(viewsets.ModelViewSet):
@@ -40,9 +37,7 @@ class ClinicalTemplateViewSet(viewsets.ModelViewSet):
     def get_queryset(self):
         """Optimize queryset with prefetch."""
         return (
-            ClinicalTemplate.objects.select_related("created_by")
-            .prefetch_related("sections")
-            .all()
+            ClinicalTemplate.objects.select_related("created_by").prefetch_related("sections").all()
         )
 
     def get_serializer_class(self):
@@ -167,10 +162,7 @@ class ClinicalTemplateViewSet(viewsets.ModelViewSet):
         """
         limit = int(request.query_params.get("limit", 10))
 
-        templates = (
-            ClinicalTemplate.objects.filter(is_active=True)
-            .order_by("-usage_count")[:limit]
-        )
+        templates = ClinicalTemplate.objects.filter(is_active=True).order_by("-usage_count")[:limit]
 
         serializer = ClinicalTemplateListSerializer(templates, many=True)
         return Response({"results": serializer.data})
@@ -190,8 +182,6 @@ class ClinicalTemplateViewSet(viewsets.ModelViewSet):
             specialty = template.specialty or "General"
             if specialty not in grouped:
                 grouped[specialty] = []
-            grouped[specialty].append(
-                ClinicalTemplateListSerializer(template).data
-            )
+            grouped[specialty].append(ClinicalTemplateListSerializer(template).data)
 
         return Response(grouped)
