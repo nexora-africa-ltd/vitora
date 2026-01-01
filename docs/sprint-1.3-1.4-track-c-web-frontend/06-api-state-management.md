@@ -1002,19 +1002,19 @@ describe('useNetworkStatus', () => {
 ## 11. Checklist
 
 ### Days 7-8: API & State
-- [ ] Create Axios client with interceptors
-- [ ] Implement token refresh logic
-- [ ] Create error transformation utility
-- [ ] Set up TanStack Query configuration
-- [ ] Create query keys factory
-- [ ] Implement locations API and hooks
-- [ ] Create UI store (Zustand)
-- [ ] Create form store (Zustand)
-- [ ] Implement toast notifications
-- [ ] Create error boundary
-- [ ] Implement network status hook
-- [ ] Create offline banner
-- [ ] Write 20 tests
+- [x] Create Axios client with interceptors
+- [x] Implement token refresh logic
+- [x] Create error transformation utility
+- [x] Set up TanStack Query configuration
+- [x] Create query keys factory
+- [x] Implement locations API and hooks
+- [x] Create UI store (Zustand)
+- [x] Create form store (Zustand)
+- [x] Implement toast notifications
+- [x] Create error boundary
+- [x] Implement network status hook
+- [x] Create offline banner
+- [x] Write 20 tests (43 tests passing)
 
 ---
 
@@ -1022,19 +1022,19 @@ describe('useNetworkStatus', () => {
 
 | Deliverable | Status |
 |-------------|--------|
-| Axios client with auth interceptors | 📋 |
-| Token refresh mechanism | 📋 |
-| Error transformation utility | 📋 |
-| TanStack Query configuration | 📋 |
-| Query keys factory | 📋 |
-| Locations API and hooks | 📋 |
-| UI Zustand store | 📋 |
-| Form draft store | 📋 |
-| Toast notifications hook | 📋 |
-| Error boundary component | 📋 |
-| Network status hook | 📋 |
-| Offline banner component | 📋 |
-| 20 API/state tests passing | 📋 |
+| Axios client with auth interceptors | ✅ |
+| Token refresh mechanism | ✅ |
+| Error transformation utility | ✅ |
+| TanStack Query configuration | ✅ |
+| Query keys factory | ✅ |
+| Locations API and hooks | ✅ |
+| UI Zustand store | ✅ |
+| Form draft store | ✅ |
+| Toast notifications hook | ✅ |
+| Error boundary component | ✅ |
+| Network status hook | ✅ |
+| Offline banner component | ✅ |
+| 20 API/state tests passing | ✅ (43 tests) |
 
 ---
 
