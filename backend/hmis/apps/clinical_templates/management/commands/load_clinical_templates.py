@@ -39,12 +39,8 @@ class Command(BaseCommand):
         update_existing = options["update"]
 
         if not templates_dir.exists():
-            self.stdout.write(
-                self.style.WARNING(f"Directory not found: {templates_dir}")
-            )
-            self.stdout.write(
-                self.style.NOTICE("Creating directory and skipping load...")
-            )
+            self.stdout.write(self.style.WARNING(f"Directory not found: {templates_dir}"))
+            self.stdout.write(self.style.NOTICE("Creating directory and skipping load..."))
             templates_dir.mkdir(parents=True, exist_ok=True)
             return
 
@@ -55,9 +51,7 @@ class Command(BaseCommand):
         json_files = list(templates_dir.glob("*.json"))
 
         if not json_files:
-            self.stdout.write(
-                self.style.WARNING(f"No JSON files found in {templates_dir}")
-            )
+            self.stdout.write(self.style.WARNING(f"No JSON files found in {templates_dir}"))
             return
 
         created_count = 0
@@ -70,29 +64,19 @@ class Command(BaseCommand):
                 result = self._load_template_file(json_file, update_existing)
                 if result == "created":
                     created_count += 1
-                    self.stdout.write(
-                        self.style.SUCCESS(f"Created: {json_file.name}")
-                    )
+                    self.stdout.write(self.style.SUCCESS(f"Created: {json_file.name}"))
                 elif result == "updated":
                     updated_count += 1
-                    self.stdout.write(
-                        self.style.SUCCESS(f"Updated: {json_file.name}")
-                    )
+                    self.stdout.write(self.style.SUCCESS(f"Updated: {json_file.name}"))
                 elif result == "skipped":
                     skipped_count += 1
-                    self.stdout.write(
-                        self.style.NOTICE(f"Skipped (exists): {json_file.name}")
-                    )
+                    self.stdout.write(self.style.NOTICE(f"Skipped (exists): {json_file.name}"))
             except json.JSONDecodeError as e:
                 error_count += 1
-                self.stderr.write(
-                    self.style.ERROR(f"Invalid JSON in {json_file.name}: {e}")
-                )
+                self.stderr.write(self.style.ERROR(f"Invalid JSON in {json_file.name}: {e}"))
             except Exception as e:
                 error_count += 1
-                self.stderr.write(
-                    self.style.ERROR(f"Error loading {json_file.name}: {e}")
-                )
+                self.stderr.write(self.style.ERROR(f"Error loading {json_file.name}: {e}"))
 
         # Print summary
         self.stdout.write("")

@@ -243,3 +243,11 @@ def sample_encounter(db, sample_patient):
 #     """Provide encounter factory for creating test encounters."""
 #     from tests.factories import EncounterFactory
 #     return EncounterFactory
+
+
+# ============================================================================
+# Pharmacy Fixtures - Import from conftest_pharmacy
+# ============================================================================
+
+# Import pharmacy fixtures
+pytest_plugins = ["tests.conftest_pharmacy"]

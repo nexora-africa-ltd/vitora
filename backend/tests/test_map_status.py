@@ -56,7 +56,7 @@ class TestGetMAPStatusMethod:
             encounter_type="OPD",
             chief_complaint="BP check",
         )
-        
+
         assert hasattr(encounter, "get_map_status")
         assert callable(encounter.get_map_status)
 
@@ -71,7 +71,7 @@ class TestGetMAPStatusMethod:
             chief_complaint="Routine BP",
             blood_pressure="120/80",
         )
-        
+
         assert encounter.get_map_status() == "normal"
 
     def test_map_status_normal_low_boundary(self, map_test_patient):
@@ -87,7 +87,7 @@ class TestGetMAPStatusMethod:
             chief_complaint="Low-normal BP",
             blood_pressure="90/60",
         )
-        
+
         assert encounter.get_map_status() == "normal"
 
     def test_map_status_normal_high_boundary(self, map_test_patient):
@@ -102,7 +102,7 @@ class TestGetMAPStatusMethod:
             chief_complaint="High-normal BP",
             blood_pressure="135/82",
         )
-        
+
         status = encounter.get_map_status()
         assert status == "normal"
 
@@ -118,7 +118,7 @@ class TestGetMAPStatusMethod:
             chief_complaint="Hypotension",
             blood_pressure="85/55",
         )
-        
+
         assert encounter.get_map_status() == "low"
 
     def test_map_status_high(self, map_test_patient):
@@ -133,7 +133,7 @@ class TestGetMAPStatusMethod:
             chief_complaint="Hypertensive crisis",
             blood_pressure="160/95",
         )
-        
+
         assert encounter.get_map_status() == "high"
 
     def test_map_status_critical_low(self, map_test_patient):
@@ -148,7 +148,7 @@ class TestGetMAPStatusMethod:
             chief_complaint="Severe hypotension / shock",
             blood_pressure="70/50",
         )
-        
+
         assert encounter.get_map_status() == "critical"
 
     def test_map_status_critical_high(self, map_test_patient):
@@ -163,7 +163,7 @@ class TestGetMAPStatusMethod:
             chief_complaint="Hypertensive emergency",
             blood_pressure="200/130",
         )
-        
+
         assert encounter.get_map_status() == "critical"
 
     def test_map_status_unknown_without_bp(self, map_test_patient):
@@ -175,7 +175,7 @@ class TestGetMAPStatusMethod:
             encounter_type="OPD",
             chief_complaint="No BP taken",
         )
-        
+
         assert encounter.get_map_status() is None
 
     def test_map_status_unknown_with_empty_bp(self, map_test_patient):
@@ -188,7 +188,7 @@ class TestGetMAPStatusMethod:
             chief_complaint="Empty BP",
             blood_pressure="",
         )
-        
+
         assert encounter.get_map_status() is None
 
 
@@ -243,9 +243,9 @@ class TestMAPInVitalsSummary:
             temperature=37.0,
             pulse=80,
         )
-        
+
         statuses = encounter.get_all_vital_statuses()
-        
+
         assert "map" in statuses
         assert statuses["map"]["value"] == encounter.get_map()
         assert statuses["map"]["status"] == encounter.get_map_status()
@@ -261,9 +261,9 @@ class TestMAPInVitalsSummary:
             chief_complaint="No BP",
             temperature=37.0,
         )
-        
+
         statuses = encounter.get_all_vital_statuses()
-        
+
         assert statuses.get("map") is None
 
 
@@ -287,7 +287,7 @@ class TestMAPCriticalAlerts:
             chief_complaint="Shock",
             blood_pressure="70/50",
         )
-        
+
         assert encounter.has_critical_vitals() is True
 
     def test_critical_map_generates_alert(self, map_test_patient):
@@ -301,9 +301,9 @@ class TestMAPCriticalAlerts:
             chief_complaint="Hypertensive emergency",
             blood_pressure="200/130",
         )
-        
+
         alerts = encounter.get_alerts()
-        
+
         # Should mention MAP or hypotension/hypertension
         assert len(alerts) > 0 or "MAP" in alerts or "pressure" in alerts.lower()
 
@@ -338,7 +338,7 @@ class TestPediatricMAPStatus:
             chief_complaint="Well baby check",
             blood_pressure="80/50",
         )
-        
+
         # This should be normal for an infant, but would be low for adult
         status = encounter.get_map_status()
         # If pediatric ranges implemented, should be 'normal'
@@ -366,7 +366,7 @@ class TestPediatricMAPStatus:
             chief_complaint="Newborn check",
             blood_pressure="70/40",
         )
-        
+
         status = encounter.get_map_status()
         # Testing that it handles pediatric cases
         assert status is not None or encounter.get_map() is None
@@ -392,7 +392,7 @@ class TestMAPEdgeCases:
             chief_complaint="Wide pulse pressure",
             blood_pressure="160/50",
         )
-        
+
         map_value = encounter.get_map()
         assert map_value is not None
         assert 85 <= map_value <= 90  # Around 87
@@ -408,7 +408,7 @@ class TestMAPEdgeCases:
             chief_complaint="Narrow pulse pressure",
             blood_pressure="100/90",
         )
-        
+
         map_value = encounter.get_map()
         assert map_value is not None
         assert 92 <= map_value <= 94
@@ -424,6 +424,6 @@ class TestMAPEdgeCases:
         )
         # Set invalid BP directly (bypassing validation)
         encounter.blood_pressure = "invalid"
-        
+
         assert encounter.get_map() is None
         assert encounter.get_map_status() is None

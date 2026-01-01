@@ -252,8 +252,7 @@ class PatientViewSet(viewsets.ModelViewSet):
         def calculate_followup_compliance() -> dict | None:
             """Calculate follow-up compliance rate."""
             plans_with_followup = TreatmentPlan.objects.filter(
-                encounter__patient=patient,
-                follow_up_date__isnull=False
+                encounter__patient=patient, follow_up_date__isnull=False
             ).select_related("encounter")
 
             if not plans_with_followup.exists():
@@ -272,7 +271,7 @@ class PatientViewSet(viewsets.ModelViewSet):
                     patient=patient,
                     encounter_date__gte=followup_window_start,
                     encounter_date__lte=followup_window_end,
-                    encounter_date__gt=plan.encounter.encounter_date  # Must be after original
+                    encounter_date__gt=plan.encounter.encounter_date,  # Must be after original
                 ).exists()
 
                 if followup_exists:
@@ -290,12 +289,12 @@ class PatientViewSet(viewsets.ModelViewSet):
         # Apply pagination if page param provided
         pagination_info = None
         page = request.query_params.get("page")
-        
+
         # Add select_related and prefetch_related before pagination
         encounters = encounters.select_related("patient").prefetch_related(
             "diagnoses__icd10_code", "treatment_plan__medications"
         )
-        
+
         if page:
             try:
                 page_num = int(page)
@@ -306,7 +305,7 @@ class PatientViewSet(viewsets.ModelViewSet):
                 offset = (page_num - 1) * page_size
 
                 # Slice the queryset for pagination (convert to list to preserve order)
-                encounters = list(encounters[offset:offset + page_size])
+                encounters = list(encounters[offset : offset + page_size])
 
                 pagination_info = {
                     "page": page_num,
@@ -439,9 +438,7 @@ class PatientViewSet(viewsets.ModelViewSet):
                 "first_encounter_date": stats["first_encounter"],
                 "last_encounter_date": stats["last_encounter"],
                 "encounters_with_critical_vitals": critical_count,
-                "by_type": {
-                    item["encounter_type"]: item["count"] for item in type_breakdown
-                },
+                "by_type": {item["encounter_type"]: item["count"] for item in type_breakdown},
                 "most_common_diagnosis": most_common_diagnosis,
                 "follow_up_compliance": calculate_followup_compliance(),
             },
