@@ -203,7 +203,7 @@
     "fields": {
       "code": "NURSE_AID",
       "name": "Nurse Aid",
-      "category": "CLINICAL",
+      "category": "TECHNICAL",
       "description": "Nursing assistant providing basic patient care under supervision. Ranks below Nurse but above CHW. No license required.",
       "permissions_matrix": {
         "Patient": {"create": false, "read": true, "update": false, "delete": false, "view_sensitive": false},
@@ -316,7 +316,7 @@
     "fields": {
       "code": "CHW",
       "name": "Community Health Worker",
-      "category": "CLINICAL",
+      "category": "COMMUNITY",
       "description": "Community-based health promotion and basic care",
       "permissions_matrix": {
         "Patient": {"create": true, "read": true, "update": true, "delete": false, "view_sensitive": false},

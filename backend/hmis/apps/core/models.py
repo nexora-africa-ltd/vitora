@@ -789,6 +789,7 @@ class Role(models.Model):
         ("ADMINISTRATIVE", "Administrative Staff"),
         ("TECHNICAL", "Technical Staff"),
         ("MANAGEMENT", "Management"),
+        ("COMMUNITY", "Community Health"),
     ]
 
     code = models.CharField(

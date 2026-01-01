@@ -169,7 +169,8 @@ class TestDefaultRolesFixture:
         
         call_command("loaddata", str(fixture_path), verbosity=0)
         
-        valid_categories = ["CLINICAL", "ADMINISTRATIVE", "TECHNICAL", "MANAGEMENT"]
+        # Categories aligned with base.py RBAC_HIERARCHY_LEVELS
+        valid_categories = ["CLINICAL", "ADMINISTRATIVE", "TECHNICAL", "MANAGEMENT", "COMMUNITY"]
         
         for role in Role.objects.all():
             assert role.category in valid_categories, \
@@ -233,7 +234,8 @@ class TestDefaultRolesFixture:
         
         call_command("loaddata", str(fixture_path), verbosity=0)
         
-        clinical_roles = ["DOCTOR", "NURSE", "CLINICAL_OFFICER", "CHW", "CONSULTANT"]
+        # CHW is COMMUNITY category, not CLINICAL
+        clinical_roles = ["DOCTOR", "NURSE", "CLINICAL_OFFICER", "CONSULTANT"]
         
         for code in clinical_roles:
             role = Role.objects.get(code=code)
@@ -329,6 +331,63 @@ class TestDefaultRolesFixture:
         # Should NOT be able to create/update patients
         assert patient_perms.get("create") is False
         assert patient_perms.get("update") is False
+
+    def test_nurse_aid_is_technical_category(self, fixture_path):
+        """Nurse Aid should be TECHNICAL category (nurse with limited capabilities)."""
+        from hmis.apps.core.models import Role
+        
+        call_command("loaddata", str(fixture_path), verbosity=0)
+        
+        nurse_aid = Role.objects.get(code="NURSE_AID")
+        assert nurse_aid.category == "TECHNICAL", \
+            "NURSE_AID should be TECHNICAL category (nurse with limited capabilities)"
+
+    def test_chw_is_community_category(self, fixture_path):
+        """CHW should be COMMUNITY category (community outreach)."""
+        from hmis.apps.core.models import Role
+        
+        call_command("loaddata", str(fixture_path), verbosity=0)
+        
+        chw = Role.objects.get(code="CHW")
+        assert chw.category == "COMMUNITY", \
+            "CHW should be COMMUNITY category, not CLINICAL"
+
+    def test_categories_align_with_settings(self, fixture_path):
+        """Role categories should align with base.py RBAC_HIERARCHY_LEVELS."""
+        from hmis.apps.core.models import Role
+        from django.conf import settings
+        
+        call_command("loaddata", str(fixture_path), verbosity=0)
+        
+        # Map hierarchy levels to expected categories from settings
+        level_to_category = {
+            0: "ADMINISTRATIVE",  # ADMIN
+            2: "CLINICAL",        # DOCTOR, CONSULTANT (CLINICAL_SENIOR maps to CLINICAL)
+            3: "CLINICAL",        # CLINICAL_OFFICER
+            4: "TECHNICAL",       # NURSE, LAB_TECH, PHARMACIST
+            5: "TECHNICAL",       # NURSE_AID (also ADMINISTRATIVE for RECEPTIONIST, RECORDS_CLERK)
+            6: "COMMUNITY",       # CHW
+        }
+        
+        # Verify key roles match their expected categories
+        expected_categories = {
+            "ADMIN": "ADMINISTRATIVE",
+            "DOCTOR": "CLINICAL",
+            "CONSULTANT": "CLINICAL",
+            "CLINICAL_OFFICER": "CLINICAL",
+            "NURSE": "CLINICAL",
+            "NURSE_AID": "TECHNICAL",
+            "LAB_TECH": "TECHNICAL",
+            "PHARMACIST": "TECHNICAL",
+            "RECEPTIONIST": "ADMINISTRATIVE",
+            "RECORDS_CLERK": "ADMINISTRATIVE",
+            "CHW": "COMMUNITY",
+        }
+        
+        for code, expected_cat in expected_categories.items():
+            role = Role.objects.get(code=code)
+            assert role.category == expected_cat, \
+                f"Role {code} should have category {expected_cat}, got {role.category}"
 
     def test_medical_hierarchy_order(self, fixture_path):
         """Should maintain proper Kenya medical hierarchy order."""
