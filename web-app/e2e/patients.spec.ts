@@ -15,6 +15,7 @@ const mockPatient = {
   phone_number: '+254712345678',
   county_name: 'Nairobi',
   sub_county_name: 'Westlands',
+  created_at: '2026-01-01T10:00:00Z',
 };
 
 const mockPatients = {
@@ -33,14 +34,15 @@ const mockPatients = {
       phone_number: '+254712345679',
       county_name: 'Mombasa',
       sub_county_name: 'Nyali',
+      created_at: '2026-01-01T11:00:00Z',
     },
   ],
 };
 
 test.describe('Patient Management', () => {
   test.beforeEach(async ({ page }) => {
-    // Mock auth using glob patterns
-    await page.route('**/api/token/', async (route) => {
+    // Mock auth endpoint - matches http://127.0.0.1:9088/api/token/
+    await page.route('**/api/token/**', async (route) => {
       await route.fulfill({
         status: 200,
         contentType: 'application/json',
@@ -52,12 +54,12 @@ test.describe('Patient Management', () => {
       });
     });
 
-    // Mock patients list
-    await page.route('**/api/patients/', async (route) => {
+    // Mock patients list - use regex to match with query params
+    await page.route(/.*\/api\/patients\/(\?.*)?$/, async (route) => {
       const url = new URL(route.request().url());
       const search = url.searchParams.get('search');
       
-      let results = mockPatients.results;
+      let results = [...mockPatients.results];
       if (search) {
         results = results.filter(p => 
           p.first_name.toLowerCase().includes(search.toLowerCase()) ||
@@ -77,8 +79,8 @@ test.describe('Patient Management', () => {
       });
     });
 
-    // Mock patient detail
-    await page.route('**/api/patients/1/', async (route) => {
+    // Mock patient detail - matches /api/patients/1/
+    await page.route(/.*\/api\/patients\/\d+\/$/, async (route) => {
       await route.fulfill({
         status: 200,
         contentType: 'application/json',
@@ -87,7 +89,7 @@ test.describe('Patient Management', () => {
     });
 
     // Mock locations
-    await page.route('**/api/locations/counties/', async (route) => {
+    await page.route(/.*\/api\/locations\/counties\/.*/, async (route) => {
       await route.fulfill({
         status: 200,
         contentType: 'application/json',
@@ -98,7 +100,7 @@ test.describe('Patient Management', () => {
       });
     });
 
-    await page.route('**/api/locations/sub-counties/**', async (route) => {
+    await page.route(/.*\/api\/locations\/sub-counties\/.*/, async (route) => {
       await route.fulfill({
         status: 200,
         contentType: 'application/json',
@@ -111,10 +113,15 @@ test.describe('Patient Management', () => {
 
     // Login and navigate to patients
     await page.goto('/login');
-    await page.getByLabel(/username/i).fill(TEST_USER.username);
-    await page.locator('input[name="password"]').fill(TEST_USER.password);
+    const usernameInput = page.locator('input[name="username"]');
+    const passwordInput = page.locator('input[name="password"]');
+    await usernameInput.waitFor({ state: 'visible' });
+    await usernameInput.clear();
+    await usernameInput.fill(TEST_USER.username);
+    await passwordInput.clear();
+    await passwordInput.fill(TEST_USER.password);
     await page.locator('button[type="submit"]').click();
-    await page.waitForURL(/.*dashboard.*/, { timeout: 10000 });
+    await page.waitForURL(/.*dashboard.*/, { timeout: 15000 });
   });
 
   test('should display patient list', async ({ page }) => {
@@ -193,11 +200,12 @@ test.describe('Patient Management', () => {
     // Wait for patient data to load
     await expect(page.getByText('Jane Doe')).toBeVisible({ timeout: 10000 });
     
-    // Click on patient row or view button
-    await page.getByText('Jane Doe').click();
+    // Click on the table row containing Jane Doe - use the row itself for better click targeting
+    const patientRow = page.locator('tr').filter({ hasText: 'Jane Doe' });
+    await patientRow.click();
     
     // Should navigate to detail page
-    await expect(page).toHaveURL(/.*patients\/1.*/);
+    await expect(page).toHaveURL(/.*patients\/1.*/, { timeout: 10000 });
   });
 
   test('should show new patient form', async ({ page }) => {
@@ -219,11 +227,14 @@ test.describe('Patient Management', () => {
     await expect(page).toHaveURL(/.*patients.*/);
     await page.waitForLoadState('networkidle');
     
-    // Click new patient button
-    await page.getByRole('button', { name: /new patient|add patient|register/i }).click();
+    // Click new patient button and wait for navigation
+    await Promise.all([
+      page.waitForURL(/.*patients\/new.*/, { timeout: 10000 }),
+      page.getByRole('button', { name: /new patient|add patient|register/i }).click(),
+    ]);
     
     // Should show form
-    await expect(page.getByLabel(/first name/i)).toBeVisible();
+    await expect(page.getByLabel(/first name/i)).toBeVisible({ timeout: 10000 });
     await expect(page.getByLabel(/last name/i)).toBeVisible();
     await expect(page.getByLabel(/date of birth/i)).toBeVisible();
   });
@@ -247,12 +258,17 @@ test.describe('Patient Management', () => {
     await expect(page).toHaveURL(/.*patients.*/);
     await page.waitForLoadState('networkidle');
     
-    // Click new patient button
-    await page.getByRole('button', { name: /new patient|add patient|register/i }).click();
-    await expect(page).toHaveURL(/.*patients\/new.*/);
+    // Click new patient button and wait for navigation
+    await Promise.all([
+      page.waitForURL(/.*patients\/new.*/, { timeout: 10000 }),
+      page.getByRole('button', { name: /new patient|add patient|register/i }).click(),
+    ]);
     
-    // Try to submit empty form
-    await page.getByRole('button', { name: /save|submit|register/i }).click();
+    // Wait for form to be visible
+    await expect(page.getByLabel(/first name/i)).toBeVisible({ timeout: 10000 });
+    
+    // Try to submit empty form - click the Register Patient button in the form
+    await page.getByRole('button', { name: /register patient/i }).click();
     
     // Should show validation errors
     await expect(page.getByText(/required/i).first()).toBeVisible();

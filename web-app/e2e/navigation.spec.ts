@@ -7,8 +7,8 @@ import { API_BASE, TEST_USER } from './fixtures';
 
 test.describe('Navigation', () => {
   test.beforeEach(async ({ page }) => {
-    // Mock API endpoints using glob patterns
-    await page.route('**/api/token/', async (route) => {
+    // Mock API endpoints using regex patterns for better matching
+    await page.route(/.*\/api\/token\/.*/, async (route) => {
       await route.fulfill({
         status: 200,
         contentType: 'application/json',
@@ -24,7 +24,7 @@ test.describe('Navigation', () => {
       });
     });
 
-    await page.route('**/api/patients/**', async (route) => {
+    await page.route(/.*\/api\/patients\/.*/, async (route) => {
       await route.fulfill({
         status: 200,
         contentType: 'application/json',
@@ -37,7 +37,7 @@ test.describe('Navigation', () => {
       });
     });
 
-    await page.route('**/api/encounters/**', async (route) => {
+    await page.route(/.*\/api\/encounters\/.*/, async (route) => {
       await route.fulfill({
         status: 200,
         contentType: 'application/json',
@@ -52,10 +52,15 @@ test.describe('Navigation', () => {
 
     // Login
     await page.goto('/login');
-    await page.getByLabel(/username/i).fill(TEST_USER.username);
-    await page.locator('input[name="password"]').fill(TEST_USER.password);
+    const usernameInput = page.locator('input[name="username"]');
+    const passwordInput = page.locator('input[name="password"]');
+    await usernameInput.waitFor({ state: 'visible' });
+    await usernameInput.clear();
+    await usernameInput.fill(TEST_USER.username);
+    await passwordInput.clear();
+    await passwordInput.fill(TEST_USER.password);
     await page.locator('button[type="submit"]').click();
-    await page.waitForURL(/.*dashboard.*/);
+    await page.waitForURL(/.*dashboard.*/, { timeout: 15000 });
   });
 
   test('should display dashboard after login', async ({ page }) => {

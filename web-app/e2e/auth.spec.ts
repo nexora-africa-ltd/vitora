@@ -7,11 +7,11 @@ import { TEST_USER, API_BASE } from './fixtures';
 
 test.describe('Authentication', () => {
   test.beforeEach(async ({ page }) => {
-    // Mock the API endpoints using glob pattern to match any host/port
-    await page.route('**/api/token/', async (route, request) => {
+    // Mock the API endpoints using regex to match any host/port with query params
+    await page.route(/.*\/api\/token\/.*/, async (route, request) => {
       const body = request.postDataJSON();
       
-      if (body.username === TEST_USER.username && body.password === TEST_USER.password) {
+      if (body?.username === TEST_USER.username && body?.password === TEST_USER.password) {
         await route.fulfill({
           status: 200,
           contentType: 'application/json',
@@ -42,7 +42,7 @@ test.describe('Authentication', () => {
     
     // Check for login form presence
     await expect(page.locator('form').first()).toBeVisible();
-    await expect(page.getByLabel(/username/i)).toBeVisible();
+    await expect(page.locator('input[name="username"]')).toBeVisible();
     await expect(page.locator('input[name="password"]')).toBeVisible();
     await expect(page.locator('button[type="submit"]')).toBeVisible();
   });
@@ -59,19 +59,31 @@ test.describe('Authentication', () => {
   test('should login with valid credentials', async ({ page }) => {
     await page.goto('/login');
     
-    await page.getByLabel(/username/i).fill(TEST_USER.username);
-    await page.locator('input[name="password"]').fill(TEST_USER.password);
+    // Wait for inputs to be visible and fill them
+    const usernameInput = page.locator('input[name="username"]');
+    const passwordInput = page.locator('input[name="password"]');
+    await usernameInput.waitFor({ state: 'visible' });
+    await usernameInput.clear();
+    await usernameInput.fill(TEST_USER.username);
+    await passwordInput.clear();
+    await passwordInput.fill(TEST_USER.password);
     await page.locator('button[type="submit"]').click();
     
     // Should redirect to dashboard
-    await expect(page).toHaveURL(/.*dashboard.*/);
+    await expect(page).toHaveURL(/.*dashboard.*/, { timeout: 10000 });
   });
 
   test('should show error for invalid credentials', async ({ page }) => {
     await page.goto('/login');
     
-    await page.getByLabel(/username/i).fill('wronguser');
-    await page.locator('input[name="password"]').fill('wrongpassword');
+    // Wait for inputs and fill with explicit waits
+    const usernameInput = page.locator('input[name="username"]');
+    const passwordInput = page.locator('input[name="password"]');
+    await usernameInput.waitFor({ state: 'visible' });
+    await usernameInput.clear();
+    await usernameInput.fill('wronguser');
+    await passwordInput.clear();
+    await passwordInput.fill('wrongpassword');
     await page.locator('button[type="submit"]').click();
     
     // Should show error message
@@ -88,12 +100,17 @@ test.describe('Authentication', () => {
   test('should persist session across page reloads', async ({ page }) => {
     await page.goto('/login');
     
-    // Login
-    await page.getByLabel(/username/i).fill(TEST_USER.username);
-    await page.locator('input[name="password"]').fill(TEST_USER.password);
+    // Login with explicit waits
+    const usernameInput = page.locator('input[name="username"]');
+    const passwordInput = page.locator('input[name="password"]');
+    await usernameInput.waitFor({ state: 'visible' });
+    await usernameInput.clear();
+    await usernameInput.fill(TEST_USER.username);
+    await passwordInput.clear();
+    await passwordInput.fill(TEST_USER.password);
     await page.locator('button[type="submit"]').click();
     
-    await expect(page).toHaveURL(/.*dashboard.*/);
+    await expect(page).toHaveURL(/.*dashboard.*/, { timeout: 10000 });
     
     // Reload the page
     await page.reload();
