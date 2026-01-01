@@ -43,6 +43,7 @@ export function Header({ onMenuClick, sidebarCollapsed }: HeaderProps) {
             size="icon"
             className="lg:hidden"
             onClick={onMenuClick}
+            aria-label="Toggle menu"
           >
             <Menu className="h-5 w-5" />
             <span className="sr-only">Toggle menu</span>

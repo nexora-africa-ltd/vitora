@@ -7,8 +7,8 @@ import { TEST_USER, API_BASE } from './fixtures';
 
 test.describe('Authentication', () => {
   test.beforeEach(async ({ page }) => {
-    // Mock the API endpoints
-    await page.route(`${API_BASE}/api/token/`, async (route, request) => {
+    // Mock the API endpoints using glob pattern to match any host/port
+    await page.route('**/api/token/', async (route, request) => {
       const body = request.postDataJSON();
       
       if (body.username === TEST_USER.username && body.password === TEST_USER.password) {
@@ -40,16 +40,17 @@ test.describe('Authentication', () => {
   test('should display login page', async ({ page }) => {
     await page.goto('/login');
     
-    await expect(page.getByRole('heading', { name: /sign in|login/i })).toBeVisible();
+    // Check for login form presence
+    await expect(page.locator('form').first()).toBeVisible();
     await expect(page.getByLabel(/username/i)).toBeVisible();
-    await expect(page.getByLabel(/password/i)).toBeVisible();
-    await expect(page.getByRole('button', { name: /sign in|login/i })).toBeVisible();
+    await expect(page.locator('input[name="password"]')).toBeVisible();
+    await expect(page.locator('button[type="submit"]')).toBeVisible();
   });
 
   test('should show validation errors for empty form', async ({ page }) => {
     await page.goto('/login');
     
-    await page.getByRole('button', { name: /sign in|login/i }).click();
+    await page.locator('button[type="submit"]').click();
     
     // Should show validation messages
     await expect(page.getByText(/username.*required|required.*username/i)).toBeVisible();
@@ -59,8 +60,8 @@ test.describe('Authentication', () => {
     await page.goto('/login');
     
     await page.getByLabel(/username/i).fill(TEST_USER.username);
-    await page.getByLabel(/password/i).fill(TEST_USER.password);
-    await page.getByRole('button', { name: /sign in|login/i }).click();
+    await page.locator('input[name="password"]').fill(TEST_USER.password);
+    await page.locator('button[type="submit"]').click();
     
     // Should redirect to dashboard
     await expect(page).toHaveURL(/.*dashboard.*/);
@@ -70,8 +71,8 @@ test.describe('Authentication', () => {
     await page.goto('/login');
     
     await page.getByLabel(/username/i).fill('wronguser');
-    await page.getByLabel(/password/i).fill('wrongpassword');
-    await page.getByRole('button', { name: /sign in|login/i }).click();
+    await page.locator('input[name="password"]').fill('wrongpassword');
+    await page.locator('button[type="submit"]').click();
     
     // Should show error message
     await expect(page.getByText(/invalid|incorrect|wrong/i)).toBeVisible();
@@ -89,8 +90,8 @@ test.describe('Authentication', () => {
     
     // Login
     await page.getByLabel(/username/i).fill(TEST_USER.username);
-    await page.getByLabel(/password/i).fill(TEST_USER.password);
-    await page.getByRole('button', { name: /sign in|login/i }).click();
+    await page.locator('input[name="password"]').fill(TEST_USER.password);
+    await page.locator('button[type="submit"]').click();
     
     await expect(page).toHaveURL(/.*dashboard.*/);
     

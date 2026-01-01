@@ -53,13 +53,17 @@ export function Sidebar({ collapsed, onCollapse, mobileOpen, onMobileClose }: Si
   const logout = useLogout();
 
   const NavLink = ({ item }: { item: NavItem }) => {
-    const isActive = pathname === item.href || pathname.startsWith(`${item.href}/`);
+    // Handle special case for dashboard: both '/' and '/dashboard' should match
+    const isActive = item.href === '/' 
+      ? (pathname === '/' || pathname === '/dashboard' || pathname.startsWith('/dashboard/'))
+      : (pathname === item.href || pathname.startsWith(`${item.href}/`));
     const Icon = item.icon;
 
     const linkContent = (
       <Link
         href={item.href}
         onClick={onMobileClose}
+        data-active={isActive}
         className={cn(
           'flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-colors',
           isActive
@@ -96,6 +100,7 @@ export function Sidebar({ collapsed, onCollapse, mobileOpen, onMobileClose }: Si
     <TooltipProvider delayDuration={0}>
       <aside
         role="complementary"
+        data-testid="sidebar"
         className={cn(
           'fixed left-0 top-0 z-50 h-screen bg-card border-r transition-all duration-300',
           collapsed ? 'w-16' : 'w-64',
