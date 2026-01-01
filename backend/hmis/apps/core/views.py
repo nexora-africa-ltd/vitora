@@ -99,6 +99,7 @@ class AuditedTokenObtainPairView(TokenObtainPairView):
     Custom TokenObtainPairView that fires Django's user_logged_in signal.
 
     This ensures that JWT-based logins are properly logged in the audit system.
+    Also includes user info in the response for the frontend.
     """
 
     def post(self, request, *args, **kwargs):
@@ -114,6 +115,17 @@ class AuditedTokenObtainPairView(TokenObtainPairView):
             try:
                 user = User.objects.get(username=username)
                 user_logged_in.send(sender=self.__class__, request=request, user=user)
+                
+                # Add user info to response
+                response.data['user'] = {
+                    'id': user.id,
+                    'username': user.username,
+                    'email': user.email,
+                    'first_name': user.first_name,
+                    'last_name': user.last_name,
+                    'is_staff': user.is_staff,
+                    'permissions': list(user.get_all_permissions()),
+                }
             except User.DoesNotExist:
                 pass
         else:

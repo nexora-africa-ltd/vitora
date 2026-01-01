@@ -767,7 +767,7 @@ function createWindow() {
   });
 
   // Load Next.js app
-  win.loadURL('http://localhost:3000');
+  win.loadURL('http://localhost:3009');
 }
 
 app.whenReady().then(() => {

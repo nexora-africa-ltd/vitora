@@ -1,3 +1,135 @@
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
+@layer base {
+  :root {
+    --background: 0 0% 100%;
+    --foreground: 0 11% 12%;  /* neutral-900 */
+    --card: 0 0% 100%;
+    --card-foreground: 0 11% 12%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 0 11% 12%;
+    --primary: 349 100% 12%;  /* Deep Burgundy #3D000F */
+    --primary-foreground: 0 0% 100%;
+    --secondary: 193 55% 23%;  /* Teal #1A4D5C */
+    --secondary-foreground: 0 0% 100%;
+    --muted: 0 3% 96%;  /* neutral-100 */
+    --muted-foreground: 0 5% 42%;  /* neutral-600 */
+    --accent: 27 50% 65%;  /* Warm Gold #D4A574 */
+    --accent-foreground: 0 11% 12%;
+    --destructive: 0 65% 47%;  /* error main #C62828 */
+    --destructive-foreground: 0 0% 100%;
+    --border: 0 4% 86%;  /* neutral-300 */
+    --input: 0 4% 86%;
+    --ring: 349 100% 12%;  /* primary */
+    --radius: 0.5rem;
+    
+    /* Semantic colors */
+    --success: 145 46% 34%;  /* #2E7D4A */
+    --warning: 45 100% 51%;  /* #FFC107 */
+    --critical: 0 65% 47%;  /* #C62828 */
+  }
+
+  .dark {
+    --background: 350 9% 9%;  /* background.dark #1A1516 */
+    --foreground: 0 3% 96%;  /* neutral-100 */
+    --card: 350 8% 12%;
+    --card-foreground: 0 3% 96%;
+    --popover: 350 8% 12%;
+    --popover-foreground: 0 3% 96%;
+    --primary: 349 100% 20%;  /* Lighter burgundy for dark mode */
+    --primary-foreground: 0 0% 100%;
+    --secondary: 193 55% 30%;  /* Lighter teal for dark mode */
+    --secondary-foreground: 0 0% 100%;
+    --muted: 350 8% 15%;
+    --muted-foreground: 0 4% 65%;
+    --accent: 27 50% 55%;  /* Slightly dimmed gold */
+    --accent-foreground: 0 11% 12%;
+    --destructive: 0 63% 55%;  /* Lighter for dark mode */
+    --destructive-foreground: 0 0% 100%;
+    --border: 350 8% 20%;
+    --input: 350 8% 20%;
+    --ring: 349 100% 20%;
+    
+    /* Semantic colors - dark mode */
+    --success: 145 46% 40%;
+    --warning: 45 100% 45%;
+    --critical: 0 63% 45%;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+  body {
+    @apply bg-background text-foreground;
+    font-feature-settings: 'rlig' 1, 'calt' 1;
+  }
+}
+
+/* Custom scrollbar */
+@layer utilities {
+  .scrollbar-thin {
+    scrollbar-width: thin;
+  }
+
+  .scrollbar-thin::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+  }
+
+  .scrollbar-thin::-webkit-scrollbar-track {
+    @apply bg-muted;
+  }
+
+  .scrollbar-thin::-webkit-scrollbar-thumb {
+    @apply bg-muted-foreground/30 rounded-full;
+  }
+
+  .scrollbar-thin::-webkit-scrollbar-thumb:hover {
+    @apply bg-muted-foreground/50;
+  }
+}
+
+/* Focus visible styles for accessibility */
+@layer utilities {
+  .focus-ring {
+    @apply focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2;
+  }
+}
+
+/* Animation utilities */
+@layer utilities {
+  .animate-in {
+    animation-duration: 0.15s;
+    animation-timing-function: ease-out;
+    animation-fill-mode: forwards;
+  }
+
+  .animate-out {
+    animation-duration: 0.15s;
+    animation-timing-function: ease-in;
+    animation-fill-mode: forwards;
+  }
+}
+
+/* Print styles for medical records */
+@media print {
+  body {
+    @apply bg-white text-black;
+  }
+  
+  .no-print {
+    display: none !important;
+  }
+  
+  .print-break-before {
+    page-break-before: always;
+  }
+  
+  .print-break-after {
+    page-break-after: always;
+  }
+}
