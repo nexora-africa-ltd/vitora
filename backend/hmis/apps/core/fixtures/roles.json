@@ -38,7 +38,7 @@
     "model": "auth.group",
     "pk": 6,
     "fields": {
-      "name": "Nurse Aid"
+      "name": "Nurse Aide"
     }
   },
   {
@@ -201,8 +201,8 @@
     "model": "core.role",
     "pk": 6,
     "fields": {
-      "code": "NURSE_AID",
-      "name": "Nurse Aid",
+      "code": "NURSE_AIDE",
+      "name": "Nurse Aide",
       "category": "TECHNICAL",
       "description": "Nursing assistant providing basic patient care under supervision. Ranks below Nurse but above CHW. No license required.",
       "permissions_matrix": {

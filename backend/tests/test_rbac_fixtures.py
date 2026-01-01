@@ -22,7 +22,7 @@ EXPECTED_ROLES = [
     "CONSULTANT",  # External service provider doctor
     "CLINICAL_OFFICER",
     "NURSE",
-    "NURSE_AID",  # Lowest rank medical staff
+    "NURSE_AIDE",  # Lowest rank medical staff
     "LAB_TECH",
     "PHARMACIST",
     "RECEPTIONIST",
@@ -98,9 +98,9 @@ class TestDefaultRolesFixture:
         nurse = Role.objects.get(code="NURSE")
         assert nurse.hierarchy_level == 4, "NURSE should have hierarchy_level 4"
         
-        # NURSE_AID below nurse but above CHW (level 5)
-        nurse_aid = Role.objects.get(code="NURSE_AID")
-        assert nurse_aid.hierarchy_level == 5, "NURSE_AID should have hierarchy_level 5"
+        # NURSE_AIDE below nurse but above CHW (level 5)
+        nurse_aide = Role.objects.get(code="NURSE_AIDE")
+        assert nurse_aide.hierarchy_level == 5, "NURSE_AIDE should have hierarchy_level 5"
         
         # CHW should be level 6
         chw = Role.objects.get(code="CHW")
@@ -143,7 +143,7 @@ class TestDefaultRolesFixture:
         
         call_command("loaddata", str(fixture_path), verbosity=0)
         
-        unlicensed_roles = ["ADMIN", "RECEPTIONIST", "RECORDS_CLERK", "CHW", "NURSE_AID"]
+        unlicensed_roles = ["ADMIN", "RECEPTIONIST", "RECORDS_CLERK", "CHW", "NURSE_AIDE"]
         for code in unlicensed_roles:
             role = Role.objects.get(code=code)
             assert role.requires_license is False, \
@@ -301,46 +301,46 @@ class TestDefaultRolesFixture:
         # Should be able to create encounters (consultations)
         assert encounter_perms.get("create") is True
 
-    def test_nurse_aid_ranks_below_nurse_above_chw(self, fixture_path):
-        """Nurse Aid should rank below Nurse but above CHW."""
+    def test_nurse_aide_ranks_below_nurse_above_chw(self, fixture_path):
+        """Nurse Aide should rank below Nurse but above CHW."""
         from hmis.apps.core.models import Role
         
         call_command("loaddata", str(fixture_path), verbosity=0)
         
         nurse = Role.objects.get(code="NURSE")
-        nurse_aid = Role.objects.get(code="NURSE_AID")
+        nurse_aide = Role.objects.get(code="NURSE_AIDE")
         chw = Role.objects.get(code="CHW")
         
-        # Nurse Aid should be between Nurse and CHW
-        assert nurse.hierarchy_level < nurse_aid.hierarchy_level, \
-            "Nurse should rank above Nurse Aid"
-        assert nurse_aid.hierarchy_level < chw.hierarchy_level, \
-            "Nurse Aid should rank above CHW"
+        # Nurse Aide should be between Nurse and CHW
+        assert nurse.hierarchy_level < nurse_aide.hierarchy_level, \
+            "Nurse should rank above Nurse Aide"
+        assert nurse_aide.hierarchy_level < chw.hierarchy_level, \
+            "Nurse Aide should rank above CHW"
 
-    def test_nurse_aid_has_limited_permissions(self, fixture_path):
-        """Nurse Aid should have limited permissions (assistive role)."""
+    def test_nurse_aide_has_limited_permissions(self, fixture_path):
+        """Nurse Aide should have limited permissions (assistive role)."""
         from hmis.apps.core.models import Role
         
         call_command("loaddata", str(fixture_path), verbosity=0)
         
-        nurse_aid = Role.objects.get(code="NURSE_AID")
+        nurse_aide = Role.objects.get(code="NURSE_AIDE")
         
         # Should be able to read patients
-        patient_perms = nurse_aid.permissions_matrix.get("Patient", {})
+        patient_perms = nurse_aide.permissions_matrix.get("Patient", {})
         assert patient_perms.get("read") is True
         # Should NOT be able to create/update patients
         assert patient_perms.get("create") is False
         assert patient_perms.get("update") is False
 
-    def test_nurse_aid_is_technical_category(self, fixture_path):
-        """Nurse Aid should be TECHNICAL category (nurse with limited capabilities)."""
+    def test_nurse_aide_is_technical_category(self, fixture_path):
+        """Nurse Aide should be TECHNICAL category (nurse with limited capabilities)."""
         from hmis.apps.core.models import Role
         
         call_command("loaddata", str(fixture_path), verbosity=0)
         
-        nurse_aid = Role.objects.get(code="NURSE_AID")
-        assert nurse_aid.category == "TECHNICAL", \
-            "NURSE_AID should be TECHNICAL category (nurse with limited capabilities)"
+        nurse_aide = Role.objects.get(code="NURSE_AIDE")
+        assert nurse_aide.category == "TECHNICAL", \
+            "NURSE_AIDE should be TECHNICAL category (nurse with limited capabilities)"
 
     def test_chw_is_community_category(self, fixture_path):
         """CHW should be COMMUNITY category (community outreach)."""
@@ -365,7 +365,7 @@ class TestDefaultRolesFixture:
             2: "CLINICAL",        # DOCTOR, CONSULTANT (CLINICAL_SENIOR maps to CLINICAL)
             3: "CLINICAL",        # CLINICAL_OFFICER
             4: "TECHNICAL",       # NURSE, LAB_TECH, PHARMACIST
-            5: "TECHNICAL",       # NURSE_AID (also ADMINISTRATIVE for RECEPTIONIST, RECORDS_CLERK)
+            5: "TECHNICAL",       # NURSE_AIDE (also ADMINISTRATIVE for RECEPTIONIST, RECORDS_CLERK)
             6: "COMMUNITY",       # CHW
         }
         
@@ -376,7 +376,7 @@ class TestDefaultRolesFixture:
             "CONSULTANT": "CLINICAL",
             "CLINICAL_OFFICER": "CLINICAL",
             "NURSE": "CLINICAL",
-            "NURSE_AID": "TECHNICAL",
+            "NURSE_AIDE": "TECHNICAL",
             "LAB_TECH": "TECHNICAL",
             "PHARMACIST": "TECHNICAL",
             "RECEPTIONIST": "ADMINISTRATIVE",
@@ -397,13 +397,13 @@ class TestDefaultRolesFixture:
         
         # Expected hierarchy (lower number = higher rank):
         # DOCTOR/CONSULTANT (2) > CLINICAL_OFFICER (3) > NURSE (4) > 
-        # NURSE_AID (5) > CHW (6)
+        # NURSE_AIDE (5) > CHW (6)
         
         doctor = Role.objects.get(code="DOCTOR")
         consultant = Role.objects.get(code="CONSULTANT")
         clinical_officer = Role.objects.get(code="CLINICAL_OFFICER")
         nurse = Role.objects.get(code="NURSE")
-        nurse_aid = Role.objects.get(code="NURSE_AID")
+        nurse_aide = Role.objects.get(code="NURSE_AIDE")
         chw = Role.objects.get(code="CHW")
         
         # Verify hierarchy chain
@@ -413,7 +413,7 @@ class TestDefaultRolesFixture:
             "Doctor should rank above Clinical Officer"
         assert clinical_officer.hierarchy_level < nurse.hierarchy_level, \
             "Clinical Officer should rank above Nurse"
-        assert nurse.hierarchy_level < nurse_aid.hierarchy_level, \
-            "Nurse should rank above Nurse Aid"
-        assert nurse_aid.hierarchy_level < chw.hierarchy_level, \
-            "Nurse Aid should rank above CHW"
+        assert nurse.hierarchy_level < nurse_aide.hierarchy_level, \
+            "Nurse should rank above Nurse Aide"
+        assert nurse_aide.hierarchy_level < chw.hierarchy_level, \
+            "Nurse Aide should rank above CHW"
