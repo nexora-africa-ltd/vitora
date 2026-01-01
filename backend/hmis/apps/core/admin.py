@@ -320,12 +320,14 @@ class StaffProfileAdmin(admin.ModelAdmin):
         "primary_role",
         "primary_department",
         "employment_status",
+        "employment_type",
         "is_license_valid_display",
     ]
     list_filter = [
         "primary_role",
         "primary_department",
         "employment_status",
+        "employment_type",
         "primary_role__requires_license",
         "license_verified",
     ]
@@ -341,7 +343,7 @@ class StaffProfileAdmin(admin.ModelAdmin):
     readonly_fields = ["created_at", "updated_at", "is_license_valid_display"]
     filter_horizontal = ["secondary_roles", "secondary_departments"]
 
-    actions = ["activate_staff", "deactivate_staff", "suspend_staff"]
+    actions = ["activate_staff", "deactivate_staff", "suspend_staff", "export_to_csv"]
 
     fieldsets = (
         (
@@ -393,6 +395,7 @@ class StaffProfileAdmin(admin.ModelAdmin):
             {
                 "fields": (
                     "employment_status",
+                    "employment_type",
                     "date_joined",
                     "date_left",
                     "supervisor",
@@ -458,3 +461,67 @@ class StaffProfileAdmin(admin.ModelAdmin):
             request,
             f"{updated} staff member(s) suspended successfully.",
         )
+
+    @admin.action(description="Export selected staff to CSV")
+    def export_to_csv(self, request, queryset):
+        """
+        Export selected staff profiles to CSV file.
+
+        Includes key fields: employee ID, name, role, department, status, etc.
+        """
+        import csv
+        from datetime import datetime
+        from django.http import HttpResponse
+
+        # Create the HttpResponse object with CSV header
+        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+        filename = f"staff_export_{timestamp}.csv"
+        response = HttpResponse(content_type="text/csv")
+        response["Content-Disposition"] = f'attachment; filename="{filename}"'
+
+        writer = csv.writer(response)
+
+        # Write header row
+        writer.writerow([
+            "Employee ID",
+            "Full Name",
+            "Title",
+            "Username",
+            "Email",
+            "Primary Role",
+            "Primary Department",
+            "Employment Status",
+            "Employment Type",
+            "License Number",
+            "License Expiry",
+            "License Verified",
+            "License Valid",
+            "Date Joined",
+            "Supervisor",
+            "Phone Number",
+        ])
+
+        # Write data rows
+        for staff in queryset.select_related(
+            "user", "primary_role", "primary_department", "supervisor"
+        ):
+            writer.writerow([
+                staff.employee_id,
+                staff.get_full_name(),
+                staff.title or "",
+                staff.user.username,
+                staff.user.email or "",
+                staff.primary_role.name,
+                staff.primary_department.name,
+                staff.get_employment_status_display(),
+                staff.get_employment_type_display(),
+                staff.license_number or "",
+                staff.license_expiry.isoformat() if staff.license_expiry else "",
+                "Yes" if staff.license_verified else "No",
+                "Yes" if staff.is_license_valid() else "No",
+                staff.date_joined.isoformat() if staff.date_joined else "",
+                staff.supervisor.get_full_name() if staff.supervisor else "",
+                staff.phone_number or "",
+            ])
+
+        return response

@@ -1,0 +1,335 @@
+[
+  {
+    "model": "auth.group",
+    "pk": 1,
+    "fields": {
+      "name": "System Administrator"
+    }
+  },
+  {
+    "model": "auth.group",
+    "pk": 2,
+    "fields": {
+      "name": "Medical Doctor"
+    }
+  },
+  {
+    "model": "auth.group",
+    "pk": 3,
+    "fields": {
+      "name": "Consultant"
+    }
+  },
+  {
+    "model": "auth.group",
+    "pk": 4,
+    "fields": {
+      "name": "Clinical Officer"
+    }
+  },
+  {
+    "model": "auth.group",
+    "pk": 5,
+    "fields": {
+      "name": "Registered Nurse"
+    }
+  },
+  {
+    "model": "auth.group",
+    "pk": 6,
+    "fields": {
+      "name": "Nurse Aid"
+    }
+  },
+  {
+    "model": "auth.group",
+    "pk": 7,
+    "fields": {
+      "name": "Laboratory Technician"
+    }
+  },
+  {
+    "model": "auth.group",
+    "pk": 8,
+    "fields": {
+      "name": "Pharmacist"
+    }
+  },
+  {
+    "model": "auth.group",
+    "pk": 9,
+    "fields": {
+      "name": "Receptionist"
+    }
+  },
+  {
+    "model": "auth.group",
+    "pk": 10,
+    "fields": {
+      "name": "Medical Records Clerk"
+    }
+  },
+  {
+    "model": "auth.group",
+    "pk": 11,
+    "fields": {
+      "name": "Community Health Worker"
+    }
+  },
+  {
+    "model": "core.role",
+    "pk": 1,
+    "fields": {
+      "code": "ADMIN",
+      "name": "System Administrator",
+      "category": "ADMINISTRATIVE",
+      "description": "Full system access for hospital administrators",
+      "permissions_matrix": {
+        "Patient": {"create": true, "read": true, "update": true, "delete": true, "view_sensitive": true},
+        "Encounter": {"create": true, "read": true, "update": true, "delete": true},
+        "StaffProfile": {"create": true, "read": true, "update": true, "delete": true},
+        "Role": {"create": true, "read": true, "update": true, "delete": true},
+        "Department": {"create": true, "read": true, "update": true, "delete": true},
+        "AuditLog": {"create": false, "read": true, "update": false, "delete": false}
+      },
+      "hierarchy_level": 0,
+      "parent_role": null,
+      "django_group": 1,
+      "requires_license": false,
+      "license_body": "",
+      "is_active": true,
+      "created_at": "2026-01-01T00:00:00Z",
+      "updated_at": "2026-01-01T00:00:00Z"
+    }
+  },
+  {
+    "model": "core.role",
+    "pk": 2,
+    "fields": {
+      "code": "DOCTOR",
+      "name": "Medical Doctor",
+      "category": "CLINICAL",
+      "description": "Licensed medical practitioner (KMPDB registered). Permanent or employed staff.",
+      "permissions_matrix": {
+        "Patient": {"create": true, "read": true, "update": true, "delete": false, "view_sensitive": true},
+        "Encounter": {"create": true, "read": true, "update": true, "delete": false},
+        "LabOrder": {"create": true, "read": true, "update": true, "delete": false},
+        "Prescription": {"create": true, "read": true, "update": true, "delete": false}
+      },
+      "hierarchy_level": 2,
+      "parent_role": null,
+      "django_group": 2,
+      "requires_license": true,
+      "license_body": "KMPDB",
+      "is_active": true,
+      "created_at": "2026-01-01T00:00:00Z",
+      "updated_at": "2026-01-01T00:00:00Z"
+    }
+  },
+  {
+    "model": "core.role",
+    "pk": 3,
+    "fields": {
+      "code": "CONSULTANT",
+      "name": "Consultant",
+      "category": "CLINICAL",
+      "description": "External specialist doctor providing consultation services (KMPDB registered). Typically external service provider (ESP).",
+      "permissions_matrix": {
+        "Patient": {"create": false, "read": true, "update": false, "delete": false, "view_sensitive": true},
+        "Encounter": {"create": true, "read": true, "update": true, "delete": false},
+        "LabOrder": {"create": true, "read": true, "update": false, "delete": false},
+        "LabResult": {"create": false, "read": true, "update": false, "delete": false},
+        "Prescription": {"create": true, "read": true, "update": false, "delete": false}
+      },
+      "hierarchy_level": 2,
+      "parent_role": null,
+      "django_group": 3,
+      "requires_license": true,
+      "license_body": "KMPDB",
+      "is_active": true,
+      "created_at": "2026-01-01T00:00:00Z",
+      "updated_at": "2026-01-01T00:00:00Z"
+    }
+  },
+  {
+    "model": "core.role",
+    "pk": 4,
+    "fields": {
+      "code": "CLINICAL_OFFICER",
+      "name": "Clinical Officer",
+      "category": "CLINICAL",
+      "description": "Licensed clinical officer (COK - Clinical Officers Council registered). Ranks below Medical Doctor but above Nurse.",
+      "permissions_matrix": {
+        "Patient": {"create": true, "read": true, "update": true, "delete": false, "view_sensitive": true},
+        "Encounter": {"create": true, "read": true, "update": true, "delete": false},
+        "LabOrder": {"create": true, "read": true, "update": false, "delete": false}
+      },
+      "hierarchy_level": 3,
+      "parent_role": null,
+      "django_group": 4,
+      "requires_license": true,
+      "license_body": "COK",
+      "is_active": true,
+      "created_at": "2026-01-01T00:00:00Z",
+      "updated_at": "2026-01-01T00:00:00Z"
+    }
+  },
+  {
+    "model": "core.role",
+    "pk": 5,
+    "fields": {
+      "code": "NURSE",
+      "name": "Registered Nurse",
+      "category": "CLINICAL",
+      "description": "Licensed nurse (NCK - Nursing Council of Kenya registered)",
+      "permissions_matrix": {
+        "Patient": {"create": true, "read": true, "update": true, "delete": false, "view_sensitive": false},
+        "Encounter": {"create": true, "read": true, "update": true, "delete": false},
+        "LabOrder": {"create": false, "read": true, "update": false, "delete": false}
+      },
+      "hierarchy_level": 4,
+      "parent_role": null,
+      "django_group": 5,
+      "requires_license": true,
+      "license_body": "NCK",
+      "is_active": true,
+      "created_at": "2026-01-01T00:00:00Z",
+      "updated_at": "2026-01-01T00:00:00Z"
+    }
+  },
+  {
+    "model": "core.role",
+    "pk": 6,
+    "fields": {
+      "code": "NURSE_AID",
+      "name": "Nurse Aid",
+      "category": "CLINICAL",
+      "description": "Nursing assistant providing basic patient care under supervision. Ranks below Nurse but above CHW. No license required.",
+      "permissions_matrix": {
+        "Patient": {"create": false, "read": true, "update": false, "delete": false, "view_sensitive": false},
+        "Encounter": {"create": false, "read": true, "update": false, "delete": false}
+      },
+      "hierarchy_level": 5,
+      "parent_role": null,
+      "django_group": 6,
+      "requires_license": false,
+      "license_body": "",
+      "is_active": true,
+      "created_at": "2026-01-01T00:00:00Z",
+      "updated_at": "2026-01-01T00:00:00Z"
+    }
+  },
+  {
+    "model": "core.role",
+    "pk": 7,
+    "fields": {
+      "code": "LAB_TECH",
+      "name": "Laboratory Technician",
+      "category": "TECHNICAL",
+      "description": "Licensed laboratory technician (KMLTTB registered)",
+      "permissions_matrix": {
+        "Patient": {"create": false, "read": true, "update": false, "delete": false, "view_sensitive": false},
+        "LabOrder": {"create": false, "read": true, "update": false, "delete": false},
+        "LabResult": {"create": true, "read": true, "update": true, "delete": false}
+      },
+      "hierarchy_level": 4,
+      "parent_role": null,
+      "django_group": 7,
+      "requires_license": true,
+      "license_body": "KMLTTB",
+      "is_active": true,
+      "created_at": "2026-01-01T00:00:00Z",
+      "updated_at": "2026-01-01T00:00:00Z"
+    }
+  },
+  {
+    "model": "core.role",
+    "pk": 8,
+    "fields": {
+      "code": "PHARMACIST",
+      "name": "Pharmacist",
+      "category": "TECHNICAL",
+      "description": "Licensed pharmacist (PPB - Pharmacy and Poisons Board registered)",
+      "permissions_matrix": {
+        "Patient": {"create": false, "read": true, "update": false, "delete": false, "view_sensitive": false},
+        "Prescription": {"create": false, "read": true, "update": true, "delete": false},
+        "DrugDispensing": {"create": true, "read": true, "update": true, "delete": false},
+        "PharmacyInventory": {"create": true, "read": true, "update": true, "delete": true}
+      },
+      "hierarchy_level": 4,
+      "parent_role": null,
+      "django_group": 8,
+      "requires_license": true,
+      "license_body": "PPB",
+      "is_active": true,
+      "created_at": "2026-01-01T00:00:00Z",
+      "updated_at": "2026-01-01T00:00:00Z"
+    }
+  },
+  {
+    "model": "core.role",
+    "pk": 9,
+    "fields": {
+      "code": "RECEPTIONIST",
+      "name": "Receptionist",
+      "category": "ADMINISTRATIVE",
+      "description": "Front desk and patient registration staff",
+      "permissions_matrix": {
+        "Patient": {"create": true, "read": true, "update": true, "delete": false, "view_sensitive": false},
+        "Encounter": {"create": false, "read": true, "update": false, "delete": false}
+      },
+      "hierarchy_level": 5,
+      "parent_role": null,
+      "django_group": 9,
+      "requires_license": false,
+      "license_body": "",
+      "is_active": true,
+      "created_at": "2026-01-01T00:00:00Z",
+      "updated_at": "2026-01-01T00:00:00Z"
+    }
+  },
+  {
+    "model": "core.role",
+    "pk": 10,
+    "fields": {
+      "code": "RECORDS_CLERK",
+      "name": "Medical Records Clerk",
+      "category": "ADMINISTRATIVE",
+      "description": "Medical records management staff",
+      "permissions_matrix": {
+        "Patient": {"create": true, "read": true, "update": true, "delete": false, "view_sensitive": false},
+        "Encounter": {"create": false, "read": true, "update": false, "delete": false}
+      },
+      "hierarchy_level": 5,
+      "parent_role": null,
+      "django_group": 10,
+      "requires_license": false,
+      "license_body": "",
+      "is_active": true,
+      "created_at": "2026-01-01T00:00:00Z",
+      "updated_at": "2026-01-01T00:00:00Z"
+    }
+  },
+  {
+    "model": "core.role",
+    "pk": 11,
+    "fields": {
+      "code": "CHW",
+      "name": "Community Health Worker",
+      "category": "CLINICAL",
+      "description": "Community-based health promotion and basic care",
+      "permissions_matrix": {
+        "Patient": {"create": true, "read": true, "update": true, "delete": false, "view_sensitive": false},
+        "Encounter": {"create": true, "read": true, "update": false, "delete": false}
+      },
+      "hierarchy_level": 6,
+      "parent_role": null,
+      "django_group": 11,
+      "requires_license": false,
+      "license_body": "",
+      "is_active": true,
+      "created_at": "2026-01-01T00:00:00Z",
+      "updated_at": "2026-01-01T00:00:00Z"
+    }
+  }
+]
