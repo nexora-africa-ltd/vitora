@@ -17,6 +17,8 @@ lib64/
 # Exception: Allow mobile-app source code
 !mobile-app/lib/
 !mobile-app/__tests__/lib/
+# Exception: Allow web-app source code
+!web-app/lib/
 parts/
 sdist/
 var/

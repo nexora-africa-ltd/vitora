@@ -2,6 +2,16 @@
  * Type definitions for Vitora HMIS
  */
 
+// Re-export enhanced encounter types
+export type {
+  Encounter as EnhancedEncounter,
+  Diagnosis,
+  TreatmentPlan,
+  Medication,
+  VitalSign,
+  EncounterListParams,
+} from './encounter';
+
 // User types
 export interface User {
   id: number;
