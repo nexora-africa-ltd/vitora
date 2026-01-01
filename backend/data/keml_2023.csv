@@ -1,0 +1,1106 @@
+code,name,dose_form,strength,lou,category,subcategory,sub_subcategory,footnotes,page
+1.1.1.1,Halothane,Inhalation,250mL,4,,1.1 General Anaesthetics,1.1.1 Inhalational medicines,,19
+1.1.1.2,Isoflurane,Inhalation,250mL,4,,1.1 General Anaesthetics,1.1.1 Inhalational medicines,,19
+1.1.1.3,Sevoflurane,Inhalation,250mL,5,,1.1 General Anaesthetics,1.1.1 Inhalational medicines,2,19
+1.1.2.1,Dexmedetomidine,Injection,200 micrograms/2mL,5,,1.1 General Anaesthetics,1.1.2 Injectable medicines,3,19
+1.1.2.2,Etomidate,Injection,2mg/mL (10mL Vial),6,,1.1 General Anaesthetics,1.1.2 Injectable medicines,4,19
+1.1.2.3,Fentanyl,Injection,50micrograms/mL (2mL Ampoule),4,,1.1 General Anaesthetics,1.1.2 Injectable medicines,5,19
+1.1.2.4,Ketamine,Injection,50mg (as HCL)/mL (10mL vial),4,,1.1 General Anaesthetics,1.1.2 Injectable medicines,,19
+1.1.2.5,Midazolam,Injection,1mg (as HCl)/mL (5mL amp),4,,1.1 General Anaesthetics,1.1.2 Injectable medicines,6,19
+1.1.2.6,Propofol,Injection,10mg/mL (20mL vial),4,,1.1 General Anaesthetics,1.1.2 Injectable medicines,7,19
+1.1.2.7,Remifentanyl,PFI,2mg/2mL,5,,1.1 General Anaesthetics,1.1.2 Injectable medicines,8,19
+1.1.2.8,Thiopental sodium,PFI,500mg vial,4,,1.1 General Anaesthetics,1.1.2 Injectable medicines,9,19
+1.2.1,Bupivacaine,Injection,0.5% (as HCl) (10mL vial),4,,1.1 General Anaesthetics,1.1.2 Injectable medicines,,19
+1.2.2,Bupivacaine + Glucose,Injection,0.5% (as HCl) (5mg/mL) + glucose 8% (80mg/mL) (4mL amp),4,,1.1 General Anaesthetics,1.1.2 Injectable medicines,10,19
+1.2.3,Lignocaine,Injection,2% (as HCl) (30mL vial),2,,1.1 General Anaesthetics,1.1.2 Injectable medicines,11,20
+1.2.3,Lignocaine,Topical spray,2% (as HCl),2,,1.1 General Anaesthetics,1.1.2 Injectable medicines,11,20
+1.2.3,Lignocaine,Injection,4% (as HCl),2,,1.1 General Anaesthetics,1.1.2 Injectable medicines,11,20
+1.2.3,Lignocaine,Injection,10% (as HCl),2,,1.1 General Anaesthetics,1.1.2 Injectable medicines,11,20
+1.2.4,Lignocaine + Epinephrine (Adrenaline),Dental cartridge,"2% + 1:80,000 (1.8mL cartridge)",3,,1.1 General Anaesthetics,1.1.2 Injectable medicines,,20
+1.2.4,Lignocaine + Epinephrine (Adrenaline),Injection12,"2% (HCl or sulphate) + 1:200,000 in vial",3,,1.1 General Anaesthetics,1.1.2 Injectable medicines,,20
+1.3.1,Dantrolene,Injection,20mg,4,,1.3 Pre-and Intra-Operative Medication and Sedation for Short-Term Procedures and Adjuncts for Spinal and Epidural Anaesthesia,,13,20
+1.3.2,Dexmedetomidine,Injection,200 micrograms (2mL),5,,1.3 Pre-and Intra-Operative Medication and Sedation for Short-Term Procedures and Adjuncts for Spinal and Epidural Anaesthesia,,14,20
+1.3.3,Ephedrine,Injection,30mg,4,,1.3 Pre-and Intra-Operative Medication and Sedation for Short-Term Procedures and Adjuncts for Spinal and Epidural Anaesthesia,,15,20
+1.3.4,Epinephrine (adrenaline),Injection,1mg /1mL amp17,4,,1.3 Pre-and Intra-Operative Medication and Sedation for Short-Term Procedures and Adjuncts for Spinal and Epidural Anaesthesia,,16,20
+1.3.5,Fentanyl,Injection (preservative-free),50 micrograms (as citrate)/mL (2mL amp),4,,1.3 Pre-and Intra-Operative Medication and Sedation for Short-Term Procedures and Adjuncts for Spinal and Epidural Anaesthesia,,18,20
+1.3.6,Ketamine,Injection,50mg (as HCl)/mL (10mL vial),4,,1.3 Pre-and Intra-Operative Medication and Sedation for Short-Term Procedures and Adjuncts for Spinal and Epidural Anaesthesia,,19,20
+1.3.7,Midazolam,Injection,1mg (as HCl)/mL (5mL amp),4,,1.3 Pre-and Intra-Operative Medication and Sedation for Short-Term Procedures and Adjuncts for Spinal and Epidural Anaesthesia,,20,20
+1.3.7,Midazolam,Injection,5mg (as HCl)/mL (3mL amp)21,4,,1.3 Pre-and Intra-Operative Medication and Sedation for Short-Term Procedures and Adjuncts for Spinal and Epidural Anaesthesia,,20,20
+1.3.8,Morphine,Injection,10mg (as HCl or sulphate) /1mL amp,4,,1.3 Pre-and Intra-Operative Medication and Sedation for Short-Term Procedures and Adjuncts for Spinal and Epidural Anaesthesia,,,20
+1.3.8,Morphine,Injection,10mg/mL (1mL Ampoule) Preservative free22,5,,1.3 Pre-and Intra-Operative Medication and Sedation for Short-Term Procedures and Adjuncts for Spinal and Epidural Anaesthesia,,,20
+1.3.9,Ondansetron,Injection,2mg/mL (2mL Ampoule),4,,1.3 Pre-and Intra-Operative Medication and Sedation for Short-Term Procedures and Adjuncts for Spinal and Epidural Anaesthesia,,23,21
+1.3.10,Phenylephrine,Injection,10mg/mL Hydrochloride 1mL,5,,1.3 Pre-and Intra-Operative Medication and Sedation for Short-Term Procedures and Adjuncts for Spinal and Epidural Anaesthesia,,24,21
+1.3.11,Propofol,Injection,10mg/mL (20mL vial),4,,1.3 Pre-and Intra-Operative Medication and Sedation for Short-Term Procedures and Adjuncts for Spinal and Epidural Anaesthesia,,25,21
+1.3.12,Remifentanyl,PFI,2mg/2mL,5,,1.3 Pre-and Intra-Operative Medication and Sedation for Short-Term Procedures and Adjuncts for Spinal and Epidural Anaesthesia,,,21
+1.4.1,Medical air,Inhalation (medical gas),,4,,1.4 Medical gases,,,21
+1.4.2,Nitrous oxide,Inhalation (medical gas),,4,,1.4 Medical gases,,,21
+1.4.3,Oxygen,Inhalation (medical gas),,2,,1.4 Medical gases,,26,21
+2.1.1,Atracurium,Injection,10mg (as besilate)/mL (5mL amp),4,,2.1 Muscle relaxants,,,21
+2.1.2,Cisatracurium,Injection,2mg (as besilate)/mL (10mL amp),4,,2.1 Muscle relaxants,,,21
+2.1.3,Rocuronium,Injection,"10mg/mL (as bromide), 5mL vial",5,,2.1 Muscle relaxants,,,21
+2.1.4,Suxamethonium,Injection,50mg (as chloride)/mL (2mL amp),4,,2.1 Muscle relaxants,,27,21
+2.1.5,Vecuronium,PFI,10mg (as bromide) vial [c],6,,2.1 Muscle relaxants,,,21
+2.2.1,Neostigmine,Injection,2.5mg (as metasulphate)/1mL amp,4,,2.2 Cholinesterase Inhibitors,,,22
+2.2.2,Pyridostigmine,Tablet,60mg (as bromide),5,,2.2 Cholinesterase Inhibitors,,,22
+2.2.2,Pyridostigmine,Injection,"5mg/mL, 2mL, Ampoule",6,,2.2 Cholinesterase Inhibitors,,,22
+2.2.2,Pyridostigmine,Oral Solution,"60mg/5mL, 240mL",6,,2.2 Cholinesterase Inhibitors,,,22
+2.3.1,Atropine,Injection,1mg (as sulphate)/1mL amp,4,,2.3 Anticholinergics,,,22
+2.3.2,Glycopyrronium,Injection,200 micrograms (as bromide)/mL,4,,2.3 Anticholinergics,,28,22
+3.1.1,Acetylsalicylic acid (Aspirin),Tablet,300mg,2,,2.3 Anticholinergics,,,22
+3.1.2,Celecoxib,Tablet,200mg,4,,2.3 Anticholinergics,,29,22
+3.1.3,Dexketoprofen,Tablet30,25mg,4,,2.3 Anticholinergics,,,22
+3.1.3,Dexketoprofen,Injection31,25mg/mL (2mL amp),5,,2.3 Anticholinergics,,,22
+3.1.4,Ibuprofen,Oral liquid,100mg/5mL [c] 32,2,,2.3 Anticholinergics,,,22
+3.1.4,Ibuprofen,Tablet,200mg,2,,2.3 Anticholinergics,,,22
+3.1.5,Ketorolac,Injection (IM/IV),30mg/mL,2,,2.3 Anticholinergics,,33,22
+3.1.6,Paracetamol,Injection (for IV infusion)34,10mg/mL (100mL vial),4,,2.3 Anticholinergics,,,23
+3.1.6,Paracetamol,Oral liquid,120mg/5mL [c],1,,2.3 Anticholinergics,,,23
+3.1.6,Paracetamol,Suppository,125mg [c],2,,2.3 Anticholinergics,,,23
+3.1.6,Paracetamol,Tablet (scored),500mg,1,,2.3 Anticholinergics,,,23
+3.2.1,Dihydrocodeine phosphate,Tablet,30mg,4,,3.2 Opioid analgesics,,35,23
+3.2.2,Fentanyl,Transdermal patch,25 micrograms/hr36,5,,3.2 Opioid analgesics,,,23
+3.2.2,Fentanyl,Transdermal patch,50 micrograms/hr37,5,,3.2 Opioid analgesics,,,23
+3.2.3,Methadone,Tablet39,5mg,4,,3.2 Opioid analgesics,,38,23
+3.2.3,Methadone,Oral Solution39,1mg/mL,4,,3.2 Opioid analgesics,,38,23
+3.2.4,Morphine,Injection,10mg (as HCl or sulphate)/1mL amp,4,,3.2 Opioid analgesics,,40,23
+3.2.4,Morphine,Injection (for Infusion)41,30mg/mL,4,,3.2 Opioid analgesics,,40,23
+3.2.4,Morphine,Oral liquid,1mg (as HCl or sulphate)/ mL,3,,3.2 Opioid analgesics,,40,23
+3.2.4,Morphine,Oral liquid,10mg (as HCl or sulphate)/ mL,3,,3.2 Opioid analgesics,,40,23
+3.2.4,Morphine,Tablet (m/r),30mg (sulphate),4,,3.2 Opioid analgesics,,40,23
+3.2.5,Oxycodone,Tablet (i/r),5mg (as HCI),6,,3.2 Opioid analgesics,,42,23
+3.2.6,Tramadol,Capsule,50mg,5,,3.2 Opioid analgesics,,43,23
+3.2.6,Tramadol,Injection,50mg/mL (2mL amp),5,,3.2 Opioid analgesics,,43,23
+3.3.1,Amitriptyline,Tablet,25mg,2,,3.3 Adjuncts for pain Management and Medicines for other Symptoms in Palliative Care,,,24
+3.3.2,Bisacodyl,Tablet,5mg,2,,3.3 Adjuncts for pain Management and Medicines for other Symptoms in Palliative Care,,,24
+3.3.3,Carbamazepine,Tablet (scored),200mg,4,,3.3 Adjuncts for pain Management and Medicines for other Symptoms in Palliative Care,,44,24
+3.3.4,Dexamethasone,Injection,4mg (as sodium phosphate)/1mL amp,3,,3.3 Adjuncts for pain Management and Medicines for other Symptoms in Palliative Care,,,24
+3.3.4,Dexamethasone,Tablet,500 micrograms,3,,3.3 Adjuncts for pain Management and Medicines for other Symptoms in Palliative Care,,,24
+3.3.4,Dexamethasone,Tablet (scored),4mg,3,,3.3 Adjuncts for pain Management and Medicines for other Symptoms in Palliative Care,,,24
+3.3.5,Diazepam,Injection,5mg/mL (2mL amp),4,,3.3 Adjuncts for pain Management and Medicines for other Symptoms in Palliative Care,,,24
+3.3.5,Diazepam,Tablet (scored),5mg,4,,3.3 Adjuncts for pain Management and Medicines for other Symptoms in Palliative Care,,,24
+3.3.6,Gabapentin,Tablet,300mg,4,,3.3 Adjuncts for pain Management and Medicines for other Symptoms in Palliative Care,,45,24
+3.3.7,Haloperidol,Injection,5mg/1mL amp,3,,3.3 Adjuncts for pain Management and Medicines for other Symptoms in Palliative Care,,46,24
+3.3.7,Haloperidol,Tablet (scored),5mg,3,,3.3 Adjuncts for pain Management and Medicines for other Symptoms in Palliative Care,,46,24
+3.3.8,Hyoscine butylbromide,Injection,20mg/1mL amp,3,,3.3 Adjuncts for pain Management and Medicines for other Symptoms in Palliative Care,,,24
+3.3.8,Hyoscine butylbromide,Tablet47,10mg,3,,3.3 Adjuncts for pain Management and Medicines for other Symptoms in Palliative Care,,,24
+3.3.9,Lactulose,Oral liquid,3.1-3.7g/5mL,4,,3.3 Adjuncts for pain Management and Medicines for other Symptoms in Palliative Care,,,24
+3.3.10,Loperamide,Capsule,2mg,3,,3.3 Adjuncts for pain Management and Medicines for other Symptoms in Palliative Care,,,24
+3.3.11,Metoclopramide,Injection,5mg/mL (2mL amp),4,,3.3 Adjuncts for pain Management and Medicines for other Symptoms in Palliative Care,,48,24
+3.3.11,Metoclopramide,Tablet,10mg,2,,3.3 Adjuncts for pain Management and Medicines for other Symptoms in Palliative Care,,48,24
+3.3.12,Midazolam,Injection,1mg (as HCl)/mL (5mL amp),5,,3.3 Adjuncts for pain Management and Medicines for other Symptoms in Palliative Care,,49,24
+3.3.13,Ondansetron,Injection50,2mg (as HCl)/mL (2mL amp),2,,3.3 Adjuncts for pain Management and Medicines for other Symptoms in Palliative Care,,,25
+3.3.13,Ondansetron,Oral liquid51,4mg base/5mL [c],2,,3.3 Adjuncts for pain Management and Medicines for other Symptoms in Palliative Care,,,25
+3.3.13,Ondansetron,Tablet52,4mg (as HCl),2,,3.3 Adjuncts for pain Management and Medicines for other Symptoms in Palliative Care,,,25
+3.3.14,Prednisolone,Oral liquid,15mg/5mL [c],4,,3.3 Adjuncts for pain Management and Medicines for other Symptoms in Palliative Care,,,25
+3.3.14,Prednisolone,Tablet,5mg,4,,3.3 Adjuncts for pain Management and Medicines for other Symptoms in Palliative Care,,,25
+3.3.15,Pregabalin,Capsule,25mg,5,,3.3 Adjuncts for pain Management and Medicines for other Symptoms in Palliative Care,,53,25
+3.3.15,Pregabalin,Capsule,75mg,5,,3.3 Adjuncts for pain Management and Medicines for other Symptoms in Palliative Care,,53,25
+3.3.16,Senna,Tablet,7.5mg,4,,3.3 Adjuncts for pain Management and Medicines for other Symptoms in Palliative Care,,54,25
+3.3.16,Senna,Oral liquid,1mg/mL,2,,3.3 Adjuncts for pain Management and Medicines for other Symptoms in Palliative Care,,54,25
+3.3.16,Senna,Oral liquid56,2mg (as maleate)/5mL,2,,3.3 Adjuncts for pain Management and Medicines for other Symptoms in Palliative Care,,54,25
+3.3.16,Senna,Tablet,5mg,4,,3.3 Adjuncts for pain Management and Medicines for other Symptoms in Palliative Care,,54,26
+5.1.1,Activated Charcoal,PFOL,50g,2,,5.1 Non-specific,,,26
+5.2.1,Acetylcysteine,Injection,200mg/mL (10mL amp59),4,,5.2 Specific,,,26
+5.2.2,Atropine,Injection,1mg (as sulphate)/1mL amp,2,,5.2 Specific,,,26
+5.2.3,Calcium folinate,Injection,10mg/mL (5mL vial),4,,5.2 Specific,,60,26
+5.2.4,Calcium gluconate,Injection,100mg/mL in 10mL amp,3,,5.2 Specific,,61,26
+5.2.5,Deferasirox,Tablet,100mg,4,,5.2 Specific,,62,26
+5.2.5,Deferasirox,Tablet,400mg,4,,5.2 Specific,,62,26
+5.2.6,Deferoxamine,PFI,500mg (as mesilate) vial,4,,5.2 Specific,,63,26
+5.2.7,Ethanol,Injection64,100% (10mL amp),4,,5.2 Specific,,,26
+5.2.7,Ethanol,Oral liquid (Medicinal)65,95-96%,4,,5.2 Specific,,,26
+5.2.8,Fomepizole,Injection,5mg (as sulphate)/mL (20mL amp),5,,5.2 Specific,,66,26
+5.2.9,Flumazenil,Injection,100 micrograms/mL (5mL amp),4,,5.2 Specific,,67,26
+5.2.10,Lipid emulsion,Injection,20% (200 to 500mL),4,,5.2 Specific,,68,27
+5.2.11,Naloxone,Injection,400 micrograms (as HCl)/1mL amp,4,,5.2 Specific,,69,27
+5.2.12,Phytomenadione (Vit K1),Injection,10mg/mL (1mL amp),4,,5.2 Specific,,70,27
+5.2.13,Pralidoxime,PFI,1g (as chloride or mesilate) vial,4,,5.2 Specific,,71,27
+5.2.14,Protamine,Injection,10mg/mL (as sulphate) (5mL amp),4,,5.2 Specific,,72,27
+5.2.15,Sodium hydrogen carbonate (Sodium bicarbonate),Injectable solution,8.4% (10mL amp),4,,5.2 Specific,,73,27
+5.2.16,Sodium nitrite,Injection,30mg/mL (10mL amp),4,,5.2 Specific,,74,27
+5.2.17,Sodium thiosulphate,Injection,250mg/mL (50mL amp),4,,5.2 Specific,,75,27
+5.2.18,Succimer [Dimercaptosuccinic acid (DMSA)],Capsule,100mg,5,,5.2 Specific,,76,27
+5.2.18,Succimer [Dimercaptosuccinic acid (DMSA)],Capsule,500mg,5,,5.2 Specific,,76,27
+5.2.18,Succimer [Dimercaptosuccinic acid (DMSA)],Tablet (cross-scored),200mg,4,,5.2 Specific,,76,27
+5.2.18,Succimer [Dimercaptosuccinic acid (DMSA)],Capsule,2mg,4,,5.2 Specific,,76,27
+5.2.18,Succimer [Dimercaptosuccinic acid (DMSA)],Capsule,100mg,4,,5.2 Specific,,76,28
+5.2.18,Succimer [Dimercaptosuccinic acid (DMSA)],Capsule,100mg,4,,5.2 Specific,,76,28
+5.2.18,Succimer [Dimercaptosuccinic acid (DMSA)],"Tablet, (chewable, dispersible)",5mg,4,,5.2 Specific,,76,28
+5.2.18,Succimer [Dimercaptosuccinic acid (DMSA)],Capsule,25mg,4,,5.2 Specific,,76,28
+5.2.18,Succimer [Dimercaptosuccinic acid (DMSA)],Oral Solution,100mg/mL,5,,5.2 Specific,,76,28
+5.2.18,Succimer [Dimercaptosuccinic acid (DMSA)],Tablet (scored)80,500mg,4,,5.2 Specific,,76,28
+5.2.18,Succimer [Dimercaptosuccinic acid (DMSA)],Capsule,5mg (as HCl)/mL (3mL amp84,4,,5.2 Specific,,76,28
+5.2.18,Succimer [Dimercaptosuccinic acid (DMSA)],Oromucosal solution85,5mg/mL,4,,5.2 Specific,,76,28
+5.2.18,Succimer [Dimercaptosuccinic acid (DMSA)],Capsule,10mg/mL,4,,5.2 Specific,,76,28
+5.2.18,Succimer [Dimercaptosuccinic acid (DMSA)],Capsule,300mg,4,,5.2 Specific,,76,28
+5.2.18,Succimer [Dimercaptosuccinic acid (DMSA)],Capsule,200mg/1mL amp,2,,5.2 Specific,,76,29
+5.2.18,Succimer [Dimercaptosuccinic acid (DMSA)],Tablet (scored),30mg,2,,5.2 Specific,,76,29
+5.2.18,Succimer [Dimercaptosuccinic acid (DMSA)],Oral liquid,30mg/5mL,4,,5.2 Specific,,76,29
+5.2.18,Succimer [Dimercaptosuccinic acid (DMSA)],Tablet / Capsule,50mg,4,,5.2 Specific,,76,29
+5.2.18,Succimer [Dimercaptosuccinic acid (DMSA)],Capsule,100mg,4,,5.2 Specific,,76,29
+5.2.18,Succimer [Dimercaptosuccinic acid (DMSA)],Capsule,75mg,4,,5.2 Specific,,76,29
+5.2.18,Succimer [Dimercaptosuccinic acid (DMSA)],Capsule,50mg,5,,5.2 Specific,,76,29
+5.2.18,Succimer [Dimercaptosuccinic acid (DMSA)],Capsule,100mg/ mL (10mL amp),4,,5.2 Specific,,76,29
+5.2.18,Succimer [Dimercaptosuccinic acid (DMSA)],Oral liquid,200mg/5mL,4,,5.2 Specific,,76,29
+5.2.18,Succimer [Dimercaptosuccinic acid (DMSA)],Tablet (e/c),200mg,4,,5.2 Specific,,76,29
+5.2.18,Succimer [Dimercaptosuccinic acid (DMSA)],Capsule,500mg,4,,5.2 Specific,,76,29
+5.2.18,Succimer [Dimercaptosuccinic acid (DMSA)],Tablet (crushable),100mg,4,,5.2 Specific,,76,29
+7.1.1.1,Albendazole,Tablet (chewable)88,400mg,1,,7.1 Anthelminthics,7.1.1 Intestinal Anthelminthics,,29
+7.1.1.1,Albendazole,Suspension89,100mg/5mL,1,,7.1 Anthelminthics,7.1.1 Intestinal Anthelminthics,,29
+7.1.1.2,Mebendazole,"Tablet (chewable, dispersible)",500mg,1,,7.1 Anthelminthics,7.1.1 Intestinal Anthelminthics,90,30
+7.1.1.3,Praziquantel,Tablet (scored),600mg,1,,7.1 Anthelminthics,7.1.1 Intestinal Anthelminthics,,30
+7.1.2.1,Albendazole,Tablet (chewable),400mg,1,,7.1 Anthelminthics,7.1.1 Intestinal Anthelminthics,,30
+7.1.2.1,Albendazole,Suspension91,100 mg/5 mL,1,,7.1 Anthelminthics,7.1.1 Intestinal Anthelminthics,,30
+7.1.2.2,Diethylcarbamazine (DEC),Tablet (scored),100mg (as dihydrogen citrate),1,,7.1 Anthelminthics,7.1.1 Intestinal Anthelminthics,,30
+7.1.2.3,Ivermectin,Tablet (scored),3mg,1,,7.1 Anthelminthics,7.1.1 Intestinal Anthelminthics,,30
+7.2.1.1,Amikacin,Injection,50mg (as sulphate)/mL in 2ml vial [c],4,,7.2 Antibacterials,7.2.1 Access Group Antibiotics,92,30
+7.2.1.1,Amikacin,Injection,250mg (as sulphate)/mL in 2ml vial,4,,7.2 Antibacterials,7.2.1 Access Group Antibiotics,92,30
+7.2.1.2,Amoxicillin,"Tablet (dispersible, scored)",250mg,2,,7.2 Antibacterials,7.2.1 Access Group Antibiotics,93,30
+7.2.1.2,Amoxicillin,PFOL,125mg/5mL ((as trihydrate),2,,7.2 Antibacterials,7.2.1 Access Group Antibiotics,93,30
+7.2.1.2,Amoxicillin,"Tablet (dispersible, scored)",250mg/5mL ((as trihydrate),2,,7.2 Antibacterials,7.2.1 Access Group Antibiotics,93,30
+7.2.1.2,Amoxicillin,Capsule,500mg,2,,7.2 Antibacterials,7.2.1 Access Group Antibiotics,93,30
+7.2.1.3,Amoxicillin + clavulanic acid,PFOL,200mg (as trihydrate) + 28mg (as potassium salt) / 5mL,4,,7.2 Antibacterials,7.2.1 Access Group Antibiotics,94,31
+7.2.1.3,Amoxicillin + clavulanic acid,PFOL,125mg (as trihydrate) + 31.25mg (as potassium salt)/5mL,4,,7.2 Antibacterials,7.2.1 Access Group Antibiotics,94,31
+7.2.1.3,Amoxicillin + clavulanic acid,PFOL,250 mg (as trihydrate) + 62.5 mg (as potassium salt)/5mL,4,,7.2 Antibacterials,7.2.1 Access Group Antibiotics,94,31
+7.2.1.3,Amoxicillin + clavulanic acid,"Tablet (dispersible, scored)","250mg + 62.5mg (i.e., 312.5 mg)",4,,7.2 Antibacterials,7.2.1 Access Group Antibiotics,94,31
+7.2.1.3,Amoxicillin + clavulanic acid,Tablet,"875mg + 125mg (i.e., 1g)",4,,7.2 Antibacterials,7.2.1 Access Group Antibiotics,94,31
+7.2.1.3,Amoxicillin + clavulanic acid,PFI95,"500mg + 100mg (i.e., 600mg)",4,,7.2 Antibacterials,7.2.1 Access Group Antibiotics,94,31
+7.2.1.3,Amoxicillin + clavulanic acid,PFOL,"1g + 200mg (i.e., 1.2gm)",4,,7.2 Antibacterials,7.2.1 Access Group Antibiotics,94,31
+7.2.1.4,Ampicillin,PFI,500mg vial,4,,7.2 Antibacterials,7.2.1 Access Group Antibiotics,96,31
+7.2.1.5,Benzathine benzylpenicillin,PFI,900mg (1.2MU) vial,2,,7.2 Antibacterials,7.2.1 Access Group Antibiotics,97,31
+7.2.1.6,Benzylpenicillin,PFI,600mg (1MU) (as sodium or potassium salt) vial,2,,7.2 Antibacterials,7.2.1 Access Group Antibiotics,98,31
+7.2.1.6,Benzylpenicillin,PFI,3g (5MU) (as sodium or potassium salt) vial,4,,7.2 Antibacterials,7.2.1 Access Group Antibiotics,98,31
+7.2.1.7,Cefalexin,PFOL,125mg/5mL,2,,7.2 Antibacterials,7.2.1 Access Group Antibiotics,99,31
+7.2.1.7,Cefalexin,Capsule,250mg,2,,7.2 Antibacterials,7.2.1 Access Group Antibiotics,99,31
+7.2.1.8,Cefazolin,PFI,500mg (as sodium salt) in vial,4,,7.2 Antibacterials,7.2.1 Access Group Antibiotics,100,31
+7.2.1.8,Cefazolin,PFI,1g (as sodium salt) in vial,4,,7.2 Antibacterials,7.2.1 Access Group Antibiotics,100,31
+7.2.1.9,Doxycycline,Tablet / Capsule,100mg (as hyclate),2,,7.2 Antibacterials,7.2.1 Access Group Antibiotics,101,32
+7.2.1.10,Flucloxacillin,Capsule102,250mg (as sodium salt),2,,7.2 Antibacterials,7.2.1 Access Group Antibiotics,,32
+7.2.1.10,Flucloxacillin,Capsule102,500mg (as sodium salt),2,,7.2 Antibacterials,7.2.1 Access Group Antibiotics,,32
+7.2.1.10,Flucloxacillin,PFOL102,125mg (as sodium salt)/5mL,2,,7.2 Antibacterials,7.2.1 Access Group Antibiotics,,32
+7.2.1.10,Flucloxacillin,PFI103,500mg (as sodium salt) vial,4,,7.2 Antibacterials,7.2.1 Access Group Antibiotics,,32
+7.2.1.11,Gentamicin,Injection,10mg/mL (as sulphate) (2mL vial),3,,7.2 Antibacterials,7.2.1 Access Group Antibiotics,104,32
+7.2.1.11,Gentamicin,Injection,40mg/mL (as sulphate) (2mL vial),3,,7.2 Antibacterials,7.2.1 Access Group Antibiotics,104,32
+7.2.1.12,Metronidazole,Injection105,5mg/mL (100mL vial),4,,7.2 Antibacterials,7.2.1 Access Group Antibiotics,,32
+7.2.1.12,Metronidazole,Oral liquid106,200mg/5mL (as benzoate),2,,7.2 Antibacterials,7.2.1 Access Group Antibiotics,,32
+7.2.1.12,Metronidazole,"Tablet (f/c, scored)",400mg,2,,7.2 Antibacterials,7.2.1 Access Group Antibiotics,,32
+7.2.1.13,Nitrofurantoin,Oral liquid,25mg/5mL [c],2,,7.2 Antibacterials,7.2.1 Access Group Antibiotics,107,32
+7.2.1.13,Nitrofurantoin,Tablet,100mg,2,,7.2 Antibacterials,7.2.1 Access Group Antibiotics,107,32
+7.2.1.14,Phenoxymethylpenicillin (Penicillin V),PFOL,250mg (as potassium salt) /5mL,3,,7.2 Antibacterials,7.2.1 Access Group Antibiotics,108,32
+7.2.1.14,Phenoxymethylpenicillin (Penicillin V),Tablet,250mg (as potassium salt),3,,7.2 Antibacterials,7.2.1 Access Group Antibiotics,108,32
+7.2.1.15,Tinidazole,Tablet (f/c),500mg,2,,7.2 Antibacterials,7.2.1 Access Group Antibiotics,109,32
+7.2.2.1,Azithromycin,Tablet (scored),500mg (anhydrous),2,,7.2 Antibacterials,7.2.2 Watch Group antibiotics,110,33
+7.2.2.1,Azithromycin,PFOL,200mg/5mL,2,,7.2 Antibacterials,7.2.2 Watch Group antibiotics,110,33
+7.2.2.2,Cefixime,Tablet,400mg (as trihydrate),2,,7.2 Antibacterials,7.2.2 Watch Group antibiotics,111,33
+7.2.2.3,Cefotaxime,Powder for Injection,500mg,4,,7.2 Antibacterials,7.2.2 Watch Group antibiotics,112,33
+7.2.2.3,Cefotaxime,Powder for Injection,1gm,4,,7.2 Antibacterials,7.2.2 Watch Group antibiotics,112,33
+7.2.2.4,Ceftazidime,PFI,250mg (as pentahydrate) vial,4,,7.2 Antibacterials,7.2.2 Watch Group antibiotics,113,33
+7.2.2.4,Ceftazidime,PFI,1g (as pentahydrate) vial,4,,7.2 Antibacterials,7.2.2 Watch Group antibiotics,113,33
+7.2.2.5,Ceftriaxone,Injection (IM/IV),250mg (as sodium salt) [c]114,4,,7.2 Antibacterials,7.2.2 Watch Group antibiotics,,33
+7.2.2.5,Ceftriaxone,Injection (IM/IV),1g (as sodium salt)115,4,,7.2 Antibacterials,7.2.2 Watch Group antibiotics,,33
+7.2.2.6,Cefuroxime,PFI116,750mg,4,,7.2 Antibacterials,7.2.2 Watch Group antibiotics,,33
+7.2.2.7,Ciprofloxacin,Tablet (scored)117,500mg (as HCl),4,,7.2 Antibacterials,7.2.2 Watch Group antibiotics,,33
+7.2.2.7,Ciprofloxacin,Injection118,400mg,5,,7.2 Antibacterials,7.2.2 Watch Group antibiotics,,33
+7.2.2.8,Clarithromycin,Tablet (scored),500mg,4,,7.2 Antibacterials,7.2.2 Watch Group antibiotics,119,34
+7.2.2.9,Clindamycin,Capsule,150mg (as HCl),4,,7.2 Antibacterials,7.2.2 Watch Group antibiotics,120,34
+7.2.2.9,Clindamycin,Injection121,150mg (as phosphate)/mL (2mL vial),4,,7.2 Antibacterials,7.2.2 Watch Group antibiotics,120,34
+7.2.2.9,Clindamycin,Oral liquid,75mg (as palmitate) /5mL [c],4,,7.2 Antibacterials,7.2.2 Watch Group antibiotics,120,34
+7.2.2.10,Cotrimoxazole (Sulfamethoxazole + Trimethoprim),Injection122,"80mg + 16mg (i.e., 96mg)/ mL (5mL amp)",4,,7.2 Antibacterials,7.2.2 Watch Group antibiotics,,34
+7.2.2.10,Cotrimoxazole (Sulfamethoxazole + Trimethoprim),Oral liquid123,"200mg +40mg (i.e., 240mg) /5mL [c]",2,,7.2 Antibacterials,7.2.2 Watch Group antibiotics,,34
+7.2.2.10,Cotrimoxazole (Sulfamethoxazole + Trimethoprim),Tablet (scored)123,"800 + 160mg (i.e., 960mg)",2,,7.2 Antibacterials,7.2.2 Watch Group antibiotics,,34
+7.2.2.11,Erythromycin,Tablet,250mg,3,,7.2 Antibacterials,7.2.2 Watch Group antibiotics,124,34
+7.2.2.11,Erythromycin,Tablet,500mg,3,,7.2 Antibacterials,7.2.2 Watch Group antibiotics,124,34
+7.2.2.12,Piperacillin + Tazobactam,PFI,4g (as sodium salt) + 500mg (as sodium salt),5,,7.2 Antibacterials,7.2.2 Watch Group antibiotics,125,34
+7.2.3.1,Ceftazidime + avibactam,PFI,2000mg+500mg,5,,7.2 Antibacterials,7.2.3 Reserve group antibiotics,126,34
+7.2.3.2,Colistin,PFI,1MU (as colistemethate sodium) vial,5,,7.2 Antibacterials,7.2.3 Reserve group antibiotics,127,34
+7.2.3.3,Fosfomycin,Granules for oral suspension128,3g sachet,5,,7.2 Antibacterials,7.2.3 Reserve group antibiotics,,34
+7.2.3.3,Fosfomycin,PFI129,3g (as sodium) vial,5,,7.2 Antibacterials,7.2.3 Reserve group antibiotics,,34
+7.2.3.4,Linezolid,Injection (IV),2mg/mL in 300mL bag,5,,7.2 Antibacterials,7.2.3 Reserve group antibiotics,130,35
+7.2.3.4,Linezolid,Tablet,600mg,5,,7.2 Antibacterials,7.2.3 Reserve group antibiotics,130,35
+7.2.3.5,Meropenem,PFI,500mg (as trihydrate),5,,7.2 Antibacterials,7.2.3 Reserve group antibiotics,131,35
+7.2.3.6,Polymyxin B,PFI,"500,000 IU vial",5,,7.2 Antibacterials,7.2.3 Reserve group antibiotics,132,35
+7.2.3.7,Teicoplanin,Injection,200mg,5,,7.2 Antibacterials,7.2.3 Reserve group antibiotics,133,35
+7.2.3.8,Tigecycline,PFI,50mg vial,5,,7.2 Antibacterials,7.2.3 Reserve group antibiotics,134,35
+7.2.3.9,Vancomycin,PFI,500mg vial (as HCl),5,,7.2 Antibacterials,7.2.3 Reserve group antibiotics,135,35
+7.2.4.1,Clofazamine,Capsule,50mg,4,,7.2 Antibacterials,7.2.3 Reserve group antibiotics,,35
+7.2.4.1,Clofazamine,Capsule,100mg,4,,7.2 Antibacterials,7.2.3 Reserve group antibiotics,,35
+7.2.4.2,Dapsone,Tablet,100mg,4,,7.2 Antibacterials,7.2.3 Reserve group antibiotics,,35
+7.2.4.2,Dapsone,Tablet,25mg,4,,7.2 Antibacterials,7.2.3 Reserve group antibiotics,,35
+7.2.4.3,Rifampicin (R),Tablet / Capsule,150mg,4,,7.2 Antibacterials,7.2.3 Reserve group antibiotics,,35
+7.2.4.3,Rifampicin (R),Tablet / Capsule,300mg,4,,7.2 Antibacterials,7.2.3 Reserve group antibiotics,,35
+7.2.4.3,Rifampicin (R),Tablet,400mg,2,,7.2 Antibacterials,7.2.3 Reserve group antibiotics,,36
+7.2.4.3,Rifampicin (R),Tablet / Capsule,100mg,2,,7.2 Antibacterials,7.2.3 Reserve group antibiotics,,36
+7.2.4.3,Rifampicin (R),Tablet / Capsule,300mg,2,,7.2 Antibacterials,7.2.3 Reserve group antibiotics,,36
+7.2.4.3,Rifampicin (R),Injection,100mg/mL,4,,7.2 Antibacterials,7.2.3 Reserve group antibiotics,,36
+7.2.4.3,Rifampicin (R),Tablet / Capsule,150mg (scored),2,,7.2 Antibacterials,7.2.3 Reserve group antibiotics,,36
+7.2.4.3,Rifampicin (R),"Tablet, (dispersible)",150mg,2,,7.2 Antibacterials,7.2.3 Reserve group antibiotics,,36
+7.2.4.3,Rifampicin (R),Tablet / Capsule,300mg,2,,7.2 Antibacterials,7.2.3 Reserve group antibiotics,,36
+7.2.4.3,Rifampicin (R),PFI,600mg,4,,7.2 Antibacterials,7.2.3 Reserve group antibiotics,,36
+7.2.4.3,Rifampicin (R),Tablet / Capsule,75mg + 50mg [c],2,,7.2 Antibacterials,7.2.3 Reserve group antibiotics,,36
+7.2.4.3,Rifampicin (R),Tablet / Capsule,100mg,3,,7.2 Antibacterials,7.2.3 Reserve group antibiotics,,37
+7.2.4.3,Rifampicin (R),Tablet / Capsule,250mg,3,,7.2 Antibacterials,7.2.3 Reserve group antibiotics,,37
+7.2.4.3,Rifampicin (R),Tablet / Capsule,500mg + 500mg vial,3,,7.2 Antibacterials,7.2.3 Reserve group antibiotics,,37
+7.2.4.3,Rifampicin (R),Tablet,250mg,3,,7.2 Antibacterials,7.2.3 Reserve group antibiotics,,37
+7.2.4.3,Rifampicin (R),Tablet / Capsule,500mg (scored),3,,7.2 Antibacterials,7.2.3 Reserve group antibiotics,,37
+7.2.4.3,Rifampicin (R),Tablet / Capsule,750mg,3,,7.2 Antibacterials,7.2.3 Reserve group antibiotics,,37
+7.2.4.3,Rifampicin (R),Tablet,600mg,3,,7.2 Antibacterials,7.2.3 Reserve group antibiotics,,37
+7.2.4.3,Rifampicin (R),Tablet,400mg,3,,7.2 Antibacterials,7.2.3 Reserve group antibiotics,,37
+7.3.1,Amphotericin B,PFI,50mg (as sodium deoxycholate) vial,4,,7.3 Antifungal Medicines,,137,37
+7.3.1,Amphotericin B,Injection,(Liposomal) 50mg vial,4,,7.3 Antifungal Medicines,,137,37
+7.3.2,Clotrimazole,Vaginal Tablet,500mg,2,,7.3 Antifungal Medicines,,138,37
+7.3.3,Fluconazole,Tablet / Capsule,150mg139,2,,7.3 Antifungal Medicines,,,38
+7.3.3,Fluconazole,Tablet / Capsule,200mg,4,,7.3 Antifungal Medicines,,,38
+7.3.3,Fluconazole,Injection140,2mg/mL (100mL bottle),4,,7.3 Antifungal Medicines,,,38
+7.3.3,Fluconazole,Oral liquid,50mg/5mL,4,,7.3 Antifungal Medicines,,,38
+7.3.4,Flucytosine,Capsule,250mg,4,,7.3 Antifungal Medicines,,141,38
+7.3.4,Flucytosine,Injection,2.5g/250mL,4,,7.3 Antifungal Medicines,,141,38
+7.3.5,Griseofulvin,Tablet,125mg,2,,7.3 Antifungal Medicines,,142,38
+7.3.5,Griseofulvin,Tablet,500mg,2,,7.3 Antifungal Medicines,,142,38
+7.3.6,Itraconazole,Capsule,100mg,5,,7.3 Antifungal Medicines,,143,38
+7.3.7,Nystatin,Oral liquid (suspension),"100,000 IU/mL [c]",2,,7.3 Antifungal Medicines,,,38
+7.3.8,Posaconazole,Tablet (Delayed Release),100mg,6,,7.3 Antifungal Medicines,,144,38
+7.3.8,Posaconazole,Injection,18mg/mL (300mg/16.7mL),6,,7.3 Antifungal Medicines,,144,38
+7.3.9,Terbinafine,Tablet,125mg,4,,7.3 Antifungal Medicines,,,38
+7.3.9,Terbinafine,Tablet,250mg,4,,7.3 Antifungal Medicines,,,38
+7.3.10,Voriconazole,Tablet,200mg,5,,7.3 Antifungal Medicines,,145,38
+7.3.10,Voriconazole,PFI,200mg vial,5,,7.3 Antifungal Medicines,,145,38
+7.4.1.1,Acyclovir,PFI,250mg vial (as sodium salt),4,,7.4 Antiviral Medicines,7.4.1 Antiherpes medicines,146,39
+7.4.1.1,Acyclovir,Tablet (scored),400mg,2,,7.4 Antiviral Medicines,7.4.1 Antiherpes medicines,146,39
+7.4.1.1,Acyclovir,Oral Solution,20 mg/mL,2,,7.4 Antiviral Medicines,7.4.1 Antiherpes medicines,146,39
+7.4.1.1,Acyclovir,Tablet,300mg,2,,7.4 Antiviral Medicines,7.4.1 Antiherpes medicines,146,39
+7.4.1.1,Acyclovir,PFI,100mg,3,,7.4 Antiviral Medicines,7.4.1 Antiherpes medicines,146,39
+7.4.1.1,Acyclovir,PFI,200mg,3,,7.4 Antiviral Medicines,7.4.1 Antiherpes medicines,146,39
+7.4.1.1,Acyclovir,PFI,150mg,3,,7.4 Antiviral Medicines,7.4.1 Antiherpes medicines,146,40
+7.4.1.1,Acyclovir,PFI,600mg (f/c),3,,7.4 Antiviral Medicines,7.4.1 Antiherpes medicines,146,40
+7.4.1.1,Acyclovir,Oral liquid,10mg/mL (200mL),3,,7.4 Antiviral Medicines,7.4.1 Antiherpes medicines,146,40
+7.4.1.1,Acyclovir,PFI,800mg + 100mg,3,,7.4 Antiviral Medicines,7.4.1 Antiherpes medicines,146,40
+7.4.1.1,Acyclovir,PFI,200mg + 50mg,2,,7.4 Antiviral Medicines,7.4.1 Antiherpes medicines,146,40
+7.4.1.1,Acyclovir,Granules (In Sachet)150,40mg +10mg,2,,7.4 Antiviral Medicines,7.4.1 Antiherpes medicines,146,40
+7.4.1.1,Acyclovir,Oral powder,100mg sachet [c],2,,7.4 Antiviral Medicines,7.4.1 Antiherpes medicines,146,40
+7.4.1.1,Acyclovir,PFI,10mg,2,,7.4 Antiviral Medicines,7.4.1 Antiherpes medicines,146,40
+7.4.1.1,Acyclovir,Tablet (dispersible),10mg,2,,7.4 Antiviral Medicines,7.4.1 Antiherpes medicines,146,40
+7.4.1.1,Acyclovir,Tablet,600mg (as sulphate) + 300mg,2,,7.4 Antiviral Medicines,7.4.1 Antiherpes medicines,146,40
+7.4.1.1,Acyclovir,Tablet,800 + 160mg,2,,7.4 Antiviral Medicines,7.4.1 Antiherpes medicines,146,41
+7.4.1.1,Acyclovir,PFI,100mg,2,,7.4 Antiviral Medicines,7.4.1 Antiherpes medicines,146,41
+7.4.3.1,Gancyclovir,PFI,500mg vial,5,,7.4 Antiviral Medicines,7.4.3 Other Antivirals,157,41
+7.4.3.2,Ribavirin,Injection (IV)158,800mg in 10mL phosphate buffer solution,4,,7.4 Antiviral Medicines,7.4.3 Other Antivirals,,41
+7.4.3.2,Ribavirin,Capsule159,200mg,4,,7.4 Antiviral Medicines,7.4.3 Other Antivirals,,41
+7.4.3.3,Valgancyclovir,Tablet,450mg,5,,7.4 Antiviral Medicines,7.4.3 Other Antivirals,160,41
+7.4.3.3,Valgancyclovir,PFOL,50mg/mL,5,,7.4 Antiviral Medicines,7.4.3 Other Antivirals,160,41
+7.5.1.1,Diloxanide,Tablet,500mg (as furoate),2,,7.5 Antiprotozoal medicines,7.5.1 Antiamoebic and antigiardiasis medicines,163,42
+7.5.1.2,Diloxanide furoate + Metronidazole,Oral liquid,250mg + 200mg,2,,7.5 Antiprotozoal medicines,7.5.1 Antiamoebic and antigiardiasis medicines,164,42
+7.5.1.2,Diloxanide furoate + Metronidazole,Tablet,500mg + 400mg,2,,7.5 Antiprotozoal medicines,7.5.1 Antiamoebic and antigiardiasis medicines,164,42
+7.5.1.3,Metronidazole,Injection,500mg/100mL vial,3,,7.5 Antiprotozoal medicines,7.5.1 Antiamoebic and antigiardiasis medicines,,42
+7.5.1.3,Metronidazole,Oral liquid,200mg/5mL (as benzoate),2,,7.5 Antiprotozoal medicines,7.5.1 Antiamoebic and antigiardiasis medicines,,42
+7.5.1.3,Metronidazole,Tablet,400mg (scored),2,,7.5 Antiprotozoal medicines,7.5.1 Antiamoebic and antigiardiasis medicines,,42
+7.5.1.4,Tinidazole,Tablet (f/c),250mg,2,,7.5 Antiprotozoal medicines,7.5.1 Antiamoebic and antigiardiasis medicines,165,43
+7.5.1.4,Tinidazole,Tablet (f/c),500mg,2,,7.5 Antiprotozoal medicines,7.5.1 Antiamoebic and antigiardiasis medicines,165,43
+7.5.2.1,Amphotericin B,Injection,(Liposomal) 50mg vial,4,,7.5 Antiprotozoal medicines,7.5.2 Antileishmaniasis Medicines,166,43
+7.5.2.2,Paromomycin,Injection solution (IM),375mg/mL (as sulphate) (2mL amp),4,,7.5 Antiprotozoal medicines,7.5.2 Antileishmaniasis Medicines,167,43
+7.5.2.3,Sodium stibogluconate,Injection,100mg/mL (100mL amp),4,,7.5 Antiprotozoal medicines,7.5.2 Antileishmaniasis Medicines,168,43
+7.5.4.1,Cotrimoxazole (Sulfamethoxazole + Trimethoprim),Injection,96mg/mL (5mL amp),4,,7.5 Antiprotozoal medicines,7.5.4 Antipneumocystosis & Antitoxoplasmosis Medicines,,45
+7.5.4.1,Cotrimoxazole (Sulfamethoxazole + Trimethoprim),Oral liquid,240mg/5mL [c],4,,7.5 Antiprotozoal medicines,7.5.4 Antipneumocystosis & Antitoxoplasmosis Medicines,,45
+7.5.4.1,Cotrimoxazole (Sulfamethoxazole + Trimethoprim),Tablet (scored),800mg + 160mg,4,,7.5 Antiprotozoal medicines,7.5.4 Antipneumocystosis & Antitoxoplasmosis Medicines,,45
+7.5.4.2,Pyrimethamine,Tablet,25mg,4,,7.5 Antiprotozoal medicines,7.5.4 Antipneumocystosis & Antitoxoplasmosis Medicines,184,45
+7.5.4.3,Sulfadiazine,Tablet,500mg,4,,7.5 Antiprotozoal medicines,7.5.4 Antipneumocystosis & Antitoxoplasmosis Medicines,185,45
+7.6.1,Ivermectin,Tablet (scored),3mg,3,,7.5 Antiprotozoal medicines,7.5.5 Antitrypanosomal medicines,,45
+8.1.1,Acetylsalicylic acid (Aspirin),Tablet,300mg,2,,8.1 For treatment of Acute Attack,,,45
+8.1.2,Ibuprofen,Tablet,200mg [c],2,,8.1 For treatment of Acute Attack,,191,46
+8.1.3,Paracetamol,Tablet (scored),500mg,1,,8.1 For treatment of Acute Attack,,,46
+8.1.3,Paracetamol,Oral liquid,120mg/5mL[c],1,,8.1 For treatment of Acute Attack,,,46
+8.1.4,Sumatriptan,Tablet,25mg,5,,8.1 For treatment of Acute Attack,,192,46
+8.1.4,Sumatriptan,Tablet,50mg,5,,8.1 For treatment of Acute Attack,,192,46
+8.2.1,Propranolol,Tablet,40mg (as HCl),4,,8.2 Prophylaxis,,193,46
+8.2.2,Topiramate,Tablet,25mg,5,,8.2 Prophylaxis,,194,46
+8.2.2,Topiramate,Tablet,50mg,5,,8.2 Prophylaxis,,194,46
+9.1.1,Antithymocyte globulin (ATG) (Equine),Injection,"50mg/mL, 5mL vial",6,,9.1 Immunomodulators for non-malignant disease and supportive medicines,,195,46
+9.1.2,Azathioprine,Tablet (scored),50mg,5,,9.1 Immunomodulators for non-malignant disease and supportive medicines,,,46
+9.1.3,Basiliximab,PFI,20mg,6,,9.1 Immunomodulators for non-malignant disease and supportive medicines,,196,46
+9.1.4,Cyclosporin,Capsule,25mg,6,,9.1 Immunomodulators for non-malignant disease and supportive medicines,,197,46
+9.1.4,Cyclosporin,Capsule,100mg,6,,9.1 Immunomodulators for non-malignant disease and supportive medicines,,197,46
+9.1.4,Cyclosporin,Concentrate for injection198,50mg/mL in 1mL amp,6,,9.1 Immunomodulators for non-malignant disease and supportive medicines,,197,46
+9.1.5,Cyclophosphamide,PFI,500mg vial,5,,9.1 Immunomodulators for non-malignant disease and supportive medicines,,199,46
+9.1.5,Cyclophosphamide,PFI,1g vial,5,,9.1 Immunomodulators for non-malignant disease and supportive medicines,,199,46
+9.1.6,Everolimus,Tablet,500 micrograms (or 0.5mg),5,,9.1 Immunomodulators for non-malignant disease and supportive medicines,,200,47
+9.1.7,Methylprednisolone,PFI,125mg (as sodium succinate),4,,9.1 Immunomodulators for non-malignant disease and supportive medicines,,,47
+9.1.7,Methylprednisolone,PFI,500mg (as sodium succinate),4,,9.1 Immunomodulators for non-malignant disease and supportive medicines,,,47
+9.1.8,Mycophenolic acid,Tablet (e/c),180mg (as mycophenolate sodium),6,,9.1 Immunomodulators for non-malignant disease and supportive medicines,,201,47
+9.1.8,Mycophenolic acid,Tablet (e/c),360mg (as mycophenolate sodium),6,,9.1 Immunomodulators for non-malignant disease and supportive medicines,,201,47
+9.1.9,Mycophenolate mofetil,Tablet,250mg,6,,9.1 Immunomodulators for non-malignant disease and supportive medicines,,202,47
+9.1.9,Mycophenolate mofetil,Tablet,500mg,6,,9.1 Immunomodulators for non-malignant disease and supportive medicines,,202,47
+9.1.10,Prednisolone,Tablet,5mg,5,,9.1 Immunomodulators for non-malignant disease and supportive medicines,,,47
+9.1.10,Prednisolone,Tablet,20mg,5,,9.1 Immunomodulators for non-malignant disease and supportive medicines,,,47
+9.1.11,Rituximab,Injection (IV),10mg/mL (10mL vial),6,,9.1 Immunomodulators for non-malignant disease and supportive medicines,,203,47
+9.1.11,Rituximab,Injection (IV),10mg/mL (50mL vial),6,,9.1 Immunomodulators for non-malignant disease and supportive medicines,,203,47
+9.1.12,Tacrolimus,Concentrate (for IV infusion),5mg/1mL amp,6,,9.1 Immunomodulators for non-malignant disease and supportive medicines,,,47
+9.1.12,Tacrolimus,Capsule,500 micrograms,6,,9.1 Immunomodulators for non-malignant disease and supportive medicines,,,47
+9.1.12,Tacrolimus,Concentrate (for IV infusion),1mg,6,,9.1 Immunomodulators for non-malignant disease and supportive medicines,,,47
+9.1.12,Tacrolimus,Concentrate (for IV infusion),5mg,6,,9.1 Immunomodulators for non-malignant disease and supportive medicines,,,47
+9.2.1.1,Arsenic trioxide,Concentrate solution for Infusion,1mg/mL,6,,9.2 Antineoplastic and supportive medicines,9.2.1 Cytotoxic medicines,204,47
+9.2.1.2,Bendamustine,Injection,100mg vial,5,,9.2 Antineoplastic and supportive medicines,9.2.1 Cytotoxic medicines,205,47
+9.2.1.3,Bleomycin,PFI,15mg vial (as sulphate),5,,9.2 Antineoplastic and supportive medicines,9.2.1 Cytotoxic medicines,206,48
+9.2.1.4,Cabazitaxel,Injection,60mg,5,,9.2 Antineoplastic and supportive medicines,9.2.1 Cytotoxic medicines,207,48
+9.2.1.5,Calcium folinate,Injection,10mg/mL (5mL vial),5,,9.2 Antineoplastic and supportive medicines,9.2.1 Cytotoxic medicines,208,48
+9.2.1.5,Calcium folinate,Injection,10mg/mL (30mL vial),5,,9.2 Antineoplastic and supportive medicines,9.2.1 Cytotoxic medicines,208,48
+9.2.1.5,Calcium folinate,Tablet,15mg,5,,9.2 Antineoplastic and supportive medicines,9.2.1 Cytotoxic medicines,208,48
+9.2.1.6,Capecitabine,Tablet,150mg,5,,9.2 Antineoplastic and supportive medicines,9.2.1 Cytotoxic medicines,209,48
+9.2.1.6,Capecitabine,Tablet,500mg,5,,9.2 Antineoplastic and supportive medicines,9.2.1 Cytotoxic medicines,209,48
+9.2.1.7,Carboplatin,Injection,10mg/mL (15mL vial),5,,9.2 Antineoplastic and supportive medicines,9.2.1 Cytotoxic medicines,210,48
+9.2.1.7,Carboplatin,Injection,10mg/mL (45mL vial),5,,9.2 Antineoplastic and supportive medicines,9.2.1 Cytotoxic medicines,210,48
+9.2.1.8,Chlorambucil,Tablet,2mg,5,,9.2 Antineoplastic and supportive medicines,9.2.1 Cytotoxic medicines,211,48
+9.2.1.9,Cisplatin,Injection,1mg/mL (50mL vial),5,,9.2 Antineoplastic and supportive medicines,9.2.1 Cytotoxic medicines,212,48
+9.2.1.10,Cyclophosphamide,PFI,500mg vial,5,,9.2 Antineoplastic and supportive medicines,9.2.1 Cytotoxic medicines,213,48
+9.2.1.10,Cyclophosphamide,PFI,1g vial,5,,9.2 Antineoplastic and supportive medicines,9.2.1 Cytotoxic medicines,213,48
+9.2.1.10,Cyclophosphamide,Tablet,50mg,5,,9.2 Antineoplastic and supportive medicines,9.2.1 Cytotoxic medicines,213,48
+9.2.1.11,Cytarabine,PFI,100mg vial,5,,9.2 Antineoplastic and supportive medicines,9.2.1 Cytotoxic medicines,214,48
+9.2.1.11,Cytarabine,PFI,1g vial,5,,9.2 Antineoplastic and supportive medicines,9.2.1 Cytotoxic medicines,214,48
+9.2.1.12,Dacarbazine,PFI,200mg vial (as citrate),5,,9.2 Antineoplastic and supportive medicines,9.2.1 Cytotoxic medicines,215,48
+9.2.1.13,Dactinomycin (Actinomycin D),PFI,500 micrograms vial,5,,9.2 Antineoplastic and supportive medicines,9.2.1 Cytotoxic medicines,216,49
+9.2.1.14,Daunorubicin,PFI,20mg vial (as HCl),5,,9.2 Antineoplastic and supportive medicines,9.2.1 Cytotoxic medicines,217,49
+9.2.1.14,Daunorubicin,PFI,50mg vial (as HCl),5,,9.2 Antineoplastic and supportive medicines,9.2.1 Cytotoxic medicines,217,49
+9.2.1.15,Docetaxel,Injection (premixed),120mg vial,5,,9.2 Antineoplastic and supportive medicines,9.2.1 Cytotoxic medicines,218,49
+9.2.1.15,Docetaxel,Injection (premixed),80mg vial,5,,9.2 Antineoplastic and supportive medicines,9.2.1 Cytotoxic medicines,218,49
+9.2.1.16,Doxorubicin,PFI or Solution for Injection219,50mg vial (as HCl),5,,9.2 Antineoplastic and supportive medicines,9.2.1 Cytotoxic medicines,,49
+9.2.1.17,Etoposide,Capsule,50mg,5,,9.2 Antineoplastic and supportive medicines,9.2.1 Cytotoxic medicines,220,49
+9.2.1.17,Etoposide,Capsule,100mg,5,,9.2 Antineoplastic and supportive medicines,9.2.1 Cytotoxic medicines,220,49
+9.2.1.17,Etoposide,Injection,20mg/mL (5mL vial),5,,9.2 Antineoplastic and supportive medicines,9.2.1 Cytotoxic medicines,220,49
+9.2.1.18,Fluorouracil,Injection,50mg/mL (5mL vial),5,,9.2 Antineoplastic and supportive medicines,9.2.1 Cytotoxic medicines,221,49
+9.2.1.19,Gemcitabine,PFI,200mg vial,5,,9.2 Antineoplastic and supportive medicines,9.2.1 Cytotoxic medicines,222,49
+9.2.1.19,Gemcitabine,PFI,1g vial,5,,9.2 Antineoplastic and supportive medicines,9.2.1 Cytotoxic medicines,222,49
+9.2.1.20,Hydroxycarbamide (Hydroxyurea),SODF,500mg,5,,9.2 Antineoplastic and supportive medicines,9.2.1 Cytotoxic medicines,223,49
+9.2.1.21,Ifosfamide + Mesna,Injection,1g + 600mg,5,,9.2 Antineoplastic and supportive medicines,9.2.1 Cytotoxic medicines,224,49
+9.2.1.21,Ifosfamide + Mesna,Injection,2g + 1200mg,5,,9.2 Antineoplastic and supportive medicines,9.2.1 Cytotoxic medicines,224,49
+9.2.1.22,Irinotecan,Injection,20mg/mL (2mL vial),5,,9.2 Antineoplastic and supportive medicines,9.2.1 Cytotoxic medicines,225,50
+9.2.1.22,Irinotecan,Injection,20mg/mL (5mL vial),5,,9.2 Antineoplastic and supportive medicines,9.2.1 Cytotoxic medicines,225,50
+9.2.1.23,L - Asparaginase,PFI,"10,000 IU vial",5,,9.2 Antineoplastic and supportive medicines,9.2.1 Cytotoxic medicines,226,50
+9.2.1.24,Liposomal Doxorubicin (Pegylated),Solution for Injection,20mg vial,5,,9.2 Antineoplastic and supportive medicines,9.2.1 Cytotoxic medicines,227,50
+9.2.1.24,Liposomal Doxorubicin (Pegylated),Solution for Injection,50mg vial,5,,9.2 Antineoplastic and supportive medicines,9.2.1 Cytotoxic medicines,227,50
+9.2.1.25,Melphalan,Tablet228,2mg,5,,9.2 Antineoplastic and supportive medicines,9.2.1 Cytotoxic medicines,,50
+9.2.1.25,Melphalan,PFI229,50mg vial,5,,9.2 Antineoplastic and supportive medicines,9.2.1 Cytotoxic medicines,,50
+9.2.1.26,Mercaptopurine,Tablet,50mg,5,,9.2 Antineoplastic and supportive medicines,9.2.1 Cytotoxic medicines,230,50
+9.2.1.27,Methotrexate,PFI (preservative-free),25mg (as sodium salt)/mL (2mL vial),5,,9.2 Antineoplastic and supportive medicines,9.2.1 Cytotoxic medicines,231,50
+9.2.1.27,Methotrexate,PFI (preservative-free),25mg (as sodium salt)/mL (20mL vial)232,5,,9.2 Antineoplastic and supportive medicines,9.2.1 Cytotoxic medicines,231,50
+9.2.1.27,Methotrexate,Tablet,2.5mg (as sodium salt),5,,9.2 Antineoplastic and supportive medicines,9.2.1 Cytotoxic medicines,231,50
+9.2.1.27,Methotrexate,PFI (preservative-free),10mg,5,,9.2 Antineoplastic and supportive medicines,9.2.1 Cytotoxic medicines,231,50
+9.2.1.28,Mitomycin C,Injection,10mg,5,,9.2 Antineoplastic and supportive medicines,9.2.1 Cytotoxic medicines,233,50
+9.2.1.29,Oxaliplatin,Solution for Injection,2mg/mL (25mL vial),5,,9.2 Antineoplastic and supportive medicines,9.2.1 Cytotoxic medicines,234,50
+9.2.1.29,Oxaliplatin,Solution for Injection,2mg/mL (50mL vial),5,,9.2 Antineoplastic and supportive medicines,9.2.1 Cytotoxic medicines,234,50
+9.2.1.30,Paclitaxel,Concentrate (for IV infusion),6mg/mL (5mL vial),5,,9.2 Antineoplastic and supportive medicines,9.2.1 Cytotoxic medicines,235,51
+9.2.1.30,Paclitaxel,Concentrate (for IV infusion),6mg/mL (16.7mL vial),5,,9.2 Antineoplastic and supportive medicines,9.2.1 Cytotoxic medicines,235,51
+9.2.1.30,Paclitaxel,Concentrate (for IV infusion),6mg/mL (50mL vial),5,,9.2 Antineoplastic and supportive medicines,9.2.1 Cytotoxic medicines,235,51
+9.2.1.31,Pegaspargase,Injection,3750 Units/5mL vial,5,,9.2 Antineoplastic and supportive medicines,9.2.1 Cytotoxic medicines,236,51
+9.2.1.32,Pemetrexed,PFI or solution for injection,500mg,5,,9.2 Antineoplastic and supportive medicines,9.2.1 Cytotoxic medicines,,51
+9.2.1.33,Procarbazine,Capsule,50mg (as HCl),5,,9.2 Antineoplastic and supportive medicines,9.2.1 Cytotoxic medicines,237,51
+9.2.1.34,Temozolomide,Capsule,100mg,5,,9.2 Antineoplastic and supportive medicines,9.2.1 Cytotoxic medicines,238,51
+9.2.1.34,Temozolomide,Capsule,20mg,5,,9.2 Antineoplastic and supportive medicines,9.2.1 Cytotoxic medicines,238,51
+9.2.1.35,Tioguanine,SODF,40mg [c],5,,9.2 Antineoplastic and supportive medicines,9.2.1 Cytotoxic medicines,239,51
+9.2.1.36,Topotecan,Injection,2.5mg,5,,9.2 Antineoplastic and supportive medicines,9.2.1 Cytotoxic medicines,240,51
+9.2.1.37,Vinblastine,Injection,1mg/mL (as sulphate) (10mL vial),5,,9.2 Antineoplastic and supportive medicines,9.2.1 Cytotoxic medicines,241,51
+9.2.1.38,Vincristine,PFI or solution for injection,1mg/mL (as sulphate) vial,5,,9.2 Antineoplastic and supportive medicines,9.2.1 Cytotoxic medicines,242,51
+9.2.1.39,Vinorelbine,Injection,10mg/mL (1mL vial),5,,9.2 Antineoplastic and supportive medicines,9.2.1 Cytotoxic medicines,243,51
+9.2.1.39,Vinorelbine,Injection,10mg/mL (5mL vial),5,,9.2 Antineoplastic and supportive medicines,9.2.1 Cytotoxic medicines,243,51
+9.2.2.1,All-trans retinoid acid (ATRA),Capsule,10mg,5,,9.2 Antineoplastic and supportive medicines,9.2.2 Targeted therapies,244,52
+9.2.2.2,Bevacizumab,Injection,100mg,5,,9.2 Antineoplastic and supportive medicines,9.2.2 Targeted therapies,245,52
+9.2.2.2,Bevacizumab,Injection,400mg,5,,9.2 Antineoplastic and supportive medicines,9.2.2 Targeted therapies,245,52
+9.2.2.3,Bortezomib,PFI,3.5mg vial,5,,9.2 Antineoplastic and supportive medicines,9.2.2 Targeted therapies,246,52
+9.2.2.4,Gefitinib,Tablet,250mg,5,,9.2 Antineoplastic and supportive medicines,9.2.2 Targeted therapies,247,52
+9.2.2.5,Ibrutinib,Capsule,140mg,5,,9.2 Antineoplastic and supportive medicines,9.2.2 Targeted therapies,248,52
+9.2.2.6,Imatinib,Tablet,400mg (as mesylate),5,,9.2 Antineoplastic and supportive medicines,9.2.2 Targeted therapies,249,52
+9.2.2.7,Nilotinib,Capsule,200mg,5,,9.2 Antineoplastic and supportive medicines,9.2.2 Targeted therapies,250,52
+9.2.2.8,Osimertinib,Tablet,80mg,5,,9.2 Antineoplastic and supportive medicines,9.2.2 Targeted therapies,251,52
+9.2.2.9,Palbociclib,Tablet,125mg,5,,9.2 Antineoplastic and supportive medicines,9.2.2 Targeted therapies,252,52
+9.2.2.9,Palbociclib,Tablet,100mg,5,,9.2 Antineoplastic and supportive medicines,9.2.2 Targeted therapies,252,52
+9.2.2.9,Palbociclib,Tablet,75mg,5,,9.2 Antineoplastic and supportive medicines,9.2.2 Targeted therapies,252,52
+9.2.2.10,Pazopanib,Tablet,200mg,5,,9.2 Antineoplastic and supportive medicines,9.2.2 Targeted therapies,253,52
+9.2.2.10,Pazopanib,Tablet,400mg,5,,9.2 Antineoplastic and supportive medicines,9.2.2 Targeted therapies,253,52
+9.2.2.11,Rituximab,Injection (IV),10mg/mL (10mL vial),5,,9.2 Antineoplastic and supportive medicines,9.2.2 Targeted therapies,254,52
+9.2.2.11,Rituximab,Injection (IV),10mg/mL (50mL vial),5,,9.2 Antineoplastic and supportive medicines,9.2.2 Targeted therapies,254,52
+9.2.2.12,Sorafenib,Capsule,200mg,5,,9.2 Antineoplastic and supportive medicines,9.2.2 Targeted therapies,255,53
+9.2.2.13,Trastuzumab,PFI256,150mg vial,5,,9.2 Antineoplastic and supportive medicines,9.2.2 Targeted therapies,,53
+9.2.2.13,Trastuzumab,PFI256,440mg vial + diluent,5,,9.2 Antineoplastic and supportive medicines,9.2.2 Targeted therapies,,53
+9.2.2.13,Trastuzumab,Injection (Solution for subcutaneous injection)257,600mg,5,,9.2 Antineoplastic and supportive medicines,9.2.2 Targeted therapies,,53
+9.2.3.1,Filgrastim,Injection (prefilled syringe),120 micrograms/0.2mL,5,,9.2 Antineoplastic and supportive medicines,9.2.3 Immunomodulators,258,53
+9.2.3.1,Filgrastim,Injection (prefilled syringe),300 micrograms/0.5mL,5,,9.2 Antineoplastic and supportive medicines,9.2.3 Immunomodulators,258,53
+9.2.3.2,Lenalidomide,Capsule,10mg,5,,9.2 Antineoplastic and supportive medicines,9.2.3 Immunomodulators,259,53
+9.2.3.2,Lenalidomide,Capsule,25mg,5,,9.2 Antineoplastic and supportive medicines,9.2.3 Immunomodulators,259,53
+9.2.3.3,Peg-Filgrastim,Injection (prefilled syringe),6mg/0.6mL,5,,9.2 Antineoplastic and supportive medicines,9.2.3 Immunomodulators,260,53
+9.2.3.4,Pembrolizumab,Injection,100mg/4mL,5,,9.2 Antineoplastic and supportive medicines,9.2.3 Immunomodulators,261,53
+9.2.3.5,Thalidomide,Capsule,100mg,5,,9.2 Antineoplastic and supportive medicines,9.2.3 Immunomodulators,262,53
+9.2.4.1,Abiraterone,Tablet,250mg,5,,9.2 Antineoplastic and supportive medicines,9.2.4 Hormones and antihormones,263,53
+9.2.4.2,Anastrozole,Tablet,1mg,5,,9.2 Antineoplastic and supportive medicines,9.2.4 Hormones and antihormones,264,53
+9.2.4.3,Bicalutamide,Tablet,50mg,5,,9.2 Antineoplastic and supportive medicines,9.2.4 Hormones and antihormones,265,54
+9.2.4.4,Dexamethasone,Injection,4mg/1mL amp (as sodium phosphate),5,,9.2 Antineoplastic and supportive medicines,9.2.4 Hormones and antihormones,266,54
+9.2.4.4,Dexamethasone,Tablet (scored),4mg,5,,9.2 Antineoplastic and supportive medicines,9.2.4 Hormones and antihormones,266,54
+9.2.4.5,Goserelin,Implant (in syringe applicator),3.6mg (as acetate),5,,9.2 Antineoplastic and supportive medicines,9.2.4 Hormones and antihormones,267,54
+9.2.4.5,Goserelin,Implant (in syringe applicator),10.8mg (as acetate),5,,9.2 Antineoplastic and supportive medicines,9.2.4 Hormones and antihormones,267,54
+9.2.4.6,Hydrocortisone,PFI,100mg vial (as sodium succinate),5,,9.2 Antineoplastic and supportive medicines,9.2.4 Hormones and antihormones,268,54
+9.2.4.7,Letrozole,Tablet,2.5mg,5,,9.2 Antineoplastic and supportive medicines,9.2.4 Hormones and antihormones,269,54
+9.2.4.8,Methylprednisolone,PFI,500mg (as sodium succinate) [c],5,,9.2 Antineoplastic and supportive medicines,9.2.4 Hormones and antihormones,270,54
+9.2.4.9,Octreotide,Injection kit,20mg,5,,9.2 Antineoplastic and supportive medicines,9.2.4 Hormones and antihormones,271,54
+9.2.4.10,Prednisolone,Oral liquid,15mg/5 mL [c],5,,9.2 Antineoplastic and supportive medicines,9.2.4 Hormones and antihormones,272,54
+9.2.4.10,Prednisolone,Tablet,5mg,5,,9.2 Antineoplastic and supportive medicines,9.2.4 Hormones and antihormones,272,54
+9.2.4.10,Prednisolone,Oral liquid,20mg,5,,9.2 Antineoplastic and supportive medicines,9.2.4 Hormones and antihormones,272,54
+9.2.4.11,Tamoxifen,Tablet,20mg (as citrate),5,,9.2 Antineoplastic and supportive medicines,9.2.4 Hormones and antihormones,273,54
+9.2.5.1,Allopurinol,Tablet,100mg,5,,9.2 Antineoplastic and supportive medicines,9.2.5 Supportive medicines,274,54
+9.2.5.1,Allopurinol,Tablet,300mg,5,,9.2 Antineoplastic and supportive medicines,9.2.5 Supportive medicines,274,54
+9.2.5.2,Febuxostat,Tablet,40mg,4,,9.2 Antineoplastic and supportive medicines,9.2.5 Supportive medicines,275,54
+9.2.5.3,Magnesium Sulphate,Injection,4% (100mL vial),5,,9.2 Antineoplastic and supportive medicines,9.2.5 Supportive medicines,276,55
+9.2.5.4,Mannitol,Solution for Infusion,"20%, 500mL",5,,9.2 Antineoplastic and supportive medicines,9.2.5 Supportive medicines,277,55
+9.2.5.5,Mesna,Injection,100mg/mL (2mL amp),5,,9.2 Antineoplastic and supportive medicines,9.2.5 Supportive medicines,278,55
+9.2.5.5,Mesna,Injection,100mg/mL (4mL amp),5,,9.2 Antineoplastic and supportive medicines,9.2.5 Supportive medicines,278,55
+9.2.5.6,Rasburicase,Injection,7.5mg/vial,5,,9.2 Antineoplastic and supportive medicines,9.2.5 Supportive medicines,279,55
+9.2.5.7,Sodium hydrogen carbonate (Sodium bicarbonate),Injectable solution,8.4% (10mL amp),5,,9.2 Antineoplastic and supportive medicines,9.2.5 Supportive medicines,280,55
+9.2.5.8,Zoledronic acid,Concentrate solution for Infusion,800 micrograms/mL (in 5mL vial),5,,9.2 Antineoplastic and supportive medicines,9.2.5 Supportive medicines,281,55
+9.2.5.8,Zoledronic acid,Tablet,2mg (hydrochloride).,4,,9.2 Antineoplastic and supportive medicines,9.2.5 Supportive medicines,281,55
+9.2.5.8,Zoledronic acid,Concentrate solution for Infusion,250mg + 25mg,4,,9.2 Antineoplastic and supportive medicines,9.2.5 Supportive medicines,281,55
+9.2.5.8,Zoledronic acid,Concentrate solution for Infusion,700 micrograms base,4,,9.2 Antineoplastic and supportive medicines,9.2.5 Supportive medicines,281,55
+9.2.5.8,Zoledronic acid,Concentrate solution for Infusion,10mg,4,,9.2 Antineoplastic and supportive medicines,9.2.5 Supportive medicines,281,55
+12.1.1,Darbepoetin alfa,Injection,25 micrograms for subcutaneous injection,5,,12.1 Antianaemics,,286,56
+12.1.1,Darbepoetin alfa,Injection,40 micrograms for subcutaneous injection,5,,12.1 Antianaemics,,286,56
+12.1.2,Erythropoetin (alfa or beta) stimulating agents,Injection (prefilled syringe),"2,000 IU",4,,12.1 Antianaemics,,,56
+12.1.3,Ferrous salt,Oral liquid (drops),25mg (iron as sulphate)/ mL,2,,12.1 Antianaemics,,,56
+12.1.3,Ferrous salt,Tablet (f/c),60-65mg elemental iron,2,,12.1 Antianaemics,,,56
+12.1.4,Ferrous salt + Folic acid,Tablet,60-65mg elemental iron + 400mcg,2,,12.1 Antianaemics,,287,56
+12.1.5,Folic acid,Tablet,400 micrograms288,1,,12.1 Antianaemics,,,56
+12.1.5,Folic acid,Tablet,5mg289,1,,12.1 Antianaemics,,,56
+12.1.6,Hydroxocobalamin (Vit B12),Injection,"1mg/1mL amp (as HCl, acetate or sulphate)",4,,12.1 Antianaemics,,,56
+12.1.7,Iron sucrose,Injection,100mg,4,,12.1 Antianaemics,,290,56
+12.2.1.1,Phytomenadione (Vit K1),Injection,10mg/mL (0.2mL) amp [c]291,2,,12.2 Medicines affecting coagulation,12.2.1 Coagulant medicines,,56
+12.2.1.1,Phytomenadione (Vit K1),Injection,10mg/mL (1mL amp),4,,12.2 Medicines affecting coagulation,12.2.1 Coagulant medicines,,56
+12.2.1.2,Tranexamic acid,Injection,100mg/mL (5mL amp),2,,12.2 Medicines affecting coagulation,12.2.1 Coagulant medicines,,57
+12.2.1.2,Tranexamic acid,Tablet,500mg,4,,12.2 Medicines affecting coagulation,12.2.1 Coagulant medicines,,57
+12.2.2.1,Enoxaparin,Injection (prefilled and calibrated syringe),40mg/0.4mL,4,,12.2 Medicines affecting coagulation,12.2.2 Anticoagulant medicines,,57
+12.2.2.1,Enoxaparin,Injection (prefilled and calibrated syringe),80mg/0.8mL,4,,12.2 Medicines affecting coagulation,12.2.2 Anticoagulant medicines,,57
+12.2.2.2,Heparin sodium,Injection,"5,000 IU/mL (5mL vial)",4,,12.2 Medicines affecting coagulation,12.2.2 Anticoagulant medicines,,57
+12.2.2.3,Rivaroxaban,Tablet,10mg,5,,12.2 Medicines affecting coagulation,12.2.2 Anticoagulant medicines,292,57
+12.2.2.3,Rivaroxaban,Tablet,15mg,5,,12.2 Medicines affecting coagulation,12.2.2 Anticoagulant medicines,292,57
+12.2.2.3,Rivaroxaban,Tablet,20mg,5,,12.2 Medicines affecting coagulation,12.2.2 Anticoagulant medicines,292,57
+12.2.2.4,Warfarin,Tablet (scored),1mg (as sodium salt),4,,12.2 Medicines affecting coagulation,12.2.2 Anticoagulant medicines,293,57
+12.2.2.4,Warfarin,Tablet (scored),3mg (as sodium salt),4,,12.2 Medicines affecting coagulation,12.2.2 Anticoagulant medicines,293,57
+12.2.2.4,Warfarin,Tablet (scored),5mg (as sodium salt),4,,12.2 Medicines affecting coagulation,12.2.2 Anticoagulant medicines,293,57
+12.3.1,Deferasirox,Tablet,100mg,4,,12.3 Other medicines for haemoglobinopathies,,294,57
+12.3.1,Deferasirox,Tablet,400mg,4,,12.3 Other medicines for haemoglobinopathies,,294,57
+12.3.2,Deferoxamine mesilate,PFI,500mg vial,4,,12.3 Other medicines for haemoglobinopathies,,295,57
+12.3.3,Hydroxycarbamide (Hydroxyurea),Capsule,250mg,4,,12.3 Other medicines for haemoglobinopathies,,,57
+12.3.3,Hydroxycarbamide (Hydroxyurea),Capsule,500mg,4,,12.3 Other medicines for haemoglobinopathies,,,57
+12.3.3,Hydroxycarbamide (Hydroxyurea),Oral Solution296,100mg/45mL,4,,12.3 Other medicines for haemoglobinopathies,,,57
+13.1.1,Cryoprecipitate,,,5,,13.1 Blood and Blood Components,,297,58
+13.1.2,"Plasma, fresh-frozen",,,4,,13.1 Blood and Blood Components,,,58
+13.1.3,Platelets,,,4,,13.1 Blood and Blood Components,,,58
+13.1.4,Red blood cells,,,4,,13.1 Blood and Blood Components,,,58
+13.1.5,Whole blood,,,4,,13.1 Blood and Blood Components,,,58
+13.2.1.1,Anti-D immunoglobulin,PFI + diluent,750 IU/mL (2mL vial),4,,13.2 Plasma-derived Medicines,13.2.1 Human immunoglobulins,298,58
+13.2.1.2,Anti-Hepatitis B immunoglobulin (HBIG),Injection,100 IU/mL,4,,13.2 Plasma-derived Medicines,13.2.1 Human immunoglobulins,299,58
+13.2.1.3,Anti-Rabies immunoglobulin,Injection,200 IU/mL (5mL vial),2,,13.2 Plasma-derived Medicines,13.2.1 Human immunoglobulins,300,58
+13.2.1.4,Ant-Tetanus immunoglobulin,Injection,1500 IU vial,4,,13.2 Plasma-derived Medicines,13.2.1 Human immunoglobulins,301,58
+13.2.1.5,Normal immunoglobulin,Injection (IV),5% protein solution (100mL vial),5,,13.2 Plasma-derived Medicines,13.2.1 Human immunoglobulins,302,58
+13.2.1.5,Normal immunoglobulin,Injection (IV),10% protein solution (100mL vial),5,,13.2 Plasma-derived Medicines,13.2.1 Human immunoglobulins,302,58
+13.2.2.1,Coagulation factor VIII,PFI (Extended half-life),250 IU vial,4,,13.2 Plasma-derived Medicines,13.2.2 Blood Coagulation Factors,,58
+13.2.2.1,Coagulation factor VIII,PFI (Extended half-life),500 IU vial,4,,13.2 Plasma-derived Medicines,13.2.2 Blood Coagulation Factors,,58
+13.2.2.1,Coagulation factor VIII,PFI (Extended half-life),"1,000 IU vial",4,,13.2 Plasma-derived Medicines,13.2.2 Blood Coagulation Factors,,58
+13.2.2.1,Coagulation factor VIII,PFI (Extended half-life),"2,000 IU vial",4,,13.2 Plasma-derived Medicines,13.2.2 Blood Coagulation Factors,,58
+13.2.2.2,Coagulation factor IX,PFI (Extended half-life),250 IU/vial,4,,13.2 Plasma-derived Medicines,13.2.2 Blood Coagulation Factors,,59
+13.2.2.2,Coagulation factor IX,PFI (Extended half-life),500 IU/vial,4,,13.2 Plasma-derived Medicines,13.2.2 Blood Coagulation Factors,,59
+13.2.2.2,Coagulation factor IX,PFI (Extended half-life),"1,000 IU/vial",4,,13.2 Plasma-derived Medicines,13.2.2 Blood Coagulation Factors,,59
+13.3.1,Dextran- 70,Solution,6%,4,,13.3 Plasma substitutes,,303,59
+13.3.2,Gelatin-based colloid,Solution for Infusion,4%,4,,13.3 Plasma substitutes,,304,59
+13.3.3,Hydroxyethyl starch,Solution for Infusion,6%,4,,13.3 Plasma substitutes,,305,59
+13.3.4,Human albumin infusion,Solution,5%,4,,13.3 Plasma substitutes,,306,59
+13.3.4,Human albumin infusion,Solution,20%,4,,13.3 Plasma substitutes,,306,59
+13.3.5,Polygeline,Infusion (IV),3.5% (500mL pack),4,,13.3 Plasma substitutes,,307,59
+14.1.1,Bisoprolol,Tablet,2.5mg,4,,14.1 Antianginal Medicines,,,59
+14.1.1,Bisoprolol,Tablet,5mg,4,,14.1 Antianginal Medicines,,,59
+14.1.2,Carvedilol,Tablet,3.125mg,4,,14.1 Antianginal Medicines,,,59
+14.1.2,Carvedilol,Tablet,6.25mg,4,,14.1 Antianginal Medicines,,,59
+14.1.2,Carvedilol,Tablet,12.5mg,4,,14.1 Antianginal Medicines,,,59
+14.1.2,Carvedilol,Tablet,25mg,4,,14.1 Antianginal Medicines,,,59
+14.1.3,Glyceryl trinitrate,Tablet (sublingual),500 micrograms,4,,14.1 Antianginal Medicines,,,59
+14.1.3,Glyceryl trinitrate,Spray (sublingual),400micrograms/ dose,4,,14.1 Antianginal Medicines,,,59
+14.1.4,Isosorbide dinitrate,Tablet,20mg,4,,14.1 Antianginal Medicines,,,59
+14.1.4,Isosorbide dinitrate,Tablet (Sublingual),5mg,4,,14.1 Antianginal Medicines,,,59
+14.1.5,Trimetazidine,Tablet (m/r),35mg,4,,14.1 Antianginal Medicines,,,60
+14.2.1,Adenosine,Injection,6mg/2mL,6,,14.2 Antiarrhythmic medicines,,308,60
+14.2.2,Amiodarone,Injection309,50mg (as HCl)/mL in 3mL amp,5,,14.2 Antiarrhythmic medicines,,,60
+14.2.2,Amiodarone,Tablet310,100mg (as HCl),4,,14.2 Antiarrhythmic medicines,,,60
+14.2.2,Amiodarone,Injection309,200mg (as HCl),4,,14.2 Antiarrhythmic medicines,,,60
+14.2.3,Atropine,Injection,1mg (as sulphate)/1mL amp,4,,14.2 Antiarrhythmic medicines,,,60
+14.2.4,Bisoprolol,Tablet,2.5mg,4,,14.2 Antiarrhythmic medicines,,,60
+14.2.4,Bisoprolol,Tablet,5mg,4,,14.2 Antiarrhythmic medicines,,,60
+14.2.5,Carvedilol,Tablet,3.125mg,4,,14.2 Antiarrhythmic medicines,,,60
+14.2.5,Carvedilol,Tablet,6.25mg,4,,14.2 Antiarrhythmic medicines,,,60
+14.2.5,Carvedilol,Tablet,12.5mg,4,,14.2 Antiarrhythmic medicines,,,60
+14.2.5,Carvedilol,Tablet,25mg,4,,14.2 Antiarrhythmic medicines,,,60
+14.2.6,Digoxin,Oral liquid311,50 micrograms/mL,4,,14.2 Antiarrhythmic medicines,,,60
+14.2.6,Digoxin,Tablet,250 micrograms,4,,14.2 Antiarrhythmic medicines,,,60
+14.2.6,Digoxin,Oral liquid311,125 micrograms,4,,14.2 Antiarrhythmic medicines,,,60
+14.2.7,Epinephrine (adrenaline),Injection,1mg/1mL amp,4,,14.2 Antiarrhythmic medicines,,312,60
+14.2.8,Lignocaine (Preservative free),Injection,200mg/10mL,5,,14.2 Antiarrhythmic medicines,,313,60
+14.2.9,Verapamil,Tablet (Immediate release),40mg (as HCl),4,,14.2 Antiarrhythmic medicines,,,60
+14.2.9,Verapamil,Tablet (Modified release),120mg,4,,14.2 Antiarrhythmic medicines,,,60
+14.3.1.1,Enalapril,Tablet (scored),5mg (as hydrogen maleate),3,,14.3 Antihypertensive medicines,14.3.1 Angiotensin converting enzyme Inhibitors (ACEIs),,61
+14.3.1.1,Enalapril,Tablet (scored),10mg (as hydrogen maleate),3,,14.3 Antihypertensive medicines,14.3.1 Angiotensin converting enzyme Inhibitors (ACEIs),,61
+14.3.1.1,Enalapril,Tablet (scored),20mg (as hydrogen maleate),3,,14.3 Antihypertensive medicines,14.3.1 Angiotensin converting enzyme Inhibitors (ACEIs),,61
+14.3.2.1,Losartan,Tablet (f/c),50mg,3,,14.3 Antihypertensive medicines,14.3.2 Angiotensin Receptor Blockers (ARBs),,61
+14.3.2.2,Telmisartan,Tablet,40mg,4,,14.3 Antihypertensive medicines,14.3.2 Angiotensin Receptor Blockers (ARBs),,61
+14.3.2.2,Telmisartan,Tablet,80mg,4,,14.3 Antihypertensive medicines,14.3.2 Angiotensin Receptor Blockers (ARBs),,61
+14.3.3.1,Bisoprolol,Tablet,2.5mg,4,,14.3 Antihypertensive medicines,14.3.3 Beta Blockers (BBs),,61
+14.3.3.1,Bisoprolol,Tablet,5mg,4,,14.3 Antihypertensive medicines,14.3.3 Beta Blockers (BBs),,61
+14.3.3.2,Labetalol,Injection314,5mg/mL (20mL amp),4,,14.3 Antihypertensive medicines,14.3.3 Beta Blockers (BBs),,61
+14.3.3.2,Labetalol,Tablet315,100mg,3,,14.3 Antihypertensive medicines,14.3.3 Beta Blockers (BBs),,61
+14.3.3.2,Labetalol,Injection314,200mg,3,,14.3 Antihypertensive medicines,14.3.3 Beta Blockers (BBs),,61
+14.3.3.3,Metoprolol,Tablet(e/r),25mg,3,,14.3 Antihypertensive medicines,14.3.3 Beta Blockers (BBs),,61
+14.3.3.3,Metoprolol,Tablet(e/r),50mg,3,,14.3 Antihypertensive medicines,14.3.3 Beta Blockers (BBs),,61
+14.3.3.4,Nebivolol,Tablet,2.5mg,3,,14.3 Antihypertensive medicines,14.3.3 Beta Blockers (BBs),,61
+14.3.3.4,Nebivolol,Tablet,5mg,3,,14.3 Antihypertensive medicines,14.3.3 Beta Blockers (BBs),,61
+14.3.4.1,Amlodipine,Tablet,5mg,3,,14.3 Antihypertensive medicines,14.3.4 Calcium channel Blockers (CCBs),,61
+14.3.4.1,Amlodipine,Tablet,10mg,3,,14.3 Antihypertensive medicines,14.3.4 Calcium channel Blockers (CCBs),,61
+14.3.4.2,Nifedipine,Tablet (s/r),20mg,3,,14.3 Antihypertensive medicines,14.3.4 Calcium channel Blockers (CCBs),316,62
+14.3.5.1,Chlorthalidone,Tablet,12.5mg,4,,14.3 Antihypertensive medicines,14.3.5 Thiazide & Thiazide-like Diuretics,,62
+14.3.5.2,Hydrochlorothiazide (HCTZ),Tablet (scored),25mg,3,,14.3 Antihypertensive medicines,14.3.5 Thiazide & Thiazide-like Diuretics,,62
+14.3.5.3,Indapamide,Tablet,1.5mg,4,,14.3 Antihypertensive medicines,14.3.5 Thiazide & Thiazide-like Diuretics,,62
+14.3.7.1,Amlodipine + Hydrochlorothiazide (HCTZ),Tablet,5mg + 12.5mg,3,,14.3 Antihypertensive medicines,14.3.6 Other anti-hypertensive agents,,63
+14.3.7.2,Amlodipine + Indapamide,Tablet,5mg + 1.25mg,3,,14.3 Antihypertensive medicines,14.3.6 Other anti-hypertensive agents,,63
+14.3.7.3,Lisinopril + Hydrochlorothiazide (HCTZ),Tablet,20mg + 12.5mg,3,,14.3 Antihypertensive medicines,14.3.6 Other anti-hypertensive agents,,63
+14.3.7.4,Losartan + Hydrochlorothiazide (HCTZ),Tablet,50mg + 12.5mg,3,,14.3 Antihypertensive medicines,14.3.6 Other anti-hypertensive agents,,63
+14.3.7.5,Perindopril + Amlodipine,Tablet,5mg + 5mg,3,,14.3 Antihypertensive medicines,14.3.6 Other anti-hypertensive agents,,63
+14.3.7.5,Perindopril + Amlodipine,Tablet,5mg + 10mg,5,,14.3 Antihypertensive medicines,14.3.6 Other anti-hypertensive agents,,63
+14.3.7.5,Telmisartan + Amlodipine,Tablet,40mg + 5mg,3,,14.3 Antihypertensive medicines,14.3.6 Other anti-hypertensive agents,,63
+14.3.7.6,Perindopril + Amlodipine + Indapamide,Tablet (Film-coated),5mg + 5mg + 1.25mg,4,,14.3 Antihypertensive medicines,14.3.6 Other anti-hypertensive agents,,63
+14.3.7.6,Perindopril + Amlodipine + Indapamide,Tablet (Film-coated),10mg + 10mg+ 2.5mg,4,,14.3 Antihypertensive medicines,14.3.6 Other anti-hypertensive agents,,63
+14.3.7.6,Telmisartan+ Amlodipine+ Hydrochlorothiazide (HCTZ),Tablet,40mg + 5mg + 12.5mg,4,,14.3 Antihypertensive medicines,14.3.6 Other anti-hypertensive agents,,63
+14.3.7.7,Telmisartan + Hydrochlorothiazide (HCTZ),Tablet,40mg + 12.5mg,3,,14.3 Antihypertensive medicines,14.3.6 Other anti-hypertensive agents,,63
+14.3.7.7,Telmisartan + Hydrochlorothiazide (HCTZ),Tablet,80mg + 12.5mg,3,,14.3 Antihypertensive medicines,14.3.6 Other anti-hypertensive agents,,63
+14.4.1,Bisoprolol,Tablet,2.5mg,4,,14.4 Medicines used in Heart Failure,,,64
+14.4.1,Bisoprolol,Tablet,5mg,4,,14.4 Medicines used in Heart Failure,,,64
+14.4.2,Carvedilol,Tablet,3.125mg,,,14.4 Medicines used in Heart Failure,,,64
+14.4.2,Carvedilol,Tablet,6.25mg,4,,14.4 Medicines used in Heart Failure,,,64
+14.4.2,Carvedilol,Tablet,12.5mg,4,,14.4 Medicines used in Heart Failure,,,64
+14.4.2,Carvedilol,Tablet,25mg,4,,14.4 Medicines used in Heart Failure,,,64
+14.4.3,Digoxin,Oral liquid326,50 micrograms/mL,4,,14.4 Medicines used in Heart Failure,,,64
+14.4.3,Digoxin,Tablet,125 micrograms,4,,14.4 Medicines used in Heart Failure,,,64
+14.4.4,Dobutamine,Injection (solution),12.5mg/mL (20mL),5,,14.4 Medicines used in Heart Failure,,,64
+14.4.5,Dopamine,Injection,40mg/mL (as HCl) (5mL vial),5,,14.4 Medicines used in Heart Failure,,327,64
+14.4.6,Empagliflozin,Tablet,10mg,5,,14.4 Medicines used in Heart Failure,,,64
+14.4.7,Enalapril,Tablet (scored),5mg (as hydrogen maleate),4,,14.4 Medicines used in Heart Failure,,,64
+14.4.8,Eplerenone,Tablet,25mg,4,,14.4 Medicines used in Heart Failure,,,64
+14.4.9,Furosemide,Injection,10mg/mL (2mL amp),4,,14.4 Medicines used in Heart Failure,,,64
+14.4.9,Furosemide,Tablet (cross-scored)328,40mg,3,,14.4 Medicines used in Heart Failure,,,64
+14.4.10,Hydralazine,Tablet,25mg (as HCl),4,,14.4 Medicines used in Heart Failure,,,64
+14.4.10,Hydralazine,Tablet,50mg (as HCl),4,,14.4 Medicines used in Heart Failure,,,64
+14.4.11,Isosorbide dinitrate,Tablet,20mg,4,,14.4 Medicines used in Heart Failure,,,64
+14.4.12,Ivabradine,Tablet (f/c),5mg,5,,14.4 Medicines used in Heart Failure,,,64
+14.4.12,Ivabradine,Tablet (f/c),7.5mg,5,,14.4 Medicines used in Heart Failure,,,64
+14.4.13,Losartan,Tablet (f/c),50mg,4,,14.4 Medicines used in Heart Failure,,,65
+14.4.14,Metolazone,Tablet,5mg,5,,14.4 Medicines used in Heart Failure,,329,65
+14.4.15,Milrinone,Injection (solution),1mg/mL (10mL),6,,14.4 Medicines used in Heart Failure,,330,65
+14.4.16,Nitroglycerin (NTG),Injection,2.5mg/mL (10mL) amp,5,,14.4 Medicines used in Heart Failure,,,65
+14.4.17,Norepinephrine (Noradrenaline),Injection,1mg/mL,5,,14.4 Medicines used in Heart Failure,,331,65
+14.4.18,Sacubitril + Valsartan,Tablet (f/c),24mg + 26mg,5,,14.4 Medicines used in Heart Failure,,332,65
+14.4.18,Sacubitril + Valsartan,Tablet (f/c),48mg + 52mg,5,,14.4 Medicines used in Heart Failure,,332,65
+14.4.19,Spironolactone,Tablet (scored),25mg,4,,14.4 Medicines used in Heart Failure,,,65
+14.4.20,Torsemide,Tablet (scored),20mg,4,,14.4 Medicines used in Heart Failure,,333,65
+14.4.20,Torsemide,Tablet (scored),10mg,4,,14.4 Medicines used in Heart Failure,,333,65
+14.5.1.1,Acetylsalicylic acid (Aspirin),Tablet,75mg,4,,14.5 Antithrombotic medicines,14.5.1 Anti-platelet medicines,,65
+14.5.1.2,Clopidogrel,Tablet,75mg,4,,14.5 Antithrombotic medicines,14.5.1 Anti-platelet medicines,,65
+14.5.1.3,Acetylsalicylic acid (Aspirin) + Clopidogrel,Tablet,75mg + 75mg,4,,14.5 Antithrombotic medicines,14.5.1 Anti-platelet medicines,,65
+14.5.2.1,Alteplase,PFI,50mg,5,,14.5 Antithrombotic medicines,14.5.2 Thrombolytic medicines,334,65
+14.5.2.1,Alteplase,PFI,100mg,5,,14.5 Antithrombotic medicines,14.5.2 Thrombolytic medicines,334,65
+14.5.2.2,Reteplase,PFI,10 Units,5,,14.5 Antithrombotic medicines,14.5.2 Thrombolytic medicines,335,65
+14.5.2.3,Tenecteplase,PFI with prefilled syringe with 10mL water for injection,50mg (10000IU),5,,14.5 Antithrombotic medicines,14.5.2 Thrombolytic medicines,336,66
+14.6.1,Atorvastatin,Tablet,20mg,3,,14.6 Lipid-lowering agents,,,66
+14.6.1,Atorvastatin,Tablet,40mg,3,,14.6 Lipid-lowering agents,,,66
+14.6.1,Atorvastatin,Tablet,80mg,3,,14.6 Lipid-lowering agents,,,66
+15.1.1,Clotrimazole,Cream,1%,2,,15.1 Antifungal medicines,,,66
+15.1.2,Miconazole,Cream,2% (as nitrate),3,,15.1 Antifungal medicines,,,66
+15.1.3,Terbinafine,Cream,1% (as HCl),4,,15.1 Antifungal medicines,,337,66
+15.2.1,Fusidic acid,Ointment,2% (15g),4,,15.2 Anti-infective medicines,,338,66
+15.2.2,Mupirocin,Ointment,2% (15g),4,,15.2 Anti-infective medicines,,339,66
+15.2.3,Silver sulphadiazine,Cream,1% (50g),2,,15.2 Anti-infective medicines,,340,66
+15.2.3,Silver sulphadiazine,Cream,1% (250g),2,,15.2 Anti-infective medicines,,340,66
+15.3.1,Betamethasone,Cream,0.1% (as valerate),4,,15.3 Anti-inflammatory and antipruritic medicines,,341,66
+15.3.1,Betamethasone,Ointment342,0.1% (as valerate),4,,15.3 Anti-inflammatory and antipruritic medicines,,341,66
+15.3.2,Calamine,Lotion,15%,1,,15.3 Anti-inflammatory and antipruritic medicines,,,66
+15.3.3,Clobetasone propionate,Ointment,0.05%,4,,15.3 Anti-inflammatory and antipruritic medicines,,,66
+15.3.4,Crotamiton,Cream,10% (30g),2,,15.3 Anti-inflammatory and antipruritic medicines,,343,67
+15.3.5,Hydrocortisone,Cream,1% (as acetate),3,,15.3 Anti-inflammatory and antipruritic medicines,,,67
+15.3.5,Hydrocortisone,Ointment,1% (as acetate),3,,15.3 Anti-inflammatory and antipruritic medicines,,,67
+15.3.6,Mometasone,Ointment,0.1% (as furoate) (30g),4,,15.3 Anti-inflammatory and antipruritic medicines,,344,67
+15.3.7,Tacrolimus,Ointment,0.03% (as monohydrate) (10g),4,,15.3 Anti-inflammatory and antipruritic medicines,,345,67
+15.3.7,Tacrolimus,Ointment,0.1% (as monohydrate) (10g),4,,15.3 Anti-inflammatory and antipruritic medicines,,345,67
+15.4.1,Benzoyl peroxide,Gel,5% (30g),4,,15.4 Medicines affecting skin differentiation and proliferation,,346,67
+15.4.2,Dithranol,Paste,2%,4,,15.4 Medicines affecting skin differentiation and proliferation,,347,67
+15.4.3,Podophyllin resin,Solution,15% (in benzoin tincture) (15mL),3,,15.4 Medicines affecting skin differentiation and proliferation,,348,67
+15.4.4,Salicylic acid,Ointment,3%,4,,15.4 Medicines affecting skin differentiation and proliferation,,349,67
+15.4.5,Tretinoin,Cream,0.05%,4,,15.4 Medicines affecting skin differentiation and proliferation,,350,67
+15.5.1,Benzyl Benzoate,Lotion,25% (50mL),2,,15.5 Scabicides and pediculicides,,351,67
+15.5.2,Calamine,Lotion,15%,1,,15.5 Scabicides and pediculicides,,,67
+15.5.3,Crotamiton,Cream,10% (30g),2,,15.5 Scabicides and pediculicides,,352,67
+15.6.1,Benzyl Benzoate,Lotion,25% (50mL),2,,15.6 Medicines for Jiggers,,353,68
+15.6.2,White soft paraffin (Petroleum jelly),Topical application,100g,1,,15.6 Medicines for Jiggers,,354,68
+15.7.1,Sun screening agent(s),Cream or lotion,SPF 50+,1,,15.7 Sunscreen preparations,,355,68
+16.1.1,Fluorescein,Test strip,0.6mg,4,,16.1 Ophthalmic diagnostics,,,68
+16.1.2,Tropicamide + Phenylephrine,Eye drops,0.8% + 5% w/v,4,,16.1 Ophthalmic diagnostics,,356,68
+16.2.1,Amidotrizoate,Solution (oral and rectal use),370-420mg iodine/mL (as sodium or meglumine salt) (100mL),4,,16.1 Ophthalmic diagnostics,,357,68
+16.2.2,Barium sulphate,Suspension (aq),95% w/w concentration (1 litre),4,,16.1 Ophthalmic diagnostics,,,68
+16.2.2,Barium sulphate,Paste (for oral or rectal use) 358,92% w/w concentration,4,,16.1 Ophthalmic diagnostics,,,68
+16.2.3,Iso-osmolar contrast media,Solution for IV injection/ infusion,320mg iodine/mL (100mL),4,,16.1 Ophthalmic diagnostics,,359,68
+16.2.4,Non-ionic low osmolar water- soluble iodinated contrast media,Injection,300mg iodine/mL (50mL) [c]361,4,,16.1 Ophthalmic diagnostics,,360,69
+16.2.4,Non-ionic low osmolar water- soluble iodinated contrast media,Injection,300mg iodine/mL (100mL) [c]362,4,,16.1 Ophthalmic diagnostics,,360,69
+16.2.4,Non-ionic low osmolar water- soluble iodinated contrast media,Injection,350mg iodine/mL (50mL)363,4,,16.1 Ophthalmic diagnostics,,360,69
+16.2.4,Non-ionic low osmolar water- soluble iodinated contrast media,Injection,350mg iodine/mL (100mL)364,4,,16.1 Ophthalmic diagnostics,,360,69
+16.2.4,Non-ionic low osmolar water- soluble iodinated contrast media,Injection,"300mg iodine/mL (50mL) [For intrathecal, oral, intra-cavitary and intravenous use] [c]365",4,,16.1 Ophthalmic diagnostics,,360,69
+16.2.4,Non-ionic low osmolar water- soluble iodinated contrast media,Injection,"300mg iodine/mL (100mL) [For intrathecal, oral, intra-cavitary and intravenous use] [c]366",4,,16.1 Ophthalmic diagnostics,,360,69
+16.2.4,Non-ionic low osmolar water- soluble iodinated contrast media,Injection,"350mg iodine/mL (50ml) [For oral, intra-cavitary and intravenous use]367",4,,16.1 Ophthalmic diagnostics,,360,69
+16.2.4,Non-ionic low osmolar water- soluble iodinated contrast media,Injection,"350mg iodine/mL (100ml) [For oral, intra-cavitary and intravenous use]368",4,,16.1 Ophthalmic diagnostics,,360,69
+16.3.1,Gadobutrol,Injection (solution) (IV),1mmol/mL (7.5mL)369,4,,16.1 Ophthalmic diagnostics,,,69
+16.3.1,Gadobutrol,Injection (solution) (IV),1mmol/mL (15mL)370,4,,16.1 Ophthalmic diagnostics,,,69
+16.3.2,Gadodiamide,Injection (solution) (IV),0.5 mmol/mL (20mL)370,4,,16.1 Ophthalmic diagnostics,,,69
+16.3.3,Gadopentate dimeglumine,Injection (solution) (IV),0.5 mmol/mL (10mL)371,4,,16.1 Ophthalmic diagnostics,,,70
+16.3.3,Gadopentate dimeglumine,Injection (solution) (IV),0.5 mmol/mL (15mL)372,4,,16.1 Ophthalmic diagnostics,,,70
+17.1.1,Chlorhexidine,Solution for dilution,5% (as gluconate/ digluconate),2,,17.1 Antiseptics,,,70
+17.1.2,Ethanol,Solution,70% (denatured),2,,17.1 Antiseptics,,,70
+17.1.3,Povidone iodine,Solution,10% (equiv. to Iodine 1%),2,,17.1 Antiseptics,,,70
+17.2.1,Alcohol-based hand rub,Solution,Isopropyl alcohol 75% (500mL dispenser),1,,17.2 Disinfectants,,,70
+17.2.2,Glutaral,Solution,2%,2,,17.2 Disinfectants,,372,70
+17.2.3,Sodium hypochlorite,Solution,4-6% chlorine373,1,,17.2 Disinfectants,,,70
+17.2.3,Sodium hypochlorite,Oral liquid,20mg/5mL [c]375,4,,17.2 Disinfectants,,,70
+17.2.3,Sodium hypochlorite,Tablet (cross-scored),40mg,4,,17.2 Disinfectants,,,70
+17.2.3,Sodium hypochlorite,Tablet (scored),100mg,4,,17.2 Disinfectants,,,70
+17.2.3,Sodium hypochlorite,Solution,20mg,4,,17.2 Disinfectants,,,71
+19.1.1,Lansoprazole,Tablet (dispersible),15mg [c]377,4,,19.1 Antiulcer medicines,,,71
+19.1.2,Omeprazole,PFI378,40mg (as sodium salt) vial,4,,19.1 Antiulcer medicines,,,71
+19.1.2,Omeprazole,Capsule,20mg,3,,19.1 Antiulcer medicines,,,71
+19.1.3,Pantoprazole,Tablet (dispersible),20mg,3,,19.1 Antiulcer medicines,,,71
+19.1.3,Pantoprazole,Capsule,20mg,3,,19.1 Antiulcer medicines,,,71
+19.1.3,Pantoprazole,PFI,40mg,4,,19.1 Antiulcer medicines,,,71
+19.2.1,Dexamethasone,Tablet,4mg,4,,19.2 Antiemetics,,,71
+19.2.1,Dexamethasone,Tablet,2mg,4,,19.2 Antiemetics,,,71
+19.2.1,Dexamethasone,Tablet,0.5mg,4,,19.2 Antiemetics,,,71
+19.2.1,Dexamethasone,Injection,4mg/mL in 1mL amp as disodium phosphate salt,4,,19.2 Antiemetics,,,71
+19.2.2,Domperidone,Oral liquid,5mg/5mL,5,,19.2 Antiemetics,,379,71
+19.2.2,Domperidone,Tablet,10mg,3,,19.2 Antiemetics,,379,71
+19.2.3,Fosaprepitant,Injection,150mg,5,,19.2 Antiemetics,,380,71
+19.2.4,Metoclopramide,Injection,5mg/mL (2mL amp),2,,19.2 Antiemetics,,381,71
+19.2.4,Metoclopramide,Tablet,10mg,2,,19.2 Antiemetics,,381,71
+19.2.5,Olanzapine,Tablet,5mg,5,,19.2 Antiemetics,,382,72
+19.2.6,Ondansetron,Injection,2mg (as HCl)/mL (2mL amp),2,,19.2 Antiemetics,,383,72
+19.2.6,Ondansetron,Oral liquid,4mg base/5mL [c]384,2,,19.2 Antiemetics,,383,72
+19.2.6,Ondansetron,Tablet,4mg (as HCl),2,,19.2 Antiemetics,,383,72
+19.2.7,Palonosetron,Injection,"0.05mg/mL, 5mL vial",4,,19.2 Antiemetics,,385,72
+19.3.1,Mesalazine,Tablet (e/c),400mg,4,,19.3 Anti-inflammatory medicines,,,72
+19.3.1,Mesalazine,Suppository,1g,5,,19.3 Anti-inflammatory medicines,,,72
+19.3.1,Mesalazine,Enema,4g/60mL,5,,19.3 Anti-inflammatory medicines,,,72
+19.3.2,Prednisolone,Tablet,5mg,4,,19.3 Anti-inflammatory medicines,,,72
+19.4.1,Bisacodyl,Tablet,5mg,2,,19.4 Laxatives,,,72
+19.4.1,Bisacodyl,Suppository,5mg,2,,19.4 Laxatives,,,72
+19.4.2,Lactulose,Oral liquid,3.1-3.7g/5mL,4,,19.4 Laxatives,,386,72
+19.5.1,Oral rehydration salts + Zinc sulphate,Co-pack (4 sachets + 10 Tablet (dispersible)),PFOL in sachet to make 500mL + 20mg Tablet [c],2,,19.5 Medicines used in Diarrhoea and Oral Rehydration,,,72
+19.5.2,Oral rehydration salts (ORS),PFOL (to make 500mL),Sachet (WHO low- osmolarity formula),1,,19.5 Medicines used in Diarrhoea and Oral Rehydration,,,72
+19.5.3,Rehydration solution for malnutrition (ReSoMal),PFOL (to make 1L),Sachet (42g) (WHO formula),4,,19.5 Medicines used in Diarrhoea and Oral Rehydration,,387,72
+19.6.1,Terlipressin,Injection,1mg (as acetate) in 8.5ml solution,4,,19.6 Vasoconstrictor Medicines,,388,72
+19.7.1,Propranolol,Tablet,20mg,4,,19.7 Medicines used for Ascites and GI bleeding,,,73
+19.7.1,Propranolol,Tablet,40mg,4,,19.7 Medicines used for Ascites and GI bleeding,,,73
+19.7.2,Spironolactone,Tablet,25mg,4,,19.7 Medicines used for Ascites and GI bleeding,,,73
+19.7.2,Spironolactone,Tablet,100mg,4,,19.7 Medicines used for Ascites and GI bleeding,,,73
+20.1.1,Fludrocortisone,Tablet,100 micrograms (as acetate),4,,20.1 Adrenal Hormones & Synthetic Substitutes,,389,73
+20.1.2,Hydrocortisone,Tablet,5mg,4,,20.1 Adrenal Hormones & Synthetic Substitutes,,390,73
+20.1.2,Hydrocortisone,Tablet,20mg,4,,20.1 Adrenal Hormones & Synthetic Substitutes,,390,73
+20.1.2,Hydrocortisone,Injection,100mg/vial,2,,20.1 Adrenal Hormones & Synthetic Substitutes,,390,73
+20.2.1,Testosterone,Gel391,1%,4,,20.2 Androgens,,,73
+20.2.1,Testosterone,Injection (oily)392,250mg (as enanthate)/1mL amp,4,,20.2 Androgens,,,73
+20.3.1,Conjugated Oestrogens,Tablet393,300 micrograms,4,,20.3 Oestrogens,,,73
+20.3.1,Conjugated Oestrogens,Cream (Vaginal)394,0.625mg/g (30g),4,,20.3 Oestrogens,,,73
+20.3.2,Estradiol,Transdermal patch,0.1mg/day,4,,20.3 Oestrogens,,395,73
+20.4.1,Medroxyprogesterone,Tablet,5mg (as acetate),4,,20.4 Progestogens,,396,73
+20.5.1.1,"Insulin, intermediate-acting (NPH)",Injection,100 IU/mL (10mL vial),4,,20.5 Medicines for diabetes,20.5.1 Insulins,,74
+20.5.1.2,"Insulin, long-acting, Detemir",Injection,100U/mL (10mL vial),4,,20.5 Medicines for diabetes,20.5.1 Insulins,,74
+20.5.1.2,"Insulin, long-acting, Detemir",Injection,100 IU/mL (3 mL cartridge or prefilled pen),4,,20.5 Medicines for diabetes,20.5.1 Insulins,,74
+20.5.1.3,"Insulin, Long-acting (basal), Glargine",Injection,100 IU/mL (10mL vial),4,,20.5 Medicines for diabetes,20.5.1 Insulins,,74
+20.5.1.3,"Insulin, Long-acting (basal), Glargine",Injection,100 IU/mL (3 mL cartridge or prefilled pen),4,,20.5 Medicines for diabetes,20.5.1 Insulins,,74
+20.5.1.4,"Insulin, Premixed (Short acting + Intermediate acting) (Human)",Injection,100 IU/mL (10mL vial),4,,20.5 Medicines for diabetes,20.5.1 Insulins,397,74
+20.5.1.4,"Insulin, Premixed (Short acting + Intermediate acting) (Human)",Injection,100 IU/mL (3mL prefilled pen),4,,20.5 Medicines for diabetes,20.5.1 Insulins,397,74
+20.5.1.5,"Insulin, Premixed (Ultra short acting + Intermediate acting)",Injection,100 IU/mL (10mL vial),4,,20.5 Medicines for diabetes,20.5.1 Insulins,398,74
+20.5.1.5,"Insulin, Premixed (Ultra short acting + Intermediate acting)",Injection,100 IU/mL (3mL prefilled pen),4,,20.5 Medicines for diabetes,20.5.1 Insulins,398,74
+20.5.1.6,"Insulin, Short acting (Soluble / regular)",Injection,100 IU/mL (10mL vial),3,,20.5 Medicines for diabetes,20.5.1 Insulins,,74
+20.5.1.6,"Insulin, Short acting (Soluble / regular)",Injection,100IU/mL (3mL penfill),3,,20.5 Medicines for diabetes,20.5.1 Insulins,,74
+20.5.1.7,"Insulin, Ultra short-acting (Rapid) (Insulin Lispro and Aspart)",Injection,100 IU/mL (10mL vial),4,,20.5 Medicines for diabetes,20.5.1 Insulins,,74
+20.5.1.7,"Insulin, Ultra short-acting (Rapid) (Insulin Lispro and Aspart)",Injection,100IU/mL (3mL prefilled pen),4,,20.5 Medicines for diabetes,20.5.1 Insulins,,74
+20.6.1,Diazoxide,Suspension,50mg/mL,4,,20.6 Medicines for hypoglycaemia,,405,76
+20.6.2,Glucagon,injection,1mg/mL,4,,20.6 Medicines for hypoglycaemia,,,76
+20.7.1,Carbimazole,Tablet,5mg,4,,20.7 Thyroid Hormones and Anti-thyroid Medicines,,,76
+20.7.1,Carbimazole,Tablet,10mg,4,,20.7 Thyroid Hormones and Anti-thyroid Medicines,,,76
+20.7.2,Levothyroxine,Tablet,25 micrograms [c] (as sodium salt),4,,20.7 Thyroid Hormones and Anti-thyroid Medicines,,,76
+20.7.2,Levothyroxine,Tablet,50 micrograms (as sodium salt),4,,20.7 Thyroid Hormones and Anti-thyroid Medicines,,,76
+20.7.2,Levothyroxine,Tablet,100 micrograms (as sodium salt),4,,20.7 Thyroid Hormones and Anti-thyroid Medicines,,,76
+20.7.3,Lugol’s Iodine solution,Solution,~130mg total iodine/mL,4,,20.7 Thyroid Hormones and Anti-thyroid Medicines,,406,76
+20.7.4,Propranolol,Tablet (scored),40mg,4,,20.7 Thyroid Hormones and Anti-thyroid Medicines,,407,76
+20.7.5,Propylthiouracil,Tablet,50mg,4,,20.7 Thyroid Hormones and Anti-thyroid Medicines,,408,76
+20.8.1,Calcitriol (Vit D3),Capsule,250 micrograms,4,,20.8 Medicines for Management of Hyperparathyroidism,,409,76
+20.8.1,Calcitriol (Vit D3),Injection,1 microgram/mL (1 mL),4,,20.8 Medicines for Management of Hyperparathyroidism,,409,76
+20.9.1,Cabergoline,Tablet,0.5mg,4,,20.9 Other endocrine medicines,,410,76
+20.9.2,Desmopressin,Injection411,4mcg/mL,5,,20.9 Other endocrine medicines,,,77
+20.9.2,Desmopressin,Nasal spray412,10mcg/spray,5,,20.9 Other endocrine medicines,,,77
+20.9.3,Somatropin (recombinant human growth hormone),Prefilled pen,12mg,5,,20.9 Other endocrine medicines,,413,77
+21.1.1,"Tuberculin, purified protein, derivative (PPD)",Injection (solution),0.1mL vial (single dose),4,,21.1 Diagnostic agents,,414,77
+21.2.1,Anti Snake venom immunoglobulin,Injection (for IV infusion),Polyvalent serum (African) (10mL vial),4,,21.2 Sera and Immunoglobulins,,415,77
+21.3.1,BCG vaccine (live attenuated),PFI + diluent,1mL vial (multi doses),2,,21.3 Vaccines,,,77
+21.3.2,DPT + HiB + Hep B vaccine (pentavalent),Injection (suspension),5mL vial (10 doses),2,,21.3 Vaccines,,416,77
+21.3.3,Hepatitis B vaccine,Injection (suspension),Single dose vial,2,,21.3 Vaccines,,,77
+21.3.3,Hepatitis B vaccine,Injection (suspension),Multi dose vial,2,,21.3 Vaccines,,,77
+21.3.4,HPV vaccine (quadrivalent),Injection,Single or multi dose vial,2,,21.3 Vaccines,,417,77
+21.3.5,Measles + Rubella vaccine (MR),PFI + diluent,5mL vial (10 doses),2,,21.3 Vaccines,,418,77
+21.3.6,Pneumococcal vaccine (10-valent ads. conjugate),Injection (suspension),2mL vial (4 doses),2,,21.3 Vaccines,,,77
+21.3.7,Pneumococcal vaccine (13 valent or higher adsorbed conjugate),Injection (syringe),Single or multi dose vial,2,,21.3 Vaccines,,419,78
+21.3.8,Polio vaccine (IPV),Injection,Multi dose vial,2,,21.3 Vaccines,,,78
+21.3.9,"Polio vaccine, oral (OPV) (live attenuated)",Oral drops,10mL vial (20 doses),2,,21.3 Vaccines,,,78
+21.3.10,Rotavirus vaccine,Oral suspension,5 dose vial,2,,21.3 Vaccines,,420,78
+21.3.11,Tetanus + Diphtheria (Td) vaccine,Injection,10mL vial (20 doses),2,,21.3 Vaccines,,421,78
+21.3.12,Tetanus + Diphtheria + Pertussis (Tdap) vaccine,Injection,0.5mL (single dose),2,,21.3 Vaccines,,422,78
+21.3.13,"Yellow fever vaccine (live, attenuated)",Injection,Single or multi dose vial,2,,21.3 Vaccines,,423,78
+21.3.14,Cholera vaccine,Oral suspension,1.5mL vial (single dose) - single dose vial,2,,21.3 Vaccines,,,78
+21.3.15,Hepatitis A vaccine,Injection,80 units (Paed),2,,21.3 Vaccines,,,78
+21.3.15,Hepatitis A vaccine,Injection,160 units (Adult),2,,21.3 Vaccines,,,78
+21.3.16,Malaria vaccine,Injection,1mL vial (2 doses),2,,21.3 Vaccines,,424,78
+21.3.17,Meningococcal meningitis vaccine,Injection,Single or multi dose,2,,21.3 Vaccines,,425,78
+21.3.18,Rabies vaccine (cell culture),Injection,Single dose (Purified Verocell / Human diploid),2,,21.3 Vaccines,,,78
+21.3.19,Typhoid vaccine,Injection (solution),Single or multi dose,2,,21.3 Vaccines,,426,78
+21.3.20,Influenza vaccine (inactivated),Injection,0.5mL vial (single dose),2,,21.3 Vaccines,,427,78
+22.1.1,Acyclovir,Eye ointment,3%,4,,22.1 Anti-infective agents,,428,79
+22.1.2,Dexamethasone + Polymixin B sulphate + Neomycin sulphate,Ointment,"1mg dexamethasone, 6000 IU polymixin B sulphate, 3500 IU neomycin sulphate",4,,22.1 Anti-infective agents,,429,79
+22.1.3,Erythromycin,Eye ointment,0.5% [c],4,,22.1 Anti-infective agents,,430,79
+22.1.4,Gentamicin,Eye drops,0.3% (as sulphate) (10mL),2,,22.1 Anti-infective agents,,,79
+22.1.5,Gentamicin + Dexamethasone,Eye drops,0.3% + 0.1%,4,,22.1 Anti-infective agents,,431,79
+22.1.6,Moxifloxacin,Eye drops,0.5% (as HCL),5,,22.1 Anti-infective agents,,,79
+22.1.7,Natamycin,Eye drops,5%,5,,22.1 Anti-infective agents,,432,79
+22.1.8,Ofloxacin,Eye drops,0.3% (as sulphate),4,,22.1 Anti-infective agents,,,79
+22.1.9,Ofloxacin + Dexamethasone,Solution (eye-drops),0.3 + 0.1%,4,,22.1 Anti-infective agents,,,79
+22.1.10,Tetracycline,Eye ointment,1% (as HCl),1,,22.1 Anti-infective agents,,,79
+22.1.11,Tobramycin,Solution (eye-drops),0.3% (as sulphate),3,,22.1 Anti-infective agents,,,79
+22.1.12,Tobramycin + Dexamethasone,Solution (eye-drops),0.3 + 0.1%,4,,22.1 Anti-infective agents,,,79
+22.1.13,Voriconazole,Powder for eye-drops,1% w/v(Lyophilized),5,,22.1 Anti-infective agents,,,79
+22.2.1,Dexamethasone,Solution (eye-drops),0.1%,4,,22.2 Anti-inflammatory agents,,,79
+22.2.2,Fluorometholone,Solution (eye-drops),0.1%,4,,22.2 Anti-inflammatory agents,,433,79
+22.2.3,Ketorolac trometamol,Solution (eye-drops),0.5%,4,,22.2 Anti-inflammatory agents,,434,79
+22.2.4,Methylprednisolone,PFI,1g vial (as sodium succinate),5,,22.2 Anti-inflammatory agents,,435,80
+22.2.5,Prednisolone,Solution (eye-drops),1% (as acetate) (5mL),4,,22.2 Anti-inflammatory agents,,,80
+22.2.6,Triamcinolone,Injection suspension,40mg/1mL amp (as acetonide or hexacetonide),5,,22.2 Anti-inflammatory agents,,436,80
+22.3.1,Lignocaine,Solution (eye-drops),2% (as HCL),4,,22.3 Local Anaesthetics,,437,80
+22.3.2,Lignocaine + Epinephrine (Adrenaline),Solution (eye-drops),"Lignocaine 2% and Epinephrine (Adrenaline) 1:100,000 or1:200,000 (as HCl)",5,,22.3 Local Anaesthetics,,,80
+22.3.3,Proparacaine,Solution (eye-drops),0.5% (as HCl),4,,22.3 Local Anaesthetics,,438,80
+22.3.4,Tetracaine,Solution (eye-drops),0.5% (as HCl),4,,22.3 Local Anaesthetics,,,80
+22.4.1,Acetazolamide,Tablet,250mg,4,,22.4 Miotics and Anti-Glaucoma Medicines,,439,80
+22.4.2,Bimatoprost,Solution (eye-drops),0.01%,4,,22.4 Miotics and Anti-Glaucoma Medicines,,440,80
+22.4.2,Bimatoprost,Solution (eye-drops),0.03%,4,,22.4 Miotics and Anti-Glaucoma Medicines,,440,80
+22.4.3,Bimatoprost + Timolol,Solution (eye-drops),Bimatoprost 0.03% +Timolol 0.5%,4,,22.4 Miotics and Anti-Glaucoma Medicines,,,80
+22.4.4,Brimonidine + Timolol,Solution (eye-drops),Brimonidine 0.2% +Timolol 0.5%,5,,22.4 Miotics and Anti-Glaucoma Medicines,,,80
+22.4.5,Dorzolamide,Solution (eye-drops),2% (as HCl),4,,22.4 Miotics and Anti-Glaucoma Medicines,,,80
+22.4.6,Latanoprost,Solution (eye-drops),0.005%,4,,22.4 Miotics and Anti-Glaucoma Medicines,,,80
+22.4.7,Pilocarpine,Solution (eye-drops)441,4% (as HCl or nitrate),5,,22.4 Miotics and Anti-Glaucoma Medicines,,,80
+22.4.7,Pilocarpine,Solution (eye-drops)441,2%,5,,22.4 Miotics and Anti-Glaucoma Medicines,,,80
+22.4.7,Pilocarpine,Solution (eye-drops)441,1%,5,,22.4 Miotics and Anti-Glaucoma Medicines,,,80
+22.4.7,Pilocarpine,Injection442,0.5% w/v(as nitrate) vial,5,,22.4 Miotics and Anti-Glaucoma Medicines,,,80
+22.4.8,Timolol,Solution (eye-drops),0.5% (as hyd. maleate),4,,22.4 Miotics and Anti-Glaucoma Medicines,,,81
+22.5.1,Atropine,Solution (eye-drops),0.1% (as sulphate) [c]443,4,,22.5 Mydriatics,,,81
+22.5.1,Atropine,Solution (eye-drops),0.5% (as sulphate),4,,22.5 Mydriatics,,,81
+22.5.2,Cyclopentolate,Solution (eye-drops),1%,4,,22.5 Mydriatics,,444,81
+22.5.3,Tropicamide + phenylephrine,Solution (eye-drops),0.8% + 5% w/v,4,,22.5 Mydriatics,,445,81
+22.6.1,Aflibercept,Injection,0.05mL (2mg vial),6,,22.6 Anti-vascular endothelial growth factor (VEGF) preparations,,446,81
+22.6.2,Bevacizumab,Injection,25mg/mL (4mL vial),6,,22.6 Anti-vascular endothelial growth factor (VEGF) preparations,,447,81
+22.6.3,Ranibizumab,Injection,6mg/mL (0.3mg vial),6,,22.6 Anti-vascular endothelial growth factor (VEGF) preparations,,448,81
+22.6.3,Ranibizumab,Injection,10mg/mL (0.5mg vial),6,,22.6 Anti-vascular endothelial growth factor (VEGF) preparations,,448,81
+22.7.1,Azelastine,Solution (eye-drops),0.05%,3,,22.7 Anti-allergy medicines for the eye,,449,81
+22.7.2,Olopatadine,Solution (eye-drops),0.1% (HCl),5,,22.7 Anti-allergy medicines for the eye,,450,81
+22.7.2,Olopatadine,Solution (eye-drops),0.2% (HCl),5,,22.7 Anti-allergy medicines for the eye,,450,81
+22.7.3,Sodium cromoglicate,Solution (eye-drops),2%,5,,22.7 Anti-allergy medicines for the eye,,,81
+22.8.1,Hypertonic saline,Solution (eye-drops),3%,5,,22.8 Other medicines for the eye,,451,81
+22.8.2,Methyl cellulose,Solution (eye-drops),0.3 - 1%,4,,22.8 Other medicines for the eye,,452,81
+22.8.3,Polyacrylic acid,Eye Gel,0.2%,4,,22.8 Other medicines for the eye,,453,82
+22.8.4,Riboflavin,Solution (eye-drops),0.1% with Dextran,5,,22.8 Other medicines for the eye,,454,82
+22.8.4,Riboflavin,Solution (eye-drops),0.1% without Dextran,5,,22.8 Other medicines for the eye,,454,82
+22.8.5,Sodium Hyaluronate,Solution (eye-drops),1% (preseverative free),4,,22.8 Other medicines for the eye,,455,82
+22.8.6,Trypan blue,Intracameral Solution,0.06%,5,,22.8 Other medicines for the eye,,456,82
+23.1.1.1,Ethinylestradiol + Levonorgestrel,Tablet,30 micrograms + 150 micrograms,2,,23.1 Contraceptives,23.1.1 Oral hormonal contraceptives,,82
+23.1.1.2,Ethinylestradiol + Norethisterone,Tablet,35 micrograms + 1mg,2,,23.1 Contraceptives,23.1.1 Oral hormonal contraceptives,,82
+23.1.1.3,Levonorgestrel,Tablet,30 micrograms,2,,23.1 Contraceptives,23.1.1 Oral hormonal contraceptives,457,82
+23.1.1.4,Levonorgestrel,Tablet,750 micrograms (pack of 2)458,2,,23.1 Contraceptives,23.1.1 Oral hormonal contraceptives,,82
+23.1.1.4,Levonorgestrel,Tablet,1.5mg,2,,23.1 Contraceptives,23.1.1 Oral hormonal contraceptives,,82
+23.1.2.1,Medroxyprogesterone acetate (DMPA),Depot Injection (IM)459,150mg/1mL (prefilled syringe),2,,23.1 Contraceptives,23.1.2 Injectable hormonal contraceptives,,82
+23.1.2.1,Medroxyprogesterone acetate (DMPA),Depot Injection (SC)460,104 mg/0.65 mL (prefilled syringe),2,,23.1 Contraceptives,23.1.2 Injectable hormonal contraceptives,,82
+23.1.3.1,Copper-containing device,,,2,,23.1 Contraceptives,23.1.3 Intrauterine devices (IUD),461,82
+23.1.3.2,Levonorgestrel (LNG),LNG-releasing Intrauterine system (LNG-IUS),Reservoir with 52mg,2,,23.1 Contraceptives,23.1.3 Intrauterine devices (IUD),462,82
+23.1.4.1,Etonorgestrel-releasing implant,Implant,68mg (1 rod),2,,23.1 Contraceptives,23.1.3 Intrauterine devices (IUD),,83
+23.1.4.2,Levonorgestrel-releasing implant,Implant,150mg (2 x 75mg rods),2,,23.1 Contraceptives,23.1.3 Intrauterine devices (IUD),,83
+23.2.1,Clomifene,Tablet,50mg (as citrate),4,,23.2 Ovulation Inducers,,463,83
+23.2.2,Human chorionic gonadotropin (HCG),Injection,"5,000 IU/vial",5,,23.2 Ovulation Inducers,,,83
+23.2.3,Human menopausal gonadotropin (HMG),Injection,75 IU,5,,23.2 Ovulation Inducers,,464,83
+23.2.4,Letrozole,Tablets,2.5mg,4,,23.2 Ovulation Inducers,,,83
+23.3.1,Danazol,Capsule,50mg,4,,23.3 Medicines for treatment of Endometriosis,,,83
+23.3.2,Dienogest,Tablet,2mg,4,,23.3 Medicines for treatment of Endometriosis,,,83
+23.3.3,Goserelin,"Injection (depot, SC)",3.6mg (as acetate),4,,23.3 Medicines for treatment of Endometriosis,,,83
+23.3.4,Levonorgestrel (LNG),LNG-releasing Intrauterine system (LNG-IUS),Reservoir with 52mg,4,,23.3 Medicines for treatment of Endometriosis,,,83
+23.4.1,Goserelin,"Injection (depot, SC)",3.6mg (as acetate),4,,23.4 Medicines for treatment of Fibroids,,,83
+23.4.2,Leuprorelin (Leuprolide),"Injection (depot, SC)",3.75mg (as acetate),4,,23.4 Medicines for treatment of Fibroids,,,83
+23.5.1,Norethisterone,Tablet,5mg,4,,23.5 Medicines for treatment of Abnormal uterine bleeding,,465,83
+23.6.1.1,Carbetocin,Injection (heat stable),100 micrograms/mL,2,,23.6 Uterotonics (Medicines acting on the Uterus),23.6.1 Oxytocics,466,83
+23.6.1.2,Carboprost,Injection,250 micrograms/mL (as tromethamine),2,,23.6 Uterotonics (Medicines acting on the Uterus),23.6.1 Oxytocics,467,83
+23.6.1.3,Ergometrine,Injection,500 micrograms/1mL (as hydrogen maleate) amp,2,,23.6 Uterotonics (Medicines acting on the Uterus),23.6.1 Oxytocics,468,84
+23.6.1.4,Mifepristone + Misoprostol,Tablet,Mifepristone 200mg (1 Tablet) and Misoprostol 200 micrograms (4 vaginal tablets) in Combi-pack,2,,23.6 Uterotonics (Medicines acting on the Uterus),23.6.1 Oxytocics,469,84
+23.6.1.5,Misoprostol,Tablet,200 micrograms470,2,,23.6 Uterotonics (Medicines acting on the Uterus),23.6.1 Oxytocics,,84
+23.6.1.5,Misoprostol,Vaginal Tablet,25 micrograms471,2,,23.6 Uterotonics (Medicines acting on the Uterus),23.6.1 Oxytocics,,84
+23.6.1.6,Oxytocin,Injection,10 IU/1mL amp,2,,23.6 Uterotonics (Medicines acting on the Uterus),23.6.1 Oxytocics,472,84
+23.6.1.7,Prostaglandin E2,Vaginal Tablet,3mg,4,,23.6 Uterotonics (Medicines acting on the Uterus),23.6.1 Oxytocics,473,84
+23.7.1,Salbutamol,Injection474,500 micrograms (as sulphate)/mL (5mL amp),4,,23.7 Anti-oxytocics (Tocolytics),,,84
+23.7.2,Terbutaline,Injection475,"0.5mg/mL, 1mL",4,,23.7 Anti-oxytocics (Tocolytics),,,84
+23.7.2,Terbutaline,Injection475,"0.5mg/mL, 5mL",4,,23.7 Anti-oxytocics (Tocolytics),,,84
+23.8.1,Dexamethasone,Injection,4mg (as disodium phosphate)/mL,4,,23.8 Other medicines administered to the mother,,476,84
+23.8.2,Tranexamic acid,Injection,100mg/mL (10mL amp),2,,23.8 Other medicines administered to the mother,,477,84
+23.9.1,Caffeine citrate,Sterile solution for IV or oral use,20mg/mL [c]478,4,,23.8 Other medicines administered to the mother,,,84
+23.9.1,Caffeine citrate,Sterile solution for IV or oral use,10mg/mL [c]479,4,,23.8 Other medicines administered to the mother,,,84
+23.9.2,Chlorhexidine,Gel480,7.1% (as digluconate) (20 g tube) [c],2,,23.8 Other medicines administered to the mother,,,85
+23.9.3,Ibuprofen,Injection solution,5mg/mL (2mL amp) [c],5,,23.8 Other medicines administered to the mother,,,85
+23.9.4,Prostaglandin E2,Injection solution,1mg/mL [c],5,,23.8 Other medicines administered to the mother,,481,85
+23.9.5,Sildenafil,PFOL,10mg/mL,5,,23.8 Other medicines administered to the mother,,482,85
+23.9.6,Surfactant,Suspension for intratracheal instillation,25mg/mL [c]483,5,,23.8 Other medicines administered to the mother,,,85
+23.9.6,Surfactant,Suspension for intratracheal instillation,80mg/mL [c]484,5,,23.8 Other medicines administered to the mother,,,85
+25.1.1,Aripiprazole,Tablet,15mg,4,,25.1 Medicines used in Psychotic disorders,,485,85
+25.1.1,Aripiprazole,Tablet,5mg,4,,25.1 Medicines used in Psychotic disorders,,485,85
+25.1.2,Chlorpromazine,Injection,25mg (as HCl)/mL (2mL amp),2,,25.1 Medicines used in Psychotic disorders,,,85
+25.1.2,Chlorpromazine,Tablet,50mg (as HCl)486,2,,25.1 Medicines used in Psychotic disorders,,,85
+25.1.2,Chlorpromazine,Injection,100mg (as HCl),2,,25.1 Medicines used in Psychotic disorders,,,85
+25.1.3,Clozapine,Tablet (scored),100mg,5,,25.1 Medicines used in Psychotic disorders,,487,85
+25.1.4,Flupentixol,"Injection (oily, depot)",20mg (as decanoate)/mL (2mL amp),4,,25.1 Medicines used in Psychotic disorders,,,85
+25.1.5,Fluphenazine,"Injection (oily, depot)",25mg (as decanoate) /1mL amp,4,,25.1 Medicines used in Psychotic disorders,,,85
+25.1.6,Haloperidol,Injection,5mg/1mL amp,4,,25.1 Medicines used in Psychotic disorders,,,85
+25.1.6,Haloperidol,Injection (oily),50mg/1mL amp,4,,25.1 Medicines used in Psychotic disorders,,,85
+25.1.6,Haloperidol,Tablet (scored),5mg,2,,25.1 Medicines used in Psychotic disorders,,,85
+25.1.7,Midazolam,Injection (IM),5mg/mL (3mL amp),4,,25.1 Medicines used in Psychotic disorders,,488,86
+25.1.8,Olanzapine,PFI,10mg,5,,25.1 Medicines used in Psychotic disorders,,489,86
+25.1.8,Olanzapine,Tablet,10mg,3,,25.1 Medicines used in Psychotic disorders,,489,86
+25.1.8,Olanzapine,PFI,5mg,3,,25.1 Medicines used in Psychotic disorders,,489,86
+25.1.8,Olanzapine,Tablet (dispersible),10mg,3,,25.1 Medicines used in Psychotic disorders,,489,86
+25.1.9,Paliperidone palmitate,Injection,75mg/mL,5,,25.1 Medicines used in Psychotic disorders,,490,86
+25.1.9,Paliperidone palmitate,Injection,100mg/mL,5,,25.1 Medicines used in Psychotic disorders,,490,86
+25.1.9,Paliperidone palmitate,Injection,150mg/mL,5,,25.1 Medicines used in Psychotic disorders,,490,86
+25.1.10,Quetiapine,"Tablet (i/r, scored)",100mg,4,,25.1 Medicines used in Psychotic disorders,,,86
+25.1.10,Quetiapine,"Tablet (i/r, scored)",300mg,4,,25.1 Medicines used in Psychotic disorders,,,86
+25.1.10,Quetiapine,"Tablet (i/r, scored)",200mg,4,,25.1 Medicines used in Psychotic disorders,,,86
+25.1.10,Quetiapine,Tablet (e/r),300mg,4,,25.1 Medicines used in Psychotic disorders,,,86
+25.1.10,Quetiapine,"Tablet (i/r, scored)",200mg,4,,25.1 Medicines used in Psychotic disorders,,,86
+25.1.11,Risperidone,Tablet (scored),2mg,3,,25.1 Medicines used in Psychotic disorders,,,86
+25.1.12,Zuclopenthixol,Injection (aqua)491,100mg (as acetate)/mL (2mL amp),4,,25.1 Medicines used in Psychotic disorders,,,86
+25.1.12,Zuclopenthixol,"Injection (oily, depot)492",200mg (as decanoate)/1mL amp,4,,25.1 Medicines used in Psychotic disorders,,,86
+25.1.12,Zuclopenthixol,Oral drops493,20mg/mL (20mL),4,,25.1 Medicines used in Psychotic disorders,,,86
+25.2.1.1,Amitriptyline,Tablet,25mg (as HCl),2,,25.2 Medicines used in Mood disorders,25.2.1 Medicines used in Depressive disorders,,86
+25.2.1.2,Escitalopram,Tablet,10mg,3,,25.2 Medicines used in Mood disorders,25.2.1 Medicines used in Depressive disorders,494,86
+25.2.1.3,Fluoxetine,Tablet (scored),20mg (as HCl),3,,25.2 Medicines used in Mood disorders,25.2.1 Medicines used in Depressive disorders,,86
+25.2.1.4,Mirtazapine,Tablet,15mg,5,,25.2 Medicines used in Mood disorders,25.2.1 Medicines used in Depressive disorders,495,86
+25.2.1.5,Venlafaxine,Tablet,75mg,4,,25.2 Medicines used in Mood disorders,25.2.1 Medicines used in Depressive disorders,,87
+25.2.1.5,Venlafaxine,Tablet,37.5mg,4,,25.2 Medicines used in Mood disorders,25.2.1 Medicines used in Depressive disorders,,87
+25.2.2.1,Carbamazepin,Tablet (cross-scored),200mg,2,,25.2 Medicines used in Mood disorders,25.2.2 Medicines used in bipolar disorders,,87
+25.2.2.1,Carbamazepin,Tablet (Controlled Release),200mg,4,,25.2 Medicines used in Mood disorders,25.2.2 Medicines used in bipolar disorders,,87
+25.2.2.2,Divalproex sodium,Tablet,500mg,4,,25.2 Medicines used in Mood disorders,25.2.2 Medicines used in bipolar disorders,,87
+25.2.2.2,Divalproex sodium,Tablet,750mg,4,,25.2 Medicines used in Mood disorders,25.2.2 Medicines used in bipolar disorders,,87
+25.2.2.3,Lamotrigine,Tablet,25mg,5,,25.2 Medicines used in Mood disorders,25.2.2 Medicines used in bipolar disorders,,87
+25.2.2.3,Lamotrigine,Tablet,100mg,5,,25.2 Medicines used in Mood disorders,25.2.2 Medicines used in bipolar disorders,,87
+25.2.2.3,Lamotrigine,"Tablet, (chewable, dispersible)",25mg,5,,25.2 Medicines used in Mood disorders,25.2.2 Medicines used in bipolar disorders,,87
+25.2.2.4,Lithium carbonate,Tablet (scored),400mg,6,,25.2 Medicines used in Mood disorders,25.2.2 Medicines used in bipolar disorders,496,87
+25.2.2.4,Lithium carbonate,Tablet (m/r),400mg,6,,25.2 Medicines used in Mood disorders,25.2.2 Medicines used in bipolar disorders,496,87
+25.2.2.5,Quetiapine,"Tablet (i/r, scored)",100mg,4,,25.2 Medicines used in Mood disorders,25.2.2 Medicines used in bipolar disorders,,87
+25.2.2.5,Quetiapine,"Tablet (i/r, scored)",300mg,4,,25.2 Medicines used in Mood disorders,25.2.2 Medicines used in bipolar disorders,,87
+25.2.2.5,Quetiapine,"Tablet (i/r, scored)",200mg,4,,25.2 Medicines used in Mood disorders,25.2.2 Medicines used in bipolar disorders,,87
+25.2.2.5,Quetiapine,Tablet (e/r),300mg,4,,25.2 Medicines used in Mood disorders,25.2.2 Medicines used in bipolar disorders,,87
+25.2.2.5,Quetiapine,"Tablet (i/r, scored)",200mg,4,,25.2 Medicines used in Mood disorders,25.2.2 Medicines used in bipolar disorders,,87
+25.3.1,Alprazolam,Tablet,0.25mg,3,,25.3 Medicines for Anxiety disorders,,,87
+25.3.1,Alprazolam,Tablet,0.5mg,3,,25.3 Medicines for Anxiety disorders,,,87
+25.3.2,Bromazepam,Tablet (scored),3mg,4,,25.3 Medicines for Anxiety disorders,,497,87
+25.3.3,Escitalopram,Tablet,10mg,3,,25.3 Medicines for Anxiety disorders,,,87
+25.3.4,Mirtazapine,Tablet,15mg,5,,25.3 Medicines for Anxiety disorders,,498,87
+25.3.5,Paroxetine,Tablet,20mg,4,,25.3 Medicines for Anxiety disorders,,,87
+25.3.6,Propranolol,Tablet,40mg,3,,25.3 Medicines for Anxiety disorders,,,87
+25.4.1,Clomipramine,Capsule,25mg (as HCl),4,,25.4 Medicines used in obsessive-compulsive disorders,,,87
+25.5.1,Acamprosate,Tablet,333mg,6,,25.4 Medicines used in obsessive-compulsive disorders,,,87
+25.5.2,Vitamin B and C,Injection (IV),Pair of amps. (2 x 5mL),4,,25.4 Medicines used in obsessive-compulsive disorders,,499,88
+25.5.3,Buprenorphine,Tablet (sublingual),2mg (as HCl),4,,25.4 Medicines used in obsessive-compulsive disorders,,500,88
+25.5.3,Buprenorphine,Tablet (sublingual),8mg (as HCl),4,,25.4 Medicines used in obsessive-compulsive disorders,,500,88
+25.5.4,Buprenorphine + Naloxone,Tablet (sublingual),2mg + 500 micrograms (both as HCl),4,,25.4 Medicines used in obsessive-compulsive disorders,,,88
+25.5.4,Buprenorphine + Naloxone,Tablet (sublingual),8mg + 2mg (both as HCl),4,,25.4 Medicines used in obsessive-compulsive disorders,,,88
+25.5.5,Bupropion,Tablet,150mg,4,,25.4 Medicines used in obsessive-compulsive disorders,,501,88
+25.5.6,Methadone,Oral liquid,5mg/mL (as HCl) (concentrate),4,,25.4 Medicines used in obsessive-compulsive disorders,,502,88
+25.5.7,Naltrexone,Tablet503,50mg (as HCl),4,,25.4 Medicines used in obsessive-compulsive disorders,,,88
+25.5.7,Naltrexone,"Injection (IM, suspension for extended release)504",380mg (as HCl),4,,25.4 Medicines used in obsessive-compulsive disorders,,,88
+25.5.7,Naltrexone,Implant505,765mg (as HCl),6,,25.4 Medicines used in obsessive-compulsive disorders,,,88
+25.5.8,Nicotine (NRT),Chewing gum,2mg,4,,25.4 Medicines used in obsessive-compulsive disorders,,506,88
+25.5.8,Nicotine (NRT),Chewing gum,4mg,4,,25.4 Medicines used in obsessive-compulsive disorders,,506,88
+25.5.8,Nicotine (NRT),Transdermal patch507,7-21mg/24 hours,4,,25.4 Medicines used in obsessive-compulsive disorders,,506,88
+25.6.1,Atomoxetine,Tablet,10mg,6,,25.6 Medicines used in attention deficit hyperactivity disorder (ADHD),,,88
+25.6.2,Methylphenidate,Tablet,10mg,4,,25.6 Medicines used in attention deficit hyperactivity disorder (ADHD),,508,88
+25.6.2,Methylphenidate,Tablet (e/r),18mg,4,,25.6 Medicines used in attention deficit hyperactivity disorder (ADHD),,508,88
+25.6.2,Methylphenidate,Tablet,27mg,5,,25.6 Medicines used in attention deficit hyperactivity disorder (ADHD),,508,88
+25.7.1,Melatonin,Tablet (dispersible),4mg,2,,25.7 Medicines for sleep disorders,,509,89
+25.7.1,Melatonin,Tablet (dispersible),3mg,2,,25.7 Medicines for sleep disorders,,509,89
+25.7.2,Zolpidem,Tablet,10mg,4,,25.7 Medicines for sleep disorders,,510,89
+26.1.1,Budesonide,Inhalation (aerosol),100 micrograms/dose (200 dose),4,,26.1 Antiasthmatic medicines and medicines for chronic obstructive pulmonary disease,,,89
+26.1.1,Budesonide,Inhalation (aerosol),200 micrograms/dose (200 dose),4,,26.1 Antiasthmatic medicines and medicines for chronic obstructive pulmonary disease,,,89
+26.1.2,Budesonide + Formoterol,Metered dose inhaler,100 micrograms + 6mg/ metered dose (120 dose),4,,26.1 Antiasthmatic medicines and medicines for chronic obstructive pulmonary disease,,,89
+26.1.2,Budesonide + Formoterol,Metered dose inhaler,200 micrograms + 6mg/ metered dose (120 dose),4,,26.1 Antiasthmatic medicines and medicines for chronic obstructive pulmonary disease,,,89
+26.1.2,Budesonide + Formoterol,Dry powder inhaler,80 micrograms + 4.5mcg/ metered dose (120 dose),4,,26.1 Antiasthmatic medicines and medicines for chronic obstructive pulmonary disease,,,89
+26.1.2,Budesonide + Formoterol,Metered dose inhaler,160 micrograms + 4.5mcg/ metered dose (120 dose),4,,26.1 Antiasthmatic medicines and medicines for chronic obstructive pulmonary disease,,,89
+26.1.3,Epinephrine (adrenaline),Injection,1mg/1mL amp511,2,,26.1 Antiasthmatic medicines and medicines for chronic obstructive pulmonary disease,,,89
+26.1.4,Ipratropium bromide,Inhalation (aerosol),20 micrograms/metered dose (200 dose),4,,26.1 Antiasthmatic medicines and medicines for chronic obstructive pulmonary disease,,,89
+26.1.4,Ipratropium bromide,Nebuliser solution,500 micrograms/2mL unit dose vial (isotonic),4,,26.1 Antiasthmatic medicines and medicines for chronic obstructive pulmonary disease,,,89
+26.1.5,Montelukast,Tablet (chewable),5mg (as sodium salt)512,4,,26.1 Antiasthmatic medicines and medicines for chronic obstructive pulmonary disease,,,89
+26.1.5,Montelukast,Tablet,10mg (as sodium salt),4,,26.1 Antiasthmatic medicines and medicines for chronic obstructive pulmonary disease,,,89
+26.1.6,Salbutamol,Nebuliser solution,5mg/mL (as sulphate),2,,26.1 Antiasthmatic medicines and medicines for chronic obstructive pulmonary disease,,,89
+26.1.7,Salbutamol + Beclomethasone,Inhalation (aerosol),100 micrograms + 50 micrograms,3,,26.1 Antiasthmatic medicines and medicines for chronic obstructive pulmonary disease,,513,89
+26.1.8,Salbutamol + Ipratropium,Nebuliser solution,Salbutamol 2.5mg as sulphate + Ipratropium 500 micrograms as bromide in 2.5mL Amp,3,,26.1 Antiasthmatic medicines and medicines for chronic obstructive pulmonary disease,,,89
+26.1.9,Tiotropium,Powder for inhalation in a Capsule514,18 micrograms / Capsule,4,,26.1 Antiasthmatic medicines and medicines for chronic obstructive pulmonary disease,,,90
+26.1.9,Tiotropium,Metered dose Inhaler,2.5 micrograms per actuation,4,,26.1 Antiasthmatic medicines and medicines for chronic obstructive pulmonary disease,,,90
+26.2.1,Nintedanib,Capsule,150mg,6,,26.2 Medicines for Idiopathic Pulmonary Fibrosis,,,90
+26.2.2,Pirfenidone,Tablet,267mg,5,,26.2 Medicines for Idiopathic Pulmonary Fibrosis,,,90
+27.1.1,Benzocaine + Chlorbutol + Paradichlorobenzene + Turpentine oil,Solution (ear drops),2.7% + 2% + 5% + 15%,3,,27.1 Medicines for the Ear,,,90
+27.1.2,Betahistine,Tablet,8mg,5,,27.1 Medicines for the Ear,,,90
+27.1.2,Betahistine,Tablet,16mg,5,,27.1 Medicines for the Ear,,,90
+27.1.3,Cinnarizine,Tablet,25mg,5,,27.1 Medicines for the Ear,,515,90
+27.1.4,Ciprofloxacin,Solution (ear drops),0.3% (as HCl),2,,27.1 Medicines for the Ear,,,90
+27.1.5,Ciprofloxacin + Dexamethasone,Solution (ear drops),0.3% (as HCl) + 0.1%,3,,27.1 Medicines for the Ear,,,90
+27.1.6,Clotrimazole,Solution (ear drops),1%,3,,27.1 Medicines for the Ear,,,90
+27.1.7,Hydrogen peroxide,Solution (ear drops),3% (stabilised),2,,27.1 Medicines for the Ear,,516,90
+27.2.1,Budesonide,Nasal spray,100 micrograms / metered dose [c],4,,27.2 Medicines for the Nose,,,90
+27.2.2,Fluticasone,Nasal spray,27.5 micrograms (as propionate or furoate),5,,27.2 Medicines for the Nose,,517,90
+27.2.3,Liquid paraffin,Nasal drops,100%,2,,27.2 Medicines for the Nose,,,90
+27.2.4,Neomycin + Betamethasone,Solution (nasal drops),0.5% (as sulphate) + (0.1% as sodium phosphate),4,,27.2 Medicines for the Nose,,518,90
+27.2.5,Sodium chloride,Solution (nasal drops),0.9%,2,,27.2 Medicines for the Nose,,,90
+27.2.6,Xylometazoline,Nasal spray,0.05%,4,,27.2 Medicines for the Nose,,519,90
+27.3.1,Chlorhexidine,Solution (mouthwash),0.2% (as gluconate/ digluconate),2,,27.3 Medicines for the Throat and Mouth,,520,90
+27.3.2,Lidocaine (Lignocaine),Spray,10mg/metered dose (actuation),4,,27.3 Medicines for the Throat and Mouth,,521,91
+28.1.1,Allopurinol,Tablet,100mg,4,,28.1 Medicines used to treat Gout,,,91
+28.1.1,Allopurinol,Tablet,300mg,4,,28.1 Medicines used to treat Gout,,,91
+28.1.2,Colchicine,Tablet,500 micrograms,4,,28.1 Medicines used to treat Gout,,,91
+28.1.3,Febuxostat,Tablet,40mg,5,,28.1 Medicines used to treat Gout,,522,91
+28.1.4,Probenecid,Tablet,250mg,6,,28.1 Medicines used to treat Gout,,523,91
+28.2.1,Abatacept,PFI (IV),250mg,6,,28.1 Medicines used to treat Gout,,524,91
+28.2.2,Adalimumab,Injection,40mg/0.4mL,6,,28.1 Medicines used to treat Gout,,525,91
+28.2.3,Azathioprine,Tablet,50mg,4,,28.1 Medicines used to treat Gout,,,91
+28.2.4,Baricitinib,Tablet,2mg,6,,28.1 Medicines used to treat Gout,,526,91
+28.2.5,Cyclosporin,Capsule,25mg,6,,28.1 Medicines used to treat Gout,,527,91
+28.2.5,Cyclosporin,Capsule,100mg,6,,28.1 Medicines used to treat Gout,,527,91
+28.2.6,Etanercept,Injection,25mg vial528,6,,28.1 Medicines used to treat Gout,,,91
+28.2.6,Etanercept,Injection,50mg vial529,6,,28.1 Medicines used to treat Gout,,,91
+28.2.7,Golimumab,Injection (solution) (SC),50mg,6,,28.1 Medicines used to treat Gout,,530,91
+28.2.8,Hydroxychloroquine,Tablet,200mg (as sulphate),4,,28.1 Medicines used to treat Gout,,531,91
+28.2.9,Infliximab,PFI,100mg,6,,28.1 Medicines used to treat Gout,,532,91
+28.2.10,Leflunomide,Tablet,20mg,6,,28.1 Medicines used to treat Gout,,533,92
+28.2.11,Methotrexate (MTX),Tablet534,2.5mg (as sodium salt),4,,28.1 Medicines used to treat Gout,,,92
+28.2.11,Methotrexate (MTX),Injection (prefilled syringe)535,10mg/mL (0.4mL),4,,28.1 Medicines used to treat Gout,,,92
+28.2.11,Methotrexate (MTX),Tablet534,25mg/mL (0.4mL),4,,28.1 Medicines used to treat Gout,,,92
+28.2.12,Methylprednisolone,PFI,125mg (as sodium succinate),4,,28.1 Medicines used to treat Gout,,,92
+28.2.12,Methylprednisolone,PFI,500mg (as sodium succinate),4,,28.1 Medicines used to treat Gout,,,92
+28.2.13,Prednisolone,Tablet,5mg,5,,28.1 Medicines used to treat Gout,,,92
+28.2.13,Prednisolone,Tablet,20mg,5,,28.1 Medicines used to treat Gout,,,92
+28.2.14,Rituximab,Injection (IV),10mg/mL (10mL vial),6,,28.1 Medicines used to treat Gout,,536,92
+28.2.14,Rituximab,Injection (IV),10mg/mL (50mL vial),6,,28.1 Medicines used to treat Gout,,536,92
+28.2.15,Sulfasalazine (SSZ),Tablet,500mg,4,,28.1 Medicines used to treat Gout,,,92
+28.2.16,Tocilizumab,(Solution for IV infusion),20mg/mL (4mL vial),6,,28.1 Medicines used to treat Gout,,537,92
+28.2.16,Tocilizumab,"Injection, single use prefilled syringe for subcutaneous injection",162mg/0.9mL,6,,28.1 Medicines used to treat Gout,,537,92
+28.2.17,Triamcinolone,Injection (suspension),40mg/1mL amp (as acetonide or hexacetonide),5,,28.1 Medicines used to treat Gout,,538,92
+28.3.1,Acetylsalicylic acid (Aspirin),Tablet (scored),300mg,4,,28.3 Medicines for Juvenile joint diseases,,539,92
+28.3.2,Adalimumab,Injection,40mg/0.4mL,6,,28.3 Medicines for Juvenile joint diseases,,540,92
+28.3.3,Etanercept,Injection,25mg vial,6,,28.3 Medicines for Juvenile joint diseases,,541,92
+28.3.4,Methotrexate (MTX),Tablet542,2.5mg (as sodium salt),4,,28.3 Medicines for Juvenile joint diseases,,,92
+28.3.4,Methotrexate (MTX),Injection (prefilled syringe)543,10mg/mL (0.4mL),4,,28.3 Medicines for Juvenile joint diseases,,,92
+28.3.4,Methotrexate (MTX),Tablet542,25mg/mL (0.4mL),4,,28.3 Medicines for Juvenile joint diseases,,,92
+28.3.5,Rituximab,Injection (IV),10mg/mL (10mL vial),6,,28.3 Medicines for Juvenile joint diseases,,544,93
+28.3.5,Rituximab,Injection (IV),10mg/mL (50mL vial),6,,28.3 Medicines for Juvenile joint diseases,,544,93
+28.3.6,Tocilizumab,Injection (solution for IV infusion),20mg/mL (4mL vial),6,,28.3 Medicines for Juvenile joint diseases,,545,93
+28.3.6,Tocilizumab,"Injection, single use prefilled syringe for subcutaneous injection",162mg/0.9mL,6,,28.3 Medicines for Juvenile joint diseases,,545,93
+28.3.7,Triamcinolone,Injection (suspension),40mg/1mL amp (as acetonide or hexacetonide),6,,28.3 Medicines for Juvenile joint diseases,,546,93
+28.3.7,Triamcinolone,Injection (suspension),0.01% (250mL),4,,28.3 Medicines for Juvenile joint diseases,,546,93
+28.3.7,Triamcinolone,Injection (suspension),1% (250g),2,,28.3 Medicines for Juvenile joint diseases,,546,93
+31.1.1,Calcium carbonate,Tablet,500mg,4,,31.1 Oral,,555,94
+31.1.2,Calcium Carbonate with Vitamin D,Tablet,Minimum Calcium 1000mg/600IU of vitamin D,4,,31.1 Oral,,,94
+31.1.3,Calcium polystyrene sulphonate,Powder,15g sachet,4,,31.1 Oral,,556,94
+31.1.4,Magnesium chloride,Tablet,71.5mg (containing Calcium as carbonate 119mg per Tablet),4,,31.1 Oral,,557,94
+31.1.5,Oral rehydration salts (ORS),PFOL (to make 500mL),Sachet (WHO low- osmolarity formula),1,,31.1 Oral,,,94
+31.1.6,Oral rehydration salts + Zinc sulphate,"Co-pack (4 sachets + 10 Tablets, (dispersible))",PFOL in sachet to make 500mL + 20mg Tablet [c],2,,31.1 Oral,,,94
+31.1.7,Potassium chloride,Tablet (e/r),600mg,4,,31.1 Oral,,558,94
+31.1.8,Rehydration solution for malnutrition (ReSoMal),PFOL (to make 1L),Sachet (42g) (WHO formula),4,,31.1 Oral,,,94
+31.1.9,Sevelamer,Tablet,400mg,4,,31.1 Oral,,559,94
+31.1.9,Sevelamer,Tablet,800mg,4,,31.1 Oral,,559,94
+31.1.10,Sodium acid phosphate,Tablets (effervescent),1.936g (equiv. to phosphorus 500mg),4,,31.1 Oral,,560,94
+31.1.11,Sodium chloride,Tablet,600mg,4,,31.1 Oral,,,94
+31.1.12,Sodium polystyrene sulphonate,Powder,450g,4,,31.1 Oral,,561,94
+31.1.13,Sodium hydrogen carbonate (Sodium bicarbonate),Tablet,1g,5,,31.1 Oral,,562,94
+31.1.14,Tolvaptan,Tablet,15mg,5,,31.1 Oral,,563,94
+31.2.1,Calcium gluconate,Injection,100mg/mL (10%) (10mL amp),4,,31.2 Parenteral,,564,94
+31.2.2,Glucose,Injectable solution,5% (isotonic) (500mL infusion pack),2,,31.2 Parenteral,,,95
+31.2.2,Glucose,Injectable solution,10% (hypertonic) (500mL infusion pack),2,,31.2 Parenteral,,,95
+31.2.2,Glucose,Injectable solution,50% (hypertonic) (50mL amp)565,4,,31.2 Parenteral,,,95
+31.2.3,Glucose + Sodium chloride,Injectable solution,5% + 0.9% [c],2,,31.2 Parenteral,,566,95
+31.2.4,Potassium acid phosphate,Injection,13.6% w/v sterile aqueous solution,4,,31.2 Parenteral,,,95
+31.2.5,Potassium chloride,Injectable solution for dilution,15% (10mL amp)567,4,,31.2 Parenteral,,,95
+31.2.6,Sodium chloride,Injectable solution (infusion),0.45% (hypotonic) (500mL) [in collapsible bottle or Euro cap]568,4,,31.2 Parenteral,,,95
+31.2.6,Sodium chloride,Injectable solution (infusion),0.9% (isotonic) (500mL)569,2,,31.2 Parenteral,,,95
+31.2.6,Sodium chloride,Injectable solution (infusion),0.9% (isotonic) (100mL),2,,31.2 Parenteral,,,95
+31.2.6,Sodium chloride,Injectable solution (infusion),0.9% (isotonic) (250mL),2,,31.2 Parenteral,,,95
+31.2.6,Sodium chloride,Injectable solution (infusion),3% (hypertonic) (100mL amp)570,5,,31.2 Parenteral,,,95
+31.2.6,Sodium chloride,Injectable solution,30% (hypertonic) (10mL amp),5,,31.2 Parenteral,,,95
+31.2.7,Sodium hydrogen carbonate (Sodium bicarbonate),Injectable solution,8.4% (10mL amp)571,2,,31.2 Parenteral,,,95
+31.2.8,Sodium lactate compound (Hartmann’s /Ringers lactate),Injectable solution (infusion),BP formula (500mL)572,2,,31.2 Parenteral,,,95
+31.2.9,Water for injection,Injection,10mL amp,2,,31.2 Parenteral,,,95
+31.2.9,Water for injection,Injection,250mg,2,,31.2 Parenteral,,,96
+31.2.9,Water for injection,Injection,1g,2,,31.2 Parenteral,,,96
+31.2.9,Water for injection,Injection,1 microgram/mL (1 mL),4,,31.2 Parenteral,,,96
+31.2.9,Water for injection,Injection,500mg,4,,31.2 Parenteral,,,96
+31.2.9,Water for injection,Injection (IM/Oral)577,"300,000 IU/1mL amp",4,,31.2 Parenteral,,,96
+31.2.9,Water for injection,Tablet / Capsule,"250 micrograms (10,000 IU)",4,,31.2 Parenteral,,,96
+31.2.9,Water for injection,Injection,"1.25mg (50,000 IU)",4,,31.2 Parenteral,,,96
+31.2.9,Water for injection,Liquid,250mg to 500mg/100mL (100 to 200mL),2,,31.2 Parenteral,,,97
+31.2.9,Water for injection,Tablet (scored),50mg (as HCl)582,2,,31.2 Parenteral,,,97
+31.2.9,Water for injection,Injection,"100,000 IU (as palmitate)",2,,31.2 Parenteral,,,97
+31.2.9,Water for injection,Injection,"200,000 IU (as palmitate)",2,,31.2 Parenteral,,,97
+31.2.9,Water for injection,Injection,"1mg/1mL amp (as HCl, acetate or sulphate)",4,,31.2 Parenteral,,,97
+33.1.1.1,Amino acids,Solution for IV infusion,21g amino acid + 12g glutamine per 100mL bottle587,4,,33.1 Feeds for Special medical purposes,33.1.1 Parenteral feeds,,98
+33.1.1.1,Amino acids,Solution for IV infusion,5-6% (100ml bottle) [c]588,4,,33.1 Feeds for Special medical purposes,33.1.1 Parenteral feeds,,98
+33.1.1.1,Amino acids,Solution for IV infusion,7% (500ml bottle)589,4,,33.1 Feeds for Special medical purposes,33.1.1 Parenteral feeds,,98
+33.1.1.1,Amino acids,Solution for IV infusion,8% (500ml bottle)590,4,,33.1 Feeds for Special medical purposes,33.1.1 Parenteral feeds,,98
+33.1.1.1,Amino acids,Solution for IV infusion,10% (500ml bottle)591,4,,33.1 Feeds for Special medical purposes,33.1.1 Parenteral feeds,,98
+33.1.1.2,Combined amino acid and glucose formulation for central administration-two chamber bag for central admnistration,Solution for IV infusion,1 litre,5,,33.1 Feeds for Special medical purposes,33.1.1 Parenteral feeds,592,98
+33.1.1.3,"Combined amino acid, glucose and lipids with medium chain Triglycerides (MCT) / Long chain Triglycerides (LCT) - Three Chamber Bag For Central Administration",Solution for IV infusion,1 litre,5,,33.1 Feeds for Special medical purposes,33.1.1 Parenteral feeds,593,98
+33.1.1.3,"Combined amino acid, glucose and lipids with medium chain Triglycerides (MCT) / Long chain Triglycerides (LCT) - Three Chamber Bag For Central Administration",Solution for IV infusion,2 litres,5,,33.1 Feeds for Special medical purposes,33.1.1 Parenteral feeds,593,98
+33.1.1.4,"Combined amino acid, glucose, and lipids with medium chain Triglycerides (MCT) + Long chain Triglycerides (LCT) - three chamber bag for peripherial administration",Solution for IV infusion,500mL,4,,33.1 Feeds for Special medical purposes,33.1.1 Parenteral feeds,594,98
+33.1.1.4,"Combined amino acid, glucose, and lipids with medium chain Triglycerides (MCT) + Long chain Triglycerides (LCT) - three chamber bag for peripherial administration",Solution for IV infusion,1 Litre,4,,33.1 Feeds for Special medical purposes,33.1.1 Parenteral feeds,594,98
+33.1.1.4,"Combined amino acid, glucose, and lipids with medium chain Triglycerides (MCT) + Long chain Triglycerides (LCT) - three chamber bag for peripherial administration",Solution for IV infusion,1.5 litre,4,,33.1 Feeds for Special medical purposes,33.1.1 Parenteral feeds,594,98
+33.1.1.4,"Combined amino acid, glucose, and lipids with medium chain Triglycerides (MCT) + Long chain Triglycerides (LCT) - three chamber bag for peripherial administration",Solution for IV infusion,2 litres,4,,33.1 Feeds for Special medical purposes,33.1.1 Parenteral feeds,594,98
+33.1.1.5,Fat (lipid),Infusion (emulsion) (IV),20% (100mL) [c],4,,33.1 Feeds for Special medical purposes,33.1.1 Parenteral feeds,595,98
+33.1.1.5,Fat (lipid),Infusion (emulsion) (IV),20% (500mL),4,,33.1 Feeds for Special medical purposes,33.1.1 Parenteral feeds,595,98
+33.1.1.6,Fat-soluble vitamins,"Solution for IV infusion, for infants and children596",10mL [c],4,,33.1 Feeds for Special medical purposes,33.1.1 Parenteral feeds,,99
+33.1.1.6,Fat-soluble vitamins,"Solution for IV infusion, adults597",10mL,4,,33.1 Feeds for Special medical purposes,33.1.1 Parenteral feeds,,99
+33.1.1.7,Trace elements,"Solution for IV infusion, Adult598",10mL,4,,33.1 Feeds for Special medical purposes,33.1.1 Parenteral feeds,,99
+33.1.1.7,Trace elements,"Solution for IV infusion, Paediatric599",10mL [c],4,,33.1 Feeds for Special medical purposes,33.1.1 Parenteral feeds,,99
+33.1.1.8,Water-soluble vitamins Containing Vitamin C and B-complex,Solution for IV infusion,10mL,4,,33.1 Feeds for Special medical purposes,33.1.1 Parenteral feeds,600,99
+33.1.2.1,High energy protein fat-free hydrolyzed feed,Liquid,200mL,4,,33.1 Feeds for Special medical purposes,33.1.2 Enteral feeds - liquid formulations,601,99
+33.1.2.2,Nutritionally complete elemental hepatic formula with MCT for oral / tube feeding,Liquid,200mL,4,,33.1 Feeds for Special medical purposes,33.1.2 Enteral feeds - liquid formulations,602,99
+33.1.2.2,Nutritionally complete elemental hepatic formula with MCT for oral / tube feeding,Liquid,500mL,4,,33.1 Feeds for Special medical purposes,33.1.2 Enteral feeds - liquid formulations,602,99
+33.1.2.3,Nutritionally complete glutamine-enriched liquid formula,Liquid,500mL,4,,33.1 Feeds for Special medical purposes,33.1.2 Enteral feeds - liquid formulations,603,99
+33.1.2.4,"Nutritionally complete High energy, high protein oral / tube feed",Liquid,200mL,4,,33.1 Feeds for Special medical purposes,33.1.2 Enteral feeds - liquid formulations,604,99
+33.1.2.4,"Nutritionally complete High energy, high protein oral / tube feed",Liquid,500mL,4,,33.1 Feeds for Special medical purposes,33.1.2 Enteral feeds - liquid formulations,604,99
+33.1.2.5,Nutritionally complete hydrolysed feeds with MCT fibre-free,Liquid,500mL,4,,33.1 Feeds for Special medical purposes,33.1.2 Enteral feeds - liquid formulations,605,99
+33.1.2.6,Nutritionally complete hypercaloric liquid formula feed,Liquid,500mL,4,,33.1 Feeds for Special medical purposes,33.1.2 Enteral feeds - liquid formulations,606,99
+33.1.2.7,"Nutritionally complete, hypocaloric oral / tube feed liquid diet with fibre",Liquid,200mL,4,,33.1 Feeds for Special medical purposes,33.1.2 Enteral feeds - liquid formulations,607,100
+33.1.2.7,"Nutritionally complete, hypocaloric oral / tube feed liquid diet with fibre",Liquid,500mL,4,,33.1 Feeds for Special medical purposes,33.1.2 Enteral feeds - liquid formulations,607,100
+33.1.2.8,Nutritionally complete isocaloric liquid diet with fibre for oral / tube feeding,Liquid,200mL,4,,33.1 Feeds for Special medical purposes,33.1.2 Enteral feeds - liquid formulations,608,100
+33.1.2.8,Nutritionally complete isocaloric liquid diet with fibre for oral / tube feeding,Liquid,500mL,4,,33.1 Feeds for Special medical purposes,33.1.2 Enteral feeds - liquid formulations,608,100
+33.1.2.8,Nutritionally complete isocaloric liquid diet with fibre for oral / tube feeding,Liquid,1000mL,4,,33.1 Feeds for Special medical purposes,33.1.2 Enteral feeds - liquid formulations,608,100
+33.1.2.9,Nutritionally complete isocaloric liquid diet fibre- free for oral / tube feeding,Liquid,200mL,4,,33.1 Feeds for Special medical purposes,33.1.2 Enteral feeds - liquid formulations,609,100
+33.1.2.9,Nutritionally complete isocaloric liquid diet fibre- free for oral / tube feeding,Liquid,500mL,4,,33.1 Feeds for Special medical purposes,33.1.2 Enteral feeds - liquid formulations,609,100
+33.1.2.9,Nutritionally complete isocaloric liquid diet fibre- free for oral / tube feeding,Liquid,1000mL,4,,33.1 Feeds for Special medical purposes,33.1.2 Enteral feeds - liquid formulations,609,100
+33.1.2.10,Nutritionally complete Iso- caloric paediatric liquid diet for oral / tube feeding,Liquid,200mL,4,,33.1 Feeds for Special medical purposes,33.1.2 Enteral feeds - liquid formulations,610,100
+33.1.2.10,Nutritionally complete Iso- caloric paediatric liquid diet for oral / tube feeding,Liquid,500mL,4,,33.1 Feeds for Special medical purposes,33.1.2 Enteral feeds - liquid formulations,610,100
+33.1.2.12,Nutritionally complete liquid low sodium formula,Liquid,500mL,4,,33.1 Feeds for Special medical purposes,33.1.2 Enteral feeds - liquid formulations,611,100
+33.1.2.13,Nutritionally complete semi- elemental peptide-based formula for oral / tube feed,Liquid,200mL,4,,33.1 Feeds for Special medical purposes,33.1.2 Enteral feeds - liquid formulations,612,100
+33.1.2.13,Nutritionally complete semi- elemental peptide-based formula for oral / tube feed,Liquid,500mL,4,,33.1 Feeds for Special medical purposes,33.1.2 Enteral feeds - liquid formulations,612,100
+33.1.3.1,Adult nutritionally complete isocaloric formula,Powder,400g,4,,33.1 Feeds for Special medical purposes,33.1.3 Enteral feeds - powder formulations,613,100
+33.1.3.2,Adult nutritionally complete elemental peptide formula,Powder,20 to 30g sachet,4,,33.1 Feeds for Special medical purposes,33.1.3 Enteral feeds - powder formulations,614,100
+33.1.3.3,Amino acids and Vitamin granules,Powder,5 to 10g sachet,4,,33.1 Feeds for Special medical purposes,33.1.3 Enteral feeds - powder formulations,615,100
+33.1.3.4,"High calorie, high protein formula",Powder616,200g,4,,33.1 Feeds for Special medical purposes,33.1.3 Enteral feeds - powder formulations,,100
+33.1.3.4,"High calorie, high protein formula",Diskettes617,200g,4,,33.1 Feeds for Special medical purposes,33.1.3 Enteral feeds - powder formulations,,100
