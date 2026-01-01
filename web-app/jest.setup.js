@@ -22,7 +22,7 @@ const localStorageMock = {
   removeItem: jest.fn(),
   clear: jest.fn(),
 };
-global.localStorage = localStorageMock as any;
+global.localStorage = localStorageMock;
 
 // Mock navigator.onLine
 Object.defineProperty(window.navigator, 'onLine', {
