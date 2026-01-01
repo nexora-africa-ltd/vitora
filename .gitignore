@@ -175,6 +175,10 @@ htmlcov/
 coverage/
 *.lcov
 
+# Media uploads (user-generated content)
+backend/media/
+media/
+
 # Documentation builds
 docs/_build/
 docs/.doctrees/
