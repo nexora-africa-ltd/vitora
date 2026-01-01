@@ -240,3 +240,180 @@ class TestStaffProfileAdmin:
         # M2M fields should use horizontal filter for better UX
         assert 'secondary_roles' in filter_horizontal
         assert 'secondary_departments' in filter_horizontal
+    def test_staffprofile_admin_export_csv_action(self):
+        """Should have CSV export action."""
+        from hmis.apps.core.admin import StaffProfileAdmin
+
+        actions = getattr(StaffProfileAdmin, 'actions', [])
+
+        # Check if export_to_csv action exists
+        action_names = [getattr(action, '__name__', str(action)) for action in actions]
+        assert 'export_to_csv' in action_names or hasattr(StaffProfileAdmin, 'export_to_csv'), \
+            "StaffProfileAdmin should have export_to_csv action"
+
+
+@pytest.mark.django_db
+class TestStaffProfileCSVExport:
+    """Tests for StaffProfile CSV export functionality."""
+
+    @pytest.fixture
+    def admin_site(self):
+        """Get admin site instance."""
+        return AdminSite()
+
+    @pytest.fixture
+    def admin_user(self):
+        """Create superuser for admin access."""
+        return User.objects.create_superuser(
+            username="admin",
+            email="admin@test.com",
+            password="admin123"
+        )
+
+    @pytest.fixture
+    def request_factory(self):
+        """Get request factory."""
+        return RequestFactory()
+
+    @pytest.fixture
+    def sample_staff(self):
+        """Create sample staff profiles for export."""
+        from hmis.apps.core.models import Department, Role, StaffProfile
+
+        department = Department.objects.create(
+            code="OPD",
+            name="Outpatient Department",
+            department_type="CLINICAL",
+        )
+
+        role = Role.objects.create(
+            code="NURSE",
+            name="Registered Nurse",
+            category="CLINICAL",
+            requires_license=True,
+            license_body="NCK",
+        )
+
+        staff_list = []
+        for i in range(3):
+            user = User.objects.create_user(
+                username=f"nurse{i}",
+                first_name=f"Nurse{i}",
+                last_name=f"Test{i}",
+                email=f"nurse{i}@test.com",
+                password="test123"
+            )
+            staff = StaffProfile.objects.create(
+                user=user,
+                employee_id=f"VH-2026-00{i}",
+                title="Nurse",
+                primary_role=role,
+                primary_department=department,
+                license_number=f"NCK-{1000+i}",
+                date_joined=date.today(),
+            )
+            staff_list.append(staff)
+
+        return staff_list
+
+    def test_export_to_csv_returns_csv_response(
+        self, admin_site, admin_user, request_factory, sample_staff
+    ):
+        """Should return CSV file response."""
+        from hmis.apps.core.admin import StaffProfileAdmin
+        from hmis.apps.core.models import StaffProfile
+
+        modeladmin = StaffProfileAdmin(StaffProfile, admin_site)
+
+        request = request_factory.get('/admin/core/staffprofile/')
+        request.user = admin_user
+
+        queryset = StaffProfile.objects.all()
+        response = modeladmin.export_to_csv(request, queryset)
+
+        assert response['Content-Type'] == 'text/csv'
+        assert 'attachment; filename=' in response['Content-Disposition']
+        assert 'staff_export' in response['Content-Disposition']
+
+    def test_export_csv_contains_headers(
+        self, admin_site, admin_user, request_factory, sample_staff
+    ):
+        """Should include column headers in CSV."""
+        from hmis.apps.core.admin import StaffProfileAdmin
+        from hmis.apps.core.models import StaffProfile
+        import csv
+        from io import StringIO
+
+        modeladmin = StaffProfileAdmin(StaffProfile, admin_site)
+
+        request = request_factory.get('/admin/core/staffprofile/')
+        request.user = admin_user
+
+        queryset = StaffProfile.objects.all()
+        response = modeladmin.export_to_csv(request, queryset)
+
+        content = response.content.decode('utf-8')
+        reader = csv.reader(StringIO(content))
+        headers = next(reader)
+
+        # Should have key columns
+        assert 'Employee ID' in headers
+        assert 'Full Name' in headers
+        assert 'Primary Role' in headers
+        assert 'Primary Department' in headers
+        assert 'Employment Status' in headers
+
+    def test_export_csv_contains_staff_data(
+        self, admin_site, admin_user, request_factory, sample_staff
+    ):
+        """Should include staff data rows."""
+        from hmis.apps.core.admin import StaffProfileAdmin
+        from hmis.apps.core.models import StaffProfile
+        import csv
+        from io import StringIO
+
+        modeladmin = StaffProfileAdmin(StaffProfile, admin_site)
+
+        request = request_factory.get('/admin/core/staffprofile/')
+        request.user = admin_user
+
+        queryset = StaffProfile.objects.all()
+        response = modeladmin.export_to_csv(request, queryset)
+
+        content = response.content.decode('utf-8')
+        reader = csv.reader(StringIO(content))
+        rows = list(reader)
+
+        # Header + 3 staff members
+        assert len(rows) == 4, f"Expected 4 rows (header + 3 staff), got {len(rows)}"
+
+        # Check data includes employee IDs
+        all_content = content
+        for staff in sample_staff:
+            assert staff.employee_id in all_content, \
+                f"Employee ID {staff.employee_id} should be in CSV"
+
+    def test_export_csv_selected_only(
+        self, admin_site, admin_user, request_factory, sample_staff
+    ):
+        """Should export only selected staff."""
+        from hmis.apps.core.admin import StaffProfileAdmin
+        from hmis.apps.core.models import StaffProfile
+        import csv
+        from io import StringIO
+
+        modeladmin = StaffProfileAdmin(StaffProfile, admin_site)
+
+        request = request_factory.get('/admin/core/staffprofile/')
+        request.user = admin_user
+
+        # Select only first staff
+        queryset = StaffProfile.objects.filter(pk=sample_staff[0].pk)
+        response = modeladmin.export_to_csv(request, queryset)
+
+        content = response.content.decode('utf-8')
+        reader = csv.reader(StringIO(content))
+        rows = list(reader)
+
+        # Header + 1 selected staff
+        assert len(rows) == 2, f"Expected 2 rows (header + 1 staff), got {len(rows)}"

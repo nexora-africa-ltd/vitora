@@ -935,6 +935,12 @@ class StaffProfile(models.Model):
         ("TERMINATED", "Terminated"),
     ]
 
+    EMPLOYMENT_TYPE = [
+        ("PERMANENT", "Permanent"),
+        ("CONTRACT", "Contract"),
+        ("LOCUM", "Locum (Part-time)"),
+    ]
+
     user = models.OneToOneField(
         settings.AUTH_USER_MODEL,
         on_delete=models.CASCADE,
@@ -1024,6 +1030,12 @@ class StaffProfile(models.Model):
         choices=EMPLOYMENT_STATUS,
         default="ACTIVE",
         help_text="Current employment status",
+    )
+    employment_type = models.CharField(
+        max_length=20,
+        choices=EMPLOYMENT_TYPE,
+        default="PERMANENT",
+        help_text="Type of employment (Permanent, Contract, or Locum/Part-time)",
     )
     date_joined = models.DateField(
         help_text="Date joined the organization",
@@ -1126,6 +1138,18 @@ class StaffProfile(models.Model):
         from datetime import date
 
         return self.license_expiry >= date.today()
+
+    @property
+    def is_external(self) -> bool:
+        """
+        Check if staff is an external service provider.
+
+        Locum (part-time) staff are considered external providers.
+
+        Returns:
+            bool: True if employment type is LOCUM
+        """
+        return self.employment_type == "LOCUM"
 
     def get_supervisees(self):
         """
