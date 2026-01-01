@@ -507,9 +507,19 @@ class LabResult(models.Model):
     text_value = models.TextField(blank=True)
     option_value = models.CharField(max_length=100, blank=True, help_text="For predefined options")
 
+    # Reference range tracking (NEW - Phase 1.3)
+    reference_low = models.DecimalField(max_digits=12, decimal_places=4, null=True, blank=True, help_text="Lower bound of reference range")
+    reference_high = models.DecimalField(max_digits=12, decimal_places=4, null=True, blank=True, help_text="Upper bound of reference range")
+    reference_range_text = models.CharField(max_length=100, blank=True, help_text="Human-readable reference range")
+
     # Interpretation
     result_flag = models.CharField(max_length=20, choices=RESULT_FLAGS, blank=True)
     interpretation = models.TextField(blank=True, help_text="Pathologist notes")
+    is_critical_result = models.BooleanField(default=False, help_text="Requires immediate attention")
+
+    # Method/Equipment tracking (NEW - Phase 1.3)
+    method = models.CharField(max_length=100, blank=True, help_text="Testing methodology used")
+    equipment = models.CharField(max_length=100, blank=True, help_text="Analyzer or equipment used")
 
     # Verification
     verification_status = models.CharField(
@@ -523,6 +533,15 @@ class LabResult(models.Model):
     # Result entry
     entered_by = models.ForeignKey(User, on_delete=models.PROTECT, related_name="entered_results")
     entered_at = models.DateTimeField(auto_now_add=True)
+
+    # Amendment tracking (NEW - Phase 1.3)
+    is_amended = models.BooleanField(default=False, help_text="Result has been amended")
+    amendment_reason = models.TextField(blank=True, help_text="Reason for amendment")
+    original_value = models.CharField(max_length=100, blank=True, help_text="Original value before amendment")
+    amended_by = models.ForeignKey(
+        User, null=True, blank=True, on_delete=models.SET_NULL, related_name="amended_results", help_text="User who amended result"
+    )
+    amended_at = models.DateTimeField(null=True, blank=True, help_text="When result was amended")
 
     # External results
     is_external_result = models.BooleanField(default=False)
