@@ -5,7 +5,15 @@ URL configuration for laboratory app.
 from django.urls import include, path
 from rest_framework.routers import DefaultRouter
 
-from .views import LabOrderViewSet, LabResultViewSet, LOINCCodeViewSet, TestCatalogViewSet
+from .views import (
+    EncounterLabOrderViewSet,
+    LabOrderViewSet,
+    LabResultViewSet,
+    LOINCCodeViewSet,
+    PatientLabOrderViewSet,
+    PatientLabResultViewSet,
+    TestCatalogViewSet,
+)
 
 router = DefaultRouter()
 router.register(r"tests", TestCatalogViewSet, basename="test-catalog")
@@ -15,4 +23,36 @@ router.register(r"loinc-codes", LOINCCodeViewSet, basename="loinc-code")
 
 urlpatterns = [
     path("", include(router.urls)),
+]
+
+# Nested routes for patients and encounters (to be included in main urls.py)
+patient_lab_patterns = [
+    path(
+        "lab-orders/",
+        PatientLabOrderViewSet.as_view({"get": "list"}),
+        name="patient-lab-orders-list",
+    ),
+    path(
+        "lab-orders/<str:order_number>/",
+        PatientLabOrderViewSet.as_view({"get": "retrieve"}),
+        name="patient-lab-orders-detail",
+    ),
+    path(
+        "lab-results/",
+        PatientLabResultViewSet.as_view({"get": "list"}),
+        name="patient-lab-results-list",
+    ),
+]
+
+encounter_lab_patterns = [
+    path(
+        "lab-orders/",
+        EncounterLabOrderViewSet.as_view({"get": "list"}),
+        name="encounter-lab-orders-list",
+    ),
+    path(
+        "lab-orders/<str:order_number>/",
+        EncounterLabOrderViewSet.as_view({"get": "retrieve"}),
+        name="encounter-lab-orders-detail",
+    ),
 ]

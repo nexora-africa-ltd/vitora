@@ -7,7 +7,6 @@ before implementation.
 Sprint 1.3-1.4 Track B: Lab/Investigations Foundation
 """
 
-import io
 from datetime import date
 from decimal import Decimal
 
@@ -108,14 +107,14 @@ class TestTestCatalogAPI:
     def test_list_tests_authenticated(self, auth_client, sample_test_catalog):
         """Authenticated user can list tests."""
         response = auth_client.get("/api/lab/tests/")
-        
+
         assert response.status_code == status.HTTP_200_OK
         assert len(response.data["results"]) == 2
 
     def test_search_tests_by_name(self, auth_client, sample_test_catalog):
         """Should search tests by name."""
         response = auth_client.get("/api/lab/tests/?search=Blood")
-        
+
         assert response.status_code == status.HTTP_200_OK
         results = response.data["results"]
         assert len(results) >= 1
@@ -124,7 +123,7 @@ class TestTestCatalogAPI:
     def test_filter_tests_by_category(self, auth_client, sample_test_catalog):
         """Should filter tests by category."""
         response = auth_client.get("/api/lab/tests/?category=HEMATOLOGY")
-        
+
         assert response.status_code == status.HTTP_200_OK
         results = response.data["results"]
         assert all(test["category"] == "HEMATOLOGY" for test in results)
@@ -133,7 +132,7 @@ class TestTestCatalogAPI:
         """Should retrieve test details by code."""
         test = sample_test_catalog[0]
         response = auth_client.get(f"/api/lab/tests/{test.code}/")
-        
+
         assert response.status_code == status.HTTP_200_OK
         assert response.data["code"] == test.code
         assert response.data["name"] == test.name
@@ -167,9 +166,9 @@ class TestLabOrderAPI:
                 {"test_code": "RBS"},
             ],
         }
-        
+
         response = auth_client.post("/api/lab/orders/", order_data, format="json")
-        
+
         assert response.status_code == status.HTTP_201_CREATED
         assert "order_number" in response.data
         assert response.data["order_number"].startswith("LAB-")
@@ -184,9 +183,9 @@ class TestLabOrderAPI:
             "encounter": sample_encounter.id,
             "items": [{"test_code": "CBC"}],
         }
-        
+
         response = auth_client.post("/api/lab/orders/", order_data, format="json")
-        
+
         assert response.status_code == status.HTTP_201_CREATED
         assert response.data["order_number"]
         assert len(response.data["order_number"]) == 17
@@ -200,10 +199,10 @@ class TestLabOrderAPI:
             "items": [{"test_code": "CBC"}],
         }
         auth_client.post("/api/lab/orders/", order_data, format="json")
-        
+
         # List orders
         response = auth_client.get("/api/lab/orders/")
-        
+
         assert response.status_code == status.HTTP_200_OK
         assert len(response.data["results"]) >= 1
 
@@ -217,10 +216,10 @@ class TestLabOrderAPI:
         }
         create_response = auth_client.post("/api/lab/orders/", order_data, format="json")
         order_number = create_response.data["order_number"]
-        
+
         # Get detail
         response = auth_client.get(f"/api/lab/orders/{order_number}/")
-        
+
         assert response.status_code == status.HTTP_200_OK
         assert response.data["order_number"] == order_number
         assert "items" in response.data
@@ -236,12 +235,12 @@ class TestLabOrderAPI:
             "items": [{"test_code": "CBC"}],
         }
         auth_client.post("/api/lab/orders/", order_data, format="json")
-        
+
         # Filter by patient
         response = auth_client.get(
             f"/api/lab/orders/?patient={sample_encounter.patient.id}"
         )
-        
+
         assert response.status_code == status.HTTP_200_OK
         results = response.data["results"]
         assert all(order["patient"] == sample_encounter.patient.id for order in results)
@@ -257,10 +256,10 @@ class TestLabOrderAPI:
             "items": [{"test_code": "CBC"}],
         }
         auth_client.post("/api/lab/orders/", order_data, format="json")
-        
+
         # Filter by status
         response = auth_client.get("/api/lab/orders/?status=DRAFT")
-        
+
         assert response.status_code == status.HTTP_200_OK
 
 
@@ -288,7 +287,7 @@ class TestLabOrderWorkflowAPI:
         response = auth_client.post(
             f"/api/lab/orders/{sample_order.order_number}/submit/"
         )
-        
+
         assert response.status_code == status.HTTP_200_OK
         assert response.data["status"] == "ORDERED"
 
@@ -297,11 +296,11 @@ class TestLabOrderWorkflowAPI:
         # First submit the order
         sample_order.status = "ORDERED"
         sample_order.save()
-        
+
         response = auth_client.post(
             f"/api/lab/orders/{sample_order.order_number}/collect-specimen/"
         )
-        
+
         assert response.status_code == status.HTTP_200_OK
         assert response.data["specimen_collected"] is True
 
@@ -312,7 +311,7 @@ class TestLabOrderWorkflowAPI:
             {"reason": "Patient discharged"},
             format="json",
         )
-        
+
         assert response.status_code == status.HTTP_200_OK
         assert response.data["status"] == "CANCELLED"
 
@@ -321,7 +320,7 @@ class TestLabOrderWorkflowAPI:
         response = auth_client.get(
             f"/api/lab/orders/{sample_order.order_number}/requisition/"
         )
-        
+
         assert response.status_code == status.HTTP_200_OK
         assert response["Content-Type"] == "application/pdf"
 
@@ -354,13 +353,13 @@ class TestLabResultAPI:
             "order_item": sample_order_item.id,
             "numeric_value": "5.5",
         }
-        
+
         response = auth_client.post(
             f"/api/lab/orders/{sample_order_item.lab_order.order_number}/results/",
             result_data,
             format="json",
         )
-        
+
         assert response.status_code == status.HTTP_201_CREATED
         # Decimal may be returned with trailing zeros
         assert Decimal(response.data["numeric_value"]) == Decimal("5.5")
@@ -371,13 +370,13 @@ class TestLabResultAPI:
             "order_item": sample_order_item.id,
             "numeric_value": "10.0",  # High value
         }
-        
+
         response = auth_client.post(
             f"/api/lab/orders/{sample_order_item.lab_order.order_number}/results/",
             result_data,
             format="json",
         )
-        
+
         assert response.status_code == status.HTTP_201_CREATED
         assert response.data["result_flag"] in ["HIGH", "CRITICAL_HIGH"]
 
@@ -389,17 +388,17 @@ class TestLabResultAPI:
             numeric_value=Decimal("5.5"),
             entered_by=authenticated_user,
         )
-        
+
         # Update it
         update_data = {
             "numeric_value": "6.0",
             "interpretation": "Slightly elevated",
         }
-        
+
         response = auth_client.patch(
             f"/api/lab/results/{result.id}/", update_data, format="json"
         )
-        
+
         assert response.status_code == status.HTTP_200_OK
         # Decimal may be returned with trailing zeros
         assert Decimal(response.data["numeric_value"]) == Decimal("6.0")
@@ -412,14 +411,14 @@ class TestLabResultAPI:
             numeric_value=Decimal("5.5"),
             entered_by=authenticated_user,
         )
-        
+
         # Verify it
         response = auth_client.post(
             f"/api/lab/results/{result.id}/verify/",
             {"approved": True},
             format="json",
         )
-        
+
         assert response.status_code == status.HTTP_200_OK
         assert response.data["verification_status"] == "VERIFIED"
 
@@ -428,7 +427,7 @@ class TestLabResultAPI:
         response = auth_client.get(
             f"/api/lab/orders/{sample_order_item.lab_order.order_number}/results/"
         )
-        
+
         assert response.status_code == status.HTTP_200_OK
 
     def test_list_results_for_patient(self, auth_client, sample_order_item):
@@ -436,7 +435,7 @@ class TestLabResultAPI:
         response = auth_client.get(
             f"/api/patients/{sample_order_item.lab_order.patient.id}/lab-results/"
         )
-        
+
         assert response.status_code == status.HTTP_200_OK
 
     def test_pending_verification_list(self, auth_client, sample_order_item, authenticated_user):
@@ -447,9 +446,9 @@ class TestLabResultAPI:
             numeric_value=Decimal("5.5"),
             entered_by=authenticated_user,
         )
-        
+
         response = auth_client.get("/api/lab/results/pending-verification/")
-        
+
         assert response.status_code == status.HTTP_200_OK
 
 
@@ -469,9 +468,9 @@ class TestLabAPIPagination:
                 specimen_type="BLOOD",
                 result_type="NUMERIC",
             )
-        
+
         response = auth_client.get("/api/lab/tests/")
-        
+
         assert response.status_code == status.HTTP_200_OK
         assert "results" in response.data
         assert "count" in response.data
@@ -487,9 +486,373 @@ class TestLabAPIPagination:
                 encounter=sample_encounter,
                 ordered_by=authenticated_user,
             )
-        
+
         response = auth_client.get("/api/lab/orders/")
-        
+
         assert response.status_code == status.HTTP_200_OK
         assert "results" in response.data
         assert "count" in response.data
+
+
+@pytest.mark.django_db
+class TestNestedLabRoutes:
+    """Tests for nested lab routes under patients and encounters."""
+
+    def test_patient_lab_orders_list(self, auth_client, sample_encounter, authenticated_user):
+        """Should list lab orders for a specific patient."""
+        order = LabOrder.objects.create(
+            patient=sample_encounter.patient,
+            encounter=sample_encounter,
+            ordered_by=authenticated_user,
+        )
+
+        response = auth_client.get(
+            f"/api/patients/{sample_encounter.patient.id}/lab-orders/"
+        )
+
+        assert response.status_code == status.HTTP_200_OK
+        assert len(response.data) >= 1
+
+    def test_patient_lab_results_list(self, auth_client, sample_encounter, authenticated_user):
+        """Should list lab results for a specific patient."""
+        test = TestCatalog.objects.create(
+            code="PAT_TEST",
+            name="Patient Test",
+            short_name="PT",
+            category="CHEMISTRY",
+            specimen_type="BLOOD",
+            result_type="NUMERIC",
+            cost=Decimal("100.00"),
+        )
+        order = LabOrder.objects.create(
+            patient=sample_encounter.patient,
+            encounter=sample_encounter,
+            ordered_by=authenticated_user,
+        )
+        item = LabOrderItem.objects.create(
+            lab_order=order,
+            test=test,
+            unit_cost=test.cost,
+        )
+        LabResult.objects.create(
+            order_item=item,
+            numeric_value=Decimal("5.5"),
+            entered_by=authenticated_user,
+        )
+
+        response = auth_client.get(
+            f"/api/patients/{sample_encounter.patient.id}/lab-results/"
+        )
+
+        assert response.status_code == status.HTTP_200_OK
+        assert len(response.data) >= 1
+
+    def test_encounter_lab_orders_list(self, auth_client, sample_encounter, authenticated_user):
+        """Should list lab orders for a specific encounter."""
+        order = LabOrder.objects.create(
+            patient=sample_encounter.patient,
+            encounter=sample_encounter,
+            ordered_by=authenticated_user,
+        )
+
+        response = auth_client.get(
+            f"/api/encounters/{sample_encounter.id}/lab-orders/"
+        )
+
+        assert response.status_code == status.HTTP_200_OK
+        assert len(response.data) >= 1
+
+
+@pytest.mark.django_db
+class TestLabOrderItemManagement:
+    """Tests for order item management (add/remove items)."""
+
+    def test_add_item_to_order(self, auth_client, sample_encounter, authenticated_user):
+        """Should add a test item to an existing order."""
+        test = TestCatalog.objects.create(
+            code="ADD_TEST",
+            name="Add Test",
+            short_name="AT",
+            category="CHEMISTRY",
+            specimen_type="BLOOD",
+            result_type="NUMERIC",
+            cost=Decimal("200.00"),
+        )
+        order = LabOrder.objects.create(
+            patient=sample_encounter.patient,
+            encounter=sample_encounter,
+            ordered_by=authenticated_user,
+        )
+
+        response = auth_client.post(
+            f"/api/lab/orders/{order.order_number}/items/",
+            {"test_code": test.code},
+        )
+
+        assert response.status_code == status.HTTP_201_CREATED
+        assert order.items.count() == 1
+
+    def test_add_duplicate_item_fails(self, auth_client, sample_encounter, authenticated_user):
+        """Should prevent adding duplicate test to order."""
+        test = TestCatalog.objects.create(
+            code="DUP_TEST",
+            name="Duplicate Test",
+            short_name="DT",
+            category="CHEMISTRY",
+            specimen_type="BLOOD",
+            result_type="NUMERIC",
+            cost=Decimal("200.00"),
+        )
+        order = LabOrder.objects.create(
+            patient=sample_encounter.patient,
+            encounter=sample_encounter,
+            ordered_by=authenticated_user,
+        )
+        LabOrderItem.objects.create(
+            lab_order=order,
+            test=test,
+            unit_cost=test.cost,
+        )
+
+        response = auth_client.post(
+            f"/api/lab/orders/{order.order_number}/items/",
+            {"test_code": test.code},
+        )
+
+        assert response.status_code == status.HTTP_400_BAD_REQUEST
+        assert "already in this order" in response.data["error"]
+
+    def test_delete_item_from_draft_order(self, auth_client, sample_encounter, authenticated_user):
+        """Should delete item from draft order."""
+        test = TestCatalog.objects.create(
+            code="DEL_TEST",
+            name="Delete Test",
+            short_name="DT",
+            category="CHEMISTRY",
+            specimen_type="BLOOD",
+            result_type="NUMERIC",
+            cost=Decimal("200.00"),
+        )
+        order = LabOrder.objects.create(
+            patient=sample_encounter.patient,
+            encounter=sample_encounter,
+            ordered_by=authenticated_user,
+            status="DRAFT",
+        )
+        item = LabOrderItem.objects.create(
+            lab_order=order,
+            test=test,
+            unit_cost=test.cost,
+        )
+
+        response = auth_client.delete(
+            f"/api/lab/orders/{order.order_number}/items/{item.id}/"
+        )
+
+        assert response.status_code == status.HTTP_204_NO_CONTENT
+        assert order.items.count() == 0
+
+    def test_delete_item_from_submitted_order_fails(
+        self, auth_client, sample_encounter, authenticated_user
+    ):
+        """Should not allow deleting items from submitted order."""
+        test = TestCatalog.objects.create(
+            code="SUB_TEST",
+            name="Submitted Test",
+            short_name="ST",
+            category="CHEMISTRY",
+            specimen_type="BLOOD",
+            result_type="NUMERIC",
+            cost=Decimal("200.00"),
+        )
+        order = LabOrder.objects.create(
+            patient=sample_encounter.patient,
+            encounter=sample_encounter,
+            ordered_by=authenticated_user,
+            status="ORDERED",  # Already submitted
+        )
+        item = LabOrderItem.objects.create(
+            lab_order=order,
+            test=test,
+            unit_cost=test.cost,
+        )
+
+        response = auth_client.delete(
+            f"/api/lab/orders/{order.order_number}/items/{item.id}/"
+        )
+
+        assert response.status_code == status.HTTP_400_BAD_REQUEST
+
+
+@pytest.mark.django_db
+class TestResultVerifyReject:
+    """Tests for result verification and rejection workflow."""
+
+    def test_verify_result_approved(self, auth_client, sample_encounter, authenticated_user):
+        """Should verify (approve) a result."""
+        test = TestCatalog.objects.create(
+            code="VER_TEST",
+            name="Verify Test",
+            short_name="VT",
+            category="CHEMISTRY",
+            specimen_type="BLOOD",
+            result_type="NUMERIC",
+            cost=Decimal("100.00"),
+        )
+        order = LabOrder.objects.create(
+            patient=sample_encounter.patient,
+            encounter=sample_encounter,
+            ordered_by=authenticated_user,
+        )
+        item = LabOrderItem.objects.create(
+            lab_order=order,
+            test=test,
+            unit_cost=test.cost,
+        )
+        result = LabResult.objects.create(
+            order_item=item,
+            numeric_value=Decimal("5.5"),
+            entered_by=authenticated_user,
+        )
+
+        response = auth_client.post(
+            f"/api/lab/results/{result.id}/verify/",
+            {"approved": True, "comments": "Looks good"},
+        )
+
+        assert response.status_code == status.HTTP_200_OK
+        result.refresh_from_db()
+        assert result.verification_status == "VERIFIED"
+
+    def test_verify_result_rejected(self, auth_client, sample_encounter, authenticated_user):
+        """Should reject a result."""
+        test = TestCatalog.objects.create(
+            code="REJ_TEST",
+            name="Reject Test",
+            short_name="RT",
+            category="CHEMISTRY",
+            specimen_type="BLOOD",
+            result_type="NUMERIC",
+            cost=Decimal("100.00"),
+        )
+        order = LabOrder.objects.create(
+            patient=sample_encounter.patient,
+            encounter=sample_encounter,
+            ordered_by=authenticated_user,
+        )
+        item = LabOrderItem.objects.create(
+            lab_order=order,
+            test=test,
+            unit_cost=test.cost,
+        )
+        result = LabResult.objects.create(
+            order_item=item,
+            numeric_value=Decimal("5.5"),
+            entered_by=authenticated_user,
+        )
+
+        response = auth_client.post(
+            f"/api/lab/results/{result.id}/verify/",
+            {"approved": False, "comments": "Sample hemolyzed, rerun required"},
+        )
+
+        assert response.status_code == status.HTTP_200_OK
+        result.refresh_from_db()
+        assert result.verification_status == "REJECTED"
+        assert "Rejection reason" in result.interpretation
+
+
+@pytest.mark.django_db
+class TestResultAttachmentUpload:
+    """Tests for result attachment upload."""
+
+    def test_upload_attachment_success(self, auth_client, sample_encounter, authenticated_user):
+        """Should upload attachment to result."""
+        test = TestCatalog.objects.create(
+            code="ATT_TEST",
+            name="Attachment Test",
+            short_name="AT",
+            category="CHEMISTRY",
+            specimen_type="BLOOD",
+            result_type="NUMERIC",
+            cost=Decimal("100.00"),
+        )
+        order = LabOrder.objects.create(
+            patient=sample_encounter.patient,
+            encounter=sample_encounter,
+            ordered_by=authenticated_user,
+        )
+        item = LabOrderItem.objects.create(
+            lab_order=order,
+            test=test,
+            unit_cost=test.cost,
+        )
+        result = LabResult.objects.create(
+            order_item=item,
+            numeric_value=Decimal("5.5"),
+            entered_by=authenticated_user,
+        )
+
+        # Create a fake PDF file
+        pdf_content = b"%PDF-1.4 fake pdf content"
+        from django.core.files.uploadedfile import SimpleUploadedFile
+        pdf_file = SimpleUploadedFile(
+            "external_result.pdf",
+            pdf_content,
+            content_type="application/pdf"
+        )
+
+        response = auth_client.post(
+            f"/api/lab/results/{result.id}/attachment/",
+            {"file": pdf_file},
+            format="multipart",
+        )
+
+        assert response.status_code == status.HTTP_200_OK
+        result.refresh_from_db()
+        assert result.is_external_result is True
+        assert result.external_result_attachment is not None
+
+    def test_upload_invalid_file_type_fails(self, auth_client, sample_encounter, authenticated_user):
+        """Should reject invalid file types."""
+        test = TestCatalog.objects.create(
+            code="INV_TEST",
+            name="Invalid Test",
+            short_name="IT",
+            category="CHEMISTRY",
+            specimen_type="BLOOD",
+            result_type="NUMERIC",
+            cost=Decimal("100.00"),
+        )
+        order = LabOrder.objects.create(
+            patient=sample_encounter.patient,
+            encounter=sample_encounter,
+            ordered_by=authenticated_user,
+        )
+        item = LabOrderItem.objects.create(
+            lab_order=order,
+            test=test,
+            unit_cost=test.cost,
+        )
+        result = LabResult.objects.create(
+            order_item=item,
+            numeric_value=Decimal("5.5"),
+            entered_by=authenticated_user,
+        )
+
+        # Create a fake executable file
+        from django.core.files.uploadedfile import SimpleUploadedFile
+        exe_file = SimpleUploadedFile(
+            "malware.exe",
+            b"fake exe content",
+            content_type="application/x-msdownload"
+        )
+
+        response = auth_client.post(
+            f"/api/lab/results/{result.id}/attachment/",
+            {"file": exe_file},
+            format="multipart",
+        )
+
+        assert response.status_code == status.HTTP_400_BAD_REQUEST
+        assert "Invalid file type" in response.data["error"]

@@ -5,21 +5,22 @@ Tests for LabWorkflowService and LabAlertService that manage
 lab order workflows and critical result notifications.
 """
 
-import pytest
 from datetime import date, timedelta
 from decimal import Decimal
+
+import pytest
 from django.contrib.auth import get_user_model
 from django.utils import timezone
 
+from hmis.apps.encounters.models import Encounter
 from hmis.apps.laboratory.models import (
-    TestCatalog,
     LabOrder,
     LabOrderItem,
     LabResult,
+    TestCatalog,
 )
-from hmis.apps.laboratory.services import LabWorkflowService, LabAlertService
+from hmis.apps.laboratory.services import LabAlertService, LabWorkflowService
 from hmis.apps.patients.models import Patient
-from hmis.apps.encounters.models import Encounter
 
 User = get_user_model()
 
@@ -66,7 +67,7 @@ class TestLabWorkflowService:
             result_type="NUMERIC",
         )
         LabOrderItem.objects.create(lab_order=sample_order, test=test, unit_cost=Decimal("100"))
-        
+
         order = LabWorkflowService.submit_order(sample_order, lab_user)
         assert order.status == "ORDERED"
 
@@ -74,9 +75,9 @@ class TestLabWorkflowService:
         """Should record specimen collection."""
         sample_order.status = "ORDERED"
         sample_order.save()
-        
+
         order = LabWorkflowService.collect_specimen(sample_order, lab_user)
-        
+
         assert order.specimen_collected is True
         assert order.specimen_collected_by == lab_user
         assert order.status == "SPECIMEN_COLLECTED"
@@ -85,7 +86,7 @@ class TestLabWorkflowService:
         """Should start processing."""
         sample_order.status = "SPECIMEN_COLLECTED"
         sample_order.save()
-        
+
         order = LabWorkflowService.start_processing(sample_order, lab_user)
         assert order.status == "IN_PROGRESS"
 
@@ -100,17 +101,17 @@ class TestLabWorkflowService:
             result_type="NUMERIC",
         )
         item = LabOrderItem.objects.create(lab_order=sample_order, test=test, unit_cost=Decimal("100"))
-        
+
         # Add result
         LabResult.objects.create(
             order_item=item,
             numeric_value=Decimal("5.5"),
             entered_by=lab_user,
         )
-        
+
         sample_order.status = "IN_PROGRESS"
         sample_order.save()
-        
+
         order = LabWorkflowService.complete_order(sample_order, lab_user)
         assert order.status == "COMPLETED"
         assert order.completed_at is not None
@@ -133,20 +134,20 @@ class TestLabWorkflowService:
             specimen_type="BLOOD",
             result_type="NUMERIC",
         )
-        
+
         item1 = LabOrderItem.objects.create(lab_order=sample_order, test=test1, unit_cost=Decimal("100"))
         item2 = LabOrderItem.objects.create(lab_order=sample_order, test=test2, unit_cost=Decimal("100"))
-        
+
         # Only add result for item1
         LabResult.objects.create(
             order_item=item1,
             numeric_value=Decimal("5.5"),
             entered_by=lab_user,
         )
-        
+
         sample_order.status = "IN_PROGRESS"
         sample_order.save()
-        
+
         # Should not be able to complete yet
         with pytest.raises(Exception):  # ValidationError or similar
             LabWorkflowService.complete_order(sample_order, lab_user)
@@ -160,7 +161,7 @@ class TestLabWorkflowService:
         """Should reject specimen with reason."""
         sample_order.status = "ORDERED"
         sample_order.save()
-        
+
         order = LabWorkflowService.reject_specimen(sample_order, lab_user, "Hemolyzed sample")
         assert order.status == "REJECTED"
 
@@ -177,7 +178,7 @@ class TestLabWorkflowService:
             normal_range_male="13.0-17.0",
         )
         item = LabOrderItem.objects.create(lab_order=sample_order, test=test, unit_cost=Decimal("100"))
-        
+
         # Create critical result
         result = LabResult.objects.create(
             order_item=item,
@@ -185,7 +186,7 @@ class TestLabWorkflowService:
             entered_by=lab_user,
         )
         result.auto_flag_result()
-        
+
         critical_results = LabAlertService.check_critical_results(sample_order)
         assert len(critical_results) > 0
 
@@ -231,7 +232,7 @@ class TestLabAlertService:
             normal_range_male="13.0-17.0",
         )
         item = LabOrderItem.objects.create(lab_order=order, test=test, unit_cost=Decimal("100"))
-        
+
         # Create critical result
         result = LabResult.objects.create(
             order_item=item,
@@ -239,7 +240,7 @@ class TestLabAlertService:
             entered_by=user,
         )
         result.auto_flag_result()
-        
+
         return order
 
     def test_check_critical_results(self, sample_order_with_result):
@@ -262,7 +263,7 @@ class TestLabAlertService:
             encounter_type="OPD",
             chief_complaint="Test complaint",
         )
-        
+
         # Create an old order
         order = LabOrder.objects.create(
             patient=patient,
@@ -270,10 +271,10 @@ class TestLabAlertService:
             ordered_by=user,
             status="IN_PROGRESS",
         )
-        
+
         # Manually set ordered_at to 48 hours ago
         order.ordered_at = timezone.now() - timedelta(hours=48)
         order.save()
-        
+
         overdue = LabAlertService.get_overdue_orders(hours=24)
         assert order in overdue

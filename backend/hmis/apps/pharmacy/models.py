@@ -15,7 +15,6 @@ All models follow TDD approach and Kenya healthcare requirements.
 
 from datetime import date, timedelta
 from decimal import Decimal
-from typing import List, Tuple
 
 from django.conf import settings
 from django.core.exceptions import ValidationError
@@ -334,9 +333,8 @@ class StockAlert(models.Model):
         self.save()
 
     @classmethod
-    def generate_low_stock_alerts(cls) -> List["StockAlert"]:
+    def generate_low_stock_alerts(cls) -> list["StockAlert"]:
         """Generate alerts for drugs with low stock levels."""
-        from django.conf import settings
 
         alerts = []
 
@@ -374,7 +372,7 @@ class StockAlert(models.Model):
         return alerts
 
     @classmethod
-    def generate_expiry_alerts(cls) -> List["StockAlert"]:
+    def generate_expiry_alerts(cls) -> list["StockAlert"]:
         """Generate alerts for expiring and expired batches."""
         from django.conf import settings
 
@@ -495,7 +493,7 @@ class Prescription(models.Model):
                 return False
         return True
 
-    def get_remaining_items(self) -> List["PrescriptionItem"]:
+    def get_remaining_items(self) -> list["PrescriptionItem"]:
         """Get items that are not fully dispensed."""
         return [
             item

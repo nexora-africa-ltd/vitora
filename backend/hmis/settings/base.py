@@ -263,3 +263,26 @@ RBAC_HIERARCHY_LEVELS = {
     'ADMINISTRATIVE': 5,
     'COMMUNITY': 6,
 }
+
+# ============================================================================
+# Laboratory Configuration (Sprint 1.3-1.4 Track B)
+# ============================================================================
+
+# Lab Order Settings
+LAB_ORDER_NUMBER_PREFIX = "LAB"
+LAB_DEFAULT_TAT_HOURS = 24  # Default turnaround time in hours
+LAB_CRITICAL_ALERT_ENABLED = True  # Enable critical result alerts
+LAB_AUTO_FLAG_RESULTS = True  # Automatically flag abnormal results
+
+# External Lab Partners
+# These are common external lab partners in Kenya
+EXTERNAL_LAB_PARTNERS = [
+    ("LANCET", "Lancet Kenya"),
+    ("PATHCARE", "PathCare Kenya"),
+    ("KEMRI", "KEMRI Reference Lab"),
+    ("AMPATH", "AMPATH Reference Lab"),
+    ("NHLS", "National Public Health Labs"),
+]
+
+# LOINC Data Configuration
+LOINC_DATA_PATH = "data/loinc_common.csv"
