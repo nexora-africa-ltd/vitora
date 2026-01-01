@@ -168,3 +168,43 @@ def prescription_item(db, prescription, sample_drug):
         route="Oral",
         instructions="Take after meals",
     )
+
+
+@pytest.fixture
+def sample_stock_batch(db, sample_drug, test_user):
+    """Alias for stock_batch fixture."""
+    from hmis.apps.pharmacy.models import StockBatch
+    
+    return StockBatch.objects.create(
+        drug=sample_drug,
+        batch_number="BATCH001",
+        quantity_received=1000,
+        quantity_available=1000,
+        manufacture_date=date.today() - timedelta(days=90),
+        expiry_date=date.today() + timedelta(days=365),
+        received_date=date.today() - timedelta(days=10),
+        cost_price=Decimal("5.00"),
+        selling_price=Decimal("10.00"),
+        supplier="Test Supplier Ltd",
+        received_by=test_user,
+        status="AVAILABLE",
+    )
+
+
+@pytest.fixture
+def sample_dispensing(db, sample_patient, sample_drug, sample_stock_batch, test_user):
+    """Create a sample dispensing for testing."""
+    from hmis.apps.pharmacy.models import Dispensing
+    
+    return Dispensing.objects.create(
+        patient=sample_patient,
+        drug=sample_drug,
+        batch=sample_stock_batch,
+        quantity_dispensed=10,
+        unit_price=Decimal("10.00"),
+        total_price=Decimal("100.00"),
+        discount=Decimal("0.00"),
+        dispensed_by=test_user,
+        patient_counseled=True,
+        instructions_given="Take as directed",
+    )

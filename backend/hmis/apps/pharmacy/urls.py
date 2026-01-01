@@ -12,6 +12,10 @@ from hmis.apps.pharmacy.views import (
     PrescriptionViewSet,
     DispensingViewSet,
     StockAdjustmentViewSet,
+    StockSummaryReportView,
+    ExpiryReportView,
+    DispensingReportView,
+    StockMovementReportView,
 )
 
 router = DefaultRouter()
@@ -26,4 +30,9 @@ app_name = "pharmacy"
 
 urlpatterns = [
     path("", include(router.urls)),
+    # Report endpoints
+    path("reports/stock-summary/", StockSummaryReportView.as_view(), name="stock-summary-report"),
+    path("reports/expiry-report/", ExpiryReportView.as_view(), name="expiry-report"),
+    path("reports/dispensing/", DispensingReportView.as_view(), name="dispensing-report"),
+    path("reports/movement/", StockMovementReportView.as_view(), name="stock-movement-report"),
 ]
