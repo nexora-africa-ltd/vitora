@@ -34,6 +34,7 @@ class TestCatalogViewSet(viewsets.ReadOnlyModelViewSet):
 
     queryset = TestCatalog.objects.filter(is_active=True)
     permission_classes = [IsAuthenticated]
+    lookup_field = "code"
 
     def get_serializer_class(self):
         if self.action == "retrieve":
@@ -44,7 +45,7 @@ class TestCatalogViewSet(viewsets.ReadOnlyModelViewSet):
         queryset = super().get_queryset()
 
         # Search by name or code
-        search = self.request.query_params.get("q", None)
+        search = self.request.query_params.get("search", None)
         if search:
             queryset = queryset.filter(
                 models.Q(name__icontains=search) | models.Q(code__icontains=search)
@@ -68,11 +69,22 @@ class LabOrderViewSet(viewsets.ModelViewSet):
     permission_classes = [IsAuthenticated]
     filter_backends = [filters.DjangoFilterBackend]
     filterset_fields = ["patient", "encounter", "status", "priority", "order_type"]
+    lookup_field = "order_number"
 
     def get_serializer_class(self):
         if self.action == "create":
             return LabOrderCreateSerializer
         return LabOrderSerializer
+    
+    def create(self, request, *args, **kwargs):
+        """Create a new lab order."""
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        order = serializer.save()
+        
+        # Return the full order representation
+        output_serializer = LabOrderSerializer(order)
+        return Response(output_serializer.data, status=status.HTTP_201_CREATED)
 
     def get_queryset(self):
         queryset = super().get_queryset()
@@ -88,7 +100,7 @@ class LabOrderViewSet(viewsets.ModelViewSet):
         return queryset
 
     @action(detail=True, methods=["post"])
-    def submit(self, request, pk=None):
+    def submit(self, request, order_number=None):
         """Submit order for processing."""
         order = self.get_object()
         try:
@@ -102,8 +114,8 @@ class LabOrderViewSet(viewsets.ModelViewSet):
                 status=status.HTTP_400_BAD_REQUEST,
             )
 
-    @action(detail=True, methods=["post"])
-    def collect_specimen(self, request, pk=None):
+    @action(detail=True, methods=["post"], url_path="collect-specimen")
+    def collect_specimen(self, request, order_number=None):
         """Record specimen collection."""
         order = self.get_object()
         try:
@@ -118,7 +130,7 @@ class LabOrderViewSet(viewsets.ModelViewSet):
             )
 
     @action(detail=True, methods=["post"])
-    def cancel(self, request, pk=None):
+    def cancel(self, request, order_number=None):
         """Cancel order."""
         order = self.get_object()
         reason = request.data.get("reason", "No reason provided")
@@ -133,16 +145,50 @@ class LabOrderViewSet(viewsets.ModelViewSet):
                 status=status.HTTP_400_BAD_REQUEST,
             )
 
-    @action(detail=True, methods=["get"])
-    def results(self, request, pk=None):
-        """Get all results for this order."""
+    @action(detail=True, methods=["post", "get"], url_path="results")
+    def handle_results(self, request, order_number=None):
+        """Handle results: GET to list, POST to create."""
         order = self.get_object()
-        results = LabResult.objects.filter(order_item__lab_order=order)
-        serializer = LabResultSerializer(results, many=True)
-        return Response(serializer.data)
+        
+        if request.method == "GET":
+            # List all results for this order
+            results = LabResult.objects.filter(order_item__lab_order=order)
+            serializer = LabResultSerializer(results, many=True)
+            return Response(serializer.data)
+        
+        # POST - Create a new result
+        serializer = LabResultCreateSerializer(data=request.data, context={"request": request})
+        if serializer.is_valid():
+            result = serializer.save()
+            return Response(
+                LabResultSerializer(result).data, status=status.HTTP_201_CREATED
+            )
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
     @action(detail=True, methods=["get"])
-    def critical_alerts(self, request, pk=None):
+    def requisition(self, request, order_number=None):
+        """Generate PDF requisition for external lab."""
+        from django.http import HttpResponse
+
+        from .external import ExternalLabRequisition
+
+        order = self.get_object()
+        try:
+            pdf_bytes = ExternalLabRequisition.generate_pdf(order)
+            response = HttpResponse(pdf_bytes, content_type="application/pdf")
+            response["Content-Disposition"] = (
+                f'attachment; filename="lab_requisition_{order.order_number}.pdf"'
+            )
+            return response
+        except Exception:
+            logger.exception("Error generating requisition PDF for order %s", order.pk)
+            return Response(
+                {"error": "Unable to generate requisition PDF."},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            )
+
+    @action(detail=True, methods=["get"])
+    def critical_alerts(self, request, order_number=None):
         """Get critical result alerts for this order."""
         order = self.get_object()
         alerts = LabAlertService.check_critical_results(order)
@@ -171,7 +217,7 @@ class LabResultViewSet(viewsets.ModelViewSet):
         serializer = self.get_serializer(result)
         return Response(serializer.data)
 
-    @action(detail=False, methods=["get"])
+    @action(detail=False, methods=["get"], url_path="pending-verification")
     def pending_verification(self, request):
         """Get results pending verification."""
         results = self.queryset.filter(verification_status="UNVERIFIED")
