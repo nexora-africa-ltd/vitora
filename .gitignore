@@ -14,9 +14,10 @@ eggs/
 .eggs/
 lib/
 lib64/
-# Exception: Allow mobile-app source code
+# Exception: Allow mobile-app and web-app source code
 !mobile-app/lib/
 !mobile-app/__tests__/lib/
+!web-app/src/lib/
 parts/
 sdist/
 var/
