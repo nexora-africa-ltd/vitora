@@ -25,11 +25,11 @@ This document tracks the implementation of Sprint 1.5-1.6 Track B Lab Workflow c
 
 | Phase | Status | Tests | Coverage |
 |-------|--------|-------|----------|
-| **Phase 1: Core Models** | 🚧 72% | 48/67 | In Progress |
+| **Phase 1: Core Models** | 🚧 88% | 59/67 | In Progress |
 | **Phase 2: Services** | ⏳ Pending | 0/32 | Not Started |
 | **Phase 3: API Endpoints** | ⏳ Pending | 0/26 | Not Started |
 | **Phase 4: Reports** | ⏳ Pending | 0/8 | Not Started |
-| **TOTAL** | 🚧 43% | 48/112 | In Progress |
+| **TOTAL** | 🚧 53% | 59/112 | In Progress |
 
 **Legend**: ✅ Complete | 🚧 In Progress | ⏳ Pending
 
@@ -37,7 +37,7 @@ This document tracks the implementation of Sprint 1.5-1.6 Track B Lab Workflow c
 
 ## Phase 1: Core Models & Database (Weeks 9-10)
 
-**Target**: 67 tests | **Status**: 48/67 complete (72%)
+**Target**: 67 tests | **Status**: 59/67 complete (88%)
 
 ### 1.1 LabQueue Model ✅ COMPLETE
 
@@ -225,14 +225,23 @@ class LabResult(models.Model):
 
 ---
 
-### 1.4 LabResultAttachment Model 🔄 TODO
+### 1.4 LabResultAttachment Model ✅ COMPLETE
 
-**Target**: 8 tests  
-**Status**: ⏳ Not Started
+**Target**: 11 tests  
+**Status**: ✅ All tests passing  
+**Tests**: 11/11 passing  
+**Files**:
+- Model: `backend/hmis/apps/laboratory/models.py` (LabResultAttachment)
+- Validators: `backend/hmis/apps/laboratory/validators.py` (new file)
+- Tests: `backend/tests/test_lab_result_attachment.py`
+- Migration: `0007_add_lab_result_attachment.py`
 
 **Purpose**: Support scanned result attachments for external lab results
 
-**Planned Implementation**:
+**Baseline Specification** (from deliverables doc):
+The implementation follows the code snippet provided in `docs/sprint-1.5-1.6-track-b-lab-workflow-deliverables.md` as the baseline specification.
+
+**Model Implementation**:
 ```python
 class LabResultAttachment(models.Model):
     """Scanned or uploaded lab result document."""
@@ -245,37 +254,54 @@ class LabResultAttachment(models.Model):
         OTHER = 'other', 'Other'
     
     # Linkage
-    lab_order = models.ForeignKey(LabOrder, on_delete=models.CASCADE)
+    lab_order = models.ForeignKey(LabOrder, related_name='attachments')
     
-    # File
+    # File (auto-populated on save)
     file = models.FileField(upload_to='lab_results/%Y/%m/')
-    filename = models.CharField(max_length=255)
-    file_type = models.CharField(max_length=50)  # MIME type
-    file_size = models.IntegerField()  # Bytes
+    filename = models.CharField(max_length=255)  # Auto from file.name
+    file_type = models.CharField(max_length=50)  # MIME type (auto)
+    file_size = models.IntegerField()  # Bytes (auto)
     
     # Metadata
-    attachment_type = models.CharField(max_length=20, choices=AttachmentType.choices)
+    attachment_type = models.CharField(choices=AttachmentType.choices)
     description = models.CharField(max_length=255, blank=True)
     
     # Audit
     uploaded_by = models.ForeignKey(User, on_delete=models.PROTECT)
     uploaded_at = models.DateTimeField(auto_now_add=True)
+    
+    class Meta:
+        ordering = ['-uploaded_at']  # Newest first
 ```
 
-**Test Plan**:
-- [ ] Attachment upload
-- [ ] Attachment linked to order
-- [ ] File metadata extracted (size, type)
-- [ ] Allowed extensions (PDF, PNG, JPG)
-- [ ] Rejected extensions (.exe, .js)
-- [ ] File size limit (>10MB rejected)
-- [ ] Upload user tracked
-- [ ] Multiple attachments per order
+**Validation Rules** (validators.py):
+- **Allowed extensions**: `.pdf`, `.png`, `.jpg`, `.jpeg`, `.tiff`, `.tif`
+- **Max file size**: 10MB
+- **Allowed MIME types**: `application/pdf`, `image/png`, `image/jpeg`, `image/tiff`
 
-**Validation Rules**:
-- Allowed extensions: `.pdf`, `.png`, `.jpg`, `.jpeg`, `.tiff`, `.tif`
-- Max file size: 10MB
-- Allowed MIME types: `application/pdf`, `image/png`, `image/jpeg`, `image/tiff`
+**Improvements over baseline**:
+1. Added comprehensive `help_text` to all fields for better documentation
+2. Added `verbose_name` and `verbose_name_plural` in Meta for Django admin
+3. Separate validators.py module for reusable file validation
+4. Auto-population of file metadata (filename, file_type, file_size) in save() method
+5. MIME type detection using mimetypes module
+6. Explicit BigAutoField for consistency with other models
+
+**Test Coverage** (11 tests):
+- [x] Attachment upload and storage
+- [x] Attachment linked to lab order
+- [x] File metadata extracted automatically (size, type, filename)
+- [x] Allowed extensions - PDF accepted
+- [x] Allowed extensions - Images (PNG, JPG) accepted
+- [x] Rejected extensions (.js, .exe blocked by validator)
+- [x] File size limit enforced (>10MB rejected)
+- [x] Upload user tracked
+- [x] Multiple attachments per order supported
+- [x] Attachment type choices (scanned, external, graph, image, other)
+- [x] Ordering by upload date (newest first)
+
+**Commits**:
+- TBD - feat: Implement LabResultAttachment model with file validation (Phase 1.4)
 
 ---
 
@@ -577,8 +603,8 @@ make test     # run all tests with coverage
 - [x] LabResultTemplate model with 8 tests passing ✅
 - [x] Data loading command with 11 tests passing ✅
 - [x] Extended LabResult with 15 tests passing ✅
-- [ ] LabResultAttachment with 8 tests passing
-- [ ] Notification model with 10 tests passing
+- [x] LabResultAttachment with 11 tests passing ✅
+- [ ] Notification model with 8 tests passing
 - [ ] All 67 Phase 1 tests passing
 - [ ] ≥85% code coverage for new models
 
@@ -598,21 +624,20 @@ make test     # run all tests with coverage
 
 ## Change Log
 
-### 2026-01-02 (Latest Update - Phase 1.3 Complete)
+### 2026-01-02 (Latest Update - Phase 1.4 Complete)
 - **Phase 1.1 Complete**: Implemented LabQueue model with 14 tests (all passing) ✅
 - **Phase 1.2 Complete**: Implemented LabResultTemplate model with 8 tests (all passing) ✅
 - **Data Loading Command Complete**: Created load_lab_reference_ranges with 11 tests (all passing) ✅
 - **Phase 1.3 Complete**: Extended LabResult model with 15 tests (all passing) ✅
-- Added 11 new fields to LabResult model:
-  - Reference range tracking (3 fields)
-  - Critical value flag (1 field)
-  - Method/equipment tracking (2 fields)
-  - Amendment tracking (5 fields)
-- Created migration `0006_add_extended_lab_result_fields.py`
-- Comprehensive test coverage for all new fields
-- **Total Progress**: 48/112 tests (43%)
-- **Phase 1 Progress**: 48/67 tests (72%)
-- **Next**: LabResultAttachment model (Phase 1.4)
+- **Phase 1.4 Complete**: Implemented LabResultAttachment model with 11 tests (all passing) ✅
+- Created validators.py module for file validation
+- File validation: PDF, PNG, JPG, JPEG, TIFF, TIF (max 10MB)
+- Auto-populated file metadata (filename, MIME type, size)
+- Multiple attachments per order supported
+- Created migration `0007_add_lab_result_attachment.py`
+- **Total Progress**: 59/112 tests (53%)
+- **Phase 1 Progress**: 59/67 tests (88%)
+- **Next**: Notification model (Phase 1.5)
 
 ### 2026-01-02 (Phase 1.2 Complete)
 - **Phase 1.1 Complete**: Implemented LabQueue model with 14 tests (all passing) ✅
