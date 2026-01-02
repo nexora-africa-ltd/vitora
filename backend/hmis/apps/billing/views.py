@@ -71,7 +71,7 @@ class InvoiceViewSet(viewsets.ModelViewSet):
     """
     queryset = Invoice.objects.select_related(
         'patient', 'encounter', 'created_by', 'cancelled_by'
-    ).prefetch_related('invoiceitem_set').all()
+    ).prefetch_related('items').all()
     serializer_class = InvoiceSerializer
     permission_classes = [IsAuthenticated]
     filter_backends = [DjangoFilterBackend, filters.SearchFilter, filters.OrderingFilter]
@@ -119,7 +119,7 @@ class InvoiceViewSet(viewsets.ModelViewSet):
             )
         
         # Check if invoice has items
-        if not invoice.invoiceitem_set.exists():
+        if not invoice.items.exists():
             return Response(
                 {'error': 'Invoice must have at least one item'},
                 status=status.HTTP_400_BAD_REQUEST
@@ -199,7 +199,7 @@ class InvoiceViewSet(viewsets.ModelViewSet):
         invoice = self.get_object()
         
         if request.method == 'GET':
-            items = invoice.invoiceitem_set.all()
+            items = invoice.items.all()
             serializer = InvoiceItemSerializer(items, many=True)
             return Response(serializer.data)
         

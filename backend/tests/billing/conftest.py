@@ -70,6 +70,7 @@ def sample_invoice(db, sample_patient, billing_user):
     return Invoice.objects.create(
         patient=sample_patient,
         invoice_date=date.today(),
+        due_date=date.today() + timedelta(days=30),
         status=Invoice.Status.DRAFT,
         payment_type=Invoice.PaymentType.CASH,
         created_by=billing_user,
@@ -107,14 +108,19 @@ def sample_invoice_item(db, sample_invoice, sample_service):
     return InvoiceItem.objects.create(
         invoice=sample_invoice,
         service=sample_service,
+        description=sample_service.name,
         quantity=1,
         unit_price=sample_service.unit_price
     )
 
 
 @pytest.fixture
-def sample_payment(db, sample_invoice, test_user):
+def sample_payment(db, sample_invoice, sample_invoice_item, test_user):
     """Create a sample payment."""
+    # Ensure invoice has items and totals calculated
+    sample_invoice.calculate_totals()
+    sample_invoice.save()
+    
     payment = Payment.objects.create(
         invoice=sample_invoice,
         method=Payment.Method.CASH,
@@ -139,12 +145,16 @@ def sample_receipt(db, sample_payment, sample_invoice, test_user):
 
 
 @pytest.fixture
-def sample_credit_note(db, sample_invoice, test_user):
+def sample_credit_note(db, sample_invoice, sample_invoice_item, test_user):
     """Create a sample credit note."""
+    # Ensure invoice has items and totals calculated
+    sample_invoice.calculate_totals()
+    sample_invoice.save()
+    
     return CreditNote.objects.create(
         invoice=sample_invoice,
         patient=sample_invoice.patient,
-        amount=Decimal('100.00'),
+        amount=Decimal('50.00'),  # Less than invoice total
         reason=CreditNote.Reason.OVERCHARGE,
         reason_detail='Test overcharge',
         requested_by=test_user
