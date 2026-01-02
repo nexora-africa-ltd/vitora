@@ -312,3 +312,144 @@ class CreditNoteViewSet(viewsets.ModelViewSet):
                 {'error': str(e)},
                 status=status.HTTP_400_BAD_REQUEST
             )
+
+
+class MpesaViewSet(viewsets.ViewSet):
+    """
+    ViewSet for M-Pesa integration.
+    
+    Provides endpoints for:
+    - STK Push initiation
+    - Payment callback handling
+    - Transaction status queries
+    """
+    permission_classes = [IsAuthenticated]
+    
+    @action(detail=False, methods=['post'])
+    def initiate(self, request):
+        """
+        Initiate M-Pesa STK Push payment.
+        
+        POST /api/billing/mpesa/initiate/
+        
+        Request body:
+        {
+            "invoice_id": 123,
+            "phone_number": "254712345678",
+            "amount": "500.00"
+        }
+        """
+        from hmis.apps.billing.services import MpesaService
+        from django.core.exceptions import ValidationError
+        
+        invoice_id = request.data.get('invoice_id')
+        phone_number = request.data.get('phone_number')
+        amount = request.data.get('amount')
+        
+        if not all([invoice_id, phone_number, amount]):
+            return Response(
+                {'error': 'invoice_id, phone_number, and amount are required'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        try:
+            # Get invoice
+            invoice = get_object_or_404(Invoice, id=invoice_id)
+            
+            # Convert amount to Decimal
+            amount_decimal = Decimal(str(amount))
+            
+            # Initiate STK Push
+            mpesa_service = MpesaService()
+            result = mpesa_service.initiate_stk_push(
+                phone_number=phone_number,
+                amount=amount_decimal,
+                account_reference=invoice.invoice_number,
+                transaction_desc=f'Payment for {invoice.invoice_number}'
+            )
+            
+            return Response(result, status=status.HTTP_201_CREATED)
+            
+        except ValidationError as e:
+            return Response(
+                {'error': str(e)},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        except Exception as e:
+            return Response(
+                {'error': f'Failed to initiate M-Pesa payment: {str(e)}'},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
+    
+    @action(detail=False, methods=['post'], permission_classes=[])
+    def callback(self, request):
+        """
+        Handle M-Pesa payment callback.
+        
+        POST /api/billing/mpesa/callback/
+        
+        This endpoint receives callbacks from Safaricom M-Pesa API.
+        No authentication required for M-Pesa callbacks.
+        """
+        from hmis.apps.billing.services import MpesaService
+        from django.core.exceptions import ValidationError
+        
+        try:
+            # Process callback
+            mpesa_service = MpesaService()
+            payment_data = mpesa_service.process_callback(request.data)
+            
+            # If payment successful, create Payment record
+            if payment_data['success']:
+                # Find invoice by checkout request ID or merchant request ID
+                # For now, just return success
+                pass
+            
+            return Response(
+                {'ResultCode': 0, 'ResultDesc': 'Success'},
+                status=status.HTTP_200_OK
+            )
+            
+        except ValidationError as e:
+            return Response(
+                {'ResultCode': 1, 'ResultDesc': str(e)},
+                status=status.HTTP_200_OK
+            )
+        except Exception as e:
+            return Response(
+                {'ResultCode': 1, 'ResultDesc': f'Callback processing failed: {str(e)}'},
+                status=status.HTTP_200_OK
+            )
+    
+    @action(detail=False, methods=['get'], url_path='query/(?P<checkout_request_id>[^/.]+)')
+    def query(self, request, checkout_request_id=None):
+        """
+        Query M-Pesa transaction status.
+        
+        GET /api/billing/mpesa/query/{checkout_request_id}/
+        """
+        from hmis.apps.billing.services import MpesaService
+        from django.core.exceptions import ValidationError
+        
+        if not checkout_request_id:
+            return Response(
+                {'error': 'checkout_request_id is required'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        try:
+            mpesa_service = MpesaService()
+            result = mpesa_service.query_transaction_status(checkout_request_id)
+            
+            return Response(result, status=status.HTTP_200_OK)
+            
+        except ValidationError as e:
+            return Response(
+                {'error': str(e)},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        except Exception as e:
+            return Response(
+                {'error': f'Failed to query transaction status: {str(e)}'},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )

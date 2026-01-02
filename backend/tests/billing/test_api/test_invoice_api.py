@@ -143,11 +143,16 @@ class TestInvoiceAPIEndpoints:
         """Test POST /api/billing/invoices/{id}/items/ - Add service item."""
         data = {
             'service': sample_service.id,
+            'description': sample_service.name,  # Add required description
             'quantity': 1,
             'unit_price': str(sample_service.unit_price)
         }
         
         response = authenticated_client.post(f'/api/billing/invoices/{sample_invoice.id}/items/', data)
+        
+        if response.status_code != status.HTTP_201_CREATED:
+            print(f"Response status: {response.status_code}")
+            print(f"Response data: {response.data}")
         
         assert response.status_code == status.HTTP_201_CREATED
         assert response.data['service'] == sample_service.id
@@ -160,8 +165,12 @@ class TestInvoiceAPIEndpoints:
         
         assert response.status_code == status.HTTP_204_NO_CONTENT
 
-    def test_apply_discount(self, authenticated_client, sample_invoice):
+    def test_apply_discount(self, authenticated_client, sample_invoice, sample_invoice_item):
         """Test POST /api/billing/invoices/{id}/apply-discount/ - Apply discount with reason."""
+        # Ensure invoice has items and totals calculated
+        sample_invoice.calculate_totals()
+        sample_invoice.save()
+        
         data = {
             'discount_amount': '50.00',
             'discount_reason': 'Senior citizen discount'
@@ -174,8 +183,9 @@ class TestInvoiceAPIEndpoints:
 
     def test_list_overdue_invoices(self, authenticated_client, sample_invoice):
         """Test GET /api/billing/invoices/overdue/ - Filter overdue invoices."""
-        # Make invoice overdue
+        # Make invoice overdue - set both invoice_date and due_date in past
         sample_invoice.status = Invoice.Status.PENDING
+        sample_invoice.invoice_date = date.today() - timedelta(days=40)
         sample_invoice.due_date = date.today() - timedelta(days=10)
         sample_invoice.save()
         

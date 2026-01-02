@@ -11,6 +11,7 @@ from hmis.apps.billing.views import (
     InvoiceViewSet,
     PaymentViewSet,
     CreditNoteViewSet,
+    MpesaViewSet,
 )
 
 router = routers.DefaultRouter()
@@ -19,6 +20,7 @@ router.register(r'services', ServiceViewSet, basename='service')
 router.register(r'invoices', InvoiceViewSet, basename='invoice')
 router.register(r'payments', PaymentViewSet, basename='payment')
 router.register(r'credit-notes', CreditNoteViewSet, basename='creditnote')
+router.register(r'mpesa', MpesaViewSet, basename='mpesa')
 
 app_name = 'billing'
 
