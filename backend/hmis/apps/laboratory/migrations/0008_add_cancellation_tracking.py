@@ -9,7 +9,7 @@ class Migration(migrations.Migration):
 
     dependencies = [
         migrations.swappable_dependency(settings.AUTH_USER_MODEL),
-        ('laboratory', '0008_add_notification_model'),
+        ('laboratory', '0007_add_lab_result_attachment'),
     ]
 
     operations = [

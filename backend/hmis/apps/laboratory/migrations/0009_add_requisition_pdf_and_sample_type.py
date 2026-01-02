@@ -6,7 +6,7 @@ from django.db import migrations, models
 class Migration(migrations.Migration):
 
     dependencies = [
-        ('laboratory', '0009_add_cancellation_tracking'),
+        ('laboratory', '0008_add_cancellation_tracking'),
     ]
 
     operations = [
