@@ -1,15 +1,13 @@
 'use client';
 
-import { useState, useRef, useCallback } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import { CalendarIcon, Loader2, CheckCircle2, AlertCircle, Info } from 'lucide-react';
+import { CalendarIcon, Loader2 } from 'lucide-react';
 import { format } from 'date-fns';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Calendar } from '@/components/ui/calendar';
-import { Checkbox } from '@/components/ui/checkbox';
 import {
   Form,
   FormControl,
@@ -31,11 +29,6 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from '@/components/ui/popover';
-import {
-  Alert,
-  AlertDescription,
-  AlertTitle,
-} from '@/components/ui/alert';
 import { cn } from '@/lib/utils';
 import { useCounties, useSubCounties, useWards } from '@/lib/hooks/use-locations';
 import { GENDER_OPTIONS, REFERRAL_SOURCE_OPTIONS } from '@/lib/utils/constants';
@@ -68,9 +61,7 @@ const patientFormSchema = z.object({
   emergency_contact_name: z.string().optional(),
   emergency_contact_phone: z.string().optional(),
   emergency_contact_relationship: z.string().optional(),
-  consent_given: z.boolean().default(false),
-  consent_data_processing: z.boolean().default(false),
-  consent_data_sharing: z.boolean().default(false),
+  consent_given: z.boolean().optional(),
 });
 
 type PatientFormValues = z.infer<typeof patientFormSchema>;
@@ -80,15 +71,9 @@ interface PatientFormProps {
   onCancel: () => void;
   isLoading?: boolean;
   defaultValues?: Partial<PatientFormValues>;
-  isEditing?: boolean;
 }
 
-export function PatientForm({ onSubmit, onCancel, isLoading, defaultValues, isEditing = false }: PatientFormProps) {
-  // Prevent double submission
-  const [isSubmitting, setIsSubmitting] = useState(false);
-  const submitLockRef = useRef(false);
-  const [dobPopoverOpen, setDobPopoverOpen] = useState(false);
-
+export function PatientForm({ onSubmit, onCancel, isLoading, defaultValues }: PatientFormProps) {
   const form = useForm<PatientFormValues>({
     resolver: zodResolver(patientFormSchema),
     defaultValues: {
@@ -104,8 +89,6 @@ export function PatientForm({ onSubmit, onCancel, isLoading, defaultValues, isEd
       emergency_contact_phone: '',
       emergency_contact_relationship: '',
       consent_given: false,
-      consent_data_processing: false,
-      consent_data_sharing: false,
       ...defaultValues,
     },
   });
@@ -117,49 +100,13 @@ export function PatientForm({ onSubmit, onCancel, isLoading, defaultValues, isEd
   const { data: subCounties, isLoading: isLoadingSubCounties } = useSubCounties(selectedCounty);
   const { data: wards, isLoading: isLoadingWards } = useWards(selectedSubCounty);
 
-  // Get display name for selected location
-  const getCountyName = useCallback((id: number | undefined) => {
-    if (!id || !counties) return undefined;
-    return counties.find(c => c.id === id)?.name;
-  }, [counties]);
-
-  const getSubCountyName = useCallback((id: number | undefined) => {
-    if (!id || !subCounties) return undefined;
-    return subCounties.find(sc => sc.id === id)?.name;
-  }, [subCounties]);
-
-  const getWardName = useCallback((id: number | undefined) => {
-    if (!id || !wards) return undefined;
-    return wards.find(w => w.id === id)?.name;
-  }, [wards]);
-
-  const handleSubmit = async (values: PatientFormValues) => {
-    // Prevent double submission
-    if (submitLockRef.current || isSubmitting) {
-      return;
-    }
-    
-    submitLockRef.current = true;
-    setIsSubmitting(true);
-    
-    try {
-      const data: PatientCreateData = {
-        ...values,
-        date_of_birth: format(values.date_of_birth, 'yyyy-MM-dd'),
-        // Combine consent fields
-        consent_given: values.consent_given && values.consent_data_processing,
-      };
-      await onSubmit(data);
-    } finally {
-      // Reset lock after a delay to ensure navigation completes
-      setTimeout(() => {
-        submitLockRef.current = false;
-        setIsSubmitting(false);
-      }, 1000);
-    }
+  const handleSubmit = (values: PatientFormValues) => {
+    const data: PatientCreateData = {
+      ...values,
+      date_of_birth: format(values.date_of_birth, 'yyyy-MM-dd'),
+    };
+    onSubmit(data);
   };
-
-  const isFormLoading = isLoading || isSubmitting;
 
   return (
     <Form {...form}>
@@ -174,7 +121,7 @@ export function PatientForm({ onSubmit, onCancel, isLoading, defaultValues, isEd
               name="first_name"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>First Name *</FormLabel>
+                  <FormLabel>First Name</FormLabel>
                   <FormControl>
                     <Input placeholder="Enter first name" {...field} />
                   </FormControl>
@@ -188,7 +135,7 @@ export function PatientForm({ onSubmit, onCancel, isLoading, defaultValues, isEd
               name="last_name"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Last Name *</FormLabel>
+                  <FormLabel>Last Name</FormLabel>
                   <FormControl>
                     <Input placeholder="Enter last name" {...field} />
                   </FormControl>
@@ -204,8 +151,8 @@ export function PatientForm({ onSubmit, onCancel, isLoading, defaultValues, isEd
               name="date_of_birth"
               render={({ field }) => (
                 <FormItem className="flex flex-col">
-                  <FormLabel>Date of Birth *</FormLabel>
-                  <Popover open={dobPopoverOpen} onOpenChange={setDobPopoverOpen}>
+                  <FormLabel>Date of Birth</FormLabel>
+                  <Popover>
                     <PopoverTrigger asChild>
                       <FormControl>
                         <Button
@@ -228,14 +175,11 @@ export function PatientForm({ onSubmit, onCancel, isLoading, defaultValues, isEd
                       <Calendar
                         mode="single"
                         selected={field.value}
-                        onSelect={(date) => {
-                          field.onChange(date);
-                          setDobPopoverOpen(false);
-                        }}
+                        onSelect={field.onChange}
                         disabled={(date) =>
                           date > new Date() || date < new Date('1900-01-01')
                         }
-                        defaultMonth={field.value || new Date(2000, 0)}
+                        initialFocus
                       />
                     </PopoverContent>
                   </Popover>
@@ -249,8 +193,8 @@ export function PatientForm({ onSubmit, onCancel, isLoading, defaultValues, isEd
               name="gender"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Gender *</FormLabel>
-                  <Select onValueChange={field.onChange} value={field.value}>
+                  <FormLabel>Gender</FormLabel>
+                  <Select onValueChange={field.onChange} defaultValue={field.value}>
                     <FormControl>
                       <SelectTrigger>
                         <SelectValue placeholder="Select gender" />
@@ -331,7 +275,7 @@ export function PatientForm({ onSubmit, onCancel, isLoading, defaultValues, isEd
               name="county"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>County *</FormLabel>
+                  <FormLabel>County</FormLabel>
                   <Select
                     onValueChange={(value) => {
                       field.onChange(Number(value));
@@ -364,7 +308,7 @@ export function PatientForm({ onSubmit, onCancel, isLoading, defaultValues, isEd
               name="sub_county"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Sub-County *</FormLabel>
+                  <FormLabel>Sub-County</FormLabel>
                   <Select
                     onValueChange={(value) => {
                       field.onChange(Number(value));
@@ -376,7 +320,7 @@ export function PatientForm({ onSubmit, onCancel, isLoading, defaultValues, isEd
                   >
                     <FormControl>
                       <SelectTrigger>
-                        <SelectValue placeholder={!selectedCounty ? 'Select county first' : isLoadingSubCounties ? 'Loading...' : 'Select sub-county'} />
+                        <SelectValue placeholder={isLoadingSubCounties ? 'Loading...' : 'Select sub-county'} />
                       </SelectTrigger>
                     </FormControl>
                     <SelectContent>
@@ -405,7 +349,7 @@ export function PatientForm({ onSubmit, onCancel, isLoading, defaultValues, isEd
                   >
                     <FormControl>
                       <SelectTrigger>
-                        <SelectValue placeholder={!selectedSubCounty ? 'Select sub-county first' : isLoadingWards ? 'Loading...' : 'Select ward'} />
+                        <SelectValue placeholder={isLoadingWards ? 'Loading...' : 'Select ward'} />
                       </SelectTrigger>
                     </FormControl>
                     <SelectContent>
@@ -476,21 +420,9 @@ export function PatientForm({ onSubmit, onCancel, isLoading, defaultValues, isEd
               render={({ field }) => (
                 <FormItem>
                   <FormLabel>Relationship</FormLabel>
-                  <Select onValueChange={field.onChange} value={field.value || ''}>
-                    <FormControl>
-                      <SelectTrigger>
-                        <SelectValue placeholder="Select relationship" />
-                      </SelectTrigger>
-                    </FormControl>
-                    <SelectContent>
-                      <SelectItem value="spouse">Spouse</SelectItem>
-                      <SelectItem value="parent">Parent</SelectItem>
-                      <SelectItem value="child">Child</SelectItem>
-                      <SelectItem value="sibling">Sibling</SelectItem>
-                      <SelectItem value="friend">Friend</SelectItem>
-                      <SelectItem value="other">Other</SelectItem>
-                    </SelectContent>
-                  </Select>
+                  <FormControl>
+                    <Input placeholder="e.g., Spouse, Parent" {...field} />
+                  </FormControl>
                   <FormMessage />
                 </FormItem>
               )}
@@ -505,7 +437,7 @@ export function PatientForm({ onSubmit, onCancel, isLoading, defaultValues, isEd
           render={({ field }) => (
             <FormItem>
               <FormLabel>Referral Source</FormLabel>
-              <Select onValueChange={field.onChange} value={field.value}>
+              <Select onValueChange={field.onChange} defaultValue={field.value}>
                 <FormControl>
                   <SelectTrigger className="w-full md:w-[250px]">
                     <SelectValue placeholder="Select referral source" />
@@ -524,98 +456,13 @@ export function PatientForm({ onSubmit, onCancel, isLoading, defaultValues, isEd
           )}
         />
 
-        {/* Consent Section */}
-        <div className="space-y-4">
-          <h3 className="text-lg font-medium">Data Protection Consent</h3>
-          
-          <Alert>
-            <Info className="h-4 w-4" />
-            <AlertTitle>Kenya Data Protection Act 2019</AlertTitle>
-            <AlertDescription>
-              Patient consent is required for processing and storing personal health information.
-              Data will be encrypted and stored securely in compliance with the law.
-            </AlertDescription>
-          </Alert>
-
-          <div className="space-y-4 rounded-lg border p-4">
-            <FormField
-              control={form.control}
-              name="consent_given"
-              render={({ field }) => (
-                <FormItem className="flex flex-row items-start space-x-3 space-y-0">
-                  <FormControl>
-                    <Checkbox
-                      checked={field.value}
-                      onCheckedChange={field.onChange}
-                    />
-                  </FormControl>
-                  <div className="space-y-1 leading-none">
-                    <FormLabel>
-                      I consent to the collection and storage of my health information *
-                    </FormLabel>
-                    <FormDescription>
-                      This includes personal details, medical history, and treatment records.
-                    </FormDescription>
-                  </div>
-                </FormItem>
-              )}
-            />
-
-            <FormField
-              control={form.control}
-              name="consent_data_processing"
-              render={({ field }) => (
-                <FormItem className="flex flex-row items-start space-x-3 space-y-0">
-                  <FormControl>
-                    <Checkbox
-                      checked={field.value}
-                      onCheckedChange={field.onChange}
-                    />
-                  </FormControl>
-                  <div className="space-y-1 leading-none">
-                    <FormLabel>
-                      I consent to the processing of my data for healthcare purposes *
-                    </FormLabel>
-                    <FormDescription>
-                      This allows healthcare providers to access records for diagnosis and treatment.
-                    </FormDescription>
-                  </div>
-                </FormItem>
-              )}
-            />
-
-            <FormField
-              control={form.control}
-              name="consent_data_sharing"
-              render={({ field }) => (
-                <FormItem className="flex flex-row items-start space-x-3 space-y-0">
-                  <FormControl>
-                    <Checkbox
-                      checked={field.value}
-                      onCheckedChange={field.onChange}
-                    />
-                  </FormControl>
-                  <div className="space-y-1 leading-none">
-                    <FormLabel>
-                      I consent to data sharing for statutory reporting (Optional)
-                    </FormLabel>
-                    <FormDescription>
-                      Anonymous data may be shared with KHIS/Ministry of Health for public health monitoring.
-                    </FormDescription>
-                  </div>
-                </FormItem>
-              )}
-            />
-          </div>
-        </div>
-
         {/* Actions */}
         <div className="flex gap-4 pt-4">
-          <Button type="submit" disabled={isFormLoading}>
-            {isFormLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-            {isEditing ? 'Update Patient' : 'Register Patient'}
+          <Button type="submit" disabled={isLoading}>
+            {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+            Register Patient
           </Button>
-          <Button type="button" variant="outline" onClick={onCancel} disabled={isFormLoading}>
+          <Button type="button" variant="outline" onClick={onCancel} disabled={isLoading}>
             Cancel
           </Button>
         </div>

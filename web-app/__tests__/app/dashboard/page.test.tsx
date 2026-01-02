@@ -1,5 +1,5 @@
 import { render, screen } from '@testing-library/react';
-import DashboardPage from '@/app/dashboard/page';
+import DashboardPage from '@/app/(dashboard)/dashboard/page';
 
 // Mock the components
 jest.mock('@/components/dashboard/stats-card', () => ({

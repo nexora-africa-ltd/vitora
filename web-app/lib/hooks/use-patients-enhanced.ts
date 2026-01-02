@@ -68,12 +68,12 @@ export function useCreatePatient() {
 /**
  * Hook for updating a patient
  */
-export function useUpdatePatient(id: number) {
+export function useUpdatePatient() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: (data: PatientUpdateData) => patientsApi.updatePatient(id, data),
-    onSuccess: () => {
+    mutationFn: ({ id, data }: { id: number; data: PatientUpdateData }) => patientsApi.updatePatient(id, data),
+    onSuccess: (_, { id }) => {
       queryClient.invalidateQueries({ queryKey: ['patient', id] });
       queryClient.invalidateQueries({ queryKey: ['patients'] });
     },

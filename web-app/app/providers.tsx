@@ -3,9 +3,10 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { ReactQueryDevtools } from '@tanstack/react-query-devtools';
 import { ThemeProvider } from 'next-themes';
-import { useState, ReactNode } from 'react';
+import { useState, ReactNode, Suspense } from 'react';
 import { AuthProvider } from '@/lib/auth/context';
 import { Toaster } from '@/components/ui/toaster';
+import { RouteProgress } from '@/components/shared/route-progress';
 
 interface ProvidersProps {
   children: ReactNode;
@@ -17,6 +18,7 @@ interface ProvidersProps {
  * - QueryClientProvider: React Query for data fetching
  * - ThemeProvider: next-themes for dark/light mode
  * - AuthProvider: JWT authentication state
+ * - RouteProgress: Top progress bar for route transitions
  * - Toaster: Toast notifications
  */
 export function Providers({ children }: ProvidersProps) {
@@ -45,6 +47,9 @@ export function Providers({ children }: ProvidersProps) {
         disableTransitionOnChange
       >
         <AuthProvider>
+          <Suspense fallback={null}>
+            <RouteProgress />
+          </Suspense>
           {children}
           <Toaster />
         </AuthProvider>
