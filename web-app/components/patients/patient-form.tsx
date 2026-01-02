@@ -343,7 +343,9 @@ export function PatientForm({ onSubmit, onCancel, isLoading, defaultValues, isEd
                   >
                     <FormControl>
                       <SelectTrigger>
-                        <SelectValue placeholder={isLoadingCounties ? 'Loading...' : 'Select county'} />
+                        <SelectValue placeholder={isLoadingCounties ? 'Loading...' : 'Select county'}>
+                          {getCountyName(field.value)}
+                        </SelectValue>
                       </SelectTrigger>
                     </FormControl>
                     <SelectContent>
@@ -376,7 +378,9 @@ export function PatientForm({ onSubmit, onCancel, isLoading, defaultValues, isEd
                   >
                     <FormControl>
                       <SelectTrigger>
-                        <SelectValue placeholder={!selectedCounty ? 'Select county first' : isLoadingSubCounties ? 'Loading...' : 'Select sub-county'} />
+                        <SelectValue placeholder={!selectedCounty ? 'Select county first' : isLoadingSubCounties ? 'Loading...' : 'Select sub-county'}>
+                          {getSubCountyName(field.value)}
+                        </SelectValue>
                       </SelectTrigger>
                     </FormControl>
                     <SelectContent>
@@ -405,7 +409,9 @@ export function PatientForm({ onSubmit, onCancel, isLoading, defaultValues, isEd
                   >
                     <FormControl>
                       <SelectTrigger>
-                        <SelectValue placeholder={!selectedSubCounty ? 'Select sub-county first' : isLoadingWards ? 'Loading...' : 'Select ward'} />
+                        <SelectValue placeholder={!selectedSubCounty ? 'Select sub-county first' : isLoadingWards ? 'Loading...' : 'Select ward'}>
+                          {getWardName(field.value)}
+                        </SelectValue>
                       </SelectTrigger>
                     </FormControl>
                     <SelectContent>

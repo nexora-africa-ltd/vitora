@@ -8,7 +8,8 @@ import { ChevronDown } from "lucide-react"
 
 interface SelectContextValue {
   value: string
-  onValueChange: (value: string) => void
+  displayText: string
+  onValueChange: (value: string, displayText?: string) => void
   open: boolean
   setOpen: (open: boolean) => void
 }
@@ -25,11 +26,13 @@ interface SelectProps {
 
 const Select: React.FC<SelectProps> = ({ value, defaultValue = '', onValueChange, children, disabled }) => {
   const [internalValue, setInternalValue] = React.useState(defaultValue)
+  const [displayText, setDisplayText] = React.useState('')
   const [open, setOpen] = React.useState(false)
 
-  const handleValueChange = React.useCallback((newValue: string) => {
+  const handleValueChange = React.useCallback((newValue: string, newDisplayText?: string) => {
     if (disabled) return
     setInternalValue(newValue)
+    if (newDisplayText) setDisplayText(newDisplayText)
     onValueChange?.(newValue)
     setOpen(false)
   }, [onValueChange, disabled])
@@ -37,7 +40,7 @@ const Select: React.FC<SelectProps> = ({ value, defaultValue = '', onValueChange
   const currentValue = value !== undefined ? value : internalValue
 
   return (
-    <SelectContext.Provider value={{ value: currentValue, onValueChange: handleValueChange, open, setOpen }}>
+    <SelectContext.Provider value={{ value: currentValue, displayText, onValueChange: handleValueChange, open, setOpen }}>
       <div className="relative">
         {children}
       </div>
@@ -72,13 +75,22 @@ SelectTrigger.displayName = "SelectTrigger"
 
 interface SelectValueProps {
   placeholder?: string
+  children?: React.ReactNode
 }
 
-const SelectValue: React.FC<SelectValueProps> = ({ placeholder }) => {
+const SelectValue: React.FC<SelectValueProps> = ({ placeholder, children }) => {
   const context = React.useContext(SelectContext)
   if (!context) throw new Error('SelectValue must be used within Select')
 
-  return <span>{context.value || placeholder}</span>
+  // If children provided (render prop pattern), use that
+  // Otherwise use displayText if available, then fall back to value
+  const displayContent = children || context.displayText || (context.value ? context.value : placeholder)
+  
+  return (
+    <span className={!context.value && !context.displayText ? 'text-muted-foreground' : ''}>
+      {context.value ? displayContent : placeholder}
+    </span>
+  )
 }
 
 const SelectContent = React.forwardRef<
@@ -118,6 +130,17 @@ const SelectItem = React.forwardRef<HTMLDivElement, SelectItemProps>(
 
     const isSelected = context.value === value
 
+    // Extract text content from children for display
+    const getTextContent = (node: React.ReactNode): string => {
+      if (typeof node === 'string') return node
+      if (typeof node === 'number') return String(node)
+      if (Array.isArray(node)) return node.map(getTextContent).join('')
+      if (React.isValidElement(node) && node.props.children) {
+        return getTextContent(node.props.children)
+      }
+      return ''
+    }
+
     return (
       <div
         ref={ref}
@@ -126,7 +149,7 @@ const SelectItem = React.forwardRef<HTMLDivElement, SelectItemProps>(
           isSelected && "bg-accent text-accent-foreground",
           className
         )}
-        onClick={() => context.onValueChange(value)}
+        onClick={() => context.onValueChange(value, getTextContent(children))}
         {...props}
       >
         {children}
