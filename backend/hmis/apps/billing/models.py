@@ -302,6 +302,11 @@ class Invoice(models.Model):
         """Apply discount to invoice."""
         if amount < 0:
             raise ValidationError("Discount amount must be positive.")
+        
+        # Handle zero subtotal case (no items yet)
+        if self.subtotal == Decimal('0.00') and amount > Decimal('0.00'):
+            raise ValidationError("Cannot apply discount to invoice with zero subtotal.")
+        
         if amount > self.subtotal:
             raise ValidationError("Discount cannot exceed subtotal.")
         
