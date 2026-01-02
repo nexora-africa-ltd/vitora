@@ -477,8 +477,11 @@ class InvoiceItem(models.Model):
     
     def save(self, *args, **kwargs):
         """Override save to calculate line total and update invoice."""
+        # Calculate line_total before validation if not set
+        if not self.line_total:
+            self.line_total = self.calculate_line_total()
         self.full_clean()
-        self.line_total = self.calculate_line_total()
+        self.line_total = self.calculate_line_total()  # Recalculate after validation
         super().save(*args, **kwargs)
         # Update invoice totals
         self.invoice.calculate_totals()
