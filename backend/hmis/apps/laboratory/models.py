@@ -944,3 +944,101 @@ class LabResultTemplate(models.Model):
             return (range_data.get("low"), range_data.get("high"))
 
         return (None, None)
+
+
+# ============================================================================
+# Lab Result Attachments (Sprint 1.5-1.6 Track B Phase 1.4)
+# ============================================================================
+
+
+class LabResultAttachment(models.Model):
+    """
+    Scanned or uploaded lab result document.
+    
+    Supports external lab results, scanned reports, images, and graphs.
+    Files are validated for type (PDF, PNG, JPG, TIFF) and size (<10MB).
+    """
+    
+    class AttachmentType(models.TextChoices):
+        SCANNED_RESULT = 'scanned', 'Scanned Result'
+        EXTERNAL_REPORT = 'external', 'External Lab Report'
+        GRAPH = 'graph', 'Result Graph'
+        IMAGE = 'image', 'Lab Image'
+        OTHER = 'other', 'Other'
+    
+    id = models.BigAutoField(primary_key=True)
+    
+    # Linkage
+    lab_order = models.ForeignKey(
+        'LabOrder',
+        on_delete=models.CASCADE,
+        related_name='attachments',
+        help_text="Lab order this attachment belongs to"
+    )
+    
+    # File
+    file = models.FileField(
+        upload_to='lab_results/%Y/%m/',
+        help_text="Uploaded file (PDF, PNG, JPG, TIFF)"
+    )
+    filename = models.CharField(
+        max_length=255,
+        help_text="Original filename"
+    )
+    file_type = models.CharField(
+        max_length=50,
+        help_text="MIME type of the file"
+    )
+    file_size = models.IntegerField(
+        help_text="File size in bytes"
+    )
+    
+    # Metadata
+    attachment_type = models.CharField(
+        max_length=20,
+        choices=AttachmentType.choices,
+        help_text="Type of attachment"
+    )
+    description = models.CharField(
+        max_length=255,
+        blank=True,
+        help_text="Optional description"
+    )
+    
+    # Audit
+    uploaded_by = models.ForeignKey(
+        User,
+        on_delete=models.PROTECT,
+        help_text="User who uploaded the file"
+    )
+    uploaded_at = models.DateTimeField(
+        auto_now_add=True,
+        help_text="When file was uploaded"
+    )
+    
+    class Meta:
+        ordering = ['-uploaded_at']
+        verbose_name = "Lab Result Attachment"
+        verbose_name_plural = "Lab Result Attachments"
+    
+    def save(self, *args, **kwargs):
+        """Auto-populate file metadata on save."""
+        if self.file:
+            self.filename = self.file.name
+            self.file_type = self._get_mime_type()
+            self.file_size = self.file.size
+        super().save(*args, **kwargs)
+    
+    def _get_mime_type(self) -> str:
+        """
+        Determine MIME type from file.
+        
+        Returns:
+            str: MIME type (e.g., 'application/pdf', 'image/png')
+        """
+        import mimetypes
+        mime_type, _ = mimetypes.guess_type(self.file.name)
+        return mime_type or 'application/octet-stream'
+    
+    def __str__(self):
+        return f"{self.attachment_type}: {self.filename} for Order {self.lab_order.order_number}"
