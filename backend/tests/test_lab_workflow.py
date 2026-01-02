@@ -54,7 +54,7 @@ class TestLabOrderWorkflow:
         updated_order = workflow.transition_to('IN_PROGRESS', user=test_user)
         
         assert updated_order.status == 'IN_PROGRESS'
-        assert updated_order.queue_entry.queue_status == 'processing'
+        assert updated_order.queue_entry.queue_status == 'PROCESSING'
         assert updated_order.queue_entry.assigned_technician == test_user
     
     def test_valid_transition_in_progress_to_completed(
@@ -71,7 +71,7 @@ class TestLabOrderWorkflow:
         updated_order = workflow.transition_to('COMPLETED', user=test_user)
         
         assert updated_order.status == 'COMPLETED'
-        assert updated_order.queue_entry.queue_status == 'released'
+        assert updated_order.queue_entry.queue_status == 'RELEASED'
         assert updated_order.queue_entry.released_at is not None
     
     def test_invalid_transition_ordered_to_completed(self, sample_lab_order, test_user):
@@ -170,15 +170,15 @@ class TestLabOrderWorkflow:
         sample_lab_order.status = 'IN_PROGRESS'
         sample_lab_order.save()
         
-        # Mock notification function
-        mock_notify = mocker.patch(
-            'hmis.apps.laboratory.services.notifications.send_result_notification'
+        # Mock notification service method
+        mock_send = mocker.patch(
+            'hmis.apps.laboratory.services.notifications.LabNotificationService.send_result_notification'
         )
         
         workflow = LabOrderWorkflow(sample_lab_order)
         workflow.transition_to('COMPLETED', user=test_user)
         
-        mock_notify.assert_called_once_with(sample_lab_order)
+        mock_send.assert_called_once_with(sample_lab_order)
     
     def test_sample_collection_records_user(self, sample_lab_order, test_user):
         """Should record collecting user during collection transition."""
