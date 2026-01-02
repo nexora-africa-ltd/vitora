@@ -320,6 +320,13 @@ class LabOrder(models.Model):
     # Billing
     total_cost = models.DecimalField(max_digits=10, decimal_places=2, default=0)
     is_paid = models.BooleanField(default=False)
+    
+    # Cancellation tracking
+    cancellation_reason = models.TextField(blank=True, help_text="Reason for cancellation")
+    cancelled_by = models.ForeignKey(
+        User, null=True, blank=True, on_delete=models.SET_NULL, related_name="cancelled_lab_orders", help_text="User who cancelled the order"
+    )
+    cancelled_at = models.DateTimeField(null=True, blank=True, help_text="When order was cancelled")
 
     # Timestamps
     ordered_at = models.DateTimeField(auto_now_add=True)
