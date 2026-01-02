@@ -106,7 +106,7 @@ class StockAlertViewSet(viewsets.ModelViewSet):
     serializer_class = StockAlertSerializer
     permission_classes = [IsAuthenticated]
     filter_backends = [DjangoFilterBackend, filters.OrderingFilter]
-    filterset_fields = ["alert_type", "severity", "acknowledged", "resolved"]
+    filterset_fields = ["alert_type", "severity", "is_acknowledged", "is_resolved"]
     ordering_fields = ["created_at", "severity"]
     ordering = ["-created_at"]
 
@@ -130,7 +130,7 @@ class StockAlertViewSet(viewsets.ModelViewSet):
     @action(detail=False, methods=["get"])
     def low_stock(self, request):
         """Get low stock alerts."""
-        alerts = self.queryset.filter(alert_type="LOW_STOCK", resolved=False)
+        alerts = self.queryset.filter(alert_type="LOW_STOCK", is_resolved=False)
         serializer = self.get_serializer(alerts, many=True)
         return Response(serializer.data)
 
@@ -139,7 +139,7 @@ class StockAlertViewSet(viewsets.ModelViewSet):
         """Get expiring stock alerts."""
         alerts = self.queryset.filter(
             alert_type__in=["EXPIRING_SOON", "EXPIRING_CRITICAL"],
-            resolved=False,
+            is_resolved=False,
         )
         serializer = self.get_serializer(alerts, many=True)
         return Response(serializer.data)
