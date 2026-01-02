@@ -453,3 +453,131 @@ class MpesaViewSet(viewsets.ViewSet):
                 {'error': f'Failed to query transaction status: {str(e)}'},
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR
             )
+
+
+class ReportViewSet(viewsets.ViewSet):
+    """
+    ViewSet for billing reports.
+    
+    Provides read-only endpoints for financial reports.
+    """
+    permission_classes = [IsAuthenticated]
+    
+    @action(detail=False, methods=['get'], url_path='daily-collection')
+    def daily_collection(self, request):
+        """Get daily collection report."""
+        from hmis.apps.billing.reports import BillingReportService
+        
+        report_date = request.query_params.get('date')
+        if not report_date:
+            return Response(
+                {'error': 'date parameter is required'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        try:
+            report_date = date.fromisoformat(report_date)
+        except (ValueError, TypeError):
+            return Response(
+                {'error': 'Invalid date format. Use YYYY-MM-DD'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        service = BillingReportService()
+        report = service.daily_collection_report(report_date)
+        
+        return Response(report, status=status.HTTP_200_OK)
+    
+    @action(detail=False, methods=['get'], url_path='revenue-summary')
+    def revenue_summary(self, request):
+        """Get revenue summary for date range."""
+        from hmis.apps.billing.reports import BillingReportService
+        
+        start_date = request.query_params.get('start_date')
+        end_date = request.query_params.get('end_date')
+        
+        if not start_date or not end_date:
+            return Response(
+                {'error': 'start_date and end_date parameters are required'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        try:
+            start_date = date.fromisoformat(start_date)
+            end_date = date.fromisoformat(end_date)
+        except (ValueError, TypeError):
+            return Response(
+                {'error': 'Invalid date format. Use YYYY-MM-DD'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        service = BillingReportService()
+        report = service.revenue_summary(start_date, end_date)
+        
+        return Response(report, status=status.HTTP_200_OK)
+    
+    @action(detail=False, methods=['get'], url_path='outstanding-balances')
+    def outstanding_balances(self, request):
+        """Get list of outstanding invoices."""
+        from hmis.apps.billing.reports import BillingReportService
+        
+        service = BillingReportService()
+        report = service.outstanding_balances()
+        
+        return Response(report, status=status.HTTP_200_OK)
+    
+    @action(detail=False, methods=['get'], url_path='service-utilization')
+    def service_utilization(self, request):
+        """Get service utilization report."""
+        from hmis.apps.billing.reports import BillingReportService
+        
+        start_date = request.query_params.get('start_date')
+        end_date = request.query_params.get('end_date')
+        
+        if not start_date or not end_date:
+            return Response(
+                {'error': 'start_date and end_date parameters are required'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        try:
+            start_date = date.fromisoformat(start_date)
+            end_date = date.fromisoformat(end_date)
+        except (ValueError, TypeError):
+            return Response(
+                {'error': 'Invalid date format. Use YYYY-MM-DD'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        service = BillingReportService()
+        report = service.service_utilization(start_date, end_date)
+        
+        return Response(report, status=status.HTTP_200_OK)
+    
+    @action(detail=False, methods=['get'], url_path='payment-analysis')
+    def payment_analysis(self, request):
+        """Get payment method analysis."""
+        from hmis.apps.billing.reports import BillingReportService
+        
+        start_date = request.query_params.get('start_date')
+        end_date = request.query_params.get('end_date')
+        
+        if not start_date or not end_date:
+            return Response(
+                {'error': 'start_date and end_date parameters are required'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        try:
+            start_date = date.fromisoformat(start_date)
+            end_date = date.fromisoformat(end_date)
+        except (ValueError, TypeError):
+            return Response(
+                {'error': 'Invalid date format. Use YYYY-MM-DD'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        service = BillingReportService()
+        report = service.payment_method_analysis(start_date, end_date)
+        
+        return Response(report, status=status.HTTP_200_OK)
