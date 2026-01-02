@@ -42,7 +42,7 @@ export function PageLoading({ message = 'Loading...', fullScreen = true }: PageL
     <div
       className={cn(
         'flex flex-col items-center justify-center gap-4 bg-background/80 backdrop-blur-sm',
-        fullScreen ? 'fixed inset-0 z-50' : 'min-h-[400px] w-full'
+        fullScreen ? 'fixed inset-0 z-50' : 'flex min-h-[60vh] w-full items-center justify-center'
       )}
       role="status"
       aria-live="polite"

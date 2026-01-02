@@ -1,0 +1,488 @@
+/**
+ * Pharmacy module type definitions.
+ * Sprint 1.3-1.4 Track A: Pharmacy Module
+ * 
+ * Based on backend models at hmis/apps/pharmacy/models.py
+ */
+
+// Drug form options
+export type DrugForm =
+  | 'TABLET'
+  | 'CAPSULE'
+  | 'SYRUP'
+  | 'INJECTION'
+  | 'CREAM'
+  | 'OINTMENT'
+  | 'DROPS'
+  | 'INHALER'
+  | 'SUPPOSITORY'
+  | 'POWDER'
+  | 'SUSPENSION'
+  | 'SOLUTION'
+  | 'GEL'
+  | 'PATCH'
+  | 'SPRAY';
+
+// Drug category options
+export type DrugCategory =
+  | 'ANALGESIC'
+  | 'ANTIBIOTIC'
+  | 'ANTIMALARIAL'
+  | 'ANTIRETROVIRAL'
+  | 'ANTIHYPERTENSIVE'
+  | 'ANTIDIABETIC'
+  | 'ANTIHISTAMINE'
+  | 'VITAMIN'
+  | 'VACCINE'
+  | 'CONTRACEPTIVE'
+  | 'PSYCHOTROPIC'
+  | 'CONTROLLED'
+  | 'OTHER';
+
+// Drug schedule options
+export type DrugSchedule = 'OTC' | 'POM' | 'P' | 'CD';
+
+// Stock status options
+export type StockStatus =
+  | 'AVAILABLE'
+  | 'LOW'
+  | 'OUT_OF_STOCK'
+  | 'EXPIRED'
+  | 'QUARANTINE'
+  | 'RECALLED';
+
+// Alert types
+export type AlertType =
+  | 'LOW_STOCK'
+  | 'OUT_OF_STOCK'
+  | 'EXPIRING_SOON'
+  | 'EXPIRING_CRITICAL'
+  | 'EXPIRED'
+  | 'RECALLED';
+
+// Alert severity
+export type AlertSeverity = 'LOW' | 'MEDIUM' | 'HIGH' | 'CRITICAL';
+
+// Prescription status
+export type PrescriptionStatus =
+  | 'PENDING'
+  | 'PARTIAL'
+  | 'DISPENSED'
+  | 'CANCELLED'
+  | 'EXPIRED';
+
+// Dispensing status
+export type DispensingStatus = 'COMPLETED' | 'RETURNED' | 'CANCELLED';
+
+// Stock adjustment types
+export type AdjustmentType =
+  | 'DAMAGED'
+  | 'EXPIRED'
+  | 'LOST'
+  | 'THEFT'
+  | 'CORRECTION'
+  | 'RETURN_TO_SUPPLIER'
+  | 'DONATION'
+  | 'TRANSFER_OUT'
+  | 'TRANSFER_IN'
+  | 'OTHER';
+
+/**
+ * Drug catalog entry
+ */
+export interface Drug {
+  id: number;
+  code: string;
+  generic_name: string;
+  brand_names: string[];
+  category: DrugCategory;
+  form: DrugForm;
+  strength: string;
+  unit: string;
+  schedule: DrugSchedule;
+  requires_prescription: boolean;
+  is_controlled: boolean;
+  is_narcotic: boolean;
+  keml_code?: string;
+  is_essential: boolean;
+  nhif_code?: string;
+  default_reorder_level: number;
+  default_reorder_quantity: number;
+  shelf_life_months?: number;
+  storage_requirements?: string;
+  reference_price?: number;
+  is_active: boolean;
+  current_stock: number;
+  created_at: string;
+  updated_at: string;
+}
+
+/**
+ * Stock batch
+ */
+export interface StockBatch {
+  id: number;
+  drug: number;
+  drug_name?: string;
+  drug_code?: string;
+  batch_number: string;
+  barcode?: string;
+  quantity_received: number;
+  quantity_available: number;
+  quantity_dispensed: number;
+  quantity_damaged: number;
+  quantity_expired: number;
+  manufacture_date?: string;
+  expiry_date: string;
+  received_date: string;
+  cost_price: number;
+  selling_price: number;
+  supplier?: string;
+  purchase_order?: string;
+  received_by: number;
+  received_by_name?: string;
+  status: StockStatus;
+  location?: string;
+  days_to_expiry: number;
+  is_expired: boolean;
+  is_low_stock: boolean;
+  created_at: string;
+  updated_at: string;
+}
+
+/**
+ * Stock alert
+ */
+export interface StockAlert {
+  id: number;
+  drug: number;
+  drug_name?: string;
+  drug_code?: string;
+  stock_batch?: number;
+  batch_number?: string;
+  alert_type: AlertType;
+  severity: AlertSeverity;
+  message: string;
+  acknowledged: boolean;
+  acknowledged_by?: number;
+  acknowledged_by_name?: string;
+  acknowledged_at?: string;
+  resolved: boolean;
+  resolved_by?: number;
+  resolved_by_name?: string;
+  resolved_at?: string;
+  resolution_notes?: string;
+  created_at: string;
+  updated_at: string;
+}
+
+/**
+ * Prescription
+ */
+export interface Prescription {
+  id: number;
+  prescription_number: string;
+  patient: number;
+  patient_name?: string;
+  patient_mrn?: string;
+  encounter?: number;
+  prescriber: number;
+  prescriber_name?: string;
+  status: PrescriptionStatus;
+  prescribed_date: string;
+  valid_until: string;
+  clinical_notes?: string;
+  cancelled_reason?: string;
+  cancelled_by?: number;
+  cancelled_at?: string;
+  items: PrescriptionItem[];
+  is_valid: boolean;
+  is_fully_dispensed: boolean;
+  created_at: string;
+  updated_at: string;
+}
+
+/**
+ * Prescription item
+ */
+export interface PrescriptionItem {
+  id: number;
+  prescription: number;
+  drug: number;
+  drug_name?: string;
+  drug_code?: string;
+  quantity_prescribed: number;
+  quantity_dispensed: number;
+  dosage: string;
+  frequency: string;
+  duration: string;
+  route?: string;
+  instructions?: string;
+  is_substitutable: boolean;
+  is_cancelled: boolean;
+  cancelled_reason?: string;
+  remaining_quantity: number;
+  created_at: string;
+  updated_at: string;
+}
+
+/**
+ * Dispensing record
+ */
+export interface Dispensing {
+  id: number;
+  prescription_item?: number;
+  drug: number;
+  drug_name?: string;
+  drug_code?: string;
+  stock_batch: number;
+  batch_number?: string;
+  quantity: number;
+  patient?: number;
+  patient_name?: string;
+  patient_mrn?: string;
+  dispensed_by: number;
+  dispensed_by_name?: string;
+  dispensed_at: string;
+  status: DispensingStatus;
+  unit_price: number;
+  total_price: number;
+  payment_status?: string;
+  notes?: string;
+  is_direct_sale: boolean;
+  returned_quantity?: number;
+  return_reason?: string;
+  created_at: string;
+  updated_at: string;
+}
+
+/**
+ * Stock adjustment
+ */
+export interface StockAdjustment {
+  id: number;
+  stock_batch: number;
+  batch_number?: string;
+  drug_name?: string;
+  adjustment_type: AdjustmentType;
+  quantity: number;
+  reason: string;
+  adjusted_by: number;
+  adjusted_by_name?: string;
+  approved_by?: number;
+  approved_by_name?: string;
+  approved_at?: string;
+  reference_number?: string;
+  created_at: string;
+  updated_at: string;
+}
+
+// ============ API Request/Response Types ============
+
+/**
+ * Drug list params
+ */
+export interface DrugListParams {
+  page?: number;
+  page_size?: number;
+  search?: string;
+  category?: DrugCategory;
+  form?: DrugForm;
+  schedule?: DrugSchedule;
+  is_essential?: boolean;
+  is_active?: boolean;
+  ordering?: string;
+}
+
+/**
+ * Stock batch list params
+ */
+export interface StockBatchListParams {
+  page?: number;
+  page_size?: number;
+  drug?: number;
+  status?: StockStatus;
+  expiring_within_days?: number;
+  ordering?: string;
+}
+
+/**
+ * Stock alert list params
+ */
+export interface StockAlertListParams {
+  page?: number;
+  page_size?: number;
+  alert_type?: AlertType;
+  severity?: AlertSeverity;
+  acknowledged?: boolean;
+  resolved?: boolean;
+  ordering?: string;
+}
+
+/**
+ * Prescription list params
+ */
+export interface PrescriptionListParams {
+  page?: number;
+  page_size?: number;
+  patient?: number;
+  encounter?: number;
+  status?: PrescriptionStatus;
+  prescriber?: number;
+  date_from?: string;
+  date_to?: string;
+  ordering?: string;
+}
+
+/**
+ * Dispensing list params
+ */
+export interface DispensingListParams {
+  page?: number;
+  page_size?: number;
+  patient?: number;
+  drug?: number;
+  dispensed_by?: number;
+  status?: DispensingStatus;
+  date_from?: string;
+  date_to?: string;
+  ordering?: string;
+}
+
+/**
+ * Drug create/update data
+ */
+export interface DrugCreateData {
+  code: string;
+  generic_name: string;
+  brand_names?: string[];
+  category: DrugCategory;
+  form: DrugForm;
+  strength: string;
+  unit: string;
+  schedule?: DrugSchedule;
+  requires_prescription?: boolean;
+  is_controlled?: boolean;
+  is_narcotic?: boolean;
+  keml_code?: string;
+  is_essential?: boolean;
+  nhif_code?: string;
+  default_reorder_level?: number;
+  default_reorder_quantity?: number;
+  shelf_life_months?: number;
+  storage_requirements?: string;
+  reference_price?: number;
+}
+
+/**
+ * Stock batch create data (receiving stock)
+ */
+export interface StockBatchCreateData {
+  drug: number;
+  batch_number: string;
+  barcode?: string;
+  quantity_received: number;
+  manufacture_date?: string;
+  expiry_date: string;
+  received_date: string;
+  cost_price: number;
+  selling_price: number;
+  supplier?: string;
+  purchase_order?: string;
+  location?: string;
+}
+
+/**
+ * Prescription create data
+ */
+export interface PrescriptionCreateData {
+  patient: number;
+  encounter?: number;
+  clinical_notes?: string;
+  items: PrescriptionItemCreateData[];
+}
+
+/**
+ * Prescription item create data
+ */
+export interface PrescriptionItemCreateData {
+  drug: number;
+  quantity_prescribed: number;
+  dosage: string;
+  frequency: string;
+  duration: string;
+  route?: string;
+  instructions?: string;
+  is_substitutable?: boolean;
+}
+
+/**
+ * Dispensing create data
+ */
+export interface DispensingCreateData {
+  prescription_item?: number;
+  drug: number;
+  stock_batch: number;
+  quantity: number;
+  patient?: number;
+  notes?: string;
+  is_direct_sale?: boolean;
+}
+
+/**
+ * Stock adjustment create data
+ */
+export interface StockAdjustmentCreateData {
+  stock_batch: number;
+  adjustment_type: AdjustmentType;
+  quantity: number;
+  reason: string;
+  reference_number?: string;
+}
+
+// ============ Report Types ============
+
+/**
+ * Stock summary report item
+ */
+export interface StockSummaryItem {
+  drug_id: number;
+  drug_code: string;
+  drug_name: string;
+  category: DrugCategory;
+  form: DrugForm;
+  strength: string;
+  total_stock: number;
+  total_value: number;
+  reorder_level: number;
+  status: 'OK' | 'LOW' | 'OUT_OF_STOCK';
+  batches_count: number;
+  expiring_within_30_days: number;
+  expired_quantity: number;
+}
+
+/**
+ * Expiry report item
+ */
+export interface ExpiryReportItem {
+  batch_id: number;
+  drug_name: string;
+  drug_code: string;
+  batch_number: string;
+  quantity_available: number;
+  expiry_date: string;
+  days_to_expiry: number;
+  status: 'EXPIRED' | 'CRITICAL' | 'WARNING' | 'OK';
+  value: number;
+}
+
+/**
+ * Dispensing report summary
+ */
+export interface DispensingReportSummary {
+  total_dispensed: number;
+  total_value: number;
+  by_category: { category: DrugCategory; count: number; value: number }[];
+  by_date: { date: string; count: number; value: number }[];
+  top_drugs: { drug_name: string; quantity: number; value: number }[];
+}
