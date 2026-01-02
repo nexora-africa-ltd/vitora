@@ -7,6 +7,23 @@
 
 ---
 
+## Reference Specification
+
+**Base Document**: [`docs/sprint-1.5-1.6-track-a-billing-deliverables.md`](./sprint-1.5-1.6-track-a-billing-deliverables.md)
+
+> **Important**: The code snippets and model definitions in the deliverables specification document serve as the **baseline/reference point** for this implementation. These specifications define the minimum requirements, expected fields, methods, and behaviors.
+>
+> **Implementation Flexibility**: While adhering to the specification baseline, reasonable improvements and enhancements may be made where opportunities are identified, such as:
+> - Additional validation or error handling
+> - Performance optimizations (additional indexes, query optimization)
+> - Enhanced logging or audit capabilities
+> - Improved code organization or documentation
+> - Additional helper methods that don't alter core behavior
+>
+> Any deviations or enhancements from the baseline spec should be documented and justified.
+
+---
+
 ## Executive Summary
 
 This document outlines the complete implementation plan for the Vitora HMIS Billing Module, which enables invoice generation, payment processing (Cash, M-Pesa, Insurance), receipt generation, and financial reporting. The implementation follows strict TDD principles and is designed for Kenya's healthcare billing context with support for SHA (Social Health Authority) claims.
@@ -40,6 +57,8 @@ Set up the billing app structure and implement core models for services and invo
   - [ ] Create billing conftest.py with fixtures
 
 - [ ] **Phase 1.2: Service/Fee Catalog Models**
+  - **Reference**: See deliverables spec § "1. Service/Fee Catalog Model" (lines 78-156)
+  - **Baseline**: ServiceCategory and Service models with specified fields
   - [ ] Create ServiceCategory model
   - [ ] Create Service model with pricing
   - [ ] Add SHA code support to Service
@@ -50,6 +69,8 @@ Set up the billing app structure and implement core models for services and invo
   - [ ] Test migration rollback
 
 - [ ] **Phase 1.3: Invoice Model**
+  - **Reference**: See deliverables spec § "2. Invoice Model" (lines 158-280)
+  - **Baseline**: Invoice model with 7-state workflow, auto-generated numbers
   - [ ] Create Invoice model with status workflow
   - [ ] Implement auto-generated invoice number (INV-YYYYMMDD-XXXX)
   - [ ] Add patient and encounter linkage
@@ -63,6 +84,8 @@ Set up the billing app structure and implement core models for services and invo
   - [ ] Test migration rollback
 
 - [ ] **Phase 1.4: Invoice Item Model**
+  - **Reference**: See deliverables spec § "3. Invoice Item Model" (lines 282-364)
+  - **Baseline**: InvoiceItem with automatic total calculation and invoice updates
   - [ ] Create InvoiceItem model
   - [ ] Add service linkage
   - [ ] Add pharmacy item linkage (future)
@@ -104,6 +127,8 @@ Implement payment recording, M-Pesa integration, and receipt generation.
 ### Tasks Checklist
 
 - [ ] **Phase 2.1: Payment Model**
+  - **Reference**: See deliverables spec § "4. Payment Model" (lines 366-474)
+  - **Baseline**: Payment model with multiple methods, M-Pesa fields, status workflow
   - [ ] Create Payment model
   - [ ] Implement auto-generated payment reference (PAY-YYYYMMDD-XXXX)
   - [ ] Add payment method support (cash, mpesa, card, etc.)
@@ -119,6 +144,8 @@ Implement payment recording, M-Pesa integration, and receipt generation.
   - [ ] Test migration rollback
 
 - [ ] **Phase 2.2: M-Pesa Integration Service**
+  - **Reference**: See deliverables spec § "5. M-Pesa Integration Service" (lines 476-683)
+  - **Baseline**: MpesaService with STK Push, OAuth, callback processing
   - [ ] Install requests library (already in pyproject.toml)
   - [ ] Create MpesaService class
   - [ ] Implement OAuth token generation
@@ -133,6 +160,8 @@ Implement payment recording, M-Pesa integration, and receipt generation.
   - [ ] Create .env.example for M-Pesa credentials
 
 - [ ] **Phase 2.3: Receipt Model**
+  - **Reference**: See deliverables spec § "6. Receipt Model" (lines 685-766)
+  - **Baseline**: Receipt with auto-generated numbers, amount-to-words, PDF generation
   - [ ] Create Receipt model
   - [ ] Implement auto-generated receipt number (RCP-YYYYMMDD-XXXX)
   - [ ] Add payment linkage
@@ -146,6 +175,8 @@ Implement payment recording, M-Pesa integration, and receipt generation.
   - [ ] Test migration rollback
 
 - [ ] **Phase 2.4: Credit Note Model**
+  - **Reference**: See deliverables spec § "7. Credit/Refund Model" (lines 768-845)
+  - **Baseline**: CreditNote with approval workflow and refund tracking
   - [ ] Create CreditNote model
   - [ ] Implement auto-generated credit note number (CN-YYYYMMDD-XXXX)
   - [ ] Add credit note reason types
@@ -180,6 +211,7 @@ Create REST API endpoints for all billing operations and integrate with existing
 ### Tasks Checklist
 
 - [ ] **Phase 3.1: Service API**
+  - **Reference**: See deliverables spec § "8. Invoice API Endpoints" (lines 847-889) for pattern
   - [ ] Create ServiceSerializer
   - [ ] Create ServiceCategorySerializer
   - [ ] Create ServiceViewSet
@@ -191,6 +223,8 @@ Create REST API endpoints for all billing operations and integrate with existing
   - [ ] Document service endpoints
 
 - [ ] **Phase 3.2: Invoice API**
+  - **Reference**: See deliverables spec § "8. Invoice API Endpoints" (lines 847-889)
+  - **Baseline**: Full CRUD with finalize, cancel, discount application, overdue filtering
   - [ ] Create InvoiceSerializer
   - [ ] Create InvoiceItemSerializer
   - [ ] Create InvoiceViewSet
@@ -205,6 +239,8 @@ Create REST API endpoints for all billing operations and integrate with existing
   - [ ] Document invoice endpoints
 
 - [ ] **Phase 3.3: Payment API**
+  - **Reference**: See deliverables spec § "9. Payment API Endpoints" (lines 891-928)
+  - **Baseline**: Payment recording, M-Pesa STK Push, callback handling, receipts
   - [ ] Create PaymentSerializer
   - [ ] Create PaymentViewSet
   - [ ] Add payment recording endpoint
@@ -217,6 +253,7 @@ Create REST API endpoints for all billing operations and integrate with existing
   - [ ] Document payment endpoints
 
 - [ ] **Phase 3.4: Credit Note API**
+  - **Reference**: See deliverables spec § "9. Payment API Endpoints" (lines 907-911) for credit note endpoints
   - [ ] Create CreditNoteSerializer
   - [ ] Create CreditNoteViewSet
   - [ ] Add credit note request endpoint
@@ -256,6 +293,8 @@ Implement financial reports and SHA claims stub for future integration.
 ### Tasks Checklist
 
 - [ ] **Phase 4.1: Financial Reports Service**
+  - **Reference**: See deliverables spec § "10. Financial Reports" (lines 930-1014)
+  - **Baseline**: BillingReportService with 5 core report methods
   - [ ] Create BillingReportService class
   - [ ] Implement daily collection report
   - [ ] Implement revenue summary report
@@ -277,6 +316,8 @@ Implement financial reports and SHA claims stub for future integration.
   - [ ] Document report endpoints
 
 - [ ] **Phase 4.3: SHA Claims Stub**
+  - **Reference**: See deliverables spec § "11. SHA Claims Stub (Future Integration)" (lines 1016-1086)
+  - **Baseline**: SHAClaimsService stub with submit_claim, query_status, get_preauthorization
   - [ ] Create SHAClaimsService class (stub)
   - [ ] Implement submit_claim stub method
   - [ ] Implement query_claim_status stub method
@@ -363,6 +404,30 @@ Implement financial reports and SHA claims stub for future integration.
 - [ ] Phase 2: Payment Processing & M-Pesa (0/4 sub-phases)
 - [ ] Phase 3: API Endpoints & Integration (0/5 sub-phases)
 - [ ] Phase 4: Reports & SHA Stub (0/6 sub-phases)
+
+---
+
+## Implementation Improvements & Deviations
+
+This section documents any reasonable improvements or deviations from the baseline specification:
+
+### Phase 1 Improvements
+
+1. **Invoice Model Enhancement**
+   - Added `full_clean()` validation in `save()` method for data integrity
+   - Improved error messages in validation methods
+   - **Justification**: Ensures data consistency and better error reporting
+
+2. **Service Model Enhancement**
+   - Added `clean()` method for price validation
+   - **Justification**: Prevents negative or zero prices at model level
+
+### Future Improvements (Planned)
+
+- Additional database indexes based on query patterns observed during testing
+- Enhanced error handling with more specific exception types
+- Optimized query performance for report generation
+- Additional audit logging for sensitive operations
 
 ---
 
