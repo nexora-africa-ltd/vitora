@@ -127,7 +127,7 @@ class ExternalLabRequisition:
             'patient_phone': getattr(self.patient, 'phone_number', ''),
             
             # Clinical info
-            'clinician_name': f"{self.encounter.clinician.first_name} {self.encounter.clinician.last_name}",
+            'clinician_name': self.lab_order.ordered_by.get_full_name() or self.lab_order.ordered_by.username,
             'clinical_notes': self.lab_order.clinical_notes or '',
             
             # Test info

@@ -8,13 +8,7 @@ import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '@/components/ui/card';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select';
+import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Checkbox } from '@/components/ui/checkbox';
 import { useICD10Search } from '@/lib/hooks/use-encounter-form';
@@ -185,67 +179,74 @@ export function DiagnosisEntry({ onAdd, existingDiagnoses, disabled = false }: D
       </div>
       
       {/* Diagnosis Type & Certainty */}
-      <div className="grid gap-4 sm:grid-cols-3">
-        <div className="space-y-2">
+      <div className="grid gap-4 sm:grid-cols-2">
+        <div className="space-y-3">
           <Label>Type</Label>
-          <Select
+          <RadioGroup
             value={formData.diagnosis_type}
             onValueChange={(value) => setFormData(prev => ({ 
               ...prev, 
               diagnosis_type: value as 'PRIMARY' | 'SECONDARY' | 'DIFFERENTIAL' 
             }))}
             disabled={disabled}
+            className="flex flex-wrap gap-3"
           >
-            <SelectTrigger>
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="PRIMARY">Primary</SelectItem>
-              <SelectItem value="SECONDARY">Secondary</SelectItem>
-              <SelectItem value="DIFFERENTIAL">Differential</SelectItem>
-            </SelectContent>
-          </Select>
+            <div className="flex items-center space-x-2">
+              <RadioGroupItem value="PRIMARY" id="type-primary" />
+              <Label htmlFor="type-primary" className="cursor-pointer font-normal">Primary</Label>
+            </div>
+            <div className="flex items-center space-x-2">
+              <RadioGroupItem value="SECONDARY" id="type-secondary" />
+              <Label htmlFor="type-secondary" className="cursor-pointer font-normal">Secondary</Label>
+            </div>
+            <div className="flex items-center space-x-2">
+              <RadioGroupItem value="DIFFERENTIAL" id="type-differential" />
+              <Label htmlFor="type-differential" className="cursor-pointer font-normal">Differential</Label>
+            </div>
+          </RadioGroup>
         </div>
         
-        <div className="space-y-2">
+        <div className="space-y-3">
           <Label>Certainty</Label>
-          <Select
+          <RadioGroup
             value={formData.certainty}
             onValueChange={(value) => setFormData(prev => ({ 
               ...prev, 
               certainty: value as 'SUSPECTED' | 'PROBABLE' | 'CONFIRMED' 
             }))}
             disabled={disabled}
+            className="flex flex-wrap gap-3"
           >
-            <SelectTrigger>
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="SUSPECTED">Suspected</SelectItem>
-              <SelectItem value="PROBABLE">Probable</SelectItem>
-              <SelectItem value="CONFIRMED">Confirmed</SelectItem>
-            </SelectContent>
-          </Select>
+            <div className="flex items-center space-x-2">
+              <RadioGroupItem value="SUSPECTED" id="certainty-suspected" />
+              <Label htmlFor="certainty-suspected" className="cursor-pointer font-normal">Suspected</Label>
+            </div>
+            <div className="flex items-center space-x-2">
+              <RadioGroupItem value="PROBABLE" id="certainty-probable" />
+              <Label htmlFor="certainty-probable" className="cursor-pointer font-normal">Probable</Label>
+            </div>
+            <div className="flex items-center space-x-2">
+              <RadioGroupItem value="CONFIRMED" id="certainty-confirmed" />
+              <Label htmlFor="certainty-confirmed" className="cursor-pointer font-normal">Confirmed</Label>
+            </div>
+          </RadioGroup>
         </div>
-        
-        <div className="space-y-2">
-          <Label>&nbsp;</Label>
-          <div className="flex items-center space-x-2 h-10">
-            <Checkbox
-              id="is_confirmed"
-              checked={formData.is_confirmed}
-              onCheckedChange={(checked) => setFormData(prev => ({ 
-                ...prev, 
-                is_confirmed: checked === true,
-                certainty: checked === true ? 'CONFIRMED' : prev.certainty,
-              }))}
-              disabled={disabled}
-            />
-            <label htmlFor="is_confirmed" className="text-sm leading-none">
-              Lab/Test Confirmed
-            </label>
-          </div>
-        </div>
+      </div>
+      
+      <div className="flex items-center space-x-2">
+        <Checkbox
+          id="is_confirmed"
+          checked={formData.is_confirmed}
+          onCheckedChange={(checked) => setFormData(prev => ({ 
+            ...prev, 
+            is_confirmed: checked === true,
+            certainty: checked === true ? 'CONFIRMED' : prev.certainty,
+          }))}
+          disabled={disabled}
+        />
+        <label htmlFor="is_confirmed" className="text-sm leading-none cursor-pointer">
+          Lab/Test Confirmed
+        </label>
       </div>
       
       {/* Notes */}

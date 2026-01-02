@@ -17,6 +17,21 @@ export function formatDate(date: string | Date, pattern = 'MMM d, yyyy'): string
 }
 
 /**
+ * Format a date and time string to a readable format.
+ * 
+ * @param date - ISO date string or Date object
+ * @param pattern - date-fns format pattern (default: 'MMM d, yyyy h:mm a')
+ * @returns Formatted date-time string
+ * 
+ * @example
+ * formatDateTime('2025-12-25T14:30:00') // 'Dec 25, 2025 2:30 PM'
+ */
+export function formatDateTime(date: string | Date, pattern = 'MMM d, yyyy h:mm a'): string {
+  const dateObj = typeof date === 'string' ? parseISO(date) : date;
+  return format(dateObj, pattern);
+}
+
+/**
  * Format a date as relative time (e.g., "2 hours ago").
  * 
  * @param date - ISO date string or Date object

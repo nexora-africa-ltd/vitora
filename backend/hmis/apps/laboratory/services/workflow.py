@@ -215,5 +215,6 @@ class LabOrderWorkflow:
     
     def _notify_clinician(self) -> None:
         """Send notification when results are ready."""
-        from hmis.apps.laboratory.services.notifications import send_result_notification
-        send_result_notification(self.lab_order)
+        from hmis.apps.laboratory.services.notifications import LabNotificationService
+        service = LabNotificationService()
+        service.send_result_notification(self.lab_order)

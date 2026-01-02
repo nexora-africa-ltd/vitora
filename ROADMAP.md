@@ -572,8 +572,8 @@ def test_vital_signs_validation():
 - **Next.js web app scaffold** with authentication
 - **Patient dashboard (read-only)** for stakeholder demos
 
-#### Sprint 1.5-1.6: Billing Basics + Lab Workflow + Web Dashboard (Weeks 9-12)
-**TDD Focus**: Test billing calculations, payment recording, lab workflows, and web dashboard
+#### Sprint 1.5-1.6: Billing Basics + Lab Workflow + Web Dashboard + Inpatient Foundation (Weeks 9-12)
+**TDD Focus**: Test billing calculations, payment recording, lab workflows, web dashboard, and inpatient admission
 
 **Track A: Billing Module**
 - [ ] **Write tests first**: Invoice generation tests
@@ -607,6 +607,28 @@ def test_vital_signs_validation():
 - [ ] **Write tests first**: Responsive design tests (Playwright)
 - [ ] Ensure mobile-responsive web experience
 
+**Track D: Inpatient Foundation (NEW)**
+- [ ] **Write tests first**: Ward model tests (ward types, capacity)
+- [ ] Implement Ward model with types (Medical, Surgical, Pediatric, Maternity, ICU, Isolation)
+- [ ] **Write tests first**: Bed model tests (status transitions, availability)
+- [ ] Implement Bed model with status (AVAILABLE, OCCUPIED, MAINTENANCE, RESERVED)
+- [ ] **Write tests first**: Admission recommendation tests (OPD → IPD workflow)
+- [ ] Implement AdmissionRecommendation model for clinician admission requests
+- [ ] **Write tests first**: Admission model tests (patient admission, bed assignment)
+- [ ] Implement Admission model linking patient, encounter, ward, and bed
+- [ ] **Write tests first**: Ward round tests (daily documentation)
+- [ ] Implement WardRound model for daily inpatient progress notes
+- [ ] **Write tests first**: Nursing Kardex tests (care plan, shift notes)
+- [ ] Implement NursingKardex model with sections (patient snapshot, orders, care plan, observations, shift notes, handover)
+- [ ] **Write tests first**: Shift handover tests
+- [ ] Implement ShiftHandover model for nursing handover documentation
+- [ ] **Write tests first**: Patient transfer tests (inter-ward)
+- [ ] Implement Transfer model for ward-to-ward patient movement
+- [ ] **Write tests first**: Discharge tests (summary, clearance, LOS)
+- [ ] Implement Discharge model with summary, medications, follow-up, and LOS calculation
+- [ ] **Write tests first**: Bed occupancy dashboard tests
+- [ ] Implement real-time bed occupancy API and dashboard component
+
 **Deliverables**:
 - Billing module with invoicing
 - M-Pesa integration stub (for testing)
@@ -616,6 +638,60 @@ def test_vital_signs_validation():
 - **Lab result entry** with attachments
 - **Web dashboard** with patient/encounter views
 - **Stakeholder demo portal** (read-only web access)
+- **Inpatient module foundation**:
+  - Ward and Bed management (6 ward types, 4 bed statuses)
+  - OPD → IPD admission workflow with clinician recommendation
+  - Ward round documentation
+  - Nurse's Kardex with shift handover
+  - Patient transfer between wards
+  - Discharge workflow with summary and LOS tracking
+  - Real-time bed occupancy dashboard
+
+**TDD Approach (Inpatient Examples)**:
+```python
+# Test admission recommendation from OPD
+def test_clinician_can_recommend_admission():
+    # Given: An active OPD encounter
+    encounter = create_opd_encounter(patient=patient)
+    # When: Clinician recommends admission
+    recommendation = AdmissionRecommendation.objects.create(
+        encounter=encounter,
+        reason="Severe pneumonia requiring IV antibiotics",
+        provisional_diagnosis="J18.9",
+        recommended_by=clinician
+    )
+    # Then: Encounter status changes to ADMISSION_PENDING
+    encounter.refresh_from_db()
+    assert encounter.admission_status == 'ADMISSION_PENDING'
+    assert recommendation.status == 'PENDING'
+
+# Test bed assignment during admission
+def test_admission_assigns_bed():
+    # Given: Available bed in medical ward
+    bed = create_bed(ward=medical_ward, status='AVAILABLE')
+    # When: Patient is admitted
+    admission = Admission.objects.create(
+        patient=patient,
+        bed=bed,
+        admitting_officer=receptionist
+    )
+    # Then: Bed status changes to OCCUPIED
+    bed.refresh_from_db()
+    assert bed.status == 'OCCUPIED'
+    assert admission.admission_date is not None
+
+# Test Kardex append-only behavior
+def test_kardex_entries_are_immutable():
+    # Given: Existing Kardex entry
+    kardex = create_kardex(admission=admission)
+    original_note = kardex.add_shift_note("Patient stable", nurse=nurse1)
+    # When: Attempting to modify
+    # Then: Original entry preserved, new entry created
+    assert kardex.shift_notes.count() == 1
+    kardex.add_shift_note("BP elevated", nurse=nurse2)
+    assert kardex.shift_notes.count() == 2
+    assert original_note.content == "Patient stable"  # Unchanged
+```
 
 #### Sprint 1.7-1.8: Mobile Features + RBAC Enforcement + Pharmacy Integration (Weeks 13-16)
 **TDD Focus**: Test mobile clinical workflows, RBAC enforcement, and pharmacy features

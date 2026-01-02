@@ -33,7 +33,8 @@ class LabNotificationService:
         Returns:
             Created Notification instance
         """
-        clinician = lab_order.encounter.clinician
+        # Use ordered_by as the clinician (Encounter model doesn't have a clinician field)
+        clinician = lab_order.ordered_by
         patient = lab_order.patient
         
         # Check for critical results
@@ -62,9 +63,9 @@ class LabNotificationService:
     
     def _has_critical_results(self, lab_order: LabOrder) -> bool:
         """Check if order has any critical results."""
-        # Check results through order items
+        # Check results through order items (result is OneToOne, not ManyToMany)
         for item in lab_order.items.all():
-            if item.results.filter(is_critical_result=True).exists():
+            if hasattr(item, 'result') and item.result.is_critical_result:
                 return True
         return False
     
@@ -104,11 +105,11 @@ class LabNotificationService:
         message = f"Results for {patient_name} ({patient.mrn}) are now available."
         
         if has_critical:
-            # Get critical parameter names
+            # Get critical parameter names (from test catalog via order item)
             critical_params = []
             for item in lab_order.items.all():
-                critical_results = item.results.filter(is_critical_result=True)
-                critical_params.extend([r.parameter_name for r in critical_results])
+                if hasattr(item, 'result') and item.result.is_critical_result:
+                    critical_params.append(item.test.name)
             
             if critical_params:
                 params_str = ", ".join(critical_params)
@@ -129,17 +130,18 @@ class LabNotificationService:
         
         patient = lab_order.patient
         patient_name = f"{patient.first_name} {patient.last_name}"
-        clinician_name = f"{clinician.first_name} {clinician.last_name}"
+        clinician_name = clinician.get_full_name() or clinician.username
         
         # Get critical results
         critical_results = []
         for item in lab_order.items.all():
-            for result in item.results.filter(is_critical_result=True):
+            if hasattr(item, 'result') and item.result.is_critical_result:
+                result = item.result
                 critical_results.append({
-                    'parameter': result.parameter_name,
-                    'value': result.value,
-                    'unit': result.unit,
-                    'flag': result.flag,
+                    'parameter': item.test.name,
+                    'value': result.get_formatted_value(),
+                    'unit': item.test.result_unit or '',
+                    'flag': result.result_flag,
                     'reference_range': result.reference_range_text or ''
                 })
         

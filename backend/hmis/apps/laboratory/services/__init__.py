@@ -1,12 +1,14 @@
-"""Laboratory services module."""
+"""Laboratory services module.
+
+This package consolidates all laboratory service classes.
+"""
 
 from .workflow import LabOrderWorkflow, InvalidTransitionError
 from .requisition import ExternalLabRequisition
 from .notifications import LabNotificationService
 
-# Deprecated: LabWorkflowService and LabAlertService are no longer imported here
-LabWorkflowService = None
-LabAlertService = None
+# Import from services_legacy module for backward compatibility
+from hmis.apps.laboratory.services_legacy import LabWorkflowService, LabAlertService
 
 __all__ = [
     'LabOrderWorkflow',
