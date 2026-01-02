@@ -22,6 +22,27 @@ export type {
   PatientEncounter,
 } from './patient';
 
+// Re-export timeline types
+export type {
+  TimelineEvent,
+  TimelineEventType,
+  TimelineFilters,
+  PatientHistoryParams,
+  PatientHistoryResponse,
+} from './timeline';
+
+// Re-export dashboard types
+export type {
+  KPIMetric,
+  ChartDataPoint,
+  PatientVolumeData,
+  RevenueData,
+  DepartmentStats,
+  RecentActivity,
+  DashboardMetrics,
+  DateRangeFilter,
+} from './dashboard';
+
 // User types
 export interface User {
   id: number;

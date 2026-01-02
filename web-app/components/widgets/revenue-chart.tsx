@@ -1,0 +1,82 @@
+'use client';
+
+import {
+  PieChart,
+  Pie,
+  Cell,
+  ResponsiveContainer,
+  Legend,
+  Tooltip,
+} from 'recharts';
+import type { RevenueData } from '@/lib/types/dashboard';
+
+interface RevenueBreakdownChartProps {
+  data: RevenueData[];
+  showLegend?: boolean;
+}
+
+const COLORS = ['#0088FE', '#00C49F', '#FFBB28', '#FF8042', '#8884d8', '#82ca9d'];
+
+export function RevenueBreakdownChart({ data, showLegend = true }: RevenueBreakdownChartProps) {
+  if (!data || data.length === 0) {
+    return (
+      <div className="h-[250px] flex items-center justify-center text-muted-foreground">
+        No revenue data available
+      </div>
+    );
+  }
+
+  const formattedData = data.map((item, index) => ({
+    ...item,
+    color: item.color || COLORS[index % COLORS.length],
+  }));
+
+  const formatCurrency = (value: number | undefined) => {
+    if (value === undefined) return ['N/A', 'Revenue'] as const;
+    return [`KES ${value.toLocaleString()}`, 'Revenue'] as const;
+  };
+
+  return (
+    <div className="h-[250px] w-full">
+      <ResponsiveContainer width="100%" height="100%">
+        <PieChart>
+          <Pie
+            data={formattedData}
+            cx="50%"
+            cy="50%"
+            labelLine={false}
+            outerRadius={80}
+            innerRadius={40}
+            fill="#8884d8"
+            dataKey="amount"
+            nameKey="department"
+          >
+            {formattedData.map((entry, index) => (
+              <Cell key={`cell-${index}`} fill={entry.color} />
+            ))}
+          </Pie>
+          <Tooltip
+            contentStyle={{
+              backgroundColor: 'hsl(var(--popover))',
+              border: '1px solid hsl(var(--border))',
+              borderRadius: '8px',
+            }}
+            formatter={formatCurrency}
+          />
+          {showLegend && (
+            <Legend
+              wrapperStyle={{ fontSize: '12px' }}
+              iconType="circle"
+              iconSize={8}
+              layout="vertical"
+              verticalAlign="middle"
+              align="right"
+            />
+          )}
+        </PieChart>
+      </ResponsiveContainer>
+    </div>
+  );
+}
+
+export default RevenueBreakdownChart;

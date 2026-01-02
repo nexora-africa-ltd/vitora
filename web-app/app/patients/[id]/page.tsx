@@ -13,7 +13,8 @@ import {
   Calendar, 
   AlertTriangle,
   FileText,
-  TestTube2
+  TestTube2,
+  History
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -78,6 +79,12 @@ export default function PatientDetailPage() {
         </div>
 
         <div className="flex gap-2">
+          <Button variant="outline" asChild>
+            <Link href={`/patients/${patient.id}/history`}>
+              <History className="h-4 w-4 mr-2" />
+              History
+            </Link>
+          </Button>
           <Button variant="outline" asChild>
             <Link href={`/patients/${patient.id}/edit`}>
               <Edit className="h-4 w-4 mr-2" />
