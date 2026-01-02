@@ -585,7 +585,7 @@ def test_vital_signs_validation():
 - [ ] **Write tests first**: Billing report tests
 - [ ] Implement basic financial reports
 
-**Track B: Lab Workflow Completion**
+**Track B: Lab Workflow Completion**cd /home/thande/dev/vitora/backend && poetry run pytest -q 
 - [ ] **Write tests first**: In-house lab workflow tests
 - [ ] Implement lab queue for in-house orders (status: ordered → in_progress → completed)
 - [ ] **Write tests first**: External lab requisition tests
