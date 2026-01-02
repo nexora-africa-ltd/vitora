@@ -7,6 +7,7 @@ Reference: Deliverables spec § 9, lines 891-928
 
 import pytest
 from decimal import Decimal
+from unittest.mock import patch, Mock
 from rest_framework import status
 from rest_framework.test import APIClient
 
@@ -116,21 +117,60 @@ class TestPaymentAPIEndpoints:
 class TestMpesaAPIEndpoints:
     """Test M-Pesa STK Push API endpoints."""
 
-    def test_initiate_mpesa_stk_push(self, authenticated_client, sample_invoice):
+    @patch('hmis.apps.billing.services.requests.post')
+    @patch('hmis.apps.billing.services.requests.get')
+    def test_initiate_mpesa_stk_push(self, mock_get, mock_post, authenticated_client, sample_invoice):
         """Test POST /api/billing/mpesa/initiate/ - Initiate M-Pesa STK push."""
+        # Mock OAuth token response
+        mock_oauth_response = Mock()
+        mock_oauth_response.json.return_value = {
+            'access_token': 'test_access_token',
+            'expires_in': '3600'
+        }
+        mock_oauth_response.raise_for_status = Mock()
+        mock_get.return_value = mock_oauth_response
+        
+        # Mock STK Push response
+        mock_stk_response = Mock()
+        mock_stk_response.json.return_value = {
+            'MerchantRequestID': 'test-merchant-123',
+            'CheckoutRequestID': 'test-checkout-456',
+            'ResponseCode': '0',
+            'ResponseDescription': 'Success. Request accepted for processing',
+            'CustomerMessage': 'Success. Request accepted for processing'
+        }
+        mock_stk_response.raise_for_status = Mock()
+        mock_post.return_value = mock_stk_response
+        
         data = {
-            'invoice': sample_invoice.id,
+            'invoice_id': sample_invoice.id,
             'phone_number': '254712345678',
             'amount': '500.00'
         }
         
         response = authenticated_client.post('/api/billing/mpesa/initiate/', data)
         
+        # Debug: print response if failed
+        if response.status_code not in [status.HTTP_200_OK, status.HTTP_201_CREATED]:
+            print(f"Response status: {response.status_code}")
+            print(f"Response data: {response.data}")
+        
         # Should return checkout request ID
         assert response.status_code in [status.HTTP_200_OK, status.HTTP_201_CREATED]
+        assert 'CheckoutRequestID' in response.data
 
-    def test_mpesa_callback_success(self, api_client):
+    @patch('hmis.apps.billing.services.requests.get')
+    def test_mpesa_callback_success(self, mock_get, api_client):
         """Test POST /api/billing/mpesa/callback/ - Successful callback processed."""
+        # Mock OAuth token response (may be needed for callback processing)
+        mock_oauth_response = Mock()
+        mock_oauth_response.json.return_value = {
+            'access_token': 'test_access_token',
+            'expires_in': '3600'
+        }
+        mock_oauth_response.raise_for_status = Mock()
+        mock_get.return_value = mock_oauth_response
+        
         # M-Pesa callbacks don't require authentication
         callback_data = {
             'Body': {
@@ -156,8 +196,18 @@ class TestMpesaAPIEndpoints:
         # Should acknowledge callback
         assert response.status_code == status.HTTP_200_OK
 
-    def test_mpesa_callback_failure(self, api_client):
+    @patch('hmis.apps.billing.services.requests.get')
+    def test_mpesa_callback_failure(self, mock_get, api_client):
         """Test M-Pesa callback with failed transaction."""
+        # Mock OAuth token response (may be needed for callback processing)
+        mock_oauth_response = Mock()
+        mock_oauth_response.json.return_value = {
+            'access_token': 'test_access_token',
+            'expires_in': '3600'
+        }
+        mock_oauth_response.raise_for_status = Mock()
+        mock_get.return_value = mock_oauth_response
+        
         callback_data = {
             'Body': {
                 'stkCallback': {
@@ -174,8 +224,32 @@ class TestMpesaAPIEndpoints:
         # Should acknowledge callback
         assert response.status_code == status.HTTP_200_OK
 
-    def test_mpesa_query_status(self, authenticated_client):
+    @patch('hmis.apps.billing.services.requests.post')
+    @patch('hmis.apps.billing.services.requests.get')
+    def test_mpesa_query_status(self, mock_get, mock_post, authenticated_client):
         """Test GET /api/billing/mpesa/query/{checkout_id}/ - Query M-Pesa status."""
+        # Mock OAuth token response
+        mock_oauth_response = Mock()
+        mock_oauth_response.json.return_value = {
+            'access_token': 'test_access_token',
+            'expires_in': '3600'
+        }
+        mock_oauth_response.raise_for_status = Mock()
+        mock_get.return_value = mock_oauth_response
+        
+        # Mock query status response
+        mock_query_response = Mock()
+        mock_query_response.json.return_value = {
+            'ResponseCode': '0',
+            'ResponseDescription': 'The service request has been accepted successfully',
+            'MerchantRequestID': 'test-merchant-123',
+            'CheckoutRequestID': 'test-checkout-456',
+            'ResultCode': '0',
+            'ResultDesc': 'The service request is processed successfully.'
+        }
+        mock_query_response.raise_for_status = Mock()
+        mock_post.return_value = mock_query_response
+        
         checkout_id = 'test-checkout-123'
         
         response = authenticated_client.get(f'/api/billing/mpesa/query/{checkout_id}/')
