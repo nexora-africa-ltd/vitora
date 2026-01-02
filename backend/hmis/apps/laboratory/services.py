@@ -157,16 +157,16 @@ class LabAlertService:
     def notify_ordering_clinician(order: LabOrder) -> None:
         """
         Notify clinician when results are ready.
-
-        This is a placeholder for future notification implementation
-        (email, SMS, in-app notification, etc.).
+        
+        Sends in-app notification and email for critical results.
 
         Args:
             order: LabOrder instance with completed results
         """
-        # TODO: Implement notification system
-        # For now, this is a no-op
-        pass
+        from hmis.apps.laboratory.services.notifications import LabNotificationService
+        
+        service = LabNotificationService()
+        service.send_result_notification(order)
 
     @staticmethod
     def get_overdue_orders(hours: int = 24) -> QuerySet:
