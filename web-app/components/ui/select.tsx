@@ -17,19 +17,22 @@ const SelectContext = React.createContext<SelectContextValue | undefined>(undefi
 
 interface SelectProps {
   value?: string
+  defaultValue?: string
   onValueChange?: (value: string) => void
   children: React.ReactNode
+  disabled?: boolean
 }
 
-const Select: React.FC<SelectProps> = ({ value = '', onValueChange, children }) => {
-  const [internalValue, setInternalValue] = React.useState(value)
+const Select: React.FC<SelectProps> = ({ value, defaultValue = '', onValueChange, children, disabled }) => {
+  const [internalValue, setInternalValue] = React.useState(defaultValue)
   const [open, setOpen] = React.useState(false)
 
   const handleValueChange = React.useCallback((newValue: string) => {
+    if (disabled) return
     setInternalValue(newValue)
     onValueChange?.(newValue)
     setOpen(false)
-  }, [onValueChange])
+  }, [onValueChange, disabled])
 
   const currentValue = value !== undefined ? value : internalValue
 

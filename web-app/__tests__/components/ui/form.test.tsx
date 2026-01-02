@@ -37,29 +37,16 @@ function TestFormFieldConsumer() {
 describe('Form Components', () => {
   describe('Form', () => {
     it('should render form with children', () => {
-      const form = {
-        handleSubmit: jest.fn(),
-        control: {} as any,
-        formState: { errors: {} } as any,
-        register: jest.fn(),
-        setValue: jest.fn(),
-        getValues: jest.fn(),
-        watch: jest.fn(),
-        reset: jest.fn(),
-        setError: jest.fn(),
-        clearErrors: jest.fn(),
-        trigger: jest.fn(),
-        getFieldState: jest.fn(() => ({})),
-        setFocus: jest.fn(),
-        resetField: jest.fn(),
-        unregister: jest.fn(),
-      };
+      function TestComponent() {
+        const form = useForm({ defaultValues: { test: '' } });
+        return (
+          <Form {...form}>
+            <div data-testid="form-content">Form Content</div>
+          </Form>
+        );
+      }
 
-      render(
-        <Form {...form}>
-          <div data-testid="form-content">Form Content</div>
-        </Form>
-      );
+      render(<TestComponent />);
 
       expect(screen.getByTestId('form-content')).toBeInTheDocument();
     });

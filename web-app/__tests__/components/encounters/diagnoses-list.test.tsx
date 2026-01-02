@@ -20,13 +20,15 @@ jest.mock('@/components/shared/empty-state', () => ({
 const mockDiagnosis: Diagnosis = {
   id: 1,
   encounter: 1,
-  icd10_code: 'J06.9',
+  icd10_code: 1,
   icd10_code_display: 'J06.9',
   icd10_description: 'Acute upper respiratory infection, unspecified',
-  free_text_diagnosis: null,
   diagnosis_type: 'PRIMARY',
   notes: 'Patient presents with cold symptoms',
+  is_confirmed: true,
+  certainty: 'CONFIRMED',
   created_at: '2025-01-01T10:00:00Z',
+  updated_at: '2025-01-01T10:00:00Z',
 };
 
 describe('DiagnosesList', () => {
@@ -62,10 +64,10 @@ describe('DiagnosesList', () => {
   });
 
   it('should render multiple diagnoses', () => {
-    const secondDiagnosis = {
+    const secondDiagnosis: Diagnosis = {
       ...mockDiagnosis,
       id: 2,
-      icd10_code: 'R51',
+      icd10_code: 2,
       icd10_code_display: 'R51',
       icd10_description: 'Headache',
       diagnosis_type: 'SECONDARY' as const,
