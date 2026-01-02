@@ -1160,3 +1160,121 @@ class StaffProfile(models.Model):
             QuerySet: StaffProfiles supervised by this staff
         """
         return self.supervisees.all()
+
+
+class Notification(models.Model):
+    """
+    In-app notification for users.
+    
+    Supports notifications for lab results, appointments, and other system events.
+    Priority levels determine urgency and delivery method (e.g., email for critical).
+    
+    Attributes:
+        user: User receiving the notification
+        notification_type: Category of notification (e.g., 'lab_result', 'appointment')
+        priority: Urgency level (low, normal, high, critical)
+        title: Short notification title (max 200 chars)
+        message: Full notification message
+        related_model: Optional model name this notification relates to
+        related_id: Optional ID of related object
+        action_url: Optional URL for user action
+        is_read: Whether notification has been read
+        read_at: When notification was marked as read
+        created_at: When notification was created
+    """
+    
+    class Priority(models.TextChoices):
+        """Priority levels for notifications."""
+        LOW = 'low', 'Low'
+        NORMAL = 'normal', 'Normal'
+        HIGH = 'high', 'High'
+        CRITICAL = 'critical', 'Critical'
+    
+    id = models.BigAutoField(primary_key=True)
+    
+    # Core fields
+    user = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name='notifications',
+        help_text="User receiving this notification"
+    )
+    notification_type = models.CharField(
+        max_length=50,
+        db_index=True,
+        help_text="Category of notification (e.g., 'lab_result', 'appointment')"
+    )
+    priority = models.CharField(
+        max_length=20,
+        choices=Priority.choices,
+        default=Priority.NORMAL,
+        db_index=True,
+        help_text="Urgency level - critical notifications may trigger emails"
+    )
+    title = models.CharField(
+        max_length=200,
+        help_text="Short notification title"
+    )
+    message = models.TextField(
+        help_text="Full notification message"
+    )
+    
+    # Link to related object
+    related_model = models.CharField(
+        max_length=50,
+        blank=True,
+        default="",
+        help_text="Model name this notification relates to (e.g., 'LabOrder')"
+    )
+    related_id = models.BigIntegerField(
+        null=True,
+        blank=True,
+        help_text="ID of the related object"
+    )
+    action_url = models.CharField(
+        max_length=500,
+        blank=True,
+        default="",
+        help_text="URL for user action (e.g., view results)"
+    )
+    
+    # Read status
+    is_read = models.BooleanField(
+        default=False,
+        db_index=True,
+        help_text="Whether notification has been read"
+    )
+    read_at = models.DateTimeField(
+        null=True,
+        blank=True,
+        help_text="When notification was marked as read"
+    )
+    
+    # Timestamps
+    created_at = models.DateTimeField(
+        auto_now_add=True,
+        db_index=True,
+        help_text="When notification was created"
+    )
+    
+    class Meta:
+        """Meta options for Notification model."""
+        ordering = ['-created_at']  # Newest first
+        indexes = [
+            models.Index(fields=['user', 'is_read', '-created_at']),
+            models.Index(fields=['user', 'notification_type']),
+            models.Index(fields=['priority', '-created_at']),
+        ]
+        verbose_name = "Notification"
+        verbose_name_plural = "Notifications"
+    
+    def __str__(self) -> str:
+        """String representation of the notification."""
+        return f"{self.user.username}: {self.title}"
+    
+    def mark_as_read(self):
+        """Mark notification as read with timestamp."""
+        if not self.is_read:
+            self.is_read = True
+            self.read_at = timezone.now()
+            self.save(update_fields=['is_read', 'read_at'])
