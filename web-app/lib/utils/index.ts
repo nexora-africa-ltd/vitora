@@ -2,6 +2,7 @@
 export { cn } from './cn';
 export {
   formatDate,
+  formatDateTime,
   formatRelativeTime,
   calculateAge,
   formatPhoneNumber,
