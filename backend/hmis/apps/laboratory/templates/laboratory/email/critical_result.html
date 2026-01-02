@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            line-height: 1.6;
+            color: #333;
+        }
+        .container {
+            max-width: 600px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        .header {
+            background-color: #d32f2f;
+            color: white;
+            padding: 20px;
+            text-align: center;
+            border-radius: 5px 5px 0 0;
+        }
+        .content {
+            background-color: #f5f5f5;
+            padding: 20px;
+            border: 1px solid #ddd;
+        }
+        .critical-box {
+            background-color: #fff3cd;
+            border-left: 4px solid #ff9800;
+            padding: 15px;
+            margin: 15px 0;
+        }
+        .result-item {
+            padding: 8px;
+            margin: 5px 0;
+            background-color: white;
+            border-left: 3px solid #d32f2f;
+        }
+        .button {
+            display: inline-block;
+            padding: 12px 24px;
+            background-color: #1976d2;
+            color: white;
+            text-decoration: none;
+            border-radius: 4px;
+            margin: 15px 0;
+        }
+        .footer {
+            text-align: center;
+            padding: 15px;
+            color: #666;
+            font-size: 12px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🚨 CRITICAL LAB RESULTS ALERT</h1>
+        </div>
+        <div class="content">
+            <p>Dear Dr. {{ clinician_name }},</p>
+            
+            <p><strong>CRITICAL</strong> lab results are now available for:</p>
+            
+            <div class="critical-box">
+                <strong>Patient:</strong> {{ patient_name }} ({{ patient_mrn }})<br>
+                <strong>Test:</strong> {{ test_name }}<br>
+                <strong>Order:</strong> {{ order_number }}
+            </div>
+            
+            <h3>Critical Values Detected:</h3>
+            {% for result in critical_results %}
+            <div class="result-item">
+                <strong>{{ result.parameter }}:</strong> {{ result.value }} {{ result.unit }} 
+                <span style="color: #d32f2f; font-weight: bold;">({{ result.flag }})</span>
+                {% if result.reference_range %}
+                <br><small>Reference: {{ result.reference_range }}</small>
+                {% endif %}
+            </div>
+            {% endfor %}
+            
+            <p style="margin-top: 20px;">
+                <strong>Please review these results immediately.</strong>
+            </p>
+            
+            <a href="{{ action_url }}" class="button">View Results</a>
+        </div>
+        <div class="footer">
+            {{ facility_name }}<br>
+            This is an automated notification. Please do not reply to this email.
+        </div>
+    </div>
+</body>
+</html>
