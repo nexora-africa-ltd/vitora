@@ -142,6 +142,8 @@ urlpatterns = [
     ),
     # Pharmacy API
     path("api/pharmacy/", include("hmis.apps.pharmacy.urls", namespace="pharmacy")),
+    # Billing API
+    path("api/billing/", include("hmis.apps.billing.urls", namespace="billing")),
     path("api-auth/", include("rest_framework.urls", namespace="rest_framework")),
     # JWT Authentication endpoints (using custom view with audit logging)
     path("api/token/", AuditedTokenObtainPairView.as_view(), name="token_obtain_pair"),
