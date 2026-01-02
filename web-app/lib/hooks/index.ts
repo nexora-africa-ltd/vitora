@@ -25,3 +25,19 @@ export {
 } from './use-patients-enhanced';
 export { useToast, toast } from './use-toast';
 export { useToastNotification } from './use-toast-notification';
+
+// Patient history/timeline hooks
+export {
+  usePatientHistory,
+  usePatientHistoryInfinite,
+  usePatientHistorySummary,
+} from './use-patient-history';
+
+// Dashboard metrics hooks
+export {
+  useDashboardMetrics,
+  useDashboardKPIs,
+  usePatientVolumeChart,
+  useRevenueBreakdown,
+  useRecentActivity,
+} from './use-dashboard-metrics';
