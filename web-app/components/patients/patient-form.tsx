@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useRef, useCallback } from 'react';
+import { useState, useRef } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
@@ -10,6 +10,8 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Calendar } from '@/components/ui/calendar';
 import { Checkbox } from '@/components/ui/checkbox';
+import { Label } from '@/components/ui/label';
+import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import {
   Form,
   FormControl,
@@ -36,9 +38,10 @@ import {
   AlertDescription,
   AlertTitle,
 } from '@/components/ui/alert';
+import { LocationCombobox } from '@/components/ui/location-combobox';
 import { cn } from '@/lib/utils';
 import { useCounties, useSubCounties, useWards } from '@/lib/hooks/use-locations';
-import { GENDER_OPTIONS, REFERRAL_SOURCE_OPTIONS } from '@/lib/utils/constants';
+import { GENDER_OPTIONS, REFERRAL_SOURCE_OPTIONS, RELATIONSHIP_OPTIONS } from '@/lib/utils/constants';
 import type { PatientCreateData } from '@/lib/types/patient';
 
 // Validation schema
@@ -88,6 +91,8 @@ export function PatientForm({ onSubmit, onCancel, isLoading, defaultValues, isEd
   const [isSubmitting, setIsSubmitting] = useState(false);
   const submitLockRef = useRef(false);
   const [dobPopoverOpen, setDobPopoverOpen] = useState(false);
+  const [showCustomRelationship, setShowCustomRelationship] = useState(false);
+  const [customRelationship, setCustomRelationship] = useState('');
 
   const form = useForm<PatientFormValues>({
     resolver: zodResolver(patientFormSchema),
@@ -116,22 +121,6 @@ export function PatientForm({ onSubmit, onCancel, isLoading, defaultValues, isEd
   const { data: counties, isLoading: isLoadingCounties } = useCounties();
   const { data: subCounties, isLoading: isLoadingSubCounties } = useSubCounties(selectedCounty);
   const { data: wards, isLoading: isLoadingWards } = useWards(selectedSubCounty);
-
-  // Get display name for selected location
-  const getCountyName = useCallback((id: number | undefined) => {
-    if (!id || !counties) return undefined;
-    return counties.find(c => c.id === id)?.name;
-  }, [counties]);
-
-  const getSubCountyName = useCallback((id: number | undefined) => {
-    if (!id || !subCounties) return undefined;
-    return subCounties.find(sc => sc.id === id)?.name;
-  }, [subCounties]);
-
-  const getWardName = useCallback((id: number | undefined) => {
-    if (!id || !wards) return undefined;
-    return wards.find(w => w.id === id)?.name;
-  }, [wards]);
 
   const handleSubmit = async (values: PatientFormValues) => {
     // Prevent double submission
@@ -248,22 +237,24 @@ export function PatientForm({ onSubmit, onCancel, isLoading, defaultValues, isEd
               control={form.control}
               name="gender"
               render={({ field }) => (
-                <FormItem>
+                <FormItem className="space-y-3">
                   <FormLabel>Gender *</FormLabel>
-                  <Select onValueChange={field.onChange} value={field.value}>
-                    <FormControl>
-                      <SelectTrigger>
-                        <SelectValue placeholder="Select gender" />
-                      </SelectTrigger>
-                    </FormControl>
-                    <SelectContent>
+                  <FormControl>
+                    <RadioGroup
+                      onValueChange={field.onChange}
+                      value={field.value}
+                      className="flex flex-wrap gap-4"
+                    >
                       {GENDER_OPTIONS.map((option) => (
-                        <SelectItem key={option.value} value={option.value}>
-                          {option.label}
-                        </SelectItem>
+                        <div key={option.value} className="flex items-center space-x-2">
+                          <RadioGroupItem value={option.value} id={`gender-${option.value}`} />
+                          <Label htmlFor={`gender-${option.value}`} className="cursor-pointer font-normal">
+                            {option.label}
+                          </Label>
+                        </div>
                       ))}
-                    </SelectContent>
-                  </Select>
+                    </RadioGroup>
+                  </FormControl>
                   <FormMessage />
                 </FormItem>
               )}
@@ -332,30 +323,22 @@ export function PatientForm({ onSubmit, onCancel, isLoading, defaultValues, isEd
               render={({ field }) => (
                 <FormItem>
                   <FormLabel>County *</FormLabel>
-                  <Select
-                    onValueChange={(value) => {
-                      field.onChange(Number(value));
-                      // Reset sub-county and ward when county changes
-                      form.setValue('sub_county', undefined as unknown as number);
-                      form.setValue('ward', undefined);
-                    }}
-                    value={field.value?.toString()}
-                  >
-                    <FormControl>
-                      <SelectTrigger>
-                        <SelectValue placeholder={isLoadingCounties ? 'Loading...' : 'Select county'}>
-                          {getCountyName(field.value)}
-                        </SelectValue>
-                      </SelectTrigger>
-                    </FormControl>
-                    <SelectContent>
-                      {counties?.map((county) => (
-                        <SelectItem key={county.id} value={county.id.toString()}>
-                          {county.name}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+                  <FormControl>
+                    <LocationCombobox
+                      options={counties?.map(c => ({ value: c.id.toString(), label: c.name })) || []}
+                      value={field.value?.toString()}
+                      onSelect={(value) => {
+                        field.onChange(Number(value));
+                        // Reset sub-county and ward when county changes
+                        form.setValue('sub_county', undefined as unknown as number);
+                        form.setValue('ward', undefined);
+                      }}
+                      placeholder="Select county"
+                      searchPlaceholder="Search counties..."
+                      emptyMessage="No county found."
+                      isLoading={isLoadingCounties}
+                    />
+                  </FormControl>
                   <FormMessage />
                 </FormItem>
               )}
@@ -367,30 +350,22 @@ export function PatientForm({ onSubmit, onCancel, isLoading, defaultValues, isEd
               render={({ field }) => (
                 <FormItem>
                   <FormLabel>Sub-County *</FormLabel>
-                  <Select
-                    onValueChange={(value) => {
-                      field.onChange(Number(value));
-                      // Reset ward when sub-county changes
-                      form.setValue('ward', undefined);
-                    }}
-                    value={field.value?.toString()}
-                    disabled={!selectedCounty}
-                  >
-                    <FormControl>
-                      <SelectTrigger>
-                        <SelectValue placeholder={!selectedCounty ? 'Select county first' : isLoadingSubCounties ? 'Loading...' : 'Select sub-county'}>
-                          {getSubCountyName(field.value)}
-                        </SelectValue>
-                      </SelectTrigger>
-                    </FormControl>
-                    <SelectContent>
-                      {subCounties?.map((subCounty) => (
-                        <SelectItem key={subCounty.id} value={subCounty.id.toString()}>
-                          {subCounty.name}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+                  <FormControl>
+                    <LocationCombobox
+                      options={subCounties?.map(sc => ({ value: sc.id.toString(), label: sc.name })) || []}
+                      value={field.value?.toString()}
+                      onSelect={(value) => {
+                        field.onChange(Number(value));
+                        // Reset ward when sub-county changes
+                        form.setValue('ward', undefined);
+                      }}
+                      placeholder={!selectedCounty ? 'Select county first' : 'Select sub-county'}
+                      searchPlaceholder="Search sub-counties..."
+                      emptyMessage="No sub-county found."
+                      disabled={!selectedCounty}
+                      isLoading={isLoadingSubCounties}
+                    />
+                  </FormControl>
                   <FormMessage />
                 </FormItem>
               )}
@@ -402,26 +377,18 @@ export function PatientForm({ onSubmit, onCancel, isLoading, defaultValues, isEd
               render={({ field }) => (
                 <FormItem>
                   <FormLabel>Ward (Optional)</FormLabel>
-                  <Select
-                    onValueChange={(value) => field.onChange(Number(value))}
-                    value={field.value?.toString()}
-                    disabled={!selectedSubCounty}
-                  >
-                    <FormControl>
-                      <SelectTrigger>
-                        <SelectValue placeholder={!selectedSubCounty ? 'Select sub-county first' : isLoadingWards ? 'Loading...' : 'Select ward'}>
-                          {getWardName(field.value)}
-                        </SelectValue>
-                      </SelectTrigger>
-                    </FormControl>
-                    <SelectContent>
-                      {wards?.map((ward) => (
-                        <SelectItem key={ward.id} value={ward.id.toString()}>
-                          {ward.name}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+                  <FormControl>
+                    <LocationCombobox
+                      options={wards?.map(w => ({ value: w.id.toString(), label: w.name })) || []}
+                      value={field.value?.toString()}
+                      onSelect={(value) => field.onChange(Number(value))}
+                      placeholder={!selectedSubCounty ? 'Select sub-county first' : 'Select ward'}
+                      searchPlaceholder="Search wards..."
+                      emptyMessage="No ward found."
+                      disabled={!selectedSubCounty}
+                      isLoading={isLoadingWards}
+                    />
+                  </FormControl>
                   <FormMessage />
                 </FormItem>
               )}
@@ -482,21 +449,57 @@ export function PatientForm({ onSubmit, onCancel, isLoading, defaultValues, isEd
               render={({ field }) => (
                 <FormItem>
                   <FormLabel>Relationship</FormLabel>
-                  <Select onValueChange={field.onChange} value={field.value || ''}>
-                    <FormControl>
-                      <SelectTrigger>
-                        <SelectValue placeholder="Select relationship" />
-                      </SelectTrigger>
-                    </FormControl>
-                    <SelectContent>
-                      <SelectItem value="spouse">Spouse</SelectItem>
-                      <SelectItem value="parent">Parent</SelectItem>
-                      <SelectItem value="child">Child</SelectItem>
-                      <SelectItem value="sibling">Sibling</SelectItem>
-                      <SelectItem value="friend">Friend</SelectItem>
-                      <SelectItem value="other">Other</SelectItem>
-                    </SelectContent>
-                  </Select>
+                  {!showCustomRelationship ? (
+                    <Select 
+                      onValueChange={(value) => {
+                        if (value === 'other') {
+                          setShowCustomRelationship(true);
+                          field.onChange('');
+                        } else {
+                          field.onChange(value);
+                        }
+                      }} 
+                      value={field.value || ''}
+                    >
+                      <FormControl>
+                        <SelectTrigger>
+                          <SelectValue placeholder="Select relationship" />
+                        </SelectTrigger>
+                      </FormControl>
+                      <SelectContent>
+                        {RELATIONSHIP_OPTIONS.map((option) => (
+                          <SelectItem key={option.value} value={option.value}>
+                            {option.label}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  ) : (
+                    <div className="flex gap-2">
+                      <FormControl>
+                        <Input 
+                          placeholder="Specify relationship" 
+                          value={customRelationship}
+                          onChange={(e) => {
+                            setCustomRelationship(e.target.value);
+                            field.onChange(e.target.value);
+                          }}
+                        />
+                      </FormControl>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        onClick={() => {
+                          setShowCustomRelationship(false);
+                          setCustomRelationship('');
+                          field.onChange('');
+                        }}
+                      >
+                        Cancel
+                      </Button>
+                    </div>
+                  )}
                   <FormMessage />
                 </FormItem>
               )}
@@ -509,22 +512,24 @@ export function PatientForm({ onSubmit, onCancel, isLoading, defaultValues, isEd
           control={form.control}
           name="referral_source"
           render={({ field }) => (
-            <FormItem>
+            <FormItem className="space-y-3">
               <FormLabel>Referral Source</FormLabel>
-              <Select onValueChange={field.onChange} value={field.value}>
-                <FormControl>
-                  <SelectTrigger className="w-full md:w-[250px]">
-                    <SelectValue placeholder="Select referral source" />
-                  </SelectTrigger>
-                </FormControl>
-                <SelectContent>
+              <FormControl>
+                <RadioGroup
+                  onValueChange={field.onChange}
+                  value={field.value}
+                  className="flex flex-wrap gap-4"
+                >
                   {REFERRAL_SOURCE_OPTIONS.map((option) => (
-                    <SelectItem key={option.value} value={option.value}>
-                      {option.label}
-                    </SelectItem>
+                    <div key={option.value} className="flex items-center space-x-2">
+                      <RadioGroupItem value={option.value} id={`referral-${option.value}`} />
+                      <Label htmlFor={`referral-${option.value}`} className="cursor-pointer font-normal">
+                        {option.label}
+                      </Label>
+                    </div>
                   ))}
-                </SelectContent>
-              </Select>
+                </RadioGroup>
+              </FormControl>
               <FormMessage />
             </FormItem>
           )}

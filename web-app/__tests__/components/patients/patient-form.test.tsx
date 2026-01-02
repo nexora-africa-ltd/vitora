@@ -43,6 +43,18 @@ jest.mock('@/lib/utils/constants', () => ({
     { value: 'clinic', label: 'Clinic' },
     { value: 'other_facility', label: 'Other Facility' },
   ],
+  RELATIONSHIP_OPTIONS: [
+    { value: 'spouse', label: 'Spouse' },
+    { value: 'parent', label: 'Parent' },
+    { value: 'child', label: 'Child' },
+    { value: 'sibling', label: 'Sibling' },
+    { value: 'grandparent', label: 'Grandparent' },
+    { value: 'uncle_aunt', label: 'Uncle/Aunt' },
+    { value: 'friend', label: 'Friend' },
+    { value: 'neighbor', label: 'Neighbor' },
+    { value: 'employer', label: 'Employer' },
+    { value: 'other', label: 'Other' },
+  ],
 }));
 
 // Mock date-fns format
@@ -220,7 +232,11 @@ describe('PatientForm Component', () => {
       <PatientForm onSubmit={mockOnSubmit} onCancel={mockOnCancel} />
     );
 
-    expect(screen.getByText(/Select gender/i)).toBeInTheDocument();
+    // Gender is now a RadioGroup - check the label and that radio buttons exist
+    expect(screen.getByText('Gender *')).toBeInTheDocument();
+    // The radiogroup should have radio options
+    const radioButtons = screen.getAllByRole('radio');
+    expect(radioButtons.length).toBeGreaterThan(0);
   });
 
   it('should render county selection', () => {
