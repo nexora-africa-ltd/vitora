@@ -93,7 +93,7 @@ class Service(models.Model):
     
     def clean(self):
         """Validate service data."""
-        if self.unit_price and self.unit_price <= 0:
+        if self.unit_price is not None and self.unit_price <= 0:
             raise ValidationError({'unit_price': 'Unit price must be greater than 0.'})
     
     def save(self, *args, **kwargs):
@@ -265,14 +265,30 @@ class Invoice(models.Model):
     @staticmethod
     def generate_invoice_number() -> str:
         """Generate unique invoice number in format INV-YYYYMMDD-XXXX."""
-        from hmis.apps.core.models import generate_unique_number
-        prefix = settings.BILLING_INVOICE_PREFIX
-        return generate_unique_number(Invoice, 'invoice_number', prefix)
+        from datetime import date
+        
+        today = date.today()
+        date_str = today.strftime('%Y%m%d')
+        prefix = f"{settings.BILLING_INVOICE_PREFIX}{date_str}-"
+        
+        # Get the last invoice number for today
+        last_invoice = Invoice.objects.filter(
+            invoice_number__startswith=prefix
+        ).order_by('-invoice_number').first()
+        
+        if last_invoice:
+            # Extract the sequence number and increment
+            last_seq = int(last_invoice.invoice_number.split('-')[-1])
+            new_seq = last_seq + 1
+        else:
+            new_seq = 1
+        
+        return f"{prefix}{new_seq:04d}"
     
     def calculate_totals(self):
         """Calculate invoice totals from items."""
         items = self.items.all()
-        self.subtotal = sum(item.line_total for item in items)
+        self.subtotal = sum(item.line_total for item in items) if items else Decimal('0.00')
         self.total_amount = self.subtotal - self.discount_amount + self.tax_amount
         self.balance_due = self.total_amount - self.amount_paid
         self.save(update_fields=[
@@ -297,6 +313,10 @@ class Invoice(models.Model):
         """Record payment and update status."""
         if amount <= 0:
             raise ValidationError("Payment amount must be positive.")
+        
+        # Prevent payment on cancelled invoices
+        if self.status == self.Status.CANCELLED:
+            raise ValidationError("Cannot record payment on cancelled invoice.")
         
         new_paid = self.amount_paid + amount
         if new_paid > self.total_amount:
@@ -446,9 +466,9 @@ class InvoiceItem(models.Model):
     
     def clean(self):
         """Validate invoice item data."""
-        if self.quantity and self.quantity <= 0:
+        if self.quantity is not None and self.quantity <= 0:
             raise ValidationError({'quantity': 'Quantity must be greater than 0.'})
-        if self.unit_price and self.unit_price <= 0:
+        if self.unit_price is not None and self.unit_price <= 0:
             raise ValidationError({'unit_price': 'Unit price must be greater than 0.'})
     
     def calculate_line_total(self) -> Decimal:
