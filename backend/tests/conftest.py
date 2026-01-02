@@ -251,3 +251,78 @@ def sample_encounter(db, sample_patient):
 
 # Import pharmacy fixtures
 pytest_plugins = ["tests.conftest_pharmacy"]
+
+
+# ============================================================================
+# Laboratory Test Fixtures
+# ============================================================================
+
+
+@pytest.fixture
+def sample_test_catalog(db):
+    """Create a sample test catalog entry."""
+    from hmis.apps.laboratory.models import TestCatalog
+    
+    return TestCatalog.objects.create(
+        code='CBC',
+        name='Complete Blood Count',
+        short_name='CBC',
+        category='HEMATOLOGY',
+        specimen_type='BLOOD',
+        result_type='PANEL',
+        cost=500.00,
+        available_in_house=True,
+        is_active=True,
+    )
+
+
+@pytest.fixture
+def sample_lab_order(db, sample_patient, sample_encounter, test_user, sample_test_catalog):
+    """Create a sample lab order for testing."""
+    from hmis.apps.laboratory.models import LabOrder, LabOrderItem
+    
+    order = LabOrder.objects.create(
+        patient=sample_patient,
+        encounter=sample_encounter,
+        ordered_by=test_user,
+        order_type='IN_HOUSE',
+        status='ORDERED',
+        priority='ROUTINE',
+    )
+    
+    # Create order item
+    LabOrderItem.objects.create(
+        lab_order=order,
+        test=sample_test_catalog,
+        unit_cost=sample_test_catalog.cost,
+    )
+    
+    # Create associated queue entry
+    from hmis.apps.laboratory.models import LabQueue
+    LabQueue.objects.create(
+        lab_order=order,
+        sample_type='blood',
+        priority='routine',
+    )
+    
+    return order
+
+
+@pytest.fixture
+def sample_lab_result(db, sample_lab_order, test_user):
+    """Create a sample lab result for testing."""
+    from hmis.apps.laboratory.models import LabResult
+    
+    # Get the first order item from the lab order
+    order_item = sample_lab_order.items.first()
+    
+    return LabResult.objects.create(
+        order_item=order_item,
+        numeric_value=7.5,
+        text_value='7.5',
+        reference_range_text='4.0-11.0',
+        reference_low=4.0,
+        reference_high=11.0,
+        result_flag='NORMAL',
+        entered_by=test_user,
+    )
