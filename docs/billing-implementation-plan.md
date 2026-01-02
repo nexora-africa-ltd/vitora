@@ -1,9 +1,9 @@
 # Billing Module Implementation Plan
 
 **Sprint**: 1.5-1.6 Track A
-**Status**: 🚧 IN PROGRESS (Phase 1-3 Nearly Complete ✅)
+**Status**: 🚧 IN PROGRESS (Phase 1-3 Complete ✅, Phase 4 Started)
 **Created**: January 2, 2026
-**Last Updated**: January 2, 2026 (21:05 UTC)
+**Last Updated**: January 2, 2026 (22:14 UTC)
 **Target Completion**: Q1 2026
 
 ---
@@ -29,8 +29,8 @@
 
 This document outlines the complete implementation plan for the Vitora HMIS Billing Module, which enables invoice generation, payment processing (Cash, M-Pesa, Insurance), receipt generation, and financial reporting. The implementation follows strict TDD principles and is designed for Kenya's healthcare billing context with support for SHA (Social Health Authority) claims.
 
-**Total Planned Tests**: ~193 tests
-**Tests Completed**: 182/193 (94% complete) ✅
+**Total Planned Tests**: ~158 tests
+**Tests Completed**: 127/158 (80% complete) ✅
 **Target Coverage**: ≥85%
 **Current Coverage**: 40% overall (billing app: 85%+)
 **Estimated Duration**: 4 weeks (Weeks 9-12)
@@ -38,8 +38,8 @@ This document outlines the complete implementation plan for the Vitora HMIS Bill
 ### Progress Overview
 - ✅ **Phase 1 Complete**: Core Billing Models (42/42 tests passing, 100%)
 - ✅ **Phase 2 Complete**: Payment Processing & Receipts (34/34 tests passing, 100%)
-- 🎯 **Phase 3 Nearly Complete**: API Endpoints (106/117 tests passing, 91%)
-- 📋 **Phase 4 Planned**: Reports & SHA Stub (0/41 tests)
+- ✅ **Phase 3 Complete**: API Endpoints & M-Pesa Integration (41/41 tests passing, 100%)
+- 🚧 **Phase 4 In Progress**: Reports & SHA Stub (10/41 tests passing, 24%)
 
 ---
 
@@ -361,17 +361,17 @@ Implement financial reports and SHA claims stub for future integration.
 
 ### Tasks Checklist
 
-- [ ] **Phase 4.1: Financial Reports Service** (8 tests planned)
+- [ ] **Phase 4.1: Financial Reports Service** (8 tests planned) ✅ **COMPLETE**
   - **Reference**: See deliverables spec § "10. Financial Reports" (lines 930-1014)
   - **Baseline**: BillingReportService with 5 core report methods
-  - [ ] Create BillingReportService class
-  - [ ] Implement daily collection report
-  - [ ] Implement revenue summary report
-  - [ ] Implement outstanding balances report
-  - [ ] Implement service utilization report
-  - [ ] Implement payment method analysis
-  - [ ] Write 8 tests for reports
-  - [ ] Document report formats
+  - [x] Create BillingReportService class
+  - [x] Implement daily collection report
+  - [x] Implement revenue summary report
+  - [x] Implement outstanding balances report
+  - [x] Implement service utilization report
+  - [x] Implement payment method analysis
+  - [x] Write 10 tests for reports (exceeded plan: 10/8)
+  - [x] Document report formats
 
 - [ ] **Phase 4.2: Report API Endpoints** (8 tests planned)
   - [ ] Create report endpoints
@@ -431,16 +431,17 @@ Implement financial reports and SHA claims stub for future integration.
   - [ ] Add troubleshooting guide
 
 ### Deliverables
-- ⏳ Financial reports implemented
+- ✅ Financial reports implemented (Phase 4.1 complete)
 - ⏳ SHA claims stub complete
-- ⏳ 41+ tests planned (Reports: 8, Report API: 8, SHA: 7, Admin: 8, Integration: 10)
+- ⏳ 41+ tests planned (Reports: 10/10 ✅, Report API: 0/8, SHA: 0/7, Admin: 0/8, Integration: 0/10)
 - ⏳ Admin interface configured
 - ⏳ Complete documentation
 - ⏳ All integration tests passing
 
 ### Success Criteria
-- All 41+ Phase 4 tests passing
-- Reports generate accurate data
+- Phase 4.1: 10/10 tests passing ✅
+- Phase 4 Total: 10/41 tests passing (24%)
+- Reports generate accurate data ✅
 - SHA stub returns mock responses
 - Admin interface fully functional
 - End-to-end flows working
