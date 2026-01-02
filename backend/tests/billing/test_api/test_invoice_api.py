@@ -69,6 +69,9 @@ class TestInvoiceAPIEndpoints:
         
         response = authenticated_client.post('/api/billing/invoices/', data)
         
+        if response.status_code != status.HTTP_201_CREATED:
+            print(f"Response status: {response.status_code}")
+            print(f"Response data: {response.data}")
         assert response.status_code == status.HTTP_201_CREATED
         assert response.data['patient'] == sample_patient.id
         assert 'invoice_number' in response.data
