@@ -473,7 +473,10 @@ class InvoiceItem(models.Model):
     
     def calculate_line_total(self) -> Decimal:
         """Calculate line total."""
-        return (self.quantity * self.unit_price) - self.discount_amount
+        from decimal import Decimal, ROUND_HALF_UP
+        line_total = (self.quantity * self.unit_price) - self.discount_amount
+        # Round to 2 decimal places to avoid validation errors
+        return line_total.quantize(Decimal('0.01'), rounding=ROUND_HALF_UP)
     
     def save(self, *args, **kwargs):
         """Override save to calculate line total and update invoice."""

@@ -153,6 +153,10 @@ class InvoiceSerializer(serializers.ModelSerializer):
             'created_at',
             'updated_at'
         ]
+        extra_kwargs = {
+            'due_date': {'required': False},
+            'invoice_date': {'required': False}
+        }
     
     def get_balance(self, obj):
         """Calculate balance dynamically."""
@@ -183,7 +187,6 @@ class PaymentSerializer(serializers.ModelSerializer):
             'mpesa_receipt_number',
             'mpesa_transaction_id',
             'mpesa_phone',
-            'transaction_reference',
             'notes',
             'received_by',
             'received_by_username',
