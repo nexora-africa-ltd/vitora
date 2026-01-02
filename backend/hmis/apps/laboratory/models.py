@@ -316,6 +316,8 @@ class LabOrder(models.Model):
     external_requisition_sent = models.BooleanField(default=False)
     external_requisition_date = models.DateTimeField(null=True, blank=True)
     external_accession_number = models.CharField(max_length=50, blank=True)
+    requisition_pdf = models.FileField(upload_to='lab_requisitions/%Y/%m/', blank=True, null=True, help_text="Generated PDF requisition form")
+    sample_type = models.CharField(max_length=100, blank=True, help_text="Type of sample required (e.g., Blood, Urine)")
 
     # Billing
     total_cost = models.DecimalField(max_digits=10, decimal_places=2, default=0)
