@@ -63,23 +63,23 @@ describe('AlertsPanel', () => {
       render(<AlertsPanel {...defaultProps} />);
 
       // Alert id 2 is acknowledged
-      const metforminAlert = screen.getByText(/metformin 500mg is out of stock/i).closest('[data-testid="alert-item"]');
-      expect(within(metforminAlert!).getByText(/acknowledged/i)).toBeInTheDocument();
+      const metforminAlert = screen.getByText(/metformin 500mg is out of stock/i).closest('[data-testid="alert-item"]') as HTMLElement;
+      expect(within(metforminAlert).getByText(/acknowledged/i)).toBeInTheDocument();
     });
 
     it('should show acknowledge button for unacknowledged alerts', () => {
       render(<AlertsPanel {...defaultProps} />);
 
       // Alert id 1 is not acknowledged
-      const amoxAlert = screen.getByText(/amoxicillin 500mg stock is below reorder level/i).closest('[data-testid="alert-item"]');
-      expect(within(amoxAlert!).getByRole('button', { name: /acknowledge/i })).toBeInTheDocument();
+      const amoxAlert = screen.getByText(/amoxicillin 500mg stock is below reorder level/i).closest('[data-testid="alert-item"]') as HTMLElement;
+      expect(within(amoxAlert).getByRole('button', { name: /acknowledge/i })).toBeInTheDocument();
     });
 
     it('should not show acknowledge button for acknowledged alerts', () => {
       render(<AlertsPanel {...defaultProps} />);
 
-      const metforminAlert = screen.getByText(/metformin 500mg is out of stock/i).closest('[data-testid="alert-item"]');
-      expect(within(metforminAlert!).queryByRole('button', { name: /acknowledge/i })).not.toBeInTheDocument();
+      const metforminAlert = screen.getByText(/metformin 500mg is out of stock/i).closest('[data-testid="alert-item"]') as HTMLElement;
+      expect(within(metforminAlert).queryByRole('button', { name: /acknowledge/i })).not.toBeInTheDocument();
     });
   });
 
