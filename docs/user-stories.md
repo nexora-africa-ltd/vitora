@@ -30,14 +30,15 @@ KE-{ROLE}-{NUM} [Phase X] [Sprint X.X]: {Story Title}
 | Code | Role | Code | Role |
 |------|------|------|------|
 | DOC | Doctor/Consultant/Clinical Officer | NRS | Nurse/Nurse Aide |
-| SRG | Surgeon/Theatre Team | PHM | Pharmacist |
-| LAB | Laboratory Tech/Radiologist | CSH | Cashier |
-| CLM | Claims Officer | BIL | Billing Clerk |
-| REC | Receptionist/Front Desk | STK | Stock Controller |
-| MGT | Management/Administrator | ITA | IT Administrator |
-| LOC | Part-time/Locum Staff | REG | Regulator |
-| MCH | MCH Nurse/Midwife/Pediatrician | CHW | Community Health Worker |
-| PAT | Patient | QUE | Queue Manager |
+| IPD | Inpatient Department (Admission/Ward) | SRG | Surgeon/Theatre Team |
+| PHM | Pharmacist | LAB | Laboratory Tech/Radiologist |
+| CSH | Cashier | CLM | Claims Officer |
+| BIL | Billing Clerk | REC | Receptionist/Front Desk |
+| STK | Stock Controller | MGT | Management/Administrator |
+| ITA | IT Administrator | LOC | Part-time/Locum Staff |
+| REG | Regulator | MCH | MCH Nurse/Midwife/Pediatrician |
+| CHW | Community Health Worker | PAT | Patient |
+| QUE | Queue Manager | WRD | Ward Manager |
 
 ### Phase Alignment
 
@@ -277,7 +278,261 @@ Focus on vitals, encounters, patient care, and clinical support.
 
 ---
 
-### 1.3 Surgeon / Theatre Nurse / Perioperative Theatre Technician
+### 1.3 Inpatient Department (IPD) Roles
+
+These roles focus on inpatient admission, ward management, nursing care, and discharge workflows. IPD enables seamless transition from outpatient to inpatient care while maintaining clinical continuity.
+
+---
+
+#### KE-IPD-001 [Phase 1] [Sprint 1.5]: Admission Recommendation from OPD
+
+**As a** doctor/clinical officer,  
+**I want to** recommend a patient for inpatient admission directly from the outpatient encounter,  
+**So that** the admission process is faster, coordinated, and does not require re-registration of the patient.
+
+**Acceptance Criteria:**
+- **Given** a patient has an active outpatient encounter
+- **When** I decide the patient requires inpatient care
+- **Then** I can mark the encounter as "Recommended for Admission"
+- **And** I can add admission reason and provisional diagnosis
+- **And** the system changes encounter status to `ADMISSION_PENDING`
+- **And** reception/front desk is notified of the pending admission
+- **And** duplicate inpatient registration is prevented
+- **And** admission recommendation expires after 24 hours (configurable)
+- **And** AuditLog records `admission_recommended` with reason
+
+**Technical Notes:**
+- New field: `Encounter.admission_status` (NONE, PENDING, ADMITTED, DECLINED)
+- New model: `AdmissionRecommendation` linking OPD encounter to IPD admission
+- Notification: Real-time alert to reception via WebSocket/polling
+
+---
+
+#### KE-IPD-002 [Phase 1] [Sprint 1.5]: Inpatient Admission Processing
+
+**As a** receptionist,  
+**I want to** be notified when a patient has been recommended for admission and complete the inpatient registration,  
+**So that** I can efficiently process admissions once the patient agrees.
+
+**Acceptance Criteria:**
+- **Given** a patient has admission recommendation from a clinician
+- **When** the patient presents at reception and agrees to inpatient admission
+- **Then** I can convert the outpatient encounter to an inpatient admission
+- **And** I can assign ward and bed from available inventory
+- **And** I can confirm/update payer/insurance details
+- **And** the system preserves all outpatient notes, vitals, labs, and orders
+- **And** the system creates an inpatient encounter linked to the same patient record
+- **And** admission timestamp and admitting officer are recorded
+- **And** AuditLog records `patient_admitted`
+
+**Edge Cases:**
+- If patient declines admission: encounter remains OPD, decline reason documented
+- If no beds available: patient added to admission waiting list
+- Bed availability validated before final admission confirmation
+
+**Technical Notes:**
+- New models: `Ward`, `Bed`, `Admission`
+- Endpoint: `POST /api/admissions/`
+- Bed status: AVAILABLE, OCCUPIED, MAINTENANCE, RESERVED
+
+---
+
+#### KE-IPD-003 [Phase 1] [Sprint 1.5]: Ward and Bed Management
+
+**As a** ward manager/receptionist,  
+**I want to** manage ward beds and view real-time occupancy,  
+**So that** bed allocation is efficient and accurate.
+
+**Acceptance Criteria:**
+- Can view all wards with bed counts (total, occupied, available, maintenance)
+- Ward types supported: Medical, Surgical, Pediatric, Maternity, ICU, Isolation
+- Can add/edit/deactivate beds within wards
+- Bed status transitions: Available → Reserved → Occupied → Available
+- Can mark beds for maintenance with reason and expected duration
+- Real-time bed occupancy dashboard for management
+- Bed charges linked to ward type for billing integration
+- Offline bed status visible; updates sync when connected
+
+**Technical Notes:**
+- Models: `Ward`, `Bed`
+- Endpoint: `GET /api/wards/`, `GET /api/wards/{id}/beds/`
+- Dashboard: Real-time occupancy percentage per ward
+
+---
+
+#### KE-IPD-004 [Phase 1] [Sprint 1.5]: Clinical Documentation Continuity
+
+**As a** doctor/clinical officer,  
+**I want to** continue documenting clinical notes after a patient is admitted,  
+**So that** inpatient care begins immediately without workflow disruption.
+
+**Acceptance Criteria:**
+- **Given** inpatient admission is completed
+- **When** I open the patient's chart
+- **Then** I can continue writing notes under the inpatient encounter
+- **And** I can enter ward notes, treatment plans, and orders
+- **And** I can view pre-admission OPD data in the same patient chart
+- **And** all clinical documentation is linked to the admission record
+- **And** encounter type shows as `IPD` with ward/bed information
+- **And** offline documentation syncs when connected
+
+**Technical Notes:**
+- `Admission` model links OPD encounter to IPD encounter
+- Patient timeline shows seamless OPD → IPD transition
+
+---
+
+#### KE-IPD-005 [Phase 1] [Sprint 1.6]: Daily Ward Rounds Documentation
+
+**As a** doctor/clinical officer,  
+**I want to** document daily ward rounds for inpatients,  
+**So that** progress is tracked and care plans are updated.
+
+**Acceptance Criteria:**
+- Can create daily round notes for each inpatient
+- Round note captures: clinical findings, assessment, plan updates
+- Can update diagnosis, medications, and investigations
+- Can set patient condition status: Stable, Improving, Deteriorating, Critical
+- Round notes timestamped with clinician attribution
+- Can flag patients for consultant review
+- Round summary visible in patient timeline
+- Offline round documentation with sync
+
+**Technical Notes:**
+- New model: `WardRound` linked to `Admission`
+- Endpoint: `POST /api/admissions/{id}/rounds/`
+
+---
+
+#### KE-IPD-006 [Phase 1] [Sprint 1.6]: Nurse's Kardex Management
+
+**As a** nurse,  
+**I want to** view and maintain a patient's Kardex during inpatient care,  
+**So that** I can safely deliver, track, and hand over nursing care across shifts.
+
+**Acceptance Criteria:**
+- **Given** a patient is admitted as an inpatient
+- **When** I open the patient chart
+- **Then** a Kardex view is available with:
+  - **Patient Snapshot** (read-only): Name, age, ward/bed, admission date, diagnosis, allergies, isolation status
+  - **Current Medical Orders** (auto-populated): Active medications, IV fluids, diet orders, activity level, special instructions
+  - **Nursing Care Plan**: Nursing problems, interventions, monitoring requirements, care task frequency
+  - **Observations & Alerts**: Latest vitals, abnormal findings, risk indicators (fall, pressure sore)
+  - **Shift Notes**: Free-text nursing narrative with nurse name, shift (Day/Night), timestamp
+  - **Handover Notes**: Follow-up items for next shift, pending labs/procedures, escalations
+
+**Safety Rules:**
+- Nurses cannot alter doctor orders from the Kardex
+- Kardex entries are append-only (no silent edits)
+- Critical orders and allergies are visually highlighted
+- All updates logged in audit trail
+- Kardex visibility limited to ward-assigned staff
+
+**Technical Notes:**
+- New model: `NursingKardex` with sections as JSON or related models
+- One active Kardex per admission
+- Endpoint: `GET/PATCH /api/admissions/{id}/kardex/`
+
+---
+
+#### KE-IPD-007 [Phase 1] [Sprint 1.6]: Nursing Shift Handover
+
+**As a** nurse,  
+**I want to** quickly review the Kardex at the start of my shift,  
+**So that** I understand the patient's current condition and care priorities.
+
+**Acceptance Criteria:**
+- Can view latest Kardex summary at shift start
+- Handover notes from previous shift clearly visible
+- Pending tasks and follow-ups highlighted
+- Can acknowledge handover receipt
+- Critical patients flagged for immediate attention
+- Shift handover report printable for ward reference
+- Handover timestamp and participants recorded
+
+**Technical Notes:**
+- New model: `ShiftHandover` linking outgoing and incoming nurses
+- Auto-generates handover summary from Kardex
+
+---
+
+#### KE-IPD-008 [Phase 1] [Sprint 1.6]: Inpatient Transfer
+
+**As a** doctor/ward manager,  
+**I want to** transfer a patient between wards,  
+**So that** patients receive appropriate level of care.
+
+**Acceptance Criteria:**
+- Can initiate transfer request with reason (step-up, step-down, specialty care)
+- Target ward/bed selected from available options
+- Transfer requires bed availability validation
+- Transfer summary includes current status and handover notes
+- Source ward notified of transfer completion
+- Billing updated for new ward charges
+- Full transfer audit trail maintained
+- AuditLog records `patient_transferred`
+
+**Technical Notes:**
+- New model: `Transfer` linking admission to source/target beds
+- Endpoint: `POST /api/admissions/{id}/transfer/`
+
+---
+
+#### KE-IPD-009 [Phase 1] [Sprint 1.6]: Discharge Planning and Execution
+
+**As a** doctor/clinical officer,  
+**I want to** plan and execute patient discharge,  
+**So that** patients leave with clear instructions and follow-up plans.
+
+**Acceptance Criteria:**
+- Can initiate discharge planning with target date
+- Discharge summary captures:
+  - Admission diagnosis and final diagnosis
+  - Procedures performed
+  - Treatment provided
+  - Discharge medications (linked to pharmacy)
+  - Follow-up appointments
+  - Instructions to patient/caregiver
+  - Referrals (if any)
+- Discharge requires clearing of:
+  - Outstanding pharmacy items
+  - Pending lab results (or documented acknowledgment)
+  - Financial clearance (bill settled or payment plan)
+- Bed status updated to AVAILABLE upon discharge
+- Discharge summary printable for patient
+- AuditLog records `patient_discharged`
+- Length of Stay (LOS) calculated and stored
+
+**Technical Notes:**
+- New model: `Discharge` linked to `Admission`
+- Endpoint: `POST /api/admissions/{id}/discharge/`
+- Auto-calculates LOS for reporting
+
+---
+
+#### KE-IPD-010 [Phase 2] [Sprint 2.1]: Consultant Review and Referral (Inpatient)
+
+**As a** clinician,  
+**I want to** request consultant reviews or external referrals during admission,  
+**So that** continuity of care and documentation are maintained.
+
+**Acceptance Criteria:**
+- Can create referral request linked to inpatient encounter
+- Referral captures: reason, urgency, target specialty/consultant
+- Internal consultant can document review and recommendations
+- External referrals generate transfer documentation
+- Referral status tracking: Requested → Accepted → Completed
+- Referring clinician notified of consultant response
+- Full audit trail of all referrals and responses
+- Referral history visible in patient timeline
+
+**Technical Notes:**
+- Extends existing referral model for IPD context
+- Notifications to consultant for pending reviews
+
+---
+
+### 1.4 Surgeon / Theatre Nurse / Perioperative Theatre Technician
 
 These roles emphasize surgical scheduling, theatre management, and perioperative care (Phase 2 focus).
 
@@ -1390,6 +1645,13 @@ These stories address system behavior in exceptional situations.
 | KE-REC-001 | `POST /api/patients/` | `Patient` | `test_patient_api.py` |
 | KE-REC-002 | `POST /api/patients/{id}/emergency-contacts/` | `EmergencyContact` | `test_emergency_contact_api.py` |
 | KE-NRS-002 | `GET /api/encounters/{id}/` | `Encounter` | `test_vitals_alerts.py` |
+| KE-IPD-001 | `PATCH /api/encounters/{id}/recommend-admission/` | `Encounter`, `AdmissionRecommendation` | `test_admission_api.py` |
+| KE-IPD-002 | `POST /api/admissions/` | `Admission`, `Ward`, `Bed` | `test_admission_api.py` |
+| KE-IPD-003 | `GET /api/wards/`, `GET /api/wards/{id}/beds/` | `Ward`, `Bed` | `test_ward_api.py` |
+| KE-IPD-005 | `POST /api/admissions/{id}/rounds/` | `WardRound` | `test_ward_round_api.py` |
+| KE-IPD-006 | `GET/PATCH /api/admissions/{id}/kardex/` | `NursingKardex` | `test_kardex_api.py` |
+| KE-IPD-008 | `POST /api/admissions/{id}/transfer/` | `Transfer` | `test_transfer_api.py` |
+| KE-IPD-009 | `POST /api/admissions/{id}/discharge/` | `Discharge` | `test_discharge_api.py` |
 | KE-PHM-001 | `GET /api/pharmacy/drugs/` | `Drug`, `StockBatch` | `test_pharmacy_api.py` |
 | KE-PHM-002 | `POST /api/pharmacy/dispensing/` | `Prescription`, `Dispensing` | `test_dispensing_api.py` |
 | KE-LAB-001 | `GET /api/laboratory/orders/` | `LabOrder`, `LabOrderItem` | `test_lab_api.py` |
@@ -1404,6 +1666,13 @@ These stories address system behavior in exceptional situations.
 | KE-DOC-001 | `patients.view_patient`, `encounters.view_encounter` |
 | KE-DOC-002 | `encounters.add_encounter` |
 | KE-REC-001 | `patients.add_patient` |
+| KE-IPD-001 | `admissions.recommend_admission` |
+| KE-IPD-002 | `admissions.add_admission` |
+| KE-IPD-003 | `wards.view_ward`, `wards.manage_beds` |
+| KE-IPD-005 | `admissions.add_wardround` |
+| KE-IPD-006 | `admissions.view_kardex`, `admissions.update_kardex` |
+| KE-IPD-008 | `admissions.transfer_patient` |
+| KE-IPD-009 | `admissions.discharge_patient` |
 | KE-PHM-002 | `pharmacy.dispense_medication` |
 | KE-LAB-002 | `laboratory.add_labresult` |
 | KE-MGT-002 | `core.view_auditlog` (admin only) |
@@ -1425,13 +1694,16 @@ These stories address system behavior in exceptional situations.
 | **KHIS** | Kenya Health Information System (DHIS2-based) |
 | **Linda Jamii** | Government free maternity program |
 | **LOINC** | Logical Observation Identifiers Names and Codes |
+| **LOS** | Length of Stay - duration from admission to discharge |
 | **MCH** | Maternal and Child Health |
 | **MRN** | Medical Record Number |
 | **OPD** | Outpatient Department |
 | **IPD** | Inpatient Department |
+| **Kardex** | Nursing reference document for inpatient care plans and handover |
 | **RMNCAH** | Reproductive, Maternal, Newborn, Child, and Adolescent Health |
 | **SHA** | Social Health Authority (Kenya's health insurer) |
 | **SyncQueue** | Local queue for offline data pending synchronization |
+| **Ward Round** | Daily clinical review of inpatients by doctors |
 
 ---
 
@@ -1441,6 +1713,7 @@ These stories address system behavior in exceptional situations.
 |---------|------|--------|---------|
 | 1.0 | Dec 2025 | Engineering Lead | Initial draft |
 | 2.0 | Jan 2, 2026 | Engineering Lead | Complete restructure: Added story IDs (KE prefix), Given-When-Then format, implemented feature coverage, NFRs, traceability matrix, error cases, missing roles |
+| 2.1 | Jan 2, 2026 | Engineering Lead | Added IPD section (KE-IPD-001 to KE-IPD-010): Admission workflow, bed management, ward rounds, Kardex, discharge. Based on consultant stakeholder feedback |
 
 ---
 
