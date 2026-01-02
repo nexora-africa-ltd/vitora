@@ -75,9 +75,6 @@ export { default as userEvent } from '@testing-library/user-event';
 // Override render method
 export { customRender as render };
 
-// Export query client creator
-export { createTestQueryClient };
-
 /**
  * Helper to wait for loading to finish
  */

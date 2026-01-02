@@ -21,18 +21,26 @@ const mockTreatmentPlan: TreatmentPlan = {
   id: 1,
   encounter: 1,
   clinical_notes: 'Rest at home, take medication as prescribed, and follow up in one week.',
+  medications_json: {},
+  procedures_json: {},
+  follow_up_instructions: '',
   follow_up_date: '2025-01-15',
+  diet_recommendations: '',
+  activity_restrictions: '',
   referral_needed: false,
-  referral_specialty: null,
-  referral_notes: null,
+  referral_specialty: '',
+  referral_notes: '',
+  status: 'ACTIVE',
   medications: [
     {
       id: 1,
+      treatment_plan: 1,
       name: 'Paracetamol',
       dosage: '500mg',
       frequency: 'Every 6 hours',
       duration: '5 days',
       route: 'Oral',
+      quantity: '20',
       instructions: 'Take after meals',
     },
   ],
@@ -85,18 +93,20 @@ describe('TreatmentPlanView', () => {
   });
 
   it('should render multiple medications', () => {
-    const planWithMultipleMeds = {
+    const planWithMultipleMeds: TreatmentPlan = {
       ...mockTreatmentPlan,
       medications: [
         ...mockTreatmentPlan.medications,
         {
           id: 2,
+          treatment_plan: 1,
           name: 'Ibuprofen',
           dosage: '400mg',
           frequency: 'Twice daily',
           duration: '3 days',
           route: 'Oral',
-          instructions: null,
+          quantity: '6',
+          instructions: '',
         },
       ],
     };

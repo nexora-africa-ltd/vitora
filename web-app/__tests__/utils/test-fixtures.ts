@@ -18,7 +18,6 @@ export function createMockPatient(overrides?: Partial<Patient>): Patient {
     gender: 'F',
     phone_number: '+254712345678',
     email: 'jane.doe@example.com',
-    address: '123 Test Street',
     county: 1,
     county_name: 'Nairobi',
     sub_county: 1,
@@ -34,7 +33,6 @@ export function createMockPatient(overrides?: Partial<Patient>): Patient {
     emergency_contact_phone: '+254712345679',
     emergency_contact_relationship: 'spouse',
     registered_by: 1,
-    registered_by_name: 'Test User',
     created_at: '2026-01-01T00:00:00Z',
     updated_at: '2026-01-01T00:00:00Z',
     ...overrides,
@@ -68,7 +66,7 @@ export function createMockEncounter(overrides?: Partial<Encounter>): Encounter {
     encounter_type: 'OPD',
     encounter_date: '2026-01-01',
     chief_complaint: 'Headache and fever',
-    status: 'in_progress',
+    status: 'IN_PROGRESS',
     
     // Vitals
     temperature: 37.5,
@@ -88,6 +86,7 @@ export function createMockEncounter(overrides?: Partial<Encounter>): Encounter {
     social_history: 'Non-smoker, occasional alcohol',
     
     // Clinical notes
+    notes: '',
     history_of_present_illness: 'Patient reports headache for 3 days',
     physical_examination: 'Alert, oriented. Temp elevated.',
     assessment: 'Possible viral infection',
@@ -98,10 +97,6 @@ export function createMockEncounter(overrides?: Partial<Encounter>): Encounter {
     created_by_name: 'Dr. Test User',
     created_at: '2026-01-01T10:00:00Z',
     updated_at: '2026-01-01T10:30:00Z',
-    
-    // Nested data
-    diagnoses: [],
-    treatment_plan: null,
     
     ...overrides,
   };

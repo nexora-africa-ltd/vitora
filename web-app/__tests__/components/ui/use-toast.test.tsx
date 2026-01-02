@@ -28,7 +28,7 @@ describe('useToast Hook', () => {
 });
 
 describe('Toast Reducer', () => {
-  const initialState = { toasts: [] };
+  const initialState = { toasts: [] as any[] };
 
   it('should add toast', () => {
     const toast = { id: '1', title: 'Test', open: true };
@@ -38,27 +38,27 @@ describe('Toast Reducer', () => {
     });
 
     expect(newState.toasts).toHaveLength(1);
-    expect(newState.toasts[0].title).toBe('Test');
+    expect(newState.toasts[0]?.title).toBe('Test');
   });
 
   it('should update toast', () => {
-    const state = { toasts: [{ id: '1', title: 'Original', open: true }] };
+    const state = { toasts: [{ id: '1', title: 'Original', open: true }] as any[] };
     const newState = reducer(state, {
       type: 'UPDATE_TOAST',
       toast: { id: '1', title: 'Updated' },
     });
 
-    expect(newState.toasts[0].title).toBe('Updated');
+    expect(newState.toasts[0]?.title).toBe('Updated');
   });
 
   it('should dismiss toast by id', () => {
-    const state = { toasts: [{ id: '1', title: 'Test', open: true }] };
+    const state = { toasts: [{ id: '1', title: 'Test', open: true }] as any[] };
     const newState = reducer(state, {
       type: 'DISMISS_TOAST',
       toastId: '1',
     });
 
-    expect(newState.toasts[0].open).toBe(false);
+    expect(newState.toasts[0]?.open).toBe(false);
   });
 
   it('should dismiss all toasts when no id provided', () => {
@@ -66,7 +66,7 @@ describe('Toast Reducer', () => {
       toasts: [
         { id: '1', title: 'Test 1', open: true },
         { id: '2', title: 'Test 2', open: true },
-      ],
+      ] as any[],
     };
     const newState = reducer(state, {
       type: 'DISMISS_TOAST',
@@ -82,7 +82,7 @@ describe('Toast Reducer', () => {
       toasts: [
         { id: '1', title: 'Test 1', open: true },
         { id: '2', title: 'Test 2', open: true },
-      ],
+      ] as any[],
     };
     const newState = reducer(state, {
       type: 'REMOVE_TOAST',
@@ -90,7 +90,7 @@ describe('Toast Reducer', () => {
     });
 
     expect(newState.toasts).toHaveLength(1);
-    expect(newState.toasts[0].id).toBe('2');
+    expect(newState.toasts[0]?.id).toBe('2');
   });
 
   it('should remove all toasts when no id provided', () => {
@@ -98,7 +98,7 @@ describe('Toast Reducer', () => {
       toasts: [
         { id: '1', title: 'Test 1', open: true },
         { id: '2', title: 'Test 2', open: true },
-      ],
+      ] as any[],
     };
     const newState = reducer(state, {
       type: 'REMOVE_TOAST',

@@ -27,6 +27,7 @@ const createMockEncounter = (overrides: Partial<Encounter> = {}): Encounter => (
   past_surgeries: 'Appendectomy 2015',
   family_history: 'Father had heart disease',
   social_history: 'Non-smoker, occasional alcohol',
+  notes: '',
   history_of_present_illness: '',
   physical_examination: '',
   assessment: '',

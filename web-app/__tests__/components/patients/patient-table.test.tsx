@@ -34,20 +34,15 @@ const mockPatient: Patient = {
   date_of_birth: '1990-05-15',
   gender: 'M',
   phone_number: '0712345678',
-  national_id: null,
-  email: null,
   county: 1,
   county_name: 'Nairobi',
   sub_county: 1,
   sub_county_name: 'Westlands',
-  ward: null,
-  ward_name: null,
   village: '',
   emergency_contact_name: '',
   emergency_contact_phone: '',
   emergency_contact_relationship: '',
   referral_source: 'self',
-  referred_from_facility: '',
   consent_given: true,
   consent_date: '2025-01-01',
   is_sensitive: false,
@@ -135,7 +130,7 @@ describe('PatientTable', () => {
   });
 
   it('should display dash for missing phone number', () => {
-    const patientWithoutPhone = { ...mockPatient, phone_number: null };
+    const patientWithoutPhone: Patient = { ...mockPatient, phone_number: undefined };
     render(<PatientTable {...defaultProps} patients={[patientWithoutPhone]} />);
 
     expect(screen.getByText('—')).toBeInTheDocument();

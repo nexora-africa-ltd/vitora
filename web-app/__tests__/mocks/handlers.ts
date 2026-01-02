@@ -109,7 +109,7 @@ export const handlers = [
   }),
 
   http.post(`${API_BASE}/api/patients/`, async ({ request }) => {
-    const body = await request.json();
+    const body = await request.json() as Record<string, unknown>;
     const newPatient = {
       id: mockPatients.length + 1,
       mrn: `MRN-${new Date().toISOString().slice(0, 10).replace(/-/g, '')}-${String(mockPatients.length + 1).padStart(4, '0')}`,
@@ -124,7 +124,7 @@ export const handlers = [
   http.patch(`${API_BASE}/api/patients/:id/`, async ({ params, request }) => {
     const id = Number(params.id);
     const patient = mockPatients.find((p) => p.id === id);
-    const body = await request.json();
+    const body = await request.json() as Record<string, unknown>;
 
     if (patient) {
       const updatedPatient = {
@@ -199,7 +199,7 @@ export const handlers = [
   }),
 
   http.post(`${API_BASE}/api/encounters/`, async ({ request }) => {
-    const body = await request.json();
+    const body = await request.json() as Record<string, unknown>;
     const newEncounter = {
       id: mockEncounters.length + 1,
       ...body,
@@ -213,7 +213,7 @@ export const handlers = [
   http.patch(`${API_BASE}/api/encounters/:id/`, async ({ params, request }) => {
     const id = Number(params.id);
     const encounter = mockEncounters.find((e) => e.id === id);
-    const body = await request.json();
+    const body = await request.json() as Record<string, unknown>;
 
     if (encounter) {
       const updatedEncounter = {
