@@ -19,6 +19,20 @@ export const REFERRAL_SOURCE_OPTIONS = [
   { value: 'other_facility', label: 'Other Facility' },
 ] as const;
 
+// Emergency contact relationship options
+export const RELATIONSHIP_OPTIONS = [
+  { value: 'spouse', label: 'Spouse' },
+  { value: 'parent', label: 'Parent' },
+  { value: 'child', label: 'Child' },
+  { value: 'sibling', label: 'Sibling' },
+  { value: 'grandparent', label: 'Grandparent' },
+  { value: 'uncle_aunt', label: 'Uncle/Aunt' },
+  { value: 'friend', label: 'Friend' },
+  { value: 'neighbor', label: 'Neighbor' },
+  { value: 'employer', label: 'Employer' },
+  { value: 'other', label: 'Other' },
+] as const;
+
 // Encounter types
 export const ENCOUNTER_TYPES = [
   { value: 'OPD', label: 'Outpatient' },
@@ -49,5 +63,6 @@ export const PAGE_SIZE_OPTIONS = [10, 25, 50, 100];
 // Type exports for TypeScript
 export type Gender = (typeof GENDER_OPTIONS)[number]['value'];
 export type ReferralSource = (typeof REFERRAL_SOURCE_OPTIONS)[number]['value'];
+export type Relationship = (typeof RELATIONSHIP_OPTIONS)[number]['value'];
 export type EncounterType = (typeof ENCOUNTER_TYPES)[number]['value'];
 export type EncounterStatusType = (typeof ENCOUNTER_STATUS)[number]['value'];

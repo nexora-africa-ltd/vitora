@@ -8,13 +8,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select';
+import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import {
   Form,
   FormControl,
@@ -181,32 +175,30 @@ export function LabOrderForm({
             <CardDescription>Configure order type and priority</CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <FormField
                 control={form.control}
                 name="order_type"
                 render={({ field }) => (
-                  <FormItem>
+                  <FormItem className="space-y-3">
                     <FormLabel>Order Type</FormLabel>
-                    <Select onValueChange={field.onChange} defaultValue={field.value}>
-                      <FormControl>
-                        <SelectTrigger>
-                          <SelectValue placeholder="Select type" />
-                        </SelectTrigger>
-                      </FormControl>
-                      <SelectContent>
+                    <FormControl>
+                      <RadioGroup
+                        onValueChange={field.onChange}
+                        defaultValue={field.value}
+                        className="flex flex-col space-y-2"
+                      >
                         {ORDER_TYPE_OPTIONS.map((option) => (
-                          <SelectItem key={option.value} value={option.value}>
-                            <div>
-                              <span>{option.label}</span>
-                              <span className="text-xs text-muted-foreground ml-2">
-                                - {option.description}
-                              </span>
-                            </div>
-                          </SelectItem>
+                          <div key={option.value} className="flex items-start space-x-3">
+                            <RadioGroupItem value={option.value} id={`order-type-${option.value}`} className="mt-1" />
+                            <Label htmlFor={`order-type-${option.value}`} className="cursor-pointer font-normal">
+                              <span className="font-medium">{option.label}</span>
+                              <span className="text-xs text-muted-foreground ml-2">- {option.description}</span>
+                            </Label>
+                          </div>
                         ))}
-                      </SelectContent>
-                    </Select>
+                      </RadioGroup>
+                    </FormControl>
                     <FormMessage />
                   </FormItem>
                 )}
@@ -216,24 +208,25 @@ export function LabOrderForm({
                 control={form.control}
                 name="priority"
                 render={({ field }) => (
-                  <FormItem>
+                  <FormItem className="space-y-3">
                     <FormLabel>Priority</FormLabel>
-                    <Select onValueChange={field.onChange} defaultValue={field.value}>
-                      <FormControl>
-                        <SelectTrigger>
-                          <SelectValue placeholder="Select priority" />
-                        </SelectTrigger>
-                      </FormControl>
-                      <SelectContent>
+                    <FormControl>
+                      <RadioGroup
+                        onValueChange={field.onChange}
+                        defaultValue={field.value}
+                        className="flex flex-col space-y-2"
+                      >
                         {PRIORITY_OPTIONS.map((option) => (
-                          <SelectItem key={option.value} value={option.value}>
-                            <div>
-                              <span>{option.label}</span>
-                            </div>
-                          </SelectItem>
+                          <div key={option.value} className="flex items-start space-x-3">
+                            <RadioGroupItem value={option.value} id={`priority-${option.value}`} className="mt-1" />
+                            <Label htmlFor={`priority-${option.value}`} className="cursor-pointer font-normal">
+                              <span className="font-medium">{option.label}</span>
+                              <span className="text-xs text-muted-foreground ml-2">- {option.description}</span>
+                            </Label>
+                          </div>
                         ))}
-                      </SelectContent>
-                    </Select>
+                      </RadioGroup>
+                    </FormControl>
                     <FormMessage />
                   </FormItem>
                 )}

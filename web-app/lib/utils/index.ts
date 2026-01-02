@@ -15,6 +15,7 @@ export {
   APP_ENV,
   GENDER_OPTIONS,
   REFERRAL_SOURCE_OPTIONS,
+  RELATIONSHIP_OPTIONS,
   ENCOUNTER_TYPES,
   ENCOUNTER_STATUS,
   VITAL_RANGES,
@@ -24,6 +25,7 @@ export {
 export type {
   Gender,
   ReferralSource,
+  Relationship,
   EncounterType,
   EncounterStatusType,
 } from './constants';
