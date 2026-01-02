@@ -23,7 +23,6 @@ class ServiceCategorySerializer(serializers.ModelSerializer):
             'code',
             'name',
             'description',
-            'parent',
             'display_order',
             'is_active',
             'created_at',
@@ -76,7 +75,6 @@ class InvoiceItemSerializer(serializers.ModelSerializer):
     """Serializer for InvoiceItem model."""
     
     service_name = serializers.CharField(source='service.name', read_only=True, allow_null=True)
-    line_total = serializers.DecimalField(max_digits=10, decimal_places=2, read_only=True)
     
     class Meta:
         model = InvoiceItem
@@ -90,12 +88,12 @@ class InvoiceItemSerializer(serializers.ModelSerializer):
             'unit_price',
             'discount_amount',
             'line_total',
-            'sha_claimable',
-            'sha_covered_amount',
-            'created_at',
-            'updated_at'
+            'is_covered_by_insurance',
+            'insurance_approved_amount',
+            'sha_code',
+            'created_at'
         ]
-        read_only_fields = ['id', 'invoice', 'line_total', 'created_at', 'updated_at']
+        read_only_fields = ['id', 'invoice', 'line_total', 'created_at']
 
 
 class InvoiceSerializer(serializers.ModelSerializer):
@@ -103,7 +101,8 @@ class InvoiceSerializer(serializers.ModelSerializer):
     
     patient_name = serializers.CharField(source='patient.full_name', read_only=True)
     created_by_username = serializers.CharField(source='created_by.username', read_only=True)
-    items = InvoiceItemSerializer(source='invoiceitem_set', many=True, read_only=True)
+    items = InvoiceItemSerializer(many=True, read_only=True)
+    balance = serializers.SerializerMethodField()
     
     class Meta:
         model = Invoice
@@ -125,8 +124,7 @@ class InvoiceSerializer(serializers.ModelSerializer):
             'amount_paid',
             'balance',
             'insurance_provider',
-            'insurance_claim_number',
-            'sha_claimable',
+            'sha_claim_number',
             'sha_claim_amount',
             'notes',
             'cancellation_reason',
@@ -155,6 +153,10 @@ class InvoiceSerializer(serializers.ModelSerializer):
             'updated_at'
         ]
     
+    def get_balance(self, obj):
+        """Calculate balance dynamically."""
+        return obj.total_amount - obj.amount_paid
+    
     def create(self, validated_data):
         # Set created_by from request user
         validated_data['created_by'] = self.context['request'].user
@@ -171,7 +173,7 @@ class PaymentSerializer(serializers.ModelSerializer):
         model = Payment
         fields = [
             'id',
-            'reference',
+            'payment_reference',
             'invoice',
             'invoice_number',
             'method',
@@ -190,7 +192,7 @@ class PaymentSerializer(serializers.ModelSerializer):
         ]
         read_only_fields = [
             'id',
-            'reference',
+            'payment_reference',
             'status',
             'received_by',
             'received_by_username',
