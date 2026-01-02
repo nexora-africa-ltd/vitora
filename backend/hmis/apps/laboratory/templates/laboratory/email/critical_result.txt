@@ -1,0 +1,19 @@
+CRITICAL LAB RESULTS ALERT
+
+Dear Dr. {{ clinician_name }},
+
+CRITICAL lab results are now available for:
+
+Patient: {{ patient_name }} ({{ patient_mrn }})
+Test: {{ test_name }}
+Order: {{ order_number }}
+
+Critical Values Detected:
+{% for result in critical_results %}- {{ result.parameter }}: {{ result.value }} {{ result.unit }} ({{ result.flag }}){% if result.reference_range %} [Reference: {{ result.reference_range }}]{% endif %}
+{% endfor %}
+
+Please review these results immediately.
+
+View results: {{ action_url }}
+
+{{ facility_name }}

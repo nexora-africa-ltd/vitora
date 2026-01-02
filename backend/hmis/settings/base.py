@@ -286,3 +286,21 @@ EXTERNAL_LAB_PARTNERS = [
 
 # LOINC Data Configuration
 LOINC_DATA_PATH = "data/loinc_common.csv"
+
+# ============================================================================
+# Email and Notification Settings (Sprint 1.5-1.6 Track B)
+# ============================================================================
+
+# Email configuration
+DEFAULT_FROM_EMAIL = os.getenv('DEFAULT_FROM_EMAIL', 'noreply@vitora.health')
+EMAIL_BACKEND = 'django.core.mail.backends.console.EmailBackend'  # For development
+
+# Frontend URL for notification links
+FRONTEND_URL = os.getenv('FRONTEND_URL', 'http://localhost:3000')
+
+# Facility information for documents
+FACILITY_NAME = os.getenv('FACILITY_NAME', 'Vitora Health Facility')
+FACILITY_ADDRESS = os.getenv('FACILITY_ADDRESS', '')
+FACILITY_PHONE = os.getenv('FACILITY_PHONE', '')
+FACILITY_EMAIL = os.getenv('FACILITY_EMAIL', '')
+FACILITY_LICENSE = os.getenv('FACILITY_LICENSE', '')
