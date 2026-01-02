@@ -3,7 +3,7 @@
 import { useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from './context';
-import { LoadingSpinner } from '@/components/shared/loading-spinner';
+import { PageLoading } from '@/components/shared/loading-spinner';
 
 interface AuthGuardProps {
   children: React.ReactNode;
@@ -24,13 +24,9 @@ export function AuthGuard({ children, requiredPermission }: AuthGuardProps) {
     }
   }, [isAuthenticated, isLoading, router]);
 
-  // Show loading while checking auth
+  // Show loading while checking auth - use same component as Next.js loading.tsx
   if (isLoading) {
-    return (
-      <div className="flex h-screen w-full items-center justify-center">
-        <LoadingSpinner size="lg" />
-      </div>
-    );
+    return <PageLoading message="Checking authentication..." fullScreen={true} />;
   }
 
   // Not authenticated - will redirect

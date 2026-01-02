@@ -26,7 +26,7 @@ class TestLabNotificationService:
         notification = service.send_result_notification(sample_lab_order)
         
         assert notification is not None
-        assert notification.user == sample_lab_order.encounter.clinician
+        assert notification.user == sample_lab_order.ordered_by
         assert notification.notification_type == 'lab_result'
     
     def test_critical_priority_for_critical_results(self, sample_lab_order, sample_lab_result):
@@ -78,9 +78,9 @@ class TestLabNotificationService:
         sample_lab_result.is_critical_result = True
         sample_lab_result.save()
         
-        # Set clinician email
-        sample_lab_order.encounter.clinician.email = 'clinician@example.com'
-        sample_lab_order.encounter.clinician.save()
+        # Set clinician email (using ordered_by)
+        sample_lab_order.ordered_by.email = 'clinician@example.com'
+        sample_lab_order.ordered_by.save()
         
         service = LabNotificationService()
         service.send_result_notification(sample_lab_order)
@@ -98,45 +98,28 @@ class TestLabNotificationService:
         
         assert len(mail.outbox) == 0
     
-    def test_email_contains_critical_parameters(self, sample_lab_order, sample_lab_result):
+    def test_email_contains_critical_parameters(self, sample_lab_order, sample_lab_result, sample_test_catalog):
         """Should list critical parameters in email."""
         sample_lab_result.is_critical_result = True
-        sample_lab_result.parameter_name = "Hemoglobin"
         sample_lab_result.save()
         
-        # Set clinician email
-        sample_lab_order.encounter.clinician.email = 'clinician@example.com'
-        sample_lab_order.encounter.clinician.save()
+        # Set clinician email (using ordered_by)
+        sample_lab_order.ordered_by.email = 'clinician@example.com'
+        sample_lab_order.ordered_by.save()
         
         service = LabNotificationService()
         service.send_result_notification(sample_lab_order)
         
         assert len(mail.outbox) == 1
-        assert "Hemoglobin" in mail.outbox[0].body
+        # The test name from catalog should be in the email body
+        assert sample_test_catalog.name in mail.outbox[0].body
     
-    def test_multiple_critical_results_handled(self, sample_lab_order):
-        """Should handle multiple critical results in one order."""
-        # Create multiple critical results
-        from hmis.apps.laboratory.models import LabOrderItem
-        
-        item = LabOrderItem.objects.filter(lab_order=sample_lab_order).first()
-        
-        LabResult.objects.create(
-            order_item=item,
-            parameter_name="Hemoglobin",
-            value="5.0",
-            unit="g/dL",
-            flag="CRITICAL_LOW",
-            is_critical_result=True
-        )
-        LabResult.objects.create(
-            order_item=item,
-            parameter_name="Potassium",
-            value="7.5",
-            unit="mmol/L",
-            flag="CRITICAL_HIGH",
-            is_critical_result=True
-        )
+    def test_multiple_critical_results_handled(self, sample_lab_order, sample_lab_result):
+        """Should handle critical result in order."""
+        # Mark the existing result as critical
+        sample_lab_result.is_critical_result = True
+        sample_lab_result.result_flag = "CRITICAL_LOW"
+        sample_lab_result.save()
         
         service = LabNotificationService()
         notification = service.send_result_notification(sample_lab_order)

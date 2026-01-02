@@ -104,6 +104,10 @@ class StockAlertSerializer(serializers.ModelSerializer):
     """Serializer for StockAlert model."""
 
     drug_name = serializers.CharField(source="drug.generic_name", read_only=True)
+    batch_number = serializers.CharField(source="batch.batch_number", read_only=True, allow_null=True)
+    # Aliases for frontend compatibility
+    acknowledged = serializers.BooleanField(source="is_acknowledged", read_only=True)
+    resolved = serializers.BooleanField(source="is_resolved", read_only=True)
 
     class Meta:
         model = StockAlert
@@ -111,20 +115,22 @@ class StockAlertSerializer(serializers.ModelSerializer):
             "id",
             "drug",
             "drug_name",
+            "batch_number",
             "alert_type",
             "severity",
             "message",
             "acknowledged",
+            "is_acknowledged",
             "acknowledged_by",
             "acknowledged_at",
             "resolved",
+            "is_resolved",
             "resolved_by",
             "resolved_at",
             "resolution_notes",
             "created_at",
-            "updated_at",
         ]
-        read_only_fields = ["id", "created_at", "updated_at", "drug_name"]
+        read_only_fields = ["id", "created_at", "drug_name", "batch_number", "acknowledged", "resolved"]
 
 
 class PrescriptionItemSerializer(serializers.ModelSerializer):

@@ -41,3 +41,33 @@ export {
   useRevenueBreakdown,
   useRecentActivity,
 } from './use-dashboard-metrics';
+
+// Laboratory hooks
+export {
+  useTestCatalog,
+  useTest,
+  useTestSearch,
+  useLabOrders,
+  useLabOrder,
+  usePatientLabOrders,
+  useEncounterLabOrders,
+  useCreateLabOrder,
+  useUpdateLabOrder,
+  useSubmitLabOrder,
+  useCollectSpecimen,
+  useCancelLabOrder,
+  useAddOrderItem,
+  useRemoveOrderItem,
+  useOrderResults,
+  usePatientLabResults,
+  useAddLabResult,
+  useUpdateLabResult,
+  useVerifyLabResult,
+  useUploadResultAttachment,
+  usePendingVerification,
+  useLabQueue,
+  useAssignQueueEntry,
+  useStartProcessing,
+  useReleaseResults,
+  useCriticalAlerts,
+} from './use-laboratory';

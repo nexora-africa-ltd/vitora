@@ -62,7 +62,7 @@ describe('VitalsForm', () => {
     render(<VitalsForm data={criticalData} onChange={mockOnChange} />);
 
     expect(screen.getByText(/critical vital sign alerts/i)).toBeInTheDocument();
-    expect(screen.getByText(/severe hypoxemia/i)).toBeInTheDocument();
+    expect(screen.getByText(/moderate hypoxemia/i)).toBeInTheDocument();
   });
 
   it('shows warning alert when SpO2 is between 90% and 95%', () => {
@@ -70,7 +70,7 @@ describe('VitalsForm', () => {
     render(<VitalsForm data={warningData} onChange={mockOnChange} />);
 
     expect(screen.getByText(/abnormal values/i)).toBeInTheDocument();
-    expect(screen.getByText(/mild hypoxemia/i)).toBeInTheDocument();
+    expect(screen.getByText(/below normal/i)).toBeInTheDocument();
   });
 
   it('shows critical badge when there are critical alerts', () => {

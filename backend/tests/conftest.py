@@ -302,7 +302,7 @@ def sample_lab_order(db, sample_patient, sample_encounter, test_user, sample_tes
     LabQueue.objects.create(
         lab_order=order,
         sample_type='blood',
-        priority='routine',
+        priority='ROUTINE',
     )
     
     return order

@@ -9,6 +9,12 @@ import {
   mockTokens,
   mockICD10Codes,
 } from './data';
+import {
+  mockDrugs,
+  mockStockBatches,
+  mockStockAlerts,
+  mockPrescriptions,
+} from './pharmacy-data';
 
 const API_BASE = 'http://127.0.0.1:9088';
 
@@ -290,5 +296,236 @@ export const handlers = [
   // ===================
   http.get(`${API_BASE}/api/users/me/`, () => {
     return HttpResponse.json(mockUser);
+  }),
+
+  // ===================
+  // Pharmacy endpoints
+  // ===================
+
+  // Drugs
+  http.get(`${API_BASE}/api/pharmacy/drugs/`, ({ request }) => {
+    const url = new URL(request.url);
+    const search = url.searchParams.get('search');
+    const category = url.searchParams.get('category');
+    const page = parseInt(url.searchParams.get('page') || '1');
+    const pageSize = parseInt(url.searchParams.get('page_size') || '20');
+
+    let filteredDrugs = [...mockDrugs];
+
+    if (search) {
+      const searchLower = search.toLowerCase();
+      filteredDrugs = filteredDrugs.filter(
+        (d) =>
+          d.generic_name.toLowerCase().includes(searchLower) ||
+          d.code.toLowerCase().includes(searchLower) ||
+          d.brand_names.some((b) => b.toLowerCase().includes(searchLower))
+      );
+    }
+
+    if (category) {
+      filteredDrugs = filteredDrugs.filter((d) => d.category === category);
+    }
+
+    const start = (page - 1) * pageSize;
+    const end = start + pageSize;
+    const paginatedDrugs = filteredDrugs.slice(start, end);
+
+    return HttpResponse.json({
+      count: filteredDrugs.length,
+      next: end < filteredDrugs.length ? `${API_BASE}/api/pharmacy/drugs/?page=${page + 1}` : null,
+      previous: page > 1 ? `${API_BASE}/api/pharmacy/drugs/?page=${page - 1}` : null,
+      results: paginatedDrugs,
+    });
+  }),
+
+  http.get(`${API_BASE}/api/pharmacy/drugs/:id/`, ({ params }) => {
+    const id = Number(params.id);
+    const drug = mockDrugs.find((d) => d.id === id);
+
+    if (drug) {
+      return HttpResponse.json(drug);
+    }
+
+    return HttpResponse.json({ detail: 'Not found.' }, { status: 404 });
+  }),
+
+  // Stock batches
+  http.get(`${API_BASE}/api/pharmacy/stock/`, ({ request }) => {
+    const url = new URL(request.url);
+    const drugId = url.searchParams.get('drug');
+    const status = url.searchParams.get('status');
+    const page = parseInt(url.searchParams.get('page') || '1');
+    const pageSize = parseInt(url.searchParams.get('page_size') || '20');
+
+    let filteredBatches = [...mockStockBatches];
+
+    if (drugId) {
+      filteredBatches = filteredBatches.filter((b) => b.drug === Number(drugId));
+    }
+
+    if (status) {
+      filteredBatches = filteredBatches.filter((b) => b.status === status);
+    }
+
+    const start = (page - 1) * pageSize;
+    const end = start + pageSize;
+    const paginatedBatches = filteredBatches.slice(start, end);
+
+    return HttpResponse.json({
+      count: filteredBatches.length,
+      next: end < filteredBatches.length ? `${API_BASE}/api/pharmacy/stock/?page=${page + 1}` : null,
+      previous: page > 1 ? `${API_BASE}/api/pharmacy/stock/?page=${page - 1}` : null,
+      results: paginatedBatches,
+    });
+  }),
+
+  http.get(`${API_BASE}/api/pharmacy/stock/by_drug/`, ({ request }) => {
+    const url = new URL(request.url);
+    const drugId = url.searchParams.get('drug_id');
+
+    if (!drugId) {
+      return HttpResponse.json({ error: 'drug_id parameter is required' }, { status: 400 });
+    }
+
+    const batches = mockStockBatches.filter((b) => b.drug === Number(drugId));
+    return HttpResponse.json(batches);
+  }),
+
+  // Stock alerts
+  http.get(`${API_BASE}/api/pharmacy/alerts/`, ({ request }) => {
+    const url = new URL(request.url);
+    const resolved = url.searchParams.get('resolved');
+    const page = parseInt(url.searchParams.get('page') || '1');
+    const pageSize = parseInt(url.searchParams.get('page_size') || '20');
+
+    let filteredAlerts = [...mockStockAlerts];
+
+    if (resolved !== null) {
+      filteredAlerts = filteredAlerts.filter((a) => a.resolved === (resolved === 'true'));
+    }
+
+    const start = (page - 1) * pageSize;
+    const end = start + pageSize;
+    const paginatedAlerts = filteredAlerts.slice(start, end);
+
+    return HttpResponse.json({
+      count: filteredAlerts.length,
+      next: end < filteredAlerts.length ? `${API_BASE}/api/pharmacy/alerts/?page=${page + 1}` : null,
+      previous: page > 1 ? `${API_BASE}/api/pharmacy/alerts/?page=${page - 1}` : null,
+      results: paginatedAlerts,
+    });
+  }),
+
+  http.get(`${API_BASE}/api/pharmacy/alerts/low_stock/`, () => {
+    const lowStockAlerts = mockStockAlerts.filter(
+      (a) => (a.alert_type === 'LOW_STOCK' || a.alert_type === 'OUT_OF_STOCK') && !a.resolved
+    );
+    return HttpResponse.json(lowStockAlerts);
+  }),
+
+  http.get(`${API_BASE}/api/pharmacy/alerts/expiring/`, () => {
+    const expiringAlerts = mockStockAlerts.filter(
+      (a) =>
+        (a.alert_type === 'EXPIRING_SOON' || a.alert_type === 'EXPIRING_CRITICAL' || a.alert_type === 'EXPIRED') &&
+        !a.resolved
+    );
+    return HttpResponse.json(expiringAlerts);
+  }),
+
+  http.post(`${API_BASE}/api/pharmacy/alerts/:id/acknowledge/`, ({ params }) => {
+    const id = Number(params.id);
+    const alert = mockStockAlerts.find((a) => a.id === id);
+
+    if (alert) {
+      return HttpResponse.json({
+        ...alert,
+        acknowledged: true,
+        acknowledged_by: 1,
+        acknowledged_by_name: 'Admin User',
+        acknowledged_at: new Date().toISOString(),
+      });
+    }
+
+    return HttpResponse.json({ detail: 'Not found.' }, { status: 404 });
+  }),
+
+  http.post(`${API_BASE}/api/pharmacy/alerts/:id/resolve/`, async ({ params, request }) => {
+    const id = Number(params.id);
+    const alert = mockStockAlerts.find((a) => a.id === id);
+    const body = (await request.json()) as { notes?: string };
+
+    if (alert) {
+      return HttpResponse.json({
+        ...alert,
+        resolved: true,
+        resolved_by: 1,
+        resolved_by_name: 'Admin User',
+        resolved_at: new Date().toISOString(),
+        resolution_notes: body.notes || '',
+      });
+    }
+
+    return HttpResponse.json({ detail: 'Not found.' }, { status: 404 });
+  }),
+
+  // Prescriptions
+  http.get(`${API_BASE}/api/pharmacy/prescriptions/`, ({ request }) => {
+    const url = new URL(request.url);
+    const status = url.searchParams.get('status');
+    const page = parseInt(url.searchParams.get('page') || '1');
+    const pageSize = parseInt(url.searchParams.get('page_size') || '20');
+
+    let filteredPrescriptions = [...mockPrescriptions];
+
+    if (status) {
+      filteredPrescriptions = filteredPrescriptions.filter((p) => p.status === status);
+    }
+
+    const start = (page - 1) * pageSize;
+    const end = start + pageSize;
+    const paginatedPrescriptions = filteredPrescriptions.slice(start, end);
+
+    return HttpResponse.json({
+      count: filteredPrescriptions.length,
+      next:
+        end < filteredPrescriptions.length
+          ? `${API_BASE}/api/pharmacy/prescriptions/?page=${page + 1}`
+          : null,
+      previous: page > 1 ? `${API_BASE}/api/pharmacy/prescriptions/?page=${page - 1}` : null,
+      results: paginatedPrescriptions,
+    });
+  }),
+
+  http.get(`${API_BASE}/api/pharmacy/prescriptions/:id/`, ({ params }) => {
+    const id = Number(params.id);
+    const prescription = mockPrescriptions.find((p) => p.id === id);
+
+    if (prescription) {
+      return HttpResponse.json(prescription);
+    }
+
+    return HttpResponse.json({ detail: 'Not found.' }, { status: 404 });
+  }),
+
+  // Reports
+  http.get(`${API_BASE}/api/pharmacy/reports/stock-summary/`, () => {
+    const summary = mockDrugs.map((drug) => ({
+      drug_id: drug.id,
+      drug_code: drug.code,
+      drug_name: drug.generic_name,
+      category: drug.category,
+      form: drug.form,
+      strength: drug.strength,
+      total_stock: drug.current_stock,
+      total_value: drug.current_stock * (drug.reference_price || 0),
+      reorder_level: drug.default_reorder_level,
+      status: drug.current_stock === 0 ? 'OUT_OF_STOCK' : drug.current_stock < drug.default_reorder_level ? 'LOW' : 'OK',
+      batches_count: mockStockBatches.filter((b) => b.drug === drug.id && b.status === 'AVAILABLE').length,
+      expiring_within_30_days: 0,
+      expired_quantity: mockStockBatches
+        .filter((b) => b.drug === drug.id && b.is_expired)
+        .reduce((sum, b) => sum + b.quantity_expired, 0),
+    }));
+    return HttpResponse.json(summary);
   }),
 ];
