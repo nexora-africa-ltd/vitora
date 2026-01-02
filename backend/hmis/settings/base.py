@@ -41,6 +41,7 @@ INSTALLED_APPS = [
     "hmis.apps.clinical_templates",
     "hmis.apps.laboratory",
     "hmis.apps.pharmacy",
+    "hmis.apps.billing",
 ]
 
 MIDDLEWARE = [
@@ -304,3 +305,29 @@ FACILITY_ADDRESS = os.getenv('FACILITY_ADDRESS', '')
 FACILITY_PHONE = os.getenv('FACILITY_PHONE', '')
 FACILITY_EMAIL = os.getenv('FACILITY_EMAIL', '')
 FACILITY_LICENSE = os.getenv('FACILITY_LICENSE', '')
+FACILITY_KRA_PIN = os.getenv('FACILITY_KRA_PIN', 'P000000000X')
+
+# ============================================================================
+# Billing Configuration (Sprint 1.5-1.6 Track A)
+# ============================================================================
+
+BILLING_INVOICE_PREFIX = "INV-"
+BILLING_RECEIPT_PREFIX = "RCP-"
+BILLING_PAYMENT_PREFIX = "PAY-"
+BILLING_CREDIT_NOTE_PREFIX = "CN-"
+BILLING_DEFAULT_CURRENCY = "KES"
+BILLING_DEFAULT_DUE_DAYS = 30  # Days until invoice due
+BILLING_OVERDUE_GRACE_DAYS = 7  # Grace period before marking overdue
+
+# M-Pesa Configuration (from environment)
+MPESA_ENVIRONMENT = os.getenv("MPESA_ENVIRONMENT", "sandbox")
+MPESA_CONSUMER_KEY = os.getenv("MPESA_CONSUMER_KEY", "")
+MPESA_CONSUMER_SECRET = os.getenv("MPESA_CONSUMER_SECRET", "")
+MPESA_SHORTCODE = os.getenv("MPESA_SHORTCODE", "174379")
+MPESA_PASSKEY = os.getenv("MPESA_PASSKEY", "")
+MPESA_CALLBACK_URL = os.getenv("MPESA_CALLBACK_URL", "")
+
+# SHA Configuration (stub for now)
+SHA_ENABLED = os.getenv("SHA_ENABLED", "false").lower() == "true"
+SHA_API_URL = os.getenv("SHA_API_URL", "")
+SHA_API_KEY = os.getenv("SHA_API_KEY", "")
