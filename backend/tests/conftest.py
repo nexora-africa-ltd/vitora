@@ -214,6 +214,40 @@ def sample_encounter(db, sample_patient):
     )
 
 
+# =========================================================================
+# Inpatient (IPD) Test Fixtures
+# =========================================================================
+
+
+@pytest.fixture
+def sample_inpatient_ward(db):
+    """Create a sample inpatient ward for testing."""
+    from decimal import Decimal
+    from hmis.apps.inpatient.models import Ward
+
+    return Ward.objects.create(
+        name="Medical Ward 1",
+        code="MED-01",
+        ward_type="MEDICAL",
+        capacity=20,
+        daily_rate=Decimal("500.00"),
+        is_active=True,
+    )
+
+
+@pytest.fixture
+def sample_bed(db, sample_inpatient_ward):
+    """Create a sample bed in the inpatient ward for testing."""
+    from hmis.apps.inpatient.models import Bed
+
+    return Bed.objects.create(
+        ward=sample_inpatient_ward,
+        bed_number="B-101",
+        bed_type="STANDARD",
+        status="AVAILABLE",
+    )
+
+
 # ============================================================================
 # Database Fixtures (will be activated when Django is set up)
 # ============================================================================
@@ -343,28 +377,13 @@ def sample_lab_result(db, sample_lab_order, test_user):
 
 
 @pytest.fixture
-def sample_admission(db, sample_patient, sample_encounter, test_user):
+def sample_admission(db, sample_patient, sample_encounter, test_user, sample_inpatient_ward, sample_bed):
     """Create a sample admission for testing."""
-    from hmis.apps.inpatient.models import Ward, Bed, Admission
-    from decimal import Decimal
+    from hmis.apps.inpatient.models import Admission
     from django.utils import timezone
     
-    # Create ward
-    ward = Ward.objects.create(
-        name="Medical Ward 1",
-        code="MED-01",
-        ward_type="MEDICAL",
-        capacity=20,
-        daily_rate=Decimal("500.00"),
-    )
-    
-    # Create bed
-    bed = Bed.objects.create(
-        ward=ward,
-        bed_number="B-101",
-        bed_type="STANDARD",
-        status="AVAILABLE",
-    )
+    ward = sample_inpatient_ward
+    bed = sample_bed
     
     # Create IPD encounter
     ipd_encounter = sample_patient.encounters.create(

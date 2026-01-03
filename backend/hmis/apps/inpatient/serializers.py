@@ -4,6 +4,8 @@ Serializers for the inpatient app.
 
 from rest_framework import serializers
 
+from hmis.apps.encounters.models import Encounter
+
 from .models import (
     Ward,
     Bed,
@@ -91,7 +93,7 @@ class AdmissionRecommendationSerializer(serializers.ModelSerializer):
     )
     status_display = serializers.CharField(source='get_status_display', read_only=True)
     urgency_display = serializers.CharField(source='get_urgency_display', read_only=True)
-    is_expired = serializers.ReadOnlyField()
+    is_expired = serializers.SerializerMethodField()
     
     class Meta:
         model = AdmissionRecommendation
@@ -125,6 +127,9 @@ class AdmissionRecommendationSerializer(serializers.ModelSerializer):
             'created_at',
             'updated_at',
         ]
+
+    def get_is_expired(self, obj):
+        return obj.is_expired()
 
 
 class AdmissionSerializer(serializers.ModelSerializer):
@@ -184,6 +189,7 @@ class AdmissionSerializer(serializers.ModelSerializer):
         read_only_fields = [
             'id',
             'admission_number',
+            'ipd_encounter',
             'admission_status',
             'created_at',
             'updated_at',
@@ -192,3 +198,28 @@ class AdmissionSerializer(serializers.ModelSerializer):
     def get_patient_name(self, obj):
         """Get patient full name."""
         return f"{obj.patient.first_name} {obj.patient.last_name}"
+
+    def create(self, validated_data):
+        """Create an admission and auto-create the linked IPD encounter."""
+        patient = validated_data['patient']
+        opd_encounter = validated_data.get('opd_encounter')
+
+        # Auto-create IPD encounter (Track D requirement)
+        ipd_encounter = Encounter.objects.create(
+            patient=patient,
+            encounter_type='IPD',
+            chief_complaint='Admitted for inpatient care',
+        )
+        validated_data['ipd_encounter'] = ipd_encounter
+
+        admission = super().create(validated_data)
+
+        # If admission is created from a recommendation, mark it accepted if still pending.
+        recommendation = admission.recommendation
+        if recommendation and recommendation.status == 'PENDING':
+            try:
+                recommendation.accept(admission.admitting_officer)
+            except ValueError:
+                pass
+
+        return admission
