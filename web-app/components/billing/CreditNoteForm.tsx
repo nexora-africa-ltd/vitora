@@ -29,7 +29,7 @@ import {
 } from '@/components/ui/select';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Loader2 } from 'lucide-react';
-import type { Invoice, CreditNoteCreateData } from '@/lib/types/billing';
+import type { Invoice, CreditNoteCreateData, CreditNoteReason } from '@/lib/types/billing';
 import { formatCurrency } from '@/lib/utils/format';
 
 // ============================================================================
@@ -44,11 +44,9 @@ interface CreditNoteFormProps {
 }
 
 const creditNoteReasons = [
+  { value: 'OVERCHARGE', label: 'Overcharge' },
   { value: 'SERVICE_NOT_RENDERED', label: 'Service Not Rendered' },
-  { value: 'DUPLICATE_CHARGE', label: 'Duplicate Charge' },
-  { value: 'PRICING_ERROR', label: 'Pricing Error' },
-  { value: 'PATIENT_COMPLAINT', label: 'Patient Complaint' },
-  { value: 'INSURANCE_ADJUSTMENT', label: 'Insurance Adjustment' },
+  { value: 'DUPLICATE_BILLING', label: 'Duplicate Billing' },
   { value: 'OTHER', label: 'Other' },
 ];
 
@@ -71,7 +69,7 @@ export function CreditNoteForm({
   onSubmit,
   onCancel,
 }: CreditNoteFormProps) {
-  const maxAmount = parseFloat(invoice.paid_amount || '0');
+  const maxAmount = parseFloat(invoice.amount_paid || '0');
 
   const form = useForm<CreditNoteFormValues>({
     resolver: zodResolver(creditNoteFormSchema),
@@ -86,10 +84,9 @@ export function CreditNoteForm({
   const handleSubmit = (values: CreditNoteFormValues) => {
     const data: CreditNoteCreateData = {
       invoice: invoice.id,
-      reason: values.reason,
+      reason: values.reason as CreditNoteReason,
       amount: values.amount.toString(),
-      description: values.description,
-      items: values.items,
+      reason_detail: values.description,
     };
     onSubmit(data);
   };

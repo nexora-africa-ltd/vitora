@@ -381,11 +381,26 @@ export interface CreditNoteRefundData {
 // Report Types
 // ============================================================================
 
+export interface PaymentMethodBreakdown {
+  amount: number;
+  count: number;
+}
+
 export interface DailyCollectionReport {
   date: string;
   total_collected: string;
+  total_amount: number;
+  total_transactions: number;
   invoice_count: number;
   by_payment_method: Record<PaymentMethod, string>;
+  by_method?: Record<PaymentMethod, PaymentMethodBreakdown>;
+  recent_payments?: Array<{
+    id: number;
+    payment_reference: string;
+    amount: string;
+    method: PaymentMethod;
+    created_at: string;
+  }>;
 }
 
 export interface RevenueSummary {

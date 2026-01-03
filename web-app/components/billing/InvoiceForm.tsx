@@ -123,7 +123,7 @@ export function InvoiceForm({
     const service = services.find((s) => s.id === serviceId);
     if (service) {
       form.setValue(`items.${index}.service_id`, serviceId);
-      form.setValue(`items.${index}.unit_price`, parseFloat(service.price));
+      form.setValue(`items.${index}.unit_price`, parseFloat(service.unit_price));
     }
   };
 
@@ -133,12 +133,6 @@ export function InvoiceForm({
       encounter: values.encounter,
       due_date: format(values.due_date, 'yyyy-MM-dd'),
       notes: values.notes,
-      items: values.items.map((item) => ({
-        service: item.service_id,
-        quantity: item.quantity,
-        unit_price: item.unit_price.toString(),
-        description: item.description,
-      })),
     };
     onSubmit(data);
   };
@@ -289,7 +283,7 @@ export function InvoiceForm({
                                   key={service.id}
                                   value={service.id.toString()}
                                 >
-                                  {service.name} - {formatCurrency(parseFloat(service.price))}
+                                  {service.name} - {formatCurrency(parseFloat(service.unit_price))}
                                 </SelectItem>
                               ))}
                             </SelectContent>

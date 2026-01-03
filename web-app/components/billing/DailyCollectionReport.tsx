@@ -211,8 +211,7 @@ export function DailyCollectionReportView({
                   {formatCurrency(
                     (report.by_method?.CARD?.amount || 0) +
                     (report.by_method?.BANK_TRANSFER?.amount || 0) +
-                    (report.by_method?.INSURANCE?.amount || 0),
-                    'KES'
+                    (report.by_method?.INSURANCE?.amount || 0)
                   )}
                 </div>
                 <p className="text-xs text-muted-foreground">
@@ -240,7 +239,7 @@ export function DailyCollectionReportView({
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {Object.entries(report.by_method || {}).map(([method, data]) => (
+                  {report.by_method && Object.entries(report.by_method).map(([method, data]) => (
                     <TableRow key={method}>
                       <TableCell>
                         <div className="flex items-center gap-2">
@@ -286,9 +285,8 @@ export function DailyCollectionReportView({
                 <Table>
                   <TableHeader>
                     <TableRow>
-                      <TableHead>Receipt #</TableHead>
+                      <TableHead>Reference #</TableHead>
                       <TableHead>Time</TableHead>
-                      <TableHead>Patient</TableHead>
                       <TableHead>Method</TableHead>
                       <TableHead className="text-right">Amount</TableHead>
                     </TableRow>
@@ -297,17 +295,16 @@ export function DailyCollectionReportView({
                     {report.recent_payments.map((payment) => (
                       <TableRow key={payment.id}>
                         <TableCell className="font-medium">
-                          {payment.receipt_number}
+                          {payment.payment_reference}
                         </TableCell>
                         <TableCell>
-                          {format(new Date(payment.payment_date), 'HH:mm')}
+                          {format(new Date(payment.created_at), 'HH:mm')}
                         </TableCell>
-                        <TableCell>{payment.patient_name}</TableCell>
                         <TableCell>
                           <div className="flex items-center gap-2">
-                            {methodIcons[payment.payment_method]}
+                            {methodIcons[payment.method]}
                             <span className="capitalize">
-                              {payment.payment_method.replace('_', ' ')}
+                              {payment.method.replace('_', ' ')}
                             </span>
                           </div>
                         </TableCell>

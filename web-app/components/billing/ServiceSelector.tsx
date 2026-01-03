@@ -141,7 +141,7 @@ export function ServiceSelector({
             <div className="flex items-center gap-2 truncate">
               <span className="truncate">{selectedService.name}</span>
               <Badge variant="secondary" className="ml-auto shrink-0">
-                {formatCurrency(parseFloat(selectedService.price))}
+                {formatCurrency(parseFloat(selectedService.unit_price))}
               </Badge>
             </div>
           ) : (
@@ -193,7 +193,7 @@ export function ServiceSelector({
                       </div>
                     </div>
                     <Badge variant="outline" className="shrink-0 ml-2">
-                      {formatCurrency(parseFloat(service.price))}
+                      {formatCurrency(parseFloat(service.unit_price))}
                     </Badge>
                   </CommandItem>
                 ))}
