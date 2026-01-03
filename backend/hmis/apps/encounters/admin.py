@@ -85,6 +85,13 @@ class EncounterAdmin(admin.ModelAdmin):
         'created_at',
         'updated_at',
     )
+    search_fields = (
+        'patient__first_name',
+        'patient__last_name',
+        'patient__mrn',
+        'chief_complaint',
+        'notes',
+    )
     date_hierarchy = 'created_at'
     inlines = [DiagnosisInline, TreatmentPlanInline]
 
