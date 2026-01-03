@@ -186,7 +186,7 @@ describe('Billing API - Service Categories', () => {
 
       expect(mockApiClient.get).toHaveBeenCalledWith('/api/billing/categories/');
       expect(result.results).toHaveLength(1);
-      expect(result.results[0].code).toBe('CONS');
+      expect(result.results[0]?.code).toBe('CONS');
     });
 
     it('should return active categories by default', async () => {
@@ -236,7 +236,7 @@ describe('Billing API - Services', () => {
 
       expect(mockApiClient.get).toHaveBeenCalledWith(expect.stringContaining('/api/billing/services/'));
       expect(result.results).toHaveLength(1);
-      expect(result.results[0].name).toBe('General Consultation');
+      expect(result.results[0]?.name).toBe('General Consultation');
     });
 
     it('should filter services by category', async () => {
@@ -344,7 +344,7 @@ describe('Billing API - Invoices', () => {
 
       expect(mockApiClient.get).toHaveBeenCalledWith(expect.stringContaining('/api/billing/invoices/'));
       expect(result.results).toHaveLength(1);
-      expect(result.results[0].invoice_number).toBe('INV-20260103-0001');
+      expect(result.results[0]?.invoice_number).toBe('INV-20260103-0001');
     });
 
     it('should filter invoices by status', async () => {
@@ -536,7 +536,7 @@ describe('Billing API - Invoices', () => {
       const result = await billingApi.getOverdueInvoices();
 
       expect(mockApiClient.get).toHaveBeenCalledWith('/api/billing/invoices/overdue/');
-      expect(result.results[0].status).toBe('OVERDUE');
+      expect(result.results[0]?.status).toBe('OVERDUE');
     });
   });
 });
@@ -972,7 +972,7 @@ describe('Billing API - Reports', () => {
 
       expect(mockApiClient.get).toHaveBeenCalledWith('/api/billing/reports/outstanding-balances/');
       expect(result).toHaveLength(1);
-      expect(result[0].days_overdue).toBe(3);
+      expect(result[0]?.days_overdue).toBe(3);
     });
   });
 
