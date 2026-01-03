@@ -248,13 +248,24 @@ export const handlers = [
   http.get(`${API_BASE}/api/inpatient/wards/`, ({ request }) => {
     const url = new URL(request.url);
     const wardType = url.searchParams.get('ward_type');
+    const page = parseInt(url.searchParams.get('page') || '1');
+    const pageSize = parseInt(url.searchParams.get('page_size') || '10');
 
     let wards = [...mockInpatientWards];
     if (wardType) {
       wards = wards.filter((w) => w.ward_type === wardType);
     }
 
-    return HttpResponse.json(wards);
+    const start = (page - 1) * pageSize;
+    const end = start + pageSize;
+    const paginatedWards = wards.slice(start, end);
+
+    return HttpResponse.json({
+      count: wards.length,
+      next: end < wards.length ? `${API_BASE}/api/inpatient/wards/?page=${page + 1}` : null,
+      previous: page > 1 ? `${API_BASE}/api/inpatient/wards/?page=${page - 1}` : null,
+      results: paginatedWards,
+    });
   }),
 
   http.get(`${API_BASE}/api/inpatient/wards/:id/`, ({ params }) => {
@@ -295,12 +306,23 @@ export const handlers = [
     const url = new URL(request.url);
     const ward = url.searchParams.get('ward');
     const statusFilter = url.searchParams.get('status');
+    const page = parseInt(url.searchParams.get('page') || '1');
+    const pageSize = parseInt(url.searchParams.get('page_size') || '10');
 
     let beds = [...mockBeds];
     if (ward) beds = beds.filter((b) => b.ward === Number(ward));
     if (statusFilter) beds = beds.filter((b) => b.status === statusFilter);
 
-    return HttpResponse.json(beds);
+    const start = (page - 1) * pageSize;
+    const end = start + pageSize;
+    const paginatedBeds = beds.slice(start, end);
+
+    return HttpResponse.json({
+      count: beds.length,
+      next: end < beds.length ? `${API_BASE}/api/inpatient/beds/?page=${page + 1}` : null,
+      previous: page > 1 ? `${API_BASE}/api/inpatient/beds/?page=${page - 1}` : null,
+      results: paginatedBeds,
+    });
   }),
 
   http.get(`${API_BASE}/api/inpatient/beds/:id/`, ({ params }) => {

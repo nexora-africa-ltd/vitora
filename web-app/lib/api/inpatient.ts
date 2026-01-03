@@ -18,8 +18,8 @@ import type {
 type Paginated<T> = { count: number; next: string | null; previous: string | null; results: T[] };
 
 export const inpatientApi = {
-  async listWards(): Promise<InpatientWard[]> {
-    const response = await apiClient.get<InpatientWard[]>('/api/inpatient/wards/');
+  async listWards(params?: { ward_type?: string; page?: number; page_size?: number }): Promise<Paginated<InpatientWard>> {
+    const response = await apiClient.get<Paginated<InpatientWard>>('/api/inpatient/wards/', { params });
     return response.data;
   },
 
@@ -36,9 +36,9 @@ export const inpatientApi = {
     return response.data as any;
   },
 
-  async listBeds(params?: BedListParams): Promise<Bed[] | { results: Bed[] }> {
-    const response = await apiClient.get('/api/inpatient/beds/', { params });
-    return response.data as any;
+  async listBeds(params?: BedListParams & { page?: number; page_size?: number }): Promise<Paginated<Bed>> {
+    const response = await apiClient.get<Paginated<Bed>>('/api/inpatient/beds/', { params });
+    return response.data;
   },
 
   async updateBed(bedId: number, data: Partial<Bed>): Promise<Bed> {

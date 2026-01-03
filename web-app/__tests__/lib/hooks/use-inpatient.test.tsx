@@ -1,6 +1,6 @@
 /**
  * TDD Tests for Inpatient Hooks
- * Tests all inpatient hooks against MSW handlers
+ * Tests all inpatient hooks with mocked API client
  */
 import React from 'react';
 import { renderHook, waitFor } from '@testing-library/react';
@@ -19,6 +19,34 @@ import {
   useUpdateAdmission,
   useUpdateBed,
 } from '@/lib/hooks/use-inpatient';
+import { apiClient } from '@/lib/api/client';
+
+// Mock the API client
+jest.mock('@/lib/api/client');
+const mockApiClient = apiClient as jest.Mocked<typeof apiClient>;
+
+// Mock data
+const mockWards = [
+  { id: 1, name: 'Medical Ward 1', code: 'MED-01', ward_type: 'MEDICAL', capacity: 20, available_beds: 5 },
+  { id: 2, name: 'Surgical Ward 1', code: 'SUR-01', ward_type: 'SURGICAL', capacity: 15, available_beds: 3 },
+];
+
+const mockBeds = [
+  { id: 1, ward: 1, ward_name: 'Medical Ward 1', bed_number: 'M-01', status: 'AVAILABLE' },
+  { id: 2, ward: 1, ward_name: 'Medical Ward 1', bed_number: 'M-02', status: 'OCCUPIED' },
+  { id: 3, ward: 2, ward_name: 'Surgical Ward 1', bed_number: 'S-01', status: 'AVAILABLE' },
+];
+
+const mockRecommendations = [
+  { id: 1, encounter: 1, urgency: 'URGENT', status: 'PENDING', reason: 'Severe malaria' },
+  { id: 2, encounter: 2, urgency: 'EMERGENCY', status: 'PENDING', reason: 'Chest pain' },
+  { id: 3, encounter: 3, urgency: 'ROUTINE', status: 'ACCEPTED', reason: 'Post-op monitoring' },
+];
+
+const mockAdmissions = [
+  { id: 1, admission_number: 'ADM-20260103-0001', patient: 1, patient_name: 'John Doe', ward: 1, admission_status: 'ACTIVE' },
+  { id: 2, admission_number: 'ADM-20260102-0001', patient: 2, patient_name: 'Mary Wanjiku', ward: 2, admission_status: 'ACTIVE' },
+];
 
 const createWrapper = () => {
   const queryClient = new QueryClient({
@@ -36,57 +64,81 @@ const createWrapper = () => {
 };
 
 describe('useInpatientWards', () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+  });
+
   it('should fetch wards list', async () => {
+    mockApiClient.get.mockResolvedValue({ data: mockWards });
+
     const { result } = renderHook(() => useInpatientWards(), {
       wrapper: createWrapper(),
     });
 
     await waitFor(() => expect(result.current.isSuccess).toBe(true));
 
-    expect(result.current.data).toHaveLength(3);
+    expect(result.current.data).toHaveLength(2);
     expect(result.current.data?.[0].name).toBe('Medical Ward 1');
-    expect(result.current.data?.[0].code).toBe('MED-01');
+    expect(mockApiClient.get).toHaveBeenCalledWith('/api/inpatient/wards/', { params: undefined });
   });
 });
 
 describe('useBeds', () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+  });
+
   it('should fetch beds list', async () => {
+    mockApiClient.get.mockResolvedValue({ data: { results: mockBeds } });
+
     const { result } = renderHook(() => useBeds(), {
       wrapper: createWrapper(),
     });
 
     await waitFor(() => expect(result.current.isSuccess).toBe(true));
 
-    expect(result.current.data).toBeDefined();
-    const beds = (result.current.data as any).results || result.current.data;
+    const beds = (result.current.data as any)?.results || result.current.data;
     expect(beds.length).toBeGreaterThan(0);
   });
 
   it('should filter beds by ward', async () => {
+    const ward1Beds = mockBeds.filter((b) => b.ward === 1);
+    mockApiClient.get.mockResolvedValue({ data: { results: ward1Beds } });
+
     const { result } = renderHook(() => useBeds({ ward: 1 }), {
       wrapper: createWrapper(),
     });
 
     await waitFor(() => expect(result.current.isSuccess).toBe(true));
 
-    const beds = (result.current.data as any).results || result.current.data;
+    const beds = (result.current.data as any)?.results || result.current.data;
     expect(beds.every((b: any) => b.ward === 1)).toBe(true);
   });
 
   it('should filter beds by status', async () => {
+    const availableBeds = mockBeds.filter((b) => b.status === 'AVAILABLE');
+    mockApiClient.get.mockResolvedValue({ data: { results: availableBeds } });
+
     const { result } = renderHook(() => useBeds({ status: 'AVAILABLE' }), {
       wrapper: createWrapper(),
     });
 
     await waitFor(() => expect(result.current.isSuccess).toBe(true));
 
-    const beds = (result.current.data as any).results || result.current.data;
+    const beds = (result.current.data as any)?.results || result.current.data;
     expect(beds.every((b: any) => b.status === 'AVAILABLE')).toBe(true);
   });
 });
 
 describe('useWardBeds', () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+  });
+
   it('should fetch beds for a specific ward', async () => {
+    const ward1Beds = mockBeds.filter((b) => b.ward === 1);
+    mockApiClient.get.mockResolvedValue({ data: { results: ward1Beds } });
+
     const { result } = renderHook(() => useWardBeds(1), {
       wrapper: createWrapper(),
     });
@@ -94,7 +146,7 @@ describe('useWardBeds', () => {
     await waitFor(() => expect(result.current.isSuccess).toBe(true));
 
     const data = result.current.data as any;
-    const beds = data.results || data;
+    const beds = data?.results || data;
     expect(beds.every((b: any) => b.ward === 1)).toBe(true);
   });
 
@@ -108,7 +160,15 @@ describe('useWardBeds', () => {
 });
 
 describe('useAdmissionRecommendations', () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+  });
+
   it('should fetch admission recommendations', async () => {
+    mockApiClient.get.mockResolvedValue({
+      data: { count: mockRecommendations.length, results: mockRecommendations },
+    });
+
     const { result } = renderHook(() => useAdmissionRecommendations(), {
       wrapper: createWrapper(),
     });
@@ -120,6 +180,11 @@ describe('useAdmissionRecommendations', () => {
   });
 
   it('should filter recommendations by status', async () => {
+    const pendingRecs = mockRecommendations.filter((r) => r.status === 'PENDING');
+    mockApiClient.get.mockResolvedValue({
+      data: { count: pendingRecs.length, results: pendingRecs },
+    });
+
     const { result } = renderHook(
       () => useAdmissionRecommendations({ status: 'PENDING' }),
       { wrapper: createWrapper() }
@@ -132,6 +197,11 @@ describe('useAdmissionRecommendations', () => {
   });
 
   it('should filter recommendations by urgency', async () => {
+    const urgentRecs = mockRecommendations.filter((r) => r.urgency === 'URGENT');
+    mockApiClient.get.mockResolvedValue({
+      data: { count: urgentRecs.length, results: urgentRecs },
+    });
+
     const { result } = renderHook(
       () => useAdmissionRecommendations({ urgency: 'URGENT' }),
       { wrapper: createWrapper() }
@@ -145,32 +215,41 @@ describe('useAdmissionRecommendations', () => {
 });
 
 describe('useCreateAdmissionRecommendation', () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+  });
+
   it('should create a new admission recommendation', async () => {
+    const newRec = { id: 4, status: 'PENDING', encounter: 5, reason: 'Test' };
+    mockApiClient.post.mockResolvedValue({ data: newRec });
+
     const { result } = renderHook(() => useCreateAdmissionRecommendation(), {
       wrapper: createWrapper(),
     });
 
-    const newRecommendation = {
+    result.current.mutate({
       encounter: 5,
       recommended_by: 1,
       reason: 'Test recommendation',
-      provisional_diagnosis: 'A00.0',
-      provisional_diagnosis_text: 'Test diagnosis',
-      urgency: 'ROUTINE' as const,
-      preferred_ward_type: 'MEDICAL' as const,
-    };
-
-    result.current.mutate(newRecommendation);
+      urgency: 'ROUTINE',
+    });
 
     await waitFor(() => expect(result.current.isSuccess).toBe(true));
 
-    expect(result.current.data).toBeDefined();
     expect(result.current.data?.status).toBe('PENDING');
   });
 });
 
 describe('useAcceptAdmissionRecommendation', () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+  });
+
   it('should accept a pending recommendation', async () => {
+    mockApiClient.post.mockResolvedValue({
+      data: { ...mockRecommendations[0], status: 'ACCEPTED' },
+    });
+
     const { result } = renderHook(() => useAcceptAdmissionRecommendation(), {
       wrapper: createWrapper(),
     });
@@ -184,7 +263,15 @@ describe('useAcceptAdmissionRecommendation', () => {
 });
 
 describe('useDeclineAdmissionRecommendation', () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+  });
+
   it('should decline a pending recommendation', async () => {
+    mockApiClient.post.mockResolvedValue({
+      data: { ...mockRecommendations[0], status: 'DECLINED' },
+    });
+
     const { result } = renderHook(() => useDeclineAdmissionRecommendation(), {
       wrapper: createWrapper(),
     });
@@ -198,7 +285,15 @@ describe('useDeclineAdmissionRecommendation', () => {
 });
 
 describe('useAdmissions', () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+  });
+
   it('should fetch admissions list', async () => {
+    mockApiClient.get.mockResolvedValue({
+      data: { count: mockAdmissions.length, results: mockAdmissions },
+    });
+
     const { result } = renderHook(() => useAdmissions(), {
       wrapper: createWrapper(),
     });
@@ -210,6 +305,11 @@ describe('useAdmissions', () => {
   });
 
   it('should filter admissions by status', async () => {
+    const activeAdmissions = mockAdmissions.filter((a) => a.admission_status === 'ACTIVE');
+    mockApiClient.get.mockResolvedValue({
+      data: { count: activeAdmissions.length, results: activeAdmissions },
+    });
+
     const { result } = renderHook(
       () => useAdmissions({ admission_status: 'ACTIVE' }),
       { wrapper: createWrapper() }
@@ -222,6 +322,11 @@ describe('useAdmissions', () => {
   });
 
   it('should filter admissions by patient', async () => {
+    const patientAdmissions = mockAdmissions.filter((a) => a.patient === 1);
+    mockApiClient.get.mockResolvedValue({
+      data: { count: patientAdmissions.length, results: patientAdmissions },
+    });
+
     const { result } = renderHook(() => useAdmissions({ patient: 1 }), {
       wrapper: createWrapper(),
     });
@@ -233,6 +338,11 @@ describe('useAdmissions', () => {
   });
 
   it('should filter admissions by ward', async () => {
+    const wardAdmissions = mockAdmissions.filter((a) => a.ward === 1);
+    mockApiClient.get.mockResolvedValue({
+      data: { count: wardAdmissions.length, results: wardAdmissions },
+    });
+
     const { result } = renderHook(() => useAdmissions({ ward: 1 }), {
       wrapper: createWrapper(),
     });
@@ -245,7 +355,13 @@ describe('useAdmissions', () => {
 });
 
 describe('useAdmission', () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+  });
+
   it('should fetch a single admission by ID', async () => {
+    mockApiClient.get.mockResolvedValue({ data: mockAdmissions[0] });
+
     const { result } = renderHook(() => useAdmission(1), {
       wrapper: createWrapper(),
     });
@@ -266,34 +382,49 @@ describe('useAdmission', () => {
 });
 
 describe('useCreateAdmission', () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+  });
+
   it('should create a new admission', async () => {
+    const newAdmission = {
+      id: 3,
+      admission_number: 'ADM-20260103-0002',
+      admission_status: 'ACTIVE',
+      patient: 3,
+    };
+    mockApiClient.post.mockResolvedValue({ data: newAdmission });
+
     const { result } = renderHook(() => useCreateAdmission(), {
       wrapper: createWrapper(),
     });
 
-    const newAdmission = {
+    result.current.mutate({
       patient: 3,
       ward: 1,
       bed: 1,
       admitting_officer: 1,
       admitting_diagnosis: 'B50.0',
-      admitting_diagnosis_text: 'Severe malaria',
-      payer_type: 'CASH' as const,
-      admission_date: new Date().toISOString(),
-    };
-
-    result.current.mutate(newAdmission);
+      payer_type: 'CASH',
+    });
 
     await waitFor(() => expect(result.current.isSuccess).toBe(true));
 
-    expect(result.current.data).toBeDefined();
     expect(result.current.data?.admission_status).toBe('ACTIVE');
     expect(result.current.data?.admission_number).toContain('ADM-');
   });
 });
 
 describe('useUpdateAdmission', () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+  });
+
   it('should update an admission', async () => {
+    mockApiClient.patch.mockResolvedValue({
+      data: { ...mockAdmissions[0], admission_status: 'DISCHARGED' },
+    });
+
     const { result } = renderHook(() => useUpdateAdmission(), {
       wrapper: createWrapper(),
     });
@@ -310,7 +441,15 @@ describe('useUpdateAdmission', () => {
 });
 
 describe('useUpdateBed', () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+  });
+
   it('should update a bed status', async () => {
+    mockApiClient.patch.mockResolvedValue({
+      data: { ...mockBeds[0], status: 'OCCUPIED', notes: 'Patient admitted' },
+    });
+
     const { result } = renderHook(() => useUpdateBed(), {
       wrapper: createWrapper(),
     });

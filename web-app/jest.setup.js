@@ -1,20 +1,29 @@
 import '@testing-library/jest-dom';
 
-// MSW setup - conditionally import to handle module resolution
-let server;
-try {
-  // Dynamic import for MSW node server
-  const mswModule = require('./__tests__/mocks/server');
-  server = mswModule.server;
-} catch (e) {
-  // MSW not available - tests will work without API mocking
-  console.warn('MSW server not available, API mocking disabled');
-}
+// Polyfill fetch API for Node.js (required for MSW)
+import { TextEncoder, TextDecoder } from 'util';
+global.TextEncoder = TextEncoder;
+global.TextDecoder = TextDecoder;
 
-// Establish API mocking before all tests
-beforeAll(() => {
-  if (server) {
+// MSW setup - Use dynamic import for ES modules
+let server;
+
+beforeAll(async () => {
+  try {
+    // Polyfill Response/Request if not available
+    if (typeof Response === 'undefined') {
+      const { Response, Request, Headers, fetch } = await import('undici');
+      global.Response = Response;
+      global.Request = Request;
+      global.Headers = Headers;
+      global.fetch = fetch;
+    }
+    
+    const serverModule = await import('./__tests__/mocks/server');
+    server = serverModule.server;
     server.listen({ onUnhandledRequest: 'warn' });
+  } catch (e) {
+    console.warn('MSW server setup failed:', e.message);
   }
 });
 
