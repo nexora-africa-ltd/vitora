@@ -87,3 +87,24 @@ export {
   useReleaseResults,
   useCriticalAlerts,
 } from './use-laboratory';
+
+// Triage hooks
+export {
+  triageKeys,
+  useTriageAssessment,
+  useCreateTriageAssessment,
+  useUpdateTriageAssessment,
+  useCalculateTriageCategory,
+  useTriageQueue,
+  useTriageQueueActions,
+  useTriageVitalThresholds,
+  useUpdateVitalThreshold,
+  useToggleThresholdActive,
+  useResetThresholdToDefault,
+  useResetAllThresholdsToDefaults,
+  useExportThresholds,
+  useImportThresholds,
+  useTriageReports,
+  useTriageWaitTimeStats,
+  useExportTriageReport,
+} from './use-triage';
