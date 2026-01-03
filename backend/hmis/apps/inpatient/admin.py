@@ -6,7 +6,7 @@ Sprint 1.5-1.6 Track D: Inpatient Foundation
 
 from django.contrib import admin
 
-from .models import Ward, Bed, AdmissionRecommendation, Admission, Discharge
+from .models import Ward, Bed, AdmissionRecommendation, Admission, Discharge, Transfer
 
 
 @admin.register(Ward)
@@ -298,3 +298,73 @@ class DischargeAdmin(admin.ModelAdmin):
         """Display length of stay."""
         return f"{obj.length_of_stay} days"
     length_of_stay_days.short_description = "Length of Stay"
+
+
+@admin.register(Transfer)
+class TransferAdmin(admin.ModelAdmin):
+    """Admin interface for Transfer model."""
+
+    list_display = [
+        "admission",
+        "source_ward",
+        "destination_ward",
+        "reason",
+        "transfer_date",
+        "transferred_by",
+    ]
+    list_filter = ["reason", "transfer_date", "source_ward", "destination_ward"]
+    search_fields = [
+        "admission__admission_number",
+        "admission__patient__first_name",
+        "admission__patient__last_name",
+        "source_ward__name",
+        "destination_ward__name",
+    ]
+    readonly_fields = ["created_at", "updated_at"]
+    ordering = ["-transfer_date"]
+    
+    fieldsets = (
+        (
+            "Transfer Details",
+            {
+                "fields": (
+                    "admission",
+                    "transfer_date",
+                    "transferred_by",
+                    "reason",
+                    "reason_details",
+                )
+            },
+        ),
+        (
+            "Source Location",
+            {
+                "fields": (
+                    "source_ward",
+                    "source_bed",
+                )
+            },
+        ),
+        (
+            "Destination Location",
+            {
+                "fields": (
+                    "destination_ward",
+                    "destination_bed",
+                )
+            },
+        ),
+        (
+            "Clinical Handover",
+            {
+                "fields": ("clinical_handover_notes",)
+            },
+        ),
+        (
+            "Timestamps",
+            {
+                "fields": ("created_at", "updated_at"),
+                "classes": ("collapse",),
+            },
+        ),
+    )
