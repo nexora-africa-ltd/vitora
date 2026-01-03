@@ -647,3 +647,197 @@ class Admission(TimeStampedModel):
         end_date = self.discharge_date if self.discharge_date else timezone.now()
         delta = end_date - self.admission_date
         return delta.days
+
+
+class Discharge(TimeStampedModel):
+    """
+    Patient discharge record.
+
+    Documents the discharge of a patient from inpatient care,
+    including clinical summary, medications, follow-up plans, and clearances.
+
+    Attributes:
+        admission: Admission being discharged
+        discharge_type: Type of discharge (NORMAL, AGAINST_ADVICE, etc.)
+        discharge_date: Date and time of discharge
+        discharged_by: User who processed the discharge
+        admission_diagnosis: ICD-10 code from admission
+        final_diagnosis: ICD-10 code at discharge
+        final_diagnosis_text: Text description of final diagnosis
+        procedures_performed: Summary of procedures during stay
+        treatment_summary: Overall treatment summary
+        discharge_medications: JSON list of discharge medications
+        follow_up_date: Date for follow-up appointment
+        follow_up_instructions: Instructions for follow-up
+        referral_facility: Facility if transferred
+        referral_reason: Reason for referral
+        patient_instructions: Instructions for patient
+        pharmacy_cleared: Pharmacy clearance status
+        billing_cleared: Billing clearance status
+        lab_results_acknowledged: Lab results reviewed
+    """
+
+    DISCHARGE_TYPE_CHOICES = [
+        ("NORMAL", "Normal Discharge"),
+        ("AGAINST_ADVICE", "Discharge Against Medical Advice"),
+        ("TRANSFERRED", "Transferred to Another Facility"),
+        ("DECEASED", "Deceased"),
+        ("ABSCONDED", "Absconded"),
+    ]
+
+    admission = models.OneToOneField(
+        Admission,
+        on_delete=models.CASCADE,
+        related_name="discharge",
+        help_text="Admission being discharged",
+    )
+
+    # Discharge details
+    discharge_type = models.CharField(
+        max_length=20,
+        choices=DISCHARGE_TYPE_CHOICES,
+        help_text="Type of discharge",
+    )
+    discharge_date = models.DateTimeField(
+        help_text="Date and time of discharge",
+    )
+    discharged_by = models.ForeignKey(
+        User,
+        on_delete=models.PROTECT,
+        related_name="discharges_processed",
+        help_text="User who processed the discharge",
+    )
+
+    # Clinical summary
+    admission_diagnosis = models.CharField(
+        max_length=10,
+        help_text="ICD-10 code from admission",
+    )
+    final_diagnosis = models.CharField(
+        max_length=10,
+        help_text="ICD-10 code at discharge",
+    )
+    final_diagnosis_text = models.CharField(
+        max_length=255,
+        help_text="Text description of final diagnosis",
+    )
+    procedures_performed = models.TextField(
+        blank=True,
+        default="",
+        help_text="Summary of procedures performed during stay",
+    )
+    treatment_summary = models.TextField(
+        help_text="Overall treatment summary",
+    )
+
+    # Discharge medications
+    discharge_medications = models.JSONField(
+        default=list,
+        blank=True,
+        help_text="List of discharge medications with dosage and instructions",
+    )
+
+    # Follow-up
+    follow_up_date = models.DateField(
+        null=True,
+        blank=True,
+        help_text="Date for follow-up appointment",
+    )
+    follow_up_instructions = models.TextField(
+        blank=True,
+        default="",
+        help_text="Instructions for follow-up care",
+    )
+
+    # Referrals
+    referral_facility = models.CharField(
+        max_length=255,
+        blank=True,
+        default="",
+        help_text="Facility name if transferred",
+    )
+    referral_reason = models.TextField(
+        blank=True,
+        default="",
+        help_text="Reason for referral/transfer",
+    )
+
+    # Patient instructions
+    patient_instructions = models.TextField(
+        help_text="Discharge instructions for patient",
+    )
+
+    # Clearances
+    pharmacy_cleared = models.BooleanField(
+        default=False,
+        help_text="Pharmacy clearance obtained",
+    )
+    billing_cleared = models.BooleanField(
+        default=False,
+        help_text="Billing clearance obtained",
+    )
+    lab_results_acknowledged = models.BooleanField(
+        default=False,
+        help_text="Lab results reviewed and acknowledged",
+    )
+
+    class Meta:
+        """Meta options for Discharge model."""
+
+        ordering = ["-discharge_date"]
+        verbose_name = "Discharge"
+        verbose_name_plural = "Discharges"
+
+    def __str__(self):
+        """Return string representation."""
+        return f"Discharge: {self.admission.admission_number} - {self.discharge_type}"
+
+    def save(self, *args, **kwargs):
+        """Override save to update admission and bed status."""
+        # Call parent save first
+        super().save(*args, **kwargs)
+
+        # Update admission status and discharge date
+        if self.discharge_type == "DECEASED":
+            self.admission.status = "DECEASED"
+        elif self.discharge_type == "ABSCONDED":
+            self.admission.status = "ABSCONDED"
+        elif self.discharge_type == "TRANSFERRED":
+            self.admission.status = "TRANSFERRED_OUT"
+        else:
+            self.admission.status = "DISCHARGED"
+
+        self.admission.discharge_date = self.discharge_date
+        self.admission.save()
+
+        # Update bed status to AVAILABLE
+        bed = self.admission.bed
+        if bed.status == "OCCUPIED":
+            bed.status = "AVAILABLE"
+            bed.status_changed_by = self.discharged_by
+            bed.notes = ""
+            bed.save()
+
+    def clean(self):
+        """Validate discharge data."""
+        from django.core.exceptions import ValidationError
+
+        # Validate discharge date is not before admission date
+        if self.discharge_date < self.admission.admission_date:
+            raise ValidationError("Discharge date cannot be before admission date")
+
+        # For normal discharge, require all clearances
+        if self.discharge_type == "NORMAL":
+            if not (self.pharmacy_cleared and self.billing_cleared and self.lab_results_acknowledged):
+                raise ValidationError("All clearances required for normal discharge")
+
+    @property
+    def length_of_stay(self) -> int:
+        """
+        Calculate length of stay in days.
+
+        Returns:
+            Number of days between admission and discharge
+        """
+        delta = self.discharge_date - self.admission.admission_date
+        return delta.days
