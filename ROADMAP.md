@@ -572,8 +572,8 @@ def test_vital_signs_validation():
 - **Next.js web app scaffold** with authentication
 - **Patient dashboard (read-only)** for stakeholder demos
 
-#### Sprint 1.5-1.6: Billing Basics + Lab Workflow + Web Dashboard + Inpatient Foundation (Weeks 9-12)
-**TDD Focus**: Test billing calculations, payment recording, lab workflows, web dashboard, and inpatient admission
+#### Sprint 1.5-1.6: Billing Basics + Lab Workflow + Web Dashboard + Inpatient Foundation + Triage MVP (Weeks 9-12)
+**TDD Focus**: Test billing calculations, payment recording, lab workflows, web dashboard, inpatient admission, and triage workflow
 
 **Track A: Billing Module**
 - [ ] **Write tests first**: Invoice generation tests
@@ -629,6 +629,28 @@ def test_vital_signs_validation():
 - [ ] **Write tests first**: Bed occupancy dashboard tests
 - [ ] Implement real-time bed occupancy API and dashboard component
 
+**Track E: Triage Module MVP (NEW)**
+- [ ] **Write tests first**: TriageAssessment model tests (chief complaint, pain score, AVPU, mobility)
+- [ ] Implement TriageAssessment model linked to Encounter
+- [ ] **Write tests first**: Triage category calculation tests (KETA scale: RED/ORANGE/YELLOW/GREEN/BLUE)
+- [ ] Implement rules-based triage category auto-calculation
+- [ ] **Write tests first**: TriageVitalThreshold model tests (configurable per facility)
+- [ ] Implement TriageVitalThreshold model with critical/warning levels
+- [ ] **Write tests first**: Triage API endpoint tests (CRUD)
+- [ ] Implement triage assessment CRUD endpoints
+- [ ] **Write tests first**: TriageQueue model tests (priority sorting, status)
+- [ ] Implement TriageQueue with priority-based sorting (category + arrival time)
+- [ ] **Write tests first**: Queue management API tests (status updates, called, with_clinician)
+- [ ] Implement queue status update endpoints
+- [ ] **Write tests first**: Triage reporting tests (wait times, volume by category)
+- [ ] Implement basic triage wait time and volume reports
+- [ ] **Write tests first**: Web triage form tests (Playwright)
+- [ ] Implement triage assessment form in web-app
+- [ ] **Write tests first**: Triage queue dashboard tests
+- [ ] Implement real-time triage queue display with color-coded priorities
+- [ ] **Write tests first**: Nurse override tests (category override with reason)
+- [ ] Implement category override with mandatory reason logging
+
 **Deliverables**:
 - Billing module with invoicing
 - M-Pesa integration stub (for testing)
@@ -646,6 +668,15 @@ def test_vital_signs_validation():
   - Patient transfer between wards
   - Discharge workflow with summary and LOS tracking
   - Real-time bed occupancy dashboard
+- **Triage module MVP** (Track E):
+  - TriageAssessment model with KETA scale (RED/ORANGE/YELLOW/GREEN/BLUE)
+  - Clinical assessment: chief complaint, pain score, AVPU mental status, mobility
+  - Rules-based triage category auto-calculation with nurse override
+  - Configurable vital thresholds per facility
+  - Priority-sorted triage queue (category + arrival time)
+  - Real-time queue dashboard with color-coded priorities
+  - Wait time and volume reporting
+  - Full audit trail for Kenya DPA compliance
 
 **TDD Approach (Inpatient Examples)**:
 ```python
@@ -691,6 +722,57 @@ def test_kardex_entries_are_immutable():
     kardex.add_shift_note("BP elevated", nurse=nurse2)
     assert kardex.shift_notes.count() == 2
     assert original_note.content == "Patient stable"  # Unchanged
+```
+
+**TDD Approach (Triage Examples)**:
+```python
+# Test triage category auto-calculation
+def test_critical_spo2_triggers_red_category():
+    # Given: Encounter with dangerously low SpO2
+    encounter = create_encounter(spo2=85)
+    # When: Triage assessment is created
+    assessment = TriageAssessment.objects.create(
+        encounter=encounter,
+        chief_complaint="Difficulty breathing",
+        triaged_by=triage_nurse
+    )
+    # Then: System suggests RED (Emergency) category
+    assert assessment.auto_calculated_category == 'RED'
+    assert 'Severe hypoxemia' in assessment.alerts
+
+# Test nurse can override category
+def test_nurse_override_requires_reason():
+    # Given: System suggests YELLOW
+    assessment = create_triage_assessment(auto_calculated='YELLOW')
+    # When: Nurse upgrades to ORANGE without reason
+    # Then: Validation error
+    with pytest.raises(ValidationError):
+        assessment.triage_category = 'ORANGE'
+        assessment.category_override_reason = ''
+        assessment.full_clean()
+
+# Test queue sorting by priority
+def test_queue_sorted_by_category_then_arrival():
+    # Given: Patients with different categories and arrival times
+    red_late = create_triage(category='RED', arrival='10:15')
+    yellow_early = create_triage(category='YELLOW', arrival='09:30')
+    red_early = create_triage(category='RED', arrival='10:00')
+    # When: Queue is fetched
+    queue = TriageQueue.objects.all()
+    # Then: RED patients first (by arrival), then YELLOW
+    assert queue[0].triage_assessment == red_early
+    assert queue[1].triage_assessment == red_late
+    assert queue[2].triage_assessment == yellow_early
+
+# Test wait time exceeded alert
+def test_wait_time_exceeded_flag():
+    # Given: YELLOW patient (target: <60 min) waiting 75 min
+    assessment = create_triage_assessment(
+        category='YELLOW',
+        arrival_time=timezone.now() - timedelta(minutes=75)
+    )
+    # Then: Wait time exceeded flag is True
+    assert assessment.is_wait_time_exceeded() == True
 ```
 
 #### Sprint 1.7-1.8: Mobile Features + RBAC Enforcement + Pharmacy Integration (Weeks 13-16)
