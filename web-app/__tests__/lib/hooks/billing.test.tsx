@@ -725,6 +725,8 @@ describe('useDailyCollectionReport', () => {
     mockBillingApi.getDailyCollectionReport.mockResolvedValue({
       date: '2026-01-03',
       total_collected: '15000.00',
+      total_amount: 15000,
+      total_transactions: 10,
       invoice_count: 10,
       by_payment_method: {
         CASH: '8000.00',
@@ -806,7 +808,7 @@ describe('useOutstandingBalances', () => {
     await waitFor(() => expect(result.current.isSuccess).toBe(true));
 
     expect(result.current.data).toHaveLength(1);
-    expect(result.current.data?.[0].days_overdue).toBe(3);
+    expect(result.current.data?.[0]?.days_overdue).toBe(3);
   });
 });
 

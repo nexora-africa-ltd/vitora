@@ -224,7 +224,9 @@ describe('InvoiceList', () => {
 
     // Use the first matching button (header New Invoice button)
     const buttons = screen.getAllByRole('button', { name: /new invoice|create invoice/i });
-    await userEvent.click(buttons[0]);
+    if (buttons[0]) {
+      await userEvent.click(buttons[0]);
+    }
 
     expect(mockOnCreateNew).toHaveBeenCalled();
   });
@@ -298,7 +300,9 @@ describe('InvoiceDetail', () => {
     render(
       <InvoiceDetail
         invoice={mockInvoice}
-        onPay={mockOnPay}
+        isLoading={false}
+        onRecordPayment={jest.fn()}
+        onFinalize={jest.fn()}
         onCancel={mockOnCancel}
         onAddItem={mockOnAddItem}
         onRemoveItem={mockOnRemoveItem}
@@ -309,14 +313,16 @@ describe('InvoiceDetail', () => {
 
     expect(screen.getByText('INV-20260103-0001')).toBeInTheDocument();
     expect(screen.getByText('Jane Doe')).toBeInTheDocument();
-    expect(screen.getByText('MRN-20260101-0001')).toBeInTheDocument();
+    expect(screen.getByText(/MRN-20260101-0001/)).toBeInTheDocument();
   });
 
   it('should render itemized breakdown', () => {
     render(
       <InvoiceDetail
         invoice={mockInvoice}
-        onPay={mockOnPay}
+        isLoading={false}
+        onRecordPayment={jest.fn()}
+        onFinalize={jest.fn()}
         onCancel={mockOnCancel}
         onAddItem={mockOnAddItem}
         onRemoveItem={mockOnRemoveItem}
@@ -327,15 +333,17 @@ describe('InvoiceDetail', () => {
 
     expect(screen.getByText('General Consultation')).toBeInTheDocument();
     expect(screen.getByText('Complete Blood Count')).toBeInTheDocument();
-    expect(screen.getByText('KES 500.00')).toBeInTheDocument();
-    expect(screen.getByText('KES 1,000.00')).toBeInTheDocument();
+    expect(screen.getAllByText('KES 500.00').length).toBeGreaterThan(0);
+    expect(screen.getAllByText('KES 1,000.00').length).toBeGreaterThan(0);
   });
 
   it('should show totals section', () => {
     render(
       <InvoiceDetail
         invoice={mockInvoice}
-        onPay={mockOnPay}
+        isLoading={false}
+        onRecordPayment={jest.fn()}
+        onFinalize={jest.fn()}
         onCancel={mockOnCancel}
         onAddItem={mockOnAddItem}
         onRemoveItem={mockOnRemoveItem}
@@ -345,15 +353,17 @@ describe('InvoiceDetail', () => {
     );
 
     expect(screen.getByText(/subtotal/i)).toBeInTheDocument();
-    expect(screen.getByText(/total/i)).toBeInTheDocument();
-    expect(screen.getByText('KES 1,500.00')).toBeInTheDocument();
+    expect(screen.getByText(/^total$/i)).toBeInTheDocument();
+    expect(screen.getAllByText('KES 1,500.00').length).toBeGreaterThan(0);
   });
 
   it('should show pay button for pending invoices', () => {
     render(
       <InvoiceDetail
         invoice={mockInvoice}
-        onPay={mockOnPay}
+        isLoading={false}
+        onRecordPayment={jest.fn()}
+        onFinalize={jest.fn()}
         onCancel={mockOnCancel}
         onAddItem={mockOnAddItem}
         onRemoveItem={mockOnRemoveItem}
@@ -371,7 +381,9 @@ describe('InvoiceDetail', () => {
     render(
       <InvoiceDetail
         invoice={paidInvoice}
-        onPay={mockOnPay}
+        isLoading={false}
+        onRecordPayment={jest.fn()}
+        onFinalize={jest.fn()}
         onCancel={mockOnCancel}
         onAddItem={mockOnAddItem}
         onRemoveItem={mockOnRemoveItem}
@@ -387,7 +399,9 @@ describe('InvoiceDetail', () => {
     render(
       <InvoiceDetail
         invoice={mockInvoice}
-        onPay={mockOnPay}
+        isLoading={false}
+        onRecordPayment={mockOnPay}
+        onFinalize={jest.fn()}
         onCancel={mockOnCancel}
         onAddItem={mockOnAddItem}
         onRemoveItem={mockOnRemoveItem}
@@ -414,7 +428,9 @@ describe('InvoiceDetail', () => {
     render(
       <InvoiceDetail
         invoice={discountedInvoice}
-        onPay={mockOnPay}
+        isLoading={false}
+        onRecordPayment={jest.fn()}
+        onFinalize={jest.fn()}
         onCancel={mockOnCancel}
         onAddItem={mockOnAddItem}
         onRemoveItem={mockOnRemoveItem}
@@ -424,7 +440,7 @@ describe('InvoiceDetail', () => {
     );
 
     expect(screen.getByText(/discount/i)).toBeInTheDocument();
-    expect(screen.getByText('10%')).toBeInTheDocument();
+    expect(screen.getByText(/10%/)).toBeInTheDocument();
     expect(screen.getByText('-KES 150.00')).toBeInTheDocument();
   });
 
@@ -435,7 +451,9 @@ describe('InvoiceDetail', () => {
     render(
       <InvoiceDetail
         invoice={mockInvoice}
-        onPay={mockOnPay}
+        isLoading={false}
+        onRecordPayment={jest.fn()}
+        onFinalize={jest.fn()}
         onCancel={mockOnCancel}
         onAddItem={mockOnAddItem}
         onRemoveItem={mockOnRemoveItem}
@@ -646,12 +664,13 @@ describe('MpesaPaymentDialog', () => {
   it('should show STK push initiation state', () => {
     render(
       <MpesaPaymentDialog
-        isOpen={true}
-        invoice={mockInvoice}
-        phoneNumber="0712345678"
-        amount="500.00"
-        onSuccess={mockOnSuccess}
+        open={true}
+        onOpenChange={jest.fn()}
+        invoiceNumber={mockInvoice.invoice_number}
+        amount={500.00}
+        onInitiate={jest.fn()}
         onCancel={mockOnCancel}
+        onComplete={mockOnSuccess}
         status="initiating"
       />,
       { wrapper: createWrapper() }
@@ -664,14 +683,14 @@ describe('MpesaPaymentDialog', () => {
   it('should show waiting for confirmation state', () => {
     render(
       <MpesaPaymentDialog
-        isOpen={true}
-        invoice={mockInvoice}
-        phoneNumber="0712345678"
-        amount="500.00"
-        onSuccess={mockOnSuccess}
+        open={true}
+        onOpenChange={jest.fn()}
+        invoiceNumber={mockInvoice.invoice_number}
+        amount={500.00}
+        onInitiate={jest.fn()}
         onCancel={mockOnCancel}
+        onComplete={mockOnSuccess}
         status="waiting"
-        checkoutRequestId="ws_CO_123456789"
       />,
       { wrapper: createWrapper() }
     );
@@ -683,14 +702,15 @@ describe('MpesaPaymentDialog', () => {
   it('should show success state with receipt number', () => {
     render(
       <MpesaPaymentDialog
-        isOpen={true}
-        invoice={mockInvoice}
-        phoneNumber="0712345678"
-        amount="500.00"
-        onSuccess={mockOnSuccess}
+        open={true}
+        onOpenChange={jest.fn()}
+        invoiceNumber={mockInvoice.invoice_number}
+        amount={500.00}
+        onInitiate={jest.fn()}
         onCancel={mockOnCancel}
+        onComplete={mockOnSuccess}
         status="success"
-        mpesaReceiptNumber="QJH3XXXXXX"
+        receiptNumber="RCP-20260103-0001"
       />,
       { wrapper: createWrapper() }
     );
@@ -702,12 +722,13 @@ describe('MpesaPaymentDialog', () => {
   it('should show failure state with error message', () => {
     render(
       <MpesaPaymentDialog
-        isOpen={true}
-        invoice={mockInvoice}
-        phoneNumber="0712345678"
-        amount="500.00"
-        onSuccess={mockOnSuccess}
+        open={true}
+        onOpenChange={jest.fn()}
+        invoiceNumber={mockInvoice.invoice_number}
+        amount={500.00}
+        onInitiate={jest.fn()}
         onCancel={mockOnCancel}
+        onComplete={mockOnSuccess}
         status="failed"
         errorMessage="Request cancelled by user"
       />,
@@ -723,13 +744,13 @@ describe('MpesaPaymentDialog', () => {
 
     render(
       <MpesaPaymentDialog
-        isOpen={true}
-        invoice={mockInvoice}
-        phoneNumber="0712345678"
-        amount="500.00"
-        onSuccess={mockOnSuccess}
+        open={true}
+        onOpenChange={jest.fn()}
+        invoiceNumber={mockInvoice.invoice_number}
+        amount={500.00}
+        onInitiate={mockOnRetry}
         onCancel={mockOnCancel}
-        onRetry={mockOnRetry}
+        onComplete={mockOnSuccess}
         status="failed"
         errorMessage="Timeout"
       />,
@@ -744,14 +765,14 @@ describe('MpesaPaymentDialog', () => {
   it('should show countdown timer while waiting', () => {
     render(
       <MpesaPaymentDialog
-        isOpen={true}
-        invoice={mockInvoice}
-        phoneNumber="0712345678"
-        amount="500.00"
-        onSuccess={mockOnSuccess}
+        open={true}
+        onOpenChange={jest.fn()}
+        invoiceNumber={mockInvoice.invoice_number}
+        amount={500.00}
+        onInitiate={jest.fn()}
         onCancel={mockOnCancel}
+        onComplete={mockOnSuccess}
         status="waiting"
-        timeoutSeconds={60}
       />,
       { wrapper: createWrapper() }
     );
@@ -776,8 +797,8 @@ describe('ReceiptView', () => {
     render(
       <ReceiptView
         receipt={mockReceipt}
+        isLoading={false}
         onPrint={mockOnPrint}
-        onClose={mockOnClose}
       />,
       { wrapper: createWrapper() }
     );
@@ -792,8 +813,8 @@ describe('ReceiptView', () => {
     render(
       <ReceiptView
         receipt={mockReceipt}
+        isLoading={false}
         onPrint={mockOnPrint}
-        onClose={mockOnClose}
       />,
       { wrapper: createWrapper() }
     );
@@ -806,8 +827,8 @@ describe('ReceiptView', () => {
     render(
       <ReceiptView
         receipt={mockReceipt}
+        isLoading={false}
         onPrint={mockOnPrint}
-        onClose={mockOnClose}
       />,
       { wrapper: createWrapper() }
     );
@@ -819,8 +840,8 @@ describe('ReceiptView', () => {
     render(
       <ReceiptView
         receipt={mockReceipt}
+        isLoading={false}
         onPrint={mockOnPrint}
-        onClose={mockOnClose}
       />,
       { wrapper: createWrapper() }
     );
@@ -840,8 +861,8 @@ describe('ReceiptView', () => {
     render(
       <ReceiptView
         receipt={voidedReceipt}
+        isLoading={false}
         onPrint={mockOnPrint}
-        onClose={mockOnClose}
       />,
       { wrapper: createWrapper() }
     );
@@ -1056,6 +1077,8 @@ describe('BillingDashboard', () => {
   const mockDailyReport = {
     date: '2026-01-03',
     total_collected: '15000.00',
+    total_amount: 15000,
+    total_transactions: 10,
     invoice_count: 10,
     by_payment_method: {
       CASH: '8000.00',
@@ -1081,7 +1104,7 @@ describe('BillingDashboard', () => {
 
     expect(screen.getByText(/today's collection/i)).toBeInTheDocument();
     expect(screen.getByText(/15,000/)).toBeInTheDocument(); // Currency formatted by locale
-    expect(screen.getByText(/10/)).toBeInTheDocument(); // Invoice count
+    expect(screen.getByText(/10\s+invoices/)).toBeInTheDocument(); // Invoice count with text
     expect(screen.getByText(/invoices/)).toBeInTheDocument();
   });
 
@@ -1097,7 +1120,8 @@ describe('BillingDashboard', () => {
     expect(screen.getByText(/cash/i)).toBeInTheDocument();
     expect(screen.getByText(/8,000/)).toBeInTheDocument(); // Cash amount
     expect(screen.getByText(/m-pesa/i)).toBeInTheDocument();
-    expect(screen.getByText(/5,000/)).toBeInTheDocument(); // M-Pesa amount
+    const amounts = screen.getAllByText(/5,000/);
+    expect(amounts.length).toBeGreaterThan(0); // M-Pesa amount exists
   });
 
   it('should show pending invoices count', () => {

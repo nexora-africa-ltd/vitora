@@ -46,7 +46,8 @@ interface CreditNoteFormProps {
 const creditNoteReasons = [
   { value: 'OVERCHARGE', label: 'Overcharge' },
   { value: 'SERVICE_NOT_RENDERED', label: 'Service Not Rendered' },
-  { value: 'DUPLICATE_BILLING', label: 'Duplicate Billing' },
+  { value: 'DUPLICATE_BILLING', label: 'Duplicate Charge' },
+  { value: 'PRICING_ERROR', label: 'Pricing Error' },
   { value: 'OTHER', label: 'Other' },
 ];
 
@@ -86,6 +87,7 @@ export function CreditNoteForm({
       invoice: invoice.id,
       reason: values.reason as CreditNoteReason,
       amount: values.amount.toString(),
+      description: values.description,
       reason_detail: values.description,
     };
     onSubmit(data);
@@ -126,7 +128,7 @@ export function CreditNoteForm({
               <FormLabel>Reason for Credit Note *</FormLabel>
               <Select value={field.value} onValueChange={field.onChange}>
                 <FormControl>
-                  <SelectTrigger>
+                  <SelectTrigger role="combobox" aria-label="Reason for credit note">
                     <SelectValue placeholder="Select a reason" />
                   </SelectTrigger>
                 </FormControl>
@@ -155,7 +157,6 @@ export function CreditNoteForm({
                   type="number"
                   min="0"
                   step="0.01"
-                  max={maxAmount}
                   {...field}
                   onChange={(e) => field.onChange(parseFloat(e.target.value) || 0)}
                 />

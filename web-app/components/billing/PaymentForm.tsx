@@ -20,16 +20,10 @@ import {
 } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Loader2, CreditCard, Smartphone, Banknote, Building } from 'lucide-react';
+import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import type { Invoice, PaymentMethod, PaymentCreateData } from '@/lib/types/billing';
 import { formatCurrency } from '@/lib/utils/format';
 
@@ -52,6 +46,8 @@ const paymentFormSchema = z.object({
   notes: z.string().optional(),
   phone_number: z.string().optional(),
   cash_received: z.number().optional(),
+  card_last_four: z.string().optional(),
+  card_type: z.string().optional(),
 });
 
 type PaymentFormValues = z.infer<typeof paymentFormSchema>;
@@ -69,6 +65,20 @@ const paymentMethodIcons: Record<PaymentMethod, React.ReactNode> = {
 
 };
 
+function formatKES(amount: number): string {
+  return `KES ${amount.toFixed(2)}`;
+}
+
+function isValidKenyanPhoneNumber(value: string): boolean {
+  const trimmed = value.trim();
+  if (!trimmed) return false;
+
+  // Accept: 0712345678, 254712345678, +254712345678 (and same for 1xx)
+  const normalized = trimmed.startsWith('+') ? trimmed : trimmed;
+  const digitsOnly = normalized.replace(/[^\d+]/g, '');
+  return /^(0|254|\+254)?[17]\d{8}$/.test(digitsOnly);
+}
+
 // ============================================================================
 // Main Component
 // ============================================================================
@@ -80,7 +90,9 @@ export function PaymentForm({
   onCancel,
   onMpesaPayment,
 }: PaymentFormProps) {
-  const balance = parseFloat(invoice.total_amount) - parseFloat(invoice.amount_paid || '0');
+  const computedBalance = parseFloat(invoice.total_amount) - parseFloat(invoice.amount_paid || '0');
+  const balanceDue = invoice.balance_due ? parseFloat(invoice.balance_due) : Number.NaN;
+  const balance = Number.isFinite(balanceDue) ? balanceDue : computedBalance;
 
   const form = useForm<PaymentFormValues>({
     resolver: zodResolver(paymentFormSchema),
@@ -91,6 +103,8 @@ export function PaymentForm({
       notes: '',
       phone_number: '',
       cash_received: balance,
+      card_last_four: '',
+      card_type: '',
     },
   });
 
@@ -104,6 +118,24 @@ export function PaymentForm({
     : 0;
 
   const handleSubmit = (values: PaymentFormValues) => {
+    if (values.amount > balance) {
+      form.setError('amount', {
+        type: 'manual',
+        message: 'Amount cannot exceed balance',
+      });
+      return;
+    }
+
+    if (values.payment_method === 'MPESA') {
+      if (!values.phone_number || !isValidKenyanPhoneNumber(values.phone_number)) {
+        form.setError('phone_number', {
+          type: 'manual',
+          message: 'Enter a valid Kenyan phone number',
+        });
+        return;
+      }
+    }
+
     // For M-Pesa, initiate STK Push instead of direct payment
     if (values.payment_method === 'MPESA' && onMpesaPayment && values.phone_number) {
       onMpesaPayment(values.phone_number, values.amount);
@@ -113,9 +145,21 @@ export function PaymentForm({
     const data: PaymentCreateData = {
       invoice: invoice.id,
       method: values.payment_method,
-      amount: values.amount.toString(),
-      notes: values.notes,
+      amount: values.amount.toFixed(2),
     };
+
+    if (values.notes && values.notes.trim()) {
+      data.notes = values.notes;
+    }
+
+    if (values.payment_method === 'MPESA' && values.phone_number) {
+      data.mpesa_phone_number = values.phone_number;
+    }
+
+    if (values.payment_method === 'CARD') {
+      if (values.card_last_four) data.card_last_four = values.card_last_four;
+      if (values.card_type) data.card_type = values.card_type;
+    }
     onSubmit(data);
   };
 
@@ -158,45 +202,30 @@ export function PaymentForm({
           render={({ field }) => (
             <FormItem>
               <FormLabel>Payment Method *</FormLabel>
-              <Select value={field.value} onValueChange={field.onChange}>
-                <FormControl>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select payment method" />
-                  </SelectTrigger>
-                </FormControl>
-                <SelectContent>
-                  <SelectItem value="CASH">
-                    <div className="flex items-center gap-2">
-                      {paymentMethodIcons.CASH}
-                      Cash
+              <FormControl>
+                <RadioGroup
+                  value={field.value}
+                  onValueChange={field.onChange}
+                  className="grid gap-3"
+                >
+                  {([
+                    { value: 'CASH' as const, label: 'Cash', icon: paymentMethodIcons.CASH },
+                    { value: 'MPESA' as const, label: 'M-Pesa', icon: paymentMethodIcons.MPESA },
+                    { value: 'CARD' as const, label: 'Card', icon: paymentMethodIcons.CARD },
+                  ]).map((method) => (
+                    <div key={method.value} className="flex items-center space-x-3">
+                      <RadioGroupItem value={method.value} id={`method-${method.value}`} />
+                      <label
+                        htmlFor={`method-${method.value}`}
+                        className="flex items-center gap-2 text-sm font-medium leading-none"
+                      >
+                        {method.icon}
+                        {method.label}
+                      </label>
                     </div>
-                  </SelectItem>
-                  <SelectItem value="MPESA">
-                    <div className="flex items-center gap-2">
-                      {paymentMethodIcons.MPESA}
-                      M-Pesa
-                    </div>
-                  </SelectItem>
-                  <SelectItem value="CARD">
-                    <div className="flex items-center gap-2">
-                      {paymentMethodIcons.CARD}
-                      Card
-                    </div>
-                  </SelectItem>
-                  <SelectItem value="BANK_TRANSFER">
-                    <div className="flex items-center gap-2">
-                      {paymentMethodIcons.BANK_TRANSFER}
-                      Bank Transfer
-                    </div>
-                  </SelectItem>
-                  <SelectItem value="INSURANCE">
-                    <div className="flex items-center gap-2">
-                      {paymentMethodIcons.INSURANCE}
-                      Insurance
-                    </div>
-                  </SelectItem>
-                </SelectContent>
-              </Select>
+                  ))}
+                </RadioGroup>
+              </FormControl>
               <FormMessage />
             </FormItem>
           )}
@@ -214,7 +243,6 @@ export function PaymentForm({
                   type="number"
                   min="0"
                   step="0.01"
-                  max={balance}
                   {...field}
                   onChange={(e) => field.onChange(parseFloat(e.target.value) || 0)}
                 />
@@ -251,6 +279,43 @@ export function PaymentForm({
           />
         )}
 
+        {/* Card Details */}
+        {watchedMethod === 'CARD' && (
+          <div className="grid gap-4 md:grid-cols-2">
+            <FormField
+              control={form.control}
+              name="card_last_four"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Last 4 Digits *</FormLabel>
+                  <FormControl>
+                    <Input
+                      inputMode="numeric"
+                      placeholder="1234"
+                      maxLength={4}
+                      {...field}
+                    />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+            <FormField
+              control={form.control}
+              name="card_type"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Card Type *</FormLabel>
+                  <FormControl>
+                    <Input placeholder="Visa / MasterCard" {...field} />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+          </div>
+        )}
+
         {/* Cash Received (for cash payments) */}
         {watchedMethod === 'CASH' && (
           <>
@@ -276,9 +341,9 @@ export function PaymentForm({
             {cashChange > 0 && (
               <Alert>
                 <AlertDescription className="flex justify-between items-center">
-                  <span>Change to give:</span>
+                  <span>Change</span>
                   <span className="font-bold text-lg" data-testid="cash-change">
-                    {formatCurrency(cashChange)}
+                    {formatKES(cashChange)}
                   </span>
                 </AlertDescription>
               </Alert>

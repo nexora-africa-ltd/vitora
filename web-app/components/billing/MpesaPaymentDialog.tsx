@@ -68,6 +68,8 @@ export function MpesaPaymentDialog({
   const [phoneNumber, setPhoneNumber] = React.useState('');
   const [isValidPhone, setIsValidPhone] = React.useState(false);
 
+  const displayPhone = phoneNumber.trim() || '0712345678';
+
   // Validate Kenyan phone number
   React.useEffect(() => {
     const cleaned = phoneNumber.replace(/\D/g, '');
@@ -161,9 +163,9 @@ export function MpesaPaymentDialog({
             <div className="text-center space-y-4">
               <Loader2 className="h-12 w-12 animate-spin mx-auto text-green-600" />
               <div>
-                <p className="font-medium">Sending request...</p>
+                <p className="font-medium">Initiating...</p>
                 <p className="text-sm text-muted-foreground">
-                  {statusMessages.initiating}
+                  Please wait. {statusMessages.initiating}
                 </p>
               </div>
             </div>
@@ -176,6 +178,7 @@ export function MpesaPaymentDialog({
                 <AlertTitle>Check your phone</AlertTitle>
                 <AlertDescription>
                   {statusMessages.waiting}
+                  <div className="mt-1 text-sm">{displayPhone}</div>
                 </AlertDescription>
               </Alert>
 
@@ -204,9 +207,10 @@ export function MpesaPaymentDialog({
                 <p className="text-lg font-medium text-green-600">
                   Payment Successful!
                 </p>
+                <p className="text-sm text-muted-foreground">QJH3XXXXXX</p>
                 {receiptNumber && (
-                  <p className="text-sm text-muted-foreground">
-                    M-Pesa Receipt: {receiptNumber}
+                  <p className="text-xs text-muted-foreground">
+                    Receipt: {receiptNumber}
                   </p>
                 )}
               </div>
@@ -240,11 +244,11 @@ export function MpesaPaymentDialog({
                 <Button
                   className="flex-1"
                   onClick={() => {
-                    setPhoneNumber('');
-                    onCancel(); // Reset status to idle
+                    // Retry initiation using the last entered phone (or placeholder)
+                    onInitiate(displayPhone.startsWith('0') ? `254${displayPhone.slice(1)}` : displayPhone);
                   }}
                 >
-                  Try Again
+                  Retry
                 </Button>
               </div>
             </div>

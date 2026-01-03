@@ -44,6 +44,14 @@ import {
 import type { Invoice, InvoiceItem, InvoiceStatus } from '@/lib/types/billing';
 import { formatCurrency, formatDate } from '@/lib/utils/format';
 
+function formatKES(amount: number): string {
+  const formatted = amount.toLocaleString('en-KE', {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  });
+  return `KES ${formatted}`;
+}
+
 // ============================================================================
 // Types
 // ============================================================================
@@ -205,17 +213,17 @@ export function InvoiceDetail({
           <CardContent>
             <div className="space-y-1">
               <div className="flex justify-between">
-                <span className="text-muted-foreground">Total:</span>
-                <span className="font-semibold">{formatCurrency(total)}</span>
+                <span className="text-muted-foreground">Amount:</span>
+                <span className="font-semibold">{formatKES(total)}</span>
               </div>
               <div className="flex justify-between">
                 <span className="text-muted-foreground">Paid:</span>
-                <span className="text-green-600">{formatCurrency(paid)}</span>
+                <span className="text-green-600">{formatKES(paid)}</span>
               </div>
               <div className="flex justify-between border-t pt-1">
                 <span className="font-medium">Balance:</span>
                 <span className={`font-bold ${balance > 0 ? 'text-red-600' : 'text-green-600'}`}>
-                  {formatCurrency(balance)}
+                  {formatKES(balance)}
                 </span>
               </div>
             </div>
@@ -241,7 +249,7 @@ export function InvoiceDetail({
                 <TableHead>Service</TableHead>
                 <TableHead className="text-right">Qty</TableHead>
                 <TableHead className="text-right">Unit Price</TableHead>
-                <TableHead className="text-right">Total</TableHead>
+                <TableHead className="text-right">Amount</TableHead>
                 {canEdit && onRemoveItem && <TableHead className="w-12" />}
               </TableRow>
             </TableHeader>
@@ -251,7 +259,7 @@ export function InvoiceDetail({
                   <TableCell>
                     <div>
                       <div className="font-medium">{item.service_name}</div>
-                      {item.description && (
+                      {item.description && item.description !== item.service_name && (
                         <div className="text-sm text-muted-foreground">
                           {item.description}
                         </div>
@@ -260,10 +268,10 @@ export function InvoiceDetail({
                   </TableCell>
                   <TableCell className="text-right">{item.quantity}</TableCell>
                   <TableCell className="text-right">
-                    {formatCurrency(parseFloat(item.unit_price))}
+                    {formatKES(parseFloat(item.unit_price))}
                   </TableCell>
                   <TableCell className="text-right font-medium">
-                    {formatCurrency(parseFloat(item.line_total))}
+                    {formatKES(parseFloat(item.line_total))}
                   </TableCell>
                   {canEdit && onRemoveItem && (
                     <TableCell>
@@ -284,24 +292,29 @@ export function InvoiceDetail({
               <TableRow>
                 <TableCell colSpan={canEdit && onRemoveItem ? 3 : 2}>Subtotal</TableCell>
                 <TableCell className="text-right" colSpan={canEdit && onRemoveItem ? 2 : 1}>
-                  {formatCurrency(subtotal)}
+                  {formatKES(subtotal)}
                 </TableCell>
               </TableRow>
               {discount > 0 && (
                 <TableRow>
                   <TableCell colSpan={canEdit && onRemoveItem ? 3 : 2} className="text-green-600">
                     Discount
-                    {invoice.discount_type === 'PERCENTAGE' && ` (${invoice.discount_value}%)`}
+                    {invoice.discount_type === 'PERCENTAGE' && (() => {
+                      const pct = parseFloat(invoice.discount_value || '0');
+                      if (!Number.isFinite(pct) || pct <= 0) return '';
+                      const pctLabel = Number.isInteger(pct) ? `${pct}%` : `${pct}%`;
+                      return ` (${pctLabel})`;
+                    })()}
                   </TableCell>
                   <TableCell className="text-right text-green-600" colSpan={canEdit && onRemoveItem ? 2 : 1}>
-                    -{formatCurrency(discount)}
+                    -{formatKES(discount)}
                   </TableCell>
                 </TableRow>
               )}
               <TableRow className="font-bold">
                 <TableCell colSpan={canEdit && onRemoveItem ? 3 : 2}>Total</TableCell>
                 <TableCell className="text-right" colSpan={canEdit && onRemoveItem ? 2 : 1}>
-                  {formatCurrency(total)}
+                  {formatKES(total)}
                 </TableCell>
               </TableRow>
             </TableFooter>
@@ -312,12 +325,19 @@ export function InvoiceDetail({
       {/* Action Buttons */}
       <div className="flex flex-wrap gap-2 justify-end">
         {/* Print */}
-        {onPrint && (
-          <Button variant="outline" onClick={() => onPrint(invoice)}>
-            <Printer className="h-4 w-4 mr-2" />
-            Print
-          </Button>
-        )}
+        <Button
+          variant="outline"
+          onClick={() => {
+            if (onPrint) {
+              onPrint(invoice);
+              return;
+            }
+            window.print();
+          }}
+        >
+          <Printer className="h-4 w-4 mr-2" />
+          Print
+        </Button>
 
         {/* Email */}
         {onEmail && (

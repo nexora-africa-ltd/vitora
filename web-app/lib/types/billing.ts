@@ -322,6 +322,7 @@ export type CreditNoteReason =
   | 'OVERCHARGE' 
   | 'SERVICE_NOT_RENDERED' 
   | 'DUPLICATE_BILLING' 
+  | 'PRICING_ERROR'
   | 'OTHER';
 
 export type CreditNoteStatus = 
@@ -364,7 +365,10 @@ export interface CreditNoteCreateData {
   invoice: number;
   amount: string;
   reason: CreditNoteReason;
-  reason_detail: string;
+  // Legacy/API field
+  reason_detail?: string;
+  // UI-friendly alias used by some callers/tests
+  description?: string;
 }
 
 export interface CreditNoteApprovalData {

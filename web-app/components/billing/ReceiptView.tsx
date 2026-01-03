@@ -11,7 +11,7 @@ import { Separator } from '@/components/ui/separator';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Printer, Download } from 'lucide-react';
 import type { Receipt } from '@/lib/types/billing';
-import { formatCurrency, formatDateTime } from '@/lib/utils/format';
+import { formatDateTime } from '@/lib/utils/format';
 
 // ============================================================================
 // Types
@@ -92,8 +92,8 @@ export function ReceiptView({
   isLoading,
   onPrint,
   onDownload,
-  facilityName = 'Healthcare Facility',
-  facilityAddress = 'P.O. Box 12345, Nairobi',
+  facilityName = 'Demo Health Facility',
+  facilityAddress = '123 Health Street, Nairobi',
   facilityPhone = '+254 700 123 456',
 }: ReceiptViewProps) {
   const printRef = React.useRef<HTMLDivElement>(null);
@@ -119,6 +119,7 @@ export function ReceiptView({
   }
 
   const amount = parseFloat(receipt.amount);
+  const amountDisplay = `KES ${amount.toFixed(2)}`;
 
   return (
     <div className="space-y-4">
@@ -146,6 +147,14 @@ export function ReceiptView({
           <h3 className="text-lg font-semibold">PAYMENT RECEIPT</h3>
         </CardHeader>
         <CardContent className="space-y-4">
+          {receipt.is_voided && (
+            <div className="rounded-md border border-destructive/40 bg-destructive/5 p-3 text-sm">
+              <div className="font-medium text-destructive">Voided</div>
+              {receipt.void_reason && (
+                <div className="text-muted-foreground">{receipt.void_reason}</div>
+              )}
+            </div>
+          )}
           {/* Receipt Details */}
           <div className="grid grid-cols-2 gap-y-2 text-sm">
             <div className="text-muted-foreground">Receipt No:</div>
@@ -181,13 +190,13 @@ export function ReceiptView({
           <div className="text-center space-y-2">
             <div className="text-sm text-muted-foreground">Amount Paid</div>
             <div className="text-3xl font-bold" data-testid="receipt-amount">
-              {formatCurrency(amount)}
+              {amountDisplay}
             </div>
             <div
               className="text-sm text-muted-foreground italic"
               data-testid="amount-in-words"
             >
-              ({amountToWords(amount)})
+              {amountToWords(amount)}
             </div>
           </div>
 

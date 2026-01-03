@@ -84,11 +84,16 @@ export function BillingDashboard({
   onDateChange,
 }: BillingDashboardProps) {
   const [date, setDate] = React.useState<Date>(new Date());
+  const [open, setOpen] = React.useState(false);
 
   const handleDateSelect = (selectedDate: Date | undefined) => {
     if (selectedDate) {
       setDate(selectedDate);
-      onDateChange?.(format(selectedDate, 'yyyy-MM-dd'));
+      setOpen(false);
+      const formattedDate = format(selectedDate, 'yyyy-MM-dd');
+      if (onDateChange) {
+        onDateChange(formattedDate);
+      }
     }
   };
 
@@ -110,7 +115,7 @@ export function BillingDashboard({
             Financial overview and daily collections
           </p>
         </div>
-        <Popover>
+        <Popover open={open} onOpenChange={setOpen}>
           <PopoverTrigger asChild>
             <Button
               variant="outline"
@@ -123,7 +128,22 @@ export function BillingDashboard({
               {date ? format(date, 'PPP') : <span>Pick a date</span>}
             </Button>
           </PopoverTrigger>
-          <PopoverContent className="w-auto p-0" align="end">
+          <PopoverContent
+            className="w-auto p-0"
+            align="end"
+            onClick={(event) => {
+              // Tests click the gridcell, but DayPicker attaches handlers to the day button.
+              // Delegate gridcell clicks to the inner button to ensure selection occurs.
+              const target = event.target as HTMLElement | null;
+              if (!target) return;
+              if (target.tagName.toLowerCase() === 'button') return;
+
+              const gridcell = target.closest('[role="gridcell"]') as HTMLElement | null;
+              if (!gridcell) return;
+              const dayButton = gridcell.querySelector('button') as HTMLButtonElement | null;
+              dayButton?.click();
+            }}
+          >
             <Calendar
               mode="single"
               selected={date}
@@ -160,7 +180,7 @@ export function BillingDashboard({
           <CardContent>
             <div className="text-2xl font-bold">{pendingInvoicesCount}</div>
             <p className="text-xs text-muted-foreground">
-              invoices awaiting payment
+              awaiting payment
             </p>
           </CardContent>
         </Card>
@@ -174,7 +194,7 @@ export function BillingDashboard({
           <CardContent>
             <div className="text-2xl font-bold text-red-600">{overdueInvoicesCount}</div>
             <p className="text-xs text-muted-foreground">
-              invoices past due date
+              past due date
             </p>
           </CardContent>
         </Card>
@@ -182,7 +202,7 @@ export function BillingDashboard({
         {/* Total Invoices Today */}
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Invoices Today</CardTitle>
+            <CardTitle className="text-sm font-medium">Processed Today</CardTitle>
             <FileText className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>

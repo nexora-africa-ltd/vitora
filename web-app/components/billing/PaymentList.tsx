@@ -136,7 +136,7 @@ export function PaymentList({
       <div className="flex flex-col sm:flex-row gap-4 items-start sm:items-center">
         {/* Payment Method filter */}
         <Select value={methodFilter} onValueChange={handleMethodChange}>
-          <SelectTrigger className="w-full sm:w-40" aria-label="Payment Method">
+          <SelectTrigger className="w-full sm:w-40" role="combobox" aria-label="Payment Method">
             <SelectValue placeholder="Filter by method" />
           </SelectTrigger>
           <SelectContent>
@@ -151,7 +151,7 @@ export function PaymentList({
 
         {/* Status filter */}
         <Select value={statusFilter} onValueChange={handleStatusChange}>
-          <SelectTrigger className="w-full sm:w-40" aria-label="Status">
+          <SelectTrigger className="w-full sm:w-40" role="combobox" aria-label="Status">
             <SelectValue placeholder="Filter by status" />
           </SelectTrigger>
           <SelectContent>
