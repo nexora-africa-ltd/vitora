@@ -25,7 +25,7 @@ class TestReportAPIEndpoints:
         assert response.status_code == status.HTTP_200_OK
         assert 'total_collections' in response.data
         assert 'invoice_count' in response.data
-        assert 'by_method' in response.data
+        assert 'by_payment_method' in response.data
 
     def test_daily_collection_requires_date(self, authenticated_client):
         """Should return 400 if date parameter is missing."""
@@ -50,7 +50,7 @@ class TestReportAPIEndpoints:
         assert response.status_code == status.HTTP_200_OK
         assert 'total_revenue' in response.data
         assert 'by_category' in response.data
-        assert 'by_method' in response.data
+        assert 'by_payment_method' in response.data
 
     def test_revenue_summary_requires_dates(self, authenticated_client):
         """Should return 400 if date parameters are missing."""
@@ -105,7 +105,7 @@ class TestReportAPIEndpoints:
         
         assert response.status_code == status.HTTP_200_OK
         assert 'by_method' in response.data
-        assert isinstance(response.data['by_method'], list)
+        assert isinstance(response.data['by_method'], dict)
 
     def test_report_endpoints_require_authentication(self, api_client):
         """Should return 401 for unauthenticated requests."""

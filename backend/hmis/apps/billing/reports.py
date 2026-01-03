@@ -58,7 +58,7 @@ class BillingReportService:
         # Outstanding balances (invoices not fully paid)
         outstanding = Invoice.objects.filter(
             Q(status=Invoice.Status.PENDING) | Q(status=Invoice.Status.PARTIAL) | Q(status=Invoice.Status.OVERDUE)
-        ).aggregate(total=Sum('balance'))['total'] or Decimal('0')
+        ).aggregate(total=Sum('balance_due'))['total'] or Decimal('0')
         
         return {
             'date': date,
@@ -165,7 +165,7 @@ class BillingReportService:
             Q(status=Invoice.Status.PENDING) | 
             Q(status=Invoice.Status.PARTIAL) | 
             Q(status=Invoice.Status.OVERDUE)
-        ).filter(balance__gt=0).select_related('patient')
+        ).filter(balance_due__gt=0).select_related('patient')
         
         result = []
         today = date.today()
@@ -184,8 +184,8 @@ class BillingReportService:
                 'invoice_date': invoice.invoice_date,
                 'due_date': invoice.due_date,
                 'total_amount': invoice.total_amount,
-                'paid_amount': invoice.paid_amount,
-                'balance': invoice.balance,
+                'paid_amount': invoice.amount_paid,
+                'balance': invoice.balance_due,
                 'days_overdue': days_overdue,
                 'status': invoice.status
             })

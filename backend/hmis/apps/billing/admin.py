@@ -57,10 +57,9 @@ class ServiceAdmin(admin.ModelAdmin):
         "code",
         "unit_price",
         "sha_code",
-        "is_available",
         "is_active",
     ]
-    list_filter = ["category", "is_available", "is_active"]
+    list_filter = ["category", "is_active"]
     search_fields = ["name", "code", "sha_code", "description"]
     ordering = ["name"]
     autocomplete_fields = ["category"]
@@ -80,7 +79,7 @@ class ServiceAdmin(admin.ModelAdmin):
         ),
         (
             "Availability",
-            {"fields": ("is_available", "is_active")},
+            {"fields": ("is_active",)},
         ),
     )
 
@@ -112,8 +111,8 @@ class InvoiceAdmin(admin.ModelAdmin):
         "discount_amount",
         "insurance_amount",
         "total_amount",
-        "paid_amount",
-        "balance",
+        "amount_paid",
+        "balance_due",
         "created_at",
         "updated_at",
     ]
@@ -135,8 +134,8 @@ class InvoiceAdmin(admin.ModelAdmin):
                     "discount_amount",
                     "insurance_amount",
                     "total_amount",
-                    "paid_amount",
-                    "balance",
+                    "amount_paid",
+                    "balance_due",
                 )
             },
         ),
@@ -160,7 +159,7 @@ class InvoiceAdmin(admin.ModelAdmin):
     @admin.display(description="Balance")
     def balance_display(self, obj):
         """Display balance with color coding."""
-        balance = obj.balance
+        balance = obj.balance_due
         if balance > 0:
             return format_html(
                 '<span style="color: red; font-weight: bold;">{}</span>',
@@ -176,17 +175,17 @@ class PaymentAdmin(admin.ModelAdmin):
     list_display = [
         "payment_reference",
         "invoice",
-        "payment_method",
+        "method",
         "amount",
         "status",
         "payment_date",
     ]
-    list_filter = ["payment_method", "status", "payment_date"]
+    list_filter = ["method", "status", "payment_date"]
     search_fields = [
         "payment_reference",
         "invoice__invoice_number",
         "invoice__patient__mrn",
-        "mpesa_receipt",
+        "mpesa_receipt_number",
     ]
     readonly_fields = [
         "payment_reference",
@@ -202,12 +201,12 @@ class PaymentAdmin(admin.ModelAdmin):
     fieldsets = (
         (
             "Payment Information",
-            {"fields": ("payment_reference", "invoice", "payment_method", "amount", "payment_date")},
+            {"fields": ("payment_reference", "invoice", "method", "amount", "payment_date")},
         ),
         (
             "M-Pesa Details",
             {
-                "fields": ("mpesa_receipt", "mpesa_phone", "mpesa_transaction_id"),
+                "fields": ("mpesa_receipt_number", "mpesa_phone", "mpesa_transaction_id"),
                 "classes": ("collapse",),
             },
         ),
@@ -234,10 +233,10 @@ class ReceiptAdmin(admin.ModelAdmin):
         "payment",
         "patient_name",
         "amount",
-        "issued_date",
-        "is_void",
+        "receipt_date",
+        "is_voided",
     ]
-    list_filter = ["is_void", "issued_date"]
+    list_filter = ["is_voided", "receipt_date"]
     search_fields = [
         "receipt_number",
         "patient_name",
@@ -249,19 +248,18 @@ class ReceiptAdmin(admin.ModelAdmin):
         "payment",
         "patient_name",
         "amount",
-        "amount_words",
+        "amount_in_words",
         "issued_by",
-        "issued_date",
+        "receipt_date",
         "created_at",
-        "updated_at",
     ]
-    ordering = ["-issued_date", "-created_at"]
-    date_hierarchy = "issued_date"
+    ordering = ["-receipt_date", "-created_at"]
+    date_hierarchy = "receipt_date"
 
     fieldsets = (
         (
             "Receipt Information",
-            {"fields": ("receipt_number", "payment", "patient_name", "amount", "amount_words")},
+            {"fields": ("receipt_number", "payment", "patient_name", "amount", "amount_in_words")},
         ),
         (
             "Facility Details",
@@ -269,12 +267,12 @@ class ReceiptAdmin(admin.ModelAdmin):
         ),
         (
             "Status & Issuance",
-            {"fields": ("is_void", "void_reason", "issued_by", "issued_date")},
+            {"fields": ("is_voided", "void_reason", "issued_by", "receipt_date")},
         ),
         (
             "Timestamps",
             {
-                "fields": ("created_at", "updated_at"),
+                "fields": ("created_at",),
                 "classes": ("collapse",),
             },
         ),
@@ -291,9 +289,9 @@ class CreditNoteAdmin(admin.ModelAdmin):
         "amount",
         "status",
         "reason",
-        "requested_date",
+        "created_at",
     ]
-    list_filter = ["status", "reason", "requested_date", "approved_date"]
+    list_filter = ["status", "reason", "created_at", "approved_at"]
     search_fields = [
         "credit_note_number",
         "invoice__invoice_number",
@@ -302,15 +300,14 @@ class CreditNoteAdmin(admin.ModelAdmin):
     readonly_fields = [
         "credit_note_number",
         "requested_by",
-        "requested_date",
-        "approved_by",
-        "approved_date",
         "created_at",
+        "approved_by",
+        "approved_at",
         "updated_at",
     ]
-    ordering = ["-requested_date", "-created_at"]
+    ordering = ["-created_at"]
     autocomplete_fields = ["invoice"]
-    date_hierarchy = "requested_date"
+    date_hierarchy = "created_at"
 
     fieldsets = (
         (
@@ -319,20 +316,20 @@ class CreditNoteAdmin(admin.ModelAdmin):
         ),
         (
             "Request Details",
-            {"fields": ("requested_by", "requested_date", "notes")},
+            {"fields": ("requested_by", "created_at", "reason_detail")},
         ),
         (
             "Approval Details",
-            {"fields": ("status", "approved_by", "approved_date", "approval_notes")},
+            {"fields": ("status", "approved_by", "approved_at")},
         ),
         (
             "Refund Details",
-            {"fields": ("refund_processed", "refund_date", "refund_reference")},
+            {"fields": ("refund_method", "refunded_at", "refund_reference")},
         ),
         (
             "Timestamps",
             {
-                "fields": ("created_at", "updated_at"),
+                "fields": ("updated_at",),
                 "classes": ("collapse",),
             },
         ),

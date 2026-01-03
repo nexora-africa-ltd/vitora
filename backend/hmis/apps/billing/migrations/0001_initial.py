@@ -12,7 +12,7 @@ class Migration(migrations.Migration):
 
     dependencies = [
         ("encounters", "0009_add_encounter_status_workflow"),
-        ("laboratory", "0010_add_requisition_pdf_and_sample_type"),
+        ("laboratory", "0009_add_requisition_pdf_and_sample_type"),
         ("patients", "0007_add_location_fields"),
         ("pharmacy", "0005_stockadjustment"),
         migrations.swappable_dependency(settings.AUTH_USER_MODEL),
