@@ -110,6 +110,20 @@ def test_user(db):
 
 
 @pytest.fixture
+def another_user(db):
+    """Create and return another test user."""
+    from django.contrib.auth import get_user_model
+
+    User = get_user_model()
+    user = User.objects.create_user(
+        username="anotheruser",
+        email="another@example.com",
+        password="testpassword123",
+    )
+    return user
+
+
+@pytest.fixture
 def authenticated_client(api_client, test_user):
     """Provide authenticated API client."""
     api_client.force_authenticate(user=test_user)

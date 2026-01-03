@@ -6,7 +6,18 @@ Sprint 1.5-1.6 Track D: Inpatient Foundation
 
 from django.contrib import admin
 
-from .models import Ward, Bed, AdmissionRecommendation, Admission, Discharge, Transfer, WardRound
+from .models import (
+    Ward, 
+    Bed, 
+    AdmissionRecommendation, 
+    Admission, 
+    Discharge, 
+    Transfer, 
+    WardRound,
+    NursingKardex,
+    KardexShiftNote,
+    KardexHandoverNote,
+)
 
 
 @admin.register(Ward)
@@ -439,3 +450,143 @@ class WardRoundAdmin(admin.ModelAdmin):
             },
         ),
     )
+
+
+@admin.register(NursingKardex)
+class NursingKardexAdmin(admin.ModelAdmin):
+    """Admin interface for NursingKardex model."""
+
+    list_display = [
+        "admission",
+        "fall_risk",
+        "pressure_sore_risk",
+        "created_at",
+        "updated_at",
+    ]
+    list_filter = ["fall_risk", "pressure_sore_risk", "created_at"]
+    search_fields = [
+        "admission__admission_number",
+        "admission__patient__first_name",
+        "admission__patient__last_name",
+        "nursing_problems",
+    ]
+    readonly_fields = ["admission", "created_at", "updated_at"]
+    ordering = ["-created_at"]
+
+    fieldsets = (
+        (
+            "Admission",
+            {
+                "fields": ("admission",)
+            },
+        ),
+        (
+            "Nursing Care Plan",
+            {
+                "fields": (
+                    "nursing_problems",
+                    "interventions",
+                    "monitoring_requirements",
+                    "care_task_frequency",
+                )
+            },
+        ),
+        (
+            "Risk Assessments",
+            {
+                "fields": (
+                    "fall_risk",
+                    "pressure_sore_risk",
+                )
+            },
+        ),
+        (
+            "Timestamps",
+            {
+                "fields": ("created_at", "updated_at"),
+                "classes": ("collapse",),
+            },
+        ),
+    )
+
+
+class KardexShiftNoteInline(admin.TabularInline):
+    """Inline admin for shift notes in Kardex."""
+    
+    model = KardexShiftNote
+    extra = 0
+    readonly_fields = ["nurse", "shift", "content", "timestamp"]
+    can_delete = False  # Append-only design
+
+
+class KardexHandoverNoteInline(admin.TabularInline):
+    """Inline admin for handover notes in Kardex."""
+    
+    model = KardexHandoverNote
+    extra = 0
+    readonly_fields = ["outgoing_nurse", "incoming_nurse", "shift_ending", "pending_tasks", "escalations", "acknowledged_at", "created_at"]
+    can_delete = False
+
+
+@admin.register(KardexShiftNote)
+class KardexShiftNoteAdmin(admin.ModelAdmin):
+    """Admin interface for KardexShiftNote model."""
+
+    list_display = [
+        "kardex",
+        "shift",
+        "nurse",
+        "timestamp",
+    ]
+    list_filter = ["shift", "timestamp"]
+    search_fields = [
+        "kardex__admission__admission_number",
+        "kardex__admission__patient__first_name",
+        "kardex__admission__patient__last_name",
+        "nurse__username",
+        "content",
+    ]
+    readonly_fields = ["kardex", "shift", "nurse", "content", "timestamp"]
+    ordering = ["-timestamp"]
+
+    def has_add_permission(self, request):
+        """Shift notes should be added via Kardex interface."""
+        return False
+
+    def has_delete_permission(self, request, obj=None):
+        """Shift notes are append-only and cannot be deleted."""
+        return False
+
+
+@admin.register(KardexHandoverNote)
+class KardexHandoverNoteAdmin(admin.ModelAdmin):
+    """Admin interface for KardexHandoverNote model."""
+
+    list_display = [
+        "kardex",
+        "outgoing_nurse",
+        "incoming_nurse",
+        "shift_ending",
+        "acknowledged_at",
+        "created_at",
+    ]
+    list_filter = ["shift_ending", "acknowledged_at", "created_at"]
+    search_fields = [
+        "kardex__admission__admission_number",
+        "kardex__admission__patient__first_name",
+        "kardex__admission__patient__last_name",
+        "outgoing_nurse__username",
+        "incoming_nurse__username",
+        "pending_tasks",
+        "escalations",
+    ]
+    readonly_fields = ["kardex", "outgoing_nurse", "incoming_nurse", "shift_ending", "pending_tasks", "escalations", "created_at"]
+    ordering = ["-created_at"]
+
+    def has_add_permission(self, request):
+        """Handover notes should be added via Kardex interface."""
+        return False
+
+    def has_delete_permission(self, request, obj=None):
+        """Handover notes should not be deleted for audit purposes."""
+        return False

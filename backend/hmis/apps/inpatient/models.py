@@ -1041,3 +1041,190 @@ class WardRound(TimeStampedModel):
             raise ValidationError(
                 {"round_date": "Round date cannot be in the future"}
             )
+
+
+class NursingKardex(models.Model):
+    """
+    Nursing Kardex for inpatient care coordination.
+    
+    One-to-one relationship with Admission. Auto-created when admission is saved.
+    Contains nursing care plan, risk assessments, and related shift/handover notes.
+    """
+    
+    RISK_CHOICES = [
+        ('LOW', 'Low'),
+        ('MODERATE', 'Moderate'),
+        ('HIGH', 'High'),
+    ]
+    
+    admission = models.OneToOneField(
+        Admission,
+        on_delete=models.CASCADE,
+        related_name='kardex',
+        help_text="One Kardex per admission"
+    )
+    
+    # Nursing care plan (editable sections)
+    nursing_problems = models.TextField(
+        blank=True,
+        help_text="Identified nursing problems/diagnoses"
+    )
+    interventions = models.TextField(
+        blank=True,
+        help_text="Nursing interventions and care activities"
+    )
+    monitoring_requirements = models.TextField(
+        blank=True,
+        help_text="What to monitor and how often"
+    )
+    care_task_frequency = models.TextField(
+        blank=True,
+        help_text="Frequency of care tasks (e.g., 'Wound dressing BD')"
+    )
+    
+    # Risk assessments
+    fall_risk = models.CharField(
+        max_length=20,
+        choices=RISK_CHOICES,
+        default='LOW',
+        help_text="Patient fall risk level"
+    )
+    pressure_sore_risk = models.CharField(
+        max_length=20,
+        choices=RISK_CHOICES,
+        default='LOW',
+        help_text="Pressure sore risk level"
+    )
+    
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+    
+    class Meta:
+        verbose_name_plural = "Nursing Kardexes"
+        ordering = ['-created_at']
+    
+    def __str__(self):
+        return f"Kardex for {self.admission.patient} - Admission {self.admission.admission_number}"
+
+
+class KardexShiftNote(models.Model):
+    """
+    Individual shift note entry in Kardex (append-only design).
+    
+    Nurses add notes throughout their shift documenting patient status,
+    care provided, and observations. Notes are immutable once created
+    (timestamp auto-set on creation and cannot be changed).
+    """
+    
+    SHIFT_CHOICES = [
+        ('DAY', 'Day Shift'),
+        ('NIGHT', 'Night Shift'),
+    ]
+    
+    kardex = models.ForeignKey(
+        NursingKardex,
+        on_delete=models.CASCADE,
+        related_name='shift_notes',
+        help_text="Kardex this note belongs to"
+    )
+    shift = models.CharField(
+        max_length=10,
+        choices=SHIFT_CHOICES,
+        help_text="Which shift this note is from"
+    )
+    nurse = models.ForeignKey(
+        User,
+        on_delete=models.PROTECT,
+        help_text="Nurse who created this note"
+    )
+    content = models.TextField(
+        help_text="Shift note content - observations, care provided, patient status"
+    )
+    timestamp = models.DateTimeField(
+        auto_now_add=True,
+        help_text="When this note was created (immutable)"
+    )
+    
+    class Meta:
+        ordering = ['-timestamp']
+        indexes = [
+            models.Index(fields=['kardex', '-timestamp']),
+            models.Index(fields=['shift', '-timestamp']),
+        ]
+    
+    def __str__(self):
+        return f"{self.shift} shift note by {self.nurse.username} at {self.timestamp}"
+
+
+class KardexHandoverNote(models.Model):
+    """
+    Handover notes for shift transitions.
+    
+    Documents pending tasks, escalations, and important information
+    to be communicated between outgoing and incoming nursing staff.
+    """
+    
+    kardex = models.ForeignKey(
+        NursingKardex,
+        on_delete=models.CASCADE,
+        related_name='handover_notes',
+        help_text="Kardex this handover belongs to"
+    )
+    outgoing_nurse = models.ForeignKey(
+        User,
+        on_delete=models.PROTECT,
+        related_name='kardex_handovers_given',
+        help_text="Nurse ending their shift"
+    )
+    incoming_nurse = models.ForeignKey(
+        User,
+        on_delete=models.PROTECT,
+        related_name='kardex_handovers_received',
+        help_text="Nurse starting their shift"
+    )
+    shift_ending = models.CharField(
+        max_length=10,
+        help_text="Which shift is ending (DAY/NIGHT)"
+    )
+    pending_tasks = models.TextField(
+        help_text="Tasks that need completion in next shift"
+    )
+    escalations = models.TextField(
+        blank=True,
+        help_text="Issues escalated to doctors or management"
+    )
+    acknowledged_at = models.DateTimeField(
+        null=True,
+        blank=True,
+        help_text="When incoming nurse acknowledged the handover"
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+    
+    class Meta:
+        ordering = ['-created_at']
+        indexes = [
+            models.Index(fields=['kardex', '-created_at']),
+        ]
+    
+    def __str__(self):
+        status = "✓ Acknowledged" if self.acknowledged_at else "Pending"
+        return f"Handover from {self.outgoing_nurse.username} to {self.incoming_nurse.username} - {status}"
+
+
+# ============================================================================
+# Signals
+# ============================================================================
+
+from django.db.models.signals import post_save
+from django.dispatch import receiver
+
+
+@receiver(post_save, sender=Admission)
+def create_kardex_for_admission(sender, instance, created, **kwargs):
+    """
+    Auto-create Nursing Kardex when an Admission is created.
+    
+    This ensures every admission has a Kardex for nursing care coordination.
+    """
+    if created:
+        NursingKardex.objects.create(admission=instance)
