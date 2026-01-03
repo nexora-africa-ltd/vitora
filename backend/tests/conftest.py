@@ -110,6 +110,20 @@ def test_user(db):
 
 
 @pytest.fixture
+def another_user(db):
+    """Create and return another test user."""
+    from django.contrib.auth import get_user_model
+
+    User = get_user_model()
+    user = User.objects.create_user(
+        username="anotheruser",
+        email="another@example.com",
+        password="testpassword123",
+    )
+    return user
+
+
+@pytest.fixture
 def authenticated_client(api_client, test_user):
     """Provide authenticated API client."""
     api_client.force_authenticate(user=test_user)
@@ -326,3 +340,72 @@ def sample_lab_result(db, sample_lab_order, test_user):
         result_flag='NORMAL',
         entered_by=test_user,
     )
+
+
+@pytest.fixture
+def sample_admission(db, sample_patient, sample_encounter, test_user):
+    """Create a sample admission for testing."""
+    from hmis.apps.inpatient.models import Ward, Bed, Admission
+    from decimal import Decimal
+    from django.utils import timezone
+    
+    # Create ward
+    ward = Ward.objects.create(
+        name="Medical Ward 1",
+        code="MED-01",
+        ward_type="MEDICAL",
+        capacity=20,
+        daily_rate=Decimal("500.00"),
+    )
+    
+    # Create bed
+    bed = Bed.objects.create(
+        ward=ward,
+        bed_number="B-101",
+        bed_type="STANDARD",
+        status="AVAILABLE",
+    )
+    
+    # Create IPD encounter
+    ipd_encounter = sample_patient.encounters.create(
+        encounter_type="IPD",
+        chief_complaint="Admitted for further management",
+    )
+    
+    # Create admission
+    admission = Admission.objects.create(
+        patient=sample_patient,
+        opd_encounter=sample_encounter,
+        ipd_encounter=ipd_encounter,
+        admission_date=timezone.now(),
+        admitting_diagnosis="J18.9",
+        admitting_diagnosis_text="Pneumonia, unspecified",
+        admitting_officer=test_user,
+        attending_doctor=test_user,
+        ward=ward,
+        bed=bed,
+        payer_type="CASH",
+    )
+    
+    return admission
+
+
+@pytest.fixture
+def sample_admission_recommendation(db, sample_encounter, test_user):
+    """Create a sample admission recommendation for testing."""
+    from hmis.apps.inpatient.models import AdmissionRecommendation
+    from django.utils import timezone
+    from datetime import timedelta
+    
+    recommendation = AdmissionRecommendation.objects.create(
+        encounter=sample_encounter,
+        recommended_by=test_user,
+        reason="Suspected pneumonia requiring hospitalization",
+        provisional_diagnosis="J18.9",
+        provisional_diagnosis_text="Pneumonia, unspecified",
+        urgency="URGENT",
+        preferred_ward_type="MEDICAL",
+        expires_at=timezone.now() + timedelta(hours=24),
+    )
+    
+    return recommendation
