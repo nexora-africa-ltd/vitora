@@ -11,12 +11,13 @@ const customJestConfig = {
   testEnvironment: 'jest-environment-jsdom',
   moduleNameMapper: {
     '^@/(.*)$': '<rootDir>/$1',
-    '^msw$': '<rootDir>/node_modules/msw/lib/core/index.js',
     '^msw/node$': '<rootDir>/node_modules/msw/lib/node/index.js',
+    '^msw$': '<rootDir>/node_modules/msw/lib/core/index.js',
+    '^@mswjs/interceptors/ClientRequest$': '<rootDir>/node_modules/@mswjs/interceptors/lib/node/interceptors/ClientRequest/index.js',
   },
   // Handle ESM modules that need to be transformed
   transformIgnorePatterns: [
-    'node_modules/(?!(msw)/)',
+    '/node_modules/(?!(msw|@mswjs)/)/',
   ],
   collectCoverageFrom: [
     'lib/**/*.{js,jsx,ts,tsx}',
