@@ -61,7 +61,7 @@ import type {
 /**
  * Build query string from params object
  */
-function buildQueryString(params: Record<string, unknown>): string {
+function buildQueryString<T extends object>(params: T): string {
   const searchParams = new URLSearchParams();
   
   Object.entries(params).forEach(([key, value]) => {

@@ -38,12 +38,10 @@ const tens = ['', '', 'Twenty', 'Thirty', 'Forty', 'Fifty', 'Sixty', 'Seventy', 
 function numberToWords(num: number): string {
   if (num === 0) return 'Zero';
   
-  const numStr = Math.floor(num).toString();
-  
   if (num < 0) return 'Negative ' + numberToWords(-num);
-  if (num < 20) return ones[num];
-  if (num < 100) return tens[Math.floor(num / 10)] + (num % 10 ? ' ' + ones[num % 10] : '');
-  if (num < 1000) return ones[Math.floor(num / 100)] + ' Hundred' + (num % 100 ? ' ' + numberToWords(num % 100) : '');
+  if (num < 20) return ones[num] || '';
+  if (num < 100) return tens[Math.floor(num / 10)] + (num % 10 ? ' ' + (ones[num % 10] || '') : '');
+  if (num < 1000) return (ones[Math.floor(num / 100)] || '') + ' Hundred' + (num % 100 ? ' ' + numberToWords(num % 100) : '');
   if (num < 1000000) return numberToWords(Math.floor(num / 1000)) + ' Thousand' + (num % 1000 ? ' ' + numberToWords(num % 1000) : '');
   if (num < 1000000000) return numberToWords(Math.floor(num / 1000000)) + ' Million' + (num % 1000000 ? ' ' + numberToWords(num % 1000000) : '');
   
@@ -156,10 +154,10 @@ export function ReceiptView({
             </div>
             
             <div className="text-muted-foreground">Date:</div>
-            <div className="text-right">{formatDateTime(receipt.payment_date)}</div>
+            <div className="text-right">{formatDateTime(receipt.receipt_date)}</div>
             
             <div className="text-muted-foreground">Invoice:</div>
-            <div className="text-right">{receipt.invoice_number}</div>
+            <div className="text-right">{receipt.payment_reference}</div>
             
             <div className="text-muted-foreground">Patient:</div>
             <div className="text-right">{receipt.patient_name}</div>
@@ -175,13 +173,6 @@ export function ReceiptView({
             <div className="text-right capitalize">
               {receipt.payment_method.replace('_', ' ')}
             </div>
-            
-            {receipt.reference_number && (
-              <>
-                <div className="text-muted-foreground">Reference:</div>
-                <div className="text-right">{receipt.reference_number}</div>
-              </>
-            )}
           </div>
 
           <Separator />
@@ -206,9 +197,6 @@ export function ReceiptView({
           <div className="text-center text-xs text-muted-foreground space-y-1">
             <p>Thank you for your payment</p>
             <p>This is a computer-generated receipt</p>
-            {receipt.created_by_name && (
-              <p>Processed by: {receipt.created_by_name}</p>
-            )}
           </div>
         </CardContent>
       </Card>

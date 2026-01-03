@@ -148,7 +148,7 @@ export function InvoiceDetail({
   const subtotal = parseFloat(invoice.subtotal || invoice.total_amount);
   const discount = parseFloat(invoice.discount_amount || '0');
   const total = parseFloat(invoice.total_amount);
-  const paid = parseFloat(invoice.paid_amount || '0');
+  const paid = parseFloat(invoice.amount_paid || '0');
   const balance = total - paid;
 
   return (
@@ -263,7 +263,7 @@ export function InvoiceDetail({
                     {formatCurrency(parseFloat(item.unit_price))}
                   </TableCell>
                   <TableCell className="text-right font-medium">
-                    {formatCurrency(parseFloat(item.total))}
+                    {formatCurrency(parseFloat(item.line_total))}
                   </TableCell>
                   {canEdit && onRemoveItem && (
                     <TableCell>
@@ -291,7 +291,7 @@ export function InvoiceDetail({
                 <TableRow>
                   <TableCell colSpan={canEdit && onRemoveItem ? 3 : 2} className="text-green-600">
                     Discount
-                    {invoice.discount_type === 'percentage' && ` (${invoice.discount_percentage}%)`}
+                    {invoice.discount_type === 'PERCENTAGE' && ` (${invoice.discount_value}%)`}
                   </TableCell>
                   <TableCell className="text-right text-green-600" colSpan={canEdit && onRemoveItem ? 2 : 1}>
                     -{formatCurrency(discount)}

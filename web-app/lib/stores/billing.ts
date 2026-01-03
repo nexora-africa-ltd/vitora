@@ -135,7 +135,7 @@ interface BillingState {
 // Default Values
 // ============================================================================
 
-const getToday = () => new Date().toISOString().split('T')[0];
+const getToday = (): string => new Date().toISOString().split('T')[0] ?? '';
 
 const defaultInvoiceFilters: InvoiceFilters = {
   status: undefined,

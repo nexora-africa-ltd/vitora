@@ -96,9 +96,9 @@ export function BillingDashboard({
     return <DashboardSkeleton />;
   }
 
-  const totalCollected = dailyReport?.total_collected || '0.00';
+  const totalCollected = parseFloat(dailyReport?.total_collected || '0');
   const invoiceCount = dailyReport?.invoice_count || 0;
-  const byMethod = dailyReport?.by_payment_method || {};
+  const byMethod: Record<string, string> = dailyReport?.by_payment_method || {};
 
   return (
     <div className="space-y-6">
@@ -203,7 +203,7 @@ export function BillingDashboard({
           <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-5">
             {(Object.keys(methodConfig) as PaymentMethod[]).map((method) => {
               const config = methodConfig[method];
-              const amount = byMethod[method] || '0.00';
+              const amount = parseFloat(byMethod[method] || '0');
               
               return (
                 <div

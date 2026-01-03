@@ -47,6 +47,7 @@ const statusColors: Record<PaymentStatus, string> = {
   COMPLETED: 'bg-green-100 text-green-700',
   FAILED: 'bg-red-100 text-red-700',
   REFUNDED: 'bg-purple-100 text-purple-700',
+  REVERSED: 'bg-gray-100 text-gray-700',
 };
 
 const methodIcons: Record<PaymentMethod, React.ReactNode> = {
@@ -55,7 +56,6 @@ const methodIcons: Record<PaymentMethod, React.ReactNode> = {
   CARD: <CreditCard className="h-4 w-4" />,
   BANK_TRANSFER: <Building className="h-4 w-4" />,
   INSURANCE: <Building className="h-4 w-4" />,
-  OTHER: <CreditCard className="h-4 w-4" />,
 };
 
 // ============================================================================

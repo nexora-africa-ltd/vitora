@@ -46,7 +46,7 @@ interface PaymentFormProps {
 }
 
 const paymentFormSchema = z.object({
-  payment_method: z.enum(['CASH', 'MPESA', 'CARD', 'BANK_TRANSFER', 'INSURANCE', 'OTHER'] as const),
+  payment_method: z.enum(['CASH', 'MPESA', 'CARD', 'BANK_TRANSFER', 'INSURANCE'] as const),
   amount: z.number().positive('Amount must be positive'),
   reference_number: z.string().optional(),
   notes: z.string().optional(),
@@ -66,7 +66,7 @@ const paymentMethodIcons: Record<PaymentMethod, React.ReactNode> = {
   CARD: <CreditCard className="h-4 w-4" />,
   BANK_TRANSFER: <Building className="h-4 w-4" />,
   INSURANCE: <Building className="h-4 w-4" />,
-  OTHER: <CreditCard className="h-4 w-4" />,
+
 };
 
 // ============================================================================
@@ -80,7 +80,7 @@ export function PaymentForm({
   onCancel,
   onMpesaPayment,
 }: PaymentFormProps) {
-  const balance = parseFloat(invoice.total_amount) - parseFloat(invoice.paid_amount || '0');
+  const balance = parseFloat(invoice.total_amount) - parseFloat(invoice.amount_paid || '0');
 
   const form = useForm<PaymentFormValues>({
     resolver: zodResolver(paymentFormSchema),
@@ -112,9 +112,8 @@ export function PaymentForm({
 
     const data: PaymentCreateData = {
       invoice: invoice.id,
-      payment_method: values.payment_method,
+      method: values.payment_method,
       amount: values.amount.toString(),
-      reference_number: values.reference_number,
       notes: values.notes,
     };
     onSubmit(data);
@@ -139,7 +138,7 @@ export function PaymentForm({
               <div>
                 <span className="text-muted-foreground">Paid:</span>
                 <span className="ml-2 font-medium text-green-600">
-                  {formatCurrency(parseFloat(invoice.paid_amount || '0'))}
+                  {formatCurrency(parseFloat(invoice.amount_paid || '0'))}
                 </span>
               </div>
               <div className="col-span-2 pt-2 border-t">
