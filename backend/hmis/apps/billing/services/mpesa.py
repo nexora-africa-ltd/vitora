@@ -8,7 +8,7 @@ This module contains business logic services for billing operations:
 import base64
 import json
 import requests
-from datetime import datetime
+from datetime import datetime, timedelta
 from decimal import Decimal
 from typing import Dict, Optional
 
@@ -34,6 +34,9 @@ class MpesaService:
     - MPESA_CALLBACK_URL
     """
     
+    # Request timeout in seconds
+    REQUEST_TIMEOUT = 30
+    
     def __init__(self):
         """Initialize M-Pesa service with sandbox credentials."""
         self.consumer_key = getattr(settings, 'MPESA_CONSUMER_KEY', '')
@@ -50,6 +53,52 @@ class MpesaService:
         
         self._access_token = None
         self._token_expires_at = None
+    
+    def format_phone(self, phone: str) -> str:
+        """
+        Normalize phone number to 254XXXXXXXXX format.
+        
+        Handles various Kenyan phone number formats:
+        - 0712345678 → 254712345678
+        - +254712345678 → 254712345678
+        - 254712345678 → 254712345678
+        - 712345678 → 254712345678
+        
+        Args:
+            phone: Phone number in any common format
+            
+        Returns:
+            str: Phone number in 254XXXXXXXXX format
+            
+        Raises:
+            ValidationError: If phone number is invalid
+        """
+        # Remove whitespace, dashes, and parentheses
+        phone = phone.strip().replace(' ', '').replace('-', '').replace('(', '').replace(')', '')
+        
+        # Remove leading + if present
+        if phone.startswith('+'):
+            phone = phone[1:]
+        
+        # Handle 07XX format (Kenya local)
+        if phone.startswith('0') and len(phone) == 10:
+            phone = '254' + phone[1:]
+        
+        # Handle 7XX format (missing prefix)
+        elif len(phone) == 9 and phone[0] in '17':
+            phone = '254' + phone
+        
+        # Validate final format
+        if not phone.startswith('254'):
+            raise ValidationError('Phone number must be a valid Kenyan number')
+        
+        if len(phone) != 12:
+            raise ValidationError('Phone number must be 12 digits (254XXXXXXXXX)')
+        
+        if not phone.isdigit():
+            raise ValidationError('Phone number must contain only digits')
+        
+        return phone
     
     def get_access_token(self) -> str:
         """
@@ -121,7 +170,7 @@ class MpesaService:
         Initiate STK Push (Lipa Na M-Pesa Online) payment request.
         
         Args:
-            phone_number: Customer phone number (format: 254XXXXXXXXX)
+            phone_number: Customer phone number (any common format - will be normalized)
             amount: Payment amount (minimum 1 KES)
             account_reference: Reference for the transaction (e.g., invoice number)
             transaction_desc: Description of the transaction
@@ -132,16 +181,15 @@ class MpesaService:
         Raises:
             ValidationError: If STK Push request fails
         """
-        # Validate phone number format
-        if not phone_number.startswith('254'):
-            raise ValidationError('Phone number must start with 254')
-        
-        if len(phone_number) != 12:
-            raise ValidationError('Phone number must be 12 digits (254XXXXXXXXX)')
+        # Normalize phone number to 254XXXXXXXXX format
+        phone_number = self.format_phone(phone_number)
         
         # Validate amount
         if amount < Decimal('1.00'):
             raise ValidationError('Amount must be at least 1 KES')
+        
+        if amount > Decimal('150000.00'):
+            raise ValidationError('Amount cannot exceed 150,000 KES per transaction')
         
         # Get access token
         access_token = self.get_access_token()
@@ -300,7 +348,3 @@ class MpesaService:
             
         except requests.RequestException as e:
             raise ValidationError(f'M-Pesa query request failed: {str(e)}')
-
-
-# Fix missing import
-from datetime import timedelta
