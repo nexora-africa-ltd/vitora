@@ -43,6 +43,59 @@ export type {
   DateRangeFilter,
 } from './dashboard';
 
+// Re-export billing types
+export type {
+  // Service types
+  ServiceCategory,
+  Service,
+  ServiceCreateData,
+  ServiceUpdateData,
+  ServiceListParams,
+  // Invoice types
+  Invoice,
+  InvoiceItem,
+  InvoiceStatus,
+  InvoiceCreateData,
+  InvoiceUpdateData,
+  InvoiceItemCreateData,
+  InvoiceListParams,
+  ApplyDiscountData,
+  // Payment types
+  Payment,
+  PaymentMethod,
+  PaymentStatus,
+  PaymentCreateData,
+  PaymentListParams,
+  // M-Pesa types
+  MpesaSTKPushRequest,
+  MpesaSTKPushResponse,
+  MpesaQueryResponse,
+  MpesaCallbackData,
+  // Receipt types
+  Receipt,
+  // Credit Note types
+  CreditNote,
+  CreditNoteReason,
+  CreditNoteStatus,
+  CreditNoteCreateData,
+  CreditNoteApprovalData,
+  CreditNoteRefundData,
+  CreditNoteListParams,
+  // Report types
+  DailyCollectionReport,
+  RevenueSummary,
+  OutstandingBalance,
+  ServiceUtilization,
+  PaymentMethodAnalysis,
+  // Paginated responses
+  PaginatedInvoices,
+  PaginatedPayments,
+  PaginatedServices,
+  PaginatedServiceCategories,
+  PaginatedCreditNotes,
+  PaginatedReceipts,
+} from './billing';
+
 // User types
 export interface User {
   id: number;
