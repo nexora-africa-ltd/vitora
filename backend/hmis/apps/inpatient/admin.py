@@ -6,7 +6,7 @@ Sprint 1.5-1.6 Track D: Inpatient Foundation
 
 from django.contrib import admin
 
-from .models import Ward, Bed, AdmissionRecommendation, Admission
+from .models import Ward, Bed, AdmissionRecommendation, Admission, Discharge
 
 
 @admin.register(Ward)
@@ -204,3 +204,97 @@ class AdmissionAdmin(admin.ModelAdmin):
             },
         ),
     )
+
+
+
+@admin.register(Discharge)
+class DischargeAdmin(admin.ModelAdmin):
+    """Admin interface for Discharge model."""
+
+    list_display = [
+        "admission",
+        "discharge_type",
+        "discharge_date",
+        "discharged_by",
+        "pharmacy_cleared",
+        "billing_cleared",
+        "length_of_stay_days",
+    ]
+    list_filter = ["discharge_type", "discharge_date", "pharmacy_cleared", "billing_cleared"]
+    search_fields = [
+        "admission__admission_number",
+        "admission__patient__first_name",
+        "admission__patient__last_name",
+        "final_diagnosis",
+    ]
+    readonly_fields = ["created_at", "updated_at", "length_of_stay_days"]
+    ordering = ["-discharge_date"]
+    
+    fieldsets = (
+        (
+            "Admission & Discharge",
+            {
+                "fields": (
+                    "admission",
+                    "discharge_type",
+                    "discharge_date",
+                    "discharged_by",
+                )
+            },
+        ),
+        (
+            "Clinical Summary",
+            {
+                "fields": (
+                    "admission_diagnosis",
+                    "final_diagnosis",
+                    "final_diagnosis_text",
+                    "procedures_performed",
+                    "treatment_summary",
+                )
+            },
+        ),
+        (
+            "Medications & Follow-up",
+            {
+                "fields": (
+                    "discharge_medications",
+                    "follow_up_date",
+                    "follow_up_instructions",
+                )
+            },
+        ),
+        (
+            "Referral (if applicable)",
+            {
+                "fields": (
+                    "referral_facility",
+                    "referral_reason",
+                ),
+                "classes": ("collapse",),
+            },
+        ),
+        (
+            "Patient Instructions & Clearances",
+            {
+                "fields": (
+                    "patient_instructions",
+                    "pharmacy_cleared",
+                    "billing_cleared",
+                    "lab_results_acknowledged",
+                )
+            },
+        ),
+        (
+            "Timestamps & Metrics",
+            {
+                "fields": ("length_of_stay_days", "created_at", "updated_at"),
+                "classes": ("collapse",),
+            },
+        ),
+    )
+    
+    def length_of_stay_days(self, obj):
+        """Display length of stay."""
+        return f"{obj.length_of_stay} days"
+    length_of_stay_days.short_description = "Length of Stay"
