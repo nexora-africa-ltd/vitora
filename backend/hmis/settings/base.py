@@ -43,6 +43,7 @@ INSTALLED_APPS = [
     "hmis.apps.pharmacy",
     "hmis.apps.billing",
     "hmis.apps.inpatient",
+    "hmis.apps.triage",
 ]
 
 MIDDLEWARE = [
