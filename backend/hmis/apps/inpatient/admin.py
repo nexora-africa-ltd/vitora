@@ -17,6 +17,7 @@ from .models import (
     NursingKardex,
     KardexShiftNote,
     KardexHandoverNote,
+    ShiftHandover,
 )
 
 
@@ -590,3 +591,76 @@ class KardexHandoverNoteAdmin(admin.ModelAdmin):
     def has_delete_permission(self, request, obj=None):
         """Handover notes should not be deleted for audit purposes."""
         return False
+
+
+@admin.register(ShiftHandover)
+class ShiftHandoverAdmin(admin.ModelAdmin):
+    """Admin interface for ShiftHandover model."""
+    
+    list_display = [
+        "ward",
+        "shift_date",
+        "shift_ending",
+        "outgoing_nurse",
+        "incoming_nurse",
+        "total_patients",
+        "critical_patients",
+        "is_acknowledged_display",
+    ]
+    list_filter = ["shift_ending", "shift_date", "ward", "acknowledged_at"]
+    search_fields = [
+        "ward__name",
+        "outgoing_nurse__username",
+        "incoming_nurse__username",
+        "general_notes",
+    ]
+    readonly_fields = ["created_at", "updated_at", "is_acknowledged_display"]
+    ordering = ["-shift_date", "-created_at"]
+    
+    fieldsets = (
+        (
+            "Shift Information",
+            {
+                "fields": (
+                    "ward",
+                    "shift_date",
+                    "shift_ending",
+                    "outgoing_nurse",
+                    "incoming_nurse",
+                )
+            },
+        ),
+        (
+            "Patient Counts",
+            {
+                "fields": (
+                    "total_patients",
+                    "critical_patients",
+                    "new_admissions",
+                    "discharges_pending",
+                )
+            },
+        ),
+        (
+            "Notes & Acknowledgment",
+            {
+                "fields": (
+                    "general_notes",
+                    "acknowledged_at",
+                    "is_acknowledged_display",
+                )
+            },
+        ),
+        (
+            "Timestamps",
+            {
+                "fields": ("created_at", "updated_at"),
+                "classes": ("collapse",),
+            },
+        ),
+    )
+    
+    def is_acknowledged_display(self, obj):
+        """Display acknowledgment status."""
+        return "✓ Acknowledged" if obj.is_acknowledged else "⏳ Pending"
+    is_acknowledged_display.short_description = "Status"

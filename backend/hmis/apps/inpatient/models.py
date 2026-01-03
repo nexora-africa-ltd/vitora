@@ -1211,6 +1211,152 @@ class KardexHandoverNote(models.Model):
         return f"Handover from {self.outgoing_nurse.username} to {self.incoming_nurse.username} - {status}"
 
 
+class ShiftHandover(TimeStampedModel):
+    """
+    Formal ward-level shift handover record.
+    
+    Documents shift handovers between nursing teams for ward-level patient care
+    coordination. Tracks patient counts, critical cases, and pending tasks.
+    
+    Attributes:
+        ward: Hospital ward where handover occurs
+        shift_date: Date of the shift
+        shift_ending: Shift that is ending (DAY, EVENING, NIGHT)
+        outgoing_nurse: Nurse handing over shift
+        incoming_nurse: Nurse receiving handover
+        total_patients: Total patient count in ward
+        critical_patients: Number of critical/unstable patients
+        new_admissions: Number of new admissions during shift
+        discharges_pending: Number of pending discharges
+        general_notes: General shift notes
+        acknowledged_at: When incoming nurse acknowledged handover
+    """
+    
+    SHIFT_CHOICES = [
+        ("DAY", "Day Shift (07:00-15:00)"),
+        ("EVENING", "Evening Shift (15:00-23:00)"),
+        ("NIGHT", "Night Shift (23:00-07:00)"),
+    ]
+    
+    ward = models.ForeignKey(
+        Ward,
+        on_delete=models.CASCADE,
+        related_name="shift_handovers",
+        help_text="Ward where handover occurs"
+    )
+    shift_date = models.DateField(help_text="Date of the shift")
+    shift_ending = models.CharField(
+        max_length=10,
+        choices=SHIFT_CHOICES,
+        help_text="Shift that is ending"
+    )
+    outgoing_nurse = models.ForeignKey(
+        User,
+        on_delete=models.PROTECT,
+        related_name="handovers_given",
+        help_text="Nurse handing over shift"
+    )
+    incoming_nurse = models.ForeignKey(
+        User,
+        on_delete=models.PROTECT,
+        related_name="handovers_received",
+        help_text="Nurse receiving handover"
+    )
+    
+    # Patient counts
+    total_patients = models.PositiveIntegerField(
+        help_text="Total patient count in ward"
+    )
+    critical_patients = models.PositiveIntegerField(
+        default=0,
+        help_text="Number of critical/unstable patients"
+    )
+    new_admissions = models.PositiveIntegerField(
+        default=0,
+        help_text="Number of new admissions during shift"
+    )
+    discharges_pending = models.PositiveIntegerField(
+        default=0,
+        help_text="Number of pending discharges"
+    )
+    
+    # Notes
+    general_notes = models.TextField(
+        blank=True,
+        help_text="General shift notes and observations"
+    )
+    acknowledged_at = models.DateTimeField(
+        null=True,
+        blank=True,
+        help_text="When incoming nurse acknowledged handover"
+    )
+    
+    class Meta:
+        ordering = ['-shift_date', '-created_at']
+        unique_together = ['ward', 'shift_date', 'shift_ending']
+        indexes = [
+            models.Index(fields=['ward', '-shift_date']),
+            models.Index(fields=['shift_date', 'shift_ending']),
+        ]
+    
+    def __str__(self):
+        return f"{self.ward.name} - {self.get_shift_ending_display()} - {self.shift_date}"
+    
+    @property
+    def is_acknowledged(self) -> bool:
+        """Check if handover has been acknowledged."""
+        return self.acknowledged_at is not None
+    
+    def acknowledge(self, user: User) -> None:
+        """
+        Acknowledge handover receipt.
+        
+        Args:
+            user: User acknowledging the handover (should be incoming_nurse)
+        """
+        self.acknowledged_at = timezone.now()
+        self.save(update_fields=['acknowledged_at'])
+    
+    def auto_populate_counts(self) -> None:
+        """
+        Auto-populate patient counts from ward data.
+        
+        Queries current ward admissions to calculate:
+        - Total patients
+        - Critical patients (based on ward round condition status)
+        - New admissions today
+        - Discharges pending
+        """
+        from django.db.models import Q, Count
+        
+        # Get all active admissions in this ward
+        active_admissions = Admission.objects.filter(
+            ward=self.ward,
+            discharge__isnull=True
+        )
+        
+        self.total_patients = active_admissions.count()
+        
+        # Count new admissions for this shift date
+        self.new_admissions = active_admissions.filter(
+            admission_date__date=self.shift_date
+        ).count()
+        
+        # Count critical patients (patients with DETERIORATING status in latest ward round)
+        critical_count = 0
+        for admission in active_admissions:
+            latest_round = admission.ward_rounds.order_by('-round_date').first()
+            if latest_round and latest_round.condition_status == 'DETERIORATING':
+                critical_count += 1
+        self.critical_patients = critical_count
+        
+        # Count pending discharges (admissions with recent discharge recommendations)
+        # This is a simplified count - could be enhanced with actual discharge orders
+        self.discharges_pending = 0  # Placeholder - implement based on your workflow
+        
+        self.save()
+
+
 # ============================================================================
 # Signals
 # ============================================================================
