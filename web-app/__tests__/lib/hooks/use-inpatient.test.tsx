@@ -77,8 +77,11 @@ describe('useInpatientWards', () => {
 
     await waitFor(() => expect(result.current.isSuccess).toBe(true));
 
-    expect(result.current.data).toHaveLength(2);
-    expect(result.current.data?.[0].name).toBe('Medical Ward 1');
+    // Data could be paginated or array
+    const data = result.current.data as any;
+    const wards = Array.isArray(data) ? data : data?.results ?? [];
+    expect(wards).toHaveLength(2);
+    expect(wards[0].name).toBe('Medical Ward 1');
     expect(mockApiClient.get).toHaveBeenCalledWith('/api/inpatient/wards/', { params: undefined });
   });
 });

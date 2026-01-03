@@ -78,7 +78,7 @@ export default function NewAdmissionPage() {
                   <SelectValue placeholder="Select ward" />
                 </SelectTrigger>
                 <SelectContent>
-                  {(wards ?? []).map((w) => (
+                  {((wards as any)?.results ?? wards ?? []).map((w: any) => (
                     <SelectItem key={w.id} value={String(w.id)}>
                       {w.name}
                     </SelectItem>

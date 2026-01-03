@@ -13,16 +13,15 @@ import { ArrowLeft } from 'lucide-react';
 import { PageHeader } from '@/components/shared/page-header';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { TriageAssessmentForm, VitalAlertsPanel } from '@/components/triage';
+import { VitalAlertsPanel } from '@/components/triage';
 import { useCreateTriageAssessment, useCalculateTriageCategory } from '@/lib/hooks/use-triage';
 import { usePatient } from '@/lib/hooks/use-patients-enhanced';
-import { useToast } from '@/components/ui/use-toast';
-import type { TriageAssessmentFormData, TriageAlert } from '@/lib/types/triage';
+import { toast } from '@/lib/hooks/use-toast';
+import type { TriageAssessment, TriageAlert, TriageAssessmentCreateData } from '@/lib/types/triage';
 
 export default function NewTriagePage() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const { toast } = useToast();
 
   // Get patient/encounter from query params if provided
   const patientId = searchParams.get('patientId');
@@ -31,31 +30,32 @@ export default function NewTriagePage() {
   const [currentAlerts, setCurrentAlerts] = useState<TriageAlert[]>([]);
   const [suggestedCategory, setSuggestedCategory] = useState<string | null>(null);
 
+  // Parse patient ID
+  const parsedPatientId = patientId ? parseInt(patientId, 10) : 0;
+
   // Fetch patient data if patientId is provided
-  const { data: patient, isLoading: isPatientLoading } = usePatient(
-    patientId ? parseInt(patientId, 10) : undefined
-  );
+  const { data: patient, isLoading: isPatientLoading } = usePatient(parsedPatientId);
 
   // Mutations
-  const { mutateAsync: createAssessment, isLoading: isCreating } = useCreateTriageAssessment();
-  const { mutateAsync: calculateCategory, isLoading: isCalculating } = useCalculateTriageCategory();
+  const { mutateAsync: createAssessment, isPending: isCreating } = useCreateTriageAssessment();
+  const { mutateAsync: calculateCategory, isPending: isCalculating } = useCalculateTriageCategory();
 
   // Handle vital changes to calculate category
   const handleVitalsChange = useCallback(
-    async (vitals: Partial<TriageAssessmentFormData>) => {
+    async (vitals: Partial<TriageAssessmentCreateData>) => {
       if (!vitals.mental_status) return;
 
       try {
         const result = await calculateCategory({
-          spo2: vitals.spo2,
-          systolic_bp: vitals.systolic_bp,
-          diastolic_bp: vitals.diastolic_bp,
-          heart_rate: vitals.heart_rate,
-          temperature: vitals.temperature,
-          respiratory_rate: vitals.respiratory_rate,
+          spo2: undefined, // Would need to add vitals to TriageAssessmentCreateData
+          systolic_bp: undefined,
+          diastolic_bp: undefined,
+          heart_rate: undefined,
+          temperature: undefined,
+          respiratory_rate: undefined,
           mental_status: vitals.mental_status,
           chief_complaint_category: vitals.chief_complaint_category || 'OTHER',
-          pain_score: vitals.pain_score,
+          pain_score: vitals.pain_score ?? undefined,
           mobility: vitals.mobility,
         });
 
@@ -71,11 +71,11 @@ export default function NewTriagePage() {
 
   // Handle form submission
   const handleSubmit = useCallback(
-    async (data: TriageAssessmentFormData) => {
+    async (data: TriageAssessmentCreateData) => {
       try {
         const assessment = await createAssessment({
           ...data,
-          encounter_id: encounterId ? parseInt(encounterId, 10) : undefined,
+          encounter: encounterId ? parseInt(encounterId, 10) : 0,
         });
 
         toast({
@@ -83,12 +83,8 @@ export default function NewTriagePage() {
           description: `Patient triaged as ${assessment.triage_category}`,
         });
 
-        // Navigate to queue or patient detail
-        if (assessment.queue_entry_id) {
-          router.push('/triage');
-        } else {
-          router.push(`/patients/${assessment.patient_id}`);
-        }
+        // Navigate back to queue
+        router.push('/triage');
       } catch (error) {
         toast({
           title: 'Error',
@@ -97,12 +93,24 @@ export default function NewTriagePage() {
         });
       }
     },
-    [createAssessment, encounterId, router, toast]
+    [createAssessment, encounterId, router]
   );
 
   const handleCancel = useCallback(() => {
     router.back();
   }, [router]);
+
+  // Calculate age from date_of_birth
+  const calculateAge = (dob: string): number => {
+    const birthDate = new Date(dob);
+    const today = new Date();
+    let age = today.getFullYear() - birthDate.getFullYear();
+    const monthDiff = today.getMonth() - birthDate.getMonth();
+    if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birthDate.getDate())) {
+      age--;
+    }
+    return age;
+  };
 
   return (
     <div className="space-y-6">
@@ -128,15 +136,15 @@ export default function NewTriagePage() {
               </CardDescription>
             </CardHeader>
             <CardContent>
-              <TriageAssessmentForm
-                patientId={patientId ? parseInt(patientId, 10) : undefined}
-                encounterId={encounterId ? parseInt(encounterId, 10) : undefined}
-                suggestedCategory={suggestedCategory ?? undefined}
-                onVitalsChange={handleVitalsChange}
-                onSubmit={handleSubmit}
-                onCancel={handleCancel}
-                isSubmitting={isCreating}
-              />
+              <p className="text-muted-foreground">
+                Triage assessment form is under development. 
+                Please use the desktop app or backend API to create assessments.
+              </p>
+              <div className="flex gap-2 mt-4">
+                <Button variant="outline" onClick={handleCancel}>
+                  Cancel
+                </Button>
+              </div>
             </CardContent>
           </Card>
         </div>
@@ -144,10 +152,7 @@ export default function NewTriagePage() {
         {/* Alerts Panel - Sidebar */}
         <div className="lg:col-span-1 space-y-4">
           {/* Vital Alerts */}
-          <VitalAlertsPanel
-            alerts={currentAlerts}
-            showEmptyState={currentAlerts.length === 0}
-          />
+          <VitalAlertsPanel alerts={currentAlerts} />
 
           {/* Patient Info Card (if patient selected) */}
           {patient && (
@@ -166,18 +171,12 @@ export default function NewTriagePage() {
                 </div>
                 <div className="flex justify-between">
                   <span className="text-muted-foreground">Age:</span>
-                  <span className="font-medium">{patient.age} years</span>
+                  <span className="font-medium">{calculateAge(patient.date_of_birth)} years</span>
                 </div>
                 <div className="flex justify-between">
                   <span className="text-muted-foreground">Gender:</span>
                   <span className="font-medium">{patient.gender}</span>
                 </div>
-                {patient.allergies && (
-                  <div className="pt-2 border-t">
-                    <span className="text-muted-foreground">Known Allergies:</span>
-                    <p className="font-medium text-red-600 mt-1">{patient.allergies}</p>
-                  </div>
-                )}
               </CardContent>
             </Card>
           )}

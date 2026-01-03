@@ -10,7 +10,7 @@ import {
   mockICD10Codes,
 } from './data';
 import {
-  mockWards as mockInpatientWards,
+  mockInpatientWards,
   mockBeds,
   mockAdmissionRecommendations,
   mockAdmissions,
@@ -270,7 +270,7 @@ export const handlers = [
 
   http.get(`${API_BASE}/api/inpatient/wards/:id/`, ({ params }) => {
     const id = Number(params.id);
-    const ward = mockInpatientWards.find((w) => w.id === id);
+    const ward = mockInpatientWards.find((w: { id: number }) => w.id === id);
     if (!ward) {
       return HttpResponse.json({ detail: 'Not found.' }, { status: 404 });
     }

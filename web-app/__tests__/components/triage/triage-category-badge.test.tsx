@@ -257,22 +257,19 @@ describe('TriageCategoryBadge - Edge Cases', () => {
 
   describe('@empty - Handle missing category', () => {
     it('should display "Not Triaged" when category is undefined', () => {
-      // @ts-expect-error - Testing undefined category handling
-      render(<TriageCategoryBadge category={undefined} />);
+      render(<TriageCategoryBadge category={undefined as unknown as TriageCategory} />);
 
       expect(screen.getByText('Not Triaged')).toBeInTheDocument();
     });
 
     it('should display "Not Triaged" when category is null', () => {
-      // @ts-expect-error - Testing null category handling
-      render(<TriageCategoryBadge category={null} />);
+      render(<TriageCategoryBadge category={null as unknown as TriageCategory} />);
 
       expect(screen.getByText('Not Triaged')).toBeInTheDocument();
     });
 
     it('should have muted/gray style when category is missing', () => {
-      // @ts-expect-error - Testing missing category handling
-      render(<TriageCategoryBadge category={undefined} />);
+      render(<TriageCategoryBadge category={undefined as unknown as TriageCategory} />);
 
       const badge = screen.getByRole('status');
       expect(badge).toHaveClass('bg-gray-300');

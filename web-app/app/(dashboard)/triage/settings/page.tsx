@@ -8,9 +8,9 @@
  */
 'use client';
 
-import { useCallback, useState } from 'react';
+import { useCallback } from 'react';
 import { useRouter } from 'next/navigation';
-import { ArrowLeft, Save, RotateCcw, Download, Upload } from 'lucide-react';
+import { ArrowLeft } from 'lucide-react';
 import { PageHeader } from '@/components/shared/page-header';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -25,16 +25,16 @@ import {
   useExportThresholds,
   useImportThresholds,
 } from '@/lib/hooks/use-triage';
-import { useAuth } from '@/lib/auth/hooks';
-import { useToast } from '@/components/ui/use-toast';
+import { useAuth } from '@/lib/auth/index';
+import { toast } from '@/lib/hooks/use-toast';
 import type { TriageVitalThreshold } from '@/lib/types/triage';
 
 export default function TriageSettingsPage() {
   const router = useRouter();
-  const { toast } = useToast();
-  const { user, hasPermission } = useAuth();
+  const { user } = useAuth();
 
-  const canEdit = hasPermission('triage.change_triageVitalthreshold');
+  // Check permission - user.permissions is an array of strings
+  const canEdit = user?.permissions?.includes('triage.change_triageVitalthreshold') ?? false;
 
   // Fetch thresholds
   const {
@@ -51,13 +51,18 @@ export default function TriageSettingsPage() {
   const { mutateAsync: exportThresholds } = useExportThresholds();
   const { mutateAsync: importThresholds } = useImportThresholds();
 
-  const handleSaveThreshold = useCallback(
-    async (threshold: TriageVitalThreshold) => {
+  const handleSave = useCallback(
+    async (threshold: Partial<TriageVitalThreshold> & { id: number }) => {
       try {
-        await updateThreshold(threshold);
+        // We need to fetch the full threshold and merge
+        const fullThreshold = thresholds?.find(t => t.id === threshold.id);
+        if (!fullThreshold) {
+          throw new Error('Threshold not found');
+        }
+        await updateThreshold({ ...fullThreshold, ...threshold });
         toast({
           title: 'Threshold Updated',
-          description: `${threshold.vital_type} threshold has been saved.`,
+          description: `${threshold.vital_type ?? 'Threshold'} has been saved.`,
         });
         refetch();
       } catch (error) {
@@ -68,7 +73,7 @@ export default function TriageSettingsPage() {
         });
       }
     },
-    [updateThreshold, refetch, toast]
+    [updateThreshold, refetch, thresholds]
   );
 
   const handleToggleActive = useCallback(
@@ -90,10 +95,10 @@ export default function TriageSettingsPage() {
         });
       }
     },
-    [toggleActive, refetch, toast]
+    [toggleActive, refetch]
   );
 
-  const handleResetToDefault = useCallback(
+  const handleReset = useCallback(
     async (id: number) => {
       try {
         await resetToDefault(id);
@@ -110,25 +115,8 @@ export default function TriageSettingsPage() {
         });
       }
     },
-    [resetToDefault, refetch, toast]
+    [resetToDefault, refetch]
   );
-
-  const handleResetAllToDefaults = useCallback(async () => {
-    try {
-      await resetAllToDefaults();
-      toast({
-        title: 'All Thresholds Reset',
-        description: 'All thresholds have been reset to system defaults.',
-      });
-      refetch();
-    } catch (error) {
-      toast({
-        title: 'Error',
-        description: 'Failed to reset thresholds.',
-        variant: 'destructive',
-      });
-    }
-  }, [resetAllToDefaults, refetch, toast]);
 
   const handleExport = useCallback(async () => {
     try {
@@ -152,16 +140,10 @@ export default function TriageSettingsPage() {
         variant: 'destructive',
       });
     }
-  }, [exportThresholds, toast]);
+  }, [exportThresholds]);
 
-  const handleImport = useCallback(async () => {
-    const input = document.createElement('input');
-    input.type = 'file';
-    input.accept = '.json';
-    input.onchange = async (e) => {
-      const file = (e.target as HTMLInputElement).files?.[0];
-      if (!file) return;
-
+  const handleImport = useCallback(
+    async (file: File) => {
       try {
         const text = await file.text();
         const data = JSON.parse(text);
@@ -178,9 +160,9 @@ export default function TriageSettingsPage() {
           variant: 'destructive',
         });
       }
-    };
-    input.click();
-  }, [importThresholds, refetch, toast]);
+    },
+    [importThresholds, refetch]
+  );
 
   const handleBack = useCallback(() => {
     router.push('/triage');
@@ -191,10 +173,6 @@ export default function TriageSettingsPage() {
       <PageHeader
         title="Triage Settings"
         description="Configure vital sign thresholds and alert rules"
-        breadcrumbs={[
-          { label: 'Triage', href: '/triage' },
-          { label: 'Settings', href: '/triage/settings' },
-        ]}
         actions={
           <Button variant="outline" onClick={handleBack}>
             <ArrowLeft className="h-4 w-4 mr-2" />
@@ -214,10 +192,9 @@ export default function TriageSettingsPage() {
             thresholds={thresholds ?? []}
             isLoading={isLoading}
             canEdit={canEdit}
-            onSaveThreshold={handleSaveThreshold}
+            onSave={handleSave}
             onToggleActive={handleToggleActive}
-            onResetToDefault={handleResetToDefault}
-            onResetAllToDefaults={handleResetAllToDefaults}
+            onReset={handleReset}
             onExport={handleExport}
             onImport={handleImport}
           />

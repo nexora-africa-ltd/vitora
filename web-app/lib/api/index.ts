@@ -5,5 +5,19 @@
 export { apiClient } from './client';
 export { encountersApi } from './encounters';
 export { inpatientApi } from './inpatient';
+export { laboratoryApi } from './laboratory';
 export { locationsApi } from './locations';
 export { patientsApi } from './patients';
+export { pharmacyApi } from './pharmacy';
+export { billingApi } from './billing';
+export { triageApi } from './triage';
+export type {
+  TriageAssessmentCreateData,
+  TriageAssessmentUpdateData,
+  TriageAssessmentListParams,
+  TriageQueueListParams,
+  CalculateCategoryRequest,
+  CalculateCategoryResponse,
+  TriageReportParams,
+  WaitTimeStatsResponse,
+} from './triage';
