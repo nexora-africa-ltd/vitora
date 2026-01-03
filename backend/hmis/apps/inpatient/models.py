@@ -420,3 +420,230 @@ class AdmissionRecommendation(TimeStampedModel):
             True if current time is past expires_at, False otherwise
         """
         return timezone.now() > self.expires_at
+
+
+class Admission(TimeStampedModel):
+    """
+    Inpatient admission record.
+
+    Represents a patient's admission to the inpatient department,
+    linking OPD/IPD encounters, bed assignment, and insurance details.
+
+    Attributes:
+        patient: Patient being admitted
+        opd_encounter: Optional OPD encounter that led to admission
+        ipd_encounter: IPD encounter for this admission
+        recommendation: Optional admission recommendation
+        admission_number: Unique admission number (ADM-YYYYMMDD-XXXX)
+        admission_date: Date and time of admission
+        admitting_diagnosis: ICD-10 code for admitting diagnosis
+        admitting_diagnosis_text: Text description of diagnosis
+        admitting_officer: User who processed the admission
+        attending_doctor: Doctor attending the patient
+        ward: Ward where patient is admitted
+        bed: Specific bed assigned
+        status: Current admission status
+        payer_type: Type of payer (CASH, SHA, CORPORATE)
+        insurance_details: JSON field for insurance information
+        discharge_date: Date and time of discharge (if applicable)
+    """
+
+    STATUS_CHOICES = [
+        ("ACTIVE", "Active"),
+        ("DISCHARGED", "Discharged"),
+        ("TRANSFERRED_OUT", "Transferred Out"),
+        ("DECEASED", "Deceased"),
+        ("ABSCONDED", "Absconded"),
+    ]
+
+    PAYER_TYPE_CHOICES = [
+        ("CASH", "Cash"),
+        ("SHA", "SHA Insurance"),
+        ("CORPORATE", "Corporate"),
+    ]
+
+    # Patient and encounter linkage
+    patient = models.ForeignKey(
+        "patients.Patient",
+        on_delete=models.PROTECT,
+        related_name="admissions",
+        help_text="Patient being admitted",
+    )
+    opd_encounter = models.ForeignKey(
+        "encounters.Encounter",
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="admission_from_opd",
+        help_text="OPD encounter that led to admission (if applicable)",
+    )
+    ipd_encounter = models.OneToOneField(
+        "encounters.Encounter",
+        on_delete=models.PROTECT,
+        related_name="admission",
+        help_text="IPD encounter for this admission",
+    )
+    recommendation = models.OneToOneField(
+        AdmissionRecommendation,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="admission",
+        help_text="Admission recommendation (if from OPD)",
+    )
+
+    # Admission details
+    admission_number = models.CharField(
+        max_length=50,
+        unique=True,
+        editable=False,
+        help_text="Unique admission number (ADM-YYYYMMDD-XXXX)",
+    )
+    admission_date = models.DateTimeField(
+        help_text="Date and time of admission",
+    )
+    admitting_diagnosis = models.CharField(
+        max_length=10,
+        help_text="ICD-10 code for admitting diagnosis",
+    )
+    admitting_diagnosis_text = models.CharField(
+        max_length=255,
+        help_text="Text description of diagnosis",
+    )
+    admitting_officer = models.ForeignKey(
+        User,
+        on_delete=models.PROTECT,
+        related_name="admissions_processed",
+        help_text="User who processed the admission",
+    )
+    attending_doctor = models.ForeignKey(
+        User,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="patients_attending",
+        help_text="Doctor attending the patient",
+    )
+
+    # Location
+    ward = models.ForeignKey(
+        Ward,
+        on_delete=models.PROTECT,
+        related_name="admissions",
+        help_text="Ward where patient is admitted",
+    )
+    bed = models.ForeignKey(
+        Bed,
+        on_delete=models.PROTECT,
+        related_name="admissions",
+        help_text="Specific bed assigned",
+    )
+
+    # Status
+    status = models.CharField(
+        max_length=20,
+        choices=STATUS_CHOICES,
+        default="ACTIVE",
+        help_text="Current admission status",
+    )
+
+    # Insurance/payment
+    payer_type = models.CharField(
+        max_length=20,
+        choices=PAYER_TYPE_CHOICES,
+        help_text="Type of payer",
+    )
+    insurance_details = models.JSONField(
+        default=dict,
+        blank=True,
+        help_text="Insurance information (for SHA/Corporate)",
+    )
+
+    # Timestamps
+    discharge_date = models.DateTimeField(
+        null=True,
+        blank=True,
+        help_text="Date and time of discharge",
+    )
+
+    class Meta:
+        """Meta options for Admission model."""
+
+        ordering = ["-admission_date"]
+        verbose_name = "Admission"
+        verbose_name_plural = "Admissions"
+
+    def __str__(self):
+        """Return string representation."""
+        return f"{self.admission_number} - {self.patient} ({self.ward.code})"
+
+    def save(self, *args, **kwargs):
+        """Override save to auto-generate admission number and update bed status."""
+        # Generate admission number if not set
+        if not self.admission_number:
+            self.admission_number = self.generate_admission_number()
+
+        # Call parent save
+        super().save(*args, **kwargs)
+
+        # Update bed status to OCCUPIED
+        if self.bed.status != "OCCUPIED":
+            self.bed.status = "OCCUPIED"
+            self.bed.status_changed_by = self.admitting_officer
+            self.bed.save()
+
+    def clean(self):
+        """Validate admission data."""
+        from django.core.exceptions import ValidationError
+
+        # Check for duplicate active admission
+        if self.status == "ACTIVE":
+            existing = Admission.objects.filter(
+                patient=self.patient,
+                status="ACTIVE"
+            ).exclude(pk=self.pk)
+            
+            if existing.exists():
+                raise ValidationError("Patient already has an active admission")
+
+    def generate_admission_number(self):
+        """
+        Auto-generate admission number in format: ADM-YYYYMMDD-XXXX.
+
+        Returns:
+            Unique admission number string
+        """
+        from django.db.models import Max
+        import re
+
+        today = self.admission_date.strftime("%Y%m%d")
+        prefix = f"ADM-{today}-"
+
+        # Get the last admission number for today
+        last_admission = Admission.objects.filter(
+            admission_number__startswith=prefix
+        ).aggregate(Max("admission_number"))["admission_number__max"]
+
+        if last_admission:
+            # Extract sequence number and increment
+            match = re.search(r"-(\d{4})$", last_admission)
+            if match:
+                sequence = int(match.group(1)) + 1
+            else:
+                sequence = 1
+        else:
+            sequence = 1
+
+        return f"{prefix}{sequence:04d}"
+
+    @property
+    def length_of_stay(self) -> int:
+        """
+        Calculate length of stay in days.
+
+        Returns:
+            Number of days between admission and discharge (or current date)
+        """
+        end_date = self.discharge_date if self.discharge_date else timezone.now()
+        delta = end_date - self.admission_date
+        return delta.days

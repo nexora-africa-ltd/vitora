@@ -6,7 +6,7 @@ Sprint 1.5-1.6 Track D: Inpatient Foundation
 
 from django.contrib import admin
 
-from .models import Ward, Bed, AdmissionRecommendation
+from .models import Ward, Bed, AdmissionRecommendation, Admission
 
 
 @admin.register(Ward)
@@ -108,6 +108,91 @@ class AdmissionRecommendationAdmin(admin.ModelAdmin):
                     "resolved_by",
                     "resolved_at",
                     "decline_reason",
+                )
+            },
+        ),
+        (
+            "Timestamps",
+            {
+                "fields": ("created_at", "updated_at"),
+                "classes": ("collapse",),
+            },
+        ),
+    )
+
+
+@admin.register(Admission)
+class AdmissionAdmin(admin.ModelAdmin):
+    """Admin interface for Admission model."""
+
+    list_display = [
+        "admission_number",
+        "patient",
+        "ward",
+        "bed",
+        "status",
+        "admission_date",
+        "attending_doctor",
+        "payer_type",
+    ]
+    list_filter = ["status", "payer_type", "ward", "admission_date"]
+    search_fields = [
+        "admission_number",
+        "patient__first_name",
+        "patient__last_name",
+        "patient__mrn",
+        "admitting_diagnosis",
+    ]
+    readonly_fields = [
+        "admission_number",
+        "created_at",
+        "updated_at",
+    ]
+    ordering = ["-admission_date"]
+    autocomplete_fields = ["patient", "ward", "bed", "admitting_officer", "attending_doctor"]
+    
+    fieldsets = (
+        (
+            "Patient & Encounters",
+            {
+                "fields": (
+                    "patient",
+                    "opd_encounter",
+                    "ipd_encounter",
+                    "recommendation",
+                )
+            },
+        ),
+        (
+            "Admission Details",
+            {
+                "fields": (
+                    "admission_number",
+                    "admission_date",
+                    "admitting_diagnosis",
+                    "admitting_diagnosis_text",
+                    "admitting_officer",
+                    "attending_doctor",
+                )
+            },
+        ),
+        (
+            "Location",
+            {
+                "fields": (
+                    "ward",
+                    "bed",
+                )
+            },
+        ),
+        (
+            "Status & Payment",
+            {
+                "fields": (
+                    "status",
+                    "payer_type",
+                    "insurance_details",
+                    "discharge_date",
                 )
             },
         ),
