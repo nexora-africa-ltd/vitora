@@ -114,4 +114,4 @@ class TestInvoiceAdminCustomization:
         """Invoice admin should have readonly fields."""
         invoice_admin = InvoiceAdmin(Invoice, admin_site)
         assert "invoice_number" in invoice_admin.readonly_fields
-        assert "balance" in invoice_admin.readonly_fields
+        assert "balance_due" in invoice_admin.readonly_fields

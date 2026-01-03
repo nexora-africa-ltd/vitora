@@ -117,8 +117,8 @@ class TestPaymentAPIEndpoints:
 class TestMpesaAPIEndpoints:
     """Test M-Pesa STK Push API endpoints."""
 
-    @patch('hmis.apps.billing.services.requests.post')
-    @patch('hmis.apps.billing.services.requests.get')
+    @patch('hmis.apps.billing.services.mpesa.requests.post')
+    @patch('hmis.apps.billing.services.mpesa.requests.get')
     def test_initiate_mpesa_stk_push(self, mock_get, mock_post, authenticated_client, sample_invoice):
         """Test POST /api/billing/mpesa/initiate/ - Initiate M-Pesa STK push."""
         # Mock OAuth token response
@@ -159,7 +159,7 @@ class TestMpesaAPIEndpoints:
         assert response.status_code in [status.HTTP_200_OK, status.HTTP_201_CREATED]
         assert 'CheckoutRequestID' in response.data
 
-    @patch('hmis.apps.billing.services.requests.get')
+    @patch('hmis.apps.billing.services.mpesa.requests.get')
     def test_mpesa_callback_success(self, mock_get, api_client):
         """Test POST /api/billing/mpesa/callback/ - Successful callback processed."""
         # Mock OAuth token response (may be needed for callback processing)
@@ -196,7 +196,7 @@ class TestMpesaAPIEndpoints:
         # Should acknowledge callback
         assert response.status_code == status.HTTP_200_OK
 
-    @patch('hmis.apps.billing.services.requests.get')
+    @patch('hmis.apps.billing.services.mpesa.requests.get')
     def test_mpesa_callback_failure(self, mock_get, api_client):
         """Test M-Pesa callback with failed transaction."""
         # Mock OAuth token response (may be needed for callback processing)
@@ -224,8 +224,8 @@ class TestMpesaAPIEndpoints:
         # Should acknowledge callback
         assert response.status_code == status.HTTP_200_OK
 
-    @patch('hmis.apps.billing.services.requests.post')
-    @patch('hmis.apps.billing.services.requests.get')
+    @patch('hmis.apps.billing.services.mpesa.requests.post')
+    @patch('hmis.apps.billing.services.mpesa.requests.get')
     def test_mpesa_query_status(self, mock_get, mock_post, authenticated_client):
         """Test GET /api/billing/mpesa/query/{checkout_id}/ - Query M-Pesa status."""
         # Mock OAuth token response

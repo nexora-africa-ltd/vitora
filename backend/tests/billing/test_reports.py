@@ -16,17 +16,19 @@ from hmis.apps.billing.models import Invoice, InvoiceItem, Payment, Service, Ser
 class TestBillingReportService:
     """Tests for BillingReportService report generation."""
 
-    def test_daily_collection_report(self, sample_invoice, sample_invoice_item, sample_payment, test_user):
+    def test_daily_collection_report(self, sample_invoice, sample_invoice_item, test_user):
         """Test daily collection report shows correct totals for a date."""
         # Arrange
         service = BillingReportService()
         report_date = date.today()
         
-        # Process a payment on today
+        # Ensure invoice has items and totals calculated
         sample_invoice.calculate_totals()
+        
+        # Create a payment for half the amount
         payment = Payment.objects.create(
             invoice=sample_invoice,
-            amount=Decimal('500.00'),
+            amount=Decimal('250.00'),
             method=Payment.Method.CASH,
             status=Payment.Status.COMPLETED,
             received_by=test_user,
@@ -39,7 +41,7 @@ class TestBillingReportService:
         # Assert
         assert report is not None
         assert 'total_collections' in report
-        assert report['total_collections'] >= Decimal('500.00')
+        assert report['total_collections'] >= Decimal('250.00')
         assert 'invoice_count' in report
         assert report['invoice_count'] >= 1
         assert 'by_payment_method' in report
@@ -69,7 +71,7 @@ class TestBillingReportService:
             status=Payment.Status.COMPLETED,
             received_by=test_user,
             payment_date=timezone.now(),
-            mpesa_receipt='TEST123'
+            mpesa_receipt_number='TEST123'
         )
         
         # Act
@@ -82,7 +84,7 @@ class TestBillingReportService:
         assert Payment.Method.MPESA in report['by_payment_method']
         assert report['by_payment_method'][Payment.Method.MPESA] == Decimal('200.00')
 
-    def test_revenue_summary_date_range(self, sample_invoice, sample_invoice_item, sample_payment, test_user):
+    def test_revenue_summary_date_range(self, sample_invoice, sample_invoice_item, test_user):
         """Test revenue summary sums correctly for a period."""
         # Arrange
         service = BillingReportService()
@@ -92,7 +94,7 @@ class TestBillingReportService:
         sample_invoice.calculate_totals()
         Payment.objects.create(
             invoice=sample_invoice,
-            amount=Decimal('500.00'),
+            amount=Decimal('250.00'),
             method=Payment.Method.CASH,
             status=Payment.Status.COMPLETED,
             received_by=test_user,
@@ -105,7 +107,7 @@ class TestBillingReportService:
         # Assert
         assert report is not None
         assert 'total_revenue' in report
-        assert report['total_revenue'] >= Decimal('500.00')
+        assert report['total_revenue'] >= Decimal('250.00')  # Matches the payment amount
         assert 'by_category' in report
         assert 'by_payment_method' in report
 
@@ -174,8 +176,10 @@ class TestBillingReportService:
         service = BillingReportService()
         sample_invoice.calculate_totals()
         sample_invoice.status = Invoice.Status.PENDING
-        # Set due date in the past
-        sample_invoice.due_date = date.today() - timedelta(days=15)
+        # Set both invoice date and due date in the past to satisfy validation
+        past_invoice_date = date.today() - timedelta(days=30)
+        sample_invoice.invoice_date = past_invoice_date
+        sample_invoice.due_date = past_invoice_date + timedelta(days=15)  # Due 15 days after invoice
         sample_invoice.save()
         
         # Act
@@ -281,7 +285,7 @@ class TestBillingReportService:
             status=Payment.Status.COMPLETED,
             received_by=test_user,
             payment_date=timezone.now(),
-            mpesa_receipt='TEST123'
+            mpesa_receipt_number='TEST123'
         )
         
         # Act
@@ -310,7 +314,7 @@ class TestBillingReportService:
             status=Payment.Status.COMPLETED,
             received_by=test_user,
             payment_date=timezone.now(),
-            mpesa_receipt='SUCCESS123'
+            mpesa_receipt_number='SUCCESS123'
         )
         
         # Create failed M-Pesa payment
