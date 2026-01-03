@@ -30,10 +30,16 @@ export { useToastNotification } from './use-toast-notification';
 export {
   useInpatientWards,
   useBeds,
+  useWardBeds,
   useAdmissionRecommendations,
   useAdmissions,
+  useAdmission,
   useCreateAdmissionRecommendation,
+  useAcceptAdmissionRecommendation,
+  useDeclineAdmissionRecommendation,
   useCreateAdmission,
+  useUpdateAdmission,
+  useUpdateBed,
 } from './use-inpatient';
 
 // Patient history/timeline hooks

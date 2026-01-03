@@ -10,6 +10,12 @@ import {
   mockICD10Codes,
 } from './data';
 import {
+  mockWards as mockInpatientWards,
+  mockBeds,
+  mockAdmissionRecommendations,
+  mockAdmissions,
+} from './inpatient-data';
+import {
   mockDrugs,
   mockStockBatches,
   mockStockAlerts,
@@ -234,6 +240,225 @@ export const handlers = [
       { detail: 'Not found.' },
       { status: 404 }
     );
+  }),
+
+  // ===================
+  // Inpatient endpoints
+  // ===================
+  http.get(`${API_BASE}/api/inpatient/wards/`, ({ request }) => {
+    const url = new URL(request.url);
+    const wardType = url.searchParams.get('ward_type');
+
+    let wards = [...mockInpatientWards];
+    if (wardType) {
+      wards = wards.filter((w) => w.ward_type === wardType);
+    }
+
+    return HttpResponse.json(wards);
+  }),
+
+  http.get(`${API_BASE}/api/inpatient/wards/:id/`, ({ params }) => {
+    const id = Number(params.id);
+    const ward = mockInpatientWards.find((w) => w.id === id);
+    if (!ward) {
+      return HttpResponse.json({ detail: 'Not found.' }, { status: 404 });
+    }
+    return HttpResponse.json(ward);
+  }),
+
+  http.get(`${API_BASE}/api/inpatient/wards/:id/beds/`, ({ params, request }) => {
+    const wardId = Number(params.id);
+    const url = new URL(request.url);
+    const statusFilter = url.searchParams.get('status');
+    const page = parseInt(url.searchParams.get('page') || '1');
+    const pageSize = parseInt(url.searchParams.get('page_size') || '10');
+
+    let beds = mockBeds.filter((b) => b.ward === wardId);
+    if (statusFilter) {
+      beds = beds.filter((b) => b.status === statusFilter);
+    }
+
+    const start = (page - 1) * pageSize;
+    const end = start + pageSize;
+    const paginatedBeds = beds.slice(start, end);
+
+    // Return paginated shape to match DRF pagination behavior
+    return HttpResponse.json({
+      count: beds.length,
+      next: end < beds.length ? `${API_BASE}/api/inpatient/wards/${wardId}/beds/?page=${page + 1}` : null,
+      previous: page > 1 ? `${API_BASE}/api/inpatient/wards/${wardId}/beds/?page=${page - 1}` : null,
+      results: paginatedBeds,
+    });
+  }),
+
+  http.get(`${API_BASE}/api/inpatient/beds/`, ({ request }) => {
+    const url = new URL(request.url);
+    const ward = url.searchParams.get('ward');
+    const statusFilter = url.searchParams.get('status');
+
+    let beds = [...mockBeds];
+    if (ward) beds = beds.filter((b) => b.ward === Number(ward));
+    if (statusFilter) beds = beds.filter((b) => b.status === statusFilter);
+
+    return HttpResponse.json(beds);
+  }),
+
+  http.get(`${API_BASE}/api/inpatient/beds/:id/`, ({ params }) => {
+    const id = Number(params.id);
+    const bed = mockBeds.find((b) => b.id === id);
+    if (!bed) {
+      return HttpResponse.json({ detail: 'Not found.' }, { status: 404 });
+    }
+    return HttpResponse.json(bed);
+  }),
+
+  http.patch(`${API_BASE}/api/inpatient/beds/:id/`, async ({ params, request }) => {
+    const id = Number(params.id);
+    const bed = mockBeds.find((b) => b.id === id);
+    if (!bed) {
+      return HttpResponse.json({ detail: 'Not found.' }, { status: 404 });
+    }
+
+    const body = (await request.json()) as Record<string, unknown>;
+    const updated = {
+      ...bed,
+      ...body,
+    };
+    return HttpResponse.json(updated);
+  }),
+
+  http.get(`${API_BASE}/api/inpatient/admission-recommendations/`, ({ request }) => {
+    const url = new URL(request.url);
+    const statusFilter = url.searchParams.get('status');
+    const urgency = url.searchParams.get('urgency');
+    const ordering = url.searchParams.get('ordering');
+    const page = parseInt(url.searchParams.get('page') || '1');
+    const pageSize = parseInt(url.searchParams.get('page_size') || '10');
+
+    let recs = [...mockAdmissionRecommendations];
+    if (statusFilter) recs = recs.filter((r) => r.status === statusFilter);
+    if (urgency) recs = recs.filter((r) => r.urgency === urgency);
+    if (ordering === '-created_at') recs = recs.reverse();
+
+    const start = (page - 1) * pageSize;
+    const end = start + pageSize;
+    const paginated = recs.slice(start, end);
+
+    return HttpResponse.json({
+      count: recs.length,
+      next: end < recs.length ? `${API_BASE}/api/inpatient/admission-recommendations/?page=${page + 1}` : null,
+      previous: page > 1 ? `${API_BASE}/api/inpatient/admission-recommendations/?page=${page - 1}` : null,
+      results: paginated,
+    });
+  }),
+
+  http.get(`${API_BASE}/api/inpatient/admission-recommendations/:id/`, ({ params }) => {
+    const id = Number(params.id);
+    const rec = mockAdmissionRecommendations.find((r) => r.id === id);
+    if (!rec) {
+      return HttpResponse.json({ detail: 'Not found.' }, { status: 404 });
+    }
+    return HttpResponse.json(rec);
+  }),
+
+  http.post(`${API_BASE}/api/inpatient/admission-recommendations/`, async ({ request }) => {
+    const body = (await request.json()) as Record<string, unknown>;
+    const created = {
+      id: mockAdmissionRecommendations.length + 1,
+      status: 'PENDING',
+      expires_at: '2026-01-04T09:00:00Z',
+      is_expired: false,
+      ...body,
+    };
+    return HttpResponse.json(created, { status: 201 });
+  }),
+
+  http.post(`${API_BASE}/api/inpatient/admission-recommendations/:id/accept/`, async ({ params, request }) => {
+    const id = Number(params.id);
+    const rec = mockAdmissionRecommendations.find((r) => r.id === id);
+    if (!rec) {
+      return HttpResponse.json({ error: 'Not found' }, { status: 404 });
+    }
+    const body = (await request.json()) as { user?: number };
+    if (!body.user) {
+      return HttpResponse.json({ error: 'User ID required' }, { status: 400 });
+    }
+    return HttpResponse.json({ ...rec, status: 'ACCEPTED' });
+  }),
+
+  http.post(`${API_BASE}/api/inpatient/admission-recommendations/:id/decline/`, async ({ params, request }) => {
+    const id = Number(params.id);
+    const rec = mockAdmissionRecommendations.find((r) => r.id === id);
+    if (!rec) {
+      return HttpResponse.json({ error: 'Not found' }, { status: 404 });
+    }
+    const body = (await request.json()) as { user?: number; reason?: string };
+    if (!body.user || !body.reason) {
+      return HttpResponse.json({ error: 'User ID and reason required' }, { status: 400 });
+    }
+    return HttpResponse.json({ ...rec, status: 'DECLINED' });
+  }),
+
+  http.get(`${API_BASE}/api/inpatient/admissions/`, ({ request }) => {
+    const url = new URL(request.url);
+    const statusFilter = url.searchParams.get('admission_status');
+    const patient = url.searchParams.get('patient');
+    const ward = url.searchParams.get('ward');
+    const payerType = url.searchParams.get('payer_type');
+    const page = parseInt(url.searchParams.get('page') || '1');
+    const pageSize = parseInt(url.searchParams.get('page_size') || '10');
+
+    let admissions = [...mockAdmissions];
+    if (statusFilter) admissions = admissions.filter((a) => a.admission_status === statusFilter);
+    if (patient) admissions = admissions.filter((a) => a.patient === Number(patient));
+    if (ward) admissions = admissions.filter((a) => a.ward === Number(ward));
+    if (payerType) admissions = admissions.filter((a) => a.payer_type === payerType);
+
+    const start = (page - 1) * pageSize;
+    const end = start + pageSize;
+    const paginated = admissions.slice(start, end);
+
+    return HttpResponse.json({
+      count: admissions.length,
+      next: end < admissions.length ? `${API_BASE}/api/inpatient/admissions/?page=${page + 1}` : null,
+      previous: page > 1 ? `${API_BASE}/api/inpatient/admissions/?page=${page - 1}` : null,
+      results: paginated,
+    });
+  }),
+
+  http.get(`${API_BASE}/api/inpatient/admissions/:id/`, ({ params }) => {
+    const id = Number(params.id);
+    const admission = mockAdmissions.find((a) => a.id === id);
+    if (!admission) {
+      return HttpResponse.json({ detail: 'Not found.' }, { status: 404 });
+    }
+    return HttpResponse.json(admission);
+  }),
+
+  http.post(`${API_BASE}/api/inpatient/admissions/`, async ({ request }) => {
+    const body = (await request.json()) as Record<string, unknown>;
+    const created = {
+      id: mockAdmissions.length + 1,
+      admission_number: `ADM-20260103-${String(mockAdmissions.length + 1).padStart(4, '0')}`,
+      admission_status: 'ACTIVE',
+      ...body,
+    };
+    return HttpResponse.json(created, { status: 201 });
+  }),
+
+  http.patch(`${API_BASE}/api/inpatient/admissions/:id/`, async ({ params, request }) => {
+    const id = Number(params.id);
+    const admission = mockAdmissions.find((a) => a.id === id);
+    if (!admission) {
+      return HttpResponse.json({ detail: 'Not found.' }, { status: 404 });
+    }
+
+    const body = (await request.json()) as Record<string, unknown>;
+    const updated = {
+      ...admission,
+      ...body,
+    };
+    return HttpResponse.json(updated);
   }),
 
   // ===================
