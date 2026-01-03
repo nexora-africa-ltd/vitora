@@ -96,6 +96,52 @@ export type {
   PaginatedReceipts,
 } from './billing';
 
+// Re-export triage types
+export type {
+  // KETA Categories
+  TriageCategory,
+  TriageCategoryConfig,
+  // Clinical assessment
+  AVPUStatus,
+  AVPUConfig,
+  MobilityStatus,
+  ArrivalMode,
+  ChiefComplaintCategory,
+  AssignedArea,
+  // Queue
+  QueueStatus,
+  // Vitals & Alerts
+  VitalType,
+  TriageVitalThreshold,
+  AlertSeverity,
+  TriageAlert,
+  // Main models
+  TriageAssessment,
+  TriageAssessmentCreateData,
+  TriageQueueEntry,
+  TriageQueueListParams,
+  // Reports
+  WaitTimeStats,
+  VolumeByCategory,
+  VolumeByArea,
+  LWBSStats,
+  TriageReportSummary,
+  // Paginated
+  PaginatedTriageAssessments,
+  PaginatedTriageQueue,
+} from './triage';
+
+export {
+  TRIAGE_CATEGORY_CONFIG,
+  TRIAGE_CATEGORY_PRIORITY,
+  AVPU_CONFIG,
+  MOBILITY_CONFIG,
+  ARRIVAL_MODE_CONFIG,
+  CHIEF_COMPLAINT_CONFIG,
+  ASSIGNED_AREA_CONFIG,
+  QUEUE_STATUS_CONFIG,
+} from './triage';
+
 // User types
 export interface User {
   id: number;
