@@ -16,12 +16,35 @@ import { Button } from '@/components/ui/button';
 import { TriageQueueDashboard } from '@/components/triage';
 import { KPICard } from '@/components/reports/kpi-card';
 import { useTriageQueue, useTriageQueueActions, useTriageWaitTimeStats } from '@/lib/hooks/use-triage';
-import { useToast } from '@/components/ui/use-toast';
-import type { TriageCategory, AssignedArea, QueueStatus } from '@/lib/types/triage';
+import { toast } from '@/lib/hooks/use-toast';
+import type { TriageCategory, AssignedArea, TriageQueueEntry, TriageQueueItem } from '@/lib/types/triage';
+
+// Transform TriageQueueEntry to TriageQueueItem for the dashboard
+function transformQueueEntries(entries: TriageQueueEntry[]): TriageQueueItem[] {
+  return entries.map((entry) => ({
+    id: entry.id,
+    patient_id: entry.triage_assessment, // Use assessment ID as patient reference
+    patient_name: entry.patient_name,
+    patient_mrn: entry.patient_mrn,
+    patient_age: entry.patient_age,
+    patient_gender: entry.patient_gender,
+    triage_category: entry.triage_category,
+    chief_complaint_category: 'OTHER' as const, // Default since not in entry
+    chief_complaint: entry.chief_complaint,
+    assigned_area: entry.assigned_area,
+    assigned_area_display: entry.assigned_area_label,
+    status: entry.status,
+    arrival_time: entry.arrival_time,
+    triage_time: entry.created_at,
+    wait_time_minutes: entry.wait_time_minutes,
+    alerts_count: entry.alerts?.length ?? 0,
+    called_by: entry.called_by_name ?? undefined,
+    called_at: entry.called_at ?? undefined,
+  }));
+}
 
 export default function TriageQueuePage() {
   const router = useRouter();
-  const { toast } = useToast();
   const [selectedArea, setSelectedArea] = useState<AssignedArea | 'all'>('all');
   const [selectedCategory, setSelectedCategory] = useState<TriageCategory | 'all'>('all');
 
@@ -164,12 +187,14 @@ export default function TriageQueuePage() {
       {/* KPI Stats Cards */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         <KPICard
+          id="avg-wait-time"
           title="Avg Wait Time"
           value={waitTimeStats?.avg_wait_minutes ?? 0}
           unit="min"
           description="Average patient wait time today"
         />
         <KPICard
+          id="target-met"
           title="Target Met"
           value={waitTimeStats?.target_met_percentage ?? 0}
           unit="%"
@@ -177,6 +202,7 @@ export default function TriageQueuePage() {
           description="Patients seen within KETA targets"
         />
         <KPICard
+          id="in-queue"
           title="In Queue"
           value={queueData?.results?.length ?? 0}
           description="Patients currently waiting"
@@ -186,14 +212,14 @@ export default function TriageQueuePage() {
 
       {/* Queue Dashboard */}
       <TriageQueueDashboard
-        queueItems={queueData?.results ?? []}
+        queueItems={transformQueueEntries(queueData?.results ?? [])}
         isLoading={isQueueLoading}
         lastUpdated={dataUpdatedAt ? new Date(dataUpdatedAt) : undefined}
         onCallPatient={handleCallPatient}
         onMarkWithClinician={handleMarkWithClinician}
         onMarkComplete={handleMarkComplete}
         onMarkLWBS={handleMarkLWBS}
-        onSelectPatient={handleSelectPatient}
+        onSelectPatient={(item) => handleSelectPatient(item.patient_id)}
         onRefresh={() => refetchQueue()}
       />
     </div>

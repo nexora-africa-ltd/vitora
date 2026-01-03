@@ -332,7 +332,7 @@ function ThresholdEditDialog({
             {errors.length > 0 && !errors.some((e) => ['critical_low', 'warning_low', 'warning_high', 'critical_high'].includes(e.field)) && (
               <Alert variant="destructive">
                 <AlertTriangle className="h-4 w-4" />
-                <AlertDescription>{errors[0].message}</AlertDescription>
+                <AlertDescription>{errors[0]?.message}</AlertDescription>
               </Alert>
             )}
           </div>

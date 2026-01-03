@@ -15,15 +15,23 @@ import { PageHeader } from '@/components/shared/page-header';
 import { Button } from '@/components/ui/button';
 import { TriageReportsPage as TriageReportsComponent } from '@/components/triage';
 import { useTriageReports, useExportTriageReport } from '@/lib/hooks/use-triage';
-import { useToast } from '@/components/ui/use-toast';
+import { toast } from '@/lib/hooks/use-toast';
 import type { DateRangePreset, ReportFilters } from '@/components/triage';
 import type { TriageCategory, AssignedArea } from '@/lib/types/triage';
 
+// Local filters interface that allows 'all' values
+interface LocalReportFilters {
+  dateRange: DateRangePreset;
+  customStartDate?: string;
+  customEndDate?: string;
+  area?: AssignedArea | 'all';
+  category?: TriageCategory | 'all';
+}
+
 export default function TriageReportsPage() {
   const router = useRouter();
-  const { toast } = useToast();
 
-  const [filters, setFilters] = useState<ReportFilters>({
+  const [filters, setFilters] = useState<LocalReportFilters>({
     dateRange: 'last_7_days',
     area: 'all',
     category: 'all',
@@ -39,7 +47,7 @@ export default function TriageReportsPage() {
   });
 
   // Export mutation
-  const { mutateAsync: exportReport, isLoading: isExporting } = useExportTriageReport();
+  const { mutateAsync: exportReport, isPending: isExporting } = useExportTriageReport();
 
   const handleDateRangeChange = useCallback(
     (preset: DateRangePreset, customDates?: { start: string; end: string }) => {
@@ -53,16 +61,23 @@ export default function TriageReportsPage() {
     []
   );
 
-  const handleFilterChange = useCallback((newFilters: Partial<ReportFilters>) => {
+  const handleFilterChange = useCallback((newFilters: Partial<LocalReportFilters>) => {
     setFilters((prev) => ({ ...prev, ...newFilters }));
   }, []);
 
   const handleExport = useCallback(
     async (format: 'pdf' | 'csv' | 'excel') => {
       try {
+        const exportFilters = {
+          dateRange: filters.dateRange,
+          customStartDate: filters.customStartDate,
+          customEndDate: filters.customEndDate,
+          area: filters.area !== 'all' ? filters.area : undefined,
+          category: filters.category !== 'all' ? filters.category : undefined,
+        };
         await exportReport({
           format,
-          filters,
+          filters: exportFilters,
         });
         toast({
           title: 'Export Started',
@@ -76,7 +91,7 @@ export default function TriageReportsPage() {
         });
       }
     },
-    [exportReport, filters, toast]
+    [exportReport, filters]
   );
 
   const handleBack = useCallback(() => {
@@ -106,10 +121,6 @@ export default function TriageReportsPage() {
       <PageHeader
         title="Triage Reports"
         description="Performance analytics and statistics"
-        breadcrumbs={[
-          { label: 'Triage', href: '/triage' },
-          { label: 'Reports', href: '/triage/reports' },
-        ]}
         actions={
           <Button variant="outline" onClick={handleBack}>
             <ArrowLeft className="h-4 w-4 mr-2" />
