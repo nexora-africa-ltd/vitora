@@ -15,10 +15,12 @@ This module implements the core IPD models including:
 - Discharge: Patient discharge records
 """
 
+from datetime import timedelta
 from decimal import Decimal
 from django.contrib.auth import get_user_model
 from django.core.validators import MinValueValidator
 from django.db import models
+from django.utils import timezone
 
 from hmis.apps.core.models import TimeStampedModel
 
@@ -259,3 +261,162 @@ class Bed(TimeStampedModel):
         self.status = "RESERVED"
         self.status_changed_by = user
         self.save()
+
+
+class AdmissionRecommendation(TimeStampedModel):
+    """
+    Clinician recommendation for patient admission from OPD.
+
+    Captures the clinician's recommendation to admit a patient from
+    OPD to IPD, including clinical reasoning and urgency.
+
+    Attributes:
+        encounter: OPD encounter that generated this recommendation
+        recommended_by: Clinician making the recommendation
+        reason: Clinical reason for admission
+        provisional_diagnosis: ICD-10 code for provisional diagnosis
+        provisional_diagnosis_text: Text description of diagnosis
+        urgency: Urgency level (ROUTINE, URGENT, EMERGENCY)
+        preferred_ward_type: Preferred ward type (optional)
+        status: Current status (PENDING, ACCEPTED, DECLINED, EXPIRED)
+        expires_at: Expiration time (default 24 hours)
+        resolved_at: When recommendation was accepted/declined
+        resolved_by: User who resolved the recommendation
+        decline_reason: Reason if recommendation was declined
+    """
+
+    STATUS_CHOICES = [
+        ("PENDING", "Pending"),
+        ("ACCEPTED", "Accepted"),
+        ("DECLINED", "Declined"),
+        ("EXPIRED", "Expired"),
+    ]
+
+    URGENCY_CHOICES = [
+        ("ROUTINE", "Routine"),
+        ("URGENT", "Urgent"),
+        ("EMERGENCY", "Emergency"),
+    ]
+
+    encounter = models.OneToOneField(
+        "encounters.Encounter",
+        on_delete=models.CASCADE,
+        related_name="admission_recommendation",
+        help_text="OPD encounter that generated this recommendation",
+    )
+    recommended_by = models.ForeignKey(
+        User,
+        on_delete=models.PROTECT,
+        related_name="admission_recommendations_made",
+        help_text="Clinician making the recommendation",
+    )
+    reason = models.TextField(
+        help_text="Clinical reason for admission",
+    )
+    provisional_diagnosis = models.CharField(
+        max_length=10,
+        help_text="ICD-10 code for provisional diagnosis",
+    )
+    provisional_diagnosis_text = models.CharField(
+        max_length=255,
+        help_text="Text description of diagnosis",
+    )
+    urgency = models.CharField(
+        max_length=20,
+        choices=URGENCY_CHOICES,
+        default="ROUTINE",
+        help_text="Urgency level",
+    )
+    preferred_ward_type = models.CharField(
+        max_length=20,
+        blank=True,
+        default="",
+        help_text="Preferred ward type (optional)",
+    )
+    status = models.CharField(
+        max_length=20,
+        choices=STATUS_CHOICES,
+        default="PENDING",
+        help_text="Current status",
+    )
+    expires_at = models.DateTimeField(
+        help_text="Expiration time (default 24 hours from creation)",
+    )
+
+    # Resolution
+    resolved_at = models.DateTimeField(
+        null=True,
+        blank=True,
+        help_text="When recommendation was accepted/declined",
+    )
+    resolved_by = models.ForeignKey(
+        User,
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name="admission_recommendations_resolved",
+        help_text="User who resolved the recommendation",
+    )
+    decline_reason = models.TextField(
+        blank=True,
+        default="",
+        help_text="Reason if recommendation was declined",
+    )
+
+    class Meta:
+        """Meta options for AdmissionRecommendation model."""
+
+        ordering = ["-created_at"]
+        verbose_name = "Admission Recommendation"
+        verbose_name_plural = "Admission Recommendations"
+
+    def __str__(self):
+        """Return string representation."""
+        return f"Admission Recommendation for {self.encounter.patient} - {self.status}"
+
+    def accept(self, user):
+        """
+        Mark recommendation as accepted.
+
+        Args:
+            user: User accepting the recommendation
+
+        Raises:
+            ValueError: If recommendation already resolved
+        """
+        if self.status in ["ACCEPTED", "DECLINED"]:
+            raise ValueError("Recommendation already resolved")
+
+        self.status = "ACCEPTED"
+        self.resolved_by = user
+        self.resolved_at = timezone.now()
+        self.save()
+
+    def decline(self, user, reason):
+        """
+        Mark recommendation as declined with reason.
+
+        Args:
+            user: User declining the recommendation
+            reason: Reason for declining
+
+        Raises:
+            ValueError: If recommendation already resolved
+        """
+        if self.status in ["ACCEPTED", "DECLINED"]:
+            raise ValueError("Recommendation already resolved")
+
+        self.status = "DECLINED"
+        self.resolved_by = user
+        self.resolved_at = timezone.now()
+        self.decline_reason = reason
+        self.save()
+
+    def is_expired(self) -> bool:
+        """
+        Check if recommendation has expired.
+
+        Returns:
+            True if current time is past expires_at, False otherwise
+        """
+        return timezone.now() > self.expires_at
