@@ -7,3 +7,6 @@
 
 export { TriageCategoryBadge, triageBadgeVariants } from './triage-category-badge';
 export type { TriageCategoryBadgeProps, BadgeCategory } from './triage-category-badge';
+
+export { VitalAlertsPanel } from './vital-alerts-panel';
+export type { VitalAlertsPanelProps, AlertItemProps } from './vital-alerts-panel';
