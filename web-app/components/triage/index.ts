@@ -10,3 +10,6 @@ export type { TriageCategoryBadgeProps, BadgeCategory } from './triage-category-
 
 export { VitalAlertsPanel } from './vital-alerts-panel';
 export type { VitalAlertsPanelProps, AlertItemProps } from './vital-alerts-panel';
+
+export { TriageAssessmentForm } from './triage-assessment-form';
+export type { TriageAssessmentFormProps } from './triage-assessment-form';
