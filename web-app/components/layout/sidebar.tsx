@@ -15,6 +15,7 @@ import {
   ChevronRight,
   LogOut,
   X,
+  AlertTriangle,
 } from 'lucide-react';
 import { cn } from '@/lib/utils/cn';
 import { Button } from '@/components/ui/button';
@@ -40,6 +41,7 @@ const mainNavItems: NavItem[] = [
   { label: 'Dashboard', href: '/', icon: LayoutDashboard },
   { label: 'Patients', href: '/patients', icon: Users },
   { label: 'Encounters', href: '/encounters', icon: Stethoscope },
+  { label: 'Triage', href: '/triage', icon: AlertTriangle },
   { label: 'Admissions', href: '/admissions', icon: FileText },
   { label: 'Pharmacy', href: '/pharmacy', icon: Pill },
   { label: 'Laboratory', href: '/laboratory', icon: FlaskConical },
