@@ -27,6 +27,8 @@ from .models import (
 from .serializers import (
     WardSerializer,
     BedSerializer,
+    AdmissionRecommendationSerializer,
+    AdmissionSerializer,
 )
 
 
@@ -124,3 +126,189 @@ class BedViewSet(viewsets.ModelViewSet):
                 },
                 ip_address=get_client_ip(self.request),
             )
+
+
+class AdmissionRecommendationViewSet(viewsets.ModelViewSet):
+    """
+    ViewSet for AdmissionRecommendation model.
+    
+    Provides CRUD operations for admission recommendations with:
+    - Workflow methods (accept, decline)
+    - Filtering by status and urgency
+    - Expiry tracking
+    
+    Endpoints:
+    - GET /api/inpatient/admission-recommendations/ - List all recommendations
+    - GET /api/inpatient/admission-recommendations/{id}/ - Recommendation detail
+    - POST /api/inpatient/admission-recommendations/ - Create recommendation
+    - POST /api/inpatient/admission-recommendations/{id}/accept/ - Accept recommendation
+    - POST /api/inpatient/admission-recommendations/{id}/decline/ - Decline recommendation
+    """
+    
+    queryset = AdmissionRecommendation.objects.all()
+    serializer_class = AdmissionRecommendationSerializer
+    permission_classes = [IsAuthenticated]
+    filter_backends = [DjangoFilterBackend, filters.SearchFilter, filters.OrderingFilter]
+    filterset_fields = ['status', 'urgency', 'recommended_by', 'preferred_ward_type']
+    search_fields = ['reason', 'provisional_diagnosis_text']
+    ordering_fields = ['created_at', 'expires_at', 'urgency']
+    ordering = ['-created_at']
+    
+    def perform_create(self, serializer):
+        """Create recommendation and log action."""
+        instance = serializer.save()
+        
+        # Log recommendation creation
+        AuditLog.log(
+            action='admission_recommendation_create',
+            user=self.request.user,
+            resource_type='AdmissionRecommendation',
+            resource_id=instance.id,
+            details={
+                'encounter': instance.encounter.id,
+                'urgency': instance.urgency,
+                'reason': instance.reason,
+            },
+            ip_address=get_client_ip(self.request),
+        )
+    
+    @action(detail=True, methods=['post'])
+    def accept(self, request, pk=None):
+        """
+        Accept a pending admission recommendation.
+        
+        Request body:
+        - user: User ID who is accepting
+        """
+        recommendation = self.get_object()
+        user_id = request.data.get('user')
+        
+        if not user_id:
+            return Response(
+                {'error': 'User ID required'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        try:
+            user = User.objects.get(id=user_id)
+            recommendation.accept(user)
+            
+            # Log acceptance
+            AuditLog.log(
+                action='admission_recommendation_accept',
+                user=request.user,
+                resource_type='AdmissionRecommendation',
+                resource_id=recommendation.id,
+                details={'accepted_by': user.username},
+                ip_address=get_client_ip(request),
+            )
+            
+            serializer = self.get_serializer(recommendation)
+            return Response(serializer.data)
+            
+        except User.DoesNotExist:
+            return Response(
+                {'error': 'User not found'},
+                status=status.HTTP_404_NOT_FOUND
+            )
+        except ValueError as e:
+            return Response(
+                {'error': str(e)},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+    
+    @action(detail=True, methods=['post'])
+    def decline(self, request, pk=None):
+        """
+        Decline a pending admission recommendation.
+        
+        Request body:
+        - user: User ID who is declining
+        - reason: Reason for declining (required)
+        """
+        recommendation = self.get_object()
+        user_id = request.data.get('user')
+        reason = request.data.get('reason')
+        
+        if not user_id or not reason:
+            return Response(
+                {'error': 'User ID and reason required'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        try:
+            user = User.objects.get(id=user_id)
+            recommendation.decline(user, reason)
+            
+            # Log decline
+            AuditLog.log(
+                action='admission_recommendation_decline',
+                user=request.user,
+                resource_type='AdmissionRecommendation',
+                resource_id=recommendation.id,
+                details={
+                    'declined_by': user.username,
+                    'reason': reason,
+                },
+                ip_address=get_client_ip(request),
+            )
+            
+            serializer = self.get_serializer(recommendation)
+            return Response(serializer.data)
+            
+        except User.DoesNotExist:
+            return Response(
+                {'error': 'User not found'},
+                status=status.HTTP_404_NOT_FOUND
+            )
+        except ValueError as e:
+            return Response(
+                {'error': str(e)},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+
+class AdmissionViewSet(viewsets.ModelViewSet):
+    """
+    ViewSet for Admission model.
+    
+    Provides CRUD operations for admissions with:
+    - Auto-generated admission numbers
+    - Bed status management
+    - Length of stay tracking
+    - Filtering by ward, status, patient
+    
+    Endpoints:
+    - GET /api/inpatient/admissions/ - List all admissions
+    - GET /api/inpatient/admissions/{id}/ - Admission detail
+    - POST /api/inpatient/admissions/ - Create admission
+    - PATCH /api/inpatient/admissions/{id}/ - Update admission
+    """
+    
+    queryset = Admission.objects.all()
+    serializer_class = AdmissionSerializer
+    permission_classes = [IsAuthenticated]
+    filter_backends = [DjangoFilterBackend, filters.SearchFilter, filters.OrderingFilter]
+    filterset_fields = ['patient', 'ward', 'admission_status', 'payer_type']
+    search_fields = ['admission_number', 'patient__first_name', 'patient__last_name']
+    ordering_fields = ['admission_date', 'created_at', 'admission_number']
+    ordering = ['-admission_date']
+    
+    def perform_create(self, serializer):
+        """Create admission and log action."""
+        instance = serializer.save()
+        
+        # Log admission creation
+        AuditLog.log(
+            action='admission_create',
+            user=self.request.user,
+            resource_type='Admission',
+            resource_id=instance.id,
+            details={
+                'admission_number': instance.admission_number,
+                'patient': instance.patient.id,
+                'ward': instance.ward.name,
+                'bed': instance.bed.bed_number,
+            },
+            ip_address=get_client_ip(self.request),
+        )

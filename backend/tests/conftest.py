@@ -388,3 +388,24 @@ def sample_admission(db, sample_patient, sample_encounter, test_user):
     )
     
     return admission
+
+
+@pytest.fixture
+def sample_admission_recommendation(db, sample_encounter, test_user):
+    """Create a sample admission recommendation for testing."""
+    from hmis.apps.inpatient.models import AdmissionRecommendation
+    from django.utils import timezone
+    from datetime import timedelta
+    
+    recommendation = AdmissionRecommendation.objects.create(
+        encounter=sample_encounter,
+        recommended_by=test_user,
+        reason="Suspected pneumonia requiring hospitalization",
+        provisional_diagnosis="J18.9",
+        provisional_diagnosis_text="Pneumonia, unspecified",
+        urgency="URGENT",
+        preferred_ward_type="MEDICAL",
+        expires_at=timezone.now() + timedelta(hours=24),
+    )
+    
+    return recommendation
