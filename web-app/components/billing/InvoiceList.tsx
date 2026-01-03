@@ -1,0 +1,231 @@
+/**
+ * Invoice List Component
+ * Displays a paginated, filterable list of invoices
+ */
+'use client';
+
+import React from 'react';
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '@/components/ui/table';
+import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
+import { Input } from '@/components/ui/input';
+import { Skeleton } from '@/components/ui/skeleton';
+import { Plus, Search, FileText } from 'lucide-react';
+import type { Invoice, InvoiceStatus } from '@/lib/types/billing';
+import { formatCurrency, formatDate } from '@/lib/utils/format';
+
+// ============================================================================
+// Types
+// ============================================================================
+
+interface InvoiceListProps {
+  invoices: Invoice[];
+  isLoading: boolean;
+  onSelect: (invoice: Invoice) => void;
+  onCreateNew: () => void;
+  onFilter?: (filters: { status?: InvoiceStatus; search?: string }) => void;
+}
+
+// ============================================================================
+// Status Badge Colors
+// ============================================================================
+
+const statusColors: Record<InvoiceStatus, string> = {
+  DRAFT: 'bg-slate-100 text-slate-700 hover:bg-slate-200',
+  PENDING: 'bg-amber-100 text-amber-700 hover:bg-amber-200',
+  PARTIAL: 'bg-blue-100 text-blue-700 hover:bg-blue-200',
+  PAID: 'bg-green-100 text-green-700 hover:bg-green-200',
+  OVERDUE: 'bg-red-100 text-red-700 hover:bg-red-200',
+  CANCELLED: 'bg-gray-100 text-gray-500 hover:bg-gray-200',
+};
+
+// ============================================================================
+// Loading Skeleton
+// ============================================================================
+
+function InvoiceListSkeleton() {
+  return (
+    <div role="status" aria-label="Loading invoices">
+      <div className="space-y-3">
+        {[...Array(5)].map((_, i) => (
+          <div key={i} className="flex items-center space-x-4">
+            <Skeleton className="h-10 w-32" />
+            <Skeleton className="h-10 w-40" />
+            <Skeleton className="h-10 w-24" />
+            <Skeleton className="h-10 w-20" />
+            <Skeleton className="h-10 w-28" />
+          </div>
+        ))}
+      </div>
+      <span className="sr-only">Loading invoices...</span>
+    </div>
+  );
+}
+
+// ============================================================================
+// Empty State
+// ============================================================================
+
+function EmptyState({ onCreateNew }: { onCreateNew: () => void }) {
+  return (
+    <div className="flex flex-col items-center justify-center py-12 text-center">
+      <FileText className="h-12 w-12 text-muted-foreground mb-4" />
+      <h3 className="text-lg font-medium mb-2">No invoices found</h3>
+      <p className="text-muted-foreground mb-4">
+        Get started by creating a new invoice
+      </p>
+      <Button onClick={onCreateNew}>
+        <Plus className="h-4 w-4 mr-2" />
+        Create Invoice
+      </Button>
+    </div>
+  );
+}
+
+// ============================================================================
+// Main Component
+// ============================================================================
+
+export function InvoiceList({
+  invoices,
+  isLoading,
+  onSelect,
+  onCreateNew,
+  onFilter,
+}: InvoiceListProps) {
+  const [searchQuery, setSearchQuery] = React.useState('');
+  const [statusFilter, setStatusFilter] = React.useState<string>('all');
+
+  const handleStatusChange = (value: string) => {
+    setStatusFilter(value);
+    onFilter?.({
+      status: value === 'all' ? undefined : (value as InvoiceStatus),
+      search: searchQuery,
+    });
+  };
+
+  const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const value = e.target.value;
+    setSearchQuery(value);
+    onFilter?.({
+      status: statusFilter === 'all' ? undefined : (statusFilter as InvoiceStatus),
+      search: value,
+    });
+  };
+
+  if (isLoading) {
+    return <InvoiceListSkeleton />;
+  }
+
+  return (
+    <div className="space-y-4">
+      {/* Header with filters */}
+      <div className="flex flex-col sm:flex-row gap-4 items-start sm:items-center justify-between">
+        <div className="flex flex-col sm:flex-row gap-2 w-full sm:w-auto">
+          {/* Search */}
+          <div className="relative">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+            <Input
+              placeholder="Search invoices..."
+              value={searchQuery}
+              onChange={handleSearchChange}
+              className="pl-9 w-full sm:w-64"
+            />
+          </div>
+
+          {/* Status filter */}
+          <Select
+            value={statusFilter}
+            onValueChange={handleStatusChange}
+          >
+            <SelectTrigger className="w-full sm:w-40" aria-label="Status">
+              <SelectValue placeholder="Filter by status" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All Statuses</SelectItem>
+              <SelectItem value="DRAFT">Draft</SelectItem>
+              <SelectItem value="PENDING">Pending</SelectItem>
+              <SelectItem value="PARTIAL">Partial</SelectItem>
+              <SelectItem value="PAID">Paid</SelectItem>
+              <SelectItem value="OVERDUE">Overdue</SelectItem>
+              <SelectItem value="CANCELLED">Cancelled</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+
+        {/* Create button */}
+        <Button onClick={onCreateNew}>
+          <Plus className="h-4 w-4 mr-2" />
+          New Invoice
+        </Button>
+      </div>
+
+      {/* Empty state or table */}
+      {invoices.length === 0 ? (
+        <EmptyState onCreateNew={onCreateNew} />
+      ) : (
+        <div className="rounded-md border">
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Invoice #</TableHead>
+                <TableHead>Patient</TableHead>
+                <TableHead>Date</TableHead>
+                <TableHead>Amount</TableHead>
+                <TableHead>Status</TableHead>
+                <TableHead>Due Date</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {invoices.map((invoice) => (
+                <TableRow
+                  key={invoice.id}
+                  className="cursor-pointer hover:bg-muted/50"
+                  onClick={() => onSelect(invoice)}
+                >
+                  <TableCell className="font-medium">
+                    {invoice.invoice_number}
+                  </TableCell>
+                  <TableCell>
+                    <div>
+                      <div className="font-medium">{invoice.patient_name}</div>
+                      {invoice.patient_mrn && (
+                        <div className="text-sm text-muted-foreground">
+                          {invoice.patient_mrn}
+                        </div>
+                      )}
+                    </div>
+                  </TableCell>
+                  <TableCell>{formatDate(invoice.invoice_date)}</TableCell>
+                  <TableCell className="font-medium">
+                    {formatCurrency(parseFloat(invoice.total_amount))}
+                  </TableCell>
+                  <TableCell>
+                    <Badge className={statusColors[invoice.status]}>
+                      {invoice.status}
+                    </Badge>
+                  </TableCell>
+                  <TableCell>{formatDate(invoice.due_date)}</TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        </div>
+      )}
+    </div>
+  );
+}

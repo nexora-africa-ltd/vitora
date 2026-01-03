@@ -5,7 +5,7 @@
  * All tests should FAIL initially.
  */
 import { renderHook, act } from '@testing-library/react';
-import { useBillingStore } from '@/lib/stores/billing';
+import { useBillingStore, useBillingStoreWithComputed } from '@/lib/stores/billing';
 import type { InvoiceStatus, PaymentMethod } from '@/lib/types/billing';
 
 describe('useBillingStore', () => {
@@ -456,7 +456,7 @@ describe('useBillingStore', () => {
 
   describe('Computed Values', () => {
     it('should compute whether any invoice is selected', () => {
-      const { result } = renderHook(() => useBillingStore());
+      const { result } = renderHook(() => useBillingStoreWithComputed());
 
       expect(result.current.hasSelectedInvoices).toBe(false);
 
@@ -468,7 +468,7 @@ describe('useBillingStore', () => {
     });
 
     it('should compute selected invoice count', () => {
-      const { result } = renderHook(() => useBillingStore());
+      const { result } = renderHook(() => useBillingStoreWithComputed());
 
       act(() => {
         result.current.toggleInvoiceSelection(1);
@@ -479,7 +479,7 @@ describe('useBillingStore', () => {
     });
 
     it('should compute whether filters are active', () => {
-      const { result } = renderHook(() => useBillingStore());
+      const { result } = renderHook(() => useBillingStoreWithComputed());
 
       expect(result.current.hasActiveInvoiceFilters).toBe(false);
 
