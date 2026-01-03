@@ -19,3 +19,6 @@ export type { TriageQueueDashboardProps } from './triage-queue-dashboard';
 
 export { TriageReportsPage } from './triage-reports-page';
 export type { TriageReportsPageProps, DateRangePreset, ReportFilters } from './triage-reports-page';
+
+export { TriageThresholdsSettings } from './triage-thresholds-settings';
+export type { TriageThresholdsSettingsProps } from './triage-thresholds-settings';
