@@ -6,7 +6,7 @@ Sprint 1.5-1.6 Track D: Inpatient Foundation
 
 from django.contrib import admin
 
-from .models import Ward, Bed, AdmissionRecommendation, Admission, Discharge, Transfer
+from .models import Ward, Bed, AdmissionRecommendation, Admission, Discharge, Transfer, WardRound
 
 
 @admin.register(Ward)
@@ -358,6 +358,77 @@ class TransferAdmin(admin.ModelAdmin):
             "Clinical Handover",
             {
                 "fields": ("clinical_handover_notes",)
+            },
+        ),
+        (
+            "Timestamps",
+            {
+                "fields": ("created_at", "updated_at"),
+                "classes": ("collapse",),
+            },
+        ),
+    )
+
+
+@admin.register(WardRound)
+class WardRoundAdmin(admin.ModelAdmin):
+    """Admin interface for WardRound model."""
+
+    list_display = [
+        "admission",
+        "round_date",
+        "round_time",
+        "conducted_by",
+        "condition_status",
+        "requires_consultant_review",
+    ]
+    list_filter = [
+        "condition_status",
+        "requires_consultant_review",
+        "round_date",
+    ]
+    search_fields = [
+        "admission__admission_number",
+        "admission__patient__first_name",
+        "admission__patient__last_name",
+        "conducted_by__username",
+        "subjective",
+        "assessment",
+    ]
+    readonly_fields = ["created_at", "updated_at"]
+    ordering = ["-round_date", "-round_time"]
+
+    fieldsets = (
+        (
+            "Round Details",
+            {
+                "fields": (
+                    "admission",
+                    "round_date",
+                    "round_time",
+                    "conducted_by",
+                )
+            },
+        ),
+        (
+            "SOAP Notes",
+            {
+                "fields": (
+                    "subjective",
+                    "objective",
+                    "assessment",
+                    "plan",
+                )
+            },
+        ),
+        (
+            "Patient Status",
+            {
+                "fields": (
+                    "condition_status",
+                    "requires_consultant_review",
+                    "consultant_specialty",
+                )
             },
         ),
         (

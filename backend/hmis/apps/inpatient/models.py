@@ -18,6 +18,7 @@ This module implements the core IPD models including:
 from datetime import timedelta
 from decimal import Decimal
 from django.contrib.auth import get_user_model
+from django.core.exceptions import ValidationError
 from django.core.validators import MinValueValidator
 from django.db import models
 from django.utils import timezone
@@ -982,3 +983,61 @@ class Transfer(TimeStampedModel):
         # Validate transfer date is not before admission date
         if self.transfer_date < self.admission.admission_date:
             raise ValidationError("Transfer date cannot be before admission date")
+
+
+class WardRound(TimeStampedModel):
+    """Daily ward round documentation using SOAP notes format."""
+
+    CONDITION_STATUS_CHOICES = [
+        ("STABLE", "Stable"),
+        ("IMPROVING", "Improving"),
+        ("DETERIORATING", "Deteriorating"),
+        ("CRITICAL", "Critical"),
+    ]
+
+    admission = models.ForeignKey(
+        Admission, on_delete=models.CASCADE, related_name="ward_rounds"
+    )
+    round_date = models.DateField()
+    round_time = models.TimeField()
+    conducted_by = models.ForeignKey(User, on_delete=models.PROTECT)
+
+    # SOAP notes
+    subjective = models.TextField(help_text="Patient complaints, symptoms")
+    objective = models.TextField(
+        help_text="Examination findings, vitals, observations"
+    )
+    assessment = models.TextField(
+        help_text="Clinical assessment, diagnosis updates"
+    )
+    plan = models.TextField(help_text="Treatment plan, orders, next steps")
+
+    # Patient condition tracking
+    condition_status = models.CharField(
+        max_length=20, choices=CONDITION_STATUS_CHOICES
+    )
+
+    # Consultant review flags
+    requires_consultant_review = models.BooleanField(default=False)
+    consultant_specialty = models.CharField(max_length=100, blank=True)
+
+    class Meta:
+        unique_together = ["admission", "round_date", "conducted_by"]
+        ordering = ["-round_date", "-round_time"]
+        verbose_name = "Ward Round"
+        verbose_name_plural = "Ward Rounds"
+
+    def __str__(self):
+        return f"Ward Round - {self.admission.patient} on {self.round_date}"
+
+    def clean(self):
+        """Validate ward round data."""
+        super().clean()
+
+        # Validate round date is not in the future
+        from datetime import date
+
+        if self.round_date and self.round_date > date.today():
+            raise ValidationError(
+                {"round_date": "Round date cannot be in the future"}
+            )

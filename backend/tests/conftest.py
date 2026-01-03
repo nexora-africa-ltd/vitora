@@ -326,3 +326,51 @@ def sample_lab_result(db, sample_lab_order, test_user):
         result_flag='NORMAL',
         entered_by=test_user,
     )
+
+
+@pytest.fixture
+def sample_admission(db, sample_patient, sample_encounter, test_user):
+    """Create a sample admission for testing."""
+    from hmis.apps.inpatient.models import Ward, Bed, Admission
+    from decimal import Decimal
+    from django.utils import timezone
+    
+    # Create ward
+    ward = Ward.objects.create(
+        name="Medical Ward 1",
+        code="MED-01",
+        ward_type="MEDICAL",
+        capacity=20,
+        daily_rate=Decimal("500.00"),
+    )
+    
+    # Create bed
+    bed = Bed.objects.create(
+        ward=ward,
+        bed_number="B-101",
+        bed_type="STANDARD",
+        status="AVAILABLE",
+    )
+    
+    # Create IPD encounter
+    ipd_encounter = sample_patient.encounters.create(
+        encounter_type="IPD",
+        chief_complaint="Admitted for further management",
+    )
+    
+    # Create admission
+    admission = Admission.objects.create(
+        patient=sample_patient,
+        opd_encounter=sample_encounter,
+        ipd_encounter=ipd_encounter,
+        admission_date=timezone.now(),
+        admitting_diagnosis="J18.9",
+        admitting_diagnosis_text="Pneumonia, unspecified",
+        admitting_officer=test_user,
+        attending_doctor=test_user,
+        ward=ward,
+        bed=bed,
+        payer_type="CASH",
+    )
+    
+    return admission
