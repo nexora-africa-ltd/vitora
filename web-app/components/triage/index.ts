@@ -16,3 +16,6 @@ export type { TriageAssessmentFormProps } from './triage-assessment-form';
 
 export { TriageQueueDashboard } from './triage-queue-dashboard';
 export type { TriageQueueDashboardProps } from './triage-queue-dashboard';
+
+export { TriageReportsPage } from './triage-reports-page';
+export type { TriageReportsPageProps, DateRangePreset, ReportFilters } from './triage-reports-page';
