@@ -213,6 +213,15 @@ class TriageAssessment(models.Model):
         "BLUE": 480,  # Non-Urgent
     }
 
+    # Category priority for sorting (lower number = higher priority)
+    CATEGORY_PRIORITY = {
+        "RED": 1,
+        "ORANGE": 2,
+        "YELLOW": 3,
+        "GREEN": 4,
+        "BLUE": 5,
+    }
+
     # Core Relationship
     encounter = models.OneToOneField(
         "encounters.Encounter", on_delete=models.CASCADE, related_name="triage_assessment"
@@ -308,6 +317,11 @@ class TriageAssessment(models.Model):
 
     def __str__(self) -> str:
         return f"Triage {self.triage_category} - {self.encounter.patient} - {self.arrival_time}"
+
+    @property
+    def category_priority(self) -> int:
+        """Get numeric priority for sorting (lower = higher priority)."""
+        return self.CATEGORY_PRIORITY.get(self.triage_category, 99)
 
     def calculate_triage_category(self) -> str:
         """
@@ -449,3 +463,101 @@ class TriageAssessment(models.Model):
             alerts.append("ALERT: Altered consciousness - neurological assessment needed")
 
         return alerts
+
+
+class TriageQueue(models.Model):
+    """
+    Active triage queue entry for a patient awaiting care.
+    Removed when patient is seen by clinician or leaves.
+    """
+
+    STATUS_CHOICES = [
+        ("WAITING", "Waiting"),
+        ("CALLED", "Called"),
+        ("WITH_CLINICIAN", "With Clinician"),
+        ("COMPLETED", "Completed"),
+        ("LEFT_WITHOUT_BEING_SEEN", "Left Without Being Seen (LWBS)"),
+    ]
+
+    triage_assessment = models.OneToOneField(
+        TriageAssessment, on_delete=models.CASCADE, related_name="queue_entry"
+    )
+    position = models.IntegerField(help_text="Queue position (auto-calculated by priority)")
+    status = models.CharField(max_length=30, choices=STATUS_CHOICES, default="WAITING")
+    called_at = models.DateTimeField(null=True, blank=True)
+    called_by = models.ForeignKey(
+        "auth.User",
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="queue_calls",
+    )
+    notes = models.TextField(blank=True, default="")
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        # Note: Ordering by category needs to be done in Python since we need priority-based sorting
+        # Default ordering is by arrival time
+        ordering = ["triage_assessment__arrival_time"]
+        verbose_name = "Triage Queue Entry"
+        verbose_name_plural = "Triage Queue Entries"
+
+    def __str__(self) -> str:
+        return f"Queue {self.position} - {self.triage_assessment.triage_category} - {self.status}"
+
+    @classmethod
+    def get_active_queue(cls, area: str = None):
+        """Get active queue entries, optionally filtered by area.
+        
+        Returns queryset sorted by triage priority (RED first) then arrival time (FIFO).
+        """
+        queryset = cls.objects.exclude(status__in=["COMPLETED", "LEFT_WITHOUT_BEING_SEEN"]).select_related('triage_assessment')
+        
+        if area:
+            queryset = queryset.filter(triage_assessment__assigned_area=area)
+        
+        # Convert to list and sort by priority then arrival time
+        queue_list = list(queryset)
+        queue_list.sort(key=lambda x: (
+            x.triage_assessment.category_priority,
+            x.triage_assessment.arrival_time
+        ))
+        
+        return queue_list
+
+    @classmethod
+    def recalculate_positions(cls):
+        """Recalculate all queue positions based on priority ordering."""
+        active_queue = cls.get_active_queue()
+        for index, entry in enumerate(active_queue, start=1):
+            entry.position = index
+            entry.save(update_fields=["position"])
+
+    def mark_called(self, called_by):
+        """Mark patient as called."""
+        self.status = "CALLED"
+        self.called_at = timezone.now()
+        self.called_by = called_by
+        self.save(update_fields=["status", "called_at", "called_by"])
+
+    def mark_with_clinician(self):
+        """Mark patient as with clinician, update triage timestamps."""
+        self.status = "WITH_CLINICIAN"
+        self.save(update_fields=["status"])
+        
+        # Update assessment timestamp
+        self.triage_assessment.seen_by_clinician_time = timezone.now()
+        self.triage_assessment.save(update_fields=["seen_by_clinician_time"])
+
+    def mark_completed(self):
+        """Mark queue entry as completed."""
+        self.status = "COMPLETED"
+        self.save(update_fields=["status"])
+
+    def mark_lwbs(self, reason: str = ""):
+        """Mark patient as Left Without Being Seen."""
+        self.status = "LEFT_WITHOUT_BEING_SEEN"
+        if reason:
+            self.notes = f"{self.notes}\nLWBS Reason: {reason}".strip()
+        self.save(update_fields=["status", "notes"])
