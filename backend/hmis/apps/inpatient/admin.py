@@ -142,12 +142,12 @@ class AdmissionAdmin(admin.ModelAdmin):
         "patient",
         "ward",
         "bed",
-        "status",
+        "admission_status",
         "admission_date",
         "attending_doctor",
         "payer_type",
     ]
-    list_filter = ["status", "payer_type", "ward", "admission_date"]
+    list_filter = ["admission_status", "payer_type", "ward", "admission_date"]
     search_fields = [
         "admission_number",
         "patient__first_name",
@@ -201,7 +201,7 @@ class AdmissionAdmin(admin.ModelAdmin):
             "Status & Payment",
             {
                 "fields": (
-                    "status",
+                    "admission_status",
                     "payer_type",
                     "insurance_details",
                     "discharge_date",

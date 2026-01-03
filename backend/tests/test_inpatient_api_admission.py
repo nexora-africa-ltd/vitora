@@ -50,7 +50,7 @@ class TestAdmissionRecommendationAPI:
         assert response.data['results'][0]['id'] == sample_admission_recommendation.id
 
     def test_create_admission_recommendation(
-        self, authenticated_client, test_user, sample_encounter, sample_ward
+        self, authenticated_client, test_user, sample_encounter, sample_inpatient_ward
     ):
         """Should create new admission recommendation."""
         data = {
@@ -60,7 +60,7 @@ class TestAdmissionRecommendationAPI:
             'provisional_diagnosis': 'J18.9',
             'provisional_diagnosis_text': 'Pneumonia, unspecified',
             'urgency': 'URGENT',
-            'preferred_ward_type': sample_ward.ward_type,
+            'preferred_ward_type': sample_inpatient_ward.ward_type,
         }
         
         response = authenticated_client.post(
@@ -160,7 +160,7 @@ class TestAdmissionAPI:
 
     def test_create_admission(
         self, authenticated_client, test_user, sample_patient, sample_encounter,
-        sample_ward, sample_bed, sample_admission_recommendation
+        sample_inpatient_ward, sample_bed, sample_admission_recommendation
     ):
         """Should create new admission with auto-generated admission number."""
         data = {
@@ -172,7 +172,7 @@ class TestAdmissionAPI:
             'admitting_diagnosis_text': 'Pneumonia, unspecified',
             'admitting_officer': test_user.id,
             'attending_doctor': test_user.id,
-            'ward': sample_ward.id,
+            'ward': sample_inpatient_ward.id,
             'bed': sample_bed.id,
             'payer_type': 'SHA',
             'insurance_details': {'policy_number': 'SHA-12345'},
@@ -206,16 +206,16 @@ class TestAdmissionAPI:
         assert isinstance(response.data['length_of_stay'], int)
 
     def test_filter_admissions_by_ward(
-        self, authenticated_client, sample_admission, sample_ward
+        self, authenticated_client, sample_admission, sample_inpatient_ward
     ):
         """Should filter admissions by ward."""
         response = authenticated_client.get(
-            f'/api/inpatient/admissions/?ward={sample_ward.id}'
+            f'/api/inpatient/admissions/?ward={sample_inpatient_ward.id}'
         )
         
         assert response.status_code == status.HTTP_200_OK
         for admission in response.data['results']:
-            assert admission['ward'] == sample_ward.id
+            assert admission['ward'] == sample_inpatient_ward.id
 
     def test_filter_admissions_by_status(
         self, authenticated_client, sample_admission

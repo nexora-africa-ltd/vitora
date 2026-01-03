@@ -26,7 +26,7 @@ from hmis.apps.core.models import AuditLog
 class TestWardAPI:
     """Tests for Ward API endpoints."""
 
-    def test_list_wards_with_occupancy(self, authenticated_client, sample_ward):
+    def test_list_wards_with_occupancy(self, authenticated_client, sample_inpatient_ward):
         """Should list wards with occupancy data."""
         response = authenticated_client.get('/api/inpatient/wards/')
         
@@ -42,15 +42,15 @@ class TestWardAPI:
         assert 'occupancy_rate' in ward_data
         assert 'daily_rate' in ward_data
 
-    def test_get_ward_detail(self, authenticated_client, sample_ward):
+    def test_get_ward_detail(self, authenticated_client, sample_inpatient_ward):
         """Should retrieve ward details with bed statistics."""
-        response = authenticated_client.get(f'/api/inpatient/wards/{sample_ward.id}/')
+        response = authenticated_client.get(f'/api/inpatient/wards/{sample_inpatient_ward.id}/')
         
         assert response.status_code == status.HTTP_200_OK
-        assert response.data['id'] == sample_ward.id
-        assert response.data['name'] == sample_ward.name
-        assert response.data['code'] == sample_ward.code
-        assert response.data['ward_type'] == sample_ward.ward_type
+        assert response.data['id'] == sample_inpatient_ward.id
+        assert response.data['name'] == sample_inpatient_ward.name
+        assert response.data['code'] == sample_inpatient_ward.code
+        assert response.data['ward_type'] == sample_inpatient_ward.ward_type
         assert 'available_beds' in response.data
         assert 'occupancy_rate' in response.data
 
@@ -60,9 +60,9 @@ class TestWardAPI:
         
         assert response.status_code == status.HTTP_401_UNAUTHORIZED
 
-    def test_search_wards_by_name(self, authenticated_client, sample_ward):
+    def test_search_wards_by_name(self, authenticated_client, sample_inpatient_ward):
         """Should search wards by name."""
-        response = authenticated_client.get('/api/inpatient/wards/', {'search': sample_ward.name})
+        response = authenticated_client.get('/api/inpatient/wards/', {'search': sample_inpatient_ward.name})
         
         assert response.status_code == status.HTTP_200_OK
         assert len(response.data['results']) >= 1
@@ -72,9 +72,9 @@ class TestWardAPI:
 class TestBedAPI:
     """Tests for Bed API endpoints."""
 
-    def test_list_beds_for_ward(self, authenticated_client, sample_ward, sample_bed):
+    def test_list_beds_for_ward(self, authenticated_client, sample_inpatient_ward, sample_bed):
         """Should list all beds for a specific ward."""
-        response = authenticated_client.get(f'/api/inpatient/wards/{sample_ward.id}/beds/')
+        response = authenticated_client.get(f'/api/inpatient/wards/{sample_inpatient_ward.id}/beds/')
         
         assert response.status_code == status.HTTP_200_OK
         assert len(response.data['results']) >= 1
@@ -82,7 +82,7 @@ class TestBedAPI:
         assert 'id' in bed_data
         assert 'bed_number' in bed_data
         assert 'status' in bed_data
-        assert bed_data['ward'] == sample_ward.id
+        assert bed_data['ward'] == sample_inpatient_ward.id
 
     def test_get_bed_detail(self, authenticated_client, sample_bed):
         """Should retrieve bed details."""
@@ -121,15 +121,15 @@ class TestBedAPI:
         assert audit_log is not None
         assert audit_log.user == test_user
 
-    def test_filter_beds_by_status(self, authenticated_client, sample_ward):
+    def test_filter_beds_by_status(self, authenticated_client, sample_inpatient_ward):
         """Should filter beds by availability status."""
         # Create beds with different statuses
-        Bed.objects.create(ward=sample_ward, bed_number='B-001', status='AVAILABLE')
-        Bed.objects.create(ward=sample_ward, bed_number='B-002', status='OCCUPIED')
-        Bed.objects.create(ward=sample_ward, bed_number='B-003', status='AVAILABLE')
+        Bed.objects.create(ward=sample_inpatient_ward, bed_number='B-001', status='AVAILABLE')
+        Bed.objects.create(ward=sample_inpatient_ward, bed_number='B-002', status='OCCUPIED')
+        Bed.objects.create(ward=sample_inpatient_ward, bed_number='B-003', status='AVAILABLE')
         
         response = authenticated_client.get(
-            f'/api/inpatient/wards/{sample_ward.id}/beds/',
+            f'/api/inpatient/wards/{sample_inpatient_ward.id}/beds/',
             {'status': 'AVAILABLE'}
         )
         

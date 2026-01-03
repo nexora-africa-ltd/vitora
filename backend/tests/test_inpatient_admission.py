@@ -541,7 +541,7 @@ class TestAdmissionQueries:
                 status=status,
             )
 
-        active_admissions = Admission.objects.filter(status="ACTIVE")
+        active_admissions = Admission.objects.filter(admission_status="ACTIVE")
         assert active_admissions.count() == 2
 
     def test_search_by_admission_number(self, sample_patient, ipd_encounter, sample_ward, available_bed, test_user):

@@ -28,6 +28,10 @@ from hmis.apps.core.models import TimeStampedModel
 User = get_user_model()
 
 
+def default_recommendation_expiry():
+    return timezone.now() + timedelta(hours=24)
+
+
 class Ward(TimeStampedModel):
     """
     Hospital ward for inpatient care.
@@ -341,6 +345,7 @@ class AdmissionRecommendation(TimeStampedModel):
         help_text="Current status",
     )
     expires_at = models.DateTimeField(
+        default=default_recommendation_expiry,
         help_text="Expiration time (default 24 hours from creation)",
     )
 
@@ -414,12 +419,7 @@ class AdmissionRecommendation(TimeStampedModel):
         self.save()
 
     def is_expired(self) -> bool:
-        """
-        Check if recommendation has expired.
-
-        Returns:
-            True if current time is past expires_at, False otherwise
-        """
+        """True if current time is past expires_at."""
         return timezone.now() > self.expires_at
 
 
@@ -443,7 +443,7 @@ class Admission(TimeStampedModel):
         attending_doctor: Doctor attending the patient
         ward: Ward where patient is admitted
         bed: Specific bed assigned
-        status: Current admission status
+        admission_status: Current admission status
         payer_type: Type of payer (CASH, SHA, CORPORATE)
         insurance_details: JSON field for insurance information
         discharge_date: Date and time of discharge (if applicable)
@@ -541,7 +541,7 @@ class Admission(TimeStampedModel):
     )
 
     # Status
-    status = models.CharField(
+    admission_status = models.CharField(
         max_length=20,
         choices=STATUS_CHOICES,
         default="ACTIVE",
@@ -598,10 +598,10 @@ class Admission(TimeStampedModel):
         from django.core.exceptions import ValidationError
 
         # Check for duplicate active admission
-        if self.status == "ACTIVE":
+        if self.admission_status == "ACTIVE":
             existing = Admission.objects.filter(
                 patient=self.patient,
-                status="ACTIVE"
+                admission_status="ACTIVE"
             ).exclude(pk=self.pk)
             
             if existing.exists():
@@ -648,6 +648,15 @@ class Admission(TimeStampedModel):
         end_date = self.discharge_date if self.discharge_date else timezone.now()
         delta = end_date - self.admission_date
         return delta.days
+
+    @property
+    def status(self) -> str:
+        """Backward-compatible alias for admission_status."""
+        return self.admission_status
+
+    @status.setter
+    def status(self, value: str) -> None:
+        self.admission_status = value
 
 
 class Discharge(TimeStampedModel):
@@ -800,13 +809,13 @@ class Discharge(TimeStampedModel):
 
         # Update admission status and discharge date
         if self.discharge_type == "DECEASED":
-            self.admission.status = "DECEASED"
+            self.admission.admission_status = "DECEASED"
         elif self.discharge_type == "ABSCONDED":
-            self.admission.status = "ABSCONDED"
+            self.admission.admission_status = "ABSCONDED"
         elif self.discharge_type == "TRANSFERRED":
-            self.admission.status = "TRANSFERRED_OUT"
+            self.admission.admission_status = "TRANSFERRED_OUT"
         else:
-            self.admission.status = "DISCHARGED"
+            self.admission.admission_status = "DISCHARGED"
 
         self.admission.discharge_date = self.discharge_date
         self.admission.save()
