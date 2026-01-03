@@ -7,17 +7,17 @@ Sprint 1.5-1.6 Track D: Inpatient Foundation
 from django.contrib import admin
 
 from .models import (
-    Ward, 
-    Bed, 
-    AdmissionRecommendation, 
-    Admission, 
-    Discharge, 
-    Transfer, 
-    WardRound,
-    NursingKardex,
-    KardexShiftNote,
+    Admission,
+    AdmissionRecommendation,
+    Bed,
+    Discharge,
     KardexHandoverNote,
+    KardexShiftNote,
+    NursingKardex,
     ShiftHandover,
+    Transfer,
+    Ward,
+    WardRound,
 )
 
 
@@ -88,7 +88,7 @@ class AdmissionRecommendationAdmin(admin.ModelAdmin):
         "updated_at",
     ]
     ordering = ["-created_at"]
-    
+
     fieldsets = (
         (
             "Recommendation Details",
@@ -162,7 +162,7 @@ class AdmissionAdmin(admin.ModelAdmin):
     ]
     ordering = ["-admission_date"]
     autocomplete_fields = ["patient", "ward", "bed", "admitting_officer", "attending_doctor"]
-    
+
     fieldsets = (
         (
             "Patient & Encounters",
@@ -241,7 +241,7 @@ class DischargeAdmin(admin.ModelAdmin):
     ]
     readonly_fields = ["created_at", "updated_at", "length_of_stay_days"]
     ordering = ["-discharge_date"]
-    
+
     fieldsets = (
         (
             "Admission & Discharge",
@@ -305,7 +305,7 @@ class DischargeAdmin(admin.ModelAdmin):
             },
         ),
     )
-    
+
     def length_of_stay_days(self, obj):
         """Display length of stay."""
         return f"{obj.length_of_stay} days"
@@ -334,7 +334,7 @@ class TransferAdmin(admin.ModelAdmin):
     ]
     readonly_fields = ["created_at", "updated_at"]
     ordering = ["-transfer_date"]
-    
+
     fieldsets = (
         (
             "Transfer Details",
@@ -513,7 +513,7 @@ class NursingKardexAdmin(admin.ModelAdmin):
 
 class KardexShiftNoteInline(admin.TabularInline):
     """Inline admin for shift notes in Kardex."""
-    
+
     model = KardexShiftNote
     extra = 0
     readonly_fields = ["nurse", "shift", "content", "timestamp"]
@@ -522,7 +522,7 @@ class KardexShiftNoteInline(admin.TabularInline):
 
 class KardexHandoverNoteInline(admin.TabularInline):
     """Inline admin for handover notes in Kardex."""
-    
+
     model = KardexHandoverNote
     extra = 0
     readonly_fields = ["outgoing_nurse", "incoming_nurse", "shift_ending", "pending_tasks", "escalations", "acknowledged_at", "created_at"]
@@ -596,7 +596,7 @@ class KardexHandoverNoteAdmin(admin.ModelAdmin):
 @admin.register(ShiftHandover)
 class ShiftHandoverAdmin(admin.ModelAdmin):
     """Admin interface for ShiftHandover model."""
-    
+
     list_display = [
         "ward",
         "shift_date",
@@ -616,7 +616,7 @@ class ShiftHandoverAdmin(admin.ModelAdmin):
     ]
     readonly_fields = ["created_at", "updated_at", "is_acknowledged_display"]
     ordering = ["-shift_date", "-created_at"]
-    
+
     fieldsets = (
         (
             "Shift Information",
@@ -659,7 +659,7 @@ class ShiftHandoverAdmin(admin.ModelAdmin):
             },
         ),
     )
-    
+
     def is_acknowledged_display(self, obj):
         """Display acknowledgment status."""
         return "✓ Acknowledged" if obj.is_acknowledged else "⏳ Pending"

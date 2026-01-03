@@ -6,9 +6,10 @@ Full integration planned for Phase 2 when SHA API becomes available.
 
 Reference: Deliverables spec § 11 "SHA Claims Stub (Future Integration)"
 """
-from decimal import Decimal
 from datetime import timedelta
-from typing import Dict, List, Any
+from decimal import Decimal
+from typing import Any
+
 from django.utils import timezone
 
 
@@ -26,12 +27,12 @@ class SHAClaimsService:
     
     All methods return mock responses for testing purposes.
     """
-    
+
     def __init__(self):
         """Initialize SHA Claims Service in stub mode."""
         self.is_stub = True
-        
-    def submit_claim(self, invoice) -> Dict[str, Any]:
+
+    def submit_claim(self, invoice) -> dict[str, Any]:
         """
         Submit claim to SHA (stub).
         
@@ -57,8 +58,8 @@ class SHAClaimsService:
             }
         # Real implementation in Phase 2
         raise NotImplementedError("SHA integration not yet implemented")
-    
-    def query_claim_status(self, claim_number: str) -> Dict[str, Any]:
+
+    def query_claim_status(self, claim_number: str) -> dict[str, Any]:
         """
         Query claim status (stub).
         
@@ -82,8 +83,8 @@ class SHAClaimsService:
                 'message': 'Stub: Claim approved',
             }
         raise NotImplementedError("SHA integration not yet implemented")
-    
-    def get_preauthorization(self, patient_id: str, service_codes: List[str]) -> Dict[str, Any]:
+
+    def get_preauthorization(self, patient_id: str, service_codes: list[str]) -> dict[str, Any]:
         """
         Get preauthorization for services (stub).
         

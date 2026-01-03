@@ -4,18 +4,22 @@ Serializers for the billing app.
 Following TDD - implemented to pass API tests.
 """
 
-from decimal import Decimal
 from rest_framework import serializers
 
 from hmis.apps.billing.models import (
-    ServiceCategory, Service, Invoice, InvoiceItem,
-    Payment, Receipt, CreditNote
+    CreditNote,
+    Invoice,
+    InvoiceItem,
+    Payment,
+    Receipt,
+    Service,
+    ServiceCategory,
 )
 
 
 class ServiceCategorySerializer(serializers.ModelSerializer):
     """Serializer for ServiceCategory model."""
-    
+
     class Meta:
         model = ServiceCategory
         fields = [
@@ -33,11 +37,11 @@ class ServiceCategorySerializer(serializers.ModelSerializer):
 
 class ServiceSerializer(serializers.ModelSerializer):
     """Serializer for Service model."""
-    
+
     category_name = serializers.CharField(source='category.name', read_only=True)
     created_by_username = serializers.CharField(source='created_by.username', read_only=True)
     is_available = serializers.SerializerMethodField()
-    
+
     class Meta:
         model = Service
         fields = [
@@ -60,11 +64,11 @@ class ServiceSerializer(serializers.ModelSerializer):
             'updated_at'
         ]
         read_only_fields = ['id', 'created_by', 'created_by_username', 'is_available', 'created_at', 'updated_at']
-    
+
     def get_is_available(self, obj):
         """Return is_available status from method."""
         return obj.is_available()
-    
+
     def create(self, validated_data):
         # Set created_by from request user
         validated_data['created_by'] = self.context['request'].user
@@ -73,9 +77,9 @@ class ServiceSerializer(serializers.ModelSerializer):
 
 class InvoiceItemSerializer(serializers.ModelSerializer):
     """Serializer for InvoiceItem model."""
-    
+
     service_name = serializers.CharField(source='service.name', read_only=True, allow_null=True)
-    
+
     class Meta:
         model = InvoiceItem
         fields = [
@@ -98,12 +102,12 @@ class InvoiceItemSerializer(serializers.ModelSerializer):
 
 class InvoiceSerializer(serializers.ModelSerializer):
     """Serializer for Invoice model."""
-    
+
     patient_name = serializers.CharField(source='patient.full_name', read_only=True)
     created_by_username = serializers.CharField(source='created_by.username', read_only=True)
     items = InvoiceItemSerializer(many=True, read_only=True)
     balance = serializers.SerializerMethodField()
-    
+
     class Meta:
         model = Invoice
         fields = [
@@ -157,11 +161,11 @@ class InvoiceSerializer(serializers.ModelSerializer):
             'due_date': {'required': False},
             'invoice_date': {'required': False}
         }
-    
+
     def get_balance(self, obj):
         """Calculate balance dynamically."""
         return obj.total_amount - obj.amount_paid
-    
+
     def create(self, validated_data):
         # Set created_by from request user
         validated_data['created_by'] = self.context['request'].user
@@ -170,10 +174,10 @@ class InvoiceSerializer(serializers.ModelSerializer):
 
 class PaymentSerializer(serializers.ModelSerializer):
     """Serializer for Payment model."""
-    
+
     invoice_number = serializers.CharField(source='invoice.invoice_number', read_only=True)
     received_by_username = serializers.CharField(source='received_by.username', read_only=True)
-    
+
     class Meta:
         model = Payment
         fields = [
@@ -204,7 +208,7 @@ class PaymentSerializer(serializers.ModelSerializer):
             'created_at',
             'updated_at'
         ]
-    
+
     def create(self, validated_data):
         # Set received_by from request user
         validated_data['received_by'] = self.context['request'].user
@@ -216,10 +220,10 @@ class PaymentSerializer(serializers.ModelSerializer):
 
 class ReceiptSerializer(serializers.ModelSerializer):
     """Serializer for Receipt model."""
-    
+
     patient_name = serializers.CharField(source='patient.full_name', read_only=True)
     issued_by_username = serializers.CharField(source='issued_by.username', read_only=True)
-    
+
     class Meta:
         model = Receipt
         fields = [
@@ -257,12 +261,12 @@ class ReceiptSerializer(serializers.ModelSerializer):
 
 class CreditNoteSerializer(serializers.ModelSerializer):
     """Serializer for CreditNote model."""
-    
+
     patient_name = serializers.CharField(source='patient.full_name', read_only=True)
     invoice_number = serializers.CharField(source='invoice.invoice_number', read_only=True)
     requested_by_username = serializers.CharField(source='requested_by.username', read_only=True)
     approved_by_username = serializers.CharField(source='approved_by.username', read_only=True, allow_null=True)
-    
+
     class Meta:
         model = CreditNote
         fields = [
@@ -300,7 +304,7 @@ class CreditNoteSerializer(serializers.ModelSerializer):
             'created_at',
             'updated_at'
         ]
-    
+
     def create(self, validated_data):
         # Set requested_by from request user
         validated_data['requested_by'] = self.context['request'].user

@@ -19,18 +19,19 @@ Test Coverage (15 tests):
 - Patient instruction requirements
 """
 
-import pytest
-from datetime import datetime, timedelta
+from datetime import timedelta
 from decimal import Decimal
+
+import pytest
 from django.contrib.auth import get_user_model
 from django.core.exceptions import ValidationError
 from django.db import IntegrityError
 from django.utils import timezone
 
-from hmis.apps.inpatient.models import Ward, Bed, Admission, Discharge
-from hmis.apps.encounters.models import Encounter
-from hmis.apps.patients.models import Patient
 from hmis.apps.core.models import County, SubCounty
+from hmis.apps.encounters.models import Encounter
+from hmis.apps.inpatient.models import Admission, Bed, Discharge, Ward
+from hmis.apps.patients.models import Patient
 
 User = get_user_model()
 
@@ -50,7 +51,7 @@ def sample_patient(db, test_user):
     """Create a sample patient."""
     county = County.objects.create(code=1, name="Test County")
     sub_county = SubCounty.objects.create(county=county, name="Test SubCounty")
-    
+
     return Patient.objects.create(
         first_name="Michael",
         last_name="Johnson",
@@ -94,9 +95,9 @@ def active_admission(db, sample_patient, sample_ward, occupied_bed, test_user):
         encounter_date=timezone.now().date(),
         chief_complaint="Post-operative care",
     )
-    
+
     admission_date = timezone.now() - timedelta(days=5)
-    
+
     return Admission.objects.create(
         patient=sample_patient,
         ipd_encounter=ipd_encounter,

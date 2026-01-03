@@ -164,7 +164,7 @@ class LabAlertService:
             order: LabOrder instance with completed results
         """
         from hmis.apps.laboratory.services.notifications import LabNotificationService
-        
+
         service = LabNotificationService()
         service.send_result_notification(order)
 

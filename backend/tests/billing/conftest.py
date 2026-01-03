@@ -2,16 +2,21 @@
 Pytest fixtures for billing tests.
 """
 
-import pytest
-from decimal import Decimal
 from datetime import date, timedelta
+from decimal import Decimal
+
+import pytest
 from django.contrib.auth import get_user_model
 
 from hmis.apps.billing.models import (
-    ServiceCategory, Service, Invoice, InvoiceItem,
-    Payment, Receipt, CreditNote
+    CreditNote,
+    Invoice,
+    InvoiceItem,
+    Payment,
+    Receipt,
+    Service,
+    ServiceCategory,
 )
-
 
 User = get_user_model()
 
@@ -120,7 +125,7 @@ def sample_payment(db, sample_invoice, sample_invoice_item, test_user):
     # Ensure invoice has items and totals calculated
     sample_invoice.calculate_totals()
     sample_invoice.save()
-    
+
     payment = Payment.objects.create(
         invoice=sample_invoice,
         method=Payment.Method.CASH,
@@ -150,7 +155,7 @@ def sample_credit_note(db, sample_invoice, sample_invoice_item, test_user):
     # Ensure invoice has items and totals calculated
     sample_invoice.calculate_totals()
     sample_invoice.save()
-    
+
     return CreditNote.objects.create(
         invoice=sample_invoice,
         patient=sample_invoice.patient,

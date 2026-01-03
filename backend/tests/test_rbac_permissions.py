@@ -5,11 +5,12 @@ Following TDD approach: Write tests FIRST, then implement.
 Sprint 1.1-1.2 Track C: RBAC Foundation - Phase 2
 """
 
-import pytest
-from unittest.mock import Mock, patch
-from rest_framework.test import APIRequestFactory
-from django.contrib.auth import get_user_model
 from datetime import date, timedelta
+from unittest.mock import Mock, patch
+
+import pytest
+from django.contrib.auth import get_user_model
+from rest_framework.test import APIRequestFactory
 
 User = get_user_model()
 
@@ -463,9 +464,8 @@ class TestRoleBasedPermission:
 
     def test_sensitive_patient_access(self, permission_class, factory, mock_view):
         """Should check view_sensitive permission for patients."""
-        from hmis.apps.core.models import Department, Role, StaffProfile
+        from hmis.apps.core.models import County, Department, Role, StaffProfile, SubCounty
         from hmis.apps.patients.models import Patient
-        from hmis.apps.core.models import County, SubCounty
 
         role = Role.objects.create(
             code="NO_SENS",
@@ -626,7 +626,7 @@ class TestRoleBasedPermission:
         self, permission_class, factory, mock_view
     ):
         """Should log permission check results."""
-        from hmis.apps.core.models import AuditLog, Department, Role, StaffProfile
+        from hmis.apps.core.models import Department, Role, StaffProfile
 
         role = Role.objects.create(
             code="AUDIT",

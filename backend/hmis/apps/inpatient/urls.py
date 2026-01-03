@@ -2,14 +2,14 @@
 URL configuration for inpatient app.
 """
 
-from django.urls import path, include
+from django.urls import include, path
 from rest_framework.routers import DefaultRouter
 
 from .views import (
-    WardViewSet,
-    BedViewSet,
     AdmissionRecommendationViewSet,
     AdmissionViewSet,
+    BedViewSet,
+    WardViewSet,
 )
 
 app_name = 'inpatient'

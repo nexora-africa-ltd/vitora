@@ -35,13 +35,13 @@ def validate_lab_attachment(file):
         raise ValidationError(
             f"File type not allowed. Allowed: {', '.join(ALLOWED_EXTENSIONS)}"
         )
-    
+
     # Check size
     if file.size > MAX_FILE_SIZE:
         raise ValidationError(
             f"File too large. Maximum size: {MAX_FILE_SIZE / 1024 / 1024}MB"
         )
-    
+
     # Check for malicious content (basic content type check)
     allowed_content_types = [
         'application/pdf',
@@ -49,6 +49,6 @@ def validate_lab_attachment(file):
         'image/jpeg',
         'image/tiff'
     ]
-    
+
     if hasattr(file, 'content_type') and file.content_type not in allowed_content_types:
         raise ValidationError("Invalid file content type")

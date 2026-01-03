@@ -10,15 +10,16 @@ Test Coverage:
 - Self-verification prevention
 """
 
-import pytest
 from datetime import date
 from decimal import Decimal
-from django.utils import timezone
-from django.contrib.auth import get_user_model
 
-from hmis.apps.laboratory.models import LabResult, LabOrder, LabOrderItem, TestCatalog
-from hmis.apps.patients.models import Patient
+import pytest
+from django.contrib.auth import get_user_model
+from django.utils import timezone
+
 from hmis.apps.core.models import County, SubCounty
+from hmis.apps.laboratory.models import LabOrder, LabOrderItem, LabResult, TestCatalog
+from hmis.apps.patients.models import Patient
 
 User = get_user_model()
 
@@ -124,7 +125,7 @@ class TestLabResultExtended:
         sample_result.reference_high = Decimal("17.5")
         sample_result.reference_range_text = "13.5-17.5 g/dL"
         sample_result.save()
-        
+
         assert sample_result.reference_low == Decimal("13.5")
         assert sample_result.reference_high == Decimal("17.5")
         assert sample_result.reference_range_text == "13.5-17.5 g/dL"
@@ -136,7 +137,7 @@ class TestLabResultExtended:
         sample_result.reference_high = Decimal("17.5")
         sample_result.result_flag = "NORMAL"
         sample_result.save()
-        
+
         assert sample_result.result_flag == "NORMAL"
 
     def test_flag_high_above_range(self, sample_result):
@@ -146,7 +147,7 @@ class TestLabResultExtended:
         sample_result.reference_high = Decimal("17.5")
         sample_result.result_flag = "HIGH"
         sample_result.save()
-        
+
         assert sample_result.result_flag == "HIGH"
 
     def test_flag_low_below_range(self, sample_result):
@@ -156,7 +157,7 @@ class TestLabResultExtended:
         sample_result.reference_high = Decimal("17.5")
         sample_result.result_flag = "LOW"
         sample_result.save()
-        
+
         assert sample_result.result_flag == "LOW"
 
     def test_flag_critical_high(self, sample_result):
@@ -167,7 +168,7 @@ class TestLabResultExtended:
         sample_result.result_flag = "CRITICAL_HIGH"
         sample_result.is_critical_result = True
         sample_result.save()
-        
+
         assert sample_result.result_flag == "CRITICAL_HIGH"
         assert sample_result.is_critical_result is True
 
@@ -179,7 +180,7 @@ class TestLabResultExtended:
         sample_result.result_flag = "CRITICAL_LOW"
         sample_result.is_critical_result = True
         sample_result.save()
-        
+
         assert sample_result.result_flag == "CRITICAL_LOW"
         assert sample_result.is_critical_result is True
 
@@ -189,7 +190,7 @@ class TestLabResultExtended:
         sample_result.is_critical_result = True
         sample_result.verification_status = "UNVERIFIED"
         sample_result.save()
-        
+
         assert sample_result.verification_status == "UNVERIFIED"
         assert sample_result.is_critical_result is True
 
@@ -199,7 +200,7 @@ class TestLabResultExtended:
         sample_result.is_critical_result = True
         sample_result.entered_by = test_user
         sample_result.save()
-        
+
         # Verification by different user should be allowed
         sample_result.verify(second_user)
         assert sample_result.verified_by == second_user
@@ -208,7 +209,7 @@ class TestLabResultExtended:
     def test_amendment_tracking(self, sample_result, second_user):
         """Result amendment should preserve original value and track changes."""
         original_value = str(sample_result.numeric_value)
-        
+
         # Amend the result
         sample_result.numeric_value = Decimal("16.0")
         sample_result.is_amended = True
@@ -217,7 +218,7 @@ class TestLabResultExtended:
         sample_result.amended_by = second_user
         sample_result.amended_at = timezone.now()
         sample_result.save()
-        
+
         assert sample_result.is_amended is True
         assert sample_result.original_value == "14.5"
         assert sample_result.amendment_reason == "Transcription error corrected"
@@ -232,28 +233,28 @@ class TestLabResultExtended:
         sample_result.amended_by = second_user
         sample_result.amended_at = timezone.now()
         sample_result.save()
-        
+
         assert sample_result.amendment_reason != ""
 
     def test_method_tracking(self, sample_result):
         """Result should track testing method used."""
         sample_result.method = "Automated analyzer - spectrophotometry"
         sample_result.save()
-        
+
         assert sample_result.method == "Automated analyzer - spectrophotometry"
 
     def test_equipment_tracking(self, sample_result):
         """Result should track equipment/analyzer used."""
         sample_result.equipment = "Sysmex XN-1000"
         sample_result.save()
-        
+
         assert sample_result.equipment == "Sysmex XN-1000"
 
     def test_result_comments(self, sample_result):
         """Result should support comments."""
         sample_result.interpretation = "Slightly elevated, monitor patient"
         sample_result.save()
-        
+
         assert "elevated" in sample_result.interpretation.lower()
 
     def test_entry_user_tracked(self, sample_result, test_user):
@@ -265,6 +266,6 @@ class TestLabResultExtended:
         """Should have is_critical_result boolean field."""
         sample_result.is_critical_result = True
         sample_result.save()
-        
+
         assert hasattr(sample_result, 'is_critical_result')
         assert sample_result.is_critical_result is True

@@ -10,13 +10,10 @@ conditions. Kenya-specific templates for endemic diseases are prioritized.
 Following TDD methodology - these tests are written BEFORE implementation.
 """
 
-from datetime import date
-from decimal import Decimal
 
 import pytest
 from django.contrib.auth import get_user_model
 from django.core.exceptions import ValidationError
-from django.db import IntegrityError
 
 pytestmark = pytest.mark.django_db
 
@@ -409,7 +406,7 @@ class TestTemplateSectionModel:
             fields=[],
         )
 
-        expected = f"History (General OPD Assessment)"
+        expected = "History (General OPD Assessment)"
         assert str(section) == expected
 
     def test_section_ordering(self, sample_clinical_template):

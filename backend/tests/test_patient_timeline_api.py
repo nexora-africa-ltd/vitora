@@ -570,7 +570,6 @@ class TestTimelinePermissions:
         self, timeline_test_user, timeline_sample_patient
     ):
         """Test timeline for sensitive patient requires special permission."""
-        from hmis.apps.patients.models import Patient
 
         # Mark patient as sensitive (HIV/GBV)
         timeline_sample_patient.is_sensitive = True

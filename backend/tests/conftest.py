@@ -223,6 +223,7 @@ def sample_encounter(db, sample_patient):
 def sample_inpatient_ward(db):
     """Create a sample inpatient ward for testing."""
     from decimal import Decimal
+
     from hmis.apps.inpatient.models import Ward
 
     return Ward.objects.create(
@@ -310,7 +311,7 @@ pytest_plugins = ["tests.conftest_pharmacy"]
 def sample_test_catalog(db):
     """Create a sample test catalog entry."""
     from hmis.apps.laboratory.models import TestCatalog
-    
+
     return TestCatalog.objects.create(
         code='CBC',
         name='Complete Blood Count',
@@ -328,7 +329,7 @@ def sample_test_catalog(db):
 def sample_lab_order(db, sample_patient, sample_encounter, test_user, sample_test_catalog):
     """Create a sample lab order for testing."""
     from hmis.apps.laboratory.models import LabOrder, LabOrderItem
-    
+
     order = LabOrder.objects.create(
         patient=sample_patient,
         encounter=sample_encounter,
@@ -337,14 +338,14 @@ def sample_lab_order(db, sample_patient, sample_encounter, test_user, sample_tes
         status='ORDERED',
         priority='ROUTINE',
     )
-    
+
     # Create order item
     LabOrderItem.objects.create(
         lab_order=order,
         test=sample_test_catalog,
         unit_cost=sample_test_catalog.cost,
     )
-    
+
     # Create associated queue entry
     from hmis.apps.laboratory.models import LabQueue
     LabQueue.objects.create(
@@ -352,7 +353,7 @@ def sample_lab_order(db, sample_patient, sample_encounter, test_user, sample_tes
         sample_type='blood',
         priority='ROUTINE',
     )
-    
+
     return order
 
 
@@ -360,10 +361,10 @@ def sample_lab_order(db, sample_patient, sample_encounter, test_user, sample_tes
 def sample_lab_result(db, sample_lab_order, test_user):
     """Create a sample lab result for testing."""
     from hmis.apps.laboratory.models import LabResult
-    
+
     # Get the first order item from the lab order
     order_item = sample_lab_order.items.first()
-    
+
     return LabResult.objects.create(
         order_item=order_item,
         numeric_value=7.5,
@@ -379,18 +380,19 @@ def sample_lab_result(db, sample_lab_order, test_user):
 @pytest.fixture
 def sample_admission(db, sample_patient, sample_encounter, test_user, sample_inpatient_ward, sample_bed):
     """Create a sample admission for testing."""
-    from hmis.apps.inpatient.models import Admission
     from django.utils import timezone
-    
+
+    from hmis.apps.inpatient.models import Admission
+
     ward = sample_inpatient_ward
     bed = sample_bed
-    
+
     # Create IPD encounter
     ipd_encounter = sample_patient.encounters.create(
         encounter_type="IPD",
         chief_complaint="Admitted for further management",
     )
-    
+
     # Create admission
     admission = Admission.objects.create(
         patient=sample_patient,
@@ -405,17 +407,19 @@ def sample_admission(db, sample_patient, sample_encounter, test_user, sample_inp
         bed=bed,
         payer_type="CASH",
     )
-    
+
     return admission
 
 
 @pytest.fixture
 def sample_admission_recommendation(db, sample_encounter, test_user):
     """Create a sample admission recommendation for testing."""
-    from hmis.apps.inpatient.models import AdmissionRecommendation
-    from django.utils import timezone
     from datetime import timedelta
-    
+
+    from django.utils import timezone
+
+    from hmis.apps.inpatient.models import AdmissionRecommendation
+
     recommendation = AdmissionRecommendation.objects.create(
         encounter=sample_encounter,
         recommended_by=test_user,
@@ -426,5 +430,5 @@ def sample_admission_recommendation(db, sample_encounter, test_user):
         preferred_ward_type="MEDICAL",
         expires_at=timezone.now() + timedelta(hours=24),
     )
-    
+
     return recommendation

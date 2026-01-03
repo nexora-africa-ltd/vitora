@@ -18,8 +18,6 @@ Business Rules:
 6. All status changes must be logged in audit trail
 """
 
-from datetime import date
-from unittest.mock import patch
 
 import pytest
 from django.contrib.auth import get_user_model
@@ -55,7 +53,6 @@ class TestEncounterStatusField:
 
     def test_status_choices_are_valid(self, sample_encounter):
         """Status field should only accept valid choices."""
-        from hmis.apps.encounters.models import Encounter
 
         valid_statuses = ["DRAFT", "IN_PROGRESS", "COMPLETED", "CANCELLED"]
 

@@ -13,25 +13,17 @@ from hmis.apps.core.models import AuditLog
 from hmis.apps.core.permissions import get_client_ip
 
 from .models import (
-    Ward,
-    Bed,
-    AdmissionRecommendation,
     Admission,
-    WardRound,
-    NursingKardex,
-    KardexShiftNote,
-    KardexHandoverNote,
-    ShiftHandover,
-    Transfer,
-    Discharge,
+    AdmissionRecommendation,
+    Bed,
+    Ward,
 )
 from .serializers import (
-    WardSerializer,
-    BedSerializer,
     AdmissionRecommendationSerializer,
     AdmissionSerializer,
+    BedSerializer,
+    WardSerializer,
 )
-
 
 User = get_user_model()
 
@@ -51,7 +43,7 @@ class WardViewSet(viewsets.ReadOnlyModelViewSet):
     - GET /api/inpatient/wards/{id}/ - Ward detail
     - GET /api/inpatient/wards/{id}/beds/ - List beds in ward
     """
-    
+
     queryset = Ward.objects.filter(is_active=True)
     serializer_class = WardSerializer
     permission_classes = [IsAuthenticated]
@@ -60,7 +52,7 @@ class WardViewSet(viewsets.ReadOnlyModelViewSet):
     search_fields = ['name', 'code']
     ordering_fields = ['name', 'code', 'ward_type', 'capacity']
     ordering = ['name']
-    
+
     @action(detail=True, methods=['get'])
     def beds(self, request, pk=None):
         """
@@ -71,18 +63,18 @@ class WardViewSet(viewsets.ReadOnlyModelViewSet):
         """
         ward = self.get_object()
         beds = Bed.objects.filter(ward=ward)
-        
+
         # Filter by status if provided
         status_filter = request.query_params.get('status')
         if status_filter:
             beds = beds.filter(status=status_filter)
-        
+
         # Paginate results
         page = self.paginate_queryset(beds)
         if page is not None:
             serializer = BedSerializer(page, many=True)
             return self.get_paginated_response(serializer.data)
-        
+
         serializer = BedSerializer(beds, many=True)
         return Response(serializer.data)
 
@@ -101,7 +93,7 @@ class BedViewSet(viewsets.ModelViewSet):
     - GET /api/inpatient/beds/{id}/ - Bed detail
     - PATCH /api/inpatient/beds/{id}/ - Update bed status
     """
-    
+
     queryset = Bed.objects.all()
     serializer_class = BedSerializer
     permission_classes = [IsAuthenticated]
@@ -110,12 +102,12 @@ class BedViewSet(viewsets.ModelViewSet):
     search_fields = ['bed_number']
     ordering_fields = ['bed_number', 'status', 'status_changed_at']
     ordering = ['bed_number']
-    
+
     def perform_update(self, serializer):
         """Update bed and log status changes."""
         old_status = self.get_object().status
         instance = serializer.save(status_changed_by=self.request.user)
-        
+
         # Log bed status update
         if instance.status != old_status:
             AuditLog.log(
@@ -148,7 +140,7 @@ class AdmissionRecommendationViewSet(viewsets.ModelViewSet):
     - POST /api/inpatient/admission-recommendations/{id}/accept/ - Accept recommendation
     - POST /api/inpatient/admission-recommendations/{id}/decline/ - Decline recommendation
     """
-    
+
     queryset = AdmissionRecommendation.objects.all()
     serializer_class = AdmissionRecommendationSerializer
     permission_classes = [IsAuthenticated]
@@ -157,11 +149,11 @@ class AdmissionRecommendationViewSet(viewsets.ModelViewSet):
     search_fields = ['reason', 'provisional_diagnosis_text']
     ordering_fields = ['created_at', 'expires_at', 'urgency']
     ordering = ['-created_at']
-    
+
     def perform_create(self, serializer):
         """Create recommendation and log action."""
         instance = serializer.save()
-        
+
         # Log recommendation creation
         AuditLog.log(
             action='admission_recommendation_create',
@@ -175,7 +167,7 @@ class AdmissionRecommendationViewSet(viewsets.ModelViewSet):
             },
             ip_address=get_client_ip(self.request),
         )
-    
+
     @action(detail=True, methods=['post'])
     def accept(self, request, pk=None):
         """
@@ -186,17 +178,17 @@ class AdmissionRecommendationViewSet(viewsets.ModelViewSet):
         """
         recommendation = self.get_object()
         user_id = request.data.get('user')
-        
+
         if not user_id:
             return Response(
                 {'error': 'User ID required'},
                 status=status.HTTP_400_BAD_REQUEST
             )
-        
+
         try:
             user = User.objects.get(id=user_id)
             recommendation.accept(user)
-            
+
             # Log acceptance
             AuditLog.log(
                 action='admission_recommendation_accept',
@@ -206,10 +198,10 @@ class AdmissionRecommendationViewSet(viewsets.ModelViewSet):
                 details={'accepted_by': user.username},
                 ip_address=get_client_ip(request),
             )
-            
+
             serializer = self.get_serializer(recommendation)
             return Response(serializer.data)
-            
+
         except User.DoesNotExist:
             return Response(
                 {'error': 'User not found'},
@@ -220,7 +212,7 @@ class AdmissionRecommendationViewSet(viewsets.ModelViewSet):
                 {'error': str(e)},
                 status=status.HTTP_400_BAD_REQUEST
             )
-    
+
     @action(detail=True, methods=['post'])
     def decline(self, request, pk=None):
         """
@@ -233,17 +225,17 @@ class AdmissionRecommendationViewSet(viewsets.ModelViewSet):
         recommendation = self.get_object()
         user_id = request.data.get('user')
         reason = request.data.get('reason')
-        
+
         if not user_id or not reason:
             return Response(
                 {'error': 'User ID and reason required'},
                 status=status.HTTP_400_BAD_REQUEST
             )
-        
+
         try:
             user = User.objects.get(id=user_id)
             recommendation.decline(user, reason)
-            
+
             # Log decline
             AuditLog.log(
                 action='admission_recommendation_decline',
@@ -256,10 +248,10 @@ class AdmissionRecommendationViewSet(viewsets.ModelViewSet):
                 },
                 ip_address=get_client_ip(request),
             )
-            
+
             serializer = self.get_serializer(recommendation)
             return Response(serializer.data)
-            
+
         except User.DoesNotExist:
             return Response(
                 {'error': 'User not found'},
@@ -288,7 +280,7 @@ class AdmissionViewSet(viewsets.ModelViewSet):
     - POST /api/inpatient/admissions/ - Create admission
     - PATCH /api/inpatient/admissions/{id}/ - Update admission
     """
-    
+
     queryset = Admission.objects.all()
     serializer_class = AdmissionSerializer
     permission_classes = [IsAuthenticated]
@@ -297,11 +289,11 @@ class AdmissionViewSet(viewsets.ModelViewSet):
     search_fields = ['admission_number', 'patient__first_name', 'patient__last_name']
     ordering_fields = ['admission_date', 'created_at', 'admission_number']
     ordering = ['-admission_date']
-    
+
     def perform_create(self, serializer):
         """Create admission and log action."""
         instance = serializer.save()
-        
+
         # Log admission creation
         AuditLog.log(
             action='admission_create',

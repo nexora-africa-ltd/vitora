@@ -5,6 +5,7 @@ Sprint 1.5-1.6 Track E: Triage Module MVP
 """
 
 from rest_framework import serializers
+
 from .models import TriageAssessment, TriageQueue, TriageVitalThreshold
 from .services import TriageCategoryCalculator
 
@@ -46,7 +47,7 @@ class TriageAssessmentSerializer(serializers.ModelSerializer):
         """Get vitals from associated encounter."""
         encounter = obj.encounter
         vitals = {}
-        
+
         if hasattr(encounter, 'spo2') and encounter.spo2:
             vitals['spo2'] = str(encounter.spo2)
         if hasattr(encounter, 'pulse') and encounter.pulse:
@@ -57,7 +58,7 @@ class TriageAssessmentSerializer(serializers.ModelSerializer):
             vitals['temperature'] = str(encounter.temperature)
         if hasattr(encounter, 'respiratory_rate') and encounter.respiratory_rate:
             vitals['respiratory_rate'] = encounter.respiratory_rate
-        
+
         return vitals
 
     def get_wait_time_minutes(self, obj):
@@ -71,7 +72,7 @@ class TriageAssessmentSerializer(serializers.ModelSerializer):
 
 class TriageAssessmentCreateSerializer(serializers.ModelSerializer):
     """Serializer for creating triage assessments."""
-    
+
     # Make triage_category optional - will be auto-calculated if not provided
     triage_category = serializers.ChoiceField(
         choices=TriageAssessment.TRIAGE_CATEGORY_CHOICES,
@@ -93,7 +94,7 @@ class TriageAssessmentCreateSerializer(serializers.ModelSerializer):
         """Ensure override reason provided if category differs from auto-calculated."""
         # Calculate what the category should be
         encounter = data.get('encounter')
-        
+
         if encounter:
             # Get vitals from encounter
             vitals = {}
@@ -110,7 +111,7 @@ class TriageAssessmentCreateSerializer(serializers.ModelSerializer):
                         vitals['diastolic_bp'] = int(bp_parts[1])
                     except ValueError:
                         pass
-            
+
             # Calculate suggested category
             calculator = TriageCategoryCalculator()
             auto_category, _ = calculator.calculate(
@@ -120,7 +121,7 @@ class TriageAssessmentCreateSerializer(serializers.ModelSerializer):
                 pain_score=data.get('pain_score'),
                 mobility=data.get('mobility'),
             )
-            
+
             # Check if user is overriding
             user_category = data.get('triage_category')
             if user_category and user_category != auto_category:
@@ -129,14 +130,14 @@ class TriageAssessmentCreateSerializer(serializers.ModelSerializer):
                     raise serializers.ValidationError({
                         'category_override_reason': 'Override reason required when changing category from auto-calculated value.'
                     })
-        
+
         return data
 
     def create(self, validated_data):
         """Auto-calculate category, generate alerts, add to queue."""
         # Get the encounter
         encounter = validated_data['encounter']
-        
+
         # Get vitals from encounter
         vitals = {}
         if hasattr(encounter, 'spo2') and encounter.spo2:
@@ -151,7 +152,7 @@ class TriageAssessmentCreateSerializer(serializers.ModelSerializer):
                     vitals['diastolic_bp'] = int(bp_parts[1])
                 except ValueError:
                     pass
-        
+
         # Calculate category and alerts
         calculator = TriageCategoryCalculator()
         auto_category, alerts = calculator.calculate(
@@ -161,23 +162,23 @@ class TriageAssessmentCreateSerializer(serializers.ModelSerializer):
             pain_score=validated_data.get('pain_score'),
             mobility=validated_data.get('mobility'),
         )
-        
+
         # Set auto-calculated category and alerts
         validated_data['auto_calculated_category'] = auto_category
         validated_data['alerts'] = alerts
-        
+
         # If user didn't specify category, use auto-calculated
         if 'triage_category' not in validated_data or not validated_data['triage_category']:
             validated_data['triage_category'] = auto_category
-        
+
         # Set triaged_by from request
         request = self.context.get('request')
         if request and hasattr(request, 'user'):
             validated_data['triaged_by'] = request.user
-        
+
         # Create the assessment
         assessment = TriageAssessment.objects.create(**validated_data)
-        
+
         # Add to queue
         from .models import TriageQueue
         TriageQueue.objects.create(
@@ -185,7 +186,7 @@ class TriageAssessmentCreateSerializer(serializers.ModelSerializer):
             position=0,  # Will be recalculated by queue ordering
             status='WAITING',
         )
-        
+
         return assessment
 
 
@@ -217,7 +218,7 @@ class TriageCategoryCalculationSerializer(serializers.Serializer):
     def calculate_category(self):
         """Calculate triage category using the service."""
         vitals = {}
-        
+
         if self.validated_data.get('spo2'):
             vitals['spo2'] = self.validated_data['spo2']
         if self.validated_data.get('systolic_bp'):
@@ -230,7 +231,7 @@ class TriageCategoryCalculationSerializer(serializers.Serializer):
             vitals['temperature'] = self.validated_data['temperature']
         if self.validated_data.get('respiratory_rate'):
             vitals['respiratory_rate'] = self.validated_data['respiratory_rate']
-        
+
         calculator = TriageCategoryCalculator()
         category, alerts = calculator.calculate(
             vitals=vitals,
@@ -239,7 +240,7 @@ class TriageCategoryCalculationSerializer(serializers.Serializer):
             pain_score=self.validated_data.get('pain_score'),
             mobility=self.validated_data.get('mobility'),
         )
-        
+
         return {
             'category': category,
             'alerts': alerts,

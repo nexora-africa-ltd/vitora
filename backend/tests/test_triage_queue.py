@@ -5,8 +5,9 @@ Following TDD approach: Write tests FIRST, then implement the model.
 Sprint 1.5-1.6 Track E: Triage Module MVP
 """
 
-import pytest
 from datetime import timedelta
+
+import pytest
 from django.utils import timezone
 
 
@@ -44,8 +45,9 @@ class TestTriageQueueModel:
 
     def test_triage_assessment_one_to_one_relationship(self, sample_encounter, test_user):
         """Should enforce one-to-one relationship with triage assessment."""
-        from hmis.apps.triage.models import TriageAssessment, TriageQueue
         from django.db import IntegrityError
+
+        from hmis.apps.triage.models import TriageAssessment, TriageQueue
 
         assessment = TriageAssessment.objects.create(
             encounter=sample_encounter,
@@ -101,8 +103,9 @@ class TestTriageQueueModel:
 
     def test_status_choices_validation(self, sample_encounter, test_user):
         """Should validate status against allowed choices."""
-        from hmis.apps.triage.models import TriageAssessment, TriageQueue
         from django.core.exceptions import ValidationError
+
+        from hmis.apps.triage.models import TriageAssessment, TriageQueue
 
         assessment = TriageAssessment.objects.create(
             encounter=sample_encounter,
@@ -131,8 +134,8 @@ class TestTriageQueueModel:
 
     def test_ordering_by_category_then_arrival_time(self, sample_patient, test_user):
         """Should order queue by triage category (RED first) then arrival time (FIFO)."""
-        from hmis.apps.triage.models import TriageAssessment, TriageQueue
         from hmis.apps.encounters.models import Encounter
+        from hmis.apps.triage.models import TriageAssessment, TriageQueue
 
         # Create encounters and assessments with different categories and times
         encounter1 = Encounter.objects.create(
@@ -206,8 +209,8 @@ class TestTriageQueueModel:
 
     def test_red_category_patients_appear_first(self, sample_patient, test_user):
         """Should prioritize RED category patients at top of queue."""
-        from hmis.apps.triage.models import TriageAssessment, TriageQueue
         from hmis.apps.encounters.models import Encounter
+        from hmis.apps.triage.models import TriageAssessment, TriageQueue
 
         # Create GREEN and RED assessments
         green_encounter = Encounter.objects.create(
@@ -257,8 +260,8 @@ class TestTriageQueueModel:
 
     def test_same_category_sorted_by_arrival_time_fifo(self, sample_patient, test_user):
         """Should sort same category by arrival time (FIFO)."""
-        from hmis.apps.triage.models import TriageAssessment, TriageQueue
         from hmis.apps.encounters.models import Encounter
+        from hmis.apps.triage.models import TriageAssessment, TriageQueue
 
         # Create three GREEN assessments with different arrival times
         encounters = [

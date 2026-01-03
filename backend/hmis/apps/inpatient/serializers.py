@@ -7,27 +7,20 @@ from rest_framework import serializers
 from hmis.apps.encounters.models import Encounter
 
 from .models import (
-    Ward,
-    Bed,
-    AdmissionRecommendation,
     Admission,
-    WardRound,
-    NursingKardex,
-    KardexShiftNote,
-    KardexHandoverNote,
-    ShiftHandover,
-    Transfer,
-    Discharge,
+    AdmissionRecommendation,
+    Bed,
+    Ward,
 )
 
 
 class WardSerializer(serializers.ModelSerializer):
     """Serializer for Ward model."""
-    
+
     available_beds = serializers.ReadOnlyField()
     occupancy_rate = serializers.ReadOnlyField()
     ward_type_display = serializers.CharField(source='get_ward_type_display', read_only=True)
-    
+
     class Meta:
         model = Ward
         fields = [
@@ -51,7 +44,7 @@ class WardSerializer(serializers.ModelSerializer):
 
 class BedSerializer(serializers.ModelSerializer):
     """Serializer for Bed model."""
-    
+
     ward_name = serializers.CharField(source='ward.name', read_only=True)
     status_display = serializers.CharField(source='get_status_display', read_only=True)
     status_changed_by_username = serializers.CharField(
@@ -59,7 +52,7 @@ class BedSerializer(serializers.ModelSerializer):
         read_only=True,
         allow_null=True
     )
-    
+
     class Meta:
         model = Bed
         fields = [
@@ -81,7 +74,7 @@ class BedSerializer(serializers.ModelSerializer):
 
 class AdmissionRecommendationSerializer(serializers.ModelSerializer):
     """Serializer for AdmissionRecommendation model."""
-    
+
     recommended_by_username = serializers.CharField(
         source='recommended_by.username',
         read_only=True
@@ -94,7 +87,7 @@ class AdmissionRecommendationSerializer(serializers.ModelSerializer):
     status_display = serializers.CharField(source='get_status_display', read_only=True)
     urgency_display = serializers.CharField(source='get_urgency_display', read_only=True)
     is_expired = serializers.SerializerMethodField()
-    
+
     class Meta:
         model = AdmissionRecommendation
         fields = [
@@ -134,7 +127,7 @@ class AdmissionRecommendationSerializer(serializers.ModelSerializer):
 
 class AdmissionSerializer(serializers.ModelSerializer):
     """Serializer for Admission model."""
-    
+
     patient_name = serializers.SerializerMethodField()
     admitting_officer_username = serializers.CharField(
         source='admitting_officer.username',
@@ -155,7 +148,7 @@ class AdmissionSerializer(serializers.ModelSerializer):
         read_only=True
     )
     length_of_stay = serializers.ReadOnlyField()
-    
+
     class Meta:
         model = Admission
         fields = [
@@ -194,7 +187,7 @@ class AdmissionSerializer(serializers.ModelSerializer):
             'created_at',
             'updated_at',
         ]
-    
+
     def get_patient_name(self, obj):
         """Get patient full name."""
         return f"{obj.patient.first_name} {obj.patient.last_name}"

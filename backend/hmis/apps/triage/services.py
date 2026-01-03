@@ -7,7 +7,6 @@ particularly the KETA (Kenya Emergency Triage Assessment) category calculator.
 Sprint 1.5-1.6 Track E: Triage Module MVP
 """
 
-from typing import Optional
 
 
 class TriageCategoryCalculator:
@@ -40,8 +39,8 @@ class TriageCategoryCalculator:
         vitals: dict,
         mental_status: str,
         chief_complaint_category: str,
-        pain_score: Optional[int] = None,
-        mobility: Optional[str] = None,
+        pain_score: int | None = None,
+        mobility: str | None = None,
     ) -> tuple[str, list[str]]:
         """
         Calculate triage category and generate alerts.
@@ -116,7 +115,7 @@ class TriageCategoryCalculator:
         if mental_status == "U":
             alerts.append("CRITICAL: Patient unresponsive (AVPU=U)")
             return alerts
-        
+
         if mental_status == "P":
             alerts.append("CRITICAL: Patient only responds to pain (AVPU=P)")
             return alerts
@@ -155,11 +154,11 @@ class TriageCategoryCalculator:
         return alerts if has_red_criteria else []
 
     def _check_orange_criteria(
-        self, 
-        vitals: dict, 
-        pain_score: Optional[int], 
+        self,
+        vitals: dict,
+        pain_score: int | None,
         chief_complaint: str,
-        mobility: Optional[str]
+        mobility: str | None
     ) -> list[str]:
         """
         Check for ORANGE (Very Urgent) criteria.
@@ -208,9 +207,9 @@ class TriageCategoryCalculator:
         return []
 
     def _check_yellow_criteria(
-        self, 
-        vitals: dict, 
-        pain_score: Optional[int],
+        self,
+        vitals: dict,
+        pain_score: int | None,
         chief_complaint: str
     ) -> list[str]:
         """
@@ -239,11 +238,11 @@ class TriageCategoryCalculator:
         if chief_complaint == "FEVER":
             spo2 = vitals.get("spo2")
             temp = vitals.get("temperature")
-            
+
             if spo2 and spo2 < 95:
                 alerts.append(f"WARNING: Fever with low oxygen (SpO2 {spo2}%)")
                 return alerts
-            
+
             if temp and temp >= 38.5:
                 alerts.append(f"WARNING: High fever (temperature {temp}°C)")
                 return alerts

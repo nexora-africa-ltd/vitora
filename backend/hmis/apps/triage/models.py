@@ -8,8 +8,8 @@ Sprint 1.5-1.6 Track E: Triage Module MVP
 """
 
 from decimal import Decimal
-from datetime import timedelta
-from django.core.validators import MinValueValidator, MaxValueValidator
+
+from django.core.validators import MaxValueValidator, MinValueValidator
 from django.db import models
 from django.utils import timezone
 
@@ -513,17 +513,17 @@ class TriageQueue(models.Model):
         Returns queryset sorted by triage priority (RED first) then arrival time (FIFO).
         """
         queryset = cls.objects.exclude(status__in=["COMPLETED", "LEFT_WITHOUT_BEING_SEEN"]).select_related('triage_assessment')
-        
+
         if area:
             queryset = queryset.filter(triage_assessment__assigned_area=area)
-        
+
         # Convert to list and sort by priority then arrival time
         queue_list = list(queryset)
         queue_list.sort(key=lambda x: (
             x.triage_assessment.category_priority,
             x.triage_assessment.arrival_time
         ))
-        
+
         return queue_list
 
     @classmethod
@@ -545,7 +545,7 @@ class TriageQueue(models.Model):
         """Mark patient as with clinician, update triage timestamps."""
         self.status = "WITH_CLINICIAN"
         self.save(update_fields=["status"])
-        
+
         # Update assessment timestamp
         self.triage_assessment.seen_by_clinician_time = timezone.now()
         self.triage_assessment.save(update_fields=["seen_by_clinician_time"])

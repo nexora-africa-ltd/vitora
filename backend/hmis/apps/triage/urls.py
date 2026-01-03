@@ -11,8 +11,8 @@ from .views import (
     TriageAssessmentViewSet,
     TriageQueueViewSet,
     VitalThresholdsViewSet,
-    WaitTimesReportView,
     VolumeReportView,
+    WaitTimesReportView,
 )
 
 router = DefaultRouter()

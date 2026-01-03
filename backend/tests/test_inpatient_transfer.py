@@ -14,17 +14,18 @@ Test Coverage (10 tests):
 - Multiple transfers for same admission
 """
 
-import pytest
 from datetime import timedelta
 from decimal import Decimal
+
+import pytest
 from django.contrib.auth import get_user_model
 from django.core.exceptions import ValidationError
 from django.utils import timezone
 
-from hmis.apps.inpatient.models import Ward, Bed, Admission, Transfer
-from hmis.apps.encounters.models import Encounter
-from hmis.apps.patients.models import Patient
 from hmis.apps.core.models import County, SubCounty
+from hmis.apps.encounters.models import Encounter
+from hmis.apps.inpatient.models import Admission, Bed, Transfer, Ward
+from hmis.apps.patients.models import Patient
 
 User = get_user_model()
 
@@ -44,7 +45,7 @@ def sample_patient(db, test_user):
     """Create a sample patient."""
     county = County.objects.create(code=1, name="Test County")
     sub_county = SubCounty.objects.create(county=county, name="Test SubCounty")
-    
+
     return Patient.objects.create(
         first_name="Transfer",
         last_name="Patient",
@@ -110,7 +111,7 @@ def active_admission(db, sample_patient, source_ward, source_bed, test_user):
         encounter_date=timezone.now().date(),
         chief_complaint="Requires specialized care",
     )
-    
+
     return Admission.objects.create(
         patient=sample_patient,
         ipd_encounter=ipd_encounter,
@@ -130,7 +131,7 @@ class TestTransferCreation:
     """Tests for Transfer creation."""
 
     def test_create_transfer_with_all_details(
-        self, active_admission, source_ward, source_bed, 
+        self, active_admission, source_ward, source_bed,
         destination_ward, destination_bed, test_user
     ):
         """Should create transfer with complete details."""
@@ -410,7 +411,7 @@ class TestTransferQueries:
         # Create multiple transfers
         current_ward = source_ward
         current_bed = source_bed
-        
+
         for dest_ward, dest_bed in wards_and_beds[:2]:  # Create 2 transfers
             Transfer.objects.create(
                 admission=active_admission,

@@ -115,7 +115,7 @@ class AuditedTokenObtainPairView(TokenObtainPairView):
             try:
                 user = User.objects.get(username=username)
                 user_logged_in.send(sender=self.__class__, request=request, user=user)
-                
+
                 # Add user info to response
                 response.data['user'] = {
                     'id': user.id,

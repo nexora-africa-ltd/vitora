@@ -5,9 +5,10 @@ Following TDD approach: Write tests FIRST, then implement the model.
 Sprint 1.5-1.6 Track E: Triage Module MVP
 """
 
-import pytest
 from datetime import timedelta
 from decimal import Decimal
+
+import pytest
 from django.core.exceptions import ValidationError
 from django.utils import timezone
 
@@ -42,8 +43,9 @@ class TestTriageAssessmentModel:
 
     def test_encounter_one_to_one_relationship(self, sample_encounter, test_user):
         """Should enforce one-to-one relationship with encounter."""
-        from hmis.apps.triage.models import TriageAssessment
         from django.db import IntegrityError
+
+        from hmis.apps.triage.models import TriageAssessment
 
         # Create first assessment
         TriageAssessment.objects.create(
@@ -240,8 +242,8 @@ class TestTriageAssessmentModel:
 
     def test_ordering_by_arrival_time_descending(self, sample_patient, test_user):
         """Should order assessments by arrival_time descending."""
-        from hmis.apps.triage.models import TriageAssessment
         from hmis.apps.encounters.models import Encounter
+        from hmis.apps.triage.models import TriageAssessment
 
         # Create three encounters and assessments
         encounter1 = Encounter.objects.create(

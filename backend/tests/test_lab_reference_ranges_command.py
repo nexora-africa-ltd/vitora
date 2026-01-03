@@ -10,10 +10,10 @@ Test Coverage:
 - Reference ranges are correctly structured
 """
 
-import pytest
 from io import StringIO
+
+import pytest
 from django.core.management import call_command
-from django.core.management.base import CommandError
 
 from hmis.apps.laboratory.models import LabResultTemplate
 
@@ -26,14 +26,14 @@ class TestLoadLabReferenceRangesCommand:
         """Command should load all panels when no --panel specified."""
         # Initial count should be 0
         assert LabResultTemplate.objects.count() == 0
-        
+
         # Run command
         out = StringIO()
         call_command("load_lab_reference_ranges", stdout=out)
-        
+
         # Check that data was loaded
         assert LabResultTemplate.objects.count() > 0
-        
+
         # Check that all panels are represented
         test_codes = set(LabResultTemplate.objects.values_list("test_code", flat=True))
         assert "CBC" in test_codes
@@ -43,7 +43,7 @@ class TestLoadLabReferenceRangesCommand:
         assert "GLUCOSE" in test_codes
         assert "ELECTROLYTES" in test_codes
         assert "THYROID" in test_codes
-        
+
         # Check output
         output = out.getvalue()
         assert "Successfully loaded" in output
@@ -53,11 +53,11 @@ class TestLoadLabReferenceRangesCommand:
         # Run command with CBC panel only
         out = StringIO()
         call_command("load_lab_reference_ranges", panel="CBC", stdout=out)
-        
+
         # Check that only CBC was loaded
         assert LabResultTemplate.objects.filter(test_code="CBC").count() == 8  # 8 CBC parameters
         assert LabResultTemplate.objects.exclude(test_code="CBC").count() == 0
-        
+
         # Check output mentions the panel
         output = out.getvalue()
         assert "CBC" in output
@@ -74,17 +74,17 @@ class TestLoadLabReferenceRangesCommand:
             reference_ranges={"default": {"low": 1, "high": 2}},
         )
         assert LabResultTemplate.objects.count() == 1
-        
+
         # Run command with --clear
         out = StringIO()
         call_command("load_lab_reference_ranges", panel="CBC", clear=True, stdout=out)
-        
+
         # Old data should be cleared
         assert not LabResultTemplate.objects.filter(test_code="TEST").exists()
-        
+
         # New CBC data should exist
         assert LabResultTemplate.objects.filter(test_code="CBC").count() == 8
-        
+
         # Check output mentions clearing
         output = out.getvalue()
         assert "Cleared" in output
@@ -94,10 +94,10 @@ class TestLoadLabReferenceRangesCommand:
         # Run command in dry-run mode
         out = StringIO()
         call_command("load_lab_reference_ranges", panel="CBC", dry_run=True, stdout=out)
-        
+
         # No data should be saved
         assert LabResultTemplate.objects.count() == 0
-        
+
         # Output should indicate dry-run
         output = out.getvalue()
         assert "DRY RUN" in output
@@ -114,22 +114,22 @@ class TestLoadLabReferenceRangesCommand:
             unit="g/dL",
             reference_ranges={"default": {"low": 10, "high": 15}},
         )
-        
+
         # Run command
         out = StringIO()
         call_command("load_lab_reference_ranges", panel="CBC", stdout=out)
-        
+
         # Should still have only one HGB entry (updated, not duplicated)
         hgb_count = LabResultTemplate.objects.filter(
             test_code="CBC", parameter_code="HGB"
         ).count()
         assert hgb_count == 1
-        
+
         # Parameter should be updated
         hgb = LabResultTemplate.objects.get(test_code="CBC", parameter_code="HGB")
         assert hgb.parameter_name == "Hemoglobin"  # Not "Hemoglobin (old)"
         assert hgb.reference_ranges["adult_male"]["low"] == 13.5  # Updated value
-        
+
         # Output should mention update
         output = out.getvalue()
         assert "Updated" in output
@@ -138,18 +138,18 @@ class TestLoadLabReferenceRangesCommand:
         """Reference ranges should have correct structure for different demographics."""
         # Load CBC panel
         call_command("load_lab_reference_ranges", panel="CBC", stdout=StringIO())
-        
+
         # Check HGB has correct ranges
         hgb = LabResultTemplate.objects.get(test_code="CBC", parameter_code="HGB")
-        
+
         assert "adult_male" in hgb.reference_ranges
         assert "adult_female" in hgb.reference_ranges
         assert "pediatric" in hgb.reference_ranges
-        
+
         # Check adult male range
         assert hgb.reference_ranges["adult_male"]["low"] == 13.5
         assert hgb.reference_ranges["adult_male"]["high"] == 17.5
-        
+
         # Check critical values
         assert hgb.critical_low is not None
         assert hgb.critical_high is not None
@@ -158,12 +158,12 @@ class TestLoadLabReferenceRangesCommand:
         """Parameters should have correct display order."""
         # Load CBC panel
         call_command("load_lab_reference_ranges", panel="CBC", stdout=StringIO())
-        
+
         # Get CBC parameters ordered by display_order
         params = list(
             LabResultTemplate.objects.filter(test_code="CBC").order_by("display_order")
         )
-        
+
         # Check order
         assert params[0].parameter_code == "WBC"  # display_order=1
         assert params[1].parameter_code == "RBC"  # display_order=2
@@ -173,12 +173,12 @@ class TestLoadLabReferenceRangesCommand:
         """Some parameters should not have critical values."""
         # Load CBC panel
         call_command("load_lab_reference_ranges", panel="CBC", stdout=StringIO())
-        
+
         # MCV should not have critical values
         mcv = LabResultTemplate.objects.get(test_code="CBC", parameter_code="MCV")
         assert mcv.critical_low is None
         assert mcv.critical_high is None
-        
+
         # But HGB should have critical values
         hgb = LabResultTemplate.objects.get(test_code="CBC", parameter_code="HGB")
         assert hgb.critical_low is not None
@@ -188,7 +188,7 @@ class TestLoadLabReferenceRangesCommand:
         """All parameters should have units specified."""
         # Load all panels
         call_command("load_lab_reference_ranges", stdout=StringIO())
-        
+
         # Check all have units
         params_without_units = LabResultTemplate.objects.filter(unit="")
         assert params_without_units.count() == 0
@@ -197,25 +197,25 @@ class TestLoadLabReferenceRangesCommand:
         """Each panel should have expected number of parameters."""
         # Load all panels
         call_command("load_lab_reference_ranges", stdout=StringIO())
-        
+
         # CBC should have 8 parameters
         assert LabResultTemplate.objects.filter(test_code="CBC").count() == 8
-        
+
         # LIVER should have 5 parameters
         assert LabResultTemplate.objects.filter(test_code="LIVER").count() == 5
-        
+
         # RENAL should have 3 parameters
         assert LabResultTemplate.objects.filter(test_code="RENAL").count() == 3
-        
+
         # LIPID should have 4 parameters
         assert LabResultTemplate.objects.filter(test_code="LIPID").count() == 4
-        
+
         # GLUCOSE should have 3 parameters
         assert LabResultTemplate.objects.filter(test_code="GLUCOSE").count() == 3
-        
+
         # ELECTROLYTES should have 4 parameters
         assert LabResultTemplate.objects.filter(test_code="ELECTROLYTES").count() == 4
-        
+
         # THYROID should have 3 parameters
         assert LabResultTemplate.objects.filter(test_code="THYROID").count() == 3
 
@@ -223,7 +223,7 @@ class TestLoadLabReferenceRangesCommand:
         """All loaded parameters should be active."""
         # Load all panels
         call_command("load_lab_reference_ranges", stdout=StringIO())
-        
+
         # All should be active
         inactive_count = LabResultTemplate.objects.filter(is_active=False).count()
         assert inactive_count == 0

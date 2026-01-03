@@ -22,7 +22,6 @@ from hmis.apps.billing.admin import (
 from hmis.apps.billing.models import (
     CreditNote,
     Invoice,
-    InvoiceItem,
     Payment,
     Receipt,
     Service,
