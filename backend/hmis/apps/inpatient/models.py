@@ -841,3 +841,144 @@ class Discharge(TimeStampedModel):
         """
         delta = self.discharge_date - self.admission.admission_date
         return delta.days
+
+
+class Transfer(TimeStampedModel):
+    """
+    Patient transfer between wards.
+
+    Documents the transfer of a patient from one ward to another,
+    with automatic bed status updates and admission tracking.
+
+    Attributes:
+        admission: Admission being transferred
+        source_ward: Ward patient is transferring from
+        source_bed: Bed patient is leaving
+        destination_ward: Ward patient is transferring to
+        destination_bed: Bed patient is moving to
+        reason: Reason for transfer
+        reason_details: Additional details about transfer
+        transferred_by: User who processed the transfer
+        transfer_date: Date and time of transfer
+        clinical_handover_notes: Clinical information for receiving team
+    """
+
+    TRANSFER_REASON_CHOICES = [
+        ("STEP_UP", "Step Up Care (e.g., to ICU)"),
+        ("STEP_DOWN", "Step Down Care"),
+        ("SPECIALTY", "Specialty Care"),
+        ("BED_MANAGEMENT", "Bed Management"),
+        ("PATIENT_REQUEST", "Patient Request"),
+        ("OTHER", "Other"),
+    ]
+
+    admission = models.ForeignKey(
+        Admission,
+        on_delete=models.CASCADE,
+        related_name="transfers",
+        help_text="Admission being transferred",
+    )
+
+    # Source
+    source_ward = models.ForeignKey(
+        Ward,
+        on_delete=models.PROTECT,
+        related_name="transfers_out",
+        help_text="Ward patient is transferring from",
+    )
+    source_bed = models.ForeignKey(
+        Bed,
+        on_delete=models.PROTECT,
+        related_name="transfers_out",
+        help_text="Bed patient is leaving",
+    )
+
+    # Destination
+    destination_ward = models.ForeignKey(
+        Ward,
+        on_delete=models.PROTECT,
+        related_name="transfers_in",
+        help_text="Ward patient is transferring to",
+    )
+    destination_bed = models.ForeignKey(
+        Bed,
+        on_delete=models.PROTECT,
+        related_name="transfers_in",
+        help_text="Bed patient is moving to",
+    )
+
+    # Details
+    reason = models.CharField(
+        max_length=20,
+        choices=TRANSFER_REASON_CHOICES,
+        help_text="Reason for transfer",
+    )
+    reason_details = models.TextField(
+        blank=True,
+        default="",
+        help_text="Additional details about transfer reason",
+    )
+    transferred_by = models.ForeignKey(
+        User,
+        on_delete=models.PROTECT,
+        related_name="transfers_processed",
+        help_text="User who processed the transfer",
+    )
+    transfer_date = models.DateTimeField(
+        help_text="Date and time of transfer",
+    )
+
+    # Handover
+    clinical_handover_notes = models.TextField(
+        help_text="Clinical information for receiving team",
+    )
+
+    class Meta:
+        """Meta options for Transfer model."""
+
+        ordering = ["-transfer_date"]
+        verbose_name = "Transfer"
+        verbose_name_plural = "Transfers"
+
+    def __str__(self):
+        """Return string representation."""
+        return f"Transfer: {self.admission.admission_number} - {self.source_ward.name} → {self.destination_ward.name}"
+
+    def save(self, *args, **kwargs):
+        """Override save to update bed and admission status."""
+        # Call parent save first
+        super().save(*args, **kwargs)
+
+        # Update source bed status to AVAILABLE
+        if self.source_bed.status == "OCCUPIED":
+            self.source_bed.status = "AVAILABLE"
+            self.source_bed.status_changed_by = self.transferred_by
+            self.source_bed.notes = ""
+            self.source_bed.save()
+
+        # Update destination bed status to OCCUPIED
+        if self.destination_bed.status == "AVAILABLE":
+            self.destination_bed.status = "OCCUPIED"
+            self.destination_bed.status_changed_by = self.transferred_by
+            self.destination_bed.save()
+
+        # Update admission's current ward and bed
+        self.admission.ward = self.destination_ward
+        self.admission.bed = self.destination_bed
+        self.admission.save()
+
+    def clean(self):
+        """Validate transfer data."""
+        from django.core.exceptions import ValidationError
+
+        # Prevent transfer within same ward
+        if self.source_ward == self.destination_ward:
+            raise ValidationError("Cannot transfer patient within the same ward")
+
+        # Validate destination bed is available
+        if self.destination_bed.status != "AVAILABLE":
+            raise ValidationError("Destination bed must be available")
+
+        # Validate transfer date is not before admission date
+        if self.transfer_date < self.admission.admission_date:
+            raise ValidationError("Transfer date cannot be before admission date")
