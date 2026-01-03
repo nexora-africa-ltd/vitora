@@ -29,6 +29,7 @@ describe('Sidebar', () => {
     expect(screen.getByText('Dashboard')).toBeInTheDocument();
     expect(screen.getByText('Patients')).toBeInTheDocument();
     expect(screen.getByText('Encounters')).toBeInTheDocument();
+    expect(screen.getByText('Admissions')).toBeInTheDocument();
     expect(screen.getByText('Pharmacy')).toBeInTheDocument();
     expect(screen.getByText('Laboratory')).toBeInTheDocument();
   });

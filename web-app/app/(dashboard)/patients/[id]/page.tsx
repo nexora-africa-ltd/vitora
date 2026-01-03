@@ -80,6 +80,11 @@ export default function PatientDetailPage() {
 
         <div className="flex gap-2">
           <Button variant="outline" asChild>
+            <Link href={`/admissions/new?patient=${patient.id}`}>
+              Admit
+            </Link>
+          </Button>
+          <Button variant="outline" asChild>
             <Link href={`/patients/${patient.id}/history`}>
               <History className="h-4 w-4 mr-2" />
               History

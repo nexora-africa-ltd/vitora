@@ -26,6 +26,16 @@ export {
 export { useToast, toast } from './use-toast';
 export { useToastNotification } from './use-toast-notification';
 
+// Inpatient (Admissions/IPD) hooks
+export {
+  useInpatientWards,
+  useBeds,
+  useAdmissionRecommendations,
+  useAdmissions,
+  useCreateAdmissionRecommendation,
+  useCreateAdmission,
+} from './use-inpatient';
+
 // Patient history/timeline hooks
 export {
   usePatientHistory,
