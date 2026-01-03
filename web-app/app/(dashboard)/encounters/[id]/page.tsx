@@ -83,6 +83,14 @@ export default function EncounterDetailPage() {
             Edit
           </Link>
         </Button>
+
+        {encounter.encounter_type === 'OPD' && (
+          <Button variant="outline" asChild>
+            <Link href={`/admissions/recommendations/new?encounter=${encounter.id}`}>
+              Recommend for Admission
+            </Link>
+          </Button>
+        )}
       </div>
 
       {/* Chief Complaint */}
