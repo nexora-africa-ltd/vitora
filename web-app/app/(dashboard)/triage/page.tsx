@@ -10,11 +10,11 @@
 
 import { useState, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
-import { Plus, RefreshCw } from 'lucide-react';
+import { Plus, RefreshCw, Clock, Target, Users } from 'lucide-react';
 import { PageHeader } from '@/components/shared/page-header';
 import { Button } from '@/components/ui/button';
 import { TriageQueueDashboard } from '@/components/triage';
-import { WaitTimeStatsCard } from '@/components/triage';
+import { KPICard } from '@/components/reports/kpi-card';
 import { useTriageQueue, useTriageQueueActions, useTriageWaitTimeStats } from '@/lib/hooks/use-triage';
 import { useToast } from '@/components/ui/use-toast';
 import type { TriageCategory, AssignedArea, QueueStatus } from '@/lib/types/triage';
@@ -36,8 +36,8 @@ export default function TriageQueuePage() {
     category: selectedCategory !== 'all' ? selectedCategory : undefined,
   });
 
-  // Fetch wait time stats for the stats card
-  const { data: waitTimeStats, isLoading: isStatsLoading } = useTriageWaitTimeStats({
+  // Fetch wait time stats for the KPI cards
+  const { data: waitTimeStats } = useTriageWaitTimeStats({
     dateRange: 'today',
   });
 
@@ -161,34 +161,41 @@ export default function TriageQueuePage() {
         }
       />
 
-      <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
-        {/* Stats Card - Sidebar */}
-        <div className="lg:col-span-1">
-          <WaitTimeStatsCard
-            stats={waitTimeStats?.by_category ?? []}
-            overallAvgMinutes={waitTimeStats?.avg_wait_minutes ?? 0}
-            overallMedianMinutes={waitTimeStats?.median_wait_minutes ?? 0}
-            targetMetPercentage={waitTimeStats?.target_met_percentage ?? 0}
-            isLoading={isStatsLoading}
-            compact
-          />
-        </div>
-
-        {/* Queue Dashboard - Main Content */}
-        <div className="lg:col-span-3">
-          <TriageQueueDashboard
-            queueItems={queueData?.results ?? []}
-            isLoading={isQueueLoading}
-            lastUpdated={dataUpdatedAt ? new Date(dataUpdatedAt) : undefined}
-            onCallPatient={handleCallPatient}
-            onMarkWithClinician={handleMarkWithClinician}
-            onMarkComplete={handleMarkComplete}
-            onMarkLWBS={handleMarkLWBS}
-            onSelectPatient={handleSelectPatient}
-            onRefresh={() => refetchQueue()}
-          />
-        </div>
+      {/* KPI Stats Cards */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <KPICard
+          title="Avg Wait Time"
+          value={waitTimeStats?.avg_wait_minutes ?? 0}
+          unit="min"
+          description="Average patient wait time today"
+        />
+        <KPICard
+          title="Target Met"
+          value={waitTimeStats?.target_met_percentage ?? 0}
+          unit="%"
+          variant={(waitTimeStats?.target_met_percentage ?? 0) >= 85 ? 'success' : 'warning'}
+          description="Patients seen within KETA targets"
+        />
+        <KPICard
+          title="In Queue"
+          value={queueData?.results?.length ?? 0}
+          description="Patients currently waiting"
+          href="/triage/reports"
+        />
       </div>
+
+      {/* Queue Dashboard */}
+      <TriageQueueDashboard
+        queueItems={queueData?.results ?? []}
+        isLoading={isQueueLoading}
+        lastUpdated={dataUpdatedAt ? new Date(dataUpdatedAt) : undefined}
+        onCallPatient={handleCallPatient}
+        onMarkWithClinician={handleMarkWithClinician}
+        onMarkComplete={handleMarkComplete}
+        onMarkLWBS={handleMarkLWBS}
+        onSelectPatient={handleSelectPatient}
+        onRefresh={() => refetchQueue()}
+      />
     </div>
   );
 }
