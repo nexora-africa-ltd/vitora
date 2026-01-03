@@ -5,8 +5,9 @@ Following TDD approach: Write tests FIRST, then implement the model.
 Sprint 1.5-1.6 Track E: Triage Module MVP
 """
 
-import pytest
 from decimal import Decimal
+
+import pytest
 from django.core.exceptions import ValidationError
 from django.db import IntegrityError
 

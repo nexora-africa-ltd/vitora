@@ -5,10 +5,11 @@ Following TDD approach: Write tests FIRST, then implement.
 Sprint 1.1-1.2 Track C: RBAC Foundation - Phase 3
 """
 
+from io import StringIO
+
 import pytest
 from django.contrib.auth.models import Group
 from django.core.management import call_command
-from io import StringIO
 
 
 @pytest.mark.django_db
@@ -27,10 +28,10 @@ class TestDefaultRolesFixture:
         assert Role.objects.count() == 9
 
         # Check specific roles exist
-        role_codes = ["ADMIN", "DOCTOR", "NURSE", "CLINICAL_OFFICER", 
-                      "LAB_TECH", "PHARMACIST", "RECEPTIONIST", 
+        role_codes = ["ADMIN", "DOCTOR", "NURSE", "CLINICAL_OFFICER",
+                      "LAB_TECH", "PHARMACIST", "RECEPTIONIST",
                       "RECORDS_CLERK", "CHW"]
-        
+
         for code in role_codes:
             assert Role.objects.filter(code=code).exists(), f"Role {code} not found"
 
@@ -117,8 +118,9 @@ class TestDefaultRolesFixture:
 
     def test_duplicate_role_codes_rejected(self):
         """Should reject duplicate role codes on reload."""
-        from hmis.apps.core.models import Role
         from django.db import IntegrityError
+
+        from hmis.apps.core.models import Role
 
         call_command("load_default_roles", stdout=StringIO())
 
@@ -150,7 +152,7 @@ class TestDefaultRolesFixture:
         # Check custom permission preserved
         doctor.refresh_from_db()
         assert "CustomResource" in doctor.permissions_matrix
-        
+
         # But default permissions should be updated
         for resource in original_perms:
             assert resource in doctor.permissions_matrix
@@ -189,7 +191,7 @@ class TestDefaultRolesFixture:
         # Should have patient access but limited
         assert "Patient" in receptionist.permissions_matrix
         patient_perms = receptionist.permissions_matrix["Patient"]
-        
+
         assert patient_perms["create"] is True
         assert patient_perms["read"] is True
         assert patient_perms["update"] is True
@@ -211,7 +213,7 @@ class TestLoadDefaultRolesCommand:
         """Should run command successfully."""
         out = StringIO()
         call_command("load_default_roles", stdout=out)
-        
+
         output = out.getvalue()
         assert "Successfully loaded" in output or "default roles" in output.lower()
 
@@ -219,7 +221,7 @@ class TestLoadDefaultRolesCommand:
         """Should output detailed information with --verbose flag."""
         out = StringIO()
         call_command("load_default_roles", "--verbose", stdout=out)
-        
+
         output = out.getvalue()
         # Should show progress for each role
         assert "ADMIN" in output or "DOCTOR" in output

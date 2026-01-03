@@ -322,7 +322,7 @@ class LabOrder(models.Model):
     # Billing
     total_cost = models.DecimalField(max_digits=10, decimal_places=2, default=0)
     is_paid = models.BooleanField(default=False)
-    
+
     # Cancellation tracking
     cancellation_reason = models.TextField(blank=True, help_text="Reason for cancellation")
     cancelled_by = models.ForeignKey(
@@ -784,10 +784,10 @@ class LabQueue(models.Model):
         """Override save to auto-generate queue number and set priority order."""
         if not self.queue_number:
             self.queue_number = generate_queue_number()
-        
+
         # Set priority_order for sorting
         self.priority_order = self.PRIORITY_ORDER.get(self.priority, 3)
-        
+
         super().save(*args, **kwargs)
 
     def assign_to(self, technician):
@@ -967,16 +967,16 @@ class LabResultAttachment(models.Model):
     Supports external lab results, scanned reports, images, and graphs.
     Files are validated for type (PDF, PNG, JPG, TIFF) and size (<10MB).
     """
-    
+
     class AttachmentType(models.TextChoices):
         SCANNED_RESULT = 'scanned', 'Scanned Result'
         EXTERNAL_REPORT = 'external', 'External Lab Report'
         GRAPH = 'graph', 'Result Graph'
         IMAGE = 'image', 'Lab Image'
         OTHER = 'other', 'Other'
-    
+
     id = models.BigAutoField(primary_key=True)
-    
+
     # Linkage
     lab_order = models.ForeignKey(
         'LabOrder',
@@ -984,7 +984,7 @@ class LabResultAttachment(models.Model):
         related_name='attachments',
         help_text="Lab order this attachment belongs to"
     )
-    
+
     # File
     file = models.FileField(
         upload_to='lab_results/%Y/%m/',
@@ -1001,7 +1001,7 @@ class LabResultAttachment(models.Model):
     file_size = models.IntegerField(
         help_text="File size in bytes"
     )
-    
+
     # Metadata
     attachment_type = models.CharField(
         max_length=20,
@@ -1013,7 +1013,7 @@ class LabResultAttachment(models.Model):
         blank=True,
         help_text="Optional description"
     )
-    
+
     # Audit
     uploaded_by = models.ForeignKey(
         User,
@@ -1024,12 +1024,12 @@ class LabResultAttachment(models.Model):
         auto_now_add=True,
         help_text="When file was uploaded"
     )
-    
+
     class Meta:
         ordering = ['-uploaded_at']
         verbose_name = "Lab Result Attachment"
         verbose_name_plural = "Lab Result Attachments"
-    
+
     def save(self, *args, **kwargs):
         """Auto-populate file metadata on save."""
         if self.file:
@@ -1037,7 +1037,7 @@ class LabResultAttachment(models.Model):
             self.file_type = self._get_mime_type()
             self.file_size = self.file.size
         super().save(*args, **kwargs)
-    
+
     def _get_mime_type(self) -> str:
         """
         Determine MIME type from file.
@@ -1048,6 +1048,6 @@ class LabResultAttachment(models.Model):
         import mimetypes
         mime_type, _ = mimetypes.guess_type(self.file.name)
         return mime_type or 'application/octet-stream'
-    
+
     def __str__(self):
         return f"{self.attachment_type}: {self.filename} for Order {self.lab_order.order_number}"

@@ -1,7 +1,7 @@
 """
 Billing services module.
 """
-from .sha import SHAClaimsService
 from .mpesa import MpesaService
+from .sha import SHAClaimsService
 
 __all__ = ['SHAClaimsService', 'MpesaService']

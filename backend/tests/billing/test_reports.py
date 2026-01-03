@@ -3,13 +3,14 @@ Tests for Billing Reports Service.
 
 Following TDD approach - tests written first based on deliverables spec § 10 (lines 930-1014).
 """
-import pytest
 from datetime import date, timedelta
 from decimal import Decimal
+
+import pytest
 from django.utils import timezone
 
+from hmis.apps.billing.models import Invoice, InvoiceItem, Payment
 from hmis.apps.billing.reports import BillingReportService
-from hmis.apps.billing.models import Invoice, InvoiceItem, Payment, Service, ServiceCategory
 
 
 @pytest.mark.django_db
@@ -21,10 +22,10 @@ class TestBillingReportService:
         # Arrange
         service = BillingReportService()
         report_date = date.today()
-        
+
         # Ensure invoice has items and totals calculated
         sample_invoice.calculate_totals()
-        
+
         # Create a payment for half the amount
         payment = Payment.objects.create(
             invoice=sample_invoice,
@@ -34,10 +35,10 @@ class TestBillingReportService:
             received_by=test_user,
             payment_date=timezone.now()
         )
-        
+
         # Act
         report = service.daily_collection_report(report_date)
-        
+
         # Assert
         assert report is not None
         assert 'total_collections' in report
@@ -52,9 +53,9 @@ class TestBillingReportService:
         # Arrange
         service = BillingReportService()
         report_date = date.today()
-        
+
         sample_invoice.calculate_totals()
-        
+
         # Create payments with different methods
         Payment.objects.create(
             invoice=sample_invoice,
@@ -73,10 +74,10 @@ class TestBillingReportService:
             payment_date=timezone.now(),
             mpesa_receipt_number='TEST123'
         )
-        
+
         # Act
         report = service.daily_collection_report(report_date)
-        
+
         # Assert
         assert 'by_payment_method' in report
         assert Payment.Method.CASH in report['by_payment_method']
@@ -90,7 +91,7 @@ class TestBillingReportService:
         service = BillingReportService()
         start_date = date.today() - timedelta(days=7)
         end_date = date.today()
-        
+
         sample_invoice.calculate_totals()
         Payment.objects.create(
             invoice=sample_invoice,
@@ -100,10 +101,10 @@ class TestBillingReportService:
             received_by=test_user,
             payment_date=timezone.now()
         )
-        
+
         # Act
         report = service.revenue_summary(start_date, end_date)
-        
+
         # Assert
         assert report is not None
         assert 'total_revenue' in report
@@ -117,7 +118,7 @@ class TestBillingReportService:
         service = BillingReportService()
         start_date = date.today() - timedelta(days=7)
         end_date = date.today()
-        
+
         # Create invoice with item
         item = InvoiceItem.objects.create(
             invoice=sample_invoice,
@@ -127,7 +128,7 @@ class TestBillingReportService:
             unit_price=sample_service.unit_price
         )
         sample_invoice.calculate_totals()
-        
+
         Payment.objects.create(
             invoice=sample_invoice,
             amount=sample_invoice.total_amount,
@@ -136,10 +137,10 @@ class TestBillingReportService:
             received_by=test_user,
             payment_date=timezone.now()
         )
-        
+
         # Act
         report = service.revenue_summary(start_date, end_date)
-        
+
         # Assert
         assert 'by_category' in report
         assert len(report['by_category']) > 0
@@ -155,10 +156,10 @@ class TestBillingReportService:
         sample_invoice.calculate_totals()
         sample_invoice.status = Invoice.Status.PENDING
         sample_invoice.save()
-        
+
         # Act
         report = service.outstanding_balances()
-        
+
         # Assert
         assert isinstance(report, list)
         assert len(report) > 0
@@ -181,10 +182,10 @@ class TestBillingReportService:
         sample_invoice.invoice_date = past_invoice_date
         sample_invoice.due_date = past_invoice_date + timedelta(days=15)  # Due 15 days after invoice
         sample_invoice.save()
-        
+
         # Act
         report = service.outstanding_balances()
-        
+
         # Assert
         assert len(report) > 0
         overdue_invoice = next((item for item in report if item['invoice_number'] == sample_invoice.invoice_number), None)
@@ -197,7 +198,7 @@ class TestBillingReportService:
         service = BillingReportService()
         start_date = date.today() - timedelta(days=7)
         end_date = date.today()
-        
+
         # Create multiple invoice items for the same service
         InvoiceItem.objects.create(
             invoice=sample_invoice,
@@ -213,10 +214,10 @@ class TestBillingReportService:
             quantity=1,
             unit_price=sample_service.unit_price
         )
-        
+
         # Act
         report = service.service_utilization(start_date, end_date)
-        
+
         # Assert
         assert 'services' in report
         assert len(report['services']) > 0
@@ -231,7 +232,7 @@ class TestBillingReportService:
         service = BillingReportService()
         start_date = date.today() - timedelta(days=7)
         end_date = date.today()
-        
+
         # Create invoice items
         InvoiceItem.objects.create(
             invoice=sample_invoice,
@@ -241,7 +242,7 @@ class TestBillingReportService:
             unit_price=sample_service.unit_price
         )
         sample_invoice.calculate_totals()
-        
+
         Payment.objects.create(
             invoice=sample_invoice,
             amount=sample_invoice.total_amount,
@@ -250,10 +251,10 @@ class TestBillingReportService:
             received_by=test_user,
             payment_date=timezone.now()
         )
-        
+
         # Act
         report = service.service_utilization(start_date, end_date)
-        
+
         # Assert
         assert 'services' in report
         for service_data in report['services']:
@@ -266,9 +267,9 @@ class TestBillingReportService:
         service = BillingReportService()
         start_date = date.today() - timedelta(days=7)
         end_date = date.today()
-        
+
         sample_invoice.calculate_totals()
-        
+
         # Create payments with different methods
         Payment.objects.create(
             invoice=sample_invoice,
@@ -287,10 +288,10 @@ class TestBillingReportService:
             payment_date=timezone.now(),
             mpesa_receipt_number='TEST123'
         )
-        
+
         # Act
         report = service.payment_method_analysis(start_date, end_date)
-        
+
         # Assert
         assert 'by_method' in report
         assert 'average_transaction' in report
@@ -303,9 +304,9 @@ class TestBillingReportService:
         service = BillingReportService()
         start_date = date.today() - timedelta(days=7)
         end_date = date.today()
-        
+
         sample_invoice.calculate_totals()
-        
+
         # Create successful M-Pesa payment
         Payment.objects.create(
             invoice=sample_invoice,
@@ -316,7 +317,7 @@ class TestBillingReportService:
             payment_date=timezone.now(),
             mpesa_receipt_number='SUCCESS123'
         )
-        
+
         # Create failed M-Pesa payment
         Payment.objects.create(
             invoice=sample_invoice,
@@ -326,10 +327,10 @@ class TestBillingReportService:
             received_by=test_user,
             payment_date=timezone.now()
         )
-        
+
         # Act
         report = service.payment_method_analysis(start_date, end_date)
-        
+
         # Assert
         assert 'mpesa_metrics' in report
         assert 'success_rate' in report['mpesa_metrics']

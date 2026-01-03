@@ -4,7 +4,15 @@ Django admin configuration for encounters app.
 
 from django.contrib import admin
 
-from .models import ICD10Code, Encounter, Diagnosis, TreatmentPlan, TreatmentPlanTemplate, Medication
+from .models import (
+    Diagnosis,
+    Encounter,
+    ICD10Code,
+    Medication,
+    TreatmentPlan,
+    TreatmentPlanTemplate,
+)
+
 
 class DiagnosisInline(admin.TabularInline):
     """Inline diagnosis on Encounter admin."""
@@ -20,7 +28,7 @@ class TreatmentPlanInline(admin.StackedInline):
     extra = 0
     max_num = 1
     readonly_fields = ['created_by', 'created_at', 'updated_at']
-    
+
 @admin.register(ICD10Code)
 class ICD10CodeAdmin(admin.ModelAdmin):
     list_display = (

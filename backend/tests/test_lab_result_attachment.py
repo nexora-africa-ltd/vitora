@@ -12,16 +12,17 @@ Test Coverage:
 - Multiple attachments per order
 """
 
-import pytest
 from datetime import date
-from django.core.files.uploadedfile import SimpleUploadedFile
-from django.core.exceptions import ValidationError
-from django.contrib.auth import get_user_model
 
-from hmis.apps.laboratory.models import LabOrder, LabResultAttachment
-from hmis.apps.encounters.models import Encounter
-from hmis.apps.patients.models import Patient
+import pytest
+from django.contrib.auth import get_user_model
+from django.core.exceptions import ValidationError
+from django.core.files.uploadedfile import SimpleUploadedFile
+
 from hmis.apps.core.models import County, SubCounty
+from hmis.apps.encounters.models import Encounter
+from hmis.apps.laboratory.models import LabOrder, LabResultAttachment
+from hmis.apps.patients.models import Patient
 
 User = get_user_model()
 
@@ -139,7 +140,7 @@ class TestLabResultAttachment:
             description="Test scan",
             uploaded_by=test_user,
         )
-        
+
         assert attachment.id is not None
         assert attachment.file.name is not None
         assert "lab_results" in attachment.file.name
@@ -152,7 +153,7 @@ class TestLabResultAttachment:
             attachment_type="external",
             uploaded_by=test_user,
         )
-        
+
         assert attachment.lab_order == sample_lab_order
         assert attachment in sample_lab_order.attachments.all()
 
@@ -164,7 +165,7 @@ class TestLabResultAttachment:
             attachment_type="scanned",
             uploaded_by=test_user,
         )
-        
+
         # File metadata should be auto-populated
         assert attachment.filename == "test_result.pdf"
         assert attachment.file_type == "application/pdf"
@@ -178,7 +179,7 @@ class TestLabResultAttachment:
             attachment_type="external",
             uploaded_by=test_user,
         )
-        
+
         assert attachment.id is not None
         assert ".pdf" in attachment.filename.lower()
 
@@ -190,41 +191,41 @@ class TestLabResultAttachment:
             attachment_type="image",
             uploaded_by=test_user,
         )
-        
+
         assert attachment.id is not None
         assert ".png" in attachment.filename.lower()
 
     def test_rejected_extension(self, sample_lab_order, test_user):
         """Should reject invalid file extensions."""
         from hmis.apps.laboratory.validators import validate_lab_attachment
-        
+
         invalid_file = SimpleUploadedFile(
             name="script.js",
             content=b"console.log('test')",
             content_type="application/javascript"
         )
-        
+
         # Validator should raise ValidationError
         with pytest.raises(ValidationError) as exc_info:
             validate_lab_attachment(invalid_file)
-        
+
         assert "File type not allowed" in str(exc_info.value)
 
     def test_file_size_limit_exceeded(self, sample_lab_order, test_user):
         """Should reject files larger than 10MB."""
         from hmis.apps.laboratory.validators import validate_lab_attachment
-        
+
         # Create a file > 10MB
         large_file = SimpleUploadedFile(
             name="huge_result.pdf",
             content=b"x" * (11 * 1024 * 1024),  # 11MB
             content_type="application/pdf"
         )
-        
+
         # Validator should raise ValidationError
         with pytest.raises(ValidationError) as exc_info:
             validate_lab_attachment(large_file)
-        
+
         assert "File too large" in str(exc_info.value)
 
     def test_uploaded_by_recorded(self, sample_lab_order, pdf_file, test_user):
@@ -235,7 +236,7 @@ class TestLabResultAttachment:
             attachment_type="scanned",
             uploaded_by=test_user,
         )
-        
+
         assert attachment.uploaded_by == test_user
         assert attachment.uploaded_at is not None
 
@@ -249,7 +250,7 @@ class TestLabResultAttachment:
             description="Main report",
             uploaded_by=test_user,
         )
-        
+
         # Upload second attachment
         attachment2 = LabResultAttachment.objects.create(
             lab_order=sample_lab_order,
@@ -258,7 +259,7 @@ class TestLabResultAttachment:
             description="Scan image",
             uploaded_by=second_user,
         )
-        
+
         # Both should be linked to same order
         attachments = sample_lab_order.attachments.all()
         assert attachments.count() == 2
@@ -268,7 +269,7 @@ class TestLabResultAttachment:
     def test_attachment_type_choices(self, sample_lab_order, pdf_file, test_user):
         """Should support different attachment types."""
         types = ['scanned', 'external', 'graph', 'image', 'other']
-        
+
         for att_type in types:
             attachment = LabResultAttachment.objects.create(
                 lab_order=sample_lab_order,
@@ -287,14 +288,14 @@ class TestLabResultAttachment:
             attachment_type="scanned",
             uploaded_by=test_user,
         )
-        
+
         att2 = LabResultAttachment.objects.create(
             lab_order=sample_lab_order,
             file=pdf_file,
             attachment_type="external",
             uploaded_by=test_user,
         )
-        
+
         # Latest should come first
         attachments = list(sample_lab_order.attachments.all())
         assert attachments[0] == att2

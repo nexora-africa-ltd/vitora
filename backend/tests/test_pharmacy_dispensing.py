@@ -829,7 +829,7 @@ class TestDispensingModel:
 
         from hmis.apps.core.models import County, SubCounty
         from hmis.apps.patients.models import Patient
-        from hmis.apps.pharmacy.models import Dispensing, Drug, StockBatch
+        from hmis.apps.pharmacy.models import Drug, StockBatch
 
         User = get_user_model()
         user = User.objects.create_user(username="pharmacist15", password="test123")

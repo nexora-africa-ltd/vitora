@@ -622,7 +622,7 @@ class Admission(TimeStampedModel):
                 patient=self.patient,
                 admission_status="ACTIVE"
             ).exclude(pk=self.pk)
-            
+
             if existing.exists():
                 raise ValidationError("Patient already has an active admission")
 
@@ -633,8 +633,9 @@ class Admission(TimeStampedModel):
         Returns:
             Unique admission number string
         """
-        from django.db.models import Max
         import re
+
+        from django.db.models import Max
 
         today = self.admission_date.strftime("%Y%m%d")
         prefix = f"ADM-{today}-"
@@ -1078,20 +1079,20 @@ class NursingKardex(models.Model):
     One-to-one relationship with Admission. Auto-created when admission is saved.
     Contains nursing care plan, risk assessments, and related shift/handover notes.
     """
-    
+
     RISK_CHOICES = [
         ('LOW', 'Low'),
         ('MODERATE', 'Moderate'),
         ('HIGH', 'High'),
     ]
-    
+
     admission = models.OneToOneField(
         Admission,
         on_delete=models.CASCADE,
         related_name='kardex',
         help_text="One Kardex per admission"
     )
-    
+
     # Nursing care plan (editable sections)
     nursing_problems = models.TextField(
         blank=True,
@@ -1109,7 +1110,7 @@ class NursingKardex(models.Model):
         blank=True,
         help_text="Frequency of care tasks (e.g., 'Wound dressing BD')"
     )
-    
+
     # Risk assessments
     fall_risk = models.CharField(
         max_length=20,
@@ -1123,14 +1124,14 @@ class NursingKardex(models.Model):
         default='LOW',
         help_text="Pressure sore risk level"
     )
-    
+
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
-    
+
     class Meta:
         verbose_name_plural = "Nursing Kardexes"
         ordering = ['-created_at']
-    
+
     def __str__(self):
         return f"Kardex for {self.admission.patient} - Admission {self.admission.admission_number}"
 
@@ -1143,12 +1144,12 @@ class KardexShiftNote(models.Model):
     care provided, and observations. Notes are immutable once created
     (timestamp auto-set on creation and cannot be changed).
     """
-    
+
     SHIFT_CHOICES = [
         ('DAY', 'Day Shift'),
         ('NIGHT', 'Night Shift'),
     ]
-    
+
     kardex = models.ForeignKey(
         NursingKardex,
         on_delete=models.CASCADE,
@@ -1172,14 +1173,14 @@ class KardexShiftNote(models.Model):
         auto_now_add=True,
         help_text="When this note was created (immutable)"
     )
-    
+
     class Meta:
         ordering = ['-timestamp']
         indexes = [
             models.Index(fields=['kardex', '-timestamp']),
             models.Index(fields=['shift', '-timestamp']),
         ]
-    
+
     def __str__(self):
         return f"{self.shift} shift note by {self.nurse.username} at {self.timestamp}"
 
@@ -1191,7 +1192,7 @@ class KardexHandoverNote(models.Model):
     Documents pending tasks, escalations, and important information
     to be communicated between outgoing and incoming nursing staff.
     """
-    
+
     kardex = models.ForeignKey(
         NursingKardex,
         on_delete=models.CASCADE,
@@ -1227,13 +1228,13 @@ class KardexHandoverNote(models.Model):
         help_text="When incoming nurse acknowledged the handover"
     )
     created_at = models.DateTimeField(auto_now_add=True)
-    
+
     class Meta:
         ordering = ['-created_at']
         indexes = [
             models.Index(fields=['kardex', '-created_at']),
         ]
-    
+
     def __str__(self):
         status = "✓ Acknowledged" if self.acknowledged_at else "Pending"
         return f"Handover from {self.outgoing_nurse.username} to {self.incoming_nurse.username} - {status}"
@@ -1259,13 +1260,13 @@ class ShiftHandover(TimeStampedModel):
         general_notes: General shift notes
         acknowledged_at: When incoming nurse acknowledged handover
     """
-    
+
     SHIFT_CHOICES = [
         ("DAY", "Day Shift (07:00-15:00)"),
         ("EVENING", "Evening Shift (15:00-23:00)"),
         ("NIGHT", "Night Shift (23:00-07:00)"),
     ]
-    
+
     ward = models.ForeignKey(
         Ward,
         on_delete=models.CASCADE,
@@ -1290,7 +1291,7 @@ class ShiftHandover(TimeStampedModel):
         related_name="handovers_received",
         help_text="Nurse receiving handover"
     )
-    
+
     # Patient counts
     total_patients = models.PositiveIntegerField(
         help_text="Total patient count in ward"
@@ -1307,7 +1308,7 @@ class ShiftHandover(TimeStampedModel):
         default=0,
         help_text="Number of pending discharges"
     )
-    
+
     # Notes
     general_notes = models.TextField(
         blank=True,
@@ -1318,7 +1319,7 @@ class ShiftHandover(TimeStampedModel):
         blank=True,
         help_text="When incoming nurse acknowledged handover"
     )
-    
+
     class Meta(TimeStampedModel.Meta):
         ordering = ['-shift_date', '-created_at']
         unique_together = ['ward', 'shift_date', 'shift_ending']
@@ -1326,18 +1327,18 @@ class ShiftHandover(TimeStampedModel):
             models.Index(fields=['ward', '-shift_date']),
             models.Index(fields=['shift_date', 'shift_ending']),
         ]
-    
+
     def __str__(self) -> str:
         # get_shift_ending_display() is auto-generated by Django for choice fields
         shift_display: str = self.get_shift_ending_display()  # type: ignore[attr-defined]
         return f"{self.ward.name} - {shift_display} - {self.shift_date}"
-    
+
     @property
     def is_acknowledged(self) -> bool:
         """Check if handover has been acknowledged."""
         return self.acknowledged_at is not None
-    
-    def acknowledge(self, user: "AbstractUser") -> None:
+
+    def acknowledge(self, user: AbstractUser) -> None:
         """
         Acknowledge handover receipt.
         
@@ -1346,7 +1347,7 @@ class ShiftHandover(TimeStampedModel):
         """
         self.acknowledged_at = timezone.now()
         self.save(update_fields=['acknowledged_at'])
-    
+
     def auto_populate_counts(self) -> None:
         """
         Auto-populate patient counts from ward data.
@@ -1357,21 +1358,20 @@ class ShiftHandover(TimeStampedModel):
         - New admissions today
         - Discharges pending
         """
-        from django.db.models import Q, Count
-        
+
         # Get all active admissions in this ward
         active_admissions = Admission.objects.filter(
             ward=self.ward,
             discharge__isnull=True
         )
-        
+
         self.total_patients = active_admissions.count()
-        
+
         # Count new admissions for this shift date
         self.new_admissions = active_admissions.filter(
             admission_date__date=self.shift_date
         ).count()
-        
+
         # Count critical patients (patients with DETERIORATING status in latest ward round)
         critical_count = 0
         for admission in active_admissions:
@@ -1379,11 +1379,11 @@ class ShiftHandover(TimeStampedModel):
             if latest_round and latest_round.condition_status == 'DETERIORATING':
                 critical_count += 1
         self.critical_patients = critical_count
-        
+
         # Count pending discharges (admissions with recent discharge recommendations)
         # TODO: This is a simplified count - could be enhanced with actual discharge orders
         self.discharges_pending = 0  # Placeholder - implement based on your workflow
-        
+
         self.save()
 
 

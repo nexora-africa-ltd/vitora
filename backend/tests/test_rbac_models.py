@@ -5,11 +5,12 @@ Following TDD approach: Write tests FIRST, then implement.
 Sprint 1.1-1.2 Track C: RBAC Foundation
 """
 
+from datetime import date, timedelta
+
 import pytest
 from django.contrib.auth import get_user_model
 from django.core.exceptions import ValidationError
 from django.db import IntegrityError
-from datetime import date, timedelta
 
 User = get_user_model()
 
@@ -358,6 +359,7 @@ class TestRoleModel:
     def test_role_django_group_linking(self):
         """Should link to Django Group for standard permissions."""
         from django.contrib.auth.models import Group
+
         from hmis.apps.core.models import Role
 
         group = Group.objects.create(name="Doctors")
@@ -583,7 +585,7 @@ class TestStaffProfileModel:
 
     def test_staffprofile_primary_role_required(self):
         """Should require primary role assignment."""
-        from hmis.apps.core.models import Department, Role, StaffProfile
+        from hmis.apps.core.models import Department, StaffProfile
 
         department = Department.objects.create(
             code="LAB", name="Laboratory", department_type="LABORATORY"
@@ -640,7 +642,7 @@ class TestStaffProfileModel:
 
     def test_staffprofile_primary_department_required(self):
         """Should require primary department assignment."""
-        from hmis.apps.core.models import Department, Role, StaffProfile
+        from hmis.apps.core.models import Role, StaffProfile
 
         role = Role.objects.create(code="STAFF", name="Staff", category="ADMINISTRATIVE")
 
@@ -935,8 +937,9 @@ class TestStaffProfileModel:
 
     def test_staffprofile_cascading_delete_prevention(self):
         """Should prevent deletion of referenced Role/Department."""
-        from hmis.apps.core.models import Department, Role, StaffProfile
         from django.db.models import ProtectedError
+
+        from hmis.apps.core.models import Department, Role, StaffProfile
 
         role = Role.objects.create(code="PROTECT", name="Protected", category="CLINICAL")
 

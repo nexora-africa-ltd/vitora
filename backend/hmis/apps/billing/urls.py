@@ -2,17 +2,17 @@
 URL configuration for billing app.
 """
 
-from django.urls import path, include
+from django.urls import include, path
 from rest_framework import routers
 
 from hmis.apps.billing.views import (
+    CreditNoteViewSet,
+    InvoiceViewSet,
+    MpesaViewSet,
+    PaymentViewSet,
+    ReportViewSet,
     ServiceCategoryViewSet,
     ServiceViewSet,
-    InvoiceViewSet,
-    PaymentViewSet,
-    CreditNoteViewSet,
-    MpesaViewSet,
-    ReportViewSet,
 )
 
 router = routers.DefaultRouter()

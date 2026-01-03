@@ -9,23 +9,15 @@ Tests AdmissionRecommendation and Admission ViewSets with:
 - Authentication requirements
 """
 
+
 import pytest
-from datetime import datetime, timedelta
-from decimal import Decimal
-from django.utils import timezone
 from django.contrib.auth import get_user_model
+from django.utils import timezone
 from rest_framework import status
-from rest_framework.test import APIClient
 
 from hmis.apps.inpatient.models import (
-    Ward,
-    Bed,
     AdmissionRecommendation,
-    Admission,
 )
-from hmis.apps.patients.models import Patient
-from hmis.apps.encounters.models import Encounter
-from hmis.apps.core.models import County, SubCounty, AuditLog
 
 User = get_user_model()
 
@@ -44,7 +36,7 @@ class TestAdmissionRecommendationAPI:
     ):
         """Should list all admission recommendations."""
         response = authenticated_client.get('/api/inpatient/admission-recommendations/')
-        
+
         assert response.status_code == status.HTTP_200_OK
         assert len(response.data['results']) >= 1
         assert response.data['results'][0]['id'] == sample_admission_recommendation.id
@@ -62,17 +54,17 @@ class TestAdmissionRecommendationAPI:
             'urgency': 'URGENT',
             'preferred_ward_type': sample_inpatient_ward.ward_type,
         }
-        
+
         response = authenticated_client.post(
             '/api/inpatient/admission-recommendations/',
             data,
             format='json'
         )
-        
+
         assert response.status_code == status.HTTP_201_CREATED
         assert response.data['status'] == 'PENDING'
         assert response.data['reason'] == data['reason']
-        
+
         # Verify expiry is set (default 24 hours)
         recommendation = AdmissionRecommendation.objects.get(id=response.data['id'])
         assert recommendation.expires_at is not None
@@ -84,7 +76,7 @@ class TestAdmissionRecommendationAPI:
         response = authenticated_client.get(
             f'/api/inpatient/admission-recommendations/{sample_admission_recommendation.id}/'
         )
-        
+
         assert response.status_code == status.HTTP_200_OK
         assert response.data['id'] == sample_admission_recommendation.id
         assert 'is_expired' in response.data
@@ -98,10 +90,10 @@ class TestAdmissionRecommendationAPI:
             {'user': test_user.id},
             format='json'
         )
-        
+
         assert response.status_code == status.HTTP_200_OK
         assert response.data['status'] == 'ACCEPTED'
-        
+
         # Verify model updated
         sample_admission_recommendation.refresh_from_db()
         assert sample_admission_recommendation.status == 'ACCEPTED'
@@ -119,10 +111,10 @@ class TestAdmissionRecommendationAPI:
             },
             format='json'
         )
-        
+
         assert response.status_code == status.HTTP_200_OK
         assert response.data['status'] == 'DECLINED'
-        
+
         # Verify model updated
         sample_admission_recommendation.refresh_from_db()
         assert sample_admission_recommendation.status == 'DECLINED'
@@ -135,7 +127,7 @@ class TestAdmissionRecommendationAPI:
         response = authenticated_client.get(
             '/api/inpatient/admission-recommendations/?status=PENDING'
         )
-        
+
         assert response.status_code == status.HTTP_200_OK
         for rec in response.data['results']:
             assert rec['status'] == 'PENDING'
@@ -153,7 +145,7 @@ class TestAdmissionAPI:
     def test_list_admissions(self, authenticated_client, sample_admission):
         """Should list all admissions."""
         response = authenticated_client.get('/api/inpatient/admissions/')
-        
+
         assert response.status_code == status.HTTP_200_OK
         assert len(response.data['results']) >= 1
         assert response.data['results'][0]['id'] == sample_admission.id
@@ -177,17 +169,17 @@ class TestAdmissionAPI:
             'payer_type': 'SHA',
             'insurance_details': {'policy_number': 'SHA-12345'},
         }
-        
+
         response = authenticated_client.post(
             '/api/inpatient/admissions/',
             data,
             format='json'
         )
-        
+
         assert response.status_code == status.HTTP_201_CREATED
         assert response.data['admission_number'].startswith('ADM-')
         assert response.data['admission_status'] == 'ACTIVE'
-        
+
         # Verify bed status updated
         sample_bed.refresh_from_db()
         assert sample_bed.status == 'OCCUPIED'
@@ -199,7 +191,7 @@ class TestAdmissionAPI:
         response = authenticated_client.get(
             f'/api/inpatient/admissions/{sample_admission.id}/'
         )
-        
+
         assert response.status_code == status.HTTP_200_OK
         assert response.data['id'] == sample_admission.id
         assert 'length_of_stay' in response.data
@@ -212,7 +204,7 @@ class TestAdmissionAPI:
         response = authenticated_client.get(
             f'/api/inpatient/admissions/?ward={sample_inpatient_ward.id}'
         )
-        
+
         assert response.status_code == status.HTTP_200_OK
         for admission in response.data['results']:
             assert admission['ward'] == sample_inpatient_ward.id
@@ -224,7 +216,7 @@ class TestAdmissionAPI:
         response = authenticated_client.get(
             '/api/inpatient/admissions/?admission_status=ACTIVE'
         )
-        
+
         assert response.status_code == status.HTTP_200_OK
         for admission in response.data['results']:
             assert admission['admission_status'] == 'ACTIVE'

@@ -22,18 +22,18 @@ Test Coverage (18 tests):
 - Admission billing item generation
 """
 
-import pytest
-from datetime import datetime, timedelta
+from datetime import timedelta
 from decimal import Decimal
+
+import pytest
 from django.contrib.auth import get_user_model
 from django.core.exceptions import ValidationError
-from django.db import IntegrityError
 from django.utils import timezone
 
-from hmis.apps.inpatient.models import Ward, Bed, AdmissionRecommendation, Admission
-from hmis.apps.encounters.models import Encounter
-from hmis.apps.patients.models import Patient
 from hmis.apps.core.models import County, SubCounty
+from hmis.apps.encounters.models import Encounter
+from hmis.apps.inpatient.models import Admission, AdmissionRecommendation, Bed, Ward
+from hmis.apps.patients.models import Patient
 
 User = get_user_model()
 
@@ -63,7 +63,7 @@ def sample_patient(db, test_user):
     """Create a sample patient."""
     county = County.objects.create(code=1, name="Test County")
     sub_county = SubCounty.objects.create(county=county, name="Test SubCounty")
-    
+
     return Patient.objects.create(
         first_name="Jane",
         last_name="Smith",
@@ -190,7 +190,7 @@ class TestAdmissionCreation:
 
         assert admission.admission_number is not None
         assert admission.admission_number.startswith("ADM-")
-        
+
         # Format should be ADM-YYYYMMDD-XXXX
         parts = admission.admission_number.split("-")
         assert len(parts) == 3
@@ -385,7 +385,7 @@ class TestAdmissionBusinessLogic:
     def test_length_of_stay_calculation_active(self, sample_patient, ipd_encounter, sample_ward, available_bed, test_user):
         """Should calculate length of stay for active admission."""
         admission_date = timezone.now() - timedelta(days=3)
-        
+
         admission = Admission.objects.create(
             patient=sample_patient,
             ipd_encounter=ipd_encounter,
@@ -406,7 +406,7 @@ class TestAdmissionBusinessLogic:
         """Should calculate length of stay using discharge date for discharged patients."""
         admission_date = timezone.now() - timedelta(days=5)
         discharge_date = timezone.now() - timedelta(days=1)
-        
+
         admission = Admission.objects.create(
             patient=sample_patient,
             ipd_encounter=ipd_encounter,
@@ -433,7 +433,7 @@ class TestAdmissionBusinessLogic:
             encounter_date=timezone.now().date(),
             chief_complaint="First admission",
         )
-        
+
         Admission.objects.create(
             patient=sample_patient,
             ipd_encounter=enc1,
@@ -454,7 +454,7 @@ class TestAdmissionBusinessLogic:
             encounter_date=timezone.now().date(),
             chief_complaint="Second admission",
         )
-        
+
         bed2 = Bed.objects.create(
             ward=sample_ward,
             bed_number="B-203",

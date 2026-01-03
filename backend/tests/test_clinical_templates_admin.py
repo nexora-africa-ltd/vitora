@@ -8,13 +8,10 @@ Following TDD methodology - these tests are written BEFORE implementation.
 """
 
 import json
-import os
-import tempfile
 from io import StringIO
 from pathlib import Path
 
 import pytest
-from django.contrib.admin.sites import AdminSite
 from django.contrib.auth import get_user_model
 from django.core.management import call_command
 from django.core.management.base import CommandError
@@ -420,7 +417,6 @@ class TestKenyaTemplatesLoading:
 
     def test_kenya_templates_directory_exists(self):
         """Test that Kenya templates directory exists."""
-        from pathlib import Path
 
         templates_dir = Path(__file__).parent.parent / "data" / "clinical_templates"
 
@@ -475,7 +471,6 @@ class TestKenyaTemplatesLoading:
 
     def test_tb_assessment_template_exists(self):
         """Test that TB assessment template JSON file exists."""
-        from pathlib import Path
 
         templates_dir = Path(__file__).parent.parent / "data" / "clinical_templates"
         tb_file = templates_dir / "tb_assessment.json"
@@ -484,7 +479,6 @@ class TestKenyaTemplatesLoading:
 
     def test_tb_assessment_template_loads_correctly(self, db):
         """Test that TB assessment template can be loaded from actual file."""
-        from pathlib import Path
 
         from hmis.apps.clinical_templates.models import ClinicalTemplate
 
@@ -503,7 +497,6 @@ class TestKenyaTemplatesLoading:
 
     def test_gbv_assessment_template_exists(self):
         """Test that GBV assessment template JSON file exists."""
-        from pathlib import Path
 
         templates_dir = Path(__file__).parent.parent / "data" / "clinical_templates"
         gbv_file = templates_dir / "gbv_assessment.json"
@@ -512,7 +505,6 @@ class TestKenyaTemplatesLoading:
 
     def test_gbv_assessment_template_is_sensitive(self, db):
         """Test that GBV template is marked as sensitive specialty."""
-        from pathlib import Path
 
         from hmis.apps.clinical_templates.models import ClinicalTemplate
 
@@ -526,7 +518,6 @@ class TestKenyaTemplatesLoading:
 
     def test_sexual_assault_template_exists(self):
         """Test that sexual assault (PRC) template JSON file exists."""
-        from pathlib import Path
 
         templates_dir = Path(__file__).parent.parent / "data" / "clinical_templates"
         sa_file = templates_dir / "sexual_assault.json"
@@ -535,7 +526,6 @@ class TestKenyaTemplatesLoading:
 
     def test_sexual_assault_template_has_prc_sections(self, db):
         """Test that sexual assault template includes PRC form sections."""
-        from pathlib import Path
 
         from hmis.apps.clinical_templates.models import ClinicalTemplate
 
@@ -551,7 +541,6 @@ class TestKenyaTemplatesLoading:
 
     def test_rta_template_exists(self):
         """Test that road traffic accident template JSON file exists."""
-        from pathlib import Path
 
         templates_dir = Path(__file__).parent.parent / "data" / "clinical_templates"
         rta_file = templates_dir / "road_traffic_accident.json"
@@ -560,7 +549,6 @@ class TestKenyaTemplatesLoading:
 
     def test_rta_template_has_trauma_sections(self, db):
         """Test that RTA template includes trauma assessment sections."""
-        from pathlib import Path
 
         from hmis.apps.clinical_templates.models import ClinicalTemplate
 

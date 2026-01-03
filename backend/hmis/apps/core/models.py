@@ -1182,16 +1182,16 @@ class Notification(models.Model):
         read_at: When notification was marked as read
         created_at: When notification was created
     """
-    
+
     class Priority(models.TextChoices):
         """Priority levels for notifications."""
         LOW = 'low', 'Low'
         NORMAL = 'normal', 'Normal'
         HIGH = 'high', 'High'
         CRITICAL = 'critical', 'Critical'
-    
+
     id = models.BigAutoField(primary_key=True)
-    
+
     # Core fields
     user = models.ForeignKey(
         settings.AUTH_USER_MODEL,
@@ -1218,7 +1218,7 @@ class Notification(models.Model):
     message = models.TextField(
         help_text="Full notification message"
     )
-    
+
     # Link to related object
     related_model = models.CharField(
         max_length=50,
@@ -1237,7 +1237,7 @@ class Notification(models.Model):
         default="",
         help_text="URL for user action (e.g., view results)"
     )
-    
+
     # Read status
     is_read = models.BooleanField(
         default=False,
@@ -1249,14 +1249,14 @@ class Notification(models.Model):
         blank=True,
         help_text="When notification was marked as read"
     )
-    
+
     # Timestamps
     created_at = models.DateTimeField(
         auto_now_add=True,
         db_index=True,
         help_text="When notification was created"
     )
-    
+
     class Meta:
         """Meta options for Notification model."""
         ordering = ['-created_at']  # Newest first
@@ -1267,11 +1267,11 @@ class Notification(models.Model):
         ]
         verbose_name = "Notification"
         verbose_name_plural = "Notifications"
-    
+
     def __str__(self) -> str:
         """String representation of the notification."""
         return f"{self.user.username}: {self.title}"
-    
+
     def mark_as_read(self):
         """Mark notification as read with timestamp."""
         if not self.is_read:

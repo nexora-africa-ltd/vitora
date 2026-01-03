@@ -16,12 +16,12 @@ Test Coverage (12 tests):
 - Ward update with audit
 """
 
-import pytest
 from decimal import Decimal
-from django.core.exceptions import ValidationError
+
+import pytest
 from django.db import IntegrityError
 
-from hmis.apps.inpatient.models import Ward, Bed
+from hmis.apps.inpatient.models import Bed, Ward
 
 
 @pytest.mark.django_db
@@ -55,7 +55,7 @@ class TestWardCreation:
     def test_ward_type_choices_valid(self):
         """Should accept valid ward type choices."""
         valid_types = ["MEDICAL", "SURGICAL", "PEDIATRIC", "MATERNITY", "ICU", "ISOLATION"]
-        
+
         for ward_type in valid_types:
             ward = Ward.objects.create(
                 name=f"Ward {ward_type}",

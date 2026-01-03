@@ -5,22 +5,20 @@ Sends notifications to clinicians when lab results are ready,
 with special handling for critical values.
 """
 
-from typing import Optional
+from django.conf import settings
 from django.contrib.auth import get_user_model
 from django.core.mail import send_mail
-from django.conf import settings
 from django.template.loader import render_to_string
-from django.utils.html import strip_tags
 
-from hmis.apps.laboratory.models import LabOrder
 from hmis.apps.core.models import Notification
+from hmis.apps.laboratory.models import LabOrder
 
 User = get_user_model()
 
 
 class LabNotificationService:
     """Handle lab result notifications."""
-    
+
     def send_result_notification(self, lab_order: LabOrder) -> Notification:
         """
         Send notification when results are ready.
@@ -36,13 +34,13 @@ class LabNotificationService:
         # Use ordered_by as the clinician (Encounter model doesn't have a clinician field)
         clinician = lab_order.ordered_by
         patient = lab_order.patient
-        
+
         # Check for critical results
         has_critical = self._has_critical_results(lab_order)
-        
+
         # Determine priority
         priority = 'critical' if has_critical else 'normal'
-        
+
         # Create in-app notification
         notification = Notification.objects.create(
             user=clinician,
@@ -54,13 +52,13 @@ class LabNotificationService:
             related_id=lab_order.id,
             action_url=f'/encounters/{lab_order.encounter.id}/lab/{lab_order.id}/'
         )
-        
+
         # Send email for critical results
         if has_critical and clinician.email:
             self._send_critical_email(clinician, lab_order)
-        
+
         return notification
-    
+
     def _has_critical_results(self, lab_order: LabOrder) -> bool:
         """Check if order has any critical results."""
         # Check results through order items (result is OneToOne, not ManyToMany)
@@ -68,7 +66,7 @@ class LabNotificationService:
             if hasattr(item, 'result') and item.result.is_critical_result:
                 return True
         return False
-    
+
     def _get_notification_title(self, lab_order: LabOrder, has_critical: bool) -> str:
         """
         Generate notification title.
@@ -83,11 +81,11 @@ class LabNotificationService:
         # Get test name from first order item
         first_item = lab_order.items.first()
         test_name = first_item.test.name if first_item else "Lab Test"
-        
+
         if has_critical:
             return f"🚨 CRITICAL: Lab Results Ready - {test_name}"
         return f"Lab Results Ready - {test_name}"
-    
+
     def _get_notification_message(self, lab_order: LabOrder, has_critical: bool) -> str:
         """
         Generate notification message.
@@ -101,22 +99,22 @@ class LabNotificationService:
         """
         patient = lab_order.patient
         patient_name = f"{patient.first_name} {patient.last_name}"
-        
+
         message = f"Results for {patient_name} ({patient.mrn}) are now available."
-        
+
         if has_critical:
             # Get critical parameter names (from test catalog via order item)
             critical_params = []
             for item in lab_order.items.all():
                 if hasattr(item, 'result') and item.result.is_critical_result:
                     critical_params.append(item.test.name)
-            
+
             if critical_params:
                 params_str = ", ".join(critical_params)
                 message += f"\n\n⚠️ Critical values detected: {params_str}"
-        
+
         return message
-    
+
     def _send_critical_email(self, clinician: User, lab_order: LabOrder) -> None:
         """
         Send email for critical lab results.
@@ -127,11 +125,11 @@ class LabNotificationService:
         """
         if not clinician.email:
             return
-        
+
         patient = lab_order.patient
         patient_name = f"{patient.first_name} {patient.last_name}"
         clinician_name = clinician.get_full_name() or clinician.username
-        
+
         # Get critical results
         critical_results = []
         for item in lab_order.items.all():
@@ -144,11 +142,11 @@ class LabNotificationService:
                     'flag': result.result_flag,
                     'reference_range': result.reference_range_text or ''
                 })
-        
+
         # Get first test name
         first_item = lab_order.items.first()
         test_name = first_item.test.name if first_item else "Lab Test"
-        
+
         # Prepare context
         context = {
             'clinician_name': clinician_name,
@@ -160,10 +158,10 @@ class LabNotificationService:
             'action_url': f"{settings.FRONTEND_URL}/encounters/{lab_order.encounter.id}/lab/{lab_order.id}/",
             'facility_name': getattr(settings, 'FACILITY_NAME', 'Vitora Health Facility'),
         }
-        
+
         # Render email from template (or use simple text)
         subject = f"🚨 CRITICAL Lab Results - {patient_name} ({patient.mrn})"
-        
+
         # Try to render from template, fallback to plain text
         try:
             html_message = render_to_string('laboratory/email/critical_result.html', context)
@@ -191,7 +189,7 @@ View results: {context['action_url']}
 {context['facility_name']}
 """
             html_message = None
-        
+
         # Send email
         send_mail(
             subject=subject,

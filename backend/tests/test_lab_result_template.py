@@ -8,14 +8,14 @@ Test Coverage:
 - Panel parameter ordering
 """
 
-import pytest
 from datetime import date
 from decimal import Decimal
-from django.core.exceptions import ValidationError
 
+import pytest
+
+from hmis.apps.core.models import County, SubCounty
 from hmis.apps.laboratory.models import LabResultTemplate
 from hmis.apps.patients.models import Patient
-from hmis.apps.core.models import County, SubCounty
 
 
 @pytest.fixture
@@ -89,7 +89,7 @@ class TestLabResultTemplate:
             critical_low=Decimal("7.0"),
             critical_high=Decimal("20.0"),
         )
-        
+
         assert template.id is not None
         assert template.test_code == "CBC"
         assert template.parameter_name == "Hemoglobin"
@@ -109,9 +109,9 @@ class TestLabResultTemplate:
                 "pediatric": {"low": 11.0, "high": 14.0},
             },
         )
-        
+
         low, high = template.get_reference_range(adult_male_patient)
-        
+
         assert low == 13.5
         assert high == 17.5
 
@@ -129,9 +129,9 @@ class TestLabResultTemplate:
                 "pediatric": {"low": 11.0, "high": 14.0},
             },
         )
-        
+
         low, high = template.get_reference_range(adult_female_patient)
-        
+
         assert low == 12.0
         assert high == 16.0
 
@@ -149,9 +149,9 @@ class TestLabResultTemplate:
                 "pediatric": {"low": 11.0, "high": 14.0},
             },
         )
-        
+
         low, high = template.get_reference_range(pediatric_patient)
-        
+
         assert low == 11.0
         assert high == 14.0
 
@@ -167,9 +167,9 @@ class TestLabResultTemplate:
                 "default": {"low": 4.5, "high": 11.0},
             },
         )
-        
+
         low, high = template.get_reference_range(adult_male_patient)
-        
+
         # Should fallback to default since adult_male not present
         assert low == 4.5
         assert high == 11.0
@@ -188,7 +188,7 @@ class TestLabResultTemplate:
             critical_low=Decimal("7.0"),
             critical_high=Decimal("20.0"),
         )
-        
+
         assert template.critical_low == Decimal("7.0")
         assert template.critical_high == Decimal("20.0")
 
@@ -204,7 +204,7 @@ class TestLabResultTemplate:
             display_order=3,
             reference_ranges={"default": {"low": 150, "high": 400}},
         )
-        
+
         param2 = LabResultTemplate.objects.create(
             test_code="CBC",
             test_name="Complete Blood Count",
@@ -214,7 +214,7 @@ class TestLabResultTemplate:
             display_order=1,
             reference_ranges={"default": {"low": 4.5, "high": 11.0}},
         )
-        
+
         param3 = LabResultTemplate.objects.create(
             test_code="CBC",
             test_name="Complete Blood Count",
@@ -224,10 +224,10 @@ class TestLabResultTemplate:
             display_order=2,
             reference_ranges={"default": {"low": 12.0, "high": 16.0}},
         )
-        
+
         # Get all CBC parameters
         cbc_params = list(LabResultTemplate.objects.filter(test_code="CBC"))
-        
+
         # Should be ordered by display_order
         assert cbc_params[0].parameter_code == "WBC"  # display_order=1
         assert cbc_params[1].parameter_code == "HGB"  # display_order=2
@@ -243,10 +243,10 @@ class TestLabResultTemplate:
             unit="×10⁹/L",
             reference_ranges={"default": {"low": 4.5, "high": 11.0}},
         )
-        
+
         # Attempting to create duplicate should fail
         from django.db import IntegrityError
-        
+
         with pytest.raises(IntegrityError):
             LabResultTemplate.objects.create(
                 test_code="CBC",

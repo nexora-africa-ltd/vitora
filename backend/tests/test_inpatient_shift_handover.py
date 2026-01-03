@@ -5,9 +5,10 @@ Sprint 1.5-1.6 Track D: Inpatient Foundation - Phase 4c
 Test coverage: 8 tests for shift handover functionality
 """
 
-import pytest
 from datetime import date
 from decimal import Decimal
+
+import pytest
 from django.core.exceptions import ValidationError
 from django.utils import timezone
 
@@ -58,7 +59,7 @@ class TestShiftHandoverCreation:
     ):
         """Should prevent duplicate handover for same ward, date, and shift."""
         shift_date = date.today()
-        
+
         # Create first handover
         ShiftHandover.objects.create(
             ward=inpatient_ward,

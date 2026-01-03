@@ -5,11 +5,12 @@ Following TDD approach: Write tests FIRST, then implement.
 Sprint 1.1-1.2 Track C: RBAC Foundation - Phase 4
 """
 
+from datetime import date
+
 import pytest
 from django.contrib.admin.sites import AdminSite
 from django.contrib.auth import get_user_model
 from django.test import RequestFactory
-from datetime import date
 
 User = get_user_model()
 
@@ -92,7 +93,6 @@ class TestRoleAdmin:
     def test_role_admin_registered(self):
         """Should register RoleAdmin."""
         from hmis.apps.core.admin import RoleAdmin
-        from hmis.apps.core.models import Role
 
         # Check if RoleAdmin exists and is properly configured
         assert RoleAdmin is not None
@@ -143,7 +143,7 @@ class TestRoleAdmin:
 
         ordering = getattr(RoleAdmin, 'ordering', [])
 
-        assert 'hierarchy_level' in ordering or ['hierarchy_level'] == ordering
+        assert 'hierarchy_level' in ordering or ordering == ['hierarchy_level']
 
 
 @pytest.mark.django_db
@@ -153,7 +153,6 @@ class TestStaffProfileAdmin:
     def test_staffprofile_admin_registered(self):
         """Should register StaffProfileAdmin."""
         from hmis.apps.core.admin import StaffProfileAdmin
-        from hmis.apps.core.models import StaffProfile
 
         # Check if StaffProfileAdmin exists and is properly configured
         assert StaffProfileAdmin is not None
@@ -164,7 +163,7 @@ class TestStaffProfileAdmin:
         """Should display key fields in list view."""
         from hmis.apps.core.admin import StaffProfileAdmin
 
-        expected_fields = ['employee_id', 'get_user_full_name', 'primary_role', 
+        expected_fields = ['employee_id', 'get_user_full_name', 'primary_role',
                           'primary_department', 'employment_status', 'is_license_valid']
         list_display = getattr(StaffProfileAdmin, 'list_display', [])
 
@@ -212,7 +211,7 @@ class TestStaffProfileAdmin:
 
         # Should have actions for status changes
         action_names = [getattr(action, '__name__', str(action)) for action in actions]
-        
+
         # Check if there are actions (could be method names as strings)
         assert len(actions) > 0 or hasattr(StaffProfileAdmin, 'activate_staff') or hasattr(StaffProfileAdmin, 'deactivate_staff')
 
@@ -339,10 +338,11 @@ class TestStaffProfileCSVExport:
         self, admin_site, admin_user, request_factory, sample_staff
     ):
         """Should include column headers in CSV."""
-        from hmis.apps.core.admin import StaffProfileAdmin
-        from hmis.apps.core.models import StaffProfile
         import csv
         from io import StringIO
+
+        from hmis.apps.core.admin import StaffProfileAdmin
+        from hmis.apps.core.models import StaffProfile
 
         modeladmin = StaffProfileAdmin(StaffProfile, admin_site)
 
@@ -367,10 +367,11 @@ class TestStaffProfileCSVExport:
         self, admin_site, admin_user, request_factory, sample_staff
     ):
         """Should include staff data rows."""
-        from hmis.apps.core.admin import StaffProfileAdmin
-        from hmis.apps.core.models import StaffProfile
         import csv
         from io import StringIO
+
+        from hmis.apps.core.admin import StaffProfileAdmin
+        from hmis.apps.core.models import StaffProfile
 
         modeladmin = StaffProfileAdmin(StaffProfile, admin_site)
 
@@ -397,10 +398,11 @@ class TestStaffProfileCSVExport:
         self, admin_site, admin_user, request_factory, sample_staff
     ):
         """Should export only selected staff."""
-        from hmis.apps.core.admin import StaffProfileAdmin
-        from hmis.apps.core.models import StaffProfile
         import csv
         from io import StringIO
+
+        from hmis.apps.core.admin import StaffProfileAdmin
+        from hmis.apps.core.models import StaffProfile
 
         modeladmin = StaffProfileAdmin(StaffProfile, admin_site)
 

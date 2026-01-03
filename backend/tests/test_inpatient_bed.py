@@ -19,12 +19,13 @@ Test Coverage (15 tests):
 - Bed search by number
 """
 
-import pytest
 from decimal import Decimal
+
+import pytest
 from django.contrib.auth import get_user_model
 from django.db import IntegrityError
 
-from hmis.apps.inpatient.models import Ward, Bed
+from hmis.apps.inpatient.models import Bed, Ward
 
 User = get_user_model()
 

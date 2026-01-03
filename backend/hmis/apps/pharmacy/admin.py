@@ -4,7 +4,15 @@
 
 from django.contrib import admin
 
-from .models import Drug, StockBatch, StockAlert, Prescription, PrescriptionItem, Dispensing, StockAdjustment
+from .models import (
+    Dispensing,
+    Drug,
+    Prescription,
+    PrescriptionItem,
+    StockAdjustment,
+    StockAlert,
+    StockBatch,
+)
 
 
 @admin.register(Drug)

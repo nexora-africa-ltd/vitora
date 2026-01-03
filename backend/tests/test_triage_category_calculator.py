@@ -5,8 +5,6 @@ Following TDD approach: Write tests FIRST, then implement the service.
 Sprint 1.5-1.6 Track E: Triage Module MVP
 """
 
-import pytest
-from decimal import Decimal
 
 
 class TestTriageCategoryCalculator:

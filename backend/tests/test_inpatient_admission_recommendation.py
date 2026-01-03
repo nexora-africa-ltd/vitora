@@ -14,18 +14,17 @@ Test Coverage (10 tests):
 - Recommendation audit logging
 """
 
+from datetime import timedelta
+
 import pytest
-from datetime import datetime, timedelta
-from decimal import Decimal
 from django.contrib.auth import get_user_model
-from django.core.exceptions import ValidationError
 from django.db import IntegrityError
 from django.utils import timezone
 
-from hmis.apps.inpatient.models import AdmissionRecommendation
-from hmis.apps.encounters.models import Encounter
-from hmis.apps.patients.models import Patient
 from hmis.apps.core.models import County, SubCounty
+from hmis.apps.encounters.models import Encounter
+from hmis.apps.inpatient.models import AdmissionRecommendation
+from hmis.apps.patients.models import Patient
 
 User = get_user_model()
 
@@ -55,7 +54,7 @@ def sample_patient(db, test_user):
     """Create a sample patient."""
     county = County.objects.create(code=1, name="Test County")
     sub_county = SubCounty.objects.create(county=county, name="Test SubCounty")
-    
+
     return Patient.objects.create(
         first_name="John",
         last_name="Doe",
@@ -170,7 +169,7 @@ class TestAdmissionRecommendationCreation:
         """Should set expiry 24 hours from creation."""
         now = timezone.now()
         expires_at = now + timedelta(hours=24)
-        
+
         recommendation = AdmissionRecommendation.objects.create(
             encounter=opd_encounter,
             recommended_by=test_user,
@@ -230,7 +229,7 @@ class TestAdmissionRecommendationWorkflow:
     def test_is_expired_returns_true_after_expiry(self, opd_encounter, test_user):
         """Should return True if recommendation has expired."""
         past_time = timezone.now() - timedelta(hours=1)
-        
+
         recommendation = AdmissionRecommendation.objects.create(
             encounter=opd_encounter,
             recommended_by=test_user,
@@ -245,7 +244,7 @@ class TestAdmissionRecommendationWorkflow:
     def test_is_expired_returns_false_before_expiry(self, opd_encounter, test_user):
         """Should return False if recommendation has not expired."""
         future_time = timezone.now() + timedelta(hours=24)
-        
+
         recommendation = AdmissionRecommendation.objects.create(
             encounter=opd_encounter,
             recommended_by=test_user,

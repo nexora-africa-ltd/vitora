@@ -14,8 +14,6 @@ import json
 import re
 from collections import defaultdict
 from pathlib import Path
-from typing import Optional
-
 
 # Drug form mapping (normalize to Drug model choices)
 FORM_MAPPING = {
@@ -193,17 +191,17 @@ CONTROLLED_INDICATORS = [
 def determine_schedule(generic_name: str, is_controlled: bool, requires_prescription: bool) -> str:
     """Determine drug schedule (OTC, POM, P, CD)."""
     name_lower = generic_name.lower()
-    
+
     # Controlled drugs
     if is_controlled or any(ctrl in name_lower for ctrl in CONTROLLED_INDICATORS):
         return 'CD'
-    
+
     # OTC common drugs
-    otc_drugs = ['paracetamol', 'ibuprofen', 'aspirin', 'antacid', 'vitamin', 
+    otc_drugs = ['paracetamol', 'ibuprofen', 'aspirin', 'antacid', 'vitamin',
                  'loratadine', 'cetirizine', 'oral rehydration']
     if any(otc in name_lower for otc in otc_drugs) and not requires_prescription:
         return 'OTC'
-    
+
     # Most drugs are POM by default
     return 'POM'
 
@@ -213,16 +211,16 @@ def normalize_form(form_raw: str) -> str:
     if not form_raw:
         return 'OTHER'
     form_lower = form_raw.strip().lower()
-    
+
     # Direct mapping
     if form_lower in FORM_MAPPING:
         return FORM_MAPPING[form_lower]
-    
+
     # Partial match
     for key, value in FORM_MAPPING.items():
         if key in form_lower:
             return value
-    
+
     return 'OTHER'
 
 
@@ -230,20 +228,20 @@ def normalize_category(class_raw: str, keml_subcat: str = '') -> str:
     """Normalize drug class/category to Drug model choices."""
     if not class_raw and not keml_subcat:
         return 'OTHER'
-    
+
     # Try KEML subcategory first
     if keml_subcat:
         for prefix, category in KEML_SUBCAT_TO_CATEGORY.items():
             if keml_subcat.startswith(prefix):
                 return category
-    
+
     # Try class from medicine_kenya
     if class_raw:
         class_lower = class_raw.strip().lower()
         for key, value in CLASS_TO_CATEGORY.items():
             if key in class_lower:
                 return value
-    
+
     return 'OTHER'
 
 
@@ -275,23 +273,23 @@ def generate_drug_code(generic_name: str, strength: str, form: str, counter: dic
     base = re.sub(r'[^a-zA-Z0-9]', '', generic_name.upper())[:6]
     if not base:
         base = 'DRUG'
-    
+
     # Increment global counter for this base
     counter[base] = counter.get(base, 0) + 1
-    
+
     return f"DRG-{base}-{counter[base]:04d}"
 
 
 def load_keml(filepath: Path) -> dict:
     """Load KEML 2023 data."""
     drugs = {}
-    with open(filepath, 'r', encoding='utf-8') as f:
+    with open(filepath, encoding='utf-8') as f:
         reader = csv.DictReader(f)
         for row in reader:
             name = clean_generic_name(row.get('name', ''))
             if not name:
                 continue
-            
+
             key = name.lower()
             if key not in drugs:
                 drugs[key] = {
@@ -312,7 +310,7 @@ def load_keml(filepath: Path) -> dict:
                 # Add additional forms/strengths
                 drugs[key]['forms'].add(normalize_form(row.get('dose_form', '')))
                 drugs[key]['strengths'].add(clean_strength(row.get('strength', '')))
-    
+
     return drugs
 
 
@@ -325,36 +323,36 @@ def load_medicine_kenya(filepath: Path) -> dict:
         'strengths': set(),
         'classes': set(),
     })
-    
-    with open(filepath, 'r', encoding='utf-8-sig') as f:
+
+    with open(filepath, encoding='utf-8-sig') as f:
         reader = csv.DictReader(f)
         for row in reader:
             generic = row.get('Generic Name', '').strip()
             if not generic or generic == '(n/a)':
                 continue
-            
+
             key = clean_generic_name(generic).lower()
             brand = row.get('\ufeffBrand Name', row.get('Brand Name', '')).strip()
-            
+
             if brand and brand not in drugs[key]['brands']:
                 drugs[key]['brands'].append(brand)
-            
+
             mfg = row.get('Manufacturer', '').strip()
             if mfg:
                 drugs[key]['manufacturers'].add(mfg)
-            
+
             form = normalize_form(row.get('Form', ''))
             if form:
                 drugs[key]['forms'].add(form)
-            
+
             strength = clean_strength(row.get('Strength', ''))
             if strength:
                 drugs[key]['strengths'].add(strength)
-            
+
             drug_class = row.get('Class', '').strip()
             if drug_class:
                 drugs[key]['classes'].add(drug_class)
-    
+
     return drugs
 
 
@@ -363,41 +361,41 @@ def merge_datasets(keml: dict, market: dict) -> list:
     catalog = []
     code_counter = {}
     seen_drugs = set()
-    
+
     # First pass: KEML drugs (essential)
     for key, keml_data in keml.items():
         market_data = market.get(key, {})
-        
+
         # Combine brands from market data
         brands = list(set(keml_data.get('brands', []) + market_data.get('brands', [])))[:20]
         manufacturers = list(keml_data.get('manufacturers', set()) | market_data.get('manufacturers', set()))[:10]
-        
+
         # Get all form/strength combinations
         forms = keml_data.get('forms', set()) | market_data.get('forms', set())
         strengths = keml_data.get('strengths', set()) | market_data.get('strengths', set())
-        
+
         # Create entry for primary form/strength
         primary_form = keml_data.get('form', 'OTHER')
         primary_strength = keml_data.get('strength', '')
-        
+
         # Determine category
         category = normalize_category(
             list(market_data.get('classes', set()))[0] if market_data.get('classes') else '',
             keml_data.get('subcategory', '')
         )
-        
+
         # Check if controlled
         is_controlled = any(ctrl in key for ctrl in CONTROLLED_INDICATORS)
-        
+
         # Determine if requires prescription based on LOU
         lou = keml_data.get('lou', '')
         requires_rx = lou not in ['1', '2'] if lou else True
-        
+
         drug_key = f"{key}_{primary_strength}_{primary_form}"
         if drug_key in seen_drugs:
             continue
         seen_drugs.add(drug_key)
-        
+
         # Get therapeutic class from market data (detailed classification)
         # Strip KEML code prefix (e.g., "7.2 Antibacterials" -> "Antibacterials")
         therapeutic_classes = list(market_data.get('classes', set()))
@@ -407,7 +405,7 @@ def merge_datasets(keml: dict, market: dict) -> list:
             keml_subcat = keml_data.get('subcategory', '')
             # Remove leading code pattern like "7.2 " or "33.1 "
             therapeutic_class = re.sub(r'^\d+\.\d+\s+', '', keml_subcat)
-        
+
         entry = {
             'code': generate_drug_code(keml_data['generic_name'], primary_strength, primary_form, code_counter),
             'generic_name': keml_data['generic_name'],
@@ -433,7 +431,7 @@ def merge_datasets(keml: dict, market: dict) -> list:
             'lou': lou,
         }
         catalog.append(entry)
-        
+
         # Add additional strength/form variants if significantly different
         for strength in strengths:
             if strength and strength != primary_strength:
@@ -443,44 +441,44 @@ def merge_datasets(keml: dict, market: dict) -> list:
                         if var_key in seen_drugs:
                             continue
                         seen_drugs.add(var_key)
-                        
+
                         var_entry = entry.copy()
                         var_entry['code'] = generate_drug_code(keml_data['generic_name'], strength, form, code_counter)
                         var_entry['strength'] = strength
                         var_entry['form'] = form
                         var_entry['unit'] = get_unit_for_form(form)
                         catalog.append(var_entry)
-    
+
     # Second pass: Non-KEML drugs from market data
     for key, market_data in market.items():
         if key in keml:
             continue  # Already processed
-        
+
         brands = market_data.get('brands', [])[:10]
         if not brands:
             continue
-        
+
         manufacturers = list(market_data.get('manufacturers', set()))[:5]
         forms = list(market_data.get('forms', set()))
         strengths = list(market_data.get('strengths', set()))
         classes = list(market_data.get('classes', set()))
-        
+
         primary_form = forms[0] if forms else 'OTHER'
         primary_strength = strengths[0] if strengths else ''
-        
+
         generic_name = clean_generic_name(key)
         if not generic_name:
             continue
-        
+
         category = normalize_category(classes[0] if classes else '', '')
         therapeutic_class = classes[0] if classes else ''
         is_controlled = any(ctrl in key for ctrl in CONTROLLED_INDICATORS)
-        
+
         drug_key = f"{key}_{primary_strength}_{primary_form}"
         if drug_key in seen_drugs:
             continue
         seen_drugs.add(drug_key)
-        
+
         entry = {
             'code': generate_drug_code(generic_name, primary_strength, primary_form, code_counter),
             'generic_name': generic_name,
@@ -506,7 +504,7 @@ def merge_datasets(keml: dict, market: dict) -> list:
             'lou': '',
         }
         catalog.append(entry)
-    
+
     return catalog
 
 
@@ -539,13 +537,13 @@ def get_default_reorder_level(category: str, lou: str) -> int:
         base = 50
     else:
         base = 25
-    
+
     # Adjust by category
     if category in ['ANTIBIOTIC', 'ANALGESIC', 'ANTIMALARIAL']:
         return base * 2
     elif category in ['VACCINE', 'CONTROLLED']:
         return base // 2
-    
+
     return base
 
 
@@ -561,31 +559,31 @@ def get_default_reorder_quantity(category: str) -> int:
 def get_storage_requirements(generic_name: str, form: str) -> str:
     """Get storage requirements based on drug characteristics."""
     name_lower = generic_name.lower()
-    
+
     # Cold chain drugs
     cold_chain = ['insulin', 'vaccine', 'oxytocin', 'ergometrine', 'immunoglobulin']
     if any(drug in name_lower for drug in cold_chain):
         return 'Refrigerate 2-8°C. Do not freeze.'
-    
+
     # Light sensitive
     if 'nifedipine' in name_lower or 'metronidazole' in name_lower:
         return 'Store below 25°C. Protect from light.'
-    
+
     # Injections often need special handling
     if form == 'INJECTION':
         return 'Store below 25°C. Protect from light.'
-    
+
     return 'Store below 25°C in dry place.'
 
 
 def main():
     """Main entry point."""
     base_dir = Path(__file__).parent.parent.parent
-    
+
     keml_path = base_dir / 'backend' / 'data' / 'keml_2023.csv'
     market_path = base_dir / '.tmp' / 'medicine_kenya.csv'
     output_path = base_dir / 'backend' / 'data' / 'drug_catalog.csv'
-    
+
     print("=" * 60)
     print("Drug Catalog Generator")
     print("=" * 60)
@@ -593,27 +591,27 @@ def main():
     print(f"Market source: {market_path}")
     print(f"Output: {output_path}")
     print()
-    
+
     # Load datasets
     print("Loading KEML 2023...")
     keml = load_keml(keml_path)
     print(f"  Loaded {len(keml)} unique generic medicines")
-    
+
     print("Loading medicine_kenya.csv...")
     market = load_medicine_kenya(market_path)
     print(f"  Loaded {len(market)} unique generic medicines")
-    
+
     # Merge
     print("\nMerging datasets...")
     catalog = merge_datasets(keml, market)
     print(f"  Generated {len(catalog)} drug catalog entries")
-    
+
     # Count essential vs non-essential
     essential = sum(1 for d in catalog if d['is_essential'])
     non_essential = len(catalog) - essential
     print(f"  Essential (KEML): {essential}")
     print(f"  Non-essential: {non_essential}")
-    
+
     # Write output
     print(f"\nWriting to {output_path}...")
     fieldnames = [
@@ -623,20 +621,20 @@ def main():
         'default_reorder_level', 'default_reorder_quantity', 'storage_requirements',
         'reference_price', 'is_active', 'manufacturers', 'lou'
     ]
-    
+
     with open(output_path, 'w', newline='', encoding='utf-8') as f:
         writer = csv.DictWriter(f, fieldnames=fieldnames)
         writer.writeheader()
-        
+
         # Sort by essential first, then by generic name
         catalog.sort(key=lambda x: (not x['is_essential'], x['generic_name'].lower()))
         writer.writerows(catalog)
-    
+
     print("\n" + "=" * 60)
     print("COMPLETE")
     print("=" * 60)
     print(f"Output: {output_path}")
-    
+
     # Summary by category
     from collections import Counter
     categories = Counter(d['category'] for d in catalog)

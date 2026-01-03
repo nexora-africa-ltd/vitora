@@ -5,10 +5,10 @@ Following TDD approach: Write tests FIRST, then implement serializers.
 Sprint 1.5-1.6 Track E: Triage Module MVP
 """
 
-import pytest
 from decimal import Decimal
+
+import pytest
 from django.utils import timezone
-from rest_framework.exceptions import ValidationError
 
 
 @pytest.mark.django_db
@@ -88,9 +88,10 @@ class TestTriageAssessmentSerializer:
 
     def test_serialize_includes_wait_time(self, sample_encounter, test_user):
         """Should include calculated wait_time_minutes."""
+        from datetime import timedelta
+
         from hmis.apps.triage.models import TriageAssessment
         from hmis.apps.triage.serializers import TriageAssessmentSerializer
-        from datetime import timedelta
 
         assessment = TriageAssessment.objects.create(
             encounter=sample_encounter,
@@ -146,8 +147,8 @@ class TestTriageAssessmentCreateSerializer:
 
     def test_create_assessment_adds_to_queue(self, sample_encounter, test_user):
         """Should automatically add to queue when creating."""
-        from hmis.apps.triage.serializers import TriageAssessmentCreateSerializer
         from hmis.apps.triage.models import TriageQueue
+        from hmis.apps.triage.serializers import TriageAssessmentCreateSerializer
 
         data = {
             "encounter": sample_encounter.id,
