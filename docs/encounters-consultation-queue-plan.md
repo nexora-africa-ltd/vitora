@@ -348,18 +348,18 @@ def get_consultation_queue():
 ### Phase 2: Backend API Updates
 
 #### 2.1 Encounter Endpoints
-- [ ] Update Encounter serializer with new fields
-- [ ] Add `POST /api/encounters/{id}/bypass-triage/` endpoint
-- [ ] Add `POST /api/encounters/{id}/call/` endpoint
-- [ ] Add `POST /api/encounters/{id}/start-consultation/` endpoint
-- [ ] Add `GET /api/encounters/consultation-queue/` endpoint
+- [x] Update Encounter serializer with new fields
+- [x] Add `POST /api/encounters/{id}/bypass_triage/` endpoint
+- [x] Add `POST /api/encounters/{id}/call/` endpoint
+- [x] Add `POST /api/encounters/{id}/start_consultation/` endpoint
+- [x] Add `GET /api/encounters/consultation_queue/` endpoint
 
 #### 2.2 Consultation Queue Endpoint
-- [ ] Filter by triage eligibility (COMPLETED, BYPASSED, NOT_APPLICABLE)
-- [ ] Exclude MANDATORY + PENDING
-- [ ] Sort by priority, then wait time
-- [ ] Include patient info, triage info, wait time
-- [ ] Support filtering by area, clinician assignment
+- [x] Filter by triage eligibility (COMPLETED, BYPASSED, NOT_APPLICABLE)
+- [x] Exclude MANDATORY + PENDING
+- [x] Sort by priority, then wait time
+- [x] Include patient info, triage info, wait time
+- [x] Support filtering by triage_status, consultation_status
 
 #### 2.3 Notification System
 - [ ] Create notification event for "Patient Called"
