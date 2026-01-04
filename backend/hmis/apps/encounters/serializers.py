@@ -276,6 +276,11 @@ class EncounterSerializer(serializers.ModelSerializer):
         source="triage_bypassed_by.username", read_only=True, allow_null=True
     )
     wait_time_minutes = serializers.SerializerMethodField()
+    
+    # Chief complaint edit tracking
+    chief_complaint_edited_by_username = serializers.CharField(
+        source="chief_complaint_edited_by.username", read_only=True, allow_null=True
+    )
 
     class Meta:
         model = Encounter
@@ -329,6 +334,14 @@ class EncounterSerializer(serializers.ModelSerializer):
             "consultation_started_at",
             "can_enter_consultation",
             "wait_time_minutes",
+            # Chief complaint edit tracking
+            "chief_complaint_original",
+            "chief_complaint_edited",
+            "chief_complaint_edit_reason",
+            "chief_complaint_edit_reason_other",
+            "chief_complaint_edited_by",
+            "chief_complaint_edited_by_username",
+            "chief_complaint_edited_at",
             "created_at",
             "updated_at",
         ]
@@ -362,6 +375,14 @@ class EncounterSerializer(serializers.ModelSerializer):
             "consultation_started_at",
             "can_enter_consultation",
             "wait_time_minutes",
+            # Chief complaint edit fields - read-only except via action
+            "chief_complaint_original",
+            "chief_complaint_edited",
+            "chief_complaint_edit_reason",
+            "chief_complaint_edit_reason_other",
+            "chief_complaint_edited_by",
+            "chief_complaint_edited_by_username",
+            "chief_complaint_edited_at",
             "created_at",
             "updated_at",
         ]

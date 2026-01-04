@@ -54,6 +54,18 @@ export interface Encounter {
   finalized_at?: string | null;
   cancellation_reason?: string;
   
+  // Triage fields
+  triage_status?: 'PENDING' | 'IN_PROGRESS' | 'COMPLETED' | 'BYPASSED' | 'NOT_APPLICABLE';
+  
+  // Chief complaint edit tracking
+  chief_complaint_original?: string;
+  chief_complaint_edited?: boolean;
+  chief_complaint_edit_reason?: string;
+  chief_complaint_edit_reason_other?: string;
+  chief_complaint_edited_by?: number | null;
+  chief_complaint_edited_by_username?: string | null;
+  chief_complaint_edited_at?: string | null;
+  
   // Metadata
   created_by?: number | null;
   created_by_name?: string;

@@ -90,6 +90,26 @@ export const encountersApi = {
     );
     return response.data;
   },
+
+  /**
+   * Edit chief complaint with audit trail.
+   * 
+   * Only allowed for triaged encounters. Requires a reason for the edit.
+   */
+  async editChiefComplaint(
+    encounterId: number,
+    data: {
+      chief_complaint: string;
+      edit_reason: string;
+      edit_reason_other?: string;
+    }
+  ): Promise<Encounter> {
+    const response = await apiClient.post<Encounter>(
+      `/api/encounters/${encounterId}/edit_chief_complaint/`,
+      data
+    );
+    return response.data;
+  },
 };
 
 // =============================================================================

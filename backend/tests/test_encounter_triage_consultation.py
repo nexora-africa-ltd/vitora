@@ -836,3 +836,183 @@ class TestTriageEdgeCases:
                 chief_complaint=f"Test for {enc_type}",
             )
             encounter.full_clean()  # Should not raise
+
+
+# ============================================================================
+# Test: Chief Complaint Edit with Audit Trail
+# ============================================================================
+
+
+@pytest.mark.unit
+class TestChiefComplaintEditAuditTrail:
+    """Test the chief complaint edit feature with audit trail."""
+
+    def test_chief_complaint_edit_reason_choices_exist(self):
+        """Verify chief complaint edit reason choices are defined."""
+        from hmis.apps.encounters.models import Encounter
+
+        expected_reasons = [
+            "ADDITIONAL_SYMPTOMS",
+            "PATIENT_DETAILS",
+            "INCORRECT_INITIAL",
+            "CLARIFICATION",
+            "MISUNDERSTANDING",
+            "OTHER",
+        ]
+        choice_values = [choice[0] for choice in Encounter.CHIEF_COMPLAINT_EDIT_REASON_CHOICES]
+
+        for reason in expected_reasons:
+            assert reason in choice_values, f"{reason} should be in CHIEF_COMPLAINT_EDIT_REASON_CHOICES"
+
+    def test_encounter_has_chief_complaint_audit_fields(self, sample_patient):
+        """Verify encounter model has all chief complaint audit fields."""
+        from hmis.apps.encounters.models import Encounter
+
+        encounter = Encounter(
+            patient=sample_patient,
+            encounter_type="OPD",
+            chief_complaint="Initial complaint",
+        )
+        
+        # Check fields exist
+        assert hasattr(encounter, 'chief_complaint_original')
+        assert hasattr(encounter, 'chief_complaint_edited')
+        assert hasattr(encounter, 'chief_complaint_edit_reason')
+        assert hasattr(encounter, 'chief_complaint_edit_reason_other')
+        assert hasattr(encounter, 'chief_complaint_edited_by')
+        assert hasattr(encounter, 'chief_complaint_edited_at')
+
+    def test_edit_chief_complaint_stores_original(self, authenticated_client, sample_patient):
+        """Test that editing chief complaint stores the original value."""
+        from hmis.apps.encounters.models import Encounter
+
+        # Create encounter
+        encounter = Encounter.objects.create(
+            patient=sample_patient,
+            encounter_type="OPD",
+            chief_complaint="Original headache complaint",
+        )
+
+        # Edit via API
+        response = authenticated_client.post(
+            f"/api/encounters/{encounter.id}/edit_chief_complaint/",
+            {
+                "chief_complaint": "Updated: severe migraine with nausea",
+                "edit_reason": "ADDITIONAL_SYMPTOMS",
+            },
+            format="json",
+        )
+
+        assert response.status_code == 200
+        encounter.refresh_from_db()
+        assert encounter.chief_complaint == "Updated: severe migraine with nausea"
+        assert encounter.chief_complaint_original == "Original headache complaint"
+        assert encounter.chief_complaint_edited is True
+        assert encounter.chief_complaint_edit_reason == "ADDITIONAL_SYMPTOMS"
+        assert encounter.chief_complaint_edited_by is not None
+        assert encounter.chief_complaint_edited_at is not None
+
+    def test_edit_chief_complaint_requires_reason(self, authenticated_client, sample_patient):
+        """Test that editing chief complaint requires a reason."""
+        from hmis.apps.encounters.models import Encounter
+
+        encounter = Encounter.objects.create(
+            patient=sample_patient,
+            encounter_type="OPD",
+            chief_complaint="Initial complaint",
+        )
+
+        # Try without reason
+        response = authenticated_client.post(
+            f"/api/encounters/{encounter.id}/edit_chief_complaint/",
+            {
+                "chief_complaint": "Updated complaint",
+            },
+            format="json",
+        )
+
+        assert response.status_code == 400
+        assert "reason" in response.data.get("detail", "").lower()
+
+    def test_edit_chief_complaint_other_requires_details(self, authenticated_client, sample_patient):
+        """Test that 'OTHER' reason requires specification."""
+        from hmis.apps.encounters.models import Encounter
+
+        encounter = Encounter.objects.create(
+            patient=sample_patient,
+            encounter_type="OPD",
+            chief_complaint="Initial complaint",
+        )
+
+        # Try with OTHER but no details
+        response = authenticated_client.post(
+            f"/api/encounters/{encounter.id}/edit_chief_complaint/",
+            {
+                "chief_complaint": "Updated complaint",
+                "edit_reason": "OTHER",
+            },
+            format="json",
+        )
+
+        assert response.status_code == 400
+        assert "specify" in response.data.get("detail", "").lower() or "other" in response.data.get("detail", "").lower()
+
+    def test_edit_chief_complaint_other_with_details_succeeds(self, authenticated_client, sample_patient):
+        """Test that 'OTHER' reason with details succeeds."""
+        from hmis.apps.encounters.models import Encounter
+
+        encounter = Encounter.objects.create(
+            patient=sample_patient,
+            encounter_type="OPD",
+            chief_complaint="Initial complaint",
+        )
+
+        response = authenticated_client.post(
+            f"/api/encounters/{encounter.id}/edit_chief_complaint/",
+            {
+                "chief_complaint": "Updated complaint",
+                "edit_reason": "OTHER",
+                "edit_reason_other": "Patient revealed additional history after trust was established",
+            },
+            format="json",
+        )
+
+        assert response.status_code == 200
+        encounter.refresh_from_db()
+        assert encounter.chief_complaint_edit_reason == "OTHER"
+        assert "trust" in encounter.chief_complaint_edit_reason_other
+
+    def test_edit_chief_complaint_preserves_first_original(self, authenticated_client, sample_patient):
+        """Test that multiple edits preserve the first original value."""
+        from hmis.apps.encounters.models import Encounter
+
+        encounter = Encounter.objects.create(
+            patient=sample_patient,
+            encounter_type="OPD",
+            chief_complaint="First original complaint",
+        )
+
+        # First edit
+        authenticated_client.post(
+            f"/api/encounters/{encounter.id}/edit_chief_complaint/",
+            {
+                "chief_complaint": "Second version",
+                "edit_reason": "ADDITIONAL_SYMPTOMS",
+            },
+            format="json",
+        )
+
+        # Second edit
+        authenticated_client.post(
+            f"/api/encounters/{encounter.id}/edit_chief_complaint/",
+            {
+                "chief_complaint": "Third version",
+                "edit_reason": "CLARIFICATION",
+            },
+            format="json",
+        )
+
+        encounter.refresh_from_db()
+        assert encounter.chief_complaint == "Third version"
+        assert encounter.chief_complaint_original == "First original complaint"
+        assert encounter.chief_complaint_edit_reason == "CLARIFICATION"
