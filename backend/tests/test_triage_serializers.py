@@ -203,7 +203,7 @@ class TestTriageQueueSerializer:
     """Tests for TriageQueueSerializer."""
 
     def test_serialize_queue_with_nested_assessment(self, sample_encounter, test_user):
-        """Should serialize queue entry with nested assessment."""
+        """Should serialize queue entry with flattened assessment data."""
         from hmis.apps.triage.models import TriageAssessment, TriageQueue
         from hmis.apps.triage.serializers import TriageQueueSerializer
 
@@ -232,8 +232,12 @@ class TestTriageQueueSerializer:
 
         assert data["position"] == 1
         assert data["status"] == "WAITING"
-        assert "assessment" in data
-        assert data["assessment"]["triage_category"] == "GREEN"
+        # Assessment data is flattened, not nested
+        assert data["triage_category"] == "GREEN"
+        assert data["chief_complaint"] == "Test"
+        assert data["assigned_area"] == "OPD"
+        assert "patient_name" in data
+        assert "patient_mrn" in data
 
 
 @pytest.mark.django_db
