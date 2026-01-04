@@ -19,7 +19,7 @@ export interface TimelineEvent {
   timestamp: string;
   metadata?: {
     encounterId?: number;
-    encounterType?: 'OPD' | 'IPD' | 'EMERGENCY';
+    encounterType?: string;
     status?: string;
     severity?: 'normal' | 'warning' | 'critical';
     provider?: string;

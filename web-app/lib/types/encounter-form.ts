@@ -2,10 +2,12 @@
  * Types for encounter form data.
  */
 
+import type { EncounterType } from './encounter';
+
 export interface EncounterFormData {
   // Core encounter info
   patient: number | null;
-  encounter_type: 'OPD' | 'IPD' | 'EMERGENCY';
+  encounter_type: EncounterType;
   encounter_date: string;
   chief_complaint: string;
   

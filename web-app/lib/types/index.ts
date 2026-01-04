@@ -14,7 +14,7 @@ export type {
   EncounterType,
   TriageRequirement,
   TriageStatus,
-  TriageCategory,
+  // Note: TriageCategory is exported from triage.ts instead to avoid duplicate
   ConsultationStatus,
   TriageBypassReason,
   ConsultationQueueItem,
