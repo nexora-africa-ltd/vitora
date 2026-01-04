@@ -377,10 +377,10 @@ def get_consultation_queue():
 - [x] Actions: Call, Start Consultation
 
 #### 3.2 Bypass Triage Dialog
-- [ ] Create `components/encounters/bypass-triage-dialog.tsx`
-- [ ] Reason selector (required)
-- [ ] Confirmation step
-- [ ] API call to bypass-triage endpoint
+- [x] Create `components/encounters/bypass-triage-dialog.tsx`
+- [x] Reason selector (required)
+- [x] Confirmation step
+- [x] API call to bypass-triage endpoint
 
 #### 3.3 Call Patient Functionality
 - [ ] "Call Patient" button
