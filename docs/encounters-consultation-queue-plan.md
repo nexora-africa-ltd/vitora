@@ -369,12 +369,12 @@ def get_consultation_queue():
 ### Phase 3: Frontend - Encounters Page
 
 #### 3.1 Consultation Queue Component
-- [ ] Create `components/encounters/consultation-queue.tsx`
-- [ ] Create `components/encounters/consultation-queue-item.tsx`
-- [ ] Fetch from `/api/encounters/consultation-queue/`
-- [ ] Display with appropriate badges based on triage_status
-- [ ] Show wait time calculation
-- [ ] Actions: Call, Start Consultation
+- [x] Create `components/encounters/consultation-queue.tsx`
+- [x] Create `components/encounters/consultation-queue-item.tsx`
+- [x] Fetch from `/api/encounters/consultation-queue/`
+- [x] Display with appropriate badges based on triage_status
+- [x] Show wait time calculation
+- [x] Actions: Call, Start Consultation
 
 #### 3.2 Bypass Triage Dialog
 - [ ] Create `components/encounters/bypass-triage-dialog.tsx`
