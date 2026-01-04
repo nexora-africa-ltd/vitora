@@ -26,6 +26,9 @@ import {
   SelectItem,
   SelectTrigger,
   SelectValue,
+  SelectGroup,
+  SelectLabel,
+  SelectSeparator,
 } from '@/components/ui/select';
 import {
   Alert,
@@ -39,7 +42,7 @@ import { useEncounter, useUpdateEncounter, useEncounterDiagnoses } from '@/lib/h
 import { MedicalHistoryForm } from '@/components/encounters/medical-history-form';
 import { ClinicalNotesForm } from '@/components/encounters/clinical-notes-form';
 import { DiagnosisForm } from '@/components/encounters/diagnosis-form';
-import { ENCOUNTER_TYPES, ENCOUNTER_STATUS } from '@/lib/utils/constants';
+import { ENCOUNTER_TYPES, ENCOUNTER_STATUS, ENCOUNTER_TYPE_GROUPS, getEncounterTypesByGroup } from '@/lib/utils/constants';
 import type { EncounterFormData, DiagnosisFormData } from '@/lib/types/encounter-form';
 import type { Patient } from '@/lib/types/patient';
 
@@ -221,13 +224,7 @@ export default function EditEncounterPage() {
       newErrors.chief_complaint = 'Chief complaint is required';
     }
     
-    if (!formData.encounter_date) {
-      newErrors.encounter_date = 'Encounter date is required';
-    }
-    
-    if (formData.encounter_date && new Date(formData.encounter_date) > new Date()) {
-      newErrors.encounter_date = 'Encounter date cannot be in the future';
-    }
+    // encounter_date is auto-set and non-editable, no validation needed
     
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
@@ -470,18 +467,42 @@ export default function EditEncounterPage() {
                 <Label htmlFor="encounter_type">Encounter Type</Label>
                 <Select
                   value={formData.encounter_type}
-                  onValueChange={(value) => handleFieldChange('encounter_type', value as 'OPD' | 'IPD' | 'EMERGENCY')}
+                  onValueChange={(value) => handleFieldChange('encounter_type', value as EncounterFormData['encounter_type'])}
                   disabled={!isEditable}
                 >
                   <SelectTrigger id="encounter_type">
-                    <SelectValue />
+                    <SelectValue placeholder="Select type..." />
                   </SelectTrigger>
                   <SelectContent>
-                    {ENCOUNTER_TYPES.map((type) => (
-                      <SelectItem key={type.value} value={type.value}>
-                        {type.label}
-                      </SelectItem>
-                    ))}
+                    {/* Walk-in / Mandatory triage */}
+                    <SelectGroup>
+                      <SelectLabel>{ENCOUNTER_TYPE_GROUPS['walk-in'].label}</SelectLabel>
+                      {getEncounterTypesByGroup('walk-in').map((type) => (
+                        <SelectItem key={type.value} value={type.value}>
+                          {type.label}
+                        </SelectItem>
+                      ))}
+                    </SelectGroup>
+                    <SelectSeparator />
+                    {/* Scheduled / Optional triage */}
+                    <SelectGroup>
+                      <SelectLabel>{ENCOUNTER_TYPE_GROUPS['scheduled'].label}</SelectLabel>
+                      {getEncounterTypesByGroup('scheduled').map((type) => (
+                        <SelectItem key={type.value} value={type.value}>
+                          {type.label}
+                        </SelectItem>
+                      ))}
+                    </SelectGroup>
+                    <SelectSeparator />
+                    {/* Pre-assessed / No triage */}
+                    <SelectGroup>
+                      <SelectLabel>{ENCOUNTER_TYPE_GROUPS['pre-assessed'].label}</SelectLabel>
+                      {getEncounterTypesByGroup('pre-assessed').map((type) => (
+                        <SelectItem key={type.value} value={type.value}>
+                          {type.label}
+                        </SelectItem>
+                      ))}
+                    </SelectGroup>
                   </SelectContent>
                 </Select>
               </div>
