@@ -14,6 +14,7 @@ export { ConsultationQueue } from './consultation-queue';
 export { ConsultationQueueItem } from './consultation-queue-item';
 export { BypassTriageDialog } from './bypass-triage-dialog';
 export { StartConsultationDialog } from './start-consultation-dialog';
+export { ConsultationQueueContainer } from './consultation-queue-container';
 
 // Form components
 export { PatientSelector } from './patient-selector';
