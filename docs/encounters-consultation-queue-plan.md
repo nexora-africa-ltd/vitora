@@ -410,8 +410,10 @@ def get_consultation_queue():
 - [x] Update page description
 
 #### 4.2 Pre-Triage Queue Logic
-- [ ] Only show encounters with `triage_status=PENDING` AND `triage_requirement` in (MANDATORY, OPTIONAL)
-- [ ] Sort by arrival time
+- [x] Only show encounters with `triage_status=PENDING` AND `triage_requirement` in (MANDATORY, OPTIONAL)
+- [x] Sort by arrival time
+- [x] Add `GET /api/encounters/pre_triage_queue/` backend endpoint
+- [x] Add `usePreTriageQueue` frontend hook
 
 ### Phase 5: Patient Journey Store Integration
 

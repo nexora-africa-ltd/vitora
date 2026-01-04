@@ -647,6 +647,65 @@ class EncounterViewSet(viewsets.ModelViewSet):
         serializer = self.get_serializer(queryset, many=True)
         return Response({"results": serializer.data})
 
+    @action(detail=False, methods=["get"])
+    def pre_triage_queue(self, request):
+        """
+        Get list of encounters awaiting triage.
+
+        Returns encounters that:
+        - Have triage_status = PENDING (or IN_PROGRESS if include_in_progress=true)
+        - Have triage_requirement in (MANDATORY, OPTIONAL)
+        - Excludes NOT_REQUIRED encounters
+
+        Sorted by:
+        - Arrival time (created_at) ascending (FIFO)
+
+        Query params:
+        - triage_requirement: Filter by triage requirement (MANDATORY, OPTIONAL)
+        - encounter_type: Filter by encounter type
+        - include_in_progress: Include IN_PROGRESS encounters (default: false)
+
+        GET /api/encounters/pre_triage_queue/
+        """
+        from datetime import datetime
+        from django.utils import timezone
+
+        queryset = self.get_queryset()
+
+        # Only include encounters requiring triage (MANDATORY or OPTIONAL)
+        queryset = queryset.filter(
+            triage_requirement__in=["MANDATORY", "OPTIONAL"],
+        )
+
+        # By default, only show PENDING status
+        # If include_in_progress=true, also show IN_PROGRESS
+        include_in_progress = request.query_params.get("include_in_progress", "false").lower() == "true"
+        if include_in_progress:
+            queryset = queryset.filter(triage_status__in=["PENDING", "IN_PROGRESS"])
+        else:
+            queryset = queryset.filter(triage_status="PENDING")
+
+        # Apply optional filters
+        triage_requirement = request.query_params.get("triage_requirement")
+        if triage_requirement:
+            queryset = queryset.filter(triage_requirement=triage_requirement)
+
+        encounter_type = request.query_params.get("encounter_type")
+        if encounter_type:
+            queryset = queryset.filter(encounter_type=encounter_type)
+
+        # Sort by arrival time (FIFO)
+        queryset = queryset.order_by("created_at")
+
+        # Paginate and serialize
+        page = self.paginate_queryset(queryset)
+        if page is not None:
+            serializer = self.get_serializer(page, many=True)
+            return self.get_paginated_response(serializer.data)
+
+        serializer = self.get_serializer(queryset, many=True)
+        return Response({"results": serializer.data})
+
     def get_queryset(self):
         """
         Optionally filter encounters by patient and status.
