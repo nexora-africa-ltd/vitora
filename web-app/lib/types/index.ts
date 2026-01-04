@@ -206,7 +206,7 @@ export interface Encounter {
   patient: number;
   patient_name?: string;
   patient_mrn?: string;
-  encounter_type: 'OPD' | 'IPD' | 'EMERGENCY';
+  encounter_type: string;
   encounter_date: string;
   chief_complaint: string;
   status: 'DRAFT' | 'IN_PROGRESS' | 'COMPLETED' | 'CANCELLED';

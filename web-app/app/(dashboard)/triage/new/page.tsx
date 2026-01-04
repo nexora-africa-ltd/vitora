@@ -422,7 +422,7 @@ export default function NewTriagePage() {
   const encounterForForm = {
     id: encounter.id,
     patient: encounter.patient,
-    encounter_type: encounter.encounter_type as 'OPD' | 'IPD' | 'EMERGENCY',
+    encounter_type: encounter.encounter_type,
     spo2: encounter.spo2 ?? undefined,
     pulse: encounter.pulse ?? undefined,
     blood_pressure: encounter.blood_pressure ?? undefined,

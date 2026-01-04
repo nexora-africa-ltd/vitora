@@ -42,7 +42,7 @@ export interface EncounterFormData {
 
 export const defaultEncounterFormData: EncounterFormData = {
   patient: null,
-  encounter_type: 'OPD',
+  encounter_type: 'select' as EncounterType,
   encounter_date: new Date().toISOString().split('T')[0] || '',
   chief_complaint: '',
   
