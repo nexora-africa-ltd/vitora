@@ -1,6 +1,6 @@
 # Epic: Move "Awaiting Consultation" to Encounters Page
 
-> **Status**: Planning  
+> **Status**: In Progress (Phase 1 Complete)  
 > **Created**: January 4, 2026  
 > **Updated**: January 4, 2026  
 > **Epic Goal**: Separate triage nurse workflow from doctor/clinician workflow by moving consultation queue to encounters page
@@ -293,7 +293,7 @@ def get_consultation_queue():
 ### Phase 1: Backend Model Updates
 
 #### 1.1 Encounter Type & Triage Requirement
-- [ ] **Extend existing `ENCOUNTER_TYPE_CHOICES`** in `hmis/apps/encounters/models.py`:
+- [x] **Extend existing `ENCOUNTER_TYPE_CHOICES`** in `hmis/apps/encounters/models.py`:
   ```python
   # Current choices (keep existing):
   # ("OPD", "Outpatient Department"),
@@ -324,25 +324,25 @@ def get_consultation_queue():
       ("DISCHARGE_REVIEW", "Discharge Review"),
   ]
   ```
-- [ ] Add `TRIAGE_REQUIREMENT_CHOICES`: `MANDATORY`, `OPTIONAL`, `NOT_REQUIRED`
-- [ ] Add `TRIAGE_STATUS_CHOICES`: `PENDING`, `IN_PROGRESS`, `COMPLETED`, `BYPASSED`, `NOT_APPLICABLE`
-- [ ] Add `TRIAGE_BYPASS_REASON_CHOICES`
+- [x] Add `TRIAGE_REQUIREMENT_CHOICES`: `MANDATORY`, `OPTIONAL`, `NOT_REQUIRED`
+- [x] Add `TRIAGE_STATUS_CHOICES`: `PENDING`, `IN_PROGRESS`, `COMPLETED`, `BYPASSED`, `NOT_APPLICABLE`
+- [x] Add `TRIAGE_BYPASS_REASON_CHOICES`
 
 #### 1.2 Encounter Model Fields
-- [ ] Add `triage_requirement` field (auto-set based on encounter_type)
-- [ ] Add `triage_status` field (default: computed from requirement)
-- [ ] Add `triage_bypass_reason` field (nullable)
-- [ ] Add `triage_bypassed_by` FK to User (nullable)
-- [ ] Add `triage_bypassed_at` DateTimeField (nullable)
-- [ ] Add `consultation_status` field: `WAITING`, `CALLED`, `IN_PROGRESS`, `COMPLETED`
-- [ ] Add `called_at` DateTimeField (nullable)
-- [ ] Add `consultation_started_at` DateTimeField (nullable)
-- [ ] Add model validation: bypass_reason required if status=BYPASSED
-- [ ] Add model method: `can_enter_consultation()` → bool
-- [ ] Add signal: Auto-set `triage_status=COMPLETED` when TriageAssessment created
+- [x] Add `triage_requirement` field (auto-set based on encounter_type)
+- [x] Add `triage_status` field (default: computed from requirement)
+- [x] Add `triage_bypass_reason` field (nullable)
+- [x] Add `triage_bypassed_by` FK to User (nullable)
+- [x] Add `triage_bypassed_at` DateTimeField (nullable)
+- [x] Add `consultation_status` field: `WAITING`, `CALLED`, `IN_PROGRESS`, `COMPLETED`
+- [x] Add `called_at` DateTimeField (nullable)
+- [x] Add `consultation_started_at` DateTimeField (nullable)
+- [x] Add model validation: bypass_reason required if status=BYPASSED
+- [x] Add model method: `can_enter_consultation()` → bool
+- [x] Add signal: Auto-set `triage_status=COMPLETED` when TriageAssessment created
 
 #### 1.3 Migrations
-- [ ] Create migration for new fields
+- [x] Create migration for new fields
 - [ ] Data migration: Set existing encounters' triage fields appropriately
 
 ### Phase 2: Backend API Updates

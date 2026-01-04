@@ -83,7 +83,7 @@ class Encounter(models.Model):
 
     def get_vital_status(self, vital_name: str) -> str:
         """Return 'normal', 'warning', or 'critical' for a vital sign."""
-        # ✅ Implemented - supports: temperature, pulse, bp_systolic, bp_diastolic,
+        # ✅ Implemented - supports: temperature, pulse, systolic_bp, diastolic_bp,
         #                          respiratory_rate, spo2
 
     def get_all_vital_statuses(self) -> dict:
@@ -124,8 +124,8 @@ class TestGetVitalStatus:
     def test_pulse_normal(self): ...                 # ✅
     def test_pulse_warning_low(self): ...            # ✅
     def test_pulse_critical_high(self): ...          # ✅
-    def test_bp_systolic_normal(self): ...           # ✅
-    def test_bp_systolic_warning(self): ...          # ✅
+    def test_systolic_bp_normal(self): ...           # ✅
+    def test_systolic_bp_warning(self): ...          # ✅
     def test_spo2_normal(self): ...                  # ✅
     def test_spo2_warning(self): ...                 # ✅
     def test_spo2_critical(self): ...                # ✅
@@ -763,7 +763,7 @@ class TestSchemaValidationFunction:        # ✅ 4 tests
 
 **Pediatric Vital Ranges** (✅ Implemented in `Encounter.PEDIATRIC_VITAL_RANGES`):
 - Different normal/warning/critical thresholds for each age group
-- Covers: pulse, respiratory_rate, bp_systolic, bp_diastolic
+- Covers: pulse, respiratory_rate, systolic_bp, diastolic_bp
 
 **Test Coverage** (61 tests):
 ```python

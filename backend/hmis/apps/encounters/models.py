@@ -533,8 +533,8 @@ class Encounter(models.Model):
             "pulse",
             "respiratory_rate",
             "spo2",
-            "bp_systolic",
-            "bp_diastolic",
+            "systolic_bp",
+            "diastolic_bp",
         ]
 
         for vital in vitals_to_check:
@@ -602,9 +602,9 @@ class Encounter(models.Model):
         systolic = self.get_systolic_bp()
         diastolic = self.get_diastolic_bp()
         if systolic is not None:
-            bp_status = self.get_vital_status("bp_systolic")
+            bp_status = self.get_vital_status("systolic_bp")
             if bp_status == "critical":
-                ranges = self._get_vital_ranges_for_patient()["bp_systolic"]
+                ranges = self._get_vital_ranges_for_patient()["systolic_bp"]
                 if systolic > ranges["normal"][1]:
                     alerts.append(f"Hypertensive crisis{age_suffix}")
                 else:
@@ -883,7 +883,7 @@ class Encounter(models.Model):
             "critical_low": 50,
             "critical_high": 120,
         },
-        "bp_systolic": {
+        "systolic_bp": {
             "unit": "mmHg",
             "normal": (90, 120),
             "warning_low": None,  # No warning, jump to critical
@@ -891,7 +891,7 @@ class Encounter(models.Model):
             "critical_low": 90,  # <90 is hypotension
             "critical_high": 140,
         },
-        "bp_diastolic": {
+        "diastolic_bp": {
             "unit": "mmHg",
             "normal": (60, 80),
             "warning_low": None,  # No warning, jump to critical
@@ -959,7 +959,7 @@ class Encounter(models.Model):
                 "critical_low": 26,
                 "critical_high": 64,
             },
-            "bp_systolic": {
+            "systolic_bp": {
                 "unit": "mmHg",
                 "normal": (60, 90),
                 "warning_low": (50, 59),
@@ -967,7 +967,7 @@ class Encounter(models.Model):
                 "critical_low": 50,
                 "critical_high": 105,
             },
-            "bp_diastolic": {
+            "diastolic_bp": {
                 "unit": "mmHg",
                 "normal": (30, 60),
                 "warning_low": (20, 29),
@@ -993,7 +993,7 @@ class Encounter(models.Model):
                 "critical_low": 25,
                 "critical_high": 65,
             },
-            "bp_systolic": {
+            "systolic_bp": {
                 "unit": "mmHg",
                 "normal": (72, 104),
                 "warning_low": (65, 71),
@@ -1001,7 +1001,7 @@ class Encounter(models.Model):
                 "critical_low": 65,
                 "critical_high": 115,
             },
-            "bp_diastolic": {
+            "diastolic_bp": {
                 "unit": "mmHg",
                 "normal": (37, 56),
                 "warning_low": (30, 36),
@@ -1027,7 +1027,7 @@ class Encounter(models.Model):
                 "critical_low": 18,
                 "critical_high": 45,
             },
-            "bp_systolic": {
+            "systolic_bp": {
                 "unit": "mmHg",
                 "normal": (86, 106),
                 "warning_low": (75, 85),
@@ -1035,7 +1035,7 @@ class Encounter(models.Model):
                 "critical_low": 75,
                 "critical_high": 120,
             },
-            "bp_diastolic": {
+            "diastolic_bp": {
                 "unit": "mmHg",
                 "normal": (42, 63),
                 "warning_low": (35, 41),
@@ -1061,7 +1061,7 @@ class Encounter(models.Model):
                 "critical_low": 16,
                 "critical_high": 35,
             },
-            "bp_systolic": {
+            "systolic_bp": {
                 "unit": "mmHg",
                 "normal": (89, 112),
                 "warning_low": (80, 88),
@@ -1069,7 +1069,7 @@ class Encounter(models.Model):
                 "critical_low": 80,
                 "critical_high": 125,
             },
-            "bp_diastolic": {
+            "diastolic_bp": {
                 "unit": "mmHg",
                 "normal": (46, 72),
                 "warning_low": (40, 45),
@@ -1095,7 +1095,7 @@ class Encounter(models.Model):
                 "critical_low": 14,
                 "critical_high": 32,
             },
-            "bp_systolic": {
+            "systolic_bp": {
                 "unit": "mmHg",
                 "normal": (97, 120),
                 "warning_low": (85, 96),
@@ -1103,7 +1103,7 @@ class Encounter(models.Model):
                 "critical_low": 85,
                 "critical_high": 135,
             },
-            "bp_diastolic": {
+            "diastolic_bp": {
                 "unit": "mmHg",
                 "normal": (57, 80),
                 "warning_low": (50, 56),
@@ -1129,7 +1129,7 @@ class Encounter(models.Model):
                 "critical_low": 10,
                 "critical_high": 25,
             },
-            "bp_systolic": {
+            "systolic_bp": {
                 "unit": "mmHg",
                 "normal": (90, 120),
                 "warning_low": (80, 89),
@@ -1137,7 +1137,7 @@ class Encounter(models.Model):
                 "critical_low": 80,
                 "critical_high": 140,
             },
-            "bp_diastolic": {
+            "diastolic_bp": {
                 "unit": "mmHg",
                 "normal": (60, 80),
                 "warning_low": (50, 59),
@@ -1248,8 +1248,8 @@ class Encounter(models.Model):
         Uses age-appropriate ranges for pediatric patients.
 
         Args:
-            vital_name: Name of the vital sign (temperature, pulse, bp_systolic,
-                       bp_diastolic, respiratory_rate, spo2)
+            vital_name: Name of the vital sign (temperature, pulse, systolic_bp,
+                       diastolic_bp, respiratory_rate, spo2)
 
         Returns:
             str | None: 'normal', 'warning', or 'critical', or None if not recorded
@@ -1266,9 +1266,9 @@ class Encounter(models.Model):
             value = float(self.temperature) if self.temperature else None
         elif vital_name == "pulse":
             value = self.pulse
-        elif vital_name == "bp_systolic":
+        elif vital_name == "systolic_bp":
             value = self.get_systolic_bp()
-        elif vital_name == "bp_diastolic":
+        elif vital_name == "diastolic_bp":
             value = self.get_diastolic_bp()
         elif vital_name == "respiratory_rate":
             value = self.respiratory_rate
@@ -1341,24 +1341,24 @@ class Encounter(models.Model):
         # Blood pressure systolic
         systolic = self.get_systolic_bp()
         if systolic:
-            statuses["bp_systolic"] = {
+            statuses["systolic_bp"] = {
                 "value": systolic,
-                "status": self.get_vital_status("bp_systolic"),
+                "status": self.get_vital_status("systolic_bp"),
                 "unit": "mmHg",
             }
         else:
-            statuses["bp_systolic"] = None
+            statuses["systolic_bp"] = None
 
         # Blood pressure diastolic
         diastolic = self.get_diastolic_bp()
         if diastolic:
-            statuses["bp_diastolic"] = {
+            statuses["diastolic_bp"] = {
                 "value": diastolic,
-                "status": self.get_vital_status("bp_diastolic"),
+                "status": self.get_vital_status("diastolic_bp"),
                 "unit": "mmHg",
             }
         else:
-            statuses["bp_diastolic"] = None
+            statuses["diastolic_bp"] = None
 
         # Respiratory rate
         if self.respiratory_rate:

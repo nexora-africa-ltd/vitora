@@ -179,7 +179,7 @@ class TestGetVitalStatusMethod:
         )
         assert encounter.get_vital_status("pulse") == "critical"
 
-    def test_bp_systolic_normal_status(self, vital_test_patient):
+    def test_systolic_bp_normal_status(self, vital_test_patient):
         """Test systolic BP 115 returns 'normal' status."""
         from hmis.apps.encounters.models import Encounter
 
@@ -189,9 +189,9 @@ class TestGetVitalStatusMethod:
             chief_complaint="Checkup",
             blood_pressure="115/75",
         )
-        assert encounter.get_vital_status("bp_systolic") == "normal"
+        assert encounter.get_vital_status("systolic_bp") == "normal"
 
-    def test_bp_systolic_warning_status(self, vital_test_patient):
+    def test_systolic_bp_warning_status(self, vital_test_patient):
         """Test systolic BP 130 returns 'warning' status (prehypertension)."""
         from hmis.apps.encounters.models import Encounter
 
@@ -201,9 +201,9 @@ class TestGetVitalStatusMethod:
             chief_complaint="BP check",
             blood_pressure="130/85",
         )
-        assert encounter.get_vital_status("bp_systolic") == "warning"
+        assert encounter.get_vital_status("systolic_bp") == "warning"
 
-    def test_bp_systolic_critical_high_status(self, vital_test_patient):
+    def test_systolic_bp_critical_high_status(self, vital_test_patient):
         """Test systolic BP 145 returns 'critical' status (hypertension)."""
         from hmis.apps.encounters.models import Encounter
 
@@ -213,7 +213,7 @@ class TestGetVitalStatusMethod:
             chief_complaint="High BP",
             blood_pressure="145/95",
         )
-        assert encounter.get_vital_status("bp_systolic") == "critical"
+        assert encounter.get_vital_status("systolic_bp") == "critical"
 
     def test_spo2_normal_status(self, vital_test_patient):
         """Test SpO2 98% returns 'normal' status."""
@@ -331,8 +331,8 @@ class TestGetAllVitalStatusesMethod:
         # Should have keys for each vital
         assert "temperature" in statuses
         assert "pulse" in statuses
-        assert "bp_systolic" in statuses
-        assert "bp_diastolic" in statuses
+        assert "systolic_bp" in statuses
+        assert "diastolic_bp" in statuses
         assert "respiratory_rate" in statuses
         assert "spo2" in statuses
 
@@ -360,7 +360,7 @@ class TestGetAllVitalStatusesMethod:
 
         assert statuses["temperature"]["status"] == "critical"
         assert statuses["pulse"]["status"] == "normal"
-        assert statuses["bp_systolic"]["status"] == "warning"
+        assert statuses["systolic_bp"]["status"] == "warning"
         assert statuses["spo2"]["status"] == "critical"
 
 

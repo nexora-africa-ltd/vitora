@@ -896,8 +896,8 @@ export const initDatabase = () => {
 | encounter_type | VARCHAR(50) | NOT NULL | OPD/IPD/Emergency |
 | encounter_date | TIMESTAMP | NOT NULL | Encounter time |
 | temperature | DECIMAL(4,1) | - | °C |
-| bp_systolic | INTEGER | - | mmHg |
-| bp_diastolic | INTEGER | - | mmHg |
+| systolic_bp | INTEGER | - | mmHg |
+| diastolic_bp | INTEGER | - | mmHg |
 | pulse | INTEGER | - | bpm |
 | respiratory_rate | INTEGER | - | breaths/min |
 | spo2 | DECIMAL(5,2) | - | Oxygen saturation % |
