@@ -389,10 +389,10 @@ def get_consultation_queue():
 - [x] Re-call option
 
 #### 3.4 Start Consultation
-- [ ] "Start Consultation" button
-- [ ] Navigate to encounter documentation
-- [ ] Update consultation_status to IN_PROGRESS
-- [ ] Record timestamp
+- [x] "Start Consultation" button
+- [x] Navigate to encounter documentation
+- [x] Update consultation_status to IN_PROGRESS
+- [x] Record timestamp
 
 #### 3.5 Page Layout
 - [ ] Redesign `app/(dashboard)/encounters/page.tsx`
