@@ -114,7 +114,7 @@ class Encounter(models.Model):
 
     Attributes:
         patient: Foreign key to Patient model
-        encounter_type: Type of encounter (OPD/IPD/EMERGENCY)
+        encounter_type: Type of encounter (OPD/IPD/EMERGENCY/etc.)
         encounter_date: Date of the encounter
         chief_complaint: Patient's main complaint
         temperature: Body temperature in Celsius
@@ -124,14 +124,102 @@ class Encounter(models.Model):
         weight: Patient weight in kg
         height: Patient height in cm
         notes: Additional clinical notes
+        triage_requirement: Whether triage is MANDATORY/OPTIONAL/NOT_REQUIRED
+        triage_status: Current triage status (PENDING/COMPLETED/BYPASSED/etc.)
+        consultation_status: Current consultation status (WAITING/CALLED/etc.)
         created_at: Timestamp when the record was created
         updated_at: Timestamp when the record was last updated
     """
 
+    # =========================================================================
+    # Extended Encounter Type Choices (Phase 1 - Consultation Queue)
+    # =========================================================================
     ENCOUNTER_TYPE_CHOICES = [
+        # Existing (MANDATORY triage)
         ("OPD", "Outpatient Department"),
         ("IPD", "Inpatient Department"),
         ("EMERGENCY", "Emergency"),
+        # High-risk clinics (MANDATORY triage)
+        ("ANC", "Antenatal Clinic"),
+        ("PAEDIATRIC", "Paediatric Clinic"),
+        ("DIALYSIS", "Dialysis Unit"),
+        ("ONCOLOGY", "Oncology Clinic"),
+        # Scheduled visits (OPTIONAL triage)
+        ("SCHEDULED_OPD", "Scheduled Outpatient"),
+        ("FOLLOW_UP", "Follow-up Visit"),
+        ("CONSULTANT_REVIEW", "Consultant Review"),
+        ("CHRONIC_STABLE", "Stable Chronic Care"),
+        ("SPECIALIST_CLINIC", "Specialist Clinic"),
+        # Pre-assessed (NOT_REQUIRED triage)
+        ("PROCEDURE", "Scheduled Procedure"),
+        ("DAY_CASE", "Day Case"),
+        ("WARD_ROUND", "Ward Round"),
+        ("DISCHARGE_REVIEW", "Discharge Review"),
+    ]
+
+    # =========================================================================
+    # Triage Requirement Choices
+    # =========================================================================
+    TRIAGE_REQUIREMENT_CHOICES = [
+        ("MANDATORY", "Mandatory - Must complete triage"),
+        ("OPTIONAL", "Optional - Can bypass triage"),
+        ("NOT_REQUIRED", "Not Required - Skip triage"),
+    ]
+
+    # Mapping from encounter type to triage requirement
+    ENCOUNTER_TYPE_TRIAGE_MAP = {
+        # Mandatory triage types
+        "OPD": "MANDATORY",
+        "IPD": "MANDATORY",
+        "EMERGENCY": "MANDATORY",
+        "ANC": "MANDATORY",
+        "PAEDIATRIC": "MANDATORY",
+        "DIALYSIS": "MANDATORY",
+        "ONCOLOGY": "MANDATORY",
+        # Optional triage types
+        "SCHEDULED_OPD": "OPTIONAL",
+        "FOLLOW_UP": "OPTIONAL",
+        "CONSULTANT_REVIEW": "OPTIONAL",
+        "CHRONIC_STABLE": "OPTIONAL",
+        "SPECIALIST_CLINIC": "OPTIONAL",
+        # Not required triage types
+        "PROCEDURE": "NOT_REQUIRED",
+        "DAY_CASE": "NOT_REQUIRED",
+        "WARD_ROUND": "NOT_REQUIRED",
+        "DISCHARGE_REVIEW": "NOT_REQUIRED",
+    }
+
+    # =========================================================================
+    # Triage Status Choices
+    # =========================================================================
+    TRIAGE_STATUS_CHOICES = [
+        ("PENDING", "Pending - Awaiting triage"),
+        ("IN_PROGRESS", "In Progress - Being triaged"),
+        ("COMPLETED", "Completed - Triage done"),
+        ("BYPASSED", "Bypassed - Triage skipped"),
+        ("NOT_APPLICABLE", "Not Applicable - Triage not required"),
+    ]
+
+    # =========================================================================
+    # Triage Bypass Reason Choices
+    # =========================================================================
+    TRIAGE_BYPASS_REASON_CHOICES = [
+        ("STABLE_FOLLOW_UP", "Stable follow-up patient"),
+        ("CONSULTANT_DECISION", "Consultant/senior decision"),
+        ("CHRONIC_CARE_REVIEW", "Chronic care review"),
+        ("STAFF_SHORTAGE", "Staff shortage"),
+        ("PATIENT_PREFERENCE", "Patient preference"),
+        ("OTHER", "Other reason"),
+    ]
+
+    # =========================================================================
+    # Consultation Status Choices
+    # =========================================================================
+    CONSULTATION_STATUS_CHOICES = [
+        ("WAITING", "Waiting for consultation"),
+        ("CALLED", "Called - Patient summoned"),
+        ("IN_PROGRESS", "In Progress - Being seen"),
+        ("COMPLETED", "Completed - Consultation done"),
     ]
 
     # Required fields
@@ -254,6 +342,62 @@ class Encounter(models.Model):
         help_text="Reason for cancellation (if status is CANCELLED)",
     )
 
+    # =========================================================================
+    # Triage Fields (Phase 1 - Consultation Queue)
+    # =========================================================================
+    triage_requirement = models.CharField(
+        max_length=20,
+        choices=TRIAGE_REQUIREMENT_CHOICES,
+        default="MANDATORY",
+        help_text="Whether triage is mandatory, optional, or not required",
+    )
+    triage_status = models.CharField(
+        max_length=20,
+        choices=TRIAGE_STATUS_CHOICES,
+        default="PENDING",
+        help_text="Current triage status",
+    )
+    triage_bypass_reason = models.CharField(
+        max_length=30,
+        choices=TRIAGE_BYPASS_REASON_CHOICES,
+        blank=True,
+        default="",
+        help_text="Reason for bypassing triage (if applicable)",
+    )
+    triage_bypassed_by = models.ForeignKey(
+        "auth.User",
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="triage_bypasses",
+        help_text="User who bypassed the triage",
+    )
+    triage_bypassed_at = models.DateTimeField(
+        null=True,
+        blank=True,
+        help_text="Timestamp when triage was bypassed",
+    )
+
+    # =========================================================================
+    # Consultation Status Fields (Phase 1 - Consultation Queue)
+    # =========================================================================
+    consultation_status = models.CharField(
+        max_length=20,
+        choices=CONSULTATION_STATUS_CHOICES,
+        default="WAITING",
+        help_text="Current consultation status",
+    )
+    called_at = models.DateTimeField(
+        null=True,
+        blank=True,
+        help_text="Timestamp when patient was called for consultation",
+    )
+    consultation_started_at = models.DateTimeField(
+        null=True,
+        blank=True,
+        help_text="Timestamp when consultation started",
+    )
+
     # Timestamps
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
@@ -318,6 +462,62 @@ class Encounter(models.Model):
         if self.spo2 is not None and (self.spo2 < 0 or self.spo2 > 100):
             raise ValidationError({"spo2": "SpO2 must be between 0 and 100%."})
 
+        # =====================================================================
+        # Triage Validation (Phase 1 - Consultation Queue)
+        # =====================================================================
+
+        # Validate bypass reason required when status is BYPASSED
+        if self.triage_status == "BYPASSED" and not self.triage_bypass_reason:
+            raise ValidationError(
+                {
+                    "triage_bypass_reason": "Bypass reason is required when triage status is BYPASSED."
+                }
+            )
+
+        # Validate that mandatory triage cannot be bypassed
+        if self.triage_requirement == "MANDATORY" and self.triage_status == "BYPASSED":
+            raise ValidationError(
+                {
+                    "triage_status": "Mandatory triage cannot be bypassed. Complete triage assessment or change encounter type."
+                }
+            )
+
+    def save(self, *args, **kwargs):
+        """Override save to auto-set triage fields based on encounter type."""
+        # Auto-set triage_requirement based on encounter_type
+        if self.encounter_type:
+            expected_requirement = self.ENCOUNTER_TYPE_TRIAGE_MAP.get(
+                self.encounter_type, "MANDATORY"
+            )
+            self.triage_requirement = expected_requirement
+
+        # Auto-set triage_status for NOT_REQUIRED encounters
+        if self.triage_requirement == "NOT_REQUIRED":
+            if self.triage_status == "PENDING":
+                self.triage_status = "NOT_APPLICABLE"
+
+        super().save(*args, **kwargs)
+
+    def can_enter_consultation(self) -> bool:
+        """
+        Check if the encounter can enter consultation queue.
+
+        Returns True if:
+        - Triage is COMPLETED
+        - Triage is BYPASSED (for optional triage)
+        - Triage is NOT_APPLICABLE (for not required triage)
+
+        Returns False if:
+        - Triage is PENDING and requirement is MANDATORY
+        - Triage is IN_PROGRESS
+        - Triage is PENDING and requirement is OPTIONAL (must bypass or complete)
+
+        Returns:
+            bool: True if can enter consultation, False otherwise
+        """
+        if self.triage_status in ("COMPLETED", "BYPASSED", "NOT_APPLICABLE"):
+            return True
+        return False
     def has_critical_vitals(self) -> bool:
         """
         Check if any vital signs are in critical ranges.
