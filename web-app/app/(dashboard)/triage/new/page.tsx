@@ -120,7 +120,7 @@ export default function NewTriagePage() {
       try {
         const assessment = await createAssessment({
           ...data,
-          encounter_id: selectedEncounterId,
+          encounter: selectedEncounterId,
         });
 
         toast({
@@ -397,7 +397,7 @@ export default function NewTriagePage() {
     last_name: patient.last_name,
     date_of_birth: patient.date_of_birth,
     gender: patient.gender as 'M' | 'F' | 'O',
-    allergies: patient.allergies || '',
+    allergies: encounter.allergies || '',
   };
 
   // Transform encounter data to match form interface
