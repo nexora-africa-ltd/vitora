@@ -22,8 +22,16 @@ export async function login(page: Page, username: string, password: string) {
   await page.getByLabel(/password/i).fill(password);
   await page.getByRole('button', { name: /sign in|login/i }).click();
   
-  // Wait for redirect to dashboard
-  await expect(page).toHaveURL(/.*dashboard.*/);
+  // Wait for login to complete - handle redirect chain / -> /dashboard
+  await page.waitForURL((url) => {
+    const pathname = url.pathname;
+    return pathname === '/dashboard' || pathname === '/' || pathname.startsWith('/dashboard');
+  }, { timeout: 15000 });
+  
+  // If we landed on /, wait for redirect to /dashboard
+  if (page.url().endsWith('/')) {
+    await page.waitForURL(/.*dashboard.*/, { timeout: 10000 });
+  }
 }
 
 /**
