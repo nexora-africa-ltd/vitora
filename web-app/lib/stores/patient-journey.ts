@@ -75,6 +75,36 @@ export type PatientStage =
   | 'DECEASED';
 
 /**
+ * Triage status for encounter (matches backend Encounter.triage_status)
+ */
+export type TriageStatus =
+  | 'PENDING'
+  | 'IN_PROGRESS'
+  | 'COMPLETED'
+  | 'BYPASSED'
+  | 'NOT_APPLICABLE';
+
+/**
+ * Consultation status for encounter (matches backend Encounter.consultation_status)
+ */
+export type ConsultationStatus =
+  | 'WAITING'
+  | 'CALLED'
+  | 'IN_PROGRESS'
+  | 'COMPLETED';
+
+/**
+ * Triage bypass reasons (matches backend Encounter.TRIAGE_BYPASS_REASON_CHOICES)
+ */
+export type TriageBypassReason =
+  | 'STABLE_FOLLOW_UP'
+  | 'CONSULTANT_DECISION'
+  | 'CHRONIC_CARE_REVIEW'
+  | 'STAFF_SHORTAGE'
+  | 'EMERGENCY_STABILIZED'
+  | 'ADMIN_OVERRIDE';
+
+/**
  * Order/Request status for ancillary services
  */
 export type OrderStatus = 
@@ -168,6 +198,8 @@ export interface PatientJourneyTimestamps {
   triage_start_time: string | null;
   /** When triage assessment completed */
   triage_end_time: string | null;
+  /** When triage was bypassed */
+  triage_bypassed_at: string | null;
   
   // Consultation
   /** When clinician called the patient */
@@ -258,6 +290,10 @@ export interface ActivePatient {
   triage_assessment_id: number | null;
   /** Triage category (if triaged) */
   triage_category: 'RED' | 'ORANGE' | 'YELLOW' | 'GREEN' | 'BLUE' | null;
+  /** Current triage status (matches Encounter.triage_status) */
+  triage_status: TriageStatus;
+  /** Reason for bypassing triage (if bypassed) */
+  triage_bypass_reason: TriageBypassReason | null;
   /** Assigned area */
   assigned_area: string | null;
   /** Chief complaint */
@@ -266,6 +302,8 @@ export interface ActivePatient {
   priority_hint: 'NORMAL' | 'URGENT' | 'CRITICAL' | null;
   
   // ========== Consultation Information ==========
+  /** Current consultation status (matches Encounter.consultation_status) */
+  consultation_status: ConsultationStatus;
   /** Assigned clinician ID */
   assigned_clinician_id: number | null;
   /** Assigned clinician name */
@@ -369,6 +407,26 @@ interface PatientJourneyState {
       assigned_area: string;
     }
   ) => void;
+
+  /**
+   * Bypass triage for a patient (OPTIONAL triage encounters)
+   */
+  bypassTriage: (patientId: number, reason: TriageBypassReason) => void;
+
+  /**
+   * Set triage as not applicable (NOT_REQUIRED encounters)
+   */
+  setTriageNotApplicable: (patientId: number) => void;
+
+  /**
+   * Directly update triage status (for syncing with backend)
+   */
+  updateTriageStatus: (patientId: number, status: TriageStatus) => void;
+
+  /**
+   * Directly update consultation status (for syncing with backend)
+   */
+  updateConsultationStatus: (patientId: number, status: ConsultationStatus) => void;
 
   /**
    * Call patient for consultation
@@ -663,6 +721,7 @@ function createEmptyTimestamps(): PatientJourneyTimestamps {
     // Triage
     triage_start_time: null,
     triage_end_time: null,
+    triage_bypassed_at: null,
     // Consultation
     called_at: null,
     consultation_start_time: null,
@@ -707,6 +766,9 @@ function createEmptyPatient(id: number): ActivePatient {
     timestamps: createEmptyTimestamps(),
     triage_assessment_id: null,
     triage_category: null,
+    triage_status: 'PENDING',
+    triage_bypass_reason: null,
+    consultation_status: 'WAITING',
     assigned_area: null,
     chief_complaint: null,
     priority_hint: null,
@@ -865,9 +927,12 @@ export const usePatientJourneyStore = create<PatientJourneyState>()(
           return {
             activePatients: {
               ...state.activePatients,
-              [patientId]: updatePatientWithStage(patient, 'IN_TRIAGE', {
-                triage_start_time: now,
-              }),
+              [patientId]: {
+                ...updatePatientWithStage(patient, 'IN_TRIAGE', {
+                  triage_start_time: now,
+                }),
+                triage_status: 'IN_PROGRESS',
+              },
             },
           };
         });
@@ -887,7 +952,82 @@ export const usePatientJourneyStore = create<PatientJourneyState>()(
                 }),
                 triage_assessment_id: assessment.assessment_id,
                 triage_category: assessment.triage_category,
+                triage_status: 'COMPLETED',
                 assigned_area: assessment.assigned_area,
+              },
+            },
+          };
+        });
+      },
+
+      bypassTriage: (patientId, reason) => {
+        const now = new Date().toISOString();
+        set((state) => {
+          const patient = state.activePatients[patientId];
+          if (!patient) return state;
+          return {
+            activePatients: {
+              ...state.activePatients,
+              [patientId]: {
+                ...updatePatientWithStage(patient, 'AWAITING_CONSULTATION', {
+                  triage_bypassed_at: now,
+                }),
+                triage_status: 'BYPASSED',
+                triage_bypass_reason: reason,
+              },
+            },
+          };
+        });
+      },
+
+      setTriageNotApplicable: (patientId) => {
+        const now = new Date().toISOString();
+        set((state) => {
+          const patient = state.activePatients[patientId];
+          if (!patient) return state;
+          return {
+            activePatients: {
+              ...state.activePatients,
+              [patientId]: {
+                ...updatePatientWithStage(patient, 'AWAITING_CONSULTATION', {}),
+                triage_status: 'NOT_APPLICABLE',
+                last_updated: now,
+              },
+            },
+          };
+        });
+      },
+
+      updateTriageStatus: (patientId, status) => {
+        const now = new Date().toISOString();
+        set((state) => {
+          const patient = state.activePatients[patientId];
+          if (!patient) return state;
+          return {
+            activePatients: {
+              ...state.activePatients,
+              [patientId]: {
+                ...patient,
+                triage_status: status,
+                last_updated: now,
+              },
+            },
+          };
+        });
+      },
+
+      updateConsultationStatus: (patientId, status) => {
+        const now = new Date().toISOString();
+        set((state) => {
+          const patient = state.activePatients[patientId];
+          if (!patient) return state;
+          return {
+            activePatients: {
+              ...state.activePatients,
+              [patientId]: {
+                ...patient,
+                consultation_status: status,
+                last_updated: now,
               },
             },
           };
@@ -904,6 +1044,7 @@ export const usePatientJourneyStore = create<PatientJourneyState>()(
               ...state.activePatients,
               [patientId]: {
                 ...patient,
+                consultation_status: 'CALLED',
                 timestamps: {
                   ...patient.timestamps,
                   called_at: now,
@@ -927,6 +1068,7 @@ export const usePatientJourneyStore = create<PatientJourneyState>()(
                 ...updatePatientWithStage(patient, 'IN_CONSULTATION', {
                   consultation_start_time: now,
                 }),
+                consultation_status: 'IN_PROGRESS',
                 assigned_clinician_id: clinicianId ?? null,
                 assigned_clinician_name: clinicianName ?? null,
               },
@@ -947,6 +1089,7 @@ export const usePatientJourneyStore = create<PatientJourneyState>()(
                 ...updatePatientWithStage(patient, 'AWAITING_DISCHARGE', {
                   consultation_end_time: now,
                 }),
+                consultation_status: 'COMPLETED',
                 consultation_summary: summary ?? null,
                 primary_diagnosis: diagnosis ?? null,
               },
