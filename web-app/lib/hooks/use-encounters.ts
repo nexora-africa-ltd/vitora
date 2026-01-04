@@ -3,7 +3,7 @@
  */
 
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { encountersApi } from '@/lib/api/encounters';
+import { encountersApi, PreTriageQueueParams } from '@/lib/api/encounters';
 import { EncounterListParams, Encounter } from '@/lib/types/encounter';
 
 /**
@@ -76,5 +76,22 @@ export function useUpdateEncounter() {
       queryClient.invalidateQueries({ queryKey: ['encounters'] });
       queryClient.invalidateQueries({ queryKey: ['encounters', variables.id] });
     },
+  });
+}
+
+/**
+ * Hook for fetching pre-triage queue (encounters awaiting triage).
+ * 
+ * Returns encounters with:
+ * - triage_status = PENDING (or IN_PROGRESS if include_in_progress=true)
+ * - triage_requirement in (MANDATORY, OPTIONAL)
+ * 
+ * Auto-refreshes every 15 seconds.
+ */
+export function usePreTriageQueue(params?: PreTriageQueueParams) {
+  return useQuery({
+    queryKey: ['encounters', 'pre-triage-queue', params],
+    queryFn: () => encountersApi.getPreTriageQueue(params),
+    refetchInterval: 15000, // Auto-refresh every 15 seconds
   });
 }

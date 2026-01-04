@@ -73,4 +73,47 @@ export const encountersApi = {
       throw error;
     }
   },
+
+  /**
+   * Get pre-triage queue (encounters awaiting triage).
+   * 
+   * Returns encounters with:
+   * - triage_status = PENDING (or IN_PROGRESS if include_in_progress=true)
+   * - triage_requirement in (MANDATORY, OPTIONAL)
+   * 
+   * Sorted by arrival time (created_at) ascending.
+   */
+  async getPreTriageQueue(params?: PreTriageQueueParams): Promise<PaginatedResponse<PreTriageQueueItem>> {
+    const response = await apiClient.get<PaginatedResponse<PreTriageQueueItem>>(
+      '/api/encounters/pre_triage_queue/',
+      { params }
+    );
+    return response.data;
+  },
 };
+
+// =============================================================================
+// Pre-Triage Queue Types
+// =============================================================================
+
+export interface PreTriageQueueParams {
+  triage_requirement?: 'MANDATORY' | 'OPTIONAL';
+  encounter_type?: string;
+  include_in_progress?: boolean;
+}
+
+export interface PreTriageQueueItem {
+  id: number;
+  patient_id: number;
+  patient_name: string;
+  patient_mrn: string;
+  patient_age: number | null;
+  patient_gender: string;
+  encounter_type: string;
+  encounter_type_display?: string;
+  chief_complaint: string;
+  triage_requirement: 'MANDATORY' | 'OPTIONAL' | 'NOT_REQUIRED';
+  triage_status: 'PENDING' | 'IN_PROGRESS' | 'COMPLETED' | 'BYPASSED' | 'NOT_APPLICABLE';
+  created_at: string;
+  wait_time_minutes: number;
+}
