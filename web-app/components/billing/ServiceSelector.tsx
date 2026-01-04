@@ -56,11 +56,9 @@ export function ServiceSelector({
     categories && categories.length > 0 ? categories[0]!.name : null
   );
 
-  if (isLoading) {
-    return <ServiceSelectorSkeleton />;
-  }
-
+  // Move useMemo before any conditional returns to follow hooks rules
   const filteredServices = React.useMemo(() => {
+    if (isLoading) return [];
     const byCategory = (() => {
       if (!activeCategory || !categories || categories.length === 0) return services;
       const category = categories.find((c) => c.name === activeCategory);
@@ -73,7 +71,11 @@ export function ServiceSelector({
     const query = searchQuery.trim().toLowerCase();
     if (!query) return byCategory;
     return byCategory.filter((s) => s.name.toLowerCase().includes(query));
-  }, [services, categories, activeCategory, searchQuery]);
+  }, [services, categories, activeCategory, searchQuery, isLoading]);
+
+  if (isLoading) {
+    return <ServiceSelectorSkeleton />;
+  }
 
   return (
     <div className="space-y-4">

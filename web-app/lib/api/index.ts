@@ -12,7 +12,6 @@ export { pharmacyApi } from './pharmacy';
 export { billingApi } from './billing';
 export { triageApi } from './triage';
 export type {
-  TriageAssessmentCreateData,
   TriageAssessmentUpdateData,
   TriageAssessmentListParams,
   TriageQueueListParams,
@@ -21,3 +20,5 @@ export type {
   TriageReportParams,
   WaitTimeStatsResponse,
 } from './triage';
+// Re-export from types for backwards compatibility
+export type { TriageAssessmentCreateData } from '@/lib/types/triage';

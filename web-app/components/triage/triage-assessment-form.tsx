@@ -371,17 +371,21 @@ export function TriageAssessmentForm({
   const mentalStatus = watchedValues.mental_status;
   const selectedCategory = watchedValues.triage_category;
   const autoCalculatedCategory = watchedValues.auto_calculated_category;
+  const chiefComplaintCategory = watchedValues.chief_complaint_category;
 
   // Recalculate suggested category when relevant fields change
   React.useEffect(() => {
-    const newSuggested = calculateSuggestedCategory(watchedValues, encounter);
+    const newSuggested = calculateSuggestedCategory(
+      { mental_status: mentalStatus, chief_complaint_category: chiefComplaintCategory, pain_score: painScore },
+      encounter
+    );
     if (newSuggested !== autoCalculatedCategory) {
       setValue('auto_calculated_category', newSuggested);
     }
   }, [
-    watchedValues.mental_status,
-    watchedValues.chief_complaint_category,
-    watchedValues.pain_score,
+    mentalStatus,
+    chiefComplaintCategory,
+    painScore,
     encounter,
     setValue,
     autoCalculatedCategory,
