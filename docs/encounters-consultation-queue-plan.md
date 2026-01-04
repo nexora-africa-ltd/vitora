@@ -524,9 +524,10 @@ NOT_REQUIRED Encounter:
 
 ---
 
-## Future Enhancements
+## Future Enhancements ( # TODO: Not in current scope)
 
 - [ ] Waiting room display showing called patients
+- [ ] Real-time queue updates via WebSockets
 - [ ] Audio announcement integration
 - [ ] SMS notification to patient
 - [ ] Estimated wait time display
