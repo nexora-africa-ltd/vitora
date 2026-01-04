@@ -176,7 +176,15 @@ class TriageAssessmentSerializer(serializers.ModelSerializer):
 
 
 class TriageAssessmentCreateSerializer(serializers.ModelSerializer):
-    """Serializer for creating triage assessments."""
+    """Serializer for creating triage assessments.
+    
+    Time fields behavior:
+    - arrival_time: Set by frontend (when patient arrived/checked in)
+    - triage_start_time: Auto-set to now when assessment is created
+    - triage_end_time: Auto-set when triage is completed via complete action
+    
+    These time fields are read-only for regular users (only editable by admins).
+    """
 
     # Make triage_category optional - will be auto-calculated if not provided
     triage_category = serializers.ChoiceField(
@@ -184,6 +192,10 @@ class TriageAssessmentCreateSerializer(serializers.ModelSerializer):
         required=False,
         allow_null=True,
     )
+    
+    # Time fields - arrival_time comes from frontend, others are auto-set
+    triage_start_time = serializers.DateTimeField(read_only=True)
+    triage_end_time = serializers.DateTimeField(read_only=True)
 
     class Meta:
         model = TriageAssessment
@@ -239,9 +251,17 @@ class TriageAssessmentCreateSerializer(serializers.ModelSerializer):
         return data
 
     def create(self, validated_data):
-        """Auto-calculate category, generate alerts, add to queue."""
+        """Auto-calculate category, generate alerts, add to queue.
+        
+        Auto-sets triage_start_time to now (when triage assessment begins).
+        """
+        from django.utils import timezone
+        
         # Get the encounter
         encounter = validated_data['encounter']
+        
+        # Auto-set triage_start_time to now
+        validated_data['triage_start_time'] = timezone.now()
 
         # Get vitals from encounter
         vitals = {}
