@@ -182,7 +182,7 @@ export default function TriageQueuePage() {
         });
       }
     },
-    [markWithClinician, refetchQueue, toast]
+    [markWithClinician, refetchQueue]
   );
 
   const handleMarkComplete = useCallback(
@@ -202,7 +202,7 @@ export default function TriageQueuePage() {
         });
       }
     },
-    [markComplete, refetchQueue, toast]
+    [markComplete, refetchQueue]
   );
 
   const handleMarkLWBS = useCallback(
@@ -222,7 +222,7 @@ export default function TriageQueuePage() {
         });
       }
     },
-    [markLWBS, refetchQueue, toast]
+    [markLWBS, refetchQueue]
   );
 
   const handleSelectPatient = useCallback(
