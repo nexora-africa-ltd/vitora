@@ -27,6 +27,9 @@ import {
   SelectItem,
   SelectTrigger,
   SelectValue,
+  SelectGroup,
+  SelectLabel,
+  SelectSeparator,
 } from '@/components/ui/select';
 import {
   Alert,
@@ -51,7 +54,7 @@ import { PatientSelector } from '@/components/encounters/patient-selector';
 import { MedicalHistoryForm } from '@/components/encounters/medical-history-form';
 import { ClinicalNotesForm } from '@/components/encounters/clinical-notes-form';
 import { DiagnosisForm } from '@/components/encounters/diagnosis-form';
-import { ENCOUNTER_TYPES } from '@/lib/utils/constants';
+import { ENCOUNTER_TYPES, ENCOUNTER_TYPE_GROUPS, getEncounterTypesByGroup } from '@/lib/utils/constants';
 import type { 
   EncounterFormData, 
   DiagnosisFormData,
@@ -192,14 +195,7 @@ export default function NewEncounterPage() {
       newErrors.chief_complaint = 'Chief complaint is required';
     }
     
-    if (!formData.encounter_date) {
-      newErrors.encounter_date = 'Encounter date is required';
-    }
-    
-    // Validate encounter date is not in future
-    if (formData.encounter_date && new Date(formData.encounter_date) > new Date()) {
-      newErrors.encounter_date = 'Encounter date cannot be in the future';
-    }
+    // encounter_date is auto-set and non-editable, no validation needed
     
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
@@ -415,35 +411,58 @@ export default function NewEncounterPage() {
                 <Label htmlFor="encounter_type">Encounter Type</Label>
                 <Select
                   value={formData.encounter_type}
-                  onValueChange={(value) => handleFieldChange('encounter_type', value as 'OPD' | 'IPD' | 'EMERGENCY')}
+                  onValueChange={(value) => handleFieldChange('encounter_type', value as EncounterFormData['encounter_type'])}
                 >
                   <SelectTrigger id="encounter_type">
-                    <SelectValue />
+                    <SelectValue placeholder="Select type..." />
                   </SelectTrigger>
                   <SelectContent>
-                    {ENCOUNTER_TYPES.map((type) => (
-                      <SelectItem key={type.value} value={type.value}>
-                        {type.label}
-                      </SelectItem>
-                    ))}
+                    {/* Walk-in / Mandatory triage */}
+                    <SelectGroup>
+                      <SelectLabel>{ENCOUNTER_TYPE_GROUPS['walk-in'].label}</SelectLabel>
+                      {getEncounterTypesByGroup('walk-in').map((type) => (
+                        <SelectItem key={type.value} value={type.value}>
+                          {type.label}
+                        </SelectItem>
+                      ))}
+                    </SelectGroup>
+                    <SelectSeparator />
+                    {/* Scheduled / Optional triage */}
+                    <SelectGroup>
+                      <SelectLabel>{ENCOUNTER_TYPE_GROUPS['scheduled'].label}</SelectLabel>
+                      {getEncounterTypesByGroup('scheduled').map((type) => (
+                        <SelectItem key={type.value} value={type.value}>
+                          {type.label}
+                        </SelectItem>
+                      ))}
+                    </SelectGroup>
+                    <SelectSeparator />
+                    {/* Pre-assessed / No triage */}
+                    <SelectGroup>
+                      <SelectLabel>{ENCOUNTER_TYPE_GROUPS['pre-assessed'].label}</SelectLabel>
+                      {getEncounterTypesByGroup('pre-assessed').map((type) => (
+                        <SelectItem key={type.value} value={type.value}>
+                          {type.label}
+                        </SelectItem>
+                      ))}
+                    </SelectGroup>
                   </SelectContent>
                 </Select>
               </div>
               
               {/* Encounter Date */}
               <div className="space-y-2">
-                <Label htmlFor="encounter_date">Date</Label>
+                <Label htmlFor="encounter_date">
+                  Date <span className="text-muted-foreground text-xs">(today)</span>
+                </Label>
                 <Input
                   id="encounter_date"
                   type="date"
                   value={formData.encounter_date}
-                  onChange={(e) => handleFieldChange('encounter_date', e.target.value)}
-                  max={new Date().toISOString().split('T')[0]}
-                  className={errors.encounter_date ? 'border-destructive' : ''}
+                  disabled
+                  readOnly
+                  className="bg-muted cursor-not-allowed"
                 />
-                {errors.encounter_date && (
-                  <p className="text-sm text-destructive">{errors.encounter_date}</p>
-                )}
               </div>
               
               {/* Status Badge */}
