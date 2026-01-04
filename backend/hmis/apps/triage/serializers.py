@@ -362,10 +362,17 @@ class TriageQueueSerializer(serializers.ModelSerializer):
         if hasattr(patient, 'age'):
             return patient.age
         # Calculate age if not a property
-        from django.utils import timezone
         from datetime import date
+
+        from django.utils import timezone
         today = date.today()
         dob = patient.date_of_birth
+        # Handle if dob is a string
+        if isinstance(dob, str):
+            from django.utils.dateparse import parse_date
+            dob = parse_date(dob)
+        if dob is None:
+            return None
         return today.year - dob.year - ((today.month, today.day) < (dob.month, dob.day))
 
     def get_assigned_area_display(self, obj):
