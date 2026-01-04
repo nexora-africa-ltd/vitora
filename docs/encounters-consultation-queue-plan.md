@@ -362,9 +362,9 @@ def get_consultation_queue():
 - [x] Support filtering by triage_status, consultation_status
 
 #### 2.3 Notification System
-- [ ] Create notification event for "Patient Called"
-- [ ] Add notification API endpoint
-- [ ] Frontend notification subscription (polling initially)
+- [x] Create notification event for "Patient Called"
+- [x] Add notification API endpoint
+- [x] Frontend notification subscription (polling initially)
 
 ### Phase 3: Frontend - Encounters Page
 
