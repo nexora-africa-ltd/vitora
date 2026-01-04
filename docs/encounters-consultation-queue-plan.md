@@ -418,9 +418,12 @@ def get_consultation_queue():
 ### Phase 5: Patient Journey Store Integration
 
 #### 5.1 Store Updates
-- [ ] Add `triage_status` to patient journey state
-- [ ] Add `consultation_status` to patient journey state
-- [ ] Update on: triage completed, bypassed, called, consultation started
+- [x] Add `triage_status` to patient journey state
+- [x] Add `consultation_status` to patient journey state
+- [x] Update on: triage completed, bypassed, called, consultation started
+- [x] Add `bypassTriage` action
+- [x] Add `setTriageNotApplicable` action
+- [x] Add `updateTriageStatus` and `updateConsultationStatus` direct actions
 
 #### 5.2 Stage Mapping
 - [ ] `triage_status=PENDING` → stage: `AWAITING_TRIAGE`
