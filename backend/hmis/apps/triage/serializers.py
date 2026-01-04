@@ -193,6 +193,16 @@ class TriageAssessmentCreateSerializer(serializers.ModelSerializer):
         allow_null=True,
     )
     
+    # Frontend-calculated category for comparison (not stored)
+    # This allows frontend to send what it showed as "suggested" so we can
+    # properly detect if user overrode it vs selected the suggestion
+    auto_calculated_category = serializers.ChoiceField(
+        choices=TriageAssessment.TRIAGE_CATEGORY_CHOICES,
+        required=False,
+        allow_null=True,
+        write_only=True,
+    )
+    
     # Time fields - arrival_time comes from frontend, others are auto-set
     triage_start_time = serializers.DateTimeField(read_only=True)
     triage_end_time = serializers.DateTimeField(read_only=True)
@@ -202,17 +212,41 @@ class TriageAssessmentCreateSerializer(serializers.ModelSerializer):
         fields = [
             'encounter', 'chief_complaint', 'chief_complaint_category', 'pain_score',
             'mental_status', 'mobility', 'arrival_mode', 'allergies_noted',
-            'triage_category', 'category_override_reason',
+            'triage_category', 'auto_calculated_category', 'category_override_reason',
             'assigned_area', 'assigned_clinician',
             'arrival_time', 'triage_start_time', 'triage_end_time',
         ]
 
     def validate(self, data):
-        """Ensure override reason provided if category differs from auto-calculated."""
-        # Calculate what the category should be
-        encounter = data.get('encounter')
-
-        if encounter:
+        """Ensure override reason provided if category differs from auto-calculated.
+        
+        The frontend sends auto_calculated_category to indicate what was shown
+        to the user as the "suggested" category. We use this for comparison
+        to determine if the user overrode the suggestion (requires reason) or
+        accepted it (no reason needed).
+        
+        If frontend doesn't send auto_calculated_category, we fall back to
+        calculating it server-side.
+        """
+        # Get user's selected category
+        user_category = data.get('triage_category')
+        if not user_category:
+            # No category selected, will be auto-calculated in create()
+            return data
+        
+        # Get the auto-calculated category - prefer frontend's value
+        frontend_auto_category = data.get('auto_calculated_category')
+        
+        if frontend_auto_category:
+            # Use frontend's auto-calculated category for comparison
+            # This ensures consistency with what the user saw in the UI
+            auto_category = frontend_auto_category
+        else:
+            # Fall back to server-side calculation
+            encounter = data.get('encounter')
+            if not encounter:
+                return data
+                
             # Get vitals from encounter
             vitals = {}
             if hasattr(encounter, 'spo2') and encounter.spo2:
@@ -239,14 +273,13 @@ class TriageAssessmentCreateSerializer(serializers.ModelSerializer):
                 mobility=data.get('mobility'),
             )
 
-            # Check if user is overriding
-            user_category = data.get('triage_category')
-            if user_category and user_category != auto_category:
-                # Override - require reason
-                if not data.get('category_override_reason'):
-                    raise serializers.ValidationError({
-                        'category_override_reason': 'Override reason required when changing category from auto-calculated value.'
-                    })
+        # Check if user is overriding
+        if user_category != auto_category:
+            # Override - require reason
+            if not data.get('category_override_reason'):
+                raise serializers.ValidationError({
+                    'category_override_reason': 'Override reason required when changing category from auto-calculated value.'
+                })
 
         return data
 
@@ -259,6 +292,10 @@ class TriageAssessmentCreateSerializer(serializers.ModelSerializer):
         
         # Get the encounter
         encounter = validated_data['encounter']
+        
+        # Remove frontend's auto_calculated_category (used only for validation)
+        # We'll calculate and set the backend's value below
+        validated_data.pop('auto_calculated_category', None)
         
         # Auto-set triage_start_time to now
         validated_data['triage_start_time'] = timezone.now()

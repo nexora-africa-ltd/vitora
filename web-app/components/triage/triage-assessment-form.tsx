@@ -416,6 +416,7 @@ export function TriageAssessmentForm({
         mobility: data.mobility,
         allergies_noted: data.allergies_noted,
         triage_category: data.triage_category,
+        auto_calculated_category: data.auto_calculated_category,
         category_override_reason: data.category_override_reason,
         assigned_area: data.assigned_area,
         assigned_clinician: data.assigned_clinician,

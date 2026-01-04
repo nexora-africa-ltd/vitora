@@ -393,6 +393,7 @@ export interface TriageAssessmentCreateData {
   mobility: MobilityStatus;
   allergies_noted?: string;
   triage_category: TriageCategory;
+  auto_calculated_category?: TriageCategory;
   category_override_reason?: string;
   assigned_area: AssignedArea;
   assigned_clinician?: number | null;
