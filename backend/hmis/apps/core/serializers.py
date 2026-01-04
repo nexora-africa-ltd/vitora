@@ -2,9 +2,10 @@
 Serializers for core app.
 """
 
+from django.utils import timezone
 from rest_framework import serializers
 
-from .models import AuditLog, County, Department, Role, StaffProfile, SubCounty, Ward
+from .models import AuditLog, County, Department, Notification, Role, StaffProfile, SubCounty, Ward
 
 
 class AuditLogSerializer(serializers.ModelSerializer):
@@ -199,3 +200,41 @@ class StaffProfileSerializer(serializers.ModelSerializer):
     def get_is_license_valid(self, obj):
         """Check if license is valid."""
         return obj.is_license_valid()
+
+
+# ============================================================================
+# Notification Serializers (Phase 2.3 - Notification System)
+# ============================================================================
+
+
+class NotificationSerializer(serializers.ModelSerializer):
+    """Serializer for Notification model."""
+
+    class Meta:
+        """Meta options for NotificationSerializer."""
+
+        model = Notification
+        fields = [
+            "id",
+            "notification_type",
+            "priority",
+            "title",
+            "message",
+            "related_model",
+            "related_id",
+            "action_url",
+            "is_read",
+            "read_at",
+            "created_at",
+        ]
+        read_only_fields = [
+            "id",
+            "notification_type",
+            "priority",
+            "title",
+            "message",
+            "related_model",
+            "related_id",
+            "action_url",
+            "created_at",
+        ]
