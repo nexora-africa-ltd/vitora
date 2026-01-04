@@ -140,3 +140,61 @@ export interface EncounterListParams {
   encounter_type?: string;
   ordering?: string;
 }
+
+// =============================================================================
+// Consultation Queue Types (Phase 3.1)
+// =============================================================================
+
+export type TriageStatus = 'PENDING' | 'IN_PROGRESS' | 'COMPLETED' | 'BYPASSED' | 'NOT_APPLICABLE';
+export type TriageCategory = 'RED' | 'ORANGE' | 'YELLOW' | 'GREEN' | 'BLUE' | null;
+export type ConsultationStatus = 'WAITING' | 'CALLED' | 'IN_PROGRESS' | 'COMPLETED';
+export type TriageBypassReason = 
+  | 'FOLLOW_UP' 
+  | 'CONSULTANT_REVIEW' 
+  | 'STABLE_CHRONIC' 
+  | 'EMERGENCY_STABILIZED' 
+  | 'CLINICIAN_DISCRETION' 
+  | 'SYSTEM_OVERRIDE'
+  | null;
+
+export interface ConsultationQueueItem {
+  id: number;
+  patient_id: number;
+  patient_name: string;
+  patient_mrn: string;
+  patient_age: number;
+  patient_gender: 'M' | 'F' | 'O';
+  encounter_type: string;
+  encounter_type_display: string;
+  chief_complaint: string;
+  triage_status: TriageStatus;
+  triage_category: TriageCategory;
+  triage_bypass_reason: TriageBypassReason;
+  consultation_status: ConsultationStatus;
+  arrival_time: string;
+  triage_completed_at: string | null;
+  wait_time_minutes: number;
+  called_at: string | null;
+}
+
+export interface ConsultationQueueFilters {
+  consultation_status?: ConsultationStatus;
+  triage_status?: TriageStatus;
+  search?: string;
+}
+
+export interface ConsultationQueueStats {
+  total: number;
+  waiting: number;
+  called: number;
+  by_category: {
+    RED: number;
+    ORANGE: number;
+    YELLOW: number;
+    GREEN: number;
+    BLUE: number;
+    bypassed: number;
+    direct: number;
+  };
+}
+
