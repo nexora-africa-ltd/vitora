@@ -426,11 +426,14 @@ def get_consultation_queue():
 - [x] Add `updateTriageStatus` and `updateConsultationStatus` direct actions
 
 #### 5.2 Stage Mapping
-- [ ] `triage_status=PENDING` → stage: `AWAITING_TRIAGE`
-- [ ] `triage_status=IN_PROGRESS` → stage: `IN_TRIAGE`
-- [ ] `triage_status=COMPLETED` + `consultation_status=WAITING` → stage: `AWAITING_CONSULTATION`
-- [ ] `consultation_status=CALLED` → stage: `AWAITING_CONSULTATION` (sub-state)
-- [ ] `consultation_status=IN_PROGRESS` → stage: `IN_CONSULTATION`
+- [x] `triage_status=PENDING` → stage: `AWAITING_TRIAGE`
+- [x] `triage_status=IN_PROGRESS` → stage: `IN_TRIAGE`
+- [x] `triage_status=COMPLETED` + `consultation_status=WAITING` → stage: `AWAITING_CONSULTATION`
+- [x] `consultation_status=CALLED` → stage: `AWAITING_CONSULTATION` (sub-state)
+- [x] `consultation_status=IN_PROGRESS` → stage: `IN_CONSULTATION`
+- [x] Add `deriveStageFromStatuses()` exported helper function
+- [x] Add `syncFromEncounter()` action for backend sync
+- [x] Add `getStageFromStatuses()` getter action
 
 ---
 

@@ -429,6 +429,26 @@ interface PatientJourneyState {
   updateConsultationStatus: (patientId: number, status: ConsultationStatus) => void;
 
   /**
+   * Sync patient journey state from backend encounter data.
+   * Derives and updates the stage based on triage_status and consultation_status.
+   */
+  syncFromEncounter: (
+    patientId: number,
+    encounterData: {
+      triage_status: TriageStatus;
+      consultation_status: ConsultationStatus;
+      triage_bypass_reason?: TriageBypassReason | null;
+      triage_category?: 'RED' | 'ORANGE' | 'YELLOW' | 'GREEN' | 'BLUE' | null;
+    }
+  ) => void;
+
+  /**
+   * Get derived stage from patient's current triage_status and consultation_status.
+   * Returns null if patient doesn't exist or stage cannot be derived.
+   */
+  getStageFromStatuses: (patientId: number) => PatientStage | null;
+
+  /**
    * Call patient for consultation
    */
   callPatient: (patientId: number) => void;
@@ -711,6 +731,53 @@ interface PatientJourneyState {
 // ============================================================================
 // Helper Functions
 // ============================================================================
+
+/**
+ * Derive patient stage from triage_status and consultation_status.
+ * 
+ * Stage Mapping Rules:
+ * - triage_status=PENDING → AWAITING_TRIAGE
+ * - triage_status=IN_PROGRESS → IN_TRIAGE
+ * - triage_status in (COMPLETED, BYPASSED, NOT_APPLICABLE) + consultation_status=WAITING → AWAITING_CONSULTATION
+ * - consultation_status=CALLED → AWAITING_CONSULTATION (sub-state)
+ * - consultation_status=IN_PROGRESS → IN_CONSULTATION
+ * - consultation_status=COMPLETED → null (stage depends on next action: lab, pharmacy, discharge)
+ * 
+ * @returns PatientStage or null if stage cannot be determined from these statuses alone
+ */
+export function deriveStageFromStatuses(
+  triageStatus: TriageStatus,
+  consultationStatus: ConsultationStatus
+): PatientStage | null {
+  // Consultation status takes precedence for active consultation
+  if (consultationStatus === 'IN_PROGRESS') {
+    return 'IN_CONSULTATION';
+  }
+  
+  // Post-consultation: stage depends on next steps (lab, pharmacy, discharge)
+  if (consultationStatus === 'COMPLETED') {
+    return null;
+  }
+  
+  // CALLED is a sub-state of AWAITING_CONSULTATION
+  if (consultationStatus === 'CALLED') {
+    return 'AWAITING_CONSULTATION';
+  }
+  
+  // Triage status mapping (when consultation_status is WAITING)
+  switch (triageStatus) {
+    case 'PENDING':
+      return 'AWAITING_TRIAGE';
+    case 'IN_PROGRESS':
+      return 'IN_TRIAGE';
+    case 'COMPLETED':
+    case 'BYPASSED':
+    case 'NOT_APPLICABLE':
+      return 'AWAITING_CONSULTATION';
+    default:
+      return null;
+  }
+}
 
 function createEmptyTimestamps(): PatientJourneyTimestamps {
   return {
@@ -1032,6 +1099,45 @@ export const usePatientJourneyStore = create<PatientJourneyState>()(
             },
           };
         });
+      },
+
+      syncFromEncounter: (patientId, encounterData) => {
+        const now = new Date().toISOString();
+        set((state) => {
+          const patient = state.activePatients[patientId];
+          if (!patient) return state;
+
+          // Derive stage from the statuses
+          const derivedStage = deriveStageFromStatuses(
+            encounterData.triage_status,
+            encounterData.consultation_status
+          );
+
+          return {
+            activePatients: {
+              ...state.activePatients,
+              [patientId]: {
+                ...patient,
+                triage_status: encounterData.triage_status,
+                consultation_status: encounterData.consultation_status,
+                triage_bypass_reason: encounterData.triage_bypass_reason ?? patient.triage_bypass_reason,
+                triage_category: encounterData.triage_category ?? patient.triage_category,
+                // Only update stage if it can be derived, otherwise keep current stage
+                ...(derivedStage ? {
+                  previous_stage: patient.stage,
+                  stage: derivedStage,
+                } : {}),
+                last_updated: now,
+              },
+            },
+          };
+        });
+      },
+
+      getStageFromStatuses: (patientId) => {
+        const patient = get().activePatients[patientId];
+        if (!patient) return null;
+        return deriveStageFromStatuses(patient.triage_status, patient.consultation_status);
       },
 
       callPatient: (patientId) => {
