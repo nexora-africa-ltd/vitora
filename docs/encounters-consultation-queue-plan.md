@@ -404,10 +404,10 @@ def get_consultation_queue():
 ### Phase 4: Frontend - Triage Page Updates
 
 #### 4.1 Remove Awaiting Consultation
-- [ ] Remove "Awaiting Consultation" section from `/triage/`
-- [ ] Keep: Waiting Queue (pre-triage patients)
-- [ ] Keep: Triage Assessment actions
-- [ ] Update page description
+- [x] Remove "Awaiting Consultation" section from `/triage/`
+- [x] Keep: Waiting Queue (pre-triage patients)
+- [x] Keep: Triage Assessment actions
+- [x] Update page description
 
 #### 4.2 Pre-Triage Queue Logic
 - [ ] Only show encounters with `triage_status=PENDING` AND `triage_requirement` in (MANDATORY, OPTIONAL)
