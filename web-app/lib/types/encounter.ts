@@ -10,7 +10,7 @@ export interface Encounter {
   patient_mrn?: string;
   
   // Encounter details
-  encounter_type: 'OPD' | 'IPD' | 'EMERGENCY';
+  encounter_type: EncounterType;
   encounter_date: string;
   chief_complaint: string;
   status: 'DRAFT' | 'IN_PROGRESS' | 'COMPLETED' | 'CANCELLED';
@@ -226,8 +226,10 @@ export const TRIAGE_STATUS_DISPLAY: Record<TriageStatus, string> = {
   NOT_APPLICABLE: 'Not Applicable - Triage not required',
 };
 
-// Triage Category (from triage app)
-export type TriageCategory = 'RED' | 'ORANGE' | 'YELLOW' | 'GREEN' | 'BLUE' | null;
+// Triage Category (imported from triage module for consistency)
+// Note: Using union with null for nullable triage category
+import type { TriageCategory as BaseTriageCategory } from './triage';
+export type TriageCategory = BaseTriageCategory | null;
 
 // Triage Bypass Reason - matches TRIAGE_BYPASS_REASON_CHOICES
 export type TriageBypassReason =
