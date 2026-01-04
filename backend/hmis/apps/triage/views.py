@@ -15,13 +15,15 @@ from rest_framework.views import APIView
 from hmis.apps.core.models import AuditLog
 from hmis.apps.core.permissions import get_client_ip
 
-from .models import TriageAssessment, TriageQueue, TriageVitalThreshold
+from .models import TriageAssessment, TriageQueue, TriageVitalThreshold, WaitingQueue
 from .serializers import (
     TriageAssessmentCreateSerializer,
     TriageAssessmentSerializer,
     TriageCategoryCalculationSerializer,
     TriageQueueSerializer,
     TriageVitalThresholdSerializer,
+    WaitingQueueSerializer,
+    WaitingQueueCreateSerializer,
 )
 
 
@@ -149,6 +151,81 @@ class TriageAssessmentViewSet(viewsets.ModelViewSet):
             return Response(result, status=status.HTTP_200_OK)
 
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+
+class WaitingQueueViewSet(viewsets.ModelViewSet):
+    """
+    ViewSet for waiting queue (patients awaiting triage).
+    
+    This is the entry point for patients who have registered/checked in
+    and are waiting to be triaged. Once triaged, they move to the 
+    priority-based TriageQueue.
+    """
+
+    queryset = WaitingQueue.objects.all().select_related('patient', 'encounter', 'checked_in_by')
+    permission_classes = [IsAuthenticated]
+    filter_backends = [DjangoFilterBackend, filters.SearchFilter, filters.OrderingFilter]
+    filterset_fields = ['status', 'priority_hint']
+    search_fields = ['patient__mrn', 'patient__first_name', 'patient__last_name', 'reason_for_visit']
+    ordering_fields = ['check_in_time', 'status']
+    ordering = ['check_in_time']
+
+    def get_serializer_class(self):
+        if self.action == 'create':
+            return WaitingQueueCreateSerializer
+        return WaitingQueueSerializer
+
+    def get_queryset(self):
+        """Return waiting patients by default."""
+        queryset = super().get_queryset()
+        
+        # By default, show only patients waiting for triage
+        show_all = self.request.query_params.get('show_all', 'false').lower() == 'true'
+        if not show_all:
+            queryset = queryset.filter(status__in=["WAITING_TRIAGE", "IN_TRIAGE"])
+        
+        return queryset
+
+    def create(self, request, *args, **kwargs):
+        """Check in a patient (add to waiting queue)."""
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        instance = serializer.save()
+
+        # Log the check-in
+        AuditLog.log(
+            action="patient_check_in",
+            user=request.user,
+            resource_type="WaitingQueue",
+            resource_id=instance.id,
+            ip_address=get_client_ip(request),
+            user_agent=request.META.get("HTTP_USER_AGENT", ""),
+            details={
+                "patient_id": instance.patient_id,
+                "patient_mrn": instance.patient.mrn,
+                "reason": instance.reason_for_visit,
+            },
+        )
+
+        read_serializer = WaitingQueueSerializer(instance)
+        return Response(read_serializer.data, status=status.HTTP_201_CREATED)
+
+    @action(detail=True, methods=['post'], url_path='start-triage')
+    def start_triage(self, request, pk=None):
+        """Mark patient as currently being triaged."""
+        entry = self.get_object()
+        entry.start_triage()
+        serializer = WaitingQueueSerializer(entry)
+        return Response(serializer.data)
+
+    @action(detail=True, methods=['post'], url_path='cancel')
+    def cancel_entry(self, request, pk=None):
+        """Remove patient from waiting queue."""
+        entry = self.get_object()
+        reason = request.data.get('reason', '')
+        entry.cancel(reason)
+        serializer = WaitingQueueSerializer(entry)
+        return Response(serializer.data)
 
 
 class VitalThresholdsViewSet(viewsets.ReadOnlyModelViewSet):

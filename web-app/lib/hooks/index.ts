@@ -107,4 +107,9 @@ export {
   useTriageReports,
   useTriageWaitTimeStats,
   useExportTriageReport,
+  // Waiting queue hooks
+  useWaitingQueue,
+  useCheckInPatient,
+  useStartTriage,
+  useCancelWaitingEntry,
 } from './use-triage';

@@ -13,11 +13,13 @@ from .views import (
     VitalThresholdsViewSet,
     VolumeReportView,
     WaitTimesReportView,
+    WaitingQueueViewSet,
 )
 
 router = DefaultRouter()
 router.register(r'assessments', TriageAssessmentViewSet, basename='triageassessment')
 router.register(r'queue', TriageQueueViewSet, basename='triagequeue')
+router.register(r'waiting', WaitingQueueViewSet, basename='waitingqueue')
 router.register(r'vital-thresholds', VitalThresholdsViewSet, basename='vitalthreshold')
 
 app_name = 'triage'

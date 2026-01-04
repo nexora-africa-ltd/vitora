@@ -31,6 +31,8 @@ export const triageKeys = {
   assessment: (id: number) => [...triageKeys.assessments(), id] as const,
   queue: () => [...triageKeys.all, 'queue'] as const,
   queueFiltered: (filters: QueueFilters) => [...triageKeys.queue(), filters] as const,
+  waitingQueue: () => [...triageKeys.all, 'waiting'] as const,
+  waitingQueueFiltered: (filters: WaitingQueueFilters) => [...triageKeys.waitingQueue(), filters] as const,
   thresholds: () => [...triageKeys.all, 'thresholds'] as const,
   reports: () => [...triageKeys.all, 'reports'] as const,
   reportsFiltered: (filters: ReportFilters) => [...triageKeys.reports(), filters] as const,
@@ -45,6 +47,37 @@ interface QueueFilters {
   area?: AssignedArea;
   category?: TriageCategory;
   status?: string;
+}
+
+interface WaitingQueueFilters {
+  status?: string;
+  priority_hint?: string;
+  show_all?: boolean;
+}
+
+interface WaitingQueueEntry {
+  id: number;
+  patient: number;
+  patient_name: string;
+  patient_mrn: string;
+  patient_age: number | null;
+  patient_gender: string;
+  encounter: number | null;
+  check_in_time: string;
+  reason_for_visit: string;
+  status: 'WAITING_TRIAGE' | 'IN_TRIAGE' | 'TRIAGED' | 'CANCELLED';
+  priority_hint: string;
+  notes: string;
+  wait_time_minutes: number;
+  created_at: string;
+}
+
+interface WaitingQueueCreateData {
+  patient_id: number;
+  reason_for_visit?: string;
+  priority_hint?: string;
+  create_encounter?: boolean;
+  notes?: string;
 }
 
 interface ReportFilters {
@@ -441,6 +474,87 @@ export function useExportTriageReport() {
       window.URL.revokeObjectURL(url);
       
       return response.data;
+    },
+  });
+}
+
+// =============================================================================
+// WAITING QUEUE HOOKS
+// =============================================================================
+
+/**
+ * Fetch waiting queue (patients awaiting triage)
+ */
+export function useWaitingQueue(filters: WaitingQueueFilters = {}) {
+  return useQuery({
+    queryKey: triageKeys.waitingQueueFiltered(filters),
+    queryFn: async () => {
+      const params = new URLSearchParams();
+      if (filters.status) params.append('status', filters.status);
+      if (filters.priority_hint) params.append('priority_hint', filters.priority_hint);
+      if (filters.show_all) params.append('show_all', 'true');
+
+      const response = await apiClient.get<PaginatedResponse<WaitingQueueEntry>>(
+        `/api/triage/waiting/?${params.toString()}`
+      );
+      return response.data;
+    },
+    refetchInterval: 15000, // Auto-refresh every 15 seconds
+  });
+}
+
+/**
+ * Check in a patient (add to waiting queue)
+ */
+export function useCheckInPatient() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (data: WaitingQueueCreateData) => {
+      const response = await apiClient.post<WaitingQueueEntry>('/api/triage/waiting/', data);
+      return response.data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: triageKeys.waitingQueue() });
+    },
+  });
+}
+
+/**
+ * Start triage for a waiting patient
+ */
+export function useStartTriage() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (waitingQueueId: number) => {
+      const response = await apiClient.post<WaitingQueueEntry>(
+        `/api/triage/waiting/${waitingQueueId}/start-triage/`
+      );
+      return response.data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: triageKeys.waitingQueue() });
+    },
+  });
+}
+
+/**
+ * Cancel/remove a patient from waiting queue
+ */
+export function useCancelWaitingEntry() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async ({ id, reason }: { id: number; reason?: string }) => {
+      const response = await apiClient.post<WaitingQueueEntry>(
+        `/api/triage/waiting/${id}/cancel/`,
+        { reason }
+      );
+      return response.data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: triageKeys.waitingQueue() });
     },
   });
 }

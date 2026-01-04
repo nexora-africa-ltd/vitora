@@ -110,6 +110,41 @@ export interface WaitTimeStatsResponse {
 }
 
 // =============================================================================
+// WAITING QUEUE TYPES
+// =============================================================================
+
+export interface WaitingQueueEntry {
+  id: number;
+  patient: number;
+  patient_name: string;
+  patient_mrn: string;
+  patient_age: number | null;
+  patient_gender: string;
+  encounter: number | null;
+  check_in_time: string;
+  reason_for_visit: string;
+  status: 'WAITING_TRIAGE' | 'IN_TRIAGE' | 'TRIAGED' | 'CANCELLED';
+  priority_hint: string;
+  notes: string;
+  wait_time_minutes: number;
+  created_at: string;
+}
+
+export interface WaitingQueueCreateData {
+  patient_id: number;
+  reason_for_visit?: string;
+  priority_hint?: string;
+  create_encounter?: boolean;
+  notes?: string;
+}
+
+export interface WaitingQueueListParams {
+  status?: string;
+  priority_hint?: string;
+  show_all?: boolean;
+}
+
+// =============================================================================
 // API CLIENT
 // =============================================================================
 
@@ -354,6 +389,48 @@ export const triageApi = {
       params: { format, ...params },
       responseType: 'blob',
     });
+    return response.data;
+  },
+
+  // ============ Waiting Queue ============
+
+  /**
+   * Get waiting queue (patients awaiting triage).
+   */
+  async getWaitingQueue(params?: WaitingQueueListParams): Promise<PaginatedResponse<WaitingQueueEntry>> {
+    const response = await apiClient.get<PaginatedResponse<WaitingQueueEntry>>(
+      '/api/triage/waiting/',
+      { params }
+    );
+    return response.data;
+  },
+
+  /**
+   * Check in a patient (add to waiting queue).
+   */
+  async checkInPatient(data: WaitingQueueCreateData): Promise<WaitingQueueEntry> {
+    const response = await apiClient.post<WaitingQueueEntry>('/api/triage/waiting/', data);
+    return response.data;
+  },
+
+  /**
+   * Start triage for a waiting patient.
+   */
+  async startTriage(waitingQueueId: number): Promise<WaitingQueueEntry> {
+    const response = await apiClient.post<WaitingQueueEntry>(
+      `/api/triage/waiting/${waitingQueueId}/start-triage/`
+    );
+    return response.data;
+  },
+
+  /**
+   * Cancel/remove a patient from waiting queue.
+   */
+  async cancelWaitingEntry(waitingQueueId: number, reason?: string): Promise<WaitingQueueEntry> {
+    const response = await apiClient.post<WaitingQueueEntry>(
+      `/api/triage/waiting/${waitingQueueId}/cancel/`,
+      { reason }
+    );
     return response.data;
   },
 };

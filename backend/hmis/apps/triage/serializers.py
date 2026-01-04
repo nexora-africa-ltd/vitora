@@ -4,10 +4,115 @@ Serializers for triage app.
 Sprint 1.5-1.6 Track E: Triage Module MVP
 """
 
+from django.utils import timezone
 from rest_framework import serializers
 
-from .models import TriageAssessment, TriageQueue, TriageVitalThreshold
+from hmis.apps.encounters.models import Encounter
+from hmis.apps.patients.models import Patient
+
+from .models import TriageAssessment, TriageQueue, TriageVitalThreshold, WaitingQueue
 from .services import TriageCategoryCalculator
+
+
+# =============================================================================
+# WAITING QUEUE SERIALIZERS
+# =============================================================================
+
+
+class WaitingQueueSerializer(serializers.ModelSerializer):
+    """Serializer for waiting queue entries (read)."""
+
+    patient_name = serializers.SerializerMethodField()
+    patient_mrn = serializers.CharField(source='patient.mrn', read_only=True)
+    patient_age = serializers.SerializerMethodField()
+    patient_gender = serializers.CharField(source='patient.gender', read_only=True)
+    wait_time_minutes = serializers.SerializerMethodField()
+
+    class Meta:
+        model = WaitingQueue
+        fields = [
+            'id', 'patient', 'patient_name', 'patient_mrn', 'patient_age', 'patient_gender',
+            'encounter', 'check_in_time', 'reason_for_visit', 'status',
+            'priority_hint', 'notes', 'wait_time_minutes', 'created_at',
+        ]
+        read_only_fields = ['created_at']
+
+    def get_patient_name(self, obj):
+        return f"{obj.patient.first_name} {obj.patient.last_name}"
+
+    def get_patient_age(self, obj):
+        if hasattr(obj.patient, 'age'):
+            return obj.patient.age
+        return None
+
+    def get_wait_time_minutes(self, obj):
+        delta = timezone.now() - obj.check_in_time
+        return int(delta.total_seconds() / 60)
+
+
+class WaitingQueueCreateSerializer(serializers.ModelSerializer):
+    """Serializer for checking in a patient (creating waiting queue entry)."""
+
+    patient_id = serializers.IntegerField(write_only=True)
+    reason_for_visit = serializers.CharField(required=False, allow_blank=True, default="")
+    priority_hint = serializers.CharField(required=False, allow_blank=True, default="")
+    create_encounter = serializers.BooleanField(required=False, default=True)
+
+    class Meta:
+        model = WaitingQueue
+        fields = ['patient_id', 'reason_for_visit', 'priority_hint', 'create_encounter', 'notes']
+
+    def validate_patient_id(self, value):
+        try:
+            patient = Patient.objects.get(pk=value)
+        except Patient.DoesNotExist:
+            raise serializers.ValidationError("Patient not found.")
+        
+        # Check if patient is already in waiting queue
+        existing = WaitingQueue.objects.filter(
+            patient=patient,
+            status__in=["WAITING_TRIAGE", "IN_TRIAGE"]
+        ).first()
+        if existing:
+            raise serializers.ValidationError(
+                f"Patient is already in the waiting queue (checked in at {existing.check_in_time.strftime('%H:%M')})."
+            )
+        
+        return value
+
+    def create(self, validated_data):
+        patient_id = validated_data.pop('patient_id')
+        create_encounter = validated_data.pop('create_encounter', True)
+        
+        patient = Patient.objects.get(pk=patient_id)
+        request = self.context.get('request')
+        
+        # Create encounter if requested
+        encounter = None
+        if create_encounter:
+            encounter = Encounter.objects.create(
+                patient=patient,
+                encounter_type='OPD',  # Default to OPD
+                encounter_date=timezone.now().date(),
+                chief_complaint=validated_data.get('reason_for_visit', 'Check-in'),
+                status='DRAFT',
+            )
+        
+        # Create waiting queue entry
+        waiting_entry = WaitingQueue.objects.create(
+            patient=patient,
+            encounter=encounter,
+            check_in_time=timezone.now(),
+            checked_in_by=request.user if request else None,
+            **validated_data
+        )
+        
+        return waiting_entry
+
+
+# =============================================================================
+# TRIAGE VITAL THRESHOLD SERIALIZERS
+# =============================================================================
 
 
 class TriageVitalThresholdSerializer(serializers.ModelSerializer):

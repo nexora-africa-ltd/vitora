@@ -13,6 +13,7 @@ import {
   User,
   FileText,
   Stethoscope,
+  Activity,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
@@ -32,15 +33,21 @@ import {
   AlertDescription,
   AlertTitle,
 } from '@/components/ui/alert';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useToast } from '@/lib/hooks/use-toast';
 import { usePatient } from '@/lib/hooks/use-patients';
 import { 
   useCreateEncounterWithValidation, 
-  getVitalAlerts 
 } from '@/lib/hooks/use-encounter-form';
 import { PatientSelector } from '@/components/encounters/patient-selector';
-import { VitalsForm } from '@/components/encounters/vitals-form';
 import { MedicalHistoryForm } from '@/components/encounters/medical-history-form';
 import { ClinicalNotesForm } from '@/components/encounters/clinical-notes-form';
 import { DiagnosisForm } from '@/components/encounters/diagnosis-form';
@@ -48,24 +55,10 @@ import { ENCOUNTER_TYPES } from '@/lib/utils/constants';
 import type { 
   EncounterFormData, 
   DiagnosisFormData,
-  defaultEncounterFormData 
 } from '@/lib/types/encounter-form';
 import type { Patient } from '@/lib/types/patient';
 
 // Helper functions to check if sections have data
-function hasVitals(data: EncounterFormData): boolean {
-  return !!(
-    data.temperature ||
-    data.pulse ||
-    data.blood_pressure_systolic ||
-    data.blood_pressure_diastolic ||
-    data.respiratory_rate ||
-    data.spo2 ||
-    data.weight ||
-    data.height
-  );
-}
-
 function hasMedicalHistory(data: EncounterFormData): boolean {
   return !!(
     data.allergies?.trim() ||
@@ -132,7 +125,9 @@ export default function NewEncounterPage() {
   const [diagnoses, setDiagnoses] = useState<DiagnosisFormData[]>([]);
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [isDirty, setIsDirty] = useState(false);
-  const [activeTab, setActiveTab] = useState('basics');
+  const [activeTab, setActiveTab] = useState('history');
+  const [showTriageModal, setShowTriageModal] = useState(false);
+  const [createdEncounterId, setCreatedEncounterId] = useState<number | null>(null);
   
   // Fetch patient if ID provided
   const { data: prefetchedPatient } = usePatient(patientIdParam || '');
@@ -147,10 +142,6 @@ export default function NewEncounterPage() {
       setFormData(prev => ({ ...prev, patient: prefetchedPatient.id }));
     }
   }, [prefetchedPatient, selectedPatient]);
-  
-  // Calculate vital alerts
-  const vitalAlerts = getVitalAlerts(formData);
-  const criticalAlerts = vitalAlerts.filter(a => a.severity === 'critical');
   
   // Field change handler
   const handleFieldChange = useCallback(<K extends keyof EncounterFormData>(
@@ -226,7 +217,7 @@ export default function NewEncounterPage() {
     }
     
     try {
-      await createEncounter.mutateAsync({
+      const result = await createEncounter.mutateAsync({
         ...formData,
         status: 'DRAFT',
       });
@@ -235,6 +226,9 @@ export default function NewEncounterPage() {
         title: 'Draft Saved',
         description: 'Encounter has been saved as draft',
       });
+      
+      // Redirect to encounters list
+      router.push('/encounters');
     } catch (error) {
       toast({
         title: 'Error',
@@ -242,9 +236,12 @@ export default function NewEncounterPage() {
         variant: 'destructive',
       });
     }
-  }, [formData, validateForm, createEncounter, toast]);
+  }, [formData, validateForm, createEncounter, toast, router]);
   
-  // Submit encounter
+  // Check if encounter type requires immediate attention (skip triage prompt)
+  const isUrgentEncounterType = formData.encounter_type === 'EMERGENCY' || formData.encounter_type === 'IPD';
+  
+  // Submit encounter - creates encounter and shows triage prompt (unless urgent)
   const handleSubmit = useCallback(async () => {
     if (!validateForm()) {
       toast({
@@ -255,24 +252,26 @@ export default function NewEncounterPage() {
       return;
     }
     
-    // Warn about critical vitals
-    if (criticalAlerts.length > 0) {
-      const confirmed = window.confirm(
-        `This encounter has ${criticalAlerts.length} critical vital sign alert(s). Are you sure you want to submit?`
-      );
-      if (!confirmed) return;
-    }
-    
     try {
-      await createEncounter.mutateAsync({
+      const result = await createEncounter.mutateAsync({
         ...formData,
         status: 'IN_PROGRESS',
       });
       
-      toast({
-        title: 'Encounter Created',
-        description: 'Encounter has been created successfully',
-      });
+      // For EMERGENCY or IPD encounters, skip triage modal and go directly to encounter
+      if (isUrgentEncounterType) {
+        toast({
+          title: 'Encounter Created',
+          description: `${formData.encounter_type} encounter created. Vitals can be recorded later.`,
+        });
+        router.push(`/encounters/${result.id}`);
+        return;
+      }
+      
+      // For OPD encounters, show triage modal
+      setCreatedEncounterId(result.id);
+      setShowTriageModal(true);
+      setIsDirty(false);
     } catch (error) {
       toast({
         title: 'Error',
@@ -280,7 +279,23 @@ export default function NewEncounterPage() {
         variant: 'destructive',
       });
     }
-  }, [formData, validateForm, criticalAlerts, createEncounter, toast]);
+  }, [formData, validateForm, createEncounter, toast, isUrgentEncounterType, router]);
+  
+  // Handle triage modal response
+  const handleGoToTriage = useCallback(() => {
+    if (createdEncounterId && selectedPatient) {
+      router.push(`/triage/new?patientId=${selectedPatient.id}&encounterId=${createdEncounterId}`);
+    }
+  }, [createdEncounterId, selectedPatient, router]);
+  
+  const handleSkipTriage = useCallback(() => {
+    setShowTriageModal(false);
+    toast({
+      title: 'Encounter Created',
+      description: 'Encounter has been created. You can record vitals later in Triage.',
+    });
+    router.push('/encounters');
+  }, [toast, router]);
   
   // Unsaved changes warning
   useEffect(() => {
@@ -297,6 +312,41 @@ export default function NewEncounterPage() {
   
   return (
     <div className="container mx-auto py-6 max-w-5xl">
+      {/* Triage Redirect Modal */}
+      <Dialog open={showTriageModal} onOpenChange={setShowTriageModal}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Activity className="h-5 w-5 text-blue-500" />
+              Record Vital Signs?
+            </DialogTitle>
+            <DialogDescription>
+              The encounter has been created successfully. Vital signs have not been recorded yet.
+              Would you like to record vitals now through Triage?
+            </DialogDescription>
+          </DialogHeader>
+          <div className="py-4">
+            <Alert>
+              <AlertTriangle className="h-4 w-4" />
+              <AlertTitle>Vitals Required</AlertTitle>
+              <AlertDescription>
+                Vital signs are essential for proper patient assessment and triage prioritization.
+                Recording vitals through Triage ensures the patient is properly categorized in the queue.
+              </AlertDescription>
+            </Alert>
+          </div>
+          <DialogFooter className="gap-2 sm:gap-0">
+            <Button variant="outline" onClick={handleSkipTriage}>
+              Skip for Now
+            </Button>
+            <Button onClick={handleGoToTriage}>
+              <Activity className="h-4 w-4 mr-2" />
+              Record Vitals in Triage
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
       {/* Header */}
       <div className="flex items-center justify-between mb-6">
         <div className="flex items-center gap-4">
@@ -320,20 +370,15 @@ export default function NewEncounterPage() {
         )}
       </div>
       
-      {/* Critical alerts banner */}
-      {criticalAlerts.length > 0 && (
-        <Alert variant="destructive" className="mb-6">
-          <AlertTriangle className="h-4 w-4" />
-          <AlertTitle>Critical Vital Sign Alerts</AlertTitle>
-          <AlertDescription>
-            <ul className="list-disc list-inside mt-2">
-              {criticalAlerts.map((alert, i) => (
-                <li key={i}>{alert.message}</li>
-              ))}
-            </ul>
-          </AlertDescription>
-        </Alert>
-      )}
+      {/* Vitals Info Banner */}
+      <Alert className="mb-6">
+        <Activity className="h-4 w-4" />
+        <AlertTitle>Vital Signs Recording</AlertTitle>
+        <AlertDescription>
+          Vital signs are recorded through the <strong>Triage module</strong> to ensure proper patient prioritization.
+          After creating this encounter, you&apos;ll be prompted to record vitals.
+        </AlertDescription>
+      </Alert>
       
       {/* Main Form */}
       <div className="space-y-6">
@@ -427,36 +472,40 @@ export default function NewEncounterPage() {
                 <p className="text-sm text-destructive">{errors.chief_complaint}</p>
               )}
             </div>
+            
+            {/* Urgent Encounter Info - show when Emergency or IPD is selected */}
+            {isUrgentEncounterType && (
+              <Alert className="bg-amber-50 dark:bg-amber-950/20 border-amber-200 dark:border-amber-800">
+                <AlertTriangle className="h-4 w-4 text-amber-600" />
+                <AlertTitle className="text-amber-800 dark:text-amber-200">
+                  {formData.encounter_type === 'EMERGENCY' ? 'Emergency Encounter' : 'Inpatient Encounter'}
+                </AlertTitle>
+                <AlertDescription className="text-amber-700 dark:text-amber-300">
+                  Triage will be skipped for this encounter type. Vital signs can be recorded later 
+                  once the patient is stabilized. The patient will proceed directly to consultation.
+                </AlertDescription>
+              </Alert>
+            )}
           </CardContent>
         </Card>
         
-        {/* Tabbed Sections - Logical clinical workflow */}
+        {/* Tabbed Sections - Clinical workflow (no vitals - handled in triage) */}
         <Tabs value={activeTab} onValueChange={setActiveTab}>
-          <TabsList className="grid w-full grid-cols-4">
-            <TabsTrigger value="vitals" className="gap-1">
-              1. Vitals
-              {criticalAlerts.length > 0 ? (
-                <Badge variant="destructive" className="h-5 w-5 p-0 flex items-center justify-center ml-1">
-                  {criticalAlerts.length}
-                </Badge>
-              ) : !hasVitals(formData) ? (
-                <span className="ml-1 text-muted-foreground">+</span>
-              ) : null}
-            </TabsTrigger>
+          <TabsList className="grid w-full grid-cols-3">
             <TabsTrigger value="history" className="gap-1">
-              2. History
+              1. History
               {!hasMedicalHistory(formData) && (
                 <span className="ml-1 text-muted-foreground">+</span>
               )}
             </TabsTrigger>
             <TabsTrigger value="notes" className="gap-1">
-              3. Clinical Notes
+              2. Clinical Notes
               {!hasClinicalNotes(formData) && (
                 <span className="ml-1 text-muted-foreground">+</span>
               )}
             </TabsTrigger>
             <TabsTrigger value="diagnosis" className="gap-1">
-              4. Diagnosis
+              3. Diagnosis
               {diagnoses.length === 0 ? (
                 <span className="ml-1 text-muted-foreground">+</span>
               ) : (
@@ -465,21 +514,10 @@ export default function NewEncounterPage() {
             </TabsTrigger>
           </TabsList>
           
-          <TabsContent value="vitals" className="mt-4">
-            <VitalsForm
-              data={formData}
-              onChange={(field, value) => handleFieldChange(field, value)}
-              errors={errors}
-              patient={selectedPatient}
-              onNext={() => setActiveTab('history')}
-            />
-          </TabsContent>
-          
           <TabsContent value="history" className="mt-4">
             <MedicalHistoryForm
               data={formData}
               onChange={(field, value) => handleFieldChange(field, value)}
-              onPrevious={() => setActiveTab('vitals')}
               onNext={() => setActiveTab('notes')}
             />
           </TabsContent>
