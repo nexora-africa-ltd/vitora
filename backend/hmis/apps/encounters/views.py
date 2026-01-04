@@ -507,10 +507,13 @@ class EncounterViewSet(viewsets.ModelViewSet):
 
         Sets consultation_status to CALLED and records the call time.
         Only allowed if encounter can enter consultation.
+        Creates a notification for the patient called event.
 
         POST /api/encounters/{id}/call/
         """
         from django.utils import timezone
+
+        from .services import create_patient_called_notification
 
         encounter = self.get_object()
 
@@ -538,6 +541,9 @@ class EncounterViewSet(viewsets.ModelViewSet):
         encounter.consultation_status = "CALLED"
         encounter.called_at = timezone.now()
         encounter.save()
+
+        # Create notification for patient called event
+        create_patient_called_notification(encounter, request.user)
 
         serializer = self.get_serializer(encounter)
         return Response(serializer.data)

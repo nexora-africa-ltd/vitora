@@ -293,3 +293,108 @@ class StaffProfileViewSet(viewsets.ModelViewSet):
         instance.employment_status = "TERMINATED"
         instance.date_left = date.today()
         instance.save()
+
+
+# ============================================================================
+# Notification ViewSet (Phase 2.3 - Notification System)
+# ============================================================================
+
+
+class NotificationViewSet(viewsets.ModelViewSet):
+    """
+    ViewSet for managing user notifications.
+
+    Provides endpoints for:
+    - Listing notifications (filtered to current user)
+    - Retrieving notification details
+    - Marking notifications as read
+    - Getting unread count
+    - Polling support with timestamp filtering
+    """
+
+    from .models import Notification
+    from .serializers import NotificationSerializer
+
+    serializer_class = NotificationSerializer
+    permission_classes = [IsAuthenticated]
+    filter_backends = [filters.OrderingFilter]
+    ordering_fields = ["created_at", "priority"]
+    ordering = ["-created_at"]
+    http_method_names = ["get", "post", "head", "options"]  # No PUT/PATCH/DELETE
+
+    def get_queryset(self):
+        """Filter notifications to current user only."""
+        from django.utils import timezone
+        from django.utils.dateparse import parse_datetime
+
+        from .models import Notification
+
+        queryset = Notification.objects.filter(user=self.request.user)
+
+        # Filter by notification_type
+        notification_type = self.request.query_params.get("notification_type")
+        if notification_type:
+            queryset = queryset.filter(notification_type=notification_type)
+
+        # Filter by is_read
+        is_read = self.request.query_params.get("is_read")
+        if is_read is not None:
+            is_read_bool = is_read.lower() in ("true", "1", "yes")
+            queryset = queryset.filter(is_read=is_read_bool)
+
+        # Filter by created_after (for polling)
+        created_after = self.request.query_params.get("created_after")
+        if created_after:
+            try:
+                after_dt = parse_datetime(created_after)
+                if after_dt:
+                    queryset = queryset.filter(created_at__gt=after_dt)
+            except (ValueError, TypeError):
+                pass  # Ignore invalid datetime
+
+        return queryset
+
+    def list(self, request, *args, **kwargs):
+        """List notifications with server timestamp for polling."""
+        from django.utils import timezone
+
+        response = super().list(request, *args, **kwargs)
+
+        # Add server timestamp for polling support
+        if isinstance(response.data, dict):
+            response.data["server_time"] = timezone.now().isoformat()
+
+        return response
+
+    @action(detail=True, methods=["post"])
+    def mark_read(self, request, pk=None):
+        """Mark a single notification as read."""
+        notification = self.get_object()
+        notification.mark_as_read()
+        return Response({"status": "marked as read"})
+
+    @action(detail=False, methods=["post"])
+    def mark_all_read(self, request):
+        """Mark all unread notifications as read."""
+        from django.utils import timezone
+
+        from .models import Notification
+
+        count = Notification.objects.filter(
+            user=request.user,
+            is_read=False,
+        ).update(is_read=True, read_at=timezone.now())
+
+        return Response({"marked_count": count})
+
+    @action(detail=False, methods=["get"])
+    def unread_count(self, request):
+        """Get count of unread notifications."""
+        from .models import Notification
+
+        count = Notification.objects.filter(
+            user=request.user,
+            is_read=False,
+        ).count()
+
+        return Response({"unread_count": count})
