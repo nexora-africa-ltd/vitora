@@ -4,6 +4,8 @@ Serializers for triage app.
 Sprint 1.5-1.6 Track E: Triage Module MVP
 """
 
+from decimal import Decimal
+
 from django.utils import timezone
 from rest_framework import serializers
 
@@ -140,6 +142,7 @@ class TriageAssessmentSerializer(serializers.ModelSerializer):
             'id', 'encounter', 'patient_name', 'patient_mrn', 'patient_age',
             'chief_complaint', 'chief_complaint_category', 'pain_score',
             'mental_status', 'mobility', 'arrival_mode', 'allergies_noted',
+            'spo2', 'heart_rate', 'systolic_bp', 'diastolic_bp', 'temperature', 'respiratory_rate',
             'triage_category', 'auto_calculated_category', 'category_override_reason',
             'assigned_area', 'assigned_clinician',
             'arrival_time', 'triage_start_time', 'triage_end_time', 'seen_by_clinician_time',
@@ -149,19 +152,36 @@ class TriageAssessmentSerializer(serializers.ModelSerializer):
         read_only_fields = ['auto_calculated_category', 'alerts', 'triaged_by']
 
     def get_vitals(self, obj):
-        """Get vitals from associated encounter."""
-        encounter = obj.encounter
+        """Get vitals captured at triage (fallback to encounter vitals if needed)."""
         vitals = {}
 
-        if hasattr(encounter, 'spo2') and encounter.spo2:
+        if obj.spo2 is not None:
+            vitals['spo2'] = str(obj.spo2)
+        if obj.heart_rate is not None:
+            vitals['heart_rate'] = obj.heart_rate
+        if obj.systolic_bp is not None and obj.diastolic_bp is not None:
+            vitals['blood_pressure'] = f"{obj.systolic_bp}/{obj.diastolic_bp}"
+        if obj.temperature is not None:
+            vitals['temperature'] = str(obj.temperature)
+        if obj.respiratory_rate is not None:
+            vitals['respiratory_rate'] = obj.respiratory_rate
+
+        if vitals:
+            return vitals
+
+        encounter = obj.encounter
+        if not encounter:
+            return {}
+
+        if hasattr(encounter, 'spo2') and encounter.spo2 is not None:
             vitals['spo2'] = str(encounter.spo2)
-        if hasattr(encounter, 'pulse') and encounter.pulse:
+        if hasattr(encounter, 'pulse') and encounter.pulse is not None:
             vitals['heart_rate'] = encounter.pulse
         if hasattr(encounter, 'blood_pressure') and encounter.blood_pressure:
             vitals['blood_pressure'] = encounter.blood_pressure
-        if hasattr(encounter, 'temperature') and encounter.temperature:
+        if hasattr(encounter, 'temperature') and encounter.temperature is not None:
             vitals['temperature'] = str(encounter.temperature)
-        if hasattr(encounter, 'respiratory_rate') and encounter.respiratory_rate:
+        if hasattr(encounter, 'respiratory_rate') and encounter.respiratory_rate is not None:
             vitals['respiratory_rate'] = encounter.respiratory_rate
 
         return vitals
@@ -207,15 +227,80 @@ class TriageAssessmentCreateSerializer(serializers.ModelSerializer):
     triage_start_time = serializers.DateTimeField(read_only=True)
     triage_end_time = serializers.DateTimeField(read_only=True)
 
+    # Vitals (all optional but validated when provided)
+    spo2 = serializers.DecimalField(
+        max_digits=5,
+        decimal_places=2,
+        required=False,
+        allow_null=True,
+        min_value=Decimal('0'),
+        max_value=Decimal('100'),
+    )
+    heart_rate = serializers.IntegerField(required=False, allow_null=True, min_value=0, max_value=300)
+    systolic_bp = serializers.IntegerField(required=False, allow_null=True, min_value=0, max_value=300)
+    diastolic_bp = serializers.IntegerField(required=False, allow_null=True, min_value=0, max_value=200)
+    temperature = serializers.DecimalField(
+        max_digits=4,
+        decimal_places=1,
+        required=False,
+        allow_null=True,
+        min_value=Decimal('30'),
+        max_value=Decimal('45'),
+    )
+    respiratory_rate = serializers.IntegerField(required=False, allow_null=True, min_value=0, max_value=60)
+
     class Meta:
         model = TriageAssessment
         fields = [
             'encounter', 'chief_complaint', 'chief_complaint_category', 'pain_score',
             'mental_status', 'mobility', 'arrival_mode', 'allergies_noted',
+            'spo2', 'heart_rate', 'systolic_bp', 'diastolic_bp', 'temperature', 'respiratory_rate',
             'triage_category', 'auto_calculated_category', 'category_override_reason',
             'assigned_area', 'assigned_clinician',
             'arrival_time', 'triage_start_time', 'triage_end_time',
         ]
+
+    def _extract_vitals(self, data, encounter: Encounter | None) -> dict:
+        """Extract vitals from incoming triage payload; fallback to encounter vitals."""
+        vitals = {}
+
+        if data.get('spo2') is not None:
+            vitals['spo2'] = data.get('spo2')
+        if data.get('heart_rate') is not None:
+            vitals['heart_rate'] = data.get('heart_rate')
+        if data.get('systolic_bp') is not None:
+            vitals['systolic_bp'] = data.get('systolic_bp')
+        if data.get('diastolic_bp') is not None:
+            vitals['diastolic_bp'] = data.get('diastolic_bp')
+        if data.get('temperature') is not None:
+            vitals['temperature'] = data.get('temperature')
+        if data.get('respiratory_rate') is not None:
+            vitals['respiratory_rate'] = data.get('respiratory_rate')
+
+        if vitals:
+            return vitals
+
+        if not encounter:
+            return {}
+
+        if hasattr(encounter, 'spo2') and encounter.spo2 is not None:
+            vitals['spo2'] = encounter.spo2
+        if hasattr(encounter, 'pulse') and encounter.pulse is not None:
+            vitals['heart_rate'] = encounter.pulse
+        if hasattr(encounter, 'blood_pressure') and encounter.blood_pressure:
+            bp_parts = encounter.blood_pressure.split('/')
+            if len(bp_parts) == 2:
+                try:
+                    vitals['systolic_bp'] = int(bp_parts[0])
+                    vitals['diastolic_bp'] = int(bp_parts[1])
+                except ValueError:
+                    pass
+        if hasattr(encounter, 'temperature') and encounter.temperature is not None:
+            vitals['temperature'] = encounter.temperature
+        if hasattr(encounter, 'respiratory_rate') and encounter.respiratory_rate is not None:
+            vitals['respiratory_rate'] = encounter.respiratory_rate
+
+        return vitals
 
     def validate(self, data):
         """Ensure override reason provided if category differs from auto-calculated.
@@ -246,22 +331,8 @@ class TriageAssessmentCreateSerializer(serializers.ModelSerializer):
             encounter = data.get('encounter')
             if not encounter:
                 return data
-                
-            # Get vitals from encounter
-            vitals = {}
-            if hasattr(encounter, 'spo2') and encounter.spo2:
-                vitals['spo2'] = encounter.spo2
-            if hasattr(encounter, 'pulse') and encounter.pulse:
-                vitals['heart_rate'] = encounter.pulse
-            if hasattr(encounter, 'blood_pressure') and encounter.blood_pressure:
-                # Parse blood pressure
-                bp_parts = encounter.blood_pressure.split('/')
-                if len(bp_parts) == 2:
-                    try:
-                        vitals['systolic_bp'] = int(bp_parts[0])
-                        vitals['diastolic_bp'] = int(bp_parts[1])
-                    except ValueError:
-                        pass
+
+            vitals = self._extract_vitals(data, encounter)
 
             # Calculate suggested category
             calculator = TriageCategoryCalculator()
@@ -300,20 +371,7 @@ class TriageAssessmentCreateSerializer(serializers.ModelSerializer):
         # Auto-set triage_start_time to now
         validated_data['triage_start_time'] = timezone.now()
 
-        # Get vitals from encounter
-        vitals = {}
-        if hasattr(encounter, 'spo2') and encounter.spo2:
-            vitals['spo2'] = encounter.spo2
-        if hasattr(encounter, 'pulse') and encounter.pulse:
-            vitals['heart_rate'] = encounter.pulse
-        if hasattr(encounter, 'blood_pressure') and encounter.blood_pressure:
-            bp_parts = encounter.blood_pressure.split('/')
-            if len(bp_parts) == 2:
-                try:
-                    vitals['systolic_bp'] = int(bp_parts[0])
-                    vitals['diastolic_bp'] = int(bp_parts[1])
-                except ValueError:
-                    pass
+        vitals = self._extract_vitals(validated_data, encounter)
 
         # Calculate category and alerts
         calculator = TriageCategoryCalculator()

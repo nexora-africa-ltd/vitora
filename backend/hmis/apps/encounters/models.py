@@ -253,6 +253,33 @@ class Encounter(models.Model):
     respiratory_rate = models.IntegerField(
         null=True, blank=True, help_text="Respiratory rate (breaths per minute)"
     )
+
+    # Vitals metadata (source tracking)
+    VITALS_SOURCE_CHOICES = [
+        ("TRIAGE", "Triage"),
+        ("CONSULTATION", "Consultation"),
+        ("NURSING", "Nursing"),
+    ]
+    vitals_source = models.CharField(
+        max_length=20,
+        choices=VITALS_SOURCE_CHOICES,
+        null=True,
+        blank=True,
+        help_text="Where the vitals were recorded (e.g., triage)",
+    )
+    vitals_recorded_by = models.ForeignKey(
+        "auth.User",
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="encounter_vitals_recorded",
+        help_text="User who recorded the vitals",
+    )
+    vitals_recorded_at = models.DateTimeField(
+        null=True,
+        blank=True,
+        help_text="Timestamp when vitals were recorded",
+    )
     weight = models.DecimalField(
         max_digits=5,
         decimal_places=1,

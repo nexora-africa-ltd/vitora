@@ -110,79 +110,79 @@ Add vital signs input fields to the triage assessment form, use them for KETA ca
 ### Phase 1: Backend - Vitals in TriageAssessment
 
 #### 1.1 Add Vitals Fields to TriageAssessment Model
-- [ ] Add `spo2` field (DecimalField, nullable)
-- [ ] Add `heart_rate` field (IntegerField, nullable) 
-- [ ] Add `systolic_bp` field (IntegerField, nullable)
-- [ ] Add `diastolic_bp` field (IntegerField, nullable)
-- [ ] Add `temperature` field (DecimalField, nullable)
-- [ ] Add `respiratory_rate` field (IntegerField, nullable)
-- [ ] Create migration
+- [x] Add `spo2` field (DecimalField, nullable)
+- [x] Add `heart_rate` field (IntegerField, nullable) 
+- [x] Add `systolic_bp` field (IntegerField, nullable)
+- [x] Add `diastolic_bp` field (IntegerField, nullable)
+- [x] Add `temperature` field (DecimalField, nullable)
+- [x] Add `respiratory_rate` field (IntegerField, nullable)
+- [x] Create migration
 
 **File**: `backend/hmis/apps/triage/models.py`
 
 **Acceptance Criteria**:
-- [ ] All vital fields are optional (nullable) - some facilities may not have all equipment
-- [ ] Field constraints match clinical ranges (e.g., SpO2 0-100, HR 0-300)
-- [ ] Migration applies without errors
+- [x] All vital fields are optional (nullable) - some facilities may not have all equipment
+- [x] Field constraints match clinical ranges (e.g., SpO2 0-100, HR 0-300)
+- [x] Migration applies without errors
 
 ---
 
 #### 1.2 Update TriageAssessment Serializer
-- [ ] Add vitals fields to `TriageAssessmentSerializer`
-- [ ] Add vitals validation (reasonable ranges)
-- [ ] Include vitals in create/update operations
+- [x] Add vitals fields to `TriageAssessmentSerializer`
+- [x] Add vitals validation (reasonable ranges)
+- [x] Include vitals in create/update operations
 
 **File**: `backend/hmis/apps/triage/serializers.py`
 
 **Acceptance Criteria**:
-- [ ] Serializer accepts vitals on create
-- [ ] Invalid vital ranges return 400 error with clear message
-- [ ] Vitals are included in serialized response
+- [x] Serializer accepts vitals on create
+- [x] Invalid vital ranges return 400 error with clear message
+- [x] Vitals are included in serialized response
 
 ---
 
 #### 1.3 Auto-Copy Vitals to Encounter (Signal)
-- [ ] Create/update signal to copy vitals from TriageAssessment to Encounter
-- [ ] Only copy if Encounter vitals are empty (don't overwrite)
-- [ ] Log audit entry for vitals source
+- [x] Create/update signal to copy vitals from TriageAssessment to Encounter
+- [x] Only copy if Encounter vitals are empty (don't overwrite)
+- [x] Log audit entry for vitals source
 
 **File**: `backend/hmis/apps/triage/signals.py`
 
 **Acceptance Criteria**:
-- [ ] On TriageAssessment create, vitals copy to linked Encounter
-- [ ] Existing Encounter vitals are NOT overwritten
-- [ ] Works correctly when some vitals are null
+- [x] On TriageAssessment create, vitals copy to linked Encounter
+- [x] Existing Encounter vitals are NOT overwritten
+- [x] Works correctly when some vitals are null
 
 ---
 
 #### 1.4 Add Vitals Source Tracking to Encounter
-- [ ] Add `vitals_source` field (choices: TRIAGE, CONSULTATION, NURSING)
-- [ ] Add `vitals_recorded_by` FK to User
-- [ ] Add `vitals_recorded_at` DateTimeField
-- [ ] Create migration
+- [x] Add `vitals_source` field (choices: TRIAGE, CONSULTATION, NURSING)
+- [x] Add `vitals_recorded_by` FK to User
+- [x] Add `vitals_recorded_at` DateTimeField
+- [x] Create migration
 
 **File**: `backend/hmis/apps/encounters/models.py`
 
 **Acceptance Criteria**:
-- [ ] Encounter shows who recorded vitals and when
-- [ ] Source is set automatically based on how vitals were entered
-- [ ] Fields are nullable for backwards compatibility
+- [x] Encounter shows who recorded vitals and when
+- [x] Source is set automatically based on how vitals were entered
+- [x] Fields are nullable for backwards compatibility
 
 ---
 
 #### 1.5 Backend Tests
-- [ ] Test TriageAssessment with vitals creates successfully
-- [ ] Test vitals auto-copy to Encounter
-- [ ] Test calculate-category endpoint with vitals returns correct category
-- [ ] Test RED category for SpO2 < 90%
-- [ ] Test ORANGE category for SpO2 < 95% + breathing complaint
-- [ ] Test vitals validation rejects out-of-range values
+- [x] Test TriageAssessment with vitals creates successfully
+- [x] Test vitals auto-copy to Encounter
+- [x] Test calculate-category endpoint with vitals returns correct category
+- [x] Test RED category for SpO2 < 90%
+- [x] Test ORANGE category for SpO2 < 95% + breathing complaint
+- [x] Test vitals validation rejects out-of-range values
 
 **File**: `backend/tests/test_triage_vitals.py`
 
 **Acceptance Criteria**:
-- [ ] All tests pass
-- [ ] Coverage for critical paths ≥ 80%
+- [x] All tests pass
+- [x] Coverage for critical paths ≥ 80%
 
 ---
 
@@ -457,12 +457,12 @@ Add vital signs input fields to the triage assessment form, use them for KETA ca
 ## Checklist Summary
 
 ### Backend
-- [ ] Add vitals fields to TriageAssessment model
-- [ ] Create migration
-- [ ] Update serializer with vitals + validation
-- [ ] Add signal to copy vitals to Encounter
-- [ ] Add vitals_source tracking to Encounter
-- [ ] Write backend tests (6 test cases)
+- [x] Add vitals fields to TriageAssessment model
+- [x] Create migration
+- [x] Update serializer with vitals + validation
+- [x] Add signal to copy vitals to Encounter
+- [x] Add vitals_source tracking to Encounter
+- [x] Write backend tests (6 test cases)
 
 ### Frontend
 - [ ] Update TypeScript types for vitals

@@ -348,6 +348,49 @@ class TriageAssessment(models.Model):
         help_text="Allergies noted at triage (snapshot from patient record)",
     )
 
+    # Vital Signs (captured at triage)
+    # All vitals are optional (some facilities may not have all equipment)
+    spo2 = models.DecimalField(
+        max_digits=5,
+        decimal_places=2,
+        null=True,
+        blank=True,
+        validators=[MinValueValidator(0), MaxValueValidator(100)],
+        help_text="Oxygen saturation percentage (SpO2)",
+    )
+    heart_rate = models.IntegerField(
+        null=True,
+        blank=True,
+        validators=[MinValueValidator(0), MaxValueValidator(300)],
+        help_text="Heart rate (beats per minute)",
+    )
+    systolic_bp = models.IntegerField(
+        null=True,
+        blank=True,
+        validators=[MinValueValidator(0), MaxValueValidator(300)],
+        help_text="Systolic blood pressure (mmHg)",
+    )
+    diastolic_bp = models.IntegerField(
+        null=True,
+        blank=True,
+        validators=[MinValueValidator(0), MaxValueValidator(200)],
+        help_text="Diastolic blood pressure (mmHg)",
+    )
+    temperature = models.DecimalField(
+        max_digits=4,
+        decimal_places=1,
+        null=True,
+        blank=True,
+        validators=[MinValueValidator(30), MaxValueValidator(45)],
+        help_text="Body temperature in Celsius (°C)",
+    )
+    respiratory_rate = models.IntegerField(
+        null=True,
+        blank=True,
+        validators=[MinValueValidator(0), MaxValueValidator(60)],
+        help_text="Respiratory rate (breaths per minute)",
+    )
+
     # Triage Decision
     triage_category = models.CharField(
         max_length=10, choices=TRIAGE_CATEGORY_CHOICES, help_text="Final triage category"
