@@ -132,11 +132,13 @@ export function PatientForm({ onSubmit, onCancel, isLoading, defaultValues, isEd
     setIsSubmitting(true);
     
     try {
+      const consentGiven = values.consent_given && values.consent_data_processing;
       const data: PatientCreateData = {
         ...values,
         date_of_birth: format(values.date_of_birth, 'yyyy-MM-dd'),
-        // Combine consent fields
-        consent_given: values.consent_given && values.consent_data_processing,
+        // Combine consent fields and set consent_date if consent is given
+        consent_given: consentGiven,
+        consent_date: consentGiven ? new Date().toISOString() : undefined,
       };
       await onSubmit(data);
     } finally {
