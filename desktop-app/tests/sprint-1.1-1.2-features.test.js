@@ -313,35 +313,35 @@ describe('getVitalStatus - Respiratory Rate', () => {
 // ====================
 describe('getVitalStatus - Blood Pressure', () => {
   test('should return normal for systolic BP 115 mmHg', () => {
-    expect(vitals.getVitalStatus('bp_systolic', 115)).toBe('normal');
+    expect(vitals.getVitalStatus('systolic_bp', 115)).toBe('normal');
   });
 
   test('should return normal for diastolic BP 75 mmHg', () => {
-    expect(vitals.getVitalStatus('bp_diastolic', 75)).toBe('normal');
+    expect(vitals.getVitalStatus('diastolic_bp', 75)).toBe('normal');
   });
 
   test('should return warning for systolic BP 135 mmHg (prehypertension)', () => {
-    expect(vitals.getVitalStatus('bp_systolic', 135)).toBe('warning');
+    expect(vitals.getVitalStatus('systolic_bp', 135)).toBe('warning');
   });
 
   test('should return warning for diastolic BP 85 mmHg', () => {
-    expect(vitals.getVitalStatus('bp_diastolic', 85)).toBe('warning');
+    expect(vitals.getVitalStatus('diastolic_bp', 85)).toBe('warning');
   });
 
   test('should return critical for systolic BP 85 mmHg (hypotension)', () => {
-    expect(vitals.getVitalStatus('bp_systolic', 85)).toBe('critical');
+    expect(vitals.getVitalStatus('systolic_bp', 85)).toBe('critical');
   });
 
   test('should return critical for systolic BP 145 mmHg (hypertension)', () => {
-    expect(vitals.getVitalStatus('bp_systolic', 145)).toBe('critical');
+    expect(vitals.getVitalStatus('systolic_bp', 145)).toBe('critical');
   });
 
   test('should return critical for diastolic BP 55 mmHg (hypotension)', () => {
-    expect(vitals.getVitalStatus('bp_diastolic', 55)).toBe('critical');
+    expect(vitals.getVitalStatus('diastolic_bp', 55)).toBe('critical');
   });
 
   test('should return critical for diastolic BP 95 mmHg (hypertension)', () => {
-    expect(vitals.getVitalStatus('bp_diastolic', 95)).toBe('critical');
+    expect(vitals.getVitalStatus('diastolic_bp', 95)).toBe('critical');
   });
 });
 
@@ -533,8 +533,8 @@ describe('getCriticalVitalsList', () => {
     };
     const criticals = vitals.getCriticalVitalsList(vitalValues);
     expect(criticals.length).toBe(2);
-    expect(criticals.map((c) => c.name)).toContain('bp_systolic');
-    expect(criticals.map((c) => c.name)).toContain('bp_diastolic');
+    expect(criticals.map((c) => c.name)).toContain('systolic_bp');
+    expect(criticals.map((c) => c.name)).toContain('diastolic_bp');
   });
 });
 

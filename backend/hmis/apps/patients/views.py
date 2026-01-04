@@ -335,7 +335,7 @@ class PatientViewSet(viewsets.ModelViewSet):
             if encounter.blood_pressure:
                 summary["blood_pressure"] = {
                     "value": encounter.blood_pressure,
-                    "status": encounter.get_vital_status("bp_systolic"),
+                    "status": encounter.get_vital_status("systolic_bp"),
                     "unit": "mmHg",
                 }
             if encounter.respiratory_rate is not None:

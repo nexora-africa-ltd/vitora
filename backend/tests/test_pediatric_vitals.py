@@ -364,7 +364,7 @@ class TestPediatricBloodPressure:
             chief_complaint="Well baby visit",
             blood_pressure="90/55",
         )
-        assert encounter.get_vital_status("bp_systolic") == "normal"
+        assert encounter.get_vital_status("systolic_bp") == "normal"
 
     def test_toddler_bp_95_55_is_normal(self, toddler_patient):
         """Toddler BP 95/55 should be normal."""
@@ -376,7 +376,7 @@ class TestPediatricBloodPressure:
             chief_complaint="Wellness check",
             blood_pressure="95/55",
         )
-        assert encounter.get_vital_status("bp_systolic") == "normal"
+        assert encounter.get_vital_status("systolic_bp") == "normal"
 
     def test_school_age_bp_110_70_is_normal(self, school_age_patient):
         """School-age BP 110/70 should be normal."""
@@ -388,7 +388,7 @@ class TestPediatricBloodPressure:
             chief_complaint="School physical",
             blood_pressure="110/70",
         )
-        assert encounter.get_vital_status("bp_systolic") == "normal"
+        assert encounter.get_vital_status("systolic_bp") == "normal"
 
     def test_infant_bp_130_90_is_critical(self, infant_patient):
         """Infant BP 130/90 should be critical (hypertensive for infant)."""
@@ -400,7 +400,7 @@ class TestPediatricBloodPressure:
             chief_complaint="Irritable infant",
             blood_pressure="130/90",
         )
-        assert encounter.get_vital_status("bp_systolic") == "critical"
+        assert encounter.get_vital_status("systolic_bp") == "critical"
 
     def test_toddler_bp_60_40_is_critical(self, toddler_patient):
         """Toddler BP 60/40 should be critical (hypotensive)."""
@@ -412,7 +412,7 @@ class TestPediatricBloodPressure:
             chief_complaint="Lethargic child",
             blood_pressure="60/40",
         )
-        assert encounter.get_vital_status("bp_systolic") == "critical"
+        assert encounter.get_vital_status("systolic_bp") == "critical"
 
 
 # ============================================================================
@@ -563,7 +563,7 @@ class TestPediatricVitalStatusIntegration:
         statuses = encounter.get_all_vital_statuses()
         assert statuses["pulse"]["status"] == "normal"
         assert statuses["respiratory_rate"]["status"] == "normal"
-        assert statuses["bp_systolic"]["status"] == "normal"
+        assert statuses["systolic_bp"]["status"] == "normal"
 
     def test_critical_alerts_use_pediatric_thresholds(self, newborn_patient):
         """Test critical vitals detection uses pediatric thresholds."""

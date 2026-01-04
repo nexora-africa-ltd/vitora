@@ -167,7 +167,8 @@ class TriageVitalThreshold(models.Model):
         ordering = ["vital_type"]
 
     def __str__(self) -> str:
-        return f"{self.get_vital_type_display()} Threshold"
+        display = getattr(self, "get_vital_type_display", lambda: self.vital_type)
+        return f"{display()} Threshold"
 
     @classmethod
     def get_defaults(cls) -> dict:

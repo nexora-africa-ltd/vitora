@@ -27,7 +27,7 @@ const VITAL_RANGES = {
     critical_low: 50,
     critical_high: 120,
   },
-  bp_systolic: {
+  systolic_bp: {
     unit: 'mmHg',
     normal: [90, 120],
     warning_low: null,
@@ -35,7 +35,7 @@ const VITAL_RANGES = {
     critical_low: 90,
     critical_high: 140,
   },
-  bp_diastolic: {
+  diastolic_bp: {
     unit: 'mmHg',
     normal: [60, 80],
     warning_low: null,
@@ -238,8 +238,8 @@ function hasCriticalVitals(vitals) {
   if (vitals.blood_pressure) {
     const bp = parseBloodPressure(vitals.blood_pressure);
     if (bp) {
-      vitalChecks.push({ name: 'bp_systolic', value: bp.systolic });
-      vitalChecks.push({ name: 'bp_diastolic', value: bp.diastolic });
+      vitalChecks.push({ name: 'systolic_bp', value: bp.systolic });
+      vitalChecks.push({ name: 'diastolic_bp', value: bp.diastolic });
     }
   }
 
@@ -271,11 +271,11 @@ function getCriticalVitalsList(vitals) {
   if (vitals.blood_pressure) {
     const bp = parseBloodPressure(vitals.blood_pressure);
     if (bp) {
-      if (getVitalStatus('bp_systolic', bp.systolic) === 'critical') {
-        criticalList.push({ name: 'bp_systolic', label: 'Systolic BP', value: bp.systolic, unit: 'mmHg' });
+      if (getVitalStatus('systolic_bp', bp.systolic) === 'critical') {
+        criticalList.push({ name: 'systolic_bp', label: 'Systolic BP', value: bp.systolic, unit: 'mmHg' });
       }
-      if (getVitalStatus('bp_diastolic', bp.diastolic) === 'critical') {
-        criticalList.push({ name: 'bp_diastolic', label: 'Diastolic BP', value: bp.diastolic, unit: 'mmHg' });
+      if (getVitalStatus('diastolic_bp', bp.diastolic) === 'critical') {
+        criticalList.push({ name: 'diastolic_bp', label: 'Diastolic BP', value: bp.diastolic, unit: 'mmHg' });
       }
     }
   }
