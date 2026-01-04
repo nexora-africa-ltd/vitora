@@ -121,6 +121,71 @@ export const AVPU_CONFIG: Record<AVPUStatus, AVPUConfig> = {
 };
 
 // =============================================================================
+// PATIENT JOURNEY STAGES
+// =============================================================================
+
+export type PatientStage = 
+  | 'REGISTERED' 
+  | 'AWAITING_TRIAGE' 
+  | 'IN_TRIAGE' 
+  | 'AWAITING_CONSULTATION' 
+  | 'IN_CONSULTATION' 
+  | 'COMPLETED';
+
+export interface PatientStageConfig {
+  stage: PatientStage;
+  label: string;
+  description: string;
+  badgeVariant: 'default' | 'secondary' | 'destructive' | 'outline';
+  color: string;
+}
+
+export const PATIENT_STAGE_CONFIG: Record<PatientStage, PatientStageConfig> = {
+  REGISTERED: {
+    stage: 'REGISTERED',
+    label: 'Registered',
+    description: 'Patient has been registered in the system',
+    badgeVariant: 'outline',
+    color: 'gray',
+  },
+  AWAITING_TRIAGE: {
+    stage: 'AWAITING_TRIAGE',
+    label: 'Awaiting Triage',
+    description: 'Patient is waiting to be triaged',
+    badgeVariant: 'secondary',
+    color: 'amber',
+  },
+  IN_TRIAGE: {
+    stage: 'IN_TRIAGE',
+    label: 'In Triage',
+    description: 'Patient is currently being triaged',
+    badgeVariant: 'default',
+    color: 'blue',
+  },
+  AWAITING_CONSULTATION: {
+    stage: 'AWAITING_CONSULTATION',
+    label: 'Awaiting Consultation',
+    description: 'Patient has been triaged and is waiting for consultation',
+    badgeVariant: 'secondary',
+    color: 'purple',
+  },
+  IN_CONSULTATION: {
+    stage: 'IN_CONSULTATION',
+    label: 'In Consultation',
+    description: 'Patient is currently with a clinician',
+    badgeVariant: 'default',
+    color: 'green',
+  },
+  COMPLETED: {
+    stage: 'COMPLETED',
+    label: 'Completed',
+    description: 'Patient visit has been completed',
+    badgeVariant: 'outline',
+    color: 'gray',
+  },
+};
+
+// =============================================================================
 // MOBILITY STATUS
 // =============================================================================
 

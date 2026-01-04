@@ -14,6 +14,100 @@ from django.db import models
 from django.utils import timezone
 
 
+class WaitingQueue(models.Model):
+    """
+    Queue for patients who have checked in but not yet been triaged.
+    
+    This represents the initial waiting state before triage assessment.
+    Once triaged, patients move to TriageQueue with their priority category.
+    """
+
+    STATUS_CHOICES = [
+        ("WAITING_TRIAGE", "Waiting for Triage"),
+        ("IN_TRIAGE", "Being Triaged"),
+        ("TRIAGED", "Triaged - Moved to Priority Queue"),
+        ("CANCELLED", "Cancelled/Left"),
+    ]
+
+    patient = models.ForeignKey(
+        "patients.Patient",
+        on_delete=models.CASCADE,
+        related_name="waiting_queue_entries",
+        help_text="Patient waiting to be seen",
+    )
+    encounter = models.ForeignKey(
+        "encounters.Encounter",
+        on_delete=models.CASCADE,
+        null=True,
+        blank=True,
+        related_name="waiting_queue_entries",
+        help_text="Associated encounter (created when patient checks in)",
+    )
+    check_in_time = models.DateTimeField(
+        default=timezone.now,
+        help_text="When patient checked in/registered",
+    )
+    reason_for_visit = models.TextField(
+        blank=True,
+        default="",
+        help_text="Initial reason for visit (chief complaint)",
+    )
+    status = models.CharField(
+        max_length=20,
+        choices=STATUS_CHOICES,
+        default="WAITING_TRIAGE",
+    )
+    priority_hint = models.CharField(
+        max_length=20,
+        blank=True,
+        default="",
+        help_text="Initial priority hint (e.g., 'EMERGENCY' for walk-in emergencies)",
+    )
+    checked_in_by = models.ForeignKey(
+        "auth.User",
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="patient_check_ins",
+        help_text="Staff who checked in the patient",
+    )
+    notes = models.TextField(blank=True, default="")
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ["check_in_time"]  # FIFO for waiting patients
+        verbose_name = "Waiting Queue Entry"
+        verbose_name_plural = "Waiting Queue Entries"
+
+    def __str__(self) -> str:
+        return f"Waiting: {self.patient} - {self.status} ({self.check_in_time.strftime('%H:%M')})"
+
+    @classmethod
+    def get_waiting_patients(cls):
+        """Get patients waiting for triage."""
+        return cls.objects.filter(
+            status__in=["WAITING_TRIAGE", "IN_TRIAGE"]
+        ).select_related("patient", "encounter").order_by("check_in_time")
+
+    def start_triage(self):
+        """Mark patient as being triaged."""
+        self.status = "IN_TRIAGE"
+        self.save(update_fields=["status", "updated_at"])
+
+    def complete_triage(self):
+        """Mark as triaged (moves to priority queue)."""
+        self.status = "TRIAGED"
+        self.save(update_fields=["status", "updated_at"])
+
+    def cancel(self, reason: str = ""):
+        """Cancel/remove from waiting queue."""
+        self.status = "CANCELLED"
+        if reason:
+            self.notes = f"{self.notes}\nCancelled: {reason}".strip()
+        self.save(update_fields=["status", "notes", "updated_at"])
+
+
 class TriageVitalThreshold(models.Model):
     """
     Configurable thresholds for vital sign alerts.

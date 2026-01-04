@@ -1,7 +1,6 @@
 'use client';
 
 import { useState, useCallback, useEffect } from 'react';
-import { useRouter } from 'next/navigation';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { apiClient } from '@/lib/api/client';
 import { useDebounce } from '@/lib/hooks/use-debounce';
@@ -76,10 +75,10 @@ export function useRecentPatients(limit: number = 10) {
 
 /**
  * Hook for creating encounters with validation.
+ * Note: Does NOT auto-redirect on success - the calling component handles navigation.
  */
 export function useCreateEncounterWithValidation() {
   const queryClient = useQueryClient();
-  const router = useRouter();
   
   return useMutation({
     mutationFn: async (data: EncounterFormData) => {
@@ -114,7 +113,7 @@ export function useCreateEncounterWithValidation() {
     onSuccess: (encounter) => {
       queryClient.invalidateQueries({ queryKey: ['encounters'] });
       queryClient.invalidateQueries({ queryKey: ['patients', encounter.patient, 'encounters'] });
-      router.push(`/encounters/${encounter.id}`);
+      // Note: Navigation is handled by the calling component to allow for intermediate modals
     },
   });
 }
