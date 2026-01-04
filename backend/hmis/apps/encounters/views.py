@@ -501,6 +501,72 @@ class EncounterViewSet(viewsets.ModelViewSet):
         return Response(serializer.data)
 
     @action(detail=True, methods=["post"])
+    def edit_chief_complaint(self, request, pk=None):
+        """
+        Edit chief complaint with audit trail.
+
+        Only allowed for triaged encounters. Requires a reason.
+
+        POST /api/encounters/{id}/edit_chief_complaint/
+        {
+            "chief_complaint": "Updated complaint text",
+            "edit_reason": "ADDITIONAL_SYMPTOMS",  # Choice from CHIEF_COMPLAINT_EDIT_REASON_CHOICES
+            "edit_reason_other": ""  # Required if edit_reason is "OTHER"
+        }
+        """
+        from django.utils import timezone
+
+        encounter = self.get_object()
+
+        # Get data from request
+        new_complaint = request.data.get("chief_complaint", "").strip()
+        edit_reason = request.data.get("edit_reason", "").strip()
+        edit_reason_other = request.data.get("edit_reason_other", "").strip()
+
+        # Validate chief complaint
+        if not new_complaint:
+            return Response(
+                {"detail": "Chief complaint is required."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        # Validate edit reason
+        valid_reasons = [choice[0] for choice in Encounter.CHIEF_COMPLAINT_EDIT_REASON_CHOICES]
+        if not edit_reason:
+            return Response(
+                {"detail": "Edit reason is required."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        if edit_reason not in valid_reasons:
+            return Response(
+                {"detail": f"Invalid edit reason. Must be one of: {', '.join(valid_reasons)}"},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        # Validate "Other" reason
+        if edit_reason == "OTHER" and not edit_reason_other:
+            return Response(
+                {"detail": "Please specify the reason when selecting 'Other'."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        # Store original if not already stored
+        if not encounter.chief_complaint_original:
+            encounter.chief_complaint_original = encounter.chief_complaint
+
+        # Update chief complaint with audit trail
+        encounter.chief_complaint = new_complaint
+        encounter.chief_complaint_edited = True
+        encounter.chief_complaint_edit_reason = edit_reason
+        encounter.chief_complaint_edit_reason_other = edit_reason_other if edit_reason == "OTHER" else ""
+        encounter.chief_complaint_edited_by = request.user
+        encounter.chief_complaint_edited_at = timezone.now()
+        encounter.save()
+
+        serializer = self.get_serializer(encounter)
+        return Response(serializer.data)
+
+    @action(detail=True, methods=["post"])
     def call(self, request, pk=None):
         """
         Call a patient for consultation.

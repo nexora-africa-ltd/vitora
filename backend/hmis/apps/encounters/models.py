@@ -398,6 +398,53 @@ class Encounter(models.Model):
         help_text="Timestamp when consultation started",
     )
 
+    # =========================================================================
+    # Chief Complaint Edit Tracking (Audit Trail)
+    # =========================================================================
+    CHIEF_COMPLAINT_EDIT_REASON_CHOICES = [
+        ("ADDITIONAL_SYMPTOMS", "Additional symptoms identified"),
+        ("PATIENT_DETAILS", "Patient provided more details"),
+        ("INCORRECT_INITIAL", "Incorrect initial assessment"),
+        ("CLARIFICATION", "Clarification after examination"),
+        ("MISUNDERSTANDING", "Triage miscommunication"),
+        ("OTHER", "Other (specify)"),
+    ]
+    
+    chief_complaint_original = models.TextField(
+        blank=True,
+        default="",
+        help_text="Original chief complaint from triage (preserved for audit)",
+    )
+    chief_complaint_edited = models.BooleanField(
+        default=False,
+        help_text="Whether the chief complaint was edited after triage",
+    )
+    chief_complaint_edit_reason = models.CharField(
+        max_length=30,
+        choices=CHIEF_COMPLAINT_EDIT_REASON_CHOICES,
+        blank=True,
+        default="",
+        help_text="Reason for editing chief complaint",
+    )
+    chief_complaint_edit_reason_other = models.TextField(
+        blank=True,
+        default="",
+        help_text="Details if 'Other' reason selected",
+    )
+    chief_complaint_edited_by = models.ForeignKey(
+        "auth.User",
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="chief_complaint_edits",
+        help_text="User who edited the chief complaint",
+    )
+    chief_complaint_edited_at = models.DateTimeField(
+        null=True,
+        blank=True,
+        help_text="Timestamp when chief complaint was edited",
+    )
+
     # Timestamps
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)

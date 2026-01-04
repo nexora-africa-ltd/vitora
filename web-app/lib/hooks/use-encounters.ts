@@ -80,6 +80,31 @@ export function useUpdateEncounter() {
 }
 
 /**
+ * Hook for editing chief complaint with audit trail.
+ */
+export function useEditChiefComplaint() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: ({
+      encounterId,
+      data,
+    }: {
+      encounterId: number;
+      data: {
+        chief_complaint: string;
+        edit_reason: string;
+        edit_reason_other?: string;
+      };
+    }) => encountersApi.editChiefComplaint(encounterId, data),
+    onSuccess: (_, variables) => {
+      queryClient.invalidateQueries({ queryKey: ['encounters'] });
+      queryClient.invalidateQueries({ queryKey: ['encounters', variables.encounterId] });
+    },
+  });
+}
+
+/**
  * Hook for fetching pre-triage queue (encounters awaiting triage).
  * 
  * Returns encounters with:

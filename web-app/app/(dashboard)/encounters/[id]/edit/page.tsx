@@ -13,6 +13,8 @@ import {
   User,
   FileText,
   Stethoscope,
+  Pencil,
+  Lock,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
@@ -38,10 +40,11 @@ import {
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useToast } from '@/lib/hooks/use-toast';
-import { useEncounter, useUpdateEncounter, useEncounterDiagnoses } from '@/lib/hooks/use-encounters';
+import { useEncounter, useUpdateEncounter, useEncounterDiagnoses, useEditChiefComplaint } from '@/lib/hooks/use-encounters';
 import { MedicalHistoryForm } from '@/components/encounters/medical-history-form';
 import { ClinicalNotesForm } from '@/components/encounters/clinical-notes-form';
 import { DiagnosisForm } from '@/components/encounters/diagnosis-form';
+import { ChiefComplaintEditDialog, ChiefComplaintEditReason } from '@/components/encounters/chief-complaint-edit-dialog';
 import { ENCOUNTER_TYPES, ENCOUNTER_STATUS, ENCOUNTER_TYPE_GROUPS, getEncounterTypesByGroup } from '@/lib/utils/constants';
 import type { EncounterFormData, DiagnosisFormData } from '@/lib/types/encounter-form';
 import type { Patient } from '@/lib/types/patient';
@@ -88,11 +91,20 @@ export default function EditEncounterPage() {
   const { data: encounter, isLoading: isLoadingEncounter, error } = useEncounter(encounterId);
   const { data: existingDiagnoses } = useEncounterDiagnoses(encounterId);
   const updateEncounter = useUpdateEncounter();
+  const editChiefComplaint = useEditChiefComplaint();
   
   const [activeTab, setActiveTab] = useState('history');
   const [isDirty, setIsDirty] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [diagnoses, setDiagnoses] = useState<DiagnosisFormData[]>([]);
+  const [isChiefComplaintDialogOpen, setIsChiefComplaintDialogOpen] = useState(false);
+  
+  // Determine if patient went through triage
+  const wasTriaged = useMemo(() => {
+    if (!encounter) return false;
+    // Patient was triaged if triage_status is COMPLETED
+    return encounter.triage_status === 'COMPLETED';
+  }, [encounter]);
   
   // Form data state
   const [formData, setFormData] = useState<EncounterFormData>({
@@ -533,24 +545,103 @@ export default function EditEncounterPage() {
             
             {/* Chief Complaint */}
             <div className="space-y-2">
-              <Label htmlFor="chief_complaint">
-                Chief Complaint <span className="text-destructive">*</span>
-              </Label>
-              <Textarea
-                id="chief_complaint"
-                placeholder="What brings the patient in today? Describe the main complaint..."
-                value={formData.chief_complaint}
-                onChange={(e) => handleFieldChange('chief_complaint', e.target.value)}
-                rows={3}
-                className={errors.chief_complaint ? 'border-destructive' : ''}
-                disabled={!isEditable}
-              />
-              {errors.chief_complaint && (
-                <p className="text-sm text-destructive">{errors.chief_complaint}</p>
+              <div className="flex items-center justify-between">
+                <Label htmlFor="chief_complaint">
+                  Chief Complaint <span className="text-destructive">*</span>
+                  {wasTriaged && (
+                    <span className="ml-2 text-xs text-muted-foreground">(from triage)</span>
+                  )}
+                </Label>
+                {wasTriaged && isEditable && (
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    className="h-7 px-2 text-xs"
+                    onClick={() => setIsChiefComplaintDialogOpen(true)}
+                  >
+                    <Pencil className="h-3 w-3 mr-1" />
+                    Edit
+                  </Button>
+                )}
+              </div>
+              
+              {wasTriaged ? (
+                // Read-only display for triaged patients
+                <div className="relative">
+                  <div className="min-h-[80px] rounded-md border bg-muted px-3 py-2 text-sm">
+                    {formData.chief_complaint || 'No chief complaint recorded'}
+                  </div>
+                  {encounter?.chief_complaint_edited && (
+                    <p className="text-xs text-muted-foreground mt-1 flex items-center gap-1">
+                      <AlertTriangle className="h-3 w-3" />
+                      Edited by {encounter.chief_complaint_edited_by_username} on{' '}
+                      {encounter.chief_complaint_edited_at
+                        ? new Date(encounter.chief_complaint_edited_at).toLocaleDateString()
+                        : 'unknown date'}
+                    </p>
+                  )}
+                </div>
+              ) : (
+                // Editable field for non-triaged patients
+                <>
+                  <Textarea
+                    id="chief_complaint"
+                    placeholder="What brings the patient in today? Describe the main complaint..."
+                    value={formData.chief_complaint}
+                    onChange={(e) => handleFieldChange('chief_complaint', e.target.value)}
+                    rows={3}
+                    className={errors.chief_complaint ? 'border-destructive' : ''}
+                    disabled={!isEditable}
+                  />
+                  {errors.chief_complaint && (
+                    <p className="text-sm text-destructive">{errors.chief_complaint}</p>
+                  )}
+                </>
               )}
             </div>
           </CardContent>
         </Card>
+
+        {/* Chief Complaint Edit Dialog */}
+        <ChiefComplaintEditDialog
+          open={isChiefComplaintDialogOpen}
+          onOpenChange={setIsChiefComplaintDialogOpen}
+          currentComplaint={formData.chief_complaint}
+          originalComplaint={encounter?.chief_complaint_original}
+          onConfirm={async (data) => {
+            try {
+              await editChiefComplaint.mutateAsync({
+                encounterId,
+                data: {
+                  chief_complaint: data.chief_complaint,
+                  edit_reason: data.edit_reason,
+                  edit_reason_other: data.edit_reason_other,
+                },
+              });
+              
+              // Update local form data
+              setFormData((prev) => ({
+                ...prev,
+                chief_complaint: data.chief_complaint,
+              }));
+              
+              setIsChiefComplaintDialogOpen(false);
+              
+              toast({
+                title: 'Chief Complaint Updated',
+                description: 'The chief complaint has been updated with audit trail.',
+              });
+            } catch {
+              toast({
+                title: 'Error',
+                description: 'Failed to update chief complaint',
+                variant: 'destructive',
+              });
+            }
+          }}
+          isLoading={editChiefComplaint.isPending}
+        />
         
         {/* Tabbed Sections */}
         <Tabs value={activeTab} onValueChange={setActiveTab}>
