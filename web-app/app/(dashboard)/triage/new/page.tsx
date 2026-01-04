@@ -130,10 +130,28 @@ export default function NewTriagePage() {
 
         // Navigate back to queue
         router.push('/triage');
-      } catch (error) {
+      } catch (error: unknown) {
+        // Extract error message from API response
+        let errorMessage = 'Failed to create triage assessment. Please try again.';
+        
+        if (error && typeof error === 'object' && 'response' in error) {
+          const axiosError = error as { response?: { data?: Record<string, string[]> } };
+          const errorData = axiosError.response?.data;
+          
+          if (errorData) {
+            // Get first error message from response
+            const firstKey = Object.keys(errorData)[0];
+            if (firstKey && Array.isArray(errorData[firstKey])) {
+              errorMessage = errorData[firstKey][0] || errorMessage;
+            } else if (typeof errorData === 'string') {
+              errorMessage = errorData;
+            }
+          }
+        }
+        
         toast({
           title: 'Error',
-          description: 'Failed to create triage assessment. Please try again.',
+          description: errorMessage,
           variant: 'destructive',
         });
       }
