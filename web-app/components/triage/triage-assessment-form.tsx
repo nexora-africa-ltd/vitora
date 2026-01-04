@@ -161,6 +161,7 @@ interface Encounter {
   blood_pressure?: string;
   temperature?: number;
   respiratory_rate?: number;
+  created_at?: string;
 }
 
 export interface TriageAssessmentFormProps {
@@ -350,7 +351,9 @@ export function TriageAssessmentForm({
     resolver: zodResolver(triageFormSchema),
     defaultValues: {
       arrival_mode: initialData?.arrival_mode || 'WALK_IN',
-      arrival_time: initialData?.arrival_time || new Date().toISOString().slice(0, 16),
+      // Use encounter creation time as arrival time (when patient was registered)
+      arrival_time: initialData?.arrival_time || 
+        (encounter.created_at ? new Date(encounter.created_at).toISOString().slice(0, 16) : new Date().toISOString().slice(0, 16)),
       chief_complaint_category: initialData?.chief_complaint_category,
       chief_complaint: initialData?.chief_complaint || '',
       pain_score: initialData?.pain_score ?? null,
@@ -517,13 +520,15 @@ export function TriageAssessmentForm({
           {/* Arrival Time */}
           <div className="space-y-2">
             <Label htmlFor="arrival_time">
-              Arrival Time <span className="text-destructive">*</span>
+              Arrival Time <span className="text-muted-foreground text-xs">(from check-in)</span>
             </Label>
             <Input
               id="arrival_time"
               type="datetime-local"
               {...register('arrival_time')}
-              disabled={disabled}
+              disabled
+              readOnly
+              className="bg-muted cursor-not-allowed"
               aria-required="true"
               aria-invalid={!!errors.arrival_time}
             />

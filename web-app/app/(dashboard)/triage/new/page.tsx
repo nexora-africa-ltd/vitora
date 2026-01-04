@@ -428,6 +428,7 @@ export default function NewTriagePage() {
     blood_pressure: encounter.blood_pressure ?? undefined,
     temperature: encounter.temperature ?? undefined,
     respiratory_rate: encounter.respiratory_rate ?? undefined,
+    created_at: encounter.created_at,
   };
 
   return (

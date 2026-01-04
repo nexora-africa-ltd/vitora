@@ -488,19 +488,17 @@ export default function EditEncounterPage() {
               
               {/* Encounter Date */}
               <div className="space-y-2">
-                <Label htmlFor="encounter_date">Date</Label>
+                <Label htmlFor="encounter_date">
+                  Date <span className="text-muted-foreground text-xs">(from encounter start)</span>
+                </Label>
                 <Input
                   id="encounter_date"
                   type="date"
                   value={formData.encounter_date}
-                  onChange={(e) => handleFieldChange('encounter_date', e.target.value)}
-                  max={new Date().toISOString().split('T')[0]}
-                  className={errors.encounter_date ? 'border-destructive' : ''}
-                  disabled={!isEditable}
+                  disabled
+                  readOnly
+                  className="bg-muted cursor-not-allowed"
                 />
-                {errors.encounter_date && (
-                  <p className="text-sm text-destructive">{errors.encounter_date}</p>
-                )}
               </div>
               
               {/* Status Badge */}
