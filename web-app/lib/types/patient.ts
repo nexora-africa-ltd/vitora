@@ -48,6 +48,7 @@ export interface PatientCreateData {
   emergency_contact_phone?: string;
   emergency_contact_relationship?: string;
   consent_given?: boolean;
+  consent_date?: string;
 }
 
 export interface PatientUpdateData extends Partial<PatientCreateData> {
