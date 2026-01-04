@@ -17,6 +17,12 @@ import userEvent from '@testing-library/user-event';
 import { ConsultationQueue } from '@/components/encounters/consultation-queue';
 import type { ConsultationQueueItem } from '@/lib/types/encounter';
 
+beforeAll(() => {
+  // Radix Tooltip relies on PointerEvent; JSDOM may not implement it.
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  (window as any).PointerEvent = window.MouseEvent;
+});
+
 // =============================================================================
 // MOCK DATA
 // =============================================================================
@@ -265,6 +271,18 @@ describe('ConsultationQueue', () => {
       await user.click(callButton);
       
       expect(defaultProps.onCallPatient).toHaveBeenCalledWith(1);
+    });
+
+    it('should provide tooltip text for "Call Patient" button', () => {
+      render(<ConsultationQueue {...defaultProps} />);
+
+      const janeRow = screen.getByText('Jane Wanjiku').closest('[data-testid="queue-item"]');
+      const callButton = within(janeRow!).getByRole('button', { name: /Call Patient/i });
+
+      expect(callButton).toHaveAttribute(
+        'title',
+        'Mark as called and notify the patient/waiting area.'
+      );
     });
 
     it('should render "Start Consultation" button for called patients', () => {
