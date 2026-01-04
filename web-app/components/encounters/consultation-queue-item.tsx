@@ -14,6 +14,12 @@ import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Card } from '@/components/ui/card';
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from '@/components/ui/tooltip';
 import { 
   Phone, 
   Play, 
@@ -222,58 +228,85 @@ export function ConsultationQueueItem({
         
         {/* Right: Actions */}
         <div className="flex flex-col gap-2">
-          {isWaiting && (
-            <Button
-              size="sm"
-              onClick={() => onCall(item.id)}
-              disabled={isCallingPatient}
-              className="min-w-[120px]"
-            >
-              {isCallingPatient ? (
-                <>
-                  <RefreshCw className="h-4 w-4 mr-1 animate-spin" />
-                  Calling...
-                </>
-              ) : (
-                <>
-                  <Phone className="h-4 w-4 mr-1" />
-                  Call Patient
-                </>
-              )}
-            </Button>
-          )}
-          
-          {isCalled && (
-            <>
-              <Button
-                size="sm"
-                onClick={() => onStartConsultation(item.id)}
-                className="min-w-[120px] bg-green-600 hover:bg-green-700"
-              >
-                <Play className="h-4 w-4 mr-1" />
-                Start Consultation
-              </Button>
-              <Button
-                size="sm"
-                variant="outline"
-                onClick={() => onCall(item.id)}
-                disabled={isCallingPatient}
-                className="min-w-[120px]"
-              >
-                {isCallingPatient ? (
-                  <>
-                    <RefreshCw className="h-4 w-4 mr-1 animate-spin" />
-                    Calling...
-                  </>
-                ) : (
-                  <>
-                    <RefreshCw className="h-4 w-4 mr-1" />
-                    Re-call
-                  </>
-                )}
-              </Button>
-            </>
-          )}
+          <TooltipProvider delayDuration={200}>
+            {isWaiting && (
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button
+                    size="sm"
+                    onClick={() => onCall(item.id)}
+                    disabled={isCallingPatient}
+                    className="min-w-[120px]"
+                    title="Mark as called and notify the patient/waiting area."
+                  >
+                    {isCallingPatient ? (
+                      <>
+                        <RefreshCw className="h-4 w-4 mr-1 animate-spin" />
+                        Calling...
+                      </>
+                    ) : (
+                      <>
+                        <Phone className="h-4 w-4 mr-1" />
+                        Call Patient
+                      </>
+                    )}
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent>
+                  Mark as called and notify the patient/waiting area.
+                </TooltipContent>
+              </Tooltip>
+            )}
+            
+            {isCalled && (
+              <>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Button
+                      size="sm"
+                      onClick={() => onStartConsultation(item.id)}
+                      className="min-w-[120px] bg-green-600 hover:bg-green-700"
+                      title="Start the consult and open encounter documentation."
+                    >
+                      <Play className="h-4 w-4 mr-1" />
+                      Start Consultation
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent>
+                    Start the consult and open encounter documentation.
+                  </TooltipContent>
+                </Tooltip>
+
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => onCall(item.id)}
+                      disabled={isCallingPatient}
+                      className="min-w-[120px]"
+                      title="Send another call notification."
+                    >
+                      {isCallingPatient ? (
+                        <>
+                          <RefreshCw className="h-4 w-4 mr-1 animate-spin" />
+                          Calling...
+                        </>
+                      ) : (
+                        <>
+                          <RefreshCw className="h-4 w-4 mr-1" />
+                          Re-call
+                        </>
+                      )}
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent>
+                    Send another call notification.
+                  </TooltipContent>
+                </Tooltip>
+              </>
+            )}
+          </TooltipProvider>
         </div>
       </div>
     </Card>

@@ -8,6 +8,12 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { PatientForm } from '@/components/patients/patient-form';
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from '@/components/ui/tooltip';
 import { useCreatePatient } from '@/lib/hooks/use-patients-enhanced';
 import { useCheckInPatient } from '@/lib/hooks/use-triage';
 import { useToast } from '@/lib/hooks/use-toast';
@@ -156,24 +162,47 @@ export default function NewPatientPage() {
             </div>
 
             {/* Action buttons */}
-            <div className="grid gap-4 sm:grid-cols-2">
-              <Button 
-                className="w-full" 
-                size="lg"
-                onClick={handleCheckInToQueue}
-                disabled={isCheckingIn}
-              >
-                <UserPlus className="mr-2 h-5 w-5" />
-                {isCheckingIn ? 'Checking In...' : 'Check In to Triage Queue'}
-              </Button>
-              
-              <Link href={`/encounters/new?patient=${registeredPatient.id}`}>
-                <Button variant="outline" className="w-full" size="lg">
-                  <Stethoscope className="mr-2 h-5 w-5" />
-                  Start Encounter Directly
-                </Button>
-              </Link>
-            </div>
+            <TooltipProvider delayDuration={200}>
+              <div className="grid gap-4 sm:grid-cols-2">
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Button
+                      className="w-full"
+                      size="lg"
+                      onClick={handleCheckInToQueue}
+                      disabled={isCheckingIn}
+                      title="Adds the patient to the triage waiting queue so vitals/triage can begin."
+                    >
+                      <UserPlus className="mr-2 h-5 w-5" />
+                      {isCheckingIn ? 'Checking In...' : 'Check In to Triage Queue'}
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent>
+                    Adds the patient to the triage waiting queue so vitals/triage can begin.
+                  </TooltipContent>
+                </Tooltip>
+
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Button
+                      asChild
+                      variant="outline"
+                      className="w-full"
+                      size="lg"
+                      title="Skip the triage queue and start clinical documentation now."
+                    >
+                      <Link href={`/encounters/new?patient=${registeredPatient.id}`}>
+                        <Stethoscope className="mr-2 h-5 w-5" />
+                        Start Encounter Directly
+                      </Link>
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent>
+                    Skip the triage queue and start clinical documentation now.
+                  </TooltipContent>
+                </Tooltip>
+              </div>
+            </TooltipProvider>
 
             <div className="grid gap-4 sm:grid-cols-3">
               <Link href={`/patients/${registeredPatient.id}`}>
