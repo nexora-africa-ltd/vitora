@@ -270,6 +270,13 @@ class EncounterSerializer(serializers.ModelSerializer):
         source="finalized_by.username", read_only=True, allow_null=True
     )
 
+    # Triage & Consultation fields (Phase 2 - Consultation Queue)
+    can_enter_consultation = serializers.SerializerMethodField()
+    triage_bypassed_by_username = serializers.CharField(
+        source="triage_bypassed_by.username", read_only=True, allow_null=True
+    )
+    wait_time_minutes = serializers.SerializerMethodField()
+
     class Meta:
         model = Encounter
         fields = [
@@ -309,6 +316,19 @@ class EncounterSerializer(serializers.ModelSerializer):
             "finalized_by_username",
             "finalized_at",
             "cancellation_reason",
+            # Triage fields (Phase 2 - Consultation Queue)
+            "triage_requirement",
+            "triage_status",
+            "triage_bypass_reason",
+            "triage_bypassed_by",
+            "triage_bypassed_by_username",
+            "triage_bypassed_at",
+            # Consultation fields (Phase 2 - Consultation Queue)
+            "consultation_status",
+            "called_at",
+            "consultation_started_at",
+            "can_enter_consultation",
+            "wait_time_minutes",
             "created_at",
             "updated_at",
         ]
@@ -329,6 +349,19 @@ class EncounterSerializer(serializers.ModelSerializer):
             "finalized_by_username",
             "finalized_at",
             "cancellation_reason",
+            # Triage fields are read-only - use actions to change
+            "triage_requirement",
+            "triage_status",
+            "triage_bypass_reason",
+            "triage_bypassed_by",
+            "triage_bypassed_by_username",
+            "triage_bypassed_at",
+            # Consultation fields are read-only - use actions to change
+            "consultation_status",
+            "called_at",
+            "consultation_started_at",
+            "can_enter_consultation",
+            "wait_time_minutes",
             "created_at",
             "updated_at",
         ]
@@ -364,6 +397,20 @@ class EncounterSerializer(serializers.ModelSerializer):
             bmi = float(obj.weight) / (height_m**2)
             return round(bmi, 1)
         return None
+
+    def get_can_enter_consultation(self, obj: Encounter) -> bool:
+        """Check if encounter can enter consultation queue."""
+        return obj.can_enter_consultation()
+
+    def get_wait_time_minutes(self, obj: Encounter) -> int | None:
+        """Calculate wait time in minutes since encounter creation."""
+        from django.utils import timezone
+
+        if obj.consultation_status in ["IN_PROGRESS", "COMPLETED"]:
+            return None
+        now = timezone.now()
+        delta = now - obj.created_at
+        return int(delta.total_seconds() / 60)
 
     def validate_blood_pressure(self, value: str) -> str:
         """Validate blood pressure format."""

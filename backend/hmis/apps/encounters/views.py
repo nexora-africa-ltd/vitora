@@ -436,6 +436,211 @@ class EncounterViewSet(viewsets.ModelViewSet):
                 status=status.HTTP_400_BAD_REQUEST,
             )
 
+    # =========================================================================
+    # Consultation Queue Actions (Phase 2)
+    # =========================================================================
+
+    @action(detail=True, methods=["post"])
+    def bypass_triage(self, request, pk=None):
+        """
+        Bypass triage for OPTIONAL triage encounters.
+
+        Only allowed for encounters with triage_requirement=OPTIONAL.
+        Requires a bypass reason.
+
+        POST /api/encounters/{id}/bypass_triage/
+        Body: {"reason": "FOLLOW_UP"}
+        """
+        from django.utils import timezone
+
+        encounter = self.get_object()
+        reason = request.data.get("reason")
+
+        # Validate reason is provided
+        if not reason:
+            return Response(
+                {"detail": "Bypass reason is required."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        # Validate reason is valid
+        valid_reasons = [choice[0] for choice in Encounter.TRIAGE_BYPASS_REASON_CHOICES]
+        if reason not in valid_reasons:
+            return Response(
+                {"detail": f"Invalid bypass reason. Valid options: {', '.join(valid_reasons)}"},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        # Check if triage can be bypassed
+        if encounter.triage_requirement == "MANDATORY":
+            return Response(
+                {"detail": "Cannot bypass triage for mandatory triage encounters."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        if encounter.triage_status == "COMPLETED":
+            return Response(
+                {"detail": "Triage already completed. Cannot bypass."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        if encounter.triage_status == "BYPASSED":
+            return Response(
+                {"detail": "Triage already bypassed."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        # Bypass triage
+        encounter.triage_status = "BYPASSED"
+        encounter.triage_bypass_reason = reason
+        encounter.triage_bypassed_by = request.user
+        encounter.triage_bypassed_at = timezone.now()
+        encounter.save()
+
+        serializer = self.get_serializer(encounter)
+        return Response(serializer.data)
+
+    @action(detail=True, methods=["post"])
+    def call(self, request, pk=None):
+        """
+        Call a patient for consultation.
+
+        Sets consultation_status to CALLED and records the call time.
+        Only allowed if encounter can enter consultation.
+
+        POST /api/encounters/{id}/call/
+        """
+        from django.utils import timezone
+
+        encounter = self.get_object()
+
+        # Check if encounter can enter consultation
+        if not encounter.can_enter_consultation():
+            return Response(
+                {"detail": "Encounter cannot enter consultation. Triage may be required."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        # Check if consultation is not already in progress
+        if encounter.consultation_status == "IN_PROGRESS":
+            return Response(
+                {"detail": "Consultation is already in progress."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        if encounter.consultation_status == "COMPLETED":
+            return Response(
+                {"detail": "Consultation is already completed."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        # Call the patient
+        encounter.consultation_status = "CALLED"
+        encounter.called_at = timezone.now()
+        encounter.save()
+
+        serializer = self.get_serializer(encounter)
+        return Response(serializer.data)
+
+    @action(detail=True, methods=["post"])
+    def start_consultation(self, request, pk=None):
+        """
+        Start consultation for a patient.
+
+        Sets consultation_status to IN_PROGRESS and records the start time.
+        Only allowed from WAITING or CALLED status.
+
+        POST /api/encounters/{id}/start_consultation/
+        """
+        from django.utils import timezone
+
+        encounter = self.get_object()
+
+        # Check if encounter can enter consultation
+        if not encounter.can_enter_consultation():
+            return Response(
+                {"detail": "Encounter cannot enter consultation. Triage may be required."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        # Check if consultation is not already in progress or completed
+        if encounter.consultation_status == "IN_PROGRESS":
+            return Response(
+                {"detail": "Consultation is already in progress."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        if encounter.consultation_status == "COMPLETED":
+            return Response(
+                {"detail": "Consultation is already completed."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        # Start consultation
+        encounter.consultation_status = "IN_PROGRESS"
+        encounter.consultation_started_at = timezone.now()
+        encounter.save()
+
+        serializer = self.get_serializer(encounter)
+        return Response(serializer.data)
+
+    @action(detail=False, methods=["get"])
+    def consultation_queue(self, request):
+        """
+        Get list of encounters ready for consultation.
+
+        Returns encounters that:
+        - Have triage_status in (COMPLETED, BYPASSED, NOT_APPLICABLE)
+        - Have consultation_status in (WAITING, CALLED)
+        - Exclude MANDATORY + PENDING triage
+
+        Sorted by:
+        - Emergency encounters first
+        - Then by wait time (oldest first)
+
+        Query params:
+        - triage_status: Filter by triage status
+        - consultation_status: Filter by consultation status
+
+        GET /api/encounters/consultation_queue/
+        """
+        from django.db.models import Case, IntegerField, Value, When
+
+        queryset = self.get_queryset()
+
+        # Filter for consultation-ready encounters
+        queryset = queryset.filter(
+            triage_status__in=["COMPLETED", "BYPASSED", "NOT_APPLICABLE"],
+            consultation_status__in=["WAITING", "CALLED"],
+        )
+
+        # Apply optional filters
+        triage_status = request.query_params.get("triage_status")
+        if triage_status:
+            queryset = queryset.filter(triage_status=triage_status)
+
+        consultation_status = request.query_params.get("consultation_status")
+        if consultation_status:
+            queryset = queryset.filter(consultation_status=consultation_status)
+
+        # Sort by priority (emergency first) then by wait time
+        queryset = queryset.annotate(
+            is_emergency=Case(
+                When(encounter_type="EMERGENCY", then=Value(0)),
+                default=Value(1),
+                output_field=IntegerField(),
+            )
+        ).order_by("is_emergency", "created_at")
+
+        # Paginate and serialize
+        page = self.paginate_queryset(queryset)
+        if page is not None:
+            serializer = self.get_serializer(page, many=True)
+            return self.get_paginated_response(serializer.data)
+
+        serializer = self.get_serializer(queryset, many=True)
+        return Response({"results": serializer.data})
+
     def get_queryset(self):
         """
         Optionally filter encounters by patient and status.
