@@ -154,8 +154,20 @@ export const triageApi = {
    * Create a new triage assessment.
    */
   async createAssessment(data: TriageAssessmentCreateData): Promise<TriageAssessment> {
-    const response = await apiClient.post<TriageAssessment>('/api/triage/assessments/', data);
-    return response.data;
+    console.log('Creating triage assessment with data:', JSON.stringify(data, null, 2));
+    try {
+      const response = await apiClient.post<TriageAssessment>('/api/triage/assessments/', data);
+      return response.data;
+    } catch (error: unknown) {
+      if (error && typeof error === 'object' && 'response' in error) {
+        const axiosError = error as { response?: { data?: unknown; status?: number } };
+        console.error('Triage assessment creation failed:', {
+          status: axiosError.response?.status,
+          data: axiosError.response?.data,
+        });
+      }
+      throw error;
+    }
   },
 
   /**
