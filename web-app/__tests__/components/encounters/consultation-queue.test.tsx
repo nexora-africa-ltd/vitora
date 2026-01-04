@@ -83,7 +83,7 @@ const mockQueueItems: ConsultationQueueItem[] = [
     patient_mrn: 'MRN-20260104-0004',
     triage_status: 'BYPASSED',
     triage_category: null,
-    triage_bypass_reason: 'FOLLOW_UP',
+    triage_bypass_reason: 'STABLE_FOLLOW_UP',
     consultation_status: 'WAITING',
     wait_time_minutes: 20,
     chief_complaint: 'Follow-up for diabetes management',
@@ -223,8 +223,8 @@ describe('ConsultationQueue', () => {
       render(<ConsultationQueue {...defaultProps} />);
       
       const graceRow = screen.getByText('Grace Mwangi').closest('[data-testid="queue-item"]');
-      // Badge contains both "Bypassed" and "Follow-up" in the same element
-      expect(within(graceRow!).getByText(/Bypassed.*Follow-up/i)).toBeInTheDocument();
+      // Badge contains both "Bypassed" and "Stable follow-up" in the same element
+      expect(within(graceRow!).getByText(/Bypassed.*Stable follow-up/i)).toBeInTheDocument();
     });
 
     it('should display "Direct" badge for NOT_APPLICABLE triage status', () => {

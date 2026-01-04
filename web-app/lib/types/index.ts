@@ -10,7 +10,9 @@ export type {
   Medication,
   VitalSign,
   EncounterListParams,
-  // Consultation Queue types
+  // Consultation Queue types (aligned with backend)
+  EncounterType,
+  TriageRequirement,
   TriageStatus,
   TriageCategory,
   ConsultationStatus,
@@ -18,6 +20,15 @@ export type {
   ConsultationQueueItem,
   ConsultationQueueFilters,
   ConsultationQueueStats,
+} from './encounter';
+
+// Re-export display constants (aligned with backend)
+export {
+  ENCOUNTER_TYPE_DISPLAY,
+  ENCOUNTER_TYPE_TRIAGE_MAP,
+  TRIAGE_STATUS_DISPLAY,
+  TRIAGE_BYPASS_REASON_DISPLAY,
+  CONSULTATION_STATUS_DISPLAY,
 } from './encounter';
 
 // Re-export patient types

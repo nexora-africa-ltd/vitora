@@ -12,6 +12,7 @@ export { TreatmentPlanView } from './treatment-plan-view';
 // Consultation Queue components
 export { ConsultationQueue } from './consultation-queue';
 export { ConsultationQueueItem } from './consultation-queue-item';
+export { BypassTriageDialog } from './bypass-triage-dialog';
 
 // Form components
 export { PatientSelector } from './patient-selector';
