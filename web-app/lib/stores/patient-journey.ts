@@ -276,7 +276,7 @@ export interface ActivePatient {
   /** Current encounter ID */
   encounter_id: number | null;
   /** Encounter type */
-  encounter_type: 'OPD' | 'IPD' | 'EMERGENCY' | null;
+  encounter_type: string | null;
   /** Current stage in journey */
   stage: PatientStage;
   /** Previous stage (for navigation) */
@@ -380,7 +380,7 @@ interface PatientJourneyState {
     patientId: number,
     options?: {
       encounter_id?: number;
-      encounter_type?: 'OPD' | 'IPD' | 'EMERGENCY';
+      encounter_type?: string;
       chief_complaint?: string;
       priority_hint?: 'NORMAL' | 'URGENT' | 'CRITICAL';
     }
@@ -630,7 +630,7 @@ interface PatientJourneyState {
   setEncounter: (
     patientId: number,
     encounterId: number,
-    encounterType: 'OPD' | 'IPD' | 'EMERGENCY'
+    encounterType: string
   ) => void;
 
   /**

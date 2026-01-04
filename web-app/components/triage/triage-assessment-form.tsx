@@ -155,7 +155,7 @@ interface Patient {
 interface Encounter {
   id: number;
   patient: number;
-  encounter_type: 'OPD' | 'IPD' | 'EMERGENCY';
+  encounter_type: string;
   spo2?: number;
   pulse?: number;
   blood_pressure?: string;
