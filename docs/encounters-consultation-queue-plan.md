@@ -395,11 +395,11 @@ def get_consultation_queue():
 - [x] Record timestamp
 
 #### 3.5 Page Layout
-- [ ] Redesign `app/(dashboard)/encounters/page.tsx`
-- [ ] Tab: "Consultation Queue" (default)
-- [ ] Tab: "My Active Consultations"
-- [ ] Filters: Area, Triage Status, Wait Time
-- [ ] Quick stats: Queue count by priority
+- [x] Redesign `app/(dashboard)/encounters/page.tsx`
+- [x] Tab: "Consultation Queue" (default)
+- [x] Tab: "My Active Consultations"
+- [x] Filters: Area, Triage Status, Wait Time
+- [x] Quick stats: Queue count by priority
 
 ### Phase 4: Frontend - Triage Page Updates
 
