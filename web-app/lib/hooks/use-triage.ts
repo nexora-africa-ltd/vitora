@@ -176,6 +176,24 @@ export function useUpdateTriageAssessment() {
 }
 
 /**
+ * Complete a triage assessment (sets triage_end_time)
+ */
+export function useCompleteTriageAssessment() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (id: number) => {
+      return triageApi.completeAssessment(id);
+    },
+    onSuccess: (data) => {
+      queryClient.invalidateQueries({ queryKey: triageKeys.assessment(data.id) });
+      queryClient.invalidateQueries({ queryKey: triageKeys.assessments() });
+      queryClient.invalidateQueries({ queryKey: triageKeys.queue() });
+    },
+  });
+}
+
+/**
  * Calculate triage category based on vitals and symptoms
  */
 export function useCalculateTriageCategory() {

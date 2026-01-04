@@ -152,6 +152,47 @@ class TriageAssessmentViewSet(viewsets.ModelViewSet):
 
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
+    @action(detail=True, methods=['post'], url_path='complete')
+    def complete_triage(self, request, pk=None):
+        """
+        Complete a triage assessment.
+        
+        Sets triage_end_time to now and marks the triage as complete.
+        This is important for reporting on triage duration metrics.
+        """
+        from django.utils import timezone
+        
+        instance = self.get_object()
+        
+        # Check if already completed
+        if instance.triage_end_time:
+            return Response(
+                {'detail': 'Triage assessment already completed.'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        # Set end time
+        instance.triage_end_time = timezone.now()
+        instance.save(update_fields=['triage_end_time'])
+        
+        # Log the completion
+        AuditLog.log(
+            action="triage_complete",
+            user=request.user,
+            resource_type="TriageAssessment",
+            resource_id=instance.id,
+            ip_address=get_client_ip(request),
+            user_agent=request.META.get("HTTP_USER_AGENT", ""),
+            details={
+                "category": instance.triage_category,
+                "duration_seconds": (instance.triage_end_time - instance.triage_start_time).total_seconds() if instance.triage_start_time else None,
+            },
+        )
+        
+        # Return updated assessment
+        serializer = TriageAssessmentSerializer(instance, context={'request': request})
+        return Response(serializer.data, status=status.HTTP_200_OK)
+
 
 class WaitingQueueViewSet(viewsets.ModelViewSet):
     """

@@ -174,6 +174,16 @@ export const triageApi = {
   },
 
   /**
+   * Complete a triage assessment (sets triage_end_time).
+   */
+  async completeAssessment(id: number): Promise<TriageAssessment> {
+    const response = await apiClient.post<TriageAssessment>(
+      `/api/triage/assessments/${id}/complete/`
+    );
+    return response.data;
+  },
+
+  /**
    * Calculate suggested triage category based on vitals and symptoms.
    */
   async calculateCategory(data: CalculateCategoryRequest): Promise<CalculateCategoryResponse> {
