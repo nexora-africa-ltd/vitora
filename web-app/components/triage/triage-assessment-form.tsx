@@ -642,7 +642,7 @@ export function TriageAssessmentForm({
                     value={field.value ?? 0}
                     onChange={(e) => field.onChange(parseInt(e.target.value))}
                     disabled={disabled}
-                    className="flex-1 h-2 bg-gradient-to-r from-green-400 via-yellow-400 via-orange-400 to-red-500 rounded-lg appearance-none cursor-pointer"
+                    className="flex-1 h-2 bg-gradient-to-r from-green-400 via-yellow-400 to-red-500 rounded-lg appearance-none cursor-pointer"
                   />
                 )}
               />
