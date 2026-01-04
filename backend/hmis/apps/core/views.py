@@ -346,6 +346,9 @@ class NotificationViewSet(viewsets.ModelViewSet):
         created_after = self.request.query_params.get("created_after")
         if created_after:
             try:
+                # Handle URL-encoded + sign (becomes space in URL params)
+                # Replace space before timezone offset back to +
+                created_after = created_after.replace(" ", "+")
                 after_dt = parse_datetime(created_after)
                 if after_dt:
                     queryset = queryset.filter(created_at__gt=after_dt)

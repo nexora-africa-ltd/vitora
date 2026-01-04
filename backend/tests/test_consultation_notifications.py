@@ -493,19 +493,10 @@ class TestNotificationPolling:
             message="New notification",
         )
         
-        # Debug: verify timestamps
-        print(f"\nDEBUG: old.created_at = {old.created_at}")
-        print(f"DEBUG: poll_since = {poll_since}")
-        print(f"DEBUG: new.created_at = {new.created_at}")
-        print(f"DEBUG: old < poll_since? {old.created_at < poll_since}")
-        print(f"DEBUG: new > poll_since? {new.created_at > poll_since}")
-        
         # Poll for notifications since timestamp
-        url = f"/api/notifications/?created_after={poll_since.isoformat()}"
-        print(f"DEBUG: URL = {url}")
-        response = authenticated_client.get(url)
-        
-        print(f"DEBUG: Response data = {response.data}")
+        response = authenticated_client.get(
+            f"/api/notifications/?created_after={poll_since.isoformat()}"
+        )
         
         assert response.status_code == status.HTTP_200_OK
         assert len(response.data["results"]) == 1
