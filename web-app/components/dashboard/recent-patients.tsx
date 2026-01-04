@@ -1,14 +1,18 @@
 'use client';
 
 import Link from 'next/link';
+import { ChevronRight } from 'lucide-react';
 import { formatRelativeTime } from '@/lib/utils/format';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { usePatients } from '@/lib/hooks/use-patients';
 
+const RECENT_PATIENTS_LIMIT = 10;
+
 export function RecentPatients() {
-  const { data: patients, isLoading } = usePatients({ limit: 5 });
+  const { data: patients, isLoading } = usePatients({ limit: RECENT_PATIENTS_LIMIT });
 
   if (isLoading) {
     return (
@@ -33,6 +37,8 @@ export function RecentPatients() {
       </p>
     );
   }
+
+  const hasMorePatients = patients.count > RECENT_PATIENTS_LIMIT;
 
   return (
     <div className="space-y-4">
@@ -61,6 +67,18 @@ export function RecentPatients() {
           </Badge>
         </Link>
       ))}
+      
+      {/* View All Patients Link */}
+      {hasMorePatients && (
+        <div className="pt-2 border-t">
+          <Button variant="ghost" size="sm" className="w-full justify-center" asChild>
+            <Link href="/patients">
+              View All Patients
+              <ChevronRight className="ml-1 h-4 w-4" />
+            </Link>
+          </Button>
+        </div>
+      )}
     </div>
   );
 }

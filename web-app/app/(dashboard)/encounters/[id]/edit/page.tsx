@@ -36,8 +36,6 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useToast } from '@/lib/hooks/use-toast';
 import { useEncounter, useUpdateEncounter, useEncounterDiagnoses } from '@/lib/hooks/use-encounters';
-import { getVitalAlerts } from '@/lib/hooks/use-encounter-form';
-import { VitalsForm } from '@/components/encounters/vitals-form';
 import { MedicalHistoryForm } from '@/components/encounters/medical-history-form';
 import { ClinicalNotesForm } from '@/components/encounters/clinical-notes-form';
 import { DiagnosisForm } from '@/components/encounters/diagnosis-form';
@@ -46,19 +44,6 @@ import type { EncounterFormData, DiagnosisFormData } from '@/lib/types/encounter
 import type { Patient } from '@/lib/types/patient';
 
 // Helper functions to check if sections have data
-function hasVitals(data: EncounterFormData): boolean {
-  return !!(
-    data.temperature ||
-    data.pulse ||
-    data.blood_pressure_systolic ||
-    data.blood_pressure_diastolic ||
-    data.respiratory_rate ||
-    data.spo2 ||
-    data.weight ||
-    data.height
-  );
-}
-
 function hasMedicalHistory(data: EncounterFormData): boolean {
   return !!(
     data.allergies?.trim() ||
@@ -101,7 +86,7 @@ export default function EditEncounterPage() {
   const { data: existingDiagnoses } = useEncounterDiagnoses(encounterId);
   const updateEncounter = useUpdateEncounter();
   
-  const [activeTab, setActiveTab] = useState('vitals');
+  const [activeTab, setActiveTab] = useState('history');
   const [isDirty, setIsDirty] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [diagnoses, setDiagnoses] = useState<DiagnosisFormData[]>([]);
@@ -200,14 +185,7 @@ export default function EditEncounterPage() {
       consent_given: true,
       referral_source: 'self' as const,
       registered_by: 0,
-    };
-  }, [encounter]);
-  
-  // Get vital alerts
-  const criticalAlerts = useMemo(() => {
-    const alerts = getVitalAlerts(formData);
-    return alerts.filter(a => a.severity === 'critical');
-  }, [formData]);
+    };  }, [encounter]);
   
   // Handle field changes
   const handleFieldChange = useCallback((field: keyof EncounterFormData, value: unknown) => {
@@ -324,14 +302,6 @@ export default function EditEncounterPage() {
       return;
     }
     
-    // Warn about critical vitals
-    if (criticalAlerts.length > 0) {
-      const confirmed = window.confirm(
-        `This encounter has ${criticalAlerts.length} critical vital sign alert(s). Are you sure you want to finalize?`
-      );
-      if (!confirmed) return;
-    }
-    
     try {
       const bp = formData.blood_pressure_systolic && formData.blood_pressure_diastolic
         ? `${formData.blood_pressure_systolic}/${formData.blood_pressure_diastolic}`
@@ -378,7 +348,7 @@ export default function EditEncounterPage() {
         variant: 'destructive',
       });
     }
-  }, [formData, encounterId, validateForm, criticalAlerts, updateEncounter, toast, router]);
+  }, [formData, encounterId, validateForm, updateEncounter, toast, router]);
   
   // Unsaved changes warning
   useEffect(() => {
@@ -483,21 +453,6 @@ export default function EditEncounterPage() {
         </Alert>
       )}
       
-      {/* Critical alerts banner */}
-      {criticalAlerts.length > 0 && (
-        <Alert variant="destructive" className="mb-6">
-          <AlertTriangle className="h-4 w-4" />
-          <AlertTitle>Critical Vital Sign Alerts</AlertTitle>
-          <AlertDescription>
-            <ul className="list-disc list-inside mt-2">
-              {criticalAlerts.map((alert, i) => (
-                <li key={i}>{alert.message}</li>
-              ))}
-            </ul>
-          </AlertDescription>
-        </Alert>
-      )}
-      
       {/* Main Form */}
       <div className="space-y-6">
         {/* Encounter Details */}
@@ -580,31 +535,21 @@ export default function EditEncounterPage() {
         
         {/* Tabbed Sections */}
         <Tabs value={activeTab} onValueChange={setActiveTab}>
-          <TabsList className="grid w-full grid-cols-4">
-            <TabsTrigger value="vitals" className="gap-1">
-              1. Vitals
-              {criticalAlerts.length > 0 ? (
-                <Badge variant="destructive" className="h-5 w-5 p-0 flex items-center justify-center ml-1">
-                  {criticalAlerts.length}
-                </Badge>
-              ) : !hasVitals(formData) ? (
-                <span className="ml-1 text-muted-foreground">+</span>
-              ) : null}
-            </TabsTrigger>
+          <TabsList className="grid w-full grid-cols-3">
             <TabsTrigger value="history" className="gap-1">
-              2. History
+              1. History
               {!hasMedicalHistory(formData) && (
                 <span className="ml-1 text-muted-foreground">+</span>
               )}
             </TabsTrigger>
             <TabsTrigger value="notes" className="gap-1">
-              3. Clinical Notes
+              2. Clinical Notes
               {!hasClinicalNotes(formData) && (
                 <span className="ml-1 text-muted-foreground">+</span>
               )}
             </TabsTrigger>
             <TabsTrigger value="diagnosis" className="gap-1">
-              4. Diagnosis
+              3. Diagnosis
               {diagnoses.length === 0 ? (
                 <span className="ml-1 text-muted-foreground">+</span>
               ) : (
@@ -613,22 +558,10 @@ export default function EditEncounterPage() {
             </TabsTrigger>
           </TabsList>
           
-          <TabsContent value="vitals" className="mt-4">
-            <VitalsForm
-              data={formData}
-              onChange={(field, value) => handleFieldChange(field, value)}
-              errors={errors}
-              patient={selectedPatient}
-              onNext={() => setActiveTab('history')}
-              disabled={!isEditable}
-            />
-          </TabsContent>
-          
           <TabsContent value="history" className="mt-4">
             <MedicalHistoryForm
               data={formData}
               onChange={(field, value) => handleFieldChange(field, value)}
-              onPrevious={() => setActiveTab('vitals')}
               onNext={() => setActiveTab('notes')}
               disabled={!isEditable}
             />
