@@ -349,18 +349,18 @@ export function TriageAssessmentForm({
   } = useForm<TriageFormData>({
     resolver: zodResolver(triageFormSchema),
     defaultValues: {
-      arrival_mode: initialData?.arrival_mode || '',
+      arrival_mode: initialData?.arrival_mode,
       arrival_time: initialData?.arrival_time || new Date().toISOString().slice(0, 16),
-      chief_complaint_category: initialData?.chief_complaint_category || '',
+      chief_complaint_category: initialData?.chief_complaint_category,
       chief_complaint: initialData?.chief_complaint || '',
       pain_score: initialData?.pain_score ?? null,
-      mental_status: initialData?.mental_status || '',
-      mobility: initialData?.mobility || '',
+      mental_status: initialData?.mental_status,
+      mobility: initialData?.mobility,
       allergies_noted: initialData?.allergies_noted || patient.allergies || '',
-      triage_category: initialData?.triage_category || '',
+      triage_category: initialData?.triage_category,
       auto_calculated_category: initialData?.auto_calculated_category || initialSuggested,
       category_override_reason: initialData?.category_override_reason || '',
-      assigned_area: initialData?.assigned_area || '',
+      assigned_area: initialData?.assigned_area,
       assigned_clinician: initialData?.assigned_clinician || null,
     },
   });
@@ -664,7 +664,7 @@ export function TriageAssessmentForm({
               render={({ field }) => (
                 <RadioGroup
                   aria-label="Mental status"
-                  value={field.value}
+                  value={field.value ?? ''}
                   onValueChange={field.onChange}
                   disabled={disabled}
                   className="grid grid-cols-2 gap-2 sm:grid-cols-4"
@@ -774,7 +774,7 @@ export function TriageAssessmentForm({
             render={({ field }) => (
               <RadioGroup
                 aria-label="Triage category"
-                value={field.value}
+                value={field.value ?? ''}
                 onValueChange={field.onChange}
                 disabled={disabled}
                 className="space-y-2"
