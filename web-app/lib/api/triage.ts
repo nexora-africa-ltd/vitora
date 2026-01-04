@@ -122,7 +122,7 @@ export const triageApi = {
   async listAssessments(
     params?: TriageAssessmentListParams
   ): Promise<PaginatedResponse<TriageAssessment>> {
-    const response = await apiClient.get<PaginatedResponse<TriageAssessment>>('/api/triage/', {
+    const response = await apiClient.get<PaginatedResponse<TriageAssessment>>('/api/triage/assessments/', {
       params,
     });
     return response.data;
@@ -132,7 +132,7 @@ export const triageApi = {
    * Get a single triage assessment by ID.
    */
   async getAssessment(id: number): Promise<TriageAssessment> {
-    const response = await apiClient.get<TriageAssessment>(`/api/triage/${id}/`);
+    const response = await apiClient.get<TriageAssessment>(`/api/triage/assessments/${id}/`);
     return response.data;
   },
 
@@ -140,7 +140,7 @@ export const triageApi = {
    * Create a new triage assessment.
    */
   async createAssessment(data: TriageAssessmentCreateData): Promise<TriageAssessment> {
-    const response = await apiClient.post<TriageAssessment>('/api/triage/', data);
+    const response = await apiClient.post<TriageAssessment>('/api/triage/assessments/', data);
     return response.data;
   },
 
@@ -148,7 +148,7 @@ export const triageApi = {
    * Update an existing triage assessment.
    */
   async updateAssessment(id: number, data: TriageAssessmentUpdateData): Promise<TriageAssessment> {
-    const response = await apiClient.patch<TriageAssessment>(`/api/triage/${id}/`, data);
+    const response = await apiClient.patch<TriageAssessment>(`/api/triage/assessments/${id}/`, data);
     return response.data;
   },
 
@@ -156,7 +156,7 @@ export const triageApi = {
    * Delete a triage assessment (admin only).
    */
   async deleteAssessment(id: number): Promise<void> {
-    await apiClient.delete(`/api/triage/${id}/`);
+    await apiClient.delete(`/api/triage/assessments/${id}/`);
   },
 
   /**
@@ -164,7 +164,7 @@ export const triageApi = {
    */
   async calculateCategory(data: CalculateCategoryRequest): Promise<CalculateCategoryResponse> {
     const response = await apiClient.post<CalculateCategoryResponse>(
-      '/api/triage/calculate-category/',
+      '/api/triage/assessments/calculate-category/',
       data
     );
     return response.data;

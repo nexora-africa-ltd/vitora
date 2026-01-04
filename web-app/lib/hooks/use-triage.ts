@@ -98,7 +98,7 @@ export function useTriageAssessment(id: number | undefined) {
   return useQuery({
     queryKey: triageKeys.assessment(id!),
     queryFn: async () => {
-      const response = await apiClient.get<TriageAssessment>(`/api/triage/${id}/`);
+      const response = await apiClient.get<TriageAssessment>(`/api/triage/assessments/${id}/`);
       return response.data;
     },
     enabled: !!id,
@@ -113,7 +113,7 @@ export function useCreateTriageAssessment() {
 
   return useMutation({
     mutationFn: async (data: Partial<TriageAssessment> & { encounter_id?: number }) => {
-      const response = await apiClient.post<TriageAssessment>('/api/triage/', data);
+      const response = await apiClient.post<TriageAssessment>('/api/triage/assessments/', data);
       return response.data;
     },
     onSuccess: () => {
@@ -131,7 +131,7 @@ export function useUpdateTriageAssessment() {
 
   return useMutation({
     mutationFn: async ({ id, data }: { id: number; data: Partial<TriageAssessment> }) => {
-      const response = await apiClient.patch<TriageAssessment>(`/api/triage/${id}/`, data);
+      const response = await apiClient.patch<TriageAssessment>(`/api/triage/assessments/${id}/`, data);
       return response.data;
     },
     onSuccess: (data) => {
@@ -148,7 +148,7 @@ export function useCalculateTriageCategory() {
   return useMutation({
     mutationFn: async (data: CalculateCategoryRequest) => {
       const response = await apiClient.post<CalculateCategoryResponse>(
-        '/api/triage/calculate-category/',
+        '/api/triage/assessments/calculate-category/',
         data
       );
       return response.data;
