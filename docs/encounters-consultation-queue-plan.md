@@ -383,10 +383,10 @@ def get_consultation_queue():
 - [x] API call to bypass-triage endpoint
 
 #### 3.3 Call Patient Functionality
-- [ ] "Call Patient" button
-- [ ] Update consultation_status to CALLED
-- [ ] Visual indicator for called patients
-- [ ] Re-call option
+- [x] "Call Patient" button
+- [x] Update consultation_status to CALLED
+- [x] Visual indicator for called patients
+- [x] Re-call option
 
 #### 3.4 Start Consultation
 - [ ] "Start Consultation" button
