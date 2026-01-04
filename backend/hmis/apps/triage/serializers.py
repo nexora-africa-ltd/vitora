@@ -316,14 +316,88 @@ class TriageAssessmentCreateSerializer(serializers.ModelSerializer):
 
 
 class TriageQueueSerializer(serializers.ModelSerializer):
-    """Serializer for triage queue entries."""
+    """Serializer for triage queue entries with flattened data for frontend display."""
 
-    assessment = TriageAssessmentSerializer(source='triage_assessment', read_only=True)
+    # Flattened patient fields
+    patient_id = serializers.IntegerField(source='triage_assessment.encounter.patient.id', read_only=True)
+    patient_name = serializers.SerializerMethodField()
+    patient_mrn = serializers.CharField(source='triage_assessment.encounter.patient.mrn', read_only=True)
+    patient_age = serializers.SerializerMethodField()
+    patient_gender = serializers.CharField(source='triage_assessment.encounter.patient.gender', read_only=True)
+    
+    # Flattened triage assessment fields
+    triage_category = serializers.CharField(source='triage_assessment.triage_category', read_only=True)
+    chief_complaint_category = serializers.CharField(source='triage_assessment.chief_complaint_category', read_only=True)
+    chief_complaint = serializers.CharField(source='triage_assessment.chief_complaint', read_only=True)
+    assigned_area = serializers.CharField(source='triage_assessment.assigned_area', read_only=True)
+    assigned_area_display = serializers.SerializerMethodField()
+    arrival_time = serializers.DateTimeField(source='triage_assessment.arrival_time', read_only=True)
+    triage_time = serializers.DateTimeField(source='triage_assessment.triage_start_time', read_only=True)
+    wait_time_minutes = serializers.SerializerMethodField()
+    alerts_count = serializers.SerializerMethodField()
+    
+    # Queue-specific fields
+    called_by_name = serializers.CharField(source='called_by.get_full_name', read_only=True, allow_null=True)
 
     class Meta:
         model = TriageQueue
-        fields = ['id', 'assessment', 'position', 'status', 'called_at', 'called_by', 'notes', 'created_at', 'updated_at']
+        fields = [
+            'id', 'patient_id', 'patient_name', 'patient_mrn', 'patient_age', 'patient_gender',
+            'triage_category', 'chief_complaint_category', 'chief_complaint',
+            'assigned_area', 'assigned_area_display', 'arrival_time', 'triage_time',
+            'wait_time_minutes', 'alerts_count',
+            'status', 'position', 'called_at', 'called_by_name', 'notes',
+            'created_at', 'updated_at'
+        ]
         read_only_fields = ['position', 'created_at', 'updated_at']
+
+    def get_patient_name(self, obj):
+        """Get patient full name."""
+        patient = obj.triage_assessment.encounter.patient
+        return f"{patient.first_name} {patient.last_name}"
+
+    def get_patient_age(self, obj):
+        """Get patient age in years."""
+        patient = obj.triage_assessment.encounter.patient
+        if hasattr(patient, 'age'):
+            return patient.age
+        # Calculate age if not a property
+        from django.utils import timezone
+        from datetime import date
+        today = date.today()
+        dob = patient.date_of_birth
+        return today.year - dob.year - ((today.month, today.day) < (dob.month, dob.day))
+
+    def get_assigned_area_display(self, obj):
+        """Get human-readable area name."""
+        area = obj.triage_assessment.assigned_area
+        area_labels = {
+            'OPD': 'Outpatient Department',
+            'ER_RESUS': 'ER Resuscitation',
+            'ER_ACUTE': 'ER Acute',
+            'ER_FAST_TRACK': 'ER Fast Track',
+            'OBSERVATION': 'Observation',
+            'TRAUMA': 'Trauma',
+            'PEDIATRIC_ER': 'Pediatric ER',
+            'MATERNITY': 'Maternity',
+            'SPECIALTY': 'Specialty',
+        }
+        return area_labels.get(area, area)
+
+    def get_wait_time_minutes(self, obj):
+        """Calculate wait time in minutes since arrival."""
+        arrival_time = obj.triage_assessment.arrival_time
+        if not arrival_time:
+            return 0
+        from django.utils import timezone
+        now = timezone.now()
+        diff = now - arrival_time
+        return int(diff.total_seconds() / 60)
+
+    def get_alerts_count(self, obj):
+        """Get count of active alerts."""
+        alerts = obj.triage_assessment.alerts or []
+        return len(alerts) if isinstance(alerts, list) else 0
 
 
 class TriageCategoryCalculationSerializer(serializers.Serializer):

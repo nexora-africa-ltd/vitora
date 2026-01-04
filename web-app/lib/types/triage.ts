@@ -405,15 +405,19 @@ export interface TriageAssessmentCreateData {
 export interface TriageQueueEntry {
   id: number;
   triage_assessment: number;
+  patient_id: number;
   patient_name: string;
   patient_mrn: string;
   patient_age: number;
   patient_gender: string;
   triage_category: TriageCategory;
+  chief_complaint_category: ChiefComplaintCategory;
   chief_complaint: string;
   assigned_area: AssignedArea;
   assigned_area_label: string;
+  assigned_area_display: string;
   arrival_time: string;
+  triage_time: string;
   wait_time_minutes: number;
   is_wait_exceeded: boolean;
   status: QueueStatus;
@@ -422,6 +426,7 @@ export interface TriageQueueEntry {
   called_by_name: string | null;
   position: number;
   alerts: TriageAlert[];
+  alerts_count: number;
   created_at: string;
   updated_at: string;
 }

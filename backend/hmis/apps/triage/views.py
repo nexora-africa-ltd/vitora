@@ -82,11 +82,21 @@ class TriageAssessmentViewSet(viewsets.ModelViewSet):
         return permissions
 
     def create(self, request, *args, **kwargs):
-        """Create triage assessment with audit logging."""
+        """Create triage assessment with audit logging.
+        
+        Also updates the WaitingQueue entry to mark triage as complete.
+        """
         # Use create serializer for validation and creation
         serializer = self.get_serializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         instance = serializer.save()
+        
+        # Update the WaitingQueue entry for this encounter to mark as triaged
+        encounter_id = instance.encounter_id
+        WaitingQueue.objects.filter(
+            encounter_id=encounter_id,
+            status__in=['WAITING_TRIAGE', 'IN_TRIAGE']
+        ).update(status='TRIAGED')
 
         # Use read serializer for response
         read_serializer = TriageAssessmentSerializer(instance, context={'request': request})

@@ -45,7 +45,7 @@ export default function NewPatientPage() {
     try {
       await checkInPatient.mutateAsync({
         patient_id: registeredPatient.id,
-        reason_for_visit: 'New patient registration',
+        reason_for_visit: '',
         create_encounter: true,
       });
       toast({

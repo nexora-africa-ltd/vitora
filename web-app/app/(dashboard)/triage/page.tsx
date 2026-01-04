@@ -35,21 +35,21 @@ import type { TriageCategory, AssignedArea, TriageQueueEntry, TriageQueueItem } 
 function transformQueueEntries(entries: TriageQueueEntry[]): TriageQueueItem[] {
   return entries.map((entry) => ({
     id: entry.id,
-    patient_id: entry.triage_assessment, // Use assessment ID as patient reference
+    patient_id: entry.patient_id,
     patient_name: entry.patient_name,
     patient_mrn: entry.patient_mrn,
     patient_age: entry.patient_age,
     patient_gender: entry.patient_gender,
     triage_category: entry.triage_category,
-    chief_complaint_category: 'OTHER' as const, // Default since not in entry
+    chief_complaint_category: entry.chief_complaint_category || 'OTHER' as const,
     chief_complaint: entry.chief_complaint,
     assigned_area: entry.assigned_area,
-    assigned_area_display: entry.assigned_area_label,
+    assigned_area_display: entry.assigned_area_display || entry.assigned_area_label,
     status: entry.status,
     arrival_time: entry.arrival_time,
-    triage_time: entry.created_at,
+    triage_time: entry.triage_time || entry.created_at,
     wait_time_minutes: entry.wait_time_minutes,
-    alerts_count: entry.alerts?.length ?? 0,
+    alerts_count: entry.alerts_count ?? entry.alerts?.length ?? 0,
     called_by: entry.called_by_name ?? undefined,
     called_at: entry.called_at ?? undefined,
   }));
