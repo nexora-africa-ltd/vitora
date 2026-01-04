@@ -9,6 +9,10 @@ export { DiagnosesList } from './diagnoses-list';
 export { MedicalHistoryView } from './medical-history-view';
 export { TreatmentPlanView } from './treatment-plan-view';
 
+// Consultation Queue components
+export { ConsultationQueue } from './consultation-queue';
+export { ConsultationQueueItem } from './consultation-queue-item';
+
 // Form components
 export { PatientSelector } from './patient-selector';
 export { VitalsForm } from './vitals-form';
