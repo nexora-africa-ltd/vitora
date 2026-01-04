@@ -57,20 +57,21 @@ const getTriageBadgeStyles = (category: string | null): string => {
   }
 };
 
+// Bypass reason display - aligned with backend TRIAGE_BYPASS_REASON_CHOICES
 const getBypassReasonDisplay = (reason: string | null): string => {
   switch (reason) {
-    case 'FOLLOW_UP':
-      return 'Follow-up';
-    case 'CONSULTANT_REVIEW':
-      return 'Consultant Review';
-    case 'STABLE_CHRONIC':
-      return 'Stable Chronic';
-    case 'EMERGENCY_STABILIZED':
-      return 'Emergency Stabilized';
-    case 'CLINICIAN_DISCRETION':
-      return 'Clinician Discretion';
-    case 'SYSTEM_OVERRIDE':
-      return 'System Override';
+    case 'STABLE_FOLLOW_UP':
+      return 'Stable follow-up';
+    case 'CONSULTANT_DECISION':
+      return 'Consultant decision';
+    case 'CHRONIC_CARE_REVIEW':
+      return 'Chronic care review';
+    case 'STAFF_SHORTAGE':
+      return 'Staff shortage';
+    case 'PATIENT_PREFERENCE':
+      return 'Patient preference';
+    case 'OTHER':
+      return 'Other';
     default:
       return reason || 'Unknown';
   }
