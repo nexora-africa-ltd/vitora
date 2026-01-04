@@ -9,6 +9,7 @@
 import { apiClient } from './client';
 import type {
   TriageAssessment,
+  TriageAssessmentCreateData,
   TriageQueueEntry,
   TriageVitalThreshold,
   TriageReportSummary,
@@ -23,28 +24,6 @@ import type { PaginatedResponse } from '@/lib/types';
 // =============================================================================
 // TYPES
 // =============================================================================
-
-export interface TriageAssessmentCreateData {
-  encounter_id: number;
-  mental_status: 'A' | 'V' | 'P' | 'U';
-  chief_complaint_category: string;
-  chief_complaint_text?: string;
-  pain_score?: number;
-  mobility?: string;
-  arrival_mode?: string;
-  assigned_area?: AssignedArea;
-  triage_category?: TriageCategory;
-  category_override_reason?: string;
-  allergies_snapshot?: string;
-  notes?: string;
-  // Vitals (can come from encounter or be entered directly)
-  spo2?: number;
-  systolic_bp?: number;
-  diastolic_bp?: number;
-  heart_rate?: number;
-  temperature?: number;
-  respiratory_rate?: number;
-}
 
 export interface TriageAssessmentUpdateData {
   mental_status?: 'A' | 'V' | 'P' | 'U';

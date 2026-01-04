@@ -10,8 +10,10 @@
 
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { apiClient } from '@/lib/api/client';
+import { triageApi } from '@/lib/api/triage';
 import type {
   TriageAssessment,
+  TriageAssessmentCreateData,
   TriageQueueEntry,
   TriageVitalThreshold,
   TriageReportSummary,
@@ -145,9 +147,8 @@ export function useCreateTriageAssessment() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: async (data: Partial<TriageAssessment> & { encounter_id?: number }) => {
-      const response = await apiClient.post<TriageAssessment>('/api/triage/assessments/', data);
-      return response.data;
+    mutationFn: async (data: TriageAssessmentCreateData) => {
+      return triageApi.createAssessment(data);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: triageKeys.queue() });
