@@ -293,23 +293,37 @@ def get_consultation_queue():
 ### Phase 1: Backend Model Updates
 
 #### 1.1 Encounter Type & Triage Requirement
-- [ ] Add `ENCOUNTER_TYPE_CHOICES` extension:
-  - [ ] `EMERGENCY` - Emergency/Casualty visit
-  - [ ] `OPD` - Outpatient walk-in
-  - [ ] `IPD` - Inpatient admission
-  - [ ] `ANC` - Antenatal clinic (high-risk)
-  - [ ] `PAEDIATRIC` - Paediatric clinic (high-risk, ETAT)
-  - [ ] `DIALYSIS` - Dialysis unit (high-risk)
-  - [ ] `ONCOLOGY` - Oncology clinic (high-risk)
-  - [ ] `SCHEDULED_OPD` - Scheduled outpatient
-  - [ ] `FOLLOW_UP` - Follow-up visit
-  - [ ] `CONSULTANT_REVIEW` - Specialist referral
-  - [ ] `CHRONIC_STABLE` - Stable chronic care (HTN, DM)
-  - [ ] `SPECIALIST_CLINIC` - ENT, Ortho, etc.
-  - [ ] `PROCEDURE` - Scheduled procedure
-  - [ ] `DAY_CASE` - Day surgery/procedure
-  - [ ] `WARD_ROUND` - Ward round review
-  - [ ] `DISCHARGE_REVIEW` - Discharge assessment
+- [ ] **Extend existing `ENCOUNTER_TYPE_CHOICES`** in `hmis/apps/encounters/models.py`:
+  ```python
+  # Current choices (keep existing):
+  # ("OPD", "Outpatient Department"),
+  # ("IPD", "Inpatient Department"),
+  # ("EMERGENCY", "Emergency"),
+  
+  # Add new choices:
+  ENCOUNTER_TYPE_CHOICES = [
+      # Existing (MANDATORY triage)
+      ("OPD", "Outpatient Department"),
+      ("IPD", "Inpatient Department"),
+      ("EMERGENCY", "Emergency"),
+      # High-risk clinics (MANDATORY triage)
+      ("ANC", "Antenatal Clinic"),
+      ("PAEDIATRIC", "Paediatric Clinic"),
+      ("DIALYSIS", "Dialysis Unit"),
+      ("ONCOLOGY", "Oncology Clinic"),
+      # Scheduled visits (OPTIONAL triage)
+      ("SCHEDULED_OPD", "Scheduled Outpatient"),
+      ("FOLLOW_UP", "Follow-up Visit"),
+      ("CONSULTANT_REVIEW", "Consultant Review"),
+      ("CHRONIC_STABLE", "Stable Chronic Care"),
+      ("SPECIALIST_CLINIC", "Specialist Clinic"),
+      # Pre-assessed (NOT_REQUIRED triage)
+      ("PROCEDURE", "Scheduled Procedure"),
+      ("DAY_CASE", "Day Case"),
+      ("WARD_ROUND", "Ward Round"),
+      ("DISCHARGE_REVIEW", "Discharge Review"),
+  ]
+  ```
 - [ ] Add `TRIAGE_REQUIREMENT_CHOICES`: `MANDATORY`, `OPTIONAL`, `NOT_REQUIRED`
 - [ ] Add `TRIAGE_STATUS_CHOICES`: `PENDING`, `IN_PROGRESS`, `COMPLETED`, `BYPASSED`, `NOT_APPLICABLE`
 - [ ] Add `TRIAGE_BYPASS_REASON_CHOICES`
