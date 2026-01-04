@@ -349,13 +349,13 @@ export function TriageAssessmentForm({
   } = useForm<TriageFormData>({
     resolver: zodResolver(triageFormSchema),
     defaultValues: {
-      arrival_mode: initialData?.arrival_mode,
+      arrival_mode: initialData?.arrival_mode || 'WALK_IN',
       arrival_time: initialData?.arrival_time || new Date().toISOString().slice(0, 16),
       chief_complaint_category: initialData?.chief_complaint_category,
       chief_complaint: initialData?.chief_complaint || '',
       pain_score: initialData?.pain_score ?? null,
-      mental_status: initialData?.mental_status,
-      mobility: initialData?.mobility,
+      mental_status: initialData?.mental_status || 'A',
+      mobility: initialData?.mobility || 'AMBULATORY',
       allergies_noted: initialData?.allergies_noted || patient.allergies || '',
       triage_category: initialData?.triage_category,
       auto_calculated_category: initialData?.auto_calculated_category || initialSuggested,
