@@ -3,6 +3,8 @@
  */
 
 export { apiClient } from './client';
+export { consultationQueueApi } from './consultation-queue';
+export type { ConsultationQueueResponse } from './consultation-queue';
 export { encountersApi } from './encounters';
 export { inpatientApi } from './inpatient';
 export { laboratoryApi } from './laboratory';

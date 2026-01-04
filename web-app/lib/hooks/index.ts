@@ -113,3 +113,12 @@ export {
   useStartTriage,
   useCancelWaitingEntry,
 } from './use-triage';
+
+// Consultation Queue hooks (Phase 3.3)
+export {
+  consultationQueueKeys,
+  useConsultationQueue,
+  useCallPatient,
+  useStartConsultation,
+  useBypassTriage,
+} from './use-consultation-queue';
