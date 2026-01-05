@@ -66,7 +66,7 @@ export default function LoginPage() {
       </Button>
 
       {/* Left side - Branding */}
-      <div className="hidden lg:flex lg:w-1/2 bg-gradient-to-br from-brand-burgundy-900 via-brand-burgundy-800 to-brand-teal-600 p-12 flex-col justify-between">
+      <div className="hidden lg:flex lg:w-1/2 bg-gradient-to-br from-brand-burgundy-900 via-brand-burgundy-900 to-brand-teal-600 p-12 flex-col justify-between">
         <div>
           <div className="flex items-center gap-3">
             <div className="h-10 w-10 rounded-lg bg-white/10 backdrop-blur flex items-center justify-center">
@@ -101,7 +101,7 @@ export default function LoginPage() {
         </div>
 
         <p className="text-sm text-white/40">
-          © {new Date().getFullYear()} Vitora HMIS. Kenya Data Protection Act 2019 Compliant.
+          © {new Date().getFullYear()} Vitora HMIS. Powered by Nexora. Kenya Data Protection Act 2019 Compliant.
         </p>
       </div>
 
