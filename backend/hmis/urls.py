@@ -152,6 +152,8 @@ urlpatterns = [
     path("api/inpatient/", include("hmis.apps.inpatient.urls", namespace="inpatient")),
     # Triage API
     path("api/triage/", include("hmis.apps.triage.urls", namespace="triage")),
+    # Core utilities API (PRC number generation, etc.)
+    path("api/core/", include("hmis.apps.core.urls")),
     path("api-auth/", include("rest_framework.urls", namespace="rest_framework")),
     # JWT Authentication endpoints (using custom view with audit logging)
     path("api/token/", AuditedTokenObtainPairView.as_view(), name="token_obtain_pair"),

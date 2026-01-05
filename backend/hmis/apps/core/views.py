@@ -401,3 +401,61 @@ class NotificationViewSet(viewsets.ModelViewSet):
         ).count()
 
         return Response({"unread_count": count})
+
+
+# ============================================================================
+# Case Number Generation Endpoints
+# ============================================================================
+
+
+from rest_framework.decorators import api_view, permission_classes as perm_classes
+from rest_framework.permissions import IsAuthenticated as IsAuth
+
+
+@api_view(["GET"])
+@perm_classes([IsAuth])
+def generate_prc_number_view(request):
+    """
+    Generate a new unique PRC (Post-Rape Care) Number.
+
+    PRC Numbers are used to track sexual assault/GBV cases across
+    medical, legal, and psychosocial services.
+
+    Format: {FACILITY_CODE}-PRC-{SEQUENCE}/{YEAR}
+    Example: FAC-PRC-0042/2026
+
+    Returns:
+        JSON: {"prc_number": "FAC-PRC-0001/2026"}
+    """
+    from .utils import generate_prc_number
+
+    facility_code = request.query_params.get("facility_code")
+    prc_number = generate_prc_number(facility_code)
+
+    return Response({"prc_number": prc_number})
+
+
+@api_view(["GET"])
+@perm_classes([IsAuth])
+def generate_case_number_view(request):
+    """
+    Generate a generic case number with a given prefix.
+
+    Query Parameters:
+        prefix: The case type prefix (e.g., 'GBV', 'RTA', 'TRAUMA')
+        facility_code: Optional facility code override
+
+    Format: {FACILITY_CODE}-{PREFIX}-{SEQUENCE}/{YEAR}
+    Example: FAC-RTA-0001/2026
+
+    Returns:
+        JSON: {"case_number": "FAC-RTA-0001/2026"}
+    """
+    from .utils import generate_case_number
+
+    prefix = request.query_params.get("prefix", "CASE")
+    facility_code = request.query_params.get("facility_code")
+    case_number = generate_case_number(prefix, facility_code)
+
+    return Response({"case_number": case_number})
+

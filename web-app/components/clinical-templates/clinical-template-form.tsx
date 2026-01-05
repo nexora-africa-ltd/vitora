@@ -11,6 +11,8 @@ import {
   FileText,
   CheckCircle,
   AlertCircle,
+  Wand2,
+  Loader2,
 } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
@@ -32,6 +34,7 @@ import {
   CollapsibleTrigger,
 } from '@/components/ui/collapsible';
 import { cn } from '@/lib/utils/cn';
+import { coreApi } from '@/lib/api/core';
 import type {
   ClinicalTemplate,
   TemplateField,
@@ -201,6 +204,33 @@ function TemplateFieldRenderer({
   disabled,
 }: TemplateFieldRendererProps) {
   const id = `field-${field.name}`;
+  const [isGenerating, setIsGenerating] = useState(false);
+
+  const handleAutoGenerate = async () => {
+    if (!field.auto_generate) return;
+    
+    setIsGenerating(true);
+    try {
+      let generatedValue: string;
+      
+      switch (field.auto_generate) {
+        case 'prc':
+          generatedValue = await coreApi.generatePRCNumber();
+          break;
+        case 'case':
+          generatedValue = await coreApi.generateCaseNumber('CASE');
+          break;
+        default:
+          return;
+      }
+      
+      onChange(generatedValue);
+    } catch (error) {
+      console.error('Failed to generate value:', error);
+    } finally {
+      setIsGenerating(false);
+    }
+  };
 
   switch (field.type) {
     case 'text':
@@ -210,13 +240,35 @@ function TemplateFieldRenderer({
             {field.label}
             {field.required && <span className="text-destructive ml-1">*</span>}
           </Label>
-          <Input
-            id={id}
-            value={(value as string) || ''}
-            onChange={(e) => onChange(e.target.value)}
-            placeholder={field.placeholder}
-            disabled={disabled}
-          />
+          <div className="flex gap-2">
+            <Input
+              id={id}
+              value={(value as string) || ''}
+              onChange={(e) => onChange(e.target.value)}
+              placeholder={field.placeholder}
+              disabled={disabled}
+              className={field.auto_generate ? 'flex-1' : undefined}
+            />
+            {field.auto_generate && (
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={handleAutoGenerate}
+                disabled={disabled || isGenerating}
+                className="shrink-0"
+              >
+                {isGenerating ? (
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                ) : (
+                  <>
+                    <Wand2 className="h-4 w-4 mr-1" />
+                    Generate
+                  </>
+                )}
+              </Button>
+            )}
+          </div>
           {field.help_text && (
             <p className="text-xs text-muted-foreground">{field.help_text}</p>
           )}

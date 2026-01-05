@@ -11,7 +11,7 @@
                 "name": "Survivor Information",
                 "order": 1,
                 "fields": [
-                    {"name": "prc_number", "type": "text", "required": true, "label": "PRC Number"},
+                    {"name": "prc_number", "type": "text", "required": true, "label": "PRC Number", "help_text": "Click 'Generate' to auto-generate or enter existing PRC number from facility register", "auto_generate": "prc"},
                     {"name": "date_of_assault", "type": "date", "required": true, "label": "Date of Assault"},
                     {"name": "time_of_assault", "type": "text", "required": false, "label": "Approximate Time of Assault"},
                     {"name": "hours_since_assault", "type": "number", "required": true, "label": "Hours Since Assault", "min": 0},
