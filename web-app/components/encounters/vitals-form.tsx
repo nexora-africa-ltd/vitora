@@ -357,7 +357,7 @@ export function VitalsForm({ data, onChange, disabled = false, errors = {}, pati
                 placeholder="120"
                 value={data.blood_pressure_systolic ?? ''}
                 onChange={(e) => onChange('blood_pressure_systolic', e.target.value ? parseInt(e.target.value) : null)}
-                className={cn('w-16 text-center', inputClassName('blood_pressure'))}
+                className={cn('w-20 text-center [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none', inputClassName('blood_pressure'))}
                 disabled={disabled}
               />
               <span className="text-muted-foreground">/</span>
@@ -368,7 +368,7 @@ export function VitalsForm({ data, onChange, disabled = false, errors = {}, pati
                 placeholder="80"
                 value={data.blood_pressure_diastolic ?? ''}
                 onChange={(e) => onChange('blood_pressure_diastolic', e.target.value ? parseInt(e.target.value) : null)}
-                className={cn('w-16 text-center', inputClassName('blood_pressure'))}
+                className={cn('w-20 text-center [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none', inputClassName('blood_pressure'))}
                 disabled={disabled}
               />
               <span className="text-xs text-muted-foreground">mmHg</span>
