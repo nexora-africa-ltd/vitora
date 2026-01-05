@@ -41,6 +41,7 @@ import {
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { TriageCategoryBadge } from './triage-category-badge';
 import { VitalAlertsPanel } from './vital-alerts-panel';
+import { InputGroup, InputGroupAddon, InputGroupInput } from '@/components/ui/input-group';
 import type {
   TriageAssessmentCreateData,
   ArrivalMode,
@@ -51,6 +52,7 @@ import type {
   AssignedArea,
   TriageAlert,
 } from '@/lib/types/triage';
+import { useCalculateTriageCategory } from '@/lib/hooks/use-triage';
 import {
   ARRIVAL_MODE_CONFIG,
   CHIEF_COMPLAINT_CONFIG,
@@ -89,6 +91,33 @@ const triageFormSchema = z
     ),
     chief_complaint: z.string().min(1, 'Chief complaint details are required'),
     pain_score: z.number().min(0).max(10).nullable().optional(),
+
+    // Vital signs (optional) - nullable number with range validation
+    // Use union to properly short-circuit null before range checks
+    spo2: z.union([
+      z.literal(null),
+      z.number().min(0, 'SpO2 must be between 0 and 100').max(100, 'SpO2 must be between 0 and 100'),
+    ]).optional(),
+    heart_rate: z.union([
+      z.literal(null),
+      z.number().min(0, 'Heart rate must be between 0 and 300').max(300, 'Heart rate must be between 0 and 300'),
+    ]).optional(),
+    systolic_bp: z.union([
+      z.literal(null),
+      z.number().min(0, 'Systolic BP must be between 0 and 300').max(300, 'Systolic BP must be between 0 and 300'),
+    ]).optional(),
+    diastolic_bp: z.union([
+      z.literal(null),
+      z.number().min(0, 'Diastolic BP must be between 0 and 200').max(200, 'Diastolic BP must be between 0 and 200'),
+    ]).optional(),
+    temperature: z.union([
+      z.literal(null),
+      z.number().min(30, 'Temperature must be between 30 and 45').max(45, 'Temperature must be between 30 and 45'),
+    ]).optional(),
+    respiratory_rate: z.union([
+      z.literal(null),
+      z.number().min(0, 'Respiratory rate must be between 0 and 60').max(60, 'Respiratory rate must be between 0 and 60'),
+    ]).optional(),
     mental_status: z.enum(['A', 'V', 'P', 'U'], {
       required_error: 'Mental status (AVPU) is required',
     }),
@@ -272,10 +301,27 @@ function calculateSuggestedCategory(
   formData: Partial<TriageFormData>,
   encounter: Encounter
 ): TriageCategory {
+  const spo2 = typeof formData.spo2 === 'number' ? formData.spo2 : encounter.spo2;
+  const heartRate =
+    typeof formData.heart_rate === 'number' ? formData.heart_rate : encounter.pulse;
+  const systolicBp = typeof formData.systolic_bp === 'number' ? formData.systolic_bp : undefined;
+  const diastolicBp =
+    typeof formData.diastolic_bp === 'number' ? formData.diastolic_bp : undefined;
+  const temperature =
+    typeof formData.temperature === 'number' ? formData.temperature : encounter.temperature;
+  const respiratoryRate =
+    typeof formData.respiratory_rate === 'number'
+      ? formData.respiratory_rate
+      : encounter.respiratory_rate;
+
   // Critical conditions → RED
   if (formData.mental_status === 'U') return 'RED';
-  if (encounter.spo2 !== undefined && encounter.spo2 < 90) return 'RED';
-  if (encounter.pulse !== undefined && (encounter.pulse < 40 || encounter.pulse > 150))
+  if (typeof spo2 === 'number' && spo2 < 90) return 'RED';
+  if (typeof heartRate === 'number' && (heartRate < 40 || heartRate > 150))
+    return 'RED';
+  if (typeof systolicBp === 'number' && (systolicBp < 90 || systolicBp > 180))
+    return 'RED';
+  if (typeof diastolicBp === 'number' && (diastolicBp < 60 || diastolicBp > 120))
     return 'RED';
 
   // High-risk complaints or warning vitals → ORANGE
@@ -290,14 +336,28 @@ function calculateSuggestedCategory(
   ) {
     return 'ORANGE';
   }
-  if (encounter.spo2 !== undefined && encounter.spo2 < 95) return 'ORANGE';
+  if (
+    formData.chief_complaint_category === 'DIFFICULTY_BREATHING' &&
+    typeof spo2 === 'number' &&
+    spo2 < 95
+  ) {
+    return 'ORANGE';
+  }
+  if (typeof spo2 === 'number' && spo2 < 95) return 'ORANGE';
   if (formData.mental_status === 'P') return 'ORANGE';
+  if (typeof temperature === 'number' && temperature > 40) return 'ORANGE';
 
   // Moderate conditions → YELLOW
   if (formData.pain_score !== null && formData.pain_score !== undefined && formData.pain_score >= 7)
     return 'YELLOW';
   if (formData.mental_status === 'V') return 'YELLOW';
-  if (encounter.temperature !== undefined && encounter.temperature >= 38.5) return 'YELLOW';
+  if (typeof temperature === 'number' && temperature >= 38.5) return 'YELLOW';
+  if (
+    typeof respiratoryRate === 'number' &&
+    (respiratoryRate < 10 || respiratoryRate > 30)
+  ) {
+    return 'YELLOW';
+  }
 
   // Stable conditions → GREEN
   if (formData.mental_status === 'A') return 'GREEN';
@@ -336,9 +396,15 @@ export function TriageAssessmentForm({
   disabled = false,
 }: TriageAssessmentFormProps) {
   const [isSubmitting, setIsSubmitting] = React.useState(false);
+  const [showVitals, setShowVitals] = React.useState(true);
+  const [backendAlerts, setBackendAlerts] = React.useState<TriageAlert[] | null>(null);
 
-  // Calculate initial suggested category
-  const initialSuggested = calculateSuggestedCategory(initialData || {}, encounter);
+  const calculateCategoryMutation = useCalculateTriageCategory();
+
+  // Use initialData's category if provided, otherwise calculate locally as fallback
+  const initialSuggested = initialData?.auto_calculated_category || 
+    initialData?.triage_category ||
+    calculateSuggestedCategory(initialData || {}, encounter);
 
   const {
     register,
@@ -357,11 +423,22 @@ export function TriageAssessmentForm({
       chief_complaint_category: initialData?.chief_complaint_category,
       chief_complaint: initialData?.chief_complaint || '',
       pain_score: initialData?.pain_score ?? null,
+
+      spo2: null,
+      heart_rate: null,
+      systolic_bp: null,
+      diastolic_bp: null,
+      temperature: null,
+      respiratory_rate: null,
+
       mental_status: initialData?.mental_status || 'A',
       mobility: initialData?.mobility || 'AMBULATORY',
       allergies_noted: initialData?.allergies_noted || patient.allergies || '',
       triage_category: initialData?.triage_category,
-      auto_calculated_category: initialData?.auto_calculated_category || initialSuggested,
+      auto_calculated_category:
+        initialData?.auto_calculated_category ||
+        initialData?.triage_category ||
+        initialSuggested,
       category_override_reason: initialData?.category_override_reason || '',
       assigned_area: initialData?.assigned_area,
       assigned_clinician: initialData?.assigned_clinician || null,
@@ -376,10 +453,78 @@ export function TriageAssessmentForm({
   const autoCalculatedCategory = watchedValues.auto_calculated_category;
   const chiefComplaintCategory = watchedValues.chief_complaint_category;
 
+  const spo2 = watchedValues.spo2;
+  const heartRate = watchedValues.heart_rate;
+  const systolicBp = watchedValues.systolic_bp;
+  const diastolicBp = watchedValues.diastolic_bp;
+  const temperature = watchedValues.temperature;
+  const respiratoryRate = watchedValues.respiratory_rate;
+
+  const spo2Critical = spo2 !== null && spo2 !== undefined && spo2 < 90;
+  const heartRateCritical =
+    heartRate !== null &&
+    heartRate !== undefined &&
+    (heartRate < 40 || heartRate > 150);
+  const systolicBpCritical =
+    systolicBp !== null &&
+    systolicBp !== undefined &&
+    (systolicBp < 90 || systolicBp > 180);
+  const diastolicBpCritical =
+    diastolicBp !== null &&
+    diastolicBp !== undefined &&
+    (diastolicBp < 60 || diastolicBp > 120);
+  const temperatureCritical =
+    temperature !== null &&
+    temperature !== undefined &&
+    (temperature < 35 || temperature > 40);
+  const respiratoryRateCritical =
+    respiratoryRate !== null &&
+    respiratoryRate !== undefined &&
+    (respiratoryRate < 10 || respiratoryRate > 30);
+
   // Recalculate suggested category when relevant fields change
+  // Skip recalculation if the category was provided via initialData (backend is source of truth)
+  const hasInitialCategory = Boolean(initialData?.auto_calculated_category || initialData?.triage_category);
+  const [hasUserInteracted, setHasUserInteracted] = React.useState(false);
+  
+  // Track when user actually interacts with category-relevant fields
+  const prevChiefComplaintCategory = React.useRef(chiefComplaintCategory);
+  const prevMentalStatus = React.useRef(mentalStatus);
+  
   React.useEffect(() => {
+    // Detect user interaction (field value changed from initial)
+    if (
+      chiefComplaintCategory !== prevChiefComplaintCategory.current ||
+      mentalStatus !== prevMentalStatus.current
+    ) {
+      setHasUserInteracted(true);
+    }
+    prevChiefComplaintCategory.current = chiefComplaintCategory;
+    prevMentalStatus.current = mentalStatus;
+  }, [chiefComplaintCategory, mentalStatus]);
+  
+  React.useEffect(() => {
+    // If category was provided in initialData and user hasn't interacted, respect initial value
+    if (hasInitialCategory && !hasUserInteracted) {
+      return;
+    }
+
+    if (!chiefComplaintCategory) return;
+
+    // Local calculation is a fallback when no vitals are entered
+    // Backend calculation (via useEffect below) takes precedence when vitals are provided
     const newSuggested = calculateSuggestedCategory(
-      { mental_status: mentalStatus, chief_complaint_category: chiefComplaintCategory, pain_score: painScore },
+      {
+        mental_status: mentalStatus,
+        chief_complaint_category: chiefComplaintCategory,
+        pain_score: painScore,
+        spo2,
+        heart_rate: heartRate,
+        systolic_bp: systolicBp,
+        diastolic_bp: diastolicBp,
+        temperature,
+        respiratory_rate: respiratoryRate,
+      },
       encounter
     );
     if (newSuggested !== autoCalculatedCategory) {
@@ -389,13 +534,92 @@ export function TriageAssessmentForm({
     mentalStatus,
     chiefComplaintCategory,
     painScore,
+    spo2,
+    heartRate,
+    systolicBp,
+    diastolicBp,
+    temperature,
+    respiratoryRate,
     encounter,
     setValue,
     autoCalculatedCategory,
+    hasInitialCategory,
+    hasUserInteracted,
   ]);
 
-  // Generate alerts
-  const alerts = generateTriageAlerts(watchedValues, encounter);
+  // Use backend calculate-category when vitals are provided
+  React.useEffect(() => {
+    const hasAnyVitals = [
+      spo2,
+      heartRate,
+      systolicBp,
+      diastolicBp,
+      temperature,
+      respiratoryRate,
+    ].some((value) => typeof value === 'number' && !Number.isNaN(value));
+
+    if (!hasAnyVitals) {
+      if (backendAlerts !== null) setBackendAlerts(null);
+      return;
+    }
+
+    let cancelled = false;
+    const timer = window.setTimeout(() => {
+      (async () => {
+        try {
+          const response = await calculateCategoryMutation.mutateAsync({
+            spo2: typeof spo2 === 'number' ? spo2 : undefined,
+            heart_rate: typeof heartRate === 'number' ? heartRate : undefined,
+            systolic_bp: typeof systolicBp === 'number' ? systolicBp : undefined,
+            diastolic_bp: typeof diastolicBp === 'number' ? diastolicBp : undefined,
+            temperature: typeof temperature === 'number' ? temperature : undefined,
+            respiratory_rate:
+              typeof respiratoryRate === 'number' ? respiratoryRate : undefined,
+            mental_status: mentalStatus,
+            chief_complaint_category: chiefComplaintCategory || 'OTHER',
+            pain_score: typeof painScore === 'number' ? painScore : undefined,
+            mobility: watchedValues.mobility,
+          });
+
+          if (cancelled) return;
+
+          setBackendAlerts(response.alerts || []);
+          if (
+            response.suggested_category &&
+            response.suggested_category !== autoCalculatedCategory
+          ) {
+            setValue('auto_calculated_category', response.suggested_category);
+          }
+        } catch {
+          if (cancelled) return;
+          setBackendAlerts(null);
+        }
+      })();
+    }, 200);
+
+    return () => {
+      cancelled = true;
+      window.clearTimeout(timer);
+    };
+  }, [
+    spo2,
+    heartRate,
+    systolicBp,
+    diastolicBp,
+    temperature,
+    respiratoryRate,
+    mentalStatus,
+    chiefComplaintCategory,
+    painScore,
+    watchedValues.mobility,
+    calculateCategoryMutation,
+    autoCalculatedCategory,
+    setValue,
+    backendAlerts,
+  ]);
+
+  // Generate alerts (prefer backend calculation when available)
+  const alerts = backendAlerts ?? generateTriageAlerts(watchedValues, encounter);
 
   // Check if category differs from suggested
   const categoryOverridden =
@@ -415,6 +639,12 @@ export function TriageAssessmentForm({
         chief_complaint_category: data.chief_complaint_category,
         chief_complaint: data.chief_complaint,
         pain_score: data.pain_score,
+        spo2: data.spo2,
+        heart_rate: data.heart_rate,
+        systolic_bp: data.systolic_bp,
+        diastolic_bp: data.diastolic_bp,
+        temperature: data.temperature,
+        respiratory_rate: data.respiratory_rate,
         mental_status: data.mental_status,
         mobility: data.mobility,
         allergies_noted: data.allergies_noted,
@@ -537,6 +767,193 @@ export function TriageAssessmentForm({
             )}
           </div>
         </CardContent>
+      </Card>
+
+      {/* Vital Signs */}
+      <Card>
+        <CardHeader className="pb-3">
+          <div className="flex items-center justify-between">
+            <CardTitle className="text-base flex items-center gap-2">
+              <Activity className="h-4 w-4" />
+              Vital Signs
+            </CardTitle>
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              onClick={() => setShowVitals((v) => !v)}
+              disabled={disabled}
+              aria-expanded={showVitals}
+            >
+              {showVitals ? 'Hide' : 'Show'}
+            </Button>
+          </div>
+        </CardHeader>
+        {showVitals && (
+          <CardContent className="grid gap-4">
+            <div className="grid gap-4 sm:grid-cols-3">
+              {/* SpO2 */}
+              <div className="space-y-2">
+                <Label htmlFor="spo2">SpO2</Label>
+                <InputGroup className={cn(spo2Critical && 'border-destructive')}>
+                  <InputGroupInput
+                    id="spo2"
+                    inputMode="decimal"
+                    placeholder="e.g. 98"
+                    aria-invalid={!!errors.spo2}
+                    disabled={disabled}
+                    {...register('spo2', {
+                      setValueAs: (v) => {
+                        if (v === '' || v === null || v === undefined) return null;
+                        const num = parseFloat(v);
+                        return Number.isNaN(num) ? null : num;
+                      },
+                    })}
+                  />
+                  <InputGroupAddon align="inline-end">%</InputGroupAddon>
+                </InputGroup>
+                {errors.spo2 && <p className="text-sm text-destructive">{errors.spo2.message}</p>}
+              </div>
+
+              {/* Heart Rate */}
+              <div className="space-y-2">
+                <Label htmlFor="heart_rate">Heart Rate</Label>
+                <InputGroup className={cn(heartRateCritical && 'border-destructive')}>
+                  <InputGroupInput
+                    id="heart_rate"
+                    inputMode="numeric"
+                    placeholder="e.g. 80"
+                    aria-invalid={!!errors.heart_rate}
+                    disabled={disabled}
+                    {...register('heart_rate', {
+                      setValueAs: (v) => {
+                        if (v === '' || v === null || v === undefined) return null;
+                        const num = parseInt(v, 10);
+                        return Number.isNaN(num) ? null : num;
+                      },
+                    })}
+                  />
+                  <InputGroupAddon align="inline-end">bpm</InputGroupAddon>
+                </InputGroup>
+                {errors.heart_rate && (
+                  <p className="text-sm text-destructive">{errors.heart_rate.message}</p>
+                )}
+              </div>
+
+              {/* Blood Pressure */}
+              <div className="space-y-2">
+                <Label>Blood Pressure</Label>
+                <div className="grid grid-cols-2 gap-2">
+                  <div className="space-y-1">
+                    <Label htmlFor="systolic_bp" className="text-xs text-muted-foreground">
+                      Systolic BP
+                    </Label>
+                    <InputGroup className={cn(systolicBpCritical && 'border-destructive')}>
+                      <InputGroupInput
+                        id="systolic_bp"
+                        inputMode="numeric"
+                        placeholder="120"
+                        aria-invalid={!!errors.systolic_bp}
+                        disabled={disabled}
+                        {...register('systolic_bp', {
+                          setValueAs: (v) => {
+                            if (v === '' || v === null || v === undefined) return null;
+                            const num = parseInt(v, 10);
+                            return Number.isNaN(num) ? null : num;
+                          },
+                        })}
+                      />
+                    </InputGroup>
+                  </div>
+                  <div className="space-y-1">
+                    <Label htmlFor="diastolic_bp" className="text-xs text-muted-foreground">
+                      Diastolic BP
+                    </Label>
+                    <InputGroup className={cn(diastolicBpCritical && 'border-destructive')}>
+                      <InputGroupInput
+                        id="diastolic_bp"
+                        inputMode="numeric"
+                        placeholder="80"
+                        aria-invalid={!!errors.diastolic_bp}
+                        disabled={disabled}
+                        {...register('diastolic_bp', {
+                          setValueAs: (v) => {
+                            if (v === '' || v === null || v === undefined) return null;
+                            const num = parseInt(v, 10);
+                            return Number.isNaN(num) ? null : num;
+                          },
+                        })}
+                      />
+                    </InputGroup>
+                  </div>
+                </div>
+                <p className="text-xs text-muted-foreground">mmHg</p>
+                {(errors.systolic_bp || errors.diastolic_bp) && (
+                  <p className="text-sm text-destructive">
+                    {errors.systolic_bp?.message || errors.diastolic_bp?.message}
+                  </p>
+                )}
+              </div>
+            </div>
+
+            <div className="grid gap-4 sm:grid-cols-3">
+              {/* Temperature */}
+              <div className="space-y-2">
+                <Label htmlFor="temperature">Temperature</Label>
+                <InputGroup className={cn(temperatureCritical && 'border-destructive')}>
+                  <InputGroupInput
+                    id="temperature"
+                    type="number"
+                    step="0.1"
+                    inputMode="decimal"
+                    placeholder="e.g. 37.2"
+                    aria-invalid={!!errors.temperature}
+                    disabled={disabled}
+                    {...register('temperature', {
+                      setValueAs: (v) => {
+                        if (v === '' || v === null || v === undefined) return null;
+                        const num = parseFloat(v);
+                        return Number.isNaN(num) ? null : num;
+                      },
+                    })}
+                  />
+                  <InputGroupAddon align="inline-end">°C</InputGroupAddon>
+                </InputGroup>
+                {errors.temperature && (
+                  <p className="text-sm text-destructive">{errors.temperature.message}</p>
+                )}
+              </div>
+
+              {/* Respiratory Rate */}
+              <div className="space-y-2">
+                <Label htmlFor="respiratory_rate">Respiratory Rate</Label>
+                <InputGroup className={cn(respiratoryRateCritical && 'border-destructive')}>
+                  <InputGroupInput
+                    id="respiratory_rate"
+                    inputMode="numeric"
+                    placeholder="e.g. 16"
+                    aria-invalid={!!errors.respiratory_rate}
+                    disabled={disabled}
+                    {...register('respiratory_rate', {
+                      setValueAs: (v) => {
+                        if (v === '' || v === null || v === undefined) return null;
+                        const num = parseInt(v, 10);
+                        return Number.isNaN(num) ? null : num;
+                      },
+                    })}
+                  />
+                  <InputGroupAddon align="inline-end">/min</InputGroupAddon>
+                </InputGroup>
+                {errors.respiratory_rate && (
+                  <p className="text-sm text-destructive">{errors.respiratory_rate.message}</p>
+                )}
+              </div>
+
+              {/* Spacer for layout symmetry */}
+              <div className="hidden sm:block" />
+            </div>
+          </CardContent>
+        )}
       </Card>
 
       {/* Chief Complaint */}
