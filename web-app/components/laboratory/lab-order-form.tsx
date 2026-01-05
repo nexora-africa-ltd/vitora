@@ -88,6 +88,7 @@ export function LabOrderForm({
       clinical_notes: '',
       items: [],
     },
+    mode: 'onChange', // Validate on change to catch issues early
   });
 
   const { fields, append, remove } = useFieldArray({
@@ -104,8 +105,9 @@ export function LabOrderForm({
   }, 0);
 
   const handleAddTest = useCallback((test: TestCatalog) => {
-    // Check if test is already added
-    const exists = items.some(item => item.test === test.id);
+    // Check if test is already added (use fields for accurate current state)
+    const currentItems = form.getValues('items');
+    const exists = currentItems.some(item => item.test === test.id);
     if (exists) {
       toast({
         title: 'Test already added',
@@ -125,10 +127,15 @@ export function LabOrderForm({
       cost: isNaN(cost) ? 0 : cost,
       special_instructions: '',
     });
+    
+    // Trigger validation for items field to clear any previous errors
+    form.trigger('items');
+    
     setShowTestSelector(false);
-  }, [items, append, toast]);
+  }, [form, append, toast]);
 
   const onSubmit = async (data: OrderFormData) => {
+    console.log('Form submitted with data:', data);
     try {
       const orderData: LabOrderCreateData = {
         patient: data.patient,
@@ -152,6 +159,7 @@ export function LabOrderForm({
 
       onSuccess?.(order.order_number);
     } catch (error) {
+      console.error('Error creating order:', error);
       toast({
         title: 'Error creating order',
         description: error instanceof Error ? error.message : 'An error occurred',
@@ -159,6 +167,10 @@ export function LabOrderForm({
       });
     }
   };
+
+  // Debug: log form errors when they change
+  const formErrors = form.formState.errors;
+  console.log('Form errors:', formErrors, 'Items count:', fields.length);
 
   return (
     <Form {...form}>
