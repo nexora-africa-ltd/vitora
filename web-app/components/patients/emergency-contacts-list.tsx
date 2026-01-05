@@ -1,6 +1,5 @@
 import { User, Phone } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
 import { EmptyState } from '@/components/shared/empty-state';
 import { EmergencyContact } from '@/lib/types/patient';
 import { formatPhoneNumber } from '@/lib/utils/format';
@@ -31,17 +30,26 @@ export function EmergencyContactsList({ contacts }: EmergencyContactsListProps) 
                   <User className="h-5 w-5 text-muted-foreground" />
                 </div>
                 <div>
-                  <p className="font-medium">{contact.name}</p>
-                  <p className="text-sm text-muted-foreground">{contact.relationship}</p>
+                  <p className="font-medium">{contact.full_name}</p>
+                  <p className="text-sm text-muted-foreground capitalize">{contact.relationship}</p>
                 </div>
               </div>
-              {contact.is_primary && <Badge>Primary</Badge>}
             </div>
-            <div className="mt-3 flex items-center gap-2 text-sm">
-              <Phone className="h-4 w-4 text-muted-foreground" />
-              <a href={`tel:${contact.phone}`} className="text-primary hover:underline">
-                {formatPhoneNumber(contact.phone)}
-              </a>
+            <div className="mt-3 space-y-1">
+              <div className="flex items-center gap-2 text-sm">
+                <Phone className="h-4 w-4 text-muted-foreground" />
+                <a href={`tel:${contact.phone_number}`} className="text-primary hover:underline">
+                  {formatPhoneNumber(contact.phone_number)}
+                </a>
+              </div>
+              {contact.alternative_phone && (
+                <div className="flex items-center gap-2 text-sm">
+                  <Phone className="h-4 w-4 text-muted-foreground" />
+                  <a href={`tel:${contact.alternative_phone}`} className="text-muted-foreground hover:underline">
+                    {formatPhoneNumber(contact.alternative_phone)} (alt)
+                  </a>
+                </div>
+              )}
             </div>
           </CardContent>
         </Card>

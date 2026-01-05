@@ -6,12 +6,16 @@ export interface Patient {
   id: number;
   mrn: string;
   first_name: string;
+  middle_name?: string;
   last_name: string;
+  full_name?: string;
   date_of_birth: string;
+  age?: number;
   gender: 'M' | 'F' | 'O';
   national_id?: string;
   phone_number?: string;
   email?: string;
+  address?: string;
   county: number;
   county_name?: string;
   sub_county: number;
@@ -23,10 +27,15 @@ export interface Patient {
   consent_given: boolean;
   consent_date?: string;
   referral_source: 'self' | 'clinic' | 'other_facility';
+  referred_from_facility?: string;
+  // Emergency contacts (nested array)
+  emergency_contacts?: EmergencyContact[];
+  // Primary emergency contact convenience fields
   emergency_contact_name?: string;
   emergency_contact_phone?: string;
   emergency_contact_relationship?: string;
   registered_by: number;
+  registered_by_username?: string;
   created_at: string;
   updated_at: string;
 }
@@ -57,11 +66,10 @@ export interface PatientUpdateData extends Partial<PatientCreateData> {
 
 export interface EmergencyContact {
   id: number;
-  patient: number;
-  name: string;
-  phone: string;
+  full_name: string;
   relationship: string;
-  is_primary: boolean;
+  phone_number: string;
+  alternative_phone?: string;
   created_at: string;
   updated_at: string;
 }
