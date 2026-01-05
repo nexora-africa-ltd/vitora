@@ -313,6 +313,9 @@ class EncounterSerializer(serializers.ModelSerializer):
             "social_history",
             # Notes and metadata
             "notes",
+            # Clinical Template Data
+            "clinical_template",
+            "clinical_template_data",
             "has_critical_vitals",
             "alerts",
             # Status workflow (Sprint 1.1-1.2)

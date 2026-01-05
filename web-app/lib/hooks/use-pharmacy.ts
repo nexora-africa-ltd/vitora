@@ -258,6 +258,17 @@ export function usePatientPrescriptions(patientId: number) {
 }
 
 /**
+ * Hook for fetching encounter prescriptions.
+ */
+export function useEncounterPrescriptions(encounterId: number) {
+  return useQuery({
+    queryKey: ['encounters', encounterId, 'prescriptions'],
+    queryFn: () => pharmacyApi.getEncounterPrescriptions(encounterId),
+    enabled: !!encounterId,
+  });
+}
+
+/**
  * Hook for fetching pending prescriptions (dispensing queue).
  */
 export function usePendingPrescriptions() {

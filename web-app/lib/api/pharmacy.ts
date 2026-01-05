@@ -212,6 +212,16 @@ export const pharmacyApi = {
   },
 
   /**
+   * Get prescriptions for an encounter.
+   */
+  async getEncounterPrescriptions(encounterId: number): Promise<Prescription[]> {
+    const response = await apiClient.get<PaginatedResponse<Prescription>>('/api/pharmacy/prescriptions/', {
+      params: { encounter: encounterId },
+    });
+    return response.data.results;
+  },
+
+  /**
    * Get pending prescriptions (for dispensing queue).
    */
   async getPendingPrescriptions(): Promise<Prescription[]> {

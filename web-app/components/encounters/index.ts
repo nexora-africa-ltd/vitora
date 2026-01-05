@@ -9,6 +9,10 @@ export { DiagnosesList } from './diagnoses-list';
 export { MedicalHistoryView } from './medical-history-view';
 export { TreatmentPlanView } from './treatment-plan-view';
 
+// Lab and Pharmacy integration
+export { EncounterLabOrders } from './encounter-lab-orders';
+export { EncounterPrescriptions } from './encounter-prescriptions';
+
 // Consultation Queue components
 export { ConsultationQueue } from './consultation-queue';
 export { ConsultationQueueItem } from './consultation-queue-item';
