@@ -76,8 +76,10 @@ export function EncounterLabOrders({ encounterId, patientId, disabled = false }:
     );
   }
 
-  const pendingOrders = orders?.filter(o => o.status !== 'COMPLETED' && o.status !== 'CANCELLED') || [];
-  const completedOrders = orders?.filter(o => o.status === 'COMPLETED') || [];
+  // Ensure orders is always an array (handle edge cases)
+  const ordersList = Array.isArray(orders) ? orders : [];
+  const pendingOrders = ordersList.filter(o => o.status !== 'COMPLETED' && o.status !== 'CANCELLED');
+  const completedOrders = ordersList.filter(o => o.status === 'COMPLETED');
 
   return (
     <Card>
@@ -86,8 +88,8 @@ export function EncounterLabOrders({ encounterId, patientId, disabled = false }:
           <CardTitle className="text-lg flex items-center gap-2">
             <Beaker className="h-5 w-5" />
             Lab Orders
-            {orders && orders.length > 0 && (
-              <Badge variant="secondary">{orders.length}</Badge>
+            {ordersList.length > 0 && (
+              <Badge variant="secondary">{ordersList.length}</Badge>
             )}
           </CardTitle>
           {!disabled && (

@@ -81,8 +81,12 @@ export const laboratoryApi = {
    * Get lab orders for a specific encounter.
    */
   async getEncounterOrders(encounterId: number): Promise<LabOrder[]> {
-    const response = await apiClient.get<LabOrder[]>(`/api/encounters/${encounterId}/lab-orders/`);
-    return response.data;
+    const response = await apiClient.get<{ results: LabOrder[] } | LabOrder[]>(`/api/encounters/${encounterId}/lab-orders/`);
+    // Handle both paginated and non-paginated responses
+    if (Array.isArray(response.data)) {
+      return response.data;
+    }
+    return response.data.results || [];
   },
 
   /**

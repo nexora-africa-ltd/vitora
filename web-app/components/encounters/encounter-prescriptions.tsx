@@ -67,9 +67,11 @@ export function EncounterPrescriptions({ encounterId, patientId, disabled = fals
     );
   }
 
-  const pendingPrescriptions = prescriptions?.filter(p => p.status === 'PENDING' || p.status === 'PARTIAL') || [];
-  const completedPrescriptions = prescriptions?.filter(p => p.status === 'DISPENSED') || [];
-  const otherPrescriptions = prescriptions?.filter(p => p.status === 'CANCELLED' || p.status === 'EXPIRED') || [];
+  // Ensure prescriptions is always an array (handle edge cases)
+  const prescriptionsList = Array.isArray(prescriptions) ? prescriptions : [];
+  const pendingPrescriptions = prescriptionsList.filter(p => p.status === 'PENDING' || p.status === 'PARTIAL');
+  const completedPrescriptions = prescriptionsList.filter(p => p.status === 'DISPENSED');
+  const otherPrescriptions = prescriptionsList.filter(p => p.status === 'CANCELLED' || p.status === 'EXPIRED');
 
   return (
     <Card>
@@ -78,8 +80,8 @@ export function EncounterPrescriptions({ encounterId, patientId, disabled = fals
           <CardTitle className="text-lg flex items-center gap-2">
             <Pill className="h-5 w-5" />
             Prescriptions
-            {prescriptions && prescriptions.length > 0 && (
-              <Badge variant="secondary">{prescriptions.length}</Badge>
+            {prescriptionsList.length > 0 && (
+              <Badge variant="secondary">{prescriptionsList.length}</Badge>
             )}
           </CardTitle>
           {!disabled && (
@@ -91,12 +93,12 @@ export function EncounterPrescriptions({ encounterId, patientId, disabled = fals
             </Button>
           )}
         </div>
-        {prescriptions && prescriptions.length === 0 && (
+        {prescriptionsList.length === 0 && (
           <CardDescription>No prescriptions for this encounter</CardDescription>
         )}
       </CardHeader>
 
-      {prescriptions && prescriptions.length > 0 && (
+      {prescriptionsList.length > 0 && (
         <CardContent className="space-y-4">
           {/* Pending Prescriptions */}
           {pendingPrescriptions.length > 0 && (
