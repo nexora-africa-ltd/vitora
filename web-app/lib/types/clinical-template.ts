@@ -14,6 +14,8 @@ export type FieldType =
   | 'select'
   | 'multiselect';
 
+export type AutoGenerateType = 'prc' | 'case' | 'ob';
+
 export interface TemplateField {
   name: string;
   type: FieldType;
@@ -24,6 +26,7 @@ export interface TemplateField {
   max?: number;
   placeholder?: string;
   help_text?: string;
+  auto_generate?: AutoGenerateType;
 }
 
 export interface TemplateSection {
