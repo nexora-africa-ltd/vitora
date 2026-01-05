@@ -21,6 +21,7 @@ import {
   Activity,
   Brain,
   AlertCircle,
+  AlertTriangle,
   MapPin,
   Stethoscope,
 } from 'lucide-react';
@@ -60,6 +61,7 @@ import {
   MOBILITY_CONFIG,
   TRIAGE_CATEGORY_CONFIG,
   ASSIGNED_AREA_CONFIG,
+  VitalType,
 } from '@/lib/types/triage';
 
 // =============================================================================
@@ -242,6 +244,98 @@ function getPainSeverity(score: number | null | undefined): {
   if (score <= 6) return { label: 'Moderate', color: 'orange' };
   if (score <= 8) return { label: 'Severe', color: 'red' };
   return { label: 'Unbearable', color: 'red' };
+}
+
+/**
+ * Vital threshold status for inline display
+ */
+interface VitalThresholdStatus {
+  severity: 'normal' | 'warning' | 'critical';
+  message: string;
+  icon: 'check' | 'warning' | 'critical';
+}
+
+/**
+ * Get vital threshold status with severity and message
+ */
+function getVitalThresholdStatus(
+  vitalType: 'spo2' | 'heart_rate' | 'systolic_bp' | 'diastolic_bp' | 'temperature' | 'respiratory_rate',
+  value: number | null | undefined
+): VitalThresholdStatus | null {
+  if (value === null || value === undefined) return null;
+
+  const thresholds: Record<string, { critical: [number, number]; warning: [number, number]; unit: string }> = {
+    spo2: { critical: [90, Infinity], warning: [95, Infinity], unit: '%' },
+    heart_rate: { critical: [40, 150], warning: [50, 120], unit: 'bpm' },
+    systolic_bp: { critical: [90, 180], warning: [100, 160], unit: 'mmHg' },
+    diastolic_bp: { critical: [60, 120], warning: [65, 100], unit: 'mmHg' },
+    temperature: { critical: [35, 40], warning: [36, 38.5], unit: '°C' },
+    respiratory_rate: { critical: [10, 30], warning: [12, 24], unit: '/min' },
+  };
+
+  const config = thresholds[vitalType];
+  if (!config) return null;
+
+  const [critLow, critHigh] = config.critical;
+  const [warnLow, warnHigh] = config.warning;
+
+  // Check critical thresholds
+  if (vitalType === 'spo2') {
+    // SpO2: only low values are concerning
+    if (value < critLow) {
+      return { severity: 'critical', message: `Critical: ${value}${config.unit} - Severe hypoxemia`, icon: 'critical' };
+    }
+    if (value < warnLow) {
+      return { severity: 'warning', message: `Low: ${value}${config.unit} - Below normal`, icon: 'warning' };
+    }
+  } else if (vitalType === 'temperature') {
+    if (value < critLow) {
+      return { severity: 'critical', message: `Critical: ${value}${config.unit} - Hypothermia`, icon: 'critical' };
+    }
+    if (value > critHigh) {
+      return { severity: 'critical', message: `Critical: ${value}${config.unit} - Hyperthermia`, icon: 'critical' };
+    }
+    if (value < warnLow || value > warnHigh) {
+      return { severity: 'warning', message: `Abnormal: ${value}${config.unit}`, icon: 'warning' };
+    }
+  } else {
+    // Heart rate, BP, RR - both low and high are concerning
+    if (value < critLow || value > critHigh) {
+      const direction = value < critLow ? 'Low' : 'High';
+      return { severity: 'critical', message: `Critical: ${value}${config.unit} - ${direction}`, icon: 'critical' };
+    }
+    if (value < warnLow || value > warnHigh) {
+      const direction = value < warnLow ? 'Low' : 'High';
+      return { severity: 'warning', message: `Abnormal: ${value}${config.unit} - ${direction}`, icon: 'warning' };
+    }
+  }
+
+  return null; // Normal
+}
+
+/**
+ * Inline vital alert badge component
+ */
+function VitalThresholdBadge({ status }: { status: VitalThresholdStatus }) {
+  if (status.severity === 'critical') {
+    return (
+      <div className="flex items-center gap-1.5 mt-1.5 p-2 rounded-md bg-red-50 dark:bg-red-950/50 border border-red-200 dark:border-red-800">
+        <AlertCircle className="h-4 w-4 text-red-600 dark:text-red-400 shrink-0" />
+        <span className="text-xs font-medium text-red-700 dark:text-red-300">{status.message}</span>
+      </div>
+    );
+  }
+
+  if (status.severity === 'warning') {
+    return (
+      <div className="flex items-center gap-1.5 mt-1.5 p-2 rounded-md bg-amber-50 dark:bg-amber-950/50 border border-amber-200 dark:border-amber-800">
+        <AlertTriangle className="h-4 w-4 text-amber-600 dark:text-amber-400 shrink-0" />
+        <span className="text-xs font-medium text-amber-700 dark:text-amber-300">{status.message}</span>
+      </div>
+    );
+  }
+
+  return null;
 }
 
 /**
@@ -460,27 +554,29 @@ export function TriageAssessmentForm({
   const temperature = watchedValues.temperature;
   const respiratoryRate = watchedValues.respiratory_rate;
 
-  const spo2Critical = spo2 !== null && spo2 !== undefined && spo2 < 90;
-  const heartRateCritical =
-    heartRate !== null &&
-    heartRate !== undefined &&
-    (heartRate < 40 || heartRate > 150);
-  const systolicBpCritical =
-    systolicBp !== null &&
-    systolicBp !== undefined &&
-    (systolicBp < 90 || systolicBp > 180);
-  const diastolicBpCritical =
-    diastolicBp !== null &&
-    diastolicBp !== undefined &&
-    (diastolicBp < 60 || diastolicBp > 120);
-  const temperatureCritical =
-    temperature !== null &&
-    temperature !== undefined &&
-    (temperature < 35 || temperature > 40);
-  const respiratoryRateCritical =
-    respiratoryRate !== null &&
-    respiratoryRate !== undefined &&
-    (respiratoryRate < 10 || respiratoryRate > 30);
+  // Get threshold status for each vital (for inline badges)
+  const spo2Status = getVitalThresholdStatus('spo2', spo2);
+  const heartRateStatus = getVitalThresholdStatus('heart_rate', heartRate);
+  const systolicBpStatus = getVitalThresholdStatus('systolic_bp', systolicBp);
+  const diastolicBpStatus = getVitalThresholdStatus('diastolic_bp', diastolicBp);
+  const temperatureStatus = getVitalThresholdStatus('temperature', temperature);
+  const respiratoryRateStatus = getVitalThresholdStatus('respiratory_rate', respiratoryRate);
+
+  // Critical flags for input border styling
+  const spo2Critical = spo2Status?.severity === 'critical';
+  const heartRateCritical = heartRateStatus?.severity === 'critical';
+  const systolicBpCritical = systolicBpStatus?.severity === 'critical';
+  const diastolicBpCritical = diastolicBpStatus?.severity === 'critical';
+  const temperatureCritical = temperatureStatus?.severity === 'critical';
+  const respiratoryRateCritical = respiratoryRateStatus?.severity === 'critical';
+  
+  // Warning flags for amber border
+  const spo2Warning = spo2Status?.severity === 'warning';
+  const heartRateWarning = heartRateStatus?.severity === 'warning';
+  const systolicBpWarning = systolicBpStatus?.severity === 'warning';
+  const diastolicBpWarning = diastolicBpStatus?.severity === 'warning';
+  const temperatureWarning = temperatureStatus?.severity === 'warning';
+  const respiratoryRateWarning = respiratoryRateStatus?.severity === 'warning';
 
   // Recalculate suggested category when relevant fields change
   // Skip recalculation if the category was provided via initialData (backend is source of truth)
@@ -795,7 +891,10 @@ export function TriageAssessmentForm({
               {/* SpO2 */}
               <div className="space-y-2">
                 <Label htmlFor="spo2">SpO2</Label>
-                <InputGroup className={cn(spo2Critical && 'border-destructive')}>
+                <InputGroup className={cn(
+                  spo2Critical && 'border-destructive ring-1 ring-destructive',
+                  spo2Warning && !spo2Critical && 'border-amber-500 ring-1 ring-amber-500'
+                )}>
                   <InputGroupInput
                     id="spo2"
                     inputMode="decimal"
@@ -813,12 +912,16 @@ export function TriageAssessmentForm({
                   <InputGroupAddon align="inline-end">%</InputGroupAddon>
                 </InputGroup>
                 {errors.spo2 && <p className="text-sm text-destructive">{errors.spo2.message}</p>}
+                {spo2Status && <VitalThresholdBadge status={spo2Status} />}
               </div>
 
               {/* Heart Rate */}
               <div className="space-y-2">
                 <Label htmlFor="heart_rate">Heart Rate</Label>
-                <InputGroup className={cn(heartRateCritical && 'border-destructive')}>
+                <InputGroup className={cn(
+                  heartRateCritical && 'border-destructive ring-1 ring-destructive',
+                  heartRateWarning && !heartRateCritical && 'border-amber-500 ring-1 ring-amber-500'
+                )}>
                   <InputGroupInput
                     id="heart_rate"
                     inputMode="numeric"
@@ -838,6 +941,7 @@ export function TriageAssessmentForm({
                 {errors.heart_rate && (
                   <p className="text-sm text-destructive">{errors.heart_rate.message}</p>
                 )}
+                {heartRateStatus && <VitalThresholdBadge status={heartRateStatus} />}
               </div>
 
               {/* Blood Pressure */}
@@ -848,7 +952,10 @@ export function TriageAssessmentForm({
                     <Label htmlFor="systolic_bp" className="text-xs text-muted-foreground">
                       Systolic BP
                     </Label>
-                    <InputGroup className={cn(systolicBpCritical && 'border-destructive')}>
+                    <InputGroup className={cn(
+                      systolicBpCritical && 'border-destructive ring-1 ring-destructive',
+                      systolicBpWarning && !systolicBpCritical && 'border-amber-500 ring-1 ring-amber-500'
+                    )}>
                       <InputGroupInput
                         id="systolic_bp"
                         inputMode="numeric"
@@ -869,7 +976,10 @@ export function TriageAssessmentForm({
                     <Label htmlFor="diastolic_bp" className="text-xs text-muted-foreground">
                       Diastolic BP
                     </Label>
-                    <InputGroup className={cn(diastolicBpCritical && 'border-destructive')}>
+                    <InputGroup className={cn(
+                      diastolicBpCritical && 'border-destructive ring-1 ring-destructive',
+                      diastolicBpWarning && !diastolicBpCritical && 'border-amber-500 ring-1 ring-amber-500'
+                    )}>
                       <InputGroupInput
                         id="diastolic_bp"
                         inputMode="numeric"
@@ -893,6 +1003,9 @@ export function TriageAssessmentForm({
                     {errors.systolic_bp?.message || errors.diastolic_bp?.message}
                   </p>
                 )}
+                {(systolicBpStatus || diastolicBpStatus) && (
+                  <VitalThresholdBadge status={systolicBpStatus || diastolicBpStatus!} />
+                )}
               </div>
             </div>
 
@@ -900,7 +1013,10 @@ export function TriageAssessmentForm({
               {/* Temperature */}
               <div className="space-y-2">
                 <Label htmlFor="temperature">Temperature</Label>
-                <InputGroup className={cn(temperatureCritical && 'border-destructive')}>
+                <InputGroup className={cn(
+                  temperatureCritical && 'border-destructive ring-1 ring-destructive',
+                  temperatureWarning && !temperatureCritical && 'border-amber-500 ring-1 ring-amber-500'
+                )}>
                   <InputGroupInput
                     id="temperature"
                     type="number"
@@ -922,12 +1038,16 @@ export function TriageAssessmentForm({
                 {errors.temperature && (
                   <p className="text-sm text-destructive">{errors.temperature.message}</p>
                 )}
+                {temperatureStatus && <VitalThresholdBadge status={temperatureStatus} />}
               </div>
 
               {/* Respiratory Rate */}
               <div className="space-y-2">
                 <Label htmlFor="respiratory_rate">Respiratory Rate</Label>
-                <InputGroup className={cn(respiratoryRateCritical && 'border-destructive')}>
+                <InputGroup className={cn(
+                  respiratoryRateCritical && 'border-destructive ring-1 ring-destructive',
+                  respiratoryRateWarning && !respiratoryRateCritical && 'border-amber-500 ring-1 ring-amber-500'
+                )}>
                   <InputGroupInput
                     id="respiratory_rate"
                     inputMode="numeric"
@@ -947,6 +1067,7 @@ export function TriageAssessmentForm({
                 {errors.respiratory_rate && (
                   <p className="text-sm text-destructive">{errors.respiratory_rate.message}</p>
                 )}
+                {respiratoryRateStatus && <VitalThresholdBadge status={respiratoryRateStatus} />}
               </div>
 
               {/* Spacer for layout symmetry */}
