@@ -28,7 +28,9 @@ import { useToast } from '@/lib/hooks/use-toast';
 import type { ConsultationQueueItem } from '@/lib/types/encounter';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Card, CardContent } from '@/components/ui/card';
-import { AlertCircle, Users } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { AlertCircle, Users, UserPlus } from 'lucide-react';
+import Link from 'next/link';
 
 // =============================================================================
 // Types
@@ -226,10 +228,16 @@ export function ConsultationQueueContainer({
         <CardContent className="p-12 text-center">
           <Users className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
           <h3 className="text-lg font-semibold mb-2">No patients in queue</h3>
-          <p className="text-sm text-muted-foreground">
+          <p className="text-sm text-muted-foreground mb-6">
             Patients will appear here once they complete triage or are registered
             for encounters that don&apos;t require triage.
           </p>
+          <Button asChild>
+            <Link href="/patients">
+              <UserPlus className="h-4 w-4 mr-2" />
+              Select from Patient List
+            </Link>
+          </Button>
         </CardContent>
       </Card>
     );
