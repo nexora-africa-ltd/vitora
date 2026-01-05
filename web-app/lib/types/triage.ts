@@ -396,6 +396,7 @@ export interface TriageAssessmentCreateData {
   diastolic_bp?: number | null;
   temperature?: number | null;
   respiratory_rate?: number | null;
+  weight?: number | null;
   // Assessment
   mental_status: AVPUStatus;
   mobility: MobilityStatus;

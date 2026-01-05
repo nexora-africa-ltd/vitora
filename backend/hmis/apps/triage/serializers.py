@@ -165,6 +165,8 @@ class TriageAssessmentSerializer(serializers.ModelSerializer):
             vitals['temperature'] = str(obj.temperature)
         if obj.respiratory_rate is not None:
             vitals['respiratory_rate'] = obj.respiratory_rate
+        if obj.weight is not None:
+            vitals['weight'] = str(obj.weight)
 
         if vitals:
             return vitals
@@ -248,13 +250,21 @@ class TriageAssessmentCreateSerializer(serializers.ModelSerializer):
         max_value=Decimal('45'),
     )
     respiratory_rate = serializers.IntegerField(required=False, allow_null=True, min_value=0, max_value=60)
+    weight = serializers.DecimalField(
+        max_digits=5,
+        decimal_places=2,
+        required=False,
+        allow_null=True,
+        min_value=Decimal('0'),
+        max_value=Decimal('500'),
+    )
 
     class Meta:
         model = TriageAssessment
         fields = [
             'encounter', 'chief_complaint', 'chief_complaint_category', 'pain_score',
             'mental_status', 'mobility', 'arrival_mode', 'allergies_noted',
-            'spo2', 'heart_rate', 'systolic_bp', 'diastolic_bp', 'temperature', 'respiratory_rate',
+            'spo2', 'heart_rate', 'systolic_bp', 'diastolic_bp', 'temperature', 'respiratory_rate', 'weight',
             'triage_category', 'auto_calculated_category', 'category_override_reason',
             'assigned_area', 'assigned_clinician',
             'arrival_time', 'triage_start_time', 'triage_end_time',
@@ -276,6 +286,8 @@ class TriageAssessmentCreateSerializer(serializers.ModelSerializer):
             vitals['temperature'] = data.get('temperature')
         if data.get('respiratory_rate') is not None:
             vitals['respiratory_rate'] = data.get('respiratory_rate')
+        if data.get('weight') is not None:
+            vitals['weight'] = data.get('weight')
 
         if vitals:
             return vitals

@@ -120,6 +120,10 @@ const triageFormSchema = z
       z.literal(null),
       z.number().min(0, 'Respiratory rate must be between 0 and 60').max(60, 'Respiratory rate must be between 0 and 60'),
     ]).optional(),
+    weight: z.union([
+      z.literal(null),
+      z.number().min(0, 'Weight must be positive').max(500, 'Weight must be less than 500 kg'),
+    ]).optional(),
     mental_status: z.enum(['A', 'V', 'P', 'U'], {
       required_error: 'Mental status (AVPU) is required',
     }),
@@ -281,13 +285,21 @@ function getVitalThresholdStatus(
 
   // Check critical thresholds
   if (vitalType === 'spo2') {
-    // SpO2: only low values are concerning
-    if (value < critLow) {
-      return { severity: 'critical', message: `Critical: ${value}${config.unit} - Severe hypoxemia`, icon: 'critical' };
+    // SpO2 clinical severity levels (adult):
+    // ≤85%: Severe hypoxemia (medical emergency)
+    // 86-90%: Moderate hypoxemia (clinically significant)
+    // 91-94%: Mild hypoxemia (slightly reduced)
+    // 95-100%: Normal oxygenation
+    if (value <= 85) {
+      return { severity: 'critical', message: `EMERGENCY: ${value}${config.unit} - Severe hypoxemia`, icon: 'critical' };
     }
-    if (value < warnLow) {
-      return { severity: 'warning', message: `Low: ${value}${config.unit} - Below normal`, icon: 'warning' };
+    if (value <= 90) {
+      return { severity: 'critical', message: `Critical: ${value}${config.unit} - Moderate hypoxemia`, icon: 'critical' };
     }
+    if (value <= 94) {
+      return { severity: 'warning', message: `Warning: ${value}${config.unit} - Mild hypoxemia`, icon: 'warning' };
+    }
+    // 95-100% is normal, return null
   } else if (vitalType === 'temperature') {
     if (value < critLow) {
       return { severity: 'critical', message: `Critical: ${value}${config.unit} - Hypothermia`, icon: 'critical' };
@@ -524,6 +536,7 @@ export function TriageAssessmentForm({
       diastolic_bp: null,
       temperature: null,
       respiratory_rate: null,
+      weight: null,
 
       mental_status: initialData?.mental_status || 'A',
       mobility: initialData?.mobility || 'AMBULATORY',
@@ -553,6 +566,7 @@ export function TriageAssessmentForm({
   const diastolicBp = watchedValues.diastolic_bp;
   const temperature = watchedValues.temperature;
   const respiratoryRate = watchedValues.respiratory_rate;
+  const weight = watchedValues.weight;
 
   // Get threshold status for each vital (for inline badges)
   const spo2Status = getVitalThresholdStatus('spo2', spo2);
@@ -741,6 +755,7 @@ export function TriageAssessmentForm({
         diastolic_bp: data.diastolic_bp,
         temperature: data.temperature,
         respiratory_rate: data.respiratory_rate,
+        weight: data.weight,
         mental_status: data.mental_status,
         mobility: data.mobility,
         allergies_noted: data.allergies_noted,
@@ -944,60 +959,54 @@ export function TriageAssessmentForm({
                 {heartRateStatus && <VitalThresholdBadge status={heartRateStatus} />}
               </div>
 
-              {/* Blood Pressure */}
+              {/* Blood Pressure - simplified layout */}
               <div className="space-y-2">
-                <Label>Blood Pressure</Label>
-                <div className="grid grid-cols-2 gap-2">
-                  <div className="space-y-1">
-                    <Label htmlFor="systolic_bp" className="text-xs text-muted-foreground">
-                      Systolic BP
-                    </Label>
-                    <InputGroup className={cn(
-                      systolicBpCritical && 'border-destructive ring-1 ring-destructive',
-                      systolicBpWarning && !systolicBpCritical && 'border-amber-500 ring-1 ring-amber-500'
-                    )}>
-                      <InputGroupInput
-                        id="systolic_bp"
-                        inputMode="numeric"
-                        placeholder="120"
-                        aria-invalid={!!errors.systolic_bp}
-                        disabled={disabled}
-                        {...register('systolic_bp', {
-                          setValueAs: (v) => {
-                            if (v === '' || v === null || v === undefined) return null;
-                            const num = parseInt(v, 10);
-                            return Number.isNaN(num) ? null : num;
-                          },
-                        })}
-                      />
-                    </InputGroup>
-                  </div>
-                  <div className="space-y-1">
-                    <Label htmlFor="diastolic_bp" className="text-xs text-muted-foreground">
-                      Diastolic BP
-                    </Label>
-                    <InputGroup className={cn(
-                      diastolicBpCritical && 'border-destructive ring-1 ring-destructive',
-                      diastolicBpWarning && !diastolicBpCritical && 'border-amber-500 ring-1 ring-amber-500'
-                    )}>
-                      <InputGroupInput
-                        id="diastolic_bp"
-                        inputMode="numeric"
-                        placeholder="80"
-                        aria-invalid={!!errors.diastolic_bp}
-                        disabled={disabled}
-                        {...register('diastolic_bp', {
-                          setValueAs: (v) => {
-                            if (v === '' || v === null || v === undefined) return null;
-                            const num = parseInt(v, 10);
-                            return Number.isNaN(num) ? null : num;
-                          },
-                        })}
-                      />
-                    </InputGroup>
-                  </div>
+                <Label htmlFor="systolic_bp">Blood Pressure <span className="text-xs text-muted-foreground">(mmHg)</span></Label>
+                <div className="flex items-center gap-1">
+                  <InputGroup className={cn(
+                    'flex-1',
+                    systolicBpCritical && 'border-destructive ring-1 ring-destructive',
+                    systolicBpWarning && !systolicBpCritical && 'border-amber-500 ring-1 ring-amber-500'
+                  )}>
+                    <InputGroupInput
+                      id="systolic_bp"
+                      inputMode="numeric"
+                      placeholder="120"
+                      aria-invalid={!!errors.systolic_bp}
+                      aria-label="Systolic blood pressure"
+                      disabled={disabled}
+                      {...register('systolic_bp', {
+                        setValueAs: (v) => {
+                          if (v === '' || v === null || v === undefined) return null;
+                          const num = parseInt(v, 10);
+                          return Number.isNaN(num) ? null : num;
+                        },
+                      })}
+                    />
+                  </InputGroup>
+                  <span className="text-muted-foreground font-medium">/</span>
+                  <InputGroup className={cn(
+                    'flex-1',
+                    diastolicBpCritical && 'border-destructive ring-1 ring-destructive',
+                    diastolicBpWarning && !diastolicBpCritical && 'border-amber-500 ring-1 ring-amber-500'
+                  )}>
+                    <InputGroupInput
+                      id="diastolic_bp"
+                      inputMode="numeric"
+                      placeholder="80"
+                      aria-invalid={!!errors.diastolic_bp}
+                      aria-label="Diastolic blood pressure"
+                      disabled={disabled}
+                      {...register('diastolic_bp', {
+                        setValueAs: (v) => {
+                          if (v === '' || v === null || v === undefined) return null;
+                          const num = parseInt(v, 10);
+                          return Number.isNaN(num) ? null : num;
+                        },
+                      })}
+                    />
+                  </InputGroup>
                 </div>
-                <p className="text-xs text-muted-foreground">mmHg</p>
                 {(errors.systolic_bp || errors.diastolic_bp) && (
                   <p className="text-sm text-destructive">
                     {errors.systolic_bp?.message || errors.diastolic_bp?.message}
@@ -1070,8 +1079,32 @@ export function TriageAssessmentForm({
                 {respiratoryRateStatus && <VitalThresholdBadge status={respiratoryRateStatus} />}
               </div>
 
-              {/* Spacer for layout symmetry */}
-              <div className="hidden sm:block" />
+              {/* Weight */}
+              <div className="space-y-2">
+                <Label htmlFor="weight">Weight</Label>
+                <InputGroup>
+                  <InputGroupInput
+                    id="weight"
+                    type="number"
+                    step="0.1"
+                    inputMode="decimal"
+                    placeholder="e.g. 70"
+                    aria-invalid={!!errors.weight}
+                    disabled={disabled}
+                    {...register('weight', {
+                      setValueAs: (v) => {
+                        if (v === '' || v === null || v === undefined) return null;
+                        const num = parseFloat(v);
+                        return Number.isNaN(num) ? null : num;
+                      },
+                    })}
+                  />
+                  <InputGroupAddon align="inline-end">kg</InputGroupAddon>
+                </InputGroup>
+                {errors.weight && (
+                  <p className="text-sm text-destructive">{errors.weight.message}</p>
+                )}
+              </div>
             </div>
           </CardContent>
         )}
