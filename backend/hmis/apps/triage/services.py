@@ -78,21 +78,21 @@ def check_map_status(systolic: int, diastolic: int, age_years: float = 30) -> tu
     age_group = get_age_group(age_years)
     thresholds = MAP_THRESHOLDS[age_group]
     
-    # Critical: MAP below minimum for adequate organ perfusion
-    if map_value < thresholds['critical_low']:
-        return ('critical', f"CRITICAL: MAP {map_value} mmHg - Inadequate perfusion (<{thresholds['critical_low']})")
+    # Critical: MAP at or below minimum for adequate organ perfusion
+    if map_value <= thresholds['critical_low']:
+        return ('critical', f"CRITICAL: Hypotension - MAP {map_value} mmHg indicates inadequate blood pressure (≤{thresholds['critical_low']})")
     
-    # Critical: Severely elevated MAP
-    if map_value > thresholds['elevated_high'] + 15:
-        return ('critical', f"CRITICAL: MAP {map_value} mmHg - Severely elevated")
+    # Critical: Severely elevated MAP (>120 for adults)
+    if map_value >= thresholds['elevated_high'] + 15:
+        return ('critical', f"CRITICAL: Hypertension - MAP {map_value} mmHg indicates severely elevated blood pressure")
     
     # Warning: MAP below normal range
     if map_value < thresholds['normal_low']:
-        return ('warning', f"Warning: MAP {map_value} mmHg - Below normal ({thresholds['normal_low']}-{thresholds['normal_high']})")
+        return ('warning', f"Warning: Low blood pressure - MAP {map_value} mmHg below normal ({thresholds['normal_low']}-{thresholds['normal_high']})")
     
     # Warning: MAP above normal
     if map_value > thresholds['elevated_high']:
-        return ('warning', f"Warning: MAP {map_value} mmHg - Elevated (>{thresholds['elevated_high']})")
+        return ('warning', f"Warning: Elevated blood pressure - MAP {map_value} mmHg (>{thresholds['elevated_high']})")
     
     return ('normal', None)
 
@@ -235,9 +235,18 @@ class TriageCategoryCalculator:
         systolic = vitals.get("systolic_bp")
         diastolic = vitals.get("diastolic_bp")
         if systolic is not None and diastolic is not None:
+            # Full MAP evaluation when both values are present
             status, alert_msg = check_map_status(systolic, diastolic, patient_age_years)
             if status == 'critical':
                 alerts.append(alert_msg)
+                has_red_criteria = True
+        elif systolic is not None:
+            # Fallback: systolic-only extreme value check when diastolic is missing
+            if systolic < 90:
+                alerts.append(f"CRITICAL: Severe hypotension (systolic blood pressure {systolic} mmHg)")
+                has_red_criteria = True
+            elif systolic > 180:
+                alerts.append(f"CRITICAL: Severe hypertension (systolic blood pressure {systolic} mmHg)")
                 has_red_criteria = True
 
         # Heart rate critical

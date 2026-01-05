@@ -62,6 +62,19 @@ def update_encounter_triage_status(sender, instance, created, **kwargs):
         updated_fields.add("blood_pressure")
         vitals_copied = True
 
+    # Copy weight if captured at triage
+    if getattr(encounter, "weight", None) is None and instance.weight is not None:
+        encounter.weight = instance.weight
+        updated_fields.add("weight")
+        vitals_copied = True
+
+    # Copy chief complaint from triage to encounter if encounter's is empty/generic
+    encounter_chief = getattr(encounter, "chief_complaint", "") or ""
+    triage_chief = getattr(instance, "chief_complaint", "") or ""
+    if triage_chief and (not encounter_chief.strip() or encounter_chief.strip().lower() in ("check-in", "triage", "pending")):
+        encounter.chief_complaint = triage_chief
+        updated_fields.add("chief_complaint")
+
     # Set vitals source metadata if we copied any vitals
     if vitals_copied:
         if getattr(encounter, "vitals_source", None) in (None, ""):

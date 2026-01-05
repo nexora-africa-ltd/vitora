@@ -362,16 +362,16 @@ function getMAPThresholdStatus(
   if (map < thresholds.criticalLow - 10) {
     return {
       severity: 'emergency',
-      message: `EMERGENCY: MAP ${map} mmHg - Severe hypoperfusion`,
+      message: `EMERGENCY: Severe hypotension - MAP ${map} mmHg`,
       icon: 'emergency',
     };
   }
 
   // Critical: MAP below minimum for adequate organ perfusion
-  if (map < thresholds.criticalLow) {
+  if (map <= thresholds.criticalLow) {
     return {
       severity: 'critical',
-      message: `Critical: MAP ${map} mmHg - Inadequate perfusion (<${thresholds.criticalLow})`,
+      message: `Critical: Hypotension - MAP ${map} mmHg (≤${thresholds.criticalLow})`,
       icon: 'critical',
     };
   }
@@ -380,16 +380,16 @@ function getMAPThresholdStatus(
   if (map > thresholds.elevatedHigh + 25) {
     return {
       severity: 'emergency',
-      message: `EMERGENCY: MAP ${map} mmHg - Hypertensive emergency`,
+      message: `EMERGENCY: Hypertensive emergency - MAP ${map} mmHg`,
       icon: 'emergency',
     };
   }
 
   // Critical: Severely elevated MAP
-  if (map > thresholds.elevatedHigh + 15) {
+  if (map >= thresholds.elevatedHigh + 15) {
     return {
       severity: 'critical',
-      message: `Critical: MAP ${map} mmHg - Severely elevated`,
+      message: `Critical: Hypertension - MAP ${map} mmHg`,
       icon: 'critical',
     };
   }
@@ -398,7 +398,7 @@ function getMAPThresholdStatus(
   if (map < thresholds.normalLow) {
     return {
       severity: 'warning',
-      message: `Warning: MAP ${map} mmHg - Below normal (${thresholds.normalLow}-${thresholds.normalHigh})`,
+      message: `Warning: Low blood pressure - MAP ${map} mmHg`,
       icon: 'warning',
     };
   }
@@ -407,7 +407,7 @@ function getMAPThresholdStatus(
   if (map > thresholds.elevatedHigh) {
     return {
       severity: 'warning',
-      message: `Warning: MAP ${map} mmHg - Elevated (>${thresholds.elevatedHigh})`,
+      message: `Warning: Elevated blood pressure - MAP ${map} mmHg`,
       icon: 'warning',
     };
   }
