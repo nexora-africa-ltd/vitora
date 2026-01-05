@@ -1467,19 +1467,90 @@ class Encounter(models.Model):
 
         return statuses
 
-    # MAP (Mean Arterial Pressure) ranges
-    # Normal: 70-100 mmHg
-    # Low: 60-69 mmHg
-    # High: 101-130 mmHg
-    # Critical low: <60 mmHg (organ perfusion compromised)
-    # Critical high: >130 mmHg (hypertensive emergency)
+    # MAP (Mean Arterial Pressure) ranges by age group
+    # Based on clinical guidelines for organ perfusion
+    # Reference: Pediatric and Adult Critical Care Guidelines
+    MAP_RANGES_BY_AGE = {
+        "adult": {  # ≥18 years
+            "normal": (70, 100),
+            "warning_low": (65, 69),
+            "warning_high": (101, 105),
+            "critical_low": 65,
+            "critical_high": 120,
+            "emergency_low": 55,
+            "emergency_high": 130,
+        },
+        "adolescent": {  # 13-17 years
+            "normal": (65, 95),
+            "warning_low": (60, 64),
+            "warning_high": (96, 100),
+            "critical_low": 60,
+            "critical_high": 115,
+            "emergency_low": 50,
+            "emergency_high": 125,
+        },
+        "school_age": {  # 6-12 years
+            "normal": (60, 90),
+            "warning_low": (55, 59),
+            "warning_high": (91, 95),
+            "critical_low": 55,
+            "critical_high": 110,
+            "emergency_low": 45,
+            "emergency_high": 120,
+        },
+        "young_child": {  # 1-5 years
+            "normal": (55, 85),
+            "warning_low": (50, 54),
+            "warning_high": (86, 90),
+            "critical_low": 50,
+            "critical_high": 100,
+            "emergency_low": 40,
+            "emergency_high": 110,
+        },
+        "infant": {  # 1-12 months
+            "normal": (45, 70),
+            "warning_low": (40, 44),
+            "warning_high": (71, 75),
+            "critical_low": 40,
+            "critical_high": 90,
+            "emergency_low": 30,
+            "emergency_high": 100,
+        },
+        "neonate": {  # <1 month
+            "normal": (40, 60),
+            "warning_low": (35, 39),
+            "warning_high": (61, 65),
+            "critical_low": 35,
+            "critical_high": 80,
+            "emergency_low": 25,
+            "emergency_high": 90,
+        },
+    }
+
+    # Default MAP ranges for backward compatibility (adult values)
     MAP_RANGES = {
         "normal": (70, 100),
-        "low": (60, 69),
-        "high": (101, 130),
-        "critical_low": 60,
-        "critical_high": 130,
+        "low": (65, 69),
+        "high": (101, 105),
+        "critical_low": 65,
+        "critical_high": 120,
     }
+
+    def _get_map_age_group(self) -> str:
+        """Get age group for MAP thresholds."""
+        age_years = self.get_patient_age_years()
+        if age_years >= 18:
+            return "adult"
+        if age_years >= 13:
+            return "adolescent"
+        if age_years >= 6:
+            return "school_age"
+        if age_years >= 1:
+            return "young_child"
+        age_days = self.get_patient_age_days()
+        if age_days >= 29:
+            return "infant"
+        return "neonate"
 
     def get_map(self) -> int | None:
         """
@@ -1502,44 +1573,54 @@ class Encounter(models.Model):
     def get_map_status(self) -> str | None:
         """
         Get status classification for Mean Arterial Pressure.
+        Uses age-adjusted thresholds for accurate assessment.
 
         Status values:
-        - 'normal': 70-100 mmHg
-        - 'low': 60-69 mmHg
-        - 'high': 101-130 mmHg
-        - 'critical': <60 or >130 mmHg
+        - 'normal': Within normal range for age
+        - 'warning': Slightly abnormal, monitor closely
+        - 'critical': Requires immediate attention
+        - 'emergency': Life-threatening, immediate intervention needed
 
         Returns:
-            str | None: 'normal', 'low', 'high', or 'critical', or None if BP not recorded
+            str | None: Status string, or None if BP not recorded
         """
         map_value = self.get_map()
 
         if map_value is None:
             return None
 
-        # Check critical first
-        if map_value < self.MAP_RANGES["critical_low"]:
+        # Get age-appropriate ranges
+        age_group = self._get_map_age_group()
+        ranges = self.MAP_RANGES_BY_AGE.get(age_group, self.MAP_RANGES_BY_AGE["adult"])
+
+        # Check emergency first (most severe)
+        if map_value < ranges["emergency_low"]:
+            return "emergency"
+        if map_value > ranges["emergency_high"]:
+            return "emergency"
+
+        # Check critical
+        if map_value < ranges["critical_low"]:
             return "critical"
-        if map_value > self.MAP_RANGES["critical_high"]:
+        if map_value > ranges["critical_high"]:
             return "critical"
 
         # Check normal
-        normal_min, normal_max = self.MAP_RANGES["normal"]
+        normal_min, normal_max = ranges["normal"]
         if normal_min <= map_value <= normal_max:
             return "normal"
 
-        # Check low
-        low_min, low_max = self.MAP_RANGES["low"]
-        if low_min <= map_value <= low_max:
-            return "low"
+        # Check warning (between normal and critical)
+        warning_low_min, warning_low_max = ranges["warning_low"]
+        if warning_low_min <= map_value <= warning_low_max:
+            return "warning"
 
-        # Check high
-        high_min, high_max = self.MAP_RANGES["high"]
-        if high_min <= map_value <= high_max:
-            return "high"
+        warning_high_min, warning_high_max = ranges["warning_high"]
+        if warning_high_min <= map_value <= warning_high_max:
+            return "warning"
 
-        # Edge case - shouldn't happen but classify as critical
-        return "critical"
+        # Edge case - classify as warning
+        return "warning"
 
     def get_vitals_summary(self) -> str:
         """
