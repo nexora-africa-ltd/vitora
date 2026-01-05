@@ -8,6 +8,8 @@ export interface Encounter {
   patient: number;
   patient_name?: string;
   patient_mrn?: string;
+  patient_gender?: 'M' | 'F' | 'O';
+  patient_date_of_birth?: string;
   
   // Encounter details
   encounter_type: EncounterType;

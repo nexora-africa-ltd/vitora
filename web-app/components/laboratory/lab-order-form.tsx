@@ -21,12 +21,13 @@ import {
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
-import { Plus, Trash2, FlaskConical, Search } from 'lucide-react';
+import { Plus, Trash2, FlaskConical, Search, User } from 'lucide-react';
 import { TestSelector } from './test-selector';
 import { LabOrderCreateData, OrderType, LabPriority, TestCatalog } from '@/lib/types/laboratory';
 import { useCreateLabOrder } from '@/lib/hooks/use-laboratory';
 import { useToast } from '@/lib/hooks';
 import { formatCurrency } from '@/lib/utils/format';
+import { useAuth } from '@/lib/auth';
 
 const orderSchema = z.object({
   patient: z.number().positive('Patient is required'),
@@ -52,6 +53,12 @@ interface LabOrderFormProps {
   patientId: number;
   encounterId: number;
   patientName?: string;
+  patientMrn?: string;
+  patientGender?: string;
+  patientDateOfBirth?: string;
+  encounterType?: string;
+  encounterDate?: string;
+  chiefComplaint?: string;
   onSuccess?: (orderNumber: string) => void;
   onCancel?: () => void;
 }
@@ -71,12 +78,29 @@ export function LabOrderForm({
   patientId,
   encounterId,
   patientName,
+  patientMrn,
+  patientGender,
+  patientDateOfBirth,
+  encounterType,
+  encounterDate,
+  chiefComplaint,
   onSuccess,
   onCancel,
 }: LabOrderFormProps) {
   const { toast } = useToast();
+  const { user } = useAuth();
   const createOrder = useCreateLabOrder();
   const [showTestSelector, setShowTestSelector] = useState(false);
+  
+  // Current date/time for "Requested At"
+  const requestedAt = new Date();
+
+  // Get current user's display name
+  const requestedByName = user 
+    ? (user.first_name && user.last_name 
+        ? `${user.first_name} ${user.last_name}` 
+        : user.username)
+    : 'Unknown';
 
   const form = useForm<OrderFormData>({
     resolver: zodResolver(orderSchema),
@@ -135,7 +159,6 @@ export function LabOrderForm({
   }, [form, append, toast]);
 
   const onSubmit = async (data: OrderFormData) => {
-    console.log('Form submitted with data:', data);
     try {
       const orderData: LabOrderCreateData = {
         patient: data.patient,
@@ -159,7 +182,6 @@ export function LabOrderForm({
 
       onSuccess?.(order.order_number);
     } catch (error) {
-      console.error('Error creating order:', error);
       toast({
         title: 'Error creating order',
         description: error instanceof Error ? error.message : 'An error occurred',
@@ -168,24 +190,86 @@ export function LabOrderForm({
     }
   };
 
-  // Debug: log form errors when they change
-  const formErrors = form.formState.errors;
-  console.log('Form errors:', formErrors, 'Items count:', fields.length);
-
   return (
     <Form {...form}>
       <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
-        {/* Patient Info */}
-        {patientName && (
-          <Card>
-            <CardHeader className="pb-3">
-              <CardTitle className="text-base">Patient</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <p className="font-medium">{patientName}</p>
-            </CardContent>
-          </Card>
-        )}
+        {/* Patient & Requestor Info */}
+        <Card>
+          <CardHeader className="pb-3">
+            <CardTitle className="text-base">Order Information</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4">
+              {/* Patient Name */}
+              {patientName && (
+                <div>
+                  <Label className="text-xs text-muted-foreground">Patient Name</Label>
+                  <p className="font-medium">{patientName}</p>
+                </div>
+              )}
+              
+              {/* Patient MRN */}
+              {patientMrn && (
+                <div>
+                  <Label className="text-xs text-muted-foreground">MRN</Label>
+                  <p className="font-medium font-mono text-sm">{patientMrn}</p>
+                </div>
+              )}
+              
+              {/* Patient Gender & Date of Birth */}
+              {(patientGender || patientDateOfBirth) && (
+                <div>
+                  <Label className="text-xs text-muted-foreground">Gender / Date of Birth</Label>
+                  <p className="font-medium text-sm">
+                    {patientGender === 'M' ? 'Male' : patientGender === 'F' ? 'Female' : patientGender || '—'}
+                    {patientDateOfBirth && ` • ${new Date(patientDateOfBirth).toLocaleDateString()}`}
+                  </p>
+                </div>
+              )}
+              
+              {/* Encounter Type */}
+              {encounterType && (
+                <div>
+                  <Label className="text-xs text-muted-foreground">Encounter Type</Label>
+                  <p className="font-medium text-sm">{encounterType}</p>
+                </div>
+              )}
+              
+              {/* Encounter Date */}
+              {encounterDate && (
+                <div>
+                  <Label className="text-xs text-muted-foreground">Encounter Date</Label>
+                  <p className="font-medium text-sm">{new Date(encounterDate).toLocaleDateString()}</p>
+                </div>
+              )}
+              
+              {/* Requested By */}
+              <div>
+                <Label className="text-xs text-muted-foreground flex items-center gap-1">
+                  <User className="h-3 w-3" />
+                  Requested By
+                </Label>
+                <p className="font-medium text-sm">{requestedByName}</p>
+              </div>
+              
+              {/* Requested At */}
+              <div>
+                <Label className="text-xs text-muted-foreground">Requested At</Label>
+                <p className="font-medium text-sm">
+                  {requestedAt.toLocaleDateString()} {requestedAt.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                </p>
+              </div>
+            </div>
+            
+            {/* Chief Complaint if provided */}
+            {chiefComplaint && (
+              <div className="mt-4 pt-4 border-t">
+                <Label className="text-xs text-muted-foreground">Chief Complaint</Label>
+                <p className="text-sm mt-1">{chiefComplaint}</p>
+              </div>
+            )}
+          </CardContent>
+        </Card>
 
         {/* Order Settings */}
         <Card>

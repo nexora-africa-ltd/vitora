@@ -71,6 +71,7 @@ export interface LabOrder {
   specimen_collected: boolean;
   specimen_collected_at?: string;
   specimen_collected_by?: number;
+  ordered_at: string;
   completed_at?: string;
   cancellation_reason?: string;
   cancelled_by?: number;

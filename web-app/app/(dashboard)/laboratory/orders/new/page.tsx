@@ -97,6 +97,12 @@ export default function NewLabOrderPage() {
         patientId={resolvedPatientId}
         encounterId={resolvedEncounterId}
         patientName={encounter?.patient_name}
+        patientMrn={encounter?.patient_mrn}
+        patientGender={encounter?.patient_gender}
+        patientDateOfBirth={encounter?.patient_date_of_birth}
+        encounterType={encounter?.encounter_type}
+        encounterDate={encounter?.encounter_date}
+        chiefComplaint={encounter?.chief_complaint}
         onSuccess={handleSuccess}
         onCancel={() => router.back()}
       />
