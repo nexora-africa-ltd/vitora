@@ -7,6 +7,7 @@ import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import { InputGroup, InputGroupAddon, InputGroupInput, InputGroupText } from '@/components/ui/input-group';
 import { cn } from '@/lib/utils/cn';
 import type { EncounterFormData, VitalAlert } from '@/lib/types/encounter-form';
 import { getVitalAlerts } from '@/lib/hooks/use-encounter-form';
@@ -349,30 +350,32 @@ export function VitalsForm({ data, onChange, disabled = false, errors = {}, pati
               <Activity className="h-4 w-4" />
               Blood Pressure
             </Label>
-            <div className="flex items-center gap-1">
-              <Input
+            <InputGroup data-disabled={disabled} className={inputClassName('blood_pressure')}>
+              <InputGroupInput
                 type="number"
                 min="60"
                 max="250"
                 placeholder="120"
                 value={data.blood_pressure_systolic ?? ''}
                 onChange={(e) => onChange('blood_pressure_systolic', e.target.value ? parseInt(e.target.value) : null)}
-                className={cn('w-16 text-center [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none', inputClassName('blood_pressure'))}
+                className="text-center [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
                 disabled={disabled}
               />
-              <span className="text-muted-foreground">/</span>
-              <Input
+              <InputGroupText>/</InputGroupText>
+              <InputGroupInput
                 type="number"
                 min="40"
                 max="150"
                 placeholder="80"
                 value={data.blood_pressure_diastolic ?? ''}
                 onChange={(e) => onChange('blood_pressure_diastolic', e.target.value ? parseInt(e.target.value) : null)}
-                className={cn('w-16 text-center [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none', inputClassName('blood_pressure'))}
+                className="text-center [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
                 disabled={disabled}
               />
-              <span className="text-xs text-muted-foreground whitespace-nowrap">mmHg</span>
-            </div>
+              <InputGroupAddon align="inline-end">
+                <InputGroupText>mmHg</InputGroupText>
+              </InputGroupAddon>
+            </InputGroup>
             <p className="text-xs text-muted-foreground">Normal: 90/60-120/80</p>
           </div>
           
