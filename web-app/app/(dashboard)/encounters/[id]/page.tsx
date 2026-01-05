@@ -82,7 +82,9 @@ export default function EncounterDetailPage() {
   // Convert diagnoses to form format
   const diagnosisFormData = useMemo((): DiagnosisFormData[] => {
     if (!diagnoses) return [];
-    return diagnoses.map(d => ({
+    // Handle both array and paginated response formats
+    const diagnosisArray = Array.isArray(diagnoses) ? diagnoses : (diagnoses as { results?: typeof diagnoses })?.results || [];
+    return diagnosisArray.map(d => ({
       icd10_code: d.icd10_code,
       icd10_display: d.icd10_code_display || d.icd10_description,
       diagnosis_type: d.diagnosis_type,
