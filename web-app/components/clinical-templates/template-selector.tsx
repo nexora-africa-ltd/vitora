@@ -11,6 +11,7 @@ import {
   ChevronRight,
   Star,
   History,
+  Loader2,
 } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
@@ -27,6 +28,7 @@ import {
 } from '@/components/ui/dialog';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useClinicalTemplates, useClinicalTemplateSearch } from '@/lib/hooks/use-clinical-templates';
+import { clinicalTemplatesApi } from '@/lib/api/clinical-templates';
 import type { ClinicalTemplate } from '@/lib/types/clinical-template';
 
 interface TemplateSelectorProps {
@@ -44,6 +46,7 @@ export function TemplateSelector({
 }: TemplateSelectorProps) {
   const [open, setOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
+  const [isLoadingTemplate, setIsLoadingTemplate] = useState(false);
 
   // Fetch all active templates
   const {
@@ -64,10 +67,23 @@ export function TemplateSelector({
     ? searchResults
     : templatesData?.results;
 
-  const handleSelect = (template: ClinicalTemplate) => {
-    onSelect(template);
-    setOpen(false);
-    setSearchQuery('');
+  const handleSelect = async (template: ClinicalTemplate) => {
+    // Fetch full template with content (list endpoint excludes content for performance)
+    setIsLoadingTemplate(true);
+    try {
+      const fullTemplate = await clinicalTemplatesApi.get(template.id);
+      onSelect(fullTemplate);
+      setOpen(false);
+      setSearchQuery('');
+    } catch (error) {
+      console.error('Failed to fetch template:', error);
+      // Fall back to partial template if fetch fails
+      onSelect(template);
+      setOpen(false);
+      setSearchQuery('');
+    } finally {
+      setIsLoadingTemplate(false);
+    }
   };
 
   // Group templates by specialty
@@ -81,7 +97,7 @@ export function TemplateSelector({
   }, {});
 
   return (
-    <Dialog open={open} onOpenChange={setOpen}>
+    <Dialog open={open} onOpenChange={(value) => !isLoadingTemplate && setOpen(value)}>
       <DialogTrigger asChild>
         {trigger || (
           <Button variant="outline" size="sm">
@@ -91,17 +107,24 @@ export function TemplateSelector({
         )}
       </DialogTrigger>
       <DialogContent className="max-w-2xl max-h-[80vh]">
-        <DialogHeader>
-          <DialogTitle>Select Clinical Template</DialogTitle>
-          <DialogDescription>
-            Choose a template to guide your clinical assessment
-          </DialogDescription>
-        </DialogHeader>
+        {isLoadingTemplate ? (
+          <div className="flex flex-col items-center justify-center py-12">
+            <Loader2 className="h-8 w-8 animate-spin text-primary mb-4" />
+            <p className="text-muted-foreground">Loading template...</p>
+          </div>
+        ) : (
+          <>
+            <DialogHeader>
+              <DialogTitle>Select Clinical Template</DialogTitle>
+              <DialogDescription>
+                Choose a template to guide your clinical assessment
+              </DialogDescription>
+            </DialogHeader>
 
-        {/* Search */}
-        <div className="relative">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-          <Input
+            {/* Search */}
+            <div className="relative">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+              <Input
             placeholder="Search templates..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
@@ -144,6 +167,8 @@ export function TemplateSelector({
             </div>
           )}
         </ScrollArea>
+          </>
+        )}
       </DialogContent>
     </Dialog>
   );
