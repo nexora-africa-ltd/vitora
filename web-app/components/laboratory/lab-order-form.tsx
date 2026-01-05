@@ -365,19 +365,22 @@ export function LabOrderForm({
         {/* Actions */}
         <div className="flex flex-col gap-3">
           {/* Show form errors */}
-          {Object.keys(form.formState.errors).length > 0 && (
+          {form.formState.isSubmitted && Object.keys(form.formState.errors).length > 0 && (
             <div className="p-3 rounded-lg border border-destructive bg-destructive/10 text-sm text-destructive">
               <p className="font-medium mb-1">Please fix the following errors:</p>
               <ul className="list-disc list-inside">
-                {form.formState.errors.patient && (
-                  <li>Patient is required</li>
-                )}
-                {form.formState.errors.encounter && (
-                  <li>Encounter is required</li>
-                )}
-                {form.formState.errors.items && (
-                  <li>{form.formState.errors.items.message}</li>
-                )}
+                {Object.entries(form.formState.errors).map(([field, error]) => (
+                  <li key={field}>
+                    {field === 'items' 
+                      ? (error as { message?: string })?.message || 'At least one test is required'
+                      : field === 'patient'
+                      ? 'Patient is required'
+                      : field === 'encounter'
+                      ? 'Encounter is required'
+                      : `${field}: ${(error as { message?: string })?.message || 'Invalid'}`
+                    }
+                  </li>
+                ))}
               </ul>
             </div>
           )}
