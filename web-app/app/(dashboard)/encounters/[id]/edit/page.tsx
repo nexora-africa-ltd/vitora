@@ -657,8 +657,10 @@ export default function EditEncounterPage() {
         <VitalsForm
           data={formData}
           onChange={(field, value) => handleFieldChange(field, value)}
-          disabled={!isEditable || (wasTriaged && encounter?.vitals_source === 'TRIAGE')}
+          disabled={!isEditable}
           errors={errors}
+          fromTriage={wasTriaged && encounter?.vitals_source === 'TRIAGE'}
+          vitalsSource={encounter?.vitals_source || undefined}
         />
 
         {/* Lab Orders and Prescriptions - Side by side on larger screens */}
