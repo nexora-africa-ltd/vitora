@@ -663,19 +663,42 @@ export default function EditEncounterPage() {
           vitalsSource={encounter?.vitals_source || undefined}
         />
 
-        {/* Lab Orders and Prescriptions - Side by side on larger screens */}
-        <div className="grid gap-4 md:grid-cols-2">
-          <EncounterLabOrders
-            encounterId={encounterId}
-            patientId={encounter.patient}
-            disabled={!isEditable}
-          />
-          <EncounterPrescriptions
-            encounterId={encounterId}
-            patientId={encounter.patient}
-            disabled={!isEditable}
-          />
-        </div>
+        {/* Clinical Template Section (moved from tabs - above SOAP notes) */}
+        <Card>
+          <CardHeader className="pb-3">
+            <div className="flex items-center justify-between">
+              <div>
+                <CardTitle className="text-lg flex items-center gap-2">
+                  <FileText className="h-5 w-5" />
+                  Clinical Template
+                  {selectedTemplate && (
+                    <Badge variant="secondary" className="ml-2">{selectedTemplate.name}</Badge>
+                  )}
+                </CardTitle>
+                <CardDescription>
+                  Use a structured template to guide clinical assessment
+                </CardDescription>
+              </div>
+              {isEditable && (
+                <TemplateSelector
+                  onSelect={handleTemplateSelect}
+                  encounterType={formData.encounter_type}
+                  chiefComplaint={formData.chief_complaint}
+                />
+              )}
+            </div>
+          </CardHeader>
+          {selectedTemplate && (
+            <CardContent>
+              <ClinicalTemplateForm
+                template={selectedTemplate}
+                value={formData.clinical_template_data || {}}
+                onChange={handleTemplateDataChange}
+                disabled={!isEditable}
+              />
+            </CardContent>
+          )}
+        </Card>
 
         {/* Chief Complaint Edit Dialog */}
         <ChiefComplaintEditDialog
@@ -717,40 +740,37 @@ export default function EditEncounterPage() {
           isLoading={editChiefComplaint.isPending}
         />
         
-        {/* Tabbed Sections */}
+        {/* Tabbed Sections - SOAP Flow */}
         <Tabs value={activeTab} onValueChange={setActiveTab}>
           <TabsList className="flex flex-wrap h-auto gap-1">
+            {/* S - Subjective */}
             <TabsTrigger value="history" className="gap-1">
-              1. History
+              1. Hx
               {!hasMedicalHistory(formData) && (
                 <span className="ml-1 text-muted-foreground">+</span>
               )}
             </TabsTrigger>
             <TabsTrigger value="notes" className="gap-1">
-              2. Clinical Notes
+              2. HPI
               {!hasClinicalNotes(formData) && (
                 <span className="ml-1 text-muted-foreground">+</span>
               )}
             </TabsTrigger>
+            {/* A - Assessment */}
             <TabsTrigger value="diagnosis" className="gap-1">
-              3. Diagnosis
+              3. Dx
               {diagnoses.length === 0 ? (
                 <span className="ml-1 text-muted-foreground">+</span>
               ) : (
                 <Badge variant="secondary" className="ml-1">{diagnoses.length}</Badge>
               )}
             </TabsTrigger>
-            <TabsTrigger value="template" className="gap-1">
-              4. Template
-              {selectedTemplate && (
-                <Badge variant="secondary" className="ml-1">1</Badge>
-              )}
-            </TabsTrigger>
+            {/* P - Plan */}
             <TabsTrigger value="lab" className="gap-1">
-              5. Lab
+              4. Labs
             </TabsTrigger>
             <TabsTrigger value="pharmacy" className="gap-1">
-              6. Rx
+              5. Rx
             </TabsTrigger>
           </TabsList>
           
@@ -779,57 +799,9 @@ export default function EditEncounterPage() {
               onAdd={handleAddDiagnosis}
               onRemove={handleRemoveDiagnosis}
               onPrevious={() => setActiveTab('notes')}
-              onNext={() => setActiveTab('template')}
+              onNext={() => setActiveTab('lab')}
               disabled={!isEditable}
             />
-          </TabsContent>
-          
-          <TabsContent value="template" className="mt-4">
-            <Card>
-              <CardHeader>
-                <div className="flex items-center justify-between">
-                  <div>
-                    <CardTitle>Clinical Template</CardTitle>
-                    <CardDescription>
-                      Use a structured template for clinical assessment
-                    </CardDescription>
-                  </div>
-                  {isEditable && (
-                    <TemplateSelector
-                      onSelect={handleTemplateSelect}
-                      encounterType={formData.encounter_type}
-                      chiefComplaint={formData.chief_complaint}
-                    />
-                  )}
-                </div>
-              </CardHeader>
-              <CardContent>
-                {selectedTemplate ? (
-                  <ClinicalTemplateForm
-                    template={selectedTemplate}
-                    value={formData.clinical_template_data || {}}
-                    onChange={handleTemplateDataChange}
-                    disabled={!isEditable}
-                  />
-                ) : (
-                  <div className="text-center py-8 text-muted-foreground">
-                    <FileText className="h-12 w-12 mx-auto mb-4 opacity-50" />
-                    <p>No template selected</p>
-                    <p className="text-sm mt-1">
-                      Select a template to guide your clinical assessment
-                    </p>
-                  </div>
-                )}
-              </CardContent>
-              <CardFooter className="flex justify-between pt-4 border-t">
-                <Button variant="secondary" onClick={() => setActiveTab('diagnosis')}>
-                  ← Back to Diagnosis
-                </Button>
-                <Button variant="secondary" onClick={() => setActiveTab('lab')}>
-                  Continue to Lab →
-                </Button>
-              </CardFooter>
-            </Card>
           </TabsContent>
           
           <TabsContent value="lab" className="mt-4">

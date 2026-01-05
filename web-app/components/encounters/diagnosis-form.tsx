@@ -405,16 +405,16 @@ export function DiagnosisForm({ diagnoses, onAdd, onRemove, disabled = false, on
           <div className="flex justify-between w-full">
             {onPrevious ? (
               <Button onClick={onPrevious} variant="secondary">
-                ← Back to Clinical Notes
+                ← Back to HPI
               </Button>
             ) : <div />}
             {onNext ? (
               <Button onClick={onNext} variant="secondary">
-                Continue to Template →
+                Continue to Labs →
               </Button>
             ) : (
               <div className="text-sm text-muted-foreground flex items-center">
-                Use the buttons above to create your encounter
+                Add diagnoses using the form above
               </div>
             )}
           </div>
