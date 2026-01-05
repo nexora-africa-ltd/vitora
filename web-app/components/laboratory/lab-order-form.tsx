@@ -97,7 +97,11 @@ export function LabOrderForm({
 
   const orderType = form.watch('order_type');
   const items = form.watch('items');
-  const totalCost = items.reduce((sum, item) => sum + (item.cost || 0), 0);
+  // Calculate total, ensuring cost is treated as number
+  const totalCost = items.reduce((sum, item) => {
+    const cost = typeof item.cost === 'string' ? parseFloat(item.cost) : (item.cost || 0);
+    return sum + (isNaN(cost) ? 0 : cost);
+  }, 0);
 
   const handleAddTest = useCallback((test: TestCatalog) => {
     // Check if test is already added
@@ -111,11 +115,14 @@ export function LabOrderForm({
       return;
     }
 
+    // Parse cost as number (backend may send as string from DecimalField)
+    const cost = typeof test.cost === 'string' ? parseFloat(test.cost) : (test.cost || 0);
+
     append({
       test: test.id,
       test_name: test.name,
       test_code: test.code,
-      cost: test.cost,
+      cost: isNaN(cost) ? 0 : cost,
       special_instructions: '',
     });
     setShowTestSelector(false);
@@ -356,15 +363,34 @@ export function LabOrderForm({
         </Card>
 
         {/* Actions */}
-        <div className="flex justify-end gap-3">
-          {onCancel && (
-            <Button type="button" variant="outline" onClick={onCancel}>
-              Cancel
-            </Button>
+        <div className="flex flex-col gap-3">
+          {/* Show form errors */}
+          {Object.keys(form.formState.errors).length > 0 && (
+            <div className="p-3 rounded-lg border border-destructive bg-destructive/10 text-sm text-destructive">
+              <p className="font-medium mb-1">Please fix the following errors:</p>
+              <ul className="list-disc list-inside">
+                {form.formState.errors.patient && (
+                  <li>Patient is required</li>
+                )}
+                {form.formState.errors.encounter && (
+                  <li>Encounter is required</li>
+                )}
+                {form.formState.errors.items && (
+                  <li>{form.formState.errors.items.message}</li>
+                )}
+              </ul>
+            </div>
           )}
-          <Button type="submit" disabled={createOrder.isPending}>
-            {createOrder.isPending ? 'Creating...' : 'Create Lab Order'}
-          </Button>
+          <div className="flex justify-end gap-3">
+            {onCancel && (
+              <Button type="button" variant="outline" onClick={onCancel}>
+                Cancel
+              </Button>
+            )}
+            <Button type="submit" disabled={createOrder.isPending}>
+              {createOrder.isPending ? 'Creating...' : 'Create Lab Order'}
+            </Button>
+          </div>
         </div>
 
         {/* Test Selector Modal */}

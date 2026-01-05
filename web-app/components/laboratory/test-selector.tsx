@@ -218,6 +218,8 @@ interface TestCardProps {
 
 function TestCard({ test, onClick }: TestCardProps) {
   const categoryColor = CATEGORY_COLORS[test.category] || CATEGORY_COLORS.OTHER;
+  // Parse cost as number (backend may send as string from DecimalField)
+  const cost = typeof test.cost === 'string' ? parseFloat(test.cost) : (test.cost || 0);
 
   return (
     <div
@@ -255,7 +257,7 @@ function TestCard({ test, onClick }: TestCardProps) {
           )}
         </div>
         <div className="text-right">
-          <p className="font-medium">{formatCurrency(test.cost)}</p>
+          <p className="font-medium">{formatCurrency(isNaN(cost) ? 0 : cost)}</p>
           {test.sha_claimable && (
             <Badge variant="secondary" className="text-xs mt-1">
               SHA
