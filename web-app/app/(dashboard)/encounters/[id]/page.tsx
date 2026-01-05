@@ -83,30 +83,33 @@ export default function EncounterDetailPage() {
           </div>
         </div>
 
-        {/* Show "Continue Encounter" for active encounters, "View Details" for completed */}
-        {encounter.status === 'COMPLETED' || encounter.status === 'CANCELLED' ? (
-          <Button variant="outline" asChild>
-            <Link href={`/encounters/${encounter.id}/edit`}>
-              <Eye className="h-4 w-4 mr-2" />
-              View Details
-            </Link>
-          </Button>
-        ) : (
-          <Button asChild>
-            <Link href={`/encounters/${encounter.id}/edit`}>
-              <PlayCircle className="h-4 w-4 mr-2" />
-              Continue Encounter
-            </Link>
-          </Button>
-        )}
+        {/* Action buttons */}
+        <div className="flex items-center gap-2">
+          {/* Show "Continue Encounter" for active encounters, "View Details" for completed */}
+          {encounter.status === 'COMPLETED' || encounter.status === 'CANCELLED' ? (
+            <Button variant="outline" asChild>
+              <Link href={`/encounters/${encounter.id}/edit`}>
+                <Eye className="h-4 w-4 mr-2" />
+                View Details
+              </Link>
+            </Button>
+          ) : (
+            <Button asChild>
+              <Link href={`/encounters/${encounter.id}/edit`}>
+                <PlayCircle className="h-4 w-4 mr-2" />
+                Continue Encounter
+              </Link>
+            </Button>
+          )}
 
-        {encounter.encounter_type === 'OPD' && (
-          <Button variant="outline" asChild>
-            <Link href={`/admissions/recommendations/new?encounter=${encounter.id}`}>
-              Recommend for Admission
-            </Link>
-          </Button>
-        )}
+          {encounter.encounter_type === 'OPD' && (
+            <Button variant="outline" asChild>
+              <Link href={`/admissions/recommendations/new?encounter=${encounter.id}`}>
+                Recommend for Admission
+              </Link>
+            </Button>
+          )}
+        </div>
       </div>
 
       {/* Chief Complaint */}
