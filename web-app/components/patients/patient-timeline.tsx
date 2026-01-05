@@ -110,11 +110,12 @@ export function PatientTimeline({ patientId }: PatientTimelineProps) {
           ) : (
             <div className="space-y-0" role="list" aria-label="Patient timeline">
               {allEvents.map((event, index) => (
-                <TimelineItem
-                  key={event.id}
-                  event={event}
-                  isLast={index === allEvents.length - 1 && !hasNextPage}
-                />
+                <div key={event.id} role="listitem">
+                  <TimelineItem
+                    event={event}
+                    isLast={index === allEvents.length - 1 && !hasNextPage}
+                  />
+                </div>
               ))}
             </div>
           )}

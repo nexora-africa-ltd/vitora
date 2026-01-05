@@ -2,7 +2,6 @@
 
 import { useState } from 'react';
 import { AlertTriangle, AlertCircle, Thermometer, Heart, Wind, Droplets, Scale, Ruler, Activity, Info, ChevronRight, Pencil, X, Check } from 'lucide-react';
-import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -299,8 +298,8 @@ export function VitalsForm({ data, onChange, disabled = false, errors = {}, pati
               <Thermometer className="h-4 w-4" />
               Temperature
             </Label>
-            <div className="relative">
-              <Input
+            <InputGroup data-disabled={disabled} className={inputClassName('temperature')}>
+              <InputGroupInput
                 id="temperature"
                 type="number"
                 step="0.1"
@@ -309,13 +308,10 @@ export function VitalsForm({ data, onChange, disabled = false, errors = {}, pati
                 placeholder="36.5"
                 value={data.temperature ?? ''}
                 onChange={(e) => onChange('temperature', e.target.value ? parseFloat(e.target.value) : null)}
-                className={inputClassName('temperature')}
                 disabled={disabled}
               />
-              <span className="absolute right-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground pointer-events-none">
-                °C
-              </span>
-            </div>
+              <InputGroupAddon align="inline-end">°C</InputGroupAddon>
+            </InputGroup>
             <p className="text-xs text-muted-foreground">Normal: 36.1-37.2°C</p>
           </div>
           
@@ -325,8 +321,8 @@ export function VitalsForm({ data, onChange, disabled = false, errors = {}, pati
               <Heart className="h-4 w-4" />
               Pulse
             </Label>
-            <div className="relative">
-              <Input
+            <InputGroup data-disabled={disabled} className={inputClassName('pulse')}>
+              <InputGroupInput
                 id="pulse"
                 type="number"
                 min="30"
@@ -334,13 +330,10 @@ export function VitalsForm({ data, onChange, disabled = false, errors = {}, pati
                 placeholder="72"
                 value={data.pulse ?? ''}
                 onChange={(e) => onChange('pulse', e.target.value ? parseInt(e.target.value) : null)}
-                className={cn('w-24 pr-12', inputClassName('pulse'))}
                 disabled={disabled}
               />
-              <span className="absolute right-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground pointer-events-none">
-                bpm
-              </span>
-            </div>
+              <InputGroupAddon align="inline-end">bpm</InputGroupAddon>
+            </InputGroup>
             <p className="text-xs text-muted-foreground">Normal: 60-100 bpm</p>
           </div>
           
@@ -372,9 +365,7 @@ export function VitalsForm({ data, onChange, disabled = false, errors = {}, pati
                 className="text-center [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
                 disabled={disabled}
               />
-              <InputGroupAddon align="inline-end">
-                <InputGroupText>mmHg</InputGroupText>
-              </InputGroupAddon>
+              <InputGroupAddon align="inline-end">mmHg</InputGroupAddon>
             </InputGroup>
             <p className="text-xs text-muted-foreground">Normal: 90/60-120/80</p>
           </div>
@@ -385,8 +376,8 @@ export function VitalsForm({ data, onChange, disabled = false, errors = {}, pati
               <Wind className="h-4 w-4" />
               Respiratory Rate
             </Label>
-            <div className="relative w-24">
-              <Input
+            <InputGroup data-disabled={disabled} className={inputClassName('respiratory_rate')}>
+              <InputGroupInput
                 id="respiratory_rate"
                 type="number"
                 min="8"
@@ -394,13 +385,10 @@ export function VitalsForm({ data, onChange, disabled = false, errors = {}, pati
                 placeholder="16"
                 value={data.respiratory_rate ?? ''}
                 onChange={(e) => onChange('respiratory_rate', e.target.value ? parseInt(e.target.value) : null)}
-                className={cn('pr-12', inputClassName('respiratory_rate'))}
                 disabled={disabled}
               />
-              <span className="absolute right-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground pointer-events-none">
-                /min
-              </span>
-            </div>
+              <InputGroupAddon align="inline-end">/min</InputGroupAddon>
+            </InputGroup>
             <p className="text-xs text-muted-foreground">Normal: 12-20/min</p>
           </div>
           
@@ -410,8 +398,8 @@ export function VitalsForm({ data, onChange, disabled = false, errors = {}, pati
               <Droplets className="h-4 w-4" />
               SpO2
             </Label>
-            <div className="relative w-24">
-              <Input
+            <InputGroup data-disabled={disabled} className={inputClassName('spo2')}>
+              <InputGroupInput
                 id="spo2"
                 type="number"
                 step="1"
@@ -420,13 +408,10 @@ export function VitalsForm({ data, onChange, disabled = false, errors = {}, pati
                 placeholder="98"
                 value={data.spo2 ?? ''}
                 onChange={(e) => onChange('spo2', e.target.value ? parseFloat(e.target.value) : null)}
-                className={cn('pr-12', inputClassName('spo2'))}
                 disabled={disabled}
               />
-              <span className="absolute right-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground pointer-events-none">
-                %
-              </span>
-            </div>
+              <InputGroupAddon align="inline-end">%</InputGroupAddon>
+            </InputGroup>
             <p className="text-xs text-muted-foreground">
               Normal: 95-100%
             </p>
@@ -438,8 +423,8 @@ export function VitalsForm({ data, onChange, disabled = false, errors = {}, pati
               <Scale className="h-4 w-4" />
               Weight
             </Label>
-            <div className="relative">
-              <Input
+            <InputGroup data-disabled={disabled}>
+              <InputGroupInput
                 id="weight"
                 type="number"
                 step="0.1"
@@ -448,13 +433,10 @@ export function VitalsForm({ data, onChange, disabled = false, errors = {}, pati
                 placeholder="70"
                 value={data.weight ?? ''}
                 onChange={(e) => onChange('weight', e.target.value ? parseFloat(e.target.value) : null)}
-                className="pr-12"
                 disabled={disabled}
               />
-              <span className="absolute right-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground pointer-events-none">
-                kg
-              </span>
-            </div>
+              <InputGroupAddon align="inline-end">kg</InputGroupAddon>
+            </InputGroup>
           </div>
           
           {/* Height */}
@@ -463,8 +445,8 @@ export function VitalsForm({ data, onChange, disabled = false, errors = {}, pati
               <Ruler className="h-4 w-4" />
               Height
             </Label>
-            <div className="relative">
-              <Input
+            <InputGroup data-disabled={disabled}>
+              <InputGroupInput
                 id="height"
                 type="number"
                 step="0.1"
@@ -473,13 +455,10 @@ export function VitalsForm({ data, onChange, disabled = false, errors = {}, pati
                 placeholder="170"
                 value={data.height ?? ''}
                 onChange={(e) => onChange('height', e.target.value ? parseFloat(e.target.value) : null)}
-                className="pr-12"
                 disabled={disabled}
               />
-              <span className="absolute right-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground pointer-events-none">
-                cm
-              </span>
-            </div>
+              <InputGroupAddon align="inline-end">cm</InputGroupAddon>
+            </InputGroup>
           </div>
           
           {/* BMI (calculated) */}
