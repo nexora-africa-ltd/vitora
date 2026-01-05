@@ -27,10 +27,10 @@ export function ClinicalNotesForm({
       <CardHeader className="pb-3">
         <CardTitle className="text-lg flex items-center gap-2">
           <FileText className="h-5 w-5" />
-          Clinical Notes
+          HPI & Clinical Notes
         </CardTitle>
         <CardDescription>
-          Document clinical findings, assessment, and treatment plan
+          Document subjective history, objective findings, assessment, and plan (SOAP)
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-6">
@@ -127,15 +127,13 @@ export function ClinicalNotesForm({
         <CardFooter className="border-t pt-4">
           <div className="flex justify-between w-full">
             {onPrevious ? (
-              <Button onClick={onPrevious} variant="outline">
-                <ChevronLeft className="mr-2 h-4 w-4" />
-                Previous: Medical History
+              <Button onClick={onPrevious} variant="secondary">
+                ← Back to Hx
               </Button>
             ) : <div />}
             {onNext && (
-              <Button onClick={onNext} variant="outline">
-                Next: Diagnosis
-                <ChevronRight className="ml-2 h-4 w-4" />
+              <Button onClick={onNext} variant="secondary">
+                Continue to Dx →
               </Button>
             )}
           </div>

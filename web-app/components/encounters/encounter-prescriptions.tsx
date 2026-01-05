@@ -149,7 +149,7 @@ export function EncounterPrescriptions({ encounterId, patientId, disabled = fals
           </Button>
           {onPrevious && (
             <Button variant="secondary" className="w-full" onClick={onPrevious}>
-              ← Back to Lab Orders
+              ← Back to Labs
             </Button>
           )}
         </CardFooter>
@@ -159,7 +159,7 @@ export function EncounterPrescriptions({ encounterId, patientId, disabled = fals
       {prescriptions && prescriptions.length > 0 && onPrevious && (
         <CardFooter className="pt-3">
           <Button variant="secondary" className="w-full" onClick={onPrevious}>
-            ← Back to Lab Orders
+            ← Back to Labs
           </Button>
         </CardFooter>
       )}

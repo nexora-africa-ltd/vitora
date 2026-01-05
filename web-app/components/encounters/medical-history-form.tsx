@@ -24,7 +24,7 @@ export function MedicalHistoryForm({ data, onChange, disabled = false, onNext, o
       <CardHeader className="pb-3">
         <CardTitle className="text-lg flex items-center gap-2">
           <FileText className="h-5 w-5" />
-          Medical History
+          Hx (Medical History)
         </CardTitle>
         <CardDescription>
           Document the patient&apos;s relevant medical background for this encounter
@@ -137,21 +137,12 @@ export function MedicalHistoryForm({ data, onChange, disabled = false, onNext, o
       </CardContent>
       
       {/* Navigation Footer */}
-      {(onNext || onPrevious) && (
+      {onNext && (
         <CardFooter className="border-t pt-4">
-          <div className="flex justify-between w-full">
-            {onPrevious ? (
-              <Button onClick={onPrevious} variant="outline">
-                <ChevronLeft className="mr-2 h-4 w-4" />
-                Previous: Vitals
-              </Button>
-            ) : <div />}
-            {onNext && (
-              <Button onClick={onNext} variant="outline">
-                Next: Clinical Notes
-                <ChevronRight className="ml-2 h-4 w-4" />
-              </Button>
-            )}
+          <div className="flex justify-end w-full">
+            <Button onClick={onNext} variant="secondary">
+              Continue to HPI →
+            </Button>
           </div>
         </CardFooter>
       )}

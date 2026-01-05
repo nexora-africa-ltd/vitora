@@ -180,7 +180,7 @@ export function EncounterLabOrders({ encounterId, patientId, disabled = false, o
           </Button>
           {onNext && (
             <Button variant="secondary" className="w-full" onClick={onNext}>
-              Continue to Prescriptions →
+              Continue to Rx →
             </Button>
           )}
         </CardFooter>
@@ -190,7 +190,7 @@ export function EncounterLabOrders({ encounterId, patientId, disabled = false, o
       {((orders && orders.length > 0) || !hasTreatmentPlan) && onNext && (
         <CardFooter className="pt-3">
           <Button variant="secondary" className="w-full" onClick={onNext}>
-            Continue to Prescriptions →
+            Continue to Rx →
           </Button>
         </CardFooter>
       )}
