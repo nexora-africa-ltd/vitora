@@ -8,6 +8,94 @@ Sprint 1.5-1.6 Track E: Triage Module MVP
 """
 
 
+def calculate_map(systolic: int, diastolic: int) -> int:
+    """
+    Calculate Mean Arterial Pressure (MAP).
+    
+    MAP = (SBP + 2 × DBP) / 3
+    
+    Args:
+        systolic: Systolic blood pressure (mmHg)
+        diastolic: Diastolic blood pressure (mmHg)
+        
+    Returns:
+        MAP value (rounded to nearest integer)
+    """
+    return round((systolic + 2 * diastolic) / 3)
+
+
+def get_age_group(age_years: float) -> str:
+    """
+    Classify patient age for MAP thresholds.
+    
+    Args:
+        age_years: Patient age in years
+        
+    Returns:
+        Age group string: 'adult', 'adolescent', 'school_age', 
+                         'young_child', 'infant', 'neonate'
+    """
+    if age_years >= 18:
+        return 'adult'
+    if age_years >= 13:
+        return 'adolescent'
+    if age_years >= 6:
+        return 'school_age'
+    if age_years >= 1:
+        return 'young_child'
+    if age_years >= 1/12:  # 1 month
+        return 'infant'
+    return 'neonate'
+
+
+# MAP thresholds by age group (mmHg)
+# Based on clinical guidelines for organ perfusion
+MAP_THRESHOLDS = {
+    'adult': {'normal_low': 70, 'normal_high': 100, 'critical_low': 65, 'elevated_high': 105},
+    'adolescent': {'normal_low': 65, 'normal_high': 95, 'critical_low': 60, 'elevated_high': 100},
+    'school_age': {'normal_low': 60, 'normal_high': 90, 'critical_low': 55, 'elevated_high': 95},
+    'young_child': {'normal_low': 55, 'normal_high': 85, 'critical_low': 50, 'elevated_high': 90},
+    'infant': {'normal_low': 45, 'normal_high': 70, 'critical_low': 40, 'elevated_high': 75},
+    'neonate': {'normal_low': 40, 'normal_high': 60, 'critical_low': 35, 'elevated_high': 65},
+}
+
+
+def check_map_status(systolic: int, diastolic: int, age_years: float = 30) -> tuple[str, str | None]:
+    """
+    Check MAP against age-appropriate thresholds.
+    
+    Args:
+        systolic: Systolic blood pressure (mmHg)
+        diastolic: Diastolic blood pressure (mmHg)
+        age_years: Patient age in years (default 30 for adult)
+        
+    Returns:
+        Tuple of (status, alert_message)
+        status: 'critical', 'warning', or 'normal'
+        alert_message: Description if abnormal, None if normal
+    """
+    map_value = calculate_map(systolic, diastolic)
+    age_group = get_age_group(age_years)
+    thresholds = MAP_THRESHOLDS[age_group]
+    
+    # Critical: MAP below minimum for adequate organ perfusion
+    if map_value < thresholds['critical_low']:
+        return ('critical', f"CRITICAL: MAP {map_value} mmHg - Inadequate perfusion (<{thresholds['critical_low']})")
+    
+    # Critical: Severely elevated MAP
+    if map_value > thresholds['elevated_high'] + 15:
+        return ('critical', f"CRITICAL: MAP {map_value} mmHg - Severely elevated")
+    
+    # Warning: MAP below normal range
+    if map_value < thresholds['normal_low']:
+        return ('warning', f"Warning: MAP {map_value} mmHg - Below normal ({thresholds['normal_low']}-{thresholds['normal_high']})")
+    
+    # Warning: MAP above normal
+    if map_value > thresholds['elevated_high']:
+        return ('warning', f"Warning: MAP {map_value} mmHg - Elevated (>{thresholds['elevated_high']})")
+    
+    return ('normal', None)
+
 
 class TriageCategoryCalculator:
     """
@@ -41,6 +129,7 @@ class TriageCategoryCalculator:
         chief_complaint_category: str,
         pain_score: int | None = None,
         mobility: str | None = None,
+        patient_age_years: float = 30,
     ) -> tuple[str, list[str]]:
         """
         Calculate triage category and generate alerts.
@@ -52,6 +141,7 @@ class TriageCategoryCalculator:
             chief_complaint_category: From CHIEF_COMPLAINT_CHOICES
             pain_score: 0-10 pain scale (optional)
             mobility: Mobility status (optional)
+            patient_age_years: Patient age in years (for age-adjusted MAP thresholds)
         
         Returns:
             Tuple of (category, alerts_list)
@@ -59,7 +149,9 @@ class TriageCategoryCalculator:
         alerts = []
 
         # Check RED criteria (highest priority)
-        red_alerts = self._check_red_criteria(vitals, mental_status, chief_complaint_category)
+        red_alerts = self._check_red_criteria(
+            vitals, mental_status, chief_complaint_category, patient_age_years
+        )
         if red_alerts:
             alerts.extend(red_alerts)
             return "RED", alerts
@@ -88,14 +180,21 @@ class TriageCategoryCalculator:
         alerts.extend(self._check_vital_alerts(vitals))
         return "BLUE", alerts
 
-    def _check_red_criteria(self, vitals: dict, mental_status: str, chief_complaint: str) -> list[str]:
+    def _check_red_criteria(
+        self,
+        vitals: dict,
+        mental_status: str,
+        chief_complaint: str,
+        patient_age_years: float = 30
+    ) -> list[str]:
         """
         Check for RED (Emergency) criteria.
         
         RED if:
         - Mental status U (Unresponsive) or P (Responds to Pain)
-        - SpO2 < 90%
-        - Systolic BP < 90 or > 180
+        - SpO2 ≤ 90% (moderate-severe hypoxemia)
+        - MAP below critical threshold (age-adjusted, indicates inadequate organ perfusion)
+        - MAP severely elevated (age-adjusted)
         - Heart rate < 40 or > 150
         - Altered consciousness chief complaint
         - Responds to voice only with altered consciousness
@@ -104,6 +203,7 @@ class TriageCategoryCalculator:
             vitals: Dictionary of vital signs
             mental_status: AVPU scale (A/V/P/U)
             chief_complaint: Chief complaint category
+            patient_age_years: Patient age in years (for MAP thresholds)
             
         Returns:
             List of RED-level alerts, empty if no RED criteria met
@@ -121,19 +221,23 @@ class TriageCategoryCalculator:
             return alerts
 
         # Collect all critical vital alerts
-        # SpO2 critical low
-        if vitals.get("spo2") and vitals["spo2"] < 90:
-            alerts.append(f"CRITICAL: Severe hypoxemia (SpO2 {vitals['spo2']}%)")
-            has_red_criteria = True
-
-        # Blood pressure critical
-        systolic = vitals.get("systolic_bp")
-        if systolic:
-            if systolic < 90:
-                alerts.append(f"CRITICAL: Severe hypotension (systolic blood pressure {systolic} mmHg)")
+        # SpO2 critical (moderate-severe hypoxemia)
+        spo2 = vitals.get("spo2")
+        if spo2 is not None:
+            if spo2 <= 85:
+                alerts.append(f"EMERGENCY: Severe hypoxemia (SpO2 {spo2}%)")
                 has_red_criteria = True
-            elif systolic > 180:
-                alerts.append(f"CRITICAL: Severe hypertension (systolic blood pressure {systolic} mmHg)")
+            elif spo2 <= 90:
+                alerts.append(f"CRITICAL: Moderate hypoxemia (SpO2 {spo2}%)")
+                has_red_criteria = True
+
+        # Blood pressure - MAP-based evaluation (age-adjusted)
+        systolic = vitals.get("systolic_bp")
+        diastolic = vitals.get("diastolic_bp")
+        if systolic is not None and diastolic is not None:
+            status, alert_msg = check_map_status(systolic, diastolic, patient_age_years)
+            if status == 'critical':
+                alerts.append(alert_msg)
                 has_red_criteria = True
 
         # Heart rate critical

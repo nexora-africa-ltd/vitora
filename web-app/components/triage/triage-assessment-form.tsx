@@ -260,10 +260,149 @@ interface VitalThresholdStatus {
 }
 
 /**
+ * Calculate Mean Arterial Pressure (MAP)
+ * MAP = (SBP + 2 × DBP) / 3
+ */
+function calculateMAP(systolic: number, diastolic: number): number {
+  return Math.round((systolic + 2 * diastolic) / 3);
+}
+
+/**
+ * Age group classification for MAP thresholds
+ */
+type AgeGroup = 'adult' | 'adolescent' | 'school_age' | 'young_child' | 'infant' | 'neonate';
+
+/**
+ * Get age group from age in years
+ */
+function getAgeGroup(ageYears: number): AgeGroup {
+  if (ageYears >= 18) return 'adult';
+  if (ageYears >= 13) return 'adolescent';
+  if (ageYears >= 6) return 'school_age';
+  if (ageYears >= 1) return 'young_child';
+  if (ageYears >= 1/12) return 'infant'; // 1 month or more
+  return 'neonate';
+}
+
+/**
+ * MAP thresholds by age group
+ * Based on clinical guidelines for organ perfusion
+ */
+interface MAPThresholds {
+  normalLow: number;
+  normalHigh: number;
+  criticalLow: number;
+  elevatedHigh: number;
+  label: string;
+}
+
+const MAP_THRESHOLDS: Record<AgeGroup, MAPThresholds> = {
+  adult: {
+    normalLow: 70,
+    normalHigh: 100,
+    criticalLow: 65,
+    elevatedHigh: 105,
+    label: 'Adult (≥18y)',
+  },
+  adolescent: {
+    normalLow: 65,
+    normalHigh: 95,
+    criticalLow: 60,
+    elevatedHigh: 100,
+    label: 'Adolescent (13-17y)',
+  },
+  school_age: {
+    normalLow: 60,
+    normalHigh: 90,
+    criticalLow: 55,
+    elevatedHigh: 95,
+    label: 'School-age (6-12y)',
+  },
+  young_child: {
+    normalLow: 55,
+    normalHigh: 85,
+    criticalLow: 50,
+    elevatedHigh: 90,
+    label: 'Young child (1-5y)',
+  },
+  infant: {
+    normalLow: 45,
+    normalHigh: 70,
+    criticalLow: 40,
+    elevatedHigh: 75,
+    label: 'Infant (1-12mo)',
+  },
+  neonate: {
+    normalLow: 40,
+    normalHigh: 60,
+    criticalLow: 35,
+    elevatedHigh: 65,
+    label: 'Neonate (<1mo)',
+  },
+};
+
+/**
+ * Get MAP threshold status based on age
+ */
+function getMAPThresholdStatus(
+  systolic: number | null | undefined,
+  diastolic: number | null | undefined,
+  patientAgeYears: number
+): VitalThresholdStatus | null {
+  if (systolic === null || systolic === undefined || 
+      diastolic === null || diastolic === undefined) {
+    return null;
+  }
+
+  const map = calculateMAP(systolic, diastolic);
+  const ageGroup = getAgeGroup(patientAgeYears);
+  const thresholds = MAP_THRESHOLDS[ageGroup];
+
+  // Critical: MAP below minimum for adequate organ perfusion
+  if (map < thresholds.criticalLow) {
+    return {
+      severity: 'critical',
+      message: `CRITICAL: MAP ${map} mmHg - Inadequate perfusion (<${thresholds.criticalLow})`,
+      icon: 'critical',
+    };
+  }
+
+  // Critical: Severely elevated MAP
+  if (map > thresholds.elevatedHigh + 15) {
+    return {
+      severity: 'critical',
+      message: `CRITICAL: MAP ${map} mmHg - Severely elevated`,
+      icon: 'critical',
+    };
+  }
+
+  // Warning: MAP below normal range but above critical
+  if (map < thresholds.normalLow) {
+    return {
+      severity: 'warning',
+      message: `Warning: MAP ${map} mmHg - Below normal (${thresholds.normalLow}-${thresholds.normalHigh})`,
+      icon: 'warning',
+    };
+  }
+
+  // Warning: MAP elevated above normal
+  if (map > thresholds.elevatedHigh) {
+    return {
+      severity: 'warning',
+      message: `Warning: MAP ${map} mmHg - Elevated (>${thresholds.elevatedHigh})`,
+      icon: 'warning',
+    };
+  }
+
+  // Normal range - return null (no badge needed)
+  return null;
+}
+
+/**
  * Get vital threshold status with severity and message
  */
 function getVitalThresholdStatus(
-  vitalType: 'spo2' | 'heart_rate' | 'systolic_bp' | 'diastolic_bp' | 'temperature' | 'respiratory_rate',
+  vitalType: 'spo2' | 'heart_rate' | 'temperature' | 'respiratory_rate',
   value: number | null | undefined
 ): VitalThresholdStatus | null {
   if (value === null || value === undefined) return null;
@@ -271,8 +410,6 @@ function getVitalThresholdStatus(
   const thresholds: Record<string, { critical: [number, number]; warning: [number, number]; unit: string }> = {
     spo2: { critical: [90, Infinity], warning: [95, Infinity], unit: '%' },
     heart_rate: { critical: [40, 150], warning: [50, 120], unit: 'bpm' },
-    systolic_bp: { critical: [90, 180], warning: [100, 160], unit: 'mmHg' },
-    diastolic_bp: { critical: [60, 120], warning: [65, 100], unit: 'mmHg' },
     temperature: { critical: [35, 40], warning: [36, 38.5], unit: '°C' },
     respiratory_rate: { critical: [10, 30], warning: [12, 24], unit: '/min' },
   };
@@ -311,7 +448,7 @@ function getVitalThresholdStatus(
       return { severity: 'warning', message: `Abnormal: ${value}${config.unit}`, icon: 'warning' };
     }
   } else {
-    // Heart rate, BP, RR - both low and high are concerning
+    // Heart rate, RR - both low and high are concerning
     if (value < critLow || value > critHigh) {
       const direction = value < critLow ? 'Low' : 'High';
       return { severity: 'critical', message: `Critical: ${value}${config.unit} - ${direction}`, icon: 'critical' };
@@ -402,10 +539,12 @@ function generateTriageAlerts(
 
 /**
  * Calculate suggested triage category based on vitals and assessment
+ * Uses MAP (Mean Arterial Pressure) for blood pressure evaluation
  */
 function calculateSuggestedCategory(
   formData: Partial<TriageFormData>,
-  encounter: Encounter
+  encounter: Encounter,
+  patientAgeYears: number = 30 // Default to adult if age unknown
 ): TriageCategory {
   const spo2 = typeof formData.spo2 === 'number' ? formData.spo2 : encounter.spo2;
   const heartRate =
@@ -420,15 +559,22 @@ function calculateSuggestedCategory(
       ? formData.respiratory_rate
       : encounter.respiratory_rate;
 
+  // Calculate MAP if both BP values are present
+  let mapCritical = false;
+  if (typeof systolicBp === 'number' && typeof diastolicBp === 'number') {
+    const map = calculateMAP(systolicBp, diastolicBp);
+    const ageGroup = getAgeGroup(patientAgeYears);
+    const thresholds = MAP_THRESHOLDS[ageGroup];
+    // MAP below critical threshold indicates inadequate organ perfusion
+    mapCritical = map < thresholds.criticalLow || map > thresholds.elevatedHigh + 15;
+  }
+
   // Critical conditions → RED
   if (formData.mental_status === 'U') return 'RED';
-  if (typeof spo2 === 'number' && spo2 < 90) return 'RED';
+  if (typeof spo2 === 'number' && spo2 <= 90) return 'RED'; // Moderate-severe hypoxemia
   if (typeof heartRate === 'number' && (heartRate < 40 || heartRate > 150))
     return 'RED';
-  if (typeof systolicBp === 'number' && (systolicBp < 90 || systolicBp > 180))
-    return 'RED';
-  if (typeof diastolicBp === 'number' && (diastolicBp < 60 || diastolicBp > 120))
-    return 'RED';
+  if (mapCritical) return 'RED'; // MAP-based critical BP
 
   // High-risk complaints or warning vitals → ORANGE
   const highRiskComplaints: ChiefComplaintCategory[] = [
@@ -568,27 +714,32 @@ export function TriageAssessmentForm({
   const respiratoryRate = watchedValues.respiratory_rate;
   const weight = watchedValues.weight;
 
+  // Calculate patient age for MAP thresholds
+  const patientAge = calculateAge(patient.date_of_birth);
+
   // Get threshold status for each vital (for inline badges)
   const spo2Status = getVitalThresholdStatus('spo2', spo2);
   const heartRateStatus = getVitalThresholdStatus('heart_rate', heartRate);
-  const systolicBpStatus = getVitalThresholdStatus('systolic_bp', systolicBp);
-  const diastolicBpStatus = getVitalThresholdStatus('diastolic_bp', diastolicBp);
   const temperatureStatus = getVitalThresholdStatus('temperature', temperature);
   const respiratoryRateStatus = getVitalThresholdStatus('respiratory_rate', respiratoryRate);
+  
+  // MAP-based blood pressure evaluation (age-adjusted)
+  const mapStatus = getMAPThresholdStatus(systolicBp, diastolicBp, patientAge);
+  const mapValue = (systolicBp != null && diastolicBp != null) 
+    ? calculateMAP(systolicBp, diastolicBp) 
+    : null;
 
   // Critical flags for input border styling
   const spo2Critical = spo2Status?.severity === 'critical';
   const heartRateCritical = heartRateStatus?.severity === 'critical';
-  const systolicBpCritical = systolicBpStatus?.severity === 'critical';
-  const diastolicBpCritical = diastolicBpStatus?.severity === 'critical';
+  const bpCritical = mapStatus?.severity === 'critical';
   const temperatureCritical = temperatureStatus?.severity === 'critical';
   const respiratoryRateCritical = respiratoryRateStatus?.severity === 'critical';
   
   // Warning flags for amber border
   const spo2Warning = spo2Status?.severity === 'warning';
   const heartRateWarning = heartRateStatus?.severity === 'warning';
-  const systolicBpWarning = systolicBpStatus?.severity === 'warning';
-  const diastolicBpWarning = diastolicBpStatus?.severity === 'warning';
+  const bpWarning = mapStatus?.severity === 'warning';
   const temperatureWarning = temperatureStatus?.severity === 'warning';
   const respiratoryRateWarning = respiratoryRateStatus?.severity === 'warning';
 
@@ -959,14 +1110,26 @@ export function TriageAssessmentForm({
                 {heartRateStatus && <VitalThresholdBadge status={heartRateStatus} />}
               </div>
 
-              {/* Blood Pressure - simplified layout */}
+              {/* Blood Pressure - with MAP calculation */}
               <div className="space-y-2">
-                <Label htmlFor="systolic_bp">Blood Pressure <span className="text-xs text-muted-foreground">(mmHg)</span></Label>
+                <div className="flex items-center justify-between">
+                  <Label htmlFor="systolic_bp">Blood Pressure <span className="text-xs text-muted-foreground">(mmHg)</span></Label>
+                  {mapValue !== null && (
+                    <span className={cn(
+                      "text-xs font-medium px-2 py-0.5 rounded",
+                      bpCritical && "bg-red-100 text-red-700 dark:bg-red-900/50 dark:text-red-300",
+                      bpWarning && !bpCritical && "bg-amber-100 text-amber-700 dark:bg-amber-900/50 dark:text-amber-300",
+                      !bpCritical && !bpWarning && "bg-green-100 text-green-700 dark:bg-green-900/50 dark:text-green-300"
+                    )}>
+                      MAP: {mapValue}
+                    </span>
+                  )}
+                </div>
                 <div className="flex items-center gap-1">
                   <InputGroup className={cn(
                     'flex-1',
-                    systolicBpCritical && 'border-destructive ring-1 ring-destructive',
-                    systolicBpWarning && !systolicBpCritical && 'border-amber-500 ring-1 ring-amber-500'
+                    bpCritical && 'border-destructive ring-1 ring-destructive',
+                    bpWarning && !bpCritical && 'border-amber-500 ring-1 ring-amber-500'
                   )}>
                     <InputGroupInput
                       id="systolic_bp"
@@ -987,8 +1150,8 @@ export function TriageAssessmentForm({
                   <span className="text-muted-foreground font-medium">/</span>
                   <InputGroup className={cn(
                     'flex-1',
-                    diastolicBpCritical && 'border-destructive ring-1 ring-destructive',
-                    diastolicBpWarning && !diastolicBpCritical && 'border-amber-500 ring-1 ring-amber-500'
+                    bpCritical && 'border-destructive ring-1 ring-destructive',
+                    bpWarning && !bpCritical && 'border-amber-500 ring-1 ring-amber-500'
                   )}>
                     <InputGroupInput
                       id="diastolic_bp"
@@ -1012,9 +1175,7 @@ export function TriageAssessmentForm({
                     {errors.systolic_bp?.message || errors.diastolic_bp?.message}
                   </p>
                 )}
-                {(systolicBpStatus || diastolicBpStatus) && (
-                  <VitalThresholdBadge status={systolicBpStatus || diastolicBpStatus!} />
-                )}
+                {mapStatus && <VitalThresholdBadge status={mapStatus} />}
               </div>
             </div>
 
