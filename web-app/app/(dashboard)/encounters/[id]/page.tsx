@@ -1,5 +1,6 @@
 'use client';
 
+import { useMemo } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { ArrowLeft, PlayCircle, User, Calendar, Stethoscope, Eye } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -18,7 +19,20 @@ import { TreatmentPlanView } from '@/components/encounters/treatment-plan-view';
 import { MedicalHistoryView } from '@/components/encounters/medical-history-view';
 import { EncounterLabOrders } from '@/components/encounters/encounter-lab-orders';
 import { EncounterPrescriptions } from '@/components/encounters/encounter-prescriptions';
+import { SOAPNoteSummary } from '@/components/encounters/soap-note-summary';
 import Link from 'next/link';
+import type { EncounterFormData, DiagnosisFormData } from '@/lib/types/encounter-form';
+
+// Parse blood pressure string "120/80" to systolic/diastolic
+function parseBP(bp: string | null | undefined): { systolic: number | null; diastolic: number | null } {
+  if (!bp) return { systolic: null, diastolic: null };
+  const parts = bp.split('/');
+  if (parts.length !== 2) return { systolic: null, diastolic: null };
+  return {
+    systolic: parseInt(parts[0] || '') || null,
+    diastolic: parseInt(parts[1] || '') || null,
+  };
+}
 
 export default function EncounterDetailPage() {
   const params = useParams();
@@ -30,6 +44,54 @@ export default function EncounterDetailPage() {
   const { data: treatmentPlan } = useEncounterTreatmentPlan(encounterId);
   const { data: labOrders } = useEncounterLabOrders(encounterId);
   const { data: prescriptions } = useEncounterPrescriptions(encounterId);
+
+  // Convert encounter to formData format for SOAP Note Summary
+  const formData = useMemo((): EncounterFormData | null => {
+    if (!encounter) return null;
+    const bp = parseBP(encounter.blood_pressure);
+    return {
+      patient: encounter.patient,
+      encounter_type: encounter.encounter_type,
+      encounter_date: encounter.encounter_date,
+      chief_complaint: encounter.chief_complaint || '',
+      temperature: encounter.temperature,
+      pulse: encounter.pulse,
+      blood_pressure_systolic: bp.systolic,
+      blood_pressure_diastolic: bp.diastolic,
+      respiratory_rate: encounter.respiratory_rate,
+      spo2: encounter.spo2,
+      weight: encounter.weight,
+      height: encounter.height,
+      allergies: encounter.allergies || '',
+      chronic_conditions: encounter.chronic_conditions || '',
+      current_medications: encounter.current_medications || '',
+      past_surgeries: encounter.past_surgeries || '',
+      family_history: encounter.family_history || '',
+      social_history: encounter.social_history || '',
+      notes: encounter.notes || '',
+      history_of_present_illness: encounter.history_of_present_illness || '',
+      physical_examination: encounter.physical_examination || '',
+      assessment: encounter.assessment || '',
+      plan: encounter.plan || '',
+      status: encounter.status === 'CANCELLED' ? 'DRAFT' : encounter.status,
+      clinical_template: encounter.clinical_template || null,
+      clinical_template_data: encounter.clinical_template_data || null,
+    };
+  }, [encounter]);
+
+  // Convert diagnoses to form format
+  const diagnosisFormData = useMemo((): DiagnosisFormData[] => {
+    if (!diagnoses) return [];
+    return diagnoses.map(d => ({
+      icd10_code: d.icd10_code,
+      icd10_display: d.icd10_code_display || d.icd10_description,
+      diagnosis_type: d.diagnosis_type,
+      free_text_diagnosis: d.free_text_diagnosis || '',
+      notes: d.notes || '',
+      is_confirmed: d.is_confirmed,
+      certainty: d.certainty,
+    }));
+  }, [diagnoses]);
 
   if (isLoading) {
     return <EncounterDetailSkeleton />;
@@ -129,8 +191,9 @@ export default function EncounterDetailPage() {
       <VitalsDisplay encounter={encounter} />
 
       {/* Tabs */}
-      <Tabs defaultValue="assessment" className="space-y-4">
+      <Tabs defaultValue="soap" className="space-y-4">
         <TabsList className="flex-wrap h-auto gap-1">
+          <TabsTrigger value="soap">📋 SOAP Note</TabsTrigger>
           <TabsTrigger value="assessment">Assessment</TabsTrigger>
           <TabsTrigger value="diagnoses">Diagnoses ({diagnoses?.length || 0})</TabsTrigger>
           <TabsTrigger value="treatment">Treatment Plan</TabsTrigger>
@@ -138,6 +201,22 @@ export default function EncounterDetailPage() {
           <TabsTrigger value="pharmacy">Prescriptions ({prescriptions?.length || 0})</TabsTrigger>
           <TabsTrigger value="history">History</TabsTrigger>
         </TabsList>
+
+        <TabsContent value="soap">
+          {formData && (
+            <SOAPNoteSummary
+              formData={formData}
+              diagnoses={diagnosisFormData}
+              labOrders={labOrders || []}
+              prescriptions={prescriptions || []}
+              patientName={encounter.patient_name}
+              patientMrn={encounter.patient_mrn}
+              encounterDate={encounter.encounter_date}
+              providerName={encounter.created_by_name}
+              disabled={true}
+            />
+          )}
+        </TabsContent>
 
         <TabsContent value="assessment">
           <Card>
