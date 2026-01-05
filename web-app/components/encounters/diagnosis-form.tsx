@@ -360,9 +360,10 @@ interface DiagnosisFormProps {
   onRemove: (index: number) => void;
   disabled?: boolean;
   onPrevious?: () => void;
+  onNext?: () => void;
 }
 
-export function DiagnosisForm({ diagnoses, onAdd, onRemove, disabled = false, onPrevious }: DiagnosisFormProps) {
+export function DiagnosisForm({ diagnoses, onAdd, onRemove, disabled = false, onPrevious, onNext }: DiagnosisFormProps) {
   return (
     <Card>
       <CardHeader className="pb-3">
@@ -399,16 +400,23 @@ export function DiagnosisForm({ diagnoses, onAdd, onRemove, disabled = false, on
       </CardContent>
       
       {/* Navigation Footer */}
-      {onPrevious && (
+      {(onPrevious || onNext) && (
         <CardFooter className="border-t pt-4">
           <div className="flex justify-between w-full">
-            <Button onClick={onPrevious} variant="outline">
-              <ChevronLeft className="mr-2 h-4 w-4" />
-              Previous: Clinical Notes
-            </Button>
-            <div className="text-sm text-muted-foreground flex items-center">
-              Use the buttons above to create your encounter
-            </div>
+            {onPrevious ? (
+              <Button onClick={onPrevious} variant="secondary">
+                ← Back to Clinical Notes
+              </Button>
+            ) : <div />}
+            {onNext ? (
+              <Button onClick={onNext} variant="secondary">
+                Continue to Template →
+              </Button>
+            ) : (
+              <div className="text-sm text-muted-foreground flex items-center">
+                Use the buttons above to create your encounter
+              </div>
+            )}
           </div>
         </CardFooter>
       )}

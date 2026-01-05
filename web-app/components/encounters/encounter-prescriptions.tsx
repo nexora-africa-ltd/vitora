@@ -19,6 +19,7 @@ interface EncounterPrescriptionsProps {
   encounterId: number;
   patientId: number;
   disabled?: boolean;
+  onPrevious?: () => void;
 }
 
 const STATUS_CONFIG: Record<PrescriptionStatus, { label: string; color: string; icon: React.ElementType }> = {
@@ -29,7 +30,7 @@ const STATUS_CONFIG: Record<PrescriptionStatus, { label: string; color: string; 
   EXPIRED: { label: 'Expired', color: 'bg-red-100 text-red-800 dark:bg-red-900/50 dark:text-red-300', icon: AlertCircle },
 };
 
-export function EncounterPrescriptions({ encounterId, patientId, disabled = false }: EncounterPrescriptionsProps) {
+export function EncounterPrescriptions({ encounterId, patientId, disabled = false, onPrevious }: EncounterPrescriptionsProps) {
   const { data: prescriptions, isLoading, error } = useEncounterPrescriptions(encounterId);
 
   if (isLoading) {
@@ -139,12 +140,26 @@ export function EncounterPrescriptions({ encounterId, patientId, disabled = fals
       )}
 
       {prescriptions && prescriptions.length === 0 && !disabled && (
-        <CardFooter className="pt-0">
+        <CardFooter className="pt-0 flex-col gap-3">
           <Button variant="outline" className="w-full" asChild>
             <Link href={`/pharmacy/prescriptions/new?encounter=${encounterId}&patient=${patientId}`}>
               <Plus className="h-4 w-4 mr-2" />
               Create First Prescription
             </Link>
+          </Button>
+          {onPrevious && (
+            <Button variant="secondary" className="w-full" onClick={onPrevious}>
+              ← Back to Lab Orders
+            </Button>
+          )}
+        </CardFooter>
+      )}
+
+      {/* Show back button when there are prescriptions */}
+      {prescriptions && prescriptions.length > 0 && onPrevious && (
+        <CardFooter className="pt-3">
+          <Button variant="secondary" className="w-full" onClick={onPrevious}>
+            ← Back to Lab Orders
           </Button>
         </CardFooter>
       )}
