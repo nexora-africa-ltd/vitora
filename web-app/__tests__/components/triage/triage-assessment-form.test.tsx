@@ -189,8 +189,8 @@ describe('TriageAssessmentForm - Form Structure', () => {
       expect(screen.getByLabelText(/heart rate/i)).toBeInTheDocument();
       expect(screen.getByText(/bpm/i)).toBeInTheDocument();
 
-      expect(screen.getByLabelText(/systolic bp/i)).toBeInTheDocument();
-      expect(screen.getByLabelText(/diastolic bp/i)).toBeInTheDocument();
+      expect(screen.getByLabelText(/systolic blood pressure/i)).toBeInTheDocument();
+      expect(screen.getByLabelText(/diastolic blood pressure/i)).toBeInTheDocument();
       expect(screen.getByText(/mmhg/i)).toBeInTheDocument();
 
       expect(screen.getByLabelText(/temperature/i)).toBeInTheDocument();
@@ -198,6 +198,9 @@ describe('TriageAssessmentForm - Form Structure', () => {
 
       expect(screen.getByLabelText(/respiratory rate/i)).toBeInTheDocument();
       expect(screen.getByText(/\/min/i)).toBeInTheDocument();
+
+      expect(screen.getByLabelText(/weight/i)).toBeInTheDocument();
+      expect(screen.getByText('kg')).toBeInTheDocument();
     });
 
     it('should highlight critical values in red border (SpO2 < 90)', async () => {
@@ -440,10 +443,13 @@ describe('TriageAssessmentForm - Submission', () => {
     await user.type(screen.getByLabelText(/spo2/i), '94');
     await user.clear(screen.getByLabelText(/heart rate/i));
     await user.type(screen.getByLabelText(/heart rate/i), '110');
-    await user.clear(screen.getByLabelText(/systolic bp/i));
-    await user.type(screen.getByLabelText(/systolic bp/i), '160');
-    await user.clear(screen.getByLabelText(/diastolic bp/i));
-    await user.type(screen.getByLabelText(/diastolic bp/i), '95');
+    
+    const systolicInput = screen.getByLabelText(/systolic blood pressure/i);
+    await user.clear(systolicInput);
+    await user.type(systolicInput, '160');
+    const diastolicInput = screen.getByLabelText(/diastolic blood pressure/i);
+    await user.clear(diastolicInput);
+    await user.type(diastolicInput, '95');
     await user.clear(screen.getByLabelText(/temperature/i));
     await user.type(screen.getByLabelText(/temperature/i), '37.2');
     await user.clear(screen.getByLabelText(/respiratory rate/i));
