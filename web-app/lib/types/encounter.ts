@@ -33,6 +33,15 @@ export interface Encounter {
   alerts?: string;
   vitals_summary?: string;
   
+  // Vitals source tracking
+  vitals_source?: 'TRIAGE' | 'CONSULTATION' | 'DIRECT' | null;
+  vitals_recorded_by?: number | null;
+  vitals_recorded_at?: string | null;
+  
+  // Clinical template
+  clinical_template?: number | null;
+  clinical_template_data?: Record<string, Record<string, unknown>> | null;
+
   // Medical history
   allergies: string;
   chronic_conditions: string;

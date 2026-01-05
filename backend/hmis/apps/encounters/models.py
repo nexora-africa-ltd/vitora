@@ -337,6 +337,21 @@ class Encounter(models.Model):
     # Clinical notes
     notes = models.TextField(blank=True, default="", help_text="Additional clinical notes")
 
+    # Clinical Template Data (stores structured assessment data from templates)
+    clinical_template = models.ForeignKey(
+        "clinical_templates.ClinicalTemplate",
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="encounters",
+        help_text="Clinical template used for this encounter",
+    )
+    clinical_template_data = models.JSONField(
+        null=True,
+        blank=True,
+        help_text="Structured data collected using the clinical template (JSON)",
+    )
+
     # Encounter Status (Sprint 1.1-1.2)
     STATUS_CHOICES = [
         ("DRAFT", "Draft"),

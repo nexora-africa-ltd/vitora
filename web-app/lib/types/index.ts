@@ -2,6 +2,18 @@
  * Type definitions for Vitora HMIS
  */
 
+// Re-export clinical template types
+export type {
+  ClinicalTemplate,
+  ClinicalTemplateListParams,
+  ClinicalTemplateCreateData,
+  TemplateType,
+  TemplateField,
+  TemplateSection,
+  TemplateContent,
+  TemplateData,
+} from './clinical-template';
+
 // Re-export enhanced encounter types
 export type {
   Encounter as EnhancedEncounter,

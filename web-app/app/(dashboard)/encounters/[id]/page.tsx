@@ -8,12 +8,16 @@ import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useEncounter, useEncounterDiagnoses, useEncounterTreatmentPlan } from '@/lib/hooks/use-encounters';
+import { useEncounterLabOrders } from '@/lib/hooks/use-laboratory';
+import { useEncounterPrescriptions } from '@/lib/hooks/use-pharmacy';
 import { formatDate } from '@/lib/utils/format';
 import { ENCOUNTER_STATUS, ENCOUNTER_TYPES } from '@/lib/utils/constants';
 import { VitalsDisplay } from '@/components/encounters/vitals-display';
 import { DiagnosesList } from '@/components/encounters/diagnoses-list';
 import { TreatmentPlanView } from '@/components/encounters/treatment-plan-view';
 import { MedicalHistoryView } from '@/components/encounters/medical-history-view';
+import { EncounterLabOrders } from '@/components/encounters/encounter-lab-orders';
+import { EncounterPrescriptions } from '@/components/encounters/encounter-prescriptions';
 import Link from 'next/link';
 
 export default function EncounterDetailPage() {
@@ -24,6 +28,8 @@ export default function EncounterDetailPage() {
   const { data: encounter, isLoading, error } = useEncounter(encounterId);
   const { data: diagnoses } = useEncounterDiagnoses(encounterId);
   const { data: treatmentPlan } = useEncounterTreatmentPlan(encounterId);
+  const { data: labOrders } = useEncounterLabOrders(encounterId);
+  const { data: prescriptions } = useEncounterPrescriptions(encounterId);
 
   if (isLoading) {
     return <EncounterDetailSkeleton />;
@@ -111,11 +117,13 @@ export default function EncounterDetailPage() {
 
       {/* Tabs */}
       <Tabs defaultValue="assessment" className="space-y-4">
-        <TabsList>
+        <TabsList className="flex-wrap h-auto gap-1">
           <TabsTrigger value="assessment">Assessment</TabsTrigger>
           <TabsTrigger value="diagnoses">Diagnoses ({diagnoses?.length || 0})</TabsTrigger>
           <TabsTrigger value="treatment">Treatment Plan</TabsTrigger>
-          <TabsTrigger value="history">Medical History</TabsTrigger>
+          <TabsTrigger value="lab">Lab ({labOrders?.length || 0})</TabsTrigger>
+          <TabsTrigger value="pharmacy">Prescriptions ({prescriptions?.length || 0})</TabsTrigger>
+          <TabsTrigger value="history">History</TabsTrigger>
         </TabsList>
 
         <TabsContent value="assessment">
@@ -171,6 +179,22 @@ export default function EncounterDetailPage() {
 
         <TabsContent value="treatment">
           <TreatmentPlanView treatmentPlan={treatmentPlan} />
+        </TabsContent>
+
+        <TabsContent value="lab">
+          <EncounterLabOrders
+            encounterId={encounterId}
+            patientId={encounter.patient}
+            disabled={encounter.status === 'COMPLETED' || encounter.status === 'CANCELLED'}
+          />
+        </TabsContent>
+
+        <TabsContent value="pharmacy">
+          <EncounterPrescriptions
+            encounterId={encounterId}
+            patientId={encounter.patient}
+            disabled={encounter.status === 'COMPLETED' || encounter.status === 'CANCELLED'}
+          />
         </TabsContent>
 
         <TabsContent value="history">

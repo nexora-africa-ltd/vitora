@@ -44,6 +44,9 @@ import { useEncounter, useUpdateEncounter, useEncounterDiagnoses, useEditChiefCo
 import { MedicalHistoryForm } from '@/components/encounters/medical-history-form';
 import { ClinicalNotesForm } from '@/components/encounters/clinical-notes-form';
 import { DiagnosisForm } from '@/components/encounters/diagnosis-form';
+import { VitalsForm } from '@/components/encounters/vitals-form';
+import { EncounterLabOrders } from '@/components/encounters/encounter-lab-orders';
+import { EncounterPrescriptions } from '@/components/encounters/encounter-prescriptions';
 import { ChiefComplaintEditDialog, ChiefComplaintEditReason } from '@/components/encounters/chief-complaint-edit-dialog';
 import { ENCOUNTER_TYPES, ENCOUNTER_STATUS, ENCOUNTER_TYPE_GROUPS, getEncounterTypesByGroup } from '@/lib/utils/constants';
 import type { EncounterFormData, DiagnosisFormData } from '@/lib/types/encounter-form';
@@ -603,6 +606,28 @@ export default function EditEncounterPage() {
           </CardContent>
         </Card>
 
+        {/* Vitals Section */}
+        <VitalsForm
+          data={formData}
+          onChange={(field, value) => handleFieldChange(field, value)}
+          disabled={!isEditable || (wasTriaged && encounter?.vitals_source === 'TRIAGE')}
+          errors={errors}
+        />
+
+        {/* Lab Orders and Prescriptions - Side by side on larger screens */}
+        <div className="grid gap-4 md:grid-cols-2">
+          <EncounterLabOrders
+            encounterId={encounterId}
+            patientId={encounter.patient}
+            disabled={!isEditable}
+          />
+          <EncounterPrescriptions
+            encounterId={encounterId}
+            patientId={encounter.patient}
+            disabled={!isEditable}
+          />
+        </div>
+
         {/* Chief Complaint Edit Dialog */}
         <ChiefComplaintEditDialog
           open={isChiefComplaintDialogOpen}
@@ -645,7 +670,7 @@ export default function EditEncounterPage() {
         
         {/* Tabbed Sections */}
         <Tabs value={activeTab} onValueChange={setActiveTab}>
-          <TabsList className="grid w-full grid-cols-3">
+          <TabsList className="flex flex-wrap h-auto gap-1">
             <TabsTrigger value="history" className="gap-1">
               1. History
               {!hasMedicalHistory(formData) && (
