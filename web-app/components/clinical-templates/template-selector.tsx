@@ -156,7 +156,7 @@ function TemplateCard({
   template: ClinicalTemplate;
   onClick: () => void;
 }) {
-  const sectionCount = template.content.sections?.length || 0;
+  const sectionCount = template.content?.sections?.length || 0;
 
   return (
     <div
