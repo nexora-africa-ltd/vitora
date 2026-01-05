@@ -7,12 +7,15 @@
 
 import { useState } from 'react';
 import Link from 'next/link';
-import { Plus, Beaker, ExternalLink, Clock, CheckCircle2, AlertCircle, FileText } from 'lucide-react';
+import { Plus, Beaker, ExternalLink, Clock, CheckCircle2, AlertCircle, FileText, Info } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
+import { Alert, AlertDescription } from '@/components/ui/alert';
 import { useEncounterLabOrders } from '@/lib/hooks/use-laboratory';
+import { useEncounterTreatmentPlan } from '@/lib/hooks/use-encounters';
+import { useToast } from '@/lib/hooks/use-toast';
 import { formatDate } from '@/lib/utils/format';
 import type { LabOrder, LabOrderStatus, LabPriority } from '@/lib/types/laboratory';
 
@@ -20,6 +23,7 @@ interface EncounterLabOrdersProps {
   encounterId: number;
   patientId: number;
   disabled?: boolean;
+  onNext?: () => void;
 }
 
 const STATUS_CONFIG: Record<LabOrderStatus, { label: string; color: string; icon: React.ElementType }> = {
@@ -38,8 +42,25 @@ const PRIORITY_CONFIG: Record<LabPriority, { label: string; color: string }> = {
   STAT: { label: 'STAT', color: 'bg-red-100 text-red-800 dark:bg-red-900/50 dark:text-red-300' },
 };
 
-export function EncounterLabOrders({ encounterId, patientId, disabled = false }: EncounterLabOrdersProps) {
+export function EncounterLabOrders({ encounterId, patientId, disabled = false, onNext }: EncounterLabOrdersProps) {
   const { data: orders, isLoading, error } = useEncounterLabOrders(encounterId);
+  const { data: treatmentPlan, isLoading: isLoadingPlan } = useEncounterTreatmentPlan(encounterId);
+  const { toast } = useToast();
+  
+  // Check if treatment plan exists
+  const hasTreatmentPlan = !!treatmentPlan;
+  
+  // Handler for order button when no treatment plan
+  const handleOrderClick = (e: React.MouseEvent) => {
+    if (!hasTreatmentPlan && !isLoadingPlan) {
+      e.preventDefault();
+      toast({
+        title: 'Treatment Plan Required',
+        description: 'Please create a treatment plan with assessment before ordering lab tests. This ensures proper clinical documentation.',
+        variant: 'warning',
+      });
+    }
+  };
 
   if (isLoading) {
     return (
@@ -93,15 +114,30 @@ export function EncounterLabOrders({ encounterId, patientId, disabled = false }:
             )}
           </CardTitle>
           {!disabled && (
-            <Button size="sm" asChild>
-              <Link href={`/laboratory/orders/new?encounter=${encounterId}&patient=${patientId}`}>
+            hasTreatmentPlan ? (
+              <Button size="sm" asChild>
+                <Link href={`/laboratory/orders/new?encounter=${encounterId}&patient=${patientId}`}>
+                  <Plus className="h-4 w-4 mr-1" />
+                  Order Lab Test
+                </Link>
+              </Button>
+            ) : (
+              <Button size="sm" onClick={handleOrderClick}>
                 <Plus className="h-4 w-4 mr-1" />
                 Order Lab Test
-              </Link>
-            </Button>
+              </Button>
+            )
           )}
         </div>
-        {orders && orders.length === 0 && (
+        {!hasTreatmentPlan && !isLoadingPlan && (
+          <Alert variant="default" className="mt-3 border-amber-200 bg-amber-50 dark:border-amber-800 dark:bg-amber-950">
+            <Info className="h-4 w-4 text-amber-600" />
+            <AlertDescription className="text-amber-800 dark:text-amber-200 text-sm">
+              A treatment plan is required before ordering lab tests. Please complete the clinical assessment first.
+            </AlertDescription>
+          </Alert>
+        )}
+        {orders && orders.length === 0 && hasTreatmentPlan && (
           <CardDescription>No lab orders for this encounter</CardDescription>
         )}
       </CardHeader>
@@ -134,13 +170,27 @@ export function EncounterLabOrders({ encounterId, patientId, disabled = false }:
         </CardContent>
       )}
 
-      {orders && orders.length === 0 && !disabled && (
-        <CardFooter className="pt-0">
+      {orders && orders.length === 0 && !disabled && hasTreatmentPlan && (
+        <CardFooter className="pt-0 flex-col gap-3">
           <Button variant="outline" className="w-full" asChild>
             <Link href={`/laboratory/orders/new?encounter=${encounterId}&patient=${patientId}`}>
               <Plus className="h-4 w-4 mr-2" />
               Order First Lab Test
             </Link>
+          </Button>
+          {onNext && (
+            <Button variant="secondary" className="w-full" onClick={onNext}>
+              Continue to Prescriptions →
+            </Button>
+          )}
+        </CardFooter>
+      )}
+
+      {/* Show continue button when there are orders or treatment plan doesn't exist */}
+      {((orders && orders.length > 0) || !hasTreatmentPlan) && onNext && (
+        <CardFooter className="pt-3">
+          <Button variant="secondary" className="w-full" onClick={onNext}>
+            Continue to Prescriptions →
           </Button>
         </CardFooter>
       )}

@@ -17,7 +17,7 @@ import {
   Lock,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
@@ -779,6 +779,7 @@ export default function EditEncounterPage() {
               onAdd={handleAddDiagnosis}
               onRemove={handleRemoveDiagnosis}
               onPrevious={() => setActiveTab('notes')}
+              onNext={() => setActiveTab('template')}
               disabled={!isEditable}
             />
           </TabsContent>
@@ -820,6 +821,14 @@ export default function EditEncounterPage() {
                   </div>
                 )}
               </CardContent>
+              <CardFooter className="flex justify-between pt-4 border-t">
+                <Button variant="secondary" onClick={() => setActiveTab('diagnosis')}>
+                  ← Back to Diagnosis
+                </Button>
+                <Button variant="secondary" onClick={() => setActiveTab('lab')}>
+                  Continue to Lab →
+                </Button>
+              </CardFooter>
             </Card>
           </TabsContent>
           
@@ -828,6 +837,7 @@ export default function EditEncounterPage() {
               encounterId={encounterId}
               patientId={encounter?.patient || 0}
               disabled={!isEditable}
+              onNext={() => setActiveTab('pharmacy')}
             />
           </TabsContent>
           
@@ -836,6 +846,7 @@ export default function EditEncounterPage() {
               encounterId={encounterId}
               patientId={encounter?.patient || 0}
               disabled={!isEditable}
+              onPrevious={() => setActiveTab('lab')}
             />
           </TabsContent>
         </Tabs>
