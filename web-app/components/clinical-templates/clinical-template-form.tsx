@@ -51,20 +51,7 @@ export function ClinicalTemplateForm({
   onChange,
   disabled = false,
 }: ClinicalTemplateFormProps) {
-  // Guard against missing template or content
-  if (!template || !template.content || !template.content.sections) {
-    return (
-      <div className="text-center py-8 text-muted-foreground">
-        <AlertCircle className="h-12 w-12 mx-auto mb-4 opacity-50" />
-        <p>Template has no content</p>
-        <p className="text-sm mt-1">
-          This template doesn&apos;t have any sections defined.
-        </p>
-      </div>
-    );
-  }
-  
-  const sections = template.content.sections;
+  const sections = template?.content?.sections || [];
   
   const [expandedSections, setExpandedSections] = useState<Set<string>>(
     new Set(sections.map((s) => s.name))
@@ -94,6 +81,19 @@ export function ClinicalTemplateForm({
     },
     [value, onChange]
   );
+
+  // Guard against missing template or content
+  if (!template || !template.content || !template.content.sections) {
+    return (
+      <div className="text-center py-8 text-muted-foreground">
+        <AlertCircle className="h-12 w-12 mx-auto mb-4 opacity-50" />
+        <p>Template has no content</p>
+        <p className="text-sm mt-1">
+          This template doesn&apos;t have any sections defined.
+        </p>
+      </div>
+    );
+  }
 
   const getSectionCompleteness = (sectionName: string, fields: TemplateField[]) => {
     const sectionData = value[sectionName] || {};
