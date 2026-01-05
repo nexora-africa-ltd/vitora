@@ -633,7 +633,7 @@ export default function EditEncounterPage() {
               {wasTriaged ? (
                 // Read-only display for triaged patients
                 <div className="relative">
-                  <div className="min-h-[80px] rounded-md border bg-muted px-3 py-2 text-sm">
+                  <div className="min-h-[80px] rounded-md border bg-teal-400/10 px-3 py-2 text-sm">
                     {formData.chief_complaint || 'No chief complaint recorded'}
                   </div>
                   {encounter?.chief_complaint_edited && (
