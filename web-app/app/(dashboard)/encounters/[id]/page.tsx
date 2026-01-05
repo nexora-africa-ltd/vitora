@@ -1,7 +1,7 @@
 'use client';
 
 import { useParams, useRouter } from 'next/navigation';
-import { ArrowLeft, Edit, User, Calendar, Stethoscope } from 'lucide-react';
+import { ArrowLeft, PlayCircle, User, Calendar, Stethoscope, Eye } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -83,12 +83,22 @@ export default function EncounterDetailPage() {
           </div>
         </div>
 
-        <Button variant="outline" asChild>
-          <Link href={`/encounters/${encounter.id}/edit`}>
-            <Edit className="h-4 w-4 mr-2" />
-            Edit
-          </Link>
-        </Button>
+        {/* Show "Continue Encounter" for active encounters, "View Details" for completed */}
+        {encounter.status === 'COMPLETED' || encounter.status === 'CANCELLED' ? (
+          <Button variant="outline" asChild>
+            <Link href={`/encounters/${encounter.id}/edit`}>
+              <Eye className="h-4 w-4 mr-2" />
+              View Details
+            </Link>
+          </Button>
+        ) : (
+          <Button asChild>
+            <Link href={`/encounters/${encounter.id}/edit`}>
+              <PlayCircle className="h-4 w-4 mr-2" />
+              Continue Encounter
+            </Link>
+          </Button>
+        )}
 
         {encounter.encounter_type === 'OPD' && (
           <Button variant="outline" asChild>
