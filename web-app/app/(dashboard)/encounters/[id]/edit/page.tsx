@@ -41,12 +41,16 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useToast } from '@/lib/hooks/use-toast';
 import { useEncounter, useUpdateEncounter, useEncounterDiagnoses, useEditChiefComplaint } from '@/lib/hooks/use-encounters';
+import { useEncounterLabOrders } from '@/lib/hooks/use-laboratory';
+import { useEncounterPrescriptions } from '@/lib/hooks/use-pharmacy';
+import { useAuth } from '@/lib/auth/context';
 import { MedicalHistoryForm } from '@/components/encounters/medical-history-form';
 import { ClinicalNotesForm } from '@/components/encounters/clinical-notes-form';
 import { DiagnosisForm } from '@/components/encounters/diagnosis-form';
 import { VitalsForm } from '@/components/encounters/vitals-form';
 import { EncounterLabOrders } from '@/components/encounters/encounter-lab-orders';
 import { EncounterPrescriptions } from '@/components/encounters/encounter-prescriptions';
+import { SOAPNoteSummary } from '@/components/encounters/soap-note-summary';
 import { ChiefComplaintEditDialog, ChiefComplaintEditReason } from '@/components/encounters/chief-complaint-edit-dialog';
 import { TemplateSelector } from '@/components/clinical-templates/template-selector';
 import { ClinicalTemplateForm } from '@/components/clinical-templates/clinical-template-form';
@@ -93,12 +97,22 @@ export default function EditEncounterPage() {
   const params = useParams();
   const router = useRouter();
   const { toast } = useToast();
+  const { user } = useAuth();
   const encounterId = Number(params.id as string);
   
   const { data: encounter, isLoading: isLoadingEncounter, error } = useEncounter(encounterId);
   const { data: existingDiagnoses } = useEncounterDiagnoses(encounterId);
+  const { data: labOrders } = useEncounterLabOrders(encounterId);
+  const { data: prescriptions } = useEncounterPrescriptions(encounterId);
   const updateEncounter = useUpdateEncounter();
   const editChiefComplaint = useEditChiefComplaint();
+  
+  // Get current provider name for SOAP note
+  const providerName = user 
+    ? (user.first_name && user.last_name 
+        ? `${user.first_name} ${user.last_name}` 
+        : user.username)
+    : undefined;
   
   const [activeTab, setActiveTab] = useState('history');
   const [isDirty, setIsDirty] = useState(false);
@@ -772,6 +786,10 @@ export default function EditEncounterPage() {
             <TabsTrigger value="pharmacy" className="gap-1">
               5. Rx
             </TabsTrigger>
+            {/* Summary */}
+            <TabsTrigger value="soap" className="gap-1">
+              📋 SOAP Note
+            </TabsTrigger>
           </TabsList>
           
           <TabsContent value="history" className="mt-4">
@@ -819,6 +837,20 @@ export default function EditEncounterPage() {
               patientId={encounter?.patient || 0}
               disabled={!isEditable}
               onPrevious={() => setActiveTab('lab')}
+            />
+          </TabsContent>
+          
+          <TabsContent value="soap" className="mt-4">
+            <SOAPNoteSummary
+              formData={formData}
+              diagnoses={diagnoses}
+              labOrders={labOrders || []}
+              prescriptions={prescriptions || []}
+              patientName={encounter?.patient_name}
+              patientMrn={encounter?.patient_mrn}
+              encounterDate={encounter?.encounter_date}
+              providerName={providerName}
+              disabled={!isEditable}
             />
           </TabsContent>
         </Tabs>
