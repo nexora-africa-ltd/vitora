@@ -107,10 +107,10 @@ class TestGetMAPStatusMethod:
         assert status == "normal"
 
     def test_map_status_low(self, map_test_patient):
-        """Test MAP status is 'low' when below 70 mmHg."""
+        """Test MAP status is 'warning' when below 70 mmHg (warning_low range)."""
         from hmis.apps.encounters.models import Encounter
 
-        # Need BP that gives MAP < 70
+        # Need BP that gives MAP in warning_low range (65-69 for adult)
         # Example: 85/55 -> 55 + 30/3 = 55 + 10 = 65
         encounter = Encounter.objects.create(
             patient=map_test_patient,
@@ -119,22 +119,22 @@ class TestGetMAPStatusMethod:
             blood_pressure="85/55",
         )
 
-        assert encounter.get_map_status() == "low"
+        assert encounter.get_map_status() == "warning"
 
     def test_map_status_high(self, map_test_patient):
-        """Test MAP status is 'high' when above 100 mmHg but below critical."""
+        """Test MAP status is 'warning' when above 100 mmHg (warning_high range)."""
         from hmis.apps.encounters.models import Encounter
 
-        # Need BP that gives MAP 101-130 (high range)
-        # Example: 160/95 -> 95 + 65/3 = 95 + 21.67 = 116.67 ≈ 117
+        # Need BP that gives MAP in warning_high range (101-105 for adult)
+        # Example: 145/85 -> 85 + 60/3 = 85 + 20 = 105
         encounter = Encounter.objects.create(
             patient=map_test_patient,
             encounter_type="EMERGENCY",
             chief_complaint="Hypertensive crisis",
-            blood_pressure="160/95",
+            blood_pressure="145/85",
         )
 
-        assert encounter.get_map_status() == "high"
+        assert encounter.get_map_status() == "warning"
 
     def test_map_status_critical_low(self, map_test_patient):
         """Test MAP status is 'critical' when severely low (< 60 mmHg)."""
@@ -152,7 +152,7 @@ class TestGetMAPStatusMethod:
         assert encounter.get_map_status() == "critical"
 
     def test_map_status_critical_high(self, map_test_patient):
-        """Test MAP status is 'critical' when severely high (> 130 mmHg)."""
+        """Test MAP status is 'emergency' when severely high (> 130 mmHg)."""
         from hmis.apps.encounters.models import Encounter
 
         # MAP > 130 is hypertensive emergency
@@ -164,7 +164,7 @@ class TestGetMAPStatusMethod:
             blood_pressure="200/130",
         )
 
-        assert encounter.get_map_status() == "critical"
+        assert encounter.get_map_status() == "emergency"
 
     def test_map_status_unknown_without_bp(self, map_test_patient):
         """Test MAP status is None when BP not recorded."""

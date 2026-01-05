@@ -36,6 +36,10 @@ export interface EncounterFormData {
   assessment: string;
   plan: string;
   
+  // Clinical template
+  clinical_template?: number | null;
+  clinical_template_data?: Record<string, Record<string, unknown>> | null;
+  
   // Status
   status: 'DRAFT' | 'IN_PROGRESS' | 'COMPLETED';
 }
@@ -67,6 +71,9 @@ export const defaultEncounterFormData: EncounterFormData = {
   physical_examination: '',
   assessment: '',
   plan: '',
+  
+  clinical_template: null,
+  clinical_template_data: null,
   
   status: 'DRAFT',
 };

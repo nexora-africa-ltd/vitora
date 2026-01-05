@@ -48,6 +48,10 @@ import { VitalsForm } from '@/components/encounters/vitals-form';
 import { EncounterLabOrders } from '@/components/encounters/encounter-lab-orders';
 import { EncounterPrescriptions } from '@/components/encounters/encounter-prescriptions';
 import { ChiefComplaintEditDialog, ChiefComplaintEditReason } from '@/components/encounters/chief-complaint-edit-dialog';
+import { TemplateSelector } from '@/components/clinical-templates/template-selector';
+import { ClinicalTemplateForm } from '@/components/clinical-templates/clinical-template-form';
+import { useClinicalTemplate } from '@/lib/hooks/use-clinical-templates';
+import type { ClinicalTemplate } from '@/lib/types/clinical-template';
 import { ENCOUNTER_TYPES, ENCOUNTER_STATUS, ENCOUNTER_TYPE_GROUPS, getEncounterTypesByGroup } from '@/lib/utils/constants';
 import type { EncounterFormData, DiagnosisFormData } from '@/lib/types/encounter-form';
 import type { Patient } from '@/lib/types/patient';
@@ -135,7 +139,22 @@ export default function EditEncounterPage() {
     assessment: '',
     plan: '',
     status: 'DRAFT',
+    clinical_template: null,
+    clinical_template_data: null,
   });
+  
+  // Selected clinical template state
+  const [selectedTemplate, setSelectedTemplate] = useState<ClinicalTemplate | null>(null);
+  
+  // Fetch template if encounter has one
+  const { data: existingTemplate } = useClinicalTemplate(encounter?.clinical_template || 0);
+  
+  // Set selected template when existing template loads
+  useEffect(() => {
+    if (existingTemplate) {
+      setSelectedTemplate(existingTemplate);
+    }
+  }, [existingTemplate]);
   
   // Populate form with existing encounter data
   useEffect(() => {
@@ -166,6 +185,8 @@ export default function EditEncounterPage() {
         assessment: encounter.assessment || '',
         plan: encounter.plan || '',
         status: encounter.status === 'CANCELLED' ? 'DRAFT' : encounter.status,
+        clinical_template: encounter.clinical_template || null,
+        clinical_template_data: encounter.clinical_template_data || null,
       });
     }
   }, [encounter]);
@@ -231,6 +252,30 @@ export default function EditEncounterPage() {
     setIsDirty(true);
   }, []);
   
+  // Clinical template handler
+  const handleTemplateSelect = useCallback((template: ClinicalTemplate) => {
+    setSelectedTemplate(template);
+    setFormData(prev => ({
+      ...prev,
+      clinical_template: template.id,
+      clinical_template_data: prev.clinical_template_data || {},
+    }));
+    setIsDirty(true);
+    toast({
+      title: 'Template Selected',
+      description: `${template.name} has been applied to this encounter.`,
+    });
+  }, [toast]);
+  
+  // Clinical template data handler
+  const handleTemplateDataChange = useCallback((data: Record<string, Record<string, unknown>>) => {
+    setFormData(prev => ({
+      ...prev,
+      clinical_template_data: data,
+    }));
+    setIsDirty(true);
+  }, []);
+  
   // Validation
   const validateForm = useCallback((): boolean => {
     const newErrors: Record<string, string> = {};
@@ -286,6 +331,8 @@ export default function EditEncounterPage() {
           physical_examination: formData.physical_examination,
           assessment: formData.assessment,
           plan: formData.plan,
+          clinical_template: formData.clinical_template,
+          clinical_template_data: formData.clinical_template_data,
         },
       });
       
@@ -691,6 +738,18 @@ export default function EditEncounterPage() {
                 <Badge variant="secondary" className="ml-1">{diagnoses.length}</Badge>
               )}
             </TabsTrigger>
+            <TabsTrigger value="template" className="gap-1">
+              4. Template
+              {selectedTemplate && (
+                <Badge variant="secondary" className="ml-1">1</Badge>
+              )}
+            </TabsTrigger>
+            <TabsTrigger value="lab" className="gap-1">
+              5. Lab
+            </TabsTrigger>
+            <TabsTrigger value="pharmacy" className="gap-1">
+              6. Rx
+            </TabsTrigger>
           </TabsList>
           
           <TabsContent value="history" className="mt-4">
@@ -718,6 +777,62 @@ export default function EditEncounterPage() {
               onAdd={handleAddDiagnosis}
               onRemove={handleRemoveDiagnosis}
               onPrevious={() => setActiveTab('notes')}
+              disabled={!isEditable}
+            />
+          </TabsContent>
+          
+          <TabsContent value="template" className="mt-4">
+            <Card>
+              <CardHeader>
+                <div className="flex items-center justify-between">
+                  <div>
+                    <CardTitle>Clinical Template</CardTitle>
+                    <CardDescription>
+                      Use a structured template for clinical assessment
+                    </CardDescription>
+                  </div>
+                  {isEditable && (
+                    <TemplateSelector
+                      onSelect={handleTemplateSelect}
+                      encounterType={formData.encounter_type}
+                      chiefComplaint={formData.chief_complaint}
+                    />
+                  )}
+                </div>
+              </CardHeader>
+              <CardContent>
+                {selectedTemplate ? (
+                  <ClinicalTemplateForm
+                    template={selectedTemplate}
+                    value={formData.clinical_template_data || {}}
+                    onChange={handleTemplateDataChange}
+                    disabled={!isEditable}
+                  />
+                ) : (
+                  <div className="text-center py-8 text-muted-foreground">
+                    <FileText className="h-12 w-12 mx-auto mb-4 opacity-50" />
+                    <p>No template selected</p>
+                    <p className="text-sm mt-1">
+                      Select a template to guide your clinical assessment
+                    </p>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          </TabsContent>
+          
+          <TabsContent value="lab" className="mt-4">
+            <EncounterLabOrders
+              encounterId={encounterId}
+              patientId={encounter?.patient || 0}
+              disabled={!isEditable}
+            />
+          </TabsContent>
+          
+          <TabsContent value="pharmacy" className="mt-4">
+            <EncounterPrescriptions
+              encounterId={encounterId}
+              patientId={encounter?.patient || 0}
               disabled={!isEditable}
             />
           </TabsContent>
