@@ -254,9 +254,9 @@ function getPainSeverity(score: number | null | undefined): {
  * Vital threshold status for inline display
  */
 interface VitalThresholdStatus {
-  severity: 'normal' | 'warning' | 'critical';
+  severity: 'normal' | 'warning' | 'critical' | 'emergency';
   message: string;
-  icon: 'check' | 'warning' | 'critical';
+  icon: 'check' | 'warning' | 'critical' | 'emergency';
 }
 
 /**
@@ -358,12 +358,30 @@ function getMAPThresholdStatus(
   const ageGroup = getAgeGroup(patientAgeYears);
   const thresholds = MAP_THRESHOLDS[ageGroup];
 
+  // Emergency: MAP severely below critical (organ failure imminent)
+  if (map < thresholds.criticalLow - 10) {
+    return {
+      severity: 'emergency',
+      message: `EMERGENCY: MAP ${map} mmHg - Severe hypoperfusion`,
+      icon: 'emergency',
+    };
+  }
+
   // Critical: MAP below minimum for adequate organ perfusion
   if (map < thresholds.criticalLow) {
     return {
       severity: 'critical',
-      message: `CRITICAL: MAP ${map} mmHg - Inadequate perfusion (<${thresholds.criticalLow})`,
+      message: `Critical: MAP ${map} mmHg - Inadequate perfusion (<${thresholds.criticalLow})`,
       icon: 'critical',
+    };
+  }
+
+  // Emergency: MAP dangerously elevated (hypertensive emergency)
+  if (map > thresholds.elevatedHigh + 25) {
+    return {
+      severity: 'emergency',
+      message: `EMERGENCY: MAP ${map} mmHg - Hypertensive emergency`,
+      icon: 'emergency',
     };
   }
 
@@ -371,7 +389,7 @@ function getMAPThresholdStatus(
   if (map > thresholds.elevatedHigh + 15) {
     return {
       severity: 'critical',
-      message: `CRITICAL: MAP ${map} mmHg - Severely elevated`,
+      message: `Critical: MAP ${map} mmHg - Severely elevated`,
       icon: 'critical',
     };
   }
@@ -428,7 +446,7 @@ function getVitalThresholdStatus(
     // 91-94%: Mild hypoxemia (slightly reduced)
     // 95-100%: Normal oxygenation
     if (value <= 85) {
-      return { severity: 'critical', message: `EMERGENCY: ${value}${config.unit} - Severe hypoxemia`, icon: 'critical' };
+      return { severity: 'emergency', message: `EMERGENCY: ${value}${config.unit} - Severe hypoxemia`, icon: 'emergency' };
     }
     if (value <= 90) {
       return { severity: 'critical', message: `Critical: ${value}${config.unit} - Moderate hypoxemia`, icon: 'critical' };
@@ -464,11 +482,24 @@ function getVitalThresholdStatus(
 
 /**
  * Inline vital alert badge component
+ * Color coding:
+ * - Emergency: Dark red/purple (life-threatening)
+ * - Critical: Red (requires immediate attention)
+ * - Warning: Amber/Orange (monitor closely)
  */
 function VitalThresholdBadge({ status }: { status: VitalThresholdStatus }) {
+  if (status.severity === 'emergency') {
+    return (
+      <div className="flex items-center gap-1.5 mt-1.5 p-2 rounded-md bg-rose-100 dark:bg-rose-950/70 border-2 border-rose-500 dark:border-rose-600">
+        <AlertCircle className="h-4 w-4 text-rose-700 dark:text-rose-300 shrink-0 animate-pulse" />
+        <span className="text-xs font-bold text-rose-800 dark:text-rose-200">{status.message}</span>
+      </div>
+    );
+  }
+
   if (status.severity === 'critical') {
     return (
-      <div className="flex items-center gap-1.5 mt-1.5 p-2 rounded-md bg-red-50 dark:bg-red-950/50 border border-red-200 dark:border-red-800">
+      <div className="flex items-center gap-1.5 mt-1.5 p-2 rounded-md bg-red-50 dark:bg-red-950/50 border border-red-300 dark:border-red-700">
         <AlertCircle className="h-4 w-4 text-red-600 dark:text-red-400 shrink-0" />
         <span className="text-xs font-medium text-red-700 dark:text-red-300">{status.message}</span>
       </div>
