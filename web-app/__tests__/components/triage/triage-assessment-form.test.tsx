@@ -16,6 +16,20 @@ import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { TriageAssessmentForm } from '@/components/triage/triage-assessment-form';
 
+jest.mock('@/lib/hooks/use-triage', () => {
+  const actual = jest.requireActual('@/lib/hooks/use-triage');
+  return {
+    ...actual,
+    useCalculateTriageCategory: () => ({
+      mutateAsync: jest.fn().mockResolvedValue({
+        suggested_category: 'ORANGE',
+        alerts: [],
+      }),
+      isPending: false,
+    }),
+  };
+});
+
 // =============================================================================
 // MOCK DATA
 // =============================================================================
@@ -159,6 +173,45 @@ describe('TriageAssessmentForm - Form Structure', () => {
       expect(allergiesInput).toHaveValue('NKDA');
     });
   });
+
+  describe('@vitals - Vital Signs', () => {
+    it('should render vital signs section', () => {
+      render(<TriageAssessmentForm {...defaultProps} />);
+      expect(screen.getByText(/vital signs/i)).toBeInTheDocument();
+    });
+
+    it('should render vital inputs with unit labels', () => {
+      render(<TriageAssessmentForm {...defaultProps} />);
+
+      expect(screen.getByLabelText(/spo2/i)).toBeInTheDocument();
+      expect(screen.getByText('%')).toBeInTheDocument();
+
+      expect(screen.getByLabelText(/heart rate/i)).toBeInTheDocument();
+      expect(screen.getByText(/bpm/i)).toBeInTheDocument();
+
+      expect(screen.getByLabelText(/systolic bp/i)).toBeInTheDocument();
+      expect(screen.getByLabelText(/diastolic bp/i)).toBeInTheDocument();
+      expect(screen.getByText(/mmhg/i)).toBeInTheDocument();
+
+      expect(screen.getByLabelText(/temperature/i)).toBeInTheDocument();
+      expect(screen.getByText(/°c/i)).toBeInTheDocument();
+
+      expect(screen.getByLabelText(/respiratory rate/i)).toBeInTheDocument();
+      expect(screen.getByText(/\/min/i)).toBeInTheDocument();
+    });
+
+    it('should highlight critical values in red border (SpO2 < 90)', async () => {
+      const user = userEvent.setup();
+      render(<TriageAssessmentForm {...defaultProps} />);
+
+      const spo2Input = screen.getByLabelText(/spo2/i);
+      await user.clear(spo2Input);
+      await user.type(spo2Input, '89');
+
+      const group = spo2Input.closest('[data-slot="input-group"]');
+      expect(group).toHaveClass('border-destructive');
+    });
+  });
 });
 
 // =============================================================================
@@ -242,14 +295,8 @@ describe('TriageAssessmentForm - Validation', () => {
     });
     expect(handleSubmit).not.toHaveBeenCalled();
   });
-});
 
-// =============================================================================
-// FORM SUBMISSION TESTS
-// =============================================================================
-
-describe('TriageAssessmentForm - Submission', () => {
-  it('should call onSubmit with valid form data', async () => {
+  it('should reject out-of-range vitals values (SpO2 > 100)', async () => {
     const user = userEvent.setup();
     const handleSubmit = jest.fn();
     render(
@@ -269,6 +316,46 @@ describe('TriageAssessmentForm - Submission', () => {
       />
     );
 
+    const spo2Input = screen.getByLabelText(/spo2/i);
+    await user.clear(spo2Input);
+    await user.type(spo2Input, '101');
+
+    const submitButton = screen.getByRole('button', { name: /complete triage/i });
+    await user.click(submitButton);
+
+    await waitFor(() => {
+      expect(screen.getByText(/spo2 must be between 0 and 100/i)).toBeInTheDocument();
+    });
+    expect(handleSubmit).not.toHaveBeenCalled();
+  });
+});
+
+// =============================================================================
+// FORM SUBMISSION TESTS
+// =============================================================================
+
+describe('TriageAssessmentForm - Submission', () => {
+  it('should call onSubmit with valid form data', async () => {
+    const user = userEvent.setup();
+    const handleSubmit = jest.fn();
+    render(
+      <TriageAssessmentForm
+        {...defaultProps}
+        onSubmit={handleSubmit}
+        initialData={{
+          arrival_mode: 'WALK_IN',
+          arrival_time: '2026-01-03T10:30',
+          chief_complaint_category: 'HEADACHE',
+          chief_complaint: 'Mild headache for 2 days',
+          mental_status: 'A',
+          mobility: 'AMBULATORY',
+          triage_category: 'GREEN',
+          auto_calculated_category: 'GREEN',
+          assigned_area: 'OPD',
+        }}
+      />
+    );
+
     const submitButton = screen.getByRole('button', { name: /complete triage/i });
     await user.click(submitButton);
 
@@ -276,10 +363,10 @@ describe('TriageAssessmentForm - Submission', () => {
       expect(handleSubmit).toHaveBeenCalledWith(
         expect.objectContaining({
           arrival_mode: 'WALK_IN',
-          chief_complaint_category: 'CHEST_PAIN',
+          chief_complaint_category: 'HEADACHE',
           mental_status: 'A',
-          triage_category: 'ORANGE',
-          assigned_area: 'ER_ACUTE',
+          triage_category: 'GREEN',
+          assigned_area: 'OPD',
         })
       );
     });
@@ -327,6 +414,56 @@ describe('TriageAssessmentForm - Submission', () => {
         expect(savingButton).toBeDisabled();
       }
     }, { timeout: 200 });
+  });
+
+  it('should include vitals in submission payload when provided', async () => {
+    const user = userEvent.setup();
+    const handleSubmit = jest.fn();
+    render(
+      <TriageAssessmentForm
+        {...defaultProps}
+        onSubmit={handleSubmit}
+        initialData={{
+          arrival_mode: 'WALK_IN',
+          arrival_time: '2026-01-03T10:30',
+          chief_complaint_category: 'CHEST_PAIN',
+          chief_complaint: 'Sharp chest pain',
+          mental_status: 'A',
+          mobility: 'AMBULATORY',
+          triage_category: 'ORANGE',
+          assigned_area: 'ER_ACUTE',
+        }}
+      />
+    );
+
+    await user.clear(screen.getByLabelText(/spo2/i));
+    await user.type(screen.getByLabelText(/spo2/i), '94');
+    await user.clear(screen.getByLabelText(/heart rate/i));
+    await user.type(screen.getByLabelText(/heart rate/i), '110');
+    await user.clear(screen.getByLabelText(/systolic bp/i));
+    await user.type(screen.getByLabelText(/systolic bp/i), '160');
+    await user.clear(screen.getByLabelText(/diastolic bp/i));
+    await user.type(screen.getByLabelText(/diastolic bp/i), '95');
+    await user.clear(screen.getByLabelText(/temperature/i));
+    await user.type(screen.getByLabelText(/temperature/i), '37.2');
+    await user.clear(screen.getByLabelText(/respiratory rate/i));
+    await user.type(screen.getByLabelText(/respiratory rate/i), '22');
+
+    const submitButton = screen.getByRole('button', { name: /complete triage/i });
+    await user.click(submitButton);
+
+    await waitFor(() => {
+      expect(handleSubmit).toHaveBeenCalledWith(
+        expect.objectContaining({
+          spo2: 94,
+          heart_rate: 110,
+          systolic_bp: 160,
+          diastolic_bp: 95,
+          temperature: 37.2,
+          respiratory_rate: 22,
+        })
+      );
+    });
   });
 });
 

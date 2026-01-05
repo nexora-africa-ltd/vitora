@@ -189,25 +189,25 @@ Add vital signs input fields to the triage assessment form, use them for KETA ca
 ### Phase 2: Frontend - Vitals Input in Triage Form
 
 #### 2.1 Update Form Schema
-- [ ] Add vitals fields to `triageFormSchema` Zod schema
-- [ ] All vitals optional but validated when provided
-- [ ] Update `TriageFormData` type
+- [x] Add vitals fields to `triageFormSchema` Zod schema
+- [x] All vitals optional but validated when provided
+- [x] Update `TriageFormData` type
 
 **File**: `web-app/components/triage/triage-assessment-form.tsx`
 
 **Acceptance Criteria**:
-- [ ] Form validates vital ranges (e.g., SpO2 0-100)
-- [ ] Empty vitals are allowed (submit as null)
-- [ ] Type-safe form data
+- [x] Form validates vital ranges (e.g., SpO2 0-100)
+- [x] Empty vitals are allowed (submit as null)
+- [x] Type-safe form data
 
 ---
 
 #### 2.2 Add Vitals Section UI
-- [ ] Create collapsible "Vital Signs" section
-- [ ] Add inputs: SpO2, Heart Rate, BP (systolic/diastolic), Temp, RR
-- [ ] Add pain score slider (already exists, ensure integration)
-- [ ] Show unit labels (%, bpm, mmHg, °C, /min)
-- [ ] Visual indicators for critical values (red border)
+- [x] Create collapsible "Vital Signs" section
+- [x] Add inputs: SpO2, Heart Rate, BP (systolic/diastolic), Temp, RR
+- [x] Add pain score slider (already exists, ensure integration)
+- [x] Show unit labels (%, bpm, mmHg, °C, /min)
+- [x] Visual indicators for critical values (red border)
 
 **File**: `web-app/components/triage/triage-assessment-form.tsx`
 
@@ -227,10 +227,10 @@ Add vital signs input fields to the triage assessment form, use them for KETA ca
 ```
 
 **Acceptance Criteria**:
-- [ ] All vital inputs render correctly
-- [ ] Critical values highlight in red (SpO2 < 90, HR < 40 or > 150, etc.)
-- [ ] Form is accessible (labels, ARIA)
-- [ ] Mobile-responsive layout
+- [x] All vital inputs render correctly
+- [x] Critical values highlight in red (SpO2 < 90, HR < 40 or > 150, etc.)
+- [x] Form is accessible (labels, ARIA)
+- [x] Mobile-responsive layout
 
 ---
 
@@ -238,7 +238,7 @@ Add vital signs input fields to the triage assessment form, use them for KETA ca
 
 **File**: `web-app/components/triage/vitals-input-section.tsx` (new)
 
-- [ ] Create reusable vitals input component
+- [ ] Create reusable vitals input component (skipped - vitals integrated directly in form)
 - [ ] Props: `onChange`, `values`, `errors`, `disabled`
 - [ ] Include:
   - Two-column layout for desktop
@@ -261,45 +261,45 @@ Add vital signs input fields to the triage assessment form, use them for KETA ca
 ---
 
 #### 2.4 Wire Up Calculate Category with Vitals
-- [ ] Pass vitals to `useCalculateTriageCategory` mutation
-- [ ] Update `calculateSuggestedCategory` local function to use form vitals
-- [ ] Show suggested category updates as vitals are entered
-- [ ] Display alerts from backend response
+- [x] Pass vitals to `useCalculateTriageCategory` mutation
+- [x] Update `calculateSuggestedCategory` local function to use form vitals
+- [x] Show suggested category updates as vitals are entered
+- [x] Display alerts from backend response
 
 **File**: `web-app/components/triage/triage-assessment-form.tsx`
 
 **Acceptance Criteria**:
-- [ ] Suggested category updates when vitals change
-- [ ] Critical vital alerts display prominently
-- [ ] Backend calculation matches displayed suggestion
+- [x] Suggested category updates when vitals change
+- [x] Critical vital alerts display prominently
+- [x] Backend calculation matches displayed suggestion
 
 ---
 
 #### 2.4 Update Triage Types
-- [ ] Add vitals to `TriageAssessmentCreateData` interface
-- [ ] Add vitals to `TriageAssessment` response type
-- [ ] Update `CalculateCategoryRequest` if needed
+- [x] Add vitals to `TriageAssessmentCreateData` interface
+- [x] Add vitals to `TriageAssessment` response type
+- [x] Update `CalculateCategoryRequest` if needed
 
 **File**: `web-app/lib/types/triage.ts`
 
 **Acceptance Criteria**:
-- [ ] Types match backend API contract
-- [ ] No TypeScript errors
+- [x] Types match backend API contract
+- [x] No TypeScript errors
 
 ---
 
 #### 2.5 Frontend Tests
-- [ ] Test form renders vital inputs
-- [ ] Test vital validation (range errors)
-- [ ] Test suggested category updates with vitals
-- [ ] Test form submission includes vitals
-- [ ] Test critical value highlighting
+- [x] Test form renders vital inputs
+- [x] Test vital validation (range errors)
+- [x] Test suggested category updates with vitals
+- [x] Test form submission includes vitals
+- [x] Test critical value highlighting
 
 **File**: `web-app/__tests__/components/triage/triage-assessment-form.test.tsx`
 
 **Acceptance Criteria**:
-- [ ] All tests pass
-- [ ] Coverage for vital input interactions
+- [x] All tests pass
+- [x] Coverage for vital input interactions
 
 ---
 
@@ -465,13 +465,13 @@ Add vital signs input fields to the triage assessment form, use them for KETA ca
 - [x] Write backend tests (6 test cases)
 
 ### Frontend
-- [ ] Update TypeScript types for vitals
-- [ ] Add vitals to form schema (Zod)
-- [ ] Create VitalsInputSection component
-- [ ] Wire up calculate-category with vitals
-- [ ] Add visual indicators for critical values
-- [ ] Write unit tests
-- [ ] Add E2E test
+- [x] Update TypeScript types for vitals
+- [x] Add vitals to form schema (Zod)
+- [x] Create VitalsInputSection component (integrated directly in form)
+- [x] Wire up calculate-category with vitals
+- [x] Add visual indicators for critical values
+- [x] Write unit tests
+- [ ] Add E2E test (Phase 3)
 
 ### Documentation
 - [ ] Update API documentation

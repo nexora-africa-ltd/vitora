@@ -389,6 +389,14 @@ export interface TriageAssessmentCreateData {
   chief_complaint_category: ChiefComplaintCategory;
   chief_complaint: string;
   pain_score?: number | null;
+  // Vital signs
+  spo2?: number | null;
+  heart_rate?: number | null;
+  systolic_bp?: number | null;
+  diastolic_bp?: number | null;
+  temperature?: number | null;
+  respiratory_rate?: number | null;
+  // Assessment
   mental_status: AVPUStatus;
   mobility: MobilityStatus;
   allergies_noted?: string;
@@ -441,6 +449,14 @@ export interface TriageQueueItem {
   patient_name: string;
   patient_mrn: string;
   patient_age: number;
+
+  // Vital signs (captured at triage; optional)
+  spo2?: number | null;
+  heart_rate?: number | null;
+  systolic_bp?: number | null;
+  diastolic_bp?: number | null;
+  temperature?: number | null;
+  respiratory_rate?: number | null;
   patient_gender: string;
   triage_category: TriageCategory;
   chief_complaint_category: ChiefComplaintCategory;
