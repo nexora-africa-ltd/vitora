@@ -243,15 +243,15 @@ export function LabResultsEntry({ orderNumber, items, onComplete, onResultAdded 
               className={cn(
                 'p-3 rounded-lg cursor-pointer transition-colors border',
                 activeItemId === item.id && 'border-primary bg-primary/5',
-                item.has_result && 'bg-green-50',
-                item.result?.is_critical_result && 'bg-red-50 border-red-200',
-                !item.has_result && activeItemId !== item.id && 'hover:bg-muted/50'
+                item.has_result && 'bg-green-50 dark:bg-green-950/30',
+                item.result?.is_critical_result && 'bg-red-50 dark:bg-red-950/30 border-red-200',
+                activeItemId !== item.id && 'hover:bg-muted/50'
               )}
-              onClick={() => !item.has_result && setActiveItemId(item.id)}
+              onClick={() => setActiveItemId(item.id)}
             >
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="font-medium text-sm">{item.test_name}</p>
+                  <p className="font-medium text-sm text-foreground">{item.test_name}</p>
                   <p className="text-xs text-muted-foreground">{item.test_code}</p>
                 </div>
                 {item.has_result ? (
@@ -477,35 +477,63 @@ export function LabResultsEntry({ orderNumber, items, onComplete, onResultAdded 
             </Form>
           ) : activeItem?.has_result ? (
             <div className="space-y-4">
-              <div className="p-4 bg-green-50 border border-green-200 rounded-lg">
-                <div className="flex items-center gap-2 mb-2">
-                  <CheckCircle className="h-5 w-5 text-green-600" />
-                  <span className="font-medium text-green-700">Result Recorded</span>
+              <div className="p-4 bg-green-50 dark:bg-green-950/40 border border-green-200 dark:border-green-800 rounded-lg">
+                <div className="flex items-center gap-2 mb-3">
+                  <CheckCircle className="h-5 w-5 text-green-600 dark:text-green-400" />
+                  <span className="font-medium text-green-700 dark:text-green-300">Result Recorded</span>
                 </div>
-                <div className="grid grid-cols-2 gap-4 text-sm">
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
                   <div>
-                    <p className="text-muted-foreground">Value</p>
-                    <p className="font-medium">
+                    <p className="text-muted-foreground text-xs mb-1">Value</p>
+                    <p className="font-semibold text-foreground">
                       {activeItem.result?.numeric_value ?? 
                        activeItem.result?.text_value ?? 
                        activeItem.result?.option_value ?? '-'}
+                      {activeItem.result?.result_unit && (
+                        <span className="text-muted-foreground ml-1">{activeItem.result.result_unit}</span>
+                      )}
                     </p>
                   </div>
+                  {activeItem.result?.reference_range_text && (
+                    <div>
+                      <p className="text-muted-foreground text-xs mb-1">Reference</p>
+                      <p className="font-medium text-foreground">{activeItem.result.reference_range_text}</p>
+                    </div>
+                  )}
                   <div>
-                    <p className="text-muted-foreground">Flag</p>
-                    <Badge>{activeItem.result?.result_flag || 'N/A'}</Badge>
+                    <p className="text-muted-foreground text-xs mb-1">Flag</p>
+                    <Badge 
+                      variant={
+                        activeItem.result?.result_flag?.includes('CRITICAL') ? 'destructive' :
+                        ['LOW', 'HIGH', 'ABNORMAL'].includes(activeItem.result?.result_flag || '') ? 'secondary' :
+                        'outline'
+                      }
+                    >
+                      {activeItem.result?.result_flag || 'NORMAL'}
+                    </Badge>
+                  </div>
+                  <div>
+                    <p className="text-muted-foreground text-xs mb-1">Status</p>
+                    <Badge variant={activeItem.result?.verification_status === 'VERIFIED' ? 'default' : 'outline'}>
+                      {activeItem.result?.verification_status || 'UNVERIFIED'}
+                    </Badge>
                   </div>
                 </div>
+                {activeItem.result?.interpretation && (
+                  <div className="mt-3 pt-3 border-t border-green-200 dark:border-green-800">
+                    <p className="text-muted-foreground text-xs mb-1">Interpretation</p>
+                    <p className="text-sm text-foreground">{activeItem.result.interpretation}</p>
+                  </div>
+                )}
               </div>
 
               {activeItem.result?.verification_status !== 'VERIFIED' && (
                 <Button
-                  variant="outline"
                   onClick={() => activeItem.result && handleVerify(activeItem.result.id)}
                   disabled={verifyResult.isPending}
                 >
                   <CheckCircle className="h-4 w-4 mr-2" />
-                  Verify Result
+                  {verifyResult.isPending ? 'Verifying...' : 'Verify Result'}
                 </Button>
               )}
             </div>
