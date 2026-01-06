@@ -1,0 +1,17 @@
+"""
+Laboratory app configuration.
+"""
+
+from django.apps import AppConfig
+
+
+class LaboratoryConfig(AppConfig):
+    """Configuration for the laboratory app."""
+
+    default_auto_field = "django.db.models.BigAutoField"
+    name = "hmis.apps.laboratory"
+    verbose_name = "Laboratory"
+
+    def ready(self):
+        """Import signals when the app is ready."""
+        import hmis.apps.laboratory.signals  # noqa: F401

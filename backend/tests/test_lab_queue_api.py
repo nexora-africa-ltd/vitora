@@ -71,7 +71,12 @@ def sample_lab_order(db, sample_patient, sample_encounter, test_user, test_catal
 
 @pytest.fixture
 def sample_lab_queue(db, sample_lab_order):
-    """Create a lab queue entry."""
+    """Get or create a lab queue entry for the lab order."""
+    # Signal auto-creates the queue, so just fetch it
+    # If not created (e.g., signal not triggered), create manually
+    queue = LabQueue.objects.filter(lab_order=sample_lab_order).first()
+    if queue:
+        return queue
     return LabQueue.objects.create(
         lab_order=sample_lab_order,
         priority="ROUTINE",
@@ -575,3 +580,57 @@ class TestLabQueueTechnicianAssignment:
         assert "id" in response.data[0]
         assert "username" in response.data[0]
         assert "full_name" in response.data[0]
+
+
+class TestLabQueueAutoCreation:
+    """Tests for automatic LabQueue creation via signals."""
+
+    def test_queue_created_for_in_house_order(
+        self, db, sample_patient, sample_encounter, test_user, test_catalog
+    ):
+        """Should auto-create LabQueue when in-house order is created."""
+        # Create a lab order - queue should be auto-created
+        order = LabOrder.objects.create(
+            patient=sample_patient,
+            encounter=sample_encounter,
+            ordered_by=test_user,
+            order_type="IN_HOUSE",
+            priority="ROUTINE",
+            status="ORDERED",
+        )
+        LabOrderItem.objects.create(
+            lab_order=order,
+            test=test_catalog,
+            unit_cost=test_catalog.cost,
+        )
+        
+        # Refresh to trigger signal and check queue exists
+        order.refresh_from_db()
+        
+        assert hasattr(order, 'queue_entry')
+        queue = order.queue_entry
+        assert queue.queue_status == "PENDING"
+        assert queue.priority == "ROUTINE"
+        assert queue.sample_type == test_catalog.specimen_type
+
+    def test_no_queue_for_external_order(
+        self, db, sample_patient, sample_encounter, test_user, test_catalog
+    ):
+        """Should NOT create LabQueue for external lab orders."""
+        order = LabOrder.objects.create(
+            patient=sample_patient,
+            encounter=sample_encounter,
+            ordered_by=test_user,
+            order_type="EXTERNAL",
+            external_lab="Lancet Labs",
+            priority="ROUTINE",
+            status="ORDERED",
+        )
+        LabOrderItem.objects.create(
+            lab_order=order,
+            test=test_catalog,
+            unit_cost=test_catalog.cost,
+        )
+        
+        # Queue should NOT exist for external orders
+        assert not LabQueue.objects.filter(lab_order=order).exists()
