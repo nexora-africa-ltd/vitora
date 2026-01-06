@@ -47,6 +47,15 @@ export const encountersApi = {
   },
 
   /**
+   * Finalize/complete an encounter.
+   * Changes status to COMPLETED and records the finalizing user and timestamp.
+   */
+  async finalize(id: number): Promise<Encounter> {
+    const response = await apiClient.post<Encounter>(`/api/encounters/${id}/finalize/`);
+    return response.data;
+  },
+
+  /**
    * Get diagnoses for an encounter.
    */
   async getDiagnoses(encounterId: number): Promise<Diagnosis[]> {

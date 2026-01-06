@@ -317,6 +317,11 @@ class EncounterSerializer(serializers.ModelSerializer):
             "social_history",
             # Notes and metadata
             "notes",
+            # SOAP Note Fields (Sprint 1.5-1.6)
+            "history_of_present_illness",
+            "physical_examination",
+            "assessment",
+            # Note: SOAP 'P' (Plan) uses TreatmentPlan.clinical_notes
             # Clinical Template Data
             "clinical_template",
             "clinical_template_data",

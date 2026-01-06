@@ -72,7 +72,6 @@ export default function EncounterDetailPage() {
       history_of_present_illness: encounter.history_of_present_illness || '',
       physical_examination: encounter.physical_examination || '',
       assessment: encounter.assessment || '',
-      plan: encounter.plan || '',
       status: encounter.status === 'CANCELLED' ? 'DRAFT' : encounter.status,
       clinical_template: encounter.clinical_template || null,
       clinical_template_data: encounter.clinical_template_data || null,

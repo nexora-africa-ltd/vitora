@@ -337,6 +337,24 @@ class Encounter(models.Model):
     # Clinical notes
     notes = models.TextField(blank=True, default="", help_text="Additional clinical notes")
 
+    # SOAP Note Fields (Sprint 1.5-1.6: Clinical Documentation)
+    history_of_present_illness = models.TextField(
+        blank=True,
+        default="",
+        help_text="History of Present Illness (HPI) - detailed narrative of the patient's condition",
+    )
+    physical_examination = models.TextField(
+        blank=True,
+        default="",
+        help_text="Physical Examination findings",
+    )
+    assessment = models.TextField(
+        blank=True,
+        default="",
+        help_text="Clinical assessment/impression (SOAP 'A')",
+    )
+    # Note: SOAP 'P' (Plan) is stored in TreatmentPlan.clinical_notes
+
     # Clinical Template Data (stores structured assessment data from templates)
     clinical_template = models.ForeignKey(
         "clinical_templates.ClinicalTemplate",

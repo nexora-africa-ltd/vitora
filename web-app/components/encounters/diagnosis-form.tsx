@@ -245,7 +245,7 @@ export function DiagnosisEntry({ onAdd, existingDiagnoses, disabled = false }: D
           disabled={disabled}
         />
         <label htmlFor="is_confirmed" className="text-sm leading-none cursor-pointer">
-          Lab/Test Confirmed
+          Diagnostics Confirmed
         </label>
       </div>
       

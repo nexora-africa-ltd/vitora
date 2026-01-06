@@ -117,7 +117,8 @@ export function SOAPNoteSummary({
         content: [],
       },
       plan: {
-        complete: !!formData.plan?.trim() || labOrders.length > 0 || prescriptions.length > 0,
+        // Plan is complete if there are lab orders, prescriptions, or treatment plan exists
+        complete: labOrders.length > 0 || prescriptions.length > 0,
         label: 'Plan',
         content: [],
       },
@@ -263,9 +264,6 @@ export function SOAPNoteSummary({
 
     // PLAN
     lines.push('PLAN:');
-    if (formData.plan) {
-      lines.push(formData.plan);
-    }
     if (labOrdersString && labOrdersString.length > 0) {
       lines.push('Labs:');
       labOrdersString.forEach((l) => lines.push(l));
@@ -277,7 +275,7 @@ export function SOAPNoteSummary({
     if (formData.notes) {
       lines.push(`Notes: ${formData.notes}`);
     }
-    if (!formData.plan && (!labOrdersString || labOrdersString.length === 0) && (!prescriptionsString || prescriptionsString.length === 0)) {
+    if ((!labOrdersString || labOrdersString.length === 0) && (!prescriptionsString || prescriptionsString.length === 0)) {
       lines.push('[No plan recorded]');
     }
     lines.push('');
