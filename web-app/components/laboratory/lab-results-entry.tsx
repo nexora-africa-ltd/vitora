@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
@@ -53,6 +53,7 @@ interface LabResultsEntryProps {
   orderNumber: string;
   items: LabOrderItem[];
   onComplete?: () => void;
+  onResultAdded?: () => void; // Callback when a result is added
 }
 
 const RESULT_FLAGS: { value: ResultFlag; label: string; color: string }[] = [
@@ -107,7 +108,7 @@ const RESULT_UNITS = [
   { value: 'CFU/mL', label: 'CFU/mL' },
 ];
 
-export function LabResultsEntry({ orderNumber, items, onComplete }: LabResultsEntryProps) {
+export function LabResultsEntry({ orderNumber, items, onComplete, onResultAdded }: LabResultsEntryProps) {
   const { toast } = useToast();
   const [activeItemId, setActiveItemId] = useState<number | null>(
     items.find(item => !item.has_result)?.id || items[0]?.id || null
@@ -119,6 +120,18 @@ export function LabResultsEntry({ orderNumber, items, onComplete }: LabResultsEn
   const activeItem = items.find(item => item.id === activeItemId);
   const pendingItems = items.filter(item => !item.has_result);
   const completedItems = items.filter(item => item.has_result);
+
+  // Update activeItemId when items change (e.g., after a result is added)
+  useEffect(() => {
+    // If current active item now has a result, move to next pending
+    const currentItem = items.find(item => item.id === activeItemId);
+    if (currentItem?.has_result) {
+      const nextPending = items.find(item => !item.has_result);
+      if (nextPending) {
+        setActiveItemId(nextPending.id);
+      }
+    }
+  }, [items, activeItemId]);
 
   const form = useForm<ResultFormData>({
     resolver: zodResolver(resultSchema),
@@ -172,15 +185,16 @@ export function LabResultsEntry({ orderNumber, items, onComplete }: LabResultsEn
         description: `Result for ${activeItem.test_name} has been recorded.`,
       });
 
-      // Move to next pending item
-      const nextPendingItem = items.find(
-        item => item.id !== activeItem.id && !item.has_result
-      );
+      // Notify parent to refetch data
+      await onResultAdded?.();
+
+      // Reset form for next item
+      form.reset();
+
+      // Check if there are more pending items (using updated items from parent)
+      const currentPendingCount = items.filter(item => !item.has_result && item.id !== activeItem.id).length;
       
-      if (nextPendingItem) {
-        setActiveItemId(nextPendingItem.id);
-        form.reset();
-      } else {
+      if (currentPendingCount === 0) {
         toast({
           title: 'All results entered',
           description: 'All test results have been recorded.',

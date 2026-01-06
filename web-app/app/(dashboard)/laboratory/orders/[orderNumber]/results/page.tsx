@@ -3,7 +3,7 @@
 import { use } from 'react';
 import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
-import { ArrowLeft } from 'lucide-react';
+import { ArrowLeft, RefreshCw } from 'lucide-react';
 import { LabResultsEntry } from '@/components/laboratory/lab-results-entry';
 import { useLabOrder } from '@/lib/hooks/use-laboratory';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -17,7 +17,7 @@ interface ResultsEntryPageProps {
 export default function ResultsEntryPage({ params }: ResultsEntryPageProps) {
   const { orderNumber } = use(params);
   const router = useRouter();
-  const { data: order, isLoading, error } = useLabOrder(orderNumber);
+  const { data: order, isLoading, error, refetch, isFetching } = useLabOrder(orderNumber);
 
   if (isLoading) {
     return (
@@ -44,19 +44,35 @@ export default function ResultsEntryPage({ params }: ResultsEntryPageProps) {
     );
   }
 
+  // Handler when a result is successfully added
+  const handleResultAdded = async () => {
+    await refetch();
+  };
+
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex items-center gap-4">
-        <Button variant="ghost" size="icon" onClick={() => router.back()}>
-          <ArrowLeft className="h-5 w-5" />
-        </Button>
-        <div>
-          <h1 className="text-2xl font-bold">Enter Results</h1>
-          <p className="text-muted-foreground">
-            Order {orderNumber} • {order.patient_name}
-          </p>
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-4">
+          <Button variant="ghost" size="icon" onClick={() => router.back()}>
+            <ArrowLeft className="h-5 w-5" />
+          </Button>
+          <div>
+            <h1 className="text-2xl font-bold">Enter Results</h1>
+            <p className="text-muted-foreground">
+              Order {orderNumber} • {order.patient_name}
+            </p>
+          </div>
         </div>
+        <Button 
+          variant="outline" 
+          size="sm" 
+          onClick={() => refetch()}
+          disabled={isFetching}
+        >
+          <RefreshCw className={`h-4 w-4 mr-2 ${isFetching ? 'animate-spin' : ''}`} />
+          Refresh
+        </Button>
       </div>
 
       {/* Results Entry Component */}
@@ -64,6 +80,7 @@ export default function ResultsEntryPage({ params }: ResultsEntryPageProps) {
         orderNumber={orderNumber}
         items={order.items}
         onComplete={() => router.push(`/laboratory/orders/${orderNumber}`)}
+        onResultAdded={handleResultAdded}
       />
     </div>
   );
