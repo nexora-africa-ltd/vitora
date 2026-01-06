@@ -229,7 +229,8 @@ export function useTriageQueue(filters: QueueFilters = {}) {
       );
       return response.data;
     },
-    refetchInterval: 30000, // Auto-refresh every 30 seconds
+    refetchInterval: 15000, // Auto-refresh every 15 seconds
+    refetchIntervalInBackground: false, // Don't poll when tab is in background
   });
 }
 
@@ -519,6 +520,7 @@ export function useWaitingQueue(filters: WaitingQueueFilters = {}) {
       return response.data;
     },
     refetchInterval: 15000, // Auto-refresh every 15 seconds
+    refetchIntervalInBackground: false, // Don't poll when tab is in background
   });
 }
 

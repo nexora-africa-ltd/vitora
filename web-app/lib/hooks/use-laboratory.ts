@@ -73,23 +73,29 @@ export function useLabOrder(orderNumber: string) {
 
 /**
  * Hook for fetching lab orders for a patient.
+ * Polls every 30 seconds to detect new results.
  */
 export function usePatientLabOrders(patientId: number) {
   return useQuery({
     queryKey: ['patients', patientId, 'lab-orders'],
     queryFn: () => laboratoryApi.getPatientOrders(patientId),
     enabled: !!patientId,
+    refetchInterval: 30000, // Check for new results every 30 seconds
+    refetchIntervalInBackground: false,
   });
 }
 
 /**
  * Hook for fetching lab orders for an encounter.
+ * Polls every 30 seconds to detect new results.
  */
 export function useEncounterLabOrders(encounterId: number) {
   return useQuery({
     queryKey: ['encounters', encounterId, 'lab-orders'],
     queryFn: () => laboratoryApi.getEncounterOrders(encounterId),
     enabled: !!encounterId,
+    refetchInterval: 30000, // Check for new results every 30 seconds
+    refetchIntervalInBackground: false,
   });
 }
 
@@ -338,7 +344,8 @@ export function useLabQueue(status?: string) {
   return useQuery({
     queryKey: ['lab-queue', status],
     queryFn: () => laboratoryApi.getQueue(status),
-    refetchInterval: 30000, // Refresh every 30 seconds
+    refetchInterval: 20000, // Refresh every 20 seconds
+    refetchIntervalInBackground: false, // Don't poll when tab is in background
   });
 }
 

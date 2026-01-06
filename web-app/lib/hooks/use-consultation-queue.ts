@@ -32,14 +32,20 @@ export const consultationQueueKeys = {
  * Hook for fetching the consultation queue.
  *
  * @param filters - Optional filters (consultation_status, triage_status, search)
+ * @param options - Optional query options including polling interval
  * @returns Query result with consultation queue data
  */
-export function useConsultationQueue(filters?: ConsultationQueueFilters) {
+export function useConsultationQueue(
+  filters?: ConsultationQueueFilters,
+  options?: { pollingInterval?: number | false }
+) {
   return useQuery({
     queryKey: consultationQueueKeys.list(filters),
     queryFn: () => consultationQueueApi.getQueue(filters),
-    // Refetch every 30 seconds for real-time updates
-    refetchInterval: 30000,
+    // Refetch every 15 seconds for real-time updates (can be customized)
+    refetchInterval: options?.pollingInterval ?? 15000,
+    // Don't poll when tab is in background to save bandwidth
+    refetchIntervalInBackground: false,
     // Keep previous data while refetching
     placeholderData: (previousData) => previousData,
   });
