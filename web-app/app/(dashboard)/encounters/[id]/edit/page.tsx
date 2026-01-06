@@ -266,27 +266,122 @@ export default function EditEncounterPage() {
     setIsDirty(true);
   }, []);
   
-  // Clinical template handler
-  const handleTemplateSelect = useCallback((template: ClinicalTemplate) => {
+  // Clinical template handler - auto-populates from existing encounter data
+  const handleTemplateSelect = useCallback(async (template: ClinicalTemplate) => {
     setSelectedTemplate(template);
-    setFormData(prev => ({
-      ...prev,
-      clinical_template: template.id,
-      clinical_template_data: prev.clinical_template_data || {},
-    }));
+    
+    // Try to auto-populate template from existing encounter data
+    try {
+      const { encountersApi } = await import('@/lib/api/encounters');
+      const { populated_data } = await encountersApi.populateTemplate(
+        encounterId,
+        template.id,
+        true // structure by section
+      );
+      
+      // Type cast to match expected shape
+      const typedData = (populated_data || {}) as Record<string, Record<string, unknown>>;
+      
+      setFormData(prev => ({
+        ...prev,
+        clinical_template: template.id,
+        clinical_template_data: typedData,
+      }));
+      
+      toast({
+        title: 'Template Applied',
+        description: `${template.name} has been applied with existing data auto-populated.`,
+      });
+    } catch (error) {
+      console.error('Failed to auto-populate template:', error);
+      // Fall back to empty template data
+      setFormData(prev => ({
+        ...prev,
+        clinical_template: template.id,
+        clinical_template_data: prev.clinical_template_data || {},
+      }));
+      
+      toast({
+        title: 'Template Selected',
+        description: `${template.name} has been applied to this encounter.`,
+      });
+    }
+    
     setIsDirty(true);
-    toast({
-      title: 'Template Selected',
-      description: `${template.name} has been applied to this encounter.`,
-    });
-  }, [toast]);
+  }, [encounterId, toast]);
   
-  // Clinical template data handler
+  // Clinical template data handler - syncs back to encounter fields
   const handleTemplateDataChange = useCallback((data: Record<string, Record<string, unknown>>) => {
-    setFormData(prev => ({
-      ...prev,
-      clinical_template_data: data,
-    }));
+    setFormData(prev => {
+      // Update template data
+      const updated: EncounterFormData = {
+        ...prev,
+        clinical_template_data: data,
+      };
+      
+      // Sync syncable fields back to encounter form
+      // Flatten section data to find syncable fields
+      for (const sectionName of Object.keys(data)) {
+        const sectionData = data[sectionName];
+        if (typeof sectionData !== 'object' || sectionData === null) continue;
+        
+        // Map template fields to encounter fields
+        for (const [fieldName, value] of Object.entries(sectionData)) {
+          switch (fieldName.toLowerCase()) {
+            case 'temperature':
+              if (value !== null && value !== undefined && value !== '') {
+                updated.temperature = typeof value === 'number' ? value : parseFloat(String(value)) || null;
+              }
+              break;
+            case 'pulse':
+            case 'heart_rate':
+              if (value !== null && value !== undefined && value !== '') {
+                updated.pulse = typeof value === 'number' ? Math.round(value) : parseInt(String(value)) || null;
+              }
+              break;
+            case 'respiratory_rate':
+            case 'resp_rate':
+              if (value !== null && value !== undefined && value !== '') {
+                updated.respiratory_rate = typeof value === 'number' ? Math.round(value) : parseInt(String(value)) || null;
+              }
+              break;
+            case 'spo2':
+            case 'oxygen_saturation':
+              if (value !== null && value !== undefined && value !== '') {
+                updated.spo2 = typeof value === 'number' ? value : parseFloat(String(value)) || null;
+              }
+              break;
+            case 'weight':
+              if (value !== null && value !== undefined && value !== '') {
+                updated.weight = typeof value === 'number' ? value : parseFloat(String(value)) || null;
+              }
+              break;
+            case 'height':
+              if (value !== null && value !== undefined && value !== '') {
+                updated.height = typeof value === 'number' ? value : parseFloat(String(value)) || null;
+              }
+              break;
+            case 'allergies':
+              if (typeof value === 'string' && value.trim()) {
+                updated.allergies = value;
+              }
+              break;
+            case 'chronic_conditions':
+              if (typeof value === 'string' && value.trim()) {
+                updated.chronic_conditions = value;
+              }
+              break;
+            case 'current_medications':
+              if (typeof value === 'string' && value.trim()) {
+                updated.current_medications = value;
+              }
+              break;
+          }
+        }
+      }
+      
+      return updated;
+    });
     setIsDirty(true);
   }, []);
   
@@ -677,43 +772,6 @@ export default function EditEncounterPage() {
           vitalsSource={encounter?.vitals_source || undefined}
         />
 
-        {/* Clinical Template Section (moved from tabs - above SOAP notes) */}
-        <Card>
-          <CardHeader className="pb-3">
-            <div className="flex items-center justify-between">
-              <div>
-                <CardTitle className="text-lg flex items-center gap-2">
-                  <FileText className="h-5 w-5" />
-                  Clinical Template
-                  {selectedTemplate && (
-                    <Badge variant="secondary" className="ml-2">{selectedTemplate.name}</Badge>
-                  )}
-                </CardTitle>
-                <CardDescription>
-                  Use a structured template to guide clinical assessment
-                </CardDescription>
-              </div>
-              {isEditable && (
-                <TemplateSelector
-                  onSelect={handleTemplateSelect}
-                  encounterType={formData.encounter_type}
-                  chiefComplaint={formData.chief_complaint}
-                />
-              )}
-            </div>
-          </CardHeader>
-          {selectedTemplate && (
-            <CardContent>
-              <ClinicalTemplateForm
-                template={selectedTemplate}
-                value={formData.clinical_template_data || {}}
-                onChange={handleTemplateDataChange}
-                disabled={!isEditable}
-              />
-            </CardContent>
-          )}
-        </Card>
-
         {/* Chief Complaint Edit Dialog */}
         <ChiefComplaintEditDialog
           open={isChiefComplaintDialogOpen}
@@ -770,9 +828,18 @@ export default function EditEncounterPage() {
                 <span className="ml-1 text-muted-foreground">+</span>
               )}
             </TabsTrigger>
+            {/* Clinical Template - Focused Assessment */}
+            <TabsTrigger value="template" className="gap-1">
+              3. Template
+              {selectedTemplate ? (
+                <Badge variant="secondary" className="ml-1 text-xs">{selectedTemplate.name.slice(0, 10)}{selectedTemplate.name.length > 10 ? '…' : ''}</Badge>
+              ) : (
+                <span className="ml-1 text-muted-foreground">+</span>
+              )}
+            </TabsTrigger>
             {/* A - Assessment */}
             <TabsTrigger value="diagnosis" className="gap-1">
-              3. Dx
+              4. Dx
               {diagnoses.length === 0 ? (
                 <span className="ml-1 text-muted-foreground">+</span>
               ) : (
@@ -781,10 +848,10 @@ export default function EditEncounterPage() {
             </TabsTrigger>
             {/* P - Plan */}
             <TabsTrigger value="lab" className="gap-1">
-              4. Labs
+              5. Labs
             </TabsTrigger>
             <TabsTrigger value="pharmacy" className="gap-1">
-              5. Rx
+              6. Rx
             </TabsTrigger>
             {/* Summary */}
             <TabsTrigger value="soap" className="gap-1">
@@ -806,9 +873,103 @@ export default function EditEncounterPage() {
               data={formData}
               onChange={(field, value) => handleFieldChange(field, value)}
               onPrevious={() => setActiveTab('history')}
-              onNext={() => setActiveTab('diagnosis')}
+              onNext={() => setActiveTab('template')}
               disabled={!isEditable}
             />
+          </TabsContent>
+          
+          <TabsContent value="template" className="mt-4">
+            <Card>
+              <CardHeader className="pb-3">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <CardTitle className="text-lg flex items-center gap-2">
+                      <FileText className="h-5 w-5" />
+                      Clinical Template
+                      {selectedTemplate && (
+                        <Badge variant="secondary" className="ml-2">{selectedTemplate.name}</Badge>
+                      )}
+                    </CardTitle>
+                    <CardDescription>
+                      Use a structured template to guide focused clinical assessment
+                    </CardDescription>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    {selectedTemplate && formData.clinical_template_data && isEditable && (
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        onClick={async () => {
+                          try {
+                            const { encountersApi } = await import('@/lib/api/encounters');
+                            await encountersApi.createTemplateSnapshot(
+                              encounterId,
+                              selectedTemplate.id,
+                              formData.clinical_template_data || {}
+                            );
+                            toast({
+                              title: 'Template Saved',
+                              description: 'Template assessment saved as attachment.',
+                            });
+                          } catch (err) {
+                            console.error('Failed to save template snapshot:', err);
+                            toast({
+                              title: 'Error',
+                              description: 'Failed to save template as attachment.',
+                              variant: 'destructive',
+                            });
+                          }
+                        }}
+                      >
+                        <FileText className="h-4 w-4 mr-1" />
+                        Save as Attachment
+                      </Button>
+                    )}
+                    {isEditable && (
+                      <TemplateSelector
+                        onSelect={handleTemplateSelect}
+                        encounterType={formData.encounter_type}
+                        chiefComplaint={formData.chief_complaint}
+                      />
+                    )}
+                  </div>
+                </div>
+              </CardHeader>
+              <CardContent>
+                {selectedTemplate ? (
+                  <ClinicalTemplateForm
+                    template={selectedTemplate}
+                    value={formData.clinical_template_data || {}}
+                    onChange={handleTemplateDataChange}
+                    disabled={!isEditable}
+                  />
+                ) : (
+                  <div className="text-center py-8 text-muted-foreground">
+                    <FileText className="h-12 w-12 mx-auto mb-4 opacity-50" />
+                    <p className="font-medium">No template selected</p>
+                    <p className="text-sm mt-1">
+                      Select a template above to guide your clinical assessment
+                    </p>
+                  </div>
+                )}
+              </CardContent>
+              <CardFooter className="flex justify-between border-t pt-4">
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => setActiveTab('notes')}
+                >
+                  ← Previous: HPI
+                </Button>
+                <Button
+                  type="button"
+                  onClick={() => setActiveTab('diagnosis')}
+                >
+                  Next: Diagnosis →
+                </Button>
+              </CardFooter>
+            </Card>
           </TabsContent>
           
           <TabsContent value="diagnosis" className="mt-4">
@@ -816,7 +977,7 @@ export default function EditEncounterPage() {
               diagnoses={diagnoses}
               onAdd={handleAddDiagnosis}
               onRemove={handleRemoveDiagnosis}
-              onPrevious={() => setActiveTab('notes')}
+              onPrevious={() => setActiveTab('template')}
               onNext={() => setActiveTab('lab')}
               disabled={!isEditable}
             />
