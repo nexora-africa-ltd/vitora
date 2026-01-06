@@ -120,3 +120,38 @@ export function usePreTriageQueue(params?: PreTriageQueueParams) {
     refetchInterval: 15000, // Auto-refresh every 15 seconds
   });
 }
+
+/**
+ * Hook for adding a diagnosis to an encounter.
+ */
+export function useAddDiagnosis(encounterId: number) {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (data: {
+      icd10_code?: number | null;
+      diagnosis_type: 'PRIMARY' | 'SECONDARY' | 'DIFFERENTIAL' | 'WORKING';
+      free_text_diagnosis?: string;
+      notes?: string;
+      is_confirmed?: boolean;
+      certainty?: 'confirmed' | 'provisional' | 'ruled_out' | 'suspected';
+    }) => encountersApi.createDiagnosis(encounterId, data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['encounters', encounterId, 'diagnoses'] });
+    },
+  });
+}
+
+/**
+ * Hook for deleting a diagnosis from an encounter.
+ */
+export function useDeleteDiagnosis(encounterId: number) {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (diagnosisId: number) => encountersApi.deleteDiagnosis(encounterId, diagnosisId),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['encounters', encounterId, 'diagnoses'] });
+    },
+  });
+}

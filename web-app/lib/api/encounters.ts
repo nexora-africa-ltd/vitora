@@ -66,6 +66,24 @@ export const encountersApi = {
   },
 
   /**
+   * Create a diagnosis for an encounter.
+   */
+  async createDiagnosis(encounterId: number, data: CreateDiagnosisData): Promise<Diagnosis> {
+    const response = await apiClient.post<Diagnosis>(
+      `/api/encounters/${encounterId}/diagnoses/`,
+      data
+    );
+    return response.data;
+  },
+
+  /**
+   * Delete a diagnosis.
+   */
+  async deleteDiagnosis(encounterId: number, diagnosisId: number): Promise<void> {
+    await apiClient.delete(`/api/encounters/${encounterId}/diagnoses/${diagnosisId}/`);
+  },
+
+  /**
    * Get treatment plan for an encounter.
    */
   async getTreatmentPlan(encounterId: number): Promise<TreatmentPlan | null> {
@@ -215,6 +233,19 @@ export interface TemplateSnapshot {
   data: Record<string, unknown>;
   created_by: string | null;
   created_at: string;
+}
+
+// =============================================================================
+// Diagnosis Types
+// =============================================================================
+
+export interface CreateDiagnosisData {
+  icd10_code?: number | null;
+  diagnosis_type: 'PRIMARY' | 'SECONDARY' | 'DIFFERENTIAL' | 'WORKING';
+  free_text_diagnosis?: string;
+  notes?: string;
+  is_confirmed?: boolean;
+  certainty?: 'confirmed' | 'provisional' | 'ruled_out' | 'suspected';
 }
 
 // =============================================================================

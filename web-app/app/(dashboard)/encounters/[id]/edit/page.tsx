@@ -49,7 +49,7 @@ import { AutoSaveStatusIndicator } from '@/components/ui/auto-save-status';
 import { useToast } from '@/lib/hooks/use-toast';
 import { useAutoSave } from '@/lib/hooks/use-auto-save';
 import { useNetworkStatus } from '@/lib/hooks/use-network-status';
-import { useEncounter, useUpdateEncounter, useEncounterDiagnoses, useEditChiefComplaint } from '@/lib/hooks/use-encounters';
+import { useEncounter, useUpdateEncounter, useEncounterDiagnoses, useEditChiefComplaint, useAddDiagnosis, useDeleteDiagnosis } from '@/lib/hooks/use-encounters';
 import { useEncounterLabOrders } from '@/lib/hooks/use-laboratory';
 import { useEncounterPrescriptions } from '@/lib/hooks/use-pharmacy';
 import { useAuth } from '@/lib/auth/context';
@@ -116,6 +116,8 @@ export default function EditEncounterPage() {
   const { data: prescriptions } = useEncounterPrescriptions(encounterId);
   const updateEncounter = useUpdateEncounter();
   const editChiefComplaint = useEditChiefComplaint();
+  const addDiagnosis = useAddDiagnosis(encounterId);
+  const deleteDiagnosis = useDeleteDiagnosis(encounterId);
   
   // Get current provider name for SOAP note
   const providerName = user 
@@ -310,14 +312,53 @@ export default function EditEncounterPage() {
     }
   }, [errors]);
   
-  // Diagnoses handlers
-  const handleAddDiagnosis = useCallback((diagnosis: DiagnosisFormData) => {
-    setDiagnoses(prev => [...prev, diagnosis]);
-  }, []);
+  // Diagnoses handlers - save to backend immediately
+  const handleAddDiagnosis = useCallback(async (diagnosis: DiagnosisFormData) => {
+    try {
+      await addDiagnosis.mutateAsync({
+        icd10_code: diagnosis.icd10_code,
+        diagnosis_type: diagnosis.diagnosis_type,
+        free_text_diagnosis: diagnosis.free_text_diagnosis || '',
+        notes: diagnosis.notes || '',
+        is_confirmed: diagnosis.is_confirmed || false,
+        certainty: (diagnosis.certainty?.toLowerCase() || 'suspected') as 'confirmed' | 'provisional' | 'ruled_out' | 'suspected',
+      });
+      toast({
+        title: 'Diagnosis Added',
+        description: 'Diagnosis has been saved successfully.',
+      });
+    } catch (err) {
+      toast({
+        title: 'Error',
+        description: 'Failed to save diagnosis. Please try again.',
+        variant: 'destructive',
+      });
+    }
+  }, [addDiagnosis, toast]);
   
-  const handleRemoveDiagnosis = useCallback((index: number) => {
-    setDiagnoses(prev => prev.filter((_, i) => i !== index));
-  }, []);
+  const handleRemoveDiagnosis = useCallback(async (index: number) => {
+    // Get the diagnosis to remove
+    const diagnosisArray = Array.isArray(existingDiagnoses) 
+      ? existingDiagnoses 
+      : (existingDiagnoses as { results?: typeof existingDiagnoses })?.results || [];
+    const diagnosisToRemove = diagnosisArray[index];
+    
+    if (diagnosisToRemove?.id) {
+      try {
+        await deleteDiagnosis.mutateAsync(diagnosisToRemove.id);
+        toast({
+          title: 'Diagnosis Removed',
+          description: 'Diagnosis has been removed successfully.',
+        });
+      } catch (err) {
+        toast({
+          title: 'Error',
+          description: 'Failed to remove diagnosis. Please try again.',
+          variant: 'destructive',
+        });
+      }
+    }
+  }, [existingDiagnoses, deleteDiagnosis, toast]);
   
   // Clinical template handler - auto-populates from existing encounter data
   const handleTemplateSelect = useCallback(async (template: ClinicalTemplate) => {
