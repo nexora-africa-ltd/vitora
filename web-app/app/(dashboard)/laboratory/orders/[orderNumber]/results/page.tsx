@@ -1,5 +1,6 @@
 'use client';
 
+import { use } from 'react';
 import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { ArrowLeft } from 'lucide-react';
@@ -8,14 +9,15 @@ import { useLabOrder } from '@/lib/hooks/use-laboratory';
 import { Skeleton } from '@/components/ui/skeleton';
 
 interface ResultsEntryPageProps {
-  params: {
+  params: Promise<{
     orderNumber: string;
-  };
+  }>;
 }
 
 export default function ResultsEntryPage({ params }: ResultsEntryPageProps) {
+  const { orderNumber } = use(params);
   const router = useRouter();
-  const { data: order, isLoading, error } = useLabOrder(params.orderNumber);
+  const { data: order, isLoading, error } = useLabOrder(orderNumber);
 
   if (isLoading) {
     return (
@@ -52,16 +54,16 @@ export default function ResultsEntryPage({ params }: ResultsEntryPageProps) {
         <div>
           <h1 className="text-2xl font-bold">Enter Results</h1>
           <p className="text-muted-foreground">
-            Order {params.orderNumber} • {order.patient_name}
+            Order {orderNumber} • {order.patient_name}
           </p>
         </div>
       </div>
 
       {/* Results Entry Component */}
       <LabResultsEntry
-        orderNumber={params.orderNumber}
+        orderNumber={orderNumber}
         items={order.items}
-        onComplete={() => router.push(`/laboratory/orders/${params.orderNumber}`)}
+        onComplete={() => router.push(`/laboratory/orders/${orderNumber}`)}
       />
     </div>
   );

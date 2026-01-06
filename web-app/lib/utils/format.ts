@@ -11,9 +11,15 @@ import { format, formatDistanceToNow, parseISO, differenceInYears } from 'date-f
  * formatDate('2025-12-25') // 'Dec 25, 2025'
  * formatDate('2025-12-25', 'yyyy-MM-dd') // '2025-12-25'
  */
-export function formatDate(date: string | Date, pattern = 'MMM d, yyyy'): string {
-  const dateObj = typeof date === 'string' ? parseISO(date) : date;
-  return format(dateObj, pattern);
+export function formatDate(date: string | Date | null | undefined, pattern = 'MMM d, yyyy'): string {
+  if (!date) return '-';
+  try {
+    const dateObj = typeof date === 'string' ? parseISO(date) : date;
+    if (isNaN(dateObj.getTime())) return '-';
+    return format(dateObj, pattern);
+  } catch {
+    return '-';
+  }
 }
 
 /**
@@ -26,9 +32,15 @@ export function formatDate(date: string | Date, pattern = 'MMM d, yyyy'): string
  * @example
  * formatDateTime('2025-12-25T14:30:00') // 'Dec 25, 2025 2:30 PM'
  */
-export function formatDateTime(date: string | Date, pattern = 'MMM d, yyyy h:mm a'): string {
-  const dateObj = typeof date === 'string' ? parseISO(date) : date;
-  return format(dateObj, pattern);
+export function formatDateTime(date: string | Date | null | undefined, pattern = 'MMM d, yyyy h:mm a'): string {
+  if (!date) return '-';
+  try {
+    const dateObj = typeof date === 'string' ? parseISO(date) : date;
+    if (isNaN(dateObj.getTime())) return '-';
+    return format(dateObj, pattern);
+  } catch {
+    return '-';
+  }
 }
 
 /**
@@ -40,9 +52,15 @@ export function formatDateTime(date: string | Date, pattern = 'MMM d, yyyy h:mm 
  * @example
  * formatRelativeTime('2025-12-31T10:00:00') // 'about 2 hours ago'
  */
-export function formatRelativeTime(date: string | Date): string {
-  const dateObj = typeof date === 'string' ? parseISO(date) : date;
-  return formatDistanceToNow(dateObj, { addSuffix: true });
+export function formatRelativeTime(date: string | Date | null | undefined): string {
+  if (!date) return '-';
+  try {
+    const dateObj = typeof date === 'string' ? parseISO(date) : date;
+    if (isNaN(dateObj.getTime())) return '-';
+    return formatDistanceToNow(dateObj, { addSuffix: true });
+  } catch {
+    return '-';
+  }
 }
 
 /**

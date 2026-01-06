@@ -202,7 +202,7 @@ export interface LabOrderCreateData {
 }
 
 export interface LabOrderItemCreateData {
-  test: number;
+  test_code: string;
   special_instructions?: string;
 }
 
