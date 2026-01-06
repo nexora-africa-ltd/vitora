@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
+import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -29,7 +30,9 @@ import {
   User,
   Beaker,
   Download,
-  Printer,
+  Play,
+  Send,
+  FlaskConical,
 } from 'lucide-react';
 import { LabOrder, LabOrderStatus, LabPriority } from '@/lib/types/laboratory';
 import {
@@ -105,8 +108,13 @@ export function LabOrderDetail({ orderNumber }: LabOrderDetailProps) {
 
   const canSubmit = order.status === 'DRAFT' && order.items.length > 0;
   const canCollectSpecimen = order.status === 'ORDERED';
+  const canEnterResults = order.status === 'SPECIMEN_COLLECTED' || order.status === 'IN_PROGRESS';
   const canCancel = ['DRAFT', 'ORDERED'].includes(order.status);
   const hasCriticalResults = order.items.some(item => item.result?.is_critical_result);
+  
+  // Check if all tests have results entered
+  const allResultsEntered = order.items.length > 0 && order.items.every(item => item.has_result);
+  const pendingResults = order.items.filter(item => !item.has_result).length;
 
   const handleSubmit = async () => {
     try {
@@ -254,6 +262,15 @@ export function LabOrderDetail({ orderNumber }: LabOrderDetailProps) {
                 </AlertDialogFooter>
               </AlertDialogContent>
             </AlertDialog>
+          )}
+
+          {canEnterResults && (
+            <Link href={`/laboratory/orders/${orderNumber}/results`}>
+              <Button>
+                <FlaskConical className="h-4 w-4 mr-2" />
+                {pendingResults > 0 ? `Enter Results (${pendingResults} pending)` : 'View/Edit Results'}
+              </Button>
+            </Link>
           )}
 
           {canCancel && (

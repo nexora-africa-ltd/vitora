@@ -190,6 +190,7 @@ class LabResultCreateSerializer(serializers.ModelSerializer):
             "numeric_value",
             "text_value",
             "option_value",
+            "result_unit",
             "reference_low",
             "reference_high",
             "reference_range_text",

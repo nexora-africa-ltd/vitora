@@ -518,6 +518,48 @@ class LabResult(models.Model):
         ("VERIFIED", "Verified"),
         ("REJECTED", "Rejected"),
     ]
+    
+    # Common lab result units
+    RESULT_UNITS = [
+        # Concentrations
+        ("g/dL", "g/dL"),
+        ("g/L", "g/L"),
+        ("mg/dL", "mg/dL"),
+        ("mg/L", "mg/L"),
+        ("µg/dL", "µg/dL"),
+        ("µg/L", "µg/L"),
+        ("ng/dL", "ng/dL"),
+        ("ng/mL", "ng/mL"),
+        ("pg/mL", "pg/mL"),
+        # Molar concentrations
+        ("mmol/L", "mmol/L"),
+        ("µmol/L", "µmol/L"),
+        ("nmol/L", "nmol/L"),
+        ("mEq/L", "mEq/L"),
+        # Enzyme activity
+        ("U/L", "U/L"),
+        ("IU/L", "IU/L"),
+        ("mU/L", "mU/L"),
+        # Cell counts
+        ("cells/µL", "cells/µL"),
+        ("x10^9/L", "x10⁹/L"),
+        ("x10^12/L", "x10¹²/L"),
+        ("x10^6/µL", "x10⁶/µL"),
+        ("/µL", "/µL"),
+        # Percentages
+        ("%", "%"),
+        # Time
+        ("sec", "seconds"),
+        ("min", "minutes"),
+        # Other
+        ("mm/hr", "mm/hr"),
+        ("mOsm/kg", "mOsm/kg"),
+        ("ratio", "ratio"),
+        ("index", "index"),
+        ("titer", "titer"),
+        ("copies/mL", "copies/mL"),
+        ("CFU/mL", "CFU/mL"),
+    ]
 
     # Relationships
     order_item = models.OneToOneField(LabOrderItem, on_delete=models.CASCADE, related_name="result")
@@ -526,6 +568,7 @@ class LabResult(models.Model):
     numeric_value = models.DecimalField(max_digits=15, decimal_places=4, null=True, blank=True)
     text_value = models.TextField(blank=True)
     option_value = models.CharField(max_length=100, blank=True, help_text="For predefined options")
+    result_unit = models.CharField(max_length=20, choices=RESULT_UNITS, blank=True, help_text="Unit of measurement")
 
     # Reference range tracking (NEW - Phase 1.3)
     reference_low = models.DecimalField(max_digits=12, decimal_places=4, null=True, blank=True, help_text="Lower bound of reference range")
