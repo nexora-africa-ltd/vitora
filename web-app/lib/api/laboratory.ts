@@ -223,8 +223,11 @@ export const laboratoryApi = {
   /**
    * Verify a result.
    */
-  async verifyResult(resultId: number): Promise<LabResult> {
-    const response = await apiClient.post<LabResult>(`/api/lab/results/${resultId}/verify/`);
+  async verifyResult(resultId: number, approved: boolean = true, comments?: string): Promise<LabResult> {
+    const response = await apiClient.post<LabResult>(`/api/lab/results/${resultId}/verify/`, {
+      approved,
+      comments: comments || '',
+    });
     return response.data;
   },
 

@@ -119,6 +119,7 @@ export interface LabResult {
   numeric_value?: number;
   text_value?: string;
   option_value?: string;
+  result_unit?: string;
   reference_low?: number;
   reference_high?: number;
   reference_range_text?: string;
