@@ -44,6 +44,8 @@ class LabOrderItemSerializer(serializers.ModelSerializer):
     test = serializers.PrimaryKeyRelatedField(
         queryset=TestCatalog.objects.all(), write_only=True, required=False
     )
+    has_result = serializers.SerializerMethodField()
+    result = serializers.SerializerMethodField()
 
     class Meta:
         model = LabOrderItem
@@ -55,7 +57,30 @@ class LabOrderItemSerializer(serializers.ModelSerializer):
             "status",
             "unit_cost",
             "special_instructions",
+            "has_result",
+            "result",
         ]
+
+    def get_has_result(self, obj):
+        return hasattr(obj, "result")
+
+    def get_result(self, obj):
+        if not hasattr(obj, "result"):
+            return None
+        result = obj.result
+        return {
+            "id": result.id,
+            "numeric_value": str(result.numeric_value) if result.numeric_value is not None else None,
+            "text_value": result.text_value,
+            "option_value": result.option_value,
+            "result_unit": result.result_unit,
+            "result_flag": result.result_flag,
+            "interpretation": result.interpretation,
+            "verification_status": result.verification_status,
+            "is_critical_result": result.is_critical_result,
+            "reference_range_text": result.reference_range_text,
+            "entered_at": result.entered_at.isoformat() if result.entered_at else None,
+        }
 
 
 class LabOrderSerializer(serializers.ModelSerializer):
