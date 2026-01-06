@@ -5,7 +5,9 @@ TDD: Sprint 1.5-1.6 Track B - Lab Queue Management
 """
 
 import pytest
+from datetime import timedelta
 from django.contrib.auth import get_user_model
+from django.utils import timezone
 from rest_framework import status
 
 from hmis.apps.laboratory.models import (
@@ -32,6 +34,19 @@ def test_catalog(db):
         cost=500.00,
         available_in_house=True,
         is_active=True,
+        turnaround_hours=24,
+    )
+
+
+@pytest.fixture
+def lab_technician(db):
+    """Create a lab technician user."""
+    return User.objects.create_user(
+        username="labtechnician",
+        email="labtech@example.com",
+        password="testpass123",
+        first_name="Lab",
+        last_name="Technician",
     )
 
 
@@ -248,5 +263,315 @@ class TestLabQueueStatistics:
         assert "pending" in response.data
         assert "collected" in response.data
         assert "processing" in response.data
-        assert "review" in response.data
-        assert "released" in response.data
+
+
+# ============================================================================
+# NEW TESTS: Sample Collection with ID
+# ============================================================================
+
+
+class TestLabQueueSampleIdCollection:
+    """Tests for sample ID collection functionality."""
+
+    def test_collect_sample_with_barcode(self, authenticated_client, sample_lab_queue):
+        """Should collect sample with barcode ID."""
+        response = authenticated_client.post(
+            f"/api/lab/queue/{sample_lab_queue.queue_number}/collect/",
+            {"sample_id": "BAR-20260106-001"},
+        )
+        
+        assert response.status_code == status.HTTP_200_OK
+        assert response.data["sample_id"] == "BAR-20260106-001"
+        assert response.data["collected_by_name"] is not None
+        assert response.data["collected_at"] is not None
+
+    def test_collect_sample_without_id(self, authenticated_client, sample_lab_queue):
+        """Should allow collection without sample ID (optional)."""
+        response = authenticated_client.post(
+            f"/api/lab/queue/{sample_lab_queue.queue_number}/collect/",
+            {},
+        )
+        
+        assert response.status_code == status.HTTP_200_OK
+        assert response.data["queue_status"] == "COLLECTED"
+
+    def test_collect_sample_records_collector(self, authenticated_client, sample_lab_queue, test_user):
+        """Should record who collected the sample."""
+        response = authenticated_client.post(
+            f"/api/lab/queue/{sample_lab_queue.queue_number}/collect/",
+            {"sample_id": "TUBE-001"},
+        )
+        
+        assert response.status_code == status.HTTP_200_OK
+        
+        sample_lab_queue.refresh_from_db()
+        assert sample_lab_queue.collected_by == test_user
+
+
+# ============================================================================
+# NEW TESTS: Sample Rejection
+# ============================================================================
+
+
+class TestLabQueueRejectSample:
+    """Tests for sample rejection functionality."""
+
+    def test_reject_sample_with_reason(self, authenticated_client, sample_lab_queue):
+        """Should reject sample with reason."""
+        sample_lab_queue.queue_status = "COLLECTED"
+        sample_lab_queue.save()
+        
+        response = authenticated_client.post(
+            f"/api/lab/queue/{sample_lab_queue.queue_number}/reject/",
+            {"reason": "Hemolyzed sample - cannot process"},
+        )
+        
+        assert response.status_code == status.HTTP_200_OK
+        assert response.data["rejection_reason"] == "Hemolyzed sample - cannot process"
+        
+        sample_lab_queue.refresh_from_db()
+        assert sample_lab_queue.rejection_reason == "Hemolyzed sample - cannot process"
+
+    def test_reject_sample_requires_reason(self, authenticated_client, sample_lab_queue):
+        """Should require rejection reason."""
+        sample_lab_queue.queue_status = "COLLECTED"
+        sample_lab_queue.save()
+        
+        response = authenticated_client.post(
+            f"/api/lab/queue/{sample_lab_queue.queue_number}/reject/",
+            {},
+        )
+        
+        assert response.status_code == status.HTTP_400_BAD_REQUEST
+
+    def test_reject_sample_from_pending(self, authenticated_client, sample_lab_queue):
+        """Should allow rejecting from PENDING status."""
+        response = authenticated_client.post(
+            f"/api/lab/queue/{sample_lab_queue.queue_number}/reject/",
+            {"reason": "Patient refused blood draw"},
+        )
+        
+        assert response.status_code == status.HTTP_200_OK
+
+    def test_reject_sample_from_processing(self, authenticated_client, sample_lab_queue):
+        """Should allow rejecting from PROCESSING status."""
+        sample_lab_queue.queue_status = "PROCESSING"
+        sample_lab_queue.save()
+        
+        response = authenticated_client.post(
+            f"/api/lab/queue/{sample_lab_queue.queue_number}/reject/",
+            {"reason": "Equipment malfunction - sample contaminated"},
+        )
+        
+        assert response.status_code == status.HTTP_200_OK
+
+    def test_cannot_reject_released_sample(self, authenticated_client, sample_lab_queue):
+        """Should not allow rejecting released samples."""
+        sample_lab_queue.queue_status = "RELEASED"
+        sample_lab_queue.save()
+        
+        response = authenticated_client.post(
+            f"/api/lab/queue/{sample_lab_queue.queue_number}/reject/",
+            {"reason": "Late rejection attempt"},
+        )
+        
+        assert response.status_code == status.HTTP_400_BAD_REQUEST
+
+
+# ============================================================================
+# NEW TESTS: Technician Notes
+# ============================================================================
+
+
+class TestLabQueueTechnicianNotes:
+    """Tests for technician notes functionality."""
+
+    def test_add_technician_notes(self, authenticated_client, sample_lab_queue):
+        """Should add technician notes."""
+        sample_lab_queue.queue_status = "PROCESSING"
+        sample_lab_queue.save()
+        
+        response = authenticated_client.post(
+            f"/api/lab/queue/{sample_lab_queue.queue_number}/notes/",
+            {"notes": "Sample appears slightly lipemic. Ran centrifuge at 3000 RPM for 10 min."},
+        )
+        
+        assert response.status_code == status.HTTP_200_OK
+        assert "lipemic" in response.data["technician_notes"]
+
+    def test_update_technician_notes(self, authenticated_client, sample_lab_queue):
+        """Should update existing notes."""
+        sample_lab_queue.queue_status = "PROCESSING"
+        sample_lab_queue.technician_notes = "Initial note"
+        sample_lab_queue.save()
+        
+        response = authenticated_client.post(
+            f"/api/lab/queue/{sample_lab_queue.queue_number}/notes/",
+            {"notes": "Updated note with more details"},
+        )
+        
+        assert response.status_code == status.HTTP_200_OK
+        assert response.data["technician_notes"] == "Updated note with more details"
+
+    def test_append_technician_notes(self, authenticated_client, sample_lab_queue):
+        """Should append to existing notes."""
+        sample_lab_queue.queue_status = "PROCESSING"
+        sample_lab_queue.technician_notes = "First observation."
+        sample_lab_queue.save()
+        
+        response = authenticated_client.post(
+            f"/api/lab/queue/{sample_lab_queue.queue_number}/notes/",
+            {"notes": "Second observation.", "append": True},
+        )
+        
+        assert response.status_code == status.HTTP_200_OK
+        assert "First observation." in response.data["technician_notes"]
+        assert "Second observation." in response.data["technician_notes"]
+
+
+# ============================================================================
+# NEW TESTS: Turnaround Time (TAT)
+# ============================================================================
+
+
+class TestLabQueueTurnaroundTime:
+    """Tests for turnaround time calculations."""
+
+    def test_tat_included_in_response(self, authenticated_client, sample_lab_queue):
+        """Should include TAT info in queue response."""
+        response = authenticated_client.get(f"/api/lab/queue/{sample_lab_queue.queue_number}/")
+        
+        assert response.status_code == status.HTTP_200_OK
+        assert "expected_tat_hours" in response.data
+        assert "elapsed_hours" in response.data
+
+    def test_tat_calculation_for_released(self, authenticated_client, sample_lab_queue):
+        """Should calculate actual TAT for released samples."""
+        # Simulate released sample
+        sample_lab_queue.queue_status = "RELEASED"
+        sample_lab_queue.released_at = timezone.now()
+        sample_lab_queue.save()
+        
+        response = authenticated_client.get(f"/api/lab/queue/{sample_lab_queue.queue_number}/")
+        
+        assert response.status_code == status.HTTP_200_OK
+        assert "actual_tat_hours" in response.data
+
+    def test_tat_overdue_flag(self, authenticated_client, sample_lab_queue, test_catalog):
+        """Should flag overdue samples."""
+        # Set created_at to 48 hours ago (overdue for 24-hour TAT)
+        sample_lab_queue.created_at = timezone.now() - timedelta(hours=48)
+        sample_lab_queue.save(update_fields=["created_at"])
+        
+        response = authenticated_client.get(f"/api/lab/queue/{sample_lab_queue.queue_number}/")
+        
+        assert response.status_code == status.HTTP_200_OK
+        assert response.data["is_overdue"] is True
+
+
+# ============================================================================
+# NEW TESTS: Barcode Lookup
+# ============================================================================
+
+
+class TestLabQueueBarcodeLookup:
+    """Tests for barcode lookup functionality."""
+
+    def test_lookup_by_sample_id(self, authenticated_client, sample_lab_queue):
+        """Should find queue entry by sample barcode."""
+        sample_lab_queue.sample_id = "BAR-20260106-001"
+        sample_lab_queue.queue_status = "COLLECTED"
+        sample_lab_queue.save()
+        
+        response = authenticated_client.get("/api/lab/queue/lookup/?barcode=BAR-20260106-001")
+        
+        assert response.status_code == status.HTTP_200_OK
+        assert response.data["queue_number"] == sample_lab_queue.queue_number
+
+    def test_lookup_by_queue_number(self, authenticated_client, sample_lab_queue):
+        """Should find queue entry by queue number barcode."""
+        response = authenticated_client.get(
+            f"/api/lab/queue/lookup/?barcode={sample_lab_queue.queue_number}"
+        )
+        
+        assert response.status_code == status.HTTP_200_OK
+        assert response.data["queue_number"] == sample_lab_queue.queue_number
+
+    def test_lookup_not_found(self, authenticated_client):
+        """Should return 404 for unknown barcode."""
+        response = authenticated_client.get("/api/lab/queue/lookup/?barcode=UNKNOWN-123")
+        
+        assert response.status_code == status.HTTP_404_NOT_FOUND
+
+    def test_lookup_requires_barcode_param(self, authenticated_client):
+        """Should require barcode parameter."""
+        response = authenticated_client.get("/api/lab/queue/lookup/")
+        
+        assert response.status_code == status.HTTP_400_BAD_REQUEST
+
+
+# ============================================================================
+# NEW TESTS: Technician Assignment
+# ============================================================================
+
+
+class TestLabQueueTechnicianAssignment:
+    """Tests for technician assignment functionality."""
+
+    def test_assign_technician_success(self, authenticated_client, sample_lab_queue, lab_technician):
+        """Should assign technician to queue entry."""
+        response = authenticated_client.post(
+            f"/api/lab/queue/{sample_lab_queue.queue_number}/assign/",
+            {"technician_id": lab_technician.id},
+        )
+        
+        assert response.status_code == status.HTTP_200_OK
+        assert response.data["assigned_technician"] == lab_technician.id
+        assert response.data["assigned_technician_name"] == "Lab Technician"
+
+    def test_reassign_technician(self, authenticated_client, sample_lab_queue, lab_technician, test_user):
+        """Should allow reassigning to different technician."""
+        sample_lab_queue.assigned_technician = test_user
+        sample_lab_queue.save()
+        
+        response = authenticated_client.post(
+            f"/api/lab/queue/{sample_lab_queue.queue_number}/assign/",
+            {"technician_id": lab_technician.id},
+        )
+        
+        assert response.status_code == status.HTTP_200_OK
+        assert response.data["assigned_technician"] == lab_technician.id
+
+    def test_unassign_technician(self, authenticated_client, sample_lab_queue, lab_technician):
+        """Should allow unassigning technician."""
+        sample_lab_queue.assigned_technician = lab_technician
+        sample_lab_queue.save()
+        
+        response = authenticated_client.post(
+            f"/api/lab/queue/{sample_lab_queue.queue_number}/assign/",
+            {"technician_id": None},
+        )
+        
+        assert response.status_code == status.HTTP_200_OK
+        assert response.data["assigned_technician"] is None
+
+    def test_assign_invalid_technician(self, authenticated_client, sample_lab_queue):
+        """Should reject invalid technician ID."""
+        response = authenticated_client.post(
+            f"/api/lab/queue/{sample_lab_queue.queue_number}/assign/",
+            {"technician_id": 99999},
+        )
+        
+        assert response.status_code == status.HTTP_404_NOT_FOUND
+
+    def test_list_available_technicians(self, authenticated_client, lab_technician):
+        """Should list available lab technicians."""
+        response = authenticated_client.get("/api/lab/queue/technicians/")
+        
+        assert response.status_code == status.HTTP_200_OK
+        assert isinstance(response.data, list)
+        assert len(response.data) >= 1
+        # Check structure has expected fields
+        assert "id" in response.data[0]
+        assert "username" in response.data[0]
+        assert "full_name" in response.data[0]

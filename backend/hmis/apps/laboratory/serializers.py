@@ -242,6 +242,12 @@ class LabQueueSerializer(serializers.ModelSerializer):
     collected_by_name = serializers.SerializerMethodField()
     reviewed_by_name = serializers.SerializerMethodField()
 
+    # TAT fields
+    expected_tat_hours = serializers.SerializerMethodField()
+    elapsed_hours = serializers.SerializerMethodField()
+    actual_tat_hours = serializers.SerializerMethodField()
+    is_overdue = serializers.SerializerMethodField()
+
     class Meta:
         model = LabQueue
         fields = [
@@ -270,6 +276,11 @@ class LabQueueSerializer(serializers.ModelSerializer):
             "rejection_reason",
             "created_at",
             "updated_at",
+            # TAT fields
+            "expected_tat_hours",
+            "elapsed_hours",
+            "actual_tat_hours",
+            "is_overdue",
         ]
         read_only_fields = [
             "queue_number",
@@ -302,6 +313,34 @@ class LabQueueSerializer(serializers.ModelSerializer):
             return obj.reviewed_by.get_full_name() or obj.reviewed_by.username
         return None
 
+    def get_expected_tat_hours(self, obj):
+        """Get expected TAT from first test in order."""
+        first_item = obj.lab_order.items.first()
+        if first_item and first_item.test:
+            return first_item.test.turnaround_hours
+        return 24  # Default 24 hours
+
+    def get_elapsed_hours(self, obj):
+        """Calculate hours since queue entry was created."""
+        from django.utils import timezone
+        delta = timezone.now() - obj.created_at
+        return round(delta.total_seconds() / 3600, 1)
+
+    def get_actual_tat_hours(self, obj):
+        """Calculate actual TAT for released samples."""
+        if obj.released_at:
+            delta = obj.released_at - obj.created_at
+            return round(delta.total_seconds() / 3600, 1)
+        return None
+
+    def get_is_overdue(self, obj):
+        """Check if sample is overdue based on expected TAT."""
+        if obj.queue_status == "RELEASED":
+            return False
+        expected = self.get_expected_tat_hours(obj)
+        elapsed = self.get_elapsed_hours(obj)
+        return elapsed > expected
+
 
 class LabQueueCollectSerializer(serializers.Serializer):
     """Serializer for sample collection action."""
@@ -312,4 +351,28 @@ class LabQueueCollectSerializer(serializers.Serializer):
 class LabQueueAssignSerializer(serializers.Serializer):
     """Serializer for technician assignment action."""
 
-    technician_id = serializers.IntegerField()
+    technician_id = serializers.IntegerField(required=False, allow_null=True)
+
+
+class LabQueueRejectSerializer(serializers.Serializer):
+    """Serializer for sample rejection action."""
+
+    reason = serializers.CharField(required=True, min_length=5)
+
+
+class LabQueueNotesSerializer(serializers.Serializer):
+    """Serializer for adding technician notes."""
+
+    notes = serializers.CharField(required=True)
+    append = serializers.BooleanField(required=False, default=False)
+
+
+class TechnicianSerializer(serializers.Serializer):
+    """Serializer for listing available technicians."""
+
+    id = serializers.IntegerField()
+    username = serializers.CharField()
+    full_name = serializers.SerializerMethodField()
+
+    def get_full_name(self, obj):
+        return obj.get_full_name() or obj.username
