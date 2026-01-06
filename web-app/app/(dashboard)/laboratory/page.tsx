@@ -17,7 +17,7 @@ export default function LaboratoryPage() {
   const [priorityFilter, setPriorityFilter] = useState<LabPriority | ''>('');
   const [searchQuery, setSearchQuery] = useState('');
 
-  const { data, isLoading, error } = useLabOrders({
+  const { data, isLoading, error, refetch } = useLabOrders({
     page,
     page_size: 20,
     status: statusFilter || undefined,
@@ -72,6 +72,7 @@ export default function LaboratoryPage() {
             onStatusFilter={setStatusFilter}
             onPriorityFilter={setPriorityFilter}
             onSearch={setSearchQuery}
+            onRefresh={() => refetch()}
           />
         </TabsContent>
 

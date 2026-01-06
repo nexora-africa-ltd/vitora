@@ -29,6 +29,7 @@ import {
   Clock,
   FileText,
   Eye,
+  RefreshCw,
 } from 'lucide-react';
 import { LabOrder, LabOrderStatus, LabPriority } from '@/lib/types/laboratory';
 import { formatDate, formatDateTime } from '@/lib/utils/format';
@@ -45,6 +46,7 @@ interface LabOrderTableProps {
   onStatusFilter?: (status: LabOrderStatus | '') => void;
   onPriorityFilter?: (priority: LabPriority | '') => void;
   onSearch?: (query: string) => void;
+  onRefresh?: () => void;
 }
 
 const STATUS_CONFIG: Record<LabOrderStatus, { label: string; variant: 'default' | 'secondary' | 'destructive' | 'outline' }> = {
@@ -73,13 +75,23 @@ export function LabOrderTable({
   onStatusFilter,
   onPriorityFilter,
   onSearch,
+  onRefresh,
 }: LabOrderTableProps) {
   const router = useRouter();
   const [searchQuery, setSearchQuery] = useState('');
+  const [isRefreshing, setIsRefreshing] = useState(false);
 
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
     onSearch?.(searchQuery);
+  };
+
+  const handleRefresh = async () => {
+    if (onRefresh) {
+      setIsRefreshing(true);
+      await onRefresh();
+      setIsRefreshing(false);
+    }
   };
 
   const hasCriticalResults = (order: LabOrder) => {
@@ -162,6 +174,17 @@ export function LabOrderTable({
                 ))}
               </SelectContent>
             </Select>
+          )}
+
+          {onRefresh && (
+            <Button 
+              variant="outline" 
+              size="icon"
+              onClick={handleRefresh}
+              disabled={isRefreshing}
+            >
+              <RefreshCw className={cn("h-4 w-4", isRefreshing && "animate-spin")} />
+            </Button>
           )}
         </div>
       </div>

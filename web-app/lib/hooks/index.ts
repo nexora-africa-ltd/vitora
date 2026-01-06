@@ -82,8 +82,10 @@ export {
   useUploadResultAttachment,
   usePendingVerification,
   useLabQueue,
+  useCollectSample,
   useAssignQueueEntry,
   useStartProcessing,
+  useSubmitForReview,
   useReleaseResults,
   useCriticalAlerts,
 } from './use-laboratory';

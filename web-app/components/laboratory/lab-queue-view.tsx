@@ -36,9 +36,17 @@ import {
   Beaker,
   AlertTriangle,
   RefreshCw,
+  Syringe,
+  Send,
 } from 'lucide-react';
 import { LabQueue, QueueStatus, LabPriority } from '@/lib/types/laboratory';
-import { useLabQueue, useStartProcessing, useReleaseResults } from '@/lib/hooks/use-laboratory';
+import { 
+  useLabQueue, 
+  useCollectSample,
+  useStartProcessing, 
+  useSubmitForReview,
+  useReleaseResults 
+} from '@/lib/hooks/use-laboratory';
 import { useToast } from '@/lib/hooks';
 import { formatDateTime, formatRelativeTime } from '@/lib/utils/format';
 import { cn } from '@/lib/utils/cn';
@@ -61,7 +69,7 @@ const STATUS_CONFIG: Record<QueueStatus, {
 };
 
 const PRIORITY_CONFIG: Record<LabPriority, { label: string; className: string }> = {
-  ROUTINE: { label: 'Routine', className: 'text-gray-600' },
+  ROUTINE: { label: 'Routine', className: 'text-blue-600' },
   URGENT: { label: 'Urgent', className: 'text-orange-600 font-medium' },
   STAT: { label: 'STAT', className: 'text-red-600 font-bold' },
 };
@@ -79,10 +87,35 @@ export function LabQueueView({ defaultStatus = '' }: LabQueueViewProps) {
   const router = useRouter();
   const { toast } = useToast();
   const [statusFilter, setStatusFilter] = useState<QueueStatus | ''>(defaultStatus);
+  const [isRefreshing, setIsRefreshing] = useState(false);
 
   const { data: queue, isLoading, error, refetch } = useLabQueue(statusFilter || undefined);
+  const collectSample = useCollectSample();
   const startProcessing = useStartProcessing();
+  const submitForReview = useSubmitForReview();
   const releaseResults = useReleaseResults();
+
+  const handleRefresh = async () => {
+    setIsRefreshing(true);
+    await refetch();
+    setIsRefreshing(false);
+  };
+
+  const handleCollectSample = async (queueNumber: string) => {
+    try {
+      await collectSample.mutateAsync({ queueNumber });
+      toast({
+        title: 'Sample collected',
+        description: 'Sample has been marked as collected.',
+      });
+    } catch (error) {
+      toast({
+        title: 'Error',
+        description: error instanceof Error ? error.message : 'Failed to collect sample',
+        variant: 'destructive',
+      });
+    }
+  };
 
   const handleStartProcessing = async (queueNumber: string) => {
     try {
@@ -95,6 +128,22 @@ export function LabQueueView({ defaultStatus = '' }: LabQueueViewProps) {
       toast({
         title: 'Error',
         description: error instanceof Error ? error.message : 'Failed to start processing',
+        variant: 'destructive',
+      });
+    }
+  };
+
+  const handleSubmitForReview = async (queueNumber: string) => {
+    try {
+      await submitForReview.mutateAsync(queueNumber);
+      toast({
+        title: 'Submitted for review',
+        description: 'Results have been submitted for review.',
+      });
+    } catch (error) {
+      toast({
+        title: 'Error',
+        description: error instanceof Error ? error.message : 'Failed to submit for review',
         variant: 'destructive',
       });
     }
@@ -198,8 +247,13 @@ export function LabQueueView({ defaultStatus = '' }: LabQueueViewProps) {
                   ))}
                 </SelectContent>
               </Select>
-              <Button variant="outline" size="icon" onClick={() => refetch()}>
-                <RefreshCw className="h-4 w-4" />
+              <Button 
+                variant="outline" 
+                size="icon" 
+                onClick={handleRefresh}
+                disabled={isRefreshing}
+              >
+                <RefreshCw className={cn("h-4 w-4", isRefreshing && "animate-spin")} />
               </Button>
             </div>
           </div>
@@ -295,6 +349,16 @@ export function LabQueueView({ defaultStatus = '' }: LabQueueViewProps) {
                             >
                               View Order
                             </DropdownMenuItem>
+                            {/* PENDING -> COLLECTED: Collect Sample */}
+                            {item.queue_status === 'PENDING' && (
+                              <DropdownMenuItem
+                                onClick={() => handleCollectSample(item.queue_number)}
+                              >
+                                <Syringe className="h-4 w-4 mr-2" />
+                                Collect Sample
+                              </DropdownMenuItem>
+                            )}
+                            {/* COLLECTED -> PROCESSING: Start Processing */}
                             {item.queue_status === 'COLLECTED' && (
                               <DropdownMenuItem
                                 onClick={() => handleStartProcessing(item.queue_number)}
@@ -303,15 +367,26 @@ export function LabQueueView({ defaultStatus = '' }: LabQueueViewProps) {
                                 Start Processing
                               </DropdownMenuItem>
                             )}
+                            {/* PROCESSING: Enter Results or Submit for Review */}
                             {item.queue_status === 'PROCESSING' && (
-                              <DropdownMenuItem
-                                onClick={() => router.push(
-                                  `/laboratory/orders/${item.order_number}/results`
-                                )}
-                              >
-                                Enter Results
-                              </DropdownMenuItem>
+                              <>
+                                <DropdownMenuItem
+                                  onClick={() => router.push(
+                                    `/laboratory/orders/${item.order_number}/results`
+                                  )}
+                                >
+                                  <Beaker className="h-4 w-4 mr-2" />
+                                  Enter Results
+                                </DropdownMenuItem>
+                                <DropdownMenuItem
+                                  onClick={() => handleSubmitForReview(item.queue_number)}
+                                >
+                                  <Send className="h-4 w-4 mr-2" />
+                                  Submit for Review
+                                </DropdownMenuItem>
+                              </>
                             )}
+                            {/* REVIEW -> RELEASED: Release Results */}
                             {item.queue_status === 'REVIEW' && (
                               <DropdownMenuItem
                                 onClick={() => handleReleaseResults(item.queue_number)}

@@ -273,6 +273,16 @@ export const laboratoryApi = {
   },
 
   /**
+   * Collect sample for queue entry.
+   */
+  async collectSample(queueNumber: string, sampleId?: string): Promise<LabQueue> {
+    const response = await apiClient.post<LabQueue>(`/api/lab/queue/${queueNumber}/collect/`, {
+      sample_id: sampleId || '',
+    });
+    return response.data;
+  },
+
+  /**
    * Assign queue entry to technician.
    */
   async assignQueueEntry(queueNumber: string, technicianId: number): Promise<LabQueue> {
@@ -291,7 +301,15 @@ export const laboratoryApi = {
   },
 
   /**
-   * Complete processing and release results.
+   * Submit results for review.
+   */
+  async submitForReview(queueNumber: string): Promise<LabQueue> {
+    const response = await apiClient.post<LabQueue>(`/api/lab/queue/${queueNumber}/submit-review/`);
+    return response.data;
+  },
+
+  /**
+   * Release results after review.
    */
   async releaseResults(queueNumber: string): Promise<LabQueue> {
     const response = await apiClient.post<LabQueue>(`/api/lab/queue/${queueNumber}/release/`);

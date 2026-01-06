@@ -343,6 +343,21 @@ export function useLabQueue(status?: string) {
 }
 
 /**
+ * Hook for collecting sample for queue entry.
+ */
+export function useCollectSample() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: ({ queueNumber, sampleId }: { queueNumber: string; sampleId?: string }) =>
+      laboratoryApi.collectSample(queueNumber, sampleId),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['lab-queue'] });
+    },
+  });
+}
+
+/**
  * Hook for assigning queue entry to technician.
  */
 export function useAssignQueueEntry() {
@@ -365,6 +380,20 @@ export function useStartProcessing() {
 
   return useMutation({
     mutationFn: (queueNumber: string) => laboratoryApi.startProcessing(queueNumber),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['lab-queue'] });
+    },
+  });
+}
+
+/**
+ * Hook for submitting results for review.
+ */
+export function useSubmitForReview() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (queueNumber: string) => laboratoryApi.submitForReview(queueNumber),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['lab-queue'] });
     },
