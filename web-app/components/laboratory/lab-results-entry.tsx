@@ -241,7 +241,7 @@ export function LabResultsEntry({ orderNumber, items, onComplete }: LabResultsEn
                             type="number"
                             step="0.01"
                             placeholder="Enter value"
-                            {...field}
+                            value={field.value ?? ''}
                             onChange={(e) => field.onChange(
                               e.target.value ? parseFloat(e.target.value) : undefined
                             )}
@@ -320,11 +320,11 @@ export function LabResultsEntry({ orderNumber, items, onComplete }: LabResultsEn
 
                 {/* Critical Alert */}
                 {resultFlag?.includes('CRITICAL') && (
-                  <div className="flex items-center gap-2 p-3 bg-red-50 border border-red-200 rounded-lg">
-                    <AlertTriangle className="h-5 w-5 text-red-500" />
+                  <div className="flex items-center gap-2 p-3 bg-destructive/10 border border-destructive/20 rounded-lg">
+                    <AlertTriangle className="h-5 w-5 text-destructive" />
                     <div>
-                      <p className="font-medium text-red-700">Critical Value Alert</p>
-                      <p className="text-sm text-red-600">
+                      <p className="font-medium text-destructive">Critical Value Alert</p>
+                      <p className="text-sm text-destructive/80">
                         This result will trigger an immediate notification to the ordering clinician.
                       </p>
                     </div>
