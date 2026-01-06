@@ -398,7 +398,7 @@ export function LabQueueView({ defaultStatus = '' }: LabQueueViewProps) {
           <Card
             className={cn(
               'cursor-pointer transition-colors hover:bg-muted/50',
-              overdueCount > 0 && 'border-orange-500 bg-orange-50'
+              overdueCount > 0 && 'border-warning bg-warning/10'
             )}
           >
             <CardContent className="pt-4">
@@ -408,7 +408,7 @@ export function LabQueueView({ defaultStatus = '' }: LabQueueViewProps) {
                   <p className="text-xs text-muted-foreground">Overdue</p>
                 </div>
                 <AlertTriangle
-                  className={cn('h-8 w-8', overdueCount > 0 ? 'text-orange-500' : 'opacity-50')}
+                  className={cn('h-8 w-8', overdueCount > 0 ? 'text-warning' : 'opacity-50')}
                 />
               </div>
             </CardContent>
