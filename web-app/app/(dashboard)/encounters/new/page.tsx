@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useCallback, useEffect } from 'react';
+import { useState, useCallback, useEffect, useMemo } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import {
@@ -14,6 +14,8 @@ import {
   FileText,
   Stethoscope,
   Activity,
+  RotateCcw,
+  X,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
@@ -46,6 +48,7 @@ import {
 } from '@/components/ui/dialog';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useToast } from '@/lib/hooks/use-toast';
+import { useDraftSave } from '@/lib/hooks/use-draft-save';
 import { usePatient } from '@/lib/hooks/use-patients';
 import { 
   useCreateEncounterWithValidation, 
@@ -114,6 +117,13 @@ const initialFormData: EncounterFormData = {
   status: 'DRAFT',
 };
 
+// Type for draft data (includes diagnoses)
+interface EncounterDraftData {
+  formData: EncounterFormData;
+  diagnoses: DiagnosisFormData[];
+  patientId: number | null;
+}
+
 export default function NewEncounterPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -127,10 +137,32 @@ export default function NewEncounterPage() {
   const [selectedPatient, setSelectedPatient] = useState<Patient | null>(null);
   const [diagnoses, setDiagnoses] = useState<DiagnosisFormData[]>([]);
   const [errors, setErrors] = useState<Record<string, string>>({});
-  const [isDirty, setIsDirty] = useState(false);
   const [activeTab, setActiveTab] = useState('history');
   const [showTriageModal, setShowTriageModal] = useState(false);
   const [createdEncounterId, setCreatedEncounterId] = useState<number | null>(null);
+  
+  // Draft data for auto-save
+  const draftData = useMemo<EncounterDraftData>(() => ({
+    formData,
+    diagnoses,
+    patientId: formData.patient,
+  }), [formData, diagnoses]);
+  
+  // Auto-save draft to localStorage
+  const draft = useDraftSave<EncounterDraftData>({
+    draftKey: 'new-encounter',
+    data: draftData,
+    debounceMs: 1500,
+    enabled: true,
+    onRecover: (recovered) => {
+      setFormData(recovered.formData);
+      setDiagnoses(recovered.diagnoses);
+      toast({
+        title: 'Draft Recovered',
+        description: 'Your previous work has been restored.',
+      });
+    },
+  });
   
   // Fetch patient if ID provided
   const { data: prefetchedPatient } = usePatient(patientIdParam || '');
@@ -152,7 +184,6 @@ export default function NewEncounterPage() {
     value: EncounterFormData[K]
   ) => {
     setFormData(prev => ({ ...prev, [field]: value }));
-    setIsDirty(true);
     // Clear error for this field
     if (errors[field]) {
       setErrors(prev => {
@@ -175,12 +206,10 @@ export default function NewEncounterPage() {
   // Diagnosis handlers
   const handleAddDiagnosis = useCallback((diagnosis: DiagnosisFormData) => {
     setDiagnoses(prev => [...prev, diagnosis]);
-    setIsDirty(true);
   }, []);
   
   const handleRemoveDiagnosis = useCallback((index: number) => {
     setDiagnoses(prev => prev.filter((_, i) => i !== index));
-    setIsDirty(true);
   }, []);
   
   // Validation
@@ -223,6 +252,9 @@ export default function NewEncounterPage() {
         description: 'Encounter has been saved as draft',
       });
       
+      // Clear local draft after saving to API
+      draft.clearDraft();
+      
       // Redirect to encounters list
       router.push('/encounters');
     } catch (error) {
@@ -260,6 +292,7 @@ export default function NewEncounterPage() {
           title: 'Encounter Created',
           description: `${formData.encounter_type} encounter created. Vitals can be recorded later.`,
         });
+        draft.clearDraft();
         router.push(`/encounters/${result.id}`);
         return;
       }
@@ -267,7 +300,8 @@ export default function NewEncounterPage() {
       // For OPD encounters, show triage modal
       setCreatedEncounterId(result.id);
       setShowTriageModal(true);
-      setIsDirty(false);
+      // Clear draft after successful creation
+      draft.clearDraft();
     } catch (error) {
       toast({
         title: 'Error',
@@ -296,7 +330,7 @@ export default function NewEncounterPage() {
   // Unsaved changes warning
   useEffect(() => {
     const handleBeforeUnload = (e: BeforeUnloadEvent) => {
-      if (isDirty) {
+      if (draft.isDirty) {
         e.preventDefault();
         e.returnValue = '';
       }
@@ -304,7 +338,7 @@ export default function NewEncounterPage() {
     
     window.addEventListener('beforeunload', handleBeforeUnload);
     return () => window.removeEventListener('beforeunload', handleBeforeUnload);
-  }, [isDirty]);
+  }, [draft.isDirty]);
   
   return (
     <div className="container mx-auto py-6 max-w-5xl">
@@ -358,13 +392,34 @@ export default function NewEncounterPage() {
           </div>
         </div>
         
-        {isDirty && (
+        {draft.isDirty && (
           <Badge variant="secondary" className="gap-1">
             <Clock className="h-3 w-3" />
-            Unsaved changes
+            {draft.lastSaved ? 'Draft saved' : 'Unsaved changes'}
           </Badge>
         )}
       </div>
+      
+      {/* Draft Recovery Banner */}
+      {draft.hasDraft && (
+        <Alert className="mb-4 border-blue-200 bg-blue-50 dark:border-blue-900 dark:bg-blue-950">
+          <RotateCcw className="h-4 w-4 text-blue-600" />
+          <AlertTitle className="text-blue-800 dark:text-blue-200">Unsaved Draft Found</AlertTitle>
+          <AlertDescription className="text-blue-700 dark:text-blue-300">
+            You have an unsaved draft from a previous session. Would you like to recover it?
+            <div className="flex gap-2 mt-3">
+              <Button size="sm" onClick={draft.recoverDraft}>
+                <RotateCcw className="h-3.5 w-3.5 mr-1" />
+                Recover Draft
+              </Button>
+              <Button size="sm" variant="outline" onClick={draft.dismissDraft}>
+                <X className="h-3.5 w-3.5 mr-1" />
+                Discard
+              </Button>
+            </div>
+          </AlertDescription>
+        </Alert>
+      )}
       
       {/* Vitals Info Banner */}
       <Alert className="mb-6">

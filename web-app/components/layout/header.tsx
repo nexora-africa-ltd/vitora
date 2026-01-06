@@ -1,6 +1,6 @@
 'use client';
 
-import { Menu, Bell, Search, Sun, Moon, User, Wifi, WifiOff } from 'lucide-react';
+import { Menu, Bell, Search, Sun, Moon, User, Wifi, WifiOff, RefreshCw } from 'lucide-react';
 import { useTheme } from 'next-themes';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -23,6 +23,7 @@ import {
 import { useAuth } from '@/lib/auth/context';
 import { useLogout } from '@/lib/auth/hooks';
 import { useNetworkStatus } from '@/lib/hooks/use-network-status';
+import { useSyncStatus, formatLastSync } from '@/lib/context/sync-context';
 import { Breadcrumb } from '@/components/layout/breadcrumb';
 import { cn } from '@/lib/utils/cn';
 
@@ -36,6 +37,7 @@ export function Header({ onMenuClick, sidebarCollapsed }: HeaderProps) {
   const { user } = useAuth();
   const logout = useLogout();
   const { isOnline } = useNetworkStatus();
+  const { lastSyncTime, isSyncing, pendingChanges, lastError } = useSyncStatus();
 
   const userInitials = user
     ? `${user.first_name?.[0] || ''}${user.last_name?.[0] || user.username[0]}`.toUpperCase()
@@ -70,26 +72,69 @@ export function Header({ onMenuClick, sidebarCollapsed }: HeaderProps) {
               <TooltipTrigger asChild>
                 <div
                   className={cn(
-                    'flex items-center gap-1.5 px-2 py-1 rounded-full text-xs font-medium transition-colors',
+                    'flex items-center gap-1.5 px-2 py-1 rounded-full text-xs font-medium transition-colors cursor-default',
                     isOnline
                       ? 'bg-green-100 text-green-700 dark:bg-green-900/40 dark:text-green-400'
                       : 'bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-400'
                   )}
                 >
-                  {isOnline ? (
+                  {isSyncing ? (
+                    <RefreshCw className="h-3.5 w-3.5 animate-spin" />
+                  ) : isOnline ? (
                     <Wifi className="h-3.5 w-3.5" />
                   ) : (
                     <WifiOff className="h-3.5 w-3.5" />
                   )}
                   <span className="hidden sm:inline">
-                    {isOnline ? 'Online' : 'Offline'}
+                    {isSyncing ? 'Syncing...' : isOnline ? 'Online' : 'Offline'}
                   </span>
+                  {pendingChanges > 0 && (
+                    <Badge 
+                      variant="secondary" 
+                      className="h-4 px-1 text-[10px] bg-yellow-200 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200"
+                    >
+                      {pendingChanges}
+                    </Badge>
+                  )}
                 </div>
               </TooltipTrigger>
-              <TooltipContent>
-                {isOnline
-                  ? 'Connected - Changes sync automatically'
-                  : 'No connection - Changes will sync when online'}
+              <TooltipContent side="bottom" className="max-w-xs">
+                <div className="space-y-1.5">
+                  <div className="flex items-center gap-2">
+                    {isOnline ? (
+                      <Wifi className="h-4 w-4 text-green-500" />
+                    ) : (
+                      <WifiOff className="h-4 w-4 text-red-500" />
+                    )}
+                    <span className="font-medium">
+                      {isOnline ? 'Connected' : 'No Connection'}
+                    </span>
+                  </div>
+                  <p className="text-xs text-muted-foreground">
+                    {isOnline
+                      ? 'Changes sync automatically'
+                      : 'Changes will sync when online'}
+                  </p>
+                  <div className="pt-1.5 border-t text-xs">
+                    <div className="flex justify-between">
+                      <span className="text-muted-foreground">Last sync:</span>
+                      <span className="font-medium">{formatLastSync(lastSyncTime)}</span>
+                    </div>
+                    {pendingChanges > 0 && (
+                      <div className="flex justify-between mt-1">
+                        <span className="text-muted-foreground">Pending:</span>
+                        <span className="font-medium text-yellow-600 dark:text-yellow-400">
+                          {pendingChanges} change{pendingChanges !== 1 ? 's' : ''}
+                        </span>
+                      </div>
+                    )}
+                    {lastError && (
+                      <div className="mt-1 text-destructive">
+                        Error: {lastError}
+                      </div>
+                    )}
+                  </div>
+                </div>
               </TooltipContent>
             </Tooltip>
           </TooltipProvider>
