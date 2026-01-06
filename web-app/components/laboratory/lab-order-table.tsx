@@ -225,7 +225,7 @@ export function LabOrderTable({
                     key={order.id}
                     className={cn(
                       'cursor-pointer hover:bg-muted/50',
-                      isCritical && 'bg-red-50 hover:bg-red-100'
+                      isCritical && 'bg-destructive/10 hover:bg-destructive/20'
                     )}
                     onClick={() => router.push(`/laboratory/orders/${order.order_number}`)}
                   >

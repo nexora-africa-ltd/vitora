@@ -95,9 +95,9 @@ const STATUS_CONFIG: Record<QueueStatus, {
 };
 
 const PRIORITY_CONFIG: Record<LabPriority, { label: string; className: string }> = {
-  ROUTINE: { label: 'Routine', className: 'text-green-600' },
-  URGENT: { label: 'Urgent', className: 'text-orange-600 font-medium' },
-  STAT: { label: 'STAT', className: 'text-red-600 font-bold' },
+  ROUTINE: { label: 'Routine', className: 'text-muted-foreground' },
+  URGENT: { label: 'Urgent', className: 'text-warning font-medium' },
+  STAT: { label: 'STAT', className: 'text-destructive font-bold' },
 };
 
 const STATUS_FILTERS: { value: QueueStatus | ''; label: string }[] = [
@@ -499,10 +499,12 @@ export function LabQueueView({ defaultStatus = '' }: LabQueueViewProps) {
                       <TableRow
                         key={item.id}
                         className={cn(
-                          item.priority === 'STAT' && 'bg-red-50',
-                          item.priority === 'URGENT' && 'bg-orange-50',
-                          item.is_overdue && 'bg-orange-100'
+                          'cursor-pointer hover:bg-muted/50 transition-colors',
+                          item.priority === 'STAT' && 'bg-destructive/10 hover:bg-destructive/20',
+                          item.priority === 'URGENT' && 'bg-warning/10 hover:bg-warning/20',
+                          item.is_overdue && 'bg-warning/20 hover:bg-warning/30'
                         )}
+                        onClick={() => router.push(`/laboratory/orders/${item.order_number}`)}
                       >
                         <TableCell className="font-mono text-sm">{item.queue_number}</TableCell>
                         <TableCell>
@@ -530,7 +532,7 @@ export function LabQueueView({ defaultStatus = '' }: LabQueueViewProps) {
                             {status.label}
                           </Badge>
                         </TableCell>
-                        <TableCell>
+                        <TableCell onClick={(e) => e.stopPropagation()}>
                           {item.assigned_technician_name || (
                             <Button
                               variant="ghost"
@@ -546,7 +548,7 @@ export function LabQueueView({ defaultStatus = '' }: LabQueueViewProps) {
                         <TableCell>
                           <TATDisplay item={item} />
                         </TableCell>
-                        <TableCell className="text-right">
+                        <TableCell className="text-right" onClick={(e) => e.stopPropagation()}>
                           <DropdownMenu>
                             <DropdownMenuTrigger asChild>
                               <Button variant="ghost" size="icon">

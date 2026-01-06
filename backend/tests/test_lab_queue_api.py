@@ -634,3 +634,38 @@ class TestLabQueueAutoCreation:
         
         # Queue should NOT exist for external orders
         assert not LabQueue.objects.filter(lab_order=order).exists()
+
+
+class TestLabOrderQueueSync:
+    """Tests for LabOrder and LabQueue synchronization."""
+
+    def test_order_collect_specimen_updates_queue(
+        self, db, sample_patient, sample_encounter, test_user, test_catalog
+    ):
+        """When collecting specimen via LabOrder, LabQueue should also be updated."""
+        order = LabOrder.objects.create(
+            patient=sample_patient,
+            encounter=sample_encounter,
+            ordered_by=test_user,
+            order_type="IN_HOUSE",
+            priority="ROUTINE",
+            status="ORDERED",
+        )
+        LabOrderItem.objects.create(
+            lab_order=order,
+            test=test_catalog,
+            unit_cost=test_catalog.cost,
+        )
+        
+        # Get the auto-created queue
+        queue = LabQueue.objects.get(lab_order=order)
+        assert queue.queue_status == "PENDING"
+        
+        # Collect specimen via LabOrder
+        order.mark_specimen_collected(test_user)
+        
+        # LabQueue should also be updated (SSOT)
+        queue.refresh_from_db()
+        assert queue.queue_status == "COLLECTED"
+        assert queue.collected_by == test_user
+        assert queue.collected_at is not None
