@@ -285,7 +285,7 @@ export const laboratoryApi = {
   /**
    * Assign queue entry to technician.
    */
-  async assignQueueEntry(queueNumber: string, technicianId: number): Promise<LabQueue> {
+  async assignQueueEntry(queueNumber: string, technicianId: number | null): Promise<LabQueue> {
     const response = await apiClient.post<LabQueue>(`/api/lab/queue/${queueNumber}/assign/`, {
       technician_id: technicianId,
     });
@@ -313,6 +313,45 @@ export const laboratoryApi = {
    */
   async releaseResults(queueNumber: string): Promise<LabQueue> {
     const response = await apiClient.post<LabQueue>(`/api/lab/queue/${queueNumber}/release/`);
+    return response.data;
+  },
+
+  /**
+   * Reject sample with reason.
+   */
+  async rejectSample(queueNumber: string, reason: string): Promise<LabQueue> {
+    const response = await apiClient.post<LabQueue>(`/api/lab/queue/${queueNumber}/reject/`, {
+      reason,
+    });
+    return response.data;
+  },
+
+  /**
+   * Add or update technician notes.
+   */
+  async updateNotes(queueNumber: string, notes: string, append?: boolean): Promise<LabQueue> {
+    const response = await apiClient.post<LabQueue>(`/api/lab/queue/${queueNumber}/notes/`, {
+      notes,
+      append: append ?? false,
+    });
+    return response.data;
+  },
+
+  /**
+   * Lookup queue entry by barcode (sample_id or queue_number).
+   */
+  async lookupByBarcode(barcode: string): Promise<LabQueue> {
+    const response = await apiClient.get<LabQueue>('/api/lab/queue/lookup/', {
+      params: { barcode },
+    });
+    return response.data;
+  },
+
+  /**
+   * Get available lab technicians.
+   */
+  async getTechnicians(): Promise<Array<{ id: number; username: string; full_name: string }>> {
+    const response = await apiClient.get('/api/lab/queue/technicians/');
     return response.data;
   },
 

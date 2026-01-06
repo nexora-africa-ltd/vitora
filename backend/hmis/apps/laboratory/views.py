@@ -429,7 +429,11 @@ class LabQueueViewSet(viewsets.ModelViewSet):
     - start-processing: Begin processing
     - submit-review: Submit for review
     - release: Release results
+    - reject: Reject sample with reason
+    - notes: Add/update technician notes
     - stats: Get queue statistics
+    - lookup: Find by barcode
+    - technicians: List available technicians
     """
 
     permission_classes = [IsAuthenticated]
@@ -451,12 +455,18 @@ class LabQueueViewSet(viewsets.ModelViewSet):
         from .serializers import (
             LabQueueAssignSerializer,
             LabQueueCollectSerializer,
+            LabQueueNotesSerializer,
+            LabQueueRejectSerializer,
             LabQueueSerializer,
         )
         if self.action == "collect":
             return LabQueueCollectSerializer
         if self.action == "assign":
             return LabQueueAssignSerializer
+        if self.action == "reject":
+            return LabQueueRejectSerializer
+        if self.action == "notes":
+            return LabQueueNotesSerializer
         return LabQueueSerializer
 
     @action(detail=True, methods=["post"])
@@ -484,16 +494,21 @@ class LabQueueViewSet(viewsets.ModelViewSet):
         serializer = LabQueueAssignSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         
-        technician_id = serializer.validated_data["technician_id"]
-        try:
-            technician = User.objects.get(pk=technician_id)
-        except User.DoesNotExist:
-            return Response(
-                {"error": "Technician not found"},
-                status=status.HTTP_404_NOT_FOUND,
-            )
+        technician_id = serializer.validated_data.get("technician_id")
         
-        queue_entry.assign_to(technician)
+        if technician_id is None:
+            # Unassign
+            queue_entry.assigned_technician = None
+            queue_entry.save(update_fields=["assigned_technician"])
+        else:
+            try:
+                technician = User.objects.get(pk=technician_id)
+            except User.DoesNotExist:
+                return Response(
+                    {"error": "Technician not found"},
+                    status=status.HTTP_404_NOT_FOUND,
+                )
+            queue_entry.assign_to(technician)
         
         return Response(LabQueueSerializer(queue_entry).data)
 
@@ -527,6 +542,49 @@ class LabQueueViewSet(viewsets.ModelViewSet):
         
         return Response(LabQueueSerializer(queue_entry).data)
 
+    @action(detail=True, methods=["post"])
+    def reject(self, request, queue_number=None):
+        """Reject sample with reason."""
+        from .serializers import LabQueueRejectSerializer, LabQueueSerializer
+        
+        queue_entry = self.get_object()
+        
+        # Cannot reject released samples
+        if queue_entry.queue_status == "RELEASED":
+            return Response(
+                {"error": "Cannot reject released samples"},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        
+        serializer = LabQueueRejectSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        
+        reason = serializer.validated_data["reason"]
+        queue_entry.reject_sample(reason)
+        
+        return Response(LabQueueSerializer(queue_entry).data)
+
+    @action(detail=True, methods=["post"])
+    def notes(self, request, queue_number=None):
+        """Add or update technician notes."""
+        from .serializers import LabQueueNotesSerializer, LabQueueSerializer
+        
+        queue_entry = self.get_object()
+        serializer = LabQueueNotesSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        
+        notes = serializer.validated_data["notes"]
+        append = serializer.validated_data.get("append", False)
+        
+        if append and queue_entry.technician_notes:
+            queue_entry.technician_notes = f"{queue_entry.technician_notes}\n{notes}"
+        else:
+            queue_entry.technician_notes = notes
+        
+        queue_entry.save(update_fields=["technician_notes"])
+        
+        return Response(LabQueueSerializer(queue_entry).data)
+
     @action(detail=False, methods=["get"])
     def stats(self, request):
         """Get queue statistics."""
@@ -557,3 +615,43 @@ class LabQueueViewSet(viewsets.ModelViewSet):
                 result[key] = stat["count"]
         
         return Response(result)
+
+    @action(detail=False, methods=["get"])
+    def lookup(self, request):
+        """Find queue entry by barcode (sample_id or queue_number)."""
+        from .models import LabQueue
+        from .serializers import LabQueueSerializer
+        
+        barcode = request.query_params.get("barcode")
+        
+        if not barcode:
+            return Response(
+                {"error": "barcode parameter is required"},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        
+        # Try to find by queue_number first, then by sample_id
+        queue_entry = LabQueue.objects.filter(queue_number=barcode).first()
+        
+        if not queue_entry:
+            queue_entry = LabQueue.objects.filter(sample_id=barcode).first()
+        
+        if not queue_entry:
+            return Response(
+                {"error": "Queue entry not found"},
+                status=status.HTTP_404_NOT_FOUND,
+            )
+        
+        return Response(LabQueueSerializer(queue_entry).data)
+
+    @action(detail=False, methods=["get"])
+    def technicians(self, request):
+        """List available lab technicians."""
+        from django.contrib.auth import get_user_model
+        from .serializers import TechnicianSerializer
+        
+        User = get_user_model()
+        # Get all active users (in production, filter by role/group)
+        users = User.objects.filter(is_active=True)
+        
+        return Response(TechnicianSerializer(users, many=True).data)

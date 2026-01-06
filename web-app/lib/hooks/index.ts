@@ -87,6 +87,10 @@ export {
   useStartProcessing,
   useSubmitForReview,
   useReleaseResults,
+  useRejectSample,
+  useUpdateNotes,
+  useBarcodeLookup,
+  useLabTechnicians,
   useCriticalAlerts,
 } from './use-laboratory';
 

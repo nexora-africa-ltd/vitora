@@ -364,7 +364,7 @@ export function useAssignQueueEntry() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: ({ queueNumber, technicianId }: { queueNumber: string; technicianId: number }) =>
+    mutationFn: ({ queueNumber, technicianId }: { queueNumber: string; technicianId: number | null }) =>
       laboratoryApi.assignQueueEntry(queueNumber, technicianId),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['lab-queue'] });
@@ -412,6 +412,60 @@ export function useReleaseResults() {
       queryClient.invalidateQueries({ queryKey: ['lab-queue'] });
       queryClient.invalidateQueries({ queryKey: ['lab-orders'] });
     },
+  });
+}
+
+/**
+ * Hook for rejecting sample with reason.
+ */
+export function useRejectSample() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: ({ queueNumber, reason }: { queueNumber: string; reason: string }) =>
+      laboratoryApi.rejectSample(queueNumber, reason),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['lab-queue'] });
+    },
+  });
+}
+
+/**
+ * Hook for updating technician notes.
+ */
+export function useUpdateNotes() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: ({ queueNumber, notes, append }: { queueNumber: string; notes: string; append?: boolean }) =>
+      laboratoryApi.updateNotes(queueNumber, notes, append),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['lab-queue'] });
+    },
+  });
+}
+
+/**
+ * Hook for looking up queue entry by barcode.
+ */
+export function useBarcodeLookup() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (barcode: string) => laboratoryApi.lookupByBarcode(barcode),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['lab-queue'] });
+    },
+  });
+}
+
+/**
+ * Hook for fetching available lab technicians.
+ */
+export function useLabTechnicians() {
+  return useQuery({
+    queryKey: ['lab-technicians'],
+    queryFn: () => laboratoryApi.getTechnicians(),
   });
 }
 

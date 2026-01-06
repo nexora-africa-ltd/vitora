@@ -172,7 +172,7 @@ export interface LabQueue {
   collected_at?: string;
   collected_by?: number;
   collected_by_name?: string;
-  assigned_technician?: number;
+  assigned_technician?: number | null;
   assigned_technician_name?: string;
   processing_started_at?: string;
   processing_completed_at?: string;
@@ -184,6 +184,11 @@ export interface LabQueue {
   rejection_reason?: string;
   created_at: string;
   updated_at: string;
+  // TAT fields
+  expected_tat_hours?: number;
+  elapsed_hours?: number;
+  actual_tat_hours?: number;
+  is_overdue?: boolean;
 }
 
 export type QueueStatus =
@@ -191,7 +196,15 @@ export type QueueStatus =
   | 'COLLECTED'
   | 'PROCESSING'
   | 'REVIEW'
-  | 'RELEASED';
+  | 'RELEASED'
+  | 'REJECTED';
+
+// Technician type
+export interface LabTechnician {
+  id: number;
+  username: string;
+  full_name: string;
+}
 
 // API request/response types
 export interface LabOrderCreateData {
