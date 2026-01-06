@@ -2,20 +2,19 @@
  * Encounter Lab Orders Component
  * Shows lab orders for a specific encounter with ability to create new orders
  * Sprint 1.5-1.6 Track B: Lab Workflow Integration
+ * 
+ * Note: Lab orders can be created at any time during the encounter.
+ * Clinicians may need to order labs to inform diagnosis and treatment decisions.
  */
 'use client';
 
-import { useState } from 'react';
 import Link from 'next/link';
-import { Plus, Beaker, ExternalLink, Clock, CheckCircle2, AlertCircle, FileText, Info } from 'lucide-react';
+import { Plus, Beaker, ExternalLink, Clock, CheckCircle2, AlertCircle, FileText } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
-import { Alert, AlertDescription } from '@/components/ui/alert';
 import { useEncounterLabOrders } from '@/lib/hooks/use-laboratory';
-import { useEncounterTreatmentPlan } from '@/lib/hooks/use-encounters';
-import { useToast } from '@/lib/hooks/use-toast';
 import { formatDate } from '@/lib/utils/format';
 import type { LabOrder, LabOrderStatus, LabPriority } from '@/lib/types/laboratory';
 
@@ -44,23 +43,6 @@ const PRIORITY_CONFIG: Record<LabPriority, { label: string; color: string }> = {
 
 export function EncounterLabOrders({ encounterId, patientId, disabled = false, onNext }: EncounterLabOrdersProps) {
   const { data: orders, isLoading, error } = useEncounterLabOrders(encounterId);
-  const { data: treatmentPlan, isLoading: isLoadingPlan } = useEncounterTreatmentPlan(encounterId);
-  const { toast } = useToast();
-  
-  // Check if treatment plan exists
-  const hasTreatmentPlan = !!treatmentPlan;
-  
-  // Handler for order button when no treatment plan
-  const handleOrderClick = (e: React.MouseEvent) => {
-    if (!hasTreatmentPlan && !isLoadingPlan) {
-      e.preventDefault();
-      toast({
-        title: 'Treatment Plan Required',
-        description: 'Please create a treatment plan with assessment before ordering lab tests. This ensures proper clinical documentation.',
-        variant: 'warning',
-      });
-    }
-  };
 
   if (isLoading) {
     return (
@@ -114,30 +96,15 @@ export function EncounterLabOrders({ encounterId, patientId, disabled = false, o
             )}
           </CardTitle>
           {!disabled && (
-            hasTreatmentPlan ? (
-              <Button size="sm" asChild>
-                <Link href={`/laboratory/orders/new?encounter=${encounterId}&patient=${patientId}`}>
-                  <Plus className="h-4 w-4 mr-1" />
-                  Order Lab Test
-                </Link>
-              </Button>
-            ) : (
-              <Button size="sm" onClick={handleOrderClick}>
+            <Button size="sm" asChild>
+              <Link href={`/laboratory/orders/new?encounter=${encounterId}&patient=${patientId}`}>
                 <Plus className="h-4 w-4 mr-1" />
                 Order Lab Test
-              </Button>
-            )
+              </Link>
+            </Button>
           )}
         </div>
-        {!hasTreatmentPlan && !isLoadingPlan && (
-          <Alert variant="default" className="mt-3 border-amber-200 bg-amber-50 dark:border-amber-800 dark:bg-amber-950">
-            <Info className="h-4 w-4 text-amber-600" />
-            <AlertDescription className="text-amber-800 dark:text-amber-200 text-sm">
-              A treatment plan is required before ordering lab tests. Please complete the clinical assessment first.
-            </AlertDescription>
-          </Alert>
-        )}
-        {orders && orders.length === 0 && hasTreatmentPlan && (
+        {orders && orders.length === 0 && (
           <CardDescription>No lab orders for this encounter</CardDescription>
         )}
       </CardHeader>
@@ -170,7 +137,7 @@ export function EncounterLabOrders({ encounterId, patientId, disabled = false, o
         </CardContent>
       )}
 
-      {orders && orders.length === 0 && !disabled && hasTreatmentPlan && (
+      {orders && orders.length === 0 && !disabled && (
         <CardFooter className="pt-0 flex-col gap-3">
           <Button variant="outline" className="w-full" asChild>
             <Link href={`/laboratory/orders/new?encounter=${encounterId}&patient=${patientId}`}>
@@ -186,8 +153,8 @@ export function EncounterLabOrders({ encounterId, patientId, disabled = false, o
         </CardFooter>
       )}
 
-      {/* Show continue button when there are orders or treatment plan doesn't exist */}
-      {((orders && orders.length > 0) || !hasTreatmentPlan) && onNext && (
+      {/* Show continue button when there are orders */}
+      {orders && orders.length > 0 && onNext && (
         <CardFooter className="pt-3">
           <Button variant="secondary" className="w-full" onClick={onNext}>
             Continue to Rx →
