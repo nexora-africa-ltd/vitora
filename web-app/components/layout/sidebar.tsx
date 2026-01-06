@@ -72,7 +72,7 @@ export function Sidebar({ collapsed, onCollapse, mobileOpen, onMobileClose }: Si
         className={cn(
           'flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-colors',
           isActive
-            ? 'bg-teal-200 text-primary-foreground '
+            ? 'bg-teal-200 text-teal-900 hover:bg-teal-300 hover:text-teal-950'
             : 'text-muted-foreground hover:bg-[#3D000F] hover:text-accent-foreground'
         )}
       >
