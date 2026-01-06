@@ -190,7 +190,14 @@ class LabResultCreateSerializer(serializers.ModelSerializer):
             "numeric_value",
             "text_value",
             "option_value",
+            "reference_low",
+            "reference_high",
+            "reference_range_text",
+            "result_flag",
             "interpretation",
+            "is_critical_result",
+            "method",
+            "equipment",
             "is_external_result",
             "external_result_date",
         ]
@@ -199,8 +206,8 @@ class LabResultCreateSerializer(serializers.ModelSerializer):
         entered_by = self.context["request"].user
         result = LabResult.objects.create(entered_by=entered_by, **validated_data)
 
-        # Auto-flag numeric results
-        if result.numeric_value is not None:
+        # Auto-flag numeric results if not manually set
+        if result.numeric_value is not None and not result.result_flag:
             result.auto_flag_result()
 
         return result
