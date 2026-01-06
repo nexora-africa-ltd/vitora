@@ -160,7 +160,6 @@ export default function EditEncounterPage() {
     history_of_present_illness: '',
     physical_examination: '',
     assessment: '',
-    plan: '',
     status: 'DRAFT',
     clinical_template: null,
     clinical_template_data: null,
@@ -206,7 +205,6 @@ export default function EditEncounterPage() {
         history_of_present_illness: encounter.history_of_present_illness || '',
         physical_examination: encounter.physical_examination || '',
         assessment: encounter.assessment || '',
-        plan: encounter.plan || '',
         status: encounter.status === 'CANCELLED' ? 'DRAFT' : encounter.status,
         clinical_template: encounter.clinical_template || null,
         clinical_template_data: encounter.clinical_template_data || null,
@@ -276,7 +274,6 @@ export default function EditEncounterPage() {
       history_of_present_illness: formData.history_of_present_illness,
       physical_examination: formData.physical_examination,
       assessment: formData.assessment,
-      plan: formData.plan,
       clinical_template: formData.clinical_template,
       clinical_template_data: formData.clinical_template_data,
     };
@@ -495,7 +492,6 @@ export default function EditEncounterPage() {
           history_of_present_illness: formData.history_of_present_illness,
           physical_examination: formData.physical_examination,
           assessment: formData.assessment,
-          plan: formData.plan,
           clinical_template: formData.clinical_template,
           clinical_template_data: formData.clinical_template_data,
         },
@@ -528,6 +524,7 @@ export default function EditEncounterPage() {
     }
     
     try {
+      // First save all the data
       const bp = formData.blood_pressure_systolic && formData.blood_pressure_diastolic
         ? `${formData.blood_pressure_systolic}/${formData.blood_pressure_diastolic}`
         : null;
@@ -555,10 +552,14 @@ export default function EditEncounterPage() {
           history_of_present_illness: formData.history_of_present_illness,
           physical_examination: formData.physical_examination,
           assessment: formData.assessment,
-          plan: formData.plan,
-          status: 'COMPLETED',
+          clinical_template: formData.clinical_template,
+          clinical_template_data: formData.clinical_template_data,
         },
       });
+      
+      // Then call the finalize endpoint to change status to COMPLETED
+      const { encountersApi } = await import('@/lib/api/encounters');
+      await encountersApi.finalize(encounterId);
       
       toast({
         title: 'Encounter Finalized',

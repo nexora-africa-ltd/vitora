@@ -34,7 +34,7 @@ export interface EncounterFormData {
   history_of_present_illness: string;
   physical_examination: string;
   assessment: string;
-  plan: string;
+  // Note: SOAP 'P' (Plan) uses TreatmentPlan.clinical_notes
   
   // Clinical template
   clinical_template?: number | null;
@@ -70,7 +70,7 @@ export const defaultEncounterFormData: EncounterFormData = {
   history_of_present_illness: '',
   physical_examination: '',
   assessment: '',
-  plan: '',
+  // Note: SOAP 'P' (Plan) uses TreatmentPlan.clinical_notes
   
   clinical_template: null,
   clinical_template_data: null,

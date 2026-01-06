@@ -112,7 +112,6 @@ const initialFormData: EncounterFormData = {
   history_of_present_illness: '',
   physical_examination: '',
   assessment: '',
-  plan: '',
   
   status: 'DRAFT',
 };

@@ -86,21 +86,15 @@ export function ClinicalNotesForm({
             />
           </div>
           
-          {/* Plan */}
-          <div className="space-y-2">
-            <Label htmlFor="plan" className="flex items-center gap-2">
+          {/* Plan note - handled by Treatment Plan, Lab Orders, and Prescriptions */}
+          <div className="space-y-2 md:col-span-2 p-3 bg-muted/50 rounded-lg">
+            <p className="text-sm text-muted-foreground flex items-center gap-2">
               <ClipboardList className="h-4 w-4 text-purple-500" />
-              Plan
-            </Label>
-            <Textarea
-              id="plan"
-              placeholder="Treatment plan and next steps...&#10;Investigations, medications, referrals, follow-up"
-              value={data.plan}
-              onChange={(e) => onChange('plan', e.target.value)}
-              disabled={disabled}
-              rows={3}
-              className="resize-none"
-            />
+              <span>
+                <strong>Plan:</strong> Use the Treatment Plan, Lab Orders, and Prescriptions tabs
+                to document the management plan with structured data.
+              </span>
+            </p>
           </div>
           
           {/* Additional Notes */}
