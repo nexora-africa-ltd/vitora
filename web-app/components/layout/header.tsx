@@ -37,7 +37,13 @@ export function Header({ onMenuClick, sidebarCollapsed }: HeaderProps) {
   const { user } = useAuth();
   const logout = useLogout();
   const { isOnline } = useNetworkStatus();
-  const { lastSyncTime, isSyncing, pendingChanges, lastError } = useSyncStatus();
+  const { lastSyncTime, isSyncing, pendingChanges, lastError, triggerSync } = useSyncStatus();
+
+  const handleSyncClick = async () => {
+    if (!isSyncing && isOnline) {
+      await triggerSync();
+    }
+  };
 
   const userInitials = user
     ? `${user.first_name?.[0] || ''}${user.last_name?.[0] || user.username[0]}`.toUpperCase()
@@ -70,12 +76,16 @@ export function Header({ onMenuClick, sidebarCollapsed }: HeaderProps) {
           <TooltipProvider delayDuration={300}>
             <Tooltip>
               <TooltipTrigger asChild>
-                <div
+                <button
+                  onClick={handleSyncClick}
+                  disabled={isSyncing || !isOnline}
                   className={cn(
-                    'flex items-center gap-1.5 px-2 py-1 rounded-full text-xs font-medium transition-colors cursor-default',
+                    'flex items-center gap-1.5 px-2 py-1 rounded-full text-xs font-medium transition-all',
+                    'hover:ring-2 hover:ring-offset-1 focus:outline-none focus:ring-2 focus:ring-offset-1',
                     isOnline
-                      ? 'bg-green-100 text-green-700 dark:bg-green-900/40 dark:text-green-400'
-                      : 'bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-400'
+                      ? 'bg-green-100 text-green-700 dark:bg-green-900/40 dark:text-green-400 hover:ring-green-300 dark:hover:ring-green-700'
+                      : 'bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-400 cursor-not-allowed',
+                    isSyncing && 'opacity-80'
                   )}
                 >
                   {isSyncing ? (
@@ -96,9 +106,12 @@ export function Header({ onMenuClick, sidebarCollapsed }: HeaderProps) {
                       {pendingChanges}
                     </Badge>
                   )}
-                </div>
+                </button>
               </TooltipTrigger>
-              <TooltipContent side="bottom" className="max-w-xs">
+              <TooltipContent 
+                side="bottom" 
+                className="max-w-xs bg-popover text-popover-foreground border shadow-md"
+              >
                 <div className="space-y-1.5">
                   <div className="flex items-center gap-2">
                     {isOnline ? (
@@ -115,7 +128,7 @@ export function Header({ onMenuClick, sidebarCollapsed }: HeaderProps) {
                       ? 'Changes sync automatically'
                       : 'Changes will sync when online'}
                   </p>
-                  <div className="pt-1.5 border-t text-xs">
+                  <div className="pt-1.5 border-t border-border text-xs">
                     <div className="flex justify-between">
                       <span className="text-muted-foreground">Last sync:</span>
                       <span className="font-medium">{formatLastSync(lastSyncTime)}</span>
@@ -134,6 +147,21 @@ export function Header({ onMenuClick, sidebarCollapsed }: HeaderProps) {
                       </div>
                     )}
                   </div>
+                  {isOnline && !isSyncing && (
+                    <div className="pt-1.5 border-t border-border">
+                      <p className="text-xs text-primary font-medium">
+                        Click to sync now
+                      </p>
+                    </div>
+                  )}
+                  {isSyncing && (
+                    <div className="pt-1.5 border-t border-border">
+                      <p className="text-xs text-muted-foreground flex items-center gap-1">
+                        <RefreshCw className="h-3 w-3 animate-spin" />
+                        Syncing in progress...
+                      </p>
+                    </div>
+                  )}
                 </div>
               </TooltipContent>
             </Tooltip>

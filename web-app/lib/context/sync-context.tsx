@@ -32,6 +32,10 @@ interface SyncContextValue extends SyncStatus {
   decrementPending: () => void;
   /** Set pending count directly */
   setPendingCount: (count: number) => void;
+  /** Trigger a manual sync - can be overridden by components */
+  triggerSync: () => Promise<void>;
+  /** Set the trigger sync function */
+  setTriggerSync: (fn: () => Promise<void>) => void;
 }
 
 const SyncContext = createContext<SyncContextValue | null>(null);
@@ -43,6 +47,24 @@ export function SyncProvider({ children }: { children: React.ReactNode }) {
     pendingChanges: 0,
     lastError: null,
   });
+  
+  // Store the trigger sync function (can be set by components that handle syncing)
+  const triggerSyncRef = React.useRef<() => Promise<void>>(async () => {
+    // Default implementation - just simulates a sync
+    setStatus(prev => ({ ...prev, isSyncing: true, lastError: null }));
+    // Small delay to show syncing state
+    await new Promise(resolve => setTimeout(resolve, 500));
+    setStatus(prev => ({ ...prev, isSyncing: false, lastSyncTime: new Date() }));
+  });
+
+  const triggerSync = useCallback(async () => {
+    if (status.isSyncing) return; // Don't trigger if already syncing
+    await triggerSyncRef.current();
+  }, [status.isSyncing]);
+  
+  const setTriggerSync = useCallback((fn: () => Promise<void>) => {
+    triggerSyncRef.current = fn;
+  }, []);
 
   const reportSync = useCallback(() => {
     setStatus(prev => ({
@@ -98,7 +120,9 @@ export function SyncProvider({ children }: { children: React.ReactNode }) {
     incrementPending,
     decrementPending,
     setPendingCount,
-  }), [status, reportSync, reportSyncStart, reportSyncError, incrementPending, decrementPending, setPendingCount]);
+    triggerSync,
+    setTriggerSync,
+  }), [status, reportSync, reportSyncStart, reportSyncError, incrementPending, decrementPending, setPendingCount, triggerSync, setTriggerSync]);
 
   return (
     <SyncContext.Provider value={value}>
@@ -122,6 +146,8 @@ export function useSyncStatus(): SyncContextValue {
       incrementPending: () => {},
       decrementPending: () => {},
       setPendingCount: () => {},
+      triggerSync: async () => {},
+      setTriggerSync: () => {},
     };
   }
   return context;
