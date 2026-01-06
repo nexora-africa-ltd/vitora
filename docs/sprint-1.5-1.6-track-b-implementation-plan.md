@@ -577,16 +577,16 @@ GET    /api/lab/results/pending-verification/       # Unverified criticals
 ```
 backend/tests/
 ├── test_lab_queue.py              ✅ Complete (14 tests)
-├── test_lab_result_template.py    🔄 TODO (8 tests)
-├── test_lab_result_extended.py    🔄 TODO (16 tests)
-├── test_lab_attachment.py         🔄 TODO (8 tests)
-├── test_notification.py           🔄 TODO (10 tests)
-├── test_lab_workflow.py           🔄 TODO (12 tests)
-├── test_lab_requisition.py        🔄 TODO (10 tests)
-├── test_lab_notification_service.py 🔄 TODO (10 tests)
-├── test_lab_queue_api.py          🔄 TODO (12 tests)
-├── test_lab_result_api.py         🔄 TODO (14 tests)
-└── test_lab_reports.py            🔄 TODO (8 tests)
+├── test_lab_result_template.py    🔄 TODO:(8 tests)
+├── test_lab_result_extended.py    🔄 TODO:(16 tests)
+├── test_lab_attachment.py         🔄 TODO:(8 tests)
+├── test_notification.py           🔄 TODO:(10 tests)
+├── test_lab_workflow.py           🔄 TODO:(12 tests)
+├── test_lab_requisition.py        🔄 TODO:(10 tests)
+├── test_lab_notification_service.py 🔄 TODO:(10 tests)
+├── test_lab_queue_api.py          🔄 TODO:(12 tests)
+├── test_lab_result_api.py         🔄 TODO:(14 tests)
+└── test_lab_reports.py            🔄 TODO:(8 tests)
 ```
 
 ### Commands Reference
