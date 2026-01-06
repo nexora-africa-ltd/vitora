@@ -349,8 +349,8 @@ export function useAssignQueueEntry() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: ({ queueId, technicianId }: { queueId: number; technicianId: number }) =>
-      laboratoryApi.assignQueueEntry(queueId, technicianId),
+    mutationFn: ({ queueNumber, technicianId }: { queueNumber: string; technicianId: number }) =>
+      laboratoryApi.assignQueueEntry(queueNumber, technicianId),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['lab-queue'] });
     },
@@ -364,7 +364,7 @@ export function useStartProcessing() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: (queueId: number) => laboratoryApi.startProcessing(queueId),
+    mutationFn: (queueNumber: string) => laboratoryApi.startProcessing(queueNumber),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['lab-queue'] });
     },
@@ -378,7 +378,7 @@ export function useReleaseResults() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: (queueId: number) => laboratoryApi.releaseResults(queueId),
+    mutationFn: (queueNumber: string) => laboratoryApi.releaseResults(queueNumber),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['lab-queue'] });
       queryClient.invalidateQueries({ queryKey: ['lab-orders'] });

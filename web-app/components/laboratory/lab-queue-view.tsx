@@ -84,9 +84,9 @@ export function LabQueueView({ defaultStatus = '' }: LabQueueViewProps) {
   const startProcessing = useStartProcessing();
   const releaseResults = useReleaseResults();
 
-  const handleStartProcessing = async (queueId: number) => {
+  const handleStartProcessing = async (queueNumber: string) => {
     try {
-      await startProcessing.mutateAsync(queueId);
+      await startProcessing.mutateAsync(queueNumber);
       toast({
         title: 'Processing started',
         description: 'Queue entry is now being processed.',
@@ -100,9 +100,9 @@ export function LabQueueView({ defaultStatus = '' }: LabQueueViewProps) {
     }
   };
 
-  const handleReleaseResults = async (queueId: number) => {
+  const handleReleaseResults = async (queueNumber: string) => {
     try {
-      await releaseResults.mutateAsync(queueId);
+      await releaseResults.mutateAsync(queueNumber);
       toast({
         title: 'Results released',
         description: 'Results have been released to the clinician.',
@@ -297,7 +297,7 @@ export function LabQueueView({ defaultStatus = '' }: LabQueueViewProps) {
                             </DropdownMenuItem>
                             {item.queue_status === 'COLLECTED' && (
                               <DropdownMenuItem
-                                onClick={() => handleStartProcessing(item.id)}
+                                onClick={() => handleStartProcessing(item.queue_number)}
                               >
                                 <Play className="h-4 w-4 mr-2" />
                                 Start Processing
@@ -314,7 +314,7 @@ export function LabQueueView({ defaultStatus = '' }: LabQueueViewProps) {
                             )}
                             {item.queue_status === 'REVIEW' && (
                               <DropdownMenuItem
-                                onClick={() => handleReleaseResults(item.id)}
+                                onClick={() => handleReleaseResults(item.queue_number)}
                               >
                                 <CheckCircle2 className="h-4 w-4 mr-2" />
                                 Release Results

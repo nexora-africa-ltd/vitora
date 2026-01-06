@@ -138,7 +138,7 @@ export default function PatientDetail(): React.JSX.Element {
         <TouchableOpacity
           style={styles.editButton}
           onPress={() => {
-            // TODO: Navigate to edit screen
+            // TODO : Navigate to edit screen
           }}
           testID="edit-patient-button"
         >

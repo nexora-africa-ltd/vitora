@@ -168,13 +168,16 @@ export interface LabQueue {
   queue_status: QueueStatus;
   sample_type: string;
   sample_id?: string;
+  tests?: Array<{ code: string; name: string }>;
   collected_at?: string;
   collected_by?: number;
+  collected_by_name?: string;
   assigned_technician?: number;
   assigned_technician_name?: string;
   processing_started_at?: string;
   processing_completed_at?: string;
   reviewed_by?: number;
+  reviewed_by_name?: string;
   reviewed_at?: string;
   released_at?: string;
   technician_notes?: string;

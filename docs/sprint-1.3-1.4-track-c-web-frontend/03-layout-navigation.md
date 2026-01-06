@@ -751,7 +751,7 @@ interface Alert {
   severity: 'low' | 'medium' | 'high' | 'critical';
 }
 
-// TODO: Replace with actual data from API
+// TODO : Replace with actual data from API
 const mockAlerts: Alert[] = [
   {
     id: '1',

@@ -173,7 +173,7 @@
 
 ---
 
-## Remaining Gaps / Future Enhancements ( # TODO: Not in current scope)
+## Remaining Gaps / Future Enhancements ( # TODO : Not in current scope)
 
 ### Phase 2 Priorities (Sprint 1.7+)
 
