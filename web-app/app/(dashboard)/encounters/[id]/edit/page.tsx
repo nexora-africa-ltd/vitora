@@ -86,7 +86,6 @@ function hasClinicalNotes(data: EncounterFormData): boolean {
     data.history_of_present_illness?.trim() ||
     data.physical_examination?.trim() ||
     data.assessment?.trim() ||
-    data.plan?.trim() ||
     data.notes?.trim()
   );
 }
@@ -315,7 +314,7 @@ export default function EditEncounterPage() {
   // Diagnoses handlers - save to backend immediately
   const handleAddDiagnosis = useCallback(async (diagnosis: DiagnosisFormData) => {
     try {
-      await addDiagnosis.mutateAsync({
+      const savedDiagnosis = await addDiagnosis.mutateAsync({
         icd10_code: diagnosis.icd10_code,
         diagnosis_type: diagnosis.diagnosis_type,
         free_text_diagnosis: diagnosis.free_text_diagnosis || '',
@@ -323,6 +322,18 @@ export default function EditEncounterPage() {
         is_confirmed: diagnosis.is_confirmed || false,
         certainty: (diagnosis.certainty?.toLowerCase() || 'suspected') as 'confirmed' | 'provisional' | 'ruled_out' | 'suspected',
       });
+      
+      // Update local state with the saved diagnosis
+      setDiagnoses(prev => [...prev, {
+        icd10_code: savedDiagnosis.icd10_code,
+        icd10_display: savedDiagnosis.icd10_code_display || savedDiagnosis.icd10_description,
+        diagnosis_type: savedDiagnosis.diagnosis_type,
+        free_text_diagnosis: savedDiagnosis.free_text_diagnosis || '',
+        notes: savedDiagnosis.notes || '',
+        is_confirmed: savedDiagnosis.is_confirmed,
+        certainty: savedDiagnosis.certainty,
+      }]);
+      
       toast({
         title: 'Diagnosis Added',
         description: 'Diagnosis has been saved successfully.',
@@ -346,6 +357,10 @@ export default function EditEncounterPage() {
     if (diagnosisToRemove?.id) {
       try {
         await deleteDiagnosis.mutateAsync(diagnosisToRemove.id);
+        
+        // Update local state
+        setDiagnoses(prev => prev.filter((_, i) => i !== index));
+        
         toast({
           title: 'Diagnosis Removed',
           description: 'Diagnosis has been removed successfully.',
@@ -357,6 +372,9 @@ export default function EditEncounterPage() {
           variant: 'destructive',
         });
       }
+    } else {
+      // Diagnosis was only local (not saved yet), just remove from local state
+      setDiagnoses(prev => prev.filter((_, i) => i !== index));
     }
   }, [existingDiagnoses, deleteDiagnosis, toast]);
   
