@@ -407,6 +407,17 @@ class LabOrder(models.Model):
         self.specimen_collected_at = timezone.now()
         self.specimen_collected_by = user
         self.update_status("SPECIMEN_COLLECTED", user)
+        
+        # Also update the LabQueue if it exists (SSOT)
+        try:
+            queue = self.queue_entry
+            if queue.queue_status == "PENDING":
+                queue.queue_status = "COLLECTED"
+                queue.collected_at = timezone.now()
+                queue.collected_by = user
+                queue.save(update_fields=["queue_status", "collected_at", "collected_by", "updated_at"])
+        except LabQueue.DoesNotExist:
+            pass
 
     def get_pending_results(self):
         """
