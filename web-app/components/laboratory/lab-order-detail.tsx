@@ -318,8 +318,8 @@ export function LabOrderDetail({ orderNumber }: LabOrderDetailProps) {
         <Card>
           <CardContent className="pt-6">
             <div className="flex items-center gap-3">
-              <div className="p-2 rounded-full bg-blue-100">
-                <User className="h-5 w-5 text-blue-600" />
+              <div className="p-2 rounded-full bg-green-100">
+                <User className="h-5 w-5 text-green-600" />
               </div>
               <div>
                 <p className="text-sm text-muted-foreground">Patient</p>

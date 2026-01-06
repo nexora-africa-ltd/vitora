@@ -39,7 +39,7 @@ INSTALLED_APPS = [
     "hmis.apps.patients",
     "hmis.apps.encounters",
     "hmis.apps.clinical_templates",
-    "hmis.apps.laboratory",
+    "hmis.apps.laboratory.apps.LaboratoryConfig",
     "hmis.apps.pharmacy",
     "hmis.apps.billing",
     "hmis.apps.inpatient",

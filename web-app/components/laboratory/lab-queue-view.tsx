@@ -95,7 +95,7 @@ const STATUS_CONFIG: Record<QueueStatus, {
 };
 
 const PRIORITY_CONFIG: Record<LabPriority, { label: string; className: string }> = {
-  ROUTINE: { label: 'Routine', className: 'text-blue-600' },
+  ROUTINE: { label: 'Routine', className: 'text-green-600' },
   URGENT: { label: 'Urgent', className: 'text-orange-600 font-medium' },
   STAT: { label: 'STAT', className: 'text-red-600 font-bold' },
 };
