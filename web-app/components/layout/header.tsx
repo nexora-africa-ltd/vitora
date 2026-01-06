@@ -1,6 +1,6 @@
 'use client';
 
-import { Menu, Bell, Search, Sun, Moon, User } from 'lucide-react';
+import { Menu, Bell, Search, Sun, Moon, User, Wifi, WifiOff } from 'lucide-react';
 import { useTheme } from 'next-themes';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -14,9 +14,17 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from '@/components/ui/tooltip';
 import { useAuth } from '@/lib/auth/context';
 import { useLogout } from '@/lib/auth/hooks';
+import { useNetworkStatus } from '@/lib/hooks/use-network-status';
 import { Breadcrumb } from '@/components/layout/breadcrumb';
+import { cn } from '@/lib/utils/cn';
 
 interface HeaderProps {
   onMenuClick: () => void;
@@ -27,6 +35,7 @@ export function Header({ onMenuClick, sidebarCollapsed }: HeaderProps) {
   const { theme, setTheme } = useTheme();
   const { user } = useAuth();
   const logout = useLogout();
+  const { isOnline } = useNetworkStatus();
 
   const userInitials = user
     ? `${user.first_name?.[0] || ''}${user.last_name?.[0] || user.username[0]}`.toUpperCase()
@@ -55,6 +64,36 @@ export function Header({ onMenuClick, sidebarCollapsed }: HeaderProps) {
 
         {/* Right side */}
         <div className="flex items-center gap-2 md:gap-4">
+          {/* Online/Offline indicator */}
+          <TooltipProvider delayDuration={300}>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <div
+                  className={cn(
+                    'flex items-center gap-1.5 px-2 py-1 rounded-full text-xs font-medium transition-colors',
+                    isOnline
+                      ? 'bg-green-100 text-green-700 dark:bg-green-900/40 dark:text-green-400'
+                      : 'bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-400'
+                  )}
+                >
+                  {isOnline ? (
+                    <Wifi className="h-3.5 w-3.5" />
+                  ) : (
+                    <WifiOff className="h-3.5 w-3.5" />
+                  )}
+                  <span className="hidden sm:inline">
+                    {isOnline ? 'Online' : 'Offline'}
+                  </span>
+                </div>
+              </TooltipTrigger>
+              <TooltipContent>
+                {isOnline
+                  ? 'Connected - Changes sync automatically'
+                  : 'No connection - Changes will sync when online'}
+              </TooltipContent>
+            </Tooltip>
+          </TooltipProvider>
+
           {/* Search (desktop) */}
           <div className="hidden md:flex relative w-64">
             <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />

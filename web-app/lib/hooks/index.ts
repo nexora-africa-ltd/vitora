@@ -3,6 +3,7 @@
  */
 
 export { useDebounce } from './use-debounce';
+export { useAutoSave, type AutoSaveStatus } from './use-auto-save';
 export {
   useEncounters,
   useEncounter,

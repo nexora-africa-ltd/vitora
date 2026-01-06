@@ -45,7 +45,10 @@ import {
 } from '@/components/ui/tooltip';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Skeleton } from '@/components/ui/skeleton';
+import { AutoSaveStatusIndicator } from '@/components/ui/auto-save-status';
 import { useToast } from '@/lib/hooks/use-toast';
+import { useAutoSave } from '@/lib/hooks/use-auto-save';
+import { useNetworkStatus } from '@/lib/hooks/use-network-status';
 import { useEncounter, useUpdateEncounter, useEncounterDiagnoses, useEditChiefComplaint } from '@/lib/hooks/use-encounters';
 import { useEncounterLabOrders } from '@/lib/hooks/use-laboratory';
 import { useEncounterPrescriptions } from '@/lib/hooks/use-pharmacy';
@@ -104,6 +107,7 @@ export default function EditEncounterPage() {
   const router = useRouter();
   const { toast } = useToast();
   const { user } = useAuth();
+  const { isOnline } = useNetworkStatus();
   const encounterId = Number(params.id as string);
   
   const { data: encounter, isLoading: isLoadingEncounter, error } = useEncounter(encounterId);
@@ -121,7 +125,6 @@ export default function EditEncounterPage() {
     : undefined;
   
   const [activeTab, setActiveTab] = useState('history');
-  const [isDirty, setIsDirty] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [diagnoses, setDiagnoses] = useState<DiagnosisFormData[]>([]);
   const [isChiefComplaintDialogOpen, setIsChiefComplaintDialogOpen] = useState(false);
@@ -246,10 +249,59 @@ export default function EditEncounterPage() {
       registered_by: 0,
     };  }, [encounter]);
   
+  // Prepare data for auto-save (build the payload similar to handleSave)
+  const autoSaveData = useMemo(() => {
+    const bp = formData.blood_pressure_systolic && formData.blood_pressure_diastolic
+      ? `${formData.blood_pressure_systolic}/${formData.blood_pressure_diastolic}`
+      : null;
+    
+    return {
+      encounter_type: formData.encounter_type,
+      encounter_date: formData.encounter_date,
+      chief_complaint: formData.chief_complaint,
+      temperature: formData.temperature,
+      pulse: formData.pulse,
+      blood_pressure: bp,
+      respiratory_rate: formData.respiratory_rate,
+      spo2: formData.spo2,
+      weight: formData.weight,
+      height: formData.height,
+      allergies: formData.allergies,
+      chronic_conditions: formData.chronic_conditions,
+      current_medications: formData.current_medications,
+      past_surgeries: formData.past_surgeries,
+      family_history: formData.family_history,
+      social_history: formData.social_history,
+      notes: formData.notes,
+      history_of_present_illness: formData.history_of_present_illness,
+      physical_examination: formData.physical_examination,
+      assessment: formData.assessment,
+      plan: formData.plan,
+      clinical_template: formData.clinical_template,
+      clinical_template_data: formData.clinical_template_data,
+    };
+  }, [formData]);
+  
+  // Check if encounter is editable for auto-save
+  const isEncounterEditable = encounter?.status !== 'COMPLETED' && encounter?.status !== 'CANCELLED';
+  
+  // Auto-save hook - automatically saves changes when user is online
+  const autoSave = useAutoSave({
+    data: autoSaveData,
+    onSave: async (data) => {
+      if (!encounterId || !formData.chief_complaint.trim()) return;
+      await updateEncounter.mutateAsync({ id: encounterId, data });
+    },
+    debounceMs: 2000,
+    enabled: isEncounterEditable && !!encounter && formData.chief_complaint.trim().length > 0,
+    onError: (error) => {
+      console.error('Auto-save failed:', error);
+    },
+  });
+  
   // Handle field changes
   const handleFieldChange = useCallback((field: keyof EncounterFormData, value: unknown) => {
     setFormData(prev => ({ ...prev, [field]: value }));
-    setIsDirty(true);
     
     // Clear error for this field
     if (errors[field]) {
@@ -264,12 +316,10 @@ export default function EditEncounterPage() {
   // Diagnoses handlers
   const handleAddDiagnosis = useCallback((diagnosis: DiagnosisFormData) => {
     setDiagnoses(prev => [...prev, diagnosis]);
-    setIsDirty(true);
   }, []);
   
   const handleRemoveDiagnosis = useCallback((index: number) => {
     setDiagnoses(prev => prev.filter((_, i) => i !== index));
-    setIsDirty(true);
   }, []);
   
   // Clinical template handler - auto-populates from existing encounter data
@@ -313,7 +363,7 @@ export default function EditEncounterPage() {
       });
     }
     
-    setIsDirty(true);
+    // No need to set isDirty - auto-save will detect the change
   }, [encounterId, toast]);
   
   // Clinical template data handler - syncs back to encounter fields
@@ -388,7 +438,7 @@ export default function EditEncounterPage() {
       
       return updated;
     });
-    setIsDirty(true);
+    // No need to set isDirty - auto-save will detect the change
   }, []);
   
   // Validation
@@ -451,7 +501,8 @@ export default function EditEncounterPage() {
         },
       });
       
-      setIsDirty(false);
+      // Reset auto-save state after manual save
+      autoSave.reset();
       toast({
         title: 'Encounter Updated',
         description: 'Changes have been saved successfully',
@@ -463,7 +514,7 @@ export default function EditEncounterPage() {
         variant: 'destructive',
       });
     }
-  }, [formData, encounterId, validateForm, updateEncounter, toast]);
+  }, [formData, encounterId, validateForm, updateEncounter, toast, autoSave]);
   
   // Finalize encounter
   const handleFinalize = useCallback(async () => {
@@ -527,7 +578,7 @@ export default function EditEncounterPage() {
   // Unsaved changes warning
   useEffect(() => {
     const handleBeforeUnload = (e: BeforeUnloadEvent) => {
-      if (isDirty) {
+      if (autoSave.isDirty) {
         e.preventDefault();
         e.returnValue = '';
       }
@@ -535,7 +586,7 @@ export default function EditEncounterPage() {
     
     window.addEventListener('beforeunload', handleBeforeUnload);
     return () => window.removeEventListener('beforeunload', handleBeforeUnload);
-  }, [isDirty]);
+  }, [autoSave.isDirty]);
   
   if (isLoadingEncounter) {
     return <EditEncounterSkeleton />;
@@ -580,12 +631,14 @@ export default function EditEncounterPage() {
         </div>
         
         <div className="flex items-center gap-2">
-          {isDirty && (
-            <Badge variant="secondary" className="gap-1">
-              <Clock className="h-3 w-3" />
-              Unsaved changes
-            </Badge>
-          )}
+          {/* Auto-save status indicator */}
+          <AutoSaveStatusIndicator
+            status={autoSave.status}
+            lastSaved={autoSave.lastSaved}
+            error={autoSave.error}
+            isDirty={autoSave.isDirty}
+            pendingCount={autoSave.pendingCount}
+          />
           
           <Button
             variant="outline"
