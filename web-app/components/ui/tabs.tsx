@@ -55,24 +55,35 @@ TabsList.displayName = "TabsList"
 const TabsTrigger = React.forwardRef<
   HTMLButtonElement,
   React.ButtonHTMLAttributes<HTMLButtonElement> & { value: string }
->(({ className, value, ...props }, ref) => {
+>(({ className, value, onClick, ...props }, ref) => {
   const context = React.useContext(TabsContext)
   if (!context) throw new Error('TabsTrigger must be used within Tabs')
 
   const isActive = context.value === value
 
+  const handleClick = (e: React.MouseEvent<HTMLButtonElement>) => {
+    // Always change the tab value
+    context.onValueChange(value)
+    // Also call any passed onClick handler (from TooltipTrigger, etc.)
+    onClick?.(e)
+  }
+
   return (
     <button
       ref={ref}
+      type="button"
+      role="tab"
+      aria-selected={isActive}
+      data-state={isActive ? 'active' : 'inactive'}
+      {...props}
       className={cn(
-        "inline-flex items-center justify-evenly whitespace-nowrap rounded-sm px-3 py-1.5 text-sm font-medium ring-offset-background transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50",
+        "inline-flex items-center justify-evenly whitespace-nowrap rounded-sm px-3 py-1.5 text-sm font-medium ring-offset-background transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 cursor-pointer",
         isActive
           ? "bg-transparent text-foreground shadow-sm font-semibold text-xl animate-pulse-text "
           : "hover:bg-teal-400/20 hover:text-foreground hover:shadow-sm",
         className
       )}
-      onClick={() => context.onValueChange(value)}
-      {...props}
+      onClick={handleClick}
     />
   )
 })

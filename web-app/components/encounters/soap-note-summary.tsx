@@ -172,13 +172,46 @@ export function SOAPNoteSummary({
     });
   }, [diagnoses]);
 
-  // Build lab orders string
+  // Build lab orders/results string
   const labOrdersString = useMemo(() => {
     if (labOrders.length === 0) return null;
-    return labOrders.map((order) => {
-      const tests = order.items?.map((item) => item.test_name).join(', ') || 'Unknown tests';
-      const status = order.status !== 'COMPLETED' ? ` [${order.status}]` : ' [Results Available]';
-      return `- ${tests}${status}`;
+    return labOrders.flatMap((order) => {
+      const orderLines: string[] = [];
+      
+      order.items?.forEach((item) => {
+        if (item.result && order.status === 'COMPLETED') {
+          // Show actual result
+          const result = item.result;
+          let resultStr = '';
+          
+          if (result.numeric_value !== undefined && result.numeric_value !== null) {
+            resultStr = `${result.numeric_value}`;
+            if (result.result_unit) resultStr += ` ${result.result_unit}`;
+            if (result.reference_range_text) {
+              resultStr += ` (ref: ${result.reference_range_text})`;
+            } else if (result.reference_low !== undefined && result.reference_high !== undefined) {
+              resultStr += ` (ref: ${result.reference_low}-${result.reference_high})`;
+            }
+          } else if (result.text_value) {
+            resultStr = result.text_value;
+          } else if (result.option_value) {
+            resultStr = result.option_value;
+          }
+          
+          // Add flag if abnormal
+          const flagStr = result.result_flag && result.result_flag !== 'NORMAL' 
+            ? ` [${result.result_flag}]` 
+            : '';
+          
+          orderLines.push(`- ${item.test_name}: ${resultStr}${flagStr}`);
+        } else {
+          // Show pending status
+          const status = item.status !== 'COMPLETED' ? ` [${item.status}]` : '';
+          orderLines.push(`- ${item.test_name}${status}`);
+        }
+      });
+      
+      return orderLines;
     });
   }, [labOrders]);
 
