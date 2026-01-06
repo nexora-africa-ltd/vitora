@@ -40,7 +40,7 @@ const orderSchema = z.object({
     z.object({
       test: z.number().positive('Test is required'),
       test_name: z.string().optional(),
-      test_code: z.string().optional(),
+      test_code: z.string().min(1, 'Test code is required'),
       cost: z.number().optional(),
       special_instructions: z.string().optional(),
     })
@@ -168,7 +168,7 @@ export function LabOrderForm({
         priority: data.priority as LabPriority,
         clinical_notes: data.clinical_notes,
         items: data.items.map(item => ({
-          test: item.test,
+          test_code: item.test_code,
           special_instructions: item.special_instructions,
         })),
       };

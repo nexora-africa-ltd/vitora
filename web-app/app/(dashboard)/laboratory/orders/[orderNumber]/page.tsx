@@ -1,13 +1,15 @@
 'use client';
 
+import { use } from 'react';
 import { LabOrderDetail } from '@/components/laboratory/lab-order-detail';
 
 interface LabOrderPageProps {
-  params: {
+  params: Promise<{
     orderNumber: string;
-  };
+  }>;
 }
 
 export default function LabOrderPage({ params }: LabOrderPageProps) {
-  return <LabOrderDetail orderNumber={params.orderNumber} />;
+  const { orderNumber } = use(params);
+  return <LabOrderDetail orderNumber={orderNumber} />;
 }
