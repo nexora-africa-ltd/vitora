@@ -7,6 +7,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useDebounce } from './use-debounce';
 import { useNetworkStatus } from './use-network-status';
+import { useSyncStatus } from '@/lib/context/sync-context';
 
 export type AutoSaveStatus = 
   | 'idle'
@@ -68,6 +69,7 @@ export function useAutoSave<T>({
   hasChanged = defaultHasChanged,
 }: AutoSaveOptions<T>): AutoSaveResult {
   const { isOnline } = useNetworkStatus();
+  const syncStatus = useSyncStatus();
   const [status, setStatus] = useState<AutoSaveStatus>('idle');
   const [lastSaved, setLastSaved] = useState<Date | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -89,9 +91,10 @@ export function useAutoSave<T>({
         setStatus('pending');
       } else {
         setStatus('offline');
+        syncStatus.incrementPending();
       }
     }
-  }, [data, hasChanged, isOnline]);
+  }, [data, hasChanged, isOnline, syncStatus]);
 
   // Auto-save when debounced data changes
   useEffect(() => {
@@ -116,6 +119,7 @@ export function useAutoSave<T>({
       saveInProgress.current = true;
       setStatus('saving');
       setError(null);
+      syncStatus.reportSyncStart();
       
       try {
         await onSave(debouncedData);
@@ -123,6 +127,8 @@ export function useAutoSave<T>({
         setLastSaved(new Date());
         setStatus('saved');
         setIsDirty(false);
+        syncStatus.reportSync();
+        syncStatus.decrementPending();
         onSuccess?.();
         
         // Reset to idle after a short delay
@@ -133,6 +139,7 @@ export function useAutoSave<T>({
         const errorMessage = err instanceof Error ? err.message : 'Failed to save';
         setError(errorMessage);
         setStatus('error');
+        syncStatus.reportSyncError(errorMessage);
         onError?.(err instanceof Error ? err : new Error(errorMessage));
       } finally {
         saveInProgress.current = false;
@@ -140,7 +147,7 @@ export function useAutoSave<T>({
     };
 
     save();
-  }, [debouncedData, enabled, isDirty, isOnline, onSave, onSuccess, onError, hasChanged]);
+  }, [debouncedData, enabled, isDirty, isOnline, onSave, onSuccess, onError, hasChanged, syncStatus]);
 
   // Process offline queue when back online
   useEffect(() => {
@@ -149,6 +156,7 @@ export function useAutoSave<T>({
     const processQueue = async () => {
       saveInProgress.current = true;
       setStatus('saving');
+      syncStatus.reportSyncStart();
       
       try {
         // Process the last queued item (most recent data)
@@ -164,6 +172,8 @@ export function useAutoSave<T>({
         setLastSaved(new Date());
         setStatus('saved');
         setIsDirty(false);
+        syncStatus.reportSync();
+        syncStatus.setPendingCount(0);
         onSuccess?.();
         
         setTimeout(() => {
@@ -173,6 +183,7 @@ export function useAutoSave<T>({
         const errorMessage = err instanceof Error ? err.message : 'Failed to sync';
         setError(errorMessage);
         setStatus('error');
+        syncStatus.reportSyncError(errorMessage);
         onError?.(err instanceof Error ? err : new Error(errorMessage));
       } finally {
         saveInProgress.current = false;
@@ -180,7 +191,7 @@ export function useAutoSave<T>({
     };
 
     processQueue();
-  }, [isOnline, onSave, onSuccess, onError]);
+  }, [isOnline, onSave, onSuccess, onError, syncStatus]);
 
   // Manual save function
   const saveNow = useCallback(async () => {
@@ -190,12 +201,14 @@ export function useAutoSave<T>({
       offlineQueue.current = [data];
       setPendingCount(1);
       setStatus('offline');
+      syncStatus.incrementPending();
       return;
     }
 
     saveInProgress.current = true;
     setStatus('saving');
     setError(null);
+    syncStatus.reportSyncStart();
     
     try {
       await onSave(data);
@@ -203,6 +216,7 @@ export function useAutoSave<T>({
       setLastSaved(new Date());
       setStatus('saved');
       setIsDirty(false);
+      syncStatus.reportSync();
       onSuccess?.();
       
       setTimeout(() => {
@@ -212,11 +226,12 @@ export function useAutoSave<T>({
       const errorMessage = err instanceof Error ? err.message : 'Failed to save';
       setError(errorMessage);
       setStatus('error');
+      syncStatus.reportSyncError(errorMessage);
       onError?.(err instanceof Error ? err : new Error(errorMessage));
     } finally {
       saveInProgress.current = false;
     }
-  }, [data, isOnline, onSave, onSuccess, onError]);
+  }, [data, isOnline, onSave, onSuccess, onError, syncStatus]);
 
   // Reset function to clear dirty state (e.g., after manual save)
   const reset = useCallback(() => {
