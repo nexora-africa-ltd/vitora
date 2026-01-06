@@ -432,3 +432,147 @@ def sample_admission_recommendation(db, sample_encounter, test_user):
     )
 
     return recommendation
+
+
+# ============================================================================
+# Clinical Template Sync Test Fixtures
+# ============================================================================
+
+
+@pytest.fixture
+def sample_encounter_with_vitals(db, sample_patient):
+    """Create an encounter with vitals populated for testing."""
+    from decimal import Decimal
+
+    from hmis.apps.encounters.models import Encounter
+
+    return Encounter.objects.create(
+        patient=sample_patient,
+        encounter_type="OPD",
+        chief_complaint="Fever and cough for 3 days",
+        temperature=Decimal("37.8"),
+        pulse=82,
+        blood_pressure="120/80",
+        respiratory_rate=18,
+        spo2=Decimal("98.0"),
+        weight=Decimal("70.5"),
+        height=Decimal("175.0"),
+    )
+
+
+@pytest.fixture
+def sample_template_with_vitals(db):
+    """Create a clinical template with vitals fields."""
+    from hmis.apps.clinical_templates.models import ClinicalTemplate
+
+    return ClinicalTemplate.objects.create(
+        name="Test Vitals Template",
+        template_type="assessment",
+        specialty="General",
+        description="Template for testing vitals sync",
+        content={
+            "title": "Vitals Assessment",
+            "version": "1.0",
+            "sections": [
+                {
+                    "name": "Vital Signs",
+                    "order": 1,
+                    "fields": [
+                        {"name": "temperature", "type": "number", "label": "Temperature (°C)", "required": True, "syncable": True},
+                        {"name": "pulse", "type": "number", "label": "Pulse (bpm)", "required": True, "syncable": True},
+                        {"name": "blood_pressure", "type": "text", "label": "Blood Pressure", "required": False, "syncable": True},
+                        {"name": "respiratory_rate", "type": "number", "label": "Respiratory Rate", "required": False, "syncable": True},
+                        {"name": "spo2", "type": "number", "label": "SpO2 (%)", "required": False, "syncable": True},
+                        {"name": "weight", "type": "number", "label": "Weight (kg)", "required": False, "syncable": True},
+                        {"name": "height", "type": "number", "label": "Height (cm)", "required": False, "syncable": True},
+                    ],
+                },
+                {
+                    "name": "Notes",
+                    "order": 2,
+                    "fields": [
+                        {"name": "notes", "type": "textarea", "label": "Clinical Notes", "required": False},
+                    ],
+                },
+            ],
+        },
+        is_active=True,
+        is_system=True,
+    )
+
+
+@pytest.fixture
+def sample_template_with_history(db):
+    """Create a clinical template with medical history fields."""
+    from hmis.apps.clinical_templates.models import ClinicalTemplate
+
+    return ClinicalTemplate.objects.create(
+        name="Test History Template",
+        template_type="assessment",
+        specialty="General",
+        description="Template for testing history sync",
+        content={
+            "title": "Medical History",
+            "version": "1.0",
+            "sections": [
+                {
+                    "name": "Medical History",
+                    "order": 1,
+                    "fields": [
+                        {"name": "allergies", "type": "textarea", "label": "Known Allergies", "required": False, "syncable": True},
+                        {"name": "chronic_conditions", "type": "textarea", "label": "Chronic Conditions", "required": False, "syncable": True},
+                        {"name": "current_medications", "type": "textarea", "label": "Current Medications", "required": False, "syncable": True},
+                        {"name": "past_surgeries", "type": "textarea", "label": "Past Surgeries", "required": False, "syncable": True},
+                        {"name": "family_history", "type": "textarea", "label": "Family History", "required": False, "syncable": True},
+                    ],
+                },
+            ],
+        },
+        is_active=True,
+        is_system=True,
+    )
+
+
+@pytest.fixture
+def sample_template_with_sections(db):
+    """Create a clinical template with multiple sections for testing structure."""
+    from hmis.apps.clinical_templates.models import ClinicalTemplate
+
+    return ClinicalTemplate.objects.create(
+        name="Test Multi-Section Template",
+        template_type="assessment",
+        specialty="General",
+        description="Template with multiple sections",
+        content={
+            "title": "Comprehensive Assessment",
+            "version": "1.0",
+            "sections": [
+                {
+                    "name": "Vital Signs",
+                    "order": 1,
+                    "fields": [
+                        {"name": "temperature", "type": "number", "label": "Temperature", "required": True, "syncable": True},
+                        {"name": "pulse", "type": "number", "label": "Pulse", "required": True, "syncable": True},
+                    ],
+                },
+                {
+                    "name": "Assessment",
+                    "order": 2,
+                    "fields": [
+                        {"name": "notes", "type": "textarea", "label": "Assessment Notes", "required": False},
+                        {"name": "diagnosis", "type": "text", "label": "Working Diagnosis", "required": False},
+                    ],
+                },
+                {
+                    "name": "Plan",
+                    "order": 3,
+                    "fields": [
+                        {"name": "treatment_plan", "type": "textarea", "label": "Treatment Plan", "required": False},
+                        {"name": "follow_up", "type": "date", "label": "Follow-up Date", "required": False},
+                    ],
+                },
+            ],
+        },
+        is_active=True,
+        is_system=True,
+    )

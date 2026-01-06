@@ -772,6 +772,225 @@ class EncounterViewSet(viewsets.ModelViewSet):
         serializer = self.get_serializer(queryset, many=True)
         return Response({"results": serializer.data})
 
+    # =========================================================================
+    # Clinical Template Sync Actions
+    # =========================================================================
+
+    @action(detail=True, methods=["get"], url_path="populate-template")
+    def populate_template(self, request, pk=None):
+        """
+        Populate template fields from existing encounter/patient data.
+
+        Auto-fills template fields with matching encounter vitals and
+        patient demographics.
+
+        GET /api/encounters/{id}/populate-template/?template_id=123
+
+        Query params:
+        - template_id: Required. The ID of the template to populate.
+        - structure_by_section: Optional. If 'true', structures data by section names.
+
+        Returns:
+        {
+            "populated_data": { ... },
+            "template_id": 123,
+            "template_name": "Vitals Assessment"
+        }
+        """
+        from hmis.apps.clinical_templates.models import ClinicalTemplate
+        from hmis.apps.clinical_templates.services import TemplateDataSynchronizer
+
+        encounter = self.get_object()
+
+        # Validate template_id
+        template_id = request.query_params.get("template_id")
+        if not template_id:
+            return Response(
+                {"detail": "template_id query parameter is required."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        try:
+            template = ClinicalTemplate.objects.get(pk=template_id, is_active=True)
+        except ClinicalTemplate.DoesNotExist:
+            return Response(
+                {"detail": "Template not found or inactive."},
+                status=status.HTTP_404_NOT_FOUND,
+            )
+
+        # Get existing template data from encounter if any
+        existing_data = encounter.clinical_template_data or {}
+
+        # Populate from encounter
+        synchronizer = TemplateDataSynchronizer()
+        structure_by_section = request.query_params.get("structure_by_section", "false").lower() == "true"
+
+        populated_data = synchronizer.populate_from_encounter(
+            template=template,
+            encounter=encounter,
+            existing_data=existing_data,
+            structure_by_section=structure_by_section,
+        )
+
+        return Response({
+            "populated_data": populated_data,
+            "template_id": template.id,
+            "template_name": template.name,
+        })
+
+    @action(detail=True, methods=["post"], url_path="sync-template")
+    def sync_template(self, request, pk=None):
+        """
+        Sync template data back to encounter fields.
+
+        Updates encounter vitals and other fields from template data.
+
+        POST /api/encounters/{id}/sync-template/
+        {
+            "template_id": 123,
+            "template_data": {
+                "temperature": 37.5,
+                "pulse": 80,
+                ...
+            }
+        }
+
+        Returns:
+        - Updated encounter with changed_fields list
+        """
+        from hmis.apps.clinical_templates.models import ClinicalTemplate
+        from hmis.apps.clinical_templates.services import TemplateDataSynchronizer
+
+        encounter = self.get_object()
+
+        # Check if encounter can be edited
+        if not encounter.can_edit():
+            return Response(
+                {"detail": f"Encounter with status '{encounter.status}' cannot be edited."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        # Validate request data
+        template_id = request.data.get("template_id")
+        template_data = request.data.get("template_data")
+
+        if not template_id:
+            return Response(
+                {"detail": "template_id is required."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        if not template_data or not isinstance(template_data, dict):
+            return Response(
+                {"detail": "template_data must be a non-empty object."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        try:
+            template = ClinicalTemplate.objects.get(pk=template_id, is_active=True)
+        except ClinicalTemplate.DoesNotExist:
+            return Response(
+                {"detail": "Template not found or inactive."},
+                status=status.HTTP_404_NOT_FOUND,
+            )
+
+        # Sync template data to encounter
+        synchronizer = TemplateDataSynchronizer()
+        updated_encounter, changed_fields = synchronizer.sync_to_encounter(
+            template_data=template_data,
+            encounter=encounter,
+            return_changes=True,
+        )
+
+        # Also store the template data on the encounter
+        updated_encounter.clinical_template = template
+        updated_encounter.clinical_template_data = template_data
+        updated_encounter.save(update_fields=["clinical_template", "clinical_template_data"])
+
+        serializer = self.get_serializer(updated_encounter)
+        return Response({
+            **serializer.data,
+            "changed_fields": changed_fields,
+        })
+
+    @action(detail=True, methods=["get", "post"], url_path="template-snapshots")
+    def template_snapshots(self, request, pk=None):
+        """
+        List or create template snapshots for an encounter.
+
+        GET /api/encounters/{id}/template-snapshots/
+        - Returns list of template snapshots for this encounter
+
+        POST /api/encounters/{id}/template-snapshots/
+        {
+            "template_id": 123,
+            "template_data": { ... }
+        }
+        - Creates a new immutable snapshot
+        """
+        from hmis.apps.clinical_templates.models import ClinicalTemplate, ClinicalTemplateSnapshot
+        from hmis.apps.clinical_templates.services import TemplateSnapshotService
+
+        encounter = self.get_object()
+        service = TemplateSnapshotService()
+
+        if request.method == "GET":
+            snapshots = service.get_snapshots_for_encounter(encounter)
+            return Response([
+                {
+                    "id": s.id,
+                    "template_id": s.template_id,
+                    "template_name": s.template_name,
+                    "template_version": s.template_version,
+                    "data": s.data,
+                    "created_by": s.created_by.username if s.created_by else None,
+                    "created_at": s.created_at.isoformat(),
+                }
+                for s in snapshots
+            ])
+
+        # POST - Create snapshot
+        template_id = request.data.get("template_id")
+        template_data = request.data.get("template_data")
+
+        if not template_id:
+            return Response(
+                {"detail": "template_id is required."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        if not template_data or not isinstance(template_data, dict):
+            return Response(
+                {"detail": "template_data must be a non-empty object."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        try:
+            template = ClinicalTemplate.objects.get(pk=template_id)
+        except ClinicalTemplate.DoesNotExist:
+            return Response(
+                {"detail": "Template not found."},
+                status=status.HTTP_404_NOT_FOUND,
+            )
+
+        snapshot = service.create_snapshot(
+            encounter=encounter,
+            template=template,
+            template_data=template_data,
+            created_by=request.user,
+        )
+
+        return Response(
+            {
+                "id": snapshot.id,
+                "template_id": snapshot.template_id,
+                "template_name": snapshot.template_name,
+                "template_version": snapshot.template_version,
+                "created_at": snapshot.created_at.isoformat(),
+            },
+            status=status.HTTP_201_CREATED,
+        )
+
     def get_queryset(self):
         """
         Optionally filter encounters by patient and status.

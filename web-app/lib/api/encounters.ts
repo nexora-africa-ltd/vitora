@@ -110,7 +110,103 @@ export const encountersApi = {
     );
     return response.data;
   },
+
+  // ===========================================================================
+  // Clinical Template Sync
+  // ===========================================================================
+
+  /**
+   * Populate template fields from existing encounter/patient data.
+   * Auto-fills template fields with matching encounter vitals and patient demographics.
+   */
+  async populateTemplate(
+    encounterId: number,
+    templateId: number,
+    structureBySection?: boolean
+  ): Promise<TemplatePopulateResponse> {
+    const params: Record<string, string> = { template_id: String(templateId) };
+    if (structureBySection) {
+      params.structure_by_section = 'true';
+    }
+    const response = await apiClient.get<TemplatePopulateResponse>(
+      `/api/encounters/${encounterId}/populate-template/`,
+      { params }
+    );
+    return response.data;
+  },
+
+  /**
+   * Sync template data back to encounter fields.
+   * Updates encounter vitals and other fields from template data.
+   */
+  async syncTemplate(
+    encounterId: number,
+    templateId: number,
+    templateData: Record<string, unknown>
+  ): Promise<TemplateSyncResponse> {
+    const response = await apiClient.post<TemplateSyncResponse>(
+      `/api/encounters/${encounterId}/sync-template/`,
+      {
+        template_id: templateId,
+        template_data: templateData,
+      }
+    );
+    return response.data;
+  },
+
+  /**
+   * List template snapshots (attachments) for an encounter.
+   */
+  async listTemplateSnapshots(encounterId: number): Promise<TemplateSnapshot[]> {
+    const response = await apiClient.get<TemplateSnapshot[]>(
+      `/api/encounters/${encounterId}/template-snapshots/`
+    );
+    return response.data;
+  },
+
+  /**
+   * Create a template snapshot (attachment) for an encounter.
+   * Snapshots are immutable records of completed template assessments.
+   */
+  async createTemplateSnapshot(
+    encounterId: number,
+    templateId: number,
+    templateData: Record<string, unknown>
+  ): Promise<TemplateSnapshot> {
+    const response = await apiClient.post<TemplateSnapshot>(
+      `/api/encounters/${encounterId}/template-snapshots/`,
+      {
+        template_id: templateId,
+        template_data: templateData,
+      }
+    );
+    return response.data;
+  },
 };
+
+// =============================================================================
+// Clinical Template Sync Types
+// =============================================================================
+
+export interface TemplatePopulateResponse {
+  populated_data: Record<string, unknown>;
+  template_id: number;
+  template_name: string;
+}
+
+export interface TemplateSyncResponse extends Encounter {
+  changed_fields: string[];
+}
+
+export interface TemplateSnapshot {
+  id: number;
+  template_id: number | null;
+  template_name: string;
+  template_version: string;
+  data: Record<string, unknown>;
+  created_by: string | null;
+  created_at: string;
+}
 
 // =============================================================================
 // Pre-Triage Queue Types

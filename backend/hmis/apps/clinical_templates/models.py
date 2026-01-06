@@ -213,3 +213,88 @@ class TemplateSection(models.Model):
 
     def __str__(self) -> str:
         return f"{self.name} ({self.template.name})"
+
+
+class ClinicalTemplateSnapshot(models.Model):
+    """
+    Immutable snapshot of a completed clinical template.
+
+    Snapshots serve as permanent records (attachments) of assessments
+    completed using clinical templates. Once created, they cannot be
+    modified - only new snapshots can be created.
+
+    Attributes:
+        encounter: The encounter this snapshot belongs to
+        template: Reference to the template used (can be null if template deleted)
+        template_name: Name of the template at time of snapshot
+        template_version: Version of the template at time of snapshot
+        data: The completed template data (JSON)
+        created_by: User who created this snapshot
+        created_at: Timestamp when snapshot was created
+    """
+
+    encounter = models.ForeignKey(
+        "encounters.Encounter",
+        on_delete=models.CASCADE,
+        related_name="template_snapshots",
+        help_text="The encounter this snapshot belongs to",
+    )
+    template = models.ForeignKey(
+        ClinicalTemplate,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="snapshots",
+        help_text="The template used (may be null if template was deleted)",
+    )
+    template_name = models.CharField(
+        max_length=200,
+        help_text="Name of the template at time of snapshot",
+    )
+    template_version = models.CharField(
+        max_length=50,
+        default="1.0",
+        help_text="Version of the template at time of snapshot",
+    )
+    data = models.JSONField(
+        help_text="The completed template data",
+    )
+    created_by = models.ForeignKey(
+        User,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="template_snapshots",
+        help_text="User who created this snapshot",
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ["-created_at"]
+        verbose_name = "Clinical Template Snapshot"
+        verbose_name_plural = "Clinical Template Snapshots"
+        indexes = [
+            models.Index(fields=["encounter"]),
+            models.Index(fields=["-created_at"]),
+        ]
+
+    def __str__(self) -> str:
+        return f"{self.template_name} - {self.encounter} ({self.created_at})"
+
+    def save(self, *args, **kwargs):
+        """
+        Override save to enforce immutability after creation.
+
+        Once a snapshot is created, it cannot be modified except
+        by database administrators.
+        """
+        if self.pk:
+            # Already exists - don't allow modification
+            # Get the original from database
+            original = ClinicalTemplateSnapshot.objects.filter(pk=self.pk).first()
+            if original:
+                # Restore original values (effectively making it immutable)
+                self.data = original.data
+                self.template_name = original.template_name
+                self.template_version = original.template_version
+        super().save(*args, **kwargs)
