@@ -118,6 +118,7 @@ export function LabQueueView({ defaultStatus = '' }: LabQueueViewProps) {
   const [statusFilter, setStatusFilter] = useState<QueueStatus | ''>(defaultStatus);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [quickSearch, setQuickSearch] = useState('');
+  const [openDropdownId, setOpenDropdownId] = useState<string | null>(null);
 
   // Dialog states
   const [selectedQueueEntry, setSelectedQueueEntry] = useState<LabQueue | null>(null);
@@ -494,6 +495,7 @@ export function LabQueueView({ defaultStatus = '' }: LabQueueViewProps) {
                     const status = STATUS_CONFIG[item.queue_status] || STATUS_CONFIG.PENDING;
                     const priority = PRIORITY_CONFIG[item.priority];
                     const StatusIcon = status.icon;
+                    const isDropdownOpen = openDropdownId === item.queue_number;
 
                     return (
                       <TableRow
@@ -504,7 +506,7 @@ export function LabQueueView({ defaultStatus = '' }: LabQueueViewProps) {
                           item.priority === 'URGENT' && 'bg-warning/10 hover:bg-warning/20',
                           item.is_overdue && 'bg-warning/20 hover:bg-warning/30'
                         )}
-                        onClick={() => router.push(`/laboratory/orders/${item.order_number}`)}
+                        onClick={() => setOpenDropdownId(item.queue_number)}
                       >
                         <TableCell className="font-mono text-sm">{item.queue_number}</TableCell>
                         <TableCell>
@@ -549,7 +551,10 @@ export function LabQueueView({ defaultStatus = '' }: LabQueueViewProps) {
                           <TATDisplay item={item} />
                         </TableCell>
                         <TableCell className="text-right" onClick={(e) => e.stopPropagation()}>
-                          <DropdownMenu>
+                          <DropdownMenu 
+                            open={isDropdownOpen} 
+                            onOpenChange={(open) => setOpenDropdownId(open ? item.queue_number : null)}
+                          >
                             <DropdownMenuTrigger asChild>
                               <Button variant="ghost" size="icon">
                                 <MoreHorizontal className="h-4 w-4" />
