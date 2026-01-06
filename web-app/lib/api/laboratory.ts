@@ -260,18 +260,24 @@ export const laboratoryApi = {
    * Get lab queue entries.
    */
   async getQueue(status?: string): Promise<LabQueue[]> {
-    const response = await apiClient.get<LabQueue[]>('/api/lab/queue/', {
-      params: { status },
-    });
-    return response.data;
+    const params: Record<string, string> = {};
+    if (status) {
+      params.queue_status = status;
+    }
+    const response = await apiClient.get<LabQueue[] | { results: LabQueue[] }>('/api/lab/queue/', { params });
+    // Handle both paginated and non-paginated responses
+    if (Array.isArray(response.data)) {
+      return response.data;
+    }
+    return response.data.results || [];
   },
 
   /**
    * Assign queue entry to technician.
    */
-  async assignQueueEntry(queueId: number, technicianId: number): Promise<LabQueue> {
-    const response = await apiClient.post<LabQueue>(`/api/lab/queue/${queueId}/assign/`, {
-      technician: technicianId,
+  async assignQueueEntry(queueNumber: string, technicianId: number): Promise<LabQueue> {
+    const response = await apiClient.post<LabQueue>(`/api/lab/queue/${queueNumber}/assign/`, {
+      technician_id: technicianId,
     });
     return response.data;
   },
@@ -279,16 +285,30 @@ export const laboratoryApi = {
   /**
    * Start processing queue entry.
    */
-  async startProcessing(queueId: number): Promise<LabQueue> {
-    const response = await apiClient.post<LabQueue>(`/api/lab/queue/${queueId}/start/`);
+  async startProcessing(queueNumber: string): Promise<LabQueue> {
+    const response = await apiClient.post<LabQueue>(`/api/lab/queue/${queueNumber}/start-processing/`);
     return response.data;
   },
 
   /**
    * Complete processing and release results.
    */
-  async releaseResults(queueId: number): Promise<LabQueue> {
-    const response = await apiClient.post<LabQueue>(`/api/lab/queue/${queueId}/release/`);
+  async releaseResults(queueNumber: string): Promise<LabQueue> {
+    const response = await apiClient.post<LabQueue>(`/api/lab/queue/${queueNumber}/release/`);
+    return response.data;
+  },
+
+  /**
+   * Get queue statistics.
+   */
+  async getQueueStats(): Promise<{
+    pending: number;
+    collected: number;
+    processing: number;
+    review: number;
+    released: number;
+  }> {
+    const response = await apiClient.get('/api/lab/queue/stats/');
     return response.data;
   },
 };

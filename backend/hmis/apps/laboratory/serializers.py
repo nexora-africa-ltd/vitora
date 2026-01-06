@@ -4,7 +4,7 @@ Serializers for laboratory models.
 
 from rest_framework import serializers
 
-from .models import LabOrder, LabOrderItem, LabResult, LOINCCode, TestCatalog
+from .models import LabOrder, LabOrderItem, LabQueue, LabResult, LOINCCode, TestCatalog
 
 
 class TestCatalogSerializer(serializers.ModelSerializer):
@@ -219,3 +219,97 @@ class LOINCCodeSerializer(serializers.ModelSerializer):
     class Meta:
         model = LOINCCode
         fields = "__all__"
+
+
+# ============================================================================
+# Lab Queue Serializers
+# ============================================================================
+
+
+class LabQueueSerializer(serializers.ModelSerializer):
+    """Serializer for lab queue listing and detail."""
+
+    # Order info
+    order_number = serializers.CharField(source="lab_order.order_number", read_only=True)
+    patient_name = serializers.SerializerMethodField()
+    patient_mrn = serializers.CharField(source="lab_order.patient.mrn", read_only=True)
+    
+    # Test info
+    tests = serializers.SerializerMethodField()
+    
+    # User info
+    assigned_technician_name = serializers.SerializerMethodField()
+    collected_by_name = serializers.SerializerMethodField()
+    reviewed_by_name = serializers.SerializerMethodField()
+
+    class Meta:
+        model = LabQueue
+        fields = [
+            "id",
+            "queue_number",
+            "order_number",
+            "patient_name",
+            "patient_mrn",
+            "tests",
+            "priority",
+            "queue_status",
+            "sample_type",
+            "sample_id",
+            "assigned_technician",
+            "assigned_technician_name",
+            "collected_by",
+            "collected_by_name",
+            "collected_at",
+            "processing_started_at",
+            "processing_completed_at",
+            "reviewed_by",
+            "reviewed_by_name",
+            "reviewed_at",
+            "released_at",
+            "technician_notes",
+            "rejection_reason",
+            "created_at",
+            "updated_at",
+        ]
+        read_only_fields = [
+            "queue_number",
+            "created_at",
+            "updated_at",
+        ]
+
+    def get_patient_name(self, obj):
+        patient = obj.lab_order.patient
+        return f"{patient.first_name} {patient.last_name}"
+
+    def get_tests(self, obj):
+        return [
+            {"code": item.test.code, "name": item.test.name}
+            for item in obj.lab_order.items.all()
+        ]
+
+    def get_assigned_technician_name(self, obj):
+        if obj.assigned_technician:
+            return obj.assigned_technician.get_full_name() or obj.assigned_technician.username
+        return None
+
+    def get_collected_by_name(self, obj):
+        if obj.collected_by:
+            return obj.collected_by.get_full_name() or obj.collected_by.username
+        return None
+
+    def get_reviewed_by_name(self, obj):
+        if obj.reviewed_by:
+            return obj.reviewed_by.get_full_name() or obj.reviewed_by.username
+        return None
+
+
+class LabQueueCollectSerializer(serializers.Serializer):
+    """Serializer for sample collection action."""
+
+    sample_id = serializers.CharField(required=False, allow_blank=True, default="")
+
+
+class LabQueueAssignSerializer(serializers.Serializer):
+    """Serializer for technician assignment action."""
+
+    technician_id = serializers.IntegerField()

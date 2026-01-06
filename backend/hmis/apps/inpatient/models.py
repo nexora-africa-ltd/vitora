@@ -1381,7 +1381,7 @@ class ShiftHandover(TimeStampedModel):
         self.critical_patients = critical_count
 
         # Count pending discharges (admissions with recent discharge recommendations)
-        # TODO: This is a simplified count - could be enhanced with actual discharge orders
+        # TODO : This is a simplified count - could be enhanced with actual discharge orders
         self.discharges_pending = 0  # Placeholder - implement based on your workflow
 
         self.save()

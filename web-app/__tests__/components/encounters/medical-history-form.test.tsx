@@ -4,7 +4,7 @@
 import { render, screen } from '@testing-library/react';
 
 // Placeholder test file for MedicalHistoryForm component
-// TODO: Add actual tests once component is implemented
+// TODO : Add actual tests once component is implemented
 
 describe('MedicalHistoryForm', () => {
   it('placeholder test - remove when actual tests are added', () => {

@@ -532,7 +532,7 @@ NOT_REQUIRED Encounter:
 
 ---
 
-## Future Enhancements ( # TODO: Not in current scope)
+## Future Enhancements ( # TODO : Not in current scope)
 
 - [ ] Waiting room display showing called patients
 - [ ] Real-time queue updates via WebSockets

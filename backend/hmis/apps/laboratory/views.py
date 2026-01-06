@@ -412,3 +412,148 @@ class LOINCCodeViewSet(viewsets.ReadOnlyModelViewSet):
     queryset = LOINCCode.objects.all()
     serializer_class = LOINCCodeSerializer
     permission_classes = [IsAuthenticated]
+
+
+# ============================================================================
+# Lab Queue ViewSet
+# ============================================================================
+
+
+class LabQueueViewSet(viewsets.ModelViewSet):
+    """
+    ViewSet for lab queue management.
+    
+    Provides queue listing, filtering, and workflow actions:
+    - collect: Record sample collection
+    - assign: Assign to technician
+    - start-processing: Begin processing
+    - submit-review: Submit for review
+    - release: Release results
+    - stats: Get queue statistics
+    """
+
+    permission_classes = [IsAuthenticated]
+    filter_backends = [filters.DjangoFilterBackend]
+    filterset_fields = ["queue_status", "priority", "assigned_technician"]
+    lookup_field = "queue_number"
+
+    def get_queryset(self):
+        from .models import LabQueue
+        return LabQueue.objects.select_related(
+            "lab_order__patient",
+            "lab_order__ordered_by",
+            "assigned_technician",
+            "collected_by",
+            "reviewed_by",
+        ).prefetch_related("lab_order__items__test")
+
+    def get_serializer_class(self):
+        from .serializers import (
+            LabQueueAssignSerializer,
+            LabQueueCollectSerializer,
+            LabQueueSerializer,
+        )
+        if self.action == "collect":
+            return LabQueueCollectSerializer
+        if self.action == "assign":
+            return LabQueueAssignSerializer
+        return LabQueueSerializer
+
+    @action(detail=True, methods=["post"])
+    def collect(self, request, queue_number=None):
+        """Record sample collection."""
+        from .serializers import LabQueueCollectSerializer, LabQueueSerializer
+        
+        queue_entry = self.get_object()
+        serializer = LabQueueCollectSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        
+        sample_id = serializer.validated_data.get("sample_id", "")
+        queue_entry.collect_sample(request.user, sample_id)
+        
+        return Response(LabQueueSerializer(queue_entry).data)
+
+    @action(detail=True, methods=["post"])
+    def assign(self, request, queue_number=None):
+        """Assign to technician."""
+        from django.contrib.auth import get_user_model
+        from .serializers import LabQueueAssignSerializer, LabQueueSerializer
+        
+        User = get_user_model()
+        queue_entry = self.get_object()
+        serializer = LabQueueAssignSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        
+        technician_id = serializer.validated_data["technician_id"]
+        try:
+            technician = User.objects.get(pk=technician_id)
+        except User.DoesNotExist:
+            return Response(
+                {"error": "Technician not found"},
+                status=status.HTTP_404_NOT_FOUND,
+            )
+        
+        queue_entry.assign_to(technician)
+        
+        return Response(LabQueueSerializer(queue_entry).data)
+
+    @action(detail=True, methods=["post"], url_path="start-processing")
+    def start_processing(self, request, queue_number=None):
+        """Start processing sample."""
+        from .serializers import LabQueueSerializer
+        
+        queue_entry = self.get_object()
+        queue_entry.start_processing()
+        
+        return Response(LabQueueSerializer(queue_entry).data)
+
+    @action(detail=True, methods=["post"], url_path="submit-review")
+    def submit_review(self, request, queue_number=None):
+        """Submit results for review."""
+        from .serializers import LabQueueSerializer
+        
+        queue_entry = self.get_object()
+        queue_entry.submit_for_review()
+        
+        return Response(LabQueueSerializer(queue_entry).data)
+
+    @action(detail=True, methods=["post"])
+    def release(self, request, queue_number=None):
+        """Release results."""
+        from .serializers import LabQueueSerializer
+        
+        queue_entry = self.get_object()
+        queue_entry.release_results(request.user)
+        
+        return Response(LabQueueSerializer(queue_entry).data)
+
+    @action(detail=False, methods=["get"])
+    def stats(self, request):
+        """Get queue statistics."""
+        from django.db.models import Count
+        from .models import LabQueue
+        
+        stats = LabQueue.objects.values("queue_status").annotate(count=Count("id"))
+        
+        result = {
+            "pending": 0,
+            "collected": 0,
+            "processing": 0,
+            "review": 0,
+            "released": 0,
+        }
+        
+        status_map = {
+            "PENDING": "pending",
+            "COLLECTED": "collected",
+            "PROCESSING": "processing",
+            "REVIEW": "review",
+            "RELEASED": "released",
+        }
+        
+        for stat in stats:
+            key = status_map.get(stat["queue_status"])
+            if key:
+                result[key] = stat["count"]
+        
+        return Response(result)

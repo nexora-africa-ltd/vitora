@@ -23,7 +23,7 @@ export default function ReceiptPage() {
   };
 
   const handleEmail = () => {
-    // TODO: Implement email functionality
+    // TODO : Implement email functionality
     console.log('Email receipt');
   };
 
