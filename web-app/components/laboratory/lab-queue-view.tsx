@@ -30,6 +30,13 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
+import {
   Tooltip,
   TooltipContent,
   TooltipProvider,
@@ -48,6 +55,7 @@ import {
   Send,
   XCircle,
   FileText,
+  Eye,
   UserPlus,
   Search,
   Timer,
@@ -119,6 +127,7 @@ export function LabQueueView({ defaultStatus = '' }: LabQueueViewProps) {
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [quickSearch, setQuickSearch] = useState('');
   const [openDropdownId, setOpenDropdownId] = useState<string | null>(null);
+  const [actionsDialogOpen, setActionsDialogOpen] = useState(false);
 
   // Dialog states
   const [selectedQueueEntry, setSelectedQueueEntry] = useState<LabQueue | null>(null);
@@ -497,6 +506,11 @@ export function LabQueueView({ defaultStatus = '' }: LabQueueViewProps) {
                     const StatusIcon = status.icon;
                     const isDropdownOpen = openDropdownId === item.queue_number;
 
+                    const handleRowClick = () => {
+                      setSelectedQueueEntry(item);
+                      setActionsDialogOpen(true);
+                    };
+
                     return (
                       <TableRow
                         key={item.id}
@@ -506,7 +520,7 @@ export function LabQueueView({ defaultStatus = '' }: LabQueueViewProps) {
                           item.priority === 'URGENT' && 'bg-warning/10 hover:bg-warning/20',
                           item.is_overdue && 'bg-warning/20 hover:bg-warning/30'
                         )}
-                        onClick={() => setOpenDropdownId(item.queue_number)}
+                        onClick={handleRowClick}
                       >
                         <TableCell className="font-mono text-sm">{item.queue_number}</TableCell>
                         <TableCell>
@@ -661,7 +675,155 @@ export function LabQueueView({ defaultStatus = '' }: LabQueueViewProps) {
           </CardContent>
         </Card>
 
-        {/* Dialogs */}
+        {/* Quick Actions Dialog */}
+        <Dialog open={actionsDialogOpen} onOpenChange={setActionsDialogOpen}>
+          <DialogContent className="sm:max-w-md">
+            <DialogHeader>
+              <DialogTitle className="flex items-center gap-2">
+                <Beaker className="h-5 w-5" />
+                {selectedQueueEntry?.queue_number}
+              </DialogTitle>
+              <DialogDescription>
+                {selectedQueueEntry?.patient_name} • {selectedQueueEntry?.patient_mrn}
+              </DialogDescription>
+            </DialogHeader>
+            {selectedQueueEntry && (
+              <div className="space-y-3 py-4">
+                {/* Status badge */}
+                <div className="flex items-center justify-between text-sm">
+                  <span className="text-muted-foreground">Status:</span>
+                  <Badge variant={STATUS_CONFIG[selectedQueueEntry.queue_status]?.variant || 'secondary'}>
+                    {STATUS_CONFIG[selectedQueueEntry.queue_status]?.label || selectedQueueEntry.queue_status}
+                  </Badge>
+                </div>
+                
+                {/* Priority */}
+                <div className="flex items-center justify-between text-sm">
+                  <span className="text-muted-foreground">Priority:</span>
+                  <span className={PRIORITY_CONFIG[selectedQueueEntry.priority]?.className}>
+                    {PRIORITY_CONFIG[selectedQueueEntry.priority]?.label}
+                  </span>
+                </div>
+
+                <div className="border-t pt-3 space-y-2">
+                  {/* View Order */}
+                  <Button
+                    className="w-full justify-start"
+                    variant="outline"
+                    onClick={() => {
+                      setActionsDialogOpen(false);
+                      router.push(`/laboratory/orders/${selectedQueueEntry.order_number}`);
+                    }}
+                  >
+                    <Eye className="h-4 w-4 mr-2" />
+                    View Order Details
+                  </Button>
+
+                  {/* PENDING: Collect Sample */}
+                  {selectedQueueEntry.queue_status === 'PENDING' && (
+                    <Button
+                      className="w-full justify-start"
+                      onClick={() => {
+                        setActionsDialogOpen(false);
+                        openCollectDialog(selectedQueueEntry);
+                      }}
+                    >
+                      <Syringe className="h-4 w-4 mr-2" />
+                      Collect Sample
+                    </Button>
+                  )}
+
+                  {/* COLLECTED: Start Processing */}
+                  {selectedQueueEntry.queue_status === 'COLLECTED' && (
+                    <Button
+                      className="w-full justify-start"
+                      onClick={() => {
+                        setActionsDialogOpen(false);
+                        handleStartProcessing(selectedQueueEntry.queue_number);
+                      }}
+                    >
+                      <Play className="h-4 w-4 mr-2" />
+                      Start Processing
+                    </Button>
+                  )}
+
+                  {/* PROCESSING: Enter Results */}
+                  {selectedQueueEntry.queue_status === 'PROCESSING' && (
+                    <>
+                      <Button
+                        className="w-full justify-start"
+                        onClick={() => {
+                          setActionsDialogOpen(false);
+                          router.push(`/laboratory/orders/${selectedQueueEntry.order_number}/results`);
+                        }}
+                      >
+                        <Beaker className="h-4 w-4 mr-2" />
+                        Enter Results
+                      </Button>
+                      <Button
+                        className="w-full justify-start"
+                        variant="outline"
+                        onClick={() => {
+                          setActionsDialogOpen(false);
+                          handleSubmitForReview(selectedQueueEntry.queue_number);
+                        }}
+                      >
+                        <Send className="h-4 w-4 mr-2" />
+                        Submit for Review
+                      </Button>
+                    </>
+                  )}
+
+                  {/* REVIEW: Release Results */}
+                  {selectedQueueEntry.queue_status === 'REVIEW' && (
+                    <Button
+                      className="w-full justify-start"
+                      onClick={() => {
+                        setActionsDialogOpen(false);
+                        handleReleaseResults(selectedQueueEntry.queue_number);
+                      }}
+                    >
+                      <CheckCircle2 className="h-4 w-4 mr-2" />
+                      Release Results
+                    </Button>
+                  )}
+
+                  {/* Notes - available for most statuses */}
+                  {['COLLECTED', 'PROCESSING', 'REVIEW'].includes(selectedQueueEntry.queue_status) && (
+                    <Button
+                      className="w-full justify-start"
+                      variant="outline"
+                      onClick={() => {
+                        setActionsDialogOpen(false);
+                        openNotesDialog(selectedQueueEntry);
+                      }}
+                    >
+                      <FileText className="h-4 w-4 mr-2" />
+                      Add/Edit Notes
+                    </Button>
+                  )}
+
+                  {/* Reject - available until released */}
+                  {['PENDING', 'COLLECTED', 'PROCESSING'].includes(selectedQueueEntry.queue_status) && (
+                    <Button
+                      className="w-full justify-start"
+                      variant="destructive"
+                      onClick={() => {
+                        setActionsDialogOpen(false);
+                        openRejectDialog(selectedQueueEntry);
+                      }}
+                    >
+                      <XCircle className="h-4 w-4 mr-2" />
+                      Reject Sample
+                    </Button>
+                  )}
+                </div>
+              </div>
+            )}
+          </DialogContent>
+        </Dialog>
+
+        {/* Other Dialogs */}
         <SampleCollectionDialog
           open={collectDialogOpen}
           onOpenChange={setCollectDialogOpen}

@@ -37,6 +37,12 @@ import {
   AlertDescription,
   AlertTitle,
 } from '@/components/ui/alert';
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from '@/components/ui/tooltip';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useToast } from '@/lib/hooks/use-toast';
@@ -814,50 +820,117 @@ export default function EditEncounterPage() {
         
         {/* Tabbed Sections - SOAP Flow */}
         <Tabs value={activeTab} onValueChange={setActiveTab}>
-          <TabsList className="flex flex-wrap h-auto gap-1">
-            {/* S - Subjective */}
-            <TabsTrigger value="history" className="gap-1">
-              1. Hx
-              {!hasMedicalHistory(formData) && (
-                <span className="ml-1 text-muted-foreground">+</span>
-              )}
-            </TabsTrigger>
-            <TabsTrigger value="notes" className="gap-1">
-              2. HPI
-              {!hasClinicalNotes(formData) && (
-                <span className="ml-1 text-muted-foreground">+</span>
-              )}
-            </TabsTrigger>
-            {/* Clinical Template - Focused Assessment */}
-            <TabsTrigger value="template" className="gap-1">
-              3. Template
-              {selectedTemplate ? (
-                <Badge variant="secondary" className="ml-1 text-xs">{selectedTemplate.name.slice(0, 10)}{selectedTemplate.name.length > 10 ? '…' : ''}</Badge>
-              ) : (
-                <span className="ml-1 text-muted-foreground">+</span>
-              )}
-            </TabsTrigger>
-            {/* A - Assessment */}
-            <TabsTrigger value="diagnosis" className="gap-1">
-              4. Dx
-              {diagnoses.length === 0 ? (
-                <span className="ml-1 text-muted-foreground">+</span>
-              ) : (
-                <Badge variant="secondary" className="ml-1">{diagnoses.length}</Badge>
-              )}
-            </TabsTrigger>
-            {/* P - Plan */}
-            <TabsTrigger value="lab" className="gap-1">
-              5. Labs
-            </TabsTrigger>
-            <TabsTrigger value="pharmacy" className="gap-1">
-              6. Rx
-            </TabsTrigger>
-            {/* Summary */}
-            <TabsTrigger value="soap" className="gap-1">
-              📋 SOAP Note
-            </TabsTrigger>
-          </TabsList>
+          <TooltipProvider delayDuration={300}>
+            <TabsList className="flex flex-wrap h-auto gap-1">
+              {/* S - Subjective */}
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <TabsTrigger value="history" className="gap-1">
+                    1. Hx
+                    {!hasMedicalHistory(formData) && (
+                      <span className="ml-1 text-muted-foreground">+</span>
+                    )}
+                  </TabsTrigger>
+                </TooltipTrigger>
+                <TooltipContent>
+                  <p className="font-medium">Medical History</p>
+                  <p className="text-xs text-muted-foreground">Allergies, chronic conditions, medications, surgeries</p>
+                </TooltipContent>
+              </Tooltip>
+              
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <TabsTrigger value="notes" className="gap-1">
+                    2. HPI
+                    {!hasClinicalNotes(formData) && (
+                      <span className="ml-1 text-muted-foreground">+</span>
+                    )}
+                  </TabsTrigger>
+                </TooltipTrigger>
+                <TooltipContent>
+                  <p className="font-medium">History of Present Illness</p>
+                  <p className="text-xs text-muted-foreground">Detailed narrative of current complaint</p>
+                </TooltipContent>
+              </Tooltip>
+              
+              {/* Clinical Template - Focused Assessment */}
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <TabsTrigger value="template" className="gap-1">
+                    3. Template
+                    {selectedTemplate ? (
+                      <Badge variant="secondary" className="ml-1 text-xs">{selectedTemplate.name.slice(0, 10)}{selectedTemplate.name.length > 10 ? '…' : ''}</Badge>
+                    ) : (
+                      <span className="ml-1 text-muted-foreground">+</span>
+                    )}
+                  </TabsTrigger>
+                </TooltipTrigger>
+                <TooltipContent className="max-w-xs">
+                  <p className="font-medium">Clinical Template</p>
+                  <p className="text-xs text-muted-foreground">
+                    Structured templates for focused assessments (e.g., Pediatric, ANC, Diabetes). 
+                    Guides documentation and ensures completeness.
+                  </p>
+                </TooltipContent>
+              </Tooltip>
+              
+              {/* A - Assessment */}
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <TabsTrigger value="diagnosis" className="gap-1">
+                    4. Dx
+                    {diagnoses.length === 0 ? (
+                      <span className="ml-1 text-muted-foreground">+</span>
+                    ) : (
+                      <Badge variant="secondary" className="ml-1">{diagnoses.length}</Badge>
+                    )}
+                  </TabsTrigger>
+                </TooltipTrigger>
+                <TooltipContent>
+                  <p className="font-medium">Diagnosis</p>
+                  <p className="text-xs text-muted-foreground">ICD-10 coded diagnoses and clinical impressions</p>
+                </TooltipContent>
+              </Tooltip>
+              
+              {/* P - Plan */}
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <TabsTrigger value="lab" className="gap-1">
+                    5. Labs
+                  </TabsTrigger>
+                </TooltipTrigger>
+                <TooltipContent>
+                  <p className="font-medium">Laboratory Orders</p>
+                  <p className="text-xs text-muted-foreground">Order lab tests and view results</p>
+                </TooltipContent>
+              </Tooltip>
+              
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <TabsTrigger value="pharmacy" className="gap-1">
+                    6. Rx
+                  </TabsTrigger>
+                </TooltipTrigger>
+                <TooltipContent>
+                  <p className="font-medium">Prescriptions</p>
+                  <p className="text-xs text-muted-foreground">Medications and pharmacy orders</p>
+                </TooltipContent>
+              </Tooltip>
+              
+              {/* Summary */}
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <TabsTrigger value="soap" className="gap-1">
+                    📋 SOAP Note
+                  </TabsTrigger>
+                </TooltipTrigger>
+                <TooltipContent>
+                  <p className="font-medium">SOAP Note Summary</p>
+                  <p className="text-xs text-muted-foreground">Complete encounter summary in SOAP format</p>
+                </TooltipContent>
+              </Tooltip>
+            </TabsList>
+          </TooltipProvider>
           
           <TabsContent value="history" className="mt-4">
             <MedicalHistoryForm

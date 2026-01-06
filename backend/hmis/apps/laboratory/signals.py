@@ -1,7 +1,8 @@
 """
 Django signals for laboratory app.
 
-This module handles automatic creation of LabQueue entries when LabOrders are created.
+This module handles automatic creation of LabQueue entries when LabOrders are created,
+and status synchronization between LabOrder, LabQueue, and LabResult.
 """
 
 import logging
@@ -9,7 +10,7 @@ import logging
 from django.db.models.signals import post_save
 from django.dispatch import receiver
 
-from .models import LabOrder, LabQueue, LabOrderItem
+from .models import LabOrder, LabQueue, LabOrderItem, LabResult
 
 logger = logging.getLogger(__name__)
 
@@ -98,3 +99,51 @@ def sync_lab_queue_priority(sender, instance, created, **kwargs):
             logger.info(f"Synced priority for queue entry {queue_entry.queue_number}")
     except Exception as e:
         logger.error(f"Failed to sync priority for order {instance.order_number}: {e}")
+
+
+@receiver(post_save, sender=LabResult)
+def update_order_status_on_result(sender, instance, created, **kwargs):
+    """
+    Update LabOrder and LabQueue status when results are entered.
+    
+    - First result: Order -> IN_PROGRESS, Queue -> PROCESSING
+    - All results entered: Order -> COMPLETED, Queue -> REVIEW
+    """
+    if not created:
+        return
+    
+    try:
+        lab_order = instance.order_item.lab_order
+        
+        # Count total items and items with results
+        total_items = lab_order.items.count()
+        items_with_results = lab_order.items.filter(result__isnull=False).count()
+        
+        # Get the user who entered the result for status update
+        user = instance.entered_by
+        
+        if items_with_results == 1:
+            # First result - transition to IN_PROGRESS
+            if lab_order.status == "SPECIMEN_COLLECTED":
+                lab_order.update_status("IN_PROGRESS", user)
+                logger.info(f"Order {lab_order.order_number} transitioned to IN_PROGRESS")
+                
+                # Also update queue to PROCESSING
+                queue_entry = LabQueue.objects.filter(lab_order=lab_order).first()
+                if queue_entry and queue_entry.queue_status in ["COLLECTED", "PENDING"]:
+                    queue_entry.queue_status = "PROCESSING"
+                    queue_entry.processing_started_at = instance.entered_at
+                    queue_entry.save(update_fields=["queue_status", "processing_started_at", "updated_at"])
+                    logger.info(f"Queue {queue_entry.queue_number} transitioned to PROCESSING")
+        
+        if items_with_results == total_items:
+            # All results entered - keep in IN_PROGRESS but queue goes to REVIEW
+            queue_entry = LabQueue.objects.filter(lab_order=lab_order).first()
+            if queue_entry and queue_entry.queue_status == "PROCESSING":
+                queue_entry.queue_status = "REVIEW"
+                queue_entry.processing_completed_at = instance.entered_at
+                queue_entry.save(update_fields=["queue_status", "processing_completed_at", "updated_at"])
+                logger.info(f"Queue {queue_entry.queue_number} transitioned to REVIEW (all results entered)")
+                
+    except Exception as e:
+        logger.error(f"Failed to update order status after result entry: {e}")

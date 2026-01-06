@@ -40,6 +40,7 @@ const resultSchema = z.object({
   reference_high: z.number().optional(),
   reference_range_text: z.string().optional(),
   result_flag: z.string().optional(),
+  result_unit: z.string().optional(),
   interpretation: z.string().optional(),
   method: z.string().optional(),
   equipment: z.string().optional(),
@@ -65,6 +66,47 @@ const RESULT_FLAGS: { value: ResultFlag; label: string; color: string }[] = [
   { value: 'NEGATIVE', label: 'Negative', color: 'bg-gray-100 text-gray-700' },
 ];
 
+// Common lab result units used in Kenya
+const RESULT_UNITS = [
+  // Concentrations
+  { value: 'g/dL', label: 'g/dL' },
+  { value: 'g/L', label: 'g/L' },
+  { value: 'mg/dL', label: 'mg/dL' },
+  { value: 'mg/L', label: 'mg/L' },
+  { value: 'µg/dL', label: 'µg/dL' },
+  { value: 'µg/L', label: 'µg/L' },
+  { value: 'ng/dL', label: 'ng/dL' },
+  { value: 'ng/mL', label: 'ng/mL' },
+  { value: 'pg/mL', label: 'pg/mL' },
+  // Molar concentrations
+  { value: 'mmol/L', label: 'mmol/L' },
+  { value: 'µmol/L', label: 'µmol/L' },
+  { value: 'nmol/L', label: 'nmol/L' },
+  { value: 'mEq/L', label: 'mEq/L' },
+  // Enzyme activity
+  { value: 'U/L', label: 'U/L' },
+  { value: 'IU/L', label: 'IU/L' },
+  { value: 'mU/L', label: 'mU/L' },
+  // Cell counts
+  { value: 'cells/µL', label: 'cells/µL' },
+  { value: 'x10^9/L', label: 'x10⁹/L' },
+  { value: 'x10^12/L', label: 'x10¹²/L' },
+  { value: 'x10^6/µL', label: 'x10⁶/µL' },
+  { value: '/µL', label: '/µL' },
+  // Percentages
+  { value: '%', label: '%' },
+  // Time
+  { value: 'sec', label: 'seconds' },
+  { value: 'min', label: 'minutes' },
+  // Other
+  { value: 'mm/hr', label: 'mm/hr' },
+  { value: 'mOsm/kg', label: 'mOsm/kg' },
+  { value: 'ratio', label: 'ratio' },
+  { value: 'titer', label: 'titer' },
+  { value: 'copies/mL', label: 'copies/mL' },
+  { value: 'CFU/mL', label: 'CFU/mL' },
+];
+
 export function LabResultsEntry({ orderNumber, items, onComplete }: LabResultsEntryProps) {
   const { toast } = useToast();
   const [activeItemId, setActiveItemId] = useState<number | null>(
@@ -86,6 +128,7 @@ export function LabResultsEntry({ orderNumber, items, onComplete }: LabResultsEn
       option_value: '',
       reference_range_text: '',
       result_flag: '',
+      result_unit: '',
       interpretation: '',
       method: '',
       equipment: '',
@@ -112,6 +155,7 @@ export function LabResultsEntry({ orderNumber, items, onComplete }: LabResultsEn
         numeric_value: data.numeric_value,
         text_value: data.text_value,
         option_value: data.option_value,
+        result_unit: data.result_unit,
         reference_low: data.reference_low,
         reference_high: data.reference_high,
         reference_range_text: data.reference_range_text,
@@ -229,7 +273,7 @@ export function LabResultsEntry({ orderNumber, items, onComplete }: LabResultsEn
             <Form {...form}>
               <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
                 {/* Result Value */}
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                   <FormField
                     control={form.control}
                     name="numeric_value"
@@ -247,6 +291,34 @@ export function LabResultsEntry({ orderNumber, items, onComplete }: LabResultsEn
                             )}
                           />
                         </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+
+                  <FormField
+                    control={form.control}
+                    name="result_unit"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Unit</FormLabel>
+                        <Select
+                          onValueChange={field.onChange}
+                          defaultValue={field.value}
+                        >
+                          <FormControl>
+                            <SelectTrigger>
+                              <SelectValue placeholder="Select unit" />
+                            </SelectTrigger>
+                          </FormControl>
+                          <SelectContent>
+                            {RESULT_UNITS.map((unit) => (
+                              <SelectItem key={unit.value} value={unit.value}>
+                                {unit.label}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
                         <FormMessage />
                       </FormItem>
                     )}
