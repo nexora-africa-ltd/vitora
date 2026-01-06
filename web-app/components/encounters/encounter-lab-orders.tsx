@@ -8,14 +8,17 @@
  */
 'use client';
 
+import { useState } from 'react';
 import Link from 'next/link';
-import { Plus, Beaker, ExternalLink, Clock, CheckCircle2, AlertCircle, FileText } from 'lucide-react';
+import { Plus, Beaker, ExternalLink, Clock, CheckCircle2, AlertCircle, FileText, Eye, EyeOff } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useEncounterLabOrders } from '@/lib/hooks/use-laboratory';
 import { formatDate } from '@/lib/utils/format';
+import { EncounterLabResultsView } from './encounter-lab-results-view';
 import type { LabOrder, LabOrderStatus, LabPriority } from '@/lib/types/laboratory';
 
 interface EncounterLabOrdersProps {
@@ -43,6 +46,7 @@ const PRIORITY_CONFIG: Record<LabPriority, { label: string; color: string }> = {
 
 export function EncounterLabOrders({ encounterId, patientId, disabled = false, onNext }: EncounterLabOrdersProps) {
   const { data: orders, isLoading, error } = useEncounterLabOrders(encounterId);
+  const [activeView, setActiveView] = useState<'orders' | 'results'>('orders');
 
   if (isLoading) {
     return (
@@ -83,6 +87,8 @@ export function EncounterLabOrders({ encounterId, patientId, disabled = false, o
   const ordersList = Array.isArray(orders) ? orders : [];
   const pendingOrders = ordersList.filter(o => o.status !== 'COMPLETED' && o.status !== 'CANCELLED');
   const completedOrders = ordersList.filter(o => o.status === 'COMPLETED');
+  const hasResults = ordersList.some(o => o.items?.some(i => i.has_result));
+  const resultsCount = ordersList.reduce((acc, o) => acc + (o.items?.filter(i => i.has_result).length || 0), 0);
 
   return (
     <Card>
@@ -95,14 +101,35 @@ export function EncounterLabOrders({ encounterId, patientId, disabled = false, o
               <Badge variant="secondary">{ordersList.length}</Badge>
             )}
           </CardTitle>
-          {!disabled && (
-            <Button size="sm" asChild>
-              <Link href={`/laboratory/orders/new?encounter=${encounterId}&patient=${patientId}`}>
-                <Plus className="h-4 w-4 mr-1" />
-                Order Lab Test
-              </Link>
-            </Button>
-          )}
+          <div className="flex items-center gap-2">
+            {hasResults && (
+              <Button
+                variant={activeView === 'results' ? 'secondary' : 'ghost'}
+                size="sm"
+                onClick={() => setActiveView(activeView === 'results' ? 'orders' : 'results')}
+              >
+                {activeView === 'results' ? (
+                  <>
+                    <EyeOff className="h-4 w-4 mr-1" />
+                    Hide Results
+                  </>
+                ) : (
+                  <>
+                    <Eye className="h-4 w-4 mr-1" />
+                    View Results ({resultsCount})
+                  </>
+                )}
+              </Button>
+            )}
+            {!disabled && (
+              <Button size="sm" asChild>
+                <Link href={`/laboratory/orders/new?encounter=${encounterId}&patient=${patientId}`}>
+                  <Plus className="h-4 w-4 mr-1" />
+                  Order Lab Test
+                </Link>
+              </Button>
+            )}
+          </div>
         </div>
         {orders && orders.length === 0 && (
           <CardDescription>No lab orders for this encounter</CardDescription>
@@ -111,28 +138,35 @@ export function EncounterLabOrders({ encounterId, patientId, disabled = false, o
 
       {orders && orders.length > 0 && (
         <CardContent className="space-y-4">
-          {/* Pending Orders */}
-          {pendingOrders.length > 0 && (
-            <div className="space-y-2">
-              <h4 className="text-sm font-medium text-muted-foreground">Pending ({pendingOrders.length})</h4>
-              <div className="space-y-2">
-                {pendingOrders.map((order) => (
-                  <LabOrderCard key={order.order_number} order={order} />
-                ))}
-              </div>
-            </div>
-          )}
+          {activeView === 'results' ? (
+            /* Inline Lab Results View */
+            <EncounterLabResultsView orders={ordersList} />
+          ) : (
+            <>
+              {/* Pending Orders */}
+              {pendingOrders.length > 0 && (
+                <div className="space-y-2">
+                  <h4 className="text-sm font-medium text-muted-foreground">Pending ({pendingOrders.length})</h4>
+                  <div className="space-y-2">
+                    {pendingOrders.map((order) => (
+                      <LabOrderCard key={order.order_number} order={order} />
+                    ))}
+                  </div>
+                </div>
+              )}
 
-          {/* Completed Orders */}
-          {completedOrders.length > 0 && (
-            <div className="space-y-2">
-              <h4 className="text-sm font-medium text-muted-foreground">Completed ({completedOrders.length})</h4>
-              <div className="space-y-2">
-                {completedOrders.map((order) => (
-                  <LabOrderCard key={order.order_number} order={order} showResults />
-                ))}
-              </div>
-            </div>
+              {/* Completed Orders */}
+              {completedOrders.length > 0 && (
+                <div className="space-y-2">
+                  <h4 className="text-sm font-medium text-muted-foreground">Completed ({completedOrders.length})</h4>
+                  <div className="space-y-2">
+                    {completedOrders.map((order) => (
+                      <LabOrderCard key={order.order_number} order={order} showResults />
+                    ))}
+                  </div>
+                </div>
+              )}
+            </>
           )}
         </CardContent>
       )}
