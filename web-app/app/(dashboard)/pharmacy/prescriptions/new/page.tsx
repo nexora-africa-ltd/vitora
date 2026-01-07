@@ -9,7 +9,7 @@
 
 'use client';
 
-import { useState, useCallback, useEffect, useMemo } from 'react';
+import { useState, useCallback, useEffect, useMemo, useRef } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import {
   ArrowLeft,
@@ -22,6 +22,9 @@ import {
   User,
   FileText,
   Info,
+  Printer,
+  Copy,
+  Check,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -121,6 +124,9 @@ export default function NewPrescriptionPage() {
   const [customDosage, setCustomDosage] = useState('');
   const [showCustomDosage, setShowCustomDosage] = useState(false);
 
+  // Copy to clipboard state
+  const [copied, setCopied] = useState(false);
+
   // Generate smart dosage suggestions based on selected drug
   const dosageSuggestions = useMemo<DosageSuggestion[]>(() => {
     if (!selectedDrug) return [];
@@ -132,6 +138,267 @@ export default function NewPrescriptionPage() {
 
   // Validation
   const [errors, setErrors] = useState<Record<string, string>>({});
+
+  // Generate prescription text for printing/copying
+  const generatePrescriptionText = useCallback(() => {
+    if (!patient || items.length === 0) return '';
+
+    const today = new Date().toLocaleDateString('en-GB', {
+      day: '2-digit',
+      month: 'short',
+      year: 'numeric',
+    });
+
+    let text = `
+═══════════════════════════════════════════════════════
+                      PRESCRIPTION
+═══════════════════════════════════════════════════════
+
+Date: ${today}
+
+PATIENT INFORMATION
+───────────────────
+Name: ${patient.first_name} ${patient.last_name}
+MRN: ${patient.mrn}
+${encounter ? `Encounter: #${encounterId}` : ''}
+
+MEDICATIONS
+───────────────────
+`;
+
+    items.forEach((item, index) => {
+      text += `
+${index + 1}. ${item.drug_name}
+   Dosage: ${item.dosage}
+   Frequency: ${FREQUENCY_OPTIONS.find(f => f.value === item.frequency)?.label || item.frequency}
+   Duration: ${item.duration}
+   Route: ${ROUTE_OPTIONS.find(r => r.value === item.route)?.label || item.route || 'Oral'}
+   Quantity: ${item.quantity_prescribed}
+   ${item.instructions ? `Instructions: ${item.instructions}` : ''}
+   ${item.is_substitutable ? '[Substitution Allowed]' : '[No Substitution]'}
+`;
+    });
+
+    if (clinicalNotes) {
+      text += `
+CLINICAL NOTES
+───────────────────
+${clinicalNotes}
+`;
+    }
+
+    text += `
+═══════════════════════════════════════════════════════
+                    Vitora HMIS
+═══════════════════════════════════════════════════════
+`;
+
+    return text;
+  }, [patient, items, encounter, encounterId, clinicalNotes]);
+
+  // Copy prescription to clipboard
+  const handleCopyToClipboard = useCallback(async () => {
+    const text = generatePrescriptionText();
+    if (!text) {
+      toast({
+        title: 'No Items',
+        description: 'Add items to the prescription first',
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    try {
+      await navigator.clipboard.writeText(text);
+      setCopied(true);
+      toast({
+        title: 'Copied!',
+        description: 'Prescription copied to clipboard',
+      });
+      setTimeout(() => setCopied(false), 2000);
+    } catch {
+      toast({
+        title: 'Error',
+        description: 'Failed to copy to clipboard',
+        variant: 'destructive',
+      });
+    }
+  }, [generatePrescriptionText, toast]);
+
+  // Print prescription
+  const handlePrint = useCallback(() => {
+    if (items.length === 0) {
+      toast({
+        title: 'No Items',
+        description: 'Add items to the prescription first',
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    const today = new Date().toLocaleDateString('en-GB', {
+      day: '2-digit',
+      month: 'short',
+      year: 'numeric',
+    });
+
+    const printContent = `
+      <!DOCTYPE html>
+      <html>
+      <head>
+        <title>Prescription - ${patient?.mrn}</title>
+        <style>
+          * { margin: 0; padding: 0; box-sizing: border-box; }
+          body { 
+            font-family: 'Segoe UI', Arial, sans-serif; 
+            padding: 20mm; 
+            max-width: 210mm;
+            font-size: 11pt;
+            line-height: 1.4;
+          }
+          .header { 
+            text-align: center; 
+            border-bottom: 2px solid #333; 
+            padding-bottom: 15px; 
+            margin-bottom: 20px;
+          }
+          .header h1 { font-size: 18pt; margin-bottom: 5px; }
+          .header p { color: #666; font-size: 10pt; }
+          .section { margin-bottom: 20px; }
+          .section-title { 
+            font-weight: bold; 
+            font-size: 11pt; 
+            border-bottom: 1px solid #ccc; 
+            padding-bottom: 5px; 
+            margin-bottom: 10px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+          }
+          .patient-info { 
+            display: grid; 
+            grid-template-columns: 1fr 1fr; 
+            gap: 10px;
+          }
+          .patient-info p { margin: 3px 0; }
+          .medication { 
+            border: 1px solid #ddd; 
+            padding: 12px; 
+            margin-bottom: 10px; 
+            border-radius: 5px;
+            background: #fafafa;
+          }
+          .medication-name { 
+            font-weight: bold; 
+            font-size: 12pt; 
+            color: #1a1a1a;
+            margin-bottom: 8px;
+          }
+          .medication-details { 
+            display: grid; 
+            grid-template-columns: repeat(2, 1fr); 
+            gap: 5px; 
+            font-size: 10pt;
+          }
+          .medication-details span { color: #666; }
+          .medication-instructions { 
+            margin-top: 8px; 
+            padding-top: 8px; 
+            border-top: 1px dashed #ddd;
+            font-style: italic;
+          }
+          .badge { 
+            display: inline-block; 
+            background: #e0f2fe; 
+            color: #0369a1; 
+            padding: 2px 8px; 
+            border-radius: 10px; 
+            font-size: 9pt;
+            margin-top: 5px;
+          }
+          .notes { 
+            background: #fffbeb; 
+            padding: 12px; 
+            border-radius: 5px;
+            border-left: 3px solid #f59e0b;
+          }
+          .footer { 
+            margin-top: 30px; 
+            padding-top: 20px; 
+            border-top: 2px solid #333;
+            display: flex;
+            justify-content: space-between;
+          }
+          .signature-line { 
+            border-top: 1px solid #333; 
+            width: 200px; 
+            padding-top: 5px;
+            margin-top: 40px;
+            font-size: 10pt;
+          }
+          @media print {
+            body { padding: 10mm; }
+            .medication { break-inside: avoid; }
+          }
+        </style>
+      </head>
+      <body>
+        <div class="header">
+          <h1>℞ PRESCRIPTION</h1>
+          <p>Date: ${today}</p>
+        </div>
+        
+        <div class="section">
+          <div class="section-title">Patient Information</div>
+          <div class="patient-info">
+            <p><strong>Name:</strong> ${patient?.first_name} ${patient?.last_name}</p>
+            <p><strong>MRN:</strong> ${patient?.mrn}</p>
+            ${encounter ? `<p><strong>Encounter:</strong> #${encounterId}</p>` : ''}
+          </div>
+        </div>
+        
+        <div class="section">
+          <div class="section-title">Medications (${items.length})</div>
+          ${items.map((item, index) => `
+            <div class="medication">
+              <div class="medication-name">${index + 1}. ${item.drug_name}</div>
+              <div class="medication-details">
+                <p><span>Dosage:</span> ${item.dosage}</p>
+                <p><span>Frequency:</span> ${FREQUENCY_OPTIONS.find(f => f.value === item.frequency)?.label || item.frequency}</p>
+                <p><span>Duration:</span> ${item.duration}</p>
+                <p><span>Route:</span> ${ROUTE_OPTIONS.find(r => r.value === item.route)?.label || item.route || 'Oral'}</p>
+                <p><span>Quantity:</span> <strong>${item.quantity_prescribed}</strong></p>
+              </div>
+              ${item.instructions ? `<div class="medication-instructions">📝 ${item.instructions}</div>` : ''}
+              ${item.is_substitutable ? '<span class="badge">Substitution Allowed</span>' : ''}
+            </div>
+          `).join('')}
+        </div>
+        
+        ${clinicalNotes ? `
+        <div class="section">
+          <div class="section-title">Clinical Notes</div>
+          <div class="notes">${clinicalNotes}</div>
+        </div>
+        ` : ''}
+        
+        <div class="footer">
+          <div class="signature-line">Prescriber Signature</div>
+          <div class="signature-line">Date</div>
+        </div>
+      </body>
+      </html>
+    `;
+
+    const printWindow = window.open('', '_blank');
+    if (printWindow) {
+      printWindow.document.write(printContent);
+      printWindow.document.close();
+      printWindow.focus();
+      setTimeout(() => {
+        printWindow.print();
+      }, 250);
+    }
+  }, [items, patient, encounter, encounterId, clinicalNotes, toast]);
 
   // Validate current item before adding
   const validateItem = useCallback((): boolean => {
@@ -648,8 +915,32 @@ export default function NewPrescriptionPage() {
         {/* Prescription Items */}
         {items.length > 0 && (
           <Card>
-            <CardHeader>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
               <CardTitle>Prescription Items ({items.length})</CardTitle>
+              <div className="flex gap-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={handleCopyToClipboard}
+                  disabled={items.length === 0}
+                >
+                  {copied ? (
+                    <Check className="h-4 w-4 mr-1 text-green-600" />
+                  ) : (
+                    <Copy className="h-4 w-4 mr-1" />
+                  )}
+                  {copied ? 'Copied!' : 'Copy'}
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={handlePrint}
+                  disabled={items.length === 0}
+                >
+                  <Printer className="h-4 w-4 mr-1" />
+                  Print
+                </Button>
+              </div>
             </CardHeader>
             <CardContent>
               <div className="space-y-3">
