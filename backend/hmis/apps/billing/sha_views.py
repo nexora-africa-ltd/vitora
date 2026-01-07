@@ -335,17 +335,35 @@ class SHAClaimViewSet(viewsets.ModelViewSet):
         Submit a claim to SHA.
 
         POST /api/sha/claims/{id}/submit/
+        
+        Supports offline queuing - if the system is offline, the claim
+        will be queued for later submission.
         """
+        from hmis.apps.billing.services.sha_claims import SHAClaimsService
+        
         claim = self.get_object()
+        force_online = request.data.get('force_online', False)
 
         try:
-            claim.submit(request.user)
+            service = SHAClaimsService()
+            result = service.submit_claim(claim, request.user, force_online=force_online)
+            
+            # If claim was queued (offline), return queue info
+            if result.get('status') == 'queued':
+                return Response({
+                    'status': 'queued',
+                    'message': result.get('message'),
+                    'queue_entry_id': result.get('queue_entry_id'),
+                    'claim_number': claim.claim_number,
+                })
+            
+            # Normal submission response
             claim.refresh_from_db()
-
             serializer = SHAClaimSubmitSerializer({
                 'status': claim.status,
                 'claim_number': claim.claim_number,
                 'submitted_at': claim.submitted_at,
+                'sha_claim_reference': claim.sha_claim_reference,
             })
 
             return Response(serializer.data)
