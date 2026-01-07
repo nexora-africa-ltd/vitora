@@ -256,7 +256,7 @@ class PrescriptionSerializer(serializers.ModelSerializer):
 class PrescriptionCreateSerializer(serializers.ModelSerializer):
     """Serializer for creating prescriptions with nested items."""
 
-    items = PrescriptionItemWriteSerializer(many=True, write_only=True)
+    items = PrescriptionItemWriteSerializer(many=True, write_only=True, required=False, default=list)
 
     class Meta:
         model = Prescription
@@ -264,13 +264,14 @@ class PrescriptionCreateSerializer(serializers.ModelSerializer):
             "id",
             "encounter",
             "patient",
+            "valid_until",
             "clinical_notes",
             "items",
         ]
 
     def create(self, validated_data):
         """Create prescription with nested items."""
-        items_data = validated_data.pop('items')
+        items_data = validated_data.pop('items', [])
         prescription = Prescription.objects.create(**validated_data)
 
         for item_data in items_data:
