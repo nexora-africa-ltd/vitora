@@ -382,6 +382,13 @@ class SHAPermission(permissions.BasePermission):
         'submit': 'submit_sha_claim',
         'appeal': 'appeal_sha_claim',
         'verify': 'verify_sha_eligibility',
+        'check_eligibility': 'verify_sha_eligibility',
+        'submit_claim': 'submit_sha_claim',
+        'appeal_claim': 'appeal_sha_claim',
+        'export': 'view_shaclaim',
+        'bulk_create': 'add_shaclaim',
+        'bulk_update': 'change_shaclaim',
+        'dashboard': 'view_shaclaim',
     }
 
     def has_permission(self, request, view):
