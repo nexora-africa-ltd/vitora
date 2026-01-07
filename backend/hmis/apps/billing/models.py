@@ -917,3 +917,192 @@ class CreditNote(models.Model):
         self.refund_reference = reference
         self.refunded_at = timezone.now()
         self.save()
+
+
+class SHAMember(models.Model):
+    """
+    SHA (Social Health Authority) membership record for a patient.
+
+    Stores membership details required for eligibility checks and claims.
+    Each patient can have one active SHA membership at a time.
+
+    SHA is the successor to NHIF in Kenya, managing universal health coverage.
+    """
+
+    class MembershipStatus(models.TextChoices):
+        ACTIVE = 'active', 'Active'
+        INACTIVE = 'inactive', 'Inactive'
+        SUSPENDED = 'suspended', 'Suspended'
+        EXPIRED = 'expired', 'Expired'
+        PENDING_VERIFICATION = 'pending', 'Pending Verification'
+
+    class MembershipType(models.TextChoices):
+        PRINCIPAL = 'principal', 'Principal Member'
+        SPOUSE = 'spouse', 'Spouse'
+        CHILD = 'child', 'Child/Dependent'
+        PARENT = 'parent', 'Parent'
+        OTHER_DEPENDENT = 'other', 'Other Dependent'
+
+    id = models.BigAutoField(primary_key=True)
+
+    # Patient linkage - OneToOne ensures one SHA membership per patient
+    patient = models.OneToOneField(
+        'patients.Patient',
+        on_delete=models.CASCADE,
+        related_name='sha_member'
+    )
+
+    # SHA identification
+    sha_number = models.CharField(
+        max_length=20,
+        unique=True,
+        help_text="SHA member number (format: SHA-XXXXXXXXXX)"
+    )
+    national_id = models.CharField(
+        max_length=20,
+        db_index=True,
+        help_text="Kenya National ID linked to SHA"
+    )
+
+    # Membership details
+    membership_type = models.CharField(
+        max_length=20,
+        choices=MembershipType.choices,
+        default=MembershipType.PRINCIPAL
+    )
+    principal_sha_number = models.CharField(
+        max_length=20,
+        blank=True,
+        help_text="Principal member's SHA number (for dependents)"
+    )
+
+    # Status
+    status = models.CharField(
+        max_length=20,
+        choices=MembershipStatus.choices,
+        default=MembershipStatus.PENDING_VERIFICATION
+    )
+
+    # Eligibility cache
+    last_eligibility_check = models.DateTimeField(null=True, blank=True)
+    eligibility_valid_until = models.DateField(null=True, blank=True)
+    eligibility_response = models.JSONField(
+        default=dict,
+        blank=True,
+        help_text="Cached response from last eligibility check"
+    )
+
+    # Coverage details
+    coverage_start_date = models.DateField(null=True, blank=True)
+    coverage_end_date = models.DateField(null=True, blank=True)
+    benefit_package = models.CharField(
+        max_length=50,
+        blank=True,
+        help_text="SHA benefit package code"
+    )
+
+    # Audit
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+    created_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.PROTECT,
+        related_name='sha_members_created'
+    )
+    verified_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.PROTECT,
+        related_name='sha_members_verified',
+        null=True,
+        blank=True
+    )
+    verified_at = models.DateTimeField(null=True, blank=True)
+
+    class Meta:
+        verbose_name = "SHA Member"
+        verbose_name_plural = "SHA Members"
+        ordering = ['-created_at']
+        indexes = [
+            models.Index(fields=['sha_number']),
+            models.Index(fields=['national_id']),
+            models.Index(fields=['status']),
+        ]
+
+    def __str__(self):
+        return f"{self.sha_number} - {self.patient}"
+
+    def clean(self):
+        """Validate SHA member data."""
+        errors = {}
+
+        # Validate SHA number format (must start with SHA-)
+        if self.sha_number and not self.sha_number.startswith('SHA-'):
+            errors['sha_number'] = 'SHA number must start with "SHA-"'
+
+        # Dependents must have principal SHA number
+        if self.membership_type != self.MembershipType.PRINCIPAL:
+            if not self.principal_sha_number:
+                errors['principal_sha_number'] = (
+                    'Dependents must have a principal SHA number'
+                )
+
+        # Coverage dates validation
+        if self.coverage_start_date and self.coverage_end_date:
+            if self.coverage_end_date < self.coverage_start_date:
+                errors['coverage_end_date'] = (
+                    'Coverage end date must be after start date'
+                )
+
+        if errors:
+            raise ValidationError(errors)
+
+    def save(self, *args, **kwargs):
+        """Override save to run validation."""
+        self.full_clean()
+        super().save(*args, **kwargs)
+
+    def is_eligible(self) -> bool:
+        """
+        Check if member is currently eligible for claims.
+
+        Returns False if:
+        - Status is not ACTIVE
+        - Coverage has expired
+        - Eligibility validity has passed
+        """
+        if self.status != self.MembershipStatus.ACTIVE:
+            return False
+
+        today = date.today()
+
+        # Check coverage end date
+        if self.coverage_end_date and self.coverage_end_date < today:
+            return False
+
+        # Check eligibility validity
+        if self.eligibility_valid_until and self.eligibility_valid_until < today:
+            return False
+
+        return True
+
+    def needs_eligibility_check(self) -> bool:
+        """
+        Determine if eligibility should be re-verified.
+
+        Returns True if:
+        - No previous eligibility check
+        - Last check was more than 24 hours ago
+        """
+        if not self.last_eligibility_check:
+            return True
+
+        # Re-check if last check was more than 24 hours ago
+        threshold = timezone.now() - timedelta(hours=24)
+        return self.last_eligibility_check < threshold
+
+    def get_eligibility_display(self) -> str:
+        """Return human-readable eligibility status."""
+        if self.is_eligible():
+            return "Eligible"
+        return f"Not Eligible ({self.get_status_display()})"
+
