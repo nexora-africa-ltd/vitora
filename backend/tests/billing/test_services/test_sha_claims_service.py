@@ -1,0 +1,783 @@
+"""
+TDD Red Phase Tests for SHAClaimsService.
+
+This module contains failing tests for the SHAClaimsService class
+that handles SHA claims creation, validation, packaging, and submission.
+
+Following TDD guidelines from docs/tdd-guidelines.md:
+1. RED: Write failing tests that define expected behavior (THIS FILE)
+2. GREEN: Write minimal code to make tests pass
+3. REFACTOR: Improve code while keeping tests green
+
+Test Coverage (15 tests):
+- [ ] Test `create_claim_from_encounter()` creates claim and items
+- [ ] Test claim type auto-detection for OPD
+- [ ] Test claim type auto-detection for IPD
+- [ ] Test claim type auto-detection for Emergency
+- [ ] Test patient without SHA membership raises error
+- [ ] Test `validate_claim()` delegation to model
+- [ ] Test `package_claim()` returns FHIR bundle
+- [ ] Test FHIR Claim resource structure
+- [ ] Test FHIR Patient resource included
+- [ ] Test FHIR Coverage resource included
+- [ ] Test `submit_claim()` success flow
+- [ ] Test `submit_claim()` updates claim status
+- [ ] Test `submit_claim()` logs audit entry
+- [ ] Test `submit_claim()` handles API error
+- [ ] Test attachments included in submission
+
+Reference: docs/sprint-2.1-2.2-sha-claims-integration-deliverables.md § Services & Business Logic
+"""
+
+from datetime import date, timedelta
+from decimal import Decimal
+from unittest.mock import MagicMock, Mock, patch
+
+import pytest
+import requests
+from django.conf import settings
+from django.core.exceptions import ValidationError
+from django.utils import timezone
+
+from hmis.apps.billing.models import (
+    Invoice,
+    InvoiceItem,
+    Service,
+    ServiceCategory,
+    SHAClaim,
+    SHAClaimAttachment,
+    SHAClaimItem,
+    SHAMember,
+    SHATariff,
+)
+from hmis.apps.core.models import AuditLog
+
+
+# ============================================================================
+# Fixtures
+# ============================================================================
+
+
+@pytest.fixture
+def claims_service_category(db):
+    """Create a service category for claims tests."""
+    return ServiceCategory.objects.create(
+        name='Consultation',
+        code='CONS',
+        description='Consultation services',
+        display_order=1
+    )
+
+
+@pytest.fixture
+def claims_service(db, claims_service_category, test_user):
+    """Create a service for claims tests."""
+    return Service.objects.create(
+        category=claims_service_category,
+        code='CONS-GEN',
+        name='General Consultation',
+        description='General doctor consultation',
+        unit_price=Decimal('500.00'),
+        sha_code='SHA-CONS-001',
+        created_by=test_user
+    )
+
+
+@pytest.fixture
+def claims_tariff(db, claims_service):
+    """Create a SHA tariff for claims tests."""
+    return SHATariff.objects.create(
+        code='SHA-CONS-001',
+        name='General Consultation',
+        category=SHATariff.TariffCategory.CONSULTATION,
+        facility_level=SHATariff.TariffLevel.LEVEL_3,
+        sha_amount=Decimal('450.00'),
+        effective_date=date.today() - timedelta(days=365),
+        is_active=True,
+        internal_service=claims_service,  # Link to service for auto-discovery
+    )
+
+
+@pytest.fixture
+def claims_patient(db, sample_county, sample_sub_county):
+    """Create a patient for claims tests."""
+    from hmis.apps.patients.models import Patient
+    return Patient.objects.create(
+        first_name="Claims",
+        last_name="Patient",
+        date_of_birth="1985-06-15",
+        gender="M",
+        county=sample_county,
+        sub_county=sample_sub_county,
+    )
+
+
+@pytest.fixture
+def claims_sha_member(db, claims_patient, test_user):
+    """Create a SHA member for claims tests."""
+    return SHAMember.objects.create(
+        patient=claims_patient,
+        sha_number='SHA-CLAIMS-001',
+        national_id='11223344',
+        membership_type=SHAMember.MembershipType.PRINCIPAL,
+        status=SHAMember.MembershipStatus.ACTIVE,
+        coverage_start_date=date.today() - timedelta(days=365),
+        coverage_end_date=date.today() + timedelta(days=365),
+        eligibility_valid_until=date.today() + timedelta(days=30),
+        created_by=test_user,
+    )
+
+
+@pytest.fixture
+def claims_patient_no_sha(db, sample_county, sample_sub_county):
+    """Create a patient without SHA membership for error tests."""
+    from hmis.apps.patients.models import Patient
+    return Patient.objects.create(
+        first_name="NoSHA",
+        last_name="Patient",
+        date_of_birth="1990-01-01",
+        gender="F",
+        county=sample_county,
+        sub_county=sample_sub_county,
+    )
+
+
+@pytest.fixture
+def claims_icd10_code(db):
+    """Create an ICD-10 code for claims tests."""
+    from hmis.apps.encounters.models import ICD10Code
+    return ICD10Code.objects.create(
+        code='J00',
+        description='Acute nasopharyngitis [common cold]',
+        category='Diseases of the respiratory system',
+        chapter=10,
+    )
+
+
+@pytest.fixture
+def claims_encounter_opd(db, claims_patient, claims_icd10_code, test_user):
+    """Create an OPD encounter for claims tests with diagnosis."""
+    from hmis.apps.encounters.models import Encounter, Diagnosis
+    encounter = Encounter.objects.create(
+        patient=claims_patient,
+        encounter_type='OPD',
+        encounter_date=date.today(),
+        chief_complaint='General checkup',
+    )
+    # Add primary diagnosis
+    Diagnosis.objects.create(
+        encounter=encounter,
+        icd10_code=claims_icd10_code,
+        diagnosis_type='PRIMARY',
+        is_confirmed=True,
+    )
+    return encounter
+
+
+@pytest.fixture
+def claims_encounter_ipd(db, claims_patient, claims_icd10_code, test_user):
+    """Create an IPD encounter for claims tests with diagnosis."""
+    from hmis.apps.encounters.models import Encounter, Diagnosis
+    encounter = Encounter.objects.create(
+        patient=claims_patient,
+        encounter_type='IPD',
+        encounter_date=date.today(),
+        chief_complaint='Admitted for observation',
+    )
+    # Set admission_date for IPD claims
+    encounter.admission_date = date.today()
+    encounter.save()
+    # Add primary diagnosis
+    Diagnosis.objects.create(
+        encounter=encounter,
+        icd10_code=claims_icd10_code,
+        diagnosis_type='PRIMARY',
+        is_confirmed=True,
+    )
+    return encounter
+
+
+@pytest.fixture
+def claims_encounter_emergency(db, claims_patient, claims_icd10_code, test_user):
+    """Create an EMERGENCY encounter for claims tests with diagnosis."""
+    from hmis.apps.encounters.models import Encounter, Diagnosis
+    encounter = Encounter.objects.create(
+        patient=claims_patient,
+        encounter_type='EMERGENCY',
+        encounter_date=date.today(),
+        chief_complaint='Emergency care needed',
+    )
+    # Add primary diagnosis
+    Diagnosis.objects.create(
+        encounter=encounter,
+        icd10_code=claims_icd10_code,
+        diagnosis_type='PRIMARY',
+        is_confirmed=True,
+    )
+    return encounter
+
+
+@pytest.fixture
+def claims_encounter_no_sha(db, claims_patient_no_sha, claims_icd10_code, test_user):
+    """Create an encounter for patient without SHA."""
+    from hmis.apps.encounters.models import Encounter, Diagnosis
+    encounter = Encounter.objects.create(
+        patient=claims_patient_no_sha,
+        encounter_type='OPD',
+        encounter_date=date.today(),
+        chief_complaint='Regular visit',
+    )
+    # Add primary diagnosis
+    Diagnosis.objects.create(
+        encounter=encounter,
+        icd10_code=claims_icd10_code,
+        diagnosis_type='PRIMARY',
+        is_confirmed=True,
+    )
+    return encounter
+
+
+@pytest.fixture
+def claims_invoice(db, claims_patient, claims_encounter_opd, test_user):
+    """Create an invoice for claims tests."""
+    return Invoice.objects.create(
+        patient=claims_patient,
+        encounter=claims_encounter_opd,
+        invoice_date=date.today(),
+        due_date=date.today() + timedelta(days=30),
+        status=Invoice.Status.PENDING,
+        payment_type=Invoice.PaymentType.INSURANCE,
+        created_by=test_user,
+    )
+
+
+@pytest.fixture
+def claims_invoice_item(db, claims_invoice, claims_service):
+    """Create an invoice item for claims tests."""
+    return InvoiceItem.objects.create(
+        invoice=claims_invoice,
+        service=claims_service,
+        description=claims_service.name,
+        quantity=Decimal('1'),
+        unit_price=claims_service.unit_price,
+    )
+
+
+@pytest.fixture
+def valid_claim(db, claims_patient, claims_sha_member, claims_encounter_opd, 
+                claims_invoice, claims_invoice_item, claims_tariff, claims_service, test_user):
+    """Create a valid claim with items and attachments for submission tests."""
+    claim = SHAClaim.objects.create(
+        patient=claims_patient,
+        sha_member=claims_sha_member,
+        encounter=claims_encounter_opd,
+        invoice=claims_invoice,
+        claim_type=SHAClaim.ClaimType.OUTPATIENT,
+        service_date=date.today(),
+        primary_diagnosis_code='J00',
+        primary_diagnosis_description='Common cold',
+        facility_code='TEST-001',
+        facility_level=SHATariff.TariffLevel.LEVEL_3,
+        created_by=test_user,
+    )
+    
+    # Add claim item
+    SHAClaimItem.objects.create(
+        claim=claim,
+        tariff=claims_tariff,
+        service=claims_service,
+        description='General Consultation',
+        quantity=Decimal('1'),
+        unit_price=Decimal('450.00'),
+    )
+    
+    # Add required attachments
+    SHAClaimAttachment.objects.create(
+        claim=claim,
+        attachment_type=SHAClaimAttachment.AttachmentType.CLINICAL_NOTES,
+        name='Clinical Notes',
+        file='sha_claims/test/clinical_notes.pdf',
+        mime_type='application/pdf',
+        original_filename='clinical_notes.pdf',
+        uploaded_by=test_user,
+    )
+    SHAClaimAttachment.objects.create(
+        claim=claim,
+        attachment_type=SHAClaimAttachment.AttachmentType.INVOICE,
+        name='Invoice',
+        file='sha_claims/test/invoice.pdf',
+        mime_type='application/pdf',
+        original_filename='invoice.pdf',
+        uploaded_by=test_user,
+    )
+    
+    return claim
+
+
+@pytest.fixture
+def mock_sha_submission_response():
+    """Mock successful SHA API submission response."""
+    return {
+        'success': True,
+        'claim_reference': 'SHA-REF-2026-001234',
+        'status': 'acknowledged',
+        'message': 'Claim received successfully',
+        'received_at': timezone.now().isoformat(),
+    }
+
+
+# ============================================================================
+# Test Classes
+# ============================================================================
+
+
+@pytest.mark.django_db
+class TestSHAClaimsServiceCreateClaim:
+    """Tests for SHAClaimsService.create_claim_from_encounter() method."""
+
+    def test_create_claim_from_encounter_creates_claim_and_items(
+        self, claims_encounter_opd, claims_invoice, claims_invoice_item,
+        claims_sha_member, claims_tariff, test_user
+    ):
+        """
+        Test that create_claim_from_encounter() creates claim and items.
+        
+        Given: An encounter with invoice and items
+        When: create_claim_from_encounter() is called
+        Then: SHAClaim is created with SHAClaimItem for each invoice item
+        """
+        from hmis.apps.billing.services.sha_claims import SHAClaimsService
+        
+        service = SHAClaimsService()
+        
+        claim = service.create_claim_from_encounter(
+            encounter=claims_encounter_opd,
+            invoice=claims_invoice,
+            user=test_user,
+        )
+        
+        # Verify claim created
+        assert isinstance(claim, SHAClaim)
+        assert claim.patient == claims_encounter_opd.patient
+        assert claim.sha_member == claims_sha_member
+        assert claim.encounter == claims_encounter_opd
+        assert claim.invoice == claims_invoice
+        assert claim.service_date == claims_encounter_opd.encounter_date
+        assert claim.facility_code == settings.FACILITY_MFL_CODE
+        assert claim.facility_level == settings.FACILITY_LEVEL
+        assert claim.created_by == test_user
+        
+        # Verify claim items created from invoice items
+        assert claim.items.count() == 1
+        claim_item = claim.items.first()
+        assert claim_item.description == claims_invoice_item.description
+        assert claim_item.quantity == claims_invoice_item.quantity
+
+    def test_claim_type_auto_detection_for_opd(
+        self, claims_encounter_opd, claims_invoice, claims_sha_member, test_user
+    ):
+        """
+        Test that OPD encounters result in OUTPATIENT claim type.
+        
+        Given: An OPD encounter
+        When: create_claim_from_encounter() is called without explicit claim_type
+        Then: Claim type is set to OUTPATIENT
+        """
+        from hmis.apps.billing.services.sha_claims import SHAClaimsService
+        
+        service = SHAClaimsService()
+        
+        claim = service.create_claim_from_encounter(
+            encounter=claims_encounter_opd,
+            invoice=claims_invoice,
+            user=test_user,
+        )
+        
+        assert claim.claim_type == SHAClaim.ClaimType.OUTPATIENT
+
+    def test_claim_type_auto_detection_for_ipd(
+        self, claims_encounter_ipd, claims_invoice, claims_sha_member, test_user
+    ):
+        """
+        Test that IPD encounters result in INPATIENT claim type.
+        
+        Given: An IPD encounter
+        When: create_claim_from_encounter() is called without explicit claim_type
+        Then: Claim type is set to INPATIENT
+        """
+        from hmis.apps.billing.services.sha_claims import SHAClaimsService
+        
+        # Update invoice to use IPD encounter
+        claims_invoice.encounter = claims_encounter_ipd
+        claims_invoice.save()
+        
+        service = SHAClaimsService()
+        
+        claim = service.create_claim_from_encounter(
+            encounter=claims_encounter_ipd,
+            invoice=claims_invoice,
+            user=test_user,
+        )
+        
+        assert claim.claim_type == SHAClaim.ClaimType.INPATIENT
+
+    def test_claim_type_auto_detection_for_emergency(
+        self, claims_encounter_emergency, claims_invoice, claims_sha_member, test_user
+    ):
+        """
+        Test that EMERGENCY encounters result in EMERGENCY claim type.
+        
+        Given: An EMERGENCY encounter
+        When: create_claim_from_encounter() is called without explicit claim_type
+        Then: Claim type is set to EMERGENCY
+        """
+        from hmis.apps.billing.services.sha_claims import SHAClaimsService
+        
+        # Update invoice to use emergency encounter
+        claims_invoice.encounter = claims_encounter_emergency
+        claims_invoice.save()
+        
+        service = SHAClaimsService()
+        
+        claim = service.create_claim_from_encounter(
+            encounter=claims_encounter_emergency,
+            invoice=claims_invoice,
+            user=test_user,
+        )
+        
+        assert claim.claim_type == SHAClaim.ClaimType.EMERGENCY
+
+    def test_patient_without_sha_membership_raises_error(
+        self, claims_encounter_no_sha, claims_invoice, test_user
+    ):
+        """
+        Test that creating claim for patient without SHA raises ValidationError.
+        
+        Given: An encounter for patient without SHA membership
+        When: create_claim_from_encounter() is called
+        Then: ValidationError is raised with appropriate message
+        """
+        from hmis.apps.billing.services.sha_claims import SHAClaimsService
+        
+        # Update invoice patient to match encounter
+        claims_invoice.patient = claims_encounter_no_sha.patient
+        claims_invoice.encounter = claims_encounter_no_sha
+        claims_invoice.save()
+        
+        service = SHAClaimsService()
+        
+        with pytest.raises(ValidationError) as exc_info:
+            service.create_claim_from_encounter(
+                encounter=claims_encounter_no_sha,
+                invoice=claims_invoice,
+                user=test_user,
+            )
+        
+        assert 'SHA membership' in str(exc_info.value)
+
+
+@pytest.mark.django_db
+class TestSHAClaimsServiceValidation:
+    """Tests for SHAClaimsService.validate_claim() method."""
+
+    def test_validate_claim_delegation_to_model(self, valid_claim):
+        """
+        Test that validate_claim() delegates to model's validate_for_submission().
+        
+        Given: A valid claim
+        When: validate_claim() is called
+        Then: Returns result from model's validate_for_submission()
+        """
+        from hmis.apps.billing.services.sha_claims import SHAClaimsService
+        
+        service = SHAClaimsService()
+        
+        is_valid, errors = service.validate_claim(valid_claim)
+        
+        # Should return tuple (bool, list)
+        assert isinstance(is_valid, bool)
+        assert isinstance(errors, list)
+        
+        # Valid claim should pass validation
+        assert is_valid is True
+        assert len(errors) == 0
+
+
+@pytest.mark.django_db
+class TestSHAClaimsServicePackaging:
+    """Tests for SHAClaimsService.package_claim() method."""
+
+    def test_package_claim_returns_fhir_bundle(self, valid_claim):
+        """
+        Test that package_claim() returns FHIR-compatible bundle.
+        
+        Given: A valid claim
+        When: package_claim() is called
+        Then: Returns dict with FHIR Bundle structure
+        """
+        from hmis.apps.billing.services.sha_claims import SHAClaimsService
+        
+        service = SHAClaimsService()
+        
+        bundle = service.package_claim(valid_claim)
+        
+        assert isinstance(bundle, dict)
+        assert bundle['resourceType'] == 'Bundle'
+        assert bundle['type'] == 'collection'
+        assert 'timestamp' in bundle
+        assert 'entry' in bundle
+        assert isinstance(bundle['entry'], list)
+        assert len(bundle['entry']) >= 3  # Claim, Patient, Coverage
+
+    def test_fhir_claim_resource_structure(self, valid_claim):
+        """
+        Test that FHIR Claim resource has correct structure.
+        
+        Given: A valid claim
+        When: package_claim() is called
+        Then: Bundle contains properly structured Claim resource
+        """
+        from hmis.apps.billing.services.sha_claims import SHAClaimsService
+        
+        service = SHAClaimsService()
+        
+        bundle = service.package_claim(valid_claim)
+        
+        # Find Claim resource in bundle
+        claim_entry = next(
+            (e for e in bundle['entry'] if e['resource'].get('resourceType') == 'Claim'),
+            None
+        )
+        
+        assert claim_entry is not None
+        claim_resource = claim_entry['resource']
+        
+        # Verify required FHIR Claim fields
+        assert claim_resource['resourceType'] == 'Claim'
+        assert 'identifier' in claim_resource
+        assert claim_resource['identifier'][0]['value'] == valid_claim.claim_number
+        assert claim_resource['status'] == 'active'
+        assert 'type' in claim_resource
+        assert claim_resource['use'] == 'claim'
+        assert 'patient' in claim_resource
+        assert 'provider' in claim_resource
+        assert 'diagnosis' in claim_resource
+        assert 'item' in claim_resource
+        assert 'total' in claim_resource
+        assert claim_resource['total']['currency'] == 'KES'
+
+    def test_fhir_patient_resource_included(self, valid_claim):
+        """
+        Test that FHIR Patient resource is included in bundle.
+        
+        Given: A valid claim
+        When: package_claim() is called
+        Then: Bundle contains Patient resource
+        """
+        from hmis.apps.billing.services.sha_claims import SHAClaimsService
+        
+        service = SHAClaimsService()
+        
+        bundle = service.package_claim(valid_claim)
+        
+        # Find Patient resource in bundle
+        patient_entry = next(
+            (e for e in bundle['entry'] if e['resource'].get('resourceType') == 'Patient'),
+            None
+        )
+        
+        assert patient_entry is not None
+        patient_resource = patient_entry['resource']
+        assert patient_resource['resourceType'] == 'Patient'
+
+    def test_fhir_coverage_resource_included(self, valid_claim):
+        """
+        Test that FHIR Coverage resource is included in bundle.
+        
+        Given: A valid claim
+        When: package_claim() is called
+        Then: Bundle contains Coverage resource for SHA membership
+        """
+        from hmis.apps.billing.services.sha_claims import SHAClaimsService
+        
+        service = SHAClaimsService()
+        
+        bundle = service.package_claim(valid_claim)
+        
+        # Find Coverage resource in bundle
+        coverage_entry = next(
+            (e for e in bundle['entry'] if e['resource'].get('resourceType') == 'Coverage'),
+            None
+        )
+        
+        assert coverage_entry is not None
+        coverage_resource = coverage_entry['resource']
+        assert coverage_resource['resourceType'] == 'Coverage'
+
+
+@pytest.mark.django_db
+class TestSHAClaimsServiceSubmission:
+    """Tests for SHAClaimsService.submit_claim() method."""
+
+    def test_submit_claim_success_flow(
+        self, valid_claim, test_user, mock_sha_submission_response
+    ):
+        """
+        Test successful claim submission flow.
+        
+        Given: A valid claim ready for submission
+        When: submit_claim() is called
+        Then: Claim is submitted to SHA API and response returned
+        """
+        from hmis.apps.billing.services.sha_claims import SHAClaimsService
+        
+        service = SHAClaimsService()
+        
+        with patch.object(
+            service, '_submit_to_sha_api', return_value=mock_sha_submission_response
+        ):
+            response = service.submit_claim(valid_claim, test_user)
+        
+        assert response == mock_sha_submission_response
+        assert response['claim_reference'] == 'SHA-REF-2026-001234'
+
+    def test_submit_claim_updates_claim_status(
+        self, valid_claim, test_user, mock_sha_submission_response
+    ):
+        """
+        Test that submit_claim() updates claim status and timestamps.
+        
+        Given: A valid claim
+        When: submit_claim() is called successfully
+        Then: Claim status is SUBMITTED with timestamps and reference
+        """
+        from hmis.apps.billing.services.sha_claims import SHAClaimsService
+        
+        service = SHAClaimsService()
+        
+        with patch.object(
+            service, '_submit_to_sha_api', return_value=mock_sha_submission_response
+        ):
+            service.submit_claim(valid_claim, test_user)
+        
+        # Refresh from database
+        valid_claim.refresh_from_db()
+        
+        assert valid_claim.status == SHAClaim.ClaimStatus.SUBMITTED
+        assert valid_claim.submitted_at is not None
+        assert valid_claim.submitted_by == test_user
+        assert valid_claim.sha_claim_reference == 'SHA-REF-2026-001234'
+        assert valid_claim.submission_response == mock_sha_submission_response
+
+    def test_submit_claim_logs_audit_entry(
+        self, valid_claim, test_user, mock_sha_submission_response
+    ):
+        """
+        Test that submit_claim() creates audit log entry.
+        
+        Given: A valid claim
+        When: submit_claim() is called successfully
+        Then: AuditLog entry is created for sha_claim_submit action
+        """
+        from hmis.apps.billing.services.sha_claims import SHAClaimsService
+        
+        service = SHAClaimsService()
+        
+        initial_audit_count = AuditLog.objects.filter(action='sha_claim_submit').count()
+        
+        with patch.object(
+            service, '_submit_to_sha_api', return_value=mock_sha_submission_response
+        ):
+            service.submit_claim(valid_claim, test_user)
+        
+        # Check audit log was created
+        final_audit_count = AuditLog.objects.filter(action='sha_claim_submit').count()
+        assert final_audit_count == initial_audit_count + 1
+        
+        # Verify audit log content
+        audit_log = AuditLog.objects.filter(action='sha_claim_submit').latest('timestamp')
+        assert audit_log.user == test_user
+        assert audit_log.resource_type == 'SHAClaim'
+        assert audit_log.resource_id == valid_claim.id
+        assert 'sha_reference' in audit_log.details
+
+    def test_submit_claim_handles_api_error(self, valid_claim, test_user):
+        """
+        Test that submit_claim() handles API errors gracefully.
+        
+        Given: A valid claim
+        When: SHA API returns an error
+        Then: ValidationError is raised and claim stores error response
+        """
+        from hmis.apps.billing.services.sha_claims import SHAClaimsService
+        
+        service = SHAClaimsService()
+        
+        with patch.object(
+            service, '_submit_to_sha_api',
+            side_effect=requests.RequestException("Connection refused")
+        ):
+            with pytest.raises(ValidationError) as exc_info:
+                service.submit_claim(valid_claim, test_user)
+        
+        assert 'Submission failed' in str(exc_info.value)
+        
+        # Verify error was stored in claim
+        valid_claim.refresh_from_db()
+        assert 'error' in valid_claim.submission_response
+
+    def test_attachments_included_in_submission(
+        self, valid_claim, test_user, mock_sha_submission_response
+    ):
+        """
+        Test that attachments are included in SHA API submission.
+        
+        Given: A valid claim with attachments
+        When: submit_claim() is called
+        Then: Attachments are included in the API call
+        """
+        from hmis.apps.billing.services.sha_claims import SHAClaimsService
+        
+        service = SHAClaimsService()
+        
+        # Track what's passed to _submit_to_sha_api
+        submitted_claim = None
+        
+        def capture_submission(bundle, claim):
+            nonlocal submitted_claim
+            submitted_claim = claim
+            return mock_sha_submission_response
+        
+        with patch.object(service, '_submit_to_sha_api', side_effect=capture_submission):
+            service.submit_claim(valid_claim, test_user)
+        
+        # Verify claim with attachments was passed
+        assert submitted_claim is not None
+        assert submitted_claim.attachments.count() == 2
+
+
+@pytest.mark.django_db
+class TestSHAClaimsServiceConfiguration:
+    """Tests for SHAClaimsService configuration."""
+
+    def test_service_uses_settings_for_configuration(self):
+        """
+        Test that service reads configuration from Django settings.
+        
+        Given: Django settings with facility configuration
+        When: SHAClaimsService is instantiated
+        Then: Service uses settings values
+        """
+        from hmis.apps.billing.services.sha_claims import SHAClaimsService
+        
+        service = SHAClaimsService()
+        
+        assert hasattr(service, 'api_base_url')
+        assert hasattr(service, 'api_key')
+        assert hasattr(service, 'facility_code')
+        assert hasattr(service, 'facility_level')
+        
+        assert service.api_base_url == settings.SHA_API_BASE_URL
+        assert service.api_key == settings.SHA_API_KEY
+        assert service.facility_code == settings.FACILITY_MFL_CODE
+        assert service.facility_level == settings.FACILITY_LEVEL

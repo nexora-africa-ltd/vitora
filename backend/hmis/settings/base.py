@@ -335,3 +335,7 @@ SHA_API_BASE_URL = os.getenv("SHA_API_BASE_URL", "https://api.sha.go.ke/v1")
 SHA_API_URL = os.getenv("SHA_API_URL", "")  # Deprecated, use SHA_API_BASE_URL
 SHA_API_KEY = os.getenv("SHA_API_KEY", "")
 SHA_API_TIMEOUT = int(os.getenv("SHA_API_TIMEOUT", "30"))  # seconds
+
+# Facility identification (for SHA claims)
+FACILITY_MFL_CODE = os.getenv("FACILITY_MFL_CODE", "TEST-001")  # Master Facility List code
+FACILITY_LEVEL = os.getenv("FACILITY_LEVEL", "L3")  # Default to Level 3
