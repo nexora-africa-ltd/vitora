@@ -329,7 +329,9 @@ MPESA_SHORTCODE = os.getenv("MPESA_SHORTCODE", "174379")
 MPESA_PASSKEY = os.getenv("MPESA_PASSKEY", "")
 MPESA_CALLBACK_URL = os.getenv("MPESA_CALLBACK_URL", "")
 
-# SHA Configuration (stub for now)
+# SHA Configuration (Social Health Authority - Kenya)
 SHA_ENABLED = os.getenv("SHA_ENABLED", "false").lower() == "true"
-SHA_API_URL = os.getenv("SHA_API_URL", "")
+SHA_API_BASE_URL = os.getenv("SHA_API_BASE_URL", "https://api.sha.go.ke/v1")
+SHA_API_URL = os.getenv("SHA_API_URL", "")  # Deprecated, use SHA_API_BASE_URL
 SHA_API_KEY = os.getenv("SHA_API_KEY", "")
+SHA_API_TIMEOUT = int(os.getenv("SHA_API_TIMEOUT", "30"))  # seconds
