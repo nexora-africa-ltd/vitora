@@ -86,7 +86,7 @@ Feature: Triage Category Badge Component
     Given color-blind mode is enabled
     When category badges are displayed
     Then each badge should include a pattern or icon
-    So categories are distinguishable without color alone
+    And categories are distinguishable without color alone
 
   @a11y @keyboard
   Scenario: Badge tooltip is keyboard accessible
@@ -124,15 +124,13 @@ Feature: Triage Category Badge Component
   Scenario: RED category badge pulses for attention
     Given a patient has triage category "RED"
     When the badge is first rendered
-    Then the badge should have a subtle pulse animation
-    For the first 5 seconds
+    Then the badge should have a subtle pulse animation for the first 5 seconds
 
   @animation @new
   Scenario: New assessments show brief highlight
     Given a triage assessment was just completed
     When the badge appears in the queue
-    Then it should have a brief glow animation
-    To indicate it's newly added
+    Then it should have a brief glow animation to indicate it is newly added
 
   # ============================================
   # DARK MODE
@@ -163,19 +161,17 @@ Feature: Triage Category Badge Component
     Given a patient has an invalid category value "PURPLE"
     When the badge is rendered
     Then the badge should display "UNKNOWN"
-    With a gray background
+    And the badge should have a gray background
     And an error should be logged
 
   @loading
   Scenario: Badge shows loading state
     Given triage data is being fetched
     When the badge component mounts
-    Then it should show a skeleton loader
-    With appropriate size
+    Then it should show a skeleton loader with appropriate size
 
   @empty
   Scenario: Handle missing category
     Given a patient has no triage category assigned
     When the badge component is rendered
-    Then it should display "Not Triaged"
-    With a gray/muted style
+    Then it should display "Not Triaged" with a gray muted style

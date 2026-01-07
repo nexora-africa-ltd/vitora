@@ -150,8 +150,7 @@ Feature: Vital Threshold Configuration
   Scenario: Configure pregnancy-specific thresholds (if enabled)
     Given pregnancy thresholds are enabled
     When I view the threshold configuration
-    Then I should see an option for "Pregnancy Thresholds"
-    With adjusted normal ranges
+    Then I should see an option for "Pregnancy Thresholds" with adjusted normal ranges
 
   # ============================================
   # IMPORT & EXPORT
@@ -226,7 +225,7 @@ Feature: Vital Threshold Configuration
   Scenario: View all threshold audit logs
     When I click "Audit Log" in the settings header
     Then I should see all threshold changes across all vitals
-    With filters for date range and user
+    And I should see filters for date range and user
 
   # ============================================
   # PERMISSIONS

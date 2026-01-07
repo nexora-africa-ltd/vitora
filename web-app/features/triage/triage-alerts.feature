@@ -276,8 +276,7 @@ Feature: Vital Signs Alerts
   Scenario: Critical alert has visual flash
     Given a new critical alert is generated
     Then the alert panel should flash red briefly
-    And the alert should pulse for 3 seconds
-    To draw attention
+    And the alert should pulse for 3 seconds to draw attention
 
   # ============================================
   # CONTEXTUAL GUIDANCE

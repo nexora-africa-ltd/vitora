@@ -5,10 +5,13 @@
  * Used alongside Playwright-BDD for E2E tests and Jest-Cucumber for integration tests.
  */
 
+// Set ts-node to use the features-specific tsconfig
+process.env.TS_NODE_PROJECT = 'features/tsconfig.json';
+
 module.exports = {
   default: {
-    // Feature file locations
-    paths: ['features/**/*.feature'],
+    // Feature file locations - all modules included
+    paths: ['features/patients/**/*.feature', 'features/pharmacy/**/*.feature', 'features/triage/**/*.feature'],
     
     // Step definitions and support files
     require: [
