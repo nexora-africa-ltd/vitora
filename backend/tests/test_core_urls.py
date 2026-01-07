@@ -27,8 +27,13 @@ class TestCoreURLConfiguration:
         assert "auditlogs" in registered_basenames
 
     def test_urlpatterns_from_router(self):
-        """URL patterns should be generated from router."""
-        assert urlpatterns == router.urls
+        """URL patterns should include router URLs plus any custom paths."""
+        # urlpatterns contains router.urls plus custom paths (generate/prc-number/, generate/case-number/)
+        # Check that all router URLs are in urlpatterns
+        for url in router.urls:
+            assert url in urlpatterns, f"Router URL {url} not found in urlpatterns"
+        # urlpatterns should have more URLs than router.urls (custom paths added)
+        assert len(urlpatterns) >= len(router.urls)
         assert len(urlpatterns) > 0
 
 

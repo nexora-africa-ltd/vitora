@@ -111,14 +111,11 @@ class TestLabQueueModel:
     """Test suite for LabQueue model."""
 
     def test_queue_entry_creation(self, sample_lab_order):
-        """Queue entry should be created with lab order."""
+        """Queue entry should be auto-created with lab order via signal."""
         from hmis.apps.laboratory.models import LabQueue
 
-        queue = LabQueue.objects.create(
-            lab_order=sample_lab_order,
-            sample_type="blood",
-            priority="ROUTINE",
-        )
+        # Signal auto-creates LabQueue when LabOrder is created
+        queue = LabQueue.objects.get(lab_order=sample_lab_order)
 
         assert queue.id is not None
         assert queue.lab_order == sample_lab_order
@@ -128,10 +125,8 @@ class TestLabQueueModel:
         """Queue number should be auto-generated in LAB-YYYYMMDD-XXXX format."""
         from hmis.apps.laboratory.models import LabQueue
 
-        queue = LabQueue.objects.create(
-            lab_order=sample_lab_order,
-            sample_type="blood",
-        )
+        # Get the auto-created queue entry
+        queue = LabQueue.objects.get(lab_order=sample_lab_order)
 
         assert queue.queue_number is not None
         assert queue.queue_number.startswith("LAB-")
@@ -144,18 +139,16 @@ class TestLabQueueModel:
         """Each queue number must be unique."""
         from hmis.apps.laboratory.models import LabQueue
 
-        # Create first queue entry
-        queue1 = LabQueue.objects.create(
-            lab_order=sample_lab_order,
-            sample_type="blood",
-        )
+        # Get first auto-created queue entry
+        queue1 = LabQueue.objects.get(lab_order=sample_lab_order)
 
-        # Create second lab order
+        # Create second lab order (signal will auto-create queue)
         order2 = LabOrder.objects.create(
             patient=sample_patient,
             encounter=sample_encounter,
             ordered_by=sample_user,
             order_type="IN_HOUSE",
+            status="ORDERED",
         )
         LabOrderItem.objects.create(
             lab_order=order2,
@@ -163,11 +156,8 @@ class TestLabQueueModel:
             unit_cost=sample_test.cost,
         )
 
-        # Create second queue entry
-        queue2 = LabQueue.objects.create(
-            lab_order=order2,
-            sample_type="blood",
-        )
+        # Get second auto-created queue entry
+        queue2 = LabQueue.objects.get(lab_order=order2)
 
         assert queue1.queue_number != queue2.queue_number
 
@@ -175,8 +165,7 @@ class TestLabQueueModel:
         """STAT > Urgent > Routine priority ordering."""
         from hmis.apps.laboratory.models import LabQueue
 
-        # Create orders with different priorities
-        orders = []
+        # Create orders with different priorities (signal auto-creates queues)
         for priority in ["ROUTINE", "URGENT", "STAT"]:
             order = LabOrder.objects.create(
                 patient=sample_patient,
@@ -184,18 +173,13 @@ class TestLabQueueModel:
                 ordered_by=sample_user,
                 order_type="IN_HOUSE",
                 priority=priority,
+                status="ORDERED",
             )
             LabOrderItem.objects.create(
                 lab_order=order,
                 test=sample_test,
                 unit_cost=sample_test.cost,
             )
-            queue = LabQueue.objects.create(
-                lab_order=order,
-                sample_type="blood",
-                priority=priority,
-            )
-            orders.append(queue)
 
         # Get ordered queue (default ordering is by priority, then created_at)
         queued_items = list(LabQueue.objects.all())
@@ -208,10 +192,8 @@ class TestLabQueueModel:
         """Technician can be assigned to queue entry."""
         from hmis.apps.laboratory.models import LabQueue
 
-        queue = LabQueue.objects.create(
-            lab_order=sample_lab_order,
-            sample_type="blood",
-        )
+        # Get the auto-created queue entry
+        queue = LabQueue.objects.get(lab_order=sample_lab_order)
 
         queue.assign_to(lab_technician)
 
@@ -222,10 +204,8 @@ class TestLabQueueModel:
         """Sample collection should be recorded."""
         from hmis.apps.laboratory.models import LabQueue
 
-        queue = LabQueue.objects.create(
-            lab_order=sample_lab_order,
-            sample_type="blood",
-        )
+        # Get the auto-created queue entry
+        queue = LabQueue.objects.get(lab_order=sample_lab_order)
 
         sample_id = "SAMPLE-001"
         queue.collect_sample(sample_user, sample_id)
@@ -240,10 +220,8 @@ class TestLabQueueModel:
         """Barcode/tube ID should be stored."""
         from hmis.apps.laboratory.models import LabQueue
 
-        queue = LabQueue.objects.create(
-            lab_order=sample_lab_order,
-            sample_type="blood",
-        )
+        # Get the auto-created queue entry
+        queue = LabQueue.objects.get(lab_order=sample_lab_order)
 
         barcode = "BC12345678"
         queue.collect_sample(sample_user, barcode)
@@ -255,11 +233,10 @@ class TestLabQueueModel:
         """Status should change to processing."""
         from hmis.apps.laboratory.models import LabQueue
 
-        queue = LabQueue.objects.create(
-            lab_order=sample_lab_order,
-            sample_type="blood",
-            queue_status="COLLECTED",
-        )
+        # Get the auto-created queue entry and set status to COLLECTED
+        queue = LabQueue.objects.get(lab_order=sample_lab_order)
+        queue.queue_status = "COLLECTED"
+        queue.save()
 
         queue.start_processing()
 
@@ -271,11 +248,10 @@ class TestLabQueueModel:
         """Status should change to review."""
         from hmis.apps.laboratory.models import LabQueue
 
-        queue = LabQueue.objects.create(
-            lab_order=sample_lab_order,
-            sample_type="blood",
-            queue_status="PROCESSING",
-        )
+        # Get the auto-created queue entry and set status to PROCESSING
+        queue = LabQueue.objects.get(lab_order=sample_lab_order)
+        queue.queue_status = "PROCESSING"
+        queue.save()
 
         queue.submit_for_review()
 
@@ -287,11 +263,10 @@ class TestLabQueueModel:
         """Results should be released and order completed."""
         from hmis.apps.laboratory.models import LabQueue
 
-        queue = LabQueue.objects.create(
-            lab_order=sample_lab_order,
-            sample_type="blood",
-            queue_status="REVIEW",
-        )
+        # Get the auto-created queue entry and set status to REVIEW
+        queue = LabQueue.objects.get(lab_order=sample_lab_order)
+        queue.queue_status = "REVIEW"
+        queue.save()
 
         queue.release_results(sample_user)
 
@@ -305,10 +280,8 @@ class TestLabQueueModel:
         """Sample rejection should be recorded with reason."""
         from hmis.apps.laboratory.models import LabQueue
 
-        queue = LabQueue.objects.create(
-            lab_order=sample_lab_order,
-            sample_type="blood",
-        )
+        # Get the auto-created queue entry
+        queue = LabQueue.objects.get(lab_order=sample_lab_order)
 
         reason = "Hemolyzed sample"
         queue.reject_sample(reason)
@@ -320,10 +293,9 @@ class TestLabQueueModel:
         """TAT should be correctly calculated from order to release."""
         from hmis.apps.laboratory.models import LabQueue
 
-        queue = LabQueue.objects.create(
-            lab_order=sample_lab_order,
-            sample_type="blood",
-        )
+        # Get the auto-created queue entry
+        queue = LabQueue.objects.get(lab_order=sample_lab_order)
+        queue.queue_status = "REVIEW"
 
         # Simulate time passing
         queue.created_at = timezone.now() - timedelta(hours=2)
@@ -339,25 +311,26 @@ class TestLabQueueModel:
         """Should be able to filter queue by status."""
         from hmis.apps.laboratory.models import LabQueue
 
-        # Create multiple queue entries with different statuses
+        # Create orders which will auto-create queue entries via signal
+        # Then update the status of each queue entry
         statuses = ["PENDING", "COLLECTED", "PROCESSING"]
-        for status in statuses:
+        for idx, status in enumerate(statuses):
             order = LabOrder.objects.create(
                 patient=sample_patient,
                 encounter=sample_encounter,
                 ordered_by=sample_user,
                 order_type="IN_HOUSE",
+                status="ORDERED",
             )
             LabOrderItem.objects.create(
                 lab_order=order,
                 test=sample_test,
                 unit_cost=sample_test.cost,
             )
-            LabQueue.objects.create(
-                lab_order=order,
-                sample_type="blood",
-                queue_status=status,
-            )
+            # Update the auto-created queue entry's status
+            queue = LabQueue.objects.get(lab_order=order)
+            queue.queue_status = status
+            queue.save()
 
         # Filter by status
         pending = LabQueue.objects.filter(queue_status="PENDING")
@@ -370,39 +343,36 @@ class TestLabQueueModel:
         """Should be able to filter queue by assigned technician."""
         from hmis.apps.laboratory.models import LabQueue
 
-        # Create queue entry assigned to technician
+        # Create order which auto-creates queue via signal
         order1 = LabOrder.objects.create(
             patient=sample_patient,
             encounter=sample_encounter,
             ordered_by=sample_user,
             order_type="IN_HOUSE",
+            status="ORDERED",
         )
         LabOrderItem.objects.create(
             lab_order=order1,
             test=sample_test,
             unit_cost=sample_test.cost,
         )
-        queue1 = LabQueue.objects.create(
-            lab_order=order1,
-            sample_type="blood",
-            assigned_technician=lab_technician,
-        )
+        # Assign technician to the auto-created queue entry
+        queue1 = LabQueue.objects.get(lab_order=order1)
+        queue1.assigned_technician = lab_technician
+        queue1.save()
 
-        # Create queue entry without assignment
+        # Create second order (queue auto-created without assignment)
         order2 = LabOrder.objects.create(
             patient=sample_patient,
             encounter=sample_encounter,
             ordered_by=sample_user,
             order_type="IN_HOUSE",
+            status="ORDERED",
         )
         LabOrderItem.objects.create(
             lab_order=order2,
             test=sample_test,
             unit_cost=sample_test.cost,
-        )
-        LabQueue.objects.create(
-            lab_order=order2,
-            sample_type="blood",
         )
 
         # Filter by technician
