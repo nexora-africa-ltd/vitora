@@ -1560,18 +1560,18 @@ class SHAEligibilityService:
 ```
 
 **Test Coverage** (12 tests):
-- [ ] Test successful eligibility check
-- [ ] Test uses cached result when valid
-- [ ] Test force_refresh bypasses cache
-- [ ] Test API timeout handling
-- [ ] Test API error handling
-- [ ] Test retry logic with exponential backoff
-- [ ] Test request payload format
-- [ ] Test response parsing for eligible member
-- [ ] Test response parsing for ineligible member
-- [ ] Test member status updated after check
-- [ ] Test eligibility check logged
-- [ ] Test mock API for unit tests
+- [x] Test successful eligibility check
+- [x] Test uses cached result when valid
+- [x] Test force_refresh bypasses cache
+- [x] Test API timeout handling
+- [x] Test API error handling
+- [x] Test retry logic with exponential backoff
+- [x] Test request payload format
+- [x] Test response parsing for eligible member
+- [x] Test response parsing for ineligible member
+- [x] Test member status updated after check
+- [x] Test eligibility check logged
+- [x] Test mock API for unit tests
 
 ---
 
@@ -1797,21 +1797,21 @@ class SHAClaimsService:
 ```
 
 **Test Coverage** (15 tests):
-- [ ] Test `create_claim_from_encounter()` creates claim and items
-- [ ] Test claim type auto-detection for OPD
-- [ ] Test claim type auto-detection for IPD
-- [ ] Test claim type auto-detection for Emergency
-- [ ] Test patient without SHA membership raises error
-- [ ] Test `validate_claim()` delegation to model
-- [ ] Test `package_claim()` returns FHIR bundle
-- [ ] Test FHIR Claim resource structure
-- [ ] Test FHIR Patient resource included
-- [ ] Test FHIR Coverage resource included
-- [ ] Test `submit_claim()` success flow
-- [ ] Test `submit_claim()` updates claim status
-- [ ] Test `submit_claim()` logs audit entry
-- [ ] Test `submit_claim()` handles API error
-- [ ] Test attachments included in submission
+- [x] Test `create_claim_from_encounter()` creates claim and items
+- [x] Test claim type auto-detection for OPD
+- [x] Test claim type auto-detection for IPD
+- [x] Test claim type auto-detection for Emergency
+- [x] Test patient without SHA membership raises error
+- [x] Test `validate_claim()` delegation to model
+- [x] Test `package_claim()` returns FHIR bundle
+- [x] Test FHIR Claim resource structure
+- [x] Test FHIR Patient resource included
+- [x] Test FHIR Coverage resource included
+- [x] Test `submit_claim()` success flow
+- [x] Test `submit_claim()` updates claim status
+- [x] Test `submit_claim()` logs audit entry
+- [x] Test `submit_claim()` handles API error
+- [x] Test attachments included in submission
 
 ---
 
