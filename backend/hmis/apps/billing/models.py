@@ -934,10 +934,11 @@ class SHAMember(models.Model):
         INACTIVE = 'inactive', 'Inactive'
         SUSPENDED = 'suspended', 'Suspended'
         EXPIRED = 'expired', 'Expired'
-        PENDING_VERIFICATION = 'pending', 'Pending Verification'
+        PENDING_VERIFICATION = 'pending_verification', 'Pending Verification'
 
     class MembershipType(models.TextChoices):
         PRINCIPAL = 'principal', 'Principal Member'
+        # DEPENDENT = 'dependent', 'Dependent'
         SPOUSE = 'spouse', 'Spouse'
         CHILD = 'child', 'Child/Dependent'
         PARENT = 'parent', 'Parent'
