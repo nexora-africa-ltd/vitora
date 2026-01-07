@@ -13,6 +13,55 @@ from typing import Any
 from django.utils import timezone
 
 
+class SHAEligibilityService:
+    """
+    SHA (Social Health Authority) eligibility verification service.
+
+    This service handles verification of patient eligibility for SHA coverage.
+    Currently a stub implementation - full SHA API integration planned for Phase 2.
+    """
+
+    def __init__(self):
+        """Initialize SHA Eligibility Service."""
+        self.is_stub = True
+
+    def verify_eligibility(self, sha_member) -> dict[str, Any]:
+        """
+        Verify eligibility for a SHA member.
+
+        Args:
+            sha_member: SHAMember object to verify
+
+        Returns:
+            Dict with eligibility verification result
+
+        Example:
+            >>> service = SHAEligibilityService()
+            >>> result = service.verify_eligibility(member)
+            >>> print(result['is_eligible'])
+            True
+        """
+        if self.is_stub:
+            # Determine eligibility based on member status and coverage dates
+            is_eligible = (
+                sha_member.status == 'active' and
+                sha_member.coverage_end_date and
+                sha_member.coverage_end_date >= timezone.now().date()
+            )
+
+            return {
+                'is_eligible': is_eligible,
+                'result': 'eligible' if is_eligible else 'ineligible',
+                'eligible_until': sha_member.coverage_end_date,
+                'benefit_balance': Decimal('50000.00') if is_eligible else None,
+                'ineligibility_reason': '' if is_eligible else 'Coverage expired or inactive',
+                'error_code': None,
+                'error_message': None,
+            }
+
+        raise NotImplementedError("SHA eligibility API not yet implemented")
+
+
 class SHAClaimsService:
     """
     SHA (Social Health Authority) claims integration stub.

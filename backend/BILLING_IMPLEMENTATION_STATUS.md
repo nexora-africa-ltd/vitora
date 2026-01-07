@@ -300,7 +300,7 @@ class InsurancePlan(models.Model):
     annual_limit = models.DecimalField(max_digits=12, decimal_places=2, null=True)
     copay_percentage = models.DecimalField(max_digits=5, decimal_places=2, default=0)
     copay_amount = models.DecimalField(max_digits=10, decimal_places=2, default=0)
-    requires_preauth = models.BooleanField(default=False)
+    requires_preauthorization = models.BooleanField(default=False)
     preauth_threshold = models.DecimalField(max_digits=10, decimal_places=2, null=True)
 
 class PatientInsurance(models.Model):
