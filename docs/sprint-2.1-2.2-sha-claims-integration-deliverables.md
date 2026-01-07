@@ -1412,23 +1412,23 @@ class SHAEligibilityCheck(models.Model):
 | `/api/sha/claims/dashboard/` | GET | Claims dashboard stats | Yes | `billing.view_shaclaim` |
 | `/api/sha/claims/export/` | GET | Export claims report | Yes | `billing.view_shaclaim` |
 
-**API Test Coverage** (30 tests):
-- [ ] Authentication required on all endpoints
-- [ ] Permission checks per endpoint
-- [ ] Pagination and filtering for list endpoints
-- [ ] Search functionality for members and tariffs
-- [ ] Error responses (400, 401, 403, 404)
-- [ ] SHA member registration with patient linkage
-- [ ] Eligibility verification API call (mocked)
-- [ ] Claim creation from encounter
-- [ ] Claim item CRUD operations
-- [ ] Attachment upload with validation
-- [ ] Claim validation endpoint
-- [ ] Claim submission workflow
-- [ ] Appeal creation from rejected claim
-- [ ] Dashboard statistics aggregation
-- [ ] Export functionality (CSV, Excel)
-- [ ] Offline sync compatibility
+**API Test Coverage** (91 tests):
+- [x] Authentication required on all endpoints
+- [x] Permission checks per endpoint
+- [x] Pagination and filtering for list endpoints
+- [x] Search functionality for members and tariffs
+- [x] Error responses (400, 401, 403, 404)
+- [x] SHA member registration with patient linkage
+- [x] Eligibility verification API call (mocked)
+- [x] Claim creation from encounter
+- [x] Claim item CRUD operations
+- [x] Attachment upload with validation
+- [x] Claim validation endpoint
+- [x] Claim submission workflow
+- [x] Appeal creation from rejected claim
+- [x] Dashboard statistics aggregation
+- [x] Export functionality (CSV, Excel)
+- [x] Offline sync compatibility
 
 ---
 

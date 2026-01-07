@@ -938,7 +938,6 @@ class SHAMember(models.Model):
 
     class MembershipType(models.TextChoices):
         PRINCIPAL = 'principal', 'Principal Member'
-        # DEPENDENT = 'dependent', 'Dependent'
         SPOUSE = 'spouse', 'Spouse'
         CHILD = 'child', 'Child/Dependent'
         PARENT = 'parent', 'Parent'
@@ -962,6 +961,7 @@ class SHAMember(models.Model):
     national_id = models.CharField(
         max_length=20,
         db_index=True,
+        blank=True,
         help_text="Kenya National ID linked to SHA"
     )
 
@@ -1039,6 +1039,11 @@ class SHAMember(models.Model):
         # Validate SHA number format (must start with SHA-)
         if self.sha_number and not self.sha_number.startswith('SHA-'):
             errors['sha_number'] = 'SHA number must start with "SHA-"'
+
+        # Principal members should have a National ID; dependents may not
+        if self.membership_type == self.MembershipType.PRINCIPAL:
+            if not self.national_id:
+                errors['national_id'] = 'National ID is required for principal members'
 
         # Dependents must have principal SHA number
         if self.membership_type != self.MembershipType.PRINCIPAL:
@@ -1656,7 +1661,10 @@ class SHAClaim(models.Model):
 
     def calculate_claimed_amount(self):
         """Calculate total claimed amount from claim items."""
-        items = self.items.all()
+        # Avoid using the related manager cache when this claim was prefetched
+        # (e.g., queryset.prefetch_related('items')), otherwise newly created
+        # items in the same request may not be reflected.
+        items = SHAClaimItem.objects.filter(claim=self).only('claimed_amount')
         self.claimed_amount = sum(
             item.claimed_amount for item in items
         ) if items.exists() else Decimal('0.00')
