@@ -703,13 +703,13 @@ class TestSHAMemberRegistration:
             'patient': dependent_patient.id,
             'sha_number': 'SHA-DEP-0000001',
             'national_id': '',  # Dependents may not have national ID
-            'membership_type': 'dependent',
+            'membership_type': 'child',
             'principal_sha_number': sample_sha_member.sha_number,
         }
         response = sha_client.post('/api/sha/members/', data)
 
         assert response.status_code == status.HTTP_201_CREATED
-        assert response.data['membership_type'] == 'dependent'
+        assert response.data['membership_type'] == 'child'
 
     def test_member_includes_patient_details(self, sha_client, sample_sha_member):
         """Should include patient details in member response."""
@@ -895,7 +895,7 @@ class TestClaimItemCRUD:
             'tariff': sample_sha_tariff.id,
             'description': 'Test Service',
             'service_date': date.today().isoformat(),
-            'quantity': '2.00',
+            'quantity': '1.00',
             'unit_price': '500.00',
         }
         response = sha_client.post(

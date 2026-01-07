@@ -7,7 +7,7 @@ Provides ViewSets for SHA Members, Tariffs, Claims, and related operations.
 import csv
 import hashlib
 from datetime import date, timedelta
-from decimal import Decimal
+from decimal import Decimal, InvalidOperation
 from io import BytesIO, StringIO
 
 from django.db.models import Count, Sum
@@ -19,6 +19,7 @@ from rest_framework import filters, status, viewsets
 from rest_framework.decorators import action
 from rest_framework.pagination import PageNumberPagination
 from rest_framework.permissions import IsAuthenticated
+from rest_framework.renderers import BrowsableAPIRenderer, JSONRenderer
 from rest_framework.response import Response
 
 from hmis.apps.billing.models import (
@@ -44,6 +45,7 @@ from hmis.apps.billing.sha_serializers import (
     SHAMemberSerializer,
     SHATariffSerializer,
 )
+from hmis.apps.billing.renderers import CSVRenderer, XLSXRenderer
 from hmis.apps.billing.services.sha_eligibility import SHAEligibilityService
 from hmis.apps.core.permissions import SHAPermission
 
@@ -64,6 +66,7 @@ class SHAMemberViewSet(viewsets.ModelViewSet):
     """
 
     queryset = SHAMember.objects.select_related('patient', 'created_by').all()
+    lookup_value_regex = r'\d+'
     permission_classes = [IsAuthenticated, SHAPermission]
     pagination_class = SHAPagination
     filter_backends = [DjangoFilterBackend, filters.SearchFilter, filters.OrderingFilter]
@@ -98,33 +101,60 @@ class SHAMemberViewSet(viewsets.ModelViewSet):
         """
         member = self.get_object()
 
-        # For now, create a mock eligibility check
-        # In production, this would call the SHA API
-        check = SHAEligibilityCheck.objects.create(
-            sha_member=member,
-            patient=member.patient,
-            result='eligible' if member.is_eligible() else 'ineligible',
-            response_data={'status': 'verified', 'source': 'local'},
-            response_time_ms=50,
-            is_eligible=member.is_eligible(),
-            eligible_until=member.coverage_end_date,
-            benefit_balance=Decimal('50000.00') if member.is_eligible() else None,
-            ineligibility_reason='' if member.is_eligible() else 'Coverage expired or inactive',
-            checked_by=request.user,
-        )
+        service = SHAEligibilityService()
+        check = service.check_eligibility(member, request.user)
 
-        # Update member eligibility
-        check.update_member_eligibility()
+        is_eligible = getattr(check, 'is_eligible', False)
+        if not isinstance(is_eligible, bool):
+            is_eligible = bool(is_eligible) if is_eligible is not None else False
+
+        result = getattr(check, 'result', '') or ''
+        if not isinstance(result, str):
+            result = str(result)
+
+        eligible_until = getattr(check, 'eligible_until', None)
+        if not isinstance(eligible_until, date):
+            eligible_until = None
+
+        benefit_balance = None
+        raw_balance = getattr(check, 'benefit_balance', None)
+        if raw_balance is not None:
+            try:
+                benefit_balance = (
+                    raw_balance
+                    if isinstance(raw_balance, Decimal)
+                    else Decimal(str(raw_balance))
+                )
+            except (InvalidOperation, TypeError, ValueError):
+                benefit_balance = None
+
+        ineligibility_reason = getattr(check, 'ineligibility_reason', '') or ''
+        if not isinstance(ineligibility_reason, str):
+            ineligibility_reason = ''
+
+        error_code = getattr(check, 'error_code', '') or ''
+        if not isinstance(error_code, str):
+            error_code = ''
+
+        error_message = getattr(check, 'error_message', '') or ''
+        if not isinstance(error_message, str):
+            error_message = ''
 
         serializer = SHAEligibilityVerifySerializer({
-            'is_eligible': check.is_eligible,
-            'result': check.result,
-            'eligible_until': check.eligible_until,
-            'benefit_balance': check.benefit_balance,
-            'ineligibility_reason': check.ineligibility_reason,
-            'error_code': check.error_code,
-            'error_message': check.error_message,
+            'is_eligible': is_eligible,
+            'result': result,
+            'eligible_until': eligible_until,
+            'benefit_balance': benefit_balance,
+            'ineligibility_reason': ineligibility_reason,
+            'error_code': error_code,
+            'error_message': error_message,
         })
+
+        if result in [
+            SHAEligibilityCheck.CheckResult.ERROR,
+            SHAEligibilityCheck.CheckResult.TIMEOUT,
+        ]:
+            return Response(serializer.data, status=status.HTTP_503_SERVICE_UNAVAILABLE)
 
         return Response(serializer.data)
 
@@ -169,6 +199,7 @@ class SHATariffViewSet(viewsets.ReadOnlyModelViewSet):
     """
 
     queryset = SHATariff.objects.all()
+    lookup_value_regex = r'\d+'
     serializer_class = SHATariffSerializer
     permission_classes = [IsAuthenticated, SHAPermission]
     pagination_class = SHAPagination
@@ -241,7 +272,9 @@ class SHAClaimViewSet(viewsets.ModelViewSet):
     queryset = SHAClaim.objects.select_related(
         'patient', 'sha_member', 'encounter', 'created_by', 'submitted_by'
     ).prefetch_related('items', 'attachments').all()
+    lookup_value_regex = r'\d+'
     permission_classes = [IsAuthenticated, SHAPermission]
+    renderer_classes = [JSONRenderer, BrowsableAPIRenderer, CSVRenderer, XLSXRenderer]
     pagination_class = SHAPagination
     filter_backends = [DjangoFilterBackend, filters.SearchFilter, filters.OrderingFilter]
     filterset_fields = ['status', 'claim_type', 'patient']
