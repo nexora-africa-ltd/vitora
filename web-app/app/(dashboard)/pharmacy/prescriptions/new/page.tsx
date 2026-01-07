@@ -57,6 +57,7 @@ import { useToast } from '@/lib/hooks/use-toast';
 import { usePatient } from '@/lib/hooks/use-patients';
 import { useEncounter } from '@/lib/hooks/use-encounters';
 import { useDrugs, useCreatePrescription } from '@/lib/hooks/use-pharmacy';
+import { useAuth } from '@/lib/auth';
 import {
   generateDosageSuggestions,
   getSuggestedRoute,
@@ -82,6 +83,7 @@ export default function NewPrescriptionPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const { toast } = useToast();
+  const { user } = useAuth();
 
   // Get encounter and patient IDs from URL params
   const encounterId = searchParams.get('encounter')
@@ -94,6 +96,11 @@ export default function NewPrescriptionPage() {
   // Fetch patient and encounter data
   const { data: patient, isLoading: patientLoading } = usePatient(patientId || 0);
   const { data: encounter, isLoading: encounterLoading } = useEncounter(encounterId || 0);
+
+  // Get prescriber name
+  const prescriberName = user 
+    ? `${user.first_name || ''} ${user.last_name || ''}`.trim() || user.username 
+    : 'Unknown';
 
   // Drug search state
   const [drugSearch, setDrugSearch] = useState('');
@@ -155,6 +162,7 @@ export default function NewPrescriptionPage() {
 ═══════════════════════════════════════════════════════
 
 Date: ${today}
+Prescriber: ${prescriberName}
 
 PATIENT INFORMATION
 ───────────────────
@@ -188,13 +196,16 @@ ${clinicalNotes}
     }
 
     text += `
+───────────────────
+Prescribed by: ${prescriberName}
+
 ═══════════════════════════════════════════════════════
                     Vitora HMIS
 ═══════════════════════════════════════════════════════
 `;
 
     return text;
-  }, [patient, items, encounter, encounterId, clinicalNotes]);
+  }, [patient, items, encounter, encounterId, clinicalNotes, prescriberName]);
 
   // Copy prescription to clipboard
   const handleCopyToClipboard = useCallback(async () => {
@@ -348,6 +359,13 @@ ${clinicalNotes}
         </div>
         
         <div class="section">
+          <div class="section-title">Prescriber Information</div>
+          <div class="patient-info">
+            <p><strong>Prescriber:</strong> ${prescriberName}</p>
+          </div>
+        </div>
+        
+        <div class="section">
           <div class="section-title">Patient Information</div>
           <div class="patient-info">
             <p><strong>Name:</strong> ${patient?.first_name} ${patient?.last_name}</p>
@@ -382,7 +400,10 @@ ${clinicalNotes}
         ` : ''}
         
         <div class="footer">
-          <div class="signature-line">Prescriber Signature</div>
+          <div>
+            <p style="margin-bottom: 5px;"><strong>Prescribed by:</strong> ${prescriberName}</p>
+            <div class="signature-line">Prescriber Signature</div>
+          </div>
           <div class="signature-line">Date</div>
         </div>
       </body>
@@ -398,7 +419,7 @@ ${clinicalNotes}
         printWindow.print();
       }, 250);
     }
-  }, [items, patient, encounter, encounterId, clinicalNotes, toast]);
+  }, [items, patient, encounter, encounterId, clinicalNotes, prescriberName, toast]);
 
   // Validate current item before adding
   const validateItem = useCallback((): boolean => {
