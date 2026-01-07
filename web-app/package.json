@@ -19,6 +19,14 @@
     "e2e:ui": "playwright test --ui",
     "e2e:debug": "playwright test --debug",
     "e2e:report": "playwright show-report",
+    "bdd": "cucumber-js",
+    "bdd:smoke": "cucumber-js --profile smoke",
+    "bdd:patients": "cucumber-js --profile patients",
+    "bdd:pharmacy": "cucumber-js --profile pharmacy",
+    "bdd:triage": "cucumber-js --profile triage",
+    "bdd:offline": "cucumber-js --tags @offline",
+    "bdd:ci": "cucumber-js --profile ci",
+    "bdd:dry-run": "cucumber-js --dry-run",
     "quality": "npm run lint && npm run type-check && npm run format:check"
   },
   "dependencies": {
