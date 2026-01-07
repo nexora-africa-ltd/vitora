@@ -2512,9 +2512,9 @@ def sha_member_data():
 
 ## Definition of Done
 
-- [ ] All tests written and passing (TDD approach followed)
-- [ ] Code coverage ≥80% for new code
-- [ ] Code reviewed and approved
+- [x] All tests written and passing (TDD approach followed)
+- [x] Code coverage ≥80% for new code
+- [x] Code reviewed and approved
 - [ ] Documentation updated (README, API docs, inline comments)
 - [ ] No linting errors (`make quality` passes)
 - [ ] Security scan clean (`bandit`)
@@ -2523,7 +2523,7 @@ def sha_member_data():
 - [ ] Audit logging implemented for all CRUD operations
 - [ ] FHIR compliance verified for claim bundle
 - [ ] Demo ready for stakeholders
-- [ ] SHA API mock server documented
+- [x] SHA API mock server documented (scripts/mock_sha_server.py - Flask server with all endpoints)
 - [ ] Tariff import script tested
 
 ---
