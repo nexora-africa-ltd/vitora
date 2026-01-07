@@ -1373,6 +1373,7 @@ class SHAClaim(models.Model):
         """SHA claim lifecycle statuses."""
         DRAFT = 'draft', 'Draft'
         VALIDATED = 'validated', 'Validated'
+        PENDING_SUBMISSION = 'pending_submission', 'Pending Submission (Queued)'
         SUBMITTED = 'submitted', 'Submitted'
         ACKNOWLEDGED = 'acknowledged', 'Acknowledged by SHA'
         UNDER_REVIEW = 'under_review', 'Under Review'
@@ -1680,7 +1681,13 @@ class SHAClaim(models.Model):
         errors = []
 
         # Check claim is not already submitted
-        if self.status not in [self.ClaimStatus.DRAFT, self.ClaimStatus.VALIDATED]:
+        # Allow DRAFT, VALIDATED, and PENDING_SUBMISSION (for queued claims being retried)
+        allowed_statuses = [
+            self.ClaimStatus.DRAFT,
+            self.ClaimStatus.VALIDATED,
+            self.ClaimStatus.PENDING_SUBMISSION,
+        ]
+        if self.status not in allowed_statuses:
             errors.append(f"Claim status '{self.get_status_display()}' cannot be submitted")
 
         # Check SHA member eligibility

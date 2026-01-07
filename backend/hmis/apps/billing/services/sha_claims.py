@@ -7,6 +7,7 @@ validation, packaging (FHIR format), and submission.
 Reference: docs/sprint-2.1-2.2-sha-claims-integration-deliverables.md
 """
 
+import logging
 from datetime import date
 from decimal import Decimal
 from typing import Any, Optional
@@ -21,6 +22,9 @@ from hmis.apps.billing.models import (
     SHAClaimItem,
 )
 from hmis.apps.core.models import AuditLog
+from hmis.apps.core.sync import ConnectivityChecker, SyncManager
+
+logger = logging.getLogger(__name__)
 
 
 class SHAClaimsService:
@@ -462,19 +466,21 @@ class SHAClaimsService:
         }
         return mapping.get(gender, 'unknown')
     
-    def submit_claim(self, claim: SHAClaim, user) -> dict:
+    def submit_claim(self, claim: SHAClaim, user, force_online: bool = False) -> dict:
         """
         Submit claim to SHA.
         
         Validates claim, packages it, submits to SHA API, and updates
-        claim status with response.
+        claim status with response. If offline, queues the claim for
+        later submission.
         
         Args:
             claim: SHAClaim to submit
             user: User performing the submission
+            force_online: If True, fail immediately if offline (don't queue)
             
         Returns:
-            Submission response dict from SHA API
+            Submission response dict from SHA API or queue confirmation
             
         Raises:
             ValidationError: If claim is not valid for submission or API fails
@@ -483,6 +489,17 @@ class SHAClaimsService:
         is_valid, errors = self.validate_claim(claim)
         if not is_valid:
             raise ValidationError({'errors': errors})
+        
+        # Check connectivity
+        checker = ConnectivityChecker(server_url=self.api_base_url)
+        is_online = checker.check()
+        
+        if not is_online and not force_online:
+            # Queue for offline submission
+            return self._queue_claim_for_submission(claim, user)
+        
+        if not is_online and force_online:
+            raise ValidationError("Cannot submit claim: system is offline")
         
         # Package claim
         bundle = self.package_claim(claim)
@@ -514,9 +531,175 @@ class SHAClaimsService:
             return response
             
         except requests.RequestException as e:
+            # If submission fails due to network, queue for retry
+            if self._is_network_error(e):
+                logger.warning(f"Network error submitting claim {claim.claim_number}, queueing for retry")
+                return self._queue_claim_for_submission(claim, user)
+            
             claim.submission_response = {'error': str(e)}
             claim.save(update_fields=['submission_response', 'updated_at'])
             raise ValidationError(f"Submission failed: {str(e)}")
+    
+    def _queue_claim_for_submission(self, claim: SHAClaim, user) -> dict:
+        """
+        Queue a claim for offline submission.
+        
+        Creates a SyncQueue entry for the claim and updates claim status
+        to PENDING_SUBMISSION.
+        
+        Args:
+            claim: SHAClaim to queue
+            user: User who initiated the submission
+            
+        Returns:
+            Queue confirmation dict
+        """
+        from hmis.apps.billing.sha_serializers import SHAClaimSerializer
+        
+        # Package the claim data
+        bundle = self.package_claim(claim)
+        
+        # Serialize claim data for sync queue
+        serializer = SHAClaimSerializer(claim)
+        claim_data = {
+            'claim_id': claim.id,
+            'claim_number': claim.claim_number,
+            'fhir_bundle': bundle,
+            'serialized_claim': serializer.data,
+            'submitted_by_id': user.id,
+            'queued_at': timezone.now().isoformat(),
+        }
+        
+        # Create sync queue entry
+        sync_manager = SyncManager()
+        queue_entry = sync_manager.queue_change(
+            operation='CREATE',
+            model_name='SHAClaimSubmission',
+            record_id=claim.id,
+            data=claim_data,
+        )
+        
+        # Update claim status to show it's queued
+        claim.status = SHAClaim.ClaimStatus.PENDING_SUBMISSION
+        claim.submission_response = {
+            'queued': True,
+            'queue_entry_id': queue_entry.id,
+            'queued_at': timezone.now().isoformat(),
+        }
+        claim.save(update_fields=['status', 'submission_response', 'updated_at'])
+        
+        # Log audit
+        AuditLog.log(
+            action='sha_claim_queued',
+            user=user,
+            resource_type='SHAClaim',
+            resource_id=claim.id,
+            details={
+                'queue_entry_id': queue_entry.id,
+                'reason': 'offline_submission',
+            }
+        )
+        
+        logger.info(f"Claim {claim.claim_number} queued for offline submission (queue_id={queue_entry.id})")
+        
+        return {
+            'status': 'queued',
+            'message': 'Claim queued for submission when online',
+            'queue_entry_id': queue_entry.id,
+            'claim_number': claim.claim_number,
+        }
+    
+    def _is_network_error(self, exception: Exception) -> bool:
+        """
+        Check if an exception is a network-related error.
+        
+        Args:
+            exception: The exception to check
+            
+        Returns:
+            True if network error, False otherwise
+        """
+        network_errors = (
+            requests.exceptions.ConnectionError,
+            requests.exceptions.Timeout,
+            requests.exceptions.ConnectTimeout,
+        )
+        return isinstance(exception, network_errors)
+    
+    def process_queued_claims(self) -> dict:
+        """
+        Process all queued claim submissions.
+        
+        Called when connectivity is restored to submit all pending claims.
+        
+        Returns:
+            Summary of processed claims
+        """
+        from hmis.apps.core.models import SyncQueue
+        from django.contrib.auth import get_user_model
+        
+        User = get_user_model()
+        
+        # Get all pending claim submissions
+        pending_entries = SyncQueue.objects.filter(
+            model_name='SHAClaimSubmission',
+            status='PENDING',
+        ).order_by('created_at')
+        
+        results = {
+            'processed': 0,
+            'succeeded': 0,
+            'failed': 0,
+            'details': [],
+        }
+        
+        for entry in pending_entries:
+            entry.mark_syncing()
+            
+            try:
+                claim_id = entry.data.get('claim_id')
+                user_id = entry.data.get('submitted_by_id')
+                
+                claim = SHAClaim.objects.get(id=claim_id)
+                user = User.objects.get(id=user_id)
+                
+                # Submit with force_online to prevent re-queueing
+                response = self.submit_claim(claim, user, force_online=True)
+                
+                entry.mark_synced()
+                results['succeeded'] += 1
+                results['details'].append({
+                    'claim_number': claim.claim_number,
+                    'status': 'submitted',
+                    'sha_reference': response.get('claim_reference', ''),
+                })
+                
+            except Exception as e:
+                entry.retry_count += 1
+                entry.error_message = str(e)
+                
+                if entry.retry_count >= 3:
+                    entry.status = 'FAILED'
+                else:
+                    entry.status = 'PENDING'
+                
+                entry.save()
+                results['failed'] += 1
+                results['details'].append({
+                    'claim_id': entry.data.get('claim_id'),
+                    'status': 'failed',
+                    'error': str(e),
+                    'retry_count': entry.retry_count,
+                })
+            
+            results['processed'] += 1
+        
+        logger.info(
+            f"Processed {results['processed']} queued claims: "
+            f"{results['succeeded']} succeeded, {results['failed']} failed"
+        )
+        
+        return results
     
     def _submit_to_sha_api(self, bundle: dict, claim: SHAClaim) -> dict:
         """
