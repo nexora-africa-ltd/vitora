@@ -339,20 +339,15 @@ def sample_lab_order(db, sample_patient, sample_encounter, test_user, sample_tes
         priority='ROUTINE',
     )
 
-    # Create order item
+    # Create order item (this will trigger signal to auto-create LabQueue entry)
     LabOrderItem.objects.create(
         lab_order=order,
         test=sample_test_catalog,
         unit_cost=sample_test_catalog.cost,
     )
 
-    # Create associated queue entry
-    from hmis.apps.laboratory.models import LabQueue
-    LabQueue.objects.create(
-        lab_order=order,
-        sample_type='blood',
-        priority='ROUTINE',
-    )
+    # Note: LabQueue entry is auto-created by signal in hmis.apps.laboratory.signals
+    # when the LabOrder is created with status='ORDERED' and order_type='IN_HOUSE'
 
     return order
 
