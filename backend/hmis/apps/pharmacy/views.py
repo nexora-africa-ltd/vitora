@@ -16,6 +16,7 @@ from hmis.apps.pharmacy.models import (
     Dispensing,
     Drug,
     Prescription,
+    PrescriptionItem,
     StockAdjustment,
     StockAlert,
     StockBatch,
@@ -23,6 +24,7 @@ from hmis.apps.pharmacy.models import (
 from hmis.apps.pharmacy.serializers import (
     DispensingSerializer,
     DrugSerializer,
+    PrescriptionCreateSerializer,
     PrescriptionSerializer,
     StockAdjustmentSerializer,
     StockAlertSerializer,
@@ -152,7 +154,7 @@ class PrescriptionViewSet(viewsets.ModelViewSet):
     Endpoints:
     - GET /api/prescriptions/ - List prescriptions
     - GET /api/prescriptions/{id}/ - Get prescription details
-    - POST /api/prescriptions/ - Create prescription
+    - POST /api/prescriptions/ - Create prescription with items
     - PATCH /api/prescriptions/{id}/ - Update prescription
     - POST /api/prescriptions/{id}/cancel/ - Cancel prescription
     """
@@ -169,9 +171,26 @@ class PrescriptionViewSet(viewsets.ModelViewSet):
     ordering_fields = ["prescribed_at", "created_at"]
     ordering = ["-prescribed_at"]
 
+    def get_serializer_class(self):
+        """Use different serializer for create action."""
+        if self.action == 'create':
+            return PrescriptionCreateSerializer
+        return PrescriptionSerializer
+
     def perform_create(self, serializer):
         """Set prescribed_by to current user when creating prescription."""
         serializer.save(prescribed_by=self.request.user)
+
+    def create(self, request, *args, **kwargs):
+        """Create prescription and return with full details."""
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        self.perform_create(serializer)
+
+        # Return full prescription with items using read serializer
+        prescription = serializer.instance
+        read_serializer = PrescriptionSerializer(prescription)
+        return Response(read_serializer.data, status=status.HTTP_201_CREATED)
 
     @action(detail=True, methods=["post"])
     def cancel(self, request, pk=None):
