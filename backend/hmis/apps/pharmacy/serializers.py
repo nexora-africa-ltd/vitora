@@ -170,6 +170,34 @@ class PrescriptionItemSerializer(serializers.ModelSerializer):
         ]
 
 
+class PrescriptionItemWriteSerializer(serializers.Serializer):
+    """Serializer for writing prescription items (nested in prescription create)."""
+
+    drug = serializers.PrimaryKeyRelatedField(queryset=Drug.objects.all())
+    # Accept both 'quantity' and 'quantity_prescribed' from frontend
+    quantity_prescribed = serializers.IntegerField(min_value=1, required=False)
+    quantity = serializers.IntegerField(min_value=1, required=False)
+    dosage = serializers.CharField(max_length=100)
+    frequency = serializers.CharField(max_length=100)
+    duration = serializers.CharField(max_length=50)
+    route = serializers.CharField(max_length=50, required=False, allow_blank=True)
+    instructions = serializers.CharField(required=False, allow_blank=True)
+    is_substitutable = serializers.BooleanField(default=True)
+
+    def validate(self, data):
+        """Ensure we have a quantity value."""
+        # Accept either quantity_prescribed or quantity
+        qty = data.get('quantity_prescribed') or data.get('quantity')
+        if not qty or qty < 1:
+            raise serializers.ValidationError({
+                'quantity': 'Quantity must be at least 1'
+            })
+        # Normalize to 'quantity' for model
+        data['quantity'] = qty
+        data.pop('quantity_prescribed', None)
+        return data
+
+
 class PrescriptionSerializer(serializers.ModelSerializer):
     """Serializer for Prescription model."""
 
@@ -223,6 +251,35 @@ class PrescriptionSerializer(serializers.ModelSerializer):
     def get_is_valid_prescription(self, obj):
         """Get prescription validity status."""
         return obj.is_valid()
+
+
+class PrescriptionCreateSerializer(serializers.ModelSerializer):
+    """Serializer for creating prescriptions with nested items."""
+
+    items = PrescriptionItemWriteSerializer(many=True, write_only=True)
+
+    class Meta:
+        model = Prescription
+        fields = [
+            "id",
+            "encounter",
+            "patient",
+            "clinical_notes",
+            "items",
+        ]
+
+    def create(self, validated_data):
+        """Create prescription with nested items."""
+        items_data = validated_data.pop('items')
+        prescription = Prescription.objects.create(**validated_data)
+
+        for item_data in items_data:
+            PrescriptionItem.objects.create(
+                prescription=prescription,
+                **item_data
+            )
+
+        return prescription
 
 
 class DispensingSerializer(serializers.ModelSerializer):
