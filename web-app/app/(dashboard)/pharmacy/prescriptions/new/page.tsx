@@ -3,14 +3,14 @@
  * Sprint 1.3-1.4 Track A: Pharmacy Module
  *
  * Allows clinicians to create prescriptions for patients during encounters.
+ * Features smart dosage suggestions based on selected drug properties.
  * Accessed from the encounter edit page's prescription tab.
  */
 
 'use client';
 
-import { useState, useCallback, useEffect } from 'react';
+import { useState, useCallback, useEffect, useMemo } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
-import Link from 'next/link';
 import {
   ArrowLeft,
   Plus,
@@ -21,6 +21,7 @@ import {
   Search,
   User,
   FileText,
+  Info,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -36,74 +37,42 @@ import {
 } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
 import { Checkbox } from '@/components/ui/checkbox';
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from '@/components/ui/popover';
+import {
+  Command,
+  CommandEmpty,
+  CommandGroup,
+  CommandInput,
+  CommandItem,
+  CommandList,
+} from '@/components/ui/command';
 import { useToast } from '@/lib/hooks/use-toast';
 import { usePatient } from '@/lib/hooks/use-patients';
 import { useEncounter } from '@/lib/hooks/use-encounters';
 import { useDrugs, useCreatePrescription } from '@/lib/hooks/use-pharmacy';
+import {
+  generateDosageSuggestions,
+  getSuggestedRoute,
+  getRouteOptions,
+  getFrequencyOptions,
+  getDurationOptions,
+  type DosageSuggestion,
+} from '@/lib/utils/dosage';
 import type { Drug, PrescriptionItemCreateData } from '@/lib/types/pharmacy';
 
-// Common dosage options
-const DOSAGE_OPTIONS = [
-  '5mg',
-  '10mg',
-  '25mg',
-  '50mg',
-  '100mg',
-  '200mg',
-  '250mg',
-  '500mg',
-  '1g',
-  '5ml',
-  '10ml',
-  '15ml',
-];
-
-// Common frequency options
-const FREQUENCY_OPTIONS = [
-  { value: 'OD', label: 'Once daily (OD)' },
-  { value: 'BD', label: 'Twice daily (BD)' },
-  { value: 'TDS', label: 'Three times daily (TDS)' },
-  { value: 'QID', label: 'Four times daily (QID)' },
-  { value: 'STAT', label: 'Immediately (STAT)' },
-  { value: 'PRN', label: 'As needed (PRN)' },
-  { value: 'Q4H', label: 'Every 4 hours' },
-  { value: 'Q6H', label: 'Every 6 hours' },
-  { value: 'Q8H', label: 'Every 8 hours' },
-  { value: 'Q12H', label: 'Every 12 hours' },
-  { value: 'NOCTE', label: 'At night (NOCTE)' },
-  { value: 'MANE', label: 'In the morning (MANE)' },
-];
-
-// Common duration options
-const DURATION_OPTIONS = [
-  '1 day',
-  '3 days',
-  '5 days',
-  '7 days',
-  '10 days',
-  '14 days',
-  '21 days',
-  '30 days',
-  '3 months',
-  '6 months',
-];
-
-// Route options
-const ROUTE_OPTIONS = [
-  { value: 'PO', label: 'Oral (PO)' },
-  { value: 'IV', label: 'Intravenous (IV)' },
-  { value: 'IM', label: 'Intramuscular (IM)' },
-  { value: 'SC', label: 'Subcutaneous (SC)' },
-  { value: 'TOPICAL', label: 'Topical' },
-  { value: 'INH', label: 'Inhaled' },
-  { value: 'PR', label: 'Rectal (PR)' },
-  { value: 'SL', label: 'Sublingual' },
-  { value: 'OPTH', label: 'Ophthalmic' },
-  { value: 'OTIC', label: 'Otic (Ear)' },
-];
+// Get options from utilities
+const FREQUENCY_OPTIONS = getFrequencyOptions();
+const DURATION_OPTIONS = getDurationOptions();
+const ROUTE_OPTIONS = getRouteOptions();
 
 interface PrescriptionItemForm extends PrescriptionItemCreateData {
   drug_name?: string;
+  drug_strength?: string;
+  drug_form?: string;
 }
 
 export default function NewPrescriptionPage() {
@@ -132,6 +101,9 @@ export default function NewPrescriptionPage() {
     is_active: true,
   });
 
+  // Selected drug for smart dosage
+  const [selectedDrug, setSelectedDrug] = useState<Drug | null>(null);
+
   // Form state
   const [clinicalNotes, setClinicalNotes] = useState('');
   const [items, setItems] = useState<PrescriptionItemForm[]>([]);
@@ -144,6 +116,16 @@ export default function NewPrescriptionPage() {
     instructions: '',
     is_substitutable: true,
   });
+
+  // Custom dosage input state
+  const [customDosage, setCustomDosage] = useState('');
+  const [showCustomDosage, setShowCustomDosage] = useState(false);
+
+  // Generate smart dosage suggestions based on selected drug
+  const dosageSuggestions = useMemo<DosageSuggestion[]>(() => {
+    if (!selectedDrug) return [];
+    return generateDosageSuggestions(selectedDrug);
+  }, [selectedDrug]);
 
   // Create prescription mutation
   const createPrescription = useCreatePrescription();
@@ -184,6 +166,8 @@ export default function NewPrescriptionPage() {
       {
         drug: currentItem.drug!,
         drug_name: currentItem.drug_name,
+        drug_strength: selectedDrug?.strength,
+        drug_form: selectedDrug?.form,
         quantity_prescribed: currentItem.quantity_prescribed!,
         dosage: currentItem.dosage!,
         frequency: currentItem.frequency!,
@@ -194,7 +178,7 @@ export default function NewPrescriptionPage() {
       },
     ]);
 
-    // Reset current item
+    // Reset current item and selected drug
     setCurrentItem({
       quantity_prescribed: 1,
       dosage: '',
@@ -204,26 +188,40 @@ export default function NewPrescriptionPage() {
       instructions: '',
       is_substitutable: true,
     });
+    setSelectedDrug(null);
     setDrugSearch('');
     setShowDrugSearch(false);
+    setCustomDosage('');
+    setShowCustomDosage(false);
     setErrors({});
-  }, [currentItem, validateItem]);
+  }, [currentItem, selectedDrug, validateItem]);
 
   // Remove item from prescription
   const handleRemoveItem = useCallback((index: number) => {
     setItems((prev) => prev.filter((_, i) => i !== index));
   }, []);
 
-  // Select drug from search results
+  // Select drug from search results - with smart defaults
   const handleSelectDrug = useCallback((drug: Drug) => {
     const displayName = drug.brand_names?.[0] || drug.generic_name;
+    setSelectedDrug(drug);
+
+    // Get smart defaults based on drug form
+    const suggestedRoute = getSuggestedRoute(drug.form);
+    const suggestions = generateDosageSuggestions(drug);
+    const defaultDosage = suggestions.find((s) => s.isDefault)?.value || '';
+
     setCurrentItem((prev) => ({
       ...prev,
       drug: drug.id,
       drug_name: displayName,
+      route: suggestedRoute.value,
+      dosage: defaultDosage,
     }));
     setDrugSearch(displayName);
     setShowDrugSearch(false);
+    setCustomDosage('');
+    setShowCustomDosage(false);
   }, []);
 
   // Submit prescription
@@ -412,36 +410,99 @@ export default function NewPrescriptionPage() {
                 )}
               </div>
               {errors.drug && <p className="text-sm text-destructive">{errors.drug}</p>}
-              {currentItem.drug_name && (
-                <Badge variant="secondary" className="mt-1">
-                  Selected: {currentItem.drug_name}
-                </Badge>
+              
+              {/* Selected drug info panel */}
+              {selectedDrug && (
+                <div className="mt-2 p-3 rounded-lg bg-muted/50 border">
+                  <div className="flex items-start justify-between">
+                    <div>
+                      <div className="font-medium text-sm">
+                        {selectedDrug.brand_names?.[0] || selectedDrug.generic_name}
+                      </div>
+                      <div className="text-xs text-muted-foreground mt-0.5">
+                        {selectedDrug.generic_name} • {selectedDrug.form} • <strong>{selectedDrug.strength}</strong>
+                      </div>
+                    </div>
+                    <div className="flex gap-1">
+                      {selectedDrug.requires_prescription && (
+                        <Badge variant="outline" className="text-xs">Rx</Badge>
+                      )}
+                      {selectedDrug.is_controlled && (
+                        <Badge variant="destructive" className="text-xs">Controlled</Badge>
+                      )}
+                    </div>
+                  </div>
+                </div>
               )}
             </div>
 
-            {/* Dosage and Quantity */}
+            {/* Dosage and Quantity - Smart dosage based on selected drug */}
             <div className="grid gap-4 sm:grid-cols-2">
               <div className="space-y-2">
-                <Label htmlFor="dosage">
-                  Dosage <span className="text-destructive">*</span>
-                </Label>
-                <Select
-                  value={currentItem.dosage}
-                  onValueChange={(value) =>
-                    setCurrentItem((prev) => ({ ...prev, dosage: value }))
-                  }
-                >
-                  <SelectTrigger className={errors.dosage ? 'border-destructive' : ''}>
-                    <SelectValue placeholder="Select dosage..." />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {DOSAGE_OPTIONS.map((d) => (
-                      <SelectItem key={d} value={d}>
-                        {d}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                <div className="flex items-center justify-between">
+                  <Label htmlFor="dosage">
+                    Dosage <span className="text-destructive">*</span>
+                  </Label>
+                  {selectedDrug && (
+                    <button
+                      type="button"
+                      className="text-xs text-muted-foreground hover:text-foreground"
+                      onClick={() => setShowCustomDosage(!showCustomDosage)}
+                    >
+                      {showCustomDosage ? 'Show suggestions' : 'Custom dosage'}
+                    </button>
+                  )}
+                </div>
+                
+                {showCustomDosage ? (
+                  // Custom dosage input
+                  <Input
+                    id="custom-dosage"
+                    placeholder="Enter custom dosage..."
+                    value={customDosage}
+                    onChange={(e) => {
+                      setCustomDosage(e.target.value);
+                      setCurrentItem((prev) => ({ ...prev, dosage: e.target.value }));
+                    }}
+                    className={errors.dosage ? 'border-destructive' : ''}
+                  />
+                ) : dosageSuggestions.length > 0 ? (
+                  // Smart dosage suggestions based on drug
+                  <Select
+                    value={currentItem.dosage}
+                    onValueChange={(value) =>
+                      setCurrentItem((prev) => ({ ...prev, dosage: value }))
+                    }
+                  >
+                    <SelectTrigger className={errors.dosage ? 'border-destructive' : ''}>
+                      <SelectValue placeholder="Select dosage..." />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {dosageSuggestions.map((suggestion) => (
+                        <SelectItem key={suggestion.value} value={suggestion.value}>
+                          <div className="flex items-center gap-2">
+                            <span>{suggestion.label}</span>
+                            {suggestion.isDefault && (
+                              <Badge variant="secondary" className="text-xs">Suggested</Badge>
+                            )}
+                          </div>
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                ) : (
+                  // Fallback: free text input when no drug selected
+                  <Input
+                    id="dosage"
+                    placeholder="Select a drug first..."
+                    value={currentItem.dosage || ''}
+                    onChange={(e) =>
+                      setCurrentItem((prev) => ({ ...prev, dosage: e.target.value }))
+                    }
+                    className={errors.dosage ? 'border-destructive' : ''}
+                    disabled={!selectedDrug}
+                  />
+                )}
                 {errors.dosage && <p className="text-sm text-destructive">{errors.dosage}</p>}
               </div>
 
@@ -509,8 +570,8 @@ export default function NewPrescriptionPage() {
                   </SelectTrigger>
                   <SelectContent>
                     {DURATION_OPTIONS.map((d) => (
-                      <SelectItem key={d} value={d}>
-                        {d}
+                      <SelectItem key={d.value} value={d.value}>
+                        {d.label}
                       </SelectItem>
                     ))}
                   </SelectContent>
@@ -522,7 +583,14 @@ export default function NewPrescriptionPage() {
             {/* Route and Instructions */}
             <div className="grid gap-4 sm:grid-cols-2">
               <div className="space-y-2">
-                <Label htmlFor="route">Route</Label>
+                <div className="flex items-center gap-2">
+                  <Label htmlFor="route">Route</Label>
+                  {selectedDrug && (
+                    <span className="text-xs text-muted-foreground">
+                      (auto-set from drug form)
+                    </span>
+                  )}
+                </div>
                 <Select
                   value={currentItem.route}
                   onValueChange={(value) =>
