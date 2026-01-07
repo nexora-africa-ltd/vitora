@@ -9,7 +9,7 @@ import type { EmergencyContact } from '@/lib/types/patient';
 
 // Mock EmptyState
 jest.mock('@/components/shared/empty-state', () => ({
-  EmptyState: ({ title, description }: any) => (
+  EmptyState: ({ title, description }: { title: string; description: string }) => (
     <div data-testid="empty-state">
       <h2>{title}</h2>
       <p>{description}</p>
@@ -17,13 +17,16 @@ jest.mock('@/components/shared/empty-state', () => ({
   ),
 }));
 
+// Mock format utility
+jest.mock('@/lib/utils/format', () => ({
+  formatPhoneNumber: (phone: string) => phone,
+}));
+
 const mockContact: EmergencyContact = {
   id: 1,
-  patient: 1,
-  name: 'Jane Doe',
-  phone: '0712345678',
+  full_name: 'Jane Doe',
+  phone_number: '0712345678',
   relationship: 'Spouse',
-  is_primary: true,
   created_at: '2025-01-01T10:00:00Z',
   updated_at: '2025-01-01T10:00:00Z',
 };
@@ -48,19 +51,6 @@ describe('EmergencyContactsList', () => {
     expect(phoneLink).toHaveAttribute('href', 'tel:0712345678');
   });
 
-  it('should show Primary badge for primary contact', () => {
-    render(<EmergencyContactsList contacts={[mockContact]} />);
-
-    expect(screen.getByText('Primary')).toBeInTheDocument();
-  });
-
-  it('should not show Primary badge for non-primary contacts', () => {
-    const nonPrimaryContact = { ...mockContact, is_primary: false };
-    render(<EmergencyContactsList contacts={[nonPrimaryContact]} />);
-
-    expect(screen.queryByText('Primary')).not.toBeInTheDocument();
-  });
-
   it('should render empty state when no contacts', () => {
     render(<EmergencyContactsList contacts={[]} />);
 
@@ -69,10 +59,27 @@ describe('EmergencyContactsList', () => {
   });
 
   it('should render multiple contacts', () => {
-    const secondContact = { ...mockContact, id: 2, name: 'John Smith', relationship: 'Parent', is_primary: false };
+    const secondContact: EmergencyContact = { 
+      ...mockContact, 
+      id: 2, 
+      full_name: 'John Smith', 
+      relationship: 'Parent',
+    };
     render(<EmergencyContactsList contacts={[mockContact, secondContact]} />);
 
     expect(screen.getByText('Jane Doe')).toBeInTheDocument();
     expect(screen.getByText('John Smith')).toBeInTheDocument();
+  });
+
+  it('should render alternative phone if provided', () => {
+    const contactWithAlt: EmergencyContact = {
+      ...mockContact,
+      alternative_phone: '0723456789',
+    };
+    render(<EmergencyContactsList contacts={[contactWithAlt]} />);
+
+    const phoneLinks = screen.getAllByRole('link');
+    expect(phoneLinks).toHaveLength(2);
+    expect(phoneLinks[1]).toHaveAttribute('href', 'tel:0723456789');
   });
 });

@@ -57,7 +57,7 @@ export interface Encounter {
   history_of_present_illness?: string;
   physical_examination?: string;
   assessment?: string;
-  // Note: SOAP 'P' (Plan) uses TreatmentPlan.clinical_notes
+  plan?: string;  // SOAP 'P' (Plan) - can also use TreatmentPlan.clinical_notes
   
   // Status workflow
   finalized_by?: number | null;

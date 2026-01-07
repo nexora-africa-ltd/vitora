@@ -55,7 +55,7 @@ export function parseStrength(strength: string): ParsedStrength | null {
   // Pattern 1: Liquid formulation "50mg/5ml" or "250mg/5ml 100ml"
   const liquidPattern = /^(\d+(?:\.\d+)?)\s*(mg|mcg|g|iu|units?)\s*\/\s*(\d+(?:\.\d+)?)\s*(ml|l)/i;
   const liquidMatch = raw.match(liquidPattern);
-  if (liquidMatch) {
+  if (liquidMatch && liquidMatch[1] && liquidMatch[2] && liquidMatch[3] && liquidMatch[4]) {
     return {
       value: parseFloat(liquidMatch[1]),
       unit: liquidMatch[2].toLowerCase(),
@@ -68,7 +68,7 @@ export function parseStrength(strength: string): ParsedStrength | null {
   // Pattern 2: Combination drug "250/125mg" - take first value
   const comboPattern = /^(\d+(?:\.\d+)?)\s*\/\s*\d+(?:\.\d+)?\s*(mg|mcg|g|iu|units?)/i;
   const comboMatch = raw.match(comboPattern);
-  if (comboMatch) {
+  if (comboMatch && comboMatch[1] && comboMatch[2]) {
     return {
       value: parseFloat(comboMatch[1]),
       unit: comboMatch[2].toLowerCase(),
@@ -79,7 +79,7 @@ export function parseStrength(strength: string): ParsedStrength | null {
   // Pattern 3: Simple strength "500mg", "0.5mg", "1g"
   const simplePattern = /^(\d+(?:\.\d+)?)\s*(mg|mcg|g|ml|iu|units?|%)/i;
   const simpleMatch = raw.match(simplePattern);
-  if (simpleMatch) {
+  if (simpleMatch && simpleMatch[1] && simpleMatch[2]) {
     return {
       value: parseFloat(simpleMatch[1]),
       unit: simpleMatch[2].toLowerCase(),
@@ -90,7 +90,7 @@ export function parseStrength(strength: string): ParsedStrength | null {
   // Pattern 4: Percentage "0.05% 15g" or "1% 10ml"
   const percentPattern = /^(\d+(?:\.\d+)?)\s*%/i;
   const percentMatch = raw.match(percentPattern);
-  if (percentMatch) {
+  if (percentMatch && percentMatch[1]) {
     return {
       value: parseFloat(percentMatch[1]),
       unit: '%',
