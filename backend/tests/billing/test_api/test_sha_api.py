@@ -730,7 +730,7 @@ class TestSHAMemberRegistration:
 class TestEligibilityVerificationAPI:
     """Test eligibility verification endpoint with mocked SHA API."""
 
-    @patch('hmis.apps.billing.services.sha.SHAEligibilityService.check_eligibility')
+    @patch('hmis.apps.billing.services.sha_eligibility.SHAEligibilityService.check_eligibility')
     def test_verify_eligibility_success(self, mock_check, sha_client, sample_sha_member):
         """Should verify eligibility and return result."""
         from hmis.apps.billing.models import SHAEligibilityCheck
@@ -748,7 +748,7 @@ class TestEligibilityVerificationAPI:
         assert response.status_code == status.HTTP_200_OK
         assert response.data['is_eligible'] is True
 
-    @patch('hmis.apps.billing.services.sha.SHAEligibilityService.check_eligibility')
+    @patch('hmis.apps.billing.services.sha_eligibility.SHAEligibilityService.check_eligibility')
     def test_verify_eligibility_ineligible(self, mock_check, sha_client, sample_sha_member):
         """Should return ineligible status when member not eligible."""
         from hmis.apps.billing.models import SHAEligibilityCheck
@@ -764,7 +764,7 @@ class TestEligibilityVerificationAPI:
         assert response.status_code == status.HTTP_200_OK
         assert response.data['is_eligible'] is False
 
-    @patch('hmis.apps.billing.services.sha.SHAEligibilityService.check_eligibility')
+    @patch('hmis.apps.billing.services.sha_eligibility.SHAEligibilityService.check_eligibility')
     def test_verify_eligibility_api_error(self, mock_check, sha_client, sample_sha_member):
         """Should handle SHA API errors gracefully."""
         from hmis.apps.billing.models import SHAEligibilityCheck

@@ -44,7 +44,7 @@ from hmis.apps.billing.sha_serializers import (
     SHAMemberSerializer,
     SHATariffSerializer,
 )
-from hmis.apps.billing.services.sha import SHAEligibilityService
+from hmis.apps.billing.services.sha_eligibility import SHAEligibilityService
 from hmis.apps.core.permissions import SHAPermission
 
 
