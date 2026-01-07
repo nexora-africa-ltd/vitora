@@ -1231,16 +1231,16 @@ class SHAClaimAttachment(models.Model):
 ```
 
 **Test Coverage** (10 tests):
-- [ ] Test attachment creation with valid data
-- [ ] Test file size validation (max 10MB)
-- [ ] Test mime type validation (PDF, JPEG, PNG, TIFF only)
-- [ ] Test attachment type choices
-- [ ] Test checksum storage
-- [ ] Test `get_required_types()` for outpatient
-- [ ] Test `get_required_types()` for inpatient
-- [ ] Test `get_required_types()` for surgery
-- [ ] Test cascade delete with parent claim
-- [ ] Test file upload path format
+- [x] Test attachment creation with valid data
+- [x] Test file size validation (max 10MB)
+- [x] Test mime type validation (PDF, JPEG, PNG, TIFF only)
+- [x] Test attachment type choices
+- [x] Test checksum storage
+- [x] Test `get_required_types()` for outpatient
+- [x] Test `get_required_types()` for inpatient
+- [x] Test `get_required_types()` for surgery
+- [x] Test cascade delete with parent claim
+- [x] Test file upload path format
 
 ---
 
@@ -1357,16 +1357,16 @@ class SHAEligibilityCheck(models.Model):
 ```
 
 **Test Coverage** (10 tests):
-- [ ] Test eligibility check creation
-- [ ] Test result choices validation
-- [ ] Test `update_member_eligibility()` with eligible result
-- [ ] Test `update_member_eligibility()` with expired status
-- [ ] Test `update_member_eligibility()` with suspended status
-- [ ] Test response time tracking
-- [ ] Test error code and message storage
-- [ ] Test benefit balance storage
-- [ ] Test request/response JSON storage
-- [ ] Test index on sha_member and check_date
+- [x] Test eligibility check creation
+- [x] Test result choices validation
+- [x] Test `update_member_eligibility()` with eligible result
+- [x] Test `update_member_eligibility()` with expired status
+- [x] Test `update_member_eligibility()` with suspended status
+- [x] Test response time tracking
+- [x] Test error code and message storage
+- [x] Test benefit balance storage
+- [x] Test request/response JSON storage
+- [x] Test index on sha_member and check_date
 
 ---
 
