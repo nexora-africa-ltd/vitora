@@ -39,6 +39,7 @@ from unittest.mock import patch, PropertyMock
 
 import pytest
 from django.core.exceptions import ValidationError
+from django.core.files.uploadedfile import SimpleUploadedFile
 from django.db import IntegrityError
 from django.utils import timezone
 
@@ -97,6 +98,7 @@ def sha_tariff(db):
         sha_amount=Decimal('500.00'),
         effective_date=date.today() - timedelta(days=30),
         is_active=True,
+        max_quantity_per_claim=10,  # Allow multiple quantities in tests
     )
 
 
@@ -565,13 +567,23 @@ class TestSHAClaimValidateForSubmission:
         SHAClaimAttachment.objects.create(
             claim=claim,
             attachment_type='clinical_notes',
-            file_name='clinical_notes.pdf',
+            name='Clinical Notes',
+            file=SimpleUploadedFile('clinical_notes.pdf', b'%PDF-1.4 test', content_type='application/pdf'),
+            file_size=1024,
+            mime_type='application/pdf',
+            checksum='a' * 64,
+            original_filename='clinical_notes.pdf',
             uploaded_by=test_user,
         )
         SHAClaimAttachment.objects.create(
             claim=claim,
             attachment_type='invoice',
-            file_name='invoice.pdf',
+            name='Invoice',
+            file=SimpleUploadedFile('invoice.pdf', b'%PDF-1.4 test', content_type='application/pdf'),
+            file_size=1024,
+            mime_type='application/pdf',
+            checksum='b' * 64,
+            original_filename='invoice.pdf',
             uploaded_by=test_user,
         )
 
@@ -617,13 +629,23 @@ class TestSHAClaimValidateForSubmission:
         SHAClaimAttachment.objects.create(
             claim=claim,
             attachment_type='clinical_notes',
-            file_name='notes.pdf',
+            name='Clinical Notes',
+            file=SimpleUploadedFile('notes.pdf', b'%PDF-1.4 test', content_type='application/pdf'),
+            file_size=1024,
+            mime_type='application/pdf',
+            checksum='a' * 64,
+            original_filename='notes.pdf',
             uploaded_by=test_user,
         )
         SHAClaimAttachment.objects.create(
             claim=claim,
             attachment_type='invoice',
-            file_name='invoice.pdf',
+            name='Invoice',
+            file=SimpleUploadedFile('invoice.pdf', b'%PDF-1.4 test', content_type='application/pdf'),
+            file_size=1024,
+            mime_type='application/pdf',
+            checksum='b' * 64,
+            original_filename='invoice.pdf',
             uploaded_by=test_user,
         )
         claim.calculate_claimed_amount()
@@ -646,13 +668,23 @@ class TestSHAClaimValidateForSubmission:
         SHAClaimAttachment.objects.create(
             claim=claim,
             attachment_type='clinical_notes',
-            file_name='notes.pdf',
+            name='Clinical Notes',
+            file=SimpleUploadedFile('notes.pdf', b'%PDF-1.4 test', content_type='application/pdf'),
+            file_size=1024,
+            mime_type='application/pdf',
+            checksum='a' * 64,
+            original_filename='notes.pdf',
             uploaded_by=test_user,
         )
         SHAClaimAttachment.objects.create(
             claim=claim,
             attachment_type='invoice',
-            file_name='invoice.pdf',
+            name='Invoice',
+            file=SimpleUploadedFile('invoice.pdf', b'%PDF-1.4 test', content_type='application/pdf'),
+            file_size=1024,
+            mime_type='application/pdf',
+            checksum='b' * 64,
+            original_filename='invoice.pdf',
             uploaded_by=test_user,
         )
 
@@ -686,13 +718,23 @@ class TestSHAClaimValidateForSubmission:
         SHAClaimAttachment.objects.create(
             claim=claim,
             attachment_type='clinical_notes',
-            file_name='notes.pdf',
+            name='Clinical Notes',
+            file=SimpleUploadedFile('notes.pdf', b'%PDF-1.4 test', content_type='application/pdf'),
+            file_size=1024,
+            mime_type='application/pdf',
+            checksum='a' * 64,
+            original_filename='notes.pdf',
             uploaded_by=test_user,
         )
         SHAClaimAttachment.objects.create(
             claim=claim,
             attachment_type='invoice',
-            file_name='invoice.pdf',
+            name='Invoice',
+            file=SimpleUploadedFile('invoice.pdf', b'%PDF-1.4 test', content_type='application/pdf'),
+            file_size=1024,
+            mime_type='application/pdf',
+            checksum='b' * 64,
+            original_filename='invoice.pdf',
             uploaded_by=test_user,
         )
         claim.calculate_claimed_amount()
@@ -746,13 +788,23 @@ class TestSHAClaimValidateForSubmission:
         SHAClaimAttachment.objects.create(
             claim=claim,
             attachment_type='clinical_notes',
-            file_name='notes.pdf',
+            name='Clinical Notes',
+            file=SimpleUploadedFile('notes.pdf', b'%PDF-1.4 test', content_type='application/pdf'),
+            file_size=1024,
+            mime_type='application/pdf',
+            checksum='a' * 64,
+            original_filename='notes.pdf',
             uploaded_by=test_user,
         )
         SHAClaimAttachment.objects.create(
             claim=claim,
             attachment_type='invoice',
-            file_name='invoice.pdf',
+            name='Invoice',
+            file=SimpleUploadedFile('invoice.pdf', b'%PDF-1.4 test', content_type='application/pdf'),
+            file_size=1024,
+            mime_type='application/pdf',
+            checksum='b' * 64,
+            original_filename='invoice.pdf',
             uploaded_by=test_user,
         )
 
@@ -787,13 +839,23 @@ class TestSHAClaimValidateForSubmission:
         SHAClaimAttachment.objects.create(
             claim=claim,
             attachment_type='clinical_notes',
-            file_name='notes.pdf',
+            name='Clinical Notes',
+            file=SimpleUploadedFile('notes.pdf', b'%PDF-1.4 test', content_type='application/pdf'),
+            file_size=1024,
+            mime_type='application/pdf',
+            checksum='a' * 64,
+            original_filename='notes.pdf',
             uploaded_by=test_user,
         )
         SHAClaimAttachment.objects.create(
             claim=claim,
             attachment_type='invoice',
-            file_name='invoice.pdf',
+            name='Invoice',
+            file=SimpleUploadedFile('invoice.pdf', b'%PDF-1.4 test', content_type='application/pdf'),
+            file_size=1024,
+            mime_type='application/pdf',
+            checksum='b' * 64,
+            original_filename='invoice.pdf',
             uploaded_by=test_user,
         )
         claim.calculate_claimed_amount()
@@ -836,13 +898,23 @@ class TestSHAClaimSubmit:
         SHAClaimAttachment.objects.create(
             claim=claim,
             attachment_type='clinical_notes',
-            file_name='notes.pdf',
+            name='Clinical Notes',
+            file=SimpleUploadedFile('notes.pdf', b'%PDF-1.4 test', content_type='application/pdf'),
+            file_size=1024,
+            mime_type='application/pdf',
+            checksum='a' * 64,
+            original_filename='notes.pdf',
             uploaded_by=test_user,
         )
         SHAClaimAttachment.objects.create(
             claim=claim,
             attachment_type='invoice',
-            file_name='invoice.pdf',
+            name='Invoice',
+            file=SimpleUploadedFile('invoice.pdf', b'%PDF-1.4 test', content_type='application/pdf'),
+            file_size=1024,
+            mime_type='application/pdf',
+            checksum='b' * 64,
+            original_filename='invoice.pdf',
             uploaded_by=test_user,
         )
         claim.calculate_claimed_amount()
@@ -910,13 +982,23 @@ class TestSHAClaimGetAgeDays:
         SHAClaimAttachment.objects.create(
             claim=claim,
             attachment_type='clinical_notes',
-            file_name='notes.pdf',
+            name='Clinical Notes',
+            file=SimpleUploadedFile('notes.pdf', b'%PDF-1.4 test', content_type='application/pdf'),
+            file_size=1024,
+            mime_type='application/pdf',
+            checksum='a' * 64,
+            original_filename='notes.pdf',
             uploaded_by=test_user,
         )
         SHAClaimAttachment.objects.create(
             claim=claim,
             attachment_type='invoice',
-            file_name='invoice.pdf',
+            name='Invoice',
+            file=SimpleUploadedFile('invoice.pdf', b'%PDF-1.4 test', content_type='application/pdf'),
+            file_size=1024,
+            mime_type='application/pdf',
+            checksum='b' * 64,
+            original_filename='invoice.pdf',
             uploaded_by=test_user,
         )
         claim.calculate_claimed_amount()
@@ -940,13 +1022,23 @@ class TestSHAClaimGetAgeDays:
         SHAClaimAttachment.objects.create(
             claim=claim,
             attachment_type='clinical_notes',
-            file_name='notes.pdf',
+            name='Clinical Notes',
+            file=SimpleUploadedFile('notes.pdf', b'%PDF-1.4 test', content_type='application/pdf'),
+            file_size=1024,
+            mime_type='application/pdf',
+            checksum='a' * 64,
+            original_filename='notes.pdf',
             uploaded_by=test_user,
         )
         SHAClaimAttachment.objects.create(
             claim=claim,
             attachment_type='invoice',
-            file_name='invoice.pdf',
+            name='Invoice',
+            file=SimpleUploadedFile('invoice.pdf', b'%PDF-1.4 test', content_type='application/pdf'),
+            file_size=1024,
+            mime_type='application/pdf',
+            checksum='b' * 64,
+            original_filename='invoice.pdf',
             uploaded_by=test_user,
         )
         claim.calculate_claimed_amount()
