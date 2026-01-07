@@ -31,7 +31,7 @@ This sprint implements Kenya's Social Health Authority (SHA) claims integration 
 
 | Test File | Tests | Status |
 |-----------|-------|--------|
-| test_sha_member.py | 0 | ⬜ Not Started |
+| test_sha_member.py | 34 | ✅ All Passed |
 | test_sha_tariff.py | 0 | ⬜ Not Started |
 | test_sha_eligibility.py | 0 | ⬜ Not Started |
 | test_sha_claim.py | 0 | ⬜ Not Started |
@@ -234,21 +234,21 @@ class SHAMember(models.Model):
 ```
 
 **Test Coverage** (15 tests):
-- [ ] Test SHA member creation with valid data
-- [ ] Test SHA number format validation (must start with SHA-)
-- [ ] Test patient one-to-one relationship constraint
-- [ ] Test unique SHA number constraint
-- [ ] Test membership type choices validation
-- [ ] Test dependent requires principal SHA number
-- [ ] Test coverage date validation (end after start)
-- [ ] Test `is_eligible()` with active status
-- [ ] Test `is_eligible()` with expired coverage
-- [ ] Test `is_eligible()` with suspended status
-- [ ] Test `needs_eligibility_check()` with no previous check
-- [ ] Test `needs_eligibility_check()` with recent check (<24h)
-- [ ] Test `needs_eligibility_check()` with stale check (>24h)
-- [ ] Test `get_eligibility_display()` for eligible member
-- [ ] Test `get_eligibility_display()` for ineligible member
+- [x] Test SHA member creation with valid data
+- [x] Test SHA number format validation (must start with SHA-)
+- [x] Test patient one-to-one relationship constraint
+- [x] Test unique SHA number constraint
+- [x] Test membership type choices validation
+- [x] Test dependent requires principal SHA number
+- [x] Test coverage date validation (end after start)
+- [x] Test `is_eligible()` with active status
+- [x] Test `is_eligible()` with expired coverage
+- [x] Test `is_eligible()` with suspended status
+- [x] Test `needs_eligibility_check()` with no previous check
+- [x] Test `needs_eligibility_check()` with recent check (<24h)
+- [x] Test `needs_eligibility_check()` with stale check (>24h)
+- [x] Test `get_eligibility_display()` for eligible member
+- [x] Test `get_eligibility_display()` for ineligible member
 
 ---
 
