@@ -38,8 +38,7 @@ Feature: Triage Reporting & Analytics
   @wait-times @exceeded
   Scenario: Identify patients who exceeded wait time targets
     When I filter for "Wait Time Exceeded"
-    Then I should see a list of patients who exceeded their category target
-    With columns:
+    Then I should see a list of patients who exceeded their category target with columns:
       | column           | description                    |
       | Patient          | Name and MRN                   |
       | Category         | KETA category                  |
@@ -308,15 +307,15 @@ Feature: Triage Reporting & Analytics
   Scenario: Export raw data as CSV
     When I click "Export" and select "CSV"
     Then a CSV file should be downloaded
-    With one row per triage assessment
-    And all relevant fields included
+    And the file should have one row per triage assessment
+    And all relevant fields should be included
 
   @print
   Scenario: Print report
     When I click "Print"
     Then a print-optimized view should open
-    With charts rendered for printing
-    And page breaks at appropriate locations
+    And charts should be rendered for printing
+    And page breaks should be at appropriate locations
 
   @schedule
   Scenario: Schedule automated report delivery

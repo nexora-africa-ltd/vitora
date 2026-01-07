@@ -201,8 +201,7 @@ Feature: Triage Queue Dashboard
   @status-badge
   Scenario Outline: Display appropriate status badge
     Given a patient with status "<status>"
-    Then their queue card should show status badge "<badge>"
-    With style "<style>"
+    Then their queue card should show status badge "<badge>" with style "<style>"
 
     Examples:
       | status                   | badge       | style   |
@@ -268,8 +267,7 @@ Feature: Triage Queue Dashboard
   @view-details
   Scenario: View full triage assessment details
     When I click on a patient's queue card
-    Then I should see the full triage assessment details modal
-    Including:
+    Then I should see the full triage assessment details modal including:
       | section            | content                    |
       | Patient Info       | Name, MRN, Age, Gender     |
       | Chief Complaint    | Category, Details          |
