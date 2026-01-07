@@ -32,7 +32,7 @@ This sprint implements Kenya's Social Health Authority (SHA) claims integration 
 | Test File | Tests | Status |
 |-----------|-------|--------|
 | test_sha_member.py | 34 | ✅ All Passed |
-| test_sha_tariff.py | 0 | ⬜ Not Started |
+| test_sha_tariff.py | 30 | ✅ All Passed |
 | test_sha_eligibility.py | 0 | ⬜ Not Started |
 | test_sha_claim.py | 0 | ⬜ Not Started |
 | test_sha_claim_item.py | 0 | ⬜ Not Started |
@@ -457,24 +457,24 @@ class SHATariff(models.Model):
 ```
 
 **Test Coverage** (18 tests):
-- [ ] Test tariff creation with valid data
-- [ ] Test tariff code uniqueness constraint
-- [ ] Test SHA amount must be positive
-- [ ] Test category choices validation
-- [ ] Test facility level choices validation
-- [ ] Test effective/expiry date validation
-- [ ] Test max quantity minimum of 1
-- [ ] Test `is_valid_on_date()` with active tariff
-- [ ] Test `is_valid_on_date()` with future effective date
-- [ ] Test `is_valid_on_date()` with expired tariff
-- [ ] Test `is_valid_on_date()` with inactive tariff
-- [ ] Test `get_active_tariffs()` returns only valid tariffs
-- [ ] Test `get_active_tariffs()` with category filter
-- [ ] Test `get_active_tariffs()` with facility level filter
-- [ ] Test `find_tariff_for_service()` with direct mapping
-- [ ] Test `find_tariff_for_service()` with SHA code fallback
-- [ ] Test `find_tariff_for_service()` returns None when no match
-- [ ] Test ICD-10 codes JSON field storage
+- [x] Test tariff creation with valid data
+- [x] Test tariff code uniqueness constraint
+- [x] Test SHA amount must be positive
+- [x] Test category choices validation
+- [x] Test facility level choices validation
+- [x] Test effective/expiry date validation
+- [x] Test max quantity minimum of 1
+- [x] Test `is_valid_on_date()` with active tariff
+- [x] Test `is_valid_on_date()` with future effective date
+- [x] Test `is_valid_on_date()` with expired tariff
+- [x] Test `is_valid_on_date()` with inactive tariff
+- [x] Test `get_active_tariffs()` returns only valid tariffs
+- [x] Test `get_active_tariffs()` with category filter
+- [x] Test `get_active_tariffs()` with facility level filter
+- [x] Test `find_tariff_for_service()` with direct mapping
+- [x] Test `find_tariff_for_service()` with SHA code fallback
+- [x] Test `find_tariff_for_service()` returns None when no match
+- [x] Test ICD-10 codes JSON field storage
 
 ---
 
