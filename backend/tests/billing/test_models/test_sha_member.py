@@ -107,7 +107,8 @@ class TestSHAMemberModel:
         )
 
         # Try to create second membership for same patient
-        with pytest.raises(IntegrityError):
+        # Model uses full_clean() in save() so raises ValidationError instead of IntegrityError
+        with pytest.raises((IntegrityError, ValidationError)):
             SHAMember.objects.create(
                 patient=sample_patient,
                 sha_number='SHA-2222222222',
@@ -160,7 +161,8 @@ class TestSHAMemberModel:
         )
 
         # Try to create membership with same SHA number
-        with pytest.raises(IntegrityError):
+        # Model uses full_clean() in save() so raises ValidationError instead of IntegrityError
+        with pytest.raises((IntegrityError, ValidationError)):
             SHAMember.objects.create(
                 patient=patient2,
                 sha_number='SHA-1234567890',  # Duplicate SHA number
