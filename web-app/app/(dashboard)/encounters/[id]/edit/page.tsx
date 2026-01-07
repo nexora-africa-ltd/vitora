@@ -351,7 +351,7 @@ export default function EditEncounterPage() {
     // Get the diagnosis to remove
     const diagnosisArray = Array.isArray(existingDiagnoses) 
       ? existingDiagnoses 
-      : (existingDiagnoses as { results?: typeof existingDiagnoses })?.results || [];
+      : (existingDiagnoses as unknown as { results?: typeof existingDiagnoses })?.results || [];
     const diagnosisToRemove = diagnosisArray[index];
     
     if (diagnosisToRemove?.id) {

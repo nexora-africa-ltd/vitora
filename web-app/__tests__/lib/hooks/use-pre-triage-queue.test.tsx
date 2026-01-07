@@ -10,7 +10,8 @@ import { renderHook, waitFor } from '@testing-library/react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import React from 'react';
 import { usePreTriageQueue } from '@/lib/hooks/use-encounters';
-import { encountersApi } from '@/lib/api/encounters';
+import { encountersApi, PreTriageQueueItem } from '@/lib/api/encounters';
+import type { PaginatedResponse } from '@/lib/types';
 
 // =============================================================================
 // MOCKS
@@ -38,7 +39,7 @@ const mockedApi = encountersApi as jest.Mocked<typeof encountersApi>;
 // Mock Data
 // =============================================================================
 
-const mockPreTriageQueue = {
+const mockPreTriageQueue: PaginatedResponse<PreTriageQueueItem> = {
   results: [
     {
       id: 1,
@@ -133,15 +134,15 @@ describe('usePreTriageQueue', () => {
     });
 
     expect(result.current.data?.results).toHaveLength(3);
-    expect(result.current.data?.results[0].patient_name).toBe('John Kamau');
-    expect(result.current.data?.results[0].triage_requirement).toBe('MANDATORY');
-    expect(result.current.data?.results[0].triage_status).toBe('PENDING');
+    expect(result.current.data?.results?.[0]?.patient_name).toBe('John Kamau');
+    expect(result.current.data?.results?.[0]?.triage_requirement).toBe('MANDATORY');
+    expect(result.current.data?.results?.[0]?.triage_status).toBe('PENDING');
   });
 
   it('should filter by triage_requirement', async () => {
-    const mandatoryOnly = {
+    const mandatoryOnly: PaginatedResponse<PreTriageQueueItem> = {
       ...mockPreTriageQueue,
-      results: mockPreTriageQueue.results.filter(r => r.triage_requirement === 'MANDATORY'),
+      results: mockPreTriageQueue.results.filter((r: PreTriageQueueItem) => r.triage_requirement === 'MANDATORY'),
       count: 2,
     };
     mockedApi.getPreTriageQueue.mockResolvedValueOnce(mandatoryOnly);
@@ -156,9 +157,9 @@ describe('usePreTriageQueue', () => {
     });
 
     // Should only have MANDATORY encounters
-    expect(result.current.data?.results.length).toBe(2);
+    expect(result.current.data?.results?.length).toBe(2);
     expect(
-      result.current.data?.results.every(r => r.triage_requirement === 'MANDATORY')
+      result.current.data?.results?.every(r => r.triage_requirement === 'MANDATORY')
     ).toBe(true);
     
     // Verify API was called with filter
@@ -178,8 +179,8 @@ describe('usePreTriageQueue', () => {
       expect(result.current.isLoading).toBe(false);
     });
 
-    expect(result.current.data?.results[0].wait_time_minutes).toBeDefined();
-    expect(typeof result.current.data?.results[0].wait_time_minutes).toBe('number');
+    expect(result.current.data?.results?.[0]?.wait_time_minutes).toBeDefined();
+    expect(typeof result.current.data?.results?.[0]?.wait_time_minutes).toBe('number');
   });
 
   it('should include patient info in results', async () => {
@@ -193,7 +194,7 @@ describe('usePreTriageQueue', () => {
       expect(result.current.isLoading).toBe(false);
     });
 
-    const firstResult = result.current.data?.results[0];
+    const firstResult = result.current.data?.results?.[0];
     expect(firstResult?.patient_name).toBeDefined();
     expect(firstResult?.patient_mrn).toBeDefined();
     expect(firstResult?.patient_age).toBeDefined();

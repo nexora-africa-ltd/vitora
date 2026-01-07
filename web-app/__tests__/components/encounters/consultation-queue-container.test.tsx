@@ -20,6 +20,13 @@ import { ConsultationQueueContainer } from '@/components/encounters/consultation
 import { consultationQueueApi } from '@/lib/api/consultation-queue';
 import type { ConsultationQueueItem } from '@/lib/types/encounter';
 
+// Helper to get HTMLElement from closest() for use with within()
+const getClosestElement = (text: string, selector: string): HTMLElement => {
+  const element = screen.getByText(text).closest(selector);
+  if (!element) throw new Error(`Could not find element with selector "${selector}" near "${text}"`);
+  return element as HTMLElement;
+};
+
 // =============================================================================
 // MOCKS
 // =============================================================================
@@ -179,8 +186,8 @@ describe('ConsultationQueueContainer Integration', () => {
       });
 
       // Find the Call Patient button for John Kamau (first waiting patient)
-      const johnRow = screen.getByText('John Kamau').closest('[data-testid="queue-item"]');
-      const callButton = within(johnRow!).getByRole('button', { name: /Call Patient/i });
+      const johnRow = getClosestElement('John Kamau', '[data-testid="queue-item"]');
+      const callButton = within(johnRow).getByRole('button', { name: /Call Patient/i });
 
       await user.click(callButton);
 
@@ -199,8 +206,8 @@ describe('ConsultationQueueContainer Integration', () => {
         expect(screen.getByText('John Kamau')).toBeInTheDocument();
       });
 
-      const johnRow = screen.getByText('John Kamau').closest('[data-testid="queue-item"]');
-      const callButton = within(johnRow!).getByRole('button', { name: /Call Patient/i });
+      const johnRow = getClosestElement('John Kamau', '[data-testid="queue-item"]');
+      const callButton = within(johnRow).getByRole('button', { name: /Call Patient/i });
 
       await user.click(callButton);
 
@@ -225,8 +232,8 @@ describe('ConsultationQueueContainer Integration', () => {
       });
 
       // Peter is already CALLED, so has Start Consultation button
-      const peterRow = screen.getByText('Peter Ochieng').closest('[data-testid="queue-item"]');
-      const startButton = within(peterRow!).getByRole('button', { name: /Start Consultation/i });
+      const peterRow = getClosestElement('Peter Ochieng', '[data-testid="queue-item"]');
+      const startButton = within(peterRow).getByRole('button', { name: /Start Consultation/i });
 
       await user.click(startButton);
 
@@ -246,8 +253,8 @@ describe('ConsultationQueueContainer Integration', () => {
         expect(screen.getByText('Peter Ochieng')).toBeInTheDocument();
       });
 
-      const peterRow = screen.getByText('Peter Ochieng').closest('[data-testid="queue-item"]');
-      const startButton = within(peterRow!).getByRole('button', { name: /Start Consultation/i });
+      const peterRow = getClosestElement('Peter Ochieng', '[data-testid="queue-item"]');
+      const startButton = within(peterRow).getByRole('button', { name: /Start Consultation/i });
 
       await user.click(startButton);
 
@@ -274,8 +281,8 @@ describe('ConsultationQueueContainer Integration', () => {
         expect(screen.getByText('Peter Ochieng')).toBeInTheDocument();
       });
 
-      const peterRow = screen.getByText('Peter Ochieng').closest('[data-testid="queue-item"]');
-      const startButton = within(peterRow!).getByRole('button', { name: /Start Consultation/i });
+      const peterRow = getClosestElement('Peter Ochieng', '[data-testid="queue-item"]');
+      const startButton = within(peterRow).getByRole('button', { name: /Start Consultation/i });
 
       await user.click(startButton);
 
@@ -315,8 +322,8 @@ describe('ConsultationQueueContainer Integration', () => {
       });
 
       // John and Mary are WAITING, so they have "Call Patient" buttons
-      const johnRow = screen.getByText('John Kamau').closest('[data-testid="queue-item"]');
-      expect(within(johnRow!).getByRole('button', { name: /Call Patient/i })).toBeInTheDocument();
+      const johnRow = getClosestElement('John Kamau', '[data-testid="queue-item"]');
+      expect(within(johnRow).getByRole('button', { name: /Call Patient/i })).toBeInTheDocument();
     });
 
     it('should display called count via status filter option', async () => {
@@ -328,8 +335,8 @@ describe('ConsultationQueueContainer Integration', () => {
       });
       
       // Peter has Start Consultation button (only shown for CALLED patients)
-      const peterRow = screen.getByText('Peter Ochieng').closest('[data-testid="queue-item"]');
-      expect(within(peterRow!).getByRole('button', { name: /Start Consultation/i })).toBeInTheDocument();
+      const peterRow = getClosestElement('Peter Ochieng', '[data-testid="queue-item"]');
+      expect(within(peterRow).getByRole('button', { name: /Start Consultation/i })).toBeInTheDocument();
     });
   });
 

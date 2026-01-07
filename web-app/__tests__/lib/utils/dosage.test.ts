@@ -365,7 +365,7 @@ describe('generateDosageSuggestions', () => {
       const suggestions = generateDosageSuggestions(drug);
 
       expect(suggestions.length).toBeGreaterThan(0);
-      expect(suggestions[0].value).toBe('250mg vial');
+      expect(suggestions[0]?.value).toBe('250mg vial');
     });
   });
 

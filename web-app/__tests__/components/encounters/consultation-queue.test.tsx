@@ -23,6 +23,13 @@ beforeAll(() => {
   (window as any).PointerEvent = window.MouseEvent;
 });
 
+// Helper to get HTMLElement from closest() for use with within()
+const getClosestElement = (text: string, selector: string): HTMLElement => {
+  const element = screen.getByText(text).closest(selector);
+  if (!element) throw new Error(`Could not find element with selector "${selector}" near "${text}"`);
+  return element as HTMLElement;
+};
+
 // =============================================================================
 // MOCK DATA
 // =============================================================================
@@ -199,53 +206,53 @@ describe('ConsultationQueue', () => {
     it('should display RED triage badge for emergency patients', () => {
       render(<ConsultationQueue {...defaultProps} />);
       
-      const janeRow = screen.getByText('Jane Wanjiku').closest('[data-testid="queue-item"]');
+      const janeRow = getClosestElement('Jane Wanjiku', '[data-testid="queue-item"]');
       expect(janeRow).toBeInTheDocument();
-      expect(within(janeRow!).getByText('RED')).toBeInTheDocument();
+      expect(within(janeRow).getByText('RED')).toBeInTheDocument();
     });
 
     it('should display ORANGE triage badge', () => {
       render(<ConsultationQueue {...defaultProps} />);
       
-      const peterRow = screen.getByText('Peter Odhiambo').closest('[data-testid="queue-item"]');
-      expect(within(peterRow!).getByText('ORANGE')).toBeInTheDocument();
+      const peterRow = getClosestElement('Peter Odhiambo', '[data-testid="queue-item"]');
+      expect(within(peterRow).getByText('ORANGE')).toBeInTheDocument();
     });
 
     it('should display YELLOW triage badge', () => {
       render(<ConsultationQueue {...defaultProps} />);
       
-      const maryRow = screen.getByText('Mary Otieno').closest('[data-testid="queue-item"]');
-      expect(within(maryRow!).getByText('YELLOW')).toBeInTheDocument();
+      const maryRow = getClosestElement('Mary Otieno', '[data-testid="queue-item"]');
+      expect(within(maryRow).getByText('YELLOW')).toBeInTheDocument();
     });
 
     it('should display GREEN triage badge', () => {
       render(<ConsultationQueue {...defaultProps} />);
       
-      const aliceRow = screen.getByText('Alice Njeri').closest('[data-testid="queue-item"]');
-      expect(within(aliceRow!).getByText('GREEN')).toBeInTheDocument();
+      const aliceRow = getClosestElement('Alice Njeri', '[data-testid="queue-item"]');
+      expect(within(aliceRow).getByText('GREEN')).toBeInTheDocument();
     });
 
     it('should display "Bypassed" badge with reason for bypassed patients', () => {
       render(<ConsultationQueue {...defaultProps} />);
       
-      const graceRow = screen.getByText('Grace Mwangi').closest('[data-testid="queue-item"]');
+      const graceRow = getClosestElement('Grace Mwangi', '[data-testid="queue-item"]');
       // Badge contains both "Bypassed" and "Stable follow-up" in the same element
-      expect(within(graceRow!).getByText(/Bypassed.*Stable follow-up/i)).toBeInTheDocument();
+      expect(within(graceRow).getByText(/Bypassed.*Stable follow-up/i)).toBeInTheDocument();
     });
 
     it('should display "Direct" badge for NOT_APPLICABLE triage status', () => {
       render(<ConsultationQueue {...defaultProps} />);
       
-      const jamesRow = screen.getByText('James Kiprotich').closest('[data-testid="queue-item"]');
-      expect(within(jamesRow!).getByText(/Direct/i)).toBeInTheDocument();
+      const jamesRow = getClosestElement('James Kiprotich', '[data-testid="queue-item"]');
+      expect(within(jamesRow).getByText(/Direct/i)).toBeInTheDocument();
     });
 
     it('should display "CALLED" status badge for called patients', () => {
       render(<ConsultationQueue {...defaultProps} />);
       
-      const aliceRow = screen.getByText('Alice Njeri').closest('[data-testid="queue-item"]');
+      const aliceRow = getClosestElement('Alice Njeri', '[data-testid="queue-item"]');
       // Look for the Called badge (not the "Called X min ago" text)
-      const calledBadge = within(aliceRow!).getByText('📣 Called');
+      const calledBadge = within(aliceRow).getByText('📣 Called');
       expect(calledBadge).toBeInTheDocument();
     });
   });
@@ -265,8 +272,8 @@ describe('ConsultationQueue', () => {
       const user = userEvent.setup();
       render(<ConsultationQueue {...defaultProps} />);
       
-      const janeRow = screen.getByText('Jane Wanjiku').closest('[data-testid="queue-item"]');
-      const callButton = within(janeRow!).getByRole('button', { name: /Call Patient/i });
+      const janeRow = getClosestElement('Jane Wanjiku', '[data-testid="queue-item"]');
+      const callButton = within(janeRow).getByRole('button', { name: /Call Patient/i });
       
       await user.click(callButton);
       
@@ -276,8 +283,8 @@ describe('ConsultationQueue', () => {
     it('should provide tooltip text for "Call Patient" button', () => {
       render(<ConsultationQueue {...defaultProps} />);
 
-      const janeRow = screen.getByText('Jane Wanjiku').closest('[data-testid="queue-item"]');
-      const callButton = within(janeRow!).getByRole('button', { name: /Call Patient/i });
+      const janeRow = getClosestElement('Jane Wanjiku', '[data-testid="queue-item"]');
+      const callButton = within(janeRow).getByRole('button', { name: /Call Patient/i });
 
       expect(callButton).toHaveAttribute(
         'title',
@@ -288,16 +295,16 @@ describe('ConsultationQueue', () => {
     it('should render "Start Consultation" button for called patients', () => {
       render(<ConsultationQueue {...defaultProps} />);
       
-      const aliceRow = screen.getByText('Alice Njeri').closest('[data-testid="queue-item"]');
-      expect(within(aliceRow!).getByRole('button', { name: /Start Consultation/i })).toBeInTheDocument();
+      const aliceRow = getClosestElement('Alice Njeri', '[data-testid="queue-item"]');
+      expect(within(aliceRow).getByRole('button', { name: /Start Consultation/i })).toBeInTheDocument();
     });
 
     it('should call onStartConsultation when "Start Consultation" is clicked', async () => {
       const user = userEvent.setup();
       render(<ConsultationQueue {...defaultProps} />);
       
-      const aliceRow = screen.getByText('Alice Njeri').closest('[data-testid="queue-item"]');
-      const startButton = within(aliceRow!).getByRole('button', { name: /Start Consultation/i });
+      const aliceRow = getClosestElement('Alice Njeri', '[data-testid="queue-item"]');
+      const startButton = within(aliceRow).getByRole('button', { name: /Start Consultation/i });
       
       await user.click(startButton);
       
@@ -307,8 +314,8 @@ describe('ConsultationQueue', () => {
     it('should render "Re-call" button for already called patients', () => {
       render(<ConsultationQueue {...defaultProps} />);
       
-      const aliceRow = screen.getByText('Alice Njeri').closest('[data-testid="queue-item"]');
-      expect(within(aliceRow!).getByRole('button', { name: /Re-call/i })).toBeInTheDocument();
+      const aliceRow = getClosestElement('Alice Njeri', '[data-testid="queue-item"]');
+      expect(within(aliceRow).getByRole('button', { name: /Re-call/i })).toBeInTheDocument();
     });
 
     it('should disable Call button while action is loading', async () => {
@@ -317,15 +324,15 @@ describe('ConsultationQueue', () => {
       
       render(<ConsultationQueue {...defaultProps} onCallPatient={slowCallPatient} />);
       
-      const janeRow = screen.getByText('Jane Wanjiku').closest('[data-testid="queue-item"]');
-      const callButton = within(janeRow!).getByRole('button', { name: /Call Patient/i });
+      const janeRow = getClosestElement('Jane Wanjiku', '[data-testid="queue-item"]');
+      const callButton = within(janeRow).getByRole('button', { name: /Call Patient/i });
       
       // Click and check it shows loading state
       fireEvent.click(callButton);
       
       // Button should now show "Calling..." and be disabled
       await waitFor(() => {
-        expect(within(janeRow!).getByRole('button', { name: /Calling/i })).toBeDisabled();
+        expect(within(janeRow).getByRole('button', { name: /Calling/i })).toBeDisabled();
       });
     });
   });
@@ -366,8 +373,8 @@ describe('ConsultationQueue', () => {
       const queueItems = screen.getAllByTestId('queue-item');
       // Called patients come first, then RED. Alice is called, Jane is RED.
       // So Alice (CALLED) should be first, then Jane (RED)
-      expect(within(queueItems[0]).getByText('Alice Njeri')).toBeInTheDocument();
-      expect(within(queueItems[1]).getByText('Jane Wanjiku')).toBeInTheDocument();
+      expect(within(queueItems[0] as HTMLElement).getByText('Alice Njeri')).toBeInTheDocument();
+      expect(within(queueItems[1] as HTMLElement).getByText('Jane Wanjiku')).toBeInTheDocument();
     });
 
     it('should render filter by triage status', async () => {
@@ -452,7 +459,7 @@ describe('ConsultationQueue', () => {
     it('should highlight called patients differently', () => {
       render(<ConsultationQueue {...defaultProps} />);
       
-      const aliceRow = screen.getByText('Alice Njeri').closest('[data-testid="queue-item"]');
+      const aliceRow = getClosestElement('Alice Njeri', '[data-testid="queue-item"]');
       expect(aliceRow).toHaveClass('called');
     });
 
@@ -472,8 +479,8 @@ describe('ConsultationQueue', () => {
     it('should display time since called for called patients', () => {
       render(<ConsultationQueue {...defaultProps} />);
       
-      const aliceRow = screen.getByText('Alice Njeri').closest('[data-testid="queue-item"]');
-      expect(within(aliceRow!).getByText(/Called 2 min ago/i)).toBeInTheDocument();
+      const aliceRow = getClosestElement('Alice Njeri', '[data-testid="queue-item"]');
+      expect(within(aliceRow).getByText(/Called 2 min ago/i)).toBeInTheDocument();
     });
   });
 });

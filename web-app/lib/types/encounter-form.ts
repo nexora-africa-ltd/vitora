@@ -34,7 +34,7 @@ export interface EncounterFormData {
   history_of_present_illness: string;
   physical_examination: string;
   assessment: string;
-  // Note: SOAP 'P' (Plan) uses TreatmentPlan.clinical_notes
+  plan?: string;  // SOAP 'P' (Plan) - can also use TreatmentPlan.clinical_notes
   
   // Clinical template
   clinical_template?: number | null;

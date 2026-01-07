@@ -71,7 +71,7 @@ describe('Patient Journey Store - Triage & Consultation Status', () => {
       });
 
       const patient = result.current.activePatients[1];
-      expect(patient.triage_status).toBe('PENDING');
+      expect(patient!.triage_status).toBe('PENDING');
     });
 
     it('should initialize consultation_status as WAITING for new patients', () => {
@@ -86,7 +86,7 @@ describe('Patient Journey Store - Triage & Consultation Status', () => {
       });
 
       const patient = result.current.activePatients[1];
-      expect(patient.consultation_status).toBe('WAITING');
+      expect(patient!.consultation_status).toBe('WAITING');
     });
   });
 
@@ -107,7 +107,7 @@ describe('Patient Journey Store - Triage & Consultation Status', () => {
       });
 
       const patient = result.current.activePatients[1];
-      expect(patient.triage_status).toBe('IN_PROGRESS');
+      expect(patient!.triage_status).toBe('IN_PROGRESS');
     });
 
     it('should update triage_status to COMPLETED when triage completes', () => {
@@ -128,7 +128,7 @@ describe('Patient Journey Store - Triage & Consultation Status', () => {
       });
 
       const patient = result.current.activePatients[1];
-      expect(patient.triage_status).toBe('COMPLETED');
+      expect(patient!.triage_status).toBe('COMPLETED');
     });
 
     it('should update triage_status to BYPASSED when triage is bypassed', () => {
@@ -144,7 +144,7 @@ describe('Patient Journey Store - Triage & Consultation Status', () => {
       });
 
       const patient = result.current.activePatients[1];
-      expect(patient.triage_status).toBe('BYPASSED');
+      expect(patient!.triage_status).toBe('BYPASSED');
     });
 
     it('should store bypass reason when triage is bypassed', () => {
@@ -160,7 +160,7 @@ describe('Patient Journey Store - Triage & Consultation Status', () => {
       });
 
       const patient = result.current.activePatients[1];
-      expect(patient.triage_bypass_reason).toBe('CONSULTANT_DECISION');
+      expect(patient!.triage_bypass_reason).toBe('CONSULTANT_DECISION');
     });
 
     it('should set triage_status to NOT_APPLICABLE for direct encounters', () => {
@@ -176,7 +176,7 @@ describe('Patient Journey Store - Triage & Consultation Status', () => {
       });
 
       const patient = result.current.activePatients[1];
-      expect(patient.triage_status).toBe('NOT_APPLICABLE');
+      expect(patient!.triage_status).toBe('NOT_APPLICABLE');
     });
   });
 
@@ -201,7 +201,7 @@ describe('Patient Journey Store - Triage & Consultation Status', () => {
       });
 
       const patient = result.current.activePatients[1];
-      expect(patient.consultation_status).toBe('WAITING');
+      expect(patient!.consultation_status).toBe('WAITING');
     });
 
     it('should update consultation_status to CALLED when patient is called', () => {
@@ -222,7 +222,7 @@ describe('Patient Journey Store - Triage & Consultation Status', () => {
       });
 
       const patient = result.current.activePatients[1];
-      expect(patient.consultation_status).toBe('CALLED');
+      expect(patient!.consultation_status).toBe('CALLED');
     });
 
     it('should update consultation_status to IN_PROGRESS when consultation starts', () => {
@@ -239,7 +239,7 @@ describe('Patient Journey Store - Triage & Consultation Status', () => {
       });
 
       const patient = result.current.activePatients[1];
-      expect(patient.consultation_status).toBe('IN_PROGRESS');
+      expect(patient!.consultation_status).toBe('IN_PROGRESS');
     });
 
     it('should update consultation_status to COMPLETED when consultation ends', () => {
@@ -256,7 +256,7 @@ describe('Patient Journey Store - Triage & Consultation Status', () => {
       });
 
       const patient = result.current.activePatients[1];
-      expect(patient.consultation_status).toBe('COMPLETED');
+      expect(patient!.consultation_status).toBe('COMPLETED');
     });
   });
 
@@ -277,8 +277,8 @@ describe('Patient Journey Store - Triage & Consultation Status', () => {
       });
 
       const patient = result.current.activePatients[1];
-      expect(patient.triage_status).toBe('PENDING');
-      expect(patient.stage).toBe('AWAITING_TRIAGE');
+      expect(patient!.triage_status).toBe('PENDING');
+      expect(patient!.stage).toBe('AWAITING_TRIAGE');
     });
 
     it('should have stage IN_TRIAGE when triage_status is IN_PROGRESS', () => {
@@ -294,8 +294,8 @@ describe('Patient Journey Store - Triage & Consultation Status', () => {
       });
 
       const patient = result.current.activePatients[1];
-      expect(patient.triage_status).toBe('IN_PROGRESS');
-      expect(patient.stage).toBe('IN_TRIAGE');
+      expect(patient!.triage_status).toBe('IN_PROGRESS');
+      expect(patient!.stage).toBe('IN_TRIAGE');
     });
 
     it('should have stage AWAITING_CONSULTATION when triage_status is COMPLETED and consultation_status is WAITING', () => {
@@ -315,9 +315,9 @@ describe('Patient Journey Store - Triage & Consultation Status', () => {
       });
 
       const patient = result.current.activePatients[1];
-      expect(patient.triage_status).toBe('COMPLETED');
-      expect(patient.consultation_status).toBe('WAITING');
-      expect(patient.stage).toBe('AWAITING_CONSULTATION');
+      expect(patient!.triage_status).toBe('COMPLETED');
+      expect(patient!.consultation_status).toBe('WAITING');
+      expect(patient!.stage).toBe('AWAITING_CONSULTATION');
     });
 
     it('should have stage AWAITING_CONSULTATION when consultation_status is CALLED', () => {
@@ -338,8 +338,8 @@ describe('Patient Journey Store - Triage & Consultation Status', () => {
       });
 
       const patient = result.current.activePatients[1];
-      expect(patient.consultation_status).toBe('CALLED');
-      expect(patient.stage).toBe('AWAITING_CONSULTATION');
+      expect(patient!.consultation_status).toBe('CALLED');
+      expect(patient!.stage).toBe('AWAITING_CONSULTATION');
     });
 
     it('should have stage IN_CONSULTATION when consultation_status is IN_PROGRESS', () => {
@@ -355,8 +355,8 @@ describe('Patient Journey Store - Triage & Consultation Status', () => {
       });
 
       const patient = result.current.activePatients[1];
-      expect(patient.consultation_status).toBe('IN_PROGRESS');
-      expect(patient.stage).toBe('IN_CONSULTATION');
+      expect(patient!.consultation_status).toBe('IN_PROGRESS');
+      expect(patient!.stage).toBe('IN_CONSULTATION');
     });
   });
 
@@ -378,8 +378,8 @@ describe('Patient Journey Store - Triage & Consultation Status', () => {
       });
 
       const patient = result.current.activePatients[1];
-      expect(patient.timestamps.triage_bypassed_at).toBeDefined();
-      expect(new Date(patient.timestamps.triage_bypassed_at!).getTime()).toBeGreaterThanOrEqual(
+      expect(patient!.timestamps.triage_bypassed_at).toBeDefined();
+      expect(new Date(patient!.timestamps.triage_bypassed_at!).getTime()).toBeGreaterThanOrEqual(
         new Date(beforeTime).getTime()
       );
     });
@@ -397,7 +397,7 @@ describe('Patient Journey Store - Triage & Consultation Status', () => {
       });
 
       const patient = result.current.activePatients[1];
-      expect(patient.timestamps.called_at).toBeDefined();
+      expect(patient!.timestamps.called_at).toBeDefined();
     });
   });
 
@@ -424,7 +424,7 @@ describe('Patient Journey Store - Triage & Consultation Status', () => {
       });
 
       const patient = result.current.activePatients[1];
-      expect(patient.triage_status).toBe('COMPLETED');
+      expect(patient!.triage_status).toBe('COMPLETED');
     });
   });
 
@@ -451,7 +451,7 @@ describe('Patient Journey Store - Triage & Consultation Status', () => {
       });
 
       const patient = result.current.activePatients[1];
-      expect(patient.consultation_status).toBe('CALLED');
+      expect(patient!.consultation_status).toBe('CALLED');
     });
   });
 });

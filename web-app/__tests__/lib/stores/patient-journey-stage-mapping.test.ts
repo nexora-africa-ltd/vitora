@@ -119,7 +119,7 @@ describe('Patient Journey Store - Stage Mapping (Phase 5.2)', () => {
       });
 
       const patient = result.current.activePatients[1];
-      expect(patient.triage_status).toBe('COMPLETED');
+      expect(patient!.triage_status).toBe('COMPLETED');
     });
 
     it('should update consultation_status from encounter data', () => {
@@ -138,7 +138,7 @@ describe('Patient Journey Store - Stage Mapping (Phase 5.2)', () => {
       });
 
       const patient = result.current.activePatients[1];
-      expect(patient.consultation_status).toBe('CALLED');
+      expect(patient!.consultation_status).toBe('CALLED');
     });
 
     it('should derive and update stage from encounter statuses', () => {
@@ -157,7 +157,7 @@ describe('Patient Journey Store - Stage Mapping (Phase 5.2)', () => {
       });
 
       const patient = result.current.activePatients[1];
-      expect(patient.stage).toBe('AWAITING_TRIAGE');
+      expect(patient!.stage).toBe('AWAITING_TRIAGE');
     });
 
     it('should update stage to IN_TRIAGE when syncing IN_PROGRESS triage_status', () => {
@@ -176,7 +176,7 @@ describe('Patient Journey Store - Stage Mapping (Phase 5.2)', () => {
       });
 
       const patient = result.current.activePatients[1];
-      expect(patient.stage).toBe('IN_TRIAGE');
+      expect(patient!.stage).toBe('IN_TRIAGE');
     });
 
     it('should update stage to AWAITING_CONSULTATION after triage completed', () => {
@@ -195,7 +195,7 @@ describe('Patient Journey Store - Stage Mapping (Phase 5.2)', () => {
       });
 
       const patient = result.current.activePatients[1];
-      expect(patient.stage).toBe('AWAITING_CONSULTATION');
+      expect(patient!.stage).toBe('AWAITING_CONSULTATION');
     });
 
     it('should update stage to AWAITING_CONSULTATION when patient is called', () => {
@@ -214,7 +214,7 @@ describe('Patient Journey Store - Stage Mapping (Phase 5.2)', () => {
       });
 
       const patient = result.current.activePatients[1];
-      expect(patient.stage).toBe('AWAITING_CONSULTATION');
+      expect(patient!.stage).toBe('AWAITING_CONSULTATION');
     });
 
     it('should update stage to IN_CONSULTATION when consultation starts', () => {
@@ -233,7 +233,7 @@ describe('Patient Journey Store - Stage Mapping (Phase 5.2)', () => {
       });
 
       const patient = result.current.activePatients[1];
-      expect(patient.stage).toBe('IN_CONSULTATION');
+      expect(patient!.stage).toBe('IN_CONSULTATION');
     });
 
     it('should handle BYPASSED triage correctly', () => {
@@ -253,9 +253,9 @@ describe('Patient Journey Store - Stage Mapping (Phase 5.2)', () => {
       });
 
       const patient = result.current.activePatients[1];
-      expect(patient.triage_status).toBe('BYPASSED');
-      expect(patient.triage_bypass_reason).toBe('STABLE_FOLLOW_UP');
-      expect(patient.stage).toBe('AWAITING_CONSULTATION');
+      expect(patient!.triage_status).toBe('BYPASSED');
+      expect(patient!.triage_bypass_reason).toBe('STABLE_FOLLOW_UP');
+      expect(patient!.stage).toBe('AWAITING_CONSULTATION');
     });
 
     it('should handle NOT_APPLICABLE triage correctly', () => {
@@ -274,8 +274,8 @@ describe('Patient Journey Store - Stage Mapping (Phase 5.2)', () => {
       });
 
       const patient = result.current.activePatients[1];
-      expect(patient.triage_status).toBe('NOT_APPLICABLE');
-      expect(patient.stage).toBe('AWAITING_CONSULTATION');
+      expect(patient!.triage_status).toBe('NOT_APPLICABLE');
+      expect(patient!.stage).toBe('AWAITING_CONSULTATION');
     });
 
     it('should update triage_category from encounter data', () => {
@@ -295,7 +295,7 @@ describe('Patient Journey Store - Stage Mapping (Phase 5.2)', () => {
       });
 
       const patient = result.current.activePatients[1];
-      expect(patient.triage_category).toBe('ORANGE');
+      expect(patient!.triage_category).toBe('ORANGE');
     });
 
     it('should not change stage when consultation is COMPLETED (depends on next step)', () => {
@@ -315,7 +315,7 @@ describe('Patient Journey Store - Stage Mapping (Phase 5.2)', () => {
       });
 
       const patientBefore = result.current.activePatients[1];
-      expect(patientBefore.stage).toBe('IN_CONSULTATION');
+      expect(patientBefore!.stage).toBe('IN_CONSULTATION');
 
       act(() => {
         // Then sync consultation completed - stage should not be derived
@@ -327,9 +327,9 @@ describe('Patient Journey Store - Stage Mapping (Phase 5.2)', () => {
 
       const patientAfter = result.current.activePatients[1];
       // Stage should remain IN_CONSULTATION (not changed by sync when stage can't be derived)
-      expect(patientAfter.consultation_status).toBe('COMPLETED');
+      expect(patientAfter!.consultation_status).toBe('COMPLETED');
       // Stage is NOT changed by sync when deriveStageFromStatuses returns null
-      expect(patientAfter.stage).toBe('IN_CONSULTATION');
+      expect(patientAfter!.stage).toBe('IN_CONSULTATION');
     });
   });
 
