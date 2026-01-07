@@ -34,7 +34,7 @@ This sprint implements Kenya's Social Health Authority (SHA) claims integration 
 | test_sha_member.py | 34 | ✅ All Passed |
 | test_sha_tariff.py | 30 | ✅ All Passed |
 | test_sha_eligibility.py | 0 | ⬜ Not Started |
-| test_sha_claim.py | 0 | ⬜ Not Started |
+| test_sha_claim.py | 46 | ✅ All Passed |
 | test_sha_claim_item.py | 0 | ⬜ Not Started |
 | test_sha_claim_attachment.py | 0 | ⬜ Not Started |
 | test_sha_claim_submission.py | 0 | ⬜ Not Started |
@@ -891,31 +891,31 @@ class SHAClaim(models.Model):
 ```
 
 **Test Coverage** (25 tests):
-- [ ] Test claim creation with valid data
-- [ ] Test claim number auto-generation (CLM-YYYYMMDD-XXXX format)
-- [ ] Test claim number uniqueness
-- [ ] Test patient must have SHA membership
-- [ ] Test service date not in future
-- [ ] Test inpatient claims require admission date
-- [ ] Test discharge date after admission date
-- [ ] Test claimed amount cannot be negative
-- [ ] Test status choices validation
-- [ ] Test claim type choices validation
-- [ ] Test `calculate_claimed_amount()` from items
-- [ ] Test `validate_for_submission()` - valid claim passes
-- [ ] Test `validate_for_submission()` - ineligible member fails
-- [ ] Test `validate_for_submission()` - no items fails
-- [ ] Test `validate_for_submission()` - missing tariff fails
-- [ ] Test `validate_for_submission()` - missing attachments fails
-- [ ] Test `validate_for_submission()` - zero amount fails
-- [ ] Test `validate_for_submission()` - already submitted fails
-- [ ] Test `submit()` updates status and timestamps
-- [ ] Test `submit()` with invalid claim raises error
-- [ ] Test `get_age_days()` calculation
-- [ ] Test `can_appeal()` for rejected claim
-- [ ] Test `can_appeal()` for paid claim returns False
-- [ ] Test `create_appeal()` creates new claim with version increment
-- [ ] Test `create_appeal()` copies items to new claim
+- [x] Test claim creation with valid data
+- [x] Test claim number auto-generation (CLM-YYYYMMDD-XXXX format)
+- [x] Test claim number uniqueness
+- [x] Test patient must have SHA membership
+- [x] Test service date not in future
+- [x] Test inpatient claims require admission date
+- [x] Test discharge date after admission date
+- [x] Test claimed amount cannot be negative
+- [x] Test status choices validation
+- [x] Test claim type choices validation
+- [x] Test `calculate_claimed_amount()` from items
+- [x] Test `validate_for_submission()` - valid claim passes
+- [x] Test `validate_for_submission()` - ineligible member fails
+- [x] Test `validate_for_submission()` - no items fails
+- [x] Test `validate_for_submission()` - missing tariff fails
+- [x] Test `validate_for_submission()` - missing attachments fails
+- [x] Test `validate_for_submission()` - zero amount fails
+- [x] Test `validate_for_submission()` - already submitted fails
+- [x] Test `submit()` updates status and timestamps
+- [x] Test `submit()` with invalid claim raises error
+- [x] Test `get_age_days()` calculation
+- [x] Test `can_appeal()` for rejected claim
+- [x] Test `can_appeal()` for paid claim returns False
+- [x] Test `create_appeal()` creates new claim with version increment
+- [x] Test `create_appeal()` copies items to new claim
 
 ---
 
@@ -1089,21 +1089,21 @@ class SHAClaimItem(models.Model):
 ```
 
 **Test Coverage** (15 tests):
-- [ ] Test claim item creation with valid data
-- [ ] Test quantity must be positive
-- [ ] Test unit price cannot be negative
-- [ ] Test claimed amount auto-calculated on save
-- [ ] Test max quantity validation against tariff
-- [ ] Test `apply_tariff()` updates pricing
-- [ ] Test `create_from_invoice_item()` with tariff
-- [ ] Test `create_from_invoice_item()` auto-finds tariff
-- [ ] Test `create_from_invoice_item()` without tariff uses invoice price
-- [ ] Test parent claim total updates on item save
-- [ ] Test item status choices
-- [ ] Test approved amount and quantity fields
-- [ ] Test rejection reason storage
-- [ ] Test service date validation
-- [ ] Test cascade delete with parent claim
+- [x] Test claim item creation with valid data
+- [x] Test quantity must be positive
+- [x] Test unit price cannot be negative
+- [x] Test claimed amount auto-calculated on save
+- [x] Test max quantity validation against tariff
+- [x] Test `apply_tariff()` updates pricing
+- [x] Test `create_from_invoice_item()` with tariff
+- [x] Test `create_from_invoice_item()` auto-finds tariff
+- [x] Test `create_from_invoice_item()` without tariff uses invoice price
+- [x] Test parent claim total updates on item save
+- [x] Test item status choices
+- [x] Test approved amount and quantity fields
+- [x] Test rejection reason storage
+- [x] Test service date validation
+- [x] Test cascade delete with parent claim
 
 ---
 
