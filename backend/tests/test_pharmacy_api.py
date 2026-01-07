@@ -365,6 +365,72 @@ class TestPrescriptionAPI:
         assert response.status_code == status.HTTP_201_CREATED
         assert response.data["status"] == "PENDING"
 
+    def test_create_prescription_with_items(self, authenticated_client, test_user):
+        """Creating a prescription with nested items should work."""
+        from hmis.apps.core.models import County, SubCounty
+        from hmis.apps.encounters.models import Encounter
+        from hmis.apps.patients.models import Patient
+        from hmis.apps.pharmacy.models import Drug
+
+        county = County.objects.create(code=99, name="API County Nested")
+        sub_county = SubCounty.objects.create(county=county, name="API SubCounty Nested")
+
+        patient = Patient.objects.create(
+            first_name="API",
+            last_name="Patient Nested",
+            date_of_birth="1990-01-01",
+            gender="M",
+            county=county,
+            sub_county=sub_county,
+        )
+
+        encounter = Encounter.objects.create(
+            patient=patient,
+            encounter_type="OPD",
+            chief_complaint="Test with items",
+        )
+
+        drug = Drug.objects.create(
+            code="NESTED001",
+            generic_name="Nested Test Drug",
+            strength="500mg",
+            form="TABLET",
+            category="ANALGESIC",
+            unit="tablet",
+        )
+
+        data = {
+            "encounter": encounter.id,
+            "patient": patient.id,
+            "valid_until": (date.today() + timedelta(days=30)).isoformat(),
+            "clinical_notes": "Test prescription with items",
+            "items": [
+                {
+                    "drug": drug.id,
+                    "quantity_prescribed": 30,  # Test frontend field name
+                    "dosage": "500mg (1 tablet)",
+                    "frequency": "TDS",
+                    "duration": "10 days",
+                    "route": "PO",
+                    "instructions": "Take after meals",
+                    "is_substitutable": True,
+                },
+            ],
+        }
+
+        response = authenticated_client.post(
+            "/api/pharmacy/prescriptions/",
+            data,
+            format="json",
+        )
+        assert response.status_code == status.HTTP_201_CREATED
+        assert response.data["status"] == "PENDING"
+        assert "items" in response.data
+        assert len(response.data["items"]) == 1
+        assert response.data["items"][0]["drug_name"] == "Nested Test Drug"
+        assert response.data["items"][0]["quantity"] == 30
+        assert response.data["items"][0]["dosage"] == "500mg (1 tablet)"
+
     def test_get_prescription_detail(self, authenticated_client, test_user):
         """Getting prescription details should include items."""
         from hmis.apps.core.models import County, SubCounty
