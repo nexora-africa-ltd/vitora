@@ -73,7 +73,7 @@ def validate_api_key(f):
 def log_request():
     """Log incoming request details."""
     logger.info(f"{request.method} {request.path}")
-    if request.json:
+    if request.is_json and request.json:
         logger.debug(f"Request body: {json.dumps(request.json, indent=2)}")
 
 
