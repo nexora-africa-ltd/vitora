@@ -34,6 +34,33 @@ When(
 );
 
 When(
+  'I search for {string}',
+  async function (this: VitoraWorld, searchTerm: string) {
+    if (!this.page) {
+      this.store('searchTerm', searchTerm);
+      return;
+    }
+
+    const candidates = [
+      '[data-testid="patient-search"]',
+      '[data-testid="drug-search"]',
+      '[data-testid="search"]',
+      'input[type="search"]',
+      'input[placeholder*="search" i]',
+    ];
+
+    const input = this.page.locator(candidates.join(', ')).first();
+    await input.fill(searchTerm);
+
+    // Some UIs search on Enter, others search on debounce.
+    await input.press('Enter').catch(() => undefined);
+    await this.page.waitForTimeout(300);
+
+    this.store('searchTerm', searchTerm);
+  }
+);
+
+When(
   'I enter {word} as {string}',
   async function (this: VitoraWorld, field: string, value: string) {
     await fillField(this, field, value);
@@ -194,6 +221,20 @@ Then(
   }
 );
 
+When(
+  'I select referral source {string}',
+  async function (this: VitoraWorld, source: string) {
+    this.store('referralSource', source);
+
+    if (this.page) {
+      await this.page.selectOption(
+        '[data-testid="referral-source"], select[name="referral_source"]',
+        { label: source }
+      );
+    }
+  }
+);
+
 Then(
   'I should see a warning {string}',
   async function (this: VitoraWorld, warningMessage: string) {
@@ -205,11 +246,38 @@ Then(
 );
 
 Then(
+  'I should see a warning:',
+  async function (this: VitoraWorld, docString: string) {
+    this.store('lastWarning', docString);
+
+    if (this.page) {
+      // Try common containers first; fall back to plain text match.
+      const warning = this.page.locator('[role="alert"], .warning, [data-testid="warning"]');
+      await expect(warning.filter({ hasText: docString.trim().slice(0, 40) }).first()).toBeVisible();
+    }
+  }
+);
+
+Then(
   'I should see a success message {string}',
   async function (this: VitoraWorld, successMessage: string) {
     if (this.page) {
       const success = this.page.locator(`[role="status"], .success, .toast`).filter({ hasText: successMessage });
       await expect(success.first()).toBeVisible();
+    }
+  }
+);
+
+Then(
+  'I must confirm to proceed',
+  async function (this: VitoraWorld) {
+    this.store('requiresConfirmation', true);
+
+    if (this.page) {
+      const confirm = this.page.locator(
+        '[data-testid="confirm"], [data-testid="confirm-proceed"], button:has-text("Confirm"), button:has-text("Proceed")'
+      );
+      await expect(confirm.first()).toBeVisible();
     }
   }
 );
@@ -329,12 +397,18 @@ async function fillField(world: VitoraWorld, field: string, value: string): Prom
  * Helper function to get field selector
  */
 function getFieldSelector(field: string): string {
-  const normalized = field.toLowerCase().replace(/\s+/g, '-');
-  
-  return `[name="${normalized}"], ` +
-         `[data-testid="${normalized}"], ` +
-         `#${normalized}, ` +
+  const normalizedHyphen = field.toLowerCase().trim().replace(/\s+/g, '-');
+  const normalizedUnderscore = normalizedHyphen.replace(/-/g, '_');
+
+  return `[name="${normalizedHyphen}"], ` +
+         `[name="${normalizedUnderscore}"], ` +
+         `[data-testid="${normalizedHyphen}"], ` +
+         `[data-testid="${normalizedUnderscore}"], ` +
+         `#${normalizedHyphen}, ` +
+         `#${normalizedUnderscore}, ` +
          `[aria-label="${field}" i], ` +
+         `[aria-label="${normalizedHyphen}" i], ` +
+         `[aria-label="${normalizedUnderscore}" i], ` +
          `label:has-text("${field}") + input, ` +
          `label:has-text("${field}") + select, ` +
          `label:has-text("${field}") ~ input`;

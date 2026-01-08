@@ -27,6 +27,10 @@
     "bdd:offline": "cucumber-js --tags @offline",
     "bdd:ci": "cucumber-js --profile ci",
     "bdd:dry-run": "cucumber-js --dry-run",
+    "bdd:e2e": "npx bddgen && playwright test --config playwright-bdd.config.ts",
+    "bdd:e2e:smoke": "npx bddgen && playwright test --config playwright-bdd.config.ts --grep @smoke",
+    "bdd:integration": "jest --config jest-cucumber.config.js",
+    "bdd:integration:watch": "jest --config jest-cucumber.config.js --watch",
     "quality": "npm run lint && npm run type-check && npm run format:check"
   },
   "dependencies": {

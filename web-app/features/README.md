@@ -9,8 +9,17 @@ features/
 ├── patients/           # Patient registration, OPD, IPD, queue (~280 scenarios)
 ├── pharmacy/           # Drug catalog, inventory, prescriptions, dispensing (~290 scenarios)
 ├── triage/             # Triage assessment, categories, alerts (~180 scenarios)
-├── step-definitions/   # Step implementation files (to be created)
-├── support/            # Hooks, fixtures, utilities (to be created)
+├── step-definitions/   # Step implementation files
+│   ├── common/         # Shared steps (auth, navigation, forms)
+│   ├── patients/       # Patient-specific steps
+│   ├── pharmacy/       # Pharmacy-specific steps
+│   └── triage/         # Triage-specific steps
+├── support/            # Hooks, fixtures, world
+│   ├── hooks.ts        # Before/After hooks
+│   ├── world.ts        # Custom World context
+│   └── fixtures.ts     # Test data factories
+├── jest-cucumber.setup.ts  # Jest-Cucumber configuration
+├── tsconfig.json       # TypeScript config for features
 └── README.md           # This file
 ```
 
@@ -43,21 +52,65 @@ features/
 
 ---
 
-## Cucumber Setup Recommendations
+## ✅ Hybrid Approach (CONFIGURED)
 
-### Option 1: Playwright-BDD (Recommended for E2E)
+We use a **hybrid testing approach** combining multiple tools for different test types:
 
-Best integration with existing Playwright setup. Generates Playwright tests from Gherkin.
+| Test Type | Tool | NPM Script | Use For |
+|-----------|------|------------|---------|
+| **E2E/UI** | Playwright-BDD | `npm run bdd:e2e` | User journeys, smoke tests |
+| **Integration** | Jest-Cucumber | `npm run bdd:integration` | API integration, component tests |
+| **Validation** | Cucumber.js | `npm run bdd:dry-run` | Syntax validation, step coverage |
+| **Unit** | Jest (existing) | `npm test` | Component logic, utilities |
 
-**Installation:**
+### Quick Start
+
 ```bash
-npm install -D playwright-bdd
+# Validate all features (dry-run - no execution)
+npm run bdd:dry-run
+
+# Run E2E tests with Playwright-BDD
+npm run bdd:e2e
+
+# Run smoke tests only
+npm run bdd:e2e:smoke
+
+# Run integration tests with Jest-Cucumber
+npm run bdd:integration
+
+# Run by module
+npm run bdd:patients
+npm run bdd:pharmacy
+npm run bdd:triage
 ```
 
-**Configuration** (`playwright.config.ts`):
-```typescript
-import { defineConfig } from '@playwright/test';
-import { defineBddConfig } from 'playwright-bdd';
+### Configuration Files
+
+| File | Purpose |
+|------|---------|
+| `cucumber.js` | Cucumber.js profiles for module-specific runs |
+| `playwright-bdd.config.ts` | Playwright-BDD E2E configuration |
+| `jest-cucumber.config.js` | Jest-Cucumber integration test config |
+| `features/tsconfig.json` | TypeScript config for step definitions |
+
+---
+
+## Cucumber.js Setup (Validation & Direct Runs)
+
+Already configured in `cucumber.js`. Use profiles for targeted runs:
+
+```bash
+npm run bdd                    # Run all features
+npm run bdd:smoke              # Run @smoke tagged scenarios
+npm run bdd:patients           # Run patients module only
+npm run bdd:pharmacy           # Run pharmacy module only
+npm run bdd:triage             # Run triage module only
+npm run bdd:dry-run            # Validate without execution
+```
+
+---
+
+## Playwright-BDD Setup (E2E Tests)
 
 const testDir = defineBddConfig({
   features: 'features/**/*.feature',

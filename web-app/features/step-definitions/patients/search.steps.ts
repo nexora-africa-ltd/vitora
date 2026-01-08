@@ -71,52 +71,9 @@ Given(
   }
 );
 
-Given(
-  'I do NOT have {string} permission',
-  async function (this: VitoraWorld, permission: string) {
-    // Ensure current user doesn't have this permission
-    if (this.currentUser?.permissions.includes(permission)) {
-      // Re-login as user without this permission
-      const basicUser = { id: 0, username: 'basicuser', email: 'basic@test.com', permissions: [] as string[] };
-      this.setUser(basicUser);
-      
-      if (this.page) {
-        // Re-authenticate with limited user
-        await this.page.goto('/login');
-        await this.page.fill('[name="username"]', basicUser.username);
-        await this.page.fill('[name="password"]', 'testpassword');
-        await this.page.click('button[type="submit"]');
-      }
-    }
-  }
-);
-
-Given(
-  'I have {string} permission',
-  async function (this: VitoraWorld, permission: string) {
-    // Ensure user has the permission
-    if (!this.currentUser?.permissions.includes(permission)) {
-      this.currentUser?.permissions.push(permission);
-    }
-  }
-);
-
 /**
  * When Steps
  */
-
-When(
-  'I search for {string}',
-  async function (this: VitoraWorld, searchTerm: string) {
-    const searchInput = this.page?.locator('[data-testid="patient-search"], input[type="search"]');
-    await searchInput?.fill(searchTerm);
-    await searchInput?.press('Enter');
-    
-    // Wait for results
-    await this.page?.waitForResponse(/patients.*search|patients\?/);
-    this.store('searchTerm', searchTerm);
-  }
-);
 
 When(
   'I perform a search',
@@ -160,13 +117,6 @@ When(
   async function (this: VitoraWorld) {
     await this.page?.click('[data-testid="patient-row"]:first-child, .patient-card:first-child');
     await this.page?.waitForURL(/patients\/\d+|patients\/MRN-/);
-  }
-);
-
-When(
-  'I click {string}',
-  async function (this: VitoraWorld, buttonText: string) {
-    await this.page?.click(`button:has-text("${buttonText}"), a:has-text("${buttonText}")`);
   }
 );
 

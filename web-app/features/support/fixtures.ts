@@ -111,16 +111,19 @@ export const PERMISSIONS = {
 
 /**
  * Create a test user with specified role
+ * Accepts any string role name - will use role's permissions if known, or custom permissions
  */
 export function createUser(
-  role: keyof typeof PERMISSIONS,
+  role: string,
   overrides: Partial<UserContext> = {}
 ): UserContext {
+  const knownRole = role as keyof typeof PERMISSIONS;
+  const basePermissions = PERMISSIONS[knownRole] ?? PERMISSIONS.doctor;
   return {
     id: Math.floor(Math.random() * 10000),
     username: `${role}_user`,
     email: `${role}@vitora.health`,
-    permissions: [...PERMISSIONS[role]],
+    permissions: overrides.permissions ?? [...basePermissions],
     ...overrides,
   };
 }
