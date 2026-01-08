@@ -4,13 +4,22 @@ SHA Claims Service for Vitora HMIS.
 This module handles SHA (Social Health Authority) claims creation,
 validation, packaging (FHIR format), and submission.
 
-Reference: docs/sha-api-validation-report.md
+Reference: docs/sha-claims-bundle-validation-report.md
+Official FHIR Bundle Spec: docs/sha-guides/claims.md
 Official Endpoints:
     - Submit: POST /v1/shr-med/bundle
     - Status: GET /v1/shr-med/claim-status?claim_id={claim_id}
+    
+FHIR Bundle Requirements (SHA MIS):
+    - Bundle type: "message"
+    - Required resources: Organization, Patient, Coverage, Claim
+    - Diagnosis coding: ICD-11 (not ICD-10)
+    - Patient ID: SHA CR Number
+    - Coverage: Must include scheme extensions (CAT-SHA-001)
 """
 
 import logging
+import uuid
 from datetime import date
 from decimal import Decimal
 from typing import Any, Optional
@@ -62,6 +71,15 @@ class SHAClaimsService:
         self.auth_service = SHAAuthService()
         self.facility_code = settings.FACILITY_MFL_CODE
         self.facility_level = settings.FACILITY_LEVEL
+        self.facility_name = getattr(settings, 'FACILITY_NAME', 'Healthcare Facility')
+        
+        # SHA MIS FHIR Base URL (different from API base URL)
+        # UAT: https://qa-mis.apeiro-digital.com
+        # Production: https://mis.apeiro-digital.com
+        self.fhir_base_url = getattr(
+            settings, 'SHA_FHIR_BASE_URL', 
+            'https://qa-mis.apeiro-digital.com'
+        ).rstrip('/')
         
         # Backward compatible attributes for tests
         self.api_key = settings.SHA_API_KEY
@@ -214,88 +232,210 @@ class SHAClaimsService:
     
     def package_claim(self, claim: SHAClaim) -> dict:
         """
-        Package claim for submission in SHA-required format.
+        Package claim for submission in SHA-required FHIR format.
         
-        Creates a FHIR-compatible claim bundle containing:
-        - Claim resource
-        - Patient resource
-        - Coverage resource
+        Creates a FHIR Bundle (type: "message") containing:
+        - Organization resource (healthcare facility)
+        - Coverage resource (SHA membership)
+        - Patient resource (patient demographics)
+        - Claim resource (claim details)
+        
+        Reference: docs/sha-guides/claims.md
         
         Args:
             claim: SHAClaim to package
             
         Returns:
-            FHIR-compatible claim bundle dict
+            SHA-compliant FHIR Bundle dict
         """
+        # Generate unique bundle ID (same as claim ID in FHIR)
+        bundle_guid = str(uuid.uuid4())
+        
+        # Get SHA CR Number (used as patient identifier in SHA system)
+        cr_number = claim.sha_member.sha_number
+        
         bundle = {
-            'resourceType': 'Bundle',
-            'type': 'collection',
+            'id': bundle_guid,
+            'meta': {
+                'profile': [
+                    f'{self.fhir_base_url}/fhir/StructureDefinition/bundle|1.0.0'
+                ]
+            },
             'timestamp': timezone.now().isoformat(),
-            'entry': []
+            'type': 'message',
+            'entry': [
+                # Order: Organization, Coverage, Patient, Claim (per SHA spec)
+                {
+                    'fullUrl': f'{self.fhir_base_url}/fhir/Organization/{self.facility_code}',
+                    'resource': self._build_organization_resource()
+                },
+                {
+                    'fullUrl': f'{self.fhir_base_url}/fhir/Coverage/{cr_number}-sha-coverage',
+                    'resource': self._build_coverage_resource(claim.sha_member, cr_number)
+                },
+                {
+                    'fullUrl': f'{self.fhir_base_url}/fhir/Patient/{cr_number}',
+                    'resource': self._build_patient_resource(claim.patient, claim.sha_member)
+                },
+                {
+                    'fullUrl': f'{self.fhir_base_url}/fhir/Claim/{bundle_guid}',
+                    'resource': self._build_claim_resource(claim, bundle_guid, cr_number)
+                },
+            ],
+            'resourceType': 'Bundle'
         }
-        
-        # Add claim resource
-        bundle['entry'].append({
-            'resource': self._build_claim_resource(claim)
-        })
-        
-        # Add patient resource
-        bundle['entry'].append({
-            'resource': self._build_patient_resource(claim.patient)
-        })
-        
-        # Add coverage resource
-        bundle['entry'].append({
-            'resource': self._build_coverage_resource(claim.sha_member)
-        })
         
         return bundle
     
-    def _build_claim_resource(self, claim: SHAClaim) -> dict:
+    def _build_organization_resource(self) -> dict:
         """
-        Build FHIR Claim resource.
+        Build FHIR Organization resource for the healthcare facility.
+        
+        This resource identifies the facility submitting the claim.
+        Data should match the Health Facilities Registry (HFR).
+        
+        Returns:
+            FHIR Organization resource dict
+        """
+        return {
+            'id': self.facility_code,
+            'meta': {
+                'profile': [
+                    f'{self.fhir_base_url}/fhir/StructureDefinition/provider-organization|1.0.0'
+                ]
+            },
+            'name': self.facility_name,
+            'active': 'True',
+            'extension': [
+                {
+                    'url': f'{self.fhir_base_url}/fhir/StructureDefinition/facility-level',
+                    'valueCodeableConcept': {
+                        'coding': [{
+                            'system': f'{self.fhir_base_url}/fhir/StructureDefinition/facility-level',
+                            'code': self.facility_level.upper(),
+                            'display': self.facility_level.upper()
+                        }]
+                    }
+                }
+            ],
+            'identifier': [{
+                'use': 'official',
+                'type': {
+                    'coding': [{
+                        'display': 'Code',
+                        'system': f'{self.fhir_base_url}/fhir/terminology/CodeSystem/facility-identifier-types',
+                        'code': 'fr-code'
+                    }]
+                },
+                'value': self.facility_code
+            }],
+            'type': [{
+                'coding': [{
+                    'system': 'https://ts.kenya-hie.health/fhir/terminology/CodeSystem/organization-type',
+                    'code': 'prov'
+                }]
+            }],
+            'resourceType': 'Organization'
+        }
+    
+    def _build_claim_resource(self, claim: SHAClaim, bundle_guid: str, cr_number: str) -> dict:
+        """
+        Build FHIR Claim resource per SHA specification.
         
         Args:
             claim: SHAClaim to build resource from
+            bundle_guid: Unique GUID for this claim bundle
+            cr_number: SHA CR Number for the patient
             
         Returns:
             FHIR Claim resource dict
         """
-        return {
-            'resourceType': 'Claim',
+        # Determine claim subType (op=outpatient, ip=inpatient)
+        sub_type = 'ip' if claim.claim_type == 'inpatient' else 'op'
+        
+        # Build billable period from service date
+        service_date = claim.service_date or date.today()
+        end_date = claim.discharge_date or service_date
+        
+        claim_resource = {
+            'id': bundle_guid,
             'identifier': [{
-                'system': 'urn:vitora:claim',
-                'value': claim.claim_number
+                'system': f'{self.fhir_base_url}/fhir/claim',
+                'value': bundle_guid
             }],
             'status': 'active',
             'type': {
                 'coding': [{
                     'system': 'http://terminology.hl7.org/CodeSystem/claim-type',
-                    'code': 'institutional' if claim.claim_type == 'inpatient' else 'professional'
+                    'code': 'institutional'
+                }]
+            },
+            'subType': {
+                'coding': [{
+                    'system': 'http://terminology.hl7.org/CodeSystem/ex-claimsubtype',
+                    'code': sub_type
                 }]
             },
             'use': 'claim',
             'patient': {
-                'reference': f'Patient/{claim.patient.id}'
+                'reference': f'{self.fhir_base_url}/fhir/Patient/{cr_number}',
+                'identifier': {
+                    'value': cr_number,
+                    'use': 'official',
+                    'system': f'{self.fhir_base_url}/fhir/identifier/shanumber'
+                },
+                'type': 'Patient'
             },
+            'billablePeriod': {
+                'start': f'{service_date.isoformat()}T00:00:00',
+                'end': f'{end_date.isoformat()}T23:59:59'
+            },
+            'insurance': [{
+                'sequence': 1,
+                'focal': 'True',
+                'coverage': {
+                    'reference': f'{self.fhir_base_url}/fhir/Coverage/{cr_number}-sha-coverage'
+                }
+            }],
             'created': claim.created_at.isoformat(),
             'provider': {
+                'reference': f'https://fr.kenya-hie.health/api/v4/Organization/{self.facility_code}',
+                'id': self.facility_code,
+                'type': 'Organization',
                 'identifier': {
-                    'value': claim.facility_code
+                    'use': 'official',
+                    'type': {
+                        'coding': [{
+                            'system': 'http://ts-kenyahie.health/facility-identifier-type',
+                            'code': 'fr-code'
+                        }]
+                    },
+                    'system': 'https://fr.kenya-hie.health/api/v4/Organization',
+                    'value': self.facility_code
                 }
             },
-            'priority': {'coding': [{'code': 'normal'}]},
+            'priority': {
+                'coding': [{
+                    'system': 'http://terminology.hl7.org/CodeSystem/processpriority',
+                    'code': 'normal'
+                }]
+            },
             'diagnosis': self._build_diagnosis_list(claim),
-            'item': self._build_item_list(claim),
+            'item': self._build_item_list(claim, cr_number),
             'total': {
                 'value': float(claim.claimed_amount),
                 'currency': 'KES'
-            }
+            },
+            'resourceType': 'Claim'
         }
+        
+        return claim_resource
     
     def _build_diagnosis_list(self, claim: SHAClaim) -> list[dict]:
         """
         Build FHIR diagnosis list from claim.
+        
+        NOTE: SHA uses ICD-11 coding system, NOT ICD-10!
         
         Args:
             claim: SHAClaim to extract diagnoses from
@@ -305,34 +445,33 @@ class SHAClaimsService:
         """
         diagnoses = []
         
-        # Primary diagnosis
+        # Primary diagnosis (using ICD-11 system per SHA spec)
         if claim.primary_diagnosis_code:
             diagnoses.append({
                 'sequence': 1,
                 'diagnosisCodeableConcept': {
                     'coding': [{
-                        'system': 'http://hl7.org/fhir/sid/icd-10',
+                        'system': f'{self.fhir_base_url}/fhir/terminology/CodeSystem/icd-11',
                         'code': claim.primary_diagnosis_code,
-                        'display': claim.primary_diagnosis_description
+                        'display': claim.primary_diagnosis_description or claim.primary_diagnosis_code
                     }]
-                },
-                'type': [{'coding': [{'code': 'principal'}]}]
+                }
             })
         
         # Secondary diagnoses
         for idx, code in enumerate(claim.secondary_diagnosis_codes or [], start=2):
             if isinstance(code, dict):
                 diag_code = code.get('code', '')
-                diag_desc = code.get('description', '')
+                diag_desc = code.get('description', diag_code)
             else:
                 diag_code = code
-                diag_desc = ''
+                diag_desc = code
             
             diagnoses.append({
                 'sequence': idx,
                 'diagnosisCodeableConcept': {
                     'coding': [{
-                        'system': 'http://hl7.org/fhir/sid/icd-10',
+                        'system': f'{self.fhir_base_url}/fhir/terminology/CodeSystem/icd-11',
                         'code': diag_code,
                         'display': diag_desc
                     }]
@@ -341,12 +480,19 @@ class SHAClaimsService:
         
         return diagnoses
     
-    def _build_item_list(self, claim: SHAClaim) -> list[dict]:
+    def _build_item_list(self, claim: SHAClaim, cr_number: str) -> list[dict]:
         """
         Build FHIR item list from claim items.
         
+        Each item includes:
+        - SHA intervention code (productOrService)
+        - Serviced period (not just date)
+        - Category (procedure, drug, etc.)
+        - Coverage extension reference
+        
         Args:
             claim: SHAClaim to extract items from
+            cr_number: SHA CR Number for coverage reference
             
         Returns:
             List of FHIR item dicts
@@ -354,14 +500,45 @@ class SHAClaimsService:
         items = []
         
         for idx, claim_item in enumerate(claim.items.all(), start=1):
+            # Get service date or use claim service date
+            service_date = claim_item.service_date or claim.service_date or date.today()
+            
+            # Get SHA intervention code from tariff
+            sha_code = ''
+            if claim_item.tariff:
+                sha_code = claim_item.tariff.code
+            
+            # Determine category based on item type or tariff category
+            category_code = 'procedure'  # Default
+            if claim_item.tariff and hasattr(claim_item.tariff, 'category'):
+                category_mapping = {
+                    'drug': 'drug',
+                    'medication': 'drug',
+                    'pharmacy': 'drug',
+                    'lab': 'procedure',
+                    'laboratory': 'procedure',
+                    'consultation': 'procedure',
+                    'procedure': 'procedure',
+                    'imaging': 'procedure',
+                    'radiology': 'procedure',
+                }
+                category_code = category_mapping.get(
+                    str(claim_item.tariff.category).lower(), 
+                    'procedure'
+                )
+            
             item = {
                 'sequence': idx,
                 'productOrService': {
                     'coding': [{
-                        'system': 'urn:vitora:service',
-                        'code': claim_item.tariff.code if claim_item.tariff else '',
-                        'display': claim_item.description
+                        'system': f'{self.fhir_base_url}/fhir/CodeSystem/intervention-codes',
+                        'code': sha_code,
+                        'display': sha_code or claim_item.description
                     }]
+                },
+                'servicedPeriod': {
+                    'start': service_date.isoformat(),
+                    'end': service_date.isoformat()
                 },
                 'quantity': {
                     'value': float(claim_item.quantity)
@@ -370,35 +547,61 @@ class SHAClaimsService:
                     'value': float(claim_item.unit_price),
                     'currency': 'KES'
                 },
+                'factor': 1,
                 'net': {
                     'value': float(claim_item.claimed_amount),
                     'currency': 'KES'
-                }
+                },
+                'category': {
+                    'coding': [{
+                        'system': f'{self.fhir_base_url}/fhir/CodeSystem/category-codes',
+                        'code': category_code,
+                        'display': category_code.capitalize()
+                    }]
+                },
+                'extension': [{
+                    'url': f'{self.fhir_base_url}/fhir/sha-coverage/StructureDefinition/Coverage',
+                    'valueReference': {
+                        'reference': f'{self.fhir_base_url}/fhir/Coverage/{cr_number}-sha-coverage'
+                    }
+                }]
             }
-            
-            if claim_item.service_date:
-                item['servicedDate'] = claim_item.service_date.isoformat()
             
             items.append(item)
         
         return items
     
-    def _build_patient_resource(self, patient) -> dict:
+    def _build_patient_resource(self, patient, sha_member) -> dict:
         """
-        Build FHIR Patient resource.
+        Build FHIR Patient resource per SHA specification.
+        
+        IMPORTANT: SHA requires the patient ID to be the SHA CR Number,
+        NOT the internal patient ID. The identifier must use the SHA
+        identifier system.
         
         Args:
             patient: Patient model instance
+            sha_member: SHAMember model instance (provides CR Number)
             
         Returns:
-            FHIR Patient resource dict
+            FHIR Patient resource dict with SHA-compliant structure
+            
+        Reference: docs/sha-guides/claims.md - Patient Resource section
         """
+        cr_number = sha_member.sha_number
+        
         return {
             'resourceType': 'Patient',
-            'id': str(patient.id),
+            'id': cr_number,
+            'meta': {
+                'profile': [
+                    f'{self.fhir_base_url}/fhir/StructureDefinition/sha-patient|1.0.0'
+                ]
+            },
             'identifier': [{
-                'system': 'urn:vitora:mrn',
-                'value': patient.mrn
+                'use': 'official',
+                'system': f'{self.fhir_base_url}/fhir/identifier/shanumber',
+                'value': cr_number
             }],
             'name': [{
                 'use': 'official',
@@ -409,22 +612,37 @@ class SHAClaimsService:
             'birthDate': self._format_date(patient.date_of_birth),
         }
     
-    def _build_coverage_resource(self, sha_member) -> dict:
+    def _build_coverage_resource(self, sha_member, cr_number: str) -> dict:
         """
         Build FHIR Coverage resource for SHA membership.
         
+        IMPORTANT: SHA requires specific scheme extensions:
+        - schemeCategoryCode: CAT-SHA-001
+        - schemeCategoryName: SOCIAL HEALTH AUTHORITY
+        
         Args:
             sha_member: SHAMember model instance
+            cr_number: SHA CR Number (e.g., CR0000000000001-1)
             
         Returns:
-            FHIR Coverage resource dict
+            FHIR Coverage resource dict with SHA-compliant structure
+            
+        Reference: docs/sha-guides/claims.md - Coverage Resource section
         """
+        coverage_id = f'{cr_number}-sha-coverage'
+        
         return {
             'resourceType': 'Coverage',
-            'id': str(sha_member.id),
+            'id': coverage_id,
+            'meta': {
+                'profile': [
+                    f'{self.fhir_base_url}/fhir/StructureDefinition/sha-coverage|1.0.0'
+                ]
+            },
             'identifier': [{
-                'system': 'urn:kenya:sha',
-                'value': sha_member.sha_number
+                'use': 'official',
+                'system': f'{self.fhir_base_url}/fhir/identifier/sha-coverage',
+                'value': coverage_id
             }],
             'status': 'active' if sha_member.status == 'active' else 'cancelled',
             'type': {
@@ -434,17 +652,35 @@ class SHAClaimsService:
                     'display': 'Social Health Authority'
                 }]
             },
+            'extension': [
+                {
+                    'url': f'{self.fhir_base_url}/fhir/StructureDefinition/scheme-category',
+                    'extension': [
+                        {
+                            'url': 'schemeCategoryCode',
+                            'valueString': 'CAT-SHA-001'
+                        },
+                        {
+                            'url': 'schemeCategoryName',
+                            'valueString': 'SOCIAL HEALTH AUTHORITY'
+                        }
+                    ]
+                }
+            ],
             'subscriber': {
-                'reference': f'Patient/{sha_member.patient.id}'
+                'reference': f'{self.fhir_base_url}/fhir/Patient/{cr_number}',
+                'type': 'Patient'
             },
             'beneficiary': {
-                'reference': f'Patient/{sha_member.patient.id}'
+                'reference': f'{self.fhir_base_url}/fhir/Patient/{cr_number}',
+                'type': 'Patient'
             },
             'period': {
                 'start': sha_member.coverage_start_date.isoformat() if sha_member.coverage_start_date else None,
                 'end': sha_member.coverage_end_date.isoformat() if sha_member.coverage_end_date else None,
             },
             'payor': [{
+                'type': 'Organization',
                 'display': 'Social Health Authority (SHA)'
             }]
         }
