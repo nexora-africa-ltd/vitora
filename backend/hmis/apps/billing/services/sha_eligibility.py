@@ -4,7 +4,8 @@ SHA Eligibility Service for Vitora HMIS.
 This module handles SHA (Social Health Authority) eligibility verification
 with API communication, caching, retry logic, and error handling.
 
-Reference: docs/sprint-2.1-2.2-sha-claims-integration-deliverables.md
+Reference: docs/sha-api-validation-report.md
+Official Endpoint: GET /v2/eligibility?doc_type={type}&doc_value={value}
 """
 
 import time
@@ -17,6 +18,7 @@ from django.conf import settings
 from django.utils import timezone
 
 from hmis.apps.billing.models import SHAEligibilityCheck, SHAMember
+from hmis.apps.billing.services.sha_auth import SHAAuthError, SHAAuthService
 
 
 class SHAEligibilityService:
@@ -24,10 +26,20 @@ class SHAEligibilityService:
     Service for verifying SHA member eligibility.
     
     Handles API communication with SHA, caching, and retry logic.
+    Uses the official Kenya Digital Superhighway eligibility endpoint.
+    
+    Official API:
+        GET /v2/eligibility?doc_type={doc_type}&doc_value={doc_value}
+        
+    Supported doc_types:
+        - national_id
+        - kra_pin
+        - sha_number
+        - cr_number (Client Registry number)
     
     Attributes:
         api_base_url: Base URL for SHA API
-        api_key: API key for authentication
+        auth_service: SHA authentication service
         timeout: Request timeout in seconds
         max_retries: Maximum number of retry attempts
     
@@ -40,10 +52,18 @@ class SHAEligibilityService:
     
     def __init__(self):
         """Initialize SHAEligibilityService with settings from Django config."""
-        self.api_base_url = settings.SHA_API_BASE_URL
-        self.api_key = settings.SHA_API_KEY
+        self.api_base_url = settings.SHA_API_BASE_URL.rstrip('/')
+        self.auth_service = SHAAuthService()
         self.timeout = settings.SHA_API_TIMEOUT
         self.max_retries = 3
+        
+        # Backward compatible attributes for tests
+        self.api_key = settings.SHA_API_KEY
+        
+        # Get endpoint from settings
+        self.eligibility_endpoint = settings.SHA_ENDPOINTS.get(
+            'eligibility', '/v2/eligibility'
+        )
     
     def check_eligibility(
         self,
@@ -103,53 +123,93 @@ class SHAEligibilityService:
     
     def _build_request(self, sha_member: SHAMember) -> dict:
         """
-        Build API request payload.
+        Build API request parameters for eligibility check.
+        
+        Per official SHA API spec, uses query parameters:
+        - doc_type: Type of document (sha_number, national_id, etc.)
+        - doc_value: The document value
         
         Args:
             sha_member: The member to build request for
             
         Returns:
-            Dict containing request payload
+            Dict containing request parameters
         """
-        return {
-            'sha_number': sha_member.sha_number,
-            'national_id': sha_member.national_id,
-            'check_date': date.today().isoformat(),
-        }
+        # Prefer SHA number if available, otherwise use national ID
+        if sha_member.sha_number:
+            return {
+                'doc_type': 'sha_number',
+                'doc_value': sha_member.sha_number,
+            }
+        elif sha_member.national_id:
+            return {
+                'doc_type': 'national_id',
+                'doc_value': sha_member.national_id,
+            }
+        else:
+            # Fallback to CR number if available
+            return {
+                'doc_type': 'cr_number',
+                'doc_value': sha_member.cr_number or '',
+            }
     
-    def _call_api(self, request_data: dict) -> dict:
+    def _call_api(self, request_params: dict) -> dict:
         """
         Make API call with retry logic.
+        
+        Uses GET request to /v2/eligibility with query parameters
+        per the official SHA API specification.
         
         Implements exponential backoff: 1s, 2s, 4s between retries.
         
         Args:
-            request_data: Request payload to send
+            request_params: Query parameters to send
             
         Returns:
-            Dict containing API response
+            Dict containing API response data
             
         Raises:
             requests.Timeout: If all retries timeout
             requests.RequestException: If all retries fail
+            SHAAuthError: If authentication fails
         """
-        headers = {
-            'Authorization': f'Bearer {self.api_key}',
-            'Content-Type': 'application/json',
-        }
-        
         last_exception: Optional[Exception] = None
         
         for attempt in range(self.max_retries):
             try:
-                response = requests.post(
-                    f'{self.api_base_url}/eligibility/check',
-                    json=request_data,
+                # Get fresh auth headers (handles token refresh)
+                headers = self.auth_service.get_auth_headers()
+                
+                # Make GET request with query parameters (official spec)
+                response = requests.get(
+                    f'{self.api_base_url}{self.eligibility_endpoint}',
+                    params=request_params,
                     headers=headers,
                     timeout=self.timeout,
                 )
+                
+                # Handle auth errors
+                if response.status_code == 401:
+                    # Token might be expired, clear cache and retry
+                    self.auth_service.clear_token_cache()
+                    if attempt < self.max_retries - 1:
+                        continue
+                    raise SHAAuthError("Authentication failed", status_code=401)
+                
                 response.raise_for_status()
-                return response.json()
+                
+                # Parse response - handle official wrapper format
+                data = response.json()
+                
+                # Official format: {"IsSuccess": true, "Data": {...}}
+                if 'Data' in data and data.get('IsSuccess'):
+                    return data['Data']
+                
+                # Direct format fallback
+                return data
+                
+            except SHAAuthError:
+                raise
             except requests.RequestException as e:
                 last_exception = e
                 if attempt == self.max_retries - 1:
@@ -171,11 +231,23 @@ class SHAEligibilityService:
         """
         Process API response and create check record.
         
+        Official SHA response format:
+        {
+            "eligible": true,
+            "reason": "Active Coverage",
+            "coverageEndDate": "2025-12-31",
+            "isEmployed": true,
+            "means_testing_details": {
+                "category": "STANDARD",
+                "copay_percentage": 10
+            }
+        }
+        
         Args:
             sha_member: The member checked
             user: User who performed the check
-            request_data: Original request payload
-            response: API response data
+            request_data: Original request parameters
+            response: API response data (already extracted from wrapper)
             response_time: Response time in milliseconds
             
         Returns:
@@ -183,11 +255,22 @@ class SHAEligibilityService:
         """
         is_eligible = response.get('eligible', False)
         
-        # Parse benefit balance
+        # Parse benefit balance (if provided)
         benefit_balance = self._parse_decimal(response.get('balance'))
         
-        # Parse eligible_until date
-        eligible_until = self._parse_date(response.get('valid_until'))
+        # Parse eligible_until date - official field is 'coverageEndDate'
+        eligible_until = self._parse_date(
+            response.get('coverageEndDate') or response.get('valid_until')
+        )
+        
+        # Get ineligibility reason
+        reason = response.get('reason', '')
+        
+        # Store full response including means testing details
+        full_response = {
+            **response,
+            'raw_response': response,  # Keep original for debugging
+        }
         
         return SHAEligibilityCheck.objects.create(
             sha_member=sha_member,
@@ -198,12 +281,12 @@ class SHAEligibilityService:
                 if is_eligible else
                 SHAEligibilityCheck.CheckResult.INELIGIBLE
             ),
-            response_data=response,
+            response_data=full_response,
             response_time_ms=response_time,
             is_eligible=is_eligible,
             eligible_until=eligible_until,
             benefit_balance=benefit_balance,
-            ineligibility_reason=response.get('reason', ''),
+            ineligibility_reason=reason if not is_eligible else '',
             checked_by=user,
         )
     

@@ -617,143 +617,140 @@ class TestSHAClaimsServicePackaging:
 
 @pytest.mark.django_db
 class TestSHAClaimsServiceSubmission:
-    """Tests for SHAClaimsService.submit_claim() method."""
+    """Tests for SHAClaimsService.submit_claim() method (offline-first)."""
 
     def test_submit_claim_success_flow(
         self, valid_claim, test_user, mock_sha_submission_response
     ):
         """
-        Test successful claim submission flow.
+        Test successful claim submission flow (offline-first queuing).
         
         Given: A valid claim ready for submission
         When: submit_claim() is called
-        Then: Claim is submitted to SHA API and response returned
+        Then: Claim is queued for offline submission
         """
         from hmis.apps.billing.services.sha_claims import SHAClaimsService
         
         service = SHAClaimsService()
         
-        with patch.object(
-            service, '_submit_to_sha_api', return_value=mock_sha_submission_response
-        ):
-            response = service.submit_claim(valid_claim, test_user)
+        response = service.submit_claim(valid_claim, test_user)
         
-        assert response == mock_sha_submission_response
-        assert response['claim_reference'] == 'SHA-REF-2026-001234'
+        # Offline-first implementation queues claims
+        assert response['status'] == 'queued'
+        assert response['message'] == 'Claim queued for submission when online'
+        assert 'queue_entry_id' in response
+        assert response['claim_number'] == valid_claim.claim_number
 
     def test_submit_claim_updates_claim_status(
         self, valid_claim, test_user, mock_sha_submission_response
     ):
         """
-        Test that submit_claim() updates claim status and timestamps.
+        Test that submit_claim() updates claim status to PENDING_SUBMISSION.
         
         Given: A valid claim
-        When: submit_claim() is called successfully
-        Then: Claim status is SUBMITTED with timestamps and reference
+        When: submit_claim() is called
+        Then: Claim status is PENDING_SUBMISSION (queued for later)
         """
         from hmis.apps.billing.services.sha_claims import SHAClaimsService
         
         service = SHAClaimsService()
         
-        with patch.object(
-            service, '_submit_to_sha_api', return_value=mock_sha_submission_response
-        ):
-            service.submit_claim(valid_claim, test_user)
+        service.submit_claim(valid_claim, test_user)
         
         # Refresh from database
         valid_claim.refresh_from_db()
         
-        assert valid_claim.status == SHAClaim.ClaimStatus.SUBMITTED
-        assert valid_claim.submitted_at is not None
-        assert valid_claim.submitted_by == test_user
-        assert valid_claim.sha_claim_reference == 'SHA-REF-2026-001234'
-        assert valid_claim.submission_response == mock_sha_submission_response
+        # Offline-first: claim is queued, not submitted directly
+        assert valid_claim.status == SHAClaim.ClaimStatus.PENDING_SUBMISSION
+        assert 'queued' in valid_claim.submission_response
+        assert valid_claim.submission_response['queued'] is True
+        assert 'queue_entry_id' in valid_claim.submission_response
 
     def test_submit_claim_logs_audit_entry(
         self, valid_claim, test_user, mock_sha_submission_response
     ):
         """
-        Test that submit_claim() creates audit log entry.
+        Test that submit_claim() creates audit log entry for queuing.
         
         Given: A valid claim
-        When: submit_claim() is called successfully
-        Then: AuditLog entry is created for sha_claim_submit action
+        When: submit_claim() is called
+        Then: AuditLog entry is created for sha_claim_queued action
         """
         from hmis.apps.billing.services.sha_claims import SHAClaimsService
         
         service = SHAClaimsService()
         
-        initial_audit_count = AuditLog.objects.filter(action='sha_claim_submit').count()
+        # Check for queued action (offline-first implementation)
+        initial_audit_count = AuditLog.objects.filter(action='sha_claim_queued').count()
         
-        with patch.object(
-            service, '_submit_to_sha_api', return_value=mock_sha_submission_response
-        ):
-            service.submit_claim(valid_claim, test_user)
+        service.submit_claim(valid_claim, test_user)
         
-        # Check audit log was created
-        final_audit_count = AuditLog.objects.filter(action='sha_claim_submit').count()
+        # Check audit log was created for queuing
+        final_audit_count = AuditLog.objects.filter(action='sha_claim_queued').count()
         assert final_audit_count == initial_audit_count + 1
         
         # Verify audit log content
-        audit_log = AuditLog.objects.filter(action='sha_claim_submit').latest('timestamp')
+        audit_log = AuditLog.objects.filter(action='sha_claim_queued').latest('timestamp')
         assert audit_log.user == test_user
         assert audit_log.resource_type == 'SHAClaim'
         assert audit_log.resource_id == valid_claim.id
-        assert 'sha_reference' in audit_log.details
+        assert 'queue_entry_id' in audit_log.details
 
-    def test_submit_claim_handles_api_error(self, valid_claim, test_user):
+    def test_submit_claim_handles_validation_error(self, valid_claim, test_user):
         """
-        Test that submit_claim() handles API errors gracefully.
+        Test that submit_claim() handles validation errors.
         
-        Given: A valid claim
-        When: SHA API returns an error
-        Then: ValidationError is raised and claim stores error response
+        Given: A valid claim with validation issues in packaging
+        When: Packaging fails
+        Then: ValidationError is raised
         """
         from hmis.apps.billing.services.sha_claims import SHAClaimsService
         
         service = SHAClaimsService()
         
+        # Mock package_claim to raise validation error
         with patch.object(
-            service, '_submit_to_sha_api',
-            side_effect=requests.RequestException("Connection refused")
+            service, 'package_claim',
+            side_effect=ValidationError("Invalid claim data")
         ):
             with pytest.raises(ValidationError) as exc_info:
                 service.submit_claim(valid_claim, test_user)
         
-        assert 'Submission failed' in str(exc_info.value)
-        
-        # Verify error was stored in claim
-        valid_claim.refresh_from_db()
-        assert 'error' in valid_claim.submission_response
+        assert 'Invalid claim data' in str(exc_info.value)
 
-    def test_attachments_included_in_submission(
-        self, valid_claim, test_user, mock_sha_submission_response
+    def test_claim_queued_creates_sync_queue_entry(
+        self, valid_claim, test_user
     ):
         """
-        Test that attachments are included in SHA API submission.
+        Test that submit_claim() creates sync queue entry for offline processing.
         
-        Given: A valid claim with attachments
+        Given: A valid claim
         When: submit_claim() is called
-        Then: Attachments are included in the API call
+        Then: SyncQueue entry is created with PENDING status
         """
         from hmis.apps.billing.services.sha_claims import SHAClaimsService
+        from hmis.apps.core.models import SyncQueue
         
         service = SHAClaimsService()
         
-        # Track what's passed to _submit_to_sha_api
-        submitted_claim = None
+        initial_queue_count = SyncQueue.objects.filter(
+            model_name='SHAClaimSubmission'
+        ).count()
         
-        def capture_submission(bundle, claim):
-            nonlocal submitted_claim
-            submitted_claim = claim
-            return mock_sha_submission_response
+        service.submit_claim(valid_claim, test_user)
         
-        with patch.object(service, '_submit_to_sha_api', side_effect=capture_submission):
-            service.submit_claim(valid_claim, test_user)
+        # Verify queue entry was created
+        final_queue_count = SyncQueue.objects.filter(
+            model_name='SHAClaimSubmission'
+        ).count()
+        assert final_queue_count == initial_queue_count + 1
         
-        # Verify claim with attachments was passed
-        assert submitted_claim is not None
-        assert submitted_claim.attachments.count() == 2
+        # Verify queue entry data
+        queue_entry = SyncQueue.objects.filter(
+            model_name='SHAClaimSubmission'
+        ).latest('created_at')
+        assert queue_entry.status == 'PENDING'
+        assert queue_entry.data.get('claim_id') == valid_claim.id
 
 
 @pytest.mark.django_db
@@ -776,8 +773,9 @@ class TestSHAClaimsServiceConfiguration:
         assert hasattr(service, 'api_key')
         assert hasattr(service, 'facility_code')
         assert hasattr(service, 'facility_level')
+        assert hasattr(service, 'auth_service')
         
-        assert service.api_base_url == settings.SHA_API_BASE_URL
+        assert service.api_base_url == settings.SHA_API_BASE_URL.rstrip('/')
         assert service.api_key == settings.SHA_API_KEY
         assert service.facility_code == settings.FACILITY_MFL_CODE
         assert service.facility_level == settings.FACILITY_LEVEL
