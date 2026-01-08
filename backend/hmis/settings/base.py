@@ -343,6 +343,11 @@ SHA_CLIENT_SECRET = os.getenv("SHA_CLIENT_SECRET", "")  # Client secret (if need
 SHA_USERNAME = os.getenv("SHA_USERNAME", "")  # API username for Basic Auth
 SHA_PASSWORD = os.getenv("SHA_PASSWORD", "")  # API password for Basic Auth
 
+# SHA FHIR Base URL (for bundle profile/resource URLs - NOT API endpoint)
+# UAT: https://qa-mis.apeiro-digital.com
+# Production: https://mis.apeiro-digital.com
+SHA_FHIR_BASE_URL = os.getenv("SHA_FHIR_BASE_URL", "https://mis.apeiro-digital.com")
+
 # SHA API Endpoints (Official Kenya Digital Superhighway)
 SHA_ENDPOINTS = {
     'auth': '/v1/hie-auth',
