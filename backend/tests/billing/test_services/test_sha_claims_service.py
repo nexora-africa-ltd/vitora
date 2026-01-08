@@ -509,11 +509,13 @@ class TestSHAClaimsServicePackaging:
 
     def test_package_claim_returns_fhir_bundle(self, valid_claim):
         """
-        Test that package_claim() returns FHIR-compatible bundle.
+        Test that package_claim() returns SHA-compliant FHIR bundle.
         
         Given: A valid claim
         When: package_claim() is called
-        Then: Returns dict with FHIR Bundle structure
+        Then: Returns dict with FHIR Bundle structure (type: 'message' per SHA spec)
+        
+        Reference: docs/sha-guides/claims.md - Bundle must have type 'message'
         """
         from hmis.apps.billing.services.sha_claims import SHAClaimsService
         
@@ -523,21 +525,28 @@ class TestSHAClaimsServicePackaging:
         
         assert isinstance(bundle, dict)
         assert bundle['resourceType'] == 'Bundle'
-        assert bundle['type'] == 'collection'
+        # SHA requires 'message' bundle type (not 'collection')
+        assert bundle['type'] == 'message'
+        assert 'id' in bundle  # SHA requires bundle ID
+        assert 'meta' in bundle  # SHA requires meta.profile
         assert 'timestamp' in bundle
         assert 'entry' in bundle
         assert isinstance(bundle['entry'], list)
-        assert len(bundle['entry']) >= 3  # Claim, Patient, Coverage
+        # SHA bundle order: Organization, Coverage, Patient, Claim (4 entries)
+        assert len(bundle['entry']) >= 4
 
     def test_fhir_claim_resource_structure(self, valid_claim):
         """
-        Test that FHIR Claim resource has correct structure.
+        Test that FHIR Claim resource has correct SHA-compliant structure.
         
         Given: A valid claim
         When: package_claim() is called
-        Then: Bundle contains properly structured Claim resource
+        Then: Bundle contains properly structured Claim resource per SHA spec
+        
+        Reference: docs/sha-guides/claims.md - Claim Resource section
         """
         from hmis.apps.billing.services.sha_claims import SHAClaimsService
+        import uuid
         
         service = SHAClaimsService()
         
@@ -550,17 +559,30 @@ class TestSHAClaimsServicePackaging:
         )
         
         assert claim_entry is not None
+        # SHA requires fullUrl in entry
+        assert 'fullUrl' in claim_entry
+        
         claim_resource = claim_entry['resource']
         
-        # Verify required FHIR Claim fields
+        # Verify required FHIR Claim fields (SHA-compliant)
         assert claim_resource['resourceType'] == 'Claim'
+        assert 'id' in claim_resource  # SHA requires id
         assert 'identifier' in claim_resource
-        assert claim_resource['identifier'][0]['value'] == valid_claim.claim_number
+        # Identifier uses UUID format (bundle GUID)
+        assert claim_resource['identifier'][0]['value'] == claim_resource['id']
         assert claim_resource['status'] == 'active'
         assert 'type' in claim_resource
+        # SHA requires claim type coding
+        assert claim_resource['type']['coding'][0]['code'] == 'institutional'
         assert claim_resource['use'] == 'claim'
         assert 'patient' in claim_resource
+        # SHA requires patient reference with identifier
+        assert 'identifier' in claim_resource['patient']
         assert 'provider' in claim_resource
+        # SHA requires billablePeriod
+        assert 'billablePeriod' in claim_resource
+        # SHA requires insurance reference
+        assert 'insurance' in claim_resource
         assert 'diagnosis' in claim_resource
         assert 'item' in claim_resource
         assert 'total' in claim_resource
@@ -587,8 +609,15 @@ class TestSHAClaimsServicePackaging:
         )
         
         assert patient_entry is not None
+        # SHA requires fullUrl
+        assert 'fullUrl' in patient_entry
         patient_resource = patient_entry['resource']
         assert patient_resource['resourceType'] == 'Patient'
+        # SHA requires patient ID to be SHA CR Number
+        assert 'id' in patient_resource
+        # SHA requires identifier with shanumber system
+        assert 'identifier' in patient_resource
+        assert patient_resource['identifier'][0]['system'].endswith('/identifier/shanumber')
 
     def test_fhir_coverage_resource_included(self, valid_claim):
         """
@@ -596,7 +625,9 @@ class TestSHAClaimsServicePackaging:
         
         Given: A valid claim
         When: package_claim() is called
-        Then: Bundle contains Coverage resource for SHA membership
+        Then: Bundle contains Coverage resource with SHA scheme extensions
+        
+        Reference: docs/sha-guides/claims.md - Coverage Resource section
         """
         from hmis.apps.billing.services.sha_claims import SHAClaimsService
         
@@ -611,8 +642,58 @@ class TestSHAClaimsServicePackaging:
         )
         
         assert coverage_entry is not None
+        # SHA requires fullUrl
+        assert 'fullUrl' in coverage_entry
         coverage_resource = coverage_entry['resource']
         assert coverage_resource['resourceType'] == 'Coverage'
+        # SHA requires scheme extensions
+        assert 'extension' in coverage_resource
+        # Find scheme-category extension with CAT-SHA-001
+        scheme_ext = next(
+            (ext for ext in coverage_resource['extension'] 
+             if 'scheme-category' in ext.get('url', '')),
+            None
+        )
+        assert scheme_ext is not None
+        # Verify CAT-SHA-001 code is present
+        assert any(
+            nested.get('valueString') == 'CAT-SHA-001' 
+            for nested in scheme_ext.get('extension', [])
+        )
+
+    def test_fhir_organization_resource_included(self, valid_claim):
+        """
+        Test that FHIR Organization resource is included in bundle.
+        
+        Given: A valid claim
+        When: package_claim() is called
+        Then: Bundle contains Organization resource for the healthcare facility
+        
+        Reference: docs/sha-guides/claims.md - Organization Resource section
+        """
+        from hmis.apps.billing.services.sha_claims import SHAClaimsService
+        
+        service = SHAClaimsService()
+        
+        bundle = service.package_claim(valid_claim)
+        
+        # Find Organization resource in bundle
+        org_entry = next(
+            (e for e in bundle['entry'] if e['resource'].get('resourceType') == 'Organization'),
+            None
+        )
+        
+        assert org_entry is not None
+        # SHA requires fullUrl
+        assert 'fullUrl' in org_entry
+        org_resource = org_entry['resource']
+        assert org_resource['resourceType'] == 'Organization'
+        # SHA requires organization ID
+        assert 'id' in org_resource
+        # SHA requires facility name
+        assert 'name' in org_resource
+        # SHA requires identifier with facility code
+        assert 'identifier' in org_resource
 
 
 @pytest.mark.django_db
