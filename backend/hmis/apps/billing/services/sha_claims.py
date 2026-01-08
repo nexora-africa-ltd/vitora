@@ -4,7 +4,10 @@ SHA Claims Service for Vitora HMIS.
 This module handles SHA (Social Health Authority) claims creation,
 validation, packaging (FHIR format), and submission.
 
-Reference: docs/sprint-2.1-2.2-sha-claims-integration-deliverables.md
+Reference: docs/sha-api-validation-report.md
+Official Endpoints:
+    - Submit: POST /v1/shr-med/bundle
+    - Status: GET /v1/shr-med/claim-status?claim_id={claim_id}
 """
 
 import logging
@@ -21,6 +24,7 @@ from hmis.apps.billing.models import (
     SHAClaim,
     SHAClaimItem,
 )
+from hmis.apps.billing.services.sha_auth import SHAAuthError, SHAAuthService
 from hmis.apps.core.models import AuditLog
 from hmis.apps.core.sync import ConnectivityChecker, SyncManager
 
@@ -31,11 +35,16 @@ class SHAClaimsService:
     """
     Service for SHA claims management.
     
-    Handles claim creation, validation, packaging, and submission.
+    Handles claim creation, validation, packaging, and submission
+    using the official Kenya Digital Superhighway API.
+    
+    Official Endpoints:
+        - POST /v1/shr-med/bundle - Submit FHIR claim bundle
+        - GET /v1/shr-med/claim-status?claim_id={id} - Check claim status
     
     Attributes:
         api_base_url: Base URL for SHA API
-        api_key: API key for authentication
+        auth_service: SHA authentication service
         facility_code: MFL (Master Facility List) code
         facility_level: Facility level (L1-L6)
     
@@ -49,10 +58,21 @@ class SHAClaimsService:
     
     def __init__(self):
         """Initialize SHAClaimsService with settings from Django config."""
-        self.api_base_url = settings.SHA_API_BASE_URL
-        self.api_key = settings.SHA_API_KEY
+        self.api_base_url = settings.SHA_API_BASE_URL.rstrip('/')
+        self.auth_service = SHAAuthService()
         self.facility_code = settings.FACILITY_MFL_CODE
         self.facility_level = settings.FACILITY_LEVEL
+        
+        # Backward compatible attributes for tests
+        self.api_key = settings.SHA_API_KEY
+        
+        # Get endpoints from settings
+        self.claims_submit_endpoint = settings.SHA_ENDPOINTS.get(
+            'claims_submit', '/v1/shr-med/bundle'
+        )
+        self.claims_status_endpoint = settings.SHA_ENDPOINTS.get(
+            'claims_status', '/v1/shr-med/claim-status'
+        )
     
     def create_claim_from_encounter(
         self,
@@ -705,6 +725,8 @@ class SHAClaimsService:
         """
         Submit claim bundle to SHA API.
         
+        Uses the official endpoint: POST /v1/shr-med/bundle
+        
         Args:
             bundle: FHIR Bundle to submit
             claim: SHAClaim (for attachments)
@@ -714,13 +736,13 @@ class SHAClaimsService:
             
         Raises:
             requests.RequestException: If API call fails
+            SHAAuthError: If authentication fails
         """
-        headers = {
-            'Authorization': f'Bearer {self.api_key}',
-            'Content-Type': 'application/fhir+json',
-        }
+        # Get auth headers
+        headers = self.auth_service.get_auth_headers()
+        headers['Content-Type'] = 'application/fhir+json'
         
-        # Prepare multipart with attachments
+        # Prepare multipart with attachments if any
         files = []
         for attachment in claim.attachments.all():
             files.append((
@@ -728,12 +750,66 @@ class SHAClaimsService:
                 (attachment.original_filename, attachment.file, attachment.mime_type)
             ))
         
+        # Submit to official endpoint: /v1/shr-med/bundle
         response = requests.post(
-            f'{self.api_base_url}/claims/submit',
+            f'{self.api_base_url}{self.claims_submit_endpoint}',
             json=bundle,
             files=files or None,
             headers=headers,
             timeout=60,
         )
+        
+        # Handle auth errors
+        if response.status_code == 401:
+            self.auth_service.clear_token_cache()
+            raise SHAAuthError("Authentication failed during claim submission", status_code=401)
+        
         response.raise_for_status()
-        return response.json()
+        
+        # Parse response - handle official wrapper format
+        data = response.json()
+        
+        # Official format: {"IsSuccess": true, "Data": {...}}
+        if 'Data' in data and data.get('IsSuccess'):
+            return data['Data']
+        
+        return data
+    
+    def get_claim_status(self, claim_id: str) -> dict:
+        """
+        Get claim status from SHA API.
+        
+        Uses the official endpoint: GET /v1/shr-med/claim-status?claim_id={claim_id}
+        
+        Args:
+            claim_id: SHA claim reference/ID
+            
+        Returns:
+            Claim status response dict
+            
+        Raises:
+            requests.RequestException: If API call fails
+            SHAAuthError: If authentication fails
+        """
+        headers = self.auth_service.get_auth_headers()
+        
+        response = requests.get(
+            f'{self.api_base_url}{self.claims_status_endpoint}',
+            params={'claim_id': claim_id},
+            headers=headers,
+            timeout=30,
+        )
+        
+        if response.status_code == 401:
+            self.auth_service.clear_token_cache()
+            raise SHAAuthError("Authentication failed during status check", status_code=401)
+        
+        response.raise_for_status()
+        
+        data = response.json()
+        
+        # Handle official wrapper format
+        if 'Data' in data and data.get('IsSuccess'):
+            return data['Data']
+        
+        return data

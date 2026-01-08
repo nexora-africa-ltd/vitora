@@ -304,7 +304,7 @@ class TestSHAEligibilityServiceErrorHandling:
         # First 2 calls fail, third succeeds
         call_count = 0
         
-        def mock_post(*args, **kwargs):
+        def mock_get(*args, **kwargs):
             nonlocal call_count
             call_count += 1
             if call_count < 3:
@@ -312,13 +312,15 @@ class TestSHAEligibilityServiceErrorHandling:
             mock_response = Mock()
             mock_response.json.return_value = {'eligible': True, 'balance': '50000.00'}
             mock_response.raise_for_status = Mock()
+            mock_response.status_code = 200
             return mock_response
         
         with patch('time.sleep', side_effect=mock_sleep):
-            with patch('requests.post', side_effect=mock_post):
-                # _call_api handles retries internally
-                request_data = service._build_request(sha_member_needs_check)
-                result = service._call_api(request_data)
+            with patch('requests.get', side_effect=mock_get):
+                with patch.object(service.auth_service, 'get_auth_headers', return_value={'Authorization': 'Bearer test'}):
+                    # _call_api handles retries internally
+                    request_data = service._build_request(sha_member_needs_check)
+                    result = service._call_api(request_data)
         
         # Verify exponential backoff pattern: 2^0=1, 2^1=2 seconds
         assert len(sleep_calls) == 2
@@ -333,11 +335,11 @@ class TestSHAEligibilityServiceRequestPayload:
 
     def test_request_payload_format(self, sha_member):
         """
-        Test that request payload has correct format.
+        Test that request payload has correct format for official SHA API.
         
         Given: A SHA member
         When: _build_request() is called
-        Then: Payload contains sha_number, national_id, and check_date
+        Then: Payload contains doc_type and doc_value per official spec
         """
         from hmis.apps.billing.services.sha_eligibility import SHAEligibilityService
         
@@ -345,12 +347,12 @@ class TestSHAEligibilityServiceRequestPayload:
         
         request_data = service._build_request(sha_member)
         
-        assert 'sha_number' in request_data
-        assert request_data['sha_number'] == sha_member.sha_number
-        assert 'national_id' in request_data
-        assert request_data['national_id'] == sha_member.national_id
-        assert 'check_date' in request_data
-        assert request_data['check_date'] == date.today().isoformat()
+        # Official API uses doc_type and doc_value
+        assert 'doc_type' in request_data
+        assert 'doc_value' in request_data
+        # SHA number should be preferred when available
+        assert request_data['doc_type'] == 'sha_number'
+        assert request_data['doc_value'] == sha_member.sha_number
 
 
 @pytest.mark.django_db
@@ -379,7 +381,9 @@ class TestSHAEligibilityServiceResponseParsing:
         assert check.eligible_until is not None
         assert check.benefit_balance == Decimal('75000.00')
         assert check.ineligibility_reason == ''
-        assert check.response_data == mock_sha_api_success_response
+        # Response data includes original fields plus raw_response for debugging
+        assert check.response_data['eligible'] == mock_sha_api_success_response['eligible']
+        assert check.response_data['balance'] == mock_sha_api_success_response['balance']
 
     def test_response_parsing_for_ineligible_member(
         self, sha_member_needs_check, test_user, mock_sha_api_ineligible_response
@@ -433,7 +437,9 @@ class TestSHAEligibilityServiceMemberUpdate:
         
         assert sha_member_needs_check.status == SHAMember.MembershipStatus.ACTIVE
         assert sha_member_needs_check.last_eligibility_check is not None
-        assert sha_member_needs_check.eligibility_response == mock_sha_api_success_response
+        # Response includes raw_response for debugging, check key fields match
+        assert sha_member_needs_check.eligibility_response['eligible'] == mock_sha_api_success_response['eligible']
+        assert sha_member_needs_check.eligibility_response['balance'] == mock_sha_api_success_response['balance']
 
     def test_member_status_updated_to_expired(
         self, sha_member_needs_check, test_user, mock_sha_api_ineligible_response
@@ -534,24 +540,26 @@ class TestSHAEligibilityServiceMockAPI:
         mock_response = Mock()
         mock_response.json.return_value = {
             'eligible': True,
-            'valid_until': '2027-01-07',
+            'coverageEndDate': '2027-01-07',
             'balance': '100000.00',
         }
         mock_response.raise_for_status = Mock()
+        mock_response.status_code = 200
         
-        with patch('requests.post', return_value=mock_response) as mock_post:
-            check = service.check_eligibility(sha_member_needs_check, test_user)
-            
-            # Verify requests.post was called with correct parameters
-            mock_post.assert_called()
-            call_args = mock_post.call_args
-            
-            # Verify URL contains eligibility endpoint
-            assert 'eligibility' in call_args[0][0] or 'eligibility' in str(call_args)
-            
-            # Verify headers include Authorization
-            assert 'headers' in call_args[1]
-            assert 'Authorization' in call_args[1]['headers']
+        with patch('requests.get', return_value=mock_response) as mock_get:
+            with patch.object(service.auth_service, 'get_auth_headers', return_value={'Authorization': 'Bearer test'}):
+                check = service.check_eligibility(sha_member_needs_check, test_user)
+                
+                # Verify requests.get was called with correct parameters
+                mock_get.assert_called()
+                call_args = mock_get.call_args
+                
+                # Verify URL contains eligibility endpoint
+                assert 'eligibility' in call_args[0][0] or 'eligibility' in str(call_args)
+                
+                # Verify headers include Authorization
+                assert 'headers' in call_args[1]
+                assert 'Authorization' in call_args[1]['headers']
         
         assert check.is_eligible is True
 
@@ -577,6 +585,7 @@ class TestSHAEligibilityServiceConfiguration:
         assert hasattr(service, 'api_key')
         assert hasattr(service, 'timeout')
         assert hasattr(service, 'max_retries')
+        assert hasattr(service, 'auth_service')
         
         # Verify max_retries is 3 as per spec
         assert service.max_retries == 3
@@ -594,6 +603,6 @@ class TestSHAEligibilityServiceConfiguration:
         service = SHAEligibilityService()
         
         # These settings should be defined in Django settings
-        assert service.api_base_url == settings.SHA_API_BASE_URL
+        assert service.api_base_url == settings.SHA_API_BASE_URL.rstrip('/')
         assert service.api_key == settings.SHA_API_KEY
         assert service.timeout == settings.SHA_API_TIMEOUT
