@@ -34,6 +34,7 @@ const PAGE_URLS: Record<string, string> = {
   'stock inventory': '/pharmacy/stock',
   'dispensing': '/pharmacy/dispensing',
   'prescription queue': '/pharmacy/prescriptions',
+  'pharmacy alerts dashboard': '/pharmacy/alerts',
   
   // Triage
   'triage': '/triage',
@@ -47,6 +48,7 @@ const PAGE_URLS: Record<string, string> = {
   // Reports
   'reports': '/reports',
   'pharmacy reports': '/reports/pharmacy',
+  'triage reports dashboard': '/reports/triage',
   
   // Dashboard
   'dashboard': '/dashboard',
@@ -83,6 +85,61 @@ Given(
     this.currentPage = 'patient registration';
     if (this.page) {
       await this.page.goto('/patients/register');
+      await this.page.waitForLoadState('networkidle');
+    }
+  }
+);
+
+Given(
+  'I am on the outpatient department page',
+  async function (this: VitoraWorld) {
+    this.currentPage = 'outpatient department';
+    if (this.page) {
+      await this.page.goto(PAGE_URLS['outpatient department']);
+      await this.page.waitForLoadState('networkidle');
+    }
+  }
+);
+
+Given(
+  'I am on the inpatient department page',
+  async function (this: VitoraWorld) {
+    this.currentPage = 'inpatient department';
+    if (this.page) {
+      await this.page.goto(PAGE_URLS['inpatient department']);
+      await this.page.waitForLoadState('networkidle');
+    }
+  }
+);
+
+Given(
+  'I am on the pharmacy alerts dashboard',
+  async function (this: VitoraWorld) {
+    this.currentPage = 'pharmacy alerts dashboard';
+    if (this.page) {
+      await this.page.goto(PAGE_URLS['pharmacy alerts dashboard']);
+      await this.page.waitForLoadState('networkidle');
+    }
+  }
+);
+
+Given(
+  'I am on the pharmacy reports page',
+  async function (this: VitoraWorld) {
+    this.currentPage = 'pharmacy reports';
+    if (this.page) {
+      await this.page.goto(PAGE_URLS['pharmacy reports']);
+      await this.page.waitForLoadState('networkidle');
+    }
+  }
+);
+
+Given(
+  'I am on the triage reports dashboard',
+  async function (this: VitoraWorld) {
+    this.currentPage = 'triage reports dashboard';
+    if (this.page) {
+      await this.page.goto(PAGE_URLS['triage reports dashboard']);
       await this.page.waitForLoadState('networkidle');
     }
   }

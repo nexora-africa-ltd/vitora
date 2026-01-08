@@ -129,35 +129,10 @@ When(
 );
 
 When(
-  'I enter vitals:',
-  async function (this: VitoraWorld, dataTable: DataTable) {
-    const vitals = safeHashes(dataTable.hashes());
-    
-    for (const vital of vitals) {
-      const vitalName = vital['vital'] || vital['Vital'] || '';
-      const vitalValue = vital['value'] || vital['Value'] || '';
-      const fieldName = vitalName.toLowerCase().replace(/\s+/g, '_');
-      await this.page?.fill(`[name="${fieldName}"]`, vitalValue);
-    }
-    
-    this.store('enteredVitals', vitals);
-  }
-);
-
-When(
   'I save the vitals',
   async function (this: VitoraWorld) {
     await this.page?.click('button:has-text("Save Vitals"), [data-testid="save-vitals"]');
     await this.page?.waitForResponse(/encounters|vitals/);
-  }
-);
-
-When(
-  'I enter {word} as {string}',
-  async function (this: VitoraWorld, vital: string, value: string) {
-    const fieldName = vital.toLowerCase().replace(/\s+/g, '_');
-    await this.page?.fill(`[name="${fieldName}"]`, value);
-    this.store(`entered_${fieldName}`, value);
   }
 );
 
@@ -289,13 +264,6 @@ When(
 );
 
 When(
-  'I click {string}',
-  async function (this: VitoraWorld, buttonText: string) {
-    await this.page?.click(`button:has-text("${buttonText}")`);
-  }
-);
-
-When(
   'I schedule follow-up:',
   async function (this: VitoraWorld, dataTable: DataTable) {
     const followUp = safeRowsHash(dataTable.rowsHash());
@@ -378,13 +346,28 @@ Then(
 Then(
   'all vitals should be recorded in the encounter',
   async function (this: VitoraWorld) {
-    const enteredVitals = this.retrieve<Array<{ vital: string; value: string }>>('enteredVitals');
-    
-    for (const vital of enteredVitals!) {
-      const fieldName = vital.vital.toLowerCase().replace(/\s+/g, '_');
-      const displayedValue = await this.page?.locator(`[data-field="${fieldName}"]`).textContent();
-      expect(displayedValue).toContain(vital.value);
+    const enteredVitals = this.retrieve<Array<{ vital: string; value: string }> | undefined>('enteredVitals');
+    const vitalsMap = this.retrieve<Record<string, string> | undefined>('vitals');
+
+    if (enteredVitals?.length) {
+      for (const vital of enteredVitals) {
+        const fieldName = vital.vital.toLowerCase().replace(/\s+/g, '_');
+        const displayedValue = await this.page?.locator(`[data-field="${fieldName}"]`).textContent();
+        expect(displayedValue).toContain(vital.value);
+      }
+      return;
     }
+
+    if (vitalsMap) {
+      for (const [vital, value] of Object.entries(vitalsMap)) {
+        const fieldName = vital.toLowerCase().replace(/\s+/g, '_');
+        const displayedValue = await this.page?.locator(`[data-field="${fieldName}"]`).textContent();
+        expect(displayedValue).toContain(value);
+      }
+      return;
+    }
+
+    throw new Error('No vitals found in test context (expected "enteredVitals" or "vitals")');
   }
 );
 

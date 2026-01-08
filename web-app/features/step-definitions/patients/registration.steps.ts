@@ -15,14 +15,6 @@ import { createPatientData, safeHashes, safeRowsHash, ensureString } from '../..
  */
 
 Given(
-  'I am on the patient registration page',
-  async function (this: VitoraWorld) {
-    await this.page?.goto('/patients/register');
-    await this.page?.waitForSelector('form');
-  }
-);
-
-Given(
   'a patient exists with MRN {string}',
   async function (this: VitoraWorld, mrn: string) {
     // Create patient via API
@@ -70,101 +62,10 @@ Given(
  */
 
 When(
-  'I fill in the registration form:',
-  async function (this: VitoraWorld, dataTable: DataTable) {
-    const data = dataTable.rowsHash();
-    
-    for (const [field, value] of Object.entries(data)) {
-      const fieldName = field.toLowerCase().replace(/\s+/g, '_');
-      
-      // Handle different input types
-      switch (fieldName) {
-        case 'county':
-        case 'sub_county':
-        case 'sub-county':
-        case 'ward':
-        case 'gender':
-        case 'referral_source':
-          // Select dropdowns
-          await this.page?.click(`[name="${fieldName}"]`);
-          await this.page?.click(`[data-value="${value}"]`);
-          break;
-        
-        case 'date_of_birth':
-          // Date input
-          await this.page?.fill(`[name="${fieldName}"]`, value);
-          break;
-        
-        default:
-          // Text inputs
-          await this.page?.fill(`[name="${fieldName}"]`, value);
-      }
-    }
-    
-    // Store form data for assertions
-    this.store('formData', data);
-  }
-);
-
-When(
-  'I click {string}',
-  async function (this: VitoraWorld, buttonText: string) {
-    await this.page?.click(`button:has-text("${buttonText}")`);
-    // Wait for any navigation or API call
-    await this.page?.waitForLoadState('networkidle');
-  }
-);
-
-When(
-  'I enter {word} as {string}',
-  async function (this: VitoraWorld, field: string, value: string) {
-    const fieldName = field.toLowerCase().replace(/\s+/g, '_');
-    await this.page?.fill(`[name="${fieldName}"]`, value);
-  }
-);
-
-When(
-  'I select county {string}',
-  async function (this: VitoraWorld, countyName: string) {
-    await this.page?.click('[name="county"]');
-    await this.page?.click(`[role="option"]:has-text("${countyName}")`);
-    // Wait for sub-counties to load
-    await this.page?.waitForResponse(/sub-counties/);
-  }
-);
-
-When(
-  'I select sub-county {string}',
-  async function (this: VitoraWorld, subCountyName: string) {
-    await this.page?.click('[name="sub_county"]');
-    await this.page?.click(`[role="option"]:has-text("${subCountyName}")`);
-  }
-);
-
-When(
   'I leave {word} empty',
   async function (this: VitoraWorld, field: string) {
     const fieldName = field.toLowerCase().replace(/\s+/g, '_');
     await this.page?.fill(`[name="${fieldName}"]`, '');
-  }
-);
-
-When(
-  'I try to submit the form',
-  async function (this: VitoraWorld) {
-    await this.page?.click('button[type="submit"]');
-  }
-);
-
-When(
-  'I add an emergency contact:',
-  async function (this: VitoraWorld, dataTable: DataTable) {
-    const data = safeRowsHash(dataTable.rowsHash());
-    
-    await this.page?.fill('[name="emergency_contact_name"]', data['Name'] ?? '');
-    await this.page?.fill('[name="emergency_contact_phone"]', data['Phone'] ?? '');
-    await this.page?.click('[name="emergency_contact_relationship"]');
-    await this.page?.click(`[role="option"]:has-text("${data['Relationship'] ?? ''}")`);
   }
 );
 
@@ -232,14 +133,6 @@ Then(
 );
 
 Then(
-  'I should see a success message {string}',
-  async function (this: VitoraWorld, message: string) {
-    const toast = this.page?.locator(`text=${message}`);
-    await expect(toast!).toBeVisible({ timeout: 5000 });
-  }
-);
-
-Then(
   '{string} should be set to my user account',
   async function (this: VitoraWorld, field: string) {
     // Verify via API that the field is set correctly
@@ -268,30 +161,8 @@ Then(
   }
 );
 
-Then(
-  'I should see an error {string}',
-  async function (this: VitoraWorld, errorMessage: string) {
-    const error = this.page?.locator(`text=${errorMessage}`);
-    await expect(error!).toBeVisible();
-  }
-);
-
-Then(
-  'I should see a warning {string}',
-  async function (this: VitoraWorld, warningMessage: string) {
-    const warning = this.page?.locator(`text=${warningMessage}`);
-    await expect(warning!).toBeVisible();
-  }
-);
-
-Then(
-  'the validation should pass',
-  async function (this: VitoraWorld) {
-    // Check no error messages are visible
-    const errors = await this.page?.locator('.error-message, [role="alert"][aria-invalid="true"]').count();
-    expect(errors).toBe(0);
-  }
-);
+// Note: 'I should see an error {string}' and 'I should see a warning {string}'
+// are defined in common/forms.steps.ts - using those instead of duplicating
 
 Then(
   'the patient should not be created',
@@ -299,19 +170,6 @@ Then(
     // Still on registration page
     const url = this.page?.url();
     expect(url).toContain('/register');
-  }
-);
-
-Then(
-  'I should see validation errors for:',
-  async function (this: VitoraWorld, dataTable: DataTable) {
-    const fields = dataTable.raw().flat();
-    
-    for (const field of fields) {
-      const fieldName = field.toLowerCase().replace(/\s+/g, '_');
-      const errorElement = this.page?.locator(`[name="${fieldName}"] ~ .error, [data-field="${fieldName}"] .error`);
-      await expect(errorElement!).toBeVisible();
-    }
   }
 );
 

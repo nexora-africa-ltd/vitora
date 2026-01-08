@@ -83,6 +83,106 @@ Given(
 );
 
 Given(
+  'I am logged in as a healthcare provider',
+  async function (this: VitoraWorld) {
+    // Treat "healthcare provider" as a clinical user (doctor role)
+    const user = createUser('doctor', {
+      username: 'provider_user',
+      email: 'provider@vitora.health',
+    });
+    this.setUser(user);
+
+    if (this.page) {
+      await this.page.goto('/login');
+      await this.page.fill('[name="username"]', user.username);
+      await this.page.fill('[name="password"]', 'testpassword');
+      await this.page.click('button[type="submit"]');
+      await this.page.waitForURL(/dashboard|home/);
+    }
+  }
+);
+
+Given(
+  'I am logged in as a user with clinical permissions',
+  async function (this: VitoraWorld) {
+    const user = createUser('doctor', {
+      username: 'clinical_user',
+      email: 'clinical@vitora.health',
+    });
+    this.setUser(user);
+
+    if (this.page) {
+      await this.page.goto('/login');
+      await this.page.fill('[name="username"]', user.username);
+      await this.page.fill('[name="password"]', 'testpassword');
+      await this.page.click('button[type="submit"]');
+      await this.page.waitForURL(/dashboard|home/);
+    }
+  }
+);
+
+Given(
+  'I am logged in as a user with inpatient permissions',
+  async function (this: VitoraWorld) {
+    // Start from doctor and add IPD-style permissions referenced by features.
+    const user = createUser('doctor', {
+      username: 'ipd_user',
+      email: 'ipd@vitora.health',
+      permissions: [...PERMISSIONS.doctor, 'ipd.view_ward', 'ipd.add_admission', 'ipd.change_bed'],
+    });
+    this.setUser(user);
+
+    if (this.page) {
+      await this.page.goto('/login');
+      await this.page.fill('[name="username"]', user.username);
+      await this.page.fill('[name="password"]', 'testpassword');
+      await this.page.click('button[type="submit"]');
+      await this.page.waitForURL(/dashboard|home/);
+    }
+  }
+);
+
+Given(
+  'I am logged in as a user with queue management permissions',
+  async function (this: VitoraWorld) {
+    const user = createUser('receptionist', {
+      username: 'queue_user',
+      email: 'queue@vitora.health',
+      permissions: [...PERMISSIONS.receptionist, 'core.manage_queue', 'core.change_queue'],
+    });
+    this.setUser(user);
+
+    if (this.page) {
+      await this.page.goto('/login');
+      await this.page.fill('[name="username"]', user.username);
+      await this.page.fill('[name="password"]', 'testpassword');
+      await this.page.click('button[type="submit"]');
+      await this.page.waitForURL(/dashboard|home/);
+    }
+  }
+);
+
+Given(
+  'I am logged in as a user with reporting access',
+  async function (this: VitoraWorld) {
+    const user = createUser('admin', {
+      username: 'reporting_user',
+      email: 'reports@vitora.health',
+      permissions: [...PERMISSIONS.admin, 'reports.view_reports', 'reports.view_pharmacy', 'reports.view_triage'],
+    });
+    this.setUser(user);
+
+    if (this.page) {
+      await this.page.goto('/login');
+      await this.page.fill('[name="username"]', user.username);
+      await this.page.fill('[name="password"]', 'testpassword');
+      await this.page.click('button[type="submit"]');
+      await this.page.waitForURL(/dashboard|home/);
+    }
+  }
+);
+
+Given(
   'I do NOT have {string} permission',
   async function (this: VitoraWorld, permission: string) {
     if (this.currentUser) {
