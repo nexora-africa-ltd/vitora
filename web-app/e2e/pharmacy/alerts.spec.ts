@@ -231,7 +231,7 @@ test.describe('Stock Alerts - Acknowledge', () => {
     const acknowledgeButton = acknowledgedAlert.getByRole('button', { name: /acknowledge/i });
     
     // Button should be disabled or not visible
-    etedawait expect(acknowledgeButton).not.toBeVisible();
+    await expect(acknowledgeButton).not.toBeVisible();
   });
 });
 
