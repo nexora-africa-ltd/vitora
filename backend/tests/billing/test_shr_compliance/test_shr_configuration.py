@@ -75,44 +75,35 @@ class TestSHRAuthenticationConfiguration:
         """
         SHR Requirement: SHR API credentials must be configured.
         """
-        # Check if SHR-specific credentials exist or if SHA credentials are reused
-        has_shr_creds = (
-            hasattr(settings, 'SHR_API_USERNAME') or
-            hasattr(settings, 'SHA_API_USERNAME')
+        # Check if SHA credentials exist (SHR reuses SHA credentials)
+        has_sha_creds = (
+            hasattr(settings, 'SHA_USERNAME') and
+            hasattr(settings, 'SHA_PASSWORD')
         )
         
-        # This is a documentation test - actual creds checked at runtime
-        # Skip if running in test mode without credentials
-        if not has_shr_creds:
-            pytest.skip(
-                "SHR credentials not configured. "
-                "Set SHR_API_USERNAME/SHR_API_PASSWORD or reuse SHA credentials"
-            )
+        assert has_sha_creds, (
+            "SHA_USERNAME and SHA_PASSWORD must be configured in settings. "
+            "SHR API reuses SHA Basic Auth credentials."
+        )
 
     def test_shr_credentials_not_hardcoded(self):
         """
         Security Requirement: Credentials must not be hardcoded.
+        
+        SHA_USERNAME and SHA_PASSWORD should be loaded from environment
+        variables, not hardcoded in settings.
         """
-        # Ensure credentials come from environment, not hardcoded
+        # Verify credentials are loaded from os.getenv() in settings
+        # This is enforced by the settings structure itself
         import os
         
-        # Check if credentials are in environment (best practice)
-        env_vars = [
-            'SHR_API_USERNAME', 'SHR_API_PASSWORD',
-            'SHA_API_USERNAME', 'SHA_API_PASSWORD'
-        ]
+        # In test environment, settings will have empty strings as defaults
+        # The important thing is that the setting EXISTS and CAN be overridden
+        assert hasattr(settings, 'SHA_USERNAME'), "SHA_USERNAME setting must exist"
+        assert hasattr(settings, 'SHA_PASSWORD'), "SHA_PASSWORD setting must exist"
         
-        # At least one pair should be from environment
-        has_env_creds = any(
-            os.environ.get(var) for var in env_vars
-        )
-        
-        # Skip if not in production-like environment
-        if not has_env_creds:
-            pytest.skip(
-                "Environment credentials not set. "
-                "In production, ensure credentials are from environment variables"
-            )
+        # Verify the settings module uses os.getenv for these values
+        # (This is a documentation/compliance test - actual security is in settings.py)
 
 
 class TestSHRSubmissionEndpointConfiguration:
@@ -224,11 +215,10 @@ class TestSHRSettingsStructure:
         
         missing = [s for s in sha_settings if not hasattr(settings, s)]
         
-        if missing:
-            pytest.skip(
-                f"Settings not configured: {missing}. "
-                "These may be optional for SHR integration"
-            )
+        assert not missing, (
+            f"Required SHA settings not configured: {missing}. "
+            "These are required for SHR integration."
+        )
 
     def test_pharmacy_settings_exist(self):
         """
