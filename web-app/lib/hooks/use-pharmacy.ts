@@ -355,6 +355,72 @@ export function useDispenseFromPrescription() {
   const queryClient = useQueryClient();
 
   return useMutation({
+    mutationFn: (data: {
+      drug_id: number;
+      quantity: number;
+      patient_id: number;
+      prescription_item_id?: number;
+      counseling_notes?: string;
+    }) => pharmacyApi.dispenseFromPrescription(data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['dispensings'] });
+      queryClient.invalidateQueries({ queryKey: ['prescriptions'] });
+      queryClient.invalidateQueries({ queryKey: ['stock-batches'] });
+      queryClient.invalidateQueries({ queryKey: ['stock-alerts'] });
+      queryClient.invalidateQueries({ queryKey: ['drugs'] });
+    },
+  });
+}
+
+/**
+ * Hook for getting available batches for a drug.
+ */
+export function useBatchesForDrug(drugId: number | undefined) {
+  return useQuery({
+    queryKey: ['stock-batches', 'by-drug', drugId],
+    queryFn: () => pharmacyApi.getBatchesForDrug(drugId!),
+    enabled: !!drugId,
+  });
+}
+
+/**
+ * Hook for returning dispensed stock.
+ */
+export function useReturnDispensing() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: ({ id, quantity, reason }: { id: number; quantity: number; reason: string }) =>
+      pharmacyApi.returnDispensing(id, quantity, reason),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['dispensings'] });
+      queryClient.invalidateQueries({ queryKey: ['prescriptions'] });
+      queryClient.invalidateQueries({ queryKey: ['stock-batches'] });
+    },
+  });
+}
+
+/**
+ * Hook for verifying controlled drug dispensing.
+ */
+export function useVerifyDispensing() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (id: number) => pharmacyApi.verifyDispensing(id),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['dispensings'] });
+    },
+  });
+}
+
+/**
+ * Hook for dispensing from prescription using FEFO.
+ */
+export function useDispenseFromPrescription() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
     mutationFn: ({ prescriptionItemId, quantity }: { prescriptionItemId: number; quantity: number }) =>
       pharmacyApi.dispenseFromPrescription(prescriptionItemId, quantity),
     onSuccess: () => {
