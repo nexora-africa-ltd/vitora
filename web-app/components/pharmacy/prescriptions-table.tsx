@@ -274,7 +274,7 @@ export function PrescriptionsTable({
       </div>
 
       {/* Table */}
-      <div className="rounded-md border">
+      <div className="rounded-md border" data-testid="prescriptions-table">
         <Table>
           <TableHeader>
             <TableRow>
@@ -306,7 +306,7 @@ export function PrescriptionsTable({
                     </div>
                   </TableCell>
                   <TableCell>
-                    <Badge className={STATUS_COLORS[rx.status]}>
+                    <Badge className={STATUS_COLORS[rx.status]} data-testid="status-badge">
                       <StatusIcon className="h-3 w-3 mr-1" />
                       {rx.status}
                     </Badge>
