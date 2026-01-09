@@ -300,7 +300,7 @@ export default function DrugDetailPage({ params }: { params: Promise<{ id: strin
               {drug.reference_price && (
                 <div>
                   <p className="text-sm text-muted-foreground">Reference Price</p>
-                  <p className="text-lg font-semibold">KES {drug.reference_price.toFixed(2)}</p>
+                  <p className="text-lg font-semibold">KES {parseFloat(String(drug.reference_price)).toFixed(2)}</p>
                 </div>
               )}
             </div>
