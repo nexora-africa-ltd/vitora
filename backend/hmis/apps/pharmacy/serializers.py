@@ -142,6 +142,9 @@ class PrescriptionItemSerializer(serializers.ModelSerializer):
 
     drug_name = serializers.CharField(source="drug.generic_name", read_only=True)
     remaining_qty = serializers.IntegerField(source="remaining_quantity", read_only=True)
+    # Alias for frontend compatibility
+    quantity_prescribed = serializers.IntegerField(source="quantity", read_only=True)
+    remaining_quantity = serializers.IntegerField(read_only=True)
 
     class Meta:
         model = PrescriptionItem
@@ -151,6 +154,7 @@ class PrescriptionItemSerializer(serializers.ModelSerializer):
             "drug",
             "drug_name",
             "quantity",
+            "quantity_prescribed",
             "dosage",
             "frequency",
             "duration",
@@ -159,6 +163,7 @@ class PrescriptionItemSerializer(serializers.ModelSerializer):
             "is_substitutable",
             "quantity_dispensed",
             "remaining_qty",
+            "remaining_quantity",
             "is_cancelled",
             "cancellation_reason",
         ]
@@ -167,6 +172,8 @@ class PrescriptionItemSerializer(serializers.ModelSerializer):
             "quantity_dispensed",
             "drug_name",
             "remaining_qty",
+            "remaining_quantity",
+            "quantity_prescribed",
         ]
 
 
@@ -203,6 +210,7 @@ class PrescriptionSerializer(serializers.ModelSerializer):
 
     items = PrescriptionItemSerializer(many=True, read_only=True)
     patient_name = serializers.SerializerMethodField()
+    patient_mrn = serializers.CharField(source="patient.mrn", read_only=True)
     prescriber_name = serializers.SerializerMethodField()
     is_valid_prescription = serializers.SerializerMethodField()
     is_fully_dispensed_status = serializers.BooleanField(
@@ -213,9 +221,11 @@ class PrescriptionSerializer(serializers.ModelSerializer):
         model = Prescription
         fields = [
             "id",
+            "prescription_number",
             "encounter",
             "patient",
             "patient_name",
+            "patient_mrn",
             "prescribed_by",
             "prescriber_name",
             "prescribed_at",
@@ -230,11 +240,13 @@ class PrescriptionSerializer(serializers.ModelSerializer):
         ]
         read_only_fields = [
             "id",
+            "prescription_number",
             "prescribed_by",
             "status",
             "created_at",
             "updated_at",
             "patient_name",
+            "patient_mrn",
             "prescriber_name",
             "is_valid_prescription",
             "is_fully_dispensed_status",
