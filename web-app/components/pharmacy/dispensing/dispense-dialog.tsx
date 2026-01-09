@@ -34,7 +34,7 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
-import { useToast } from '@/hooks/use-toast';
+import { useToast } from '@/lib/hooks/use-toast';
 import { useDispenseFromPrescription, useBatchesForDrug } from '@/lib/hooks/use-pharmacy';
 import { Prescription, PrescriptionItem, StockBatch } from '@/lib/types/pharmacy';
 
@@ -96,8 +96,10 @@ export function DispenseDialog({
   useEffect(() => {
     if (batches && batches.length > 0 && !selectedBatch) {
       const fefoBatch = batches[0]; // Already sorted by expiry_date in API
-      setSelectedBatch(fefoBatch);
-      setValue('batch_id', fefoBatch.id.toString());
+      if (fefoBatch) {
+        setSelectedBatch(fefoBatch);
+        setValue('batch_id', fefoBatch.id.toString());
+      }
     }
   }, [batches, selectedBatch, setValue]);
 
