@@ -819,3 +819,84 @@ class StockAdjustment(models.Model):
         self.approved_by = user
         self.approved_at = timezone.now()
         self.save()
+
+
+class AlertSettings(models.Model):
+    """
+    Global alert configuration settings.
+    
+    Stores configuration for automated alert generation including
+    thresholds for low stock and expiry warnings.
+    
+    Only one instance should exist (enforced at application level).
+    """
+    
+    # Stock alert thresholds
+    low_stock_threshold = models.IntegerField(
+        default=100,
+        help_text="Generate alert when stock falls below this quantity"
+    )
+    
+    # Expiry warning periods (in days)
+    expiry_warning_days = models.IntegerField(
+        default=90,
+        help_text="Days before expiry to generate warning alert"
+    )
+    expiry_critical_days = models.IntegerField(
+        default=30,
+        help_text="Days before expiry to generate critical alert"
+    )
+    
+    # Email notification settings
+    enable_email_notifications = models.BooleanField(
+        default=False,
+        help_text="Enable email notifications for critical alerts"
+    )
+    notification_email_recipients = models.TextField(
+        blank=True,
+        help_text="Comma-separated list of email addresses to notify"
+    )
+    
+    # Metadata
+    updated_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        related_name='alert_settings_updates'
+    )
+    updated_at = models.DateTimeField(auto_now=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    
+    class Meta:
+        verbose_name = "Alert Settings"
+        verbose_name_plural = "Alert Settings"
+    
+    def __str__(self):
+        return f"Alert Settings (Updated: {self.updated_at})"
+    
+    def clean(self):
+        """Validate settings."""
+        if self.low_stock_threshold < 0:
+            raise ValidationError("Low stock threshold must be non-negative")
+        
+        if self.expiry_warning_days < 0:
+            raise ValidationError("Expiry warning days must be non-negative")
+        
+        if self.expiry_critical_days < 0:
+            raise ValidationError("Expiry critical days must be non-negative")
+        
+        if self.expiry_critical_days >= self.expiry_warning_days:
+            raise ValidationError(
+                "Critical days should be less than warning days"
+            )
+    
+    @classmethod
+    def get_settings(cls):
+        """
+        Get or create the singleton alert settings instance.
+        
+        Returns:
+            AlertSettings: The alert settings instance
+        """
+        settings, created = cls.objects.get_or_create(pk=1)
+        return settings

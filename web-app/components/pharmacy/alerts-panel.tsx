@@ -46,7 +46,7 @@ import {
 import { Textarea } from '@/components/ui/textarea';
 import { Input } from '@/components/ui/input';
 import { StockAlert, AlertType, AlertSeverity } from '@/lib/types/pharmacy';
-import { useAcknowledgeAlert, useResolveAlert } from '@/lib/hooks/use-pharmacy';
+import { useAcknowledgeAlert, useResolveAlert, useAlertSettings, useUpdateAlertSettings } from '@/lib/hooks/use-pharmacy';
 import { useToast } from '@/lib/hooks/use-toast';
 
 interface AlertsPanelProps {
@@ -108,6 +108,16 @@ export function AlertsPanel({
 
   const acknowledgeAlert = useAcknowledgeAlert();
   const resolveAlert = useResolveAlert();
+  const { data: alertSettings } = useAlertSettings();
+  const updateSettings = useUpdateAlertSettings();
+
+  // Load settings when available
+  useEffect(() => {
+    if (alertSettings) {
+      setExpiryWarningDays(String(alertSettings.expiry_warning_days || 90));
+      setLowStockThreshold(String(alertSettings.low_stock_threshold || 100));
+    }
+  }, [alertSettings]);
 
   // Auto-refresh polling
   useEffect(() => {
@@ -680,15 +690,35 @@ export function AlertsPanel({
               Cancel
             </Button>
             <Button
-              onClick={() => {
-                toast({
-                  title: 'Settings saved',
-                  description: 'Alert settings have been updated.',
-                });
-                setSettingsDialogOpen(false);
+              onClick={async () => {
+                try {
+                  await updateSettings.mutateAsync({
+                    expiry_warning_days: parseInt(expiryWarningDays) || 90,
+                    low_stock_threshold: parseInt(lowStockThreshold) || 100,
+                  });
+                  toast({
+                    title: 'Settings saved',
+                    description: 'Alert settings have been updated successfully.',
+                  });
+                  setSettingsDialogOpen(false);
+                } catch (error) {
+                  toast({
+                    title: 'Error',
+                    description: 'Failed to save settings.',
+                    variant: 'destructive',
+                  });
+                }
               }}
+              disabled={updateSettings.isPending}
             >
-              Save Changes
+              {updateSettings.isPending ? (
+                <>
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                  Saving...
+                </>
+              ) : (
+                'Save Changes'
+              )}
             </Button>
           </DialogFooter>
         </DialogContent>

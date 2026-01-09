@@ -6,6 +6,7 @@ from django.contrib.auth import get_user_model
 from rest_framework import serializers
 
 from hmis.apps.pharmacy.models import (
+    AlertSettings,
     Dispensing,
     Drug,
     Prescription,
@@ -393,3 +394,54 @@ class StockAdjustmentSerializer(serializers.ModelSerializer):
         if obj.approved_by:
             return obj.approved_by.get_full_name() or obj.approved_by.username
         return None
+
+
+class AlertSettingsSerializer(serializers.ModelSerializer):
+    """Serializer for AlertSettings model."""
+    
+    updated_by_name = serializers.SerializerMethodField()
+    
+    class Meta:
+        model = AlertSettings
+        fields = [
+            "id",
+            "low_stock_threshold",
+            "expiry_warning_days",
+            "expiry_critical_days",
+            "enable_email_notifications",
+            "notification_email_recipients",
+            "updated_by",
+            "updated_by_name",
+            "updated_at",
+            "created_at",
+        ]
+        read_only_fields = [
+            "id",
+            "updated_by_name",
+            "updated_at",
+            "created_at",
+        ]
+    
+    def get_updated_by_name(self, obj):
+        """Get updater full name."""
+        if obj.updated_by:
+            return obj.updated_by.get_full_name() or obj.updated_by.username
+        return None
+    
+    def validate(self, data):
+        """Validate settings data."""
+        expiry_warning = data.get('expiry_warning_days')
+        expiry_critical = data.get('expiry_critical_days')
+        
+        if expiry_critical and expiry_warning and expiry_critical >= expiry_warning:
+            raise serializers.ValidationError(
+                "Critical days should be less than warning days"
+            )
+        
+        low_stock = data.get('low_stock_threshold')
+        if low_stock is not None and low_stock < 0:
+            raise serializers.ValidationError(
+                "Low stock threshold must be non-negative"
+            )
+        
+        return data
