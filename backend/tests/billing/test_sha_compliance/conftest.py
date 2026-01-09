@@ -139,8 +139,8 @@ def sha_member(db, sha_test_patient, sha_test_user):
 def sha_member_no_sha_number(db, sha_test_patient, sha_test_user, sample_county, sample_sub_county):
     """Create an SHA member without SHA number for national_id fallback tests.
     
-    Note: Since the model requires sha_number, we use a mock or patch approach
-    for testing national_id fallback behavior.
+    The sha_number field is required by the model, but we can simulate a fallback
+    scenario by having the test mock/patch sha_member.sha_number to empty string.
     """
     if not HAS_SHA_MODELS:
         pytest.skip("SHA models not available")
@@ -158,15 +158,19 @@ def sha_member_no_sha_number(db, sha_test_patient, sha_test_user, sample_county,
         registered_by=sha_test_user,
     )
     
-    # Create member with sha_number (required) but tests can simulate fallback
-    return SHAMember.objects.create(
+    # Create member with sha_number (required by model)
+    member = SHAMember.objects.create(
         patient=patient,
-        sha_number='SHA-00000000000000-0',  # Placeholder for fallback test
+        sha_number='SHA-00000000000000-0',  # Required by model
         national_id=patient.national_id,
         membership_type='principal',
         status='active',
         created_by=sha_test_user,
     )
+    
+    # Clear sha_number in memory for fallback test (not saved to DB)
+    member.sha_number = ''
+    return member
 
 
 @pytest.fixture
@@ -206,13 +210,14 @@ def sha_tariff(db, sha_test_user):
     if not HAS_SHA_MODELS:
         pytest.skip("SHA models not available")
     
+    # Use lowercase values matching TariffCategory and TariffLevel choices
     return SHATariff.objects.create(
         code='SHA-08-001',
         name='General Consultation',
         description='General outpatient consultation',
-        category='CONSULTATION',
+        category='consultation',  # TariffCategory.CONSULTATION
         sha_amount=Decimal('300.00'),
-        facility_level='L4',
+        facility_level='L4',  # TariffLevel.LEVEL_4
         effective_date=date.today() - timedelta(days=30),
         is_active=True,
         requires_preauthorization=False,
@@ -272,19 +277,20 @@ def sha_claim(db, sha_test_patient, sha_member, sha_test_encounter, sha_test_inv
     if not HAS_SHA_MODELS:
         pytest.skip("SHA models not available")
     
+    # Use lowercase values matching model's TextChoices (standard FHIR format)
     return SHAClaim.objects.create(
         patient=sha_test_patient,
         sha_member=sha_member,
         encounter=sha_test_encounter,
         invoice=sha_test_invoice,
-        claim_type='OUTPATIENT',
+        claim_type='outpatient',  # ClaimType.OUTPATIENT
         service_date=date.today(),
         facility_code='FID-22-123456-0',
         facility_level='L4',
         primary_diagnosis_code='CA00.0',
         primary_diagnosis_description='Acute nasopharyngitis',
         claimed_amount=Decimal('500.00'),
-        status='DRAFT',
+        status='draft',  # ClaimStatus.DRAFT
         created_by=sha_test_user,
     )
 
@@ -305,7 +311,7 @@ def sha_claim_item(db, sha_claim, sha_tariff, sha_service, sha_invoice_item):
         quantity=1,
         unit_price=Decimal('500.00'),
         claimed_amount=Decimal('500.00'),
-        status='PENDING',
+        status='pending',
     )
 
 

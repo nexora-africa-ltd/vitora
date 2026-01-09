@@ -399,20 +399,10 @@ class SHAClaimsService:
             }],
             'created': claim.created_at.isoformat(),
             'provider': {
-                'reference': f'https://fr.kenya-hie.health/api/v4/Organization/{self.facility_code}',
-                'id': self.facility_code,
-                'type': 'Organization',
-                'identifier': {
-                    'use': 'official',
-                    'type': {
-                        'coding': [{
-                            'system': 'http://ts-kenyahie.health/facility-identifier-type',
-                            'code': 'fr-code'
-                        }]
-                    },
-                    'system': 'https://fr.kenya-hie.health/api/v4/Organization',
-                    'value': self.facility_code
-                }
+                # Reference MUST match the Organization fullUrl in the bundle
+                # Per SHA Integration Checklist #11: "All references mentioned in the bundle
+                # must point to a resource in bundle with matching fullUrl value"
+                'reference': f'{self.fhir_base_url}/fhir/Organization/{self.facility_code}',
             },
             'priority': {
                 'coding': [{
@@ -652,19 +642,16 @@ class SHAClaimsService:
                     'display': 'Social Health Authority'
                 }]
             },
+            # Per SHA spec: schemeCategoryCode and schemeCategoryName are flat extensions
+            # Reference: docs/sha-guides/claims.md - Coverage Resource section
             'extension': [
                 {
-                    'url': f'{self.fhir_base_url}/fhir/StructureDefinition/scheme-category',
-                    'extension': [
-                        {
-                            'url': 'schemeCategoryCode',
-                            'valueString': 'CAT-SHA-001'
-                        },
-                        {
-                            'url': 'schemeCategoryName',
-                            'valueString': 'SOCIAL HEALTH AUTHORITY'
-                        }
-                    ]
+                    'url': f'{self.fhir_base_url}/fhir/StructureDefinition/schemeCategoryCode',
+                    'valueString': 'CAT-SHA-001'
+                },
+                {
+                    'url': f'{self.fhir_base_url}/fhir/StructureDefinition/schemeCategoryName',
+                    'valueString': 'SOCIAL HEALTH AUTHORITY'
                 }
             ],
             'subscriber': {
