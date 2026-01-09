@@ -5,7 +5,8 @@
 
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+import Link from 'next/link';
 import { format, formatDistanceToNow } from 'date-fns';
 import {
   AlertTriangle,
@@ -19,6 +20,7 @@ import {
   Settings,
   ShoppingCart,
   Eye,
+  Download,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -51,6 +53,8 @@ interface AlertsPanelProps {
   alerts: StockAlert[];
   isLoading: boolean;
   error: Error | null;
+  onRefresh?: () => void;
+  autoRefreshInterval?: number; // in seconds, 0 to disable
 }
 
 // Alert type icons
@@ -81,7 +85,13 @@ const ALERT_TYPE_TEST_IDS: Record<AlertType, string> = {
   RECALLED: 'alert-icon-recalled',
 };
 
-export function AlertsPanel({ alerts, isLoading, error }: AlertsPanelProps) {
+export function AlertsPanel({ 
+  alerts, 
+  isLoading, 
+  error,
+  onRefresh,
+  autoRefreshInterval = 0, // Default: no auto-refresh
+}: AlertsPanelProps) {
   const { toast } = useToast();
   const [activeTab, setActiveTab] = useState('all');
   const [showResolved, setShowResolved] = useState(false);
@@ -93,10 +103,23 @@ export function AlertsPanel({ alerts, isLoading, error }: AlertsPanelProps) {
   const [resolutionNotes, setResolutionNotes] = useState('');
   const [expiryWarningDays, setExpiryWarningDays] = useState('90');
   const [lowStockThreshold, setLowStockThreshold] = useState('100');
-  const [lastRefreshed] = useState(new Date());
+  const [lastRefreshed, setLastRefreshed] = useState(new Date());
+  const [isRefreshing, setIsRefreshing] = useState(false);
 
   const acknowledgeAlert = useAcknowledgeAlert();
   const resolveAlert = useResolveAlert();
+
+  // Auto-refresh polling
+  useEffect(() => {
+    if (autoRefreshInterval > 0 && onRefresh) {
+      const intervalId = setInterval(() => {
+        onRefresh();
+        setLastRefreshed(new Date());
+      }, autoRefreshInterval * 1000);
+
+      return () => clearInterval(intervalId);
+    }
+  }, [autoRefreshInterval, onRefresh]);
 
   // Filter alerts based on active tab, filters, and resolved state
   const filteredAlerts = alerts.filter((alert) => {
@@ -163,12 +186,77 @@ export function AlertsPanel({ alerts, isLoading, error }: AlertsPanelProps) {
   };
 
   // Handle refresh
-  const handleRefresh = () => {
-    toast({
-      title: 'Refreshing alerts',
-      description: 'Alerts are being refreshed...',
-    });
-    // In a real implementation, this would trigger a refetch
+  const handleRefresh = async () => {
+    if (onRefresh) {
+      setIsRefreshing(true);
+      try {
+        await onRefresh();
+        setLastRefreshed(new Date());
+        toast({
+          title: 'Alerts refreshed',
+          description: 'Successfully refreshed alerts data.',
+        });
+      } catch (error) {
+        toast({
+          title: 'Error',
+          description: 'Failed to refresh alerts.',
+          variant: 'destructive',
+        });
+      } finally {
+        setIsRefreshing(false);
+      }
+    } else {
+      toast({
+        title: 'Refreshing alerts',
+        description: 'Alerts are being refreshed...',
+      });
+    }
+  };
+
+  // Export alerts to CSV
+  const handleExport = () => {
+    try {
+      // Create CSV content
+      const headers = ['Drug Name', 'Drug Code', 'Alert Type', 'Severity', 'Message', 'Batch Number', 'Created At', 'Acknowledged', 'Resolved'];
+      const rows = filteredAlerts.map(alert => [
+        alert.drug_name || '',
+        alert.drug_code || '',
+        alert.alert_type,
+        alert.severity,
+        alert.message,
+        alert.batch_number || '',
+        format(new Date(alert.created_at), 'yyyy-MM-dd HH:mm:ss'),
+        alert.acknowledged ? 'Yes' : 'No',
+        alert.resolved ? 'Yes' : 'No',
+      ]);
+
+      const csvContent = [
+        headers.join(','),
+        ...rows.map(row => row.map(cell => `"${cell}"`).join(',')),
+      ].join('\n');
+
+      // Create download link
+      const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+      const link = document.createElement('a');
+      const url = URL.createObjectURL(blob);
+      link.setAttribute('href', url);
+      link.setAttribute('download', `stock-alerts-${format(new Date(), 'yyyy-MM-dd-HHmmss')}.csv`);
+      link.style.visibility = 'hidden';
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+
+      toast({
+        title: 'Export successful',
+        description: 'Alerts have been exported to CSV.',
+      });
+    } catch (error) {
+      toast({
+        title: 'Export failed',
+        description: 'Failed to export alerts.',
+        variant: 'destructive',
+      });
+    }
   };
 
   if (isLoading) {
@@ -251,7 +339,19 @@ export function AlertsPanel({ alerts, isLoading, error }: AlertsPanelProps) {
           </div>
         </div>
 
-        <div className="flex gap-2">
+        <div className="flex gap-2 flex-wrap">
+          {/* Export button */}
+          <Button
+            variant="outline"
+            size="sm"
+            data-testid="export-alerts-button"
+            onClick={handleExport}
+            disabled={filteredAlerts.length === 0}
+          >
+            <Download className="h-4 w-4 mr-1" />
+            Export CSV
+          </Button>
+
           {/* Quick filters */}
           <Button
             variant={activeTab === 'low-stock' ? 'default' : 'outline'}
@@ -276,8 +376,9 @@ export function AlertsPanel({ alerts, isLoading, error }: AlertsPanelProps) {
             size="sm"
             data-testid="refresh-alerts-button"
             onClick={handleRefresh}
+            disabled={isRefreshing}
           >
-            <RefreshCw className="h-4 w-4 mr-1" />
+            <RefreshCw className={`h-4 w-4 mr-1 ${isRefreshing ? 'animate-spin' : ''}`} />
             Refresh
           </Button>
 
@@ -355,7 +456,16 @@ export function AlertsPanel({ alerts, isLoading, error }: AlertsPanelProps) {
                       <div className="flex-1 space-y-2">
                         <div className="flex items-center justify-between">
                           <div className="flex items-center gap-2">
-                            <span className="font-medium">{alert.drug_name}</span>
+                            {alert.drug ? (
+                              <Link 
+                                href={`/pharmacy/drugs/${alert.drug}`}
+                                className="font-medium text-primary hover:underline"
+                              >
+                                {alert.drug_name}
+                              </Link>
+                            ) : (
+                              <span className="font-medium">{alert.drug_name}</span>
+                            )}
                             <Badge className={SEVERITY_COLORS[alert.severity]}>
                               {alert.severity}
                             </Badge>
@@ -380,7 +490,15 @@ export function AlertsPanel({ alerts, isLoading, error }: AlertsPanelProps) {
                               {alert.acknowledged_at && format(new Date(alert.acknowledged_at), 'MMM d')}
                             </Badge>
                           )}
-                          {alert.batch_number && (
+                          {alert.batch_number && alert.stock_batch && (
+                            <Link href={`/pharmacy?tab=inventory&batch=${alert.stock_batch}`}>
+                              <Badge variant="outline" className="text-xs hover:bg-accent cursor-pointer">
+                                <Package className="h-3 w-3 mr-1" />
+                                {alert.batch_number}
+                              </Badge>
+                            </Link>
+                          )}
+                          {alert.batch_number && !alert.stock_batch && (
                             <Badge variant="outline" className="text-xs">
                               <Package className="h-3 w-3 mr-1" />
                               {alert.batch_number}
@@ -448,21 +566,17 @@ export function AlertsPanel({ alerts, isLoading, error }: AlertsPanelProps) {
                               Reorder
                             </Button>
                           )}
-                          {(alert.alert_type === 'EXPIRING_SOON' || alert.alert_type === 'EXPIRING_CRITICAL' || alert.alert_type === 'EXPIRED') && alert.batch_number && (
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              data-testid="view-batch-button"
-                              onClick={() => {
-                                toast({
-                                  title: 'View Batch',
-                                  description: `Opening batch ${alert.batch_number}`,
-                                });
-                              }}
-                            >
-                              <Eye className="h-4 w-4 mr-1" />
-                              View Batch
-                            </Button>
+                          {(alert.alert_type === 'EXPIRING_SOON' || alert.alert_type === 'EXPIRING_CRITICAL' || alert.alert_type === 'EXPIRED') && alert.stock_batch && (
+                            <Link href={`/pharmacy?tab=inventory&batch=${alert.stock_batch}`}>
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                data-testid="view-batch-button"
+                              >
+                                <Eye className="h-4 w-4 mr-1" />
+                                View Batch
+                              </Button>
+                            </Link>
                           )}
                         </div>
                       </div>
