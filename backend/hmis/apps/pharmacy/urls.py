@@ -6,6 +6,7 @@ from django.urls import include, path
 from rest_framework.routers import DefaultRouter
 
 from hmis.apps.pharmacy.views import (
+    AlertSettingsView,
     DispensingReportView,
     DispensingViewSet,
     DrugViewSet,
@@ -30,6 +31,8 @@ app_name = "pharmacy"
 
 urlpatterns = [
     path("", include(router.urls)),
+    # Settings endpoint
+    path("alert-settings/", AlertSettingsView.as_view(), name="alert-settings"),
     # Report endpoints
     path("reports/stock-summary/", StockSummaryReportView.as_view(), name="stock-summary-report"),
     path("reports/expiry-report/", ExpiryReportView.as_view(), name="expiry-report"),

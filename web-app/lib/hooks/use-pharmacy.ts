@@ -441,3 +441,36 @@ export function useDispensingReport(params?: { date_from?: string; date_to?: str
     queryFn: () => pharmacyApi.getDispensingReport(params),
   });
 }
+
+// ============ Alert Settings Hooks ============
+
+/**
+ * Hook for fetching alert settings.
+ */
+export function useAlertSettings() {
+  return useQuery({
+    queryKey: ['alert-settings'],
+    queryFn: () => pharmacyApi.getAlertSettings(),
+  });
+}
+
+/**
+ * Hook for updating alert settings.
+ */
+export function useUpdateAlertSettings() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (data: {
+      low_stock_threshold?: number;
+      expiry_warning_days?: number;
+      expiry_critical_days?: number;
+      enable_email_notifications?: boolean;
+      notification_email_recipients?: string;
+    }) => pharmacyApi.updateAlertSettings(data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['alert-settings'] });
+      queryClient.invalidateQueries({ queryKey: ['stock-alerts'] });
+    },
+  });
+}
