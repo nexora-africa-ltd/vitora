@@ -11,7 +11,7 @@ Requirements:
 - Searchable dropdowns with type-ahead
 """
 
-import pytest
+import pytest # type: ignore
 from django.core.exceptions import ValidationError
 
 

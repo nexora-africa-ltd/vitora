@@ -11,7 +11,7 @@ Test Coverage:
 from datetime import date
 from decimal import Decimal
 
-import pytest
+import pytest # type: ignore
 
 from hmis.apps.core.models import County, SubCounty
 from hmis.apps.laboratory.models import LabResultTemplate

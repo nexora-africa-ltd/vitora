@@ -5,7 +5,7 @@ This module tests the bidirectional sync between clinical templates
 and existing encounter/patient data.
 """
 
-import pytest
+import pytest # type: ignore
 from datetime import date, datetime
 from decimal import Decimal
 

@@ -6,7 +6,7 @@ Tests cover Kardex auto-creation, shift notes (append-only), handover notes, ris
 """
 
 
-import pytest
+import pytest # type: ignore
 from django.core.exceptions import ValidationError
 from django.db import IntegrityError
 from django.utils import timezone

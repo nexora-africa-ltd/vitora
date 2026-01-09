@@ -8,7 +8,7 @@ Test coverage: 8 tests for shift handover functionality
 from datetime import date
 from decimal import Decimal
 
-import pytest
+import pytest # type: ignore
 from django.core.exceptions import ValidationError
 from django.utils import timezone
 

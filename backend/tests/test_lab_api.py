@@ -10,7 +10,7 @@ Sprint 1.3-1.4 Track B: Lab/Investigations Foundation
 from datetime import date
 from decimal import Decimal
 
-import pytest
+import pytest # type: ignore
 from django.contrib.auth import get_user_model
 from rest_framework import status
 from rest_framework.test import APIClient

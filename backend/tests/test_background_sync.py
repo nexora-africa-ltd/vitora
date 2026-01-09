@@ -10,7 +10,7 @@ and handle various scenarios including failures and retries.
 
 from unittest.mock import MagicMock, patch
 
-import pytest
+import pytest # type: ignore
 
 
 @pytest.mark.unit

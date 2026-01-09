@@ -12,7 +12,7 @@ Key Requirements:
     - Kenya location hierarchy (County, Sub-County, Ward)
 """
 
-import pytest
+import pytest # type: ignore
 from django.conf import settings
 
 # Try to import models

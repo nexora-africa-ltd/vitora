@@ -8,7 +8,7 @@ Total: 16 tests as specified.
 from datetime import timedelta
 from decimal import Decimal
 
-import pytest
+import pytest # type: ignore
 from django.core.exceptions import ValidationError
 from django.utils import timezone
 

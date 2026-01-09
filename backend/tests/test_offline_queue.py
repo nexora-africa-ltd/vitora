@@ -10,7 +10,7 @@ and can be synchronized when connectivity is restored.
 
 from datetime import date
 
-import pytest
+import pytest # type: ignore
 from django.utils import timezone
 
 

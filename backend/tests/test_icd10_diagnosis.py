@@ -9,7 +9,7 @@ Following TDD principles - these tests are written BEFORE implementation.
 
 from datetime import date
 
-import pytest
+import pytest # type: ignore
 from django.core.exceptions import ValidationError
 
 pytestmark = pytest.mark.django_db

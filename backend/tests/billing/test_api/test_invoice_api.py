@@ -8,7 +8,7 @@ Reference: Deliverables spec § 8, lines 847-889
 from datetime import date, timedelta
 from decimal import Decimal
 
-import pytest
+import pytest # type: ignore
 from rest_framework import status
 from rest_framework.test import APIClient
 

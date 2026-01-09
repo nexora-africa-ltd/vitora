@@ -10,7 +10,7 @@ Tests AdmissionRecommendation and Admission ViewSets with:
 """
 
 
-import pytest
+import pytest # type: ignore
 from django.contrib.auth import get_user_model
 from django.utils import timezone
 from rest_framework import status

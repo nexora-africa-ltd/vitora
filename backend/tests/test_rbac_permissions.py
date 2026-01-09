@@ -8,7 +8,7 @@ Sprint 1.1-1.2 Track C: RBAC Foundation - Phase 2
 from datetime import date, timedelta
 from unittest.mock import Mock, patch
 
-import pytest
+import pytest # type: ignore
 from django.contrib.auth import get_user_model
 from rest_framework.test import APIRequestFactory
 
