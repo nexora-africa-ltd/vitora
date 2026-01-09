@@ -348,6 +348,14 @@ SHA_PASSWORD = os.getenv("SHA_PASSWORD", "")  # API password for Basic Auth
 # Production: https://mis.apeiro-digital.com or https://fhir.sha.go.ke
 SHA_FHIR_BASE_URL = os.getenv("SHA_FHIR_BASE_URL", "https://qa-mis.apeiro-digital.com")
 
+# SHA API Endpoints for Shared Health Record (SHR) Integration
+# Reference: docs/sha-guides/shr-integration.md
+SHA_API_ENDPOINTS = {
+    'patient_resource': '/v1/patient-resource',  # PUT - Patient registration/update
+    'shr_submission': '/v1/shr-submission',  # POST - MedicationRequest/MedicationDispense
+    'shr_summary': '/v1/shr/summary',  # GET - IPS/Patient summary retrieval
+}
+
 # SHA API Endpoints (Official Kenya Digital Superhighway)
 SHA_ENDPOINTS = {
     'auth': '/v1/hie-auth',
