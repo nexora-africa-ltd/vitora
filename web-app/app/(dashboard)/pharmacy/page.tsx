@@ -25,7 +25,7 @@ import {
   usePrescriptions,
   usePendingPrescriptions,
 } from '@/lib/hooks/use-pharmacy';
-import { StockStatus, PrescriptionStatus } from '@/lib/types/pharmacy';
+import { StockStatus, PrescriptionStatus, DrugCategory, DrugForm, DrugSchedule } from '@/lib/types/pharmacy';
 
 export default function PharmacyPage() {
   const router = useRouter();
@@ -33,6 +33,13 @@ export default function PharmacyPage() {
   // Drugs state
   const [drugsPage, setDrugsPage] = useState(1);
   const [drugsSearch, setDrugsSearch] = useState('');
+  const [drugsFilters, setDrugsFilters] = useState<{
+    category?: DrugCategory;
+    form?: DrugForm;
+    schedule?: DrugSchedule;
+    is_essential?: boolean;
+    is_active?: boolean;
+  }>({});
   const drugsPageSize = 20;
 
   // Stock batches state
@@ -58,6 +65,7 @@ export default function PharmacyPage() {
     page: drugsPage,
     page_size: drugsPageSize,
     search: drugsSearch || undefined,
+    ...drugsFilters,
   });
 
   const {
@@ -177,9 +185,14 @@ export default function PharmacyPage() {
             error={drugsError as Error | null}
             page={drugsPage}
             totalPages={drugsTotalPages}
+            totalCount={drugsData?.count}
             onPageChange={setDrugsPage}
             onSearch={(query) => {
               setDrugsSearch(query);
+              setDrugsPage(1);
+            }}
+            onFiltersChange={(filters) => {
+              setDrugsFilters(filters);
               setDrugsPage(1);
             }}
           />
