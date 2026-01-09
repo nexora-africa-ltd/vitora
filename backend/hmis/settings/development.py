@@ -70,9 +70,6 @@ SYNC_ENABLED = os.getenv("SYNC_ENABLED", "false").lower() == "true"
 SYNC_BATCH_SIZE = int(os.getenv("SYNC_BATCH_SIZE", "100"))
 SYNC_MAX_RETRIES = int(os.getenv("SYNC_MAX_RETRIES", "3"))
 
-# SHA FHIR Base URL - UAT environment for development
-SHA_FHIR_BASE_URL = os.getenv("SHA_FHIR_BASE_URL", "https://qa-mis.apeiro-digital.com")
-
 # Development-specific apps
 INSTALLED_APPS += ["django_extensions"]  # noqa: F405
 
