@@ -301,6 +301,8 @@ export function DrugForm({ drug, onSuccess, onCancel }: DrugFormProps) {
                       type="button"
                       onClick={() => removeBrandName(index)}
                       className="ml-1 hover:bg-secondary-foreground/20 rounded-full"
+                      title={`Remove ${name}`}
+                      aria-label={`Remove ${name}`}
                     >
                       <X className="h-3 w-3" />
                     </button>
