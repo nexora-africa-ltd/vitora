@@ -13,13 +13,47 @@ This module contains all pharmacy-related models including:
 All models follow TDD approach and Kenya healthcare requirements.
 """
 
-from datetime import date, timedelta
+from datetime import date, datetime, timedelta
 from decimal import Decimal
 
 from django.conf import settings
 from django.core.exceptions import ValidationError
 from django.db import models
 from django.utils import timezone
+
+
+def generate_prescription_number():
+    """
+    Generate a unique Prescription Number.
+
+    Format: RX-YYYYMMDD-XXXX
+    Where XXXX is a 4-digit sequential number for the day.
+
+    Returns:
+        str: A unique prescription number string
+    """
+    today = datetime.now().strftime("%Y%m%d")
+    prefix = f"RX-{today}-"
+
+    # Import here to avoid circular import
+    from hmis.apps.pharmacy.models import Prescription
+
+    # Find the highest prescription number for today
+    latest_prescription = (
+        Prescription.objects.filter(prescription_number__startswith=prefix)
+        .order_by("-prescription_number")
+        .first()
+    )
+
+    if latest_prescription:
+        # Extract the sequence number and increment
+        last_sequence = int(latest_prescription.prescription_number.split("-")[-1])
+        sequence = last_sequence + 1
+    else:
+        # First prescription of the day
+        sequence = 1
+
+    return f"{prefix}{sequence:04d}"
 
 
 class Drug(models.Model):
@@ -447,6 +481,14 @@ class Prescription(models.Model):
         ("EXPIRED", "Expired"),
     ]
 
+    # Prescription number (auto-generated)
+    prescription_number = models.CharField(
+        max_length=50,
+        unique=True,
+        editable=False,
+        help_text="Prescription Number (auto-generated, format: RX-YYYYMMDD-XXXX)",
+    )
+
     # Links
     encounter = models.ForeignKey(
         "encounters.Encounter", on_delete=models.PROTECT, related_name="prescriptions"
@@ -478,9 +520,19 @@ class Prescription(models.Model):
 
     class Meta:
         ordering = ["-prescribed_at"]
+        indexes = [
+            models.Index(fields=["prescription_number"]),
+            models.Index(fields=["status"]),
+        ]
 
     def __str__(self):
-        return f"Prescription for {self.patient} - {self.prescribed_at.date()}"
+        return f"{self.prescription_number} - {self.patient}"
+
+    def save(self, *args, **kwargs):
+        """Override save to auto-generate prescription number."""
+        if not self.prescription_number:
+            self.prescription_number = generate_prescription_number()
+        super().save(*args, **kwargs)
 
     def is_valid(self) -> bool:
         """Check if prescription has not expired."""
