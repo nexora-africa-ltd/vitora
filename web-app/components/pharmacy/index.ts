@@ -8,3 +8,4 @@ export { DrugForm } from './drug-form';
 export { StockTable } from './stock-table';
 export { AlertsPanel } from './alerts-panel';
 export { PrescriptionsTable } from './prescriptions-table';
+export { BatchDetailDialog } from './batch-detail-dialog';
