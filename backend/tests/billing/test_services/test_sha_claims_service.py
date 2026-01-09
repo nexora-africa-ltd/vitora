@@ -646,19 +646,34 @@ class TestSHAClaimsServicePackaging:
         assert 'fullUrl' in coverage_entry
         coverage_resource = coverage_entry['resource']
         assert coverage_resource['resourceType'] == 'Coverage'
-        # SHA requires scheme extensions
+        # SHA requires scheme extensions (flat format per spec)
         assert 'extension' in coverage_resource
-        # Find scheme-category extension with CAT-SHA-001
-        scheme_ext = next(
+        
+        # Find schemeCategoryCode extension with CAT-SHA-001
+        # Per SHA spec: flat extension with url ending in 'schemeCategoryCode'
+        scheme_code_ext = next(
             (ext for ext in coverage_resource['extension'] 
-             if 'scheme-category' in ext.get('url', '')),
+             if 'schemeCategoryCode' in ext.get('url', '')),
             None
         )
-        assert scheme_ext is not None
-        # Verify CAT-SHA-001 code is present
-        assert any(
-            nested.get('valueString') == 'CAT-SHA-001' 
-            for nested in scheme_ext.get('extension', [])
+        assert scheme_code_ext is not None, (
+            "Coverage must have schemeCategoryCode extension per SHA spec"
+        )
+        assert scheme_code_ext.get('valueString') == 'CAT-SHA-001', (
+            "schemeCategoryCode must be CAT-SHA-001"
+        )
+        
+        # Find schemeCategoryName extension
+        scheme_name_ext = next(
+            (ext for ext in coverage_resource['extension'] 
+             if 'schemeCategoryName' in ext.get('url', '')),
+            None
+        )
+        assert scheme_name_ext is not None, (
+            "Coverage must have schemeCategoryName extension per SHA spec"
+        )
+        assert scheme_name_ext.get('valueString') == 'SOCIAL HEALTH AUTHORITY', (
+            "schemeCategoryName must be 'SOCIAL HEALTH AUTHORITY'"
         )
 
     def test_fhir_organization_resource_included(self, valid_claim):
