@@ -10,3 +10,7 @@ export { AlertsPanel } from './alerts-panel';
 export { PrescriptionsTable } from './prescriptions-table';
 export { BatchDetailDialog } from './batch-detail-dialog';
 export { StockAdjustmentDialog } from './stock-adjustment-dialog';
+export { DispensingHistoryTable } from './dispensing-history-table';
+
+// Dispensing Components
+export { DispenseDialog } from './dispensing/dispense-dialog';

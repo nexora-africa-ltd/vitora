@@ -6,6 +6,7 @@
  * - Drug Catalog
  * - Inventory (Stock Batches)
  * - Prescriptions
+ * - Dispensing History
  * - Alerts
  */
 
@@ -13,17 +14,24 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { Plus, Pill, Package, FileText, AlertTriangle, Loader2 } from 'lucide-react';
+import { Plus, Pill, Package, FileText, AlertTriangle, Loader2, History } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Badge } from '@/components/ui/badge';
-import { DrugTable, StockTable, AlertsPanel, PrescriptionsTable } from '@/components/pharmacy';
+import { 
+  DrugTable, 
+  StockTable, 
+  AlertsPanel, 
+  PrescriptionsTable,
+  DispensingHistoryTable,
+} from '@/components/pharmacy';
 import {
   useDrugs,
   useStockBatches,
   useStockAlerts,
   usePrescriptions,
   usePendingPrescriptions,
+  useDispensings,
 } from '@/lib/hooks/use-pharmacy';
 import { StockStatus, PrescriptionStatus, DrugCategory, DrugForm, DrugSchedule } from '@/lib/types/pharmacy';
 
@@ -54,6 +62,14 @@ export default function PharmacyPage() {
   const [rxDateFrom, setRxDateFrom] = useState('');
   const [rxDateTo, setRxDateTo] = useState('');
   const rxPageSize = 20;
+
+  // Dispensing history state
+  const [dispensingPage, setDispensingPage] = useState(1);
+  const [dispensingPatientFilter, setDispensingPatientFilter] = useState('');
+  const [dispensingDrugFilter, setDispensingDrugFilter] = useState('');
+  const [dispensingDateFrom, setDispensingDateFrom] = useState('');
+  const [dispensingDateTo, setDispensingDateTo] = useState('');
+  const dispensingPageSize = 20;
 
   // Alerts state
   const [alertsResolved, setAlertsResolved] = useState(false);
@@ -102,6 +118,15 @@ export default function PharmacyPage() {
 
   const { data: pendingRx } = usePendingPrescriptions();
 
+  const {
+    data: dispensingData,
+    isLoading: dispensingLoading,
+    error: dispensingError,
+  } = useDispensings({
+    page: dispensingPage,
+    page_size: dispensingPageSize,
+  });
+
   // Calculate counts for badges
   const unresolvedAlertsCount = alertsData?.results?.filter((a) => !a.resolved).length ?? 0;
   const pendingRxCount = pendingRx?.length ?? 0;
@@ -110,6 +135,7 @@ export default function PharmacyPage() {
   const drugsTotalPages = Math.ceil((drugsData?.count ?? 0) / drugsPageSize);
   const stockTotalPages = Math.ceil((stockData?.count ?? 0) / stockPageSize);
   const rxTotalPages = Math.ceil((rxData?.count ?? 0) / rxPageSize);
+  const dispensingTotalPages = Math.ceil((dispensingData?.count ?? 0) / dispensingPageSize);
 
   // Show loading state when initial data is loading
   const isInitialLoading = drugsLoading && !drugsData;
@@ -167,6 +193,10 @@ export default function PharmacyPage() {
                 {pendingRxCount}
               </Badge>
             )}
+          </TabsTrigger>
+          <TabsTrigger value="dispensing" className="gap-2">
+            <History className="h-4 w-4" />
+            Dispensing
           </TabsTrigger>
           <TabsTrigger value="alerts" className="gap-2 relative">
             <AlertTriangle className="h-4 w-4" />
@@ -256,6 +286,31 @@ export default function PharmacyPage() {
               setRxDateFrom(dateFrom);
               setRxDateTo(dateTo);
               setRxPage(1);
+            }}
+          />
+        </TabsContent>
+
+        {/* Dispensing History Tab */}
+        <TabsContent value="dispensing" className="space-y-4">
+          <DispensingHistoryTable
+            dispensings={dispensingData?.results ?? []}
+            isLoading={dispensingLoading}
+            error={dispensingError as Error | null}
+            page={dispensingPage}
+            totalPages={dispensingTotalPages}
+            onPageChange={setDispensingPage}
+            onPatientFilter={(patientId) => {
+              setDispensingPatientFilter(patientId);
+              setDispensingPage(1);
+            }}
+            onDrugFilter={(drugId) => {
+              setDispensingDrugFilter(drugId);
+              setDispensingPage(1);
+            }}
+            onDateRangeFilter={(from, to) => {
+              setDispensingDateFrom(from);
+              setDispensingDateTo(to);
+              setDispensingPage(1);
             }}
           />
         </TabsContent>

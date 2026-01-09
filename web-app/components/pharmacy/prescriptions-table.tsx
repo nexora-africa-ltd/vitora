@@ -8,7 +8,19 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { format } from 'date-fns';
-import { Search, Eye, ChevronLeft, ChevronRight, Pill, Clock, CheckCircle, XCircle, Calendar } from 'lucide-react';
+import { 
+  Search, 
+  Eye, 
+  ChevronLeft, 
+  ChevronRight, 
+  Pill, 
+  Clock, 
+  CheckCircle, 
+  XCircle,
+  ChevronDown,
+  ChevronUp,
+  Package,
+} from 'lucide-react';
 import {
   Table,
   TableBody,
@@ -28,7 +40,8 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { Prescription, PrescriptionStatus } from '@/lib/types/pharmacy';
+import { Prescription, PrescriptionStatus, PrescriptionItem } from '@/lib/types/pharmacy';
+import { DispenseDialog } from './dispensing/dispense-dialog';
 
 interface PrescriptionsTableProps {
   prescriptions: Prescription[];
@@ -39,7 +52,6 @@ interface PrescriptionsTableProps {
   onPageChange: (page: number) => void;
   onStatusFilter: (status: PrescriptionStatus | '') => void;
   onSearch: (query: string) => void;
-  onDateFilter?: (dateFrom: string, dateTo: string) => void;
 }
 
 // Status badge colors
@@ -69,13 +81,20 @@ export function PrescriptionsTable({
   onPageChange,
   onStatusFilter,
   onSearch,
-  onDateFilter,
 }: PrescriptionsTableProps) {
   const router = useRouter();
   const [searchValue, setSearchValue] = useState('');
   const [selectedStatus, setSelectedStatus] = useState<string>('');
-  const [dateFrom, setDateFrom] = useState('');
-  const [dateTo, setDateTo] = useState('');
+  const [expandedRows, setExpandedRows] = useState<Set<number>>(new Set());
+  const [dispenseDialog, setDispenseDialog] = useState<{
+    isOpen: boolean;
+    prescription: Prescription | null;
+    prescriptionItem: PrescriptionItem | null;
+  }>({
+    isOpen: false,
+    prescription: null,
+    prescriptionItem: null,
+  });
 
   const handleSearchChange = (value: string) => {
     setSearchValue(value);
@@ -85,22 +104,6 @@ export function PrescriptionsTable({
   const handleStatusChange = (value: string) => {
     setSelectedStatus(value);
     onStatusFilter(value === 'all' ? '' : (value as PrescriptionStatus));
-  };
-
-  const handleTodayFilter = () => {
-    const today = format(new Date(), 'yyyy-MM-dd');
-    setDateFrom(today);
-    setDateTo(today);
-    onDateFilter?.(today, today);
-  };
-
-  const handleDateChange = () => {
-    if (dateFrom && dateTo) {
-      onDateFilter?.(dateFrom, dateTo);
-    } else if (!dateFrom && !dateTo) {
-      // Clear date filter
-      onDateFilter?.('', '');
-    }
   };
 
   if (isLoading) {
@@ -148,7 +151,7 @@ export function PrescriptionsTable({
   if (prescriptions.length === 0) {
     return (
       <div className="space-y-4">
-        <div className="flex flex-wrap items-center gap-4">
+        <div className="flex items-center gap-4">
           <div className="relative max-w-sm flex-1">
             <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
             <Input
@@ -172,38 +175,6 @@ export function PrescriptionsTable({
               <SelectItem value="EXPIRED">Expired</SelectItem>
             </SelectContent>
           </Select>
-          <Input
-            type="date"
-            aria-label="From date"
-            data-testid="date-from"
-            placeholder="From"
-            value={dateFrom}
-            onChange={(e) => {
-              setDateFrom(e.target.value);
-              setTimeout(handleDateChange, 100);
-            }}
-            className="w-40"
-          />
-          <Input
-            type="date"
-            aria-label="To date"
-            data-testid="date-to"
-            placeholder="To"
-            value={dateTo}
-            onChange={(e) => {
-              setDateTo(e.target.value);
-              setTimeout(handleDateChange, 100);
-            }}
-            className="w-40"
-          />
-          <Button
-            variant="outline"
-            onClick={handleTodayFilter}
-            data-testid="today-filter"
-          >
-            <Calendar className="h-4 w-4 mr-2" />
-            Today
-          </Button>
         </div>
         <div className="flex flex-col items-center justify-center py-12 text-center">
           <p className="text-muted-foreground">No prescriptions found</p>
@@ -215,7 +186,7 @@ export function PrescriptionsTable({
   return (
     <div className="space-y-4">
       {/* Filters */}
-      <div className="flex flex-wrap items-center gap-4">
+      <div className="flex items-center gap-4">
         <div className="relative max-w-sm flex-1">
           <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
           <Input
@@ -239,45 +210,14 @@ export function PrescriptionsTable({
             <SelectItem value="EXPIRED">Expired</SelectItem>
           </SelectContent>
         </Select>
-        <Input
-          type="date"
-          aria-label="From date"
-          data-testid="date-from"
-          placeholder="From"
-          value={dateFrom}
-          onChange={(e) => {
-            setDateFrom(e.target.value);
-            setTimeout(handleDateChange, 100);
-          }}
-          className="w-40"
-        />
-        <Input
-          type="date"
-          aria-label="To date"
-          data-testid="date-to"
-          placeholder="To"
-          value={dateTo}
-          onChange={(e) => {
-            setDateTo(e.target.value);
-            setTimeout(handleDateChange, 100);
-          }}
-          className="w-40"
-        />
-        <Button
-          variant="outline"
-          onClick={handleTodayFilter}
-          data-testid="today-filter"
-        >
-          <Calendar className="h-4 w-4 mr-2" />
-          Today
-        </Button>
       </div>
 
       {/* Table */}
-      <div className="rounded-md border" data-testid="prescriptions-table">
+      <div className="rounded-md border">
         <Table>
           <TableHeader>
             <TableRow>
+              <TableHead className="w-[50px]"></TableHead>
               <TableHead>Rx #</TableHead>
               <TableHead>Patient</TableHead>
               <TableHead>MRN</TableHead>
@@ -291,42 +231,159 @@ export function PrescriptionsTable({
           <TableBody>
             {prescriptions.map((rx) => {
               const StatusIcon = STATUS_ICONS[rx.status];
+              const isExpanded = expandedRows.has(rx.id);
+              const canDispense = ['PENDING', 'PARTIAL'].includes(rx.status);
 
               return (
-                <TableRow key={rx.id}>
-                  <TableCell className="font-mono text-sm">{rx.prescription_number}</TableCell>
-                  <TableCell className="font-medium">{rx.patient_name}</TableCell>
-                  <TableCell className="text-muted-foreground">{rx.patient_mrn}</TableCell>
-                  <TableCell>{rx.prescriber_name}</TableCell>
-                  <TableCell>{format(new Date(rx.prescribed_date), 'MMM d, yyyy')}</TableCell>
-                  <TableCell>
-                    <div className="flex items-center gap-1">
-                      <Pill className="h-4 w-4 text-muted-foreground" />
-                      <span>{rx.items.length} items</span>
-                    </div>
-                  </TableCell>
-                  <TableCell>
-                    <Badge className={STATUS_COLORS[rx.status]} data-testid="status-badge">
-                      <StatusIcon className="h-3 w-3 mr-1" />
-                      {rx.status}
-                    </Badge>
-                  </TableCell>
-                  <TableCell>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => router.push(`/pharmacy/prescriptions/${rx.id}`)}
-                    >
-                      <Eye className="h-4 w-4 mr-1" />
-                      View
-                    </Button>
-                  </TableCell>
-                </TableRow>
+                <>
+                  {/* Main Row */}
+                  <TableRow key={rx.id}>
+                    <TableCell>
+                      {canDispense && (
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => {
+                            const newExpanded = new Set(expandedRows);
+                            if (isExpanded) {
+                              newExpanded.delete(rx.id);
+                            } else {
+                              newExpanded.add(rx.id);
+                            }
+                            setExpandedRows(newExpanded);
+                          }}
+                        >
+                          {isExpanded ? (
+                            <ChevronUp className="h-4 w-4" />
+                          ) : (
+                            <ChevronDown className="h-4 w-4" />
+                          )}
+                        </Button>
+                      )}
+                    </TableCell>
+                    <TableCell className="font-mono text-sm">{rx.prescription_number}</TableCell>
+                    <TableCell className="font-medium">{rx.patient_name}</TableCell>
+                    <TableCell className="text-muted-foreground">{rx.patient_mrn}</TableCell>
+                    <TableCell>{rx.prescriber_name}</TableCell>
+                    <TableCell>{format(new Date(rx.prescribed_date), 'MMM d, yyyy')}</TableCell>
+                    <TableCell>
+                      <div className="flex items-center gap-1">
+                        <Pill className="h-4 w-4 text-muted-foreground" />
+                        <span>{rx.items.length} items</span>
+                      </div>
+                    </TableCell>
+                    <TableCell>
+                      <Badge className={STATUS_COLORS[rx.status]}>
+                        <StatusIcon className="h-3 w-3 mr-1" />
+                        {rx.status}
+                      </Badge>
+                    </TableCell>
+                    <TableCell>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => router.push(`/pharmacy/prescriptions/${rx.id}`)}
+                      >
+                        <Eye className="h-4 w-4 mr-1" />
+                        View
+                      </Button>
+                    </TableCell>
+                  </TableRow>
+
+                  {/* Expanded Items Row */}
+                  {isExpanded && (
+                    <TableRow>
+                      <TableCell colSpan={9} className="bg-muted/30">
+                        <div className="py-4 space-y-3">
+                          <h4 className="font-semibold text-sm flex items-center gap-2">
+                            <Package className="h-4 w-4" />
+                            Prescription Items
+                          </h4>
+                          <div className="space-y-2">
+                            {rx.items.map((item) => (
+                              <div
+                                key={item.id}
+                                className="flex items-center justify-between p-3 border rounded-md bg-background"
+                              >
+                                <div className="flex-1">
+                                  <p className="font-medium">{item.drug_name}</p>
+                                  <p className="text-sm text-muted-foreground">
+                                    {item.dosage} • {item.frequency} • {item.duration}
+                                  </p>
+                                  {item.instructions && (
+                                    <p className="text-xs text-muted-foreground mt-1">
+                                      {item.instructions}
+                                    </p>
+                                  )}
+                                  <div className="flex items-center gap-4 mt-2 text-xs">
+                                    <span>
+                                      Prescribed: <strong>{item.quantity_prescribed}</strong>
+                                    </span>
+                                    <span>
+                                      Dispensed: <strong>{item.quantity_dispensed}</strong>
+                                    </span>
+                                    <span>
+                                      Remaining:{' '}
+                                      <strong className="text-primary">{item.remaining_quantity}</strong>
+                                    </span>
+                                  </div>
+                                </div>
+                                <div>
+                                  {item.remaining_quantity > 0 && !item.is_cancelled ? (
+                                    <Button
+                                      size="sm"
+                                      onClick={() => {
+                                        setDispenseDialog({
+                                          isOpen: true,
+                                          prescription: rx,
+                                          prescriptionItem: item,
+                                        });
+                                      }}
+                                    >
+                                      <Pill className="h-4 w-4 mr-2" />
+                                      Dispense
+                                    </Button>
+                                  ) : item.is_cancelled ? (
+                                    <Badge variant="outline">Cancelled</Badge>
+                                  ) : (
+                                    <Badge variant="outline" className="bg-green-100 text-green-800">
+                                      <CheckCircle className="h-3 w-3 mr-1" />
+                                      Fully Dispensed
+                                    </Badge>
+                                  )}
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  )}
+                </>
               );
             })}
           </TableBody>
         </Table>
       </div>
+
+      {/* Dispense Dialog */}
+      {dispenseDialog.isOpen && dispenseDialog.prescription && dispenseDialog.prescriptionItem && (
+        <DispenseDialog
+          isOpen={dispenseDialog.isOpen}
+          onClose={() =>
+            setDispenseDialog({
+              isOpen: false,
+              prescription: null,
+              prescriptionItem: null,
+            })
+          }
+          prescription={dispenseDialog.prescription}
+          prescriptionItem={dispenseDialog.prescriptionItem}
+          onSuccess={() => {
+            // Refresh prescription data is handled by React Query cache invalidation
+          }}
+        />
+      )}
 
       {/* Pagination */}
       {totalPages > 1 && (
