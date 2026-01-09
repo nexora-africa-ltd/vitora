@@ -414,40 +414,6 @@ export function useVerifyDispensing() {
   });
 }
 
-/**
- * Hook for dispensing from prescription using FEFO.
- */
-export function useDispenseFromPrescription() {
-  const queryClient = useQueryClient();
-
-  return useMutation({
-    mutationFn: ({ prescriptionItemId, quantity }: { prescriptionItemId: number; quantity: number }) =>
-      pharmacyApi.dispenseFromPrescription(prescriptionItemId, quantity),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['dispensings'] });
-      queryClient.invalidateQueries({ queryKey: ['prescriptions'] });
-      queryClient.invalidateQueries({ queryKey: ['stock-batches'] });
-      queryClient.invalidateQueries({ queryKey: ['stock-alerts'] });
-    },
-  });
-}
-
-/**
- * Hook for returning dispensed drugs.
- */
-export function useReturnDispensing() {
-  const queryClient = useQueryClient();
-
-  return useMutation({
-    mutationFn: ({ id, quantity, reason }: { id: number; quantity: number; reason: string }) =>
-      pharmacyApi.returnDispensing(id, quantity, reason),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['dispensings'] });
-      queryClient.invalidateQueries({ queryKey: ['stock-batches'] });
-    },
-  });
-}
-
 // ============ Stock Adjustment Hooks ============
 
 /**
