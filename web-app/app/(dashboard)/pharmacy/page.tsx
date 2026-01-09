@@ -51,6 +51,8 @@ export default function PharmacyPage() {
   const [rxPage, setRxPage] = useState(1);
   const [rxStatus, setRxStatus] = useState<PrescriptionStatus | ''>('');
   const [rxSearch, setRxSearch] = useState('');
+  const [rxDateFrom, setRxDateFrom] = useState('');
+  const [rxDateTo, setRxDateTo] = useState('');
   const rxPageSize = 20;
 
   // Alerts state
@@ -94,6 +96,8 @@ export default function PharmacyPage() {
     page: rxPage,
     page_size: rxPageSize,
     status: rxStatus || undefined,
+    date_from: rxDateFrom || undefined,
+    date_to: rxDateTo || undefined,
   });
 
   const { data: pendingRx } = usePendingPrescriptions();
@@ -235,6 +239,11 @@ export default function PharmacyPage() {
             }}
             onSearch={(query) => {
               setRxSearch(query);
+              setRxPage(1);
+            }}
+            onDateFilter={(dateFrom, dateTo) => {
+              setRxDateFrom(dateFrom);
+              setRxDateTo(dateTo);
               setRxPage(1);
             }}
           />

@@ -8,7 +8,7 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { format } from 'date-fns';
-import { Search, Eye, ChevronLeft, ChevronRight, Pill, Clock, CheckCircle, XCircle } from 'lucide-react';
+import { Search, Eye, ChevronLeft, ChevronRight, Pill, Clock, CheckCircle, XCircle, Calendar } from 'lucide-react';
 import {
   Table,
   TableBody,
@@ -39,6 +39,7 @@ interface PrescriptionsTableProps {
   onPageChange: (page: number) => void;
   onStatusFilter: (status: PrescriptionStatus | '') => void;
   onSearch: (query: string) => void;
+  onDateFilter?: (dateFrom: string, dateTo: string) => void;
 }
 
 // Status badge colors
@@ -68,10 +69,13 @@ export function PrescriptionsTable({
   onPageChange,
   onStatusFilter,
   onSearch,
+  onDateFilter,
 }: PrescriptionsTableProps) {
   const router = useRouter();
   const [searchValue, setSearchValue] = useState('');
   const [selectedStatus, setSelectedStatus] = useState<string>('');
+  const [dateFrom, setDateFrom] = useState('');
+  const [dateTo, setDateTo] = useState('');
 
   const handleSearchChange = (value: string) => {
     setSearchValue(value);
@@ -81,6 +85,22 @@ export function PrescriptionsTable({
   const handleStatusChange = (value: string) => {
     setSelectedStatus(value);
     onStatusFilter(value === 'all' ? '' : (value as PrescriptionStatus));
+  };
+
+  const handleTodayFilter = () => {
+    const today = format(new Date(), 'yyyy-MM-dd');
+    setDateFrom(today);
+    setDateTo(today);
+    onDateFilter?.(today, today);
+  };
+
+  const handleDateChange = () => {
+    if (dateFrom && dateTo) {
+      onDateFilter?.(dateFrom, dateTo);
+    } else if (!dateFrom && !dateTo) {
+      // Clear date filter
+      onDateFilter?.('', '');
+    }
   };
 
   if (isLoading) {
@@ -128,7 +148,7 @@ export function PrescriptionsTable({
   if (prescriptions.length === 0) {
     return (
       <div className="space-y-4">
-        <div className="flex items-center gap-4">
+        <div className="flex flex-wrap items-center gap-4">
           <div className="relative max-w-sm flex-1">
             <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
             <Input
@@ -152,6 +172,38 @@ export function PrescriptionsTable({
               <SelectItem value="EXPIRED">Expired</SelectItem>
             </SelectContent>
           </Select>
+          <Input
+            type="date"
+            aria-label="From date"
+            data-testid="date-from"
+            placeholder="From"
+            value={dateFrom}
+            onChange={(e) => {
+              setDateFrom(e.target.value);
+              setTimeout(handleDateChange, 100);
+            }}
+            className="w-40"
+          />
+          <Input
+            type="date"
+            aria-label="To date"
+            data-testid="date-to"
+            placeholder="To"
+            value={dateTo}
+            onChange={(e) => {
+              setDateTo(e.target.value);
+              setTimeout(handleDateChange, 100);
+            }}
+            className="w-40"
+          />
+          <Button
+            variant="outline"
+            onClick={handleTodayFilter}
+            data-testid="today-filter"
+          >
+            <Calendar className="h-4 w-4 mr-2" />
+            Today
+          </Button>
         </div>
         <div className="flex flex-col items-center justify-center py-12 text-center">
           <p className="text-muted-foreground">No prescriptions found</p>
@@ -163,7 +215,7 @@ export function PrescriptionsTable({
   return (
     <div className="space-y-4">
       {/* Filters */}
-      <div className="flex items-center gap-4">
+      <div className="flex flex-wrap items-center gap-4">
         <div className="relative max-w-sm flex-1">
           <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
           <Input
@@ -187,6 +239,38 @@ export function PrescriptionsTable({
             <SelectItem value="EXPIRED">Expired</SelectItem>
           </SelectContent>
         </Select>
+        <Input
+          type="date"
+          aria-label="From date"
+          data-testid="date-from"
+          placeholder="From"
+          value={dateFrom}
+          onChange={(e) => {
+            setDateFrom(e.target.value);
+            setTimeout(handleDateChange, 100);
+          }}
+          className="w-40"
+        />
+        <Input
+          type="date"
+          aria-label="To date"
+          data-testid="date-to"
+          placeholder="To"
+          value={dateTo}
+          onChange={(e) => {
+            setDateTo(e.target.value);
+            setTimeout(handleDateChange, 100);
+          }}
+          className="w-40"
+        />
+        <Button
+          variant="outline"
+          onClick={handleTodayFilter}
+          data-testid="today-filter"
+        >
+          <Calendar className="h-4 w-4 mr-2" />
+          Today
+        </Button>
       </div>
 
       {/* Table */}
