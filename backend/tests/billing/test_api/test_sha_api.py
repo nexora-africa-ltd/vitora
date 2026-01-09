@@ -29,6 +29,8 @@ from decimal import Decimal
 from io import BytesIO
 from unittest.mock import patch, MagicMock
 
+from django.utils import timezone
+
 import pytest # type: ignore
 from django.contrib.auth import get_user_model
 from django.contrib.auth.models import Permission
@@ -1355,7 +1357,11 @@ class TestOfflineSyncCompatibility:
 
     def test_list_supports_modified_since_filter(self, sha_client, multiple_sha_claims):
         """Should support filtering by modification date for incremental sync."""
-        modified_since = (date.today() - timedelta(days=1)).isoformat()
+        # Use timezone-aware datetime for filtering DateTimeField with USE_TZ=True
+        yesterday = timezone.now() - timedelta(days=1)
+        # Format compatible with Django DateTimeField parsing
+        # Use 'Z' suffix for UTC which avoids URL encoding issues with '+' sign
+        modified_since = yesterday.strftime('%Y-%m-%dT%H:%M:%SZ')
 
         response = sha_client.get(f'/api/sha/claims/?modified_since={modified_since}')
 
