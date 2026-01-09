@@ -86,6 +86,7 @@ export function StockTable({
   const [detailDialogOpen, setDetailDialogOpen] = useState(false);
   const [adjustmentDialogOpen, setAdjustmentDialogOpen] = useState(false);
   const [adjustmentType, setAdjustmentType] = useState<AdjustmentType | undefined>();
+  const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('asc');
 
   const handleStatusChange = (value: string) => {
     setSelectedStatus(value);
@@ -133,6 +134,17 @@ export function StockTable({
     setAdjustmentType(type);
     setAdjustmentDialogOpen(true);
   };
+
+  const handleExpirySort = () => {
+    setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc');
+  };
+
+  // Sort batches by expiry date
+  const sortedBatches = [...batches].sort((a, b) => {
+    const dateA = new Date(a.expiry_date).getTime();
+    const dateB = new Date(b.expiry_date).getTime();
+    return sortOrder === 'asc' ? dateA - dateB : dateB - dateA;
+  });
 
   if (isLoading) {
     return (
@@ -304,7 +316,17 @@ export function StockTable({
               <TableHead>Batch #</TableHead>
               <TableHead>Drug</TableHead>
               <TableHead>Available</TableHead>
-              <TableHead>Expiry Date</TableHead>
+              <TableHead 
+                className="cursor-pointer hover:bg-muted"
+                onClick={handleExpirySort}
+                role="columnheader"
+                aria-sort={sortOrder === 'asc' ? 'ascending' : 'descending'}
+              >
+                <div className="flex items-center gap-1">
+                  Expiry Date
+                  <span className="text-xs">{sortOrder === 'asc' ? '↑' : '↓'}</span>
+                </div>
+              </TableHead>
               <TableHead>Days to Expiry</TableHead>
               <TableHead>Status</TableHead>
               <TableHead>Supplier</TableHead>
@@ -314,7 +336,7 @@ export function StockTable({
             </TableRow>
           </TableHeader>
           <TableBody>
-            {batches.map((batch) => {
+            {sortedBatches.map((batch) => {
               const expiryDate = new Date(batch.expiry_date);
               const isExpired = batch.is_expired;
               const isExpiringSoon = !isExpired && isBefore(expiryDate, addDays(new Date(), 90));
