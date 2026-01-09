@@ -5,6 +5,7 @@
 from django.contrib import admin
 
 from .models import (
+    AlertSettings,
     Dispensing,
     Drug,
     Prescription,
@@ -234,3 +235,30 @@ class StockAdjustmentAdmin(admin.ModelAdmin):
         'approved_by',
         'approved_at',
     )
+
+
+@admin.register(AlertSettings)
+class AlertSettingsAdmin(admin.ModelAdmin):
+    list_display = (
+        'id',
+        'low_stock_threshold',
+        'expiry_warning_days',
+        'expiry_critical_days',
+        'enable_email_notifications',
+        'updated_by',
+        'updated_at',
+    )
+    list_filter = (
+        'enable_email_notifications',
+        'updated_by',
+        'updated_at',
+    )
+    readonly_fields = ('created_at', 'updated_at')
+    
+    def has_add_permission(self, request):
+        # Only allow one instance
+        return not AlertSettings.objects.exists()
+    
+    def has_delete_permission(self, request, obj=None):
+        # Don't allow deletion
+        return False

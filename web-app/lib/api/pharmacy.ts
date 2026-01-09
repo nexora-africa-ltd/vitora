@@ -378,3 +378,28 @@ export const pharmacyApi = {
     return response.data;
   },
 };
+
+  // ============ Alert Settings ============
+
+  /**
+   * Get alert settings.
+   */
+  async getAlertSettings(): Promise<any> {
+    const response = await apiClient.get('/api/pharmacy/alert-settings/');
+    return response.data;
+  },
+
+  /**
+   * Update alert settings.
+   */
+  async updateAlertSettings(data: {
+    low_stock_threshold?: number;
+    expiry_warning_days?: number;
+    expiry_critical_days?: number;
+    enable_email_notifications?: boolean;
+    notification_email_recipients?: string;
+  }): Promise<any> {
+    const response = await apiClient.patch('/api/pharmacy/alert-settings/', data);
+    return response.data;
+  },
+};
