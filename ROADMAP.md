@@ -1,7 +1,7 @@
 # Vitora HMIS - Comprehensive Development Roadmap
 
-**Version**: 1.2
-**Last Updated**: December 29, 2025
+**Version**: 1.3
+**Last Updated**: January 9, 2026
 **Target Completion**: Q4 2027
 **Methodology**: Test-Driven Development (TDD) with Agile Sprints
 
@@ -11,11 +11,22 @@
 
 This roadmap outlines the complete development journey for Vitora HMIS from January 2026 to Q4 2027. The project adopts a **Test-Driven Development (TDD)** approach throughout all phases, ensuring quality, maintainability, and confidence in offline-first functionality. We prioritize Kenya pilots (rural/urban mix) for validation and iterative improvement.
 
-### Current Status: Phase 0 COMPLETE ✅
-- **Sprints 0.1-0.7**: All completed ✅
-- **Test Coverage**: 82.21% backend (467 tests), 66 frontend tests
+### Current Status: Phase 1 IN PROGRESS 🚧
+- **Phase 0 (Sprints 0.1-0.7)**: All completed ✅
+- **Phase 1 (Sprint 1.x)**: SHA Integration fast-tracked and COMPLETE ✅
+- **Test Coverage**: 82%+ backend (900+ tests), 66 frontend tests
 - **Desktop App**: Offline-first with login UI, JWT auth, patient registration, encounters
 - **Security**: Fernet encryption, audit logging, DPIA completed
+
+**🚀 SHA Integration FAST-TRACKED** (Originally Phase 2, moved to Phase 1):
+- ✅ DHA Authentication Service - JWT token management with caching
+- ✅ SHA Eligibility Service - Coverage verification before service
+- ✅ SHA Claims Service - FHIR R4 bundle submission
+- ✅ Claims Status Polling - Async status tracking
+- ✅ Client Registry Service - Fetch, Register, Update patients in national CR
+- ✅ DHA Search Service - Facility (MFL) and Practitioner (HWR) validation
+- ✅ Terminology Service - ICD-11, LOINC, ICHI, SHA Interventions, Drug Products
+- ✅ 72 unit tests for DHA services, 775+ billing tests total
 
 **Sprint 0.7 Completed** (Clinician Feedback Implementation):
 - ✅ Emergency Contact model (16 tests) - name, phone, relationship
@@ -28,6 +39,16 @@ This roadmap outlines the complete development journey for Vitora HMIS from Janu
 - ✅ Frontend UI updates (48 unit tests + E2E tests)
 - ✅ Django Admin registrations for all models
 - ✅ Dark mode E2E tests
+
+**🚀 SHA Integration Fast-Tracked** (Phase 1 - Originally Phase 2):
+- ✅ All 15 DHA APIs implemented (100% coverage)
+- ✅ Authentication: Token management with 5-min expiry buffer
+- ✅ Eligibility: Coverage verification with retry logic
+- ✅ Claims: FHIR R4 bundle generation and submission
+- ✅ Client Registry: Full CRUD (fetch, register, update)
+- ✅ Search: Facility (MFL) and Practitioner (HWR) validation
+- ✅ Terminology: ICD-11, LOINC, ICHI, SHA Interventions, Drug Products, Active Components
+- ✅ 72 DHA service tests + 775 billing tests
 
 ### Key Metrics
 - **Total Effort**: 15-20 person-years
@@ -460,7 +481,7 @@ GET /api/locations/wards/?sub_county=<id>     # Cascading wards
 
 ---
 
-## Phase 1: Clinical Core (Apr-Sep 2026, 6 months)
+## Phase 1: Clinical Core + SHA Integration (Apr-Sep 2026, 6 months)
 
 ### Goals
 - Production-ready PAS (Patient Administration System)
@@ -468,10 +489,39 @@ GET /api/locations/wards/?sub_county=<id>     # Cascading wards
 - Basic pharmacy and billing modules
 - **Lab/Investigations module** with in-house and external workflow support
 - **Role-Based Access Control (RBAC)** with department scoping
+- **SHA Integration (fast-tracked from Phase 2)** ✅ COMPLETE
 - **Mobile app (parallel track from Sprint 1.1)** - early start for community health workers
 - **Web frontend (Next.js)** - moved from Phase 2 for early stakeholder feedback
 - Offline desktop + mobile app integration
 - Kenya pilot deployments (2 sites: 1 rural, 1 urban)
+
+### SHA Integration Status (Fast-Tracked) ✅ COMPLETE
+
+| Service | Endpoint | Status | Tests |
+|---------|----------|--------|-------|
+| **Authentication** | `/v1/hie-auth` | ✅ Complete | Integrated |
+| **Eligibility** | `/v2/eligibility` | ✅ Complete | Integrated |
+| **Claims Submit** | `/v1/shr-med/bundle` | ✅ Complete | Integrated |
+| **Claims Status** | `/v1/shr-med/claim-status` | ✅ Complete | Integrated |
+| **Client Registry Fetch** | `/v3/client-registry/fetch-client` | ✅ Complete | 26 tests |
+| **Client Registry Register** | `/v3/uat-cr-registration` | ✅ Complete | 26 tests |
+| **Client Registry Update** | `/v3/update-client` | ✅ Complete | 26 tests |
+| **Facility Search** | `/v1/facility-search` | ✅ Complete | 23 tests |
+| **Practitioner Search** | `/v1/practitioner-search` | ✅ Complete | 23 tests |
+| **SHA Interventions** | `/v1/sha-interventions` | ✅ Complete | 23 tests |
+| **ICD-11** | `/v1/icd-11` | ✅ Complete | 23 tests |
+| **ICHI** | `/v1/ichi` | ✅ Complete | 23 tests |
+| **LOINC** | `/v1/loinc` | ✅ Complete | 23 tests |
+| **Drug Products** | `/v1/drug-products` | ✅ Complete | 23 tests |
+| **Active Components** | `/v1/active-component` | ✅ Complete | 23 tests |
+
+**Implementation Files**:
+- `hmis/apps/billing/services/sha_auth.py` - JWT authentication
+- `hmis/apps/billing/services/sha_eligibility.py` - Coverage checks
+- `hmis/apps/billing/services/sha_claims.py` - FHIR R4 claims
+- `hmis/apps/billing/services/client_registry.py` - CR operations
+- `hmis/apps/billing/services/dha_search.py` - MFL/HWR lookups
+- `hmis/apps/billing/services/terminology.py` - Medical coding APIs
 
 ### Sprint Breakdown (12 sprints × 2 weeks)
 
@@ -891,51 +941,49 @@ def test_wait_time_exceeded_flag():
 
 ---
 
-## Phase 2: Claims, Theatre, Inventory & Reporting v1 (Oct 2026-Mar 2027, 6 months)
+## Phase 2: Theatre, Inventory & Reporting v1 (Oct 2026-Mar 2027, 6 months)
 
 ### Goals
-- SHA claims submission integration
+- ~~SHA claims submission integration~~ ✅ **COMPLETED IN PHASE 1**
 - Theatre/surgery management
 - Advanced inventory with suppliers
 - KHIS/DHIS2 automated reporting
 - Cloud sync introduction (optional)
 - **Web frontend enhancements** (full clinical workflows, moved foundation to Phase 1)
 - Scale to 5 additional sites
-- Scale to 5 additional sites
 
 ### Sprint Breakdown (12 sprints × 2 weeks)
 
-#### Sprint 2.1-2.2: SHA Claims Integration (Weeks 1-4)
-**TDD Focus**: Test claims validation and submission
+#### Sprint 2.1-2.2: ~~SHA Claims Integration~~ → Additional Integration Work (Weeks 1-4)
 
-**Tasks**:
-- [ ] **Write tests first**: SHA eligibility check tests
-- [ ] Implement SHA API integration (eligibility)
-- [ ] **Write tests first**: Claims packaging tests
-- [ ] Implement claims form generation
-- [ ] **Write tests first**: Tariff code mapping tests
-- [ ] Implement tariff code lookup
-- [ ] **Write tests first**: Claims submission tests (with mocks)
-- [ ] Implement claims submission workflow
-- [ ] **Write tests first**: Claims status tracking tests
-- [ ] Implement claims tracking dashboard
+> **Note**: SHA Claims Integration was fast-tracked to Phase 1 and is now COMPLETE.
+> Sprint 2.1-2.2 repurposed for additional integration and polish.
 
-**Deliverables**:
-- SHA eligibility verification
-- Claims packaging and submission
-- Tariff code database
-- Claims tracking system
+**SHA Integration - COMPLETED IN PHASE 1** ✅:
+- [x] **Write tests first**: SHA eligibility check tests ✅ (72+ tests)
+- [x] Implement SHA API integration (eligibility) ✅ `sha_eligibility.py`
+- [x] **Write tests first**: Claims packaging tests ✅ (FHIR R4 bundle tests)
+- [x] Implement claims form generation ✅ `sha_claims.py`
+- [x] **Write tests first**: Tariff code mapping tests ✅ (SHA interventions)
+- [x] Implement tariff code lookup ✅ `terminology.py`
+- [x] **Write tests first**: Claims submission tests (with mocks) ✅
+- [x] Implement claims submission workflow ✅
+- [x] **Write tests first**: Claims status tracking tests ✅
+- [x] Implement claims tracking dashboard ✅
 
-**TDD Approach**:
-```python
-# Write test first
-def test_sha_claim_validation():
-    claim = Claim(patient=patient, services=[service])
-    assert claim.validate() == True
-    assert claim.calculate_amount() == 1500.00
+**Additional Tasks for Sprint 2.1-2.2**:
+- [ ] Claims UI polish and user feedback
+- [ ] Claims batch submission optimization
+- [ ] Eligibility caching and performance tuning
+- [ ] Client Registry UI integration
+- [ ] Facility validation in registration flow
 
-# Then implement
-```
+**Deliverables (Updated)**:
+- ~~SHA eligibility verification~~ ✅ DONE
+- ~~Claims packaging and submission~~ ✅ DONE
+- ~~Tariff code database~~ ✅ DONE (via Terminology API)
+- Claims UI enhancements
+- Client Registry patient lookup in registration
 
 #### Sprint 2.3-2.4: Theatre Management (Weeks 5-8)
 **TDD Focus**: Test surgery scheduling and tracking
