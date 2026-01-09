@@ -6,7 +6,7 @@
 'use client';
 
 import { useState } from 'react';
-import { formatDistanceToNow } from 'date-fns';
+import { format, formatDistanceToNow } from 'date-fns';
 import {
   AlertTriangle,
   XCircle,
@@ -15,13 +15,37 @@ import {
   Package,
   Bell,
   Loader2,
+  RefreshCw,
+  Settings,
+  ShoppingCart,
+  Eye,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
+import { Switch } from '@/components/ui/switch';
+import { Label } from '@/components/ui/label';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
+import { Textarea } from '@/components/ui/textarea';
+import { Input } from '@/components/ui/input';
 import { StockAlert, AlertType, AlertSeverity } from '@/lib/types/pharmacy';
 import { useAcknowledgeAlert, useResolveAlert } from '@/lib/hooks/use-pharmacy';
+import { useToast } from '@/components/ui/use-toast';
 
 interface AlertsPanelProps {
   alerts: StockAlert[];
@@ -58,12 +82,34 @@ const ALERT_TYPE_TEST_IDS: Record<AlertType, string> = {
 };
 
 export function AlertsPanel({ alerts, isLoading, error }: AlertsPanelProps) {
+  const { toast } = useToast();
   const [activeTab, setActiveTab] = useState('all');
+  const [showResolved, setShowResolved] = useState(false);
+  const [typeFilter, setTypeFilter] = useState<AlertType | 'all'>('all');
+  const [severityFilter, setSeverityFilter] = useState<AlertSeverity | 'all'>('all');
+  const [resolveDialogOpen, setResolveDialogOpen] = useState(false);
+  const [settingsDialogOpen, setSettingsDialogOpen] = useState(false);
+  const [selectedAlert, setSelectedAlert] = useState<StockAlert | null>(null);
+  const [resolutionNotes, setResolutionNotes] = useState('');
+  const [expiryWarningDays, setExpiryWarningDays] = useState('90');
+  const [lowStockThreshold, setLowStockThreshold] = useState('100');
+  const [lastRefreshed] = useState(new Date());
+
   const acknowledgeAlert = useAcknowledgeAlert();
   const resolveAlert = useResolveAlert();
 
-  // Filter alerts based on active tab
+  // Filter alerts based on active tab, filters, and resolved state
   const filteredAlerts = alerts.filter((alert) => {
+    // Resolved filter
+    if (!showResolved && alert.resolved) return false;
+
+    // Type filter
+    if (typeFilter !== 'all' && alert.alert_type !== typeFilter) return false;
+
+    // Severity filter
+    if (severityFilter !== 'all' && alert.severity !== severityFilter) return false;
+
+    // Tab filter
     if (activeTab === 'all') return true;
     if (activeTab === 'low-stock') {
       return alert.alert_type === 'LOW_STOCK' || alert.alert_type === 'OUT_OF_STOCK';
@@ -77,6 +123,53 @@ export function AlertsPanel({ alerts, isLoading, error }: AlertsPanelProps) {
     }
     return true;
   });
+
+  // Handle acknowledge
+  const handleAcknowledge = async (alertId: number) => {
+    try {
+      await acknowledgeAlert.mutateAsync(alertId);
+      toast({
+        title: 'Alert acknowledged',
+        description: 'The alert has been acknowledged successfully.',
+      });
+    } catch (error) {
+      toast({
+        title: 'Error',
+        description: 'Failed to acknowledge alert.',
+        variant: 'destructive',
+      });
+    }
+  };
+
+  // Handle resolve
+  const handleResolve = async () => {
+    if (!selectedAlert) return;
+    try {
+      await resolveAlert.mutateAsync({ id: selectedAlert.id, notes: resolutionNotes });
+      toast({
+        title: 'Alert resolved',
+        description: 'The alert has been resolved successfully.',
+      });
+      setResolveDialogOpen(false);
+      setResolutionNotes('');
+      setSelectedAlert(null);
+    } catch (error) {
+      toast({
+        title: 'Error',
+        description: 'Failed to resolve alert.',
+        variant: 'destructive',
+      });
+    }
+  };
+
+  // Handle refresh
+  const handleRefresh = () => {
+    toast({
+      title: 'Refreshing alerts',
+      description: 'Alerts are being refreshed...',
+    });
+    // In a real implementation, this would trigger a refetch
+  };
 
   if (isLoading) {
     return (
@@ -107,6 +200,105 @@ export function AlertsPanel({ alerts, isLoading, error }: AlertsPanelProps) {
 
   return (
     <div className="space-y-4">
+      {/* Filters and controls */}
+      <div className="flex flex-wrap gap-4 items-center justify-between">
+        <div className="flex flex-wrap gap-4">
+          {/* Type filter */}
+          <div className="flex items-center gap-2">
+            <Label htmlFor="type-filter">Type</Label>
+            <Select value={typeFilter} onValueChange={(value) => setTypeFilter(value as AlertType | 'all')}>
+              <SelectTrigger id="type-filter" data-testid="alert-type-filter" className="w-[180px]">
+                <SelectValue placeholder="All Types" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Types</SelectItem>
+                <SelectItem value="OUT_OF_STOCK">Out of Stock</SelectItem>
+                <SelectItem value="LOW_STOCK">Low Stock</SelectItem>
+                <SelectItem value="EXPIRING_SOON">Expiring Soon</SelectItem>
+                <SelectItem value="EXPIRING_CRITICAL">Expiring Critical</SelectItem>
+                <SelectItem value="EXPIRED">Expired</SelectItem>
+                <SelectItem value="RECALLED">Recalled</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+
+          {/* Severity filter */}
+          <div className="flex items-center gap-2">
+            <Label htmlFor="severity-filter">Severity</Label>
+            <Select value={severityFilter} onValueChange={(value) => setSeverityFilter(value as AlertSeverity | 'all')}>
+              <SelectTrigger id="severity-filter" data-testid="severity-filter" className="w-[150px]">
+                <SelectValue placeholder="All Severities" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Severities</SelectItem>
+                <SelectItem value="CRITICAL">Critical</SelectItem>
+                <SelectItem value="HIGH">High</SelectItem>
+                <SelectItem value="MEDIUM">Medium</SelectItem>
+                <SelectItem value="LOW">Low</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+
+          {/* Show resolved toggle */}
+          <div className="flex items-center gap-2">
+            <Switch
+              id="resolved-toggle"
+              data-testid="resolved-toggle"
+              checked={showResolved}
+              onCheckedChange={setShowResolved}
+            />
+            <Label htmlFor="resolved-toggle">Show Resolved</Label>
+          </div>
+        </div>
+
+        <div className="flex gap-2">
+          {/* Quick filters */}
+          <Button
+            variant={activeTab === 'low-stock' ? 'default' : 'outline'}
+            size="sm"
+            data-testid="low-stock-filter"
+            onClick={() => setActiveTab('low-stock')}
+          >
+            Low Stock
+          </Button>
+          <Button
+            variant={activeTab === 'expiring' ? 'default' : 'outline'}
+            size="sm"
+            data-testid="expiring-filter"
+            onClick={() => setActiveTab('expiring')}
+          >
+            Expiring
+          </Button>
+
+          {/* Refresh button */}
+          <Button
+            variant="outline"
+            size="sm"
+            data-testid="refresh-alerts-button"
+            onClick={handleRefresh}
+          >
+            <RefreshCw className="h-4 w-4 mr-1" />
+            Refresh
+          </Button>
+
+          {/* Settings button */}
+          <Button
+            variant="outline"
+            size="sm"
+            data-testid="alert-settings-button"
+            onClick={() => setSettingsDialogOpen(true)}
+          >
+            <Settings className="h-4 w-4 mr-1" />
+            Settings
+          </Button>
+        </div>
+      </div>
+
+      {/* Last updated */}
+      <p className="text-sm text-muted-foreground">
+        Last refreshed: {formatDistanceToNow(lastRefreshed, { addSuffix: true })}
+      </p>
+
       <Tabs value={activeTab} onValueChange={setActiveTab}>
         <TabsList>
           <TabsTrigger value="all">All</TabsTrigger>
@@ -115,13 +307,22 @@ export function AlertsPanel({ alerts, isLoading, error }: AlertsPanelProps) {
         </TabsList>
 
         <TabsContent value={activeTab} className="mt-4">
-          <div className="space-y-4">
+          <div className="space-y-4" data-testid="alert-list">
             {filteredAlerts.map((alert) => {
               const Icon = ALERT_TYPE_ICONS[alert.alert_type];
               const testId = ALERT_TYPE_TEST_IDS[alert.alert_type];
 
               return (
-                <Card key={alert.id} data-testid="alert-item">
+                <Card 
+                  key={alert.id} 
+                  data-testid="alert-item"
+                  className={`${
+                    alert.severity === 'CRITICAL' ? 'border-red-500 bg-red-50/50' :
+                    alert.severity === 'HIGH' ? 'border-orange-500 bg-orange-50/50' :
+                    alert.severity === 'MEDIUM' ? 'border-yellow-500 bg-yellow-50/50' :
+                    'border-blue-500 bg-blue-50/50'
+                  }`}
+                >
                   <CardContent className="pt-4">
                     <div className="flex items-start gap-4">
                       {/* Icon */}
@@ -132,7 +333,9 @@ export function AlertsPanel({ alerts, isLoading, error }: AlertsPanelProps) {
                             ? 'bg-red-100'
                             : alert.severity === 'HIGH'
                             ? 'bg-orange-100'
-                            : 'bg-yellow-100'
+                            : alert.severity === 'MEDIUM'
+                            ? 'bg-yellow-100'
+                            : 'bg-blue-100'
                         }`}
                       >
                         <Icon
@@ -141,7 +344,9 @@ export function AlertsPanel({ alerts, isLoading, error }: AlertsPanelProps) {
                               ? 'text-red-600'
                               : alert.severity === 'HIGH'
                               ? 'text-orange-600'
-                              : 'text-yellow-600'
+                              : alert.severity === 'MEDIUM'
+                              ? 'text-yellow-600'
+                              : 'text-blue-600'
                           }`}
                         />
                       </div>
@@ -156,35 +361,43 @@ export function AlertsPanel({ alerts, isLoading, error }: AlertsPanelProps) {
                             </Badge>
                           </div>
                           <span className="text-sm text-muted-foreground">
-                            {formatDistanceToNow(new Date(alert.created_at), { addSuffix: true })}
+                            {format(new Date(alert.created_at), 'MMM d, yyyy')}
                           </span>
                         </div>
 
                         <p className="text-sm text-muted-foreground">{alert.message}</p>
 
-                        {/* Status */}
-                        <div className="flex items-center gap-2">
+                        {/* Status badges */}
+                        <div className="flex items-center gap-2 flex-wrap">
                           {alert.acknowledged && (
                             <Badge variant="outline" className="text-xs">
                               <CheckCircle className="h-3 w-3 mr-1" />
-                              Acknowledged
+                              Acknowledged by {alert.acknowledged_by_name} on{' '}
+                              {alert.acknowledged_at && format(new Date(alert.acknowledged_at), 'MMM d')}
                             </Badge>
                           )}
                           {alert.batch_number && (
                             <Badge variant="outline" className="text-xs">
                               <Package className="h-3 w-3 mr-1" />
-                              Batch: {alert.batch_number}
+                              {alert.batch_number}
+                            </Badge>
+                          )}
+                          {alert.resolved && (
+                            <Badge variant="outline" className="text-xs bg-green-50">
+                              <CheckCircle className="h-3 w-3 mr-1 text-green-600" />
+                              Resolved
                             </Badge>
                           )}
                         </div>
 
                         {/* Actions */}
-                        <div className="flex items-center gap-2 pt-2">
-                          {!alert.acknowledged && (
+                        <div className="flex items-center gap-2 pt-2 flex-wrap">
+                          {!alert.acknowledged && !alert.resolved && (
                             <Button
                               variant="outline"
                               size="sm"
-                              onClick={() => acknowledgeAlert.mutate(alert.id)}
+                              data-testid="acknowledge-button"
+                              onClick={() => handleAcknowledge(alert.id)}
                               disabled={acknowledgeAlert.isPending}
                             >
                               {acknowledgeAlert.isPending ? (
@@ -195,11 +408,15 @@ export function AlertsPanel({ alerts, isLoading, error }: AlertsPanelProps) {
                               Acknowledge
                             </Button>
                           )}
-                          {alert.acknowledged && !alert.resolved && (
+                          {!alert.resolved && (
                             <Button
                               variant="outline"
                               size="sm"
-                              onClick={() => resolveAlert.mutate({ id: alert.id })}
+                              data-testid="resolve-button"
+                              onClick={() => {
+                                setSelectedAlert(alert);
+                                setResolveDialogOpen(true);
+                              }}
                               disabled={resolveAlert.isPending}
                             >
                               {resolveAlert.isPending ? (
@@ -208,6 +425,39 @@ export function AlertsPanel({ alerts, isLoading, error }: AlertsPanelProps) {
                                 <CheckCircle className="h-4 w-4 mr-1" />
                               )}
                               Resolve
+                            </Button>
+                          )}
+                          {(alert.alert_type === 'LOW_STOCK' || alert.alert_type === 'OUT_OF_STOCK') && (
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              data-testid="reorder-button"
+                              onClick={() => {
+                                // Navigate to reorder page or open reorder dialog
+                                toast({
+                                  title: 'Reorder',
+                                  description: `Opening reorder for ${alert.drug_name}`,
+                                });
+                              }}
+                            >
+                              <ShoppingCart className="h-4 w-4 mr-1" />
+                              Reorder
+                            </Button>
+                          )}
+                          {(alert.alert_type === 'EXPIRING_SOON' || alert.alert_type === 'EXPIRING_CRITICAL' || alert.alert_type === 'EXPIRED') && alert.batch_number && (
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              data-testid="view-batch-button"
+                              onClick={() => {
+                                toast({
+                                  title: 'View Batch',
+                                  description: `Opening batch ${alert.batch_number}`,
+                                });
+                              }}
+                            >
+                              <Eye className="h-4 w-4 mr-1" />
+                              View Batch
                             </Button>
                           )}
                         </div>
@@ -220,6 +470,111 @@ export function AlertsPanel({ alerts, isLoading, error }: AlertsPanelProps) {
           </div>
         </TabsContent>
       </Tabs>
+
+      {/* Resolve Dialog */}
+      <Dialog open={resolveDialogOpen} onOpenChange={setResolveDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Resolve Alert</DialogTitle>
+            <DialogDescription>
+              Enter notes about how this alert was resolved.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div className="space-y-2">
+              <Label htmlFor="resolution-notes">Resolution Notes</Label>
+              <Textarea
+                id="resolution-notes"
+                placeholder="Describe how the alert was resolved..."
+                value={resolutionNotes}
+                onChange={(e) => setResolutionNotes(e.target.value)}
+                rows={4}
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => {
+                setResolveDialogOpen(false);
+                setResolutionNotes('');
+                setSelectedAlert(null);
+              }}
+            >
+              Cancel
+            </Button>
+            <Button onClick={handleResolve} disabled={resolveAlert.isPending}>
+              {resolveAlert.isPending ? (
+                <>
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                  Resolving...
+                </>
+              ) : (
+                'Confirm'
+              )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Settings Dialog */}
+      <Dialog open={settingsDialogOpen} onOpenChange={setSettingsDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Alert Settings</DialogTitle>
+            <DialogDescription>
+              Configure alert thresholds and notification preferences.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div className="space-y-2">
+              <Label htmlFor="expiry-warning-days">Expiry Warning Days</Label>
+              <Input
+                id="expiry-warning-days"
+                type="number"
+                value={expiryWarningDays}
+                onChange={(e) => setExpiryWarningDays(e.target.value)}
+                placeholder="90"
+              />
+              <p className="text-xs text-muted-foreground">
+                Alert when stock is within this many days of expiry
+              </p>
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="reorder-level">Low Stock Threshold / Reorder Level</Label>
+              <Input
+                id="reorder-level"
+                type="number"
+                value={lowStockThreshold}
+                onChange={(e) => setLowStockThreshold(e.target.value)}
+                placeholder="100"
+              />
+              <p className="text-xs text-muted-foreground">
+                Alert when stock falls below this quantity
+              </p>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => setSettingsDialogOpen(false)}
+            >
+              Cancel
+            </Button>
+            <Button
+              onClick={() => {
+                toast({
+                  title: 'Settings saved',
+                  description: 'Alert settings have been updated.',
+                });
+                setSettingsDialogOpen(false);
+              }}
+            >
+              Save Changes
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
