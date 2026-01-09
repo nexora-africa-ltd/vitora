@@ -9,3 +9,4 @@ export { StockTable } from './stock-table';
 export { AlertsPanel } from './alerts-panel';
 export { PrescriptionsTable } from './prescriptions-table';
 export { BatchDetailDialog } from './batch-detail-dialog';
+export { StockAdjustmentDialog } from './stock-adjustment-dialog';
