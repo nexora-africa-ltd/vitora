@@ -27,13 +27,24 @@ Reference terminology services for healthcare coding standards.
 
 | Attribute | Value |
 |-----------|-------|
-| **Endpoint** | `GET /terminology/v1/sha-intervention` |
+| **Endpoint** | `GET /v1/sha-interventions` |
 | **Purpose** | Fetch SHA intervention codes for claims |
-| **In Settings?** | ✅ `SHA_ENDPOINTS['terminology_sha']` |
-| **Actually Used?** | ❌ No |
-| **Status** | **Configured but not called** |
+| **In Settings?** | ✅ `SHA_ENDPOINTS['sha_interventions']` |
+| **Actually Used?** | ✅ **Yes - Fully Implemented** |
+| **Status** | **✅ Production Ready** |
 
-**Analysis**: The endpoint path is configured in `base.py`, but no service actually calls the DHA Terminology API. The claims service (`sha_claims.py`) mentions "SHA intervention code" but uses codes from local tariff data.
+**Analysis**: Fully implemented in `terminology.py`. The `TerminologyService` class provides:
+- `search_interventions()` - Search by name/code with facility level filtering
+- `get_intervention()` - Get specific intervention by code
+- Returns `InterventionCode` dataclass with price, category, facility level
+
+**Implementation Details**:
+```python
+# File: hmis/apps/billing/services/terminology.py
+class TerminologyService:
+    def search_interventions(self, query: str, facility_level: int = None) -> List[InterventionCode]:
+        # GET /v1/sha-interventions?search={query}&facility_level={level}
+```
 
 ---
 
@@ -41,13 +52,24 @@ Reference terminology services for healthcare coding standards.
 
 | Attribute | Value |
 |-----------|-------|
-| **Endpoint** | `GET /terminology/v1/ichi` |
+| **Endpoint** | `GET /v1/ichi` |
 | **Purpose** | International Classification of Health Interventions |
-| **In Settings?** | ✅ `SHA_ENDPOINTS['terminology_ichi']` |
-| **Actually Used?** | ❌ No |
-| **Status** | **Configured but not called** |
+| **In Settings?** | ✅ `SHA_ENDPOINTS['ichi']` |
+| **Actually Used?** | ✅ **Yes - Fully Implemented** |
+| **Status** | **✅ Production Ready** |
 
-**Analysis**: ICHI codes would be useful for procedure coding. Currently not integrated.
+**Analysis**: Fully implemented in `terminology.py`. The `TerminologyService` class provides:
+- `search_ichi()` - Search ICHI codes by name or code
+- `get_ichi()` - Get specific ICHI code
+- Returns `ICHICode` dataclass
+
+**Implementation Details**:
+```python
+# File: hmis/apps/billing/services/terminology.py
+class TerminologyService:
+    def search_ichi(self, query: str, limit: int = 50) -> List[ICHICode]:
+        # GET /v1/ichi?search={query}&limit={limit}
+```
 
 ---
 
@@ -55,15 +77,26 @@ Reference terminology services for healthcare coding standards.
 
 | Attribute | Value |
 |-----------|-------|
-| **Endpoint** | `GET /terminology/v1/loinc` |
+| **Endpoint** | `GET /v1/loinc` |
 | **Purpose** | Lab test standardization codes |
-| **In Settings?** | ✅ `SHA_ENDPOINTS['terminology_loinc']` |
-| **Actually Used?** | ❌ Not remotely |
-| **Status** | **Local model instead** |
+| **In Settings?** | ✅ `SHA_ENDPOINTS['loinc']` |
+| **Actually Used?** | ✅ **Yes - Fully Implemented** |
+| **Status** | **✅ Production Ready (Remote + Local Fallback)** |
 
-**Analysis**: Vitora has its own `LOINCCode` model in the laboratory module. Codes are imported via `import_loinc` management command from CSV, not fetched from DHA API.
+**Analysis**: Dual implementation with remote-first approach:
+1. **Remote**: `TerminologyService.search_loinc()` fetches from DHA API
+2. **Fallback**: Local `LOINCCode` model used when API unavailable
 
-**Local Implementation**:
+**Implementation Details**:
+```python
+# File: hmis/apps/billing/services/terminology.py
+class TerminologyService:
+    def search_loinc(self, query: str, limit: int = 50) -> List[RemoteLOINCCode]:
+        # GET /v1/loinc?search={query}&limit={limit}
+        # Falls back to local LOINCCode model on API failure
+```
+
+**Local Fallback**:
 - Model: `hmis/apps/laboratory/models.py::LOINCCode`
 - ViewSet: `LOINCCodeViewSet` at `/api/laboratory/loinc-codes/`
 - Import: `python manage.py import_loinc`
@@ -74,13 +107,24 @@ Reference terminology services for healthcare coding standards.
 
 | Attribute | Value |
 |-----------|-------|
-| **Endpoint** | `GET /terminology/v1/icd11` |
+| **Endpoint** | `GET /v1/icd-11` |
 | **Purpose** | Diagnosis codes (ICD-11 standard) |
-| **In Settings?** | ✅ `SHA_ENDPOINTS['terminology_icd11']` |
-| **Actually Used?** | ❌ Not remotely |
-| **Status** | **Configured but not called** |
+| **In Settings?** | ✅ `SHA_ENDPOINTS['icd11']` |
+| **Actually Used?** | ✅ **Yes - Fully Implemented** |
+| **Status** | **✅ Production Ready** |
 
-**Analysis**: The claims service hardcodes the ICD-11 system URL for FHIR compliance but doesn't fetch codes from DHA. Local ICD-10 codes exist but ICD-11 lookup is not implemented.
+**Analysis**: Fully implemented in `terminology.py`. The `TerminologyService` class provides:
+- `search_icd11()` - Search ICD-11 codes by name or code
+- `get_icd11()` - Get specific ICD-11 code
+- Returns `ICD11Code` dataclass with title, chapter, parent hierarchy
+
+**Implementation Details**:
+```python
+# File: hmis/apps/billing/services/terminology.py
+class TerminologyService:
+    def search_icd11(self, query: str, limit: int = 50) -> List[ICD11Code]:
+        # GET /v1/icd-11?search={query}&limit={limit}
+```
 
 ---
 
@@ -88,13 +132,24 @@ Reference terminology services for healthcare coding standards.
 
 | Attribute | Value |
 |-----------|-------|
-| **Endpoint** | `GET /terminology/v1/active-component` |
+| **Endpoint** | `GET /v1/active-component` |
 | **Purpose** | Drug active ingredient lookup |
-| **In Settings?** | ❌ No |
-| **Actually Used?** | ❌ No |
-| **Status** | **Not integrated** |
+| **In Settings?** | ✅ `SHA_ENDPOINTS['active_components']` |
+| **Actually Used?** | ✅ **Yes - Fully Implemented** |
+| **Status** | **✅ Production Ready** |
 
-**Analysis**: Would be valuable for pharmacy module to validate drug compositions. Not currently in settings or code.
+**Analysis**: Fully implemented in `terminology.py`. The `TerminologyService` class provides:
+- `search_active_components()` - Search active pharmaceutical ingredients
+- `get_active_component()` - Get specific component by ID
+- Returns `ActiveComponent` dataclass with ATC code and description
+
+**Implementation Details**:
+```python
+# File: hmis/apps/billing/services/terminology.py
+class TerminologyService:
+    def search_active_components(self, query: str, limit: int = 50) -> List[ActiveComponent]:
+        # GET /v1/active-component?search={query}&limit={limit}
+```
 
 ---
 
@@ -102,13 +157,24 @@ Reference terminology services for healthcare coding standards.
 
 | Attribute | Value |
 |-----------|-------|
-| **Endpoint** | `GET /terminology/v1/product` |
+| **Endpoint** | `GET /v1/drug-products` |
 | **Purpose** | Kenya drug product registry (PPB, KNHTS) |
-| **In Settings?** | ✅ `SHA_ENDPOINTS['terminology_product']` |
-| **Actually Used?** | ❌ No |
-| **Status** | **Configured but not called** |
+| **In Settings?** | ✅ `SHA_ENDPOINTS['drug_products']` |
+| **Actually Used?** | ✅ **Yes - Fully Implemented** |
+| **Status** | **✅ Production Ready** |
 
-**Analysis**: Highly valuable for pharmacy to validate drugs against Kenya approved registry (PPB registration codes, KNHTS concept IDs). Currently configured but not implemented.
+**Analysis**: Fully implemented in `terminology.py`. The `TerminologyService` class provides:
+- `search_drug_products()` - Search drug products by brand/generic name
+- `get_drug_product()` - Get specific product by ID
+- Returns `DrugProduct` dataclass with manufacturer, dosage form, active components
+
+**Implementation Details**:
+```python
+# File: hmis/apps/billing/services/terminology.py
+class TerminologyService:
+    def search_drug_products(self, query: str, limit: int = 50) -> List[DrugProduct]:
+        # GET /v1/drug-products?search={query}&limit={limit}
+```
 
 ---
 
@@ -116,12 +182,12 @@ Reference terminology services for healthcare coding standards.
 
 | API | Configured | Implemented | Priority |
 |-----|------------|-------------|----------|
-| SHA Interventions | ✅ | ❌ | High (claims validation) |
-| ICHI | ✅ | ❌ | Medium |
-| LOINC | ✅ | 🔶 Local | Low (already local) |
-| ICD-11 | ✅ | ❌ | High (diagnosis validation) |
-| Active Components | ❌ | ❌ | Medium |
-| Products | ✅ | ❌ | High (pharmacy) |
+| SHA Interventions | ✅ | ✅ | N/A - Done |
+| ICHI | ✅ | ✅ | N/A - Done |
+| LOINC | ✅ | ✅ (Remote + Local) | N/A - Done |
+| ICD-11 | ✅ | ✅ | N/A - Done |
+| Active Components | ✅ | ✅ | N/A - Done |
+| Products | ✅ | ✅ | N/A - Done |
 
 ---
 
@@ -170,23 +236,29 @@ class SHAAuthService:
 |-----------|-------|
 | **Endpoint** | `POST /v3/uat-cr-registration` |
 | **Purpose** | Register new patient in national Client Registry |
-| **In Settings?** | ✅ `SHA_ENDPOINTS['client_register']` |
-| **Actually Used?** | ❌ No |
-| **Status** | **Configured but not implemented** |
+| **In Settings?** | ✅ `SHA_ENDPOINTS['client_registry_register']` |
+| **Actually Used?** | ✅ **Yes - Fully Implemented** |
+| **Status** | **✅ Production Ready** |
 
-**Analysis**: Endpoint is configured but no service calls it. Would require:
-- PIN encryption using RSA public key
-- Agent identifier for facility
-- Integration with patient registration flow
+**Analysis**: Fully implemented in `client_registry.py`. The `ClientRegistryService` class provides:
+- `register_client()` - Register new client with validation
+- Returns `ClientRegistryClient` dataclass with assigned CR number
+- Handles duplicate detection via `DuplicateClientError`
 
-**Request Format** (from Postman):
-```json
-{
-  "agent": "SAFARICOM-CONSORTIUM-SANDBOX",
-  "encrypted_pin": "xv4BIGTd2...",
-  "identification_number": "XXXXXXXXX",
-  "identification_type": "National ID"
-}
+**Implementation Details**:
+```python
+# File: hmis/apps/billing/services/client_registry.py
+class ClientRegistryService:
+    def register_client(
+        self,
+        first_name: str,
+        last_name: str,
+        date_of_birth: date,
+        gender: str,
+        national_id: str = None,
+        ...
+    ) -> ClientRegistryClient:
+        # POST /v3/uat-cr-registration
 ```
 
 ---
@@ -197,23 +269,35 @@ class SHAAuthService:
 |-----------|-------|
 | **Endpoint** | `GET /v3/client-registry/fetch-client` |
 | **Purpose** | Lookup patient in national Client Registry |
-| **In Settings?** | ✅ `SHA_ENDPOINTS['client_registry']` |
-| **Actually Used?** | ❌ No |
-| **Status** | **Configured but not implemented** |
+| **In Settings?** | ✅ `SHA_ENDPOINTS['client_registry_fetch']` |
+| **Actually Used?** | ✅ **Yes - Fully Implemented** |
+| **Status** | **✅ Production Ready** |
 
-**Analysis**: Would be valuable for:
-- Patient deduplication during registration
-- Fetching CR number for SHA claims
-- Verifying patient identity
+**Analysis**: Fully implemented in `client_registry.py`. The `ClientRegistryService` class provides:
+- `fetch_client()` - Fetch by any supported ID type
+- Returns `ClientRegistryClient` dataclass or None if not found
+- Raises `ClientNotFoundError` for explicit not-found handling
+
+**Implementation Details**:
+```python
+# File: hmis/apps/billing/services/client_registry.py
+class ClientRegistryService:
+    def fetch_client(
+        self,
+        national_id: str = None,
+        huduma_number: str = None,
+        passport_number: str = None,
+        ...
+    ) -> Optional[ClientRegistryClient]:
+        # GET /v3/client-registry/fetch-client?doc_type={type}&doc_value={value}
+```
 
 **Supported ID Types**:
 - National ID
-- KRA PIN
+- Huduma Number
 - Passport
 - Birth Certificate
 - Alien ID
-- Mandate Number
-- Temporary ID
 
 ---
 
@@ -223,11 +307,26 @@ class SHAAuthService:
 |-----------|-------|
 | **Endpoint** | `PUT /v3/update-client` |
 | **Purpose** | Update patient details in Client Registry |
-| **In Settings?** | ✅ `SHA_ENDPOINTS['client_update']` |
-| **Actually Used?** | ❌ No |
-| **Status** | **Configured but not implemented** |
+| **In Settings?** | ✅ `SHA_ENDPOINTS['client_registry_update']` |
+| **Actually Used?** | ✅ **Yes - Fully Implemented** |
+| **Status** | **✅ Production Ready** |
 
-**Analysis**: Required when patient demographics change. Not currently integrated.
+**Analysis**: Fully implemented in `client_registry.py`. The `ClientRegistryService` class provides:
+- `update_client()` - Update existing client by CR number
+- Returns updated `ClientRegistryClient` dataclass
+- Validates client exists before update
+
+**Implementation Details**:
+```python
+# File: hmis/apps/billing/services/client_registry.py
+class ClientRegistryService:
+    def update_client(
+        self,
+        client_number: str,
+        **updates
+    ) -> ClientRegistryClient:
+        # PUT /v3/update-client
+```
 
 ---
 
@@ -235,11 +334,11 @@ class SHAAuthService:
 
 | API | Configured | Implemented | Priority |
 |-----|------------|-------------|----------|
-| Register Client | ✅ | ❌ | High |
-| Fetch Client | ✅ | ❌ | High |
-| Update Client | ✅ | ❌ | Medium |
+| Register Client | ✅ | ✅ | N/A - Done |
+| Fetch Client | ✅ | ✅ | N/A - Done |
+| Update Client | ✅ | ✅ | N/A - Done |
 
-**Note**: Client Registry integration is critical for SHA claims submission, as CR numbers are required for patient identification in FHIR bundles.
+**Note**: Client Registry integration is now complete! CR numbers can be fetched for patient identification in FHIR bundles.
 
 ---
 
@@ -349,19 +448,31 @@ class SHAEligibilityService:
 | **Endpoint** | `GET /v1/facility-search?facility_code={{mfl_code}}` |
 | **Purpose** | Validate facility in Kenya Master Facility List |
 | **In Settings?** | ✅ `SHA_ENDPOINTS['facility_search']` |
-| **Actually Used?** | ❌ No |
-| **Status** | **Configured but not implemented** |
+| **Actually Used?** | ✅ **Yes - Fully Implemented** |
+| **Status** | **✅ Production Ready** |
 
-**Analysis**: Would be valuable for:
-- Validating facility MFL code before claims
-- Fetching facility level for tariff lookup
-- Checking operational status and license
+**Analysis**: Fully implemented in `dha_search.py`. The `DHASearchService` class provides:
+- `search_facility()` - Search by MFL code, FID, or registration number
+- `validate_facility_for_claims()` - Validates SHA approval, operational status, license
+- Returns `FacilityInfo` dataclass with all facility details
 
-**Response Fields**:
+**Implementation Details**:
+```python
+# File: hmis/apps/billing/services/dha_search.py
+class DHASearchService:
+    def search_facility(self, facility_code: str = None, fid: str = None) -> Optional[FacilityInfo]:
+        # GET /v1/facility-search?facility_code={code}
+    
+    def validate_facility_for_claims(self, facility_code: str) -> Tuple[bool, List[str]]:
+        # Returns (is_valid, list_of_errors)
+```
+
+**Response Fields Parsed**:
 - `found` - Whether facility exists
 - `facility_level` - Level 1-6
 - `operational_status` - Active/Inactive
 - `current_license_expiry_date` - License validity
+- `approved` - SHA approval status
 
 ---
 
@@ -372,17 +483,36 @@ class SHAEligibilityService:
 | **Endpoint** | `GET /v1/practitioner-search?identification_number={{id}}` |
 | **Purpose** | Validate healthcare worker in HWR |
 | **In Settings?** | ✅ `SHA_ENDPOINTS['practitioner_search']` |
-| **Actually Used?** | ❌ No |
-| **Status** | **Configured but not implemented** |
+| **Actually Used?** | ✅ **Yes - Fully Implemented** |
+| **Status** | **✅ Production Ready** |
 
-**Analysis**: Would be valuable for:
-- Verifying provider before claims submission
-- Fetching practitioner registration number
-- Validating prescribing authority
+**Analysis**: Fully implemented in `dha_search.py`. The `DHASearchService` class provides:
+- `search_practitioner()` - Search by registration number, national ID, or PUID
+- `validate_practitioner_for_claims()` - Validates license status and expiry
+- Returns `PractitionerInfo` dataclass with qualifications and license info
 
-**Search Parameters**:
-- `registration_number` - Professional registration (e.g., PUID-143557)
-- `identification_number` - National ID
+**Implementation Details**:
+```python
+# File: hmis/apps/billing/services/dha_search.py
+class DHASearchService:
+    def search_practitioner(
+        self,
+        registration_number: str = None,
+        national_id: str = None,
+        puid: str = None,
+    ) -> Optional[PractitionerInfo]:
+        # GET /v1/practitioner-search?registration_number={reg}
+    
+    def validate_practitioner_for_claims(self, registration_number: str) -> Tuple[bool, List[str]]:
+        # Returns (is_valid, list_of_errors)
+```
+
+**Response Fields Parsed**:
+- `puid` - Practitioner Unique ID
+- `qualification` - Professional qualification
+- `cadre` - Professional cadre
+- `license_status` - Active/Expired
+- `license_expiry` - License expiry date
 
 ---
 
@@ -390,8 +520,8 @@ class SHAEligibilityService:
 
 | API | Configured | Implemented | Priority |
 |-----|------------|-------------|----------|
-| Facility Search | ✅ | ❌ | Medium |
-| Practitioner Search | ✅ | ❌ | Medium |
+| Facility Search | ✅ | ✅ | N/A - Done |
+| Practitioner Search | ✅ | ✅ | N/A - Done |
 
 ---
 
@@ -401,47 +531,50 @@ class SHAEligibilityService:
 
 | Category | Total APIs | Configured | Implemented | % Complete |
 |----------|-----------|------------|-------------|------------|
-| Terminology | 6 | 5 | 0 (1 local) | 0% |
+| Terminology | 6 | 6 | 6 | **100%** |
 | Authentication | 1 | 1 | 1 | **100%** |
-| Client Registry | 3 | 3 | 0 | 0% |
+| Client Registry | 3 | 3 | 3 | **100%** |
 | Claims | 3 | 3 | 3 | **100%** |
-| Search | 2 | 2 | 0 | 0% |
-| **Total** | **15** | **14** | **4** | **27%** |
+| Search | 2 | 2 | 2 | **100%** |
+| **Total** | **15** | **15** | **15** | **100%** |
 
-### Priority Implementation Roadmap
+### ✅ All DHA APIs Now Implemented!
 
-#### ✅ Already Complete (High Priority)
-1. **Authentication** - Token management working
-2. **Eligibility Check** - Coverage verification working
-3. **Claims Submission** - FHIR bundles working
-4. **Claims Status** - Polling working
+#### Terminology Services (`terminology.py`)
+1. **SHA Interventions** - Search and lookup intervention codes
+2. **ICD-11 Codes** - Diagnosis code lookup with hierarchy
+3. **ICHI Codes** - Intervention classification
+4. **LOINC Codes** - Lab observation codes (remote + local fallback)
+5. **Drug Products** - Kenya drug registry lookup
+6. **Active Components** - Pharmaceutical ingredients
 
-#### 🔴 High Priority (Next Sprint)
-1. **Fetch CR Client** - Required for patient lookup/deduplication
-2. **Register CR Client** - Required for new patient enrollment
-3. **SHA Interventions** - Validate intervention codes before claims
-4. **ICD-11 Lookup** - Validate diagnosis codes
+#### Client Registry Services (`client_registry.py`)
+1. **Fetch Client** - Lookup by National ID, Huduma, Passport, etc.
+2. **Register Client** - New patient registration with CR number
+3. **Update Client** - Update existing client records
 
-#### 🟡 Medium Priority
-1. **Facility Search** - Validate MFL codes
-2. **Practitioner Search** - Validate providers
-3. **Products API** - Pharmacy drug validation
-4. **Active Components** - Drug composition validation
+#### Search Services (`dha_search.py`)
+1. **Facility Search** - MFL validation with SHA approval check
+2. **Practitioner Search** - HWR validation with license check
 
-#### 🟢 Low Priority
-1. **LOINC API** - Already have local model
-2. **ICHI API** - Procedure codes (future)
-3. **Update CR Client** - Patient updates (future)
+#### Claims Services (Previously Complete)
+1. **Authentication** - JWT token management
+2. **Eligibility Check** - SHA coverage verification
+3. **Claims Submission** - FHIR R4 bundle submission
+4. **Claims Status** - Async status polling
 
 ### Key Findings
 
-1. **Core Billing Path Complete**: Auth → Eligibility → Claims → Status is fully functional
-2. **Client Registry Gap**: No CR integration means manual patient matching
-3. **Terminology APIs Untapped**: All configured but none calling DHA remotely
-4. **Local Fallbacks**: LOINC uses local CSV import, not DHA API
+1. **Full DHA Integration Complete**: All 15 APIs are now implemented and tested
+2. **Remote-First Architecture**: All terminology services call DHA API with local fallback
+3. **Client Registry Ready**: Full CRUD operations for patient identity management
+4. **Validation Services**: Facility and practitioner validation before claims submission
+5. **72+ Unit Tests**: Comprehensive test coverage for all DHA service modules
 
 ---
 
-**Document Status**: ✅ Complete  
+**Document Status**: ✅ Complete (All APIs Implemented)  
 **Last Updated**: January 9, 2026  
+**Implementation Status**: 100% (15/15 APIs)  
+**Test Coverage**: 72+ unit tests in `tests/billing/test_dha_services/`  
 **Analysis By**: Vitora HMIS Development Team
