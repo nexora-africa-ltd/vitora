@@ -141,6 +141,7 @@ class PrescriptionItemSerializer(serializers.ModelSerializer):
     """Serializer for PrescriptionItem model."""
 
     drug_name = serializers.CharField(source="drug.generic_name", read_only=True)
+    drug_code = serializers.CharField(source="drug.code", read_only=True)
     remaining_qty = serializers.IntegerField(source="remaining_quantity", read_only=True)
     # Alias for frontend compatibility
     quantity_prescribed = serializers.IntegerField(source="quantity", read_only=True)
@@ -153,6 +154,7 @@ class PrescriptionItemSerializer(serializers.ModelSerializer):
             "prescription",
             "drug",
             "drug_name",
+            "drug_code",
             "quantity",
             "quantity_prescribed",
             "dosage",
@@ -171,6 +173,7 @@ class PrescriptionItemSerializer(serializers.ModelSerializer):
             "id",
             "quantity_dispensed",
             "drug_name",
+            "drug_code",
             "remaining_qty",
             "remaining_quantity",
             "quantity_prescribed",
@@ -212,10 +215,14 @@ class PrescriptionSerializer(serializers.ModelSerializer):
     patient_name = serializers.SerializerMethodField()
     patient_mrn = serializers.CharField(source="patient.mrn", read_only=True)
     prescriber_name = serializers.SerializerMethodField()
+    prescribed_date = serializers.DateField(source="prescribed_at", read_only=True)
     is_valid_prescription = serializers.SerializerMethodField()
     is_fully_dispensed_status = serializers.BooleanField(
         source="is_fully_dispensed", read_only=True
     )
+    # Aliases for frontend compatibility
+    is_valid = serializers.SerializerMethodField()
+    is_fully_dispensed = serializers.BooleanField(source="is_fully_dispensed_status", read_only=True)
 
     class Meta:
         model = Prescription
@@ -229,10 +236,13 @@ class PrescriptionSerializer(serializers.ModelSerializer):
             "prescribed_by",
             "prescriber_name",
             "prescribed_at",
+            "prescribed_date",
             "valid_until",
             "status",
             "clinical_notes",
+            "is_valid",
             "is_valid_prescription",
+            "is_fully_dispensed",
             "is_fully_dispensed_status",
             "items",
             "created_at",
@@ -242,13 +252,16 @@ class PrescriptionSerializer(serializers.ModelSerializer):
             "id",
             "prescription_number",
             "prescribed_by",
+            "prescribed_date",
             "status",
             "created_at",
             "updated_at",
             "patient_name",
             "patient_mrn",
             "prescriber_name",
+            "is_valid",
             "is_valid_prescription",
+            "is_fully_dispensed",
             "is_fully_dispensed_status",
         ]
 
@@ -262,6 +275,10 @@ class PrescriptionSerializer(serializers.ModelSerializer):
 
     def get_is_valid_prescription(self, obj):
         """Get prescription validity status."""
+        return obj.is_valid()
+    
+    def get_is_valid(self, obj):
+        """Alias for is_valid_prescription."""
         return obj.is_valid()
 
 
