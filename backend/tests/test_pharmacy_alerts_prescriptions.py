@@ -432,6 +432,63 @@ class TestStockAlertModel:
 class TestPrescriptionModel:
     """Tests for Prescription model."""
 
+    def test_prescription_number_auto_generated(self):
+        """Prescription number should be auto-generated with format RX-YYYYMMDD-XXXX."""
+        from django.contrib.auth import get_user_model
+
+        from hmis.apps.core.models import County, SubCounty
+        from hmis.apps.encounters.models import Encounter
+        from hmis.apps.patients.models import Patient
+        from hmis.apps.pharmacy.models import Prescription
+
+        User = get_user_model()
+        user = User.objects.create_user(username="prescriber0", password="test123")
+
+        county = County.objects.create(code=100, name="Test County 100")
+        sub_county = SubCounty.objects.create(county=county, name="Test SubCounty 100")
+
+        patient = Patient.objects.create(
+            first_name="Test",
+            last_name="Patient",
+            date_of_birth="1990-01-01",
+            gender="M",
+            county=county,
+            sub_county=sub_county,
+        )
+
+        encounter = Encounter.objects.create(
+            patient=patient,
+            encounter_type="OPD",
+            chief_complaint="Test complaint",
+        )
+
+        prescription = Prescription.objects.create(
+            encounter=encounter,
+            patient=patient,
+            prescribed_by=user,
+            valid_until=date.today() + timedelta(days=30),
+            clinical_notes="Test prescription",
+        )
+
+        # Check prescription number format
+        assert prescription.prescription_number is not None
+        assert prescription.prescription_number.startswith("RX-")
+        assert len(prescription.prescription_number) == 18  # RX-YYYYMMDD-XXXX
+        
+        # Create another prescription on the same day
+        prescription2 = Prescription.objects.create(
+            encounter=encounter,
+            patient=patient,
+            prescribed_by=user,
+            valid_until=date.today() + timedelta(days=30),
+            clinical_notes="Test prescription 2",
+        )
+        
+        # Check sequential numbering
+        num1 = int(prescription.prescription_number.split("-")[-1])
+        num2 = int(prescription2.prescription_number.split("-")[-1])
+        assert num2 == num1 + 1
+
     def test_prescription_creation_linked_to_encounter(self):
         """Prescription can be created and linked to encounter."""
         from django.contrib.auth import get_user_model
