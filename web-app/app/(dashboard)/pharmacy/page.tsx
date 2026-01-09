@@ -17,7 +17,9 @@ import { Plus, Pill, Package, FileText, AlertTriangle, Loader2 } from 'lucide-re
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Badge } from '@/components/ui/badge';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { DrugTable, StockTable, AlertsPanel, PrescriptionsTable } from '@/components/pharmacy';
+import { AlertsWidget } from '@/components/dashboard/alerts-widget';
 import {
   useDrugs,
   useStockBatches,
@@ -137,6 +139,41 @@ export default function PharmacyPage() {
           <p className="text-muted-foreground">
             Manage drugs, inventory, prescriptions, and dispensing
           </p>
+        </div>
+      </div>
+
+      {/* Dashboard Summary - Key Widgets */}
+      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+        {/* Alerts Widget */}
+        <div className="lg:col-span-1">
+          <AlertsWidget />
+        </div>
+        
+        {/* Quick Stats */}
+        <div className="lg:col-span-2">
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-lg">Quick Overview</CardTitle>
+            </CardHeader>
+            <CardContent className="grid grid-cols-2 gap-4">
+              <div className="space-y-1">
+                <p className="text-sm text-muted-foreground">Total Drugs</p>
+                <p className="text-2xl font-bold">{drugsData?.count ?? 0}</p>
+              </div>
+              <div className="space-y-1">
+                <p className="text-sm text-muted-foreground">Stock Batches</p>
+                <p className="text-2xl font-bold">{stockData?.count ?? 0}</p>
+              </div>
+              <div className="space-y-1">
+                <p className="text-sm text-muted-foreground">Pending Prescriptions</p>
+                <p className="text-2xl font-bold">{pendingRxCount}</p>
+              </div>
+              <div className="space-y-1">
+                <p className="text-sm text-muted-foreground">Active Alerts</p>
+                <p className="text-2xl font-bold text-destructive">{unresolvedAlertsCount}</p>
+              </div>
+            </CardContent>
+          </Card>
         </div>
       </div>
 
