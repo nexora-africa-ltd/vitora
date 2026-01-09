@@ -34,8 +34,9 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import { StockBatch, StockStatus } from '@/lib/types/pharmacy';
+import { StockBatch, StockStatus, AdjustmentType } from '@/lib/types/pharmacy';
 import { BatchDetailDialog } from './batch-detail-dialog';
+import { StockAdjustmentDialog } from './stock-adjustment-dialog';
 
 interface StockTableProps {
   batches: StockBatch[];
@@ -83,6 +84,8 @@ export function StockTable({
   const [expiringSoonEnabled, setExpiringSoonEnabled] = useState(false);
   const [selectedBatch, setSelectedBatch] = useState<StockBatch | null>(null);
   const [detailDialogOpen, setDetailDialogOpen] = useState(false);
+  const [adjustmentDialogOpen, setAdjustmentDialogOpen] = useState(false);
+  const [adjustmentType, setAdjustmentType] = useState<AdjustmentType | undefined>();
 
   const handleStatusChange = (value: string) => {
     setSelectedStatus(value);
@@ -123,6 +126,12 @@ export function StockTable({
   const handleBatchClick = (batch: StockBatch) => {
     setSelectedBatch(batch);
     setDetailDialogOpen(true);
+  };
+
+  const handleAdjustmentAction = (batch: StockBatch, type?: AdjustmentType) => {
+    setSelectedBatch(batch);
+    setAdjustmentType(type);
+    setAdjustmentDialogOpen(true);
   };
 
   if (isLoading) {
@@ -339,7 +348,15 @@ export function StockTable({
                   </TableCell>
                   <TableCell>{batch.days_to_expiry}</TableCell>
                   <TableCell>
-                    <Badge className={`${STATUS_COLORS[batch.status]} ${batch.status === 'LOW' ? 'warning' : batch.status === 'EXPIRED' ? 'destructive' : ''}`}>{batch.status}</Badge>
+                    <Badge 
+                      className={`${STATUS_COLORS[batch.status]} ${
+                        batch.status === 'LOW' ? 'warning bg-yellow-100 text-yellow-800' : 
+                        batch.status === 'EXPIRED' || batch.status === 'OUT_OF_STOCK' ? 'destructive bg-red-100 text-red-800' : 
+                        ''
+                      }`}
+                    >
+                      {batch.status}
+                    </Badge>
                   </TableCell>
                   <TableCell>{batch.supplier || '-'}</TableCell>
                   <TableCell>KES {Number(batch.selling_price).toFixed(2)}</TableCell>
@@ -348,21 +365,21 @@ export function StockTable({
                     {batch.status !== 'EXPIRED' && batch.status !== 'RECALLED' && (
                       <DropdownMenu>
                         <DropdownMenuTrigger asChild>
-                          <Button variant="ghost" size="sm" aria-label="Actions">
+                          <Button variant="ghost" size="sm" aria-label="More actions">
                             <MoreVertical className="h-4 w-4" />
                           </Button>
                         </DropdownMenuTrigger>
                         <DropdownMenuContent align="end">
-                          <DropdownMenuItem>
+                          <DropdownMenuItem onClick={() => handleAdjustmentAction(batch)}>
                             Adjust Stock
                           </DropdownMenuItem>
-                          <DropdownMenuItem>
+                          <DropdownMenuItem onClick={() => handleAdjustmentAction(batch, 'EXPIRED')}>
                             Mark as Expired
                           </DropdownMenuItem>
-                          <DropdownMenuItem>
+                          <DropdownMenuItem onClick={() => handleAdjustmentAction(batch, 'DAMAGED')}>
                             Mark as Damaged
                           </DropdownMenuItem>
-                          <DropdownMenuItem>
+                          <DropdownMenuItem onClick={() => handleAdjustmentAction(batch)}>
                             Quarantine
                           </DropdownMenuItem>
                         </DropdownMenuContent>
@@ -410,6 +427,17 @@ export function StockTable({
         batch={selectedBatch}
         open={detailDialogOpen}
         onOpenChange={setDetailDialogOpen}
+      />
+
+      {/* Stock Adjustment Dialog */}
+      <StockAdjustmentDialog
+        batch={selectedBatch}
+        open={adjustmentDialogOpen}
+        onOpenChange={setAdjustmentDialogOpen}
+        defaultAdjustmentType={adjustmentType}
+        onSuccess={() => {
+          // Optionally refresh the data here
+        }}
       />
     </div>
   );
