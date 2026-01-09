@@ -4,6 +4,7 @@
  */
 
 export { DrugTable } from './drug-table';
+export { DrugForm } from './drug-form';
 export { StockTable } from './stock-table';
 export { AlertsPanel } from './alerts-panel';
 export { PrescriptionsTable } from './prescriptions-table';
