@@ -1,133 +1,114 @@
-HIX Gate Logo
-Admin Tools
-Dashboard
-Facilities
-Credentials
-Resources
-Overview
-Getting Started
-Integration Guide
-API Explorer
-Simulation
-User Management
-FAQs
-Support
 
+# Shared Health Record (SHR)
 
-TW
-Home
-Product Documentation
-Claim Integration
-Eligibility
-Facility Reference
-Facility Resource Overview
-Facility Registry APIs
-SHR Integration
-Patient Reference
-Shared Health Record
-Health Worker Registry
-Client Registry
-Overview
-Search Facility GET
-🔗 View Detailed APIs in Interactive Docs
-📥 Download Postman Collection
+## Introduction
 
-Overview
-The Facility Registry API allows users to search for healthcare facilities within the system using facility codes. This API ensures efficient facility lookup and retrieval of essential facility details, supporting healthcare coordination and management.
+The Shared Health Record (SHR) is a core component of a Health Information Exchange (HIE) that enables clinical data sharing across different health information systems. By serving as a centralized repository for normalized patient data, the SHR ensures that healthcare providers have access to a consistent and unified health record—regardless of which system originally collected the data.
 
-Facility Identifiers
-Facilities can be identified using the following:
+The SHR facilitates real-time access to patient information, improving care coordination, decision-making, and overall health outcomes. Unlike a data warehouse, which is primarily used for reporting and analytics, the SHR functions as an operational, real-time transactional data source that supports live updates and queries across healthcare systems.
 
-Facility Code: A unique code assigned to each healthcare facility.
-Facility Data Elements
-The Facility resource contains essential facility-related information, including:
+## Key Functions of the Shared Health Record
 
-Facility Code (Unique identifier)
-Approval Status
-Facility Level
-Operational Status
-Current License Expiry Date
-Key Capabilities
-This API enables:
+The SHR serves multiple critical functions within a healthcare interoperability framework:
 
-🔍 Search and Retrieve: Find and access facility details using a facility code.
-📌 Verify Facility Status: Retrieve licensing and operational status.
-Facility Management
-Healthcare administrators and system users can leverage this API to:
+### 1. Centralized Data Repository
+Collects and stores patient health records from various clinical systems (e.g., Electronic Medical Records (EMRs), Laboratory Information Systems (LIS), Radiology Information Systems (RIS)).
+Maintains a longitudinal patient record, allowing authorized providers to access comprehensive health history.
 
-Search for healthcare facilities based on facility codes.
-Retrieve critical facility details such as approval and operational status.
-Facility Resource APIs
-The following API endpoint is available for interacting with the Facility Registry:
+### 2. Real-Time Data Exchange
+Supports bi-directional communication, allowing authorized systems to query and update patient records in real time.
+Ensures that healthcare providers have timely access to the latest patient information.
 
-Search Facility API Endpoint
-Description
-Search for healthcare facilities based on facility codes.
+### 3. Data Normalization and Standardization
+Converts local identifiers (e.g., patient ID, provider ID, facility ID) into universal identifiers, ensuring data consistency.
+Maps terminology codes to standard reference terminologies (e.g., SNOMED CT, LOINC, ICD-10) to enable semantic interoperability.
 
-Endpoint
-Method: GET
-URL: {{base_url}}/v1/facility-search?facility_code={{facility_code}}
-Request Parameters
-Parameter	Type	Required	Description
-facility_code	string	✅ Yes	Facility code
-Headers
-Header	Required	Description
-Authorization	✅ Yes	Bearer token for authentication
-Response
-📋 Copy
-{
-  "message": {
-    "facility_code": "24749",
-    "found": 1,
-    "approved": null,
-    "facility_level": null,
-    "operational_status": null,
-    "current_license_expiry_date": ""
-  }
-}
-Status Codes
-Code	Description
-200	Request successful
-404	Facility not found
-Common Use Cases
-Facility Lookup
-Retrieve a facility’s details for reference, status verification, or licensing purposes.
+### 4. Secure and Controlled Data Access
+Implements role-based access control (RBAC) to ensure that only authorized users and systems can read or update patient records.
+Supports consent management mechanisms to honor patient privacy preferences and comply with data protection regulations.
 
-Implementation Example
-Before approving a new facility for a healthcare program, use this API to verify the facility’s status and operational details.
+### 5. Improved Clinical Decision Support
+Provides a complete and accurate patient record at the point of care, reducing errors caused by incomplete or missing data.
+Enables AI-driven clinical decision support systems (CDSS) to leverage comprehensive health data for predictive analytics and treatment recommendations.
 
-Best Practices
-✅ Ensure Valid Facility Codes: Always use the correct facility code to retrieve accurate results. ✅ Authenticate Requests: Use a valid JWT token for API access. ✅ Handle Missing Data Gracefully: Not all facilities may have complete metadata (e.g., approval status or license expiry date may be null). ✅ Verify Facility Status Before Transactions: Ensure the facility is operational and licensed before proceeding with medical transactions or referrals.
+## How the Shared Health Record Works
 
----
+### 1. Data Sources and Contributions
+The SHR aggregates data from various healthcare systems, including:
 
-Refill Calculation Explained Simply
-The refill computation process determines how many medication refills a patient has left and when they can get their next refill. Here's how it works in straightforward terms:
+Electronic Medical Records (EMRs) – Patient visits, diagnoses, prescriptions, allergies, clinical notes.
+Laboratory Information Systems (LIS) – Lab test orders, results, interpretations.
+Radiology Information Systems (RIS) – Imaging studies, radiology reports.
+Pharmacy Information Systems (PIS) – Medication dispensing records.
+Public Health and Surveillance Systems – Immunization records, disease surveillance data.
 
-Step 1: Gather the Information
-The system collects two key pieces of information:
+### 2. Normalization and Data Standardization
+When data is received, the SHR normalizes it by:
 
-The original prescription details (from the MedicationRequest)
-A history of all times the medication was dispensed (from MedicationDispense records)
-Step 2: Calculate Basic Numbers
-Total allowed fills: This is the initial fill plus all refills
-For example: If the doctor allows 5 refills, the total is 6 fills (1 initial + 5 refills)
-Fills used so far: Count how many times the pharmacy has given the medication to the patient
-Remaining refills: Subtract the fills used from the total allowed
-Step 3: Determine Next Refill Date
-Look at when the patient last picked up their medication
-Check how many days that supply was meant to last (usually 30 days)
-Add those days to the last pickup date to find when they can get their next refill
-Step 4: Check If Prescription Is Still Valid
-Prescriptions typically expire after a certain period (often 6 months)
-The system compares today's date with the prescription's end date
-If today's date is past the end date, the prescription is no longer valid, regardless of remaining refills
-Example:
-For patient Stephen Gitau:
+Resolving metadata items (e.g., mapping local patient identifiers to a universal patient ID).
+Ensuring terminology consistency by mapping codes to standard reference terminologies.
+For example:
 
-His doctor wrote a prescription for Amlodipine with 5 refills (6 total fills)
-He's picked up the medication twice already
-He has 4 refills remaining
-His next refill is due on May 27, 2025
-His prescription remains valid until September 28, 2025
-The Python code does all this automatically by processing the FHIR resources from the patient's health record, saving pharmacists from having to calculate these details manually.
+A patient ID used in Hospital A may differ from the ID used in Hospital B. The SHR links these records to a single universal patient identifier.
+Lab results stored in proprietary codes are converted to LOINC (Logical Observation Identifiers Names and Codes) for uniformity.
+
+### 3. Data Access and Queries
+Authorized systems can send queries to retrieve patient records.
+Data retrieval can be patient-specific (e.g., “Fetch John Doe’s last 3 lab results”) or condition-specific (e.g., “Find all hypertensive patients”).
+4. Updating the SHR
+When a healthcare provider updates a patient’s medical record in their local system, the change is synchronized with the SHR.
+The update must comply with data governance policies, ensuring accuracy, completeness, and security.
+
+## Distinguishing SHR from a Data Warehouse
+
+| Feature | Shared Health Record (SHR) | Data Warehouse |
+|---------|---------------------------|----------------|
+| **Purpose** | Real-time operational data exchange for clinical use. | Historical data analysis and reporting. |
+| **Data Type** | Transactional data (live updates). | Aggregated data (used for trends and analytics). |
+| **Access** | Queried and updated by authorized systems in real time. | Used for business intelligence, research, and analytics. |
+| **Data Structure** | Normalized data, mapped to standard terminologies. | Often denormalized for analytical processing. |
+
+## Benefits of Implementing a Shared Health Record
+
+### 1. Enhances Patient-Centered Care
+Provides clinicians with a complete view of a patient’s medical history, reducing duplicate tests and conflicting treatments.
+Improves continuity of care by allowing seamless information sharing across hospitals, clinics, and laboratories.
+
+### 2. Reduces Medical Errors and Data Duplication
+Minimizes errors due to incomplete or inconsistent patient records.
+Eliminates duplicate data entries by maintaining a single source of truth.
+
+### 3. Strengthens Health System Interoperability
+Facilitates seamless data exchange between health information systems.
+Enables multi-institutional care coordination and patient referrals.
+
+### 4. Improves Public Health Surveillance and Research
+Provides real-time data access to epidemiologists and public health officials.
+Supports disease tracking and outbreak monitoring by aggregating national health data.
+
+### 5. Enables AI and Data-Driven Decision-Making
+Supports machine learning models for predictive analytics.
+Enhances clinical decision support systems (CDSS) by integrating diverse health data sources.
+
+## Implementation Considerations
+
+### 1. Data Governance and Quality Control
+Establish policies for data accuracy, validation, and deduplication.
+Define data stewardship responsibilities to ensure ongoing maintenance.
+
+### 2. Security and Access Control
+Implement strong authentication mechanisms (e.g., OAuth 2.0, JWT tokens).
+Ensure compliance with privacy regulations (e.g., GDPR, HIPAA).
+Restrict access to authorized healthcare professionals only.
+
+### 3. Interoperability Standards
+Use FHIR (Fast Healthcare Interoperability Resources) for structured health data exchange.
+Adopt HL7 messaging standards for system-to-system communication.
+Ensure compatibility with SNOMED CT, LOINC, and ICD-10 for standard terminology mapping.
+
+### 4. Patient Consent and Privacy Controls
+Allow patients to define access preferences for their health data.
+Implement audit logs to track data access and modifications.
+
+## Conclusion
+The Shared Health Record (SHR) is a crucial infrastructure for enabling interoperable, patient-centered healthcare systems. By providing real-time, standardized access to patient data across institutions, the SHR enhances clinical decision-making, reduces medical errors, and improves healthcare coordination.
