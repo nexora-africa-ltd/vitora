@@ -10,7 +10,7 @@ Tests cover:
 from datetime import date
 from decimal import Decimal
 
-import pytest
+import pytest # type: ignore
 
 pytestmark = pytest.mark.django_db
 

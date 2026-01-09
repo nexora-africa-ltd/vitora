@@ -12,7 +12,7 @@ Key Requirements:
     - Endpoints configured correctly
 """
 
-import pytest # type: ignore
+import pytest # type: ignore # type: ignore
 from django.conf import settings
 
 

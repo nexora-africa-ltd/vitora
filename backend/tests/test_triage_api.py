@@ -7,7 +7,7 @@ Sprint 1.5-1.6 Track E: Triage Module MVP - Phase 5
 
 from decimal import Decimal
 
-import pytest
+import pytest # type: ignore
 from django.contrib.auth.models import Permission
 from django.utils import timezone
 from rest_framework import status

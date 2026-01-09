@@ -12,7 +12,7 @@ Key Requirements:
     - Organization resource structure for FHIR bundles
 """
 
-import pytest
+import pytest # type: ignore
 from django.conf import settings
 
 # Try to import the service

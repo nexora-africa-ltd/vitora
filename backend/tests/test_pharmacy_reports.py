@@ -5,7 +5,7 @@ Following TDD approach: Write tests FIRST, then implement.
 
 from datetime import date, timedelta
 
-import pytest
+import pytest # type: ignore
 from django.urls import reverse
 from rest_framework import status
 

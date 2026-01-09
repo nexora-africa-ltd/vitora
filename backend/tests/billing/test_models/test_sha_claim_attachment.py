@@ -23,7 +23,7 @@ from decimal import Decimal
 from io import BytesIO
 from unittest.mock import MagicMock, patch
 
-import pytest
+import pytest # type: ignore
 from django.core.exceptions import ValidationError
 from django.core.files.uploadedfile import SimpleUploadedFile
 

@@ -664,7 +664,7 @@ Tests for RBAC models: Department, Role, StaffProfile.
 Following TDD approach: Write tests FIRST, then implement.
 """
 
-import pytest
+import pytest # type: ignore
 from django.contrib.auth import get_user_model
 from hmis.apps.core.models import Department, Role, StaffProfile
 
@@ -796,7 +796,7 @@ Tests for RoleBasedPermission class.
 Following TDD approach: Write tests FIRST, then implement.
 """
 
-import pytest
+import pytest # type: ignore
 from rest_framework.test import APIRequestFactory
 from hmis.apps.core.permissions import RoleBasedPermission
 
@@ -867,7 +867,7 @@ Tests for RBAC API endpoints.
 Following TDD approach: Write tests FIRST, then implement.
 """
 
-import pytest
+import pytest # type: ignore
 from rest_framework import status
 from rest_framework.test import APIClient
 
@@ -933,7 +933,7 @@ class TestStaffProfileAPI:
 Tests for RBAC Django Admin integration.
 """
 
-import pytest
+import pytest # type: ignore
 from django.contrib.admin.sites import AdminSite
 from hmis.apps.core.admin import DepartmentAdmin, RoleAdmin, StaffProfileAdmin
 

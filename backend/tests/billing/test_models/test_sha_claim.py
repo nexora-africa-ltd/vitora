@@ -37,7 +37,7 @@ from datetime import date, timedelta
 from decimal import Decimal
 from unittest.mock import patch, PropertyMock
 
-import pytest
+import pytest # type: ignore
 from django.core.exceptions import ValidationError
 from django.core.files.uploadedfile import SimpleUploadedFile
 from django.db import IntegrityError

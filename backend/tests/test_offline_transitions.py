@@ -11,7 +11,7 @@ connectivity state transitions.
 from datetime import date, timedelta
 from unittest.mock import patch
 
-import pytest
+import pytest # type: ignore
 from django.utils import timezone
 
 

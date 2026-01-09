@@ -7,7 +7,7 @@ These fixtures provide test data for validating SHA integration compliance.
 from datetime import date, timedelta
 from decimal import Decimal
 
-import pytest
+import pytest # type: ignore
 from django.contrib.auth import get_user_model
 
 User = get_user_model()

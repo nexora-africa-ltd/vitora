@@ -5,7 +5,7 @@ Following TDD approach for Phase 4.3 SHA Claims Stub implementation.
 """
 from decimal import Decimal
 
-import pytest
+import pytest # type: ignore
 
 from hmis.apps.billing.services.sha import SHAClaimsService
 

@@ -12,7 +12,7 @@ Following TDD approach: Write tests FIRST, then implement.
 from datetime import timedelta
 from decimal import Decimal
 
-import pytest
+import pytest # type: ignore
 from django.contrib.auth import get_user_model
 from django.utils import timezone
 from rest_framework import status

@@ -8,7 +8,7 @@ import os
 from collections.abc import Generator
 
 import django
-import pytest
+import pytest # type: ignore
 from django.core.management import call_command
 
 # Set Django settings module for tests

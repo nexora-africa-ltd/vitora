@@ -8,7 +8,7 @@ Reference: Deliverables spec § 9, lines 891-928
 from decimal import Decimal
 from unittest.mock import Mock, patch
 
-import pytest
+import pytest # type: ignore
 from rest_framework import status
 from rest_framework.test import APIClient
 

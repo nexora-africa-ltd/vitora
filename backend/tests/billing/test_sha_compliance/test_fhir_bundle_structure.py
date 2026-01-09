@@ -18,7 +18,7 @@ import uuid
 from datetime import date, datetime
 from decimal import Decimal
 
-import pytest
+import pytest # type: ignore
 from django.conf import settings
 
 # Try to import the service - may fail if not fully implemented

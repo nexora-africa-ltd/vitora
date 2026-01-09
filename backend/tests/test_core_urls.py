@@ -4,7 +4,7 @@ Tests for core URL configuration.
 Sprint 0.6: Coverage improvement tests for core/urls.py (0% -> 100%)
 """
 
-import pytest
+import pytest # type: ignore
 from django.urls import resolve
 
 from hmis.apps.core.urls import router, urlpatterns

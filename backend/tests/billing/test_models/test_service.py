@@ -7,7 +7,7 @@ Total: 10 tests as specified.
 
 from decimal import Decimal
 
-import pytest
+import pytest # type: ignore
 from django.core.exceptions import ValidationError
 from django.db import IntegrityError
 

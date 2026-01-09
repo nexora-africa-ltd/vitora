@@ -29,7 +29,7 @@ from decimal import Decimal
 from io import BytesIO
 from unittest.mock import patch, MagicMock
 
-import pytest
+import pytest # type: ignore
 from django.contrib.auth import get_user_model
 from django.contrib.auth.models import Permission
 from django.core.files.uploadedfile import SimpleUploadedFile

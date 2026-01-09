@@ -5,7 +5,7 @@ Following TDD approach: Write tests FIRST, then implement.
 Sprint 0.4: Security Baseline
 """
 
-import pytest
+import pytest # type: ignore
 from django.contrib.auth import get_user_model
 from django.urls import reverse
 from rest_framework import status

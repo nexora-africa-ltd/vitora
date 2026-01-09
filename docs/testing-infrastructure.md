@@ -355,7 +355,7 @@ warn_unused_configs = true
 Module docstring describing what is being tested.
 """
 
-import pytest
+import pytest # type: ignore
 
 
 @pytest.mark.unit
@@ -495,7 +495,7 @@ All checks must pass for merge approval.
 
 ```python
 # tests/test_patient.py
-import pytest
+import pytest # type: ignore
 
 @pytest.mark.unit
 def test_patient_mrn_generation():

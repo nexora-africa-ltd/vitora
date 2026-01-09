@@ -5,7 +5,7 @@ Following TDD principles: Write tests FIRST, then implement.
 Item b) Medical History: Allergies, chronic conditions, medications, surgeries, etc.
 """
 
-import pytest
+import pytest # type: ignore
 
 
 @pytest.mark.django_db

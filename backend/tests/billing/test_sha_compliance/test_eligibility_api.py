@@ -13,7 +13,7 @@ Key Requirements:
     - Correct interpretation of eligible field (1=eligible, 0=not eligible)
 """
 
-import pytest
+import pytest # type: ignore
 
 # Try to import the service - may fail if not fully implemented
 try:

@@ -31,7 +31,7 @@ from datetime import date, timedelta
 from decimal import Decimal
 from unittest.mock import MagicMock, Mock, patch
 
-import pytest
+import pytest # type: ignore
 import requests
 from django.conf import settings
 from django.utils import timezone

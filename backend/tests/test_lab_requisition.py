@@ -6,7 +6,7 @@ Sprint 1.5-1.6 Track B: Lab Workflow
 
 from io import BytesIO
 
-import pytest
+import pytest # type: ignore
 from django.contrib.auth import get_user_model
 
 from hmis.apps.laboratory.services.requisition import ExternalLabRequisition

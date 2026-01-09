@@ -4,7 +4,7 @@ Tests for LabNotificationService (Phase 2.3).
 Sprint 1.5-1.6 Track B: Lab Workflow
 """
 
-import pytest
+import pytest # type: ignore
 from django.contrib.auth import get_user_model
 from django.core import mail
 

@@ -6,7 +6,7 @@ Sprint 0.6: Coverage improvement tests for core/sync.py (58% -> 85%+)
 
 from unittest.mock import MagicMock, patch
 
-import pytest
+import pytest # type: ignore
 import requests
 
 from hmis.apps.core.models import SyncQueue

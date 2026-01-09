@@ -11,7 +11,7 @@ Key Requirements:
     - Valid practitioner lookup before claims
 """
 
-import pytest
+import pytest # type: ignore
 
 # Try to import models
 try:

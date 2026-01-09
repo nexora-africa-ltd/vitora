@@ -2095,7 +2095,7 @@ class SHAClaimDashboardSerializer(serializers.Serializer):
 ```python
 # Test file: tests/test_sha_member.py
 
-import pytest
+import pytest # type: ignore
 from django.core.exceptions import ValidationError
 from rest_framework import status
 from hmis.apps.billing.models import SHAMember

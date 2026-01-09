@@ -7,7 +7,7 @@ Targets uncovered lines in:
 - Triage serializers validation
 """
 
-import pytest
+import pytest # type: ignore
 from datetime import timedelta
 from decimal import Decimal
 from django.utils import timezone
