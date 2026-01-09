@@ -222,7 +222,7 @@ export function DrugForm({ drug, onSuccess, onCancel }: DrugFormProps) {
 
   return (
     <Form {...form}>
-      <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
+      <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6" data-testid="drug-form">
         {/* Success Message */}
         {success && (
           <Alert className="bg-green-50 border-green-200">
@@ -275,9 +275,10 @@ export function DrugForm({ drug, onSuccess, onCancel }: DrugFormProps) {
 
           {/* Brand Names */}
           <div className="space-y-2">
-            <FormLabel>Brand Names</FormLabel>
+            <Label htmlFor="brand-names-input">Brand Names</Label>
             <div className="flex gap-2">
               <Input
+                id="brand-names-input"
                 placeholder="e.g., Panadol, Tylenol"
                 value={brandNameInput}
                 onChange={(e) => setBrandNameInput(e.target.value)}
@@ -287,6 +288,7 @@ export function DrugForm({ drug, onSuccess, onCancel }: DrugFormProps) {
                     addBrandName();
                   }
                 }}
+                aria-label="Brand Names"
               />
               <Button type="button" variant="outline" onClick={addBrandName}>
                 <Plus className="h-4 w-4" />
@@ -423,7 +425,7 @@ export function DrugForm({ drug, onSuccess, onCancel }: DrugFormProps) {
               name="keml_code"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>KEML Code</FormLabel>
+                  <FormLabel>KEML ID</FormLabel>
                   <FormControl>
                     <Input placeholder="Essential Medicines List code" {...field} />
                   </FormControl>
@@ -440,7 +442,7 @@ export function DrugForm({ drug, onSuccess, onCancel }: DrugFormProps) {
               name="nhif_code"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>NHIF/SHA Code</FormLabel>
+                  <FormLabel>NHIF/SHA ID</FormLabel>
                   <FormControl>
                     <Input placeholder="Insurance code" {...field} />
                   </FormControl>

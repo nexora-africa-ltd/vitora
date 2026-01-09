@@ -174,7 +174,7 @@ export default function PharmacyPage() {
         {/* Drugs Tab */}
         <TabsContent value="drugs" className="space-y-4">
           <div className="flex justify-end">
-            <Button onClick={() => router.push('/pharmacy/drugs/new')}>
+            <Button onClick={() => router.push('/pharmacy/drugs/new')} data-testid="add-drug-button">
               <Plus className="h-4 w-4 mr-2" />
               Add Drug
             </Button>

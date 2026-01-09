@@ -7,7 +7,7 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { Search, Eye, ChevronLeft, ChevronRight, AlertTriangle, XCircle, Shield, Star } from 'lucide-react';
+import { Search, Eye, ChevronLeft, ChevronRight, AlertTriangle, XCircle, Shield, Star, MoreVertical, Edit, Trash2 } from 'lucide-react';
 import {
   Table,
   TableBody,
@@ -23,8 +23,25 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Label } from '@/components/ui/label';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
 import { Drug, DrugCategory, DrugForm, DrugSchedule } from '@/lib/types/pharmacy';
 import { useDebounce } from '@/lib/hooks/use-debounce';
+import { pharmacyApi } from '@/lib/api/pharmacy';
 
 interface DrugTableProps {
   drugs: Drug[];
@@ -106,6 +123,10 @@ export function DrugTable({
   const [scheduleFilter, setScheduleFilter] = useState<DrugSchedule | ''>('');
   const [essentialOnly, setEssentialOnly] = useState(false);
   const [activeOnly, setActiveOnly] = useState(false);
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [drugToDelete, setDrugToDelete] = useState<Drug | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
+  const [deleteError, setDeleteError] = useState<string | null>(null);
   const debouncedSearch = useDebounce(searchValue, 300);
 
   // Trigger search when debounced value changes
@@ -203,6 +224,36 @@ export function DrugTable({
     }, 0);
   };
 
+  const handleDeleteClick = (drug: Drug) => {
+    setDrugToDelete(drug);
+    setDeleteError(null);
+    setDeleteDialogOpen(true);
+  };
+
+  const handleDeleteConfirm = async () => {
+    if (!drugToDelete) return;
+
+    setIsDeleting(true);
+    setDeleteError(null);
+
+    try {
+      await pharmacyApi.deleteDrug(drugToDelete.id);
+      setDeleteDialogOpen(false);
+      setDrugToDelete(null);
+      // Refresh the page
+      window.location.reload();
+    } catch (err: any) {
+      console.error('Error deleting drug:', err);
+      setDeleteError(
+        err.response?.data?.detail ||
+        err.message ||
+        'Cannot delete drug with existing stock'
+      );
+    } finally {
+      setIsDeleting(false);
+    }
+  };
+
   if (isLoading) {
     return (
       <div data-testid="drug-table-skeleton" className="space-y-4">
@@ -247,7 +298,7 @@ export function DrugTable({
   if (drugs.length === 0) {
     return (
       <div className="space-y-4">
-        {/* Search and Filters */}
+        {/* Search */}
         <div className="flex flex-col gap-4">
           <div className="relative max-w-sm">
             <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
@@ -257,77 +308,9 @@ export function DrugTable({
               value={searchValue}
               onChange={(e) => handleSearchChange(e.target.value)}
               className="pl-9"
+              data-testid="drug-search"
             />
           </div>
-          
-          {onFiltersChange && (
-            <div className="flex flex-wrap gap-4">
-              <div className="w-48">
-                <Select value={categoryFilter} onValueChange={handleCategoryChange}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Category" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="">All Categories</SelectItem>
-                    {Object.entries(CATEGORY_LABELS).map(([key, label]) => (
-                      <SelectItem key={key} value={key}>{label}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-              
-              <div className="w-48">
-                <Select value={formFilter} onValueChange={handleFormChange}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Form" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="">All Forms</SelectItem>
-                    {Object.entries(FORM_LABELS).map(([key, label]) => (
-                      <SelectItem key={key} value={key}>{label}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-              
-              <div className="w-48">
-                <Select value={scheduleFilter} onValueChange={handleScheduleChange}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Schedule" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="">All Schedules</SelectItem>
-                    <SelectItem value="OTC">OTC - Over The Counter</SelectItem>
-                    <SelectItem value="POM">POM - Prescription Only</SelectItem>
-                    <SelectItem value="P">P - Pharmacy Medicine</SelectItem>
-                    <SelectItem value="CD">CD - Controlled Drug</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-              
-              <div className="flex items-center space-x-2">
-                <Checkbox 
-                  id="essential-filter" 
-                  checked={essentialOnly}
-                  onCheckedChange={handleEssentialChange}
-                />
-                <Label htmlFor="essential-filter" className="text-sm cursor-pointer">
-                  Essential Medicines Only
-                </Label>
-              </div>
-              
-              <div className="flex items-center space-x-2">
-                <Checkbox 
-                  id="active-filter" 
-                  checked={activeOnly}
-                  onCheckedChange={handleActiveChange}
-                />
-                <Label htmlFor="active-filter" className="text-sm cursor-pointer">
-                  Active Only
-                </Label>
-              </div>
-            </div>
-          )}
         </div>
         
         <div className="flex flex-col items-center justify-center py-12 text-center">
@@ -341,7 +324,7 @@ export function DrugTable({
     <div className="space-y-4">
       {/* Search and Filters */}
       <div className="flex flex-col gap-4">
-        <div className="relative max-w-sm">
+        <div className="relative max-w-sm" role="search" aria-label="Search drugs">
           <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
           <Input
             type="search"
@@ -349,6 +332,8 @@ export function DrugTable({
             value={searchValue}
             onChange={(e) => handleSearchChange(e.target.value)}
             className="pl-9"
+            data-testid="drug-search"
+            aria-label="Search drugs"
           />
         </div>
         
@@ -445,11 +430,17 @@ export function DrugTable({
               const isOutOfStock = drug.current_stock === 0;
 
               return (
-                <TableRow key={drug.id}>
+                <TableRow key={drug.id} data-testid={`drug-row-${drug.id}`}>
                   <TableCell className="font-mono text-sm">{drug.code}</TableCell>
                   <TableCell>
                     <div className="flex flex-col gap-1">
-                      <div className="font-medium">{drug.generic_name}</div>
+                      <button 
+                        type="button"
+                        className="font-medium text-left hover:underline cursor-pointer"
+                        onClick={() => router.push(`/pharmacy/drugs/${drug.id}`)}
+                      >
+                        {drug.generic_name}
+                      </button>
                       {drug.brand_names && drug.brand_names.length > 0 && (
                         <div className="text-xs text-muted-foreground">
                           {drug.brand_names.join(', ')}
@@ -508,14 +499,41 @@ export function DrugTable({
                     <Badge className={SCHEDULE_COLORS[drug.schedule]}>{drug.schedule}</Badge>
                   </TableCell>
                   <TableCell>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => router.push(`/pharmacy/drugs/${drug.id}`)}
-                    >
-                      <Eye className="h-4 w-4 mr-1" />
-                      View
-                    </Button>
+                    <div className="flex items-center gap-1">
+                      <Button 
+                        variant="ghost" 
+                        size="sm"
+                        onClick={() => router.push(`/pharmacy/drugs/${drug.id}/edit`)}
+                        data-testid="edit-drug"
+                      >
+                        <Edit className="h-4 w-4" />
+                        <span className="sr-only">Modify drug</span>
+                      </Button>
+                      <Button 
+                        variant="ghost" 
+                        size="sm"
+                        onClick={() => handleDeleteClick(drug)}
+                        data-testid="delete-drug"
+                        className="text-destructive hover:text-destructive"
+                      >
+                        <Trash2 className="h-4 w-4" />
+                        <span className="sr-only">Remove drug</span>
+                      </Button>
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <Button variant="ghost" size="sm" aria-label="More actions">
+                            <MoreVertical className="h-4 w-4" />
+                            <span className="sr-only">More actions</span>
+                          </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end">
+                          <DropdownMenuItem onClick={() => router.push(`/pharmacy/drugs/${drug.id}`)}>
+                            <Eye className="h-4 w-4 mr-2" />
+                            View Details
+                          </DropdownMenuItem>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
+                    </div>
                   </TableCell>
                 </TableRow>
               );
@@ -554,6 +572,45 @@ export function DrugTable({
           </Button>
         </div>
       </div>
+
+      {/* Delete Confirmation Dialog */}
+      <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Are you sure?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This will permanently delete <strong>{drugToDelete?.generic_name}</strong> from the catalog.
+              This action cannot be undone.
+              {drugToDelete && drugToDelete.current_stock > 0 && (
+                <div className="mt-2 text-destructive font-semibold">
+                  Warning: This drug has {drugToDelete.current_stock} units in stock and cannot be deleted.
+                </div>
+              )}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          {deleteError && (
+            <div className="text-sm text-destructive bg-destructive/10 p-3 rounded">
+              {deleteError}
+            </div>
+          )}
+          <AlertDialogFooter>
+            <AlertDialogCancel onClick={() => {
+              setDeleteDialogOpen(false);
+              setDrugToDelete(null);
+              setDeleteError(null);
+            }}>
+              Cancel
+            </AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleDeleteConfirm}
+              disabled={isDeleting || (drugToDelete?.current_stock ?? 0) > 0}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              {isDeleting ? 'Deleting...' : 'Delete'}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
