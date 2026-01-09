@@ -20,6 +20,7 @@ from django.conf import settings
 from django.core.exceptions import ValidationError
 from django.db import models
 from django.utils import timezone
+from django.apps import apps
 
 
 def generate_prescription_number():
@@ -35,8 +36,8 @@ def generate_prescription_number():
     today = datetime.now().strftime("%Y%m%d")
     prefix = f"RX-{today}-"
 
-    # Import here to avoid circular import
-    from hmis.apps.pharmacy.models import Prescription
+    # Get the Prescription model via the app registry to avoid circular imports
+    Prescription = apps.get_model("pharmacy", "Prescription")
 
     # Find the highest prescription number for today
     latest_prescription = (
