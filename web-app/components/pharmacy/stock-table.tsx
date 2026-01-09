@@ -7,7 +7,7 @@
 
 import { useState } from 'react';
 import { format, formatDistanceToNow, isBefore, addDays } from 'date-fns';
-import { ChevronLeft, ChevronRight, AlertTriangle, XCircle, Clock, Settings } from 'lucide-react';
+import { ChevronLeft, ChevronRight, AlertTriangle, XCircle, Clock, Settings, MoreVertical } from 'lucide-react';
 import {
   Table,
   TableBody,
@@ -28,7 +28,14 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
 import { StockBatch, StockStatus } from '@/lib/types/pharmacy';
+import { BatchDetailDialog } from './batch-detail-dialog';
 
 interface StockTableProps {
   batches: StockBatch[];
@@ -74,6 +81,8 @@ export function StockTable({
   const [selectedLocation, setSelectedLocation] = useState<string>('');
   const [searchQuery, setSearchQuery] = useState<string>('');
   const [expiringSoonEnabled, setExpiringSoonEnabled] = useState(false);
+  const [selectedBatch, setSelectedBatch] = useState<StockBatch | null>(null);
+  const [detailDialogOpen, setDetailDialogOpen] = useState(false);
 
   const handleStatusChange = (value: string) => {
     setSelectedStatus(value);
@@ -111,6 +120,10 @@ export function StockTable({
   // Get unique locations from batches for location filter
   const uniqueLocations = Array.from(new Set(batches.map(b => b.location).filter(Boolean)));
 
+  const handleBatchClick = (batch: StockBatch) => {
+    setSelectedBatch(batch);
+    setDetailDialogOpen(true);
+  };
 
   if (isLoading) {
     return (
@@ -299,7 +312,14 @@ export function StockTable({
 
               return (
                 <TableRow key={batch.id} className={batch.status === 'LOW' ? 'bg-yellow-50' : batch.status === 'EXPIRED' ? 'bg-red-50' : ''}>
-                  <TableCell className="font-mono text-sm">{batch.batch_number}</TableCell>
+                  <TableCell className="font-mono text-sm">
+                    <button
+                      onClick={() => handleBatchClick(batch)}
+                      className="text-blue-600 hover:text-blue-800 hover:underline"
+                    >
+                      {batch.batch_number}
+                    </button>
+                  </TableCell>
                   <TableCell className="font-medium">{batch.drug_name}</TableCell>
                   <TableCell>{batch.quantity_available}</TableCell>
                   <TableCell>
@@ -326,10 +346,27 @@ export function StockTable({
                   <TableCell>{batch.location || '-'}</TableCell>
                   <TableCell>
                     {batch.status !== 'EXPIRED' && batch.status !== 'RECALLED' && (
-                      <Button variant="ghost" size="sm">
-                        <Settings className="h-4 w-4 mr-1" />
-                        Adjust
-                      </Button>
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <Button variant="ghost" size="sm" aria-label="Actions">
+                            <MoreVertical className="h-4 w-4" />
+                          </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end">
+                          <DropdownMenuItem>
+                            Adjust Stock
+                          </DropdownMenuItem>
+                          <DropdownMenuItem>
+                            Mark as Expired
+                          </DropdownMenuItem>
+                          <DropdownMenuItem>
+                            Mark as Damaged
+                          </DropdownMenuItem>
+                          <DropdownMenuItem>
+                            Quarantine
+                          </DropdownMenuItem>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
                     )}
                   </TableCell>
                 </TableRow>
@@ -367,6 +404,13 @@ export function StockTable({
           </div>
         </div>
       )}
+
+      {/* Batch Detail Dialog */}
+      <BatchDetailDialog
+        batch={selectedBatch}
+        open={detailDialogOpen}
+        onOpenChange={setDetailDialogOpen}
+      />
     </div>
   );
 }

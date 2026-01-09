@@ -217,6 +217,7 @@ export default function PharmacyPage() {
               setStockStatus(status);
               setStockPage(1);
             }}
+            drugs={drugsData?.results.map(d => ({ id: d.id, display_name: d.generic_name + ' ' + d.strength }))}
           />
         </TabsContent>
 
