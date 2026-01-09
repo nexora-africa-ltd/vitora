@@ -369,6 +369,10 @@ export function AlertsPanel({ alerts, isLoading, error }: AlertsPanelProps) {
 
                         {/* Status badges */}
                         <div className="flex items-center gap-2 flex-wrap">
+                          {/* Auto-generated badge - all stock alerts are system generated */}
+                          <Badge variant="outline" className="text-xs">
+                            System Generated
+                          </Badge>
                           {alert.acknowledged && (
                             <Badge variant="outline" className="text-xs">
                               <CheckCircle className="h-3 w-3 mr-1" />
