@@ -51,6 +51,8 @@ export default function PharmacyPage() {
   const [rxPage, setRxPage] = useState(1);
   const [rxStatus, setRxStatus] = useState<PrescriptionStatus | ''>('');
   const [rxSearch, setRxSearch] = useState('');
+  const [rxDateFrom, setRxDateFrom] = useState('');
+  const [rxDateTo, setRxDateTo] = useState('');
   const rxPageSize = 20;
 
   // Alerts state
@@ -94,6 +96,8 @@ export default function PharmacyPage() {
     page: rxPage,
     page_size: rxPageSize,
     status: rxStatus || undefined,
+    date_from: rxDateFrom || undefined,
+    date_to: rxDateTo || undefined,
   });
 
   const { data: pendingRx } = usePendingPrescriptions();
@@ -155,7 +159,11 @@ export default function PharmacyPage() {
             <FileText className="h-4 w-4" />
             Prescriptions
             {pendingRxCount > 0 && (
-              <Badge variant="destructive" className="ml-1 h-5 w-5 p-0 flex items-center justify-center text-xs">
+              <Badge 
+                variant="destructive" 
+                className="ml-1 h-5 w-5 p-0 flex items-center justify-center text-xs"
+                data-testid="pending-count"
+              >
                 {pendingRxCount}
               </Badge>
             )}
@@ -222,6 +230,12 @@ export default function PharmacyPage() {
 
         {/* Prescriptions Tab */}
         <TabsContent value="prescriptions" className="space-y-4">
+          <div className="flex justify-end">
+            <Button onClick={() => router.push('/pharmacy/prescriptions/new')}>
+              <Plus className="h-4 w-4 mr-2" />
+              New Prescription
+            </Button>
+          </div>
           <PrescriptionsTable
             prescriptions={rxData?.results ?? []}
             isLoading={rxLoading}
@@ -235,6 +249,11 @@ export default function PharmacyPage() {
             }}
             onSearch={(query) => {
               setRxSearch(query);
+              setRxPage(1);
+            }}
+            onDateFilter={(dateFrom, dateTo) => {
+              setRxDateFrom(dateFrom);
+              setRxDateTo(dateTo);
               setRxPage(1);
             }}
           />
