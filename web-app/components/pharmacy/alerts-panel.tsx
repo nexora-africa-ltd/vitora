@@ -45,7 +45,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Input } from '@/components/ui/input';
 import { StockAlert, AlertType, AlertSeverity } from '@/lib/types/pharmacy';
 import { useAcknowledgeAlert, useResolveAlert } from '@/lib/hooks/use-pharmacy';
-import { useToast } from '@/components/ui/use-toast';
+import { useToast } from '@/lib/hooks/use-toast';
 
 interface AlertsPanelProps {
   alerts: StockAlert[];
