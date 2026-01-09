@@ -279,13 +279,32 @@ export const pharmacyApi = {
 
   /**
    * Dispense from prescription using FEFO.
+   * Returns array of dispensing records (may span multiple batches).
    */
-  async dispenseFromPrescription(prescriptionItemId: number, quantity: number): Promise<Dispensing> {
-    const response = await apiClient.post<Dispensing>('/api/pharmacy/dispensings/dispense_fefo/', {
-      prescription_item_id: prescriptionItemId,
-      quantity,
-    });
+  async dispenseFromPrescription(data: {
+    drug_id: number;
+    quantity: number;
+    patient_id: number;
+    prescription_item_id?: number;
+    counseling_notes?: string;
+  }): Promise<Dispensing[]> {
+    const response = await apiClient.post<Dispensing[]>('/api/pharmacy/dispensings/dispense/', data);
     return response.data;
+  },
+
+  /**
+   * Get available batches for a drug (for manual batch selection).
+   */
+  async getBatchesForDrug(drugId: number): Promise<StockBatch[]> {
+    const response = await apiClient.get<PaginatedResponse<StockBatch>>('/api/pharmacy/stock/', {
+      params: {
+        drug: drugId,
+        status: 'AVAILABLE',
+        page_size: 100,
+        ordering: 'expiry_date', // FEFO ordering
+      },
+    });
+    return response.data.results;
   },
 
   /**
@@ -296,6 +315,14 @@ export const pharmacyApi = {
       quantity,
       reason,
     });
+    return response.data;
+  },
+
+  /**
+   * Verify controlled drug dispensing (requires different user than dispenser).
+   */
+  async verifyDispensing(id: number): Promise<Dispensing> {
+    const response = await apiClient.post<Dispensing>(`/api/pharmacy/dispensings/${id}/verify/`);
     return response.data;
   },
 
