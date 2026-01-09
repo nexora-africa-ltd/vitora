@@ -84,6 +84,7 @@ export default function PharmacyPage() {
     data: alertsData,
     isLoading: alertsLoading,
     error: alertsError,
+    refetch: refetchAlerts,
   } = useStockAlerts({
     resolved: alertsResolved,
   });
@@ -283,6 +284,8 @@ export default function PharmacyPage() {
             alerts={alertsData?.results ?? []}
             isLoading={alertsLoading}
             error={alertsError as Error | null}
+            onRefresh={() => refetchAlerts()}
+            autoRefreshInterval={300} // Auto-refresh every 5 minutes (300 seconds)
           />
         </TabsContent>
       </Tabs>
