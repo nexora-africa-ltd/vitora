@@ -535,7 +535,7 @@ test.describe('Prescriptions - Cancel', () => {
     
     // Cancel should not be available or should be disabled
     const cancelButton = dispensedRow.getByRole('button', { name: /cancel/i });
-    await expect(cancelButton).not.toBeVisible().or(cancelButton.toBeDisabled());
+    await expect(cancelButton).not.toBeVisible();
   });
 });
 
