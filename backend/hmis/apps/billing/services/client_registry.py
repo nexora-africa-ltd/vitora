@@ -1,0 +1,646 @@
+"""
+Client Registry Service for Vitora HMIS.
+
+This module handles integration with the Kenya Client Registry (CR)
+through the Digital Superhighway API for patient identification
+and registration.
+
+Reference: docs/dha-api-usage-analysis.md
+Official Endpoints:
+    - POST /v3/uat-cr-registration - Register new client in CR
+    - GET /v3/client-registry/fetch-client - Fetch client by ID
+    - PUT /v3/update-client - Update existing client record
+"""
+
+import logging
+from dataclasses import dataclass, field
+from datetime import date, datetime
+from typing import Any, Optional, Union
+
+import requests
+from django.conf import settings
+
+from .sha_auth import SHAAuthService, SHAAuthError
+
+logger = logging.getLogger(__name__)
+
+
+# =============================================================================
+# Data Classes
+# =============================================================================
+
+@dataclass
+class ClientRegistryClient:
+    """
+    Client record from Kenya Client Registry.
+    
+    Represents a person's identity as registered in the national
+    Client Registry system.
+    
+    Attributes:
+        client_number: Unique CR identifier (e.g., 'CR-12345')
+        first_name: Client's first name
+        last_name: Client's last name
+        middle_name: Client's middle name (optional)
+        date_of_birth: Date of birth
+        gender: Gender code ('M', 'F', 'O')
+        national_id: Kenya National ID number (encrypted in CR)
+        huduma_number: Huduma Namba (if available)
+        passport_number: Passport number (for non-citizens)
+        birth_certificate_number: Birth certificate number
+        phone_number: Primary phone number
+        email: Email address (optional)
+        county_of_residence: County code
+        sub_county_of_residence: Sub-county code
+        ward_of_residence: Ward code
+        raw_data: Original API response data
+    """
+    
+    client_number: str
+    first_name: str
+    last_name: str
+    date_of_birth: date
+    gender: str
+    middle_name: Optional[str] = None
+    national_id: Optional[str] = None
+    huduma_number: Optional[str] = None
+    passport_number: Optional[str] = None
+    birth_certificate_number: Optional[str] = None
+    phone_number: Optional[str] = None
+    email: Optional[str] = None
+    county_of_residence: Optional[str] = None
+    sub_county_of_residence: Optional[str] = None
+    ward_of_residence: Optional[str] = None
+    raw_data: dict = field(default_factory=dict)
+    
+    @property
+    def full_name(self) -> str:
+        """Return full name with middle name if available."""
+        parts = [self.first_name]
+        if self.middle_name:
+            parts.append(self.middle_name)
+        parts.append(self.last_name)
+        return ' '.join(parts)
+    
+    @property
+    def age(self) -> int:
+        """Calculate age from date of birth."""
+        today = date.today()
+        return today.year - self.date_of_birth.year - (
+            (today.month, today.day) < (self.date_of_birth.month, self.date_of_birth.day)
+        )
+    
+    @classmethod
+    def from_api_response(cls, data: dict) -> 'ClientRegistryClient':
+        """
+        Create ClientRegistryClient from CR API response.
+        
+        Args:
+            data: API response data dict
+            
+        Returns:
+            ClientRegistryClient instance
+        """
+        # Parse date of birth
+        dob = data.get('date_of_birth') or data.get('dob')
+        if isinstance(dob, str):
+            dob = datetime.strptime(dob, '%Y-%m-%d').date()
+        
+        return cls(
+            client_number=data.get('client_number', ''),
+            first_name=data.get('first_name', ''),
+            last_name=data.get('last_name', ''),
+            middle_name=data.get('middle_name'),
+            date_of_birth=dob,
+            gender=data.get('gender', ''),
+            national_id=data.get('national_id'),
+            huduma_number=data.get('huduma_number'),
+            passport_number=data.get('passport_number'),
+            birth_certificate_number=data.get('birth_certificate_number'),
+            phone_number=data.get('phone_number'),
+            email=data.get('email'),
+            county_of_residence=data.get('county_of_residence'),
+            sub_county_of_residence=data.get('sub_county_of_residence'),
+            ward_of_residence=data.get('ward_of_residence'),
+            raw_data=data,
+        )
+
+
+# =============================================================================
+# Custom Exceptions
+# =============================================================================
+
+class ClientRegistryError(Exception):
+    """
+    Base exception for Client Registry operations.
+    
+    Attributes:
+        message: Error description
+        status_code: HTTP status code if applicable
+        error_code: CR-specific error code
+    """
+    
+    def __init__(
+        self, 
+        message: str, 
+        status_code: int = 0,
+        error_code: Optional[str] = None,
+    ):
+        self.message = message
+        self.status_code = status_code
+        self.error_code = error_code
+        super().__init__(message)
+    
+    def __str__(self):
+        parts = ["ClientRegistryError"]
+        if self.status_code:
+            parts.append(f"({self.status_code})")
+        if self.error_code:
+            parts.append(f"[{self.error_code}]")
+        parts.append(f": {self.message}")
+        return ''.join(parts)
+
+
+class ClientNotFoundError(ClientRegistryError):
+    """Raised when client is not found in the registry."""
+    
+    def __init__(self, identifier: str, identifier_type: str = "ID"):
+        self.identifier = identifier
+        self.identifier_type = identifier_type
+        super().__init__(
+            message=f"Client not found with {identifier_type}: {identifier}",
+            status_code=404,
+        )
+
+
+class ClientRegistrationError(ClientRegistryError):
+    """Raised when client registration fails."""
+    
+    def __init__(self, message: str, validation_errors: Optional[dict] = None):
+        self.validation_errors = validation_errors or {}
+        super().__init__(message=message, status_code=400)
+
+
+class DuplicateClientError(ClientRegistryError):
+    """Raised when attempting to register a duplicate client."""
+    
+    def __init__(self, existing_client_number: Optional[str] = None):
+        self.existing_client_number = existing_client_number
+        message = "A client with this identifier already exists"
+        if existing_client_number:
+            message += f" (CR Number: {existing_client_number})"
+        super().__init__(message=message, status_code=409)
+
+
+# =============================================================================
+# Service Class
+# =============================================================================
+
+class ClientRegistryService:
+    """
+    Service for interacting with Kenya Client Registry.
+    
+    This service provides methods to:
+        - Fetch existing clients by various identifiers
+        - Register new clients in the CR
+        - Update existing client records
+    
+    The Client Registry is Kenya's master patient index, providing
+    unique identification across healthcare facilities.
+    
+    Attributes:
+        api_base_url: DHA API base URL
+        fetch_endpoint: Endpoint path for fetching clients
+        register_endpoint: Endpoint path for registration
+        update_endpoint: Endpoint path for updates
+        timeout: Request timeout in seconds
+        auth_service: SHAAuthService instance for authentication
+    
+    Example:
+        >>> cr_service = ClientRegistryService()
+        >>> client = cr_service.fetch_client(national_id='12345678')
+        >>> if client:
+        ...     print(f"Found: {client.full_name}")
+    """
+    
+    def __init__(self):
+        """Initialize ClientRegistryService with settings from Django config."""
+        self.api_base_url = settings.SHA_API_BASE_URL.rstrip('/')
+        self.timeout = getattr(settings, 'SHA_API_TIMEOUT', 30)
+        
+        # Get endpoint paths from settings
+        endpoints = getattr(settings, 'SHA_ENDPOINTS', {})
+        self.fetch_endpoint = endpoints.get(
+            'client_registry_fetch', 
+            '/v3/client-registry/fetch-client'
+        )
+        self.register_endpoint = endpoints.get(
+            'client_registry_register',
+            '/v3/uat-cr-registration'
+        )
+        self.update_endpoint = endpoints.get(
+            'client_registry_update',
+            '/v3/update-client'
+        )
+        
+        # Initialize auth service
+        self.auth_service = SHAAuthService()
+    
+    def fetch_client(
+        self,
+        national_id: Optional[str] = None,
+        client_number: Optional[str] = None,
+        huduma_number: Optional[str] = None,
+        passport_number: Optional[str] = None,
+    ) -> Optional[ClientRegistryClient]:
+        """
+        Fetch a client from the Client Registry.
+        
+        At least one identifier must be provided. The method will
+        search using the provided identifier(s) in priority order.
+        
+        Args:
+            national_id: Kenya National ID number
+            client_number: Existing CR client number
+            huduma_number: Huduma Namba
+            passport_number: Passport number
+            
+        Returns:
+            ClientRegistryClient if found, None otherwise
+            
+        Raises:
+            ClientRegistryError: If API request fails
+            ValueError: If no identifier is provided
+            
+        Example:
+            >>> client = service.fetch_client(national_id='12345678')
+            >>> if client:
+            ...     print(client.client_number)
+        """
+        # Validate at least one identifier is provided
+        if not any([national_id, client_number, huduma_number, passport_number]):
+            raise ValueError("At least one identifier must be provided")
+        
+        # Build query parameters
+        params = {}
+        if national_id:
+            params['national_id'] = national_id
+        elif client_number:
+            params['client_number'] = client_number
+        elif huduma_number:
+            params['huduma_number'] = huduma_number
+        elif passport_number:
+            params['passport_number'] = passport_number
+        
+        logger.info(f"Fetching client from CR with params: {params.keys()}")
+        
+        try:
+            headers = self.auth_service.get_auth_headers()
+            
+            response = requests.get(
+                f"{self.api_base_url}{self.fetch_endpoint}",
+                params=params,
+                headers=headers,
+                timeout=self.timeout,
+            )
+            
+            logger.debug(f"CR fetch response status: {response.status_code}")
+            
+            if response.status_code == 404:
+                return None
+            
+            if response.status_code == 401:
+                raise ClientRegistryError(
+                    "Authentication failed",
+                    status_code=401,
+                )
+            
+            response.raise_for_status()
+            
+            data = response.json()
+            
+            # Handle different response formats
+            # Format 1: {"client": {...}}
+            # Format 2: {"data": {"client": {...}}}
+            # Format 3: Direct client data
+            client_data = data.get('client') or data.get('data', {}).get('client') or data
+            
+            # Check if client was found
+            if not client_data or client_data.get('found') == 0:
+                return None
+            
+            return ClientRegistryClient.from_api_response(client_data)
+            
+        except SHAAuthError as e:
+            raise ClientRegistryError(
+                f"Authentication error: {str(e)}",
+                status_code=e.status_code,
+            )
+        except requests.Timeout:
+            raise ClientRegistryError(
+                "Request timed out",
+                status_code=0,
+            )
+        except requests.RequestException as e:
+            raise ClientRegistryError(
+                f"Request failed: {str(e)}",
+                status_code=getattr(e.response, 'status_code', 0) if hasattr(e, 'response') else 0,
+            )
+    
+    def register_client(
+        self,
+        first_name: str,
+        last_name: str,
+        date_of_birth: Union[str, date],
+        gender: str,
+        national_id: Optional[str] = None,
+        middle_name: Optional[str] = None,
+        huduma_number: Optional[str] = None,
+        passport_number: Optional[str] = None,
+        birth_certificate_number: Optional[str] = None,
+        phone_number: Optional[str] = None,
+        email: Optional[str] = None,
+        county_of_residence: Optional[str] = None,
+        sub_county_of_residence: Optional[str] = None,
+        ward_of_residence: Optional[str] = None,
+    ) -> ClientRegistryClient:
+        """
+        Register a new client in the Client Registry.
+        
+        Creates a new client record in Kenya's CR and returns the
+        assigned client number.
+        
+        Args:
+            first_name: Client's first name (required)
+            last_name: Client's last name (required)
+            date_of_birth: Date of birth (required, 'YYYY-MM-DD' or date object)
+            gender: Gender code 'M', 'F', or 'O' (required)
+            national_id: Kenya National ID number
+            middle_name: Middle name
+            huduma_number: Huduma Namba
+            passport_number: Passport number
+            birth_certificate_number: Birth certificate number
+            phone_number: Phone number
+            email: Email address
+            county_of_residence: County code
+            sub_county_of_residence: Sub-county code
+            ward_of_residence: Ward code
+            
+        Returns:
+            ClientRegistryClient with assigned client_number
+            
+        Raises:
+            ClientRegistrationError: If registration fails
+            DuplicateClientError: If client already exists
+            
+        Example:
+            >>> client = service.register_client(
+            ...     first_name='John',
+            ...     last_name='Doe',
+            ...     date_of_birth='1990-01-15',
+            ...     gender='M',
+            ...     national_id='12345678',
+            ... )
+            >>> print(f"Registered as: {client.client_number}")
+        """
+        # Validate required fields
+        if not all([first_name, last_name, date_of_birth, gender]):
+            raise ClientRegistrationError(
+                "first_name, last_name, date_of_birth, and gender are required",
+                validation_errors={
+                    'first_name': 'required' if not first_name else None,
+                    'last_name': 'required' if not last_name else None,
+                    'date_of_birth': 'required' if not date_of_birth else None,
+                    'gender': 'required' if not gender else None,
+                }
+            )
+        
+        # Validate gender
+        if gender not in ('M', 'F', 'O'):
+            raise ClientRegistrationError(
+                "Gender must be 'M', 'F', or 'O'",
+                validation_errors={'gender': 'invalid'}
+            )
+        
+        # Format date of birth
+        if isinstance(date_of_birth, date):
+            dob_str = date_of_birth.strftime('%Y-%m-%d')
+        else:
+            dob_str = date_of_birth
+        
+        # Build request payload
+        payload = {
+            'first_name': first_name,
+            'last_name': last_name,
+            'date_of_birth': dob_str,
+            'gender': gender,
+        }
+        
+        # Add optional fields
+        if middle_name:
+            payload['middle_name'] = middle_name
+        if national_id:
+            payload['national_id'] = national_id
+        if huduma_number:
+            payload['huduma_number'] = huduma_number
+        if passport_number:
+            payload['passport_number'] = passport_number
+        if birth_certificate_number:
+            payload['birth_certificate_number'] = birth_certificate_number
+        if phone_number:
+            payload['phone_number'] = phone_number
+        if email:
+            payload['email'] = email
+        if county_of_residence:
+            payload['county_of_residence'] = county_of_residence
+        if sub_county_of_residence:
+            payload['sub_county_of_residence'] = sub_county_of_residence
+        if ward_of_residence:
+            payload['ward_of_residence'] = ward_of_residence
+        
+        logger.info(f"Registering new client in CR: {first_name} {last_name}")
+        
+        try:
+            headers = self.auth_service.get_auth_headers()
+            
+            response = requests.post(
+                f"{self.api_base_url}{self.register_endpoint}",
+                json=payload,
+                headers=headers,
+                timeout=self.timeout,
+            )
+            
+            logger.debug(f"CR registration response status: {response.status_code}")
+            
+            if response.status_code == 409:
+                # Duplicate client
+                data = response.json()
+                existing_number = data.get('client_number')
+                raise DuplicateClientError(existing_client_number=existing_number)
+            
+            if response.status_code == 400:
+                # Validation error
+                data = response.json()
+                raise ClientRegistrationError(
+                    data.get('message', 'Validation failed'),
+                    validation_errors=data.get('errors', {}),
+                )
+            
+            if response.status_code == 401:
+                raise ClientRegistryError(
+                    "Authentication failed",
+                    status_code=401,
+                )
+            
+            response.raise_for_status()
+            
+            data = response.json()
+            
+            # Extract client data from response
+            # Response format: {"client_number": "CR-12345", ...}
+            client_data = data.get('client') or data
+            
+            # Add submitted data if not in response
+            if 'first_name' not in client_data:
+                client_data.update(payload)
+            
+            return ClientRegistryClient.from_api_response(client_data)
+            
+        except SHAAuthError as e:
+            raise ClientRegistryError(
+                f"Authentication error: {str(e)}",
+                status_code=e.status_code,
+            )
+        except requests.Timeout:
+            raise ClientRegistryError(
+                "Request timed out",
+                status_code=0,
+            )
+        except (DuplicateClientError, ClientRegistrationError):
+            raise
+        except requests.RequestException as e:
+            raise ClientRegistryError(
+                f"Request failed: {str(e)}",
+                status_code=getattr(e.response, 'status_code', 0) if hasattr(e, 'response') else 0,
+            )
+    
+    def update_client(
+        self,
+        client_number: str,
+        **updates: Any,
+    ) -> ClientRegistryClient:
+        """
+        Update an existing client in the Client Registry.
+        
+        Updates specified fields for an existing client record.
+        Only provided fields will be updated.
+        
+        Args:
+            client_number: The CR client number to update (required)
+            **updates: Field-value pairs to update. Supported fields:
+                - phone_number
+                - email
+                - county_of_residence
+                - sub_county_of_residence
+                - ward_of_residence
+                
+        Returns:
+            Updated ClientRegistryClient
+            
+        Raises:
+            ClientNotFoundError: If client not found
+            ClientRegistryError: If update fails
+            ValueError: If no updates provided
+            
+        Example:
+            >>> updated = service.update_client(
+            ...     client_number='CR-12345',
+            ...     phone_number='0712345678',
+            ...     email='john@example.com',
+            ... )
+        """
+        if not client_number:
+            raise ValueError("client_number is required")
+        
+        if not updates:
+            raise ValueError("At least one field to update is required")
+        
+        # Allowed update fields
+        allowed_fields = {
+            'phone_number', 'email', 'county_of_residence',
+            'sub_county_of_residence', 'ward_of_residence',
+            'middle_name',
+        }
+        
+        # Filter to allowed fields only
+        payload = {
+            'client_number': client_number,
+            **{k: v for k, v in updates.items() if k in allowed_fields}
+        }
+        
+        logger.info(f"Updating client {client_number} in CR")
+        
+        try:
+            headers = self.auth_service.get_auth_headers()
+            
+            response = requests.put(
+                f"{self.api_base_url}{self.update_endpoint}",
+                json=payload,
+                headers=headers,
+                timeout=self.timeout,
+            )
+            
+            logger.debug(f"CR update response status: {response.status_code}")
+            
+            if response.status_code == 404:
+                raise ClientNotFoundError(
+                    identifier=client_number,
+                    identifier_type="client_number",
+                )
+            
+            if response.status_code == 401:
+                raise ClientRegistryError(
+                    "Authentication failed",
+                    status_code=401,
+                )
+            
+            response.raise_for_status()
+            
+            data = response.json()
+            
+            # Extract updated client data
+            client_data = data.get('client') or data
+            
+            return ClientRegistryClient.from_api_response(client_data)
+            
+        except SHAAuthError as e:
+            raise ClientRegistryError(
+                f"Authentication error: {str(e)}",
+                status_code=e.status_code,
+            )
+        except requests.Timeout:
+            raise ClientRegistryError(
+                "Request timed out",
+                status_code=0,
+            )
+        except ClientNotFoundError:
+            raise
+        except requests.RequestException as e:
+            raise ClientRegistryError(
+                f"Request failed: {str(e)}",
+                status_code=getattr(e.response, 'status_code', 0) if hasattr(e, 'response') else 0,
+            )
+    
+    def is_configured(self) -> bool:
+        """
+        Check if Client Registry integration is properly configured.
+        
+        Returns:
+            True if CR integration can be used
+        """
+        return bool(
+            self.api_base_url and
+            self.fetch_endpoint and
+            self.register_endpoint and
+            self.auth_service.is_configured()
+        )
