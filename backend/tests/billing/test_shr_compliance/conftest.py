@@ -484,7 +484,34 @@ def valid_patient_resource_fhir():
                 "given": ["STEPHEN"]
             }
         ],
-        "gender": "male"
+        "gender": "male",
+        # Optional but recommended fields
+        "birthDate": "1990-05-15",
+        "telecom": [
+            {
+                "system": "phone",
+                "value": "+254712345678",
+                "use": "mobile"
+            },
+            {
+                "system": "email",
+                "value": "stephen.gitau@example.com",
+                "use": "home"
+            }
+        ],
+        "address": [
+            {
+                "use": "home",
+                "type": "physical",
+                "text": "123 Kenyatta Avenue, Nairobi",
+                "line": ["123 Kenyatta Avenue"],
+                "city": "Nairobi",
+                "district": "Nairobi",
+                "state": "Nairobi County",
+                "postalCode": "00100",
+                "country": "KE"
+            }
+        ]
     }
 
 
