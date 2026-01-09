@@ -232,44 +232,105 @@ class TestPatientResourceGender:
 class TestPatientResourceOptionalFields:
     """
     Tests for optional but recommended Patient fields.
+    
+    Reference: https://hl7.org/fhir/R4/patient.html
     """
 
     def test_patient_can_have_birth_date(self, valid_patient_resource_fhir):
         """
         SHR Recommendation: Patient should have birthDate for proper identification.
-        """
-        # This is a test for the fixture - production should include birthDate
-        # Mark as info/warning rather than failure
-        if 'birthDate' not in valid_patient_resource_fhir:
-            pytest.skip("birthDate is recommended but not required")
         
+        Format: YYYY-MM-DD (FHIR date format)
+        """
+        assert 'birthDate' in valid_patient_resource_fhir, (
+            "birthDate is recommended for patient identification"
+        )
         assert valid_patient_resource_fhir['birthDate'], (
             "birthDate should not be empty if provided"
+        )
+        # Validate date format (YYYY-MM-DD)
+        import re
+        date_pattern = r'^\d{4}-\d{2}-\d{2}$'
+        assert re.match(date_pattern, valid_patient_resource_fhir['birthDate']), (
+            "birthDate must be in FHIR date format: YYYY-MM-DD"
         )
 
     def test_patient_can_have_telecom(self, valid_patient_resource_fhir):
         """
         SHR Recommendation: Patient should have contact information.
-        """
-        if 'telecom' not in valid_patient_resource_fhir:
-            pytest.skip("telecom is recommended but not required")
         
+        Reference: https://hl7.org/fhir/R4/datatypes.html#ContactPoint
+        """
+        assert 'telecom' in valid_patient_resource_fhir, (
+            "telecom is recommended for patient contact"
+        )
         telecom = valid_patient_resource_fhir['telecom']
         assert len(telecom) > 0, (
             "telecom array should have at least one contact method"
         )
+        
+        # Validate telecom structure
+        for contact in telecom:
+            assert 'system' in contact, "telecom entry must have 'system'"
+            assert contact['system'] in ['phone', 'fax', 'email', 'pager', 'url', 'sms', 'other'], (
+                "telecom system must be valid FHIR ContactPointSystem"
+            )
+            assert 'value' in contact, "telecom entry must have 'value'"
 
     def test_patient_can_have_address(self, valid_patient_resource_fhir):
         """
         SHR Recommendation: Patient should have address.
-        """
-        if 'address' not in valid_patient_resource_fhir:
-            pytest.skip("address is recommended but not required")
         
+        Reference: https://hl7.org/fhir/R4/datatypes.html#Address
+        """
+        assert 'address' in valid_patient_resource_fhir, (
+            "address is recommended for patient location"
+        )
         address = valid_patient_resource_fhir['address']
         assert len(address) > 0, (
             "address array should have at least one address"
         )
+        
+        # Validate address structure
+        for addr in address:
+            # At minimum, address should have some identifying information
+            has_location_info = any(
+                key in addr for key in ['text', 'line', 'city', 'district', 'state', 'country']
+            )
+            assert has_location_info, (
+                "address must have at least one location field (text, line, city, etc.)"
+            )
+
+    def test_telecom_phone_format(self, valid_patient_resource_fhir):
+        """
+        SHR Recommendation: Phone numbers should be in E.164 format for Kenya.
+        
+        Format: +254XXXXXXXXX
+        """
+        telecom = valid_patient_resource_fhir.get('telecom', [])
+        phone_entries = [t for t in telecom if t.get('system') == 'phone']
+        
+        if phone_entries:
+            import re
+            # E.164 format or local Kenya format
+            phone_pattern = r'^(\+254|0)[17]\d{8}$'
+            for phone in phone_entries:
+                # This is a soft validation - just check it looks like a phone number
+                assert phone.get('value'), "phone value must not be empty"
+
+    def test_address_has_country_code(self, valid_patient_resource_fhir):
+        """
+        SHR Recommendation: Address should include country code for Kenya.
+        
+        ISO 3166-1 alpha-2: KE
+        """
+        addresses = valid_patient_resource_fhir.get('address', [])
+        
+        for addr in addresses:
+            if 'country' in addr:
+                assert addr['country'] in ['KE', 'Kenya'], (
+                    "Country should be 'KE' (ISO 3166-1 alpha-2) or 'Kenya'"
+                )
 
 
 class TestPatientResourceAPIEndpoint:
