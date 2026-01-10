@@ -107,20 +107,20 @@ export function StockMovementReport() {
       case 'RECEIVED':
         return <ArrowUpCircle className="h-4 w-4 text-green-600" />;
       case 'DISPENSED':
-        return <ArrowDownCircle className="h-4 w-4 text-blue-600" />;
+        return <ArrowDownCircle className="h-4 w-4 text-primary" />;
       case 'ADJUSTED':
-        return <RefreshCw className="h-4 w-4 text-orange-600" />;
+        return <RefreshCw className="h-4 w-4 text-orange-600 dark:text-orange-400" />;
     }
   };
 
   const getMovementBadge = (type: StockMovement['movement_type']) => {
     switch (type) {
       case 'RECEIVED':
-        return <Badge className="bg-green-100 text-green-800">Received</Badge>;
+        return <Badge className="bg-emerald-500/15 text-emerald-700 dark:text-emerald-400">Received</Badge>;
       case 'DISPENSED':
-        return <Badge className="bg-blue-100 text-blue-800">Dispensed</Badge>;
+        return <Badge className="bg-primary/15 text-primary">Dispensed</Badge>;
       case 'ADJUSTED':
-        return <Badge className="bg-orange-100 text-orange-800">Adjusted</Badge>;
+        return <Badge className="bg-orange-500/15 text-orange-700 dark:text-orange-400">Adjusted</Badge>;
     }
   };
 
@@ -286,22 +286,22 @@ export function StockMovementReport() {
             <p className="text-sm text-muted-foreground">Total Movements</p>
             <p className="text-2xl font-bold">{sortedMovements.length}</p>
           </div>
-          <div className="p-4 rounded-lg bg-green-50 border border-green-200">
-            <p className="text-sm text-green-700">Total In (Received)</p>
-            <p className="text-2xl font-bold text-green-700">+{totalIn}</p>
+          <div className="p-4 rounded-lg bg-emerald-500/10 border border-emerald-500/20">
+            <p className="text-sm text-emerald-700 dark:text-emerald-400">Total In (Received)</p>
+            <p className="text-2xl font-bold text-emerald-700 dark:text-emerald-400">+{totalIn}</p>
           </div>
-          <div className="p-4 rounded-lg bg-blue-50 border border-blue-200">
-            <p className="text-sm text-blue-700">Total Out (Dispensed)</p>
-            <p className="text-2xl font-bold text-blue-700">-{totalOut}</p>
+          <div className="p-4 rounded-lg bg-primary/10 border border-primary/20">
+            <p className="text-sm text-primary">Total Out (Dispensed)</p>
+            <p className="text-2xl font-bold text-primary">-{totalOut}</p>
           </div>
           <div className={cn(
             'p-4 rounded-lg border',
-            netMovement >= 0 ? 'bg-green-50 border-green-200' : 'bg-red-50 border-red-200'
+            netMovement >= 0 ? 'bg-emerald-500/10 border-emerald-500/20' : 'bg-destructive/10 border-destructive/20'
           )}>
-            <p className={cn('text-sm', netMovement >= 0 ? 'text-green-700' : 'text-red-700')}>
+            <p className={cn('text-sm', netMovement >= 0 ? 'text-emerald-700 dark:text-emerald-400' : 'text-destructive')}>
               Net Movement
             </p>
-            <p className={cn('text-2xl font-bold', netMovement >= 0 ? 'text-green-700' : 'text-red-700')}>
+            <p className={cn('text-2xl font-bold', netMovement >= 0 ? 'text-emerald-700 dark:text-emerald-400' : 'text-destructive')}>
               {netMovement >= 0 ? '+' : ''}{netMovement}
             </p>
           </div>

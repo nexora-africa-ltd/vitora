@@ -225,8 +225,8 @@ export function DrugForm({ drug, onSuccess, onCancel }: DrugFormProps) {
       <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6" data-testid="drug-form">
         {/* Success Message */}
         {success && (
-          <Alert className="bg-green-50 border-green-200">
-            <AlertDescription className="text-green-800">
+          <Alert className="bg-emerald-500/10 border-emerald-500/20">
+            <AlertDescription className="text-emerald-700 dark:text-emerald-400">
               Drug {drug ? 'updated' : 'created'} successfully!
             </AlertDescription>
           </Alert>

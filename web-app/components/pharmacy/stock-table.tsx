@@ -53,14 +53,14 @@ interface StockTableProps {
   drugs?: { id: number; display_name: string }[];
 }
 
-// Status badge colors
+// Status badge colors using semantic classes
 const STATUS_COLORS: Record<StockStatus, string> = {
-  AVAILABLE: 'bg-green-100 text-green-800',
-  LOW: 'bg-yellow-100 text-yellow-800',
-  OUT_OF_STOCK: 'bg-red-100 text-red-800',
-  EXPIRED: 'bg-red-100 text-red-800',
-  QUARANTINE: 'bg-orange-100 text-orange-800',
-  RECALLED: 'bg-purple-100 text-purple-800',
+  AVAILABLE: 'bg-emerald-500/15 text-emerald-700 dark:text-emerald-400',
+  LOW: 'bg-amber-500/15 text-amber-700 dark:text-amber-400',
+  OUT_OF_STOCK: 'bg-destructive/15 text-destructive',
+  EXPIRED: 'bg-destructive/15 text-destructive',
+  QUARANTINE: 'bg-orange-500/15 text-orange-700 dark:text-orange-400',
+  RECALLED: 'bg-purple-500/15 text-purple-700 dark:text-purple-400',
 };
 
 export function StockTable({
@@ -208,7 +208,7 @@ export function StockTable({
                 <SelectItem value="all">All Statuses</SelectItem>
                 <SelectItem value="AVAILABLE">Available</SelectItem>
                 <SelectItem value="LOW">Low</SelectItem>
-                <SelectItem value="OUT_OF_STOCK">Out of Stock</SelectItem>
+                <SelectItem value="OUT_OF_STOCK">OOS</SelectItem>
                 <SelectItem value="EXPIRED">Expired</SelectItem>
                 <SelectItem value="QUARANTINE">Quarantine</SelectItem>
               </SelectContent>
@@ -246,7 +246,7 @@ export function StockTable({
               <SelectItem value="all">All Statuses</SelectItem>
               <SelectItem value="AVAILABLE">Available</SelectItem>
               <SelectItem value="LOW">Low</SelectItem>
-              <SelectItem value="OUT_OF_STOCK">Out of Stock</SelectItem>
+              <SelectItem value="OUT_OF_STOCK">OOS</SelectItem>
               <SelectItem value="EXPIRED">Expired</SelectItem>
               <SelectItem value="QUARANTINE">Quarantine</SelectItem>
             </SelectContent>
@@ -342,11 +342,11 @@ export function StockTable({
               const isExpiringSoon = !isExpired && isBefore(expiryDate, addDays(new Date(), 90));
 
               return (
-                <TableRow key={batch.id} className={batch.status === 'LOW' ? 'bg-yellow-50' : batch.status === 'EXPIRED' ? 'bg-red-50' : ''}>
+                <TableRow key={batch.id} className={batch.status === 'LOW' ? 'bg-amber-500/5' : batch.status === 'EXPIRED' ? 'bg-destructive/5' : ''}>
                   <TableCell className="font-mono text-sm">
                     <button
                       onClick={() => handleBatchClick(batch)}
-                      className="text-blue-600 hover:text-blue-800 hover:underline"
+                      className="text-primary hover:text-primary/80 hover:underline"
                     >
                       {batch.batch_number}
                     </button>
@@ -363,21 +363,15 @@ export function StockTable({
                       )}
                       {isExpiringSoon && !isExpired && (
                         <span data-testid="expiry-warning" title="Expiring Soon">
-                          <Clock className="h-4 w-4 text-yellow-500" />
+                          <Clock className="h-4 w-4 text-amber-500" />
                         </span>
                       )}
                     </div>
                   </TableCell>
                   <TableCell>{batch.days_to_expiry}</TableCell>
                   <TableCell>
-                    <Badge 
-                      className={`${STATUS_COLORS[batch.status]} ${
-                        batch.status === 'LOW' ? 'warning bg-yellow-100 text-yellow-800' : 
-                        batch.status === 'EXPIRED' || batch.status === 'OUT_OF_STOCK' ? 'destructive bg-red-100 text-red-800' : 
-                        ''
-                      }`}
-                    >
-                      {batch.status}
+                    <Badge className={STATUS_COLORS[batch.status]}>
+                      {batch.status === 'OUT_OF_STOCK' ? 'OOS' : batch.status}
                     </Badge>
                   </TableCell>
                   <TableCell>{batch.supplier || '-'}</TableCell>

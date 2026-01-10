@@ -54,13 +54,13 @@ interface PrescriptionsTableProps {
   onSearch: (query: string) => void;
 }
 
-// Status badge colors
+// Status badge colors using semantic classes
 const STATUS_COLORS: Record<PrescriptionStatus, string> = {
-  PENDING: 'bg-yellow-100 text-yellow-800',
-  PARTIAL: 'bg-blue-100 text-blue-800',
-  DISPENSED: 'bg-green-100 text-green-800',
-  CANCELLED: 'bg-gray-100 text-gray-800',
-  EXPIRED: 'bg-red-100 text-red-800',
+  PENDING: 'bg-amber-500/15 text-amber-700 dark:text-amber-400',
+  PARTIAL: 'bg-primary/15 text-primary',
+  DISPENSED: 'bg-emerald-500/15 text-emerald-700 dark:text-emerald-400',
+  CANCELLED: 'bg-muted text-muted-foreground',
+  EXPIRED: 'bg-destructive/15 text-destructive',
 };
 
 // Status icons
@@ -237,13 +237,26 @@ export function PrescriptionsTable({
               return (
                 <>
                   {/* Main Row */}
-                  <TableRow key={rx.id}>
+                  <TableRow 
+                    key={rx.id}
+                    className={canDispense ? 'cursor-pointer hover:bg-muted/50' : ''}
+                    onClick={canDispense ? () => {
+                      const newExpanded = new Set(expandedRows);
+                      if (isExpanded) {
+                        newExpanded.delete(rx.id);
+                      } else {
+                        newExpanded.add(rx.id);
+                      }
+                      setExpandedRows(newExpanded);
+                    } : undefined}
+                  >
                     <TableCell>
                       {canDispense && (
                         <Button
                           variant="ghost"
                           size="sm"
-                          onClick={() => {
+                          onClick={(e) => {
+                            e.stopPropagation();
                             const newExpanded = new Set(expandedRows);
                             if (isExpanded) {
                               newExpanded.delete(rx.id);
@@ -282,7 +295,10 @@ export function PrescriptionsTable({
                       <Button
                         variant="ghost"
                         size="sm"
-                        onClick={() => router.push(`/pharmacy/prescriptions/${rx.id}`)}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          router.push(`/pharmacy/prescriptions/${rx.id}`);
+                        }}
                       >
                         <Eye className="h-4 w-4 mr-1" />
                         View
@@ -346,7 +362,7 @@ export function PrescriptionsTable({
                                   ) : item.is_cancelled ? (
                                     <Badge variant="outline">Cancelled</Badge>
                                   ) : (
-                                    <Badge variant="outline" className="bg-green-100 text-green-800">
+                                    <Badge variant="outline" className="bg-emerald-500/15 text-emerald-700 dark:text-emerald-400">
                                       <CheckCircle className="h-3 w-3 mr-1" />
                                       Fully Dispensed
                                     </Badge>

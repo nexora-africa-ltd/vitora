@@ -26,6 +26,7 @@ import {
   AlertsPanel, 
   PrescriptionsTable,
   DispensingHistoryTable,
+  DirectDispenseDialog,
 } from '@/components/pharmacy';
 import { AlertsWidget } from '@/components/dashboard/alerts-widget';
 import {
@@ -40,6 +41,9 @@ import { StockStatus, PrescriptionStatus, DrugCategory, DrugForm, DrugSchedule }
 
 export default function PharmacyPage() {
   const router = useRouter();
+
+  // Direct dispense dialog state
+  const [showDirectDispenseDialog, setShowDirectDispenseDialog] = useState(false);
 
   // Drugs state
   const [drugsPage, setDrugsPage] = useState(1);
@@ -172,12 +176,22 @@ export default function PharmacyPage() {
             Manage drugs, inventory, prescriptions, and dispensing
           </p>
         </div>
-        <Link href="/pharmacy/reports" data-testid="pharmacy-reports">
-          <Button variant="outline">
-            <BarChart3 className="h-4 w-4 mr-2" />
-            Reports
+        <div className="flex gap-2">
+          <Button 
+            variant="outline"
+            onClick={() => setShowDirectDispenseDialog(true)}
+            data-testid="direct-dispense-button"
+          >
+            <Pill className="h-4 w-4 mr-2" />
+            Direct Dispense
           </Button>
-        </Link>
+          <Link href="/pharmacy/reports" data-testid="pharmacy-reports">
+            <Button variant="outline">
+              <BarChart3 className="h-4 w-4 mr-2" />
+              Reports
+            </Button>
+          </Link>
+        </div>
       </div>
 
       {/* Dashboard Summary - Key Widgets */}
@@ -371,6 +385,15 @@ export default function PharmacyPage() {
           />
         </TabsContent>
       </Tabs>
+
+      {/* Direct Dispense Dialog */}
+      <DirectDispenseDialog
+        isOpen={showDirectDispenseDialog}
+        onClose={() => setShowDirectDispenseDialog(false)}
+        onSuccess={() => {
+          refetchDispensings();
+        }}
+      />
     </div>
   );
 }

@@ -708,11 +708,19 @@ export async function setupPharmacyMocks(page: Page) {
     const method = route.request().method();
 
     if (method === 'GET') {
-      if (url.includes('by_drug')) {
+      // Handle by-drug filter (either as path segment or query param)
+      if (url.includes('by_drug') || url.includes('drug=')) {
+        // Return batches for the specified drug in paginated format
+        const availableBatches = mockStockBatchesData.results.filter((b) => b.status === 'AVAILABLE');
         await route.fulfill({
           status: 200,
           contentType: 'application/json',
-          body: JSON.stringify(mockStockBatchesData.results.filter((b) => b.drug === 1)),
+          body: JSON.stringify({
+            count: availableBatches.length,
+            next: null,
+            previous: null,
+            results: availableBatches,
+          }),
         });
       } else if (url.match(/\/stock\/\d+\/?$/)) {
         const id = parseInt(url.match(/\/stock\/(\d+)/)?.[1] || '1');

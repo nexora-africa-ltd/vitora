@@ -10,7 +10,7 @@
 
 import { useState } from 'react';
 import { format } from 'date-fns';
-import { Search, Calendar, User, Pill, Package, DollarSign, Filter } from 'lucide-react';
+import { Search, Calendar, User, Pill, Package, DollarSign, Filter, RotateCcw, Printer } from 'lucide-react';
 import {
   Table,
   TableBody,
@@ -32,6 +32,8 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { Dispensing } from '@/lib/types/pharmacy';
+import { ReturnDialog } from './dispensing/return-dialog';
+import { LabelDialog } from './dispensing/label-dialog';
 
 interface DispensingHistoryTableProps {
   dispensings: Dispensing[];
@@ -43,6 +45,7 @@ interface DispensingHistoryTableProps {
   onPatientFilter?: (patientId: string) => void;
   onDrugFilter?: (drugId: string) => void;
   onDateRangeFilter?: (from: string, to: string) => void;
+  onRefresh?: () => void;
 }
 
 export function DispensingHistoryTable({
@@ -55,12 +58,21 @@ export function DispensingHistoryTable({
   onPatientFilter,
   onDrugFilter,
   onDateRangeFilter,
+  onRefresh,
 }: DispensingHistoryTableProps) {
   const [showFilters, setShowFilters] = useState(false);
   const [patientSearch, setPatientSearch] = useState('');
   const [drugSearch, setDrugSearch] = useState('');
   const [dateFrom, setDateFrom] = useState('');
   const [dateTo, setDateTo] = useState('');
+  const [returnDialog, setReturnDialog] = useState<{ isOpen: boolean; dispensing: Dispensing | null }>({
+    isOpen: false,
+    dispensing: null,
+  });
+  const [labelDialog, setLabelDialog] = useState<{ isOpen: boolean; dispensing: Dispensing | null }>({
+    isOpen: false,
+    dispensing: null,
+  });
 
   const handleApplyFilters = () => {
     if (onPatientFilter && patientSearch) {
@@ -352,8 +364,21 @@ export function DispensingHistoryTable({
                 </TableCell>
                 <TableCell>
                   <div className="flex gap-1">
-                    <Button variant="ghost" size="sm" disabled>
+                    <Button 
+                      variant="ghost" 
+                      size="sm"
+                      onClick={() => setReturnDialog({ isOpen: true, dispensing })}
+                    >
+                      <RotateCcw className="h-3 w-3 mr-1" />
                       Return
+                    </Button>
+                    <Button 
+                      variant="ghost" 
+                      size="sm"
+                      onClick={() => setLabelDialog({ isOpen: true, dispensing })}
+                    >
+                      <Printer className="h-3 w-3 mr-1" />
+                      Print Label
                     </Button>
                   </div>
                 </TableCell>
@@ -389,6 +414,21 @@ export function DispensingHistoryTable({
           </div>
         </div>
       )}
+
+      {/* Return Dialog */}
+      <ReturnDialog
+        isOpen={returnDialog.isOpen}
+        onClose={() => setReturnDialog({ isOpen: false, dispensing: null })}
+        dispensing={returnDialog.dispensing}
+        onSuccess={onRefresh}
+      />
+
+      {/* Label Dialog */}
+      <LabelDialog
+        isOpen={labelDialog.isOpen}
+        onClose={() => setLabelDialog({ isOpen: false, dispensing: null })}
+        dispensing={labelDialog.dispensing}
+      />
     </div>
   );
 }

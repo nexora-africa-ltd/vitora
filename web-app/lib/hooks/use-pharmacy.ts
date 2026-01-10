@@ -401,6 +401,24 @@ export function useReturnDispensing() {
 }
 
 /**
+ * Alias for useReturnDispensing with different parameter names.
+ */
+export function useReturnStock() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: ({ dispensing_id, quantity, reason }: { dispensing_id: number; quantity: number; reason: string }) =>
+      pharmacyApi.returnDispensing(dispensing_id, quantity, reason),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['dispensings'] });
+      queryClient.invalidateQueries({ queryKey: ['prescriptions'] });
+      queryClient.invalidateQueries({ queryKey: ['stock-batches'] });
+      queryClient.invalidateQueries({ queryKey: ['stock-alerts'] });
+    },
+  });
+}
+
+/**
  * Hook for verifying controlled drug dispensing.
  */
 export function useVerifyDispensing() {

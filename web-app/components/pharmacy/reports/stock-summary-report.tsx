@@ -225,15 +225,15 @@ export function StockSummaryReport() {
             <p className="text-sm text-muted-foreground">Total Drugs</p>
             <p className="text-2xl font-bold">{filteredData.length}</p>
           </div>
-          <div className="p-4 rounded-lg bg-yellow-50 border border-yellow-200">
-            <p className="text-sm text-yellow-700">Below Reorder</p>
-            <p className="text-2xl font-bold text-yellow-700">
+          <div className="p-4 rounded-lg bg-amber-500/10 border border-amber-500/20">
+            <p className="text-sm text-amber-700 dark:text-amber-400">Below Reorder</p>
+            <p className="text-2xl font-bold text-amber-700 dark:text-amber-400">
               {filteredData.filter((d: StockSummaryItem) => d.is_below_reorder).length}
             </p>
           </div>
-          <div className="p-4 rounded-lg bg-red-50 border border-red-200">
-            <p className="text-sm text-red-700">Out of Stock</p>
-            <p className="text-2xl font-bold text-red-700">
+          <div className="p-4 rounded-lg bg-destructive/10 border border-destructive/20">
+            <p className="text-sm text-destructive">OOS</p>
+            <p className="text-2xl font-bold text-destructive">
               {filteredData.filter((d: StockSummaryItem) => d.total_quantity === 0).length}
             </p>
           </div>
@@ -271,8 +271,8 @@ export function StockSummaryReport() {
                       <TableRow
                         className={cn(
                           'cursor-pointer hover:bg-muted/50',
-                          item.is_below_reorder && 'bg-yellow-50/50',
-                          item.total_quantity === 0 && 'bg-red-50/50'
+                          item.is_below_reorder && 'bg-amber-500/5',
+                          item.total_quantity === 0 && 'bg-destructive/5'
                         )}
                         onClick={() => toggleDrugExpanded(item.drug_id)}
                       >
@@ -292,11 +292,11 @@ export function StockSummaryReport() {
                         <TableCell className="text-right">{item.reorder_level}</TableCell>
                         <TableCell>
                           {item.total_quantity === 0 ? (
-                            <Badge variant="destructive">Out of Stock</Badge>
+                            <Badge variant="destructive">OOS</Badge>
                           ) : item.is_below_reorder ? (
-                            <Badge className="bg-yellow-100 text-yellow-800">Below Reorder</Badge>
+                            <Badge className="bg-amber-500/15 text-amber-700 dark:text-amber-400">Below Reorder</Badge>
                           ) : (
-                            <Badge className="bg-green-100 text-green-800">OK</Badge>
+                            <Badge className="bg-emerald-500/15 text-emerald-700 dark:text-emerald-400">OK</Badge>
                           )}
                         </TableCell>
                         <TableCell className="text-right">{item.batches.length}</TableCell>
