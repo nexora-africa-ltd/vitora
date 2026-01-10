@@ -100,28 +100,63 @@ class ClientRegistryClient:
             
         Returns:
             ClientRegistryClient instance
+            
+        Note:
+            DHA API returns gender as full words: 'Male', 'Female', 'Other'
+            We normalize to single char: 'M', 'F', 'O'
+            
+            DHA API field names differ from our model:
+            - 'id' -> client_number (CR number like CR000000000-2)
+            - 'county' -> county_of_residence
+            - 'sub_county' -> sub_county_of_residence
+            - 'ward' -> ward_of_residence
+            - 'phone' -> phone_number
+            - 'identification_number' -> national_id (when type is National ID)
         """
         # Parse date of birth
         dob = data.get('date_of_birth') or data.get('dob')
-        if isinstance(dob, str):
-            dob = datetime.strptime(dob, '%Y-%m-%d').date()
+        if isinstance(dob, str) and dob:
+            try:
+                dob = datetime.strptime(dob, '%Y-%m-%d').date()
+            except ValueError:
+                dob = None
+        
+        # Normalize gender: DHA returns 'Male'/'Female'/'Other', we need 'M'/'F'/'O'
+        raw_gender = data.get('gender', '')
+        if raw_gender:
+            gender_map = {
+                'male': 'M', 'm': 'M',
+                'female': 'F', 'f': 'F',
+                'other': 'O', 'o': 'O',
+            }
+            gender = gender_map.get(raw_gender.lower(), raw_gender[0].upper() if raw_gender else 'O')
+        else:
+            gender = ''
+        
+        # Extract national ID from identification fields if present
+        national_id = data.get('national_id')
+        if not national_id and data.get('identification_type') == 'National ID':
+            national_id = data.get('identification_number')
+        
+        # Client number: DHA uses 'id' field for CR number (e.g., CR000000000-2)
+        client_number = data.get('client_number') or data.get('id', '')
         
         return cls(
-            client_number=data.get('client_number', ''),
-            first_name=data.get('first_name', ''),
-            last_name=data.get('last_name', ''),
-            middle_name=data.get('middle_name'),
+            client_number=client_number,
+            first_name=data.get('first_name', '').strip(),
+            last_name=data.get('last_name', '').strip(),
+            middle_name=data.get('middle_name', '').strip() if data.get('middle_name') else None,
             date_of_birth=dob,
-            gender=data.get('gender', ''),
-            national_id=data.get('national_id'),
+            gender=gender,
+            national_id=national_id,
             huduma_number=data.get('huduma_number'),
             passport_number=data.get('passport_number'),
             birth_certificate_number=data.get('birth_certificate_number'),
-            phone_number=data.get('phone_number'),
+            phone_number=data.get('phone_number') or data.get('phone'),
             email=data.get('email'),
-            county_of_residence=data.get('county_of_residence'),
-            sub_county_of_residence=data.get('sub_county_of_residence'),
-            ward_of_residence=data.get('ward_of_residence'),
+            county_of_residence=data.get('county_of_residence') or data.get('county'),
+            sub_county_of_residence=data.get('sub_county_of_residence') or data.get('sub_county'),
+            ward_of_residence=data.get('ward_of_residence') or data.get('ward'),
             raw_data=data,
         )
 
@@ -330,14 +365,43 @@ class ClientRegistryService:
             
             data = response.json()
             
-            # Handle different response formats
+            # Handle DHA API response format:
+            # Official format: {"message": {"total": N, "result": [...]}}
+            # The result array contains client records
+            # 
+            # Also handle alternative formats for backward compatibility:
             # Format 1: {"client": {...}}
             # Format 2: {"data": {"client": {...}}}
             # Format 3: Direct client data
-            client_data = data.get('client') or data.get('data', {}).get('client') or data
+            
+            client_data = None
+            
+            # Check for official DHA format: {"message": {"result": [...]}}
+            if 'message' in data and isinstance(data['message'], dict):
+                message = data['message']
+                total = message.get('total', 0)
+                result = message.get('result', [])
+                
+                if total > 0 and result:
+                    # Get the first matching client
+                    client_data = result[0]
+                else:
+                    return None
+            # Fallback formats
+            elif 'client' in data:
+                client_data = data['client']
+            elif 'data' in data and isinstance(data['data'], dict):
+                client_data = data['data'].get('client')
+            else:
+                # Assume direct client data
+                client_data = data
             
             # Check if client was found
-            if not client_data or client_data.get('found') == 0:
+            if not client_data:
+                return None
+            
+            # Some APIs return found=0 to indicate not found
+            if client_data.get('found') == 0:
                 return None
             
             return ClientRegistryClient.from_api_response(client_data)
