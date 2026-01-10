@@ -7,7 +7,7 @@ Sprint 1.1-1.2 Track C: RBAC Foundation
 
 from datetime import date, timedelta
 
-import pytest
+import pytest # type: ignore
 from django.contrib.auth import get_user_model
 from django.core.exceptions import ValidationError
 from django.db import IntegrityError

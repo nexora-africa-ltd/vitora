@@ -329,7 +329,51 @@ MPESA_SHORTCODE = os.getenv("MPESA_SHORTCODE", "174379")
 MPESA_PASSKEY = os.getenv("MPESA_PASSKEY", "")
 MPESA_CALLBACK_URL = os.getenv("MPESA_CALLBACK_URL", "")
 
-# SHA Configuration (stub for now)
+# SHA Configuration (Social Health Authority - Kenya)
+# Reference: docs/sha-api-validation-report.md
 SHA_ENABLED = os.getenv("SHA_ENABLED", "false").lower() == "true"
-SHA_API_URL = os.getenv("SHA_API_URL", "")
-SHA_API_KEY = os.getenv("SHA_API_KEY", "")
+SHA_API_BASE_URL = os.getenv("SHA_API_BASE_URL", "https://uat.dha.go.ke")
+SHA_API_URL = os.getenv("SHA_API_URL", "")  # Deprecated, use SHA_API_BASE_URL
+SHA_API_KEY = os.getenv("SHA_API_KEY", "")  # Deprecated, use SHA_CONSUMER_KEY
+SHA_API_TIMEOUT = int(os.getenv("SHA_API_TIMEOUT", "30"))  # seconds
+
+# SHA Authentication Credentials (Official API)
+SHA_CONSUMER_KEY = os.getenv("SHA_CONSUMER_KEY", "")  # Consumer key for API access
+SHA_CLIENT_SECRET = os.getenv("SHA_CLIENT_SECRET", "")  # Client secret (if needed)
+SHA_USERNAME = os.getenv("SHA_USERNAME", "")  # API username for Basic Auth
+SHA_PASSWORD = os.getenv("SHA_PASSWORD", "")  # API password for Basic Auth
+
+# SHA FHIR Base URL (for bundle profile/resource URLs - NOT API endpoint)
+# UAT: https://qa-mis.apeiro-digital.com
+# Production: https://mis.apeiro-digital.com or https://fhir.sha.go.ke
+SHA_FHIR_BASE_URL = os.getenv("SHA_FHIR_BASE_URL", "https://qa-mis.apeiro-digital.com")
+
+# SHA API Endpoints for Shared Health Record (SHR) Integration
+# Reference: docs/sha-guides/shr-integration.md
+SHA_API_ENDPOINTS = {
+    'patient_resource': '/v1/patient-resource',  # PUT - Patient registration/update
+    'shr_submission': '/v1/shr-submission',  # POST - MedicationRequest/MedicationDispense
+    'shr_summary': '/v1/shr/summary',  # GET - IPS/Patient summary retrieval
+}
+
+# SHA API Endpoints (Official Kenya Digital Superhighway)
+SHA_ENDPOINTS = {
+    'auth': '/v1/hie-auth',
+    'eligibility': '/v2/eligibility',
+    'client_registry': '/v3/client-registry/fetch-client',
+    'client_register': '/v3/uat-cr-registration',
+    'client_update': '/v3/update-client',
+    'claims_submit': '/v1/shr-med/bundle',
+    'claims_status': '/v1/shr-med/claim-status',
+    'facility_search': '/v1/facility-search',
+    'practitioner_search': '/v1/practitioner-search',
+    'terminology_icd11': '/terminology/v1/icd11',
+    'terminology_loinc': '/terminology/v1/loinc',
+    'terminology_ichi': '/terminology/v1/ichi',
+    'terminology_sha': '/terminology/v1/sha-intervention',
+    'terminology_product': '/terminology/v1/product',
+}
+
+# Facility identification (for SHA claims)
+FACILITY_MFL_CODE = os.getenv("FACILITY_MFL_CODE", "TEST-001")  # Master Facility List code
+FACILITY_LEVEL = os.getenv("FACILITY_LEVEL", "L3")  # Default to Level 3

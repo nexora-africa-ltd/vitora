@@ -195,7 +195,7 @@ EXTERNAL_SERVICE_URL = 'https://example.com/api'
 ```python
 # Test file: tests/test_[feature].py
 
-import pytest
+import pytest # type: ignore
 from rest_framework import status
 
 

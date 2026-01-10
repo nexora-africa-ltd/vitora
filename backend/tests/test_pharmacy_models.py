@@ -8,7 +8,7 @@ These tests follow the sprint deliverable requirements exactly.
 from datetime import date, timedelta
 from decimal import Decimal
 
-import pytest
+import pytest # type: ignore
 from django.db import IntegrityError
 
 # ============================================================================

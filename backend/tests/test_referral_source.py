@@ -5,7 +5,7 @@ Following TDD principles: Write tests FIRST, then implement.
 Item f) Track how patients were referred to the facility
 """
 
-import pytest
+import pytest # type: ignore
 from django.core.exceptions import ValidationError
 
 

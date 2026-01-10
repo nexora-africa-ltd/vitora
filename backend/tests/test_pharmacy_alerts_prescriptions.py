@@ -7,7 +7,7 @@ Following TDD approach: Write tests FIRST, then implement models.
 from datetime import date, timedelta
 from decimal import Decimal
 
-import pytest
+import pytest # type: ignore
 
 # ============================================================================
 # StockAlert Model Tests (12 tests as per sprint deliverables)

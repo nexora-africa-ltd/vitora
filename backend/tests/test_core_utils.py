@@ -2,7 +2,7 @@
 Tests for core utility functions.
 """
 
-import pytest
+import pytest # type: ignore
 from django.conf import settings
 
 from hmis.apps.core.utils import (

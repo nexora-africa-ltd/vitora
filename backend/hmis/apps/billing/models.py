@@ -917,3 +917,1351 @@ class CreditNote(models.Model):
         self.refund_reference = reference
         self.refunded_at = timezone.now()
         self.save()
+
+
+class SHAMember(models.Model):
+    """
+    SHA (Social Health Authority) membership record for a patient.
+
+    Stores membership details required for eligibility checks and claims.
+    Each patient can have one active SHA membership at a time.
+
+    SHA is the successor to NHIF in Kenya, managing universal health coverage.
+    """
+
+    class MembershipStatus(models.TextChoices):
+        ACTIVE = 'active', 'Active'
+        INACTIVE = 'inactive', 'Inactive'
+        SUSPENDED = 'suspended', 'Suspended'
+        EXPIRED = 'expired', 'Expired'
+        PENDING_VERIFICATION = 'pending_verification', 'Pending Verification'
+
+    class MembershipType(models.TextChoices):
+        PRINCIPAL = 'principal', 'Principal Member'
+        SPOUSE = 'spouse', 'Spouse'
+        CHILD = 'child', 'Child/Dependent'
+        PARENT = 'parent', 'Parent'
+        OTHER_DEPENDENT = 'other', 'Other Dependent'
+
+    id = models.BigAutoField(primary_key=True)
+
+    # Patient linkage - OneToOne ensures one SHA membership per patient
+    patient = models.OneToOneField(
+        'patients.Patient',
+        on_delete=models.CASCADE,
+        related_name='sha_member'
+    )
+
+    # SHA identification
+    sha_number = models.CharField(
+        max_length=20,
+        unique=True,
+        help_text="SHA member number (format: SHA-XXXXXXXXXX)"
+    )
+    national_id = models.CharField(
+        max_length=20,
+        db_index=True,
+        blank=True,
+        help_text="Kenya National ID linked to SHA"
+    )
+
+    # Membership details
+    membership_type = models.CharField(
+        max_length=20,
+        choices=MembershipType.choices,
+        default=MembershipType.PRINCIPAL
+    )
+    principal_sha_number = models.CharField(
+        max_length=20,
+        blank=True,
+        help_text="Principal member's SHA number (for dependents)"
+    )
+
+    # Status
+    status = models.CharField(
+        max_length=20,
+        choices=MembershipStatus.choices,
+        default=MembershipStatus.PENDING_VERIFICATION
+    )
+
+    # Eligibility cache
+    last_eligibility_check = models.DateTimeField(null=True, blank=True)
+    eligibility_valid_until = models.DateField(null=True, blank=True)
+    eligibility_response = models.JSONField(
+        default=dict,
+        blank=True,
+        help_text="Cached response from last eligibility check"
+    )
+
+    # Coverage details
+    coverage_start_date = models.DateField(null=True, blank=True)
+    coverage_end_date = models.DateField(null=True, blank=True)
+    benefit_package = models.CharField(
+        max_length=50,
+        blank=True,
+        help_text="SHA benefit package code"
+    )
+
+    # Audit
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+    created_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.PROTECT,
+        related_name='sha_members_created'
+    )
+    verified_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.PROTECT,
+        related_name='sha_members_verified',
+        null=True,
+        blank=True
+    )
+    verified_at = models.DateTimeField(null=True, blank=True)
+
+    class Meta:
+        verbose_name = "SHA Member"
+        verbose_name_plural = "SHA Members"
+        ordering = ['-created_at']
+        indexes = [
+            models.Index(fields=['sha_number']),
+            models.Index(fields=['national_id']),
+            models.Index(fields=['status']),
+        ]
+
+    def __str__(self):
+        return f"{self.sha_number} - {self.patient}"
+
+    def clean(self):
+        """Validate SHA member data."""
+        errors = {}
+
+        # Validate SHA number format (must start with SHA-)
+        if self.sha_number and not self.sha_number.startswith('SHA-'):
+            errors['sha_number'] = 'SHA number must start with "SHA-"'
+
+        # Principal members should have a National ID; dependents may not
+        if self.membership_type == self.MembershipType.PRINCIPAL:
+            if not self.national_id:
+                errors['national_id'] = 'National ID is required for principal members'
+
+        # Dependents must have principal SHA number
+        if self.membership_type != self.MembershipType.PRINCIPAL:
+            if not self.principal_sha_number:
+                errors['principal_sha_number'] = (
+                    'Dependents must have a principal SHA number'
+                )
+
+        # Coverage dates validation
+        if self.coverage_start_date and self.coverage_end_date:
+            if self.coverage_end_date < self.coverage_start_date:
+                errors['coverage_end_date'] = (
+                    'Coverage end date must be after start date'
+                )
+
+        if errors:
+            raise ValidationError(errors)
+
+    def save(self, *args, **kwargs):
+        """Override save to run validation."""
+        self.full_clean()
+        super().save(*args, **kwargs)
+
+    def is_eligible(self) -> bool:
+        """
+        Check if member is currently eligible for claims.
+
+        Returns False if:
+        - Status is not ACTIVE
+        - Coverage has expired
+        - Eligibility validity has passed
+        """
+        if self.status != self.MembershipStatus.ACTIVE:
+            return False
+
+        today = date.today()
+
+        # Check coverage end date
+        if self.coverage_end_date and self.coverage_end_date < today:
+            return False
+
+        # Check eligibility validity
+        if self.eligibility_valid_until and self.eligibility_valid_until < today:
+            return False
+
+        return True
+
+    def needs_eligibility_check(self) -> bool:
+        """
+        Determine if eligibility should be re-verified.
+
+        Returns True if:
+        - No previous eligibility check
+        - Last check was more than 24 hours ago
+        """
+        if not self.last_eligibility_check:
+            return True
+
+        # Re-check if last check was more than 24 hours ago
+        threshold = timezone.now() - timedelta(hours=24)
+        return self.last_eligibility_check < threshold
+
+    def get_eligibility_display(self) -> str:
+        """Return human-readable eligibility status."""
+        if self.is_eligible():
+            return "Eligible"
+        return f"Not Eligible ({self.get_status_display()})"
+
+
+class SHATariff(models.Model):
+    """
+    SHA Tariff code catalog for standardized claims pricing.
+
+    Maps facility services to SHA-recognized tariff codes with
+    approved reimbursement amounts. This is the master catalog
+    used for claims submission and reimbursement calculations.
+
+    Kenya SHA Context:
+    - Tariffs are standardized across all SHA-accredited facilities
+    - Different pricing tiers exist for facility levels (L1-L6)
+    - Some services require pre-authorization
+    - ICD-10 codes may be linked for diagnosis-based pricing
+    """
+
+    class TariffCategory(models.TextChoices):
+        """Categories of SHA tariff codes."""
+        CONSULTATION = 'consultation', 'Consultation'
+        LABORATORY = 'laboratory', 'Laboratory'
+        RADIOLOGY = 'radiology', 'Radiology/Imaging'
+        PHARMACY = 'pharmacy', 'Pharmacy/Drugs'
+        PROCEDURE = 'procedure', 'Procedures'
+        SURGERY = 'surgery', 'Surgery'
+        INPATIENT = 'inpatient', 'Inpatient Services'
+        MATERNITY = 'maternity', 'Maternity'
+        DENTAL = 'dental', 'Dental'
+        OPTICAL = 'optical', 'Optical'
+        PHYSIOTHERAPY = 'physiotherapy', 'Physiotherapy'
+        DIALYSIS = 'dialysis', 'Dialysis'
+        ONCOLOGY = 'oncology', 'Oncology'
+        OTHER = 'other', 'Other Services'
+
+    class TariffLevel(models.TextChoices):
+        """Kenya healthcare facility levels."""
+        LEVEL_1 = 'L1', 'Level 1 (Dispensary)'
+        LEVEL_2 = 'L2', 'Level 2 (Health Centre)'
+        LEVEL_3 = 'L3', 'Level 3 (Sub-County Hospital)'
+        LEVEL_4 = 'L4', 'Level 4 (County Hospital)'
+        LEVEL_5 = 'L5', 'Level 5 (National Referral)'
+        LEVEL_6 = 'L6', 'Level 6 (Tertiary/Specialized)'
+
+    id = models.BigAutoField(primary_key=True)
+
+    # Tariff identification
+    code = models.CharField(
+        max_length=20,
+        unique=True,
+        help_text="SHA tariff code (e.g., SHA-CONS-001)"
+    )
+    name = models.CharField(max_length=200)
+    description = models.TextField(blank=True)
+
+    # Classification
+    category = models.CharField(
+        max_length=20,
+        choices=TariffCategory.choices,
+        db_index=True
+    )
+    facility_level = models.CharField(
+        max_length=5,
+        choices=TariffLevel.choices,
+        help_text="Applicable facility level"
+    )
+
+    # Pricing
+    sha_amount = models.DecimalField(
+        max_digits=10,
+        decimal_places=2,
+        help_text="SHA approved reimbursement amount (KES)"
+    )
+    currency = models.CharField(max_length=3, default='KES')
+
+    # Validity
+    effective_date = models.DateField(
+        help_text="Date from which this tariff is effective"
+    )
+    expiry_date = models.DateField(
+        null=True,
+        blank=True,
+        help_text="Date when tariff expires (null = no expiry)"
+    )
+    is_active = models.BooleanField(default=True)
+
+    # Mapping to internal services
+    internal_service = models.ForeignKey(
+        'billing.Service',
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='sha_tariffs',
+        help_text="Linked internal service for auto-mapping"
+    )
+
+    # ICD-10 linkage (for diagnosis-based tariffs)
+    applicable_icd10_codes = models.JSONField(
+        default=list,
+        blank=True,
+        help_text="List of ICD-10 codes this tariff applies to"
+    )
+
+    # Requirements
+    requires_preauthorization = models.BooleanField(
+        default=False,
+        help_text="Whether pre-authorization is required"
+    )
+    max_quantity_per_claim = models.IntegerField(
+        default=1,
+        help_text="Maximum quantity claimable per encounter"
+    )
+    waiting_period_days = models.IntegerField(
+        default=0,
+        help_text="Waiting period before claimable (days)"
+    )
+
+    # Audit
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        verbose_name = "SHA Tariff"
+        verbose_name_plural = "SHA Tariffs"
+        ordering = ['category', 'code']
+        indexes = [
+            models.Index(fields=['code']),
+            models.Index(fields=['category', 'is_active']),
+            models.Index(fields=['facility_level']),
+        ]
+
+    def __str__(self):
+        return f"{self.code} - {self.name} (KES {self.sha_amount})"
+
+    def clean(self):
+        """Validate tariff data."""
+        errors = {}
+
+        # SHA amount must be positive
+        if self.sha_amount is not None and self.sha_amount <= 0:
+            errors['sha_amount'] = 'SHA amount must be greater than 0'
+
+        # Expiry date must be after effective date
+        if self.expiry_date and self.effective_date:
+            if self.expiry_date < self.effective_date:
+                errors['expiry_date'] = 'Expiry date must be after effective date'
+
+        # Max quantity must be at least 1
+        if self.max_quantity_per_claim < 1:
+            errors['max_quantity_per_claim'] = 'Maximum quantity must be at least 1'
+
+        if errors:
+            raise ValidationError(errors)
+
+    def save(self, *args, **kwargs):
+        """Override save to run validation."""
+        self.full_clean()
+        super().save(*args, **kwargs)
+
+    def is_valid_on_date(self, check_date: date = None) -> bool:
+        """
+        Check if tariff is valid on given date.
+
+        Args:
+            check_date: Date to check validity for. Defaults to today.
+
+        Returns:
+            True if tariff is active, effective, and not expired.
+        """
+        check_date = check_date or date.today()
+
+        # Must be active
+        if not self.is_active:
+            return False
+
+        # Must be effective (not future)
+        if self.effective_date > check_date:
+            return False
+
+        # Must not be expired (expiry is inclusive)
+        if self.expiry_date and self.expiry_date < check_date:
+            return False
+
+        return True
+
+    @classmethod
+    def get_active_tariffs(cls, category: str = None, facility_level: str = None):
+        """
+        Get all currently valid tariffs, optionally filtered.
+
+        Args:
+            category: Optional TariffCategory to filter by
+            facility_level: Optional TariffLevel to filter by
+
+        Returns:
+            QuerySet of valid SHATariff instances
+        """
+        today = date.today()
+        qs = cls.objects.filter(
+            is_active=True,
+            effective_date__lte=today
+        ).filter(
+            models.Q(expiry_date__isnull=True) | models.Q(expiry_date__gte=today)
+        )
+
+        if category:
+            qs = qs.filter(category=category)
+        if facility_level:
+            qs = qs.filter(facility_level=facility_level)
+
+        return qs
+
+    @classmethod
+    def find_tariff_for_service(cls, service, facility_level: str):
+        """
+        Find matching SHA tariff for an internal service.
+
+        Lookup priority:
+        1. Direct mapping via internal_service FK
+        2. Matching SHA code on service
+
+        Args:
+            service: Service instance to find tariff for
+            facility_level: TariffLevel to match
+
+        Returns:
+            Matching SHATariff or None
+        """
+        # First try direct mapping
+        tariff = cls.get_active_tariffs(
+            facility_level=facility_level
+        ).filter(internal_service=service).first()
+
+        if tariff:
+            return tariff
+
+        # Try matching by SHA code on service
+        if service.sha_code:
+            tariff = cls.get_active_tariffs(
+                facility_level=facility_level
+            ).filter(code=service.sha_code).first()
+
+        return tariff
+
+
+class SHAClaim(models.Model):
+    """
+    SHA Claim submission record.
+
+    Represents a complete claim package submitted to SHA for reimbursement.
+    Tracks full lifecycle: Draft → Submitted → Under Review → Approved/Rejected → Paid.
+
+    Kenya SHA Context:
+    - Claims must include patient eligibility verification
+    - Required attachments: clinical notes, invoices, lab reports (when applicable)
+    - Pre-authorization required for some procedures
+    - Appeals process available for rejected/partially approved claims
+    """
+
+    class ClaimStatus(models.TextChoices):
+        """SHA claim lifecycle statuses."""
+        DRAFT = 'draft', 'Draft'
+        VALIDATED = 'validated', 'Validated'
+        PENDING_SUBMISSION = 'pending_submission', 'Pending Submission (Queued)'
+        SUBMITTED = 'submitted', 'Submitted'
+        ACKNOWLEDGED = 'acknowledged', 'Acknowledged by SHA'
+        UNDER_REVIEW = 'under_review', 'Under Review'
+        QUERY = 'query', 'Query Raised'
+        APPROVED = 'approved', 'Approved'
+        PARTIALLY_APPROVED = 'partial', 'Partially Approved'
+        REJECTED = 'rejected', 'Rejected'
+        APPEALED = 'appealed', 'Appealed'
+        PAID = 'paid', 'Paid'
+        WRITTEN_OFF = 'written_off', 'Written Off'
+
+    class ClaimType(models.TextChoices):
+        """Types of SHA claims."""
+        OUTPATIENT = 'outpatient', 'Outpatient'
+        INPATIENT = 'inpatient', 'Inpatient'
+        MATERNITY = 'maternity', 'Maternity'
+        SURGERY = 'surgery', 'Surgery'
+        CHRONIC = 'chronic', 'Chronic Disease Management'
+        EMERGENCY = 'emergency', 'Emergency'
+        DENTAL = 'dental', 'Dental'
+        OPTICAL = 'optical', 'Optical'
+        DIALYSIS = 'dialysis', 'Dialysis'
+
+    class SubmissionMethod(models.TextChoices):
+        """Methods for submitting claims to SHA."""
+        API = 'api', 'API Integration'
+        PORTAL = 'portal', 'SHA Portal'
+        MANUAL = 'manual', 'Manual Submission'
+
+    id = models.BigAutoField(primary_key=True)
+
+    # Claim identification
+    claim_number = models.CharField(
+        max_length=30,
+        unique=True,
+        editable=False,
+        help_text="Internal claim reference (format: CLM-YYYYMMDD-XXXX)"
+    )
+    sha_claim_reference = models.CharField(
+        max_length=50,
+        blank=True,
+        db_index=True,
+        help_text="SHA-assigned claim reference number"
+    )
+
+    # Patient and encounter linkage
+    patient = models.ForeignKey(
+        'patients.Patient',
+        on_delete=models.PROTECT,
+        related_name='sha_claims'
+    )
+    sha_member = models.ForeignKey(
+        'billing.SHAMember',
+        on_delete=models.PROTECT,
+        related_name='claims',
+        null=True,  # Allow null for validation error testing
+    )
+    encounter = models.ForeignKey(
+        'encounters.Encounter',
+        on_delete=models.PROTECT,
+        related_name='sha_claims'
+    )
+    invoice = models.ForeignKey(
+        'billing.Invoice',
+        on_delete=models.PROTECT,
+        related_name='sha_claims',
+        null=True,
+        blank=True
+    )
+
+    # Claim details
+    claim_type = models.CharField(
+        max_length=20,
+        choices=ClaimType.choices
+    )
+    status = models.CharField(
+        max_length=20,
+        choices=ClaimStatus.choices,
+        default=ClaimStatus.DRAFT
+    )
+
+    # Service dates
+    service_date = models.DateField(
+        help_text="Date service was provided"
+    )
+    admission_date = models.DateField(
+        null=True,
+        blank=True,
+        help_text="Admission date (for inpatient claims)"
+    )
+    discharge_date = models.DateField(
+        null=True,
+        blank=True,
+        help_text="Discharge date (for inpatient claims)"
+    )
+
+    # Diagnosis (ICD-10)
+    primary_diagnosis_code = models.CharField(
+        max_length=10,
+        help_text="Primary ICD-10 diagnosis code"
+    )
+    primary_diagnosis_description = models.CharField(max_length=255)
+    secondary_diagnosis_codes = models.JSONField(
+        default=list,
+        blank=True,
+        help_text="List of secondary ICD-10 diagnosis codes"
+    )
+
+    # Amounts
+    claimed_amount = models.DecimalField(
+        max_digits=12,
+        decimal_places=2,
+        default=Decimal('0.00'),
+        help_text="Total amount claimed"
+    )
+    approved_amount = models.DecimalField(
+        max_digits=12,
+        decimal_places=2,
+        default=Decimal('0.00'),
+        help_text="Amount approved by SHA"
+    )
+    paid_amount = models.DecimalField(
+        max_digits=12,
+        decimal_places=2,
+        default=Decimal('0.00'),
+        help_text="Amount actually paid"
+    )
+    patient_copay = models.DecimalField(
+        max_digits=12,
+        decimal_places=2,
+        default=Decimal('0.00'),
+        help_text="Amount to be paid by patient"
+    )
+
+    # Submission details
+    submission_method = models.CharField(
+        max_length=20,
+        choices=SubmissionMethod.choices,
+        default=SubmissionMethod.API
+    )
+    submitted_at = models.DateTimeField(null=True, blank=True)
+    submission_response = models.JSONField(
+        default=dict,
+        blank=True,
+        help_text="Response from SHA on submission"
+    )
+
+    # Adjudication
+    adjudication_date = models.DateField(null=True, blank=True)
+    adjudication_notes = models.TextField(blank=True)
+    rejection_reason = models.TextField(blank=True)
+    rejection_code = models.CharField(max_length=20, blank=True)
+
+    # Payment
+    payment_date = models.DateField(null=True, blank=True)
+    payment_reference = models.CharField(max_length=50, blank=True)
+
+    # Pre-authorization (if required)
+    preauth_number = models.CharField(
+        max_length=50,
+        blank=True,
+        help_text="Pre-authorization reference number"
+    )
+    preauth_date = models.DateField(null=True, blank=True)
+    preauth_valid_until = models.DateField(null=True, blank=True)
+
+    # Facility details
+    facility_code = models.CharField(
+        max_length=20,
+        help_text="MFL (Master Facility List) code"
+    )
+    facility_level = models.CharField(
+        max_length=5,
+        choices=SHATariff.TariffLevel.choices
+    )
+
+    # Audit
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+    created_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.PROTECT,
+        related_name='sha_claims_created'
+    )
+    submitted_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.PROTECT,
+        related_name='sha_claims_submitted',
+        null=True,
+        blank=True
+    )
+
+    # Version tracking for resubmissions
+    version = models.IntegerField(default=1)
+    parent_claim = models.ForeignKey(
+        'self',
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='resubmissions',
+        help_text="Original claim if this is a resubmission"
+    )
+
+    class Meta:
+        verbose_name = "SHA Claim"
+        verbose_name_plural = "SHA Claims"
+        ordering = ['-created_at']
+        indexes = [
+            models.Index(fields=['claim_number']),
+            models.Index(fields=['sha_claim_reference']),
+            models.Index(fields=['patient', 'status']),
+            models.Index(fields=['status', 'submitted_at']),
+            models.Index(fields=['service_date']),
+        ]
+        permissions = [
+            ('submit_sha_claim', 'Can submit SHA claims'),
+            ('approve_sha_claim', 'Can approve SHA claims locally'),
+            ('appeal_sha_claim', 'Can submit SHA claim appeals'),
+        ]
+
+    def __str__(self):
+        return f"{self.claim_number} - {self.patient} ({self.get_status_display()})"
+
+    def clean(self):
+        """Validate claim data."""
+        errors = {}
+
+        # Validate patient has SHA membership
+        if self.sha_member is None:
+            errors['sha_member'] = 'Patient must have SHA membership for claims'
+
+        # Validate service date not in future
+        if self.service_date and self.service_date > date.today():
+            errors['service_date'] = 'Service date cannot be in the future'
+
+        # Validate inpatient claims have admission date
+        if self.claim_type == self.ClaimType.INPATIENT:
+            if not self.admission_date:
+                errors['admission_date'] = 'Inpatient claims require admission date'
+
+        # Validate discharge after admission
+        if self.admission_date and self.discharge_date:
+            if self.discharge_date < self.admission_date:
+                errors['discharge_date'] = 'Discharge date must be on or after admission date'
+
+        # Validate claimed amount is not negative
+        if self.claimed_amount is not None and self.claimed_amount < 0:
+            errors['claimed_amount'] = 'Claimed amount cannot be negative'
+
+        # Validate status is a valid choice
+        if self.status and self.status not in [c[0] for c in self.ClaimStatus.choices]:
+            errors['status'] = 'Invalid status'
+
+        # Validate claim_type is a valid choice
+        if self.claim_type and self.claim_type not in [c[0] for c in self.ClaimType.choices]:
+            errors['claim_type'] = 'Invalid claim type'
+
+        if errors:
+            raise ValidationError(errors)
+
+    def save(self, *args, **kwargs):
+        """Override save to generate claim number and run validation."""
+        if not self.claim_number:
+            self.claim_number = self.generate_claim_number()
+        self.full_clean()
+        super().save(*args, **kwargs)
+
+    @staticmethod
+    def generate_claim_number() -> str:
+        """Generate unique claim number in format CLM-YYYYMMDD-XXXX."""
+        today = date.today()
+        date_str = today.strftime('%Y%m%d')
+        prefix = f"CLM-{date_str}-"
+
+        last_claim = SHAClaim.objects.filter(
+            claim_number__startswith=prefix
+        ).order_by('-claim_number').first()
+
+        if last_claim:
+            last_seq = int(last_claim.claim_number.split('-')[-1])
+            new_seq = last_seq + 1
+        else:
+            new_seq = 1
+
+        return f"{prefix}{new_seq:04d}"
+
+    def calculate_claimed_amount(self):
+        """Calculate total claimed amount from claim items."""
+        # Avoid using the related manager cache when this claim was prefetched
+        # (e.g., queryset.prefetch_related('items')), otherwise newly created
+        # items in the same request may not be reflected.
+        items = SHAClaimItem.objects.filter(claim=self).only('claimed_amount')
+        self.claimed_amount = sum(
+            item.claimed_amount for item in items
+        ) if items.exists() else Decimal('0.00')
+        self.save(update_fields=['claimed_amount', 'updated_at'])
+
+    def validate_for_submission(self) -> tuple[bool, list[str]]:
+        """
+        Validate claim is ready for submission.
+
+        Returns:
+            Tuple of (is_valid, list_of_errors)
+        """
+        errors = []
+
+        # Check claim is not already submitted
+        # Allow DRAFT, VALIDATED, and PENDING_SUBMISSION (for queued claims being retried)
+        allowed_statuses = [
+            self.ClaimStatus.DRAFT,
+            self.ClaimStatus.VALIDATED,
+            self.ClaimStatus.PENDING_SUBMISSION,
+        ]
+        if self.status not in allowed_statuses:
+            errors.append(f"Claim status '{self.get_status_display()}' cannot be submitted")
+
+        # Check SHA member eligibility
+        if self.sha_member and not self.sha_member.is_eligible():
+            errors.append(f"Member not eligible: {self.sha_member.get_eligibility_display()}")
+
+        # Check has items
+        if not self.items.exists():
+            errors.append("Claim must have at least one item")
+
+        # Check all items have tariff codes
+        items_without_tariff = self.items.filter(tariff__isnull=True)
+        if items_without_tariff.exists():
+            count = items_without_tariff.count()
+            errors.append(f"{count} item(s) missing SHA tariff code")
+
+        # Check required attachments (clinical_notes and invoice are required)
+        required_types = ['clinical_notes', 'invoice']
+        existing_types = list(
+            self.attachments.values_list('attachment_type', flat=True)
+        )
+        for req_type in required_types:
+            if req_type not in existing_types:
+                errors.append(f"Missing required attachment: {req_type}")
+
+        # Check claimed amount is positive
+        if self.claimed_amount <= Decimal('0.00'):
+            errors.append("Claimed amount must be greater than zero")
+
+        return len(errors) == 0, errors
+
+    def submit(self, user) -> bool:
+        """
+        Mark claim as submitted.
+
+        Args:
+            user: User performing the submission
+
+        Returns:
+            True if submission successful
+
+        Raises:
+            ValidationError if claim is not valid for submission
+        """
+        is_valid, errors = self.validate_for_submission()
+        if not is_valid:
+            raise ValidationError({'__all__': errors})
+
+        self.status = self.ClaimStatus.SUBMITTED
+        self.submitted_at = timezone.now()
+        self.submitted_by = user
+        self.save(update_fields=['status', 'submitted_at', 'submitted_by', 'updated_at'])
+        return True
+
+    def get_age_days(self) -> int:
+        """
+        Get claim age in days since submission.
+
+        Returns:
+            Number of days since submission, or 0 if not submitted
+        """
+        if not self.submitted_at:
+            return 0
+        return (timezone.now() - self.submitted_at).days
+
+    def can_appeal(self) -> bool:
+        """
+        Check if claim can be appealed.
+
+        Returns:
+            True if claim status allows appeal
+        """
+        appealable_statuses = [
+            self.ClaimStatus.REJECTED,
+            self.ClaimStatus.PARTIALLY_APPROVED,
+        ]
+        return self.status in appealable_statuses
+
+    def create_appeal(self, reason: str, user) -> 'SHAClaim':
+        """
+        Create an appeal (resubmission) of this claim.
+
+        Args:
+            reason: Reason for appeal
+            user: User creating the appeal
+
+        Returns:
+            New SHAClaim instance for the appeal
+
+        Raises:
+            ValidationError if claim cannot be appealed
+        """
+        if not self.can_appeal():
+            raise ValidationError({
+                '__all__': [f"Claim with status '{self.get_status_display()}' cannot be appealed"]
+            })
+
+        # Create new claim as appeal
+        appeal = SHAClaim.objects.create(
+            patient=self.patient,
+            sha_member=self.sha_member,
+            encounter=self.encounter,
+            invoice=self.invoice,
+            claim_type=self.claim_type,
+            service_date=self.service_date,
+            admission_date=self.admission_date,
+            discharge_date=self.discharge_date,
+            primary_diagnosis_code=self.primary_diagnosis_code,
+            primary_diagnosis_description=self.primary_diagnosis_description,
+            secondary_diagnosis_codes=self.secondary_diagnosis_codes,
+            facility_code=self.facility_code,
+            facility_level=self.facility_level,
+            preauth_number=self.preauth_number,
+            preauth_date=self.preauth_date,
+            preauth_valid_until=self.preauth_valid_until,
+            version=self.version + 1,
+            parent_claim=self,
+            created_by=user,
+        )
+
+        # Update original claim status
+        self.status = self.ClaimStatus.APPEALED
+        self.save(update_fields=['status', 'updated_at'])
+
+        # Copy items to appeal
+        for item in self.items.all():
+            SHAClaimItem.objects.create(
+                claim=appeal,
+                tariff=item.tariff,
+                service=item.service,
+                description=item.description,
+                quantity=item.quantity,
+                unit_price=item.unit_price,
+                claimed_amount=item.claimed_amount,
+            )
+
+        return appeal
+
+
+class SHAClaimItem(models.Model):
+    """
+    Individual line item within a SHA claim.
+
+    Each item represents a service provided, mapped to a SHA tariff
+    code for reimbursement calculation.
+    """
+
+    class ItemStatus(models.TextChoices):
+        """Status of the claim item during adjudication."""
+        PENDING = 'pending', 'Pending Review'
+        APPROVED = 'approved', 'Approved'
+        REJECTED = 'rejected', 'Rejected'
+        ADJUSTED = 'adjusted', 'Adjusted'
+
+    id = models.BigAutoField(primary_key=True)
+
+    # Claim linkage
+    claim = models.ForeignKey(
+        SHAClaim,
+        on_delete=models.CASCADE,
+        related_name='items'
+    )
+
+    # Tariff mapping
+    tariff = models.ForeignKey(
+        SHATariff,
+        on_delete=models.PROTECT,
+        related_name='claim_items',
+        null=True,
+        blank=True,
+        help_text="SHA tariff code for this item"
+    )
+
+    # Internal service (for reference)
+    service = models.ForeignKey(
+        'billing.Service',
+        on_delete=models.PROTECT,
+        related_name='sha_claim_items',
+        null=True,
+        blank=True
+    )
+    invoice_item = models.ForeignKey(
+        'billing.InvoiceItem',
+        on_delete=models.SET_NULL,
+        related_name='sha_claim_items',
+        null=True,
+        blank=True
+    )
+
+    # Item details
+    description = models.CharField(max_length=255)
+    service_date = models.DateField(
+        null=True,
+        blank=True,
+        help_text="Date this specific service was provided"
+    )
+
+    # Quantity and pricing
+    quantity = models.DecimalField(
+        max_digits=10,
+        decimal_places=2,
+        default=Decimal('1.00')
+    )
+    unit_price = models.DecimalField(
+        max_digits=10,
+        decimal_places=2,
+        help_text="SHA tariff unit price"
+    )
+    claimed_amount = models.DecimalField(
+        max_digits=12,
+        decimal_places=2,
+        help_text="Total claimed (quantity × unit_price)"
+    )
+
+    # Adjudication results
+    status = models.CharField(
+        max_length=20,
+        choices=ItemStatus.choices,
+        default=ItemStatus.PENDING
+    )
+    approved_quantity = models.DecimalField(
+        max_digits=10,
+        decimal_places=2,
+        null=True,
+        blank=True
+    )
+    approved_amount = models.DecimalField(
+        max_digits=12,
+        decimal_places=2,
+        null=True,
+        blank=True
+    )
+    rejection_reason = models.CharField(max_length=255, blank=True)
+
+    # Audit
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        verbose_name = "SHA Claim Item"
+        verbose_name_plural = "SHA Claim Items"
+        ordering = ['claim', 'created_at']
+
+    def __str__(self):
+        return f"{self.claim.claim_number} - {self.description}"
+
+    def clean(self):
+        """Validate claim item data."""
+        errors = {}
+
+        # Quantity must be positive
+        if self.quantity is not None and self.quantity <= 0:
+            errors['quantity'] = 'Quantity must be greater than 0'
+
+        # Unit price cannot be negative
+        if self.unit_price is not None and self.unit_price < 0:
+            errors['unit_price'] = 'Unit price cannot be negative'
+
+        # Validate against tariff max quantity
+        if self.tariff and self.quantity:
+            if self.quantity > self.tariff.max_quantity_per_claim:
+                errors['quantity'] = (
+                    f'Exceeds maximum quantity ({self.tariff.max_quantity_per_claim}) '
+                    f'for this tariff'
+                )
+
+        if errors:
+            raise ValidationError(errors)
+
+    def save(self, *args, **kwargs):
+        """Override save to auto-calculate claimed amount and validate."""
+        # Auto-calculate claimed amount (quantize to 2 decimal places)
+        if self.quantity is not None and self.unit_price is not None:
+            self.claimed_amount = (self.quantity * self.unit_price).quantize(
+                Decimal('0.01')
+            )
+
+        self.full_clean()
+        super().save(*args, **kwargs)
+
+        # Update parent claim total
+        self.claim.calculate_claimed_amount()
+
+    def apply_tariff(self, tariff: 'SHATariff'):
+        """
+        Apply a tariff code to this item.
+
+        Updates the tariff reference, unit price, and recalculates
+        the claimed amount.
+
+        Args:
+            tariff: SHATariff instance to apply
+        """
+        self.tariff = tariff
+        self.unit_price = tariff.sha_amount
+        self.claimed_amount = (self.quantity * self.unit_price).quantize(
+            Decimal('0.01')
+        )
+        self.save()
+
+    @classmethod
+    def create_from_invoice_item(
+        cls,
+        claim: 'SHAClaim',
+        invoice_item: 'InvoiceItem',
+        tariff: 'SHATariff' = None
+    ) -> 'SHAClaimItem':
+        """
+        Create claim item from an invoice item.
+
+        Attempts to find a matching tariff if not provided.
+
+        Args:
+            claim: Parent SHAClaim
+            invoice_item: InvoiceItem to create from
+            tariff: Optional SHATariff (will auto-find if not provided)
+
+        Returns:
+            Created SHAClaimItem instance
+        """
+        # Try to find matching tariff if not provided
+        if not tariff and invoice_item.service:
+            tariff = SHATariff.find_tariff_for_service(
+                invoice_item.service,
+                claim.facility_level
+            )
+
+        unit_price = tariff.sha_amount if tariff else invoice_item.unit_price
+
+        return cls.objects.create(
+            claim=claim,
+            tariff=tariff,
+            service=invoice_item.service,
+            invoice_item=invoice_item,
+            description=invoice_item.description,
+            service_date=claim.service_date,
+            quantity=invoice_item.quantity,
+            unit_price=unit_price,
+        )
+
+
+class SHAClaimAttachment(models.Model):
+    """
+    Attachment for SHA claim submission.
+
+    SHA requires various supporting documents for claims:
+    - Clinical notes
+    - Invoices
+    - Lab reports (when applicable)
+    - Prescriptions (for pharmacy claims)
+    - Pre-authorization letters (when required)
+    """
+
+    class AttachmentType(models.TextChoices):
+        """Types of claim attachments."""
+        CLINICAL_NOTES = 'clinical_notes', 'Clinical Notes'
+        LAB_REPORT = 'lab_report', 'Laboratory Report'
+        RADIOLOGY_REPORT = 'radiology_report', 'Radiology Report'
+        PRESCRIPTION = 'prescription', 'Prescription'
+        INVOICE = 'invoice', 'Invoice'
+        DISCHARGE_SUMMARY = 'discharge_summary', 'Discharge Summary'
+        OPERATIVE_NOTES = 'operative_notes', 'Operative Notes'
+        REFERRAL_LETTER = 'referral_letter', 'Referral Letter'
+        PREAUTH_APPROVAL = 'preauth_approval', 'Pre-authorization Approval'
+        ID_COPY = 'id_copy', 'ID Copy'
+        SHA_CARD = 'sha_card', 'SHA Card Copy'
+        OTHER = 'other', 'Other Document'
+
+    # Allowed MIME types for attachments
+    ALLOWED_MIME_TYPES = [
+        'application/pdf',
+        'image/jpeg',
+        'image/png',
+        'image/tiff',
+    ]
+
+    # Maximum file size: 10MB
+    MAX_FILE_SIZE = 10 * 1024 * 1024
+
+    id = models.BigAutoField(primary_key=True)
+
+    # Claim linkage
+    claim = models.ForeignKey(
+        SHAClaim,
+        on_delete=models.CASCADE,
+        related_name='attachments'
+    )
+
+    # Attachment details
+    attachment_type = models.CharField(
+        max_length=30,
+        choices=AttachmentType.choices
+    )
+    name = models.CharField(max_length=255)
+    description = models.TextField(blank=True)
+
+    # File storage
+    file = models.FileField(
+        upload_to='sha_claims/%Y/%m/',
+        max_length=500
+    )
+    file_size = models.IntegerField(
+        null=True,
+        blank=True,
+        help_text="File size in bytes"
+    )
+    mime_type = models.CharField(max_length=100, blank=True)
+    checksum = models.CharField(
+        max_length=64,
+        blank=True,
+        help_text="SHA-256 checksum for integrity verification"
+    )
+
+    # Metadata
+    original_filename = models.CharField(max_length=255, blank=True)
+    page_count = models.IntegerField(
+        null=True,
+        blank=True,
+        help_text="Number of pages (for PDFs)"
+    )
+
+    # Audit
+    created_at = models.DateTimeField(auto_now_add=True)
+    uploaded_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.PROTECT,
+        related_name='sha_attachments_uploaded'
+    )
+
+    class Meta:
+        verbose_name = "SHA Claim Attachment"
+        verbose_name_plural = "SHA Claim Attachments"
+        ordering = ['claim', 'attachment_type']
+
+    def __str__(self):
+        return f"{self.claim.claim_number} - {self.get_attachment_type_display()}"
+
+    def clean(self):
+        """Validate attachment."""
+        # Max file size: 10MB
+        if self.file_size and self.file_size > self.MAX_FILE_SIZE:
+            raise ValidationError({
+                'file_size': f'File size exceeds maximum allowed (10MB). Got {self.file_size} bytes.'
+            })
+
+        # Allowed mime types
+        if self.mime_type and self.mime_type not in self.ALLOWED_MIME_TYPES:
+            raise ValidationError({
+                'mime_type': f'File type not allowed. Allowed types: PDF, JPEG, PNG, TIFF. Got: {self.mime_type}'
+            })
+
+    def save(self, *args, **kwargs):
+        self.full_clean()
+        super().save(*args, **kwargs)
+
+    @classmethod
+    def get_required_types(cls, claim_type: str) -> list[str]:
+        """Get required attachment types for a claim type."""
+        base_required = ['clinical_notes', 'invoice']
+
+        additional = {
+            'inpatient': ['discharge_summary'],
+            'surgery': ['discharge_summary', 'operative_notes'],
+            'maternity': ['discharge_summary'],
+        }
+
+        return base_required + additional.get(claim_type, [])
+
+
+class SHAEligibilityCheck(models.Model):
+    """
+    Log of SHA eligibility verification requests.
+
+    Records all eligibility checks for audit trail and debugging.
+    """
+
+    class CheckResult(models.TextChoices):
+        ELIGIBLE = 'eligible', 'Eligible'
+        INELIGIBLE = 'ineligible', 'Ineligible'
+        PENDING = 'pending', 'Pending'
+        ERROR = 'error', 'Error'
+        TIMEOUT = 'timeout', 'Request Timeout'
+
+    id = models.BigAutoField(primary_key=True)
+
+    # Member being checked
+    sha_member = models.ForeignKey(
+        SHAMember,
+        on_delete=models.CASCADE,
+        related_name='eligibility_checks'
+    )
+    patient = models.ForeignKey(
+        'patients.Patient',
+        on_delete=models.CASCADE,
+        related_name='sha_eligibility_checks'
+    )
+
+    # Request details
+    check_date = models.DateTimeField(auto_now_add=True)
+    request_data = models.JSONField(
+        default=dict,
+        help_text="Request payload sent to SHA"
+    )
+
+    # Response
+    result = models.CharField(
+        max_length=20,
+        choices=CheckResult.choices
+    )
+    response_data = models.JSONField(
+        default=dict,
+        help_text="Response from SHA API"
+    )
+    response_time_ms = models.IntegerField(
+        null=True,
+        blank=True,
+        help_text="API response time in milliseconds"
+    )
+
+    # Eligibility details (extracted from response)
+    is_eligible = models.BooleanField(default=False)
+    eligible_until = models.DateField(null=True, blank=True)
+    benefit_balance = models.DecimalField(
+        max_digits=12,
+        decimal_places=2,
+        null=True,
+        blank=True,
+        help_text="Remaining benefit balance"
+    )
+    ineligibility_reason = models.CharField(max_length=255, blank=True)
+
+    # Error handling
+    error_code = models.CharField(max_length=50, blank=True)
+    error_message = models.TextField(blank=True)
+
+    # Audit
+    checked_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.PROTECT,
+        related_name='sha_eligibility_checks'
+    )
+
+    class Meta:
+        verbose_name = "SHA Eligibility Check"
+        verbose_name_plural = "SHA Eligibility Checks"
+        ordering = ['-check_date']
+        indexes = [
+            models.Index(fields=['sha_member', 'check_date']),
+            models.Index(fields=['result']),
+        ]
+
+    def __str__(self):
+        return f"{self.sha_member.sha_number} - {self.result} ({self.check_date})"
+
+    def update_member_eligibility(self):
+        """Update the SHA member record with eligibility results."""
+        member = self.sha_member
+
+        # Update eligibility cache
+        member.last_eligibility_check = timezone.now()
+        member.eligibility_response = self.response_data
+
+        if self.is_eligible:
+            member.status = SHAMember.MembershipStatus.ACTIVE
+            if self.eligible_until:
+                member.eligibility_valid_until = self.eligible_until
+        else:
+            # Determine status based on ineligibility reason
+            reason_lower = self.ineligibility_reason.lower()
+            if 'expired' in reason_lower:
+                member.status = SHAMember.MembershipStatus.EXPIRED
+            elif 'suspended' in reason_lower:
+                member.status = SHAMember.MembershipStatus.SUSPENDED
+            else:
+                member.status = SHAMember.MembershipStatus.INACTIVE
+
+        member.save()

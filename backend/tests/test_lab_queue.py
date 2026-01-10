@@ -10,7 +10,7 @@ Test Coverage:
 
 from datetime import datetime, timedelta
 
-import pytest
+import pytest # type: ignore
 from django.contrib.auth import get_user_model
 from django.utils import timezone
 

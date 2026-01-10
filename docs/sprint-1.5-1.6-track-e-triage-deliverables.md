@@ -825,7 +825,7 @@ TRIAGE_TARGET_WAIT_TIMES = {
 ```python
 # Test file: tests/test_triage_models.py
 
-import pytest
+import pytest # type: ignore
 from django.utils import timezone
 from datetime import timedelta
 from rest_framework import status

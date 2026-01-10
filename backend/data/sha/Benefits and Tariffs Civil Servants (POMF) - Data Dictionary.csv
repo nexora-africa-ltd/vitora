@@ -1,0 +1,28 @@
+Variable,Description
+Category of health services,Where the health services are accessed
+Sub - Category as per the Benefits Package,The list of benefit packages under SHA
+Intervention name,Name of each service payable under SHA
+Intervention Code,"Assign the prefix SHA-XX-YYYY to codes, unless they are for PMSF with a  different provider payment mechanism, in which case PMF-XX-YYYY is used"
+Accessible points,Allowed Clinical setting of the specific intervention
+"Type of code  ICHI, Kenya Standard Code, Drug etc",Definition of code used
+Diagnosis (ICD 11 Block heading),ICD-11 code
+"Block ICD code, for diagnosis (ICD 11)",ICD-11 code
+Needs Pre - Auth (YES/NO),Does this intervention require a pre authorization request or not
+Category of Health Facility,The Kenya Medical Practioners and Dentists Council categorization of health facilities in Kenya
+Tariffs (KES),"Tariff applicable per unit of episode of care, encounter, visit, session"
+Provider Payment Machanism,The method of which providers and facilities will be reimbursed
+Gender,The persons eligible for an intervention
+Limits per Individual or Household,"Unit of setting limits, either as household or individual"
+Period of Intervention Limits,The duration in which the limits are valid 
+Intervention quantity per period,"No of interventions allowed per period e.g 2 scans per year, 2 dialysis session per week"
+Costs allocated to PHC Fund,% of the inteventions allocated to a fund
+Costs allocated to SHIF,% of the inteventions allocated to a fund
+Costs allocated to ECCIF,% of the inteventions allocated to a fund
+Annual limit,The maximum services a member is entitled to per year
+No of session for SHIF,No of intervention sessions or cycles allocated to SHIF
+No of session for ECCIF,No of intervention sessions or cycles allocated to ECCIF
+Facillity Ownership,The facility type where these benefits can be accessed
+IP,Inpatient
+OP,Outpatient
+Level 4*,Select level 4's as per the SHA list
+Red coded benefits,Not active this financial year

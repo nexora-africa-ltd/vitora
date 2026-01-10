@@ -23,6 +23,12 @@ help:
 	@echo "clean         - Remove generated files and caches"
 	@echo "coverage-html - Generate HTML coverage report"
 	@echo "coverage-report - Show coverage report"
+	@echo "showmigrations - Show Django migrations"
+	@echo "makemigrations - Create new database migrations"
+	@echo "migrate       - Apply database migrations"
+	@echo "createsuperuser - Create a Django superuser"
+	@echo "runserver     - Run the Django development server"
+	@echo "shell         - Open Django shell"
 
 install:
 	poetry install
@@ -102,3 +108,21 @@ coverage-html:
 
 coverage-report:
 	poetry run coverage report
+
+showmigrations:
+	poetry run python manage.py showmigrations
+
+makemigrations:
+	poetry run python manage.py makemigrations
+
+migrate:
+	poetry run python manage.py migrate
+
+createsuperuser:
+	poetry run python manage.py createsuperuser
+
+runserver:
+	poetry run python manage.py runserver
+
+shell:	
+	poetry run python manage.py shell

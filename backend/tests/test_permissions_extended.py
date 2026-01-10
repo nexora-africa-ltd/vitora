@@ -6,7 +6,7 @@ Sprint 0.6: Coverage improvement tests for core/permissions.py (62% -> 95%+)
 
 from unittest.mock import MagicMock, patch
 
-import pytest
+import pytest # type: ignore
 from django.contrib.auth import get_user_model
 from django.test import RequestFactory
 

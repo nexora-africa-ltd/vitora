@@ -403,7 +403,7 @@ GET    /api/auditlogs/?action=patient_view  # Filter by action
 ```python
 # backend/tests/test_{feature}.py
 
-import pytest
+import pytest # type: ignore
 from rest_framework import status
 
 class TestPatientCreation:

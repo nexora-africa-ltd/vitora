@@ -6,7 +6,7 @@ Following TDD approach - tests written first based on deliverables spec § 10 (l
 from datetime import date, timedelta
 from decimal import Decimal
 
-import pytest
+import pytest # type: ignore
 from django.utils import timezone
 
 from hmis.apps.billing.models import Invoice, InvoiceItem, Payment

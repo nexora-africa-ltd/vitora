@@ -10,7 +10,7 @@ and that encryption/decryption operations work correctly.
 
 from datetime import date
 
-import pytest
+import pytest # type: ignore
 from django.db import connection
 
 

@@ -14,7 +14,7 @@ Test Coverage:
 
 from datetime import date
 
-import pytest
+import pytest # type: ignore
 from django.contrib.auth import get_user_model
 from django.core.exceptions import ValidationError
 from django.core.files.uploadedfile import SimpleUploadedFile

@@ -7,7 +7,7 @@ Sprint 1.1-1.2 Track C: RBAC Foundation - Phase 3
 
 from io import StringIO
 
-import pytest
+import pytest # type: ignore
 from django.contrib.auth.models import Group
 from django.core.management import call_command
 

@@ -8,7 +8,7 @@ Targets uncovered lines in:
 - WaitingQueue methods
 """
 
-import pytest
+import pytest # type: ignore
 from datetime import timedelta
 from decimal import Decimal
 from django.utils import timezone

@@ -8,7 +8,7 @@ Total: 18 tests as specified.
 from datetime import date, timedelta
 from decimal import Decimal
 
-import pytest
+import pytest # type: ignore
 from django.core.exceptions import ValidationError
 
 from hmis.apps.billing.models import Invoice, InvoiceItem

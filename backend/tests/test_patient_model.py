@@ -7,7 +7,7 @@ They define the expected behavior of the Patient model.
 
 from datetime import date, datetime
 
-import pytest
+import pytest # type: ignore
 from django.core.exceptions import ValidationError
 from django.db import IntegrityError
 

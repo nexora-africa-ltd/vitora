@@ -7,7 +7,7 @@ This file contains shared fixtures specific to pharmacy testing.
 from datetime import date, timedelta
 from decimal import Decimal
 
-import pytest
+import pytest # type: ignore
 
 
 @pytest.fixture
