@@ -377,7 +377,6 @@ export const pharmacyApi = {
     });
     return response.data;
   },
-};
 
   // ============ Alert Settings ============
 
