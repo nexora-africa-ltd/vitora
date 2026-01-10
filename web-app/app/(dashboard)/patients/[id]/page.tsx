@@ -14,7 +14,8 @@ import {
   AlertTriangle,
   FileText,
   TestTube2,
-  History
+  History,
+  Shield
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -25,6 +26,7 @@ import { usePatient, usePatientEmergencyContacts } from '@/lib/hooks/use-patient
 import { calculateAge, formatDate, formatPhoneNumber } from '@/lib/utils/format';
 import { PatientEncounters } from '@/components/patients/patient-encounters';
 import { EmergencyContactsList } from '@/components/patients/emergency-contacts-list';
+import { EligibilityBanner } from '@/components/billing/sha';
 
 export default function PatientDetailPage() {
   const params = useParams();
@@ -102,6 +104,9 @@ export default function PatientDetailPage() {
           </Button>
         </div>
       </div>
+
+      {/* SHA Eligibility Banner */}
+      <EligibilityBanner patientId={patientId} />
 
       {/* Patient Info Cards */}
       <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">

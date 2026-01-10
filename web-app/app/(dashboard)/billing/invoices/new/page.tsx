@@ -4,12 +4,14 @@
  */
 'use client';
 
-import React from 'react';
-import { useRouter } from 'next/navigation';
-import { ArrowLeft } from 'lucide-react';
+import React, { useState } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
+import { ArrowLeft, Shield } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { InvoiceForm } from '@/components/billing/InvoiceForm';
+import { EligibilityBanner } from '@/components/billing/sha';
 import { useCreateInvoice, useServices } from '@/lib/hooks/billing';
 import { usePatients } from '@/lib/hooks/use-patients';
 import { useToast } from '@/lib/hooks/use-toast';
@@ -17,8 +19,15 @@ import type { InvoiceCreateData } from '@/lib/types/billing';
 
 export default function NewInvoicePage() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const { toast } = useToast();
   const createInvoice = useCreateInvoice();
+  
+  // Get patient from URL if provided
+  const patientIdFromUrl = searchParams.get('patient');
+  const [selectedPatientId, setSelectedPatientId] = useState<number | null>(
+    patientIdFromUrl ? parseInt(patientIdFromUrl) : null
+  );
   
   // Fetch patients and services for the form
   const { data: patientsData, isLoading: patientsLoading } = usePatients();
@@ -69,6 +78,11 @@ export default function NewInvoicePage() {
         </div>
       </div>
 
+      {/* SHA Eligibility Banner - shown when patient is selected */}
+      {selectedPatientId && (
+        <EligibilityBanner patientId={selectedPatientId} compact />
+      )}
+
       {/* Form */}
       {isLoading ? (
         <div className="space-y-4">
@@ -83,6 +97,8 @@ export default function NewInvoicePage() {
           onSubmit={handleSubmit}
           onCancel={handleCancel}
           isLoading={createInvoice.isPending}
+          onPatientChange={(patientId) => setSelectedPatientId(patientId)}
+          initialPatient={selectedPatientId || undefined}
         />
       )}
     </div>
