@@ -558,26 +558,24 @@ export function SHAVerificationModal({
           ? "!max-w-[95vw] !w-[95vw] !h-[95vh] !max-h-[95vh]" 
           : "max-w-md w-auto"
       )}>
-        <DialogHeader>
-          <div className="flex items-center justify-between">
-            <DialogTitle className="flex items-center gap-2">
-              <Database className="h-5 w-5 text-primary" />
-              Kenya Digital Health Verification
-            </DialogTitle>
-            <Button
-              variant="ghost"
-              size="icon"
-              className="h-8 w-8 -mr-2"
-              onClick={() => setIsExpanded(!isExpanded)}
-              title={isExpanded ? "Minimize" : "Expand to fullscreen"}
-            >
-              {isExpanded ? (
-                <Minimize2 className="h-4 w-4" />
-              ) : (
-                <Maximize2 className="h-4 w-4" />
-              )}
-            </Button>
-          </div>
+        <Button
+          variant="ghost"
+          size="icon"
+          className="absolute left-4 top-4 h-7 w-7 z-10"
+          onClick={() => setIsExpanded(!isExpanded)}
+          title={isExpanded ? "Minimize" : "Expand to fullscreen"}
+        >
+          {isExpanded ? (
+            <Minimize2 className="h-4 w-4" />
+          ) : (
+            <Maximize2 className="h-4 w-4" />
+          )}
+        </Button>
+        <DialogHeader className="pl-8">
+          <DialogTitle className="flex items-center gap-2">
+            <Database className="h-5 w-5 text-primary" />
+            Kenya Digital Health Verification
+          </DialogTitle>
           <DialogDescription>
             Lookup patient records from Client Registry or verify SHA insurance eligibility
           </DialogDescription>
