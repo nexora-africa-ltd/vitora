@@ -14,7 +14,8 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { Plus, Pill, Package, FileText, AlertTriangle, Loader2, History } from 'lucide-react';
+import Link from 'next/link';
+import { Plus, Pill, Package, FileText, AlertTriangle, Loader2, History, BarChart3 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Badge } from '@/components/ui/badge';
@@ -171,6 +172,12 @@ export default function PharmacyPage() {
             Manage drugs, inventory, prescriptions, and dispensing
           </p>
         </div>
+        <Link href="/pharmacy/reports" data-testid="pharmacy-reports">
+          <Button variant="outline">
+            <BarChart3 className="h-4 w-4 mr-2" />
+            Reports
+          </Button>
+        </Link>
       </div>
 
       {/* Dashboard Summary - Key Widgets */}
