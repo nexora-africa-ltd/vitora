@@ -435,18 +435,77 @@ function EligibilityCheckTab({ defaultNationalId, onEligibilityVerified }: Eligi
                   </div>
                 </div>
 
-                {eligibility.full_name && (
-                  <div className="text-sm mt-2">
-                    <Label className="text-muted-foreground text-xs">Name</Label>
-                    <p className="font-medium">{eligibility.full_name}</p>
-                  </div>
-                )}
+                <div className="grid grid-cols-2 gap-3 text-sm mt-4">
+                  {eligibility.full_name && (
+                    <div>
+                      <Label className="text-muted-foreground text-xs">Name</Label>
+                      <p className="font-medium">{eligibility.full_name}</p>
+                    </div>
+                  )}
+                  {eligibility.sha_number && (
+                    <div>
+                      <Label className="text-muted-foreground text-xs">SHA Number</Label>
+                      <p className="font-medium">{eligibility.sha_number}</p>
+                    </div>
+                  )}
+                  {eligibility.is_employed !== undefined && (
+                    <div>
+                      <Label className="text-muted-foreground text-xs">Employment Status</Label>
+                      <p className="font-medium">
+                        {eligibility.is_employed ? 'Employed' : 'Not Employed'}
+                        {eligibility.employment_type && eligibility.employment_type !== 'Unspecified' && (
+                          <span className="text-muted-foreground"> ({eligibility.employment_type})</span>
+                        )}
+                      </p>
+                    </div>
+                  )}
+                  {eligibility.employer_name && (
+                    <div>
+                      <Label className="text-muted-foreground text-xs">Employer</Label>
+                      <p className="font-medium">{eligibility.employer_name}</p>
+                    </div>
+                  )}
+                </div>
 
                 {eligibility.nhif_transition_status && (
-                  <div className="text-sm mt-2">
+                  <div className="text-sm mt-3">
                     <Label className="text-muted-foreground text-xs">NHIF Transition Status</Label>
                     <p className="font-medium text-warning-foreground">{eligibility.nhif_transition_status}</p>
                   </div>
+                )}
+
+                {/* Means Testing Details */}
+                {eligibility.means_testing && eligibility.means_testing.means_testing_done === 1 && (
+                  <div className="mt-4 p-3 rounded-lg bg-muted/50 border">
+                    <Label className="text-muted-foreground text-xs font-semibold block mb-2">Means Testing Details</Label>
+                    <div className="grid grid-cols-2 gap-2 text-sm">
+                      <div>
+                        <span className="text-muted-foreground text-xs">Monthly Contribution:</span>
+                        <p className="font-medium">KES {eligibility.means_testing.monthly_contribution?.toLocaleString()}</p>
+                      </div>
+                      <div>
+                        <span className="text-muted-foreground text-xs">Annual Contribution:</span>
+                        <p className="font-medium">KES {eligibility.means_testing.annual_contribution?.toLocaleString()}</p>
+                      </div>
+                      {eligibility.means_testing.income_prediction_category && (
+                        <div className="col-span-2">
+                          <span className="text-muted-foreground text-xs">Income Category:</span>
+                          <p className="font-medium">{eligibility.means_testing.income_prediction_category}</p>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                )}
+
+                {/* Possible Solution */}
+                {eligibility.possible_solution && (
+                  <Alert className="mt-4 border-blue-200 bg-blue-50 dark:border-blue-800 dark:bg-blue-950/50">
+                    <Info className="h-4 w-4 text-blue-600 dark:text-blue-400" />
+                    <AlertTitle className="text-blue-800 dark:text-blue-300 text-sm">How to Resolve</AlertTitle>
+                    <AlertDescription className="text-sm text-blue-700 dark:text-blue-400">
+                      {eligibility.possible_solution}
+                    </AlertDescription>
+                  </Alert>
                 )}
 
                 <Alert className="mt-4 border-warning bg-warning/10">
