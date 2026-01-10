@@ -87,15 +87,15 @@ export function BatchDetailDialog({ batch, open, onOpenChange, onEdit }: BatchDe
             {(batch.quantity_damaged > 0 || batch.quantity_expired > 0) && (
               <div className="grid grid-cols-2 gap-4 mt-4">
                 {batch.quantity_damaged > 0 && (
-                  <div className="p-3 bg-red-50 rounded-lg">
+                  <div className="p-3 bg-destructive/10 rounded-lg">
                     <div className="text-sm text-muted-foreground">Damaged</div>
-                    <div className="text-2xl font-bold text-red-600">{batch.quantity_damaged}</div>
+                    <div className="text-2xl font-bold text-destructive">{batch.quantity_damaged}</div>
                   </div>
                 )}
                 {batch.quantity_expired > 0 && (
-                  <div className="p-3 bg-red-50 rounded-lg">
+                  <div className="p-3 bg-destructive/10 rounded-lg">
                     <div className="text-sm text-muted-foreground">Expired</div>
-                    <div className="text-2xl font-bold text-red-600">{batch.quantity_expired}</div>
+                    <div className="text-2xl font-bold text-destructive">{batch.quantity_expired}</div>
                   </div>
                 )}
               </div>

@@ -97,12 +97,12 @@ const CATEGORY_LABELS: Record<DrugCategory, string> = {
   OTHER: 'Other',
 };
 
-// Schedule badge colors
+// Schedule badge colors using semantic classes
 const SCHEDULE_COLORS: Record<DrugSchedule, string> = {
-  OTC: 'bg-green-100 text-green-800',
-  POM: 'bg-blue-100 text-blue-800',
-  P: 'bg-yellow-100 text-yellow-800',
-  CD: 'bg-red-100 text-red-800',
+  OTC: 'bg-emerald-500/15 text-emerald-700 dark:text-emerald-400',
+  POM: 'bg-primary/15 text-primary',
+  P: 'bg-amber-500/15 text-amber-700 dark:text-amber-400',
+  CD: 'bg-destructive/15 text-destructive',
 };
 
 export function DrugTable({
@@ -450,7 +450,7 @@ export function DrugTable({
                         {drug.is_essential && (
                           <Badge 
                             variant="outline" 
-                            className="bg-blue-50 text-blue-700 border-blue-200 text-xs"
+                            className="bg-primary/10 text-primary border-primary/20 text-xs"
                             title="Kenya Essential Medicines List"
                           >
                             <Star className="h-3 w-3 mr-1" />
@@ -460,7 +460,7 @@ export function DrugTable({
                         {drug.is_controlled && (
                           <Badge 
                             variant="outline" 
-                            className="bg-red-50 text-red-700 border-red-200 text-xs"
+                            className="bg-destructive/10 text-destructive border-destructive/20 text-xs"
                             title="Controlled Drug"
                           >
                             <Shield className="h-3 w-3 mr-1" />
@@ -492,7 +492,7 @@ export function DrugTable({
                       )}
                     </div>
                     {isOutOfStock && (
-                      <div className="text-xs text-destructive mt-1">Out of Stock</div>
+                      <div className="text-xs text-destructive mt-1">OOS</div>
                     )}
                   </TableCell>
                   <TableCell>

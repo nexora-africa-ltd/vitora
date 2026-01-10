@@ -14,3 +14,6 @@ export { DispensingHistoryTable } from './dispensing-history-table';
 
 // Dispensing Components
 export { DispenseDialog } from './dispensing/dispense-dialog';
+export { DirectDispenseDialog } from './dispensing/direct-dispense-dialog';
+export { ReturnDialog } from './dispensing/return-dialog';
+export { LabelDialog } from './dispensing/label-dialog';

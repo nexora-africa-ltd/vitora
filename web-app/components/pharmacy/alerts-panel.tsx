@@ -310,7 +310,7 @@ export function AlertsPanel({
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">All Types</SelectItem>
-                <SelectItem value="OUT_OF_STOCK">Out of Stock</SelectItem>
+                <SelectItem value="OUT_OF_STOCK">OOS</SelectItem>
                 <SelectItem value="LOW_STOCK">Low Stock</SelectItem>
                 <SelectItem value="EXPIRING_SOON">Expiring Soon</SelectItem>
                 <SelectItem value="EXPIRING_CRITICAL">Expiring Critical</SelectItem>

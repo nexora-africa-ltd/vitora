@@ -287,13 +287,13 @@ export function DispensingReport() {
             <p className="text-sm text-muted-foreground">Total Records</p>
             <p className="text-2xl font-bold">{filteredRecords.length}</p>
           </div>
-          <div className="p-4 rounded-lg bg-blue-50 border border-blue-200">
-            <p className="text-sm text-blue-700">Total Dispensed</p>
-            <p className="text-2xl font-bold text-blue-700">{totalDispensed} units</p>
+          <div className="p-4 rounded-lg bg-primary/10 border border-primary/20">
+            <p className="text-sm text-primary">Total Dispensed</p>
+            <p className="text-2xl font-bold text-primary">{totalDispensed} units</p>
           </div>
-          <div className="p-4 rounded-lg bg-green-50 border border-green-200">
-            <p className="text-sm text-green-700">Total Value</p>
-            <p className="text-2xl font-bold text-green-700">KES {totalValue.toFixed(2)}</p>
+          <div className="p-4 rounded-lg bg-emerald-500/10 border border-emerald-500/20">
+            <p className="text-sm text-emerald-700 dark:text-emerald-400">Total Value</p>
+            <p className="text-2xl font-bold text-emerald-700 dark:text-emerald-400">KES {totalValue.toFixed(2)}</p>
           </div>
         </div>
 

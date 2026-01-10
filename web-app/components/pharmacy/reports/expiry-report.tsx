@@ -77,9 +77,9 @@ export function ExpiryReport() {
       return <Badge variant="destructive">Critical ({daysToExpiry} days)</Badge>;
     }
     if (daysToExpiry <= 60) {
-      return <Badge className="bg-orange-100 text-orange-800">Warning ({daysToExpiry} days)</Badge>;
+      return <Badge className="bg-orange-500/15 text-orange-700 dark:text-orange-400">Warning ({daysToExpiry} days)</Badge>;
     }
-    return <Badge className="bg-yellow-100 text-yellow-800">{daysToExpiry} days</Badge>;
+    return <Badge className="bg-amber-500/15 text-amber-700 dark:text-amber-400">{daysToExpiry} days</Badge>;
   };
 
   const handleDispose = (batch: ExpiringBatch) => {
@@ -231,21 +231,21 @@ export function ExpiryReport() {
 
           {/* Summary Stats */}
           <div className="grid grid-cols-3 gap-4">
-            <div className="p-4 rounded-lg bg-red-50 border border-red-200">
-              <p className="text-sm text-red-700">Critical (&lt;30 days)</p>
-              <p className="text-2xl font-bold text-red-700">
+            <div className="p-4 rounded-lg bg-destructive/10 border border-destructive/20">
+              <p className="text-sm text-destructive">Critical (&lt;30 days)</p>
+              <p className="text-2xl font-bold text-destructive">
                 {expiringBatches.filter((b: ExpiringBatch) => b.days_to_expiry <= 30).length}
               </p>
             </div>
-            <div className="p-4 rounded-lg bg-orange-50 border border-orange-200">
-              <p className="text-sm text-orange-700">Warning (30-60 days)</p>
-              <p className="text-2xl font-bold text-orange-700">
+            <div className="p-4 rounded-lg bg-orange-500/10 border border-orange-500/20">
+              <p className="text-sm text-orange-700 dark:text-orange-400">Warning (30-60 days)</p>
+              <p className="text-2xl font-bold text-orange-700 dark:text-orange-400">
                 {expiringBatches.filter((b: ExpiringBatch) => b.days_to_expiry > 30 && b.days_to_expiry <= 60).length}
               </p>
             </div>
-            <div className="p-4 rounded-lg bg-yellow-50 border border-yellow-200">
-              <p className="text-sm text-yellow-700">Approaching (60-90 days)</p>
-              <p className="text-2xl font-bold text-yellow-700">
+            <div className="p-4 rounded-lg bg-amber-500/10 border border-amber-500/20">
+              <p className="text-sm text-amber-700 dark:text-amber-400">Approaching (60-90 days)</p>
+              <p className="text-2xl font-bold text-amber-700 dark:text-amber-400">
                 {expiringBatches.filter((b: ExpiringBatch) => b.days_to_expiry > 60).length}
               </p>
             </div>
@@ -276,9 +276,9 @@ export function ExpiryReport() {
                     <TableRow
                       key={batch.batch_id}
                       className={cn(
-                        batch.days_to_expiry <= 30 && 'bg-red-50/50',
-                        batch.days_to_expiry > 30 && batch.days_to_expiry <= 60 && 'bg-orange-50/50',
-                        batch.days_to_expiry > 60 && 'bg-yellow-50/50'
+                        batch.days_to_expiry <= 30 && 'bg-destructive/5',
+                        batch.days_to_expiry > 30 && batch.days_to_expiry <= 60 && 'bg-orange-500/5',
+                        batch.days_to_expiry > 60 && 'bg-amber-500/5'
                       )}
                     >
                       <TableCell className="font-medium">{batch.drug_name}</TableCell>
