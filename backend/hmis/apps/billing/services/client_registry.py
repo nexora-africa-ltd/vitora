@@ -290,6 +290,8 @@ class ClientRegistryService:
         client_number: Optional[str] = None,
         huduma_number: Optional[str] = None,
         passport_number: Optional[str] = None,
+        identification_type: Optional[str] = None,
+        identification_number: Optional[str] = None,
     ) -> Optional[ClientRegistryClient]:
         """
         Fetch a client from the Client Registry.
@@ -302,6 +304,8 @@ class ClientRegistryService:
             client_number: Existing CR client number
             huduma_number: Huduma Namba
             passport_number: Passport number
+            identification_type: Generic ID type (e.g., 'National ID', 'Passport')
+            identification_number: Generic ID value (used with identification_type)
             
         Returns:
             ClientRegistryClient if found, None otherwise
@@ -316,7 +320,8 @@ class ClientRegistryService:
             ...     print(client.client_number)
         """
         # Validate at least one identifier is provided
-        if not any([national_id, client_number, huduma_number, passport_number]):
+        if not any([national_id, client_number, huduma_number, passport_number, 
+                    (identification_type and identification_number)]):
             raise ValueError("At least one identifier must be provided")
         
         # Build query parameters per official API spec
@@ -325,7 +330,11 @@ class ClientRegistryService:
             'agent': self.agent,
         }
         
-        if national_id:
+        # Priority: explicit identification_type/number > named params
+        if identification_type and identification_number:
+            params['identification_type'] = identification_type
+            params['identification_number'] = identification_number
+        elif national_id:
             params['identification_type'] = 'National ID'
             params['identification_number'] = national_id
         elif client_number:
