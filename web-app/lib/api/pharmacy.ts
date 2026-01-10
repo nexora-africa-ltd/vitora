@@ -378,6 +378,16 @@ export const pharmacyApi = {
     return response.data;
   },
 
+  /**
+   * Get stock movement report.
+   */
+  async getStockMovementReport(params?: { date_from?: string; date_to?: string }): Promise<{ results: any[] }> {
+    const response = await apiClient.get('/api/pharmacy/reports/movement/', {
+      params,
+    });
+    return response.data;
+  },
+
   // ============ Alert Settings ============
 
   /**

@@ -467,10 +467,20 @@ export function useExpiryReport(days?: number) {
 /**
  * Hook for fetching dispensing report.
  */
-export function useDispensingReport(params?: { date_from?: string; date_to?: string }) {
+export function useDispensingReport(startDate?: string, endDate?: string) {
   return useQuery({
-    queryKey: ['pharmacy-reports', 'dispensing', params],
-    queryFn: () => pharmacyApi.getDispensingReport(params),
+    queryKey: ['pharmacy-reports', 'dispensing', startDate, endDate],
+    queryFn: () => pharmacyApi.getDispensingReport({ date_from: startDate, date_to: endDate }),
+  });
+}
+
+/**
+ * Hook for fetching stock movement report.
+ */
+export function useStockMovementReport(startDate?: string, endDate?: string) {
+  return useQuery({
+    queryKey: ['pharmacy-reports', 'movement', startDate, endDate],
+    queryFn: () => pharmacyApi.getStockMovementReport({ date_from: startDate, date_to: endDate }),
   });
 }
 
