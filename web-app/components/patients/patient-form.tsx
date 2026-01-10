@@ -17,7 +17,7 @@ import React, { useState, useRef, useCallback, useEffect } from 'react';
 import { useForm, useWatch } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import { CalendarIcon, Loader2, CheckCircle2, AlertCircle, Info, Search, Lock, CreditCard, Shield, Building2, Wallet } from 'lucide-react';
+import { CalendarIcon, Loader2, CheckCircle2, AlertCircle, Info, Search, Lock, CreditCard, Shield, Building2, Wallet, ChevronDown, HelpCircle } from 'lucide-react';
 import { format } from 'date-fns';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -45,6 +45,20 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from '@/components/ui/tooltip';
 import {
   Popover,
   PopoverContent,
@@ -164,10 +178,10 @@ interface PatientFormProps {
 
 // Payment mode icons
 const PAYMENT_MODE_ICONS: Record<PaymentMode, React.ReactNode> = {
-  cash: <Wallet className="h-4 w-4" />,
-  sha: <Shield className="h-4 w-4" />,
-  insurance_private: <CreditCard className="h-4 w-4" />,
-  insurance_corporate: <Building2 className="h-4 w-4" />,
+  cash: <Wallet className="h-4 w-4 text-emerald-600" />,
+  sha: <Shield className="h-4 w-4 text-blue-600" />,
+  insurance_private: <CreditCard className="h-4 w-4 text-purple-600" />,
+  insurance_corporate: <Building2 className="h-4 w-4 text-orange-600" />,
 };
 
 export function PatientForm({ 
@@ -500,14 +514,14 @@ export function PatientForm({
               </Alert>
             )}
             
-            <div className="grid gap-4 md:grid-cols-2">
+            <div className="flex flex-wrap gap-6">
               {/* ID Type + Number with clickable label */}
               <div className="space-y-2">
                 <FormField
                   control={form.control}
                   name="identification_number"
                   render={({ field }) => (
-                    <FormItem>
+                    <FormItem className="min-w-[240px]">
                       <IdentificationInput
                         identificationType={identificationType}
                         identificationNumber={field.value || ''}
@@ -548,7 +562,7 @@ export function PatientForm({
                 control={form.control}
                 name="cr_number"
                 render={({ field }) => (
-                  <FormItem>
+                  <FormItem className="min-w-[240px]">
                     <FormLabel className="flex items-center gap-1">
                       <Lock className="h-3 w-3" />
                       CR Number
@@ -558,7 +572,7 @@ export function PatientForm({
                         {...field} 
                         readOnly 
                         disabled
-                        placeholder="Auto-populated from Client Registry"
+                        placeholder="Auto-populated"
                         className="bg-muted"
                       />
                     </FormControl>
@@ -579,32 +593,41 @@ export function PatientForm({
           <div className="space-y-4">
             <h3 className="text-lg font-medium">Personal Information</h3>
             
-            {/* Title + Names */}
-            <div className="grid gap-4 md:grid-cols-4">
+            <div className="flex flex-wrap gap-4 items-start">
               <FormField
                 control={form.control}
                 name="title"
                 render={({ field }) => (
-                  <FormItem>
+                  <FormItem className="w-[100px]">
                     <FormLabel>Title</FormLabel>
-                    <Select 
-                      onValueChange={field.onChange} 
-                      value={field.value || ''}
-                      disabled={formLocked || isFormLoading}
-                    >
-                      <FormControl>
-                        <SelectTrigger>
-                          <SelectValue placeholder="Select" />
-                        </SelectTrigger>
-                      </FormControl>
-                      <SelectContent>
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <Button
+                          variant="outline"
+                          role="combobox"
+                          disabled={formLocked || isFormLoading}
+                          className={cn(
+                            "w-full justify-between font-normal",
+                            !field.value && "text-muted-foreground"
+                          )}
+                        >
+                          {field.value
+                            ? TITLE_OPTIONS.find((t) => t.value === field.value)?.label
+                            : "Select"}
+                          <ChevronDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                        </Button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="start">
                         {TITLE_OPTIONS.map((option) => (
-                          <SelectItem key={option.value} value={option.value || 'none'}>
+                          <DropdownMenuItem
+                            key={option.value}
+                            onSelect={() => field.onChange(option.value || 'none')}
+                          >
                             {option.label}
-                          </SelectItem>
+                          </DropdownMenuItem>
                         ))}
-                      </SelectContent>
-                    </Select>
+                      </DropdownMenuContent>
+                    </DropdownMenu>
                   </FormItem>
                 )}
               />
@@ -613,7 +636,7 @@ export function PatientForm({
                 control={form.control}
                 name="first_name"
                 render={({ field }) => (
-                  <FormItem>
+                  <FormItem className="min-w-[200px] flex-1">
                     <FormLabel>First Name *</FormLabel>
                     <FormControl>
                       <Input 
@@ -631,7 +654,7 @@ export function PatientForm({
                 control={form.control}
                 name="middle_name"
                 render={({ field }) => (
-                  <FormItem>
+                  <FormItem className="min-w-[200px] flex-1">
                     <FormLabel>Middle Name</FormLabel>
                     <FormControl>
                       <Input 
@@ -648,7 +671,7 @@ export function PatientForm({
                 control={form.control}
                 name="last_name"
                 render={({ field }) => (
-                  <FormItem>
+                  <FormItem className="min-w-[200px] flex-1">
                     <FormLabel>Last Name *</FormLabel>
                     <FormControl>
                       <Input 
@@ -663,13 +686,42 @@ export function PatientForm({
               />
             </div>
 
-            {/* DOB, Gender, Place of Birth */}
-            <div className="grid gap-4 md:grid-cols-3">
+            <div className="flex flex-wrap gap-6 items-start">
+              <FormField
+                control={form.control}
+                name="gender"
+                render={({ field }) => (
+                  <FormItem className="space-y-3">
+                    <FormLabel>Gender *</FormLabel>
+                    <FormControl>
+                      <RadioGroup
+                        onValueChange={field.onChange}
+                        value={field.value}
+                        disabled={formLocked || isFormLoading}
+                        className="flex flex-col space-y-1"
+                      >
+                        <div className="flex items-center gap-4">
+                          {GENDER_OPTIONS.map((option) => (
+                            <div key={option.value} className="flex items-center space-x-2">
+                              <RadioGroupItem value={option.value} id={`gender-${option.value}`} />
+                              <Label htmlFor={`gender-${option.value}`} className="font-normal cursor-pointer">
+                                {option.label}
+                              </Label>
+                            </div>
+                          ))}
+                        </div>
+                      </RadioGroup>
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
               <FormField
                 control={form.control}
                 name="date_of_birth"
                 render={({ field }) => (
-                  <FormItem>
+                  <FormItem className="w-[200px]">
                     <FormLabel>Date of Birth *</FormLabel>
                     <DobPicker
                       value={field.value}
@@ -683,9 +735,26 @@ export function PatientForm({
 
               <FormField
                 control={form.control}
+                name="place_of_birth"
+                render={({ field }) => (
+                  <FormItem className="min-w-[200px] flex-1">
+                    <FormLabel>Place of Birth</FormLabel>
+                    <FormControl>
+                      <Input 
+                        placeholder="County or City" 
+                        {...field} 
+                        disabled={formLocked || isFormLoading}
+                      />
+                    </FormControl>
+                  </FormItem>
+                )}
+              />
+
+              <FormField
+                control={form.control}
                 name="is_person_with_disability"
                 render={({ field }) => (
-                  <FormItem className="flex flex-row items-center space-x-3 space-y-0 rounded-md border p-4">
+                  <FormItem className="flex flex-row items-center space-x-3 space-y-0 rounded-md border p-4 min-w-[260px] translate-y-7">
                     <FormControl>
                       <Checkbox
                         checked={field.value}
@@ -694,10 +763,19 @@ export function PatientForm({
                       />
                     </FormControl>
                     <div className="space-y-1 leading-none">
-                      <FormLabel>Person with Disability (PWD)</FormLabel>
-                      <FormDescription>
-                        Check if patient has a registered disability
-                      </FormDescription>
+                      <FormLabel className="flex items-center gap-2">
+                        Person with Disability
+                        <TooltipProvider>
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <HelpCircle className="h-4 w-4 text-muted-foreground cursor-help" />
+                            </TooltipTrigger>
+                            <TooltipContent>
+                              <p>Check if patient has a registered disability</p>
+                            </TooltipContent>
+                          </Tooltip>
+                        </TooltipProvider>
+                      </FormLabel>
                     </div>
                   </FormItem>
                 )}
@@ -713,12 +791,12 @@ export function PatientForm({
           <div className="space-y-4">
             <h3 className="text-lg font-medium">Contact Information</h3>
             
-            <div className="grid gap-4 md:grid-cols-2">
+            <div className="flex flex-wrap gap-4 items-start">
               <FormField
                 control={form.control}
                 name="phone_number"
                 render={({ field }) => (
-                  <FormItem>
+                  <FormItem className="w-[200px]">
                     <FormLabel>Phone Number</FormLabel>
                     <FormControl>
                       <Input 
@@ -727,7 +805,7 @@ export function PatientForm({
                         disabled={formLocked || isFormLoading}
                       />
                     </FormControl>
-                    <FormDescription>Kenya format: +254XXXXXXXXX</FormDescription>
+                    <FormDescription>Kenya format</FormDescription>
                     <FormMessage />
                   </FormItem>
                 )}
@@ -737,7 +815,7 @@ export function PatientForm({
                 control={form.control}
                 name="email"
                 render={({ field }) => (
-                  <FormItem>
+                  <FormItem className="w-[240px]">
                     <FormLabel>Email (Optional)</FormLabel>
                     <FormControl>
                       <Input 
@@ -751,26 +829,26 @@ export function PatientForm({
                   </FormItem>
                 )}
               />
+              
+              <FormField
+                control={form.control}
+                name="address"
+                render={({ field }) => (
+                  <FormItem className="flex-1 min-w-[300px]">
+                    <FormLabel>Physical Address (Optional)</FormLabel>
+                    <FormControl>
+                      <Textarea 
+                        placeholder="Street, building, etc." 
+                        {...field} 
+                        disabled={formLocked || isFormLoading}
+                        rows={1}
+                        className="min-h-[40px] resize-none"
+                      />
+                    </FormControl>
+                  </FormItem>
+                )}
+              />
             </div>
-
-            {/* Address Field */}
-            <FormField
-              control={form.control}
-              name="address"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Physical Address (Optional)</FormLabel>
-                  <FormControl>
-                    <Textarea 
-                      placeholder="Enter physical address (street, building, etc.)" 
-                      {...field} 
-                      disabled={formLocked || isFormLoading}
-                      rows={2}
-                    />
-                  </FormControl>
-                </FormItem>
-              )}
-            />
           </div>
 
           <Separator />
@@ -781,12 +859,12 @@ export function PatientForm({
           <div className="space-y-4">
             <h3 className="text-lg font-medium">Location</h3>
             
-            <div className="grid gap-4 md:grid-cols-3">
+            <div className="flex flex-wrap gap-4">
               <FormField
                 control={form.control}
                 name="county"
                 render={({ field }) => (
-                  <FormItem>
+                  <FormItem className="min-w-[200px] flex-1">
                     <FormLabel>County *</FormLabel>
                     <FormControl>
                       <LocationCombobox
@@ -813,7 +891,7 @@ export function PatientForm({
                 control={form.control}
                 name="sub_county"
                 render={({ field }) => (
-                  <FormItem>
+                  <FormItem className="min-w-[200px] flex-1">
                     <FormLabel>Sub-County *</FormLabel>
                     <FormControl>
                       <LocationCombobox
@@ -839,7 +917,7 @@ export function PatientForm({
                 control={form.control}
                 name="ward"
                 render={({ field }) => (
-                  <FormItem>
+                  <FormItem className="min-w-[200px] flex-1">
                     <FormLabel>Ward (Optional)</FormLabel>
                     <FormControl>
                       <LocationCombobox
@@ -907,7 +985,7 @@ export function PatientForm({
                         <CardContent className="flex items-start gap-3 p-4">
                           <div className={cn(
                             'rounded-full p-2',
-                            field.value === option.value ? 'bg-primary text-primary-foreground' : 'bg-muted'
+                            field.value === option.value ? 'bg-background' : 'bg-muted'
                           )}>
                             {PAYMENT_MODE_ICONS[option.value]}
                           </div>
@@ -951,7 +1029,7 @@ export function PatientForm({
                   control={form.control}
                   name="insurance_member_number"
                   render={({ field }) => (
-                    <FormItem>
+                    <FormItem className="max-w-[240px]">
                       <FormLabel>Member/Policy Number</FormLabel>
                       <FormControl>
                         <Input 
@@ -975,12 +1053,12 @@ export function PatientForm({
           <div className="space-y-4">
             <h3 className="text-lg font-medium">Emergency Contact</h3>
             
-            <div className="grid gap-4 md:grid-cols-3">
+            <div className="flex flex-wrap gap-6">
               <FormField
                 control={form.control}
                 name="emergency_contact_name"
                 render={({ field }) => (
-                  <FormItem>
+                  <FormItem className="min-w-[240px] flex-1">
                     <FormLabel>Contact Name</FormLabel>
                     <FormControl>
                       <Input 
@@ -997,7 +1075,7 @@ export function PatientForm({
                 control={form.control}
                 name="emergency_contact_phone"
                 render={({ field }) => (
-                  <FormItem>
+                  <FormItem className="min-w-[240px]">
                     <FormLabel>Contact Phone</FormLabel>
                     <FormControl>
                       <Input 
@@ -1014,7 +1092,7 @@ export function PatientForm({
                 control={form.control}
                 name="emergency_contact_relationship"
                 render={({ field }) => (
-                  <FormItem>
+                  <FormItem className="min-w-[200px]">
                     <FormLabel>Relationship</FormLabel>
                     {!showCustomRelationship ? (
                       <Select 
@@ -1123,6 +1201,62 @@ export function PatientForm({
                 Patient consent will be requested upon form submission. Data will be encrypted and stored securely in compliance with the law.
               </AlertDescription>
             </Alert>
+            
+            <div className="grid gap-4 md:grid-cols-2">
+              <FormField
+                control={form.control}
+                name="consent_given"
+                render={({ field }) => (
+                  <FormItem className="flex flex-row items-start space-x-3 space-y-0 rounded-md border p-4">
+                    <FormControl>
+                      <Checkbox
+                        checked={field.value}
+                        onCheckedChange={(checked) => {
+                           field.onChange(checked);
+                           if (checked) form.setValue('consent_deferred', false);
+                        }}
+                        disabled={formLocked || isFormLoading}
+                      />
+                    </FormControl>
+                    <div className="space-y-1 leading-none">
+                      <FormLabel>
+                        Patient Consent
+                      </FormLabel>
+                      <FormDescription>
+                        I confirm that the patient has given consent for data collection.
+                      </FormDescription>
+                    </div>
+                  </FormItem>
+                )}
+              />
+              
+              <FormField
+                control={form.control}
+                name="consent_deferred"
+                render={({ field }) => (
+                  <FormItem className="flex flex-row items-start space-x-3 space-y-0 rounded-md border p-4">
+                    <FormControl>
+                      <Checkbox
+                        checked={field.value}
+                        onCheckedChange={(checked) => {
+                           field.onChange(checked);
+                           if (checked) form.setValue('consent_given', false);
+                        }}
+                        disabled={formLocked || isFormLoading}
+                      />
+                    </FormControl>
+                    <div className="space-y-1 leading-none">
+                      <FormLabel>
+                        Defer Consent
+                      </FormLabel>
+                      <FormDescription>
+                        Consent is deferred due to emergency or incapacity.
+                      </FormDescription>
+                    </div>
+                  </FormItem>
+                )}
+              />
+            </div>
           </div>
 
           {/* ================================================================== */}
