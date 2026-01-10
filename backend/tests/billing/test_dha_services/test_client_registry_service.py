@@ -476,3 +476,158 @@ class TestClientRegistryClient:
         assert client.first_name == 'Jane'
         assert client.date_of_birth == date(1985, 6, 20)
         assert client.raw_data == api_data
+
+    def test_from_api_response_with_dha_format(self):
+        """Should parse DHA official API format with full gender words."""
+        # DHA API returns gender as full words and 'id' for client number
+        api_data = {
+            'id': 'CR000000000000-2',
+            'first_name': 'Jane ',  # Note trailing space
+            'middle_name': 'Doe',
+            'last_name': 'Test',
+            'date_of_birth': '2010-05-11',
+            'gender': 'Female',  # Full word, not 'F'
+            'identification_type': 'National ID',
+            'identification_number': '32440686',
+            'phone': '0712345678',  # DHA uses 'phone' not 'phone_number'
+            'county': 'Nairobi',  # DHA uses 'county' not 'county_of_residence'
+            'sub_county': 'Kasarani',
+            'ward': 'kasarani',
+        }
+        
+        client = ClientRegistryClient.from_api_response(api_data)
+        
+        assert client.client_number == 'CR000000000000-2'
+        assert client.first_name == 'Jane'  # Should strip whitespace
+        assert client.middle_name == 'Doe'
+        assert client.last_name == 'Test'
+        assert client.date_of_birth == date(2010, 5, 11)
+        assert client.gender == 'F'  # Should convert 'Female' to 'F'
+        assert client.national_id == '32440686'
+        assert client.phone_number == '0712345678'
+        assert client.county_of_residence == 'Nairobi'
+        assert client.sub_county_of_residence == 'Kasarani'
+        assert client.ward_of_residence == 'kasarani'
+
+    def test_from_api_response_gender_mapping(self):
+        """Should correctly map all gender formats."""
+        # Test 'Male' -> 'M'
+        male_data = {'id': 'CR1', 'first_name': 'Test', 'last_name': 'User', 
+                    'date_of_birth': '1990-01-01', 'gender': 'Male'}
+        assert ClientRegistryClient.from_api_response(male_data).gender == 'M'
+        
+        # Test 'Female' -> 'F'
+        female_data = {'id': 'CR2', 'first_name': 'Test', 'last_name': 'User',
+                      'date_of_birth': '1990-01-01', 'gender': 'Female'}
+        assert ClientRegistryClient.from_api_response(female_data).gender == 'F'
+        
+        # Test 'Other' -> 'O'
+        other_data = {'id': 'CR3', 'first_name': 'Test', 'last_name': 'User',
+                     'date_of_birth': '1990-01-01', 'gender': 'Other'}
+        assert ClientRegistryClient.from_api_response(other_data).gender == 'O'
+        
+        # Test lowercase also works
+        lowercase_data = {'id': 'CR4', 'first_name': 'Test', 'last_name': 'User',
+                         'date_of_birth': '1990-01-01', 'gender': 'male'}
+        assert ClientRegistryClient.from_api_response(lowercase_data).gender == 'M'
+
+
+# =============================================================================
+# DHA Official API Format Tests
+# =============================================================================
+
+class TestDHAOfficialFormatParsing:
+    """Tests for parsing official DHA API response format."""
+
+    @pytest.fixture
+    def service(self, mock_sha_auth):
+        """Create ClientRegistryService instance with mocked auth."""
+        return ClientRegistryService()
+
+    def test_fetch_client_dha_official_format(self, service, mock_requests_get):
+        """Should correctly parse DHA official response format with message.result array."""
+        # This is the actual format from DHA API
+        mock_requests_get.return_value = Mock(
+            status_code=200,
+            json=lambda: {
+                'message': {
+                    'total': 1,
+                    'result': [
+                        {
+                            'id': 'CR000000000000-2',
+                            'resourceType': 'Patient',
+                            'first_name': 'Jane ',
+                            'middle_name': 'Doe',
+                            'last_name': 'Test',
+                            'gender': 'Female',
+                            'date_of_birth': '2010-05-11',
+                            'identification_type': 'National ID',
+                            'identification_number': '32440686',
+                            'phone': '',
+                            'county': 'Nairobi',
+                            'sub_county': 'Kasarani',
+                            'ward': 'kasarani',
+                        }
+                    ]
+                }
+            }
+        )
+        
+        result = service.fetch_client(national_id='32440686')
+        
+        assert result is not None
+        assert result.client_number == 'CR000000000000-2'
+        assert result.first_name == 'Jane'
+        assert result.last_name == 'Test'
+        assert result.gender == 'F'
+        assert result.national_id == '32440686'
+        assert result.county_of_residence == 'Nairobi'
+
+    def test_fetch_client_dha_not_found(self, service, mock_requests_get):
+        """Should return None when DHA returns empty result array."""
+        mock_requests_get.return_value = Mock(
+            status_code=200,
+            json=lambda: {
+                'message': {
+                    'total': 0,
+                    'result': []
+                }
+            }
+        )
+        
+        result = service.fetch_client(national_id='99999999')
+        
+        assert result is None
+
+    def test_fetch_client_dha_multiple_results(self, service, mock_requests_get):
+        """Should return first client when DHA returns multiple results."""
+        mock_requests_get.return_value = Mock(
+            status_code=200,
+            json=lambda: {
+                'message': {
+                    'total': 2,
+                    'result': [
+                        {
+                            'id': 'CR000000000001-1',
+                            'first_name': 'First',
+                            'last_name': 'Person',
+                            'date_of_birth': '1990-01-01',
+                            'gender': 'Male',
+                        },
+                        {
+                            'id': 'CR000000000002-2',
+                            'first_name': 'Second',
+                            'last_name': 'Person',
+                            'date_of_birth': '1991-02-02',
+                            'gender': 'Female',
+                        }
+                    ]
+                }
+            }
+        )
+        
+        result = service.fetch_client(national_id='12345678')
+        
+        assert result is not None
+        assert result.client_number == 'CR000000000001-1'
+        assert result.first_name == 'First'
