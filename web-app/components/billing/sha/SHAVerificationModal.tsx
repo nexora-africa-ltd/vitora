@@ -546,14 +546,17 @@ export function SHAVerificationModal({
   const setIsOpen = isControlled ? onOpenChange! : setInternalOpen;
 
   return (
-    <Dialog open={isOpen} onOpenChange={setIsOpen}>
+    <Dialog open={isOpen} onOpenChange={(open) => {
+      if (!open) setIsExpanded(false); // Reset expanded state when closing
+      setIsOpen(open);
+    }}>
       {trigger && <DialogTrigger asChild>{trigger}</DialogTrigger>}
       
       <DialogContent className={cn(
-        "transition-all duration-200",
+        "transition-all duration-200 overflow-hidden",
         isExpanded 
-          ? "max-w-[95vw] max-h-[95vh] w-full h-full" 
-          : "max-w-md"
+          ? "!max-w-[95vw] !w-[95vw] !h-[95vh] !max-h-[95vh]" 
+          : "max-w-md w-auto"
       )}>
         <DialogHeader>
           <div className="flex items-center justify-between">
@@ -564,9 +567,9 @@ export function SHAVerificationModal({
             <Button
               variant="ghost"
               size="icon"
-              className="h-8 w-8"
+              className="h-8 w-8 -mr-2"
               onClick={() => setIsExpanded(!isExpanded)}
-              title={isExpanded ? "Minimize" : "Expand"}
+              title={isExpanded ? "Minimize" : "Expand to fullscreen"}
             >
               {isExpanded ? (
                 <Minimize2 className="h-4 w-4" />
@@ -581,7 +584,8 @@ export function SHAVerificationModal({
         </DialogHeader>
 
         <div className={cn(
-          isExpanded && "overflow-y-auto max-h-[calc(95vh-120px)]"
+          "overflow-y-auto",
+          isExpanded ? "max-h-[calc(95vh-140px)]" : "max-h-[70vh]"
         )}>
           <Tabs defaultValue={defaultTab} className="mt-4">
             <TabsList className="grid w-full grid-cols-2">
