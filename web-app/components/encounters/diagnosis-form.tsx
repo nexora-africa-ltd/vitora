@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useCallback } from 'react';
-import { Search, Plus, Trash2, AlertCircle, Check, X, ChevronLeft, Shield } from 'lucide-react';
+import { Search, Plus, Trash2, AlertCircle, Check, X, ChevronLeft } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -11,7 +11,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Checkbox } from '@/components/ui/checkbox';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Switch } from '@/components/ui/switch';
 import { ICD11Select } from '@/components/billing/sha';
 import { useICD10Search } from '@/lib/hooks/use-encounter-form';
 import { cn } from '@/lib/utils/cn';
@@ -27,7 +27,7 @@ export function DiagnosisEntry({ onAdd, existingDiagnoses, disabled = false }: D
   const [searchQuery, setSearchQuery] = useState('');
   const [isSearchOpen, setIsSearchOpen] = useState(false);
   const [selectedCode, setSelectedCode] = useState<ICD10SearchResult | null>(null);
-  const [codeSystem, setCodeSystem] = useState<'icd10' | 'icd11'>('icd10');
+  const [useICD11, setUseICD11] = useState(true); // Default to ICD-11
   const [icd11Value, setIcd11Value] = useState<{ code: string; title: string } | null>(null);
   
   const [formData, setFormData] = useState<DiagnosisFormData>({
@@ -121,8 +121,12 @@ export function DiagnosisEntry({ onAdd, existingDiagnoses, disabled = false }: D
             </Badge>
             {icd11Value && (
               <Badge variant="secondary" className="text-xs">
-                <Shield className="h-3 w-3 mr-1" />
                 ICD-11
+              </Badge>
+            )}
+            {selectedCode && (
+              <Badge variant="secondary" className="text-xs">
+                ICD-10
               </Badge>
             )}
             <span className="flex-1 text-sm truncate">
@@ -139,16 +143,22 @@ export function DiagnosisEntry({ onAdd, existingDiagnoses, disabled = false }: D
             </Button>
           </div>
         ) : (
-          <Tabs value={codeSystem} onValueChange={(v) => setCodeSystem(v as 'icd10' | 'icd11')}>
-            <TabsList className="mb-2">
-              <TabsTrigger value="icd10">ICD-10 (Local)</TabsTrigger>
-              <TabsTrigger value="icd11" className="gap-1">
-                <Shield className="h-3 w-3" />
-                ICD-11 (SHA)
-              </TabsTrigger>
-            </TabsList>
+          <div className="space-y-3">
+            {/* ICD Version Toggle */}
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <span className={cn("text-sm", !useICD11 && "font-medium")}>ICD-10</span>
+                <Switch
+                  checked={useICD11}
+                  onCheckedChange={setUseICD11}
+                  disabled={disabled}
+                />
+                <span className={cn("text-sm", useICD11 && "font-medium")}>ICD-11</span>
+              </div>
+            </div>
             
-            <TabsContent value="icd10" className="mt-0">
+            {/* ICD-10 Search */}
+            {!useICD11 && (
               <div className="relative">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                 <Input
@@ -205,20 +215,18 @@ export function DiagnosisEntry({ onAdd, existingDiagnoses, disabled = false }: D
                   </Card>
                 )}
               </div>
-            </TabsContent>
+            )}
             
-            <TabsContent value="icd11" className="mt-0">
+            {/* ICD-11 Search */}
+            {useICD11 && (
               <ICD11Select
                 value={icd11Value}
                 onSelect={handleSelectICD11}
-                placeholder="Search SHA ICD-11 codes..."
+                placeholder="Search ICD-11 codes (e.g., malaria, diabetes)..."
                 disabled={disabled}
               />
-              <p className="text-xs text-muted-foreground mt-1">
-                Use ICD-11 codes for SHA insurance claim submissions
-              </p>
-            </TabsContent>
-          </Tabs>
+            )}
+          </div>
         )}
       </div>
       
@@ -229,7 +237,7 @@ export function DiagnosisEntry({ onAdd, existingDiagnoses, disabled = false }: D
         </Label>
         <Input
           id="free_text_diagnosis"
-          placeholder={selectedCode ? 'Additional notes about this diagnosis...' : 'Enter diagnosis if ICD-10 code not available...'}
+          placeholder={selectedCode ? 'Additional notes about this diagnosis...' : 'Enter diagnosis if ICD code not available...'}
           value={formData.free_text_diagnosis}
           onChange={(e) => setFormData(prev => ({ ...prev, free_text_diagnosis: e.target.value }))}
           disabled={disabled}

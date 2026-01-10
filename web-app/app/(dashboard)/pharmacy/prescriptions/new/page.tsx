@@ -25,7 +25,6 @@ import {
   Printer,
   Copy,
   Check,
-  Shield,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -54,7 +53,7 @@ import {
   CommandItem,
   CommandList,
 } from '@/components/ui/command';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Switch } from '@/components/ui/switch';
 import { DrugSelect } from '@/components/billing/sha';
 import { useToast } from '@/lib/hooks/use-toast';
 import { usePatient } from '@/lib/hooks/use-patients';
@@ -116,8 +115,8 @@ export default function NewPrescriptionPage() {
     ? `${user.first_name || ''} ${user.last_name || ''}`.trim() || user.username 
     : 'Unknown';
 
-  // Drug source selection (local vs SHA)
-  const [drugSource, setDrugSource] = useState<'local' | 'sha'>('local');
+  // Drug source selection (local inventory vs SHA formulary)
+  const [useSHADrug, setUseSHADrug] = useState(false);
   const [selectedSHADrug, setSelectedSHADrug] = useState<SHADrugSelection | null>(null);
 
   // Drug search state
@@ -708,8 +707,12 @@ Prescribed by: ${prescriberName}
                         </span>
                         {selectedSHADrug && (
                           <Badge variant="secondary" className="text-xs">
-                            <Shield className="h-3 w-3 mr-1" />
                             SHA
+                          </Badge>
+                        )}
+                        {selectedDrug && (
+                          <Badge variant="secondary" className="text-xs">
+                            Local
                           </Badge>
                         )}
                       </div>
@@ -721,7 +724,7 @@ Prescribed by: ${prescriberName}
                       </div>
                       {selectedSHADrug?.code && (
                         <div className="text-xs font-mono text-muted-foreground mt-1">
-                          SHA Code: {selectedSHADrug.code}
+                          Code: {selectedSHADrug.code}
                         </div>
                       )}
                     </div>
@@ -754,16 +757,19 @@ Prescribed by: ${prescriberName}
                   </div>
                 </div>
               ) : (
-                <Tabs value={drugSource} onValueChange={(v) => setDrugSource(v as 'local' | 'sha')}>
-                  <TabsList className="mb-2">
-                    <TabsTrigger value="local">Local Inventory</TabsTrigger>
-                    <TabsTrigger value="sha" className="gap-1">
-                      <Shield className="h-3 w-3" />
-                      SHA Drugs
-                    </TabsTrigger>
-                  </TabsList>
+                <div className="space-y-3">
+                  {/* Drug Source Toggle */}
+                  <div className="flex items-center gap-2">
+                    <span className={`text-sm ${!useSHADrug ? 'font-medium' : ''}`}>Local Inventory</span>
+                    <Switch
+                      checked={useSHADrug}
+                      onCheckedChange={setUseSHADrug}
+                    />
+                    <span className={`text-sm ${useSHADrug ? 'font-medium' : ''}`}>SHA Formulary</span>
+                  </div>
                   
-                  <TabsContent value="local" className="mt-0">
+                  {/* Local Drug Search */}
+                  {!useSHADrug && (
                     <div className="relative">
                       <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                       <Input
@@ -814,19 +820,17 @@ Prescribed by: ${prescriberName}
                         </div>
                       )}
                     </div>
-                  </TabsContent>
+                  )}
                   
-                  <TabsContent value="sha" className="mt-0">
+                  {/* SHA Drug Search */}
+                  {useSHADrug && (
                     <DrugSelect
                       value={selectedSHADrug}
                       onSelect={handleSelectSHADrug}
                       placeholder="Search SHA drug formulary..."
                     />
-                    <p className="text-xs text-muted-foreground mt-1">
-                      Use SHA drugs for insurance claim submissions
-                    </p>
-                  </TabsContent>
-                </Tabs>
+                  )}
+                </div>
               )}
               {errors.drug && <p className="text-sm text-destructive">{errors.drug}</p>}
             </div>
