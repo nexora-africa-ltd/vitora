@@ -342,7 +342,7 @@ MPESA_CALLBACK_URL = os.getenv("MPESA_CALLBACK_URL", "")
 # SHA Configuration (Social Health Authority - Kenya)
 # Reference: docs/sha-api-validation-report.md
 SHA_ENABLED = os.getenv("SHA_ENABLED", "false").lower() == "true"
-SHA_API_BASE_URL = os.getenv("SHA_API_BASE_URL", "https://uat.dha.go.ke")
+SHA_API_BASE_URL = os.getenv("SHA_API_BASE_URL", "https://uat.dha.go.ke") # production: https://api.dha.go.ke
 SHA_API_URL = os.getenv("SHA_API_URL", "")  # Deprecated, use SHA_API_BASE_URL
 SHA_API_KEY = os.getenv("SHA_API_KEY", "")  # Deprecated, use SHA_CONSUMER_KEY
 SHA_API_TIMEOUT = int(os.getenv("SHA_API_TIMEOUT", "30"))  # seconds
