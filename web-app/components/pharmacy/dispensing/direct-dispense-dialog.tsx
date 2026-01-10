@@ -47,6 +47,8 @@ import {
 } from '@/components/ui/popover';
 import { useToast } from '@/lib/hooks/use-toast';
 import { useDrugs, useBatchesForDrug, useCreateDispensing } from '@/lib/hooks/use-pharmacy';
+import { usePatients } from '@/lib/hooks/use-patients';
+import { useDebounce } from '@/lib/hooks/use-debounce';
 import { cn } from '@/lib/utils/cn';
 
 // Form validation schema
@@ -69,13 +71,6 @@ interface DirectDispenseDialogProps {
   onSuccess?: () => void;
 }
 
-// Mock patients for direct dispense - in production would use patient search API
-const MOCK_PATIENTS = [
-  { id: '1', name: 'Jane Doe', mrn: 'MRN-001' },
-  { id: '2', name: 'John Smith', mrn: 'MRN-002' },
-  { id: '3', name: 'Alice Johnson', mrn: 'MRN-003' },
-];
-
 export function DirectDispenseDialog({
   isOpen,
   onClose,
@@ -83,9 +78,19 @@ export function DirectDispenseDialog({
 }: DirectDispenseDialogProps) {
   const { toast } = useToast();
   const [patientOpen, setPatientOpen] = useState(false);
-  const [drugOpen, setDrugOpen] = useState(false);
+  const [patientSearch, setPatientSearch] = useState('');
   const [selectedDrugId, setSelectedDrugId] = useState<string>('');
-  const [selectedPatient, setSelectedPatient] = useState<string>('');
+  const [selectedPatient, setSelectedPatient] = useState<{ id: string; name: string; mrn: string } | null>(null);
+
+  // Debounce patient search to avoid too many API calls
+  const debouncedPatientSearch = useDebounce(patientSearch, 300);
+
+  // Fetch patients based on search
+  const { data: patientsData, isLoading: patientsLoading } = usePatients({
+    search: debouncedPatientSearch,
+    limit: 20,
+  });
+  const patients = patientsData?.results || [];
 
   // Fetch OTC drugs only (schedule = 'OTC')
   const { data: drugsData } = useDrugs({ schedule: 'OTC', is_active: true });
@@ -122,25 +127,34 @@ export function DirectDispenseDialog({
   const availableBatches = batches?.filter(b => b.quantity_available > 0) || [];
   const selectedBatch = availableBatches[0]; // FEFO - first batch
 
-  // Calculate total
-  const unitPrice = selectedDrug?.unit_price || 0;
+  // Calculate total (use selling_price from batch or reference_price from drug)
+  const unitPrice = selectedBatch?.selling_price || selectedDrug?.reference_price || 0;
   const totalCost = quantity * unitPrice;
 
   // Handle form submission
   const onSubmit = async (data: DirectDispenseFormData) => {
+    if (!selectedBatch) {
+      toast({
+        title: 'No Stock Available',
+        description: 'Please select a drug with available stock.',
+        variant: 'destructive',
+      });
+      return;
+    }
+
     try {
       await createDispensing.mutateAsync({
         patient: parseInt(data.patient_id),
         drug: parseInt(data.drug_id),
-        batch: selectedBatch ? parseInt(selectedBatch.id.toString()) : undefined,
-        quantity_dispensed: data.quantity,
-        dispensing_type: 'DIRECT',
+        stock_batch: selectedBatch.id,
+        quantity: data.quantity,
+        is_direct_sale: true,
         notes: data.notes,
       });
 
       toast({
         title: 'Dispensing Successful',
-        description: `${data.quantity} units of ${selectedDrug?.name} dispensed.`,
+        description: `${data.quantity} units of ${selectedDrug?.generic_name} dispensed.`,
       });
 
       handleClose();
@@ -159,7 +173,8 @@ export function DirectDispenseDialog({
     if (!createDispensing.isPending) {
       reset();
       setSelectedDrugId('');
-      setSelectedPatient('');
+      setSelectedPatient(null);
+      setPatientSearch('');
       onClose();
     }
   };
@@ -190,32 +205,50 @@ export function DirectDispenseDialog({
                   className="w-full justify-between"
                 >
                   {selectedPatient
-                    ? MOCK_PATIENTS.find(p => p.id === selectedPatient)?.name
+                    ? `${selectedPatient.name} (${selectedPatient.mrn})`
                     : "Select patient..."}
                   <Search className="ml-2 h-4 w-4 shrink-0 opacity-50" />
                 </Button>
               </PopoverTrigger>
               <PopoverContent className="w-full p-0">
-                <Command>
-                  <CommandInput placeholder="Search patients..." />
+                <Command shouldFilter={false}>
+                  <CommandInput 
+                    placeholder="Search patients by name or MRN..." 
+                    value={patientSearch}
+                    onValueChange={setPatientSearch}
+                  />
                   <CommandList>
-                    <CommandEmpty>No patient found.</CommandEmpty>
-                    <CommandGroup>
-                      {MOCK_PATIENTS.map((patient) => (
-                        <CommandItem
-                          key={patient.id}
-                          value={patient.name}
-                          onSelect={() => {
-                            setSelectedPatient(patient.id);
-                            setValue('patient_id', patient.id);
-                            setPatientOpen(false);
-                          }}
-                        >
-                          <span>{patient.name}</span>
-                          <span className="ml-2 text-muted-foreground">{patient.mrn}</span>
-                        </CommandItem>
-                      ))}
-                    </CommandGroup>
+                    {patientsLoading ? (
+                      <div className="p-4 text-sm text-muted-foreground text-center">
+                        Searching...
+                      </div>
+                    ) : patients.length === 0 ? (
+                      <CommandEmpty>
+                        {patientSearch ? 'No patients found.' : 'Type to search patients...'}
+                      </CommandEmpty>
+                    ) : (
+                      <CommandGroup>
+                        {patients.map((patient) => (
+                          <CommandItem
+                            key={patient.id}
+                            value={patient.mrn}
+                            onSelect={() => {
+                              const patientInfo = {
+                                id: patient.id.toString(),
+                                name: `${patient.first_name} ${patient.last_name}`,
+                                mrn: patient.mrn,
+                              };
+                              setSelectedPatient(patientInfo);
+                              setValue('patient_id', patientInfo.id);
+                              setPatientOpen(false);
+                            }}
+                          >
+                            <span>{patient.first_name} {patient.last_name}</span>
+                            <span className="ml-2 text-muted-foreground">{patient.mrn}</span>
+                          </CommandItem>
+                        ))}
+                      </CommandGroup>
+                    )}
                   </CommandList>
                 </Command>
               </PopoverContent>
@@ -241,7 +274,7 @@ export function DirectDispenseDialog({
               <SelectContent>
                 {otcDrugs.map((drug) => (
                   <SelectItem key={drug.id} value={drug.id.toString()}>
-                    {drug.name} ({drug.form} {drug.strength})
+                    {drug.generic_name} ({drug.form} {drug.strength})
                   </SelectItem>
                 ))}
               </SelectContent>
@@ -249,7 +282,7 @@ export function DirectDispenseDialog({
             {errors.drug_id && (
               <p className="text-sm text-destructive">{errors.drug_id.message}</p>
             )}
-            {selectedDrug && !selectedDrug.is_otc && (
+            {selectedDrug && selectedDrug.requires_prescription && (
               <p className="text-sm text-destructive flex items-center gap-1">
                 <AlertTriangle className="h-3 w-3" />
                 This drug requires a prescription
