@@ -1,89 +1,65 @@
-#!/usr/bin/env python
-"""
-SHA PII Decryption Utility
-
-Decrypts encrypted _pii fields from DHA API responses using RSA/AES hybrid encryption.
-
-Usage:
-    # As Django management command context
-    cd backend && poetry run python hmis/apps/core/fixtures/sha-decrypt.py '{"message": {...}}'
-    
-    # Pipe from curl
-    curl -s "https://uat.dha.go.ke/v3/..." | poetry run python hmis/apps/core/fixtures/sha-decrypt.py
-    
-    # From file
-    cat response.json | poetry run python hmis/apps/core/fixtures/sha-decrypt.py
-"""
 import base64
 import json
-import os
-import sys
 
-# Setup Django settings before importing anything else
-os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'hmis.settings.development')
-
-# Add the backend directory to the path
-backend_dir = os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))))
-sys.path.insert(0, backend_dir)
-
-# Now we can import Django and crypto libraries
-import django
-django.setup()
-
-from django.conf import settings
 from Crypto.Cipher import AES
 from Crypto.PublicKey import RSA
 from Crypto.Util.Padding import unpad
 from Crypto.Cipher import PKCS1_OAEP
 
-
-def get_private_key() -> str:
-    """Load RSA private key from sha.pem file in backend directory."""
-    pem_path = os.path.join(backend_dir, 'sha.pem')
-    
-    if not os.path.exists(pem_path):
-        raise FileNotFoundError(
-            f"Private key file not found at {pem_path}\n"
-            "Please create backend/sha.pem with your RSA private key."
-        )
-    
-    with open(pem_path, 'r') as f:
-        return f.read()
-
-
-def get_agent() -> str:
-    """Get DHA agent code from Django settings."""
-    agent = getattr(settings, 'SHA_AGENT', None)
-    if not agent:
-        raise ValueError(
-            "SHA_AGENT not configured in Django settings.\n"
-            "Set SHA_AGENT environment variable or add to your settings file."
-        )
-    return agent
+# Your RSA private key (replace with your actual private key)
+agent="DHABP05113"
+production_private_key = """-----BEGIN PRIVATE KEY-----
+MIIEvQIBADANBgkqhkiG9w0BAQEFAASCBKcwggSjAgEAAoIBAQDsrl9AOLD+40Hk
+kkmMl09CSNs1EjHtfGNjf/8qsp2whNbaMqay676xYz0z/p8fVxZmqDmQPo+N6a0v
+8mvF7feesHzNVxqHFnasMsaJNYbJ61hiNwAg5YUsXAbvKKs0tHt06xbk5YOiVKq6
+2tGfSpcwBztW/fvx44nC8+35Jj4KUpgs7COHi0kvvHatMMAojrCoLUx9r0EYq/Yw
+IDjDE2mArSsHsiSxawc30z9klDYHYWMTTK4ydcH4Otf7VEgN8aBfkwft7MqQawTH
+/h12kmensTBIkXfUG8jKR4eRNv+X9tlbzKcJhL74bxLQC/xGiQy+5uUkHvfoL2Bm
+XLvUL019AgMBAAECggEAGCK7YDtdF/kJK1Zxp/khd4MiJi9/UOuvikzaCBAj6DAm
+ZXo8fqAaF6Z6Q3byjMnJj9lq2VdP4KsU4qqoK+HVr7npWC/1lWizMbc8gMR+b3vk
+96Bf49A+vDnRk9+ZVJbCb4yuY9Q15Wlt6ap5LZ3NJ3QtVx8vwJ3cBWSbqXMpaM2L
+i2rOisbHWoBpVKk9ED0A518WWuOioEtbc8vLzspsr2+RtZkBOtiqCILhrrtqmarK
+F+KzFLZ79eNGhaBm5EYXF7YVMo+xsk0rSBJmtuFWSV8F6Xpva8Hq7GrO8KdAIX45
+cCAk0fv9PUw0yghfoJggBNKlt/X6g+lN3MMJn6oXvwKBgQD4oprMIs/2k6WkxFRW
+PzkMlwB0UXOlBeHrcv4QLbLrCvR8XAuijMFjCEMWp+WR354Wp3zqlNMUdohq3fQx
+XKjMgaiS8gdxg6ZdBFrPUoLJZyRz26MhiDhcZcgowK+loXew1UixnFehJMv4BxC2
+eeuAw4/70sZdsVJN0f9OMNqegwKBgQDzsR7GERfCy36TdOOtPXgl/yjIIvafFUKz
+Q1Uh47ingLlzAPeP+IA2Zxvh9r4hHCxkQMb5cBt0Kyz3zxAz1GRStZfI+1NRjhQz
+A3XLSTIoHGc//BISxQ9t3GJIdWSzKpWlZlYB3uliZRCcBiezVzGmRh/AFZ7pmYND
+DwJeUiqj/wKBgQDy2niSvcodkZewuWebGoPRrUhvVQO9A2LpBFfuW4SwGfI16f4f
+Vpap8W7+GR6d/iq++/eCdb069pBGuecDs/rYTijm5uqoUKvVnSRJ7tD6gflUBQtw
+/En4zh3U2Gh4Qp/TJHCtswTQzE1CRTxoz+tcySfBE95Xs5StmFlj+UoAmwKBgHdU
+mFktLZF5zHWwm3zNyPPySqoWVOX5pzvZEOsTc+yyIB2sr42UhlQdkY3JIblc7m/5
+OHYU65yrN83xW2HF84p82eLVDyu0gzenzhrJsQHrRrQSX1dJoBCQBqCsu67wf28K
++brYyTghfUypxu8PF4TwecO50qNZROmlg+dkHPVJAoGAa4bUU9gIUfNS0DhScdOn
+Fxsw/dLtCOaDoyVqmk1WNM6GKz1MlGAU5wdI/72P5YtzfwFRIpLfbXXhscOUBcCH
+i3OaJk8zEBDeyjzoDJcQtXiPoDYMdAJayXdXlZV78mPmQVXajFWK0j0XyIWQMOpa
+UFx2ql+SG5nuWBfB8+2s6wM=
+-----END PRIVATE KEY-----"""
 
 # Function to decrypt AES key using RSA private key
-def decrypt_with_rsa(private_key: str, encrypted_data: str) -> bytes:
+def decrypt_with_rsa(private_key, encrypted_data):
     rsa_key = RSA.import_key(private_key)
     cipher = PKCS1_OAEP.new(rsa_key)
     decrypted_data = cipher.decrypt(base64.b64decode(encrypted_data))
     return base64.b64decode(decrypted_data)
 
 # Function to decrypt AES-encrypted data
-def decrypt_with_aes(encrypted_data: str, aes_key: bytes, iv: bytes) -> str:
+def decrypt_with_aes(encrypted_data, aes_key, iv):
     cipher = AES.new(aes_key, AES.MODE_CBC, iv)
     decrypted_data = unpad(cipher.decrypt(base64.b64decode(encrypted_data)), AES.block_size)
     return decrypted_data.decode()
 
 # Main execution
-def decrypt_pii(combined_base64: str, private_key: str) -> dict:
+def decrypt_pii(combined_base64: str) -> dict:
     """Decrypt a single _pii field."""
     # Split the combined base64 string to get encrypted AES key, IV, and JSON data
     combined_string = base64.b64decode(combined_base64).decode()
     encrypted_aes_key, encrypted_iv, encrypted_json_data = combined_string.split(":")
 
     # Decrypt the AES key and IV using the RSA private key
-    aes_key = decrypt_with_rsa(private_key, encrypted_aes_key)
-    iv = decrypt_with_rsa(private_key, encrypted_iv)
+    aes_key = decrypt_with_rsa(production_private_key, encrypted_aes_key)
+    iv = decrypt_with_rsa(production_private_key, encrypted_iv)
 
     # Decrypt the JSON data using the AES key and IV
     decrypted_json_data = decrypt_with_aes(encrypted_json_data, aes_key, iv)
@@ -93,15 +69,7 @@ def decrypt_pii(combined_base64: str, private_key: str) -> dict:
 
 
 def main():
-    # Load configuration
-    try:
-        private_key = get_private_key()
-        agent = get_agent()
-        print(f"Using DHA Agent: {agent}")
-        print(f"Private key loaded from: backend/sha.pem\n")
-    except (FileNotFoundError, ValueError) as e:
-        print(f"Configuration Error: {e}", file=sys.stderr)
-        sys.exit(1)
+    import sys
     
     if len(sys.argv) > 1:
         # Read from command line argument (JSON string)
@@ -121,7 +89,7 @@ def main():
             for i, item in enumerate(results):
                 if "_pii" in item:
                     try:
-                        decrypted = decrypt_pii(item["_pii"], private_key)
+                        decrypted = decrypt_pii(item["_pii"])
                         decrypted_results.append(decrypted)
                         print(f"\n=== Record {i+1} ===")
                         print(json.dumps(decrypted, indent=2))
@@ -135,7 +103,7 @@ def main():
         
         # Handle single _pii field
         elif "_pii" in data:
-            decrypted = decrypt_pii(data["_pii"], private_key)
+            decrypted = decrypt_pii(data["_pii"])
             print("Decrypted JSON Data:", json.dumps(decrypted, indent=2))
         
         else:
@@ -144,7 +112,7 @@ def main():
     except json.JSONDecodeError as e:
         # Try treating input as raw base64 _pii value
         try:
-            decrypted = decrypt_pii(input_data.strip(), private_key)
+            decrypted = decrypt_pii(input_data.strip())
             print("Decrypted JSON Data:", json.dumps(decrypted, indent=2))
         except Exception as e2:
             print(f"Failed to parse input: {e}")
