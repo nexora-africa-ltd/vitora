@@ -110,6 +110,29 @@ export interface EligibilityCheckResponse {
   message?: string;
 }
 
+// Direct eligibility check (without SHAMember record)
+export interface DirectEligibilityCheckRequest {
+  national_id?: string;
+  sha_number?: string;
+  identification_type?: string;
+  identification_number?: string;
+}
+
+export interface DirectEligibilityCheckResponse {
+  is_eligible: boolean;
+  sha_number?: string | null;
+  full_name?: string | null;
+  coverage_end_date?: string | null;
+  copay_percentage: number;
+  reason?: string;
+  is_employed?: boolean;
+  employment_type?: string;
+  employer_name?: string | null;
+  nhif_transition_status?: string;
+  raw_response?: Record<string, unknown>;
+  error?: string | null;
+}
+
 export interface EligibilityState {
   status: EligibilityStatus;
   member?: SHAMember;

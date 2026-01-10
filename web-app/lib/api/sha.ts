@@ -25,6 +25,8 @@ import type {
   PaginatedSHAMembers,
   EligibilityCheckRequest,
   EligibilityCheckResponse,
+  DirectEligibilityCheckRequest,
+  DirectEligibilityCheckResponse,
   // Terminology
   PaginatedICD11Codes,
   PaginatedSHAInterventions,
@@ -169,6 +171,18 @@ async function checkPatientEligibility(
     ...eligibilityResponse,
     member,
   };
+}
+
+/**
+ * Check SHA eligibility directly by national ID without needing an SHAMember record
+ * Useful during patient registration/lookup to verify SHA coverage status
+ */
+async function checkDirectEligibility(
+  params: DirectEligibilityCheckRequest
+): Promise<DirectEligibilityCheckResponse> {
+  const queryString = buildQueryString(params);
+  const response = await apiClient.get(`/api/billing/eligibility/direct/?${queryString}`);
+  return response.data;
 }
 
 // ============================================================================
@@ -375,6 +389,7 @@ export const shaApi = {
   // Eligibility
   checkEligibility,
   checkPatientEligibility,
+  checkDirectEligibility,
   
   // Terminology - ICD-11
   searchICD11,

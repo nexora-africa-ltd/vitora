@@ -96,15 +96,15 @@ const config: Config = {
   			},
   			success: {
   				DEFAULT: 'hsl(var(--success))',
-  				foreground: '#ffffff'
+  				foreground: 'hsl(var(--success-foreground))'
   			},
   			warning: {
   				DEFAULT: 'hsl(var(--warning))',
-  				foreground: '#000000'
+  				foreground: 'hsl(var(--warning-foreground))'
   			},
   			critical: {
   				DEFAULT: 'hsl(var(--critical))',
-  				foreground: '#ffffff'
+  				foreground: 'hsl(var(--critical-foreground))'
   			},
   			chart: {
   				'1': 'hsl(var(--chart-1))',
