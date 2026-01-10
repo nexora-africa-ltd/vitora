@@ -841,15 +841,27 @@ class ClientRegistryView(APIView):
         GET /api/billing/client-registry/fetch/?national_id=XXX
         GET /api/billing/client-registry/fetch/?client_number=XXX
         GET /api/billing/client-registry/fetch/?huduma_number=XXX
+        GET /api/billing/client-registry/fetch/?identification_type=National ID&identification_number=XXX
+        
+        Query Parameters:
+            national_id: Kenya National ID number
+            client_number: CR client number
+            huduma_number: Huduma Namba
+            passport_number: Passport number
+            identification_type: Generic ID type (e.g., 'National ID', 'Passport', 'SHA Number')
+            identification_number: ID value (used with identification_type)
         """
         national_id = request.query_params.get('national_id')
         client_number = request.query_params.get('client_number')
         huduma_number = request.query_params.get('huduma_number')
         passport_number = request.query_params.get('passport_number')
+        identification_type = request.query_params.get('identification_type')
+        identification_number = request.query_params.get('identification_number')
         
-        if not any([national_id, client_number, huduma_number, passport_number]):
+        if not any([national_id, client_number, huduma_number, passport_number,
+                    (identification_type and identification_number)]):
             return Response(
-                {'error': 'At least one identifier is required'},
+                {'error': 'At least one identifier is required (national_id, client_number, huduma_number, passport_number, or identification_type+identification_number)'},
                 status=status.HTTP_400_BAD_REQUEST
             )
         
@@ -860,6 +872,8 @@ class ClientRegistryView(APIView):
                 client_number=client_number,
                 huduma_number=huduma_number,
                 passport_number=passport_number,
+                identification_type=identification_type,
+                identification_number=identification_number,
             )
             
             if client:
