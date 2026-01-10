@@ -132,12 +132,11 @@ class SHAAuthService:
             
         Example:
             >>> token = auth_service.generate_terminology_token()
-        """
-        # Check cache first
-        if self._terminology_token_cache and self._terminology_token_cache.is_valid:
-            logger.debug("Using cached terminology token")
-            return self._terminology_token_cache.token
         
+        Note:
+            Tokens are generated fresh each time (no caching) because
+            the short 20-second TTL makes caching counterproductive.
+        """
         now = int(time.time())
         
         # JWT Header (compact JSON, no spaces)
@@ -162,14 +161,7 @@ class SHAAuthService:
         # Combine to form JWT
         token = f"{encoded_header}.{encoded_payload}.{encoded_signature}"
         
-        # Cache the token
-        SHAAuthService._terminology_token_cache = SHAToken(
-            token=token,
-            obtained_at=datetime.now(),
-            expires_in_seconds=expires_in,
-        )
-        
-        logger.debug("Generated new terminology JWT")
+        logger.debug(f"Generated fresh terminology JWT (expires in {expires_in}s)")
         return token
     
     def get_terminology_headers(self) -> dict:

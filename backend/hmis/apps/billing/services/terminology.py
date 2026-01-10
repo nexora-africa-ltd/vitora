@@ -468,7 +468,7 @@ class TerminologyService:
             params['category'] = category
         
         try:
-            headers = self.auth_service.get_terminology_headers()
+            headers = self.auth_service.get_auth_headers()
             
             response = requests.get(
                 f"{self.api_base_url}{self.interventions_endpoint}",
@@ -529,7 +529,7 @@ class TerminologyService:
         logger.info(f"Fetching SHA intervention: {code}")
         
         try:
-            headers = self.auth_service.get_terminology_headers()
+            headers = self.auth_service.get_auth_headers()
             
             response = requests.get(
                 f"{self.api_base_url}{self.interventions_endpoint}/{code}",
@@ -606,7 +606,7 @@ class TerminologyService:
             params['chapter'] = chapter
         
         try:
-            headers = self.auth_service.get_terminology_headers()
+            headers = self.auth_service.get_auth_headers()
             
             response = requests.get(
                 f"{self.api_base_url}{self.icd11_endpoint}",
@@ -657,7 +657,7 @@ class TerminologyService:
         logger.info(f"Fetching ICD-11 code: {code}")
         
         try:
-            headers = self.auth_service.get_terminology_headers()
+            headers = self.auth_service.get_auth_headers()
             
             response = requests.get(
                 f"{self.api_base_url}{self.icd11_endpoint}/{code}",
@@ -708,7 +708,7 @@ class TerminologyService:
         }
         
         try:
-            headers = self.auth_service.get_terminology_headers()
+            headers = self.auth_service.get_auth_headers()
             
             response = requests.get(
                 f"{self.api_base_url}{self.products_endpoint}",
@@ -746,7 +746,7 @@ class TerminologyService:
         logger.info(f"Fetching drug product: {product_id}")
         
         try:
-            headers = self.auth_service.get_terminology_headers()
+            headers = self.auth_service.get_auth_headers()
             
             response = requests.get(
                 f"{self.api_base_url}{self.products_endpoint}/{product_id}",
@@ -797,7 +797,7 @@ class TerminologyService:
         }
         
         try:
-            headers = self.auth_service.get_terminology_headers()
+            headers = self.auth_service.get_auth_headers()
             
             response = requests.get(
                 f"{self.api_base_url}{self.components_endpoint}",
@@ -862,7 +862,7 @@ class TerminologyService:
             'limit': limit,
         }
         
-        headers = self.auth_service.get_terminology_headers()
+        headers = self.auth_service.get_auth_headers()
         
         response = requests.get(
             f"{self.api_base_url}{self.loinc_endpoint}",
@@ -936,7 +936,7 @@ class TerminologyService:
         
         # Try remote first
         try:
-            headers = self.auth_service.get_terminology_headers()
+            headers = self.auth_service.get_auth_headers()
             
             response = requests.get(
                 f"{self.api_base_url}{self.loinc_endpoint}/{loinc_num}",
@@ -1014,7 +1014,7 @@ class TerminologyService:
         }
         
         try:
-            headers = self.auth_service.get_terminology_headers()
+            headers = self.auth_service.get_auth_headers()
             
             response = requests.get(
                 f"{self.api_base_url}{self.ichi_endpoint}",
@@ -1052,7 +1052,7 @@ class TerminologyService:
         logger.info(f"Fetching ICHI code: {code}")
         
         try:
-            headers = self.auth_service.get_terminology_headers()
+            headers = self.auth_service.get_auth_headers()
             
             response = requests.get(
                 f"{self.api_base_url}{self.ichi_endpoint}/{code}",

@@ -384,6 +384,12 @@ SHA_ENDPOINTS = {
     'terminology_product': '/terminology/v1/product',
 }
 
+# Local WHO ICD-11 API (Docker container: whoicd/icd-api)
+# Deployed via: backend/compose.yml
+ICD11_LOCAL_API_URL = os.getenv("ICD11_LOCAL_API_URL", "http://localhost:5080")
+ICD11_API_TIMEOUT = int(os.getenv("ICD11_API_TIMEOUT", "10"))
+ICD11_USE_LOCAL = os.getenv("ICD11_USE_LOCAL", "true").lower() == "true"
+
 # Facility identification (for SHA claims)
 FACILITY_MFL_CODE = os.getenv("FACILITY_MFL_CODE", "TEST-001")  # Master Facility List code
 FACILITY_LEVEL = os.getenv("FACILITY_LEVEL", "L3")  # Default to Level 3

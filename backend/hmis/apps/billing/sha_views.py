@@ -701,7 +701,9 @@ class SHAClaimViewSet(viewsets.ModelViewSet):
 # =============================================================================
 
 from rest_framework.views import APIView
+from django.conf import settings as django_settings
 from hmis.apps.billing.services.terminology import TerminologyService, TerminologyError
+from hmis.apps.billing.services.icd11_local import ICD11LocalService
 from hmis.apps.billing.services.dha_search import DHASearchService, SearchError
 from hmis.apps.billing.services.client_registry import (
     ClientRegistryService,
@@ -715,6 +717,8 @@ class TerminologySearchView(APIView):
     API view for searching medical terminologies.
     
     Supports ICD-11, LOINC, ICHI, Interventions, and Drug Products.
+    
+    For ICD-11, uses local WHO ICD-11 API container by default (ICD11_USE_LOCAL=true).
     """
     permission_classes = [IsAuthenticated]
     
@@ -736,6 +740,10 @@ class TerminologySearchView(APIView):
             })
         
         try:
+            # Use local ICD-11 API for icd11 terminology if enabled
+            if terminology_type == 'icd11' and getattr(django_settings, 'ICD11_USE_LOCAL', True):
+                return self._search_icd11_local(search, limit)
+            
             service = TerminologyService()
             
             if terminology_type == 'icd11':
@@ -778,6 +786,44 @@ class TerminologySearchView(APIView):
         except Exception as e:
             return Response(
                 {'error': str(e)},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
+    
+    def _search_icd11_local(self, search: str, limit: int):
+        """
+        Search ICD-11 using local WHO ICD-11 API container.
+        
+        Args:
+            search: Search query
+            limit: Maximum results
+            
+        Returns:
+            Response with ICD-11 codes
+        """
+        try:
+            service = ICD11LocalService()
+            
+            # Check if service is available
+            if not service.is_available():
+                return Response(
+                    {'error': 'Local ICD-11 API is not available. Start the container: docker compose -f docker/icd/compose.yml up -d'},
+                    status=status.HTTP_503_SERVICE_UNAVAILABLE
+                )
+            
+            results = service.search(search, limit=limit)
+            
+            # Convert to dict format
+            data = [code.to_dict() for code in results]
+            
+            return Response({
+                'results': data,
+                'count': len(data),
+                'source': 'local_who_icd11',
+            })
+            
+        except Exception as e:
+            return Response(
+                {'error': f'ICD-11 local search failed: {str(e)}'},
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR
             )
 
