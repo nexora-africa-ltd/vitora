@@ -81,7 +81,11 @@ export default function AdmissionsPage() {
                 <p className="text-sm text-muted-foreground">No active admissions.</p>
               ) : (
                 admissions?.results.map((adm) => (
-                  <div key={adm.id} className="rounded-md border p-3">
+                  <Link 
+                    key={adm.id} 
+                    href={`/admissions/${adm.id}`}
+                    className="block rounded-md border p-3 hover:bg-muted/50 transition-colors"
+                  >
                     <div className="flex flex-col gap-1">
                       <p className="font-medium">{adm.admission_number}</p>
                       <p className="text-sm text-muted-foreground">{adm.patient_name}</p>
@@ -89,7 +93,7 @@ export default function AdmissionsPage() {
                         {adm.ward_name} — {adm.bed_number}
                       </p>
                     </div>
-                  </div>
+                  </Link>
                 ))
               )}
             </div>
