@@ -3,7 +3,7 @@
 import { useState, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { ArrowLeft, CheckCircle2, Stethoscope, User, Plus, UserPlus, ArrowRight, Clock, Activity, FileText, Shield} from 'lucide-react';
+import { ArrowLeft, CheckCircle2, Stethoscope, User, Plus, UserPlus, ArrowRight, Clock, Activity, FileText, Shield } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -31,19 +31,18 @@ export default function NewPatientPage() {
   const [crClient, setCrClient] = useState<ClientRegistryClient | null>(null);
   const [eligibility, setEligibility] = useState<DirectEligibilityCheckResponse | null>(null);
 
-  // Callback when CR client is found - pre-populate form
-  // Callback when CR client is found - pre-populate form
+  // Handle CR client found from modal
   const handleCRClientFound = useCallback((client: ClientRegistryClient) => {
     setCrClient(client);
     toast({
-      title: 'Client Found',
-      description: `Found ${client.first_name} ${client.last_name}. Form will be pre-populated.`,
+      title: 'Client Registry Record Found',
+      description: `Found record for ${client.first_name} ${client.last_name}`,
     });
   }, [toast]);
 
-  // Callback when eligibility is verified
-  const handleEligibilityVerified = useCallback((elig: DirectEligibilityCheckResponse) => {
-    setEligibility(elig);
+  // Handle eligibility verification from modal
+  const handleEligibilityVerified = useCallback((result: DirectEligibilityCheckResponse) => {
+    setEligibility(result);
   }, []);
 
   const handleSubmit = async (data: PatientCreateData) => {
@@ -238,7 +237,6 @@ export default function NewPatientPage() {
                 onClick={() => {
                   setRegisteredPatient(null);
                   setCrClient(null);
-                  setEligibility(null);
                 }}
               >
                 <Plus className="mr-2 h-5 w-5" />
@@ -373,14 +371,7 @@ export default function NewPatientPage() {
             onSubmit={handleSubmit}
             onCancel={handleCancel}
             isLoading={createPatient.isPending}
-            defaultValues={crClient ? {
-              first_name: crClient.first_name,
-              last_name: crClient.last_name,
-              date_of_birth: crClient.date_of_birth ? new Date(crClient.date_of_birth) : undefined,
-              gender: crClient.gender as 'M' | 'F' | 'O',
-              national_id: crClient.national_id || '',
-              phone_number: crClient.phone_number || '',
-            } : undefined}
+            prePopulatedClient={crClient}
           />
         </CardContent>
       </Card>

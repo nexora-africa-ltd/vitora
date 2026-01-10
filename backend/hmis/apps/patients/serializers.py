@@ -50,17 +50,28 @@ class PatientSerializer(serializers.ModelSerializer):
         fields = [
             "id",
             "mrn",
+            # Client Registry
+            "cr_number",
+            # Personal Information
+            "title",
             "first_name",
             "middle_name",
             "last_name",
             "full_name",
             "date_of_birth",
+            "place_of_birth",
             "age",
             "gender",
+            "citizenship",
+            "is_person_with_disability",
+            # Identification
+            "identification_type",
+            "identification_number",
+            "national_id",  # Legacy, kept for backward compatibility
+            # Contact Information
             "phone_number",
             "email",
             "address",
-            "national_id",
             # Location fields
             "county",
             "county_name",
@@ -72,6 +83,7 @@ class PatientSerializer(serializers.ModelSerializer):
             # Consent fields (Kenya DPA compliance)
             "consent_given",
             "consent_date",
+            "consent_deferred",
             "is_sensitive",
             # Emergency contacts (nested)
             "emergency_contacts",

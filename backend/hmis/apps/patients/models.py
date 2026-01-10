@@ -44,15 +44,22 @@ class Patient(models.Model):
 
     Attributes:
         mrn: Unique Medical Record Number (auto-generated)
+        cr_number: Client Registry number (from Kenya HIE)
         first_name: Patient's first name (required)
         middle_name: Patient's middle name (optional)
         last_name: Patient's last name (required)
+        title: Patient's title (Mr, Mrs, Miss, etc.)
         date_of_birth: Patient's date of birth (required)
+        place_of_birth: Patient's place of birth (optional)
         gender: Patient's gender (M/F/O)
+        identification_type: Type of ID used (national_id, passport, etc.)
+        identification_number: ID number value
         phone_number: Patient's phone number (optional)
         email: Patient's email address (optional)
         address: Patient's physical address (optional)
-        national_id: Patient's national ID number (optional)
+        national_id: Patient's national ID number (deprecated, use identification_number)
+        citizenship: Patient's citizenship (default: Kenyan)
+        is_person_with_disability: PWD status
         created_at: Timestamp when the record was created
         updated_at: Timestamp when the record was last updated
     """
@@ -61,6 +68,29 @@ class Patient(models.Model):
         ("M", "Male"),
         ("F", "Female"),
         ("O", "Other"),
+    ]
+
+    TITLE_CHOICES = [
+        ("Mr", "Mr"),
+        ("Mrs", "Mrs"),
+        ("Miss", "Miss"),
+        ("Ms", "Ms"),
+        ("Dr", "Dr"),
+        ("Prof", "Prof"),
+        ("Hon", "Hon"),
+        ("Rev", "Rev"),
+        ("", "None"),
+    ]
+
+    # SHA/CR supported identification types
+    IDENTIFICATION_TYPE_CHOICES = [
+        ("national_id", "National ID"),
+        ("cr_number", "HIE Patient ID"),
+        ("mandate_number", "Mandate Number"),
+        ("alien_id", "Alien ID"),
+        ("kra_pin", "KRA PIN"),
+        ("temporary_id", "Temporary ID"),
+        ("passport", "Passport Number"),
     ]
 
     # Required fields
@@ -75,17 +105,68 @@ class Patient(models.Model):
     date_of_birth = models.DateField(help_text="Patient's date of birth")
     gender = models.CharField(max_length=1, choices=GENDER_CHOICES, help_text="Patient's gender")
 
-    # Optional fields
+    # Client Registry Integration
+    cr_number = models.CharField(
+        max_length=50,
+        blank=True,
+        null=True,
+        unique=True,
+        help_text="Client Registry number from Kenya HIE (CR-XXXXXXXXXX-X format)",
+    )
+
+    # Title and Names
+    title = models.CharField(
+        max_length=10,
+        choices=TITLE_CHOICES,
+        blank=True,
+        default="",
+        help_text="Patient's title (Mr, Mrs, Miss, etc.)",
+    )
     middle_name = models.CharField(
         max_length=100, blank=True, default="", help_text="Patient's middle name"
     )
+    place_of_birth = models.CharField(
+        max_length=200,
+        blank=True,
+        default="",
+        help_text="Patient's place of birth",
+    )
+
+    # Identification (flexible for multiple ID types)
+    identification_type = models.CharField(
+        max_length=20,
+        choices=IDENTIFICATION_TYPE_CHOICES,
+        default="national_id",
+        help_text="Type of identification document",
+    )
+    identification_number = models.CharField(
+        max_length=50,
+        blank=True,
+        null=True,
+        help_text="Identification document number",
+    )
+
+    # Contact Information
     phone_number = models.CharField(
         max_length=20, blank=True, null=True, help_text="Patient's phone number"
     )
     email = models.EmailField(blank=True, default="", help_text="Patient's email address")
     address = models.TextField(blank=True, default="", help_text="Patient's physical address")
+    
+    # Legacy field - kept for backward compatibility, use identification_number instead
     national_id = models.CharField(
-        max_length=50, blank=True, null=True, help_text="Patient's national ID number"
+        max_length=50, blank=True, null=True, help_text="Patient's national ID number (legacy)"
+    )
+
+    # Demographics
+    citizenship = models.CharField(
+        max_length=100,
+        default="Kenyan",
+        help_text="Patient's citizenship",
+    )
+    is_person_with_disability = models.BooleanField(
+        default=False,
+        help_text="Whether the patient has a disability (1=Yes, 0=No)",
     )
 
     # Privacy & Consent (Kenya Data Protection Act compliance)
@@ -101,6 +182,11 @@ class Patient(models.Model):
         null=True,
         blank=True,
         help_text="Date and time when consent was given",
+    )
+    # Track if consent was deferred (needs to be obtained before discharge)
+    consent_deferred = models.BooleanField(
+        default=False,
+        help_text="Consent was deferred and must be obtained before discharge",
     )
 
     # Staff registration tracking
@@ -174,9 +260,11 @@ class Patient(models.Model):
         ordering = ["-created_at"]
         indexes = [
             models.Index(fields=["mrn"]),
+            models.Index(fields=["cr_number"]),
             models.Index(fields=["last_name", "first_name"]),
             models.Index(fields=["date_of_birth"]),
             models.Index(fields=["is_sensitive"]),
+            models.Index(fields=["identification_type", "identification_number"]),
         ]
         verbose_name = "Patient"
         verbose_name_plural = "Patients"
@@ -230,11 +318,16 @@ class Patient(models.Model):
         Get patient's full name.
 
         Returns:
-            str: Patient's full name (first + last)
+            str: Patient's full name (first + middle + last)
         """
+        parts = []
+        if self.title:
+            parts.append(self.title)
+        parts.append(self.first_name)
         if self.middle_name:
-            return f"{self.first_name} {self.middle_name} {self.last_name}"
-        return f"{self.first_name} {self.last_name}"
+            parts.append(self.middle_name)
+        parts.append(self.last_name)
+        return " ".join(parts)
 
     @property
     def age(self) -> int:

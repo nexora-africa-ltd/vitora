@@ -20,16 +20,30 @@ export interface ClientRegistryClient {
   national_id?: string;
   huduma_number?: string;
   passport_number?: string;
+  alien_id?: string;
+  kra_pin?: string;
+  mandate_number?: string;
   phone_number?: string;
   email?: string;
   county?: string;
   sub_county?: string;
+  ward?: string;
+  address?: string;
+  citizenship?: string;
+  place_of_birth?: string;
+  is_person_with_disability?: boolean;
 }
 
 export interface ClientRegistryFetchRequest {
   national_id?: string;
   huduma_number?: string;
   passport_number?: string;
+  alien_id?: string;
+  kra_pin?: string;
+  mandate_number?: string;
+  cr_number?: string;
+  identification_type?: string;
+  identification_number?: string;
 }
 
 export interface ClientRegistryFetchResponse {
