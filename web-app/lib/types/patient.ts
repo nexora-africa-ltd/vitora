@@ -2,20 +2,67 @@
  * Patient type definitions for Vitora HMIS
  */
 
+// Supported identification types (aligned with SHA/CR)
+export type IdentificationType = 
+  | 'national_id'
+  | 'cr_number'
+  | 'mandate_number'
+  | 'alien_id'
+  | 'kra_pin'
+  | 'temporary_id'
+  | 'passport';
+
+export const IDENTIFICATION_TYPE_OPTIONS: Array<{ value: IdentificationType; label: string }> = [
+  { value: 'national_id', label: 'National ID' },
+  { value: 'cr_number', label: 'HIE Patient ID' },
+  { value: 'mandate_number', label: 'Mandate Number' },
+  { value: 'alien_id', label: 'Alien ID' },
+  { value: 'kra_pin', label: 'KRA PIN' },
+  { value: 'temporary_id', label: 'Temporary ID' },
+  { value: 'passport', label: 'Passport Number' },
+];
+
+// Title options
+export type PatientTitle = 'Mr' | 'Mrs' | 'Miss' | 'Ms' | 'Dr' | 'Prof' | 'Hon' | 'Rev' | '';
+
+export const TITLE_OPTIONS: Array<{ value: PatientTitle; label: string }> = [
+  { value: '', label: 'None' },
+  { value: 'Mr', label: 'Mr' },
+  { value: 'Mrs', label: 'Mrs' },
+  { value: 'Miss', label: 'Miss' },
+  { value: 'Ms', label: 'Ms' },
+  { value: 'Dr', label: 'Dr' },
+  { value: 'Prof', label: 'Prof' },
+  { value: 'Hon', label: 'Hon' },
+  { value: 'Rev', label: 'Rev' },
+];
+
 export interface Patient {
   id: number;
   mrn: string;
+  // Client Registry
+  cr_number?: string;
+  // Personal Information
+  title?: PatientTitle;
   first_name: string;
   middle_name?: string;
   last_name: string;
   full_name?: string;
   date_of_birth: string;
+  place_of_birth?: string;
   age?: number;
   gender: 'M' | 'F' | 'O';
-  national_id?: string;
+  citizenship?: string;
+  is_person_with_disability?: boolean;
+  // Identification
+  identification_type?: IdentificationType;
+  identification_number?: string;
+  national_id?: string; // Legacy, kept for backward compatibility
+  // Contact Information
   phone_number?: string;
   email?: string;
   address?: string;
+  // Location
   county: number;
   county_name?: string;
   sub_county: number;
@@ -23,9 +70,11 @@ export interface Patient {
   ward?: number;
   ward_name?: string;
   village?: string;
+  // Consent
   is_sensitive: boolean;
   consent_given: boolean;
   consent_date?: string;
+  consent_deferred?: boolean;
   referral_source: 'self' | 'clinic' | 'other_facility';
   referred_from_facility?: string;
   // Emergency contacts (nested array)
@@ -41,24 +90,54 @@ export interface Patient {
 }
 
 export interface PatientCreateData {
+  // Client Registry (readonly after creation if from CR)
+  cr_number?: string;
+  // Personal Information
+  title?: PatientTitle;
   first_name: string;
+  middle_name?: string;
   last_name: string;
   date_of_birth: string;
+  place_of_birth?: string;
   gender: 'M' | 'F' | 'O';
-  national_id?: string;
+  citizenship?: string;
+  is_person_with_disability?: boolean;
+  // Identification
+  identification_type?: IdentificationType;
+  identification_number?: string;
+  national_id?: string; // Legacy
+  // Contact Information
   phone_number?: string;
   email?: string;
+  address?: string;
+  // Location
   county: number;
   sub_county: number;
   ward?: number;
   village?: string;
+  // Payment
+  payment_mode?: PaymentMode;
+  insurance_provider?: string;
+  insurance_member_number?: string;
+  // Other
   referral_source?: 'self' | 'clinic' | 'other_facility';
   emergency_contact_name?: string;
   emergency_contact_phone?: string;
   emergency_contact_relationship?: string;
   consent_given?: boolean;
   consent_date?: string;
+  consent_deferred?: boolean;
 }
+
+// Payment mode options
+export type PaymentMode = 'cash' | 'sha' | 'insurance_private' | 'insurance_corporate';
+
+export const PAYMENT_MODE_OPTIONS: Array<{ value: PaymentMode; label: string; description?: string }> = [
+  { value: 'cash', label: 'Cash', description: 'Patient pays out of pocket' },
+  { value: 'sha', label: 'SHA (Social Health Authority)', description: 'Government health insurance' },
+  { value: 'insurance_private', label: 'Private Insurance', description: 'Individual private health cover' },
+  { value: 'insurance_corporate', label: 'Corporate Insurance', description: 'Employer-provided health cover' },
+];
 
 export interface PatientUpdateData extends Partial<PatientCreateData> {
   is_sensitive?: boolean;

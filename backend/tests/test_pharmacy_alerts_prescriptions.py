@@ -473,7 +473,7 @@ class TestPrescriptionModel:
         # Check prescription number format
         assert prescription.prescription_number is not None
         assert prescription.prescription_number.startswith("RX-")
-        assert len(prescription.prescription_number) == 18  # RX-YYYYMMDD-XXXX
+        assert len(prescription.prescription_number) == 16  # RX-YYYYMMDD-XXXX
         
         # Create another prescription on the same day
         prescription2 = Prescription.objects.create(
