@@ -50,6 +50,8 @@ interface InvoiceFormProps {
   isLoading?: boolean;
   onSubmit: (data: InvoiceCreateData) => void;
   onCancel: () => void;
+  onPatientChange?: (patientId: number | null) => void;
+  initialPatient?: number;
 }
 
 interface LineItem {
@@ -87,13 +89,15 @@ export function InvoiceForm({
   isLoading,
   onSubmit,
   onCancel,
+  onPatientChange,
+  initialPatient,
 }: InvoiceFormProps) {
   const isEditing = !!invoice;
 
   const form = useForm<InvoiceFormValues>({
     resolver: zodResolver(invoiceFormSchema),
     defaultValues: {
-      patient: invoice?.patient || 0,
+      patient: invoice?.patient || initialPatient || 0,
       encounter: invoice?.encounter || undefined,
       due_date: invoice?.due_date ? new Date(invoice.due_date) : new Date(Date.now() + 30 * 24 * 60 * 60 * 1000), // 30 days from now
       notes: invoice?.notes || '',
@@ -155,7 +159,11 @@ export function InvoiceForm({
                   <FormLabel>Patient *</FormLabel>
                   <Select
                     value={field.value?.toString() || ''}
-                    onValueChange={(value) => field.onChange(parseInt(value))}
+                    onValueChange={(value) => {
+                      const patientId = parseInt(value);
+                      field.onChange(patientId);
+                      onPatientChange?.(patientId || null);
+                    }}
                     disabled={isEditing}
                   >
                     <FormControl>

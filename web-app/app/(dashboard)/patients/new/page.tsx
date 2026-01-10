@@ -1,13 +1,15 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { ArrowLeft, CheckCircle2, Stethoscope, User, Plus, UserPlus, ArrowRight, Clock, Activity, FileText } from 'lucide-react';
+import { ArrowLeft, CheckCircle2, Stethoscope, User, Plus, UserPlus, ArrowRight, Clock, Activity, FileText, Shield, Search } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { PatientForm } from '@/components/patients/patient-form';
+import { ClientRegistryLookup } from '@/components/billing/sha';
 import {
   Tooltip,
   TooltipContent,
@@ -18,6 +20,7 @@ import { useCreatePatient } from '@/lib/hooks/use-patients-enhanced';
 import { useCheckInPatient } from '@/lib/hooks/use-triage';
 import { useToast } from '@/lib/hooks/use-toast';
 import type { PatientCreateData, Patient } from '@/lib/types/patient';
+import type { ClientRegistryClient } from '@/lib/types/sha';
 
 export default function NewPatientPage() {
   const router = useRouter();
@@ -26,6 +29,17 @@ export default function NewPatientPage() {
   const checkInPatient = useCheckInPatient();
   const [registeredPatient, setRegisteredPatient] = useState<Patient | null>(null);
   const [isCheckingIn, setIsCheckingIn] = useState(false);
+  const [crClient, setCrClient] = useState<ClientRegistryClient | null>(null);
+  const [registrationTab, setRegistrationTab] = useState<'manual' | 'cr-lookup'>('manual');
+
+  // Callback when CR client is found - pre-populate form
+  const handleCRClientFound = useCallback((client: ClientRegistryClient) => {
+    setCrClient(client);
+    toast({
+      title: 'Client Found',
+      description: `Found ${client.first_name} ${client.last_name} in SHA Client Registry. Form pre-populated.`,
+    });
+  }, [toast]);
 
   const handleSubmit = async (data: PatientCreateData) => {
     try {
@@ -216,7 +230,10 @@ export default function NewPatientPage() {
                 variant="outline" 
                 className="w-full" 
                 size="lg"
-                onClick={() => setRegisteredPatient(null)}
+                onClick={() => {
+                  setRegisteredPatient(null);
+                  setCrClient(null);
+                }}
               >
                 <Plus className="mr-2 h-5 w-5" />
                 Register Another
@@ -249,12 +266,39 @@ export default function NewPatientPage() {
         </div>
       </div>
 
+      {/* SHA Client Registry Lookup Card */}
+      <Card className="border-blue-200 dark:border-blue-800 bg-blue-50/50 dark:bg-blue-950/20">
+        <CardHeader className="pb-3">
+          <div className="flex items-center gap-2">
+            <Shield className="h-5 w-5 text-blue-600" />
+            <CardTitle className="text-lg">SHA Client Registry Lookup</CardTitle>
+            <Badge variant="outline" className="ml-auto text-blue-600 border-blue-300">
+              Optional
+            </Badge>
+          </div>
+          <CardDescription>
+            Search SHA Client Registry by National ID to auto-populate patient information and verify coverage
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <ClientRegistryLookup
+            identifierType="national_id"
+            value=""
+            onClientFound={handleCRClientFound}
+            showDetails
+          />
+        </CardContent>
+      </Card>
+
       {/* Form Card */}
       <Card>
         <CardHeader>
           <CardTitle>Patient Information</CardTitle>
           <CardDescription>
-            Fields marked with * are required. Patient data is encrypted and stored securely.
+            {crClient 
+              ? 'Form pre-populated from SHA Client Registry. Review and update if needed.'
+              : 'Fields marked with * are required. Patient data is encrypted and stored securely.'
+            }
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -262,6 +306,14 @@ export default function NewPatientPage() {
             onSubmit={handleSubmit}
             onCancel={handleCancel}
             isLoading={createPatient.isPending}
+            defaultValues={crClient ? {
+              first_name: crClient.first_name,
+              last_name: crClient.last_name,
+              date_of_birth: crClient.date_of_birth ? new Date(crClient.date_of_birth) : undefined,
+              gender: crClient.gender as 'M' | 'F' | 'O',
+              national_id: crClient.national_id || '',
+              phone_number: crClient.phone_number || '',
+            } : undefined}
           />
         </CardContent>
       </Card>
