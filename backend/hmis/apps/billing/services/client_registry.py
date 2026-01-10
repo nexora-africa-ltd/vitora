@@ -226,7 +226,7 @@ class ClientRegistryService:
     def __init__(self):
         """Initialize ClientRegistryService with settings from Django config."""
         self.api_base_url = settings.SHA_API_BASE_URL.rstrip('/')
-        self.timeout = getattr(settings, 'SHA_API_TIMEOUT', 30)
+        self.timeout = getattr(settings, 'SHA_API_TIMEOUT', 19)
         
         # Get agent from settings (required for API calls)
         self.agent = getattr(settings, 'SHA_AGENT', '')
