@@ -38,9 +38,10 @@ const orderSchema = z.object({
   clinical_notes: z.string().optional(),
   items: z.array(
     z.object({
-      test: z.number().positive('Test is required'),
+      test: z.number().min(0, 'Test is required'),
       test_name: z.string().optional(),
       test_code: z.string().min(1, 'Test code is required'),
+      loinc_code: z.string().optional(),
       cost: z.number().optional(),
       special_instructions: z.string().optional(),
     })
@@ -156,6 +157,40 @@ export function LabOrderForm({
     form.trigger('items');
     
     setShowTestSelector(false);
+  }, [form, append, toast]);
+
+  // Handle LOINC test selection from SHA
+  const handleAddLOINCTest = useCallback((loinc: { code: string; title: string; component?: string }) => {
+    // Check if LOINC code is already added
+    const currentItems = form.getValues('items');
+    const exists = currentItems.some(item => item.test_code === loinc.code);
+    if (exists) {
+      toast({
+        title: 'Test already added',
+        description: `${loinc.title} is already in the order.`,
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    append({
+      test: 0, // LOINC tests may not have local catalog entry
+      test_name: loinc.title,
+      test_code: loinc.code,
+      loinc_code: loinc.code, // Store LOINC code for SHA claims
+      cost: 0, // Cost to be determined
+      special_instructions: '',
+    });
+    
+    // Trigger validation for items field to clear any previous errors
+    form.trigger('items');
+    
+    setShowTestSelector(false);
+    
+    toast({
+      title: 'LOINC Test Added',
+      description: `${loinc.title} (${loinc.code}) added. Cost will be determined by lab.`,
+    });
   }, [form, append, toast]);
 
   const onSubmit = async (data: OrderFormData) => {
@@ -496,8 +531,10 @@ export function LabOrderForm({
         {showTestSelector && (
           <TestSelector
             onSelect={handleAddTest}
+            onSelectLOINC={handleAddLOINCTest}
             onClose={() => setShowTestSelector(false)}
             orderType={orderType as OrderType}
+            showLOINCTab={true}
           />
         )}
       </form>

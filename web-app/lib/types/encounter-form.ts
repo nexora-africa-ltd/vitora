@@ -95,6 +95,8 @@ export interface ICD10SearchResult {
 export interface DiagnosisFormData {
   icd10_code: number | null;
   icd10_display?: string;
+  icd11_code?: string;
+  icd11_display?: string;
   diagnosis_type: 'PRIMARY' | 'SECONDARY' | 'DIFFERENTIAL';
   free_text_diagnosis: string;
   notes: string;

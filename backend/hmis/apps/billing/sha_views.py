@@ -70,7 +70,7 @@ class SHAMemberViewSet(viewsets.ModelViewSet):
     permission_classes = [IsAuthenticated, SHAPermission]
     pagination_class = SHAPagination
     filter_backends = [DjangoFilterBackend, filters.SearchFilter, filters.OrderingFilter]
-    filterset_fields = ['status', 'membership_type']
+    filterset_fields = ['status', 'membership_type', 'patient']
     search_fields = ['sha_number', 'national_id', 'patient__first_name', 'patient__last_name']
     ordering_fields = ['created_at', 'sha_number']
     ordering = ['-created_at']
@@ -277,7 +277,7 @@ class SHAClaimViewSet(viewsets.ModelViewSet):
     renderer_classes = [JSONRenderer, BrowsableAPIRenderer, CSVRenderer, XLSXRenderer]
     pagination_class = SHAPagination
     filter_backends = [DjangoFilterBackend, filters.SearchFilter, filters.OrderingFilter]
-    filterset_fields = ['status', 'claim_type', 'patient']
+    filterset_fields = ['status', 'claim_type', 'patient', 'invoice', 'encounter']
     search_fields = ['claim_number', 'sha_claim_reference', 'patient__first_name', 'patient__last_name']
     ordering_fields = ['created_at', 'service_date', 'claimed_amount']
     ordering = ['-created_at']
@@ -694,3 +694,394 @@ class SHAClaimViewSet(viewsets.ModelViewSet):
         except ImportError:
             # Fallback to CSV if openpyxl not available
             return self._export_csv(queryset)
+
+
+# =============================================================================
+# Terminology API Views
+# =============================================================================
+
+from rest_framework.views import APIView
+from hmis.apps.billing.services.terminology import TerminologyService, TerminologyError
+from hmis.apps.billing.services.dha_search import DHASearchService, SearchError
+from hmis.apps.billing.services.client_registry import (
+    ClientRegistryService,
+    ClientRegistryError,
+    ClientNotFoundError,
+)
+
+
+class TerminologySearchView(APIView):
+    """
+    API view for searching medical terminologies.
+    
+    Supports ICD-11, LOINC, ICHI, Interventions, and Drug Products.
+    """
+    permission_classes = [IsAuthenticated]
+    
+    def get(self, request, terminology_type):
+        """
+        Search terminology codes.
+        
+        GET /api/billing/terminology/{type}/?search=query&limit=50
+        
+        Types: icd11, loinc, ichi, interventions, drugs, active-components
+        """
+        search = request.query_params.get('search', '')
+        limit = int(request.query_params.get('limit', 50))
+        
+        if len(search) < 2:
+            return Response({
+                'results': [],
+                'message': 'Search query must be at least 2 characters'
+            })
+        
+        try:
+            service = TerminologyService()
+            
+            if terminology_type == 'icd11':
+                results = service.search_icd11(search, limit=limit)
+            elif terminology_type == 'loinc':
+                results = service.search_loinc(search, limit=limit)
+            elif terminology_type == 'ichi':
+                results = service.search_ichi(search, limit=limit)
+            elif terminology_type == 'interventions':
+                results = service.search_interventions(search, limit=limit)
+            elif terminology_type == 'drugs':
+                results = service.search_drug_products(search, limit=limit)
+            elif terminology_type == 'active-components':
+                results = service.search_active_components(search, limit=limit)
+            else:
+                return Response(
+                    {'error': f'Unknown terminology type: {terminology_type}'},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+            
+            # Convert dataclasses to dicts
+            data = []
+            for item in results:
+                if hasattr(item, '__dict__'):
+                    item_dict = {k: v for k, v in item.__dict__.items() if not k.startswith('_')}
+                    data.append(item_dict)
+                else:
+                    data.append(item)
+            
+            return Response({
+                'results': data,
+                'count': len(data),
+            })
+            
+        except TerminologyError as e:
+            return Response(
+                {'error': str(e), 'status_code': e.status_code},
+                status=status.HTTP_503_SERVICE_UNAVAILABLE
+            )
+        except Exception as e:
+            return Response(
+                {'error': str(e)},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
+
+
+class ClientRegistryView(APIView):
+    """
+    API view for Kenya Client Registry operations.
+    """
+    permission_classes = [IsAuthenticated]
+    
+    def get(self, request):
+        """
+        Fetch client from Client Registry.
+        
+        GET /api/billing/client-registry/fetch/?national_id=XXX
+        GET /api/billing/client-registry/fetch/?client_number=XXX
+        GET /api/billing/client-registry/fetch/?huduma_number=XXX
+        """
+        national_id = request.query_params.get('national_id')
+        client_number = request.query_params.get('client_number')
+        huduma_number = request.query_params.get('huduma_number')
+        passport_number = request.query_params.get('passport_number')
+        
+        if not any([national_id, client_number, huduma_number, passport_number]):
+            return Response(
+                {'error': 'At least one identifier is required'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        try:
+            service = ClientRegistryService()
+            client = service.fetch_client(
+                national_id=national_id,
+                client_number=client_number,
+                huduma_number=huduma_number,
+                passport_number=passport_number,
+            )
+            
+            if client:
+                return Response({
+                    'found': True,
+                    'client': {
+                        'client_number': client.client_number,
+                        'first_name': client.first_name,
+                        'last_name': client.last_name,
+                        'middle_name': client.middle_name,
+                        'date_of_birth': str(client.date_of_birth) if client.date_of_birth else None,
+                        'gender': client.gender,
+                        'national_id': client.national_id,
+                        'huduma_number': client.huduma_number,
+                        'phone_number': client.phone_number,
+                        'email': client.email,
+                        'county': client.county_of_residence,
+                        'sub_county': client.sub_county_of_residence,
+                    }
+                })
+            else:
+                return Response({'found': False})
+                
+        except ClientNotFoundError:
+            return Response({'found': False})
+        except ClientRegistryError as e:
+            return Response(
+                {'error': str(e), 'found': False},
+                status=status.HTTP_503_SERVICE_UNAVAILABLE
+            )
+        except Exception as e:
+            return Response(
+                {'error': str(e), 'found': False},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
+    
+    def post(self, request):
+        """
+        Register a new client in Client Registry.
+        
+        POST /api/billing/client-registry/register/
+        """
+        data = request.data
+        
+        required_fields = ['first_name', 'last_name', 'date_of_birth', 'gender']
+        missing = [f for f in required_fields if not data.get(f)]
+        if missing:
+            return Response(
+                {'error': f'Missing required fields: {", ".join(missing)}'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        try:
+            service = ClientRegistryService()
+            client = service.register_client(
+                first_name=data['first_name'],
+                last_name=data['last_name'],
+                date_of_birth=data['date_of_birth'],
+                gender=data['gender'],
+                national_id=data.get('national_id'),
+                middle_name=data.get('middle_name'),
+                huduma_number=data.get('huduma_number'),
+                passport_number=data.get('passport_number'),
+                phone_number=data.get('phone_number'),
+                email=data.get('email'),
+            )
+            
+            return Response({
+                'success': True,
+                'client_number': client.client_number,
+                'message': 'Client registered successfully',
+            }, status=status.HTTP_201_CREATED)
+            
+        except ClientRegistryError as e:
+            return Response(
+                {'error': str(e), 'success': False},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        except Exception as e:
+            return Response(
+                {'error': str(e), 'success': False},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
+
+
+class FacilitySearchView(APIView):
+    """
+    API view for facility validation via MFL.
+    """
+    permission_classes = [IsAuthenticated]
+    
+    def get(self, request):
+        """
+        Search/validate facility in Master Facility List.
+        
+        GET /api/billing/facility/validate/?facility_code=XXXXX
+        """
+        facility_code = request.query_params.get('facility_code')
+        fid = request.query_params.get('fid')
+        
+        if not facility_code and not fid:
+            return Response(
+                {'error': 'facility_code or fid is required'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        try:
+            service = DHASearchService()
+            facility = service.search_facility(
+                facility_code=facility_code,
+                fid=fid,
+            )
+            
+            if facility and facility.found:
+                return Response({
+                    'found': True,
+                    'facility': {
+                        'facility_code': facility.facility_code,
+                        'name': facility.name,
+                        'level': facility.level,
+                        'county': facility.county,
+                        'sub_county': facility.sub_county,
+                        'ward': facility.ward,
+                        'ownership': facility.ownership,
+                        'facility_type': facility.facility_type,
+                        'operational_status': facility.operational_status,
+                        'license_expiry': str(facility.license_expiry) if facility.license_expiry else None,
+                        'is_sha_contracted': facility.approved,
+                    }
+                })
+            else:
+                return Response({'found': False})
+                
+        except SearchError as e:
+            return Response(
+                {'error': str(e), 'found': False},
+                status=status.HTTP_503_SERVICE_UNAVAILABLE
+            )
+        except Exception as e:
+            return Response(
+                {'error': str(e), 'found': False},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
+
+
+class PractitionerSearchView(APIView):
+    """
+    API view for practitioner validation via HWR.
+    """
+    permission_classes = [IsAuthenticated]
+    
+    def get(self, request):
+        """
+        Search/validate practitioner in Health Worker Registry.
+        
+        GET /api/billing/practitioner/validate/?license_number=XXXXX
+        """
+        identification_number = request.query_params.get('identification_number')
+        registration_number = request.query_params.get('registration_number')
+        license_number = request.query_params.get('license_number')
+        
+        # license_number is an alias for registration_number
+        if license_number and not registration_number:
+            registration_number = license_number
+        
+        if not identification_number and not registration_number:
+            return Response(
+                {'error': 'identification_number or registration_number is required'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        try:
+            service = DHASearchService()
+            practitioner = service.search_practitioner(
+                identification_number=identification_number,
+                registration_number=registration_number,
+            )
+            
+            if practitioner and practitioner.found:
+                return Response({
+                    'found': True,
+                    'practitioner': {
+                        'puid': practitioner.puid,
+                        'first_name': practitioner.first_name,
+                        'last_name': practitioner.last_name,
+                        'middle_name': practitioner.middle_name,
+                        'full_name': practitioner.full_name,
+                        'qualification': practitioner.qualification,
+                        'cadre': practitioner.cadre,
+                        'registration_number': practitioner.registration_number,
+                        'license_status': practitioner.license_status,
+                        'license_expiry': str(practitioner.license_expiry) if practitioner.license_expiry else None,
+                        'specialty': practitioner.specialty,
+                        'is_active': practitioner.is_active,
+                    }
+                })
+            else:
+                return Response({'found': False})
+                
+        except SearchError as e:
+            return Response(
+                {'error': str(e), 'found': False},
+                status=status.HTTP_503_SERVICE_UNAVAILABLE
+            )
+        except Exception as e:
+            return Response(
+                {'error': str(e), 'found': False},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
+
+
+class EligibilityCheckView(APIView):
+    """
+    API view for SHA eligibility verification.
+    """
+    permission_classes = [IsAuthenticated]
+    
+    def post(self, request):
+        """
+        Check eligibility for a patient or SHA member.
+        
+        POST /api/billing/eligibility/check/
+        {
+            "patient_id": 123,
+            "sha_number": "SHA-XXXXX"
+        }
+        """
+        patient_id = request.data.get('patient_id')
+        sha_number = request.data.get('sha_number')
+        
+        if not patient_id and not sha_number:
+            return Response(
+                {'error': 'patient_id or sha_number is required'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        try:
+            # Try to find SHA member
+            member = None
+            if sha_number:
+                member = SHAMember.objects.filter(sha_number=sha_number).first()
+            elif patient_id:
+                member = SHAMember.objects.filter(patient_id=patient_id).first()
+            
+            if not member:
+                return Response({
+                    'is_eligible': False,
+                    'result': 'NOT_FOUND',
+                    'message': 'No SHA membership found for this patient',
+                })
+            
+            # Check eligibility
+            service = SHAEligibilityService()
+            check = service.check_eligibility(member, request.user)
+            
+            return Response({
+                'is_eligible': getattr(check, 'is_eligible', False),
+                'result': getattr(check, 'result', ''),
+                'eligible_until': str(check.eligible_until) if getattr(check, 'eligible_until', None) else None,
+                'benefit_balance': float(check.benefit_balance) if getattr(check, 'benefit_balance', None) else None,
+                'ineligibility_reason': getattr(check, 'ineligibility_reason', ''),
+                'sha_number': member.sha_number,
+                'membership_type': member.membership_type,
+            })
+            
+        except Exception as e:
+            return Response(
+                {'error': str(e), 'is_eligible': False},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
+

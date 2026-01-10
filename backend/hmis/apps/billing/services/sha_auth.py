@@ -2,14 +2,18 @@
 SHA Authentication Service for Vitora HMIS.
 
 This module handles SHA (Social Health Authority) API authentication
-using Basic Auth to obtain JWT tokens per the official Kenya Digital
-Superhighway API specification.
+using two methods:
+1. Basic Auth to obtain JWT tokens for client registry/eligibility APIs
+2. Self-signed JWT for terminology APIs (uses client_secret as HMAC key)
 
 Reference: docs/sha-api-validation-report.md
 Official Endpoint: GET /v1/hie-auth?key={consumer_key}
 """
 
 import base64
+import hashlib
+import hmac
+import json
 import logging
 import time
 from dataclasses import dataclass
@@ -75,14 +79,24 @@ class SHAAuthService:
     
     # Class-level token cache for efficiency
     _token_cache: Optional[SHAToken] = None
+    _terminology_token_cache: Optional[SHAToken] = None
     
     def __init__(self):
         """Initialize SHAAuthService with settings from Django config."""
         self.base_url = settings.SHA_API_BASE_URL.rstrip('/')
         self.consumer_key = settings.SHA_CONSUMER_KEY
+        self.client_secret = getattr(settings, 'SHA_CLIENT_SECRET', '')
         self.username = settings.SHA_USERNAME
         self.password = settings.SHA_PASSWORD
         self.timeout = getattr(settings, 'SHA_API_TIMEOUT', 30)
+    
+    def _base64url_encode(self, data: bytes) -> str:
+        """
+        Base64url encode data (JWT-compatible).
+        
+        Removes padding and replaces +/ with -_
+        """
+        return base64.urlsafe_b64encode(data).rstrip(b'=').decode('utf-8')
     
     def _create_basic_auth_header(self) -> str:
         """
@@ -100,6 +114,78 @@ class SHAAuthService:
         credentials = f"{self.username}:{self.password}"
         encoded = base64.b64encode(credentials.encode()).decode()
         return encoded
+    
+    def generate_terminology_token(self, expires_in: int = 20) -> str:
+        """
+        Generate a self-signed JWT for terminology API calls.
+        
+        The terminology APIs (ICD-11, LOINC, ICHI, etc.) require a JWT
+        that is locally signed using the client_secret as the HMAC key.
+        This is different from the /v1/hie-auth endpoint which returns
+        a server-signed token.
+        
+        Args:
+            expires_in: Token validity in seconds (default 20)
+            
+        Returns:
+            Self-signed JWT token string
+            
+        Example:
+            >>> token = auth_service.generate_terminology_token()
+        """
+        # Check cache first
+        if self._terminology_token_cache and self._terminology_token_cache.is_valid:
+            logger.debug("Using cached terminology token")
+            return self._terminology_token_cache.token
+        
+        now = int(time.time())
+        
+        # JWT Header (compact JSON, no spaces)
+        header = {"alg":"HS256","typ":"JWT"}
+        
+        # JWT Payload (matches Postman pre-request script)
+        payload = {"key":self.consumer_key,"iat":now,"exp":now+expires_in}
+        
+        # Encode header and payload (compact JSON)
+        encoded_header = self._base64url_encode(json.dumps(header, separators=(',', ':')).encode('utf-8'))
+        encoded_payload = self._base64url_encode(json.dumps(payload, separators=(',', ':')).encode('utf-8'))
+        
+        # Create signature
+        message = f"{encoded_header}.{encoded_payload}"
+        signature = hmac.new(
+            self.client_secret.encode('utf-8'),
+            message.encode('utf-8'),
+            hashlib.sha256
+        ).digest()
+        encoded_signature = self._base64url_encode(signature)
+        
+        # Combine to form JWT
+        token = f"{encoded_header}.{encoded_payload}.{encoded_signature}"
+        
+        # Cache the token
+        SHAAuthService._terminology_token_cache = SHAToken(
+            token=token,
+            obtained_at=datetime.now(),
+            expires_in_seconds=expires_in,
+        )
+        
+        logger.debug("Generated new terminology JWT")
+        return token
+    
+    def get_terminology_headers(self) -> dict:
+        """
+        Get HTTP headers for terminology API requests.
+        
+        Uses self-signed JWT for terminology endpoints.
+        
+        Returns:
+            Dict with Authorization and Accept headers
+        """
+        token = self.generate_terminology_token()
+        return {
+            'Authorization': f'Bearer {token}',
+            'Accept': 'application/json',
+        }
     
     def get_token(self, force_refresh: bool = False) -> str:
         """
@@ -159,14 +245,33 @@ class SHAAuthService:
             
             response.raise_for_status()
             
-            data = response.json()
-            
             # Handle different response formats
-            # Official format: {"token": "..."}
-            # Alternative: {"IsSuccess": true, "Data": {"token": "..."}}
-            token = data.get('token')
-            if not token and data.get('Data'):
-                token = data['Data'].get('token')
+            # The API may return:
+            # 1. Plain text JWT token directly
+            # 2. JSON with {"token": "..."}
+            # 3. JSON with {"IsSuccess": true, "Data": {"token": "..."}}
+            
+            content_type = response.headers.get('Content-Type', '')
+            response_text = response.text.strip()
+            
+            if 'application/json' in content_type:
+                data = response.json()
+                # Official format: {"token": "..."}
+                # Alternative: {"IsSuccess": true, "Data": {"token": "..."}}
+                token = data.get('token')
+                if not token and data.get('Data'):
+                    token = data['Data'].get('token')
+            else:
+                # Plain text JWT token (official DHA format)
+                # Check if it looks like a JWT (starts with eyJ)
+                if response_text.startswith('eyJ'):
+                    token = response_text
+                    data = {'token': token}
+                else:
+                    raise SHAAuthError(
+                        f"Unexpected response format: {response_text[:100]}",
+                        status_code=response.status_code
+                    )
             
             if not token:
                 raise SHAAuthError(

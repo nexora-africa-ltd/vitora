@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import {
   Dialog,
   DialogContent,
@@ -20,7 +21,8 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { Search, FlaskConical, Check, X } from 'lucide-react';
+import { Search, FlaskConical, Check, X, Shield } from 'lucide-react';
+import { LOINCSelect } from '@/components/billing/sha';
 import { TestCatalog, TestCategory, OrderType } from '@/lib/types/laboratory';
 import { useTestCatalog, useTestSearch } from '@/lib/hooks/use-laboratory';
 import { useDebounce } from '@/lib/hooks';
@@ -29,9 +31,11 @@ import { cn } from '@/lib/utils/cn';
 
 interface TestSelectorProps {
   onSelect: (test: TestCatalog) => void;
+  onSelectLOINC?: (loinc: { code: string; title: string; component?: string }) => void;
   onClose: () => void;
   orderType?: OrderType;
   excludeTestIds?: number[];
+  showLOINCTab?: boolean;
 }
 
 const CATEGORIES: { value: TestCategory | ''; label: string }[] = [
@@ -63,13 +67,16 @@ const CATEGORY_COLORS: Record<TestCategory, string> = {
 
 export function TestSelector({
   onSelect,
+  onSelectLOINC,
   onClose,
   orderType = 'IN_HOUSE',
   excludeTestIds = [],
+  showLOINCTab = true,
 }: TestSelectorProps) {
   const [searchQuery, setSearchQuery] = useState('');
   const [category, setCategory] = useState<TestCategory | ''>('');
   const [page, setPage] = useState(1);
+  const [testSource, setTestSource] = useState<'local' | 'loinc'>('local');
   const debouncedSearch = useDebounce(searchQuery, 300);
 
   // Use search if query exists, otherwise use catalog list
@@ -93,6 +100,14 @@ export function TestSelector({
     (test) => !excludeTestIds.includes(test.id)
   );
 
+  // Handle LOINC selection
+  const handleLOINCSelect = (loinc: { code: string; title: string }) => {
+    if (onSelectLOINC) {
+      onSelectLOINC(loinc);
+    }
+    onClose();
+  };
+
   return (
     <Dialog open onOpenChange={(open) => !open && onClose()}>
       <DialogContent className="max-w-2xl max-h-[80vh]">
@@ -106,71 +121,109 @@ export function TestSelector({
           </DialogDescription>
         </DialogHeader>
 
-        {/* Search and Filter */}
-        <div className="flex gap-3">
-          <div className="relative flex-1">
-            <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
-            <Input
-              placeholder="Search tests by name or code..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="pl-8"
-              autoFocus
-            />
-          </div>
-          <Select
-            value={category}
-            onValueChange={(value) => setCategory(value as TestCategory | '')}
-          >
-            <SelectTrigger className="w-[180px]">
-              <SelectValue placeholder="Category" />
-            </SelectTrigger>
-            <SelectContent>
-              {CATEGORIES.map((cat) => (
-                <SelectItem key={cat.value} value={cat.value}>
-                  {cat.label}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
-
-        {/* Test List */}
-        <ScrollArea className="h-[400px] pr-4">
-          {isLoading ? (
-            <div className="space-y-3">
-              {[...Array(5)].map((_, i) => (
-                <div key={i} className="p-3 border rounded-lg">
-                  <Skeleton className="h-5 w-48 mb-2" />
-                  <Skeleton className="h-4 w-32" />
-                </div>
-              ))}
-            </div>
-          ) : filteredTests.length === 0 ? (
-            <div className="text-center py-8 text-muted-foreground">
-              <FlaskConical className="h-12 w-12 mx-auto mb-3 opacity-50" />
-              <p>No tests found</p>
-              {searchQuery && (
-                <Button
-                  variant="link"
-                  onClick={() => setSearchQuery('')}
-                >
-                  Clear search
-                </Button>
-              )}
-            </div>
-          ) : (
-            <div className="space-y-2">
-              {filteredTests.map((test) => (
-                <TestCard
-                  key={test.id}
-                  test={test}
-                  onClick={() => onSelect(test)}
-                />
-              ))}
-            </div>
+        <Tabs value={testSource} onValueChange={(v) => setTestSource(v as 'local' | 'loinc')}>
+          {showLOINCTab && (
+            <TabsList className="mb-4">
+              <TabsTrigger value="local">Local Catalog</TabsTrigger>
+              <TabsTrigger value="loinc" className="gap-1">
+                <Shield className="h-3 w-3" />
+                LOINC (SHA)
+              </TabsTrigger>
+            </TabsList>
           )}
-        </ScrollArea>
+
+          <TabsContent value="local" className="mt-0 space-y-4">
+            {/* Search and Filter */}
+            <div className="flex gap-3">
+              <div className="relative flex-1">
+                <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+                <Input
+                  placeholder="Search tests by name or code..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  className="pl-8"
+                  autoFocus={testSource === 'local'}
+                />
+              </div>
+              <Select
+                value={category}
+                onValueChange={(value) => setCategory(value as TestCategory | '')}
+              >
+                <SelectTrigger className="w-[180px]">
+                  <SelectValue placeholder="Category" />
+                </SelectTrigger>
+                <SelectContent>
+                  {CATEGORIES.map((cat) => (
+                    <SelectItem key={cat.value} value={cat.value}>
+                      {cat.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            {/* Test List */}
+            <ScrollArea className="h-[400px] pr-4">
+              {isLoading ? (
+                <div className="space-y-3">
+                  {[...Array(5)].map((_, i) => (
+                    <div key={i} className="p-3 border rounded-lg">
+                      <Skeleton className="h-5 w-48 mb-2" />
+                      <Skeleton className="h-4 w-32" />
+                    </div>
+                  ))}
+                </div>
+              ) : filteredTests.length === 0 ? (
+                <div className="text-center py-8 text-muted-foreground">
+                  <FlaskConical className="h-12 w-12 mx-auto mb-3 opacity-50" />
+                  <p>No tests found</p>
+                  {searchQuery && (
+                    <Button
+                      variant="link"
+                      onClick={() => setSearchQuery('')}
+                    >
+                      Clear search
+                    </Button>
+                  )}
+                </div>
+              ) : (
+                <div className="space-y-2">
+                  {filteredTests.map((test) => (
+                    <TestCard
+                      key={test.id}
+                      test={test}
+                      onClick={() => onSelect(test)}
+                    />
+                  ))}
+                </div>
+              )}
+            </ScrollArea>
+          </TabsContent>
+
+          {showLOINCTab && (
+            <TabsContent value="loinc" className="mt-0 space-y-4">
+              <div className="space-y-3">
+                <p className="text-sm text-muted-foreground">
+                  Search LOINC codes for standardized lab test ordering. Use LOINC codes for SHA insurance claim submissions.
+                </p>
+                <LOINCSelect
+                  value={null}
+                  onSelect={handleLOINCSelect}
+                  placeholder="Search LOINC codes (e.g., glucose, hemoglobin, CBC)..."
+                />
+              </div>
+              
+              <div className="rounded-lg border bg-muted/50 p-4">
+                <h4 className="text-sm font-medium mb-2">About LOINC Codes</h4>
+                <ul className="text-xs text-muted-foreground space-y-1">
+                  <li>• LOINC (Logical Observation Identifiers Names and Codes) is a universal standard for lab tests</li>
+                  <li>• Required for SHA claims to ensure proper reimbursement</li>
+                  <li>• Enables interoperability between healthcare systems</li>
+                </ul>
+              </div>
+            </TabsContent>
+          )}
+        </Tabs>
 
         {/* Pagination for catalog view */}
         {!isSearching && catalogResults.data && catalogResults.data.count > 20 && (

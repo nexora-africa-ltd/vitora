@@ -9,6 +9,16 @@ from pathlib import Path
 
 from django.core.management.utils import get_random_secret_key
 
+# Load environment variables from .env file
+try:
+    from dotenv import load_dotenv
+    # Look for .env in project root (parent of backend/)
+    env_path = Path(__file__).resolve().parent.parent.parent.parent / '.env'
+    if env_path.exists():
+        load_dotenv(env_path)
+except ImportError:
+    pass  # python-dotenv not installed
+
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent.parent
 
@@ -342,7 +352,7 @@ SHA_CONSUMER_KEY = os.getenv("SHA_CONSUMER_KEY", "")  # Consumer key for API acc
 SHA_CLIENT_SECRET = os.getenv("SHA_CLIENT_SECRET", "")  # Client secret (if needed)
 SHA_USERNAME = os.getenv("SHA_USERNAME", "")  # API username for Basic Auth
 SHA_PASSWORD = os.getenv("SHA_PASSWORD", "")  # API password for Basic Auth
-
+SHA_AGENT = os.getenv("SHA_AGENT", "")  # Agent identifier for API requests
 # SHA FHIR Base URL (for bundle profile/resource URLs - NOT API endpoint)
 # UAT: https://qa-mis.apeiro-digital.com
 # Production: https://mis.apeiro-digital.com or https://fhir.sha.go.ke
