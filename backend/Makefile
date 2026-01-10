@@ -29,6 +29,10 @@ help:
 	@echo "createsuperuser - Create a Django superuser"
 	@echo "runserver     - Run the Django development server"
 	@echo "shell         - Open Django shell"
+	@echo "docker-up     - Start Docker containers"
+	@echo "docker-down   - Stop Docker containers"
+	@echo "docker-build  - Build Docker images"
+	@echo "docker-restart - Restart Docker containers"
 
 install:
 	poetry install
@@ -126,3 +130,17 @@ runserver:
 
 shell:	
 	poetry run python manage.py shell
+
+docker-up:
+	docker compose up -d
+	@echo "Docker containers started."
+docker-down:
+	docker compose down
+	@echo "Docker containers stopped."
+docker-build:
+	docker compose build
+	@echo "Docker images built."
+docker-restart:
+	docker compose down
+	docker compose up -d
+	@echo "Docker containers restarted."

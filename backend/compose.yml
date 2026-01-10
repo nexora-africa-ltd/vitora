@@ -1,0 +1,16 @@
+services:
+  icd-api:
+    image: whoicd/icd-api:latest
+    container_name: vitora-icd-api
+    environment:
+      - acceptLicense=true
+      - saveAnalytics=true
+    ports:
+      - "5080:80"
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:80/icd/entity"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
