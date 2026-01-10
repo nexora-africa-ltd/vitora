@@ -806,7 +806,7 @@ class TerminologySearchView(APIView):
             # Check if service is available
             if not service.is_available():
                 return Response(
-                    {'error': 'Local ICD-11 API is not available. Start the container: docker compose -f docker/icd/compose.yml up -d'},
+                    {'error': 'Local ICD-11 API is not available. Start the container: docker compose -f backend/compose.yml up -d'},
                     status=status.HTTP_503_SERVICE_UNAVAILABLE
                 )
             

@@ -7,7 +7,7 @@ container (whoicd/icd-api) for standardized disease classification.
 The local deployment avoids authentication issues with external APIs
 and provides faster response times.
 
-Docker setup: docker/icd/compose.yml
+Docker setup: backend/compose.yml
 API docs: https://icd.who.int/icdapi
 """
 
