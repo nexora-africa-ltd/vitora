@@ -489,6 +489,20 @@ class SHAEligibilityService:
             if data.get('isEmployed') and is_eligible:
                 copay_percentage = 0
             
+            # Format means testing info for frontend
+            means_testing_info = None
+            if means_testing and means_testing.get('means_testing_done'):
+                means_testing_info = {
+                    'record_id': means_testing.get('record_id'),
+                    'contribution': means_testing.get('contribution'),
+                    'monthly_contribution': means_testing.get('monthly_contribution'),
+                    'annual_contribution': means_testing.get('annual_contribution'),
+                    'mt_date': means_testing.get('mt_date'),
+                    'appeal_status': means_testing.get('appeal_status'),
+                    'income_prediction_category': means_testing.get('income_prediction_category'),
+                    'means_testing_done': means_testing.get('means_testing_done'),
+                }
+            
             return {
                 'is_eligible': is_eligible,
                 'sha_number': sha_number,
@@ -496,10 +510,12 @@ class SHAEligibilityService:
                 'coverage_end_date': coverage_end_date,
                 'copay_percentage': copay_percentage,
                 'reason': data.get('message') or data.get('reason', ''),
+                'possible_solution': data.get('possible_solution'),
                 'is_employed': data.get('isEmployed', False),
                 'employment_type': data.get('client_portal_details', {}).get('employment_type'),
                 'employer_name': data.get('client_portal_details', {}).get('employer_name'),
                 'nhif_transition_status': data.get('transition_status'),
+                'means_testing': means_testing_info,
                 'raw_response': response,
                 'error': None,
             }

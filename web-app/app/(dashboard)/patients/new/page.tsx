@@ -316,28 +316,53 @@ export default function NewPatientPage() {
 
           {/* Verification results - only show if we have data */}
           {(eligibility || crClient) && (
-            <div className="mt-4 pt-4 border-t space-y-2">
+            <div className="mt-4 pt-4 border-t space-y-3">
               {eligibility && (
-                <div className={`p-2 rounded-md flex items-center gap-2 text-sm ${
+                <div className={`p-3 rounded-md ${
                   eligibility.is_eligible 
-                    ? 'bg-success/10 text-success' 
-                    : 'bg-warning/10 text-warning-foreground'
+                    ? 'bg-success/10 border border-success/30' 
+                    : 'bg-warning/10 border border-warning/30'
                 }`}>
-                  {eligibility.is_eligible ? (
-                    <>
-                      <CheckCircle2 className="h-4 w-4" />
-                      <span className="flex-1">
-                        <strong>SHA Eligible</strong>
-                        {eligibility.copay_percentage === 0 ? ' • Full coverage' : ` • ${eligibility.copay_percentage}% copay`}
-                      </span>
-                    </>
-                  ) : (
-                    <>
-                      <Shield className="h-4 w-4" />
-                      <span className="flex-1">
-                        <strong>Not SHA Eligible</strong> • {eligibility.reason || 'Cash payment required'}
-                      </span>
-                    </>
+                  <div className={`flex items-center gap-2 text-sm ${
+                    eligibility.is_eligible ? 'text-success' : 'text-warning-foreground'
+                  }`}>
+                    {eligibility.is_eligible ? (
+                      <>
+                        <CheckCircle2 className="h-4 w-4" />
+                        <span className="flex-1">
+                          <strong>SHA Eligible</strong>
+                          {eligibility.copay_percentage === 0 ? ' • Full coverage' : ` • ${eligibility.copay_percentage}% copay`}
+                        </span>
+                      </>
+                    ) : (
+                      <>
+                        <Shield className="h-4 w-4" />
+                        <span className="flex-1">
+                          <strong>Not SHA Eligible</strong>
+                        </span>
+                      </>
+                    )}
+                  </div>
+                  
+                  {/* Additional details for ineligible patients */}
+                  {!eligibility.is_eligible && (
+                    <div className="mt-2 text-sm space-y-1">
+                      {eligibility.sha_number && (
+                        <p className="text-muted-foreground">
+                          <span className="font-medium">SHA Number:</span> {eligibility.sha_number}
+                        </p>
+                      )}
+                      {eligibility.reason && (
+                        <p className="text-warning-foreground">
+                          <span className="font-medium">Reason:</span> {eligibility.reason}
+                        </p>
+                      )}
+                      {eligibility.possible_solution && (
+                        <p className="text-blue-600 dark:text-blue-400">
+                          <span className="font-medium">Solution:</span> {eligibility.possible_solution}
+                        </p>
+                      )}
+                    </div>
                   )}
                 </div>
               )}

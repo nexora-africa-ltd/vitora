@@ -132,6 +132,18 @@ export interface DirectEligibilityCheckRequest {
   identification_number?: string;
 }
 
+// Means testing details from SHA API
+export interface MeansTestingDetails {
+  record_id?: string;
+  contribution?: number;
+  monthly_contribution?: number;
+  annual_contribution?: number;
+  mt_date?: string;
+  appeal_status?: string;
+  income_prediction_category?: string;
+  means_testing_done?: number;
+}
+
 export interface DirectEligibilityCheckResponse {
   is_eligible: boolean;
   sha_number?: string | null;
@@ -139,10 +151,12 @@ export interface DirectEligibilityCheckResponse {
   coverage_end_date?: string | null;
   copay_percentage: number;
   reason?: string;
+  possible_solution?: string;
   is_employed?: boolean;
   employment_type?: string;
   employer_name?: string | null;
   nhif_transition_status?: string;
+  means_testing?: MeansTestingDetails;
   raw_response?: Record<string, unknown>;
   error?: string | null;
 }

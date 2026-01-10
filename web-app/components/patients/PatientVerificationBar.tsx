@@ -95,42 +95,58 @@ function EligibilityResult({ eligibility, onClear }: EligibilityResultProps) {
   
   return (
     <div className={cn(
-      "flex items-center gap-3 p-2 rounded-md text-sm",
+      "flex flex-col gap-2 p-3 rounded-md text-sm",
       isEligible ? "bg-green-50 dark:bg-green-950/30" : "bg-yellow-50 dark:bg-yellow-950/30"
     )}>
-      {isEligible ? (
-        <CheckCircle2 className="h-4 w-4 text-green-600 shrink-0" />
-      ) : (
-        <XCircle className="h-4 w-4 text-yellow-600 shrink-0" />
-      )}
-      <div className="flex-1 min-w-0">
+      <div className="flex items-center gap-3">
         {isEligible ? (
-          <>
-            <span className="font-medium text-green-700 dark:text-green-300">Eligible</span>
-            {eligibility.full_name && (
-              <span className="text-green-600 dark:text-green-400 ml-2">{eligibility.full_name}</span>
-            )}
-            <span className="text-green-600 dark:text-green-400 ml-2">
-              {eligibility.copay_percentage === 0 ? '• Full coverage' : `• ${eligibility.copay_percentage}% copay`}
-            </span>
-            {eligibility.coverage_end_date && (
-              <span className="text-green-600/70 dark:text-green-400/70 ml-1">
-                until {eligibility.coverage_end_date}
-              </span>
-            )}
-          </>
+          <CheckCircle2 className="h-4 w-4 text-green-600 shrink-0" />
         ) : (
-          <>
-            <span className="font-medium text-yellow-700 dark:text-yellow-300">Not Eligible</span>
-            <span className="text-yellow-600 dark:text-yellow-400 ml-2">
-              {eligibility.reason || 'Cash payment required'}
-            </span>
-          </>
+          <XCircle className="h-4 w-4 text-yellow-600 shrink-0" />
         )}
+        <div className="flex-1 min-w-0">
+          {isEligible ? (
+            <>
+              <span className="font-medium text-green-700 dark:text-green-300">Eligible</span>
+              {eligibility.full_name && (
+                <span className="text-green-600 dark:text-green-400 ml-2">{eligibility.full_name}</span>
+              )}
+              <span className="text-green-600 dark:text-green-400 ml-2">
+                {eligibility.copay_percentage === 0 ? '• Full coverage' : `• ${eligibility.copay_percentage}% copay`}
+              </span>
+              {eligibility.coverage_end_date && (
+                <span className="text-green-600/70 dark:text-green-400/70 ml-1">
+                  until {eligibility.coverage_end_date}
+                </span>
+              )}
+            </>
+          ) : (
+            <>
+              <span className="font-medium text-yellow-700 dark:text-yellow-300">Not Eligible</span>
+              {eligibility.sha_number && (
+                <span className="text-yellow-600 dark:text-yellow-400 ml-2">• {eligibility.sha_number}</span>
+              )}
+            </>
+          )}
+        </div>
+        <Button size="sm" variant="ghost" onClick={onClear} className="h-7 w-7 p-0">
+          <X className="h-3 w-3" />
+        </Button>
       </div>
-      <Button size="sm" variant="ghost" onClick={onClear} className="h-7 w-7 p-0">
-        <X className="h-3 w-3" />
-      </Button>
+      
+      {/* Additional details for ineligible patients */}
+      {!isEligible && (eligibility.reason || eligibility.possible_solution) && (
+        <div className="pl-7 space-y-1 text-xs">
+          {eligibility.reason && (
+            <p className="text-yellow-700 dark:text-yellow-300">{eligibility.reason}</p>
+          )}
+          {eligibility.possible_solution && (
+            <p className="text-blue-600 dark:text-blue-400 font-medium">
+              💡 {eligibility.possible_solution}
+            </p>
+          )}
+        </div>
+      )}
     </div>
   );
 }
