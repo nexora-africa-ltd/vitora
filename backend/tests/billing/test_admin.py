@@ -4,7 +4,7 @@ Tests for billing admin interface.
 Tests admin model registration, customization, inline editors, and admin actions.
 """
 
-import pytest
+import pytest # type: ignore
 from django.contrib import admin
 from django.contrib.admin.sites import AdminSite
 from django.contrib.auth import get_user_model

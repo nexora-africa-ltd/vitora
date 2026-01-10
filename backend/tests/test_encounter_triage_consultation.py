@@ -16,7 +16,7 @@ They define the expected behavior for:
 
 from datetime import date
 
-import pytest
+import pytest # type: ignore
 from django.core.exceptions import ValidationError
 from django.utils import timezone
 

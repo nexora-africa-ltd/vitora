@@ -17,7 +17,7 @@ Following TDD methodology - these tests are written BEFORE implementation.
 from datetime import date, timedelta
 from decimal import Decimal
 
-import pytest
+import pytest # type: ignore
 from django.contrib.auth import get_user_model
 from django.utils import timezone
 from rest_framework import status

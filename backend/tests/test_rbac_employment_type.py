@@ -7,7 +7,7 @@ Sprint 1.1-1.2 Track C: RBAC Foundation - Employment Type Extension
 
 from datetime import date
 
-import pytest
+import pytest # type: ignore
 from django.contrib.auth import get_user_model
 
 User = get_user_model()

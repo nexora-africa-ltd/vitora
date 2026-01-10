@@ -1093,6 +1093,27 @@ class NursingKardex(models.Model):
         help_text="One Kardex per admission"
     )
 
+    # Basic care information
+    mobility_status = models.CharField(
+        max_length=100,
+        blank=True,
+        help_text="Patient mobility status (e.g., Ambulatory, Wheelchair, Bedridden)"
+    )
+    dietary_requirements = models.CharField(
+        max_length=200,
+        blank=True,
+        help_text="Dietary requirements (e.g., Regular, Diabetic, NPO)"
+    )
+    allergies = models.TextField(
+        blank=True,
+        help_text="Known allergies"
+    )
+    iv_access = models.CharField(
+        max_length=200,
+        blank=True,
+        help_text="IV access details (e.g., Right arm IV cannula)"
+    )
+
     # Nursing care plan (editable sections)
     nursing_problems = models.TextField(
         blank=True,
@@ -1111,7 +1132,7 @@ class NursingKardex(models.Model):
         help_text="Frequency of care tasks (e.g., 'Wound dressing BD')"
     )
 
-    # Risk assessments
+    # Risk assessments (CharFields with choices)
     fall_risk = models.CharField(
         max_length=20,
         choices=RISK_CHOICES,
@@ -1122,7 +1143,18 @@ class NursingKardex(models.Model):
         max_length=20,
         choices=RISK_CHOICES,
         default='LOW',
-        help_text="Pressure sore risk level"
+        help_text="Patient pressure sore risk level"
+    )
+
+    # Isolation requirements
+    isolation_required = models.BooleanField(
+        default=False,
+        help_text="Whether patient requires isolation"
+    )
+    isolation_type = models.CharField(
+        max_length=100,
+        blank=True,
+        help_text="Type of isolation (e.g., Contact, Droplet, Airborne)"
     )
 
     created_at = models.DateTimeField(auto_now_add=True)

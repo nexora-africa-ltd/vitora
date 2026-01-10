@@ -1115,7 +1115,7 @@ poetry run pytest --cov=hmis --cov-report=html
 Test structure:
 ```python
 # tests/test_patients.py
-import pytest
+import pytest # type: ignore
 from django.test import TestCase
 from hmis.apps.patients.models import Patient
 

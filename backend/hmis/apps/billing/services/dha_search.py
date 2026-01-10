@@ -1,0 +1,660 @@
+"""
+DHA Search Service for Vitora HMIS.
+
+This module handles integration with Kenya Digital Health Agency
+search APIs for facilities and practitioners.
+
+Reference: docs/dha-api-usage-analysis.md
+Official Endpoints:
+    - GET /v1/facility-search - Search facility in Master Facility List
+    - GET /v1/practitioner-search - Search healthcare worker in HWR
+"""
+
+import logging
+from dataclasses import dataclass, field
+from datetime import date, datetime
+from typing import List, Optional, Tuple
+
+import requests
+from django.conf import settings
+
+from .sha_auth import SHAAuthService, SHAAuthError
+
+logger = logging.getLogger(__name__)
+
+
+# =============================================================================
+# Data Classes
+# =============================================================================
+
+@dataclass
+class FacilityInfo:
+    """
+    Facility information from Master Facility List (MFL).
+    
+    Represents a healthcare facility registered in Kenya's
+    Master Facility List.
+    
+    Attributes:
+        facility_code: MFL code (e.g., '24979')
+        found: Whether facility was found (1 = found, 0 = not found)
+        name: Facility name
+        approved: SHA approval status
+        level: Facility level (1-6)
+        operational_status: Current operational status
+        license_expiry: Current license expiry date
+        county: County name
+        sub_county: Sub-county name
+        ward: Ward name
+        ownership: Ownership type (Government, Private, etc.)
+        facility_type: Type (Hospital, Health Center, etc.)
+        fid: Facility ID (FID format)
+        registration_number: Official registration number
+        raw_data: Original API response
+    """
+    
+    facility_code: str
+    found: bool
+    name: Optional[str] = None
+    approved: Optional[bool] = None
+    level: Optional[int] = None
+    operational_status: Optional[str] = None
+    license_expiry: Optional[date] = None
+    county: Optional[str] = None
+    sub_county: Optional[str] = None
+    ward: Optional[str] = None
+    ownership: Optional[str] = None
+    facility_type: Optional[str] = None
+    fid: Optional[str] = None
+    registration_number: Optional[str] = None
+    raw_data: dict = field(default_factory=dict)
+    
+    @property
+    def is_operational(self) -> bool:
+        """Check if facility is operational."""
+        return self.operational_status == 'Operational'
+    
+    @property
+    def is_license_valid(self) -> bool:
+        """Check if license is valid (not expired)."""
+        if not self.license_expiry:
+            return True  # Assume valid if no expiry info
+        return self.license_expiry >= date.today()
+    
+    @property
+    def is_approved_for_sha(self) -> bool:
+        """Check if facility is approved for SHA claims."""
+        return bool(self.approved)
+    
+    @classmethod
+    def from_api_response(cls, data: dict) -> 'FacilityInfo':
+        """
+        Create FacilityInfo from MFL API response.
+        
+        Args:
+            data: API response data dict (from 'message' field)
+            
+        Returns:
+            FacilityInfo instance
+        """
+        # Parse found status
+        found = data.get('found', 0)
+        if isinstance(found, int):
+            found = found == 1
+        
+        # Parse facility level
+        level = data.get('facility_level')
+        if isinstance(level, str) and level.startswith('LEVEL '):
+            level = int(level.replace('LEVEL ', '').strip())
+        elif isinstance(level, str):
+            try:
+                level = int(level)
+            except ValueError:
+                level = None
+        
+        # Parse license expiry date
+        expiry = data.get('current_license_expiry_date')
+        if isinstance(expiry, str):
+            try:
+                expiry = datetime.strptime(expiry, '%Y-%m-%d').date()
+            except ValueError:
+                expiry = None
+        
+        return cls(
+            facility_code=data.get('facility_code', ''),
+            found=found,
+            name=data.get('name') or data.get('facility_name'),
+            approved=data.get('approved'),
+            level=level,
+            operational_status=data.get('operational_status'),
+            license_expiry=expiry,
+            county=data.get('county'),
+            sub_county=data.get('sub_county'),
+            ward=data.get('ward'),
+            ownership=data.get('ownership'),
+            facility_type=data.get('facility_type'),
+            fid=data.get('fid'),
+            registration_number=data.get('registration_number'),
+            raw_data=data,
+        )
+
+
+@dataclass
+class PractitionerInfo:
+    """
+    Practitioner information from Health Worker Registry (HWR).
+    
+    Represents a healthcare worker registered in Kenya's HWR.
+    
+    Attributes:
+        puid: Practitioner Unique ID
+        found: Whether practitioner was found
+        first_name: First name
+        last_name: Last name
+        middle_name: Middle name
+        qualification: Professional qualification
+        cadre: Professional cadre
+        registration_number: Professional registration number
+        license_status: License status (Active, Expired, etc.)
+        license_expiry: License expiry date
+        specialty: Medical specialty (if applicable)
+        facility_code: Current facility MFL code
+        raw_data: Original API response
+    """
+    
+    puid: str
+    found: bool
+    first_name: Optional[str] = None
+    last_name: Optional[str] = None
+    middle_name: Optional[str] = None
+    qualification: Optional[str] = None
+    cadre: Optional[str] = None
+    registration_number: Optional[str] = None
+    license_status: Optional[str] = None
+    license_expiry: Optional[date] = None
+    specialty: Optional[str] = None
+    facility_code: Optional[str] = None
+    raw_data: dict = field(default_factory=dict)
+    
+    @property
+    def full_name(self) -> str:
+        """Return full name."""
+        parts = [self.first_name]
+        if self.middle_name:
+            parts.append(self.middle_name)
+        if self.last_name:
+            parts.append(self.last_name)
+        return ' '.join(filter(None, parts))
+    
+    @property
+    def is_license_active(self) -> bool:
+        """Check if license is active."""
+        if self.license_status:
+            return self.license_status.lower() == 'active'
+        # Check expiry date if status not provided
+        if self.license_expiry:
+            return self.license_expiry >= date.today()
+        return True  # Assume active if no info
+    
+    @classmethod
+    def from_api_response(cls, data: dict) -> 'PractitionerInfo':
+        """
+        Create PractitionerInfo from HWR API response.
+        
+        Args:
+            data: API response data dict
+            
+        Returns:
+            PractitionerInfo instance
+        """
+        # Handle nested 'practitioner' field
+        practitioner_data = data.get('practitioner', data)
+        found = data.get('found', True)
+        
+        if isinstance(found, str):
+            found = found.lower() == 'true'
+        
+        # Parse license expiry
+        expiry = practitioner_data.get('license_expiry')
+        if isinstance(expiry, str):
+            try:
+                expiry = datetime.strptime(expiry, '%Y-%m-%d').date()
+            except ValueError:
+                expiry = None
+        
+        return cls(
+            puid=practitioner_data.get('puid', ''),
+            found=found,
+            first_name=practitioner_data.get('first_name'),
+            last_name=practitioner_data.get('last_name'),
+            middle_name=practitioner_data.get('middle_name'),
+            qualification=practitioner_data.get('qualification'),
+            cadre=practitioner_data.get('cadre'),
+            registration_number=practitioner_data.get('registration_number'),
+            license_status=practitioner_data.get('license_status'),
+            license_expiry=expiry,
+            specialty=practitioner_data.get('specialty'),
+            facility_code=practitioner_data.get('facility_code'),
+            raw_data=data,
+        )
+
+
+# =============================================================================
+# Custom Exception
+# =============================================================================
+
+class SearchError(Exception):
+    """
+    Exception raised for DHA search errors.
+    
+    Attributes:
+        message: Error description
+        status_code: HTTP status code if applicable
+        search_type: Which search failed (facility/practitioner)
+    """
+    
+    def __init__(
+        self,
+        message: str,
+        status_code: int = 0,
+        search_type: Optional[str] = None,
+    ):
+        self.message = message
+        self.status_code = status_code
+        self.search_type = search_type
+        super().__init__(message)
+    
+    def __str__(self):
+        parts = ["SearchError"]
+        if self.search_type:
+            parts.append(f"[{self.search_type}]")
+        if self.status_code:
+            parts.append(f"({self.status_code})")
+        parts.append(f": {self.message}")
+        return ''.join(parts)
+
+
+# =============================================================================
+# Service Class
+# =============================================================================
+
+class DHASearchService:
+    """
+    Service for searching Kenya DHA registries.
+    
+    This service provides methods to search:
+        - Master Facility List (MFL) for healthcare facilities
+        - Health Worker Registry (HWR) for practitioners
+    
+    These searches are crucial for:
+        - Validating facilities for SHA claims
+        - Verifying practitioner credentials
+        - Claims pre-submission validation
+    
+    Attributes:
+        api_base_url: DHA API base URL
+        facility_endpoint: MFL search endpoint
+        practitioner_endpoint: HWR search endpoint
+        timeout: Request timeout in seconds
+        auth_service: SHAAuthService instance
+    
+    Example:
+        >>> search = DHASearchService()
+        >>> facility = search.search_facility(facility_code='24979')
+        >>> if facility and facility.is_operational:
+        ...     print(f"Facility {facility.name} is operational")
+    """
+    
+    def __init__(self):
+        """Initialize DHASearchService with settings from Django config."""
+        self.api_base_url = settings.SHA_API_BASE_URL.rstrip('/')
+        self.timeout = getattr(settings, 'SHA_API_TIMEOUT', 30)
+        
+        # Get endpoint paths from settings
+        endpoints = getattr(settings, 'SHA_ENDPOINTS', {})
+        self.facility_endpoint = endpoints.get('facility_search', '/v1/facility-search')
+        self.practitioner_endpoint = endpoints.get('practitioner_search', '/v1/practitioner-search')
+        
+        # Initialize auth service
+        self.auth_service = SHAAuthService()
+    
+    # =========================================================================
+    # Facility Search
+    # =========================================================================
+    
+    def search_facility(
+        self,
+        facility_code: Optional[str] = None,
+        fid: Optional[str] = None,
+        registration_number: Optional[str] = None,
+    ) -> Optional[FacilityInfo]:
+        """
+        Search for a facility in the Master Facility List.
+        
+        At least one search parameter must be provided.
+        
+        Args:
+            facility_code: MFL facility code (e.g., '24979')
+            fid: Facility ID (FID format)
+            registration_number: Official registration number
+            
+        Returns:
+            FacilityInfo if found, None otherwise
+            
+        Raises:
+            SearchError: If search request fails
+            ValueError: If no search parameter provided
+            
+        Example:
+            >>> facility = service.search_facility(facility_code='24979')
+            >>> if facility:
+            ...     print(f"Found: {facility.name}")
+        """
+        # Validate at least one parameter
+        if not any([facility_code, fid, registration_number]):
+            raise ValueError("At least one search parameter must be provided")
+        
+        # Build query parameters
+        params = {}
+        if facility_code:
+            params['facility_code'] = facility_code
+        elif fid:
+            params['fid'] = fid
+        elif registration_number:
+            params['registration_number'] = registration_number
+        
+        logger.info(f"Searching MFL with params: {params}")
+        
+        try:
+            headers = self.auth_service.get_auth_headers()
+            
+            response = requests.get(
+                f"{self.api_base_url}{self.facility_endpoint}",
+                params=params,
+                headers=headers,
+                timeout=self.timeout,
+            )
+            
+            logger.debug(f"MFL search response status: {response.status_code}")
+            
+            if response.status_code == 401:
+                raise SearchError(
+                    "Authentication failed",
+                    status_code=401,
+                    search_type="FACILITY",
+                )
+            
+            if response.status_code == 500:
+                raise SearchError(
+                    "Server error",
+                    status_code=500,
+                    search_type="FACILITY",
+                )
+            
+            response.raise_for_status()
+            
+            data = response.json()
+            
+            # Response format: {"message": {...}}
+            message_data = data.get('message', data)
+            
+            # Check if facility was found
+            found = message_data.get('found', 0)
+            if isinstance(found, int) and found == 0:
+                return None
+            if isinstance(found, bool) and not found:
+                return None
+            
+            return FacilityInfo.from_api_response(message_data)
+            
+        except SHAAuthError as e:
+            raise SearchError(
+                f"Authentication error: {str(e)}",
+                status_code=e.status_code,
+                search_type="FACILITY",
+            )
+        except requests.Timeout:
+            raise SearchError(
+                "Request timed out",
+                search_type="FACILITY",
+            )
+        except SearchError:
+            raise
+        except requests.RequestException as e:
+            raise SearchError(
+                f"Request failed: {str(e)}",
+                search_type="FACILITY",
+            )
+    
+    def validate_facility_for_claims(
+        self,
+        facility_code: Optional[str] = None,
+        fid: Optional[str] = None,
+    ) -> Tuple[bool, List[str]]:
+        """
+        Validate a facility can submit SHA claims.
+        
+        Checks that facility:
+            - Exists in MFL
+            - Is approved for SHA
+            - Is operational
+            - Has valid license
+        
+        Args:
+            facility_code: MFL facility code
+            fid: Facility ID
+            
+        Returns:
+            Tuple of (is_valid, list_of_errors)
+            
+        Example:
+            >>> valid, errors = service.validate_facility_for_claims(
+            ...     facility_code='24979'
+            ... )
+            >>> if not valid:
+            ...     for error in errors:
+            ...         print(f"Error: {error}")
+        """
+        errors = []
+        
+        try:
+            facility = self.search_facility(
+                facility_code=facility_code,
+                fid=fid,
+            )
+            
+            if not facility:
+                return False, ["Facility not found in Master Facility List"]
+            
+            if not facility.found:
+                return False, ["Facility not found in Master Facility List"]
+            
+            if facility.approved is not None and not facility.approved:
+                errors.append("Facility is not approved for SHA claims")
+            
+            if not facility.is_operational:
+                errors.append(
+                    f"Facility is not operational (status: {facility.operational_status})"
+                )
+            
+            if not facility.is_license_valid:
+                errors.append(
+                    f"Facility license has expired (expiry: {facility.license_expiry})"
+                )
+            
+            return len(errors) == 0, errors
+            
+        except SearchError as e:
+            return False, [f"Facility validation failed: {str(e)}"]
+    
+    # =========================================================================
+    # Practitioner Search
+    # =========================================================================
+    
+    def search_practitioner(
+        self,
+        identification_number: Optional[str] = None,
+        registration_number: Optional[str] = None,
+    ) -> Optional[PractitionerInfo]:
+        """
+        Search for a practitioner in the Health Worker Registry.
+        
+        At least one search parameter must be provided.
+        
+        Args:
+            identification_number: National ID number
+            registration_number: Professional registration number (PUID)
+            
+        Returns:
+            PractitionerInfo if found, None otherwise
+            
+        Raises:
+            SearchError: If search request fails
+            ValueError: If no search parameter provided
+            
+        Example:
+            >>> practitioner = service.search_practitioner(
+            ...     identification_number='12345678'
+            ... )
+            >>> if practitioner:
+            ...     print(f"Found: {practitioner.full_name}")
+        """
+        # Validate at least one parameter
+        if not any([identification_number, registration_number]):
+            raise ValueError("At least one search parameter must be provided")
+        
+        # Build query parameters
+        params = {}
+        if identification_number:
+            params['identification_number'] = identification_number
+        elif registration_number:
+            params['registration_number'] = registration_number
+        
+        logger.info(f"Searching HWR with params: {list(params.keys())}")
+        
+        try:
+            headers = self.auth_service.get_auth_headers()
+            
+            response = requests.get(
+                f"{self.api_base_url}{self.practitioner_endpoint}",
+                params=params,
+                headers=headers,
+                timeout=self.timeout,
+            )
+            
+            logger.debug(f"HWR search response status: {response.status_code}")
+            
+            if response.status_code == 401:
+                raise SearchError(
+                    "Authentication failed",
+                    status_code=401,
+                    search_type="PRACTITIONER",
+                )
+            
+            if response.status_code == 500:
+                raise SearchError(
+                    "Server error",
+                    status_code=500,
+                    search_type="PRACTITIONER",
+                )
+            
+            response.raise_for_status()
+            
+            data = response.json()
+            
+            # Response format: {"message": {...}} or {"found": true, "practitioner": {...}}
+            message_data = data.get('message', data)
+            
+            # Check if practitioner was found
+            found = message_data.get('found', False)
+            if isinstance(found, str):
+                found = found.lower() == 'true'
+            if not found:
+                return None
+            
+            return PractitionerInfo.from_api_response(message_data)
+            
+        except SHAAuthError as e:
+            raise SearchError(
+                f"Authentication error: {str(e)}",
+                status_code=e.status_code,
+                search_type="PRACTITIONER",
+            )
+        except requests.Timeout:
+            raise SearchError(
+                "Request timed out",
+                search_type="PRACTITIONER",
+            )
+        except SearchError:
+            raise
+        except requests.RequestException as e:
+            raise SearchError(
+                f"Request failed: {str(e)}",
+                search_type="PRACTITIONER",
+            )
+    
+    def validate_practitioner_for_claims(
+        self,
+        identification_number: Optional[str] = None,
+        registration_number: Optional[str] = None,
+    ) -> Tuple[bool, List[str]]:
+        """
+        Validate a practitioner can be referenced in SHA claims.
+        
+        Checks that practitioner:
+            - Exists in HWR
+            - Has active license
+        
+        Args:
+            identification_number: National ID number
+            registration_number: Professional registration number
+            
+        Returns:
+            Tuple of (is_valid, list_of_errors)
+            
+        Example:
+            >>> valid, errors = service.validate_practitioner_for_claims(
+            ...     identification_number='12345678'
+            ... )
+            >>> if not valid:
+            ...     for error in errors:
+            ...         print(f"Error: {error}")
+        """
+        errors = []
+        
+        try:
+            practitioner = self.search_practitioner(
+                identification_number=identification_number,
+                registration_number=registration_number,
+            )
+            
+            if not practitioner:
+                return False, ["Practitioner not found or not registered in Health Worker Registry"]
+            
+            if not practitioner.is_license_active:
+                errors.append(
+                    f"Practitioner license is not active (status: {practitioner.license_status})"
+                )
+            
+            return len(errors) == 0, errors
+            
+        except SearchError as e:
+            return False, [f"Practitioner validation failed: {str(e)}"]
+    
+    # =========================================================================
+    # Utility Methods
+    # =========================================================================
+    
+    def is_configured(self) -> bool:
+        """
+        Check if Search service is properly configured.
+        
+        Returns:
+            True if service can be used
+        """
+        return bool(
+            self.api_base_url and
+            self.facility_endpoint and
+            self.practitioner_endpoint and
+            self.auth_service.is_configured()
+        )

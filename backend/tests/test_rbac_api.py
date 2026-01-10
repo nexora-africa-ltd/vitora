@@ -7,7 +7,7 @@ Sprint 1.1-1.2 Track C: RBAC Foundation - Phase 5
 
 from datetime import date
 
-import pytest
+import pytest # type: ignore
 from django.contrib.auth import get_user_model
 from rest_framework import status
 from rest_framework.test import APIClient

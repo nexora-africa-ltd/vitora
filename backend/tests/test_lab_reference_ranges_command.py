@@ -12,7 +12,7 @@ Test Coverage:
 
 from io import StringIO
 
-import pytest
+import pytest # type: ignore
 from django.core.management import call_command
 
 from hmis.apps.laboratory.models import LabResultTemplate

@@ -4,7 +4,7 @@ Tests for Lab Queue API endpoints.
 TDD: Sprint 1.5-1.6 Track B - Lab Queue Management
 """
 
-import pytest
+import pytest # type: ignore
 from datetime import timedelta
 from django.contrib.auth import get_user_model
 from django.utils import timezone

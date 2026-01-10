@@ -7,7 +7,7 @@ Total: 8 tests as specified.
 
 from decimal import Decimal
 
-import pytest
+import pytest # type: ignore
 from django.contrib.auth import get_user_model
 from django.core.exceptions import ValidationError
 

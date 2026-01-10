@@ -18,7 +18,7 @@ Test Coverage (12 tests):
 
 from datetime import date, time, timedelta
 
-import pytest
+import pytest # type: ignore
 from django.core.exceptions import ValidationError
 from django.db import IntegrityError
 

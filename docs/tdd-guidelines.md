@@ -71,7 +71,7 @@ Maintain this distribution:
 
 ```python
 # Example: Test for MRN generation (BEFORE implementation)
-import pytest
+import pytest # type: ignore
 from hmis.models import Patient
 from hmis.utils import generate_mrn
 
@@ -204,7 +204,7 @@ def _get_next_sequence(site_code: str, date_str: str) -> int:
 
 ```python
 # tests/models/test_patient.py
-import pytest
+import pytest # type: ignore
 from django.core.exceptions import ValidationError
 from django.db import IntegrityError
 from hmis.models import Patient
@@ -327,7 +327,7 @@ class TestPatientModel:
 
 ```python
 # tests/api/test_patient_api.py
-import pytest
+import pytest # type: ignore
 from rest_framework.test import APIClient
 from rest_framework import status
 from django.contrib.auth import get_user_model
@@ -499,7 +499,7 @@ class TestPatientAPI:
 
 ```python
 # tests/utils/test_validators.py
-import pytest
+import pytest # type: ignore
 from hmis.utils.validators import (
     validate_kenyan_phone,
     validate_national_id,
@@ -587,7 +587,7 @@ class TestVitalSignsValidator:
 
 ```python
 # tests/integration/test_patient_workflow.py
-import pytest
+import pytest # type: ignore
 from rest_framework.test import APIClient
 from rest_framework import status
 from django.contrib.auth import get_user_model
@@ -778,7 +778,7 @@ backend/tests/
 Use pytest markers to categorize tests:
 
 ```python
-import pytest
+import pytest # type: ignore
 
 @pytest.mark.unit
 def test_patient_model():

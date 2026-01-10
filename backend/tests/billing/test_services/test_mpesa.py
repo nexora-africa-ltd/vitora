@@ -12,7 +12,7 @@ Following TDD approach - tests for MpesaService class covering:
 from decimal import Decimal
 from unittest.mock import Mock, patch
 
-import pytest
+import pytest # type: ignore
 from django.core.exceptions import ValidationError
 
 from hmis.apps.billing.services.mpesa import MpesaService

@@ -349,3 +349,105 @@ class RoleBasedPermission(permissions.BasePermission):
                 return True
 
         return False
+
+
+class SHAPermission(permissions.BasePermission):
+    """
+    Permission class for SHA (Social Health Authority) endpoints.
+
+    Checks for specific SHA permissions based on action:
+    - view_shamember: View SHA members
+    - add_shamember: Create SHA members
+    - change_shamember: Update SHA members
+    - view_shaclaim: View SHA claims
+    - add_shaclaim: Create SHA claims
+    - change_shaclaim: Update SHA claims
+    - submit_sha_claim: Submit claims to SHA
+    - appeal_sha_claim: Appeal rejected claims
+    - verify_sha_eligibility: Verify member eligibility
+    """
+
+    # Map view actions to required permission codenames
+    ACTION_PERMISSION_MAP = {
+        'list': 'view',
+        'retrieve': 'view',
+        'create': 'add',
+        'update': 'change',
+        'partial_update': 'change',
+        'destroy': 'delete',
+    }
+
+    # Custom action permissions
+    CUSTOM_ACTION_PERMISSIONS = {
+        'submit': 'submit_sha_claim',
+        'appeal': 'appeal_sha_claim',
+        'verify': 'verify_sha_eligibility',
+        'check_eligibility': 'verify_sha_eligibility',
+        'submit_claim': 'submit_sha_claim',
+        'appeal_claim': 'appeal_sha_claim',
+        'export': 'view_shaclaim',
+        'bulk_create': 'add_shaclaim',
+        'bulk_update': 'change_shaclaim',
+        'dashboard': 'view_shaclaim',
+    }
+
+    def has_permission(self, request, view):
+        """
+        Check if user has permission for SHA action.
+
+        Args:
+            request: The HTTP request
+            view: The view being accessed
+
+        Returns:
+            bool: True if permission granted
+        """
+        # Check authentication
+        if not request.user or not request.user.is_authenticated:
+            return False
+
+        # Superusers always have permission
+        if request.user.is_superuser:
+            return True
+
+        # Get the action
+        action = getattr(view, 'action', None)
+
+        # Check for custom action permissions first
+        if action in self.CUSTOM_ACTION_PERMISSIONS:
+            perm_codename = self.CUSTOM_ACTION_PERMISSIONS[action]
+            return request.user.has_perm(f'billing.{perm_codename}')
+
+        # Get standard permission for CRUD actions
+        perm_prefix = self.ACTION_PERMISSION_MAP.get(action, 'view')
+
+        # Get model name from view
+        model_name = self._get_model_name(view)
+        if not model_name:
+            return False
+
+        perm_codename = f'{perm_prefix}_{model_name}'
+        return request.user.has_perm(f'billing.{perm_codename}')
+
+    def _get_model_name(self, view):
+        """
+        Get lowercase model name from view.
+
+        Args:
+            view: The view
+
+        Returns:
+            str: Lowercase model name or None
+        """
+        if hasattr(view, 'get_queryset'):
+            try:
+                queryset = view.get_queryset()
+                if hasattr(queryset, 'model'):
+                    return queryset.model.__name__.lower()
+            except Exception:
+                pass
+
+        if hasattr(view, 'queryset') and view.queryset is not None:
+            return view.queryset.model.__name__.lower()
+
+        return None

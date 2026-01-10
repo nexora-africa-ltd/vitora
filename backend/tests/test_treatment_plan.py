@@ -11,7 +11,7 @@ Tests cover:
 
 from datetime import date, timedelta
 
-import pytest
+import pytest # type: ignore
 from django.core.exceptions import ValidationError
 
 pytestmark = pytest.mark.django_db

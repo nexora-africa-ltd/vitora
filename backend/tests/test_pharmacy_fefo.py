@@ -7,7 +7,7 @@ Following TDD approach: Write tests FIRST, then implement service.
 from datetime import date, timedelta
 from decimal import Decimal
 
-import pytest
+import pytest # type: ignore
 
 # ============================================================================
 # FEFO Service Tests (10 tests as per sprint deliverables)
