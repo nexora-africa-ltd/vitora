@@ -5,6 +5,7 @@
 'use client';
 
 import React from 'react';
+import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -40,8 +41,12 @@ import {
   AlertCircle,
   Percent,
   Plus,
+  Shield,
+  ExternalLink,
 } from 'lucide-react';
+import { ClaimSubmissionButton, ClaimStatusBadge } from '@/components/billing/sha';
 import type { Invoice, InvoiceItem, InvoiceStatus } from '@/lib/types/billing';
+import type { Claim } from '@/lib/types/sha';
 import { formatCurrency, formatDate } from '@/lib/utils/format';
 
 function formatKES(amount: number): string {
@@ -67,6 +72,8 @@ interface InvoiceDetailProps {
   onAddItem?: (invoice: Invoice) => void;
   onRemoveItem?: (invoice: Invoice, itemId: number) => void;
   onApplyDiscount?: (invoice: Invoice) => void;
+  onClaimSubmitted?: (claim: Claim) => void;
+  linkedClaim?: Claim | null;
 }
 
 // ============================================================================
@@ -135,6 +142,8 @@ export function InvoiceDetail({
   onAddItem,
   onRemoveItem,
   onApplyDiscount,
+  onClaimSubmitted,
+  linkedClaim,
 }: InvoiceDetailProps) {
   const [cancelDialogOpen, setCancelDialogOpen] = React.useState(false);
 
@@ -230,6 +239,67 @@ export function InvoiceDetail({
           </CardContent>
         </Card>
       </div>
+
+      {/* SHA Claim Status Card - Show for finalized invoices */}
+      {['PENDING', 'PARTIAL', 'PAID', 'OVERDUE'].includes(invoice.status) && (
+        <Card className="border-blue-200 dark:border-blue-800">
+          <CardHeader className="pb-2">
+            <div className="flex items-center gap-2">
+              <Shield className="h-5 w-5 text-blue-600" />
+              <CardTitle className="text-sm font-medium">SHA Insurance Claim</CardTitle>
+            </div>
+          </CardHeader>
+          <CardContent>
+            {linkedClaim ? (
+              <div className="space-y-3">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <ClaimStatusBadge status={linkedClaim.status} />
+                    {linkedClaim.sha_reference && (
+                      <span className="text-sm font-mono text-muted-foreground">
+                        {linkedClaim.sha_reference}
+                      </span>
+                    )}
+                  </div>
+                  <Button variant="outline" size="sm" asChild>
+                    <Link href={`/billing/sha-claims/${linkedClaim.id}`}>
+                      View Claim
+                      <ExternalLink className="h-3 w-3 ml-1" />
+                    </Link>
+                  </Button>
+                </div>
+                {linkedClaim.approved_amount && (
+                  <div className="text-sm">
+                    <span className="text-muted-foreground">Approved: </span>
+                    <span className="font-medium text-green-600">
+                      {formatKES(parseFloat(linkedClaim.approved_amount))}
+                    </span>
+                  </div>
+                )}
+              </div>
+            ) : invoice.sha_claim_number ? (
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm text-muted-foreground">Claim Reference</p>
+                  <p className="font-mono">{invoice.sha_claim_number}</p>
+                </div>
+                <Badge variant="outline">Submitted</Badge>
+              </div>
+            ) : (
+              <div className="space-y-3">
+                <p className="text-sm text-muted-foreground">
+                  Submit this invoice to SHA for insurance reimbursement.
+                </p>
+                <ClaimSubmissionButton
+                  invoiceId={invoice.id}
+                  encounterId={invoice.encounter}
+                  onSuccess={onClaimSubmitted}
+                />
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      )}
 
       {/* Line Items */}
       <Card>

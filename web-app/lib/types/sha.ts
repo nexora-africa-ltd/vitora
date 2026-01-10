@@ -292,6 +292,7 @@ export interface ClaimListParams {
   status?: ClaimStatus;
   patient?: number;
   encounter?: number;
+  invoice?: number;
   start_date?: string;
   end_date?: string;
   ordering?: string;

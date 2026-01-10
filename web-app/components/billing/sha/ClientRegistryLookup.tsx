@@ -32,8 +32,10 @@ import type {
 interface ClientRegistryLookupProps {
   /** Type of identifier to search */
   identifierType: 'national_id' | 'huduma_number' | 'passport_number';
-  /** Current value of the identifier field */
-  value: string;
+  /** Current value of the identifier field (controlled mode) */
+  value?: string;
+  /** Callback when value changes (controlled mode) */
+  onChange?: (value: string) => void;
   /** Callback when client is found and verified */
   onClientFound?: (client: ClientRegistryClient) => void;
   /** Callback when lookup status changes */
@@ -184,7 +186,8 @@ function ClientDetailsCard({ client }: ClientDetailsCardProps) {
 
 export function ClientRegistryLookup({
   identifierType,
-  value,
+  value: controlledValue,
+  onChange,
   onClientFound,
   onStatusChange,
   disabled = false,
@@ -194,6 +197,19 @@ export function ClientRegistryLookup({
   const [status, setStatus] = useState<CRLookupStatus>('idle');
   const [client, setClient] = useState<ClientRegistryClient | null>(null);
   const [errorMessage, setErrorMessage] = useState<string>();
+  const [internalValue, setInternalValue] = useState('');
+
+  // Use controlled value if provided, otherwise use internal state
+  const isControlled = controlledValue !== undefined;
+  const value = isControlled ? controlledValue : internalValue;
+
+  const handleValueChange = useCallback((newValue: string) => {
+    if (isControlled) {
+      onChange?.(newValue);
+    } else {
+      setInternalValue(newValue);
+    }
+  }, [isControlled, onChange]);
 
   const updateStatus = useCallback((newStatus: CRLookupStatus) => {
     setStatus(newStatus);
@@ -251,9 +267,10 @@ export function ClientRegistryLookup({
         <div className="flex-1">
           <Input
             value={value}
-            readOnly
+            onChange={(e) => handleValueChange(e.target.value)}
             placeholder={`Enter ${identifierLabel}`}
             onKeyDown={handleKeyDown}
+            disabled={disabled}
             className={cn(
               status === 'found' && 'border-green-500 focus:ring-green-500',
               status === 'error' && 'border-red-500 focus:ring-red-500'

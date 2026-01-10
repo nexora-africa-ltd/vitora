@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useCallback } from 'react';
-import { Search, Plus, Trash2, AlertCircle, Check, X, ChevronLeft } from 'lucide-react';
+import { Search, Plus, Trash2, AlertCircle, Check, X, ChevronLeft, Shield } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -11,6 +11,8 @@ import { Textarea } from '@/components/ui/textarea';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Checkbox } from '@/components/ui/checkbox';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { ICD11Select } from '@/components/billing/sha';
 import { useICD10Search } from '@/lib/hooks/use-encounter-form';
 import { cn } from '@/lib/utils/cn';
 import type { DiagnosisFormData, ICD10SearchResult } from '@/lib/types/encounter-form';
@@ -25,6 +27,8 @@ export function DiagnosisEntry({ onAdd, existingDiagnoses, disabled = false }: D
   const [searchQuery, setSearchQuery] = useState('');
   const [isSearchOpen, setIsSearchOpen] = useState(false);
   const [selectedCode, setSelectedCode] = useState<ICD10SearchResult | null>(null);
+  const [codeSystem, setCodeSystem] = useState<'icd10' | 'icd11'>('icd10');
+  const [icd11Value, setIcd11Value] = useState<{ code: string; title: string } | null>(null);
   
   const [formData, setFormData] = useState<DiagnosisFormData>({
     icd10_code: null,
@@ -39,27 +43,45 @@ export function DiagnosisEntry({ onAdd, existingDiagnoses, disabled = false }: D
   
   const handleSelectCode = useCallback((code: ICD10SearchResult) => {
     setSelectedCode(code);
+    setIcd11Value(null);
     setFormData(prev => ({
       ...prev,
       icd10_code: code.id,
       icd10_display: `${code.code} - ${code.short_description || code.description}`,
+      icd11_code: undefined,
+      icd11_display: undefined,
     }));
     setSearchQuery('');
     setIsSearchOpen(false);
   }, []);
-  
-  const handleClearCode = useCallback(() => {
+
+  const handleSelectICD11 = useCallback((code: { code: string; title: string }) => {
+    setIcd11Value(code);
     setSelectedCode(null);
     setFormData(prev => ({
       ...prev,
       icd10_code: null,
       icd10_display: undefined,
+      icd11_code: code.code,
+      icd11_display: `${code.code} - ${code.title}`,
+    }));
+  }, []);
+  
+  const handleClearCode = useCallback(() => {
+    setSelectedCode(null);
+    setIcd11Value(null);
+    setFormData(prev => ({
+      ...prev,
+      icd10_code: null,
+      icd10_display: undefined,
+      icd11_code: undefined,
+      icd11_display: undefined,
     }));
   }, []);
   
   const handleAdd = useCallback(() => {
-    if (!selectedCode && !formData.free_text_diagnosis.trim()) {
-      return; // Need either ICD-10 code or free text
+    if (!selectedCode && !icd11Value && !formData.free_text_diagnosis.trim()) {
+      return; // Need either ICD code or free text
     }
     
     onAdd({
@@ -67,10 +89,14 @@ export function DiagnosisEntry({ onAdd, existingDiagnoses, disabled = false }: D
       icd10_display: selectedCode 
         ? `${selectedCode.code} - ${selectedCode.short_description || selectedCode.description}`
         : undefined,
+      icd11_display: icd11Value
+        ? `${icd11Value.code} - ${icd11Value.title}`
+        : undefined,
     });
     
     // Reset form for next entry
     setSelectedCode(null);
+    setIcd11Value(null);
     setFormData({
       icd10_code: null,
       diagnosis_type: 'SECONDARY', // Default to secondary for subsequent diagnoses
@@ -79,20 +105,28 @@ export function DiagnosisEntry({ onAdd, existingDiagnoses, disabled = false }: D
       is_confirmed: false,
       certainty: 'SUSPECTED',
     });
-  }, [formData, selectedCode, onAdd]);
+  }, [formData, selectedCode, icd11Value, onAdd]);
+
+  const hasSelectedCode = selectedCode || icd11Value;
   
   return (
     <div className="space-y-4 border-b pb-4 last:border-0 last:pb-0">
-      {/* ICD-10 Search */}
+      {/* ICD Code Search with ICD-10/ICD-11 Tabs */}
       <div className="space-y-2">
-        <Label>ICD-10 Code Search</Label>
-        {selectedCode ? (
+        <Label>Diagnosis Code Search</Label>
+        {hasSelectedCode ? (
           <div className="flex items-center gap-2 p-3 rounded-md border bg-muted/50">
             <Badge variant="outline" className="font-mono">
-              {selectedCode.code}
+              {selectedCode?.code || icd11Value?.code}
             </Badge>
+            {icd11Value && (
+              <Badge variant="secondary" className="text-xs">
+                <Shield className="h-3 w-3 mr-1" />
+                ICD-11
+              </Badge>
+            )}
             <span className="flex-1 text-sm truncate">
-              {selectedCode.short_description || selectedCode.description}
+              {selectedCode?.short_description || selectedCode?.description || icd11Value?.title}
             </span>
             <Button
               type="button"
@@ -105,62 +139,86 @@ export function DiagnosisEntry({ onAdd, existingDiagnoses, disabled = false }: D
             </Button>
           </div>
         ) : (
-          <div className="relative">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-            <Input
-              type="text"
-              placeholder="Search ICD-10 codes (e.g., malaria, J18, diabetes)..."
-              value={searchQuery}
-              onChange={(e) => {
-                setSearchQuery(e.target.value);
-                setIsSearchOpen(true);
-              }}
-              onFocus={() => setIsSearchOpen(true)}
-              className="pl-9"
-              disabled={disabled}
-            />
+          <Tabs value={codeSystem} onValueChange={(v) => setCodeSystem(v as 'icd10' | 'icd11')}>
+            <TabsList className="mb-2">
+              <TabsTrigger value="icd10">ICD-10 (Local)</TabsTrigger>
+              <TabsTrigger value="icd11" className="gap-1">
+                <Shield className="h-3 w-3" />
+                ICD-11 (SHA)
+              </TabsTrigger>
+            </TabsList>
             
-            {/* Search Results Dropdown */}
-            {isSearchOpen && searchQuery.length >= 2 && (
-              <Card className="absolute z-50 mt-1 w-full shadow-lg max-h-64 overflow-y-auto">
-                <CardContent className="p-2">
-                  {isSearching ? (
-                    <div className="space-y-2">
-                      {[1, 2, 3].map((i) => (
-                        <div key={i} className="flex items-center gap-2 p-2">
-                          <Skeleton className="h-5 w-16" />
-                          <Skeleton className="h-4 flex-1" />
+            <TabsContent value="icd10" className="mt-0">
+              <div className="relative">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                <Input
+                  type="text"
+                  placeholder="Search ICD-10 codes (e.g., malaria, J18, diabetes)..."
+                  value={searchQuery}
+                  onChange={(e) => {
+                    setSearchQuery(e.target.value);
+                    setIsSearchOpen(true);
+                  }}
+                  onFocus={() => setIsSearchOpen(true)}
+                  className="pl-9"
+                  disabled={disabled}
+                />
+                
+                {/* Search Results Dropdown */}
+                {isSearchOpen && searchQuery.length >= 2 && (
+                  <Card className="absolute z-50 mt-1 w-full shadow-lg max-h-64 overflow-y-auto">
+                    <CardContent className="p-2">
+                      {isSearching ? (
+                        <div className="space-y-2">
+                          {[1, 2, 3].map((i) => (
+                            <div key={i} className="flex items-center gap-2 p-2">
+                              <Skeleton className="h-5 w-16" />
+                              <Skeleton className="h-4 flex-1" />
+                            </div>
+                          ))}
                         </div>
-                      ))}
-                    </div>
-                  ) : searchResults && searchResults.length > 0 ? (
-                    <ul className="space-y-1">
-                      {searchResults.map((code) => (
-                        <li key={code.id}>
-                          <button
-                            type="button"
-                            onClick={() => handleSelectCode(code)}
-                            className="w-full flex items-start gap-2 p-2 rounded-md hover:bg-accent transition-colors text-left"
-                          >
-                            <Badge variant="outline" className="font-mono shrink-0">
-                              {code.code}
-                            </Badge>
-                            <span className="text-sm">
-                              {code.short_description || code.description}
-                            </span>
-                          </button>
-                        </li>
-                      ))}
-                    </ul>
-                  ) : (
-                    <p className="text-center text-muted-foreground py-4 text-sm">
-                      No ICD-10 codes found for &quot;{searchQuery}&quot;
-                    </p>
-                  )}
-                </CardContent>
-              </Card>
-            )}
-          </div>
+                      ) : searchResults && searchResults.length > 0 ? (
+                        <ul className="space-y-1">
+                          {searchResults.map((code) => (
+                            <li key={code.id}>
+                              <button
+                                type="button"
+                                onClick={() => handleSelectCode(code)}
+                                className="w-full flex items-start gap-2 p-2 rounded-md hover:bg-accent transition-colors text-left"
+                              >
+                                <Badge variant="outline" className="font-mono shrink-0">
+                                  {code.code}
+                                </Badge>
+                                <span className="text-sm">
+                                  {code.short_description || code.description}
+                                </span>
+                              </button>
+                            </li>
+                          ))}
+                        </ul>
+                      ) : (
+                        <p className="text-center text-muted-foreground py-4 text-sm">
+                          No ICD-10 codes found for &quot;{searchQuery}&quot;
+                        </p>
+                      )}
+                    </CardContent>
+                  </Card>
+                )}
+              </div>
+            </TabsContent>
+            
+            <TabsContent value="icd11" className="mt-0">
+              <ICD11Select
+                value={icd11Value}
+                onSelect={handleSelectICD11}
+                placeholder="Search SHA ICD-11 codes..."
+                disabled={disabled}
+              />
+              <p className="text-xs text-muted-foreground mt-1">
+                Use ICD-11 codes for SHA insurance claim submissions
+              </p>
+            </TabsContent>
+          </Tabs>
         )}
       </div>
       

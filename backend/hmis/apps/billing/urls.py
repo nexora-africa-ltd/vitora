@@ -14,6 +14,16 @@ from hmis.apps.billing.views import (
     ServiceCategoryViewSet,
     ServiceViewSet,
 )
+from hmis.apps.billing.sha_views import (
+    SHAClaimViewSet,
+    SHAMemberViewSet,
+    SHATariffViewSet,
+    TerminologySearchView,
+    ClientRegistryView,
+    FacilitySearchView,
+    PractitionerSearchView,
+    EligibilityCheckView,
+)
 
 router = routers.DefaultRouter()
 router.register(r'service-categories', ServiceCategoryViewSet, basename='servicecategory')
@@ -23,6 +33,11 @@ router.register(r'payments', PaymentViewSet, basename='payment')
 router.register(r'credit-notes', CreditNoteViewSet, basename='creditnote')
 router.register(r'mpesa', MpesaViewSet, basename='mpesa')
 router.register(r'reports', ReportViewSet, basename='reports')
+
+# SHA-related endpoints
+router.register(r'sha-members', SHAMemberViewSet, basename='sha-member')
+router.register(r'sha-tariffs', SHATariffViewSet, basename='sha-tariff')
+router.register(r'claims', SHAClaimViewSet, basename='claim')
 
 app_name = 'billing'
 
@@ -34,4 +49,18 @@ urlpatterns = [
         InvoiceViewSet.as_view({'delete': 'remove_item'}),
         name='invoice-item-delete'
     ),
+    
+    # SHA Terminology endpoints
+    path('terminology/<str:terminology_type>/', TerminologySearchView.as_view(), name='terminology-search'),
+    
+    # SHA Client Registry endpoints
+    path('client-registry/fetch/', ClientRegistryView.as_view(), name='client-registry-fetch'),
+    path('client-registry/register/', ClientRegistryView.as_view(), name='client-registry-register'),
+    
+    # SHA Facility and Practitioner validation
+    path('facility/validate/', FacilitySearchView.as_view(), name='facility-validate'),
+    path('practitioner/validate/', PractitionerSearchView.as_view(), name='practitioner-validate'),
+    
+    # SHA Eligibility check
+    path('eligibility/check/', EligibilityCheckView.as_view(), name='eligibility-check'),
 ]

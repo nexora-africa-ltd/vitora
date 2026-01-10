@@ -78,7 +78,8 @@ function buildQueryString<T extends object>(params: T): string {
 async function fetchFromClientRegistry(
   data: ClientRegistryFetchRequest
 ): Promise<ClientRegistryFetchResponse> {
-  const response = await apiClient.post('/api/billing/client-registry/fetch/', data);
+  const queryString = buildQueryString(data);
+  const response = await apiClient.get(`/api/billing/client-registry/fetch/?${queryString}`);
   return response.data;
 }
 
@@ -260,8 +261,8 @@ async function searchActiveComponents(
 ): Promise<PaginatedActiveComponents> {
   const queryString = params ? buildQueryString(params) : '';
   const url = queryString
-    ? `/api/billing/terminology/components/?${queryString}`
-    : '/api/billing/terminology/components/';
+    ? `/api/billing/terminology/active-components/?${queryString}`
+    : '/api/billing/terminology/active-components/';
   const response = await apiClient.get(url);
   return response.data;
 }

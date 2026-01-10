@@ -228,6 +228,9 @@ class ClientRegistryService:
         self.api_base_url = settings.SHA_API_BASE_URL.rstrip('/')
         self.timeout = getattr(settings, 'SHA_API_TIMEOUT', 30)
         
+        # Get agent from settings (required for API calls)
+        self.agent = getattr(settings, 'SHA_AGENT', '')
+        
         # Get endpoint paths from settings
         endpoints = getattr(settings, 'SHA_ENDPOINTS', {})
         self.fetch_endpoint = endpoints.get(
@@ -281,18 +284,26 @@ class ClientRegistryService:
         if not any([national_id, client_number, huduma_number, passport_number]):
             raise ValueError("At least one identifier must be provided")
         
-        # Build query parameters
-        params = {}
-        if national_id:
-            params['national_id'] = national_id
-        elif client_number:
-            params['client_number'] = client_number
-        elif huduma_number:
-            params['huduma_number'] = huduma_number
-        elif passport_number:
-            params['passport_number'] = passport_number
+        # Build query parameters per official API spec
+        # API requires: identification_type, identification_number, agent
+        params = {
+            'agent': self.agent,
+        }
         
-        logger.info(f"Fetching client from CR with params: {params.keys()}")
+        if national_id:
+            params['identification_type'] = 'National ID'
+            params['identification_number'] = national_id
+        elif client_number:
+            params['identification_type'] = 'client_number'
+            params['identification_number'] = client_number
+        elif huduma_number:
+            params['identification_type'] = 'huduma_number'
+            params['identification_number'] = huduma_number
+        elif passport_number:
+            params['identification_type'] = 'passport_number'
+            params['identification_number'] = passport_number
+        
+        logger.info(f"Fetching client from CR with params: {params}")
         
         try:
             headers = self.auth_service.get_auth_headers()

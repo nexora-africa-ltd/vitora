@@ -283,7 +283,6 @@ export default function NewPatientPage() {
         <CardContent>
           <ClientRegistryLookup
             identifierType="national_id"
-            value=""
             onClientFound={handleCRClientFound}
             showDetails
           />

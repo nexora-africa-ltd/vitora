@@ -25,6 +25,7 @@ import {
   Printer,
   Copy,
   Check,
+  Shield,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -53,6 +54,8 @@ import {
   CommandItem,
   CommandList,
 } from '@/components/ui/command';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { DrugSelect } from '@/components/billing/sha';
 import { useToast } from '@/lib/hooks/use-toast';
 import { usePatient } from '@/lib/hooks/use-patients';
 import { useEncounter } from '@/lib/hooks/use-encounters';
@@ -68,6 +71,16 @@ import {
 } from '@/lib/utils/dosage';
 import type { Drug, PrescriptionItemCreateData } from '@/lib/types/pharmacy';
 
+// SHA Drug type for selected drug
+interface SHADrugSelection {
+  code: string;
+  name: string;
+  price?: number;
+  strength?: string;
+  form?: string;
+  route?: string;
+}
+
 // Get options from utilities
 const FREQUENCY_OPTIONS = getFrequencyOptions();
 const DURATION_OPTIONS = getDurationOptions();
@@ -77,6 +90,7 @@ interface PrescriptionItemForm extends PrescriptionItemCreateData {
   drug_name?: string;
   drug_strength?: string;
   drug_form?: string;
+  sha_code?: string;
 }
 
 export default function NewPrescriptionPage() {
@@ -101,6 +115,10 @@ export default function NewPrescriptionPage() {
   const prescriberName = user 
     ? `${user.first_name || ''} ${user.last_name || ''}`.trim() || user.username 
     : 'Unknown';
+
+  // Drug source selection (local vs SHA)
+  const [drugSource, setDrugSource] = useState<'local' | 'sha'>('local');
+  const [selectedSHADrug, setSelectedSHADrug] = useState<SHADrugSelection | null>(null);
 
   // Drug search state
   const [drugSearch, setDrugSearch] = useState('');
@@ -493,6 +511,7 @@ Prescribed by: ${prescriberName}
   const handleSelectDrug = useCallback((drug: Drug) => {
     const displayName = drug.brand_names?.[0] || drug.generic_name;
     setSelectedDrug(drug);
+    setSelectedSHADrug(null); // Clear SHA drug if local selected
 
     // Get smart defaults based on drug form
     const suggestedRoute = getSuggestedRoute(drug.form);
@@ -503,13 +522,40 @@ Prescribed by: ${prescriberName}
       ...prev,
       drug: drug.id,
       drug_name: displayName,
+      drug_strength: drug.strength,
+      drug_form: drug.form,
       route: suggestedRoute.value,
       dosage: defaultDosage,
+      sha_code: undefined, // Clear SHA code
     }));
     setDrugSearch(displayName);
     setShowDrugSearch(false);
     setCustomDosage('');
     setShowCustomDosage(false);
+  }, []);
+
+  // Select SHA drug from DrugSelect component
+  const handleSelectSHADrug = useCallback((drug: { code: string; name: string; price?: number }) => {
+    const shaDrug: SHADrugSelection = {
+      code: drug.code,
+      name: drug.name,
+      price: drug.price,
+    };
+    setSelectedSHADrug(shaDrug);
+    setSelectedDrug(null); // Clear local drug if SHA selected
+    
+    setCurrentItem((prev) => ({
+      ...prev,
+      drug: undefined, // SHA drugs may not have local ID
+      drug_name: drug.name,
+      drug_strength: '',
+      drug_form: '',
+      route: 'PO',
+      dosage: '',
+      sha_code: drug.code,
+    }));
+    setDrugSearch(drug.name);
+    setShowDrugSearch(false);
   }, []);
 
   // Submit prescription
@@ -642,86 +688,147 @@ Prescribed by: ${prescriberName}
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
-            {/* Drug Search */}
+            {/* Drug Search with Local/SHA Tabs */}
             <div className="space-y-2">
-              <Label htmlFor="drug-search">
+              <Label>
                 Drug <span className="text-destructive">*</span>
               </Label>
-              <div className="relative">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                <Input
-                  id="drug-search"
-                  placeholder="Search drugs by name or generic name..."
-                  value={drugSearch}
-                  onChange={(e) => {
-                    setDrugSearch(e.target.value);
-                    setShowDrugSearch(true);
-                  }}
-                  onFocus={() => setShowDrugSearch(true)}
-                  className={`pl-10 ${errors.drug ? 'border-destructive' : ''}`}
-                />
-                {showDrugSearch && drugSearch && (
-                  <div className="absolute z-50 w-full mt-1 bg-popover border rounded-md shadow-lg max-h-60 overflow-auto">
-                    {drugsLoading ? (
-                      <div className="p-4 text-center text-muted-foreground">
-                        <Loader2 className="h-4 w-4 animate-spin mx-auto" />
-                      </div>
-                    ) : drugsData?.results && drugsData.results.length > 0 ? (
-                      drugsData.results.map((drug) => (
-                        <button
-                          key={drug.id}
-                          type="button"
-                          className="w-full px-4 py-2 text-left hover:bg-accent flex items-center justify-between"
-                          onClick={() => handleSelectDrug(drug)}
-                        >
-                          <div>
-                            <div className="font-medium">
-                              {drug.brand_names?.[0] || drug.generic_name}
-                            </div>
-                            <div className="text-xs text-muted-foreground">
-                              {drug.generic_name} • {drug.form} • {drug.strength}
-                            </div>
-                          </div>
-                          {drug.requires_prescription && (
-                            <Badge variant="outline" className="text-xs">
-                              Rx
-                            </Badge>
-                          )}
-                        </button>
-                      ))
-                    ) : (
-                      <div className="p-4 text-center text-muted-foreground">
-                        No drugs found
-                      </div>
-                    )}
-                  </div>
-                )}
-              </div>
-              {errors.drug && <p className="text-sm text-destructive">{errors.drug}</p>}
               
-              {/* Selected drug info panel */}
-              {selectedDrug && (
-                <div className="mt-2 p-3 rounded-lg bg-muted/50 border">
+              {/* Show selected drug if any */}
+              {(selectedDrug || selectedSHADrug) ? (
+                <div className="p-3 rounded-lg bg-muted/50 border">
                   <div className="flex items-start justify-between">
                     <div>
-                      <div className="font-medium text-sm">
-                        {selectedDrug.brand_names?.[0] || selectedDrug.generic_name}
+                      <div className="flex items-center gap-2">
+                        <span className="font-medium text-sm">
+                          {selectedDrug 
+                            ? (selectedDrug.brand_names?.[0] || selectedDrug.generic_name)
+                            : selectedSHADrug?.name
+                          }
+                        </span>
+                        {selectedSHADrug && (
+                          <Badge variant="secondary" className="text-xs">
+                            <Shield className="h-3 w-3 mr-1" />
+                            SHA
+                          </Badge>
+                        )}
                       </div>
                       <div className="text-xs text-muted-foreground mt-0.5">
-                        {selectedDrug.generic_name} • {selectedDrug.form} • <strong>{selectedDrug.strength}</strong>
+                        {selectedDrug 
+                          ? `${selectedDrug.generic_name} • ${selectedDrug.form} • ${selectedDrug.strength}`
+                          : `${selectedSHADrug?.form || ''} • ${selectedSHADrug?.strength || ''}`
+                        }
                       </div>
+                      {selectedSHADrug?.code && (
+                        <div className="text-xs font-mono text-muted-foreground mt-1">
+                          SHA Code: {selectedSHADrug.code}
+                        </div>
+                      )}
                     </div>
-                    <div className="flex gap-1">
-                      {selectedDrug.requires_prescription && (
+                    <div className="flex gap-1 items-start">
+                      {selectedDrug?.requires_prescription && (
                         <Badge variant="outline" className="text-xs">Rx</Badge>
                       )}
-                      {selectedDrug.is_controlled && (
+                      {selectedDrug?.is_controlled && (
                         <Badge variant="destructive" className="text-xs">Controlled</Badge>
                       )}
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => {
+                          setSelectedDrug(null);
+                          setSelectedSHADrug(null);
+                          setDrugSearch('');
+                          setCurrentItem(prev => ({
+                            ...prev,
+                            drug: undefined,
+                            drug_name: undefined,
+                            sha_code: undefined,
+                          }));
+                        }}
+                      >
+                        Change
+                      </Button>
                     </div>
                   </div>
                 </div>
+              ) : (
+                <Tabs value={drugSource} onValueChange={(v) => setDrugSource(v as 'local' | 'sha')}>
+                  <TabsList className="mb-2">
+                    <TabsTrigger value="local">Local Inventory</TabsTrigger>
+                    <TabsTrigger value="sha" className="gap-1">
+                      <Shield className="h-3 w-3" />
+                      SHA Drugs
+                    </TabsTrigger>
+                  </TabsList>
+                  
+                  <TabsContent value="local" className="mt-0">
+                    <div className="relative">
+                      <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                      <Input
+                        id="drug-search"
+                        placeholder="Search drugs by name or generic name..."
+                        value={drugSearch}
+                        onChange={(e) => {
+                          setDrugSearch(e.target.value);
+                          setShowDrugSearch(true);
+                        }}
+                        onFocus={() => setShowDrugSearch(true)}
+                        className={`pl-10 ${errors.drug ? 'border-destructive' : ''}`}
+                      />
+                      {showDrugSearch && drugSearch && (
+                        <div className="absolute z-50 w-full mt-1 bg-popover border rounded-md shadow-lg max-h-60 overflow-auto">
+                          {drugsLoading ? (
+                            <div className="p-4 text-center text-muted-foreground">
+                              <Loader2 className="h-4 w-4 animate-spin mx-auto" />
+                            </div>
+                          ) : drugsData?.results && drugsData.results.length > 0 ? (
+                            drugsData.results.map((drug) => (
+                              <button
+                                key={drug.id}
+                                type="button"
+                                className="w-full px-4 py-2 text-left hover:bg-accent flex items-center justify-between"
+                                onClick={() => handleSelectDrug(drug)}
+                              >
+                                <div>
+                                  <div className="font-medium">
+                                    {drug.brand_names?.[0] || drug.generic_name}
+                                  </div>
+                                  <div className="text-xs text-muted-foreground">
+                                    {drug.generic_name} • {drug.form} • {drug.strength}
+                                  </div>
+                                </div>
+                                {drug.requires_prescription && (
+                                  <Badge variant="outline" className="text-xs">
+                                    Rx
+                                  </Badge>
+                                )}
+                              </button>
+                            ))
+                          ) : (
+                            <div className="p-4 text-center text-muted-foreground">
+                              No drugs found
+                            </div>
+                          )}
+                        </div>
+                      )}
+                    </div>
+                  </TabsContent>
+                  
+                  <TabsContent value="sha" className="mt-0">
+                    <DrugSelect
+                      value={selectedSHADrug}
+                      onSelect={handleSelectSHADrug}
+                      placeholder="Search SHA drug formulary..."
+                    />
+                    <p className="text-xs text-muted-foreground mt-1">
+                      Use SHA drugs for insurance claim submissions
+                    </p>
+                  </TabsContent>
+                </Tabs>
               )}
+              {errors.drug && <p className="text-sm text-destructive">{errors.drug}</p>}
             </div>
 
             {/* Dosage and Quantity - Smart dosage based on selected drug */}

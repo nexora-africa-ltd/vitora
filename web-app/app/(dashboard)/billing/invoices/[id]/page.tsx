@@ -22,8 +22,10 @@ import {
   useFinalizeInvoice,
   useCancelInvoice,
 } from '@/lib/hooks/billing';
+import { useClaims } from '@/lib/hooks/use-sha';
 import { useToast } from '@/lib/hooks/use-toast';
 import type { Invoice, PaymentCreateData } from '@/lib/types/billing';
+import type { Claim } from '@/lib/types/sha';
 
 export default function InvoiceDetailPage() {
   const router = useRouter();
@@ -34,7 +36,11 @@ export default function InvoiceDetailPage() {
   const [showPaymentDialog, setShowPaymentDialog] = useState(false);
 
   // Fetch invoice
-  const { data: invoice, isLoading } = useInvoice(invoiceId);
+  const { data: invoice, isLoading, refetch: refetchInvoice } = useInvoice(invoiceId);
+
+  // Fetch linked SHA claim for this invoice
+  const { data: claimsData, refetch: refetchClaims } = useClaims({ invoice: invoiceId });
+  const linkedClaim = claimsData?.results?.[0] || null;
 
   // Mutations
   const createPayment = useCreatePayment();
@@ -43,6 +49,15 @@ export default function InvoiceDetailPage() {
 
   const handleRecordPayment = (inv: Invoice) => {
     setShowPaymentDialog(true);
+  };
+
+  const handleClaimSubmitted = (claim: Claim) => {
+    toast({
+      title: 'Claim submitted',
+      description: `Claim ${claim.sha_reference || claim.id} submitted to SHA successfully.`,
+    });
+    refetchClaims();
+    refetchInvoice();
   };
 
   const handlePaymentSubmit = async (data: PaymentCreateData) => {
@@ -124,6 +139,8 @@ export default function InvoiceDetailPage() {
         onFinalize={handleFinalize}
         onCancel={handleCancel}
         onPrint={handlePrint}
+        onClaimSubmitted={handleClaimSubmitted}
+        linkedClaim={linkedClaim}
       />
 
       {/* Payment Dialog */}
