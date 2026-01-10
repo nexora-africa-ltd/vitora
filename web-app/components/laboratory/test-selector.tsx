@@ -6,7 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Switch } from '@/components/ui/switch';
 import {
   Dialog,
   DialogContent,
@@ -21,7 +21,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { Search, FlaskConical, Check, X, Shield } from 'lucide-react';
+import { Search, FlaskConical, Check, X } from 'lucide-react';
 import { LOINCSelect } from '@/components/billing/sha';
 import { TestCatalog, TestCategory, OrderType } from '@/lib/types/laboratory';
 import { useTestCatalog, useTestSearch } from '@/lib/hooks/use-laboratory';
@@ -76,7 +76,7 @@ export function TestSelector({
   const [searchQuery, setSearchQuery] = useState('');
   const [category, setCategory] = useState<TestCategory | ''>('');
   const [page, setPage] = useState(1);
-  const [testSource, setTestSource] = useState<'local' | 'loinc'>('local');
+  const [useLOINC, setUseLOINC] = useState(false);
   const debouncedSearch = useDebounce(searchQuery, 300);
 
   // Use search if query exists, otherwise use catalog list
@@ -121,18 +121,21 @@ export function TestSelector({
           </DialogDescription>
         </DialogHeader>
 
-        <Tabs value={testSource} onValueChange={(v) => setTestSource(v as 'local' | 'loinc')}>
-          {showLOINCTab && (
-            <TabsList className="mb-4">
-              <TabsTrigger value="local">Local Catalog</TabsTrigger>
-              <TabsTrigger value="loinc" className="gap-1">
-                <Shield className="h-3 w-3" />
-                LOINC (SHA)
-              </TabsTrigger>
-            </TabsList>
-          )}
+        {/* Test Source Toggle */}
+        {showLOINCTab && (
+          <div className="flex items-center gap-2 pb-4 border-b">
+            <span className={`text-sm ${!useLOINC ? 'font-medium' : ''}`}>Local Catalog</span>
+            <Switch
+              checked={useLOINC}
+              onCheckedChange={setUseLOINC}
+            />
+            <span className={`text-sm ${useLOINC ? 'font-medium' : ''}`}>LOINC</span>
+          </div>
+        )}
 
-          <TabsContent value="local" className="mt-0 space-y-4">
+        {/* Local Catalog View */}
+        {!useLOINC && (
+          <div className="space-y-4">
             {/* Search and Filter */}
             <div className="flex gap-3">
               <div className="relative flex-1">
@@ -142,7 +145,7 @@ export function TestSelector({
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
                   className="pl-8"
-                  autoFocus={testSource === 'local'}
+                  autoFocus={!useLOINC}
                 />
               </div>
               <Select
@@ -198,32 +201,27 @@ export function TestSelector({
                 </div>
               )}
             </ScrollArea>
-          </TabsContent>
+          </div>
+        )}
 
-          {showLOINCTab && (
-            <TabsContent value="loinc" className="mt-0 space-y-4">
-              <div className="space-y-3">
-                <p className="text-sm text-muted-foreground">
-                  Search LOINC codes for standardized lab test ordering. Use LOINC codes for SHA insurance claim submissions.
-                </p>
-                <LOINCSelect
-                  value={null}
-                  onSelect={handleLOINCSelect}
-                  placeholder="Search LOINC codes (e.g., glucose, hemoglobin, CBC)..."
-                />
-              </div>
-              
-              <div className="rounded-lg border bg-muted/50 p-4">
-                <h4 className="text-sm font-medium mb-2">About LOINC Codes</h4>
-                <ul className="text-xs text-muted-foreground space-y-1">
-                  <li>• LOINC (Logical Observation Identifiers Names and Codes) is a universal standard for lab tests</li>
-                  <li>• Required for SHA claims to ensure proper reimbursement</li>
-                  <li>• Enables interoperability between healthcare systems</li>
-                </ul>
-              </div>
-            </TabsContent>
-          )}
-        </Tabs>
+        {/* LOINC View */}
+        {showLOINCTab && useLOINC && (
+          <div className="space-y-4">
+            <LOINCSelect
+              value={null}
+              onSelect={handleLOINCSelect}
+              placeholder="Search LOINC codes (e.g., glucose, hemoglobin, CBC)..."
+            />
+            
+            <div className="rounded-lg border bg-muted/50 p-4">
+              <h4 className="text-sm font-medium mb-2">About LOINC Codes</h4>
+              <ul className="text-xs text-muted-foreground space-y-1">
+                <li>• LOINC (Logical Observation Identifiers Names and Codes) is a universal standard for lab tests</li>
+                <li>• Used for insurance claims and interoperability</li>
+              </ul>
+            </div>
+          </div>
+        )}
 
         {/* Pagination for catalog view */}
         {!isSearching && catalogResults.data && catalogResults.data.count > 20 && (
