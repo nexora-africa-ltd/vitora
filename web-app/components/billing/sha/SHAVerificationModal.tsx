@@ -39,6 +39,8 @@ import {
   Info,
   Database,
   ShieldQuestionMark,
+  Maximize2,
+  Minimize2,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { shaApi } from '@/lib/api/sha';
@@ -537,6 +539,7 @@ export function SHAVerificationModal({
   onOpenChange,
 }: SHAVerificationModalProps) {
   const [internalOpen, setInternalOpen] = useState(false);
+  const [isExpanded, setIsExpanded] = useState(false);
   
   const isControlled = open !== undefined;
   const isOpen = isControlled ? open : internalOpen;
@@ -546,59 +549,83 @@ export function SHAVerificationModal({
     <Dialog open={isOpen} onOpenChange={setIsOpen}>
       {trigger && <DialogTrigger asChild>{trigger}</DialogTrigger>}
       
-      <DialogContent className="max-w-lg">
+      <DialogContent className={cn(
+        "transition-all duration-200",
+        isExpanded 
+          ? "max-w-[95vw] max-h-[95vh] w-full h-full" 
+          : "max-w-md"
+      )}>
         <DialogHeader>
-          <DialogTitle className="flex items-center gap-2">
-            <Database className="h-5 w-5 text-primary" />
-            Kenya Digital Health Verification
-          </DialogTitle>
+          <div className="flex items-center justify-between">
+            <DialogTitle className="flex items-center gap-2">
+              <Database className="h-5 w-5 text-primary" />
+              Kenya Digital Health Verification
+            </DialogTitle>
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-8 w-8"
+              onClick={() => setIsExpanded(!isExpanded)}
+              title={isExpanded ? "Minimize" : "Expand"}
+            >
+              {isExpanded ? (
+                <Minimize2 className="h-4 w-4" />
+              ) : (
+                <Maximize2 className="h-4 w-4" />
+              )}
+            </Button>
+          </div>
           <DialogDescription>
             Lookup patient records from Client Registry or verify SHA insurance eligibility
           </DialogDescription>
         </DialogHeader>
 
-        <Tabs defaultValue={defaultTab} className="mt-4">
-          <TabsList className="grid w-full grid-cols-2">
-            <TabsTrigger value="cr" className="flex items-center gap-2">
-              <Database className="h-4 w-4" />
-              Client Registry
-            </TabsTrigger>
-            <TabsTrigger value="eligibility" className="flex items-center gap-2">
-              <ShieldCheck className="h-4 w-4" />
-              SHA Eligibility
-            </TabsTrigger>
-          </TabsList>
+        <div className={cn(
+          isExpanded && "overflow-y-auto max-h-[calc(95vh-120px)]"
+        )}>
+          <Tabs defaultValue={defaultTab} className="mt-4">
+            <TabsList className="grid w-full grid-cols-2">
+              <TabsTrigger value="cr" className="flex items-center gap-2">
+                <Database className="h-4 w-4" />
+                Client Registry
+              </TabsTrigger>
+              <TabsTrigger value="eligibility" className="flex items-center gap-2">
+                <ShieldCheck className="h-4 w-4" />
+                SHA Eligibility
+              </TabsTrigger>
+            </TabsList>
 
-          <TabsContent value="cr" className="mt-4">
-            <div className="mb-4 p-3 bg-muted rounded-lg text-sm">
-              <p className="text-muted-foreground">
-                <strong>Client Registry</strong> lookup retrieves patient demographic information 
-                from Kenya&apos;s national database to auto-fill registration details.
-              </p>
-            </div>
-            <CRLookupTab
-              defaultNationalId={defaultNationalId}
-              onClientFound={(client) => {
-                onClientFound?.(client);
-              }}
-            />
-          </TabsContent>
+            <TabsContent value="cr" className="mt-4">
+              <div className="mb-4 p-3 bg-muted rounded-lg text-sm">
+                <p className="text-muted-foreground">
+                  <strong>Client Registry</strong> lookup retrieves patient demographic information 
+                  from Kenya&apos;s national database to auto-fill registration details.
+                </p>
+              </div>
+              <CRLookupTab
+                defaultNationalId={defaultNationalId}
+                onClientFound={(client) => {
+                  onClientFound?.(client);
+                }}
+              />
+            </TabsContent>
 
-          <TabsContent value="eligibility" className="mt-4">
-            <div className="mb-4 p-3 bg-muted rounded-lg text-sm">
-              <p className="text-muted-foreground">
-                <strong>SHA Eligibility</strong> verifies if a person has active Social Health Authority 
-                insurance coverage and determines their copay percentage.
-              </p>
-            </div>
-            <EligibilityCheckTab
-              defaultNationalId={defaultNationalId}
-              onEligibilityVerified={(elig) => {
-                onEligibilityVerified?.(elig);
-              }}
-            />
-          </TabsContent>
-        </Tabs>
+            <TabsContent value="eligibility" className="mt-4">
+              <div className="mb-4 p-3 bg-muted rounded-lg text-sm">
+                <p className="text-muted-foreground">
+                  <strong>SHA Eligibility</strong> verifies if a person has active Social Health Authority 
+                  insurance coverage and determines their copay percentage.
+                </p>
+              </div>
+              <EligibilityCheckTab
+                defaultNationalId={defaultNationalId}
+                onEligibilityVerified={(elig) => {
+                  onEligibilityVerified?.(elig);
+                }}
+              />
+            </TabsContent>
+          </Tabs>
+        </div>
       </DialogContent>
     </Dialog>
   );
