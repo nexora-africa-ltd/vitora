@@ -32,7 +32,7 @@ class SHAToken:
     
     token: str
     obtained_at: datetime
-    expires_in_seconds: int = 3600  # Default 1 hour
+    expires_in_seconds: int = 18  # Default 1 hour
     
     @property
     def expires_at(self) -> datetime:
@@ -88,7 +88,7 @@ class SHAAuthService:
         self.client_secret = getattr(settings, 'SHA_CLIENT_SECRET', '')
         self.username = settings.SHA_USERNAME
         self.password = settings.SHA_PASSWORD
-        self.timeout = getattr(settings, 'SHA_API_TIMEOUT', 30)
+        self.timeout = getattr(settings, 'SHA_API_TIMEOUT', 19)
     
     def _base64url_encode(self, data: bytes) -> str:
         """
@@ -272,7 +272,7 @@ class SHAAuthService:
                 )
             
             # Parse expiry if provided
-            expires_in = data.get('expires_in', 3600)
+            expires_in = int(data.get('expires_in', 19))
             
             # Cache the token
             SHAAuthService._token_cache = SHAToken(
