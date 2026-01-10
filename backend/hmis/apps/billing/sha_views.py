@@ -1131,3 +1131,83 @@ class EligibilityCheckView(APIView):
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR
             )
 
+
+class DirectEligibilityCheckView(APIView):
+    """
+    API view for direct SHA eligibility verification by ID number.
+    
+    This endpoint checks eligibility directly with SHA API without
+    requiring a pre-existing SHAMember record. Useful during patient
+    registration or lookup to verify SHA coverage status.
+    """
+    permission_classes = [IsAuthenticated]
+    
+    def get(self, request):
+        """
+        Check SHA eligibility by identification.
+        
+        GET /api/billing/eligibility/direct/?national_id=12345678
+        GET /api/billing/eligibility/direct/?sha_number=CR1234567890-0
+        
+        Query Parameters:
+            national_id: Kenya National ID number
+            sha_number: SHA/CR number
+            identification_type: Custom ID type (default: 'National ID')
+            identification_number: ID value (if using custom type)
+        
+        Returns:
+            {
+                "is_eligible": true/false,
+                "sha_number": "CR...",
+                "full_name": "JOHN DOE",
+                "coverage_end_date": "2025-12-31",
+                "copay_percentage": 0,
+                "reason": "The individual is covered",
+                "is_employed": true,
+                "error": null
+            }
+        """
+        national_id = request.query_params.get('national_id')
+        sha_number = request.query_params.get('sha_number')
+        identification_type = request.query_params.get('identification_type')
+        identification_number = request.query_params.get('identification_number')
+        
+        # Determine identification type and number
+        if national_id:
+            id_type = 'National ID'
+            id_number = national_id
+        elif sha_number:
+            id_type = 'SHA Number'
+            id_number = sha_number
+        elif identification_type and identification_number:
+            id_type = identification_type
+            id_number = identification_number
+        else:
+            return Response(
+                {'error': 'national_id, sha_number, or identification_type+identification_number is required'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        try:
+            service = SHAEligibilityService()
+            result = service.check_eligibility_direct(id_type, id_number)
+            
+            # Return appropriate status based on result
+            if result.get('error'):
+                return Response(result, status=status.HTTP_503_SERVICE_UNAVAILABLE)
+            
+            return Response(result)
+            
+        except Exception as e:
+            return Response(
+                {
+                    'is_eligible': False,
+                    'error': str(e),
+                    'sha_number': None,
+                    'full_name': None,
+                    'coverage_end_date': None,
+                    'copay_percentage': 100,
+                    'reason': 'Internal error',
+                },
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )

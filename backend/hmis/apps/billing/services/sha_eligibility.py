@@ -414,3 +414,129 @@ class SHAEligibilityService:
             return date.fromisoformat(str(value))
         except (ValueError, TypeError):
             return None
+    
+    def check_eligibility_direct(
+        self,
+        identification_type: str,
+        identification_number: str,
+    ) -> dict:
+        """
+        Check eligibility directly via SHA API without requiring an SHAMember record.
+        
+        This is useful during patient registration/lookup to verify SHA coverage
+        before creating a local SHAMember record.
+        
+        Official API: GET /v2/eligibility?identification_type={type}&identification_number={value}
+        
+        Args:
+            identification_type: Type of ID ('National ID', 'SHA Number', etc.)
+            identification_number: The ID number value
+            
+        Returns:
+            Dict with eligibility information:
+            {
+                'is_eligible': bool,
+                'sha_number': str or None,
+                'full_name': str or None,
+                'coverage_end_date': str or None,
+                'copay_percentage': int,
+                'reason': str,
+                'raw_response': dict,
+                'error': str or None,
+            }
+        """
+        import logging
+        logger = logging.getLogger(__name__)
+        
+        request_params = {
+            'identification_type': identification_type,
+            'identification_number': identification_number,
+        }
+        
+        logger.info(f"Direct eligibility check: {identification_type}={identification_number}")
+        
+        try:
+            response = self._call_api(request_params)
+            
+            # Parse response - official format has eligibility data in 'message' wrapper
+            # or directly in the response
+            data = response.get('message', response) if isinstance(response.get('message'), dict) else response
+            
+            # Check if eligible - SHA uses 'eligible' field (1 = eligible, 0 = not)
+            eligible_value = data.get('eligible', 0)
+            is_eligible = eligible_value == 1 or eligible_value is True
+            
+            # Get SHA number (CR number)
+            sha_number = data.get('id') or data.get('sha_number') or data.get('cr_number')
+            
+            # Coverage end date
+            coverage_end_date = data.get('coverageEndDate')
+            if coverage_end_date:
+                # Parse ISO date format - may have timezone
+                try:
+                    from datetime import datetime
+                    if 'T' in str(coverage_end_date):
+                        dt = datetime.fromisoformat(coverage_end_date.replace('Z', '+00:00'))
+                        coverage_end_date = dt.date().isoformat()
+                except (ValueError, AttributeError):
+                    pass
+            
+            # Determine copay - means testing details may have this
+            means_testing = data.get('means_testing_details', {})
+            copay_percentage = means_testing.get('copay_percentage', 0)
+            
+            # If employed, typically standard 0% copay for SHIF
+            if data.get('isEmployed') and is_eligible:
+                copay_percentage = 0
+            
+            return {
+                'is_eligible': is_eligible,
+                'sha_number': sha_number,
+                'full_name': data.get('full_name'),
+                'coverage_end_date': coverage_end_date,
+                'copay_percentage': copay_percentage,
+                'reason': data.get('message') or data.get('reason', ''),
+                'is_employed': data.get('isEmployed', False),
+                'employment_type': data.get('client_portal_details', {}).get('employment_type'),
+                'employer_name': data.get('client_portal_details', {}).get('employer_name'),
+                'nhif_transition_status': data.get('transition_status'),
+                'raw_response': response,
+                'error': None,
+            }
+            
+        except SHAAuthError as e:
+            logger.error(f"Auth error during eligibility check: {e}")
+            return {
+                'is_eligible': False,
+                'sha_number': None,
+                'full_name': None,
+                'coverage_end_date': None,
+                'copay_percentage': 100,
+                'reason': 'Authentication failed',
+                'raw_response': {},
+                'error': f'Authentication error: {str(e)}',
+            }
+        except requests.Timeout:
+            logger.error("Timeout during eligibility check")
+            return {
+                'is_eligible': False,
+                'sha_number': None,
+                'full_name': None,
+                'coverage_end_date': None,
+                'copay_percentage': 100,
+                'reason': 'Request timeout',
+                'raw_response': {},
+                'error': 'Request timed out',
+            }
+        except requests.RequestException as e:
+            logger.error(f"Request error during eligibility check: {e}")
+            return {
+                'is_eligible': False,
+                'sha_number': None,
+                'full_name': None,
+                'coverage_end_date': None,
+                'copay_percentage': 100,
+                'reason': 'API request failed',
+                'raw_response': {},
+                'error': str(e),
+            }

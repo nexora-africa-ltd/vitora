@@ -3,13 +3,12 @@
 import { useState, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { ArrowLeft, CheckCircle2, Stethoscope, User, Plus, UserPlus, ArrowRight, Clock, Activity, FileText, Shield, Search } from 'lucide-react';
+import { ArrowLeft, CheckCircle2, Stethoscope, User, Plus, UserPlus, ArrowRight, Clock, Activity, FileText, Shield} from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { PatientForm } from '@/components/patients/patient-form';
-import { ClientRegistryLookup } from '@/components/billing/sha';
+import { SHAVerificationModal } from '@/components/billing/sha';
 import {
   Tooltip,
   TooltipContent,
@@ -20,7 +19,7 @@ import { useCreatePatient } from '@/lib/hooks/use-patients-enhanced';
 import { useCheckInPatient } from '@/lib/hooks/use-triage';
 import { useToast } from '@/lib/hooks/use-toast';
 import type { PatientCreateData, Patient } from '@/lib/types/patient';
-import type { ClientRegistryClient } from '@/lib/types/sha';
+import type { ClientRegistryClient, DirectEligibilityCheckResponse } from '@/lib/types/sha';
 
 export default function NewPatientPage() {
   const router = useRouter();
@@ -30,16 +29,22 @@ export default function NewPatientPage() {
   const [registeredPatient, setRegisteredPatient] = useState<Patient | null>(null);
   const [isCheckingIn, setIsCheckingIn] = useState(false);
   const [crClient, setCrClient] = useState<ClientRegistryClient | null>(null);
-  const [registrationTab, setRegistrationTab] = useState<'manual' | 'cr-lookup'>('manual');
+  const [eligibility, setEligibility] = useState<DirectEligibilityCheckResponse | null>(null);
 
+  // Callback when CR client is found - pre-populate form
   // Callback when CR client is found - pre-populate form
   const handleCRClientFound = useCallback((client: ClientRegistryClient) => {
     setCrClient(client);
     toast({
       title: 'Client Found',
-      description: `Found ${client.first_name} ${client.last_name} in SHA Client Registry. Form pre-populated.`,
+      description: `Found ${client.first_name} ${client.last_name}. Form will be pre-populated.`,
     });
   }, [toast]);
+
+  // Callback when eligibility is verified
+  const handleEligibilityVerified = useCallback((elig: DirectEligibilityCheckResponse) => {
+    setEligibility(elig);
+  }, []);
 
   const handleSubmit = async (data: PatientCreateData) => {
     try {
@@ -233,6 +238,7 @@ export default function NewPatientPage() {
                 onClick={() => {
                   setRegisteredPatient(null);
                   setCrClient(null);
+                  setEligibility(null);
                 }}
               >
                 <Plus className="mr-2 h-5 w-5" />
@@ -266,26 +272,88 @@ export default function NewPatientPage() {
         </div>
       </div>
 
-      {/* SHA Client Registry Lookup Card */}
-      <Card className="border-blue-200 dark:border-blue-800 bg-blue-50/50 dark:bg-blue-950/20">
-        <CardHeader className="pb-3">
-          <div className="flex items-center gap-2">
-            <Shield className="h-5 w-5 text-blue-600" />
-            <CardTitle className="text-lg">SHA Client Registry Lookup</CardTitle>
-            <Badge variant="outline" className="ml-auto text-blue-600 border-blue-300">
-              Optional
-            </Badge>
+      {/* Kenya Digital Health Verification */}
+      <Card className="border-muted">
+        <CardContent className="py-4">
+          <div className="flex flex-wrap items-center justify-between gap-4">
+            {/* Left side - info */}
+            <div className="flex items-center gap-3">
+              <div className="h-10 w-10 rounded-full bg-muted flex items-center justify-center">
+                <Shield className="h-5 w-5 text-muted-foreground" />
+              </div>
+              <div>
+                <p className="font-medium">Kenya Digital Health Services</p>
+                <p className="text-sm text-muted-foreground">
+                  Verify patient information before registration
+                </p>
+              </div>
+            </div>
+
+            {/* Right side - action buttons */}
+            <div className="flex items-center gap-2">
+              <SHAVerificationModal
+                trigger={
+                  <Button variant="outline" size="sm">
+                    <User className="h-4 w-4 mr-2" />
+                    Client Registry
+                  </Button>
+                }
+                defaultTab="cr"
+                onClientFound={handleCRClientFound}
+                onEligibilityVerified={handleEligibilityVerified}
+              />
+              <SHAVerificationModal
+                trigger={
+                  <Button variant="outline" size="sm">
+                    <Shield className="h-4 w-4 mr-2" />
+                    SHA Eligibility
+                  </Button>
+                }
+                defaultTab="eligibility"
+                onClientFound={handleCRClientFound}
+                onEligibilityVerified={handleEligibilityVerified}
+              />
+            </div>
           </div>
-          <CardDescription>
-            Search SHA Client Registry by National ID to auto-populate patient information and verify coverage
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <ClientRegistryLookup
-            identifierType="national_id"
-            onClientFound={handleCRClientFound}
-            showDetails
-          />
+
+          {/* Verification results - only show if we have data */}
+          {(eligibility || crClient) && (
+            <div className="mt-4 pt-4 border-t space-y-2">
+              {eligibility && (
+                <div className={`p-2 rounded-md flex items-center gap-2 text-sm ${
+                  eligibility.is_eligible 
+                    ? 'bg-success/10 text-success' 
+                    : 'bg-warning/10 text-warning-foreground'
+                }`}>
+                  {eligibility.is_eligible ? (
+                    <>
+                      <CheckCircle2 className="h-4 w-4" />
+                      <span className="flex-1">
+                        <strong>SHA Eligible</strong>
+                        {eligibility.copay_percentage === 0 ? ' • Full coverage' : ` • ${eligibility.copay_percentage}% copay`}
+                      </span>
+                    </>
+                  ) : (
+                    <>
+                      <Shield className="h-4 w-4" />
+                      <span className="flex-1">
+                        <strong>Not SHA Eligible</strong> • {eligibility.reason || 'Cash payment required'}
+                      </span>
+                    </>
+                  )}
+                </div>
+              )}
+
+              {crClient && (
+                <div className="p-2 rounded-md bg-primary/10 text-primary flex items-center gap-2 text-sm">
+                  <User className="h-4 w-4" />
+                  <span className="flex-1">
+                    <strong>CR Verified:</strong> {crClient.first_name} {crClient.last_name} • {crClient.client_number}
+                  </span>
+                </div>
+              )}
+            </div>
+          )}
         </CardContent>
       </Card>
 

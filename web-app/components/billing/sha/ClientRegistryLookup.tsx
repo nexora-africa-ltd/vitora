@@ -1,13 +1,14 @@
 /**
  * Client Registry Lookup Component
  * Searches SHA Client Registry by National ID, Huduma Number, or Passport
+ * Also verifies SHA eligibility for found clients
  * 
  * @see docs/sha-frontend-integration-guide.md - Flow 1
  */
 'use client';
 
 import React, { useState, useCallback } from 'react';
-import { Search, CheckCircle2, AlertCircle, Info, Loader2, UserCheck } from 'lucide-react';
+import { Search, CheckCircle2, AlertCircle, Info, Loader2, UserCheck, ShieldCheck, ShieldOff } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -23,6 +24,7 @@ import type {
   ClientRegistryClient, 
   CRLookupStatus,
   ClientRegistryFetchRequest,
+  DirectEligibilityCheckResponse,
 } from '@/lib/types/sha';
 
 // ============================================================================
@@ -37,13 +39,15 @@ interface ClientRegistryLookupProps {
   /** Callback when value changes (controlled mode) */
   onChange?: (value: string) => void;
   /** Callback when client is found and verified */
-  onClientFound?: (client: ClientRegistryClient) => void;
+  onClientFound?: (client: ClientRegistryClient, eligibility?: DirectEligibilityCheckResponse) => void;
   /** Callback when lookup status changes */
   onStatusChange?: (status: CRLookupStatus) => void;
   /** Whether the lookup is disabled */
   disabled?: boolean;
   /** Whether to show the full client details card */
   showDetails?: boolean;
+  /** Whether to also check SHA eligibility */
+  checkEligibility?: boolean;
   /** Custom class name */
   className?: string;
 }
@@ -117,20 +121,65 @@ function StatusDisplay({ status, client, errorMessage }: StatusDisplayProps) {
 
 interface ClientDetailsCardProps {
   client: ClientRegistryClient;
+  eligibility?: DirectEligibilityCheckResponse | null;
 }
 
-function ClientDetailsCard({ client }: ClientDetailsCardProps) {
+function ClientDetailsCard({ client, eligibility }: ClientDetailsCardProps) {
+  const isEligible = eligibility?.is_eligible ?? false;
+  
   return (
-    <div className="mt-4 p-4 border rounded-lg bg-green-50 dark:bg-green-950 border-green-200 dark:border-green-800">
+    <div className={cn(
+      "mt-4 p-4 border rounded-lg",
+      isEligible 
+        ? "bg-green-50 dark:bg-green-950 border-green-200 dark:border-green-800"
+        : "bg-yellow-50 dark:bg-yellow-950 border-yellow-200 dark:border-yellow-800"
+    )}>
       <div className="flex items-center gap-2 mb-3">
-        <UserCheck className="h-5 w-5 text-green-600" />
-        <h4 className="font-medium text-green-700 dark:text-green-300">
+        <UserCheck className={cn("h-5 w-5", isEligible ? "text-green-600" : "text-yellow-600")} />
+        <h4 className={cn("font-medium", isEligible ? "text-green-700 dark:text-green-300" : "text-yellow-700 dark:text-yellow-300")}>
           Client Registry Record
         </h4>
-        <Badge variant="outline" className="ml-auto text-green-600 border-green-600">
+        <Badge variant="outline" className={cn("ml-auto", isEligible ? "text-green-600 border-green-600" : "text-yellow-600 border-yellow-600")}>
           {client.client_number}
         </Badge>
       </div>
+      
+      {/* SHA Eligibility Status */}
+      {eligibility && (
+        <div className={cn(
+          "mb-3 p-2 rounded-md flex items-center gap-2",
+          isEligible ? "bg-green-100 dark:bg-green-900" : "bg-yellow-100 dark:bg-yellow-900"
+        )}>
+          {isEligible ? (
+            <>
+              <ShieldCheck className="h-5 w-5 text-green-600" />
+              <div className="flex-1">
+                <span className="font-medium text-green-700 dark:text-green-300">SHA COVERED</span>
+                {eligibility.coverage_end_date && (
+                  <span className="ml-2 text-sm text-green-600 dark:text-green-400">
+                    until {eligibility.coverage_end_date}
+                  </span>
+                )}
+                {eligibility.copay_percentage !== undefined && eligibility.copay_percentage === 0 && (
+                  <Badge variant="secondary" className="ml-2 text-xs bg-green-200 text-green-700">
+                    Full Coverage
+                  </Badge>
+                )}
+              </div>
+            </>
+          ) : (
+            <>
+              <ShieldOff className="h-5 w-5 text-yellow-600" />
+              <div className="flex-1">
+                <span className="font-medium text-yellow-700 dark:text-yellow-300">NOT SHA COVERED</span>
+                <span className="ml-2 text-sm text-yellow-600 dark:text-yellow-400">
+                  {eligibility.reason || 'Cash payment required'}
+                </span>
+              </div>
+            </>
+          )}
+        </div>
+      )}
       
       <div className="grid grid-cols-2 md:grid-cols-3 gap-4 text-sm">
         <div>
@@ -192,10 +241,12 @@ export function ClientRegistryLookup({
   onStatusChange,
   disabled = false,
   showDetails = true,
+  checkEligibility: shouldCheckEligibility = true,
   className,
 }: ClientRegistryLookupProps) {
   const [status, setStatus] = useState<CRLookupStatus>('idle');
   const [client, setClient] = useState<ClientRegistryClient | null>(null);
+  const [eligibility, setEligibility] = useState<DirectEligibilityCheckResponse | null>(null);
   const [errorMessage, setErrorMessage] = useState<string>();
   const [internalValue, setInternalValue] = useState('');
 
@@ -223,6 +274,7 @@ export function ClientRegistryLookup({
 
     updateStatus('searching');
     setClient(null);
+    setEligibility(null);
     setErrorMessage(undefined);
 
     try {
@@ -234,8 +286,23 @@ export function ClientRegistryLookup({
 
       if (response.found && response.client) {
         setClient(response.client);
+        
+        // Also check SHA eligibility if enabled
+        let eligibilityResult: DirectEligibilityCheckResponse | null = null;
+        if (shouldCheckEligibility && identifierType === 'national_id') {
+          try {
+            eligibilityResult = await shaApi.checkDirectEligibility({
+              national_id: value.trim(),
+            });
+            setEligibility(eligibilityResult);
+          } catch (eligError) {
+            console.warn('Eligibility check failed:', eligError);
+            // Don't fail the whole lookup if eligibility check fails
+          }
+        }
+        
         updateStatus('found');
-        onClientFound?.(response.client);
+        onClientFound?.(response.client, eligibilityResult ?? undefined);
       } else {
         updateStatus('not_found');
       }
@@ -246,7 +313,7 @@ export function ClientRegistryLookup({
       );
       updateStatus('error');
     }
-  }, [value, identifierType, updateStatus, onClientFound]);
+  }, [value, identifierType, updateStatus, onClientFound, shouldCheckEligibility]);
 
   const handleKeyDown = useCallback((e: React.KeyboardEvent) => {
     if (e.key === 'Enter') {
@@ -306,7 +373,7 @@ export function ClientRegistryLookup({
       />
 
       {showDetails && status === 'found' && client && (
-        <ClientDetailsCard client={client} />
+        <ClientDetailsCard client={client} eligibility={eligibility} />
       )}
     </div>
   );

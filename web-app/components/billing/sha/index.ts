@@ -9,6 +9,9 @@ export {
   useClientRegistryLookup,
 } from './ClientRegistryLookup';
 
+// SHA Verification Modal (combined CR + Eligibility)
+export { SHAVerificationModal } from './SHAVerificationModal';
+
 // Eligibility
 export { 
   EligibilityBanner, 

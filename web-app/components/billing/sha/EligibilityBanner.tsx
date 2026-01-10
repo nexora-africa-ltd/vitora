@@ -118,19 +118,19 @@ function StatusIcon({
   
   switch (status) {
     case 'eligible':
-      return <ShieldCheck className={cn(iconClass, 'text-green-600')} />;
+      return <ShieldCheck className={cn(iconClass, 'text-success')} />;
     case 'ineligible':
-      return <ShieldOff className={cn(iconClass, 'text-red-600')} />;
+      return <ShieldOff className={cn(iconClass, 'text-destructive')} />;
     case 'expired':
-      return <ShieldAlert className={cn(iconClass, 'text-orange-600')} />;
+      return <ShieldAlert className={cn(iconClass, 'text-warning-foreground')} />;
     case 'pending':
-      return <Clock className={cn(iconClass, 'text-yellow-600')} />;
+      return <Clock className={cn(iconClass, 'text-warning-foreground')} />;
     case 'checking':
-      return <Loader2 className={cn(iconClass, 'text-gray-500 animate-spin')} />;
+      return <Loader2 className={cn(iconClass, 'text-muted-foreground animate-spin')} />;
     case 'error':
-      return <AlertCircle className={cn(iconClass, 'text-red-600')} />;
+      return <AlertCircle className={cn(iconClass, 'text-destructive')} />;
     default:
-      return <ShieldAlert className={cn(iconClass, 'text-gray-400')} />;
+      return <ShieldAlert className={cn(iconClass, 'text-muted-foreground')} />;
   }
 }
 
@@ -155,12 +155,12 @@ function CompactEligibilityBanner({
       
       <span className={cn(
         'text-sm font-medium',
-        status === 'eligible' && 'text-green-600',
-        status === 'ineligible' && 'text-red-600',
-        status === 'expired' && 'text-orange-600',
-        status === 'pending' && 'text-yellow-600',
-        status === 'error' && 'text-red-600',
-        status === 'checking' && 'text-gray-500',
+        status === 'eligible' && 'text-success',
+        status === 'ineligible' && 'text-destructive',
+        status === 'expired' && 'text-warning-foreground',
+        status === 'pending' && 'text-warning-foreground',
+        status === 'error' && 'text-destructive',
+        status === 'checking' && 'text-muted-foreground',
       )}>
         {status === 'eligible' && 'SHA Eligible'}
         {status === 'ineligible' && 'Not Eligible'}
@@ -177,7 +177,7 @@ function CompactEligibilityBanner({
       )}
 
       {status === 'eligible' && copayPercentage === 0 && (
-        <Badge variant="secondary" className="text-xs bg-green-100 text-green-700">
+        <Badge variant="secondary" className="text-xs bg-success/10 text-success">
           Full Coverage
         </Badge>
       )}
@@ -214,17 +214,17 @@ function FullEligibilityBanner({
   const getBannerStyles = () => {
     switch (status) {
       case 'eligible':
-        return 'border-green-200 bg-green-50 dark:bg-green-950 dark:border-green-800';
+        return 'border-success bg-success/10';
       case 'ineligible':
-        return 'border-red-200 bg-red-50 dark:bg-red-950 dark:border-red-800';
+        return 'border-destructive bg-destructive/10';
       case 'expired':
-        return 'border-orange-200 bg-orange-50 dark:bg-orange-950 dark:border-orange-800';
+        return 'border-warning bg-warning/10';
       case 'pending':
-        return 'border-yellow-200 bg-yellow-50 dark:bg-yellow-950 dark:border-yellow-800';
+        return 'border-warning bg-warning/10';
       case 'error':
-        return 'border-red-200 bg-red-50 dark:bg-red-950 dark:border-red-800';
+        return 'border-destructive bg-destructive/10';
       default:
-        return 'border-gray-200 bg-gray-50 dark:bg-gray-900 dark:border-gray-700';
+        return 'border-muted bg-muted';
     }
   };
 
@@ -234,12 +234,12 @@ function FullEligibilityBanner({
         {/* Status Icon */}
         <div className={cn(
           'flex items-center justify-center w-12 h-12 rounded-full',
-          status === 'eligible' && 'bg-green-100 dark:bg-green-900',
-          status === 'ineligible' && 'bg-red-100 dark:bg-red-900',
-          status === 'expired' && 'bg-orange-100 dark:bg-orange-900',
-          status === 'pending' && 'bg-yellow-100 dark:bg-yellow-900',
-          status === 'error' && 'bg-red-100 dark:bg-red-900',
-          status === 'checking' && 'bg-gray-100 dark:bg-gray-800',
+          status === 'eligible' && 'bg-success/20',
+          status === 'ineligible' && 'bg-destructive/20',
+          status === 'expired' && 'bg-warning/20',
+          status === 'pending' && 'bg-warning/20',
+          status === 'error' && 'bg-destructive/20',
+          status === 'checking' && 'bg-muted',
         )}>
           <StatusIcon status={status} className="h-6 w-6" />
         </div>
@@ -250,12 +250,12 @@ function FullEligibilityBanner({
           <div className="flex items-center gap-2 mb-1">
             <h4 className={cn(
               'font-semibold text-lg',
-              status === 'eligible' && 'text-green-700 dark:text-green-300',
-              status === 'ineligible' && 'text-red-700 dark:text-red-300',
-              status === 'expired' && 'text-orange-700 dark:text-orange-300',
-              status === 'pending' && 'text-yellow-700 dark:text-yellow-300',
-              status === 'error' && 'text-red-700 dark:text-red-300',
-              status === 'checking' && 'text-gray-600 dark:text-gray-400',
+              status === 'eligible' && 'text-success',
+              status === 'ineligible' && 'text-destructive',
+              status === 'expired' && 'text-warning-foreground',
+              status === 'pending' && 'text-warning-foreground',
+              status === 'error' && 'text-destructive',
+              status === 'checking' && 'text-muted-foreground',
             )}>
               {status === 'eligible' && 'SHA ELIGIBLE'}
               {status === 'ineligible' && 'NOT SHA ELIGIBLE'}
@@ -268,7 +268,7 @@ function FullEligibilityBanner({
 
           {/* Status Details */}
           {status === 'eligible' && (
-            <div className="space-y-1 text-sm text-green-700 dark:text-green-300">
+            <div className="space-y-1 text-sm text-success">
               {coverageEndDate && (
                 <p>
                   <span className="font-medium">Coverage:</span> Active until {formatCoverageDate(coverageEndDate)}
@@ -288,26 +288,26 @@ function FullEligibilityBanner({
           )}
 
           {status === 'ineligible' && (
-            <p className="text-sm text-red-600 dark:text-red-400">
+            <p className="text-sm text-destructive">
               Cash payment required. Patient is not enrolled in SHA or coverage is inactive.
             </p>
           )}
 
           {status === 'expired' && coverageEndDate && (
-            <p className="text-sm text-orange-600 dark:text-orange-400">
+            <p className="text-sm text-warning-foreground">
               Coverage expired on {formatCoverageDate(coverageEndDate)}. 
               Cash payment required or coverage renewal needed.
             </p>
           )}
 
           {status === 'pending' && (
-            <p className="text-sm text-yellow-600 dark:text-yellow-400">
+            <p className="text-sm text-warning-foreground">
               Coverage verification is pending. Please wait or retry.
             </p>
           )}
 
           {status === 'error' && (
-            <p className="text-sm text-red-600 dark:text-red-400">
+            <p className="text-sm text-destructive">
               {errorMessage || 'Unable to verify SHA coverage. You can proceed with manual billing.'}
             </p>
           )}
@@ -336,7 +336,7 @@ function FullEligibilityBanner({
               variant={copayPercentage === 0 ? 'default' : 'secondary'}
               className={cn(
                 'text-sm px-3 py-1',
-                copayPercentage === 0 && 'bg-green-600'
+                copayPercentage === 0 && 'bg-success text-success-foreground'
               )}
             >
               {copayPercentage === 0 ? 'Full Coverage' : `${copayPercentage}% Copay`}

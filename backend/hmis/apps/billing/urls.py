@@ -23,6 +23,7 @@ from hmis.apps.billing.sha_views import (
     FacilitySearchView,
     PractitionerSearchView,
     EligibilityCheckView,
+    DirectEligibilityCheckView,
 )
 
 router = routers.DefaultRouter()
@@ -63,4 +64,5 @@ urlpatterns = [
     
     # SHA Eligibility check
     path('eligibility/check/', EligibilityCheckView.as_view(), name='eligibility-check'),
+    path('eligibility/direct/', DirectEligibilityCheckView.as_view(), name='eligibility-direct'),
 ]
