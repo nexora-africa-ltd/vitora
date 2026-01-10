@@ -99,7 +99,8 @@ function CRLookupTab({ defaultNationalId, onClientFound }: CRLookupTabProps) {
 
     try {
       const response = await shaApi.fetchFromClientRegistry({
-        national_id: nationalId.trim(),
+        identification_type: 'National ID',
+        identification_number: nationalId.trim(),
       });
 
       if (response.found && response.client) {

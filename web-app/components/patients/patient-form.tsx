@@ -290,32 +290,22 @@ export function PatientForm({
     setFormLocked(true);
     
     try {
-      // Build the request based on ID type
+      // Build the request based on ID type - always use identification_type/identification_number
       const request: Record<string, string> = {};
       
-      switch (idType) {
-        case 'national_id':
-          request.national_id = idNumber;
-          break;
-        case 'passport':
-          request.passport_number = idNumber;
-          break;
-        case 'cr_number':
-          request.cr_number = idNumber;
-          break;
-        case 'alien_id':
-          request.alien_id = idNumber;
-          break;
-        case 'kra_pin':
-          request.kra_pin = idNumber;
-          break;
-        case 'mandate_number':
-          request.mandate_number = idNumber;
-          break;
-        default:
-          request.identification_type = idType;
-          request.identification_number = idNumber;
-      }
+      // Map our internal ID types to DHA API identification_type values
+      const idTypeMap: Record<IdentificationType, string> = {
+        national_id: 'National ID',
+        passport: 'Passport',
+        cr_number: 'SHA Number',
+        alien_id: 'Alien ID',
+        kra_pin: 'KRA PIN',
+        mandate_number: 'Mandate Number',
+        huduma_number: 'Huduma Number',
+      };
+      
+      request.identification_type = idTypeMap[idType] || idType;
+      request.identification_number = idNumber;
       
       const response = await shaApi.fetchFromClientRegistry(request);
       
