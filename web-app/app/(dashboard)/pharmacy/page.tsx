@@ -130,6 +130,7 @@ export default function PharmacyPage() {
     data: dispensingData,
     isLoading: dispensingLoading,
     error: dispensingError,
+    refetch: refetchDispensings,
   } = useDispensings({
     page: dispensingPage,
     page_size: dispensingPageSize,
@@ -339,11 +340,6 @@ export default function PharmacyPage() {
             }}
             onSearch={(query) => {
               setRxSearch(query);
-              setRxPage(1);
-            }}
-            onDateFilter={(dateFrom, dateTo) => {
-              setRxDateFrom(dateFrom);
-              setRxDateTo(dateTo);
               setRxPage(1);
             }}
           />

@@ -129,6 +129,7 @@ export function AlertsPanel({
 
       return () => clearInterval(intervalId);
     }
+    return undefined;
   }, [autoRefreshInterval, onRefresh]);
 
   // Filter alerts based on active tab, filters, and resolved state

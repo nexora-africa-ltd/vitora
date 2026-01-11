@@ -129,6 +129,15 @@ async function getSHAMember(id: number): Promise<SHAMember> {
   return response.data;
 }
 
+/**
+ * Get dependents for a principal SHA member
+ * Returns all SHA members who have this member as their principal
+ */
+async function getSHAMemberDependents(memberId: number): Promise<PaginatedSHAMembers> {
+  const response = await apiClient.get(`/api/billing/sha-members/${memberId}/dependents/`);
+  return response.data;
+}
+
 // ============================================================================
 // Eligibility API
 // ============================================================================
@@ -385,6 +394,7 @@ export const shaApi = {
   // SHA Members
   getSHAMembers,
   getSHAMember,
+  getSHAMemberDependents,
   
   // Eligibility
   checkEligibility,

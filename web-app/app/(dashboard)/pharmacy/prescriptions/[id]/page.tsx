@@ -53,7 +53,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { usePrescription, useCancelPrescription } from '@/lib/hooks/use-pharmacy';
 import { PrescriptionStatus } from '@/lib/types/pharmacy';
 import { useState } from 'react';
-import { useToast } from '@/hooks/use-toast';
+import { useToast } from '@/lib/hooks/use-toast';
 
 // Status badge colors
 const STATUS_COLORS: Record<PrescriptionStatus, string> = {

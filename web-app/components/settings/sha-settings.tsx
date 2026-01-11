@@ -25,25 +25,7 @@ import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Separator } from '@/components/ui/separator';
 import { FacilityValidation, PractitionerValidation } from '@/components/billing/sha';
 import { useToast } from '@/lib/hooks/use-toast';
-
-interface FacilityInfo {
-  facility_code: string;
-  name: string;
-  level: number;
-  county: string;
-  sub_county?: string;
-  ward?: string;
-  is_sha_contracted: boolean;
-}
-
-interface PractitionerInfo {
-  license_number: string;
-  name: string;
-  qualification: string;
-  specialty?: string;
-  is_active: boolean;
-  expiry_date?: string;
-}
+import type { FacilityInfo, PractitionerInfo } from '@/lib/types/sha';
 
 export function SHASettingsTab() {
   const { toast } = useToast();
@@ -56,7 +38,7 @@ export function SHASettingsTab() {
     setValidatedFacility(info);
     toast({
       title: 'Facility Validated',
-      description: `${info.name} is ${info.is_sha_contracted ? 'contracted with SHA' : 'not contracted with SHA'}`,
+      description: `${info.name} is ${info.sha_approved ? 'approved by SHA' : 'not approved by SHA'}`,
     });
   };
 
@@ -64,7 +46,7 @@ export function SHASettingsTab() {
     setValidatedPractitioner(info);
     toast({
       title: 'Practitioner Validated',
-      description: `${info.name} - ${info.qualification}`,
+      description: `${info.name} - ${info.cadre}`,
     });
   };
 
@@ -155,8 +137,9 @@ export function SHASettingsTab() {
 
           {facilityCode && (
             <FacilityValidation
-              mflCode={facilityCode}
+              initialCode={facilityCode}
               onValidated={handleFacilityValidated}
+              autoValidate={true}
             />
           )}
 
@@ -170,8 +153,8 @@ export function SHASettingsTab() {
                     {validatedFacility.sub_county && `, ${validatedFacility.sub_county}`}
                   </p>
                 </div>
-                <Badge variant={validatedFacility.is_sha_contracted ? 'default' : 'secondary'}>
-                  {validatedFacility.is_sha_contracted ? 'SHA Contracted' : 'Not Contracted'}
+                <Badge variant={validatedFacility.sha_approved ? 'default' : 'secondary'}>
+                  {validatedFacility.sha_approved ? 'SHA Approved' : 'Not Approved'}
                 </Badge>
               </div>
             </div>
@@ -209,8 +192,9 @@ export function SHASettingsTab() {
 
           {practitionerLicense && (
             <PractitionerValidation
-              licenseNumber={practitionerLicense}
+              initialHwrNumber={practitionerLicense}
               onValidated={handlePractitionerValidated}
+              autoValidate={true}
             />
           )}
 
@@ -220,17 +204,17 @@ export function SHASettingsTab() {
                 <div>
                   <h4 className="font-medium">{validatedPractitioner.name}</h4>
                   <p className="text-sm text-muted-foreground">
-                    {validatedPractitioner.qualification}
-                    {validatedPractitioner.specialty && ` • ${validatedPractitioner.specialty}`}
+                    {validatedPractitioner.cadre}
+                    {validatedPractitioner.specialization && ` • ${validatedPractitioner.specialization}`}
                   </p>
-                  {validatedPractitioner.expiry_date && (
+                  {validatedPractitioner.license_expiry && (
                     <p className="text-xs text-muted-foreground mt-1">
-                      Expires: {new Date(validatedPractitioner.expiry_date).toLocaleDateString()}
+                      Expires: {new Date(validatedPractitioner.license_expiry).toLocaleDateString()}
                     </p>
                   )}
                 </div>
-                <Badge variant={validatedPractitioner.is_active ? 'default' : 'destructive'}>
-                  {validatedPractitioner.is_active ? 'Active' : 'Inactive'}
+                <Badge variant={validatedPractitioner.license_status === 'Active' ? 'default' : 'destructive'}>
+                  {validatedPractitioner.license_status}
                 </Badge>
               </div>
             </div>

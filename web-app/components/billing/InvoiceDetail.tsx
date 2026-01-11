@@ -292,7 +292,7 @@ export function InvoiceDetail({
                 </p>
                 <ClaimSubmissionButton
                   invoiceId={invoice.id}
-                  encounterId={invoice.encounter}
+                  encounterId={invoice.encounter ?? 0}
                   onSuccess={onClaimSubmitted}
                 />
               </div>

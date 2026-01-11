@@ -17,7 +17,7 @@ import React, { useState, useRef, useCallback, useEffect } from 'react';
 import { useForm, useWatch } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import { CalendarIcon, Loader2, CheckCircle2, AlertCircle, Info, Search, Lock, CreditCard, Shield, Building2, Wallet, ChevronDown, HelpCircle } from 'lucide-react';
+import { CalendarIcon, Loader2, CheckCircle2, AlertCircle, Info, Search, Lock, CreditCard, Shield, Building2, Wallet, ChevronDown, HelpCircle, ChevronsUpDown, Check, Ban } from 'lucide-react';
 import { format } from 'date-fns';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -50,6 +50,8 @@ import {
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuLabel,
+  DropdownMenuRadioGroup,
+  DropdownMenuRadioItem,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
@@ -69,6 +71,14 @@ import {
   AlertDescription,
   AlertTitle,
 } from '@/components/ui/alert';
+import {
+  Command,
+  CommandEmpty,
+  CommandGroup,
+  CommandInput,
+  CommandItem,
+  CommandList,
+} from '@/components/ui/command';
 import { Card, CardContent } from '@/components/ui/card';
 import { Separator } from '@/components/ui/separator';
 import { LocationCombobox } from '@/components/ui/location-combobox';
@@ -79,6 +89,7 @@ import { useCounties, useSubCounties, useWards } from '@/lib/hooks/use-locations
 import { useToast } from '@/lib/hooks/use-toast';
 import { shaApi } from '@/lib/api/sha';
 import { GENDER_OPTIONS, REFERRAL_SOURCE_OPTIONS, RELATIONSHIP_OPTIONS } from '@/lib/utils/constants';
+import { NATIONALITIES, NATIONALITY_OPTIONS } from '@/lib/utils/nationalities';
 import { 
   type PatientCreateData, 
   type IdentificationType, 
@@ -128,7 +139,7 @@ const patientFormSchema = z.object({
   gender: z.enum(['M', 'F', 'O'], {
     required_error: 'Gender is required',
   }),
-  citizenship: z.string().default('Kenyan'),
+  nationality: z.string().default('Kenyan'),
   is_person_with_disability: z.boolean().default(false),
   
   // Contact Information
@@ -208,6 +219,17 @@ export function PatientForm({
   const [showConsentDialog, setShowConsentDialog] = useState(false);
   const [pendingFormData, setPendingFormData] = useState<PatientFormValues | null>(null);
   
+  // SHA Eligibility state - tracks if patient is eligible for SHA coverage
+  const [shaEligibility, setShaEligibility] = useState<{
+    checked: boolean;
+    isEligible: boolean;
+    reason?: string;
+  }>({ checked: false, isEligible: true });
+  const [isCheckingEligibility, setIsCheckingEligibility] = useState(false);
+  
+  // Nationality combobox state
+  const [nationalityOpen, setNationalityOpen] = useState(false);
+  
   // UI state
   const [dobPopoverOpen, setDobPopoverOpen] = useState(false);
   const [showCustomRelationship, setShowCustomRelationship] = useState(false);
@@ -225,7 +247,7 @@ export function PatientForm({
       last_name: '',
       place_of_birth: '',
       gender: undefined,
-      citizenship: 'Kenyan',
+      nationality: 'Kenyan',
       is_person_with_disability: false,
       phone_number: '',
       email: '',
@@ -275,7 +297,7 @@ export function PatientForm({
     if (client.email) form.setValue('email', client.email);
     if (client.client_number) form.setValue('cr_number', client.client_number);
     if (client.place_of_birth) form.setValue('place_of_birth', client.place_of_birth);
-    if (client.citizenship) form.setValue('citizenship', client.citizenship);
+    if (client.citizenship) form.setValue('nationality', client.citizenship);
     if (client.is_person_with_disability !== undefined) {
       form.setValue('is_person_with_disability', client.is_person_with_disability);
     }
@@ -301,7 +323,7 @@ export function PatientForm({
         alien_id: 'Alien ID',
         kra_pin: 'KRA PIN',
         mandate_number: 'Mandate Number',
-        huduma_number: 'Huduma Number',
+        temporary_id: 'Temporary ID',
       };
       
       request.identification_type = idTypeMap[idType] || idType;
@@ -320,12 +342,17 @@ export function PatientForm({
         });
         
         populateFromCRClient(response.client);
+        
+        // Check SHA eligibility after CR lookup
+        checkShaEligibility(idType, idNumber);
       } else {
         toast({
           title: 'No Record Found',
           description: 'No existing Client Registry record. A new record will be created upon registration.',
           variant: 'default',
         });
+        // Reset eligibility status when no CR record found
+        setShaEligibility({ checked: true, isEligible: false, reason: 'No Client Registry record found' });
       }
     } catch (error) {
       console.error('CR lookup failed:', error);
@@ -339,6 +366,58 @@ export function PatientForm({
       setFormLocked(false);
     }
   }, [toast, populateFromCRClient]);
+
+  // Check SHA eligibility for the patient
+  const checkShaEligibility = useCallback(async (idType: IdentificationType, idNumber: string) => {
+    if (!idNumber) return;
+    
+    setIsCheckingEligibility(true);
+    try {
+      // Build eligibility check request based on ID type
+      const params: Record<string, string> = {};
+      if (idType === 'national_id') {
+        params.national_id = idNumber;
+      } else if (idType === 'cr_number') {
+        params.sha_number = idNumber;
+      } else {
+        params.identification_type = idType;
+        params.identification_number = idNumber;
+      }
+      
+      const response = await shaApi.checkDirectEligibility(params);
+      
+      setShaEligibility({
+        checked: true,
+        isEligible: response.is_eligible,
+        reason: response.is_eligible 
+          ? undefined 
+          : response.reason || 'Patient is not eligible for SHA coverage',
+      });
+      
+      // If ineligible and SHA was selected, switch to cash
+      if (!response.is_eligible) {
+        const currentPaymentMode = form.getValues('payment_mode');
+        if (currentPaymentMode === 'sha') {
+          form.setValue('payment_mode', 'cash');
+          toast({
+            title: 'Payment Mode Changed',
+            description: 'SHA coverage is not available. Switched to Cash payment.',
+            variant: 'default',
+          });
+        }
+      }
+    } catch (error) {
+      console.error('SHA eligibility check failed:', error);
+      // On error, allow SHA as an option but show warning
+      setShaEligibility({
+        checked: true,
+        isEligible: true, // Allow selection, verification will happen at claim time
+        reason: undefined,
+      });
+    } finally {
+      setIsCheckingEligibility(false);
+    }
+  }, [form, toast]);
 
   // Auto-search CR when ID number changes (debounced)
   useEffect(() => {
@@ -681,26 +760,39 @@ export function PatientForm({
                 control={form.control}
                 name="gender"
                 render={({ field }) => (
-                  <FormItem className="space-y-3">
+                  <FormItem className="w-[140px]">
                     <FormLabel>Gender *</FormLabel>
                     <FormControl>
-                      <RadioGroup
-                        onValueChange={field.onChange}
-                        value={field.value}
-                        disabled={formLocked || isFormLoading}
-                        className="flex flex-col space-y-1"
-                      >
-                        <div className="flex items-center gap-4">
-                          {GENDER_OPTIONS.map((option) => (
-                            <div key={option.value} className="flex items-center space-x-2">
-                              <RadioGroupItem value={option.value} id={`gender-${option.value}`} />
-                              <Label htmlFor={`gender-${option.value}`} className="font-normal cursor-pointer">
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <Button 
+                            variant="outline" 
+                            className="w-full justify-between"
+                            disabled={formLocked || isFormLoading}
+                          >
+                            {field.value 
+                              ? GENDER_OPTIONS.find(opt => opt.value === field.value)?.label 
+                              : 'Select gender'
+                            }
+                            <ChevronDown className="h-4 w-4 opacity-50" />
+                          </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent className="w-[140px]">
+                          <DropdownMenuRadioGroup 
+                            value={field.value} 
+                            onValueChange={field.onChange}
+                          >
+                            {GENDER_OPTIONS.map((option) => (
+                              <DropdownMenuRadioItem 
+                                key={option.value} 
+                                value={option.value}
+                              >
                                 {option.label}
-                              </Label>
-                            </div>
-                          ))}
-                        </div>
-                      </RadioGroup>
+                              </DropdownMenuRadioItem>
+                            ))}
+                          </DropdownMenuRadioGroup>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -711,7 +803,7 @@ export function PatientForm({
                 control={form.control}
                 name="date_of_birth"
                 render={({ field }) => (
-                  <FormItem className="w-[200px]">
+                  <FormItem className="w-[160px]">
                     <FormLabel>Date of Birth *</FormLabel>
                     <DobPicker
                       value={field.value}
@@ -727,7 +819,7 @@ export function PatientForm({
                 control={form.control}
                 name="place_of_birth"
                 render={({ field }) => (
-                  <FormItem className="min-w-[200px] flex-1">
+                  <FormItem className="min-w-[160px] flex-1">
                     <FormLabel>Place of Birth</FormLabel>
                     <FormControl>
                       <Input 
@@ -742,9 +834,67 @@ export function PatientForm({
 
               <FormField
                 control={form.control}
+                name="nationality"
+                render={({ field }) => (
+                  <FormItem className="min-w-[160px] flex-1">
+                    <FormLabel>Nationality</FormLabel>
+                    <Popover open={nationalityOpen} onOpenChange={setNationalityOpen}>
+                      <PopoverTrigger asChild>
+                        <FormControl>
+                          <Button
+                            variant="outline"
+                            role="combobox"
+                            aria-expanded={nationalityOpen}
+                            className={cn(
+                              'w-full justify-between',
+                              !field.value && 'text-muted-foreground'
+                            )}
+                            disabled={formLocked || isFormLoading}
+                          >
+                            {field.value || 'Select nationality'}
+                            <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                          </Button>
+                        </FormControl>
+                      </PopoverTrigger>
+                      <PopoverContent className="w-[250px] p-0" align="start">
+                        <Command>
+                          <CommandInput placeholder="Search nationality..." />
+                          <CommandList>
+                            <CommandEmpty>No nationality found.</CommandEmpty>
+                            <CommandGroup className="max-h-[300px] overflow-y-auto">
+                              {NATIONALITIES.map((nationality) => (
+                                <CommandItem
+                                  key={nationality}
+                                  value={nationality}
+                                  onSelect={() => {
+                                    field.onChange(nationality);
+                                    setNationalityOpen(false);
+                                  }}
+                                >
+                                  <Check
+                                    className={cn(
+                                      'mr-2 h-4 w-4',
+                                      field.value === nationality ? 'opacity-100' : 'opacity-0'
+                                    )}
+                                  />
+                                  {nationality}
+                                </CommandItem>
+                              ))}
+                            </CommandGroup>
+                          </CommandList>
+                        </Command>
+                      </PopoverContent>
+                    </Popover>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <FormField
+                control={form.control}
                 name="is_person_with_disability"
                 render={({ field }) => (
-                  <FormItem className="flex flex-row items-center space-x-3 space-y-0 rounded-md border p-4 min-w-[260px] translate-y-7">
+                  <FormItem className="flex flex-row items-center space-x-3 space-y-0 rounded-md p-4 min-w-[120px] translate-y-7">
                     <FormControl>
                       <Checkbox
                         checked={field.value}
@@ -754,7 +904,7 @@ export function PatientForm({
                     </FormControl>
                     <div className="space-y-1 leading-none">
                       <FormLabel className="flex items-center gap-2">
-                        Person with Disability
+                        PLWD
                         <TooltipProvider>
                           <Tooltip>
                             <TooltipTrigger asChild>
@@ -952,6 +1102,18 @@ export function PatientForm({
           <div className="space-y-4">
             <h3 className="text-lg font-medium">Payment Mode</h3>
             
+            {/* SHA Eligibility Alert */}
+            {shaEligibility.checked && !shaEligibility.isEligible && (
+              <Alert variant="destructive" className="border-orange-300 bg-orange-50 text-orange-900">
+                <Ban className="h-4 w-4" />
+                <AlertTitle>SHA Coverage Unavailable</AlertTitle>
+                <AlertDescription>
+                  {shaEligibility.reason || 'Patient is not eligible for SHA coverage.'}
+                  {' '}Please use an alternative payment method.
+                </AlertDescription>
+              </Alert>
+            )}
+            
             <FormField
               control={form.control}
               name="payment_mode"
@@ -959,36 +1121,53 @@ export function PatientForm({
                 <FormItem>
                   <FormLabel>How will the patient pay? *</FormLabel>
                   <div className="grid gap-3 md:grid-cols-2 lg:grid-cols-4">
-                    {PAYMENT_MODE_OPTIONS.map((option) => (
-                      <Card
-                        key={option.value}
-                        className={cn(
-                          'cursor-pointer transition-all hover:border-primary',
-                          field.value === option.value && 'border-primary bg-primary/5'
-                        )}
-                        onClick={() => {
-                          if (!formLocked && !isFormLoading) {
-                            field.onChange(option.value);
-                          }
-                        }}
-                      >
-                        <CardContent className="flex items-start gap-3 p-4">
-                          <div className={cn(
-                            'rounded-full p-2',
-                            field.value === option.value ? 'bg-background' : 'bg-muted'
-                          )}>
-                            {PAYMENT_MODE_ICONS[option.value]}
-                          </div>
-                          <div className="flex-1">
-                            <div className="font-medium">{option.label}</div>
-                            <div className="text-xs text-muted-foreground">{option.description}</div>
-                          </div>
-                          {field.value === option.value && (
-                            <CheckCircle2 className="h-5 w-5 text-primary" />
+                    {PAYMENT_MODE_OPTIONS.map((option) => {
+                      // Check if SHA option should be disabled
+                      const isShaDisabled = option.value === 'sha' && 
+                        shaEligibility.checked && 
+                        !shaEligibility.isEligible;
+                      
+                      return (
+                        <Card
+                          key={option.value}
+                          className={cn(
+                            'transition-all',
+                            isShaDisabled 
+                              ? 'cursor-not-allowed opacity-50 bg-muted' 
+                              : 'cursor-pointer hover:border-primary',
+                            field.value === option.value && !isShaDisabled && 'border-primary bg-primary/5'
                           )}
-                        </CardContent>
-                      </Card>
-                    ))}
+                          onClick={() => {
+                            if (!formLocked && !isFormLoading && !isShaDisabled) {
+                              field.onChange(option.value);
+                            }
+                          }}
+                        >
+                          <CardContent className="flex items-start gap-3 p-4">
+                            <div className={cn(
+                              'rounded-full p-2',
+                              field.value === option.value && !isShaDisabled ? 'bg-background' : 'bg-muted'
+                            )}>
+                              {PAYMENT_MODE_ICONS[option.value]}
+                            </div>
+                            <div className="flex-1">
+                              <div className="font-medium flex items-center gap-2">
+                                {option.label}
+                                {isShaDisabled && (
+                                  <Badge variant="secondary" className="text-xs bg-red-100 text-red-800">
+                                    Unavailable
+                                  </Badge>
+                                )}
+                              </div>
+                              <div className="text-xs text-muted-foreground">{option.description}</div>
+                            </div>
+                            {field.value === option.value && !isShaDisabled && (
+                              <CheckCircle2 className="h-5 w-5 text-primary" />
+                            )}
+                          </CardContent>
+                        </Card>
+                      );
+                    })}
                   </div>
                   <FormMessage />
                 </FormItem>

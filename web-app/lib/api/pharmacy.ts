@@ -353,8 +353,8 @@ export const pharmacyApi = {
   /**
    * Get stock summary report.
    */
-  async getStockSummaryReport(): Promise<StockSummaryItem[]> {
-    const response = await apiClient.get<StockSummaryItem[]>('/api/pharmacy/reports/stock-summary/');
+  async getStockSummaryReport(): Promise<{ results: StockSummaryItem[] }> {
+    const response = await apiClient.get<{ results: StockSummaryItem[] }>('/api/pharmacy/reports/stock-summary/');
     return response.data;
   },
 

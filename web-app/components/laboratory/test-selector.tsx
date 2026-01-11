@@ -101,9 +101,9 @@ export function TestSelector({
   );
 
   // Handle LOINC selection
-  const handleLOINCSelect = (loinc: { code: string; title: string }) => {
+  const handleLOINCSelect = (loinc: { code: string; name: string }) => {
     if (onSelectLOINC) {
-      onSelectLOINC(loinc);
+      onSelectLOINC({ code: loinc.code, title: loinc.name });
     }
     onClose();
   };

@@ -40,17 +40,7 @@ import {
 } from '@/components/ui/table';
 import { useDispensingReport } from '@/lib/hooks/use-pharmacy';
 import { useToast } from '@/lib/hooks/use-toast';
-
-interface DispensingRecord {
-  dispensing_id: number;
-  drug_name: string;
-  quantity_dispensed: number;
-  dispensed_date: string;
-  patient_name: string;
-  dispensed_by: string;
-  batch_number: string;
-  total_cost: string;
-}
+import type { DispensingReportRecord } from '@/lib/types/pharmacy';
 
 export function DispensingReport() {
   const { toast } = useToast();
@@ -84,26 +74,27 @@ export function DispensingReport() {
   const records = reportData?.results || [];
 
   // Filter data
-  const filteredRecords = records.filter((record: DispensingRecord) => {
+  const filteredRecords = records.filter((record: DispensingReportRecord) => {
     const matchesDrug = !drugFilter || record.drug_name.toLowerCase().includes(drugFilter.toLowerCase());
     const matchesPatient = !patientFilter || record.patient_name.toLowerCase().includes(patientFilter.toLowerCase());
     return matchesDrug && matchesPatient;
   });
 
   // Calculate totals
-  const totalDispensed = filteredRecords.reduce((sum: number, r: DispensingRecord) => sum + r.quantity_dispensed, 0);
-  const totalValue = filteredRecords.reduce((sum: number, r: DispensingRecord) => sum + parseFloat(r.total_cost), 0);
+  const totalDispensed = filteredRecords.reduce((sum: number, r: DispensingReportRecord) => sum + r.quantity_dispensed, 0);
+  const totalValue = filteredRecords.reduce((sum: number, r: DispensingReportRecord) => sum + parseFloat(r.total_cost), 0);
 
   // Group by drug if enabled
   const groupedData = groupByDrug
     ? Object.entries(
-        filteredRecords.reduce((acc: Record<string, { drug_name: string; total_qty: number; total_cost: number; count: number }>, r: DispensingRecord) => {
+        filteredRecords.reduce((acc: Record<string, { drug_name: string; total_qty: number; total_cost: number; count: number }>, r: DispensingReportRecord) => {
           if (!acc[r.drug_name]) {
             acc[r.drug_name] = { drug_name: r.drug_name, total_qty: 0, total_cost: 0, count: 0 };
           }
-          acc[r.drug_name].total_qty += r.quantity_dispensed;
-          acc[r.drug_name].total_cost += parseFloat(r.total_cost);
-          acc[r.drug_name].count += 1;
+          const item = acc[r.drug_name]!;
+          item.total_qty += r.quantity_dispensed;
+          item.total_cost += parseFloat(r.total_cost);
+          item.count += 1;
           return acc;
         }, {})
       ).map(([_, value]) => value)
@@ -123,7 +114,7 @@ export function DispensingReport() {
           ].join('\n')
         : [
             ['Drug Name', 'Quantity', 'Date', 'Patient', 'Dispensed By', 'Batch', 'Cost'].join(','),
-            ...filteredRecords.map((r: DispensingRecord) => [
+            ...filteredRecords.map((r: DispensingReportRecord) => [
               `"${r.drug_name}"`,
               r.quantity_dispensed,
               r.dispensed_date,
@@ -349,7 +340,7 @@ export function DispensingReport() {
                     </TableCell>
                   </TableRow>
                 ) : (
-                  filteredRecords.map((record: DispensingRecord) => (
+                  filteredRecords.map((record: DispensingReportRecord) => (
                     <TableRow key={record.dispensing_id}>
                       <TableCell className="font-medium">{record.drug_name}</TableCell>
                       <TableCell className="text-right">{record.quantity_dispensed}</TableCell>

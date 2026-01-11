@@ -41,6 +41,9 @@ export { ClaimItemsTable } from './ClaimItemsTable';
 // PFMS Coverage Toggle (SHA Integration Checklist #13)
 export { PFMSToggle } from './PFMSToggle';
 
+// Dependents View for Principal Members
+export { DependentsView } from './DependentsView';
+
 // Facility & Practitioner Validation
 export {
   FacilityValidation,
