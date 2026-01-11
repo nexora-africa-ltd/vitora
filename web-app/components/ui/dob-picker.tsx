@@ -39,7 +39,7 @@ export function DobPicker({
   value, 
   onChange, 
   disabled,
-  placeholder = "Select date of birth",
+  placeholder = "Select date",
   className,
   error,
 }: DobPickerProps) {
@@ -70,7 +70,7 @@ export function DobPicker({
           <ChevronDownIcon className="h-4 w-4 opacity-50" />
         </Button>
       </PopoverTrigger>
-      <PopoverContent className="w-auto overflow-hidden p-0" align="start">
+      <PopoverContent className="w-auto p-0" align="start">
         <Calendar
           mode="single"
           selected={value}
