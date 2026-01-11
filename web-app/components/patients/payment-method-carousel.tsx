@@ -176,7 +176,7 @@ export function PaymentMethodCarousel({
                             <span className="text-sm font-medium">Selected</span>
                           </div>
                         ) : isInFocus ? (
-                          <span className="text-x text-accent-foreground animate-pulse">
+                          <span className="text-xs text-accent-foreground animate-pulse">
                             Click to select {option.label}
                           </span>
                         ) : null}
