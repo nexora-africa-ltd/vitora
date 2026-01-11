@@ -974,7 +974,16 @@ class SHAMember(models.Model):
     principal_sha_number = models.CharField(
         max_length=20,
         blank=True,
-        help_text="Principal member's SHA number (for dependents)"
+        help_text="Principal member's SHA number (for dependents) - external reference"
+    )
+    # ForeignKey for internal referential integrity
+    principal = models.ForeignKey(
+        'self',
+        on_delete=models.PROTECT,
+        null=True,
+        blank=True,
+        related_name='dependents',
+        help_text="Principal member this dependent belongs to"
     )
 
     # Status
@@ -1072,11 +1081,16 @@ class SHAMember(models.Model):
             if not self.national_id:
                 errors['national_id'] = 'National ID is required for principal members'
 
-        # Dependents must have principal SHA number
+        # Dependents must have principal SHA number or principal FK
         if self.membership_type != self.MembershipType.PRINCIPAL:
-            if not self.principal_sha_number:
+            if not self.principal_sha_number and not self.principal:
                 errors['principal_sha_number'] = (
-                    'Dependents must have a principal SHA number'
+                    'Dependents must have a principal SHA number or principal member reference'
+                )
+            # Validate principal FK points to a principal member
+            if self.principal and self.principal.membership_type != self.MembershipType.PRINCIPAL:
+                errors['principal'] = (
+                    'Principal reference must point to a principal member'
                 )
 
         # Coverage dates validation

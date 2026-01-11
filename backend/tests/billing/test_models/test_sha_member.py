@@ -213,7 +213,7 @@ class TestSHAMemberModel:
     # Test 6: Dependent requires principal SHA number
     # =========================================================================
     def test_dependent_requires_principal_sha_number(self, sample_patient, test_user):
-        """Dependents must have principal SHA number."""
+        """Dependents must have principal SHA number or principal FK."""
         from hmis.apps.billing.models import SHAMember
 
         with pytest.raises(ValidationError) as exc_info:
@@ -223,6 +223,7 @@ class TestSHAMemberModel:
                 national_id='12345678',
                 membership_type=SHAMember.MembershipType.SPOUSE,  # Dependent
                 principal_sha_number='',  # Missing principal SHA
+                principal=None,  # No principal FK either
                 created_by=test_user,
             )
 
@@ -692,3 +693,173 @@ class TestSHAMemberAuditFields:
         )
 
         assert member.benefit_package == 'STANDARD'
+
+
+# =============================================================================
+# Test Class: Principal Foreign Key Relationship
+# =============================================================================
+
+
+@pytest.mark.django_db
+class TestSHAMemberPrincipalForeignKey:
+    """Tests for the principal ForeignKey relationship."""
+
+    # =========================================================================
+    # Test: Dependent with principal FK is accepted
+    # =========================================================================
+    def test_dependent_with_principal_fk_accepted(self, test_user):
+        """Dependent with principal FK should be accepted without principal_sha_number."""
+        from hmis.apps.billing.models import SHAMember
+        from hmis.apps.patients.models import Patient
+        from hmis.apps.core.models import County, SubCounty
+
+        county = County.objects.first()
+        sub_county = SubCounty.objects.filter(county=county).first()
+
+        # Create principal patient
+        principal_patient = Patient.objects.create(
+            first_name='Principal',
+            last_name='Member',
+            date_of_birth='1980-01-01',
+            gender='M',
+            county=county,
+            sub_county=sub_county,
+            registered_by=test_user,
+        )
+
+        # Create principal member
+        principal_member = SHAMember.objects.create(
+            patient=principal_patient,
+            sha_number='SHA-0000000001',
+            national_id='12345678',
+            membership_type=SHAMember.MembershipType.PRINCIPAL,
+            created_by=test_user,
+        )
+
+        # Create dependent patient
+        dependent_patient = Patient.objects.create(
+            first_name='Dependent',
+            last_name='Child',
+            date_of_birth='2010-05-15',
+            gender='F',
+            county=county,
+            sub_county=sub_county,
+            registered_by=test_user,
+        )
+
+        # Create dependent with principal FK (no principal_sha_number needed)
+        dependent_member = SHAMember.objects.create(
+            patient=dependent_patient,
+            sha_number='SHA-0000000002',
+            membership_type=SHAMember.MembershipType.CHILD,
+            principal=principal_member,  # FK instead of string
+            created_by=test_user,
+        )
+
+        assert dependent_member.principal == principal_member
+        assert dependent_member.principal_sha_number == ''
+
+    # =========================================================================
+    # Test: Reverse relationship - get dependents from principal
+    # =========================================================================
+    def test_principal_can_access_dependents_via_related_name(self, test_user):
+        """Principal member should access dependents via related_name='dependents'."""
+        from hmis.apps.billing.models import SHAMember
+        from hmis.apps.patients.models import Patient
+        from hmis.apps.core.models import County, SubCounty
+
+        county = County.objects.first()
+        sub_county = SubCounty.objects.filter(county=county).first()
+
+        # Create principal
+        principal_patient = Patient.objects.create(
+            first_name='Parent',
+            last_name='Member',
+            date_of_birth='1975-03-20',
+            gender='M',
+            county=county,
+            sub_county=sub_county,
+            registered_by=test_user,
+        )
+        principal = SHAMember.objects.create(
+            patient=principal_patient,
+            sha_number='SHA-PRINCIPAL1',
+            national_id='11111111',
+            membership_type=SHAMember.MembershipType.PRINCIPAL,
+            created_by=test_user,
+        )
+
+        # Create two dependents
+        for i, (name, mtype) in enumerate([('Spouse', 'spouse'), ('Child', 'child')]):
+            dep_patient = Patient.objects.create(
+                first_name=name,
+                last_name='Member',
+                date_of_birth=f'199{i}-01-01',
+                gender='F',
+                county=county,
+                sub_county=sub_county,
+                registered_by=test_user,
+            )
+            SHAMember.objects.create(
+                patient=dep_patient,
+                sha_number=f'SHA-DEP{i}',
+                membership_type=mtype,
+                principal=principal,
+                created_by=test_user,
+            )
+
+        # Access via reverse relation
+        assert principal.dependents.count() == 2
+        assert set(principal.dependents.values_list('membership_type', flat=True)) == {'spouse', 'child'}
+
+    # =========================================================================
+    # Test: Principal FK must point to a principal member
+    # =========================================================================
+    def test_principal_fk_must_reference_principal_member(self, test_user):
+        """Principal FK must point to a member with membership_type=PRINCIPAL."""
+        from hmis.apps.billing.models import SHAMember
+        from hmis.apps.patients.models import Patient
+        from hmis.apps.core.models import County, SubCounty
+
+        county = County.objects.first()
+        sub_county = SubCounty.objects.filter(county=county).first()
+
+        # Create a spouse member (not principal)
+        spouse_patient = Patient.objects.create(
+            first_name='Spouse',
+            last_name='Member',
+            date_of_birth='1985-06-15',
+            gender='F',
+            county=county,
+            sub_county=sub_county,
+            registered_by=test_user,
+        )
+        spouse_member = SHAMember.objects.create(
+            patient=spouse_patient,
+            sha_number='SHA-SPOUSE001',
+            membership_type=SHAMember.MembershipType.SPOUSE,
+            principal_sha_number='SHA-SOMEPRINCIPAL',  # Legacy string
+            created_by=test_user,
+        )
+
+        # Try to create child with spouse as principal (should fail)
+        child_patient = Patient.objects.create(
+            first_name='Child',
+            last_name='Member',
+            date_of_birth='2015-01-01',
+            gender='M',
+            county=county,
+            sub_county=sub_county,
+            registered_by=test_user,
+        )
+
+        with pytest.raises(ValidationError) as exc_info:
+            SHAMember.objects.create(
+                patient=child_patient,
+                sha_number='SHA-CHILD001',
+                membership_type=SHAMember.MembershipType.CHILD,
+                principal=spouse_member,  # Invalid - spouse is not a principal
+                created_by=test_user,
+            )
+
+        assert 'principal' in str(exc_info.value)

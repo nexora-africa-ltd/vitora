@@ -10,6 +10,7 @@ from datetime import date, timedelta
 from decimal import Decimal, InvalidOperation
 from io import BytesIO, StringIO
 
+from django.db import models
 from django.db.models import Count, Sum
 from django.http import HttpResponse
 from django.shortcuts import get_object_or_404
@@ -197,7 +198,8 @@ class SHAMemberViewSet(viewsets.ModelViewSet):
 
         GET /api/billing/sha-members/{id}/dependents/
         
-        Returns list of SHA members who have this member's SHA number as their principal.
+        Returns list of SHA members who have this member as their principal.
+        Uses the principal FK for integrity, falls back to principal_sha_number for legacy data.
         Only applicable for principal members.
         """
         member = self.get_object()
@@ -209,10 +211,10 @@ class SHAMemberViewSet(viewsets.ModelViewSet):
                 status=status.HTTP_400_BAD_REQUEST
             )
         
-        # Get all dependents linked to this principal
+        # Get all dependents linked to this principal (via FK or legacy string field)
         dependents = SHAMember.objects.filter(
-            principal_sha_number=member.sha_number
-        ).select_related('patient', 'created_by')
+            models.Q(principal=member) | models.Q(principal_sha_number=member.sha_number)
+        ).select_related('patient', 'created_by').distinct()
         
         page = self.paginate_queryset(dependents)
         if page is not None:
