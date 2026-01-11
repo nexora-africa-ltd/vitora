@@ -35,6 +35,12 @@ export {
   ClaimListItem,
 } from './ClaimComponents';
 
+// Claim Items Table with coverage type (SHA Integration Checklist #13)
+export { ClaimItemsTable } from './ClaimItemsTable';
+
+// PFMS Coverage Toggle (SHA Integration Checklist #13)
+export { PFMSToggle } from './PFMSToggle';
+
 // Facility & Practitioner Validation
 export {
   FacilityValidation,

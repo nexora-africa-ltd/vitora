@@ -284,6 +284,17 @@ function FullEligibilityBanner({
                   <span className="font-medium">Verified:</span> {memberName}
                 </p>
               )}
+              {/* PFMS Eligibility Badge (SHA Integration Checklist #13) */}
+              {member?.is_pfms_eligible && (
+                <div className="mt-1.5">
+                  <Badge variant="secondary" className="bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-100">
+                    🏛️ PFMS Eligible: {member.pfms_category_display || member.pfms_category}
+                  </Badge>
+                  <span className="text-xs text-muted-foreground ml-2">
+                    (Government Subsidy Coverage)
+                  </span>
+                </div>
+              )}
             </div>
           )}
 

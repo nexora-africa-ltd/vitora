@@ -1002,6 +1002,32 @@ class SHAMember(models.Model):
         help_text="SHA benefit package code"
     )
 
+    # PFMS (Public Finance Management System) Coverage
+    # For vulnerable populations: indigent, elderly, disabled, orphans
+    # Reference: SHA Integration Checklist item #13
+    class PFMSCategory(models.TextChoices):
+        VULNERABLE = 'vulnerable', 'Vulnerable Population'
+        ELDERLY = 'elderly', 'Elderly (65+)'
+        DISABLED = 'disabled', 'Persons with Disability'
+        ORPHAN = 'orphan', 'Orphan/Vulnerable Child'
+        INDIGENT = 'indigent', 'Indigent'
+
+    is_pfms_eligible = models.BooleanField(
+        default=False,
+        help_text="Is this member eligible for PFMS (government subsidy)?"
+    )
+    pfms_category = models.CharField(
+        max_length=20,
+        choices=PFMSCategory.choices,
+        blank=True,
+        help_text="PFMS category for government-subsidized coverage"
+    )
+    pfms_verified = models.BooleanField(
+        default=False,
+        help_text="Has PFMS eligibility been verified?"
+    )
+    pfms_verified_at = models.DateTimeField(null=True, blank=True)
+
     # Audit
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
@@ -1027,6 +1053,7 @@ class SHAMember(models.Model):
             models.Index(fields=['sha_number']),
             models.Index(fields=['national_id']),
             models.Index(fields=['status']),
+            models.Index(fields=['is_pfms_eligible']),
         ]
 
     def __str__(self):
@@ -1058,6 +1085,12 @@ class SHAMember(models.Model):
                 errors['coverage_end_date'] = (
                     'Coverage end date must be after start date'
                 )
+
+        # PFMS validation: category required when PFMS eligible
+        if self.is_pfms_eligible and not self.pfms_category:
+            errors['pfms_category'] = (
+                'PFMS category is required when member is PFMS eligible'
+            )
 
         if errors:
             raise ValidationError(errors)
@@ -1842,6 +1875,12 @@ class SHAClaimItem(models.Model):
         REJECTED = 'rejected', 'Rejected'
         ADJUSTED = 'adjusted', 'Adjusted'
 
+    class CoverageType(models.TextChoices):
+        """Which coverage pays for this item."""
+        SHA = 'sha', 'SHA Coverage'
+        PFMS = 'pfms', 'PFMS Coverage (Government Subsidy)'
+        BOTH = 'both', 'Split Between SHA and PFMS'
+
     id = models.BigAutoField(primary_key=True)
 
     # Claim linkage
@@ -1883,6 +1922,14 @@ class SHAClaimItem(models.Model):
         null=True,
         blank=True,
         help_text="Date this specific service was provided"
+    )
+
+    # Coverage type (for PFMS dual coverage - SHA Checklist item #13)
+    coverage_type = models.CharField(
+        max_length=10,
+        choices=CoverageType.choices,
+        default=CoverageType.SHA,
+        help_text="Which coverage pays for this item (SHA, PFMS, or both)"
     )
 
     # Quantity and pricing

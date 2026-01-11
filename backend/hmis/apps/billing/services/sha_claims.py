@@ -344,6 +344,7 @@ class SHAClaimsService:
         - Practitioner resource (attending healthcare worker)
         - Organization resource (healthcare facility)
         - Coverage resource (SHA membership)
+        - PFMS Coverage resource (if PFMS eligible - checklist item #13)
         - Patient resource (patient demographics)
         - Claim resource (claim details with careTeam)
         
@@ -367,6 +368,51 @@ class SHAClaimsService:
             practitioner_user = claim.encounter.finalized_by
         practitioner_id = self._get_practitioner_id(practitioner_user)
         
+        # Check for PFMS eligibility (checklist item #13)
+        is_pfms_eligible = getattr(claim.sha_member, 'is_pfms_eligible', False)
+        
+        # Build base entries
+        entries = [
+            # Order per SHA spec: Practitioner, Organization, Coverage, Patient, Claim
+            {
+                'fullUrl': f'{self.fhir_base_url}/fhir/Practitioner/{practitioner_id}',
+                'resource': self._build_practitioner_resource(practitioner_user, practitioner_id)
+            },
+            {
+                'fullUrl': f'{self.fhir_base_url}/fhir/Organization/{self.facility_code}',
+                'resource': self._build_organization_resource()
+            },
+            {
+                'fullUrl': f'{self.fhir_base_url}/fhir/Coverage/{cr_number}-sha-coverage',
+                'resource': self._build_coverage_resource(claim.sha_member, cr_number)
+            },
+        ]
+        
+        # Add PFMS coverage if eligible (SHA Integration Checklist item #13)
+        if is_pfms_eligible:
+            pfms_category = getattr(claim.sha_member, 'pfms_category', 'vulnerable')
+            entries.append({
+                'fullUrl': f'{self.fhir_base_url}/fhir/Coverage/{cr_number}-pfms-coverage',
+                'resource': self._build_pfms_coverage_resource(
+                    claim.sha_member, cr_number, pfms_category
+                )
+            })
+        
+        # Add patient and claim resources
+        entries.extend([
+            {
+                'fullUrl': f'{self.fhir_base_url}/fhir/Patient/{cr_number}',
+                'resource': self._build_patient_resource(claim.patient, claim.sha_member)
+            },
+            {
+                'fullUrl': f'{self.fhir_base_url}/fhir/Claim/{bundle_guid}',
+                'resource': self._build_claim_resource(
+                    claim, bundle_guid, cr_number, practitioner_id, practitioner_user,
+                    is_pfms_eligible=is_pfms_eligible
+                )
+            },
+        ])
+        
         bundle = {
             'id': bundle_guid,
             'meta': {
@@ -376,31 +422,7 @@ class SHAClaimsService:
             },
             'timestamp': timezone.now().isoformat(),
             'type': 'message',
-            'entry': [
-                # Order per SHA spec: Practitioner, Organization, Coverage, Patient, Claim
-                {
-                    'fullUrl': f'{self.fhir_base_url}/fhir/Practitioner/{practitioner_id}',
-                    'resource': self._build_practitioner_resource(practitioner_user, practitioner_id)
-                },
-                {
-                    'fullUrl': f'{self.fhir_base_url}/fhir/Organization/{self.facility_code}',
-                    'resource': self._build_organization_resource()
-                },
-                {
-                    'fullUrl': f'{self.fhir_base_url}/fhir/Coverage/{cr_number}-sha-coverage',
-                    'resource': self._build_coverage_resource(claim.sha_member, cr_number)
-                },
-                {
-                    'fullUrl': f'{self.fhir_base_url}/fhir/Patient/{cr_number}',
-                    'resource': self._build_patient_resource(claim.patient, claim.sha_member)
-                },
-                {
-                    'fullUrl': f'{self.fhir_base_url}/fhir/Claim/{bundle_guid}',
-                    'resource': self._build_claim_resource(
-                        claim, bundle_guid, cr_number, practitioner_id, practitioner_user
-                    )
-                },
-            ],
+            'entry': entries,
             'resourceType': 'Bundle'
         }
         
@@ -463,7 +485,8 @@ class SHAClaimsService:
         bundle_guid: str, 
         cr_number: str,
         practitioner_id: str | None = None,
-        practitioner_user=None
+        practitioner_user=None,
+        is_pfms_eligible: bool = False
     ) -> dict:
         """
         Build FHIR Claim resource per SHA specification.
@@ -474,6 +497,7 @@ class SHAClaimsService:
             cr_number: SHA CR Number for the patient
             practitioner_id: PUID for the attending practitioner
             practitioner_user: User instance for practitioner details
+            is_pfms_eligible: Whether member has PFMS coverage (checklist #13)
             
         Returns:
             FHIR Claim resource dict
@@ -492,6 +516,25 @@ class SHAClaimsService:
             staff_profile = getattr(practitioner_user, 'staff_profile', None)
             if staff_profile and staff_profile.title:
                 practitioner_display = f'{staff_profile.title} {practitioner_display}'
+        
+        # Build insurance array (SHA Integration Checklist item #13)
+        insurance_entries = [{
+            'sequence': 1,
+            'focal': 'True',
+            'coverage': {
+                'reference': f'{self.fhir_base_url}/fhir/Coverage/{cr_number}-sha-coverage'
+            }
+        }]
+        
+        # Add PFMS coverage if eligible
+        if is_pfms_eligible:
+            insurance_entries.append({
+                'sequence': 2,
+                'focal': 'False',
+                'coverage': {
+                    'reference': f'{self.fhir_base_url}/fhir/Coverage/{cr_number}-pfms-coverage'
+                }
+            })
         
         claim_resource = {
             'id': bundle_guid,
@@ -526,13 +569,7 @@ class SHAClaimsService:
                 'start': f'{service_date.isoformat()}T00:00:00',
                 'end': f'{end_date.isoformat()}T23:59:59'
             },
-            'insurance': [{
-                'sequence': 1,
-                'focal': 'True',
-                'coverage': {
-                    'reference': f'{self.fhir_base_url}/fhir/Coverage/{cr_number}-sha-coverage'
-                }
-            }],
+            'insurance': insurance_entries,
             'created': claim.created_at.isoformat(),
             'provider': {
                 # Reference MUST match the Organization fullUrl in the bundle
@@ -663,6 +700,20 @@ class SHAClaimsService:
                     'procedure'
                 )
             
+            # Determine coverage reference based on item's coverage_type
+            # SHA Integration Checklist item #13: extension to show which item belongs to which coverage
+            coverage_type = getattr(claim_item, 'coverage_type', 'sha')
+            
+            # Build coverage extension based on coverage type
+            if coverage_type == 'pfms':
+                coverage_ref = f'{self.fhir_base_url}/fhir/Coverage/{cr_number}-pfms-coverage'
+            elif coverage_type == 'both':
+                # For items covered by both, reference SHA (primary), PFMS handles remainder
+                coverage_ref = f'{self.fhir_base_url}/fhir/Coverage/{cr_number}-sha-coverage'
+            else:
+                # Default to SHA coverage
+                coverage_ref = f'{self.fhir_base_url}/fhir/Coverage/{cr_number}-sha-coverage'
+            
             item = {
                 'sequence': idx,
                 'productOrService': {
@@ -698,7 +749,7 @@ class SHAClaimsService:
                 'extension': [{
                     'url': f'{self.fhir_base_url}/fhir/sha-coverage/StructureDefinition/Coverage',
                     'valueReference': {
-                        'reference': f'{self.fhir_base_url}/fhir/Coverage/{cr_number}-sha-coverage'
+                        'reference': coverage_ref
                     }
                 }]
             }
@@ -815,6 +866,119 @@ class SHAClaimsService:
             'payor': [{
                 'type': 'Organization',
                 'display': 'Social Health Authority (SHA)'
+            }]
+        }
+    
+    # PFMS scheme code mapping
+    # Reference: SHA Integration Checklist item #13
+    PFMS_SCHEME_CODES = {
+        'vulnerable': 'CAT-PFMS-001',
+        'elderly': 'CAT-PFMS-002',
+        'disabled': 'CAT-PFMS-003',
+        'orphan': 'CAT-PFMS-004',
+        'indigent': 'CAT-PFMS-005',
+    }
+    
+    PFMS_SCHEME_NAMES = {
+        'vulnerable': 'PFMS VULNERABLE POPULATION',
+        'elderly': 'PFMS ELDERLY (65+)',
+        'disabled': 'PFMS PERSONS WITH DISABILITY',
+        'orphan': 'PFMS ORPHANS AND VULNERABLE CHILDREN',
+        'indigent': 'PFMS INDIGENT',
+    }
+    
+    def get_pfms_scheme_code(self, category: str) -> str:
+        """
+        Get PFMS scheme category code for a given category.
+        
+        Args:
+            category: PFMS category (vulnerable, elderly, disabled, orphan, indigent)
+            
+        Returns:
+            PFMS scheme code (e.g., CAT-PFMS-001)
+        """
+        return self.PFMS_SCHEME_CODES.get(category.lower(), 'CAT-PFMS-001')
+    
+    def get_pfms_scheme_name(self, category: str) -> str:
+        """
+        Get PFMS scheme name for a given category.
+        
+        Args:
+            category: PFMS category
+            
+        Returns:
+            PFMS scheme display name
+        """
+        return self.PFMS_SCHEME_NAMES.get(category.lower(), 'PFMS VULNERABLE POPULATION')
+    
+    def _build_pfms_coverage_resource(
+        self, sha_member, cr_number: str, pfms_category: str
+    ) -> dict:
+        """
+        Build FHIR Coverage resource for PFMS (government subsidy) coverage.
+        
+        SHA Integration Checklist item #13:
+        "If the patient is eligible for PFMS coverage then both SHA and PFMS 
+        coverage must be mentioned in insurance section."
+        
+        Args:
+            sha_member: SHAMember model instance
+            cr_number: SHA CR Number
+            pfms_category: PFMS category (vulnerable, elderly, disabled, orphan, indigent)
+            
+        Returns:
+            FHIR Coverage resource dict for PFMS
+        """
+        coverage_id = f'{cr_number}-pfms-coverage'
+        scheme_code = self.get_pfms_scheme_code(pfms_category)
+        scheme_name = self.get_pfms_scheme_name(pfms_category)
+        
+        return {
+            'resourceType': 'Coverage',
+            'id': coverage_id,
+            'meta': {
+                'profile': [
+                    f'{self.fhir_base_url}/fhir/StructureDefinition/pfms-coverage|1.0.0'
+                ]
+            },
+            'identifier': [{
+                'use': 'official',
+                'system': f'{self.fhir_base_url}/fhir/identifier/pfms-coverage',
+                'value': coverage_id
+            }],
+            'status': 'active' if sha_member.status == 'active' else 'cancelled',
+            'type': {
+                'coding': [{
+                    'system': 'http://terminology.hl7.org/CodeSystem/v3-ActCode',
+                    'code': 'SUBSIDIZ',
+                    'display': 'Public Finance Management System (PFMS)'
+                }]
+            },
+            'extension': [
+                {
+                    'url': f'{self.fhir_base_url}/fhir/StructureDefinition/schemeCategoryCode',
+                    'valueString': scheme_code
+                },
+                {
+                    'url': f'{self.fhir_base_url}/fhir/StructureDefinition/schemeCategoryName',
+                    'valueString': scheme_name
+                }
+            ],
+            'subscriber': {
+                'reference': f'{self.fhir_base_url}/fhir/Patient/{cr_number}',
+                'type': 'Patient'
+            },
+            'beneficiary': {
+                'reference': f'{self.fhir_base_url}/fhir/Patient/{cr_number}',
+                'type': 'Patient'
+            },
+            'period': {
+                'start': sha_member.coverage_start_date.isoformat() if sha_member.coverage_start_date else None,
+                'end': sha_member.coverage_end_date.isoformat() if sha_member.coverage_end_date else None,
+            },
+            'payor': [{
+                'type': 'Organization',
+                'display': 'Government of Kenya - PFMS'
             }]
         }
     
