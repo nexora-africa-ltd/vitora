@@ -1,0 +1,146 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --background: 0 0% 100%;
+    --foreground: 0 0% 3.9%;  /* neutral-900 */
+    --card: 0 0% 100%;
+    --card-foreground: 0 0% 3.9%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 0 0% 3.9%;
+    --primary: 0 0% 9%;  /* Deep Burgundy #3D000F */
+    --primary-foreground: 0 0% 98%;
+    --secondary: 0 0% 96.1%;  /* Teal #1A4D5C */
+    --secondary-foreground: 0 0% 9%;
+    --muted: 0 0% 96.1%;  /* neutral-100 */
+    --muted-foreground: 0 0% 45.1%;  /* neutral-600 */
+    --accent: 0 0% 96.1%;  /* Warm Gold #D4A574 */
+    --accent-foreground: 0 0% 9%;
+    --destructive: 0 84.2% 60.2%;  /* error main #C62828 */
+    --destructive-foreground: 0 0% 98%;
+    --border: 0 0% 89.8%;  /* neutral-300 */
+    --input: 0 0% 89.8%;
+    --ring: 0 0% 3.9%;  /* primary */
+    --radius: 0.5rem;
+    
+    /* Semantic colors */
+    --success: 145 46% 34%;  /* #2E7D4A */
+    --success-foreground: 0 0% 100%;
+    --warning: 45 100% 51%;  /* #FFC107 */
+    --warning-foreground: 30 15% 25%;  /* Dark amber for readability */
+    --critical: 0 65% 47%;  /* #C62828 */
+    --critical-foreground: 0 0% 100%;  --chart-1: 12 76% 61%;  --chart-2: 173 58% 39%;  --chart-3: 197 37% 24%;  --chart-4: 43 74% 66%;  --chart-5: 27 87% 67%;
+  }
+
+  .dark {
+    --background: 0 0% 3.9%;  /* background.dark #1A1516 */
+    --foreground: 0 0% 98%;  /* neutral-100 */
+    --card: 0 0% 3.9%;
+    --card-foreground: 0 0% 98%;
+    --popover: 0 0% 3.9%;
+    --popover-foreground: 0 0% 98%;
+    --primary: 0 0% 98%;  /* Lighter burgundy for dark mode */
+    --primary-foreground: 0 0% 9%;
+    --secondary: 0 0% 14.9%;  /* Lighter teal for dark mode */
+    --secondary-foreground: 0 0% 98%;
+    --muted: 0 0% 14.9%;
+    --muted-foreground: 0 0% 63.9%;
+    --accent: 0 0% 14.9%;  /* Slightly dimmed gold */
+    --accent-foreground: 0 0% 98%;
+    --destructive: 0 62.8% 30.6%;  /* Lighter for dark mode */
+    --destructive-foreground: 0 0% 98%;
+    --border: 0 0% 14.9%;
+    --input: 0 0% 14.9%;
+    --ring: 0 0% 83.1%;
+    
+    /* Semantic colors - dark mode */
+    --success: 145 46% 40%;
+    --success-foreground: 145 46% 90%;
+    --warning: 45 100% 45%;
+    --warning-foreground: 45 60% 85%;
+    --critical: 0 63% 45%;
+    --critical-foreground: 0 63% 90%;
+    --chart-1: 220 70% 50%;
+    --chart-2: 160 60% 45%;
+    --chart-3: 30 80% 55%;
+    --chart-4: 280 65% 60%;
+    --chart-5: 340 75% 55%;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+  body {
+    @apply bg-background text-foreground;
+    font-feature-settings: 'rlig' 1, 'calt' 1;
+  }
+}
+
+/* Custom scrollbar */
+@layer utilities {
+  .scrollbar-thin {
+    scrollbar-width: thin;
+  }
+
+  .scrollbar-thin::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+  }
+
+  .scrollbar-thin::-webkit-scrollbar-track {
+    @apply bg-muted;
+  }
+
+  .scrollbar-thin::-webkit-scrollbar-thumb {
+    @apply bg-muted-foreground/30 rounded-full;
+  }
+
+  .scrollbar-thin::-webkit-scrollbar-thumb:hover {
+    @apply bg-muted-foreground/50;
+  }
+}
+
+/* Focus visible styles for accessibility */
+@layer utilities {
+  .focus-ring {
+    @apply focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2;
+  }
+}
+
+/* Animation utilities */
+@layer utilities {
+  .animate-in {
+    animation-duration: 0.15s;
+    animation-timing-function: ease-out;
+    animation-fill-mode: forwards;
+  }
+
+  .animate-out {
+    animation-duration: 0.15s;
+    animation-timing-function: ease-in;
+    animation-fill-mode: forwards;
+  }
+}
+
+/* Print styles for medical records */
+@media print {
+  body {
+    @apply bg-white text-black;
+  }
+  
+  .no-print {
+    display: none !important;
+  }
+  
+  .print-break-before {
+    page-break-before: always;
+  }
+  
+  .print-break-after {
+    page-break-after: always;
+  }
+}

@@ -199,7 +199,7 @@ interface PatientFormProps {
 // Payment mode icons
 const PAYMENT_MODE_ICONS: Record<PaymentMode, React.ReactNode> = {
   cash: <Wallet className="h-4 w-4 text-emerald-600" />,
-  sha: <Shield className="h-4 w-4 text-blue-600" />,
+  sha: <Shield className="h-4 w-4 text-blue-600  " />,
   insurance_private: <CreditCard className="h-4 w-4 text-purple-600" />,
   insurance_corporate: <Building2 className="h-4 w-4 text-orange-600" />,
 };
