@@ -22,8 +22,6 @@ import { format } from 'date-fns';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
-// import { Calendar22 as Calendar } from '@/components/ui/dob-picker';
-import { Calendar } from '@/components/ui/calendar';
 import { DobPicker } from '@/components/ui/dob-picker';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Label } from '@/components/ui/label';
@@ -314,8 +312,9 @@ export function PatientForm({
   }, [form]);
 
   // Define performCRLookup with useCallback
-  const performCRLookup = useCallback(async (idType: IdentificationType, idNumber: string) => {
-    if (!idNumber || idNumber.length < 5) return;
+  // Returns { found: boolean, idType, idNumber } to allow caller to check eligibility
+  const performCRLookup = useCallback(async (idType: IdentificationType, idNumber: string): Promise<{ found: boolean; idType: IdentificationType; idNumber: string } | null> => {
+    if (!idNumber || idNumber.length < 5) return null;
     
     setIsSearchingCR(true);
     setFormLocked(true);
@@ -352,8 +351,7 @@ export function PatientForm({
         
         populateFromCRClient(response.client);
         
-        // Check SHA eligibility after CR lookup
-        checkShaEligibility(idType, idNumber);
+        return { found: true, idType, idNumber };
       } else {
         toast({
           title: 'No Record Found',
@@ -362,6 +360,7 @@ export function PatientForm({
         });
         // Reset eligibility status when no CR record found
         setShaEligibility({ checked: true, isEligible: false, reason: 'No Client Registry record found' });
+        return { found: false, idType, idNumber };
       }
     } catch (error) {
       console.error('CR lookup failed:', error);
@@ -370,6 +369,7 @@ export function PatientForm({
         description: 'Unable to search Client Registry. You can continue with manual entry.',
         variant: 'destructive',
       });
+      return null;
     } finally {
       setIsSearchingCR(false);
       setFormLocked(false);
@@ -437,9 +437,14 @@ export function PatientForm({
       !crSearched &&
       !isEditing
     ) {
-      performCRLookup(identificationType, debouncedIdNumber);
+      performCRLookup(identificationType, debouncedIdNumber).then((result) => {
+        // Check SHA eligibility after CR lookup if record was found
+        if (result?.found) {
+          checkShaEligibility(result.idType, result.idNumber);
+        }
+      });
     }
-  }, [debouncedIdNumber, identificationType, crClient, crSearched, isEditing, performCRLookup]);
+  }, [debouncedIdNumber, identificationType, crClient, crSearched, isEditing, performCRLookup, checkShaEligibility]);
 
   // Pre-populate from external CR client
   useEffect(() => {
@@ -456,7 +461,12 @@ export function PatientForm({
     if (idNumber && idNumber.length >= 5) {
       setCrSearched(false);
       setCrClient(null);
-      performCRLookup(idType, idNumber);
+      performCRLookup(idType, idNumber).then((result) => {
+        // Check SHA eligibility after CR lookup if record was found
+        if (result?.found) {
+          checkShaEligibility(result.idType, result.idNumber);
+        }
+      });
     } else {
       toast({
         title: 'Invalid ID',
