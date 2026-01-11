@@ -17,7 +17,7 @@ import React, { useState, useRef, useCallback, useEffect } from 'react';
 import { useForm, useWatch } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import { CalendarIcon, Loader2, CheckCircle2, AlertCircle, Info, Search, Lock, CreditCard, Shield, Building2, Wallet, ChevronDown, HelpCircle, ChevronsUpDown, Check, Ban, ChevronLeft, ChevronRight } from 'lucide-react';
+import { CalendarIcon, Loader2, CheckCircle2, AlertCircle, Info, Search, Lock, CreditCard, Shield, Building2, Wallet, ChevronDown, HelpCircle, ChevronsUpDown, Check, Ban, ChevronLeft, ChevronRight, Eye, BadgeCheck, XCircle } from 'lucide-react';
 import { format } from 'date-fns';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -105,7 +105,7 @@ import {
   TITLE_OPTIONS,
   PAYMENT_MODE_OPTIONS,
 } from '@/lib/types/patient';
-import type { ClientRegistryClient } from '@/lib/types/sha';
+import type { ClientRegistryClient, DirectEligibilityCheckResponse } from '@/lib/types/sha';
 import { PaymentMethodCarousel } from './payment-method-carousel';
 
 // Debounce hook for auto-search
@@ -231,8 +231,12 @@ export function PatientForm({
     checked: boolean;
     isEligible: boolean;
     reason?: string;
+    details?: DirectEligibilityCheckResponse;
   }>({ checked: false, isEligible: true });
   const [isCheckingEligibility, setIsCheckingEligibility] = useState(false);
+  
+  // SHA Details dialog state
+  const [showShaDetailsDialog, setShowShaDetailsDialog] = useState(false);
   
   // Nationality combobox state
   const [nationalityOpen, setNationalityOpen] = useState(false);
@@ -359,7 +363,7 @@ export function PatientForm({
           variant: 'default',
         });
         // Reset eligibility status when no CR record found
-        setShaEligibility({ checked: true, isEligible: false, reason: 'No Client Registry record found' });
+        setShaEligibility({ checked: true, isEligible: false, reason: 'No Client Registry record found', details: undefined });
         return { found: false, idType, idNumber };
       }
     } catch (error) {
@@ -401,7 +405,16 @@ export function PatientForm({
         reason: response.is_eligible 
           ? undefined 
           : response.reason || 'Patient is not eligible for SHA coverage',
+        details: response,
       });
+      
+      // Show success toast if eligible
+      if (response.is_eligible) {
+        toast({
+          title: 'SHA Coverage Active',
+          description: `Patient ${response.full_name || ''} has active SHA coverage.`,
+        });
+      }
       
       // If ineligible and SHA was selected, switch to cash
       if (!response.is_eligible) {
@@ -422,6 +435,7 @@ export function PatientForm({
         checked: true,
         isEligible: true, // Allow selection, verification will happen at claim time
         reason: undefined,
+        details: undefined,
       });
     } finally {
       setIsCheckingEligibility(false);
@@ -598,6 +612,72 @@ export function PatientForm({
                 <AlertTitle className="text-warning-foreground">No Existing Record</AlertTitle>
                 <AlertDescription>
                   A new Client Registry record will be created upon registration.
+                </AlertDescription>
+              </Alert>
+            )}
+            
+            {/* SHA Eligibility Status Banner */}
+            {isCheckingEligibility && (
+              <Alert className="border-blue-200 bg-blue-50">
+                <Loader2 className="h-4 w-4 text-blue-600 animate-spin" />
+                <AlertTitle className="text-blue-700">Checking SHA Coverage...</AlertTitle>
+                <AlertDescription className="text-blue-600">
+                  Verifying patient eligibility with Social Health Authority.
+                </AlertDescription>
+              </Alert>
+            )}
+            
+            {shaEligibility.checked && !isCheckingEligibility && shaEligibility.isEligible && shaEligibility.details && (
+              <Alert className="border-emerald-200 bg-emerald-50">
+                <BadgeCheck className="h-4 w-4 text-emerald-600" />
+                <AlertTitle className="text-emerald-700 flex items-center gap-2">
+                  Active SHA Coverage
+                  <Badge variant="outline" className="border-emerald-300 text-emerald-700 bg-emerald-100">
+                    Eligible
+                  </Badge>
+                </AlertTitle>
+                <AlertDescription className="flex items-center justify-between">
+                  <span className="text-emerald-600">
+                    {shaEligibility.details.full_name && (
+                      <strong>{shaEligibility.details.full_name}</strong>
+                    )}
+                    {shaEligibility.details.sha_number && (
+                      <span> • SHA#: {shaEligibility.details.sha_number}</span>
+                    )}
+                    {shaEligibility.details.copay_percentage !== undefined && shaEligibility.details.copay_percentage > 0 && (
+                      <span> • Co-pay: {shaEligibility.details.copay_percentage}%</span>
+                    )}
+                  </span>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    className="border-emerald-300 text-emerald-700 hover:bg-emerald-100"
+                    onClick={() => setShowShaDetailsDialog(true)}
+                  >
+                    <Eye className="h-3 w-3 mr-1" />
+                    View SHA Details
+                  </Button>
+                </AlertDescription>
+              </Alert>
+            )}
+            
+            {shaEligibility.checked && !isCheckingEligibility && !shaEligibility.isEligible && (
+              <Alert className="border-orange-200 bg-orange-50">
+                <XCircle className="h-4 w-4 text-orange-600" />
+                <AlertTitle className="text-orange-700 flex items-center gap-2">
+                  SHA Coverage Not Available
+                  <Badge variant="outline" className="border-orange-300 text-orange-700 bg-orange-100">
+                    Not Eligible
+                  </Badge>
+                </AlertTitle>
+                <AlertDescription className="text-orange-600">
+                  {shaEligibility.reason || 'Patient does not have active SHA coverage.'}
+                  {shaEligibility.details?.possible_solution && (
+                    <span className="block mt-1 text-sm">
+                      <strong>Suggestion:</strong> {shaEligibility.details.possible_solution}
+                    </span>
+                  )}
                 </AlertDescription>
               </Alert>
             )}
