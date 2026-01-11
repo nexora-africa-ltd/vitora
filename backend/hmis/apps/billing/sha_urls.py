@@ -16,6 +16,8 @@ from hmis.apps.billing.sha_views import (
     FacilitySearchView,
     PractitionerSearchView,
     EligibilityCheckView,
+    SHAWebhookView,
+    SHAValidateView,
 )
 
 app_name = 'sha'
@@ -41,4 +43,12 @@ urlpatterns = [
     
     # Eligibility check
     path('eligibility/check/', EligibilityCheckView.as_view(), name='eligibility-check'),
+    
+    # DHA Integration Endpoints (Callback/Webhook URLs)
+    # Register these with DHA when setting up integration:
+    # - Callback URL: https://your-domain/api/sha/webhook/
+    # - Validate URL: https://your-domain/api/sha/validate/
+    path('webhook/', SHAWebhookView.as_view(), name='sha-webhook'),
+    path('callback/', SHAWebhookView.as_view(), name='sha-callback'),  # Alias for webhook
+    path('validate/', SHAValidateView.as_view(), name='sha-validate'),
 ]
