@@ -1225,3 +1225,283 @@ class DirectEligibilityCheckView(APIView):
                 },
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR
             )
+
+
+class SHAWebhookView(APIView):
+    """
+    Webhook endpoint for receiving DHA/SHA claim responses.
+    
+    This is the callback URL that DHA calls to notify us about:
+    - Claim status changes (approved, rejected, pending-verification)
+    - ClaimResponse FHIR resources
+    - Payment notifications
+    
+    Register this URL with DHA as your Callback URL:
+    https://your-domain/api/sha/webhook/
+    
+    DHA Sandbox expects: https://taifa-hmis.com/callback
+    Replace with your actual production URL.
+    """
+    
+    # Allow unauthenticated access since DHA will call this
+    # Use signature verification instead
+    permission_classes = []
+    
+    def post(self, request):
+        """
+        Receive ClaimResponse from DHA.
+        
+        Expected payload (FHIR ClaimResponse):
+        {
+            "resourceType": "ClaimResponse",
+            "id": "claim-response-id",
+            "status": "active",
+            "type": {"coding": [{"code": "institutional"}]},
+            "use": "claim",
+            "patient": {"reference": "Patient/xxx"},
+            "created": "2026-01-11T10:00:00Z",
+            "insurer": {"reference": "Organization/sha"},
+            "request": {"reference": "Claim/original-claim-id"},
+            "outcome": "complete|queued|error|partial",
+            "disposition": "Claim approved/rejected reason",
+            "item": [...],
+            "total": {"value": 1500.00, "currency": "KES"}
+        }
+        
+        Or simplified notification:
+        {
+            "claim_reference": "SHA-CLM-2026-001",
+            "status": "approved|rejected|pending",
+            "outcome": "complete|queued|error",
+            "disposition": "Reason text",
+            "approved_amount": 1500.00,
+            "payment_reference": "PAY-xxx"
+        }
+        """
+        import logging
+        logger = logging.getLogger('hmis.sha.webhook')
+        
+        try:
+            payload = request.data
+            logger.info(f"SHA Webhook received: {payload}")
+            
+            # Verify signature if provided (DHA may include HMAC signature)
+            signature = request.headers.get('X-SHA-Signature')
+            if signature and not self._verify_signature(request.body, signature):
+                logger.warning("Invalid webhook signature")
+                return Response(
+                    {'error': 'Invalid signature'},
+                    status=status.HTTP_401_UNAUTHORIZED
+                )
+            
+            # Handle FHIR ClaimResponse
+            if payload.get('resourceType') == 'ClaimResponse':
+                return self._handle_fhir_claim_response(payload)
+            
+            # Handle simple notification format
+            if 'claim_reference' in payload:
+                return self._handle_simple_notification(payload)
+            
+            # Unknown format - log and acknowledge
+            logger.warning(f"Unknown webhook payload format: {payload}")
+            return Response({'status': 'received', 'warning': 'Unknown format'})
+            
+        except Exception as e:
+            logger.exception(f"Error processing SHA webhook: {e}")
+            return Response(
+                {'error': 'Processing error', 'detail': str(e)},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
+    
+    def _verify_signature(self, body: bytes, signature: str) -> bool:
+        """Verify HMAC signature from DHA."""
+        from django.conf import settings
+        import hmac
+        
+        secret = getattr(settings, 'SHA_WEBHOOK_SECRET', None)
+        if not secret:
+            # No secret configured, skip verification
+            return True
+        
+        expected = hmac.new(
+            secret.encode(),
+            body,
+            hashlib.sha256
+        ).hexdigest()
+        
+        return hmac.compare_digest(expected, signature)
+    
+    def _handle_fhir_claim_response(self, payload: dict) -> Response:
+        """Process FHIR ClaimResponse resource."""
+        import logging
+        logger = logging.getLogger('hmis.sha.webhook')
+        
+        # Extract claim reference from request.reference
+        request_ref = payload.get('request', {}).get('reference', '')
+        claim_id = request_ref.replace('Claim/', '') if request_ref else None
+        
+        outcome = payload.get('outcome', '')  # complete, queued, error, partial
+        disposition = payload.get('disposition', '')
+        
+        # Map FHIR outcome to our status
+        status_map = {
+            'complete': 'approved',
+            'queued': 'pending_verification',
+            'error': 'rejected',
+            'partial': 'partially_approved',
+        }
+        new_status = status_map.get(outcome, 'pending_verification')
+        
+        # Get approved amount from total
+        total = payload.get('total', {})
+        approved_amount = total.get('value', 0)
+        
+        # Update claim if we can find it
+        if claim_id:
+            updated = self._update_claim_status(
+                claim_reference=claim_id,
+                new_status=new_status,
+                disposition=disposition,
+                approved_amount=approved_amount,
+                response_payload=payload
+            )
+            if updated:
+                logger.info(f"Updated claim {claim_id} to status {new_status}")
+            else:
+                logger.warning(f"Could not find claim with reference {claim_id}")
+        
+        return Response({
+            'status': 'processed',
+            'claim_reference': claim_id,
+            'outcome': outcome,
+            'new_status': new_status
+        })
+    
+    def _handle_simple_notification(self, payload: dict) -> Response:
+        """Process simple notification format."""
+        import logging
+        logger = logging.getLogger('hmis.sha.webhook')
+        
+        claim_reference = payload.get('claim_reference')
+        new_status = payload.get('status', 'pending_verification')
+        disposition = payload.get('disposition', '')
+        approved_amount = payload.get('approved_amount', 0)
+        
+        updated = self._update_claim_status(
+            claim_reference=claim_reference,
+            new_status=new_status,
+            disposition=disposition,
+            approved_amount=approved_amount,
+            response_payload=payload
+        )
+        
+        if updated:
+            logger.info(f"Updated claim {claim_reference} to status {new_status}")
+        else:
+            logger.warning(f"Could not find claim with reference {claim_reference}")
+        
+        return Response({
+            'status': 'processed',
+            'claim_reference': claim_reference,
+            'updated': updated
+        })
+    
+    def _update_claim_status(
+        self,
+        claim_reference: str,
+        new_status: str,
+        disposition: str,
+        approved_amount: float,
+        response_payload: dict
+    ) -> bool:
+        """Update claim status in database."""
+        from decimal import Decimal
+        
+        # Try to find claim by SHA reference or claim number
+        claim = SHAClaim.objects.filter(
+            sha_claim_reference=claim_reference
+        ).first()
+        
+        if not claim:
+            claim = SHAClaim.objects.filter(
+                claim_number=claim_reference
+            ).first()
+        
+        if not claim:
+            return False
+        
+        # Update claim
+        claim.status = new_status
+        claim.disposition = disposition
+        claim.approved_amount = Decimal(str(approved_amount)) if approved_amount else None
+        claim.submission_response = response_payload
+        claim.save(update_fields=[
+            'status', 'disposition', 'approved_amount', 
+            'submission_response', 'updated_at'
+        ])
+        
+        return True
+
+
+class SHAValidateView(APIView):
+    """
+    Validation endpoint for DHA to verify our system is reachable.
+    
+    This is the Validate URL that DHA uses to test connectivity:
+    https://your-domain/api/sha/validate/
+    
+    DHA Sandbox expects: https://taifa-hmis/validate
+    Replace with your actual production URL.
+    """
+    
+    permission_classes = []  # Allow unauthenticated for health checks
+    
+    def get(self, request):
+        """
+        Health check endpoint for DHA validation.
+        
+        Returns system status and readiness for claim processing.
+        """
+        from django.conf import settings
+        
+        return Response({
+            'status': 'active',
+            'system': 'Vitora HMIS',
+            'version': getattr(settings, 'VERSION', '1.0.0'),
+            'sha_integration': {
+                'enabled': True,
+                'api_version': 'v3',
+                'fhir_version': 'R4',
+            },
+            'timestamp': timezone.now().isoformat(),
+            'ready': True
+        })
+    
+    def post(self, request):
+        """
+        Validate a test payload from DHA.
+        
+        DHA may send test claims to verify integration.
+        """
+        payload = request.data
+        
+        # Basic validation of payload structure
+        validation_result = {
+            'valid': True,
+            'errors': [],
+            'warnings': []
+        }
+        
+        # Check for required FHIR bundle fields if it's a bundle
+        if payload.get('resourceType') == 'Bundle':
+            if 'type' not in payload:
+                validation_result['errors'].append('Bundle missing type field')
+                validation_result['valid'] = False
+            if 'entry' not in payload:
+                validation_result['warnings'].append('Bundle has no entries')
+        
+        return Response({
+            'status': 'validated',
+            'result': validation_result,
+            'timestamp': timezone.now().isoformat()
+        })

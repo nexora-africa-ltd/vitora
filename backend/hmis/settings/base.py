@@ -390,6 +390,14 @@ ICD11_LOCAL_API_URL = os.getenv("ICD11_LOCAL_API_URL", "http://localhost:5080")
 ICD11_API_TIMEOUT = int(os.getenv("ICD11_API_TIMEOUT", "10"))
 ICD11_USE_LOCAL = os.getenv("ICD11_USE_LOCAL", "true").lower() == "true"
 
+# SHA Webhook/Callback Configuration
+# These are the URLs DHA calls to notify us about claim status changes
+# When registering with DHA, provide your actual domain:
+# - Callback URL: https://your-domain/api/sha/webhook/ (or /api/sha/callback/)
+# - Validate URL: https://your-domain/api/sha/validate/
+# DHA Sandbox defaults: https://taifa-hmis.com/callback, https://taifa-hmis/validate
+SHA_WEBHOOK_SECRET = os.getenv("SHA_WEBHOOK_SECRET", "")  # Optional HMAC secret for webhook verification
+
 # Facility identification (for SHA claims)
 FACILITY_MFL_CODE = os.getenv("FACILITY_MFL_CODE", "TEST-001")  # Master Facility List code
 FACILITY_LEVEL = os.getenv("FACILITY_LEVEL", "L3")  # Default to Level 3
