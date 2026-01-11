@@ -22,7 +22,7 @@ import { format } from 'date-fns';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
-import { DobPicker } from '@/components/ui/dob-picker';
+import DobPicker from '@/components/ui/dob-picker';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Label } from '@/components/ui/label';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
@@ -877,7 +877,7 @@ export function PatientForm({
                 control={form.control}
                 name="date_of_birth"
                 render={({ field }) => (
-                  <FormItem className="w-[160px]">
+                  <FormItem className="max-w-md">
                     <FormLabel>Date of Birth *</FormLabel>
                     <DobPicker
                       value={field.value}

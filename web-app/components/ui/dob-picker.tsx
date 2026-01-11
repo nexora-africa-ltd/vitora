@@ -1,94 +1,98 @@
-"use client"
+"use client";
 
-import * as React from "react"
-import { CalendarIcon, ChevronDownIcon } from "lucide-react"
-import { format } from "date-fns"
-import { Button } from "@/components/ui/button"
-import { Calendar } from "@/components/ui/calendar"
+import * as React from "react";
+import { ChevronDownIcon, CalendarIcon } from "lucide-react";
+import { format } from "date-fns";
+
+import { Button } from "@/components/ui/button";
+import { Calendar } from "@/components/ui/calendar";
 import {
   Popover,
   PopoverContent,
   PopoverTrigger,
-} from "@/components/ui/popover"
-import { cn } from "@/lib/utils"
+} from "@/components/ui/popover";
+import { cn } from "@/lib/utils";
 
 interface DobPickerProps {
-  /** Selected date value */
-  value?: Date
-  /** Callback when date changes */
-  onChange: (date?: Date) => void
-  /** Disable the picker */
-  disabled?: boolean
-  /** Placeholder text */
-  placeholder?: string
-  /** Custom class name for the trigger button */
-  className?: string
-  /** Error state */
-  error?: boolean
+  value?: Date;
+  onChange: (date?: Date) => void;
+  disabled?: boolean;
+  placeholder?: string;
+  className?: string;
+  error?: boolean;
 }
 
-/**
- * Date of Birth Picker Component
- * 
- * A specialized date picker optimized for selecting dates of birth:
- * - Dropdown navigation for easy year/month selection (100+ years back)
- * - Prevents future dates
- * - Controlled open state for better UX
- */
-export function DobPicker({ 
-  value, 
-  onChange, 
+export function DobPicker({
+  value,
+  onChange,
   disabled,
-  placeholder = "Select date",
+  placeholder = "Select",
   className,
   error,
 }: DobPickerProps) {
-  const [open, setOpen] = React.useState(false)
+  const [open, setOpen] = React.useState(false);
 
-  // Calculate a reasonable default month (30 years ago if no value)
   const defaultMonth = React.useMemo(() => {
-    if (value) return value
-    const thirtyYearsAgo = new Date()
-    thirtyYearsAgo.setFullYear(thirtyYearsAgo.getFullYear() - 30)
-    return thirtyYearsAgo
-  }, [value])
+    if (value) return value;
+    const d = new Date();
+    d.setFullYear(d.getFullYear() - 30);
+    return d;
+  }, [value]);
 
   return (
     <Popover open={open} onOpenChange={setOpen}>
       <PopoverTrigger asChild>
         <Button
+          type="button"
           variant="outline"
           disabled={disabled}
+          aria-invalid={error}
           className={cn(
-            "w-full justify-between font-normal",
+            "h-10 w-full justify-between px-3 text-left font-normal",
+            "focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2",
             !value && "text-muted-foreground",
-            error && "border-destructive",
+            error &&
+              "border-destructive focus-visible:ring-destructive",
             className
           )}
         >
-          {value ? format(value, "PPP") : placeholder}
-          <ChevronDownIcon className="h-4 w-4 opacity-50" />
+          <span className="flex items-center gap-2 truncate">
+            <CalendarIcon className="h-4 w-4 text-muted-foreground" />
+            {value ? format(value, "PPP") : placeholder}
+          </span>
+
+          <ChevronDownIcon
+            className={cn(
+              "h-4 w-4 shrink-0 text-muted-foreground transition-transform",
+              open && "rotate-180"
+            )}
+          />
         </Button>
       </PopoverTrigger>
-      <PopoverContent className="w-auto p-0" align="start">
+
+      <PopoverContent
+        align="start"
+        className="w-auto rounded-md border p-2 shadow-md"
+      >
         <Calendar
           mode="single"
           selected={value}
           captionLayout="dropdown"
+          defaultMonth={defaultMonth}
           onSelect={(date) => {
-            onChange(date)
-            setOpen(false)
+            onChange(date);
+            setOpen(false);
           }}
           disabled={(date) =>
             date > new Date() || date < new Date("1900-01-01")
           }
-          defaultMonth={defaultMonth}
           fromYear={1900}
           toYear={new Date().getFullYear()}
+          className="rounded-md"
         />
       </PopoverContent>
     </Popover>
-  )
+  );
 }
 
-export default DobPicker
+export default DobPicker;
