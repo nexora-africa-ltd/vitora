@@ -96,6 +96,32 @@ export type SchemeCategory =
   | 'NHIF_LEGACY'
   | 'UNKNOWN';
 
+// PFMS (Public Finance Management System) Categories
+// For vulnerable populations eligible for government subsidy
+export type PFMSCategory =
+  | 'vulnerable'
+  | 'elderly'
+  | 'disabled'
+  | 'orphan'
+  | 'indigent';
+
+export const PFMS_CATEGORY_LABELS: Record<PFMSCategory, string> = {
+  vulnerable: 'Vulnerable Population',
+  elderly: 'Elderly (65+)',
+  disabled: 'Persons with Disability',
+  orphan: 'Orphan/Vulnerable Child',
+  indigent: 'Indigent',
+};
+
+// Coverage type for claim items (SHA Integration Checklist #13)
+export type CoverageType = 'sha' | 'pfms' | 'both';
+
+export const COVERAGE_TYPE_LABELS: Record<CoverageType, string> = {
+  sha: 'SHA Coverage',
+  pfms: 'PFMS Coverage (Government Subsidy)',
+  both: 'Split Between SHA and PFMS',
+};
+
 export interface SHAMember {
   id: number;
   patient: number;
@@ -106,6 +132,12 @@ export interface SHAMember {
   coverage_start_date: string;
   coverage_end_date?: string;
   is_active: boolean;
+  // PFMS fields (SHA Integration Checklist #13)
+  is_pfms_eligible: boolean;
+  pfms_category?: PFMSCategory;
+  pfms_category_display?: string;
+  pfms_verified: boolean;
+  pfms_verified_at?: string;
   created_at: string;
   updated_at: string;
 }
@@ -316,6 +348,31 @@ export interface Claim {
   // Metadata
   created_by?: number;
   submitted_by?: number;
+}
+
+// Claim Item with coverage type (SHA Integration Checklist #13)
+export interface ClaimItem {
+  id: number;
+  claim: number;
+  tariff?: number;
+  tariff_code?: string;
+  tariff_name?: string;
+  service?: number;
+  invoice_item?: number;
+  description: string;
+  service_date?: string;
+  quantity: string | number;
+  unit_price: string;
+  claimed_amount: string;
+  // PFMS coverage type
+  coverage_type: CoverageType;
+  coverage_type_display?: string;
+  status: 'pending' | 'approved' | 'rejected' | 'adjusted';
+  approved_quantity?: string | number;
+  approved_amount?: string;
+  rejection_reason?: string;
+  created_at: string;
+  updated_at: string;
 }
 
 export interface ClaimCreateRequest {

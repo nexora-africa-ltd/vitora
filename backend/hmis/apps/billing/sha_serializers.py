@@ -24,6 +24,7 @@ class SHAMemberSerializer(serializers.ModelSerializer):
 
     patient_name = serializers.SerializerMethodField()
     eligibility_display = serializers.SerializerMethodField()
+    pfms_category_display = serializers.SerializerMethodField()
 
     class Meta:
         model = SHAMember
@@ -41,6 +42,12 @@ class SHAMemberSerializer(serializers.ModelSerializer):
             'coverage_end_date',
             'eligibility_valid_until',
             'last_eligibility_check',
+            # PFMS fields (SHA Integration Checklist #13)
+            'is_pfms_eligible',
+            'pfms_category',
+            'pfms_category_display',
+            'pfms_verified',
+            'pfms_verified_at',
             'created_at',
             'updated_at',
         ]
@@ -49,6 +56,8 @@ class SHAMemberSerializer(serializers.ModelSerializer):
             'status',
             'eligibility_valid_until',
             'last_eligibility_check',
+            'pfms_verified',
+            'pfms_verified_at',
             'created_at',
             'updated_at',
         ]
@@ -62,6 +71,12 @@ class SHAMemberSerializer(serializers.ModelSerializer):
     def get_eligibility_display(self, obj):
         """Return human-readable eligibility status."""
         return obj.get_eligibility_display()
+
+    def get_pfms_category_display(self, obj):
+        """Return human-readable PFMS category."""
+        if obj.is_pfms_eligible and obj.pfms_category:
+            return obj.get_pfms_category_display()
+        return None
 
     def validate_sha_number(self, value):
         """Validate SHA number format."""
@@ -77,6 +92,14 @@ class SHAMemberSerializer(serializers.ModelSerializer):
         if membership_type != SHAMember.MembershipType.PRINCIPAL and not principal_sha_number:
             raise serializers.ValidationError({
                 'principal_sha_number': 'Non-principal members must have a principal SHA number'
+            })
+
+        # Validate PFMS category when PFMS eligible
+        is_pfms_eligible = attrs.get('is_pfms_eligible', False)
+        pfms_category = attrs.get('pfms_category', '')
+        if is_pfms_eligible and not pfms_category:
+            raise serializers.ValidationError({
+                'pfms_category': 'PFMS category is required when member is PFMS eligible'
             })
 
         return attrs
@@ -144,6 +167,7 @@ class SHAClaimItemSerializer(serializers.ModelSerializer):
 
     tariff_code = serializers.CharField(source='tariff.code', read_only=True, allow_null=True)
     tariff_name = serializers.CharField(source='tariff.name', read_only=True, allow_null=True)
+    coverage_type_display = serializers.SerializerMethodField()
 
     class Meta:
         model = SHAClaimItem
@@ -160,6 +184,9 @@ class SHAClaimItemSerializer(serializers.ModelSerializer):
             'quantity',
             'unit_price',
             'claimed_amount',
+            # PFMS coverage type (SHA Integration Checklist #13)
+            'coverage_type',
+            'coverage_type_display',
             'status',
             'approved_quantity',
             'approved_amount',
@@ -178,6 +205,10 @@ class SHAClaimItemSerializer(serializers.ModelSerializer):
             'created_at',
             'updated_at',
         ]
+
+    def get_coverage_type_display(self, obj):
+        """Return human-readable coverage type."""
+        return obj.get_coverage_type_display()
 
 
 class SHAClaimAttachmentSerializer(serializers.ModelSerializer):
