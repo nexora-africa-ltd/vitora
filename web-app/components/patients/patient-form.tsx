@@ -80,13 +80,6 @@ import {
   DialogTrigger,
 } from '@/components/ui/dialog';
 import {
-  Carousel,
-  CarouselContent,
-  CarouselItem,
-  CarouselNext,
-  CarouselPrevious,
-} from '@/components/ui/carousel';
-import {
   Command,
   CommandEmpty,
   CommandGroup,
@@ -115,6 +108,7 @@ import {
   PAYMENT_MODE_OPTIONS,
 } from '@/lib/types/patient';
 import type { ClientRegistryClient } from '@/lib/types/sha';
+import { PaymentMethodCarousel } from './payment-method-carousel';
 
 // Debounce hook for auto-search
 function useDebounce<T>(value: T, delay: number): T {
@@ -646,9 +640,9 @@ export function PatientForm({
                 control={form.control}
                 name="cr_number"
                 render={({ field }) => (
-                  <FormItem className="w-[180px] shrink-0">
+                  <FormItem className="w-[180px] shrink-0 mt-1">
                     <FormLabel className="flex items-center gap-1">
-                      <Lock className="h-3 w-3" />
+                      <Lock className="h-4 w-4" />
                       CR Number
                     </FormLabel>
                     <FormControl>
@@ -668,6 +662,7 @@ export function PatientForm({
               />
               
               {/* Payment Method - Compact selector with dialog */}
+              {/* Payment Method - Compact selector with dialog */}
               <FormField
                 control={form.control}
                 name="payment_mode"
@@ -676,7 +671,7 @@ export function PatientForm({
                   const isShaDisabled = shaEligibility.checked && !shaEligibility.isEligible;
                   
                   return (
-                    <FormItem className="min-w-[200px] flex-1">
+                    <FormItem className="min-w-[120px] -mt-1">
                       <FormLabel>Payment Method *</FormLabel>
                       <Dialog>
                         <DialogTrigger asChild>
@@ -695,7 +690,7 @@ export function PatientForm({
                             <ChevronDown className="h-4 w-4 opacity-50" />
                           </Button>
                         </DialogTrigger>
-                        <DialogContent className="max-w-md overflow-hidden">
+                        <DialogContent className="max-w-sm overflow-y-auto">
                           <DialogHeader>
                             <DialogTitle>Select Payment Method</DialogTitle>
                             <DialogDescription>
@@ -707,72 +702,12 @@ export function PatientForm({
                               )}
                             </DialogDescription>
                           </DialogHeader>
-                          <div className="px-8">
-                            <Carousel className="w-full max-w-xs" opts={{ align: 'center', loop: true }}>
-                              <CarouselContent className="-ml-2">
-                                {PAYMENT_MODE_OPTIONS.map((option) => {
-                                  const isDisabled = option.value === 'sha' && isShaDisabled;
-                                  const isSelected = field.value === option.value;
-                                  
-                                  return (
-                                    <CarouselItem key={option.value} className="pl-2 basis-full">
-                                      <Card
-                                        className={cn(
-                                          'transition-all',
-                                          isDisabled 
-                                            ? 'cursor-not-allowed opacity-50 bg-muted' 
-                                            : 'cursor-pointer hover:border-primary hover:shadow-md',
-                                          isSelected && !isDisabled && 'border-primary bg-primary/5 ring-2 ring-primary'
-                                        )}
-                                        onClick={() => {
-                                          if (!isDisabled) {
-                                            field.onChange(option.value);
-                                          }
-                                        }}
-                                      >
-                                        <CardContent className="flex aspect-square items-center justify-centre p-6">
-                                          <div className={cn(
-                                            'rounded-full p-3 shrink-0',
-                                            isSelected && !isDisabled ? 'bg-primary/20' : 'bg-muted'
-                                          )}>
-                                            {PAYMENT_MODE_ICONS[option.value]}
-                                          </div>
-                                          <div className="flex-1 min-w-0">
-                                            <div className="font-semibold text-lg flex items-center gap-2">
-                                              {option.label}
-                                              {isDisabled && (
-                                                <Badge variant="secondary" className="text-xs bg-red-100 text-red-800">
-                                                  Unavailable
-                                                </Badge>
-                                              )}
-                                            </div>
-                                            <div className="text-sm text-muted-foreground mt-1">{option.description}</div>
-                                          </div>
-                                          {isSelected && !isDisabled && (
-                                            <CheckCircle2 className="h-6 w-6 text-primary shrink-0" />
-                                          )}
-                                        </CardContent>
-                                      </Card>
-                                    </CarouselItem>
-                                  );
-                                })}
-                              </CarouselContent>
-                              <CarouselPrevious className="-left-8" />
-                              <CarouselNext className="-right-8" />
-                            </Carousel>
-                          </div>
-                          {/* Carousel indicator dots */}
-                          <div className="flex justify-center gap-2 pt-2">
-                            {PAYMENT_MODE_OPTIONS.map((option, index) => (
-                              <div
-                                key={option.value}
-                                className={cn(
-                                  'w-2 h-2 rounded-full transition-colors',
-                                  field.value === option.value ? 'bg-primary' : 'bg-muted-foreground/30'
-                                )}
-                              />
-                            ))}
-                          </div>
+                          <PaymentMethodCarousel
+                            value={field.value}
+                            onChange={field.onChange}
+                            shaDisabled={isShaDisabled}
+                            shaDisabledReason={shaEligibility.reason}
+                          />
                         </DialogContent>
                       </Dialog>
                       <FormMessage />
