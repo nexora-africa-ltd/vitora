@@ -362,8 +362,7 @@ export function PatientForm({
           description: 'No existing Client Registry record. A new record will be created upon registration.',
           variant: 'default',
         });
-        // Reset eligibility status when no CR record found
-        setShaEligibility({ checked: true, isEligible: false, reason: 'No Client Registry record found', details: undefined });
+        // Don't set eligibility here - we'll check directly with SHA API
         return { found: false, idType, idNumber };
       }
     } catch (error) {
@@ -452,8 +451,9 @@ export function PatientForm({
       !isEditing
     ) {
       performCRLookup(identificationType, debouncedIdNumber).then((result) => {
-        // Check SHA eligibility after CR lookup if record was found
-        if (result?.found) {
+        // Always check SHA eligibility after CR lookup (regardless of whether CR found a record)
+        // SHA eligibility is independent of Client Registry status
+        if (result) {
           checkShaEligibility(result.idType, result.idNumber);
         }
       });
@@ -476,8 +476,8 @@ export function PatientForm({
       setCrSearched(false);
       setCrClient(null);
       performCRLookup(idType, idNumber).then((result) => {
-        // Check SHA eligibility after CR lookup if record was found
-        if (result?.found) {
+        // Always check SHA eligibility after CR lookup (regardless of whether CR found a record)
+        if (result) {
           checkShaEligibility(result.idType, result.idNumber);
         }
       });
@@ -618,26 +618,26 @@ export function PatientForm({
             
             {/* SHA Eligibility Status Banner */}
             {isCheckingEligibility && (
-              <Alert className="border-blue-200 bg-blue-50">
-                <Loader2 className="h-4 w-4 text-blue-600 animate-spin" />
-                <AlertTitle className="text-blue-700">Checking SHA Coverage...</AlertTitle>
-                <AlertDescription className="text-blue-600">
+              <Alert className="border-primary/30 bg-primary/5">
+                <Loader2 className="h-4 w-4 text-primary animate-spin" />
+                <AlertTitle className="text-primary">Checking SHA Coverage...</AlertTitle>
+                <AlertDescription className="text-primary/80">
                   Verifying patient eligibility with Social Health Authority.
                 </AlertDescription>
               </Alert>
             )}
             
             {shaEligibility.checked && !isCheckingEligibility && shaEligibility.isEligible && shaEligibility.details && (
-              <Alert className="border-emerald-200 bg-emerald-50">
-                <BadgeCheck className="h-4 w-4 text-emerald-600" />
-                <AlertTitle className="text-emerald-700 flex items-center gap-2">
+              <Alert className="border-success/30 bg-success/5">
+                <BadgeCheck className="h-4 w-4 text-success" />
+                <AlertTitle className="text-success flex items-center gap-2">
                   Active SHA Coverage
-                  <Badge variant="outline" className="border-emerald-300 text-emerald-700 bg-emerald-100">
+                  <Badge variant="outline" className="border-success/50 text-success bg-success/10">
                     Eligible
                   </Badge>
                 </AlertTitle>
                 <AlertDescription className="flex items-center justify-between">
-                  <span className="text-emerald-600">
+                  <span className="text-success/90">
                     {shaEligibility.details.full_name && (
                       <strong>{shaEligibility.details.full_name}</strong>
                     )}
@@ -652,7 +652,7 @@ export function PatientForm({
                     type="button"
                     variant="outline"
                     size="sm"
-                    className="border-emerald-300 text-emerald-700 hover:bg-emerald-100"
+                    className="border-success/50 text-success hover:bg-success/10"
                     onClick={() => setShowShaDetailsDialog(true)}
                   >
                     <Eye className="h-3 w-3 mr-1" />
@@ -663,15 +663,15 @@ export function PatientForm({
             )}
             
             {shaEligibility.checked && !isCheckingEligibility && !shaEligibility.isEligible && (
-              <Alert className="border-orange-200 bg-orange-50">
-                <XCircle className="h-4 w-4 text-orange-600" />
-                <AlertTitle className="text-orange-700 flex items-center gap-2">
+              <Alert className="border-warning/30 bg-warning/5">
+                <XCircle className="h-4 w-4 text-warning-foreground" />
+                <AlertTitle className="text-warning-foreground flex items-center gap-2">
                   SHA Coverage Not Available
-                  <Badge variant="outline" className="border-orange-300 text-orange-700 bg-orange-100">
+                  <Badge variant="outline" className="border-warning/50 text-warning-foreground bg-warning/10">
                     Not Eligible
                   </Badge>
                 </AlertTitle>
-                <AlertDescription className="text-orange-600">
+                <AlertDescription className="text-warning-foreground/80">
                   {shaEligibility.reason || 'Patient does not have active SHA coverage.'}
                   {shaEligibility.details?.possible_solution && (
                     <span className="block mt-1 text-sm">
@@ -1542,7 +1542,7 @@ export function PatientForm({
         <DialogContent className="max-w-lg">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
-              <Shield className="h-5 w-5 text-blue-600" />
+              <Shield className="h-5 w-5 text-primary" />
               SHA Coverage Details
             </DialogTitle>
             <DialogDescription>
@@ -1553,11 +1553,11 @@ export function PatientForm({
           {shaEligibility.details && (
             <div className="space-y-4">
               {/* Eligibility Status */}
-              <div className="flex items-center gap-2 p-3 rounded-lg bg-emerald-50 border border-emerald-200">
-                <BadgeCheck className="h-5 w-5 text-emerald-600" />
+              <div className="flex items-center gap-2 p-3 rounded-lg bg-success/10 border border-success/30">
+                <BadgeCheck className="h-5 w-5 text-success" />
                 <div>
-                  <p className="font-medium text-emerald-700">Active Coverage</p>
-                  <p className="text-sm text-emerald-600">Patient is eligible for SHA benefits</p>
+                  <p className="font-medium text-success">Active Coverage</p>
+                  <p className="text-sm text-success/80">Patient is eligible for SHA benefits</p>
                 </div>
               </div>
               
