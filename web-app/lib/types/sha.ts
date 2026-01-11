@@ -132,6 +132,10 @@ export interface SHAMember {
   coverage_start_date: string;
   coverage_end_date?: string;
   is_active: boolean;
+  // Membership type (for dependents tracking)
+  membership_type?: 'PRINCIPAL' | 'SPOUSE' | 'CHILD' | 'PARENT' | 'OTHER';
+  principal_sha_number?: string;
+  status?: 'ACTIVE' | 'INACTIVE' | 'PENDING_VERIFICATION' | 'SUSPENDED';
   // PFMS fields (SHA Integration Checklist #13)
   is_pfms_eligible: boolean;
   pfms_category?: PFMSCategory;

@@ -120,10 +120,13 @@ export function LabelDialog({ isOpen, onClose, dispensing }: LabelDialogProps) {
   if (!dispensing) return null;
 
   const dispensedDate = format(new Date(dispensing.dispensed_at), 'MMM d, yyyy');
-  const expiryDate = dispensing.batch_expiry || 'N/A';
+  // batch_expiry comes from extended dispensing object if available
+  const expiryDate = (dispensing as Dispensing & { batch_expiry?: string }).batch_expiry || 'N/A';
   
   // Get dosage instructions from prescription if available
-  const instructions = dispensing.dosage || dispensing.instructions || '2 tablets three times daily';
+  const instructions = (dispensing as Dispensing & { dosage?: string; instructions?: string }).dosage 
+    || (dispensing as Dispensing & { dosage?: string; instructions?: string }).instructions 
+    || '2 tablets three times daily';
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>

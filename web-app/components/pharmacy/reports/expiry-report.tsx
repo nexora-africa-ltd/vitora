@@ -56,7 +56,7 @@ interface ExpiringBatch {
   expiry_date: string;
   days_to_expiry: number;
   quantity_available: number;
-  status: 'CRITICAL' | 'WARNING' | 'LOW';
+  status: 'OK' | 'CRITICAL' | 'WARNING' | 'EXPIRED';
 }
 
 export function ExpiryReport() {
@@ -114,10 +114,10 @@ export function ExpiryReport() {
 
   const handleExport = () => {
     try {
-      const data = reportData?.results || [];
+      const data = reportData || [];
       const csvContent = [
         ['Drug Name', 'Batch Number', 'Expiry Date', 'Days to Expiry', 'Quantity'].join(','),
-        ...data.map((item: ExpiringBatch) => [
+        ...data.map((item) => [
           `"${item.drug_name}"`,
           item.batch_number,
           item.expiry_date,
@@ -178,7 +178,7 @@ export function ExpiryReport() {
     );
   }
 
-  const expiringBatches = reportData?.results || [];
+  const expiringBatches = reportData || [];
 
   return (
     <>
@@ -234,19 +234,19 @@ export function ExpiryReport() {
             <div className="p-4 rounded-lg bg-destructive/10 border border-destructive/20">
               <p className="text-sm text-destructive">Critical (&lt;30 days)</p>
               <p className="text-2xl font-bold text-destructive">
-                {expiringBatches.filter((b: ExpiringBatch) => b.days_to_expiry <= 30).length}
+                {expiringBatches.filter((b) => b.days_to_expiry <= 30).length}
               </p>
             </div>
             <div className="p-4 rounded-lg bg-orange-500/10 border border-orange-500/20">
               <p className="text-sm text-orange-700 dark:text-orange-400">Warning (30-60 days)</p>
               <p className="text-2xl font-bold text-orange-700 dark:text-orange-400">
-                {expiringBatches.filter((b: ExpiringBatch) => b.days_to_expiry > 30 && b.days_to_expiry <= 60).length}
+                {expiringBatches.filter((b) => b.days_to_expiry > 30 && b.days_to_expiry <= 60).length}
               </p>
             </div>
             <div className="p-4 rounded-lg bg-amber-500/10 border border-amber-500/20">
               <p className="text-sm text-amber-700 dark:text-amber-400">Approaching (60-90 days)</p>
               <p className="text-2xl font-bold text-amber-700 dark:text-amber-400">
-                {expiringBatches.filter((b: ExpiringBatch) => b.days_to_expiry > 60).length}
+                {expiringBatches.filter((b) => b.days_to_expiry > 60).length}
               </p>
             </div>
           </div>
@@ -272,7 +272,7 @@ export function ExpiryReport() {
                     </TableCell>
                   </TableRow>
                 ) : (
-                  expiringBatches.map((batch: ExpiringBatch) => (
+                  expiringBatches.map((batch) => (
                     <TableRow
                       key={batch.batch_id}
                       className={cn(

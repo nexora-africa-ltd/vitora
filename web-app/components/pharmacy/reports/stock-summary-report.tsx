@@ -48,22 +48,7 @@ import {
 import { useStockSummaryReport } from '@/lib/hooks/use-pharmacy';
 import { useToast } from '@/lib/hooks/use-toast';
 import { cn } from '@/lib/utils/cn';
-
-interface StockBatch {
-  batch_number: string;
-  quantity_available: number;
-  expiry_date: string;
-  days_to_expiry: number;
-}
-
-interface StockSummaryItem {
-  drug_id: number;
-  drug_name: string;
-  total_quantity: number;
-  reorder_level: number;
-  is_below_reorder: boolean;
-  batches: StockBatch[];
-}
+import type { StockSummaryItem, StockSummaryBatch } from '@/lib/types/pharmacy';
 
 export function StockSummaryReport() {
   const { toast } = useToast();
@@ -84,7 +69,7 @@ export function StockSummaryReport() {
     setExpandedDrugs(newExpanded);
   };
 
-  // Filter data
+  // Filter data - reportData has a results array wrapper
   const filteredData = (reportData?.results || []).filter((item: StockSummaryItem) => {
     const matchesSearch = item.drug_name.toLowerCase().includes(searchQuery.toLowerCase());
     const matchesLowStock = !showLowStockOnly || item.is_below_reorder;

@@ -190,6 +190,38 @@ class SHAMemberViewSet(viewsets.ModelViewSet):
         serializer = self.get_serializer(queryset, many=True)
         return Response({'results': serializer.data})
 
+    @action(detail=True, methods=['get'], url_path='dependents')
+    def dependents(self, request, pk=None):
+        """
+        Get all dependents for a principal SHA member.
+
+        GET /api/billing/sha-members/{id}/dependents/
+        
+        Returns list of SHA members who have this member's SHA number as their principal.
+        Only applicable for principal members.
+        """
+        member = self.get_object()
+        
+        # Check if the member is a principal
+        if member.membership_type != SHAMember.MembershipType.PRINCIPAL:
+            return Response(
+                {'detail': 'Only principal members can have dependents.'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        # Get all dependents linked to this principal
+        dependents = SHAMember.objects.filter(
+            principal_sha_number=member.sha_number
+        ).select_related('patient', 'created_by')
+        
+        page = self.paginate_queryset(dependents)
+        if page is not None:
+            serializer = self.get_serializer(page, many=True)
+            return self.get_paginated_response(serializer.data)
+        
+        serializer = self.get_serializer(dependents, many=True)
+        return Response({'results': serializer.data, 'count': dependents.count()})
+
 
 class SHATariffViewSet(viewsets.ReadOnlyModelViewSet):
     """

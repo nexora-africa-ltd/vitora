@@ -443,22 +443,25 @@ export interface StockAdjustmentCreateData {
 // ============ Report Types ============
 
 /**
+ * Stock batch details for stock summary
+ */
+export interface StockSummaryBatch {
+  batch_number: string;
+  quantity_available: number;
+  expiry_date: string;
+  days_to_expiry: number;
+}
+
+/**
  * Stock summary report item
  */
 export interface StockSummaryItem {
   drug_id: number;
-  drug_code: string;
   drug_name: string;
-  category: DrugCategory;
-  form: DrugForm;
-  strength: string;
-  total_stock: number;
-  total_value: number;
+  total_quantity: number;
   reorder_level: number;
-  status: 'OK' | 'LOW' | 'OUT_OF_STOCK';
-  batches_count: number;
-  expiring_within_30_days: number;
-  expired_quantity: number;
+  is_below_reorder: boolean;
+  batches: StockSummaryBatch[];
 }
 
 /**
@@ -477,6 +480,20 @@ export interface ExpiryReportItem {
 }
 
 /**
+ * Dispensing report record
+ */
+export interface DispensingReportRecord {
+  dispensing_id: number;
+  drug_name: string;
+  quantity_dispensed: number;
+  dispensed_date: string;
+  patient_name: string;
+  dispensed_by: string;
+  batch_number: string;
+  total_cost: string;
+}
+
+/**
  * Dispensing report summary
  */
 export interface DispensingReportSummary {
@@ -485,4 +502,5 @@ export interface DispensingReportSummary {
   by_category: { category: DrugCategory; count: number; value: number }[];
   by_date: { date: string; count: number; value: number }[];
   top_drugs: { drug_name: string; quantity: number; value: number }[];
+  results?: DispensingReportRecord[];
 }
