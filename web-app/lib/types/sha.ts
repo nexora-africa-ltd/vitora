@@ -180,6 +180,16 @@ export interface MeansTestingDetails {
   means_testing_done?: number;
 }
 
+// SHA Dependent information
+export interface SHADependent {
+  name: string;
+  relationship?: string;
+  date_of_birth?: string;
+  age?: number;
+  sha_number?: string;
+  is_active?: boolean;
+}
+
 export interface DirectEligibilityCheckResponse {
   is_eligible: boolean;
   sha_number?: string | null;
@@ -193,6 +203,8 @@ export interface DirectEligibilityCheckResponse {
   employer_name?: string | null;
   nhif_transition_status?: string;
   means_testing?: MeansTestingDetails;
+  dependents?: SHADependent[];
+  dependents_covered?: number;
   raw_response?: Record<string, unknown>;
   error?: string | null;
 }

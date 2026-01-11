@@ -17,7 +17,7 @@ import React, { useState, useRef, useCallback, useEffect } from 'react';
 import { useForm, useWatch } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import { CalendarIcon, Loader2, CheckCircle2, AlertCircle, Info, Search, Lock, CreditCard, Shield, Building2, Wallet, ChevronDown, HelpCircle, ChevronsUpDown, Check, Ban, ChevronLeft, ChevronRight, Eye, BadgeCheck, XCircle } from 'lucide-react';
+import { CalendarIcon, Loader2, CheckCircle2, AlertCircle, Info, Search, Lock, CreditCard, Shield, Building2, Wallet, ChevronDown, HelpCircle, ChevronsUpDown, Check, Ban, ChevronLeft, ChevronRight, Eye, BadgeCheck, XCircle, Users } from 'lucide-react';
 import { format } from 'date-fns';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -87,6 +87,12 @@ import {
 } from '@/components/ui/command';
 import { Card, CardContent } from '@/components/ui/card';
 import { Separator } from '@/components/ui/separator';
+import {
+  Accordion,
+  AccordionContent,
+  AccordionItem,
+  AccordionTrigger,
+} from '@/components/ui/accordion';
 import { LocationCombobox } from '@/components/ui/location-combobox';
 import { IdentificationInput } from './identification-input';
 import { ConsentConfirmationDialog, type ConsentDecision } from './consent-confirmation-dialog';
@@ -1636,6 +1642,59 @@ export function PatientForm({
                   </div>
                 </div>
               )}
+              
+              {/* Dependents Accordion - Always show */}
+              <Accordion type="single" collapsible className="w-full">
+                <AccordionItem value="dependents" className="border rounded-lg px-3">
+                  <AccordionTrigger className="hover:no-underline">
+                    <div className="flex items-center gap-2">
+                      <Users className="h-4 w-4 text-muted-foreground" />
+                      <span>Dependents ({shaEligibility.details.dependents?.length || shaEligibility.details.dependents_covered || 0})</span>
+                    </div>
+                  </AccordionTrigger>
+                  <AccordionContent>
+                    <div className="space-y-3 pt-2">
+                      {shaEligibility.details.dependents && shaEligibility.details.dependents.length > 0 ? (
+                        shaEligibility.details.dependents.map((dependent, index) => (
+                          <div
+                            key={index}
+                            className="flex items-center justify-between p-3 rounded-md bg-muted/30 border"
+                          >
+                            <div className="space-y-1">
+                              <p className="font-medium text-sm">{dependent.name}</p>
+                              <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                                {dependent.relationship && (
+                                  <span className="capitalize">{dependent.relationship}</span>
+                                )}
+                                {dependent.age !== undefined && (
+                                  <span>• {dependent.age} years</span>
+                                )}
+                                {dependent.date_of_birth && !dependent.age && (
+                                  <span>• DOB: {dependent.date_of_birth}</span>
+                                )}
+                              </div>
+                              {dependent.sha_number && (
+                                <p className="text-xs font-mono text-muted-foreground">
+                                  SHA#: {dependent.sha_number}
+                                </p>
+                              )}
+                            </div>
+                            {dependent.is_active !== undefined && (
+                              <Badge variant={dependent.is_active ? 'default' : 'secondary'}>
+                                {dependent.is_active ? 'Active' : 'Inactive'}
+                              </Badge>
+                            )}
+                          </div>
+                        ))
+                      ) : (
+                        <p className="text-sm text-muted-foreground text-center py-4">
+                          No dependents registered under this membership
+                        </p>
+                      )}
+                    </div>
+                  </AccordionContent>
+                </AccordionItem>
+              </Accordion>
             </div>
           )}
           

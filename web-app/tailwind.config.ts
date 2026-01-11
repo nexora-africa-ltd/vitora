@@ -127,10 +127,14 @@ const config: Config = {
   			]
   		},
   		keyframes: {
-			'pulse-text': {
-				'0%, 100%': { transform: 'scale(1)' },
-				'50%': { transform: 'scale(1.1)' },
-			},
+  			'pulse-text': {
+  				'0%, 100%': {
+  					transform: 'scale(1)'
+  				},
+  				'50%': {
+  					transform: 'scale(1.1)'
+  				}
+  			},
   			'accordion-down': {
   				from: {
   					height: '0'
@@ -187,7 +191,7 @@ const config: Config = {
   			'fade-out': 'fade-out 0.2s ease-out',
   			'slide-in-from-top': 'slide-in-from-top 0.3s ease-out',
   			'slide-in-from-bottom': 'slide-in-from-bottom 0.3s ease-out',
-			'pulse-text': 'pulse-text 0.6s ease-in-out'
+  			'pulse-text': 'pulse-text 0.6s ease-in-out'
   		}
   	}
   },

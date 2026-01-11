@@ -503,6 +503,40 @@ class SHAEligibilityService:
                     'means_testing_done': means_testing.get('means_testing_done'),
                 }
             
+            # Fetch dependents if we have a SHA number (regardless of eligibility status)
+            dependents = []
+            dependents_covered = data.get('dependents_covered', 0)
+            
+            if sha_number:
+                try:
+                    from hmis.apps.billing.models import SHAMember
+                    # Look up the principal member by SHA number
+                    principal = SHAMember.objects.filter(
+                        sha_number=sha_number,
+                        membership_type=SHAMember.MembershipType.PRINCIPAL
+                    ).first()
+                    
+                    if principal:
+                        # Get dependents via FK or legacy string field
+                        from django.db.models import Q
+                        dependent_members = SHAMember.objects.filter(
+                            Q(principal=principal) | Q(principal_sha_number=sha_number)
+                        ).select_related('patient')
+                        
+                        for dep in dependent_members:
+                            dependents.append({
+                                'name': dep.patient.full_name if dep.patient else 'Unknown',
+                                'relationship': dep.get_membership_type_display(),
+                                'date_of_birth': dep.patient.date_of_birth.isoformat() if dep.patient and dep.patient.date_of_birth else None,
+                                'sha_number': dep.sha_number,
+                                'is_active': dep.status == SHAMember.MembershipStatus.ACTIVE,
+                            })
+                        
+                        if not dependents_covered:
+                            dependents_covered = len(dependents)
+                except Exception as e:
+                    logger.warning(f"Could not fetch dependents: {e}")
+            
             return {
                 'is_eligible': is_eligible,
                 'sha_number': sha_number,
@@ -516,6 +550,8 @@ class SHAEligibilityService:
                 'employer_name': data.get('client_portal_details', {}).get('employer_name'),
                 'nhif_transition_status': data.get('transition_status'),
                 'means_testing': means_testing_info,
+                'dependents': dependents,
+                'dependents_covered': dependents_covered,
                 'raw_response': response,
                 'error': None,
             }
