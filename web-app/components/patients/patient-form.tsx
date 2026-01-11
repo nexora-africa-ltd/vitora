@@ -1536,6 +1536,116 @@ export function PatientForm({
         crRecordFound={!!crClient}
         isNewCRRecord={crSearched && !crClient}
       />
+
+      {/* SHA Details Dialog */}
+      <Dialog open={showShaDetailsDialog} onOpenChange={setShowShaDetailsDialog}>
+        <DialogContent className="max-w-lg">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Shield className="h-5 w-5 text-blue-600" />
+              SHA Coverage Details
+            </DialogTitle>
+            <DialogDescription>
+              Social Health Authority membership information
+            </DialogDescription>
+          </DialogHeader>
+          
+          {shaEligibility.details && (
+            <div className="space-y-4">
+              {/* Eligibility Status */}
+              <div className="flex items-center gap-2 p-3 rounded-lg bg-emerald-50 border border-emerald-200">
+                <BadgeCheck className="h-5 w-5 text-emerald-600" />
+                <div>
+                  <p className="font-medium text-emerald-700">Active Coverage</p>
+                  <p className="text-sm text-emerald-600">Patient is eligible for SHA benefits</p>
+                </div>
+              </div>
+              
+              {/* Member Details */}
+              <div className="grid gap-3">
+                {shaEligibility.details.full_name && (
+                  <div className="flex justify-between py-2 border-b">
+                    <span className="text-muted-foreground">Member Name</span>
+                    <span className="font-medium">{shaEligibility.details.full_name}</span>
+                  </div>
+                )}
+                
+                {shaEligibility.details.sha_number && (
+                  <div className="flex justify-between py-2 border-b">
+                    <span className="text-muted-foreground">SHA Number</span>
+                    <span className="font-mono font-medium">{shaEligibility.details.sha_number}</span>
+                  </div>
+                )}
+                
+                {shaEligibility.details.coverage_end_date && (
+                  <div className="flex justify-between py-2 border-b">
+                    <span className="text-muted-foreground">Coverage Valid Until</span>
+                    <span className="font-medium">{shaEligibility.details.coverage_end_date}</span>
+                  </div>
+                )}
+                
+                <div className="flex justify-between py-2 border-b">
+                  <span className="text-muted-foreground">Co-pay Percentage</span>
+                  <span className="font-medium">{shaEligibility.details.copay_percentage || 0}%</span>
+                </div>
+                
+                {shaEligibility.details.employment_type && (
+                  <div className="flex justify-between py-2 border-b">
+                    <span className="text-muted-foreground">Employment Type</span>
+                    <span className="font-medium capitalize">{shaEligibility.details.employment_type}</span>
+                  </div>
+                )}
+                
+                {shaEligibility.details.employer_name && (
+                  <div className="flex justify-between py-2 border-b">
+                    <span className="text-muted-foreground">Employer</span>
+                    <span className="font-medium">{shaEligibility.details.employer_name}</span>
+                  </div>
+                )}
+                
+                {shaEligibility.details.nhif_transition_status && (
+                  <div className="flex justify-between py-2 border-b">
+                    <span className="text-muted-foreground">NHIF Transition</span>
+                    <Badge variant="outline" className="capitalize">
+                      {shaEligibility.details.nhif_transition_status}
+                    </Badge>
+                  </div>
+                )}
+              </div>
+              
+              {/* Means Testing Info (if available) */}
+              {shaEligibility.details.means_testing && (
+                <div className="p-3 rounded-lg bg-muted/50 space-y-2">
+                  <p className="text-sm font-medium flex items-center gap-1">
+                    <Info className="h-4 w-4" />
+                    Means Testing Information
+                  </p>
+                  <div className="grid gap-2 text-sm">
+                    {shaEligibility.details.means_testing.monthly_contribution !== undefined && (
+                      <div className="flex justify-between">
+                        <span className="text-muted-foreground">Monthly Contribution</span>
+                        <span>KES {shaEligibility.details.means_testing.monthly_contribution?.toLocaleString()}</span>
+                      </div>
+                    )}
+                    {shaEligibility.details.means_testing.income_prediction_category && (
+                      <div className="flex justify-between">
+                        <span className="text-muted-foreground">Income Category</span>
+                        <span className="capitalize">{shaEligibility.details.means_testing.income_prediction_category}</span>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+          
+          <div className="flex justify-end pt-2">
+            <Button variant="outline" onClick={() => setShowShaDetailsDialog(false)}>
+              Close
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
     </>
   );
 }
