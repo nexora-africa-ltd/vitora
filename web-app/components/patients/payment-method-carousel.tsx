@@ -110,7 +110,7 @@ export function PaymentMethodCarousel({
       className={cn('w-full outline-none', className)}
       tabIndex={0}
       onKeyDown={handleKeyDown}
-      role="listbox"
+      role="group"
       aria-label="Payment method options"
     >
       <Carousel 
