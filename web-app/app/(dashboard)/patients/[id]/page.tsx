@@ -26,15 +26,33 @@ import { usePatient, usePatientEmergencyContacts } from '@/lib/hooks/use-patient
 import { calculateAge, formatDate, formatPhoneNumber } from '@/lib/utils/format';
 import { PatientEncounters } from '@/components/patients/patient-encounters';
 import { EmergencyContactsList } from '@/components/patients/emergency-contacts-list';
-import { EligibilityBanner } from '@/components/billing/sha';
+import { EligibilityBanner, DependentsView } from '@/components/billing/sha';
+import { Switch } from '@/components/ui/switch';
+import { Label } from '@/components/ui/label';
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
+import { ChevronDown, Users } from 'lucide-react';
+import { useQuery } from '@tanstack/react-query';
+import { shaApi } from '@/lib/api/sha';
+import { useState } from 'react';
 
 export default function PatientDetailPage() {
   const params = useParams();
   const router = useRouter();
   const patientId = Number(params.id);
+  const [showDependents, setShowDependents] = useState(false);
 
   const { data: patient, isLoading, error } = usePatient(patientId);
   const { data: emergencyContacts } = usePatientEmergencyContacts(patientId);
+  
+  // Fetch SHA member for this patient to check if they're a principal
+  const { data: shaMembersData } = useQuery({
+    queryKey: ['sha-members', patientId],
+    queryFn: () => shaApi.getSHAMembers({ patient: patientId }),
+    enabled: !!patientId,
+  });
+  
+  const shaMember = shaMembersData?.results?.[0];
+  const isPrincipalMember = shaMember?.membership_type === 'PRINCIPAL';
 
   if (isLoading) {
     return <PatientDetailSkeleton />;
@@ -107,6 +125,49 @@ export default function PatientDetailPage() {
 
       {/* SHA Eligibility Banner */}
       <EligibilityBanner patientId={patientId} />
+
+      {/* SHA Dependents Section - Only for Principal Members */}
+      {isPrincipalMember && shaMember && (
+        <Card>
+          <CardContent className="p-4">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <Users className="h-5 w-5 text-blue-600" />
+                <div>
+                  <p className="font-medium">SHA Dependents</p>
+                  <p className="text-sm text-muted-foreground">
+                    View dependents covered under this principal member
+                  </p>
+                </div>
+              </div>
+              <div className="flex items-center gap-2">
+                <Label htmlFor="show-dependents" className="text-sm">
+                  Show Dependents
+                </Label>
+                <Switch
+                  id="show-dependents"
+                  checked={showDependents}
+                  onCheckedChange={setShowDependents}
+                />
+              </div>
+            </div>
+            
+            {showDependents && (
+              <div className="mt-4 pt-4 border-t">
+                <DependentsView 
+                  principalMember={shaMember}
+                  onDependentClick={(dependent) => {
+                    if (dependent.patient) {
+                      router.push(`/patients/${dependent.patient}`);
+                    }
+                  }}
+                  showAddButton={false}
+                />
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      )}
 
       {/* Patient Info Cards */}
       <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">

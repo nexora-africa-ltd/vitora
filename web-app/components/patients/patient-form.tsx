@@ -631,7 +631,7 @@ export function PatientForm({
                 control={form.control}
                 name="cr_number"
                 render={({ field }) => (
-                  <FormItem className="min-w-[240px]">
+                  <FormItem className="min-w-[120px]">
                     <FormLabel className="flex items-center gap-1">
                       <Lock className="h-3 w-3" />
                       CR Number
@@ -955,7 +955,7 @@ export function PatientForm({
                 control={form.control}
                 name="email"
                 render={({ field }) => (
-                  <FormItem className="w-[240px]">
+                  <FormItem className="w-[140px]">
                     <FormLabel>Email (Optional)</FormLabel>
                     <FormControl>
                       <Input 
@@ -974,15 +974,15 @@ export function PatientForm({
                 control={form.control}
                 name="address"
                 render={({ field }) => (
-                  <FormItem className="flex-1 min-w-[300px]">
+                  <FormItem className="flex-grow min-w-[200px] resize-auto">
                     <FormLabel>Physical Address (Optional)</FormLabel>
                     <FormControl>
                       <Textarea 
-                        placeholder="Street, building, etc." 
+                        placeholder="P.O BOX, Street, Nearest Landmark, School, etc." 
                         {...field} 
                         disabled={formLocked || isFormLoading}
                         rows={1}
-                        className="min-h-[40px] resize-none"
+                        className="min-h-[40px] resize-auto"
                       />
                     </FormControl>
                   </FormItem>
