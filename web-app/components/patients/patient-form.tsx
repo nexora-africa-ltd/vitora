@@ -17,7 +17,7 @@ import React, { useState, useRef, useCallback, useEffect } from 'react';
 import { useForm, useWatch } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import { CalendarIcon, Loader2, CheckCircle2, AlertCircle, Info, Search, Lock, CreditCard, Shield, Building2, Wallet, ChevronDown, HelpCircle, ChevronsUpDown, Check, Ban } from 'lucide-react';
+import { CalendarIcon, Loader2, CheckCircle2, AlertCircle, Info, Search, Lock, CreditCard, Shield, Building2, Wallet, ChevronDown, HelpCircle, ChevronsUpDown, Check, Ban, ChevronLeft, ChevronRight } from 'lucide-react';
 import { format } from 'date-fns';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -71,6 +71,21 @@ import {
   AlertDescription,
   AlertTitle,
 } from '@/components/ui/alert';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from '@/components/ui/dialog';
+import {
+  Carousel,
+  CarouselContent,
+  CarouselItem,
+  CarouselNext,
+  CarouselPrevious,
+} from '@/components/ui/carousel';
 import {
   Command,
   CommandEmpty,
@@ -631,7 +646,7 @@ export function PatientForm({
                 control={form.control}
                 name="cr_number"
                 render={({ field }) => (
-                  <FormItem className="min-w-[120px]">
+                  <FormItem className="w-[180px] shrink-0">
                     <FormLabel className="flex items-center gap-1">
                       <Lock className="h-3 w-3" />
                       CR Number
@@ -642,14 +657,128 @@ export function PatientForm({
                         readOnly 
                         disabled
                         placeholder="Auto-populated"
-                        className="bg-muted"
+                        className="bg-muted font-mono text-sm"
                       />
                     </FormControl>
                     <FormDescription>
-                      Automatically assigned when found or after registration
+                      Auto-assigned from registry
                     </FormDescription>
                   </FormItem>
                 )}
+              />
+              
+              {/* Payment Method - Compact selector with dialog */}
+              <FormField
+                control={form.control}
+                name="payment_mode"
+                render={({ field }) => {
+                  const selectedOption = PAYMENT_MODE_OPTIONS.find(o => o.value === field.value);
+                  const isShaDisabled = shaEligibility.checked && !shaEligibility.isEligible;
+                  
+                  return (
+                    <FormItem className="min-w-[200px] flex-1">
+                      <FormLabel>Payment Method *</FormLabel>
+                      <Dialog>
+                        <DialogTrigger asChild>
+                          <Button
+                            variant="outline"
+                            className={cn(
+                              "w-full justify-between",
+                              !field.value && "text-muted-foreground"
+                            )}
+                            disabled={formLocked || isFormLoading}
+                          >
+                            <div className="flex items-center gap-2">
+                              {selectedOption && PAYMENT_MODE_ICONS[selectedOption.value]}
+                              <span>{selectedOption?.label || "Select payment method"}</span>
+                            </div>
+                            <ChevronDown className="h-4 w-4 opacity-50" />
+                          </Button>
+                        </DialogTrigger>
+                        <DialogContent className="max-w-md overflow-hidden">
+                          <DialogHeader>
+                            <DialogTitle>Select Payment Method</DialogTitle>
+                            <DialogDescription>
+                              Choose how the patient will pay for services
+                              {isShaDisabled && (
+                                <span className="block mt-1 text-orange-600">
+                                  ⚠️ SHA is unavailable: {shaEligibility.reason || 'Patient not eligible'}
+                                </span>
+                              )}
+                            </DialogDescription>
+                          </DialogHeader>
+                          <div className="px-8">
+                            <Carousel className="w-full max-w-xs" opts={{ align: 'center', loop: true }}>
+                              <CarouselContent className="-ml-2">
+                                {PAYMENT_MODE_OPTIONS.map((option) => {
+                                  const isDisabled = option.value === 'sha' && isShaDisabled;
+                                  const isSelected = field.value === option.value;
+                                  
+                                  return (
+                                    <CarouselItem key={option.value} className="pl-2 basis-full">
+                                      <Card
+                                        className={cn(
+                                          'transition-all',
+                                          isDisabled 
+                                            ? 'cursor-not-allowed opacity-50 bg-muted' 
+                                            : 'cursor-pointer hover:border-primary hover:shadow-md',
+                                          isSelected && !isDisabled && 'border-primary bg-primary/5 ring-2 ring-primary'
+                                        )}
+                                        onClick={() => {
+                                          if (!isDisabled) {
+                                            field.onChange(option.value);
+                                          }
+                                        }}
+                                      >
+                                        <CardContent className="flex aspect-square items-center justify-centre p-6">
+                                          <div className={cn(
+                                            'rounded-full p-3 shrink-0',
+                                            isSelected && !isDisabled ? 'bg-primary/20' : 'bg-muted'
+                                          )}>
+                                            {PAYMENT_MODE_ICONS[option.value]}
+                                          </div>
+                                          <div className="flex-1 min-w-0">
+                                            <div className="font-semibold text-lg flex items-center gap-2">
+                                              {option.label}
+                                              {isDisabled && (
+                                                <Badge variant="secondary" className="text-xs bg-red-100 text-red-800">
+                                                  Unavailable
+                                                </Badge>
+                                              )}
+                                            </div>
+                                            <div className="text-sm text-muted-foreground mt-1">{option.description}</div>
+                                          </div>
+                                          {isSelected && !isDisabled && (
+                                            <CheckCircle2 className="h-6 w-6 text-primary shrink-0" />
+                                          )}
+                                        </CardContent>
+                                      </Card>
+                                    </CarouselItem>
+                                  );
+                                })}
+                              </CarouselContent>
+                              <CarouselPrevious className="-left-8" />
+                              <CarouselNext className="-right-8" />
+                            </Carousel>
+                          </div>
+                          {/* Carousel indicator dots */}
+                          <div className="flex justify-center gap-2 pt-2">
+                            {PAYMENT_MODE_OPTIONS.map((option, index) => (
+                              <div
+                                key={option.value}
+                                className={cn(
+                                  'w-2 h-2 rounded-full transition-colors',
+                                  field.value === option.value ? 'bg-primary' : 'bg-muted-foreground/30'
+                                )}
+                              />
+                            ))}
+                          </div>
+                        </DialogContent>
+                      </Dialog>
+                      <FormMessage />
+                    </FormItem>
+                  );
+                }}
               />
             </div>
           </div>
@@ -1097,92 +1226,18 @@ export function PatientForm({
           <Separator />
 
           {/* ================================================================== */}
-          {/* SECTION 5: Payment Mode */}
+          {/* SECTION 5: Insurance Details (conditional) */}
           {/* ================================================================== */}
-          <div className="space-y-4">
-            <h3 className="text-lg font-medium">Payment Mode</h3>
-            
-            {/* SHA Eligibility Alert */}
-            {shaEligibility.checked && !shaEligibility.isEligible && (
-              <Alert variant="destructive" className="border-orange-300 bg-orange-50 text-orange-900">
-                <Ban className="h-4 w-4" />
-                <AlertTitle>SHA Coverage Unavailable</AlertTitle>
-                <AlertDescription>
-                  {shaEligibility.reason || 'Patient is not eligible for SHA coverage.'}
-                  {' '}Please use an alternative payment method.
-                </AlertDescription>
-              </Alert>
-            )}
-            
-            <FormField
-              control={form.control}
-              name="payment_mode"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>How will the patient pay? *</FormLabel>
-                  <div className="grid gap-3 md:grid-cols-2 lg:grid-cols-4">
-                    {PAYMENT_MODE_OPTIONS.map((option) => {
-                      // Check if SHA option should be disabled
-                      const isShaDisabled = option.value === 'sha' && 
-                        shaEligibility.checked && 
-                        !shaEligibility.isEligible;
-                      
-                      return (
-                        <Card
-                          key={option.value}
-                          className={cn(
-                            'transition-all',
-                            isShaDisabled 
-                              ? 'cursor-not-allowed opacity-50 bg-muted' 
-                              : 'cursor-pointer hover:border-primary',
-                            field.value === option.value && !isShaDisabled && 'border-primary bg-primary/5'
-                          )}
-                          onClick={() => {
-                            if (!formLocked && !isFormLoading && !isShaDisabled) {
-                              field.onChange(option.value);
-                            }
-                          }}
-                        >
-                          <CardContent className="flex items-start gap-3 p-4">
-                            <div className={cn(
-                              'rounded-full p-2',
-                              field.value === option.value && !isShaDisabled ? 'bg-background' : 'bg-muted'
-                            )}>
-                              {PAYMENT_MODE_ICONS[option.value]}
-                            </div>
-                            <div className="flex-1">
-                              <div className="font-medium flex items-center gap-2">
-                                {option.label}
-                                {isShaDisabled && (
-                                  <Badge variant="secondary" className="text-xs bg-red-100 text-red-800">
-                                    Unavailable
-                                  </Badge>
-                                )}
-                              </div>
-                              <div className="text-xs text-muted-foreground">{option.description}</div>
-                            </div>
-                            {field.value === option.value && !isShaDisabled && (
-                              <CheckCircle2 className="h-5 w-5 text-primary" />
-                            )}
-                          </CardContent>
-                        </Card>
-                      );
-                    })}
-                  </div>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-
-            {/* Insurance Details (shown for insurance modes) */}
-            {(paymentMode === 'insurance_private' || paymentMode === 'insurance_corporate') && (
+          {(paymentMode === 'insurance_private' || paymentMode === 'insurance_corporate') && (
+            <div className="space-y-4">
+              <h3 className="text-lg font-medium">Insurance Details</h3>
               <div className="grid gap-4 md:grid-cols-2 p-4 rounded-lg border bg-muted/30">
                 <FormField
                   control={form.control}
                   name="insurance_provider"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Insurance Provider</FormLabel>
+                      <FormLabel>Insurance Provider *</FormLabel>
                       <FormControl>
                         <Input 
                           placeholder="e.g., Jubilee, AAR, Britam" 
@@ -1211,8 +1266,8 @@ export function PatientForm({
                   )}
                 />
               </div>
-            )}
-          </div>
+            </div>
+          )}
 
           <Separator />
 
