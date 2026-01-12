@@ -92,6 +92,8 @@ export interface Patient {
 export interface PatientCreateData {
   // Client Registry (readonly after creation if from CR)
   cr_number?: string;
+  // SHA (Social Health Authority) - readonly, populated from SHA lookup
+  sha_number?: string;
   // Personal Information
   title?: PatientTitle;
   first_name: string;

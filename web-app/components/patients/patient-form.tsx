@@ -96,6 +96,7 @@ import {
 import { LocationCombobox } from '@/components/ui/location-combobox';
 import { IdentificationInput } from './identification-input';
 import { ConsentConfirmationDialog, type ConsentDecision } from './consent-confirmation-dialog';
+import { SHAPrincipalConfirmationDialog, type SHAPrincipalDecision } from './sha-principal-confirmation-dialog';
 import { cn } from '@/lib/utils';
 import { useCounties, useSubCounties, useWards } from '@/lib/hooks/use-locations';
 import { useToast } from '@/lib/hooks/use-toast';
@@ -137,6 +138,7 @@ const patientFormSchema = z.object({
   identification_type: z.enum(['national_id', 'cr_number', 'mandate_number', 'alien_id', 'kra_pin', 'temporary_id', 'passport']).default('national_id'),
   identification_number: z.string().optional(),
   cr_number: z.string().optional(), // Read-only, populated from CR lookup
+  sha_number: z.string().optional(), // Read-only, populated from SHA lookup
   
   // Personal Information
   title: z.enum(['Mr', 'Mrs', 'Miss', 'Ms', 'Dr', 'Prof', 'Hon', 'Rev', '']).optional(),
@@ -244,6 +246,10 @@ export function PatientForm({
   // SHA Details dialog state
   const [showShaDetailsDialog, setShowShaDetailsDialog] = useState(false);
   
+  // SHA Principal Confirmation dialog state
+  const [showShaPrincipalDialog, setShowShaPrincipalDialog] = useState(false);
+  const [pendingShaDetails, setPendingShaDetails] = useState<DirectEligibilityCheckResponse | null>(null);
+  
   // Nationality combobox state
   const [nationalityOpen, setNationalityOpen] = useState(false);
   
@@ -258,6 +264,7 @@ export function PatientForm({
       identification_type: 'national_id',
       identification_number: '',
       cr_number: '',
+      sha_number: '',
       title: '',
       first_name: '',
       middle_name: '',
@@ -320,6 +327,96 @@ export function PatientForm({
     }
     if (client.address) form.setValue('address', client.address);
   }, [form]);
+
+  // Populate form from SHA eligibility details (when no CR record exists)
+  const populateFromShaDetails = useCallback((details: DirectEligibilityCheckResponse, dependentName?: string) => {
+    // Set SHA number
+    if (details.sha_number) {
+      form.setValue('sha_number', details.sha_number);
+    }
+    
+    // Parse name - could be from principal or dependent
+    const fullName = dependentName || details.full_name;
+    if (fullName) {
+      const nameParts = fullName.trim().split(/\s+/);
+      if (nameParts.length >= 1 && nameParts[0]) {
+        form.setValue('first_name', nameParts[0]);
+      }
+      if (nameParts.length >= 3) {
+        const middleName = nameParts.slice(1, -1).join(' ');
+        const lastName = nameParts[nameParts.length - 1];
+        if (middleName) form.setValue('middle_name', middleName);
+        if (lastName) form.setValue('last_name', lastName);
+      } else if (nameParts.length === 2 && nameParts[1]) {
+        form.setValue('last_name', nameParts[1]);
+      }
+    }
+    
+    // If SHA is eligible, auto-select SHA payment mode
+    if (details.is_eligible) {
+      form.setValue('payment_mode', 'sha');
+    }
+  }, [form]);
+
+  // Handle SHA principal confirmation decision
+  const handleShaPrincipalDecision = useCallback((decision: SHAPrincipalDecision, selectedDependent?: { name: string; sha_number?: string; date_of_birth?: string }) => {
+    setShowShaPrincipalDialog(false);
+    
+    if (decision === 'cancelled') {
+      // User wants to enter manually, just set SHA number if available
+      if (pendingShaDetails?.sha_number) {
+        form.setValue('sha_number', pendingShaDetails.sha_number);
+      }
+      setPendingShaDetails(null);
+      return;
+    }
+    
+    if (pendingShaDetails) {
+      if (decision === 'confirmed') {
+        // Principal is the patient - populate from SHA details
+        populateFromShaDetails(pendingShaDetails);
+        toast({
+          title: 'Form Auto-Populated',
+          description: 'Patient details filled from SHA records. Please verify and complete remaining fields.',
+        });
+      } else if (decision === 'is_dependent' && selectedDependent) {
+        // Selected a dependent - populate with dependent info
+        if (selectedDependent.sha_number) {
+          form.setValue('sha_number', selectedDependent.sha_number);
+        }
+        if (selectedDependent.name) {
+          const nameParts = selectedDependent.name.trim().split(/\s+/);
+          if (nameParts.length >= 1 && nameParts[0]) {
+            form.setValue('first_name', nameParts[0]);
+          }
+          if (nameParts.length >= 3) {
+            const middleName = nameParts.slice(1, -1).join(' ');
+            const lastName = nameParts[nameParts.length - 1];
+            if (middleName) form.setValue('middle_name', middleName);
+            if (lastName) form.setValue('last_name', lastName);
+          } else if (nameParts.length === 2 && nameParts[1]) {
+            form.setValue('last_name', nameParts[1]);
+          }
+        }
+        if (selectedDependent.date_of_birth) {
+          const dob = new Date(selectedDependent.date_of_birth);
+          if (!isNaN(dob.getTime())) {
+            form.setValue('date_of_birth', dob);
+          }
+        }
+        // If SHA is eligible, auto-select SHA payment mode
+        if (pendingShaDetails.is_eligible) {
+          form.setValue('payment_mode', 'sha');
+        }
+        toast({
+          title: 'Dependent Selected',
+          description: `Patient details filled for ${selectedDependent.name}. Please verify and complete remaining fields.`,
+        });
+      }
+    }
+    
+    setPendingShaDetails(null);
+  }, [form, pendingShaDetails, populateFromShaDetails, toast]);
 
   // Define performCRLookup with useCallback
   // Returns { found: boolean, idType, idNumber } to allow caller to check eligibility
@@ -386,7 +483,8 @@ export function PatientForm({
   }, [toast, populateFromCRClient]);
 
   // Check SHA eligibility for the patient
-  const checkShaEligibility = useCallback(async (idType: IdentificationType, idNumber: string) => {
+  // When crFound is false and SHA details are found, show confirmation dialog
+  const checkShaEligibility = useCallback(async (idType: IdentificationType, idNumber: string, crFound: boolean = false) => {
     if (!idNumber) return;
     
     setIsCheckingEligibility(true);
@@ -413,8 +511,18 @@ export function PatientForm({
         details: response,
       });
       
-      // Show success toast if eligible
-      if (response.is_eligible) {
+      // Always set SHA number if available
+      if (response.sha_number) {
+        form.setValue('sha_number', response.sha_number);
+      }
+      
+      // If CR record was NOT found but SHA details are available, prompt user to confirm identity
+      if (!crFound && response.is_eligible && (response.full_name || response.sha_number)) {
+        setPendingShaDetails(response);
+        setShowShaPrincipalDialog(true);
+        // Don't show the success toast yet - wait for user confirmation
+      } else if (response.is_eligible) {
+        // CR record was found OR no SHA details to populate - just show success toast
         toast({
           title: 'SHA Coverage Active',
           description: `Patient ${response.full_name || ''} has active SHA coverage.`,
@@ -460,7 +568,7 @@ export function PatientForm({
         // Always check SHA eligibility after CR lookup (regardless of whether CR found a record)
         // SHA eligibility is independent of Client Registry status
         if (result) {
-          checkShaEligibility(result.idType, result.idNumber);
+          checkShaEligibility(result.idType, result.idNumber, result.found);
         }
       });
     }
@@ -484,7 +592,7 @@ export function PatientForm({
       performCRLookup(idType, idNumber).then((result) => {
         // Always check SHA eligibility after CR lookup (regardless of whether CR found a record)
         if (result) {
-          checkShaEligibility(result.idType, result.idNumber);
+          checkShaEligibility(result.idType, result.idNumber, result.found);
         }
       });
     } else {
@@ -552,6 +660,8 @@ export function PatientForm({
         consent_date: values.consent_given ? new Date().toISOString() : undefined,
         // Include CR number if found
         cr_number: values.cr_number || crClient?.client_number,
+        // Include SHA number if found
+        sha_number: values.sha_number || shaEligibility.details?.sha_number || undefined,
       };
       
       await onSubmit(data);
@@ -567,6 +677,7 @@ export function PatientForm({
     setCrClient(null);
     setCrSearched(false);
     form.setValue('cr_number', '');
+    form.setValue('sha_number', '');
   };
 
   const isFormLoading = isLoading || isSubmitting;
@@ -768,6 +879,32 @@ export function PatientForm({
                     </FormControl>
                     <FormDescription>
                       Auto-assigned from registry
+                    </FormDescription>
+                  </FormItem>
+                )}
+              />
+              
+              {/* SHA Number (Read-only) */}
+              <FormField
+                control={form.control}
+                name="sha_number"
+                render={({ field }) => (
+                  <FormItem className="w-[180px] shrink-0 mt-1">
+                    <FormLabel className="flex items-center gap-1 text-blue-700">
+                      <Shield className="h-4 w-4 text-blue-600" />
+                      SHA Number
+                    </FormLabel>
+                    <FormControl>
+                      <Input 
+                        {...field} 
+                        readOnly 
+                        disabled
+                        placeholder="Auto-populated"
+                        className="bg-blue-50 border-blue-200 font-mono text-sm text-blue-800"
+                      />
+                    </FormControl>
+                    <FormDescription className="text-blue-600/70">
+                      From SHA lookup
                     </FormDescription>
                   </FormItem>
                 )}
@@ -1557,6 +1694,14 @@ export function PatientForm({
         }
         crRecordFound={!!crClient}
         isNewCRRecord={crSearched && !crClient}
+      />
+
+      {/* SHA Principal Confirmation Dialog */}
+      <SHAPrincipalConfirmationDialog
+        open={showShaPrincipalDialog}
+        onOpenChange={setShowShaPrincipalDialog}
+        onDecision={handleShaPrincipalDecision}
+        shaDetails={pendingShaDetails}
       />
 
       {/* SHA Details Dialog */}
