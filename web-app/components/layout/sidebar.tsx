@@ -44,8 +44,8 @@ const mainNavItems: NavItem[] = [
   { label: 'Encounters', href: '/encounters', icon: Stethoscope },
   { label: 'Admissions', href: '/admissions', icon: FileText },
   { label: 'Pharmacy', href: '/pharmacy', icon: Pill },
-  { label: 'Laboratory', href: '/laboratory', icon: FlaskConical },
-  { label: 'Billing', href: '/billing', icon: CreditCard },
+  { label: 'Diagnostics', href: '/laboratory', icon: FlaskConical },
+  { label: 'Billing & Insurance', href: '/billing', icon: CreditCard },
   { label: 'Reports', href: '/reports', icon: FileText },
 ];
 
