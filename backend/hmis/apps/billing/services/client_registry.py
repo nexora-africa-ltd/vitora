@@ -269,15 +269,15 @@ class ClientRegistryService:
         # Get endpoint paths from settings
         endpoints = getattr(settings, 'SHA_ENDPOINTS', {})
         self.fetch_endpoint = endpoints.get(
-            'client_registry_fetch', 
+            'client_registry', 
             '/v3/client-registry/fetch-client'
         )
         self.register_endpoint = endpoints.get(
-            'client_registry_register',
+            'client_register',
             '/v3/uat-cr-registration'
         )
         self.update_endpoint = endpoints.get(
-            'client_registry_update',
+            'client_update',
             '/v3/update-client'
         )
         

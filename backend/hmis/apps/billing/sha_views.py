@@ -991,6 +991,86 @@ class ClientRegistryView(APIView):
                 {'error': str(e), 'success': False},
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR
             )
+    
+    def put(self, request):
+        """
+        Update an existing client in Client Registry.
+        
+        PUT /api/billing/client-registry/update/
+        
+        Request Body:
+            client_number: CR client number (required)
+            phone_number: Updated phone number (optional)
+            email: Updated email address (optional)
+            county: Updated county of residence (optional)
+            sub_county: Updated sub-county of residence (optional)
+            
+        At least one field to update must be provided alongside client_number.
+        
+        Per DHA API: PUT /v3/update-client
+        """
+        data = request.data
+        
+        client_number = data.get('client_number')
+        if not client_number:
+            return Response(
+                {'error': 'client_number is required'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        # Extract updatable fields
+        update_fields = {}
+        if 'phone_number' in data:
+            update_fields['phone_number'] = data['phone_number']
+        if 'email' in data:
+            update_fields['email'] = data['email']
+        if 'county' in data:
+            update_fields['county_of_residence'] = data['county']
+        if 'sub_county' in data:
+            update_fields['sub_county_of_residence'] = data['sub_county']
+        
+        if not update_fields:
+            return Response(
+                {'error': 'At least one field to update is required (phone_number, email, county, sub_county)'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        try:
+            service = ClientRegistryService()
+            client = service.update_client(
+                client_number=client_number,
+                **update_fields
+            )
+            
+            return Response({
+                'success': True,
+                'client': {
+                    'client_number': client.client_number,
+                    'first_name': client.first_name,
+                    'last_name': client.last_name,
+                    'phone_number': client.phone_number,
+                    'email': client.email,
+                    'county': client.county_of_residence,
+                    'sub_county': client.sub_county_of_residence,
+                },
+                'message': 'Client updated successfully',
+            })
+            
+        except ClientNotFoundError as e:
+            return Response(
+                {'error': str(e), 'success': False},
+                status=status.HTTP_404_NOT_FOUND
+            )
+        except ClientRegistryError as e:
+            return Response(
+                {'error': str(e), 'success': False},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        except Exception as e:
+            return Response(
+                {'error': str(e), 'success': False},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
 
 
 class FacilitySearchView(APIView):

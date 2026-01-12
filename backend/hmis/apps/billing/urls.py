@@ -57,6 +57,7 @@ urlpatterns = [
     # SHA Client Registry endpoints
     path('client-registry/fetch/', ClientRegistryView.as_view(), name='client-registry-fetch'),
     path('client-registry/register/', ClientRegistryView.as_view(), name='client-registry-register'),
+    path('client-registry/update/', ClientRegistryView.as_view(), name='client-registry-update'),
     
     # SHA Facility and Practitioner validation
     path('facility/validate/', FacilitySearchView.as_view(), name='facility-validate'),
