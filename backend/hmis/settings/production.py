@@ -45,6 +45,11 @@ else:
         }
     }
 
+# Whitenoise for static files
+# Insert after SecurityMiddleware
+MIDDLEWARE.insert(1, "whitenoise.middleware.WhiteNoiseMiddleware")  # noqa: F405
+STATICFILES_STORAGE = "whitenoise.storage.CompressedManifestStaticFilesStorage"
+
 # Security settings for production
 # Note: Render handles SSL termination, so we may need to disable redirect
 SECURE_SSL_REDIRECT = os.getenv("SECURE_SSL_REDIRECT", "true").lower() == "true"
