@@ -171,6 +171,22 @@ export default function PatientDetailPage() {
 
       {/* Patient Info Cards */}
       <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+        {/* Identification */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-lg">Identification</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            <InfoRow icon={FileText} label="CR Number" value={patient.cr_number || '—'} />
+            <InfoRow icon={Shield} label="SHA Number" value={patient.sha_number || '—'} />
+            <InfoRow 
+              icon={FileText} 
+              label={patient.identification_type === 'national_id' ? 'National ID' : (patient.identification_type || 'ID')} 
+              value={patient.identification_number || patient.national_id || '—'} 
+            />
+          </CardContent>
+        </Card>
+
         {/* Basic Info */}
         <Card>
           <CardHeader>

@@ -1,12 +1,18 @@
 'use client';
 
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { ReactQueryDevtools } from '@tanstack/react-query-devtools';
 import { ThemeProvider } from 'next-themes';
-import { useState, ReactNode, Suspense } from 'react';
+import { useState, ReactNode, Suspense, lazy } from 'react';
 import { AuthProvider } from '@/lib/auth/context';
 import { Toaster } from '@/components/ui/toaster';
 import { RouteProgress } from '@/components/shared/route-progress';
+
+// Lazy load devtools only in development
+const ReactQueryDevtools = lazy(() =>
+  import('@tanstack/react-query-devtools').then((mod) => ({
+    default: mod.ReactQueryDevtools,
+  }))
+);
 
 interface ProvidersProps {
   children: ReactNode;
@@ -54,7 +60,11 @@ export function Providers({ children }: ProvidersProps) {
           <Toaster />
         </AuthProvider>
       </ThemeProvider>
-      <ReactQueryDevtools initialIsOpen={false} />
+      {process.env.NODE_ENV === 'development' && (
+        <Suspense fallback={null}>
+          <ReactQueryDevtools initialIsOpen={false} />
+        </Suspense>
+      )}
     </QueryClientProvider>
   );
 }

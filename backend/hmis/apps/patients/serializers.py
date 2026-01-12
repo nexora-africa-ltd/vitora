@@ -52,6 +52,8 @@ class PatientSerializer(serializers.ModelSerializer):
             "mrn",
             # Client Registry
             "cr_number",
+            # SHA Integration
+            "sha_number",
             # Personal Information
             "title",
             "first_name",

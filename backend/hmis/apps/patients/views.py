@@ -79,38 +79,76 @@ class PatientViewSet(viewsets.ModelViewSet):
         return response
 
     def create(self, request, *args, **kwargs):
-        """Override create to add audit logging and set registered_by."""
+        """Override create to add audit logging, set registered_by, and handle emergency contact."""
         serializer = self.get_serializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         # Set registered_by to current user
-        serializer.save(registered_by=request.user)
+        patient = serializer.save(registered_by=request.user)
+
+        # Create emergency contact if data provided
+        emergency_contact_name = request.data.get("emergency_contact_name")
+        emergency_contact_phone = request.data.get("emergency_contact_phone")
+        emergency_contact_relationship = request.data.get("emergency_contact_relationship")
+
+        if emergency_contact_name or emergency_contact_phone:
+            EmergencyContact.objects.create(
+                patient=patient,
+                full_name=emergency_contact_name or "",
+                phone_number=emergency_contact_phone or "",
+                relationship=emergency_contact_relationship or "",
+            )
 
         # Log the create action
         AuditLog.log(
             action="patient_create",
             user=request.user,
             resource_type="Patient",
-            resource_id=serializer.instance.id,
+            resource_id=patient.id,
             ip_address=get_client_ip(request),
             user_agent=request.META.get("HTTP_USER_AGENT", ""),
-            patient_id=serializer.instance.id,
+            patient_id=patient.id,
             details={
-                "patient_mrn": serializer.instance.mrn,
+                "patient_mrn": patient.mrn,
                 "registered_by": request.user.username,
             },
         )
 
-        headers = self.get_success_headers(serializer.data)
-        return Response(serializer.data, status=status.HTTP_201_CREATED, headers=headers)
+        # Re-serialize to include the newly created emergency contact
+        response_serializer = self.get_serializer(patient)
+        headers = self.get_success_headers(response_serializer.data)
+        return Response(response_serializer.data, status=status.HTTP_201_CREATED, headers=headers)
 
     def update(self, request, *args, **kwargs):
-        """Override update to add audit logging."""
+        """Override update to add audit logging and handle emergency contact."""
         patient = self.get_object()
         old_data = PatientSerializer(patient).data
 
         response = super().update(request, *args, **kwargs)
 
         if response.status_code == 200:
+            # Handle emergency contact update
+            emergency_contact_name = request.data.get("emergency_contact_name")
+            emergency_contact_phone = request.data.get("emergency_contact_phone")
+            emergency_contact_relationship = request.data.get("emergency_contact_relationship")
+
+            if emergency_contact_name or emergency_contact_phone:
+                # Get or create primary emergency contact
+                contact = patient.emergency_contacts.first()
+                if contact:
+                    contact.full_name = emergency_contact_name or contact.full_name
+                    contact.phone_number = emergency_contact_phone or contact.phone_number
+                    contact.relationship = emergency_contact_relationship or contact.relationship
+                    contact.save()
+                else:
+                    EmergencyContact.objects.create(
+                        patient=patient,
+                        full_name=emergency_contact_name or "",
+                        phone_number=emergency_contact_phone or "",
+                        relationship=emergency_contact_relationship or "",
+                    )
+                # Re-serialize to include updated emergency contact
+                response = Response(self.get_serializer(patient).data)
+
             # Log the update action with changes
             new_data = response.data
             changes = {
@@ -475,11 +513,11 @@ class PatientViewSet(viewsets.ModelViewSet):
         from hmis.apps.laboratory.serializers import LabResultSerializer
 
         patient = self.get_object()
-        results = LabResult.objects.filter(
-            order_item__lab_order__patient=patient
-        ).select_related(
-            "order_item__test", "entered_by", "verified_by"
-        ).order_by("-entered_at")
+        results = (
+            LabResult.objects.filter(order_item__lab_order__patient=patient)
+            .select_related("order_item__test", "entered_by", "verified_by")
+            .order_by("-entered_at")
+        )
 
         serializer = LabResultSerializer(results, many=True)
         return Response(serializer.data)

@@ -42,6 +42,8 @@ export interface Patient {
   mrn: string;
   // Client Registry
   cr_number?: string;
+  // SHA Integration
+  sha_number?: string;
   // Personal Information
   title?: PatientTitle;
   first_name: string;

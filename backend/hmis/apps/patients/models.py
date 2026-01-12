@@ -114,6 +114,14 @@ class Patient(models.Model):
         help_text="Client Registry number from Kenya HIE (CR-XXXXXXXXXX-X format)",
     )
 
+    # SHA Integration
+    sha_number = models.CharField(
+        max_length=50,
+        blank=True,
+        null=True,
+        help_text="SHA member number for Social Health Authority coverage",
+    )
+
     # Title and Names
     title = models.CharField(
         max_length=10,

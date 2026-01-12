@@ -17,6 +17,7 @@ import {
 } from '@/components/ui/tooltip';
 import { useCreatePatient } from '@/lib/hooks/use-patients-enhanced';
 import { useCheckInPatient } from '@/lib/hooks/use-triage';
+import { useRegisterInCR } from '@/lib/hooks/use-sha';
 import { useToast } from '@/lib/hooks/use-toast';
 import type { PatientCreateData, Patient } from '@/lib/types/patient';
 import type { ClientRegistryClient, DirectEligibilityCheckResponse } from '@/lib/types/sha';
@@ -26,6 +27,7 @@ export default function NewPatientPage() {
   const { toast } = useToast();
   const createPatient = useCreatePatient();
   const checkInPatient = useCheckInPatient();
+  const registerInCR = useRegisterInCR();
   const [registeredPatient, setRegisteredPatient] = useState<Patient | null>(null);
   const [isCheckingIn, setIsCheckingIn] = useState(false);
   const [crClient, setCrClient] = useState<ClientRegistryClient | null>(null);
@@ -53,6 +55,30 @@ export default function NewPatientPage() {
         title: 'Patient registered',
         description: `Successfully registered ${data.first_name} ${data.last_name} (${patient.mrn})`,
       });
+
+      // If no CR record exists, register in Client Registry
+      if (!crClient && !data.cr_number && data.identification_number) {
+        try {
+          const crResponse = await registerInCR.mutateAsync({
+            patient_id: patient.id,
+          });
+          
+          if (crResponse.success && crResponse.client_number) {
+            toast({
+              title: 'Client Registry Registration Successful',
+              description: `CR Number: ${crResponse.client_number}`,
+            });
+          }
+        } catch (crError) {
+          // CR registration is optional, don't fail the whole process
+          console.error('CR registration failed:', crError);
+          toast({
+            title: 'Client Registry Registration',
+            description: 'Patient registered locally. CR registration will be attempted later.',
+            variant: 'default',
+          });
+        }
+      }
     } catch (error) {
       toast({
         title: 'Registration failed',
