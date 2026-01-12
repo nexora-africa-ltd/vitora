@@ -136,7 +136,10 @@ function useDebounce<T>(value: T, delay: number): T {
 const patientFormSchema = z.object({
   // Identification (at the top)
   identification_type: z.enum(['national_id', 'cr_number', 'mandate_number', 'alien_id', 'kra_pin', 'temporary_id', 'passport']).default('national_id'),
-  identification_number: z.string().optional(),
+  identification_number: z.string()
+    .max(15, 'ID number cannot exceed 15 characters')
+    .regex(/^[a-zA-Z0-9-]*$/, 'ID can only contain letters, numbers, and dashes')
+    .optional(),
   cr_number: z.string().optional(), // Read-only, populated from CR lookup
   sha_number: z.string().optional(), // Read-only, populated from SHA lookup
   
@@ -202,12 +205,12 @@ interface PatientFormProps {
   isEditing?: boolean;
 }
 
-// Payment mode icons
+// Payment mode icons - using muted foreground for consistent theming
 const PAYMENT_MODE_ICONS: Record<PaymentMode, React.ReactNode> = {
-  cash: <Wallet className="h-4 w-4 text-emerald-600" />,
-  sha: <Shield className="h-4 w-4 text-blue-600  " />,
-  insurance_private: <CreditCard className="h-4 w-4 text-purple-600" />,
-  insurance_corporate: <Building2 className="h-4 w-4 text-orange-600" />,
+  cash: <Wallet className="h-4 w-4 text-success" />,
+  sha: <Shield className="h-4 w-4 text-primary" />,
+  insurance_private: <CreditCard className="h-4 w-4 text-accent-foreground" />,
+  insurance_corporate: <Building2 className="h-4 w-4 text-warning-foreground" />,
 };
 
 export function PatientForm({ 
@@ -559,7 +562,7 @@ export function PatientForm({
   useEffect(() => {
     if (
       debouncedIdNumber && 
-      debouncedIdNumber.length >= 5 && 
+      debouncedIdNumber.length >= 8 && 
       !crClient && 
       !crSearched &&
       !isEditing
@@ -682,10 +685,32 @@ export function PatientForm({
 
   const isFormLoading = isLoading || isSubmitting;
 
+  // Handle form validation errors with toast
+  const handleFormErrors = useCallback(() => {
+    const errors = form.formState.errors;
+    const errorFields: string[] = [];
+    
+    // Collect human-readable field names for required fields
+    if (errors.first_name) errorFields.push('First Name');
+    if (errors.last_name) errorFields.push('Last Name');
+    if (errors.date_of_birth) errorFields.push('Date of Birth');
+    if (errors.gender) errorFields.push('Gender');
+    if (errors.county) errorFields.push('County');
+    if (errors.sub_county) errorFields.push('Sub-County');
+    
+    if (errorFields.length > 0) {
+      toast({
+        title: 'Missing Required Fields',
+        description: `Please fill in: ${errorFields.join(', ')}`,
+        variant: 'destructive',
+      });
+    }
+  }, [form.formState.errors, toast]);
+
   return (
     <>
       <Form {...form}>
-        <form onSubmit={form.handleSubmit(handleFormSubmit)} className="space-y-8">
+        <form onSubmit={form.handleSubmit(handleFormSubmit, handleFormErrors)} className="space-y-8">
           
           {/* ================================================================== */}
           {/* SECTION 1: Identification & CR Status (Top Priority) */}
@@ -845,11 +870,11 @@ export function PatientForm({
                             type="button"
                             variant="ghost"
                             size="sm"
-                            className="h-6 px-2 text-xs"
+                            className="h-6 px-2 text-xs border-teal-400 text-teal-600 hover:bg-teal-600/20"
                             onClick={handleManualCRSearch}
                           >
                             <Search className="h-3 w-3 mr-1" />
-                            Search CR
+                            Search CR/SHA
                           </Button>
                         )}
                       </FormDescription>
@@ -890,8 +915,8 @@ export function PatientForm({
                 name="sha_number"
                 render={({ field }) => (
                   <FormItem className="w-[180px] shrink-0 mt-1">
-                    <FormLabel className="flex items-center gap-1 text-blue-700">
-                      <Shield className="h-4 w-4 text-blue-600" />
+                    <FormLabel className="flex items-center gap-1 text-teal-400">
+                      <Shield className="h-4 w-4 text-teal-400" />
                       SHA Number
                     </FormLabel>
                     <FormControl>
@@ -900,10 +925,10 @@ export function PatientForm({
                         readOnly 
                         disabled
                         placeholder="Auto-populated"
-                        className="bg-blue-50 border-blue-200 font-mono text-sm text-blue-800"
+                        className="bg-secondary/5 border-secondary/20 font-mono text-sm text-teal-400"
                       />
                     </FormControl>
-                    <FormDescription className="text-blue-600/70">
+                    <FormDescription className="text-teal-400">
                       From SHA lookup
                     </FormDescription>
                   </FormItem>
@@ -945,7 +970,7 @@ export function PatientForm({
                             <DialogDescription>
                               Choose how the patient will pay for services
                               {isShaDisabled && (
-                                <span className="block mt-1 text-orange-600">
+                                <span className="block mt-1 text-warning-foreground">
                                   ⚠️ SHA is unavailable: {shaEligibility.reason || 'Patient not eligible'}
                                 </span>
                               )}
