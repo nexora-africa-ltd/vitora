@@ -266,6 +266,9 @@ class ClientRegistryService:
         # Get agent from settings (required for API calls)
         self.agent = getattr(settings, 'SHA_AGENT', '')
         
+        # Get encrypted PIN from settings (required for CR registration/update)
+        self.encrypted_pin = getattr(settings, 'SHA_ENCRYPTED_PIN', '')
+        
         # Get endpoint paths from settings
         endpoints = getattr(settings, 'SHA_ENDPOINTS', {})
         self.fetch_endpoint = endpoints.get(
@@ -512,37 +515,52 @@ class ClientRegistryService:
         else:
             dob_str = date_of_birth
         
-        # Build request payload
+        # Validate agent and encrypted_pin are configured
+        if not self.agent:
+            raise ClientRegistrationError(
+                "SHA_AGENT is not configured. Set SHA_AGENT in environment.",
+                validation_errors={'agent': 'required'}
+            )
+        if not self.encrypted_pin:
+            raise ClientRegistrationError(
+                "SHA_ENCRYPTED_PIN is not configured. Use sha-pin-gen.py to generate and set in environment.",
+                validation_errors={'encrypted_pin': 'required'}
+            )
+        
+        # Determine identification type and number for DHA API
+        # DHA expects identification_type and identification_number, not individual ID fields
+        identification_type = None
+        identification_number = None
+        
+        if national_id:
+            identification_type = 'National ID'
+            identification_number = national_id
+        elif huduma_number:
+            identification_type = 'Huduma Number'
+            identification_number = huduma_number
+        elif passport_number:
+            identification_type = 'Passport'
+            identification_number = passport_number
+        elif birth_certificate_number:
+            identification_type = 'Birth Certificate'
+            identification_number = birth_certificate_number
+        
+        if not identification_number:
+            raise ClientRegistrationError(
+                "At least one identification (national_id, huduma_number, passport_number, or birth_certificate_number) is required",
+                validation_errors={'identification': 'required'}
+            )
+        
+        # Build request payload - DHA UAT CR registration API format
+        # Reference: Kenya Digital Superhighway Postman Collection
         payload = {
-            'first_name': first_name,
-            'last_name': last_name,
-            'date_of_birth': dob_str,
-            'gender': gender,
+            'agent': self.agent,
+            'encrypted_pin': self.encrypted_pin,
+            'identification_type': identification_type,
+            'identification_number': identification_number,
         }
         
-        # Add optional fields
-        if middle_name:
-            payload['middle_name'] = middle_name
-        if national_id:
-            payload['national_id'] = national_id
-        if huduma_number:
-            payload['huduma_number'] = huduma_number
-        if passport_number:
-            payload['passport_number'] = passport_number
-        if birth_certificate_number:
-            payload['birth_certificate_number'] = birth_certificate_number
-        if phone_number:
-            payload['phone_number'] = phone_number
-        if email:
-            payload['email'] = email
-        if county_of_residence:
-            payload['county_of_residence'] = county_of_residence
-        if sub_county_of_residence:
-            payload['sub_county_of_residence'] = sub_county_of_residence
-        if ward_of_residence:
-            payload['ward_of_residence'] = ward_of_residence
-        
-        logger.info(f"Registering new client in CR: {first_name} {last_name}")
+        logger.info(f"Registering new client in CR: {first_name} {last_name} ({identification_type}: {identification_number[:4]}...)")
         
         try:
             headers = self.auth_service.get_auth_headers()
@@ -555,6 +573,13 @@ class ClientRegistryService:
             )
             
             logger.debug(f"CR registration response status: {response.status_code}")
+            
+            # Log response body for debugging (truncate if too long)
+            try:
+                response_text = response.text[:1000] if response.text else "(empty)"
+                logger.debug(f"CR registration response body: {response_text}")
+            except Exception:
+                pass
             
             if response.status_code == 409:
                 # Duplicate client
@@ -574,6 +599,15 @@ class ClientRegistryService:
                 raise ClientRegistryError(
                     "Authentication failed",
                     status_code=401,
+                )
+            
+            if response.status_code >= 500:
+                # Server error - include response body for debugging
+                error_body = response.text[:500] if response.text else "No response body"
+                logger.error(f"DHA server error ({response.status_code}): {error_body}")
+                raise ClientRegistryError(
+                    f"DHA server error: {error_body}",
+                    status_code=response.status_code,
                 )
             
             response.raise_for_status()
@@ -726,5 +760,7 @@ class ClientRegistryService:
             self.api_base_url and
             self.fetch_endpoint and
             self.register_endpoint and
+            self.agent and
+            self.encrypted_pin and
             self.auth_service.is_configured()
         )
