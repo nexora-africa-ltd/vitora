@@ -1,0 +1,806 @@
+{
+  "openapi": "3.0.1",
+  "info": {
+    "title": "Default module",
+    "description": "",
+    "version": "1.0.0"
+  },
+  "tags": [
+    {
+      "name": "afyalink_private"
+    },
+    {
+      "name": "afyalink_private/Terminology"
+    },
+    {
+      "name": "afyalink_private/Tiberbu"
+    }
+  ],
+  "paths": {
+    "/terminology/v1/sha-intervention": {
+      "get": {
+        "summary": "Fetch SHA Interventions  ",
+        "deprecated": false,
+        "description": "\n## Fetch SHA Interventions  \n\n### Description  \nEndpoint for fetching SHA interventions.  \n\n### Endpoint  \nMethod: `GET`  \nURL: `{{base_url}}/terminology/v1/sha-intervention?search={{search}}&intervention_code={{intervention_code}}&observation_code={{observation_code}}`  \n\n### URL Variables  \n\n| Variable       | Description                      | Example                      |  \n|---------------|----------------------------------|------------------------------|  \n| `{{base_url}}` | The base URL of the API server. | `https://uat.dha.go.ke`      |  \n\n## Requests  \n\n### Request Parameters  \nThese parameters must be included in the URL query string.  \n\n| Parameter             | Type   | Required | Description                                           | Example                 |  \n|----------------------|--------|----------|------------------------------------------------------|-------------------------|  \n| `search`            | String | ❌ No    | Global search filter for SHA interventions based on intervention name. | `Anti - D` |  \n| `intervention_code` | String | ❌ No    | Search by exact intervention code.                   | `SHA-08-004`           |  \n| `observation_code`  | String | ❌ No    | Search by exact observation code.                    | `10331-7`              |  \n\n## Authorization  \nThis request requires Basic Authentication. Ensure you provide the correct credentials from the Kenya Digital Superhighway and include a valid JWT token generated from the **Generate JWT Token** endpoint in the request headers.  \n\n### Headers  \n\n| Header Key       | Value Format      | Required | Description |  \n|-----------------|------------------|----------|-------------|  \n| `Authorization` | `Bearer <jwt-token>` | ✅ Yes | A valid JWT token for authentication. |  \n| `Content-Type`  | `application/json`   | ✅ Yes  | Specifies that the request body is in JSON format. |  \n\n## Sample Body  \n\n```json\n{}\n```\n\n## Example Request (cURL)  \n\n```sh\ncurl -X GET \"https://uat.dha.go.ke/terminology/v1/sha-intervention?search=Anti%20-%20D&intervention_code=SHA-08-004&observation_code=10331-7\" \\\n     -H \"Authorization: Bearer <jwt-token>\" \\\n     -H \"Content-Type: application/json\" \n```\n\n## Example Response (JSON)  \n\n```json\n{\n  \"IsSuccess\": true,\n  \"Message\": \"Success\",\n  \"Errors\": [],\n  \"Data\": {\n    \"shaInterventions\": [\n      {\n        \"intervention_code\": \"SHA-08-004\",\n        \"intervention_name\": \"Anti - D\",\n        \"category\": \"Test\",\n        \"subcatgeory\": \"Test\",\n        \"needs_pre_auth\": true,\n        \"limits_per\": \"Individual\",\n        \"provider_payment\": \"FFS\",\n        \"levels\": [\n          {\n            \"2\": \"Dispensaries and clinics\"\n          },\n          {\n            \"3\": \"Health centers\"\n          },\n          {\n            \"4\": \"Sub-county hospitals\"\n          },\n          {\n            \"5\": \"County referral hospitals\"\n          },\n          {\n            \"6\": \"National referral hospitals\"\n          }\n        ],\n        \"diagnosis\": [\n          {\n            \"KA84.0\": \"Rh isoimmunization of fetus or newborn\"\n          },\n          {\n            \"XM77D4\": \"Serum anti-Rh\"\n          },\n          {\n            \"XM4361\": \"Anti-D (rh) immunoglobulin\"\n          }\n        ],\n        \"observation\": [\n          {\n            \"10331-7\": \"Rh\"\n          },\n          {\n            \"10413-3\": \"Rh immune globulin given\"\n          },\n          {\n            \"69373-9\": \"Passive D Ab\"\n          }\n        ]\n      }\n    ],\n    \"count\": 1\n  }\n}\n```\n",
+        "tags": [
+          "afyalink_private/Terminology"
+        ],
+        "parameters": [
+          {
+            "name": "search",
+            "in": "query",
+            "description": "",
+            "required": false,
+            "example": "{{search}}",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "intervention_code",
+            "in": "query",
+            "description": "",
+            "required": false,
+            "example": "{{intervention_code}}",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "observation_code",
+            "in": "query",
+            "description": "",
+            "required": false,
+            "example": "{{observation_code}}`",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {}
+                }
+              }
+            },
+            "headers": {}
+          }
+        },
+        "security": [
+          {
+            "basic": []
+          }
+        ]
+      }
+    },
+    "/terminology/v1/ichi": {
+      "get": {
+        "summary": "Fetch ICHIs  ",
+        "deprecated": false,
+        "description": "## Fetch ICHIs  \n\n### Description  \nEndpoint for fetching ICHIs.  \n\n### Endpoint  \nMethod: `GET`  \nURL: `{{base_url}}/terminology/v1/ichi?search={{search}}&id_code={{id_code}}&code={{code}}&target={{target}}&action={{action}}&mean={{mean}}`  \n\n### URL Variables  \n\n| Variable       | Description                      | Example                      |  \n|---------------|----------------------------------|------------------------------|  \n| `{{base_url}}` | The base URL of the API server. | `https://uat.dha.go.ke`      |  \n\n## Requests  \n\n### Request Parameters  \nThese parameters must be included in the URL query string.  \n\n| Parameter    | Type   | Required | Description                                      | Example              |  \n|-------------|--------|----------|--------------------------------------------------|----------------------|  \n| `search`    | String | ❌ No    | Global search filters for ICHIs based on `clean_title`. | `Test of orientation functions` |  \n| `id_code`   | String | ❌ No    | Search by specific `id_code`.                   | `ATD.AC.ZZ`          |  \n| `code`      | String | ❌ No    | Search by specific `code`.                      | `ATD.AC.ZZ`          |  \n| `target`    | String | ❌ No    | Search by specific `target`.                    | `ATD`                |  \n| `action`    | String | ❌ No    | Search by specific `action`.                    | `AC`                 |  \n| `mean`      | String | ❌ No    | Search by specific `mean`.                      | `AC`                 |  \n\n## Authorization  \nThis request requires Basic Authentication. Ensure you provide the correct credentials from the Kenya Digital Superhighway and include a valid JWT token generated from the **Generate JWT Token** endpoint in the request headers.  \n\n### Headers  \n\n| Header Key       | Value Format      | Required | Description |  \n|-----------------|------------------|----------|-------------|  \n| `Authorization` | `Bearer <jwt-token>` | ✅ Yes | A valid JWT token for authentication. |  \n| `Content-Type`  | `application/json`   | ✅ Yes  | Specifies that the request body is in JSON format. |  \n\n## Sample Body  \n\n```json\n{}\n```\n\n## Example Request (cURL)  \n\n```sh\ncurl -X GET \"https://uat.dha.go.ke/terminology/v1/ichi?search=Test%20of%20orientation%20functions&id_code=ATD.AC.ZZ&code=ATD.AC.ZZ&target=ATD&action=AC&mean=AC\" \\\n     -H \"Authorization: Bearer <jwt-token>\" \\\n     -H \"Content-Type: application/json\" \n```\n\n## Example Response (JSON)  \n\n```json\n{\n  \"IsSuccess\": true,\n  \"Message\": \"Success\",\n  \"Errors\": [],\n  \"Data\": {\n    \"ichi\": [\n      {\n        \"id_code\": \"ATD.AC.ZZ\",\n        \"clean_title\": \"Test of orientation functions\",\n        \"code_level\": 6,\n        \"code\": \"ATD.AC.ZZ\",\n        \"id_code_path\": \"ICHI Category > Health interventions > Interventions on body systems or functions > Interventions on the nervous system or mental functions > BlockL4-AT2 > BlockL5-ATD > ATD.AC.ZZ\",\n        \"title_path\": \"ICHI Category > Health interventions > Interventions on body systems or functions > Interventions on the nervous system or mental functions > Interventions on global mental functions > Interventions on orientation functions > Test of orientation functions\",\n        \"block_id\": null,\n        \"target\": \"ATD\",\n        \"action\": \"AC\",\n        \"mean\": \"AC\",\n        \"class_kind\": \"category\"\n      }\n    ],\n    \"count\": 1\n  }\n}\n```\n",
+        "tags": [
+          "afyalink_private/Terminology"
+        ],
+        "parameters": [
+          {
+            "name": "search",
+            "in": "query",
+            "description": "",
+            "required": false,
+            "example": "{{search}}",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "id_code",
+            "in": "query",
+            "description": "",
+            "required": false,
+            "example": "{{id_code}}",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "code",
+            "in": "query",
+            "description": "",
+            "required": false,
+            "example": "{{code}}",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "target",
+            "in": "query",
+            "description": "",
+            "required": false,
+            "example": "{{target}}",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "action",
+            "in": "query",
+            "description": "",
+            "required": false,
+            "example": "{{action}}",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "mean",
+            "in": "query",
+            "description": "",
+            "required": false,
+            "example": "{{mean}}",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {}
+                }
+              }
+            },
+            "headers": {}
+          }
+        },
+        "security": [
+          {
+            "basic": []
+          }
+        ]
+      }
+    },
+    "/terminology/v1/icd11": {
+      "get": {
+        "summary": "Fetch ICD11 ",
+        "deprecated": false,
+        "description": "\n## Fetch ICD11  \n\n### Description  \nThis API endpoint allows users to retrieve ICD-11 (International Classification of Diseases, 11th Revision) codes, which are used for categorizing diseases, disorders, and other health-related conditions. It provides a search functionality based on the disease description or a specific ICD-11 code. The results include details such as the ICD-11 code, a brief description of the condition, and a direct link to the official World Health Organization (WHO) ICD-11 browser for further reference.  \n\nThis endpoint is useful for healthcare providers, medical researchers, and digital health platforms that need to integrate standardized disease classification into their systems.  \n\n### Endpoint  \nMethod: `GET`  \nURL: `{{base_url}}/terminology/v1/icd11?search={{search}}&icd_11_code={{icd_11_code}}`  \n\n### URL Variables  \n\n| Variable       | Description                      | Example                      |  \n|---------------|----------------------------------|------------------------------|  \n| `{{base_url}}` | The base URL of the API server. | `https://uat.dha.go.ke`      |  \n\n## Requests  \n\n### Request Parameters  \nThese parameters must be included in the URL query string.  \n\n| Parameter      | Type   | Required | Description                                         | Example    |  \n|---------------|--------|----------|-----------------------------------------------------|------------|  \n| `search`      | String | ❌ No    | Performs a global search for ICD-11 codes based on the disease description. Example: \"Cholera\". | `Cholera` |  \n| `icd_11_code` | String | ❌ No    | Searches for a specific ICD-11 code. If provided, it will return details about that particular code. | `1A00`     |  \n\n## Authorization  \nThis request requires Basic Authentication. Ensure you provide the correct credentials from the Kenya Digital Superhighway and include a valid JWT token generated from the **Generate JWT Token** endpoint in the request headers.  \n\n### Headers  \n\n| Header Key       | Value Format      | Required | Description |  \n|-----------------|------------------|----------|-------------|  \n| `Authorization` | `Bearer <jwt-token>` | ✅ Yes | A valid JWT token for authentication. |  \n| `Content-Type`  | `application/json`   | ✅ Yes  | Specifies that the request body is in JSON format. |  \n\n## Sample Body  \n\n```json\n{}\n```\n\n## Example Request (cURL)  \n\n```sh\ncurl -X GET \"https://uat.dha.go.ke/terminology/v1/icd11?search=Cholera&icd_11_code=1A00\" \\\n     -H \"Authorization: Bearer <jwt-token>\" \\\n     -H \"Content-Type: application/json\" \n```\n\n## Example Response (JSON)  \n\n```json\n{\n  \"IsSuccess\": true,\n  \"Message\": \"Success\",\n  \"Errors\": [],\n  \"Data\": {\n    \"icd11\": [\n      {\n        \"icd_11_code\": \"1A00\",\n        \"description\": \"Cholera\",\n        \"browser_url\": \"https://icd.who.int/browse/2024-01/mms/en#257068224\"\n      }\n    ],\n    \"count\": 1\n  }\n}\n```\n",
+        "tags": [
+          "afyalink_private/Terminology"
+        ],
+        "parameters": [
+          {
+            "name": "search",
+            "in": "query",
+            "description": "",
+            "required": false,
+            "example": "{{search}}",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "icd_11_code",
+            "in": "query",
+            "description": "",
+            "required": false,
+            "example": "{{icd_11_code}}",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {}
+                }
+              }
+            },
+            "headers": {}
+          }
+        },
+        "security": [
+          {
+            "basic": []
+          }
+        ]
+      }
+    },
+    "/terminology/v1/loinc": {
+      "get": {
+        "summary": "Fetch LOINC",
+        "deprecated": false,
+        "description": "\n## Fetch LOINC  \n\n### Description  \nAPI for fetching LOINC.  \n\n### Endpoint  \nMethod: `GET`  \nURL: `{{base_url}}/terminology/v1/loinc?search={{search}}`  \n\n### URL Variables  \n\n| Variable       | Description                      | Example                      |  \n|---------------|----------------------------------|------------------------------|  \n| `{{base_url}}` | The base URL of the API server. | `https://uat.dha.go.ke`      |  \n\n## Requests  \n\n### Request Parameters  \nThese parameters must be included in the URL query string.  \n\n| Parameter   | Type   | Required | Description                                                                 | Example      |  \n|------------|--------|----------|-----------------------------------------------------------------------------|--------------|  \n| `search`   | String | ❌ No    | Global search filter based on `loinc_num`, `component`, or `display_name`. | `100000-9`   |  \n\n## Authorization  \nThis request requires Basic Authentication. Ensure you provide the correct credentials from the Kenya Digital Superhighway and include a valid JWT token generated from the **Generate JWT Token** endpoint in the request headers.  \n\n### Headers  \n\n| Header Key       | Value Format      | Required | Description |  \n|-----------------|------------------|----------|-------------|  \n| `Authorization` | `Bearer <jwt-token>` | ✅ Yes | A valid JWT token for authentication. |  \n| `Content-Type`  | `application/json`   | ✅ Yes  | Specifies that the request body is in JSON format. |  \n\n\n\n## Example Request (cURL)  \n\n```sh\ncurl -X GET \"https://uat.dha.go.ke/terminology/v1/loinc?search=100000-9\" \\\n     -H \"Authorization: Bearer <jwt-token>\" \\\n     -H \"Content-Type: application/json\" \n```\n\n## Example Response (JSON)  \n\n```json\n{\n  \"IsSuccess\": true,\n  \"Message\": \"Success\",\n  \"Errors\": [],\n  \"Data\": {\n    \"loinc\": [\n      {\n        \"loinc_num\": \"101129-5\",\n        \"component\": \"Assay Sensitivity\",\n        \"display_name\": null\n      }\n    ],\n    \"count\": 1\n  }\n}\n```\n",
+        "tags": [
+          "afyalink_private/Terminology"
+        ],
+        "parameters": [
+          {
+            "name": "search",
+            "in": "query",
+            "description": "",
+            "required": false,
+            "example": "{{search}}",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {}
+                }
+              }
+            },
+            "headers": {}
+          }
+        },
+        "security": [
+          {
+            "basic": []
+          }
+        ]
+      }
+    },
+    "/terminology/v1/active-component": {
+      "get": {
+        "summary": "Fetch Active Components ",
+        "deprecated": false,
+        "description": "\n## Fetch Active Components  \n\n### Description  \nThis API endpoint retrieves active pharmaceutical components, which are the biologically active ingredients in medications. It provides the ability to search for active components using various filters such as component descriptions, exact matches, and specific active component IDs.  \n\nHealthcare providers, pharmacists, and digital health systems can use this endpoint to integrate structured medication data into their applications, ensuring accurate drug information retrieval.  \n\n### Endpoint  \nMethod: `GET`  \nURL: `{{base_url}}/terminology/v1/active-component?search={{search}}&exact_match={{exact_match}}&active_component_id={{active_component_id}}`  \n\n### URL Variables  \n\n| Variable       | Description                      | Example                      |  \n|---------------|----------------------------------|------------------------------|  \n| `{{base_url}}` | The base URL of the API server. | `https://uat.dha.go.ke`      |  \n\n## Requests  \n\n### Request Parameters  \nThese parameters must be included in the URL query string.  \n\n| Parameter             | Type    | Required | Description                                                                         | Example     |  \n|----------------------|---------|----------|-------------------------------------------------------------------------------------|-------------|  \n| `search`            | String  | ❌ No    | Performs a global search for active components based on component descriptions. Example: \"Metformin\". | `Metformin` |  \n| `exact_match`       | Boolean | ❌ No    | If `true`, the search will return only exact matches; otherwise, broader search results are included. | `true` or `false` |  \n| `active_component_id` | Integer | ❌ No    | Searches for a specific active component using its unique identifier. | `1`         |  \n\n## Authorization  \nThis request requires Basic Authentication. Ensure you provide the correct credentials from the Kenya Digital Superhighway and include a valid JWT token generated from the **Generate JWT Token** endpoint in the request headers.  \n\n### Headers  \n\n| Header Key       | Value Format      | Required | Description |  \n|-----------------|------------------|----------|-------------|  \n| `Authorization` | `Bearer <jwt-token>` | ✅ Yes | A valid JWT token for authentication. |  \n| `Content-Type`  | `application/json`   | ✅ Yes  | Specifies that the request body is in JSON format. |  \n\n\n\n## Example Request (cURL)  \n\n```sh\ncurl -X GET \"https://uat.dha.go.ke/terminology/v1/active-component?search=Metformin&exact_match=true&active_component_id=1\" \\\n     -H \"Authorization: Bearer <jwt-token>\" \\\n     -H \"Content-Type: application/json\" \n```\n\n## Example Response (JSON)  \n\n```json\n{\n  \"IsSuccess\": true,\n  \"Message\": \"Success\",\n  \"Errors\": [],\n  \"Data\": {\n    \"ac\": [\n      {\n        \"active_component_id\": 1,\n        \"component_description\": \"Metformin\",\n        \"component_links\": [\n          {\n            \"active_component_link_id\": 1,\n            \"active_component_line\": 1,\n            \"active_component_id\": 1,\n            \"component_name\": \"Metformin\",\n            \"component_atc_code\": \"A10BA02\"\n          }\n        ]\n      }\n    ],\n    \"count\": 1\n  }\n}\n```\n",
+        "tags": [
+          "afyalink_private/Terminology"
+        ],
+        "parameters": [
+          {
+            "name": "search",
+            "in": "query",
+            "description": "",
+            "required": false,
+            "example": "{{search}}",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "exact_match",
+            "in": "query",
+            "description": "",
+            "required": false,
+            "example": "{{exact_match}}",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "active_component_id",
+            "in": "query",
+            "description": "",
+            "required": false,
+            "example": "{{active_component_id}}",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {}
+                }
+              }
+            },
+            "headers": {}
+          }
+        },
+        "security": [
+          {
+            "basic": []
+          }
+        ]
+      }
+    },
+    "/terminology/v1/product": {
+      "get": {
+        "summary": " Fetch Products  ",
+        "deprecated": false,
+        "description": "\n## Fetch Products  \n\n### Description  \nThis API endpoint retrieves product details from the terminology system, including brand and generic names, dosage forms, and regulatory identifiers. It allows filtering by various parameters such as product ID, generic concept ID, form ID, and route ID.  \n\nHealthcare providers, pharmacies, and digital health applications can use this endpoint to fetch product details for better inventory management, prescription accuracy, and pharmaceutical research.  \n\n### Endpoint  \nMethod: `GET`  \nURL: `{{base_url}}/terminology/v1/product?search={{search}}&product_id={{product_id}}&generic_concept_id={{generic_concept_id}}&form_id={{form_id}}&route_id={{route_id}}`  \n\n### URL Variables  \n\n| Variable       | Description                      | Example                      |  \n|---------------|----------------------------------|------------------------------|  \n| `{{base_url}}` | The base URL of the API server. | `https://uat.dha.go.ke`      |  \n\n## Requests  \n\n### Request Parameters  \nThese parameters must be included in the URL query string.  \n\n| Parameter              | Type    | Required | Description | Example |  \n|------------------------|---------|----------|-------------|---------|  \n| `search`              | String  | ❌ No    | Global search filter based on brand name, generic name, route description, form description, PPB registration code, ETCD, or KNHTS concept ID. Example: \"Metformin\". | `Metformin` |  \n| `product_id`          | Integer | ❌ No    | Search for a specific product by its unique identifier. | `4855` |  \n| `generic_concept_id`  | Integer | ❌ No    | Search by specific generic concept identifier. | `2` |  \n| `form_id`            | Integer | ❌ No    | Search for a product by its dosage form ID. | `1` |  \n| `route_id`           | Integer | ❌ No    | Search by specific administration route ID. | `1` |  \n\n## Authorization  \nThis request requires Basic Authentication. Ensure you provide the correct credentials from the Kenya Digital Superhighway and include a valid JWT token generated from the **Generate JWT Token** endpoint in the request headers.  \n\n### Headers  \n\n| Header Key       | Value Format      | Required | Description |  \n|-----------------|------------------|----------|-------------|  \n| `Authorization` | `Bearer <jwt-token>` | ✅ Yes | A valid JWT token for authentication. |  \n| `Content-Type`  | `application/json`   | ✅ Yes  | Specifies that the request body is in JSON format. |  \n\n## Sample Body  \n\n```json\n{}\n```\n\n## Example Request (cURL)  \n\n```sh\ncurl -X GET \"https://uat.dha.go.ke/terminology/v1/product?search=Metformin&product_id=4855\" \\\n     -H \"Authorization: Bearer <jwt-token>\" \\\n     -H \"Content-Type: application/json\"\n```\n\n## Example Response (JSON)  \n\n```json\n{\n  \"IsSuccess\": true,\n  \"Message\": \"Success\",\n  \"Errors\": [],\n  \"Data\": {\n    \"products\": [\n      {\n        \"product_id\": 4855,\n        \"generic_concept_id\": 2,\n        \"brand_display_name\": \"Glucodeal 500 mg Oral Tablet\",\n        \"generic_display_name\": \"Metformin 500 mg Oral Tablet\",\n        \"brand_name\": \"Glucodeal\",\n        \"generic_name\": \"Metformin\",\n        \"strength_amount\": \"500\",\n        \"strength_unit\": \"mg\",\n        \"route_description\": \"Oral\",\n        \"form_description\": \"Tablet\",\n        \"ppb_registration_code\": \"77\",\n        \"etcd\": \"3913\",\n        \"knhts_concept_id\": \"10-03913-01\",\n        \"updation_date\": \"2024-12-21T04:56:04.243Z\"\n      }\n    ],\n    \"count\": 1\n  }\n}\n```\n",
+        "tags": [
+          "afyalink_private/Terminology"
+        ],
+        "parameters": [
+          {
+            "name": "search",
+            "in": "query",
+            "description": "",
+            "required": false,
+            "example": "{{search}}",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "product_id",
+            "in": "query",
+            "description": "",
+            "required": false,
+            "example": "{{product_id}}",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "generic_concept_id",
+            "in": "query",
+            "description": "",
+            "required": false,
+            "example": "{{generic_concept_id}}",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "form_id",
+            "in": "query",
+            "description": "",
+            "required": false,
+            "example": "{{form_id}}",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "route_id",
+            "in": "query",
+            "description": "",
+            "required": false,
+            "example": "{{route_id}}",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {}
+                }
+              }
+            },
+            "headers": {}
+          }
+        },
+        "security": [
+          {
+            "basic": []
+          }
+        ]
+      }
+    },
+    "/v2/detach-dependant": {
+      "put": {
+        "summary": "Tiberbu Detach Dependant v2 ",
+        "deprecated": false,
+        "description": "\n\n## Tiberbu Detach Dependant v2  \n\n### Description  \nThis API allows a **client** to remove dependants who were added from external sources but **do not belong to them**. This operation now requires an **encrypted PIN** for security verification.  \n\n---\n\n### Endpoint  \n**Method:** `PUT`  \n**URL:** `{{base_url}}/v2/detach-dependant`  \n\n---\n\n### URL Variables  \n| Variable        | Description                           | Example                      |  \n|----------------|--------------------------------------|------------------------------|  \n| `{{base_url}}` | The base URL of the API server.     | `https://api-uat.tiberbu.health` |  \n\n---\n\n## Requests  \n\n### Request Parameters  \nThese parameters must be included in the request body.  \n\n| Parameter          | Type   | Required | Description                                      | Example                 |  \n|-------------------|--------|----------|--------------------------------------------------|-------------------------|  \n| `agent`          | String | ✅ Yes   | The unique identifier of the requesting agent.  | `AGENT00123`            |  \n| `id`             | String | ✅ Yes   | The unique client ID of the principal.         | `CR123456789-2`         |  \n| `dependant_cr_id`| String | ✅ Yes   | The unique client ID of the dependant to detach. | `CR987654321-2`         |  \n| `encrypted_pin`  | String | ✅ Yes   | The encrypted PIN for authentication.          | `\"xxxxxxxxxxxx\"`        |  \n\n---\n\n## Authorization  \nThis request requires **Basic Authentication**. Ensure you provide the correct credentials from the **Kenya Digital Superhighway** and include a valid **JWT token** generated from the **Generate JWT Token** endpoint.  \n\n### Headers  \nThe request must include an authentication token obtained from the **Generate JWT Token** endpoint.  \n\n| Header Key       | Value Format            | Required | Description                                     |  \n|-----------------|------------------------|----------|-------------------------------------------------|  \n| `Authorization` | `Bearer <jwt-token>`    | ✅ Yes   | A valid JWT token for authentication.          |  \n| `Content-Type`  | `application/json`      | ✅ Yes   | Specifies that the request body is in JSON format. |  \n\n---\n\n## Sample Body  \n\n```json\n{\n    \"agent\": \"AGENT00123\",\n    \"id\": \"CR123456789-2\",\n    \"dependant_cr_id\": \"CR987654321-2\",\n    \"encrypted_pin\": \"xxxxxxxxxxxx\"\n}\n```\n\n---\n\n## Example Request (cURL)  \n\n```bash\ncurl -X PUT \"https://api-uat.tiberbu.health/v2/detach-dependant\" \\\n  -H \"Authorization: Basic <base64_encoded_username:password>\" \\\n  -H \"Authorization: Bearer <jwt_token>\" \\\n  -H \"Content-Type: application/json\" \\\n  -d '{\n        \"agent\": \"AGENT00123\",\n        \"id\": \"CR123456789-2\",\n        \"dependant_cr_id\": \"CR987654321-2\",\n        \"encrypted_pin\": \"xxxxxxxxxxxx\"\n      }'\n```\n\n---\n\n## Example Response (JSON)  \n\n```json\n{\n    \"status\": \"success\",\n    \"message\": \"Dependant successfully detached.\",\n    \"data\": {\n        \"id\": \"CR123456789-2\",\n        \"dependant_cr_id\": \"CR987654321-2\",\n        \"detached_at\": \"2025-02-26T14:30:00Z\"\n    }\n}\n```\n\n",
+        "tags": [
+          "afyalink_private/Tiberbu"
+        ],
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {}
+                }
+              }
+            },
+            "headers": {}
+          }
+        },
+        "security": [
+          {
+            "basic": []
+          }
+        ]
+      }
+    },
+    "/v3/agent-update-client": {
+      "put": {
+        "summary": " Tiberbu Update Client by Agent v3  ",
+        "deprecated": false,
+        "description": "\n## Tiberbu Update Client by Agent v3  \n\n### Description  \nThis API allows an **agent** to edit blacklisted client fields. Only select fields can be updated, and each field can only be updated **once**. An **encrypted PIN** is now required for this operation.  \n\n---\n\n### Endpoint  \n**Method:** `PUT`  \n**URL:** `{{base_url}}/v3/agent-update-client`  \n\n---\n\n### URL Variables  \n| Variable        | Description                           | Example                      |  \n|----------------|--------------------------------------|------------------------------|  \n| `{{base_url}}` | The base URL of the API server.     | `https://api-uat.tiberbu.health` |  \n\n---\n\n## Requests  \n\n### Request Parameters  \nThese parameters must be included in the request body.  \n\n| Parameter         | Type   | Required | Description                                       | Example                |  \n|------------------|--------|----------|---------------------------------------------------|------------------------|  \n| `id`            | String | ✅ Yes   | The unique client ID.                            | `CR123456789-2`         |  \n| `agent`         | String | ✅ Yes   | The unique identifier of the requesting agent.   | `AGENT00123`           |  \n| `encrypted_pin` | String | ✅ Yes   | The encrypted PIN for authentication.           | `\"xxxxxxxxxxxx\"`       |  \n| `gender`        | String | ✅ Yes   | The updated gender of the client.                | `\"Male\"`               |  \n\n---\n\n## Authorization  \nThis request requires **Basic Authentication**. Ensure you provide the correct credentials from the **Kenya Digital Superhighway** and include a valid **JWT token** generated from the **Generate JWT Token** endpoint.  \n\n### Headers  \nThe request must include an authentication token obtained from the **Generate JWT Token** endpoint.  \n\n| Header Key       | Value Format            | Required | Description                                     |  \n|-----------------|------------------------|----------|-------------------------------------------------|  \n| `Authorization` | `Bearer <jwt-token>`    | ✅ Yes   | A valid JWT token for authentication.          |  \n| `Content-Type`  | `application/json`      | ✅ Yes   | Specifies that the request body is in JSON format. |  \n\n---\n\n## Sample Body  \n\n```json\n{\n    \"id\": \"CR123456789-2\",\n    \"agent\": \"AGENT00123\",\n    \"encrypted_pin\": \"xxxxxxxxxxxx\",\n    \"gender\": \"Male\"\n}\n```\n\n---\n\n## Example Request (cURL)  \n\n```bash\ncurl -X PUT \"https://api-uat.tiberbu.health/v3/agent-update-client\" \\\n  -H \"Authorization: Basic <base64_encoded_username:password>\" \\\n  -H \"Authorization: Bearer <jwt_token>\" \\\n  -H \"Content-Type: application/json\" \\\n  -d '{\n        \"id\": \"CR123456789-2\",\n        \"agent\": \"AGENT00123\",\n        \"encrypted_pin\": \"xxxxxxxxxxxx\",\n        \"gender\": \"Male\"\n      }'\n```\n\n---\n\n## Example Response (JSON)  \n\n```json\n{\n    \"status\": \"success\",\n    \"message\": \"Client details updated successfully.\",\n    \"data\": {\n        \"id\": \"CR123456789-2\",\n        \"updated_fields\": [\"gender\"],\n        \"last_updated\": \"2025-02-26T14:00:00Z\"\n    }\n}\n```\n",
+        "tags": [
+          "afyalink_private/Tiberbu"
+        ],
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {}
+                }
+              }
+            },
+            "headers": {}
+          }
+        },
+        "security": [
+          {
+            "basic": []
+          }
+        ]
+      }
+    },
+    "/send-web-otp": {
+      "post": {
+        "summary": "Tiberbu Send Web OTP",
+        "deprecated": false,
+        "description": "\n## Tiberbu Send Web OTP\n### Description\nSend OTP for specific use cases such as Registration, Login, or Adding a Spouse.\n\n### Endpoint\nMethod: `POST`  \nURL: `{{base_url}}/send-web-otp`\n\n### URL Variables\n| Variable      | Description                      | Example                  |\n|--------------|----------------------------------|--------------------------|\n| `{{base_url}}` | The base URL of the API server. | `https://uat.dha.go.ke` |\n\n## Requests\n\n### Request Parameters  \nThese parameters must be included in the request body.\n\n| Parameter                | Type   | Required | Description                              | Example         |  \n|--------------------------|--------|----------|------------------------------------------|-----------------|  \n| `identification_type`   | String | ✅ Yes   | Type of identification document.         | `National ID`   |  \n| `identification_number` | String | ✅ Yes   | The client's identification number.      | `1234567890`    |  \n| `otp_type`             | Integer | ✅ Yes   | Type of OTP being requested.             | `3` (Registration/Login) |  \n| `agent`                 | String | ✅ Yes   | The agent requesting the OTP.            | `AGENT001`      |  \n\n---\n\n## Authorization\nThis request requires Basic Authentication. Ensure you provide the correct credentials from the Kenya Digital Superhighway and include a valid JWT token generated from the **Generate JWT Token** endpoint in the request headers.\n\n### Headers\nThe request must include an authentication token obtained from the **Generate JWT Token** endpoint.\n\n| Header Key       | Value Format      | Required | Description |\n|-----------------|------------------|----------|-------------|\n| `Authorization` | `Bearer <jwt-token>` | ✅ Yes | A valid JWT token for authentication. |\n| `Content-Type`  | `application/json`   | ✅ Yes  | Specifies that the request body is in JSON format. |\n\n## Sample Body\n\n```json\n{\n  \"identification_type\": \"National ID\",\n  \"identification_number\": \"1234567890\",\n  \"otp_type\": 3,\n  \"agent\": \"AGENT001\"\n}\n```\n\n## Example Request (cURL)\n\n```bash\ncurl -X POST \"https://api-uat.tiberbu.health/send-web-otp\" \\\n  -H \"Authorization: Basic <base64_encoded_username:password>\" \\\n  -H \"Authorization: Bearer <jwt_token>\" \\\n  -H \"Content-Type: application/json\" \\\n  -d '{\n        \"identification_type\": \"National ID\",\n        \"identification_number\": \"1234567890\",\n        \"otp_type\": 3,\n        \"agent\": \"AGENT001\"\n      }'\n```\n\n## Example Response (JSON)\n```json\n{\n  \"status\": \"success\",\n  \"message\": \"OTP sent successfully\",\n  \"otp_reference\": \"a4klufn4o0\"\n}\n```\n",
+        "tags": [
+          "afyalink_private/Tiberbu"
+        ],
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {}
+                }
+              }
+            },
+            "headers": {}
+          }
+        },
+        "security": [
+          {
+            "basic": []
+          }
+        ]
+      }
+    },
+    "/v4/tiberbu-validate-otp": {
+      "post": {
+        "summary": "Tiberbu UAT Validate OTP in CR v4",
+        "deprecated": false,
+        "description": "\n## Tiberbu UAT Validate OTP in CR v4\n### Description\nThis API validates a One-Time Password (OTP) and, if successful, executes the associated action. If the OTP type is **3**, the API will add a spouse for the client. The OTP must be valid and issued for the intended operation.\n\n### Endpoint\nMethod: `POST`  \nURL: `{{base_url}}/v4/tiberbu-validate-otp`\n\n### URL Variables\n| Variable        | Description                      | Example                  |\n|----------------|----------------------------------|--------------------------|\n| `{{base_url}}` | The base URL of the API server. | `https://uat.dha.go.ke` |\n\n## Requests\n\n### Request Parameters  \nThese parameters must be included in the request body.\n\n| Parameter       | Type   | Required | Description                                         | Example       |  \n|----------------|--------|----------|-----------------------------------------------------|---------------|  \n| `agent`       | String | ✅ Yes   | The agent processing the OTP validation request.   | `AGENT001`    |  \n| `otp_record`  | String | ✅ Yes   | A valid OTP reference from the **Send Web OTP** API. | `OTP123456`  |  \n| `otp`         | String | ✅ Yes   | The one-time password provided by the user.        | `22445`       |  \n| `encrypted_pin` | String | ✅ Yes   | The encrypted PIN for security validation.         | `********`    |  \n\n---\n\n## Authorization\nThis request requires Basic Authentication. Ensure you provide the correct credentials from the Kenya Digital Superhighway and include a valid JWT token generated from the **Generate JWT Token** endpoint in the request headers.\n\n### Headers\nThe request must include an authentication token obtained from the **Generate JWT Token** endpoint.\n\n| Header Key       | Value Format      | Required | Description |\n|-----------------|------------------|----------|-------------|\n| `Authorization` | `Bearer <jwt-token>` | ✅ Yes | A valid JWT token for authentication. |\n| `Content-Type`  | `application/json`   | ✅ Yes | Specifies that the request body is in JSON format. |\n\n## Sample Body\n\n```json\n{\n  \"agent\": \"AGENT001\",\n  \"otp_record\": \"OTP123456\",\n  \"otp\": \"22445\",\n  \"encrypted_pin\": \"********\"\n}\n```\n\n## Example Request (cURL)\n\n```bash\ncurl -X POST \"https://api-uat.tiberbu.health/v4/tiberbu-validate-otp\" \\\n  -H \"Authorization: Basic <base64_encoded_username:password>\" \\\n  -H \"Authorization: Bearer <jwt_token>\" \\\n  -H \"Content-Type: application/json\" \\\n  -d '{\n        \"agent\": \"AGENT001\",\n        \"otp_record\": \"OTP123456\",\n        \"otp\": \"22445\",\n        \"encrypted_pin\": \"********\"\n      }'\n```\n\n## Example Response (JSON)\n```json\n{\n  \"status\": \"success\",\n  \"message\": \"OTP validated successfully\",\n  \"action\": \"Spouse added to client profile\"\n}\n```\n",
+        "tags": [
+          "afyalink_private/Tiberbu"
+        ],
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {}
+                }
+              }
+            },
+            "headers": {}
+          }
+        },
+        "security": [
+          {
+            "basic": []
+          }
+        ]
+      }
+    },
+    "/web-cr-registration": {
+      "post": {
+        "summary": "Tiberbu Web CR Registration",
+        "deprecated": false,
+        "description": "## Tiberbu Web CR Registration\n### Description\nThis API is used for registering new clients in the system. A valid OTP of type **Registration** is required to complete the process. The registration must be initiated by an authorized agent.\n\n### Endpoint\nMethod: `POST`  \nURL: `{{base_url}}/web-cr-registration`\n\n### URL Variables\n| Variable        | Description                      | Example                  |\n|----------------|----------------------------------|--------------------------|\n| `{{base_url}}` | The base URL of the API server. | `https://uat.dha.go.ke` |\n\n## Requests\n\n### Request Parameters  \nThese parameters must be included in the request body.\n\n| Parameter       | Type   | Required | Description                                         | Example           |  \n|----------------|--------|----------|-----------------------------------------------------|-------------------|  \n| `agent`       | String | ✅ Yes   | The agent processing the registration request.     | `AGENT001`        |  \n| `encrypted_pin` | String | ✅ Yes   | The encrypted PIN for security validation.         | `********`        |  \n| `otp_record`  | String | ✅ Yes   | A valid OTP reference from the **Send Web OTP** API. | `a4klufn4o0`      |  \n| `first_name`  | String | ✅ Yes   | The first name of the client being registered.     | `John`            |  \n\n---\n\n## Authorization\nThis request requires Basic Authentication. Ensure you provide the correct credentials from the Kenya Digital Superhighway and include a valid JWT token generated from the **Generate JWT Token** endpoint in the request headers.\n\n### Headers\nThe request must include an authentication token obtained from the **Generate JWT Token** endpoint.\n\n| Header Key       | Value Format      | Required | Description |\n|-----------------|------------------|----------|-------------|\n| `Authorization` | `Bearer <jwt-token>` | ✅ Yes | A valid JWT token for authentication. |\n| `Content-Type`  | `application/json`   | ✅ Yes | Specifies that the request body is in JSON format. |\n\n## Sample Body\n\n```json\n{\n  \"agent\": \"AGENT001\",\n  \"encrypted_pin\": \"********\",\n  \"otp_record\": \"a4klufn4o0\",\n  \"first_name\": \"John\"\n}\n```\n\n## Example Request (cURL)\n\n```bash\ncurl -X POST \"https://api-uat.tiberbu.health/web-cr-registration\" \\\n  -H \"Authorization: Basic <base64_encoded_username:password>\" \\\n  -H \"Authorization: Bearer <jwt_token>\" \\\n  -H \"Content-Type: application/json\" \\\n  -d '{\n        \"agent\": \"AGENT001\",\n        \"encrypted_pin\": \"********\",\n        \"otp_record\": \"a4klufn4o0\",\n        \"first_name\": \"John\"\n      }'\n```\n\n## Example Response (JSON)\n```json\n{\n  \"status\": \"success\",\n  \"message\": \"Client registered successfully\",\n  \"client_id\": \"CR123456789\"\n}\n```\n",
+        "tags": [
+          "afyalink_private/Tiberbu"
+        ],
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {}
+                }
+              }
+            },
+            "headers": {}
+          }
+        },
+        "security": [
+          {
+            "basic": []
+          }
+        ]
+      }
+    },
+    "/check-client": {
+      "get": {
+        "summary": "Check Client",
+        "deprecated": false,
+        "description": "\n\n## Check Client  \n\n### Description  \nThe **Check Client** API verifies if a client exists in the system using their **identification number** and **identification type**. A valid **Authorization Token** is required.  \n\n### Endpoint  \n**Method:** `GET`  \n**URL:** `{{base_url}}/check-client?identification_number={{identification_number}}&identification_type={{identification_type}}&agent={{agent}}`  \n\n### URL Variables  \n| Variable                  | Description                                      | Example                |  \n|---------------------------|--------------------------------------------------|------------------------|  \n| `{{base_url}}`           | The base URL of the API server.                  | `https://uat.dha.go.ke` |  \n| `{{identification_number}}` | The unique identification number of the client.  | `1234567890`           |  \n| `{{identification_type}}`  | The type of identification used by the client.    | `National ID`          |  \n| `{{agent}}`                | The unique identifier of the requesting agent.    | `AGENT00123`           |  \n\n---\n\n## Requests  \n\n### Request Parameters  \nThese parameters must be included in the URL query string.  \n\n| Parameter              | Type   | Required | Description                              | Example         |  \n|-----------------------|--------|----------|------------------------------------------|-----------------|  \n| `identification_number` | String | ✅ Yes   | The unique ID number of the client.     | `1234567890`    |  \n| `identification_type`  | String | ✅ Yes   | The type of identification.             | `National ID`   |  \n| `agent`                | String | ✅ Yes   | The unique identifier of the agent.     | `AGENT00123`    |  \n\n---\n\n## Authorization  \nThis request requires **Basic Authentication**. Ensure you provide the correct credentials from the **Kenya Digital Superhighway** and include a valid **JWT token** generated from the **Generate JWT Token** endpoint.  \n\n### Headers  \nThe request must include an authentication token obtained from the **Generate JWT Token** endpoint.  \n\n| Header Key       | Value Format         | Required | Description                                    |  \n|-----------------|---------------------|----------|------------------------------------------------|  \n| `Authorization` | `Bearer <jwt-token>` | ✅ Yes   | A valid JWT token for authentication.         |  \n| `Content-Type`  | `application/json`   | ✅ Yes   | Specifies that the request body is in JSON format. |  \n\n---\n\n## Sample Body  \nSince this is a `GET` request, the request body should be empty.  \n\n```json\n{}\n```\n\n---\n\n## Example Request (cURL)  \n\n```sh\ncurl -X GET \"https://uat.dha.go.ke/check-client?identification_number=1234567890&identification_type=National ID&agent=AGENT00123\" \\\n     -H \"Authorization: Bearer <jwt-token>\" \\\n     -H \"Content-Type: application/json\"\n```\n\n---\n\n## Example Response (JSON)  \n\n```json\n{\n    \"status\": \"success\",\n    \"message\": \"Client found.\",\n    \"data\": {\n        \"client_id\": \"CR1234567890\",\n        \"first_name\": \"John\",\n        \"last_name\": \"Doe\",\n        \"identification_type\": \"National ID\",\n        \"identification_number\": \"1234567890\",\n        \"account_status\": \"Active\"\n    }\n}\n```\n",
+        "tags": [
+          "afyalink_private/Tiberbu"
+        ],
+        "parameters": [
+          {
+            "name": "identification_number",
+            "in": "query",
+            "description": "",
+            "required": false,
+            "example": "{{identification_number}}",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "identification_type",
+            "in": "query",
+            "description": "",
+            "required": false,
+            "example": "{{identification_type}}",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "agent",
+            "in": "query",
+            "description": "",
+            "required": false,
+            "example": "{{agent}}",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {}
+                }
+              }
+            },
+            "headers": {}
+          }
+        },
+        "security": [
+          {
+            "basic": []
+          }
+        ]
+      }
+    },
+    "/fetch-eligible-dependant": {
+      "get": {
+        "summary": "Fetch Eligible Dependant",
+        "deprecated": false,
+        "description": "\n\n## Fetch Eligible Dependant  \n\n### Description  \nThe **Fetch Eligible Dependant** API allows a client to retrieve dependants from the **Client Registry (CR)** if they are below **25 years old**. A valid **Authorization Token** is required.  \n\n### Endpoint  \n**Method:** `GET`  \n**URL:** `{{base_url}}/fetch-eligible-dependant?identification_number={{identification_number}}&identification_type={{identification_type}}&agent={{agent}}`  \n\n### URL Variables  \n| Variable                | Description                                       | Example                |  \n|-------------------------|---------------------------------------------------|------------------------|  \n| `{{base_url}}`         | The base URL of the API server.                   | `https://uat.dha.go.ke` |  \n| `{{identification_number}}` | The unique identification number of the client.  | `1234567890`           |  \n| `{{identification_type}}`  | The type of identification used by the client.    | `National ID`          |  \n| `{{agent}}`                | The unique identifier of the requesting agent.    | `AGENT00123`           |  \n\n---\n\n## Requests  \n\n### Request Parameters  \nThese parameters must be included in the URL query string.  \n\n| Parameter              | Type   | Required | Description                              | Example         |  \n|-----------------------|--------|----------|------------------------------------------|-----------------|  \n| `identification_number` | String | ✅ Yes   | The unique ID number of the client.     | `1234567890`    |  \n| `identification_type`  | String | ✅ Yes   | The type of identification.             | `National ID`   |  \n| `agent`                | String | ✅ Yes   | The unique identifier of the agent.     | `AGENT00123`    |  \n\n---\n\n## Authorization  \nThis request requires **Basic Authentication**. Ensure you provide the correct credentials from the **Kenya Digital Superhighway** and include a valid **JWT token** generated from the **Generate JWT Token** endpoint.  \n\n### Headers  \nThe request must include an authentication token obtained from the **Generate JWT Token** endpoint.  \n\n| Header Key       | Value Format         | Required | Description                                    |  \n|-----------------|---------------------|----------|------------------------------------------------|  \n| `Authorization` | `Bearer <jwt-token>` | ✅ Yes   | A valid JWT token for authentication.         |  \n| `Content-Type`  | `application/json`   | ✅ Yes   | Specifies that the request body is in JSON format. |  \n\n---\n\n## Sample Body  \nSince this is a `GET` request, the request body should be empty.  \n\n```json\n{}\n```\n\n---\n\n## Example Request (cURL)  \n\n```sh\ncurl -X GET \"https://uat.dha.go.ke/fetch-eligible-dependant?identification_number=1234567890&identification_type=National ID&agent=AGENT00123\" \\\n     -H \"Authorization: Bearer <jwt-token>\" \\\n     -H \"Content-Type: application/json\"\n```\n\n---\n\n## Example Response (JSON)  \n\n```json\n{\n    \"status\": \"success\",\n    \"message\": \"Eligible dependants retrieved successfully.\",\n    \"data\": [\n        {\n            \"dependant_id\": \"CR987654321\",\n            \"first_name\": \"John\",\n            \"last_name\": \"Doe\",\n            \"gender\": \"Male\",\n            \"date_of_birth\": \"2010-08-15\",\n            \"relationship\": \"Son\",\n            \"identification_type\": \"Birth Certificate\",\n            \"identification_number\": \"BC123456789\"\n        }\n    ]\n}\n```\n",
+        "tags": [
+          "afyalink_private/Tiberbu"
+        ],
+        "parameters": [
+          {
+            "name": "identification_number",
+            "in": "query",
+            "description": "",
+            "required": false,
+            "example": "{{identification_number}}",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "identification_type",
+            "in": "query",
+            "description": "",
+            "required": false,
+            "example": "{{identification_type}}",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "agent",
+            "in": "query",
+            "description": "",
+            "required": false,
+            "example": "{{agent}}",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {}
+                }
+              }
+            },
+            "headers": {}
+          }
+        },
+        "security": [
+          {
+            "basic": []
+          }
+        ]
+      }
+    },
+    "/refresh-client": {
+      "get": {
+        "summary": "Refresh Client",
+        "deprecated": false,
+        "description": "## Refresh Client  \n\n### Description  \nThe **Refresh Client** API retrieves a client's details from the registry, similar to `client-registry/fetch-client`, but with **additional validation**. A valid **Authorization Token** is required.  \n\n### Endpoint  \n**Method:** `GET`  \n**URL:** `{{base_url}}/refresh-client?identification_type={{identification_type}}&identification_number={{identification_number}}&agent={{agent}}`  \n\n### URL Variables  \n| Variable                  | Description                                      | Example                |  \n|---------------------------|--------------------------------------------------|------------------------|  \n| `{{base_url}}`           | The base URL of the API server.                  | `https://uat.dha.go.ke` |  \n| `{{identification_type}}` | The type of identification used by the client.    | `National ID`          |  \n| `{{identification_number}}` | The unique identification number of the client.  | `1234567890`           |  \n| `{{agent}}`               | The unique identifier of the requesting agent.    | `AGENT00123`           |  \n\n---\n\n## Requests  \n\n### Request Parameters  \nThese parameters must be included in the URL query string.  \n\n| Parameter              | Type   | Required | Description                              | Example         |  \n|-----------------------|--------|----------|------------------------------------------|-----------------|  \n| `identification_type`  | String | ✅ Yes   | The type of identification.             | `National ID`   |  \n| `identification_number` | String | ✅ Yes   | The unique ID number of the client.     | `1234567890`    |  \n| `agent`                | String | ✅ Yes   | The unique identifier of the agent.     | `AGENT00123`    |  \n\n---\n\n## Authorization  \nThis request requires **Basic Authentication**. Ensure you provide the correct credentials from the **Kenya Digital Superhighway** and include a valid **JWT token** generated from the **Generate JWT Token** endpoint.  \n\n### Headers  \nThe request must include an authentication token obtained from the **Generate JWT Token** endpoint.  \n\n| Header Key       | Value Format         | Required | Description                                    |  \n|-----------------|---------------------|----------|------------------------------------------------|  \n| `Authorization` | `Bearer <jwt-token>` | ✅ Yes   | A valid JWT token for authentication.         |  \n| `Content-Type`  | `application/json`   | ✅ Yes   | Specifies that the request body is in JSON format. |  \n\n---\n\n## Sample Body  \nSince this is a `GET` request, the request body should be empty.  \n\n```json\n{}\n```\n\n---\n\n## Example Request (cURL)  \n\n```sh\ncurl -X GET \"https://uat.dha.go.ke/refresh-client?identification_type=National ID&identification_number=1234567890&agent=AGENT00123\" \\\n     -H \"Authorization: Bearer <jwt-token>\" \\\n     -H \"Content-Type: application/json\"\n```\n\n---\n\n## Example Response (JSON)  \n\n```json\n{\n    \"status\": \"success\",\n    \"message\": \"Client details retrieved successfully.\",\n    \"data\": {\n        \"client_id\": \"CR1234567890\",\n        \"first_name\": \"John\",\n        \"last_name\": \"Doe\",\n        \"identification_type\": \"National ID\",\n        \"identification_number\": \"1234567890\",\n        \"account_status\": \"Active\",\n        \"last_updated\": \"2025-02-26T12:45:00Z\"\n    }\n}\n```\n\n",
+        "tags": [
+          "afyalink_private/Tiberbu"
+        ],
+        "parameters": [
+          {
+            "name": "identification_type",
+            "in": "query",
+            "description": "",
+            "required": false,
+            "example": "{{identification_type}}",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "identification_number",
+            "in": "query",
+            "description": "",
+            "required": false,
+            "example": "{{identification_number}}",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "agent",
+            "in": "query",
+            "description": "",
+            "required": false,
+            "example": "{{agent}}",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {}
+                }
+              }
+            },
+            "headers": {}
+          }
+        },
+        "security": [
+          {
+            "basic": []
+          }
+        ]
+      }
+    },
+    "/v2/check-account-status": {
+      "get": {
+        "summary": "Tiberbu Check Account Status v2  ",
+        "deprecated": false,
+        "description": "## Tiberbu Check Account Status v2  \n\n### Description  \nThe **Tiberbu Check Account Status v2** API retrieves a client's **account status**. If the status is `\"Dormant\"`, the system attempts to perform **KYC verification** and returns the outcome. A valid **Authorization Token** is required.  \n\n### Endpoint  \n**Method:** `GET`  \n**URL:** `{{base_url}}/v2/check-account-status?id={{id}}`  \n\n### URL Variables  \n| Variable         | Description                                       | Example                |  \n|-----------------|---------------------------------------------------|------------------------|  \n| `{{base_url}}`  | The base URL of the API server.                   | `https://uat.dha.go.ke` |  \n| `{{id}}`        | The unique client reference ID.                   | `CR1234567890`         |  \n\n---\n\n## Requests  \n\n### Request Parameters  \nThese parameters must be included in the URL query string.  \n\n| Parameter  | Type   | Required | Description                          | Example          |  \n|-----------|--------|----------|--------------------------------------|------------------|  \n| `id`      | String | ✅ Yes   | The unique client reference ID.     | `CR1234567890`   |  \n\n---\n\n## Authorization  \nThis request requires **Basic Authentication**. Ensure you provide the correct credentials from the **Kenya Digital Superhighway** and include a valid **JWT token** generated from the **Generate JWT Token** endpoint.  \n\n### Headers  \nThe request must include an authentication token obtained from the **Generate JWT Token** endpoint.  \n\n| Header Key       | Value Format         | Required | Description                                    |  \n|-----------------|---------------------|----------|------------------------------------------------|  \n| `Authorization` | `Bearer <jwt-token>` | ✅ Yes   | A valid JWT token for authentication.         |  \n| `Content-Type`  | `application/json`   | ✅ Yes   | Specifies that the request body is in JSON format. |  \n\n---\n\n## Sample Body  \nSince this is a `GET` request, the request body should be empty.  \n\n```json\n{}\n```\n\n---\n\n## Example Request (cURL)  \n\n```sh\ncurl -X GET \"https://uat.dha.go.ke/v2/check-account-status?id=CR1234567890\" \\\n     -H \"Authorization: Bearer <jwt-token>\" \\\n     -H \"Content-Type: application/json\"\n```\n\n---\n\n## Example Response (JSON)  \n\n```json\n{\n    \"status\": \"success\",\n    \"message\": \"Account status retrieved successfully.\",\n    \"data\": {\n        \"client_id\": \"CR1234567890\",\n        \"account_status\": \"Active\",\n        \"kyc_performed\": false,\n        \"last_updated\": \"2025-02-26T12:45:00Z\"\n    }\n}\n```\n\n",
+        "tags": [
+          "afyalink_private/Tiberbu"
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "query",
+            "description": "",
+            "required": false,
+            "example": "{{id}}",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {}
+                }
+              }
+            },
+            "headers": {}
+          }
+        },
+        "security": [
+          {
+            "basic": []
+          }
+        ]
+      }
+    }
+  },
+  "components": {
+    "schemas": {},
+    "responses": {},
+    "securitySchemes": {
+      "basic": {
+        "type": "http",
+        "scheme": "basic"
+      }
+    }
+  },
+  "servers": [
+    {
+      "url": "https://uat.dha.go.ke",
+      "description": "Testing Env"
+    },
+    {
+      "url": "https://uat.dha.go.ke",
+      "description": "Prod Env"
+    }
+  ],
+  "security": [
+    {
+      "basic": []
+    }
+  ]
+}

@@ -678,12 +678,28 @@ export function PatientForm({
                   </Badge>
                 </AlertTitle>
                 <AlertDescription className="text-warning-foreground/80">
-                  {shaEligibility.reason || 'Patient does not have active SHA coverage.'}
-                  {shaEligibility.details?.possible_solution && (
-                    <span className="block mt-1 text-sm">
-                      <strong>Suggestion:</strong> {shaEligibility.details.possible_solution}
-                    </span>
-                  )}
+                  <div className="flex items-center justify-between">
+                    <div>
+                      {shaEligibility.reason || 'Patient does not have active SHA coverage.'}
+                      {shaEligibility.details?.possible_solution && (
+                        <span className="block mt-1 text-sm">
+                          <strong>Suggestion:</strong> {shaEligibility.details.possible_solution}
+                        </span>
+                      )}
+                    </div>
+                    {shaEligibility.details && (
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        className="border-warning/50 text-warning-foreground hover:bg-warning/10 ml-2 shrink-0"
+                        onClick={() => setShowShaDetailsDialog(true)}
+                      >
+                        <Eye className="h-3 w-3 mr-1" />
+                        View Details
+                      </Button>
+                    )}
+                  </div>
                 </AlertDescription>
               </Alert>
             )}
@@ -1559,13 +1575,25 @@ export function PatientForm({
           {shaEligibility.details && (
             <div className="space-y-4">
               {/* Eligibility Status */}
-              <div className="flex items-center gap-2 p-3 rounded-lg bg-success/10 border border-success/30">
-                <BadgeCheck className="h-5 w-5 text-success" />
-                <div>
-                  <p className="font-medium text-success">Active Coverage</p>
-                  <p className="text-sm text-success/80">Patient is eligible for SHA benefits</p>
+              {shaEligibility.isEligible ? (
+                <div className="flex items-center gap-2 p-3 rounded-lg bg-success/10 border border-success/30">
+                  <BadgeCheck className="h-5 w-5 text-success" />
+                  <div>
+                    <p className="font-medium text-success">Active Coverage</p>
+                    <p className="text-sm text-success/80">Patient is eligible for SHA benefits</p>
+                  </div>
                 </div>
-              </div>
+              ) : (
+                <div className="flex items-center gap-2 p-3 rounded-lg bg-warning/10 border border-warning/30">
+                  <XCircle className="h-5 w-5 text-warning-foreground" />
+                  <div>
+                    <p className="font-medium text-warning-foreground">Coverage Inactive</p>
+                    <p className="text-sm text-warning-foreground/80">
+                      {shaEligibility.reason || 'Patient is not currently eligible for SHA benefits'}
+                    </p>
+                  </div>
+                </div>
+              )}
               
               {/* Member Details */}
               <div className="grid gap-3">

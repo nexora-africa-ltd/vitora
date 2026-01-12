@@ -13,6 +13,7 @@ Reference: docs/dha-api-usage-analysis.md
 """
 
 import pytest # type: ignore
+import requests
 from unittest.mock import Mock, patch
 from datetime import date
 from django.conf import settings
@@ -353,7 +354,16 @@ class TestRegisterClient:
 # =============================================================================
 
 class TestUpdateClient:
-    """Tests for updating clients in Client Registry."""
+    """Tests for updating clients in Client Registry.
+    
+    API: PUT /v3/update-client
+    
+    Updatable fields per DHA docs:
+    - email: Patient email address
+    - phone: Patient phone number  
+    - county: Patient county of residence
+    - sub_county: Patient sub-county of residence
+    """
 
     @pytest.fixture
     def service(self, mock_sha_auth):
@@ -383,6 +393,91 @@ class TestUpdateClient:
         
         assert result.phone_number == '0799999999'
 
+    def test_update_client_email(self, service, mock_requests_put):
+        """Should update client email address."""
+        mock_requests_put.return_value = Mock(
+            status_code=200,
+            json=lambda: {
+                'client': {
+                    'client_number': 'CR-12345678',
+                    'first_name': 'John',
+                    'last_name': 'Doe',
+                    'date_of_birth': '1990-01-15',
+                    'gender': 'M',
+                    'email': 'john.doe@example.com',
+                }
+            }
+        )
+        
+        result = service.update_client(
+            client_number='CR-12345678',
+            email='john.doe@example.com',
+        )
+        
+        assert result.email == 'john.doe@example.com'
+        mock_requests_put.assert_called_once()
+        # Verify request body contains email
+        call_kwargs = mock_requests_put.call_args
+        assert 'email' in str(call_kwargs)
+
+    def test_update_client_county_and_sub_county(self, service, mock_requests_put):
+        """Should update client county and sub_county of residence."""
+        mock_requests_put.return_value = Mock(
+            status_code=200,
+            json=lambda: {
+                'client': {
+                    'client_number': 'CR-12345678',
+                    'first_name': 'John',
+                    'last_name': 'Doe',
+                    'date_of_birth': '1990-01-15',
+                    'gender': 'M',
+                    'county': 'Nairobi',
+                    'sub_county': 'Westlands',
+                }
+            }
+        )
+        
+        result = service.update_client(
+            client_number='CR-12345678',
+            county_of_residence='Nairobi',
+            sub_county_of_residence='Westlands',
+        )
+        
+        assert result.county_of_residence == 'Nairobi'
+        assert result.sub_county_of_residence == 'Westlands'
+
+    def test_update_client_multiple_fields(self, service, mock_requests_put):
+        """Should update multiple fields in a single request."""
+        mock_requests_put.return_value = Mock(
+            status_code=200,
+            json=lambda: {
+                'client': {
+                    'client_number': 'CR-12345678',
+                    'first_name': 'John',
+                    'last_name': 'Doe',
+                    'date_of_birth': '1990-01-15',
+                    'gender': 'M',
+                    'phone_number': '0722123456',
+                    'email': 'john@example.com',
+                    'county': 'Mombasa',
+                    'sub_county': 'Nyali',
+                }
+            }
+        )
+        
+        result = service.update_client(
+            client_number='CR-12345678',
+            phone_number='0722123456',
+            email='john@example.com',
+            county_of_residence='Mombasa',
+            sub_county_of_residence='Nyali',
+        )
+        
+        assert result.phone_number == '0722123456'
+        assert result.email == 'john@example.com'
+        assert result.county_of_residence == 'Mombasa'
+        assert result.sub_county_of_residence == 'Nyali'
+
     def test_update_client_requires_client_number(self, service):
         """Should require client_number."""
         with pytest.raises(ValueError) as exc_info:
@@ -411,6 +506,62 @@ class TestUpdateClient:
             )
         
         assert 'CR-NOTEXIST' in str(exc_info.value)
+
+    def test_update_client_bad_request(self, service, mock_requests_put):
+        """Should handle 400 Bad Request for invalid parameters."""
+        mock_response = Mock(
+            status_code=400,
+            json=lambda: {'error': 'Invalid email format'}
+        )
+        mock_response.raise_for_status.side_effect = requests.HTTPError(response=mock_response)
+        mock_requests_put.return_value = mock_response
+        
+        with pytest.raises(ClientRegistryError) as exc_info:
+            service.update_client(
+                client_number='CR-12345678',
+                email='invalid-email',
+            )
+        
+        # Should capture the error
+        assert exc_info.value is not None
+
+    def test_update_client_unauthorized(self, service, mock_requests_put):
+        """Should handle 401 Unauthorized for invalid credentials."""
+        mock_requests_put.return_value = Mock(status_code=401)
+        
+        with pytest.raises(ClientRegistryError) as exc_info:
+            service.update_client(
+                client_number='CR-12345678',
+                phone_number='0799999999',
+            )
+        
+        # Should indicate auth failure
+        assert 'auth' in str(exc_info.value).lower() or '401' in str(exc_info.value)
+
+    def test_update_client_uses_correct_endpoint(self, service, mock_requests_put):
+        """Should call PUT /v3/update-client endpoint."""
+        mock_requests_put.return_value = Mock(
+            status_code=200,
+            json=lambda: {
+                'client': {
+                    'client_number': 'CR-12345678',
+                    'first_name': 'John',
+                    'last_name': 'Doe',
+                    'date_of_birth': '1990-01-15',
+                    'gender': 'M',
+                    'phone_number': '0799999999',
+                }
+            }
+        )
+        
+        service.update_client(
+            client_number='CR-12345678',
+            phone_number='0799999999',
+        )
+        
+        # Verify correct endpoint was called
+        call_args = mock_requests_put.call_args
+        assert '/v3/update-client' in call_args[0][0] or 'update-client' in str(call_args)
 
 
 # =============================================================================
