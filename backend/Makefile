@@ -157,11 +157,11 @@ shell:
 
 import-locations:
 	@echo "Importing Kenya locations (counties, sub-counties, wards)..."
-	poetry run python manage.py import_kenya_locations
+	poetry run python manage.py import_kenya_locations data/kenya_locations.csv
 
 import-icd10:
 	@echo "Importing ICD-10 diagnosis codes..."
-	poetry run python manage.py import_icd10
+	poetry run python manage.py import_icd10 data/icd10_kenya_common.csv
 
 import-loinc:
 	@echo "Importing LOINC laboratory codes..."
