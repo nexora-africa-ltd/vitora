@@ -38,7 +38,7 @@ help:
 	@echo "  load-templates  - Load clinical templates"
 	@echo "  load-lab-ranges - Load laboratory reference ranges"
 	@echo "  create-lab-queues - Create missing laboratory queues"
-	@echo "  create-test-user - Create test user (admin/a8nD7gDlRxDTrQ/voXOQkM4Tn6qCNQTy)"
+	@echo "  create-test-user - Create test user (admin/voXOQkM4Tn6qCNQTy)"
 	@echo "  import-all      - Run all data imports"
 	@echo ""
 	@echo "Setup:"
@@ -201,7 +201,7 @@ setup-db: migrate import-all createsuperuser
 
 # Quick setup (no superuser prompt)
 setup-db-quick: migrate import-all create-test-user
-	@echo "Database setup complete with test user (admin/a8nD7gDlRxDTrQ/voXOQkM4Tn6qCNQTy)!"
+	@echo "Database setup complete with test user (admin/voXOQkM4Tn6qCNQTy)!"
 
 # ============================================================================
 # Docker Commands
