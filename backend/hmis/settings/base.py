@@ -353,6 +353,7 @@ SHA_CLIENT_SECRET = os.getenv("SHA_CLIENT_SECRET", "")  # Client secret (if need
 SHA_USERNAME = os.getenv("SHA_USERNAME", "")  # API username for Basic Auth
 SHA_PASSWORD = os.getenv("SHA_PASSWORD", "")  # API password for Basic Auth
 SHA_AGENT = os.getenv("SHA_AGENT", "")  # Agent identifier for API requests
+SHA_ENCRYPTED_PIN = os.getenv("SHA_ENCRYPTED_PIN", "")  # Pre-encrypted PIN for API requests
 # SHA FHIR Base URL (for bundle profile/resource URLs - NOT API endpoint)
 # UAT: https://qa-mis.apeiro-digital.com
 # Production: https://mis.apeiro-digital.com or https://fhir.sha.go.ke
