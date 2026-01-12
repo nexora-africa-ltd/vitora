@@ -41,7 +41,7 @@ def admin_site():
 def admin_user(db):
     """Create admin user for testing."""
     return User.objects.create_superuser(
-        username="admin", email="admin@test.com", password="a8nD7gDlRxDTrQ/voXOQkM4Tn6qCNQTy"
+        username="admin", email="admin@test.com", password="voXOQkM4Tn6qCNQTy"
     )
 
 

@@ -30,7 +30,7 @@ class TestDepartmentAdmin:
         return User.objects.create_superuser(
             username="admin",
             email="admin@test.com",
-            password="a8nD7gDlRxDTrQ/voXOQkM4Tn6qCNQTy"
+            password="voXOQkM4Tn6qCNQTy"
         )
 
     @pytest.fixture
@@ -266,7 +266,7 @@ class TestStaffProfileCSVExport:
         return User.objects.create_superuser(
             username="admin",
             email="admin@test.com",
-            password="a8nD7gDlRxDTrQ/voXOQkM4Tn6qCNQTy"
+            password="voXOQkM4Tn6qCNQTy"
         )
 
     @pytest.fixture

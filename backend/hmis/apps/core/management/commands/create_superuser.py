@@ -29,8 +29,8 @@ class Command(BaseCommand):
         parser.add_argument(
             "--password",
             type=str,
-            default="a8nD7gDlRxDTrQ/voXOQkM4Tn6qCNQTy",
-            help="Password for the superuser (default: a8nD7gDlRxDTrQ/voXOQkM4Tn6qCNQTy)",
+            default="voXOQkM4Tn6qCNQTy",
+            help="Password for the superuser (default: voXOQkM4Tn6qCNQTy)",
         )
 
     def handle(self, *args, **options):
