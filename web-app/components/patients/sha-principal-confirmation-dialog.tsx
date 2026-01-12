@@ -79,16 +79,16 @@ export function SHAPrincipalConfirmationDialog({
       <AlertDialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
         <AlertDialogHeader>
           <AlertDialogTitle className="flex items-center gap-2">
-            <Shield className="h-5 w-5 text-blue-600" />
+            <Shield className="h-5 w-5 text-secondary" />
             SHA Record Found - Confirm Identity
           </AlertDialogTitle>
           <AlertDialogDescription asChild>
             <div className="space-y-4">
               {/* SHA Member Info */}
-              <Alert className="border-blue-200 bg-blue-50">
-                <UserCheck className="h-4 w-4 text-blue-600" />
-                <AlertTitle className="text-blue-700">SHA Principal Member</AlertTitle>
-                <AlertDescription className="text-blue-600">
+              <Alert className="border-secondary/30 bg-secondary/5">
+                <UserCheck className="h-4 w-4 text-secondary" />
+                <AlertTitle className="text-secondary">SHA Principal Member</AlertTitle>
+                <AlertDescription className="text-secondary/80">
                   <div className="mt-2 space-y-1">
                     <p><strong>Name:</strong> {shaDetails.full_name || 'Not available'}</p>
                     <p><strong>SHA Number:</strong> {shaDetails.sha_number || 'Not available'}</p>
@@ -116,15 +116,15 @@ export function SHAPrincipalConfirmationDialog({
               {/* Dependents Section */}
               {hasDependents && (
                 <div className="space-y-3">
-                  <Alert className="border-amber-200 bg-amber-50">
-                    <Users className="h-4 w-4 text-amber-600" />
-                    <AlertTitle className="text-amber-700 flex items-center gap-2">
+                  <Alert className="border-warning/30 bg-warning/5">
+                    <Users className="h-4 w-4 text-warning-foreground" />
+                    <AlertTitle className="text-warning-foreground flex items-center gap-2">
                       Dependents Found
-                      <Badge variant="outline" className="text-amber-600 border-amber-300">
+                      <Badge variant="outline" className="text-warning-foreground border-warning/50">
                         {shaDetails.dependents?.length}
                       </Badge>
                     </AlertTitle>
-                    <AlertDescription className="text-amber-600">
+                    <AlertDescription className="text-warning-foreground/80">
                       <p className="mb-2">
                         If the patient is a dependent, select them below:
                       </p>
@@ -137,21 +137,21 @@ export function SHAPrincipalConfirmationDialog({
                             className={cn(
                               "w-full text-left px-3 py-2 rounded-md border transition-colors",
                               selectedDependent === dependent
-                                ? "border-amber-500 bg-amber-100"
-                                : "border-amber-200 bg-white hover:border-amber-300 hover:bg-amber-50"
+                                ? "border-warning bg-warning/20"
+                                : "border-warning/30 bg-background hover:border-warning/50 hover:bg-warning/10"
                             )}
                           >
                             <div className="flex items-center justify-between">
                               <div>
-                                <p className="font-medium text-amber-800">{dependent.name}</p>
-                                <p className="text-xs text-amber-600">
+                                <p className="font-medium text-warning-foreground">{dependent.name}</p>
+                                <p className="text-xs text-warning-foreground/70">
                                   {dependent.relationship && `${dependent.relationship} • `}
                                   {dependent.date_of_birth && `DOB: ${dependent.date_of_birth}`}
                                   {dependent.age !== undefined && ` (${dependent.age} yrs)`}
                                 </p>
                               </div>
                               {dependent.sha_number && (
-                                <Badge variant="outline" className="text-amber-600 border-amber-300 text-xs">
+                                <Badge variant="outline" className="text-warning-foreground border-warning/50 text-xs">
                                   {dependent.sha_number}
                                 </Badge>
                               )}
@@ -165,9 +165,9 @@ export function SHAPrincipalConfirmationDialog({
               )}
 
               {/* Warning for manual entry */}
-              <Alert className="border-slate-200 bg-slate-50">
-                <AlertTriangle className="h-4 w-4 text-slate-500" />
-                <AlertDescription className="text-slate-600 text-xs">
+              <Alert className="border-border bg-muted">
+                <AlertTriangle className="h-4 w-4 text-muted-foreground" />
+                <AlertDescription className="text-muted-foreground text-xs">
                   If the patient is not shown here, click &quot;Enter Manually&quot; to proceed
                   without auto-populating SHA details.
                 </AlertDescription>
@@ -182,7 +182,7 @@ export function SHAPrincipalConfirmationDialog({
           {selectedDependent ? (
             <AlertDialogAction
               onClick={handleConfirmDependent}
-              className="bg-amber-600 hover:bg-amber-700"
+              className="bg-warning text-warning-foreground hover:bg-warning/90"
             >
               <Users className="h-4 w-4 mr-2" />
               Use Dependent: {selectedDependent.name.split(' ')[0]}
@@ -190,7 +190,7 @@ export function SHAPrincipalConfirmationDialog({
           ) : (
             <AlertDialogAction
               onClick={handleConfirmPrincipal}
-              className="bg-blue-600 hover:bg-blue-700"
+              className="bg-secondary hover:bg-teal-500/90 hover:animate-pulse"
             >
               <UserCheck className="h-4 w-4 mr-2" />
               Yes, This is the Patient
