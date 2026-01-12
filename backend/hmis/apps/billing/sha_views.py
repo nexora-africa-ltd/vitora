@@ -949,31 +949,78 @@ class ClientRegistryView(APIView):
         Register a new client in Client Registry.
         
         POST /api/billing/client-registry/register/
-        """
-        data = request.data
         
-        required_fields = ['first_name', 'last_name', 'date_of_birth', 'gender']
-        missing = [f for f in required_fields if not data.get(f)]
-        if missing:
-            return Response(
-                {'error': f'Missing required fields: {", ".join(missing)}'},
-                status=status.HTTP_400_BAD_REQUEST
-            )
+        Accepts either:
+        - patient_id: ID of existing patient (will fetch data automatically)
+        - Individual fields: first_name, last_name, date_of_birth, gender (required)
+        """
+        from hmis.apps.patients.models import Patient
+        
+        data = request.data
+        patient_id = data.get('patient_id')
+        
+        # If patient_id provided, fetch patient data
+        if patient_id:
+            try:
+                patient = Patient.objects.get(id=patient_id)
+                # Use patient data for CR registration
+                first_name = patient.first_name
+                last_name = patient.last_name
+                date_of_birth = str(patient.date_of_birth)
+                gender = patient.gender
+                national_id = patient.identification_number if patient.identification_type == 'national_id' else patient.national_id
+                middle_name = patient.middle_name
+                phone_number = patient.phone_number
+                email = patient.email
+                # Map other ID types
+                huduma_number = None
+                passport_number = None
+                if patient.identification_type == 'passport':
+                    passport_number = patient.identification_number
+            except Patient.DoesNotExist:
+                return Response(
+                    {'error': f'Patient with id {patient_id} not found', 'success': False},
+                    status=status.HTTP_404_NOT_FOUND
+                )
+        else:
+            # Use individual fields from request
+            required_fields = ['first_name', 'last_name', 'date_of_birth', 'gender']
+            missing = [f for f in required_fields if not data.get(f)]
+            if missing:
+                return Response(
+                    {'error': f'Missing required fields: {", ".join(missing)}'},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+            first_name = data['first_name']
+            last_name = data['last_name']
+            date_of_birth = data['date_of_birth']
+            gender = data['gender']
+            national_id = data.get('national_id')
+            middle_name = data.get('middle_name')
+            huduma_number = data.get('huduma_number')
+            passport_number = data.get('passport_number')
+            phone_number = data.get('phone_number')
+            email = data.get('email')
         
         try:
             service = ClientRegistryService()
             client = service.register_client(
-                first_name=data['first_name'],
-                last_name=data['last_name'],
-                date_of_birth=data['date_of_birth'],
-                gender=data['gender'],
-                national_id=data.get('national_id'),
-                middle_name=data.get('middle_name'),
-                huduma_number=data.get('huduma_number'),
-                passport_number=data.get('passport_number'),
-                phone_number=data.get('phone_number'),
-                email=data.get('email'),
+                first_name=first_name,
+                last_name=last_name,
+                date_of_birth=date_of_birth,
+                gender=gender,
+                national_id=national_id,
+                middle_name=middle_name,
+                huduma_number=huduma_number,
+                passport_number=passport_number,
+                phone_number=phone_number,
+                email=email,
             )
+            
+            # If patient_id provided, update patient with CR number
+            if patient_id and client.client_number:
+                patient.cr_number = client.client_number
+                patient.save(update_fields=['cr_number'])
             
             return Response({
                 'success': True,

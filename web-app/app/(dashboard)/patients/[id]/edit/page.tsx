@@ -44,8 +44,13 @@ export default function EditPatientPage() {
             });
           }
         } catch (crError) {
+          // CR registration is optional, don't fail the whole process
           console.error('CR registration failed:', crError);
-          // Don't show error toast - CR registration is optional
+          toast({
+            title: 'Client Registry Registration',
+            description: 'Patient updated locally. CR registration will be attempted later.',
+            variant: 'default',
+          });
         }
       }
 

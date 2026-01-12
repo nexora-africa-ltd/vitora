@@ -283,10 +283,20 @@ export function useFetchFromCR() {
 
 /**
  * Register in Client Registry
+ * Invalidates patient cache on success since backend updates patient.cr_number
  */
 export function useRegisterInCR() {
+  const queryClient = useQueryClient();
+  
   return useMutation({
     mutationFn: shaApi.registerInClientRegistry,
+    onSuccess: (_, variables) => {
+      // Invalidate patient cache since cr_number was updated
+      if (variables.patient_id) {
+        queryClient.invalidateQueries({ queryKey: ['patient', variables.patient_id] });
+        queryClient.invalidateQueries({ queryKey: ['patients'] });
+      }
+    },
   });
 }
 
