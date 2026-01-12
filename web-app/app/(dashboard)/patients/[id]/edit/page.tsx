@@ -82,22 +82,40 @@ export default function EditPatientPage() {
 
   // Convert patient data to form default values
   const defaultValues = {
+    // Client Registry / SHA
+    cr_number: patient.cr_number || '',
+    sha_number: patient.sha_number || '',
+    // Identification
+    identification_type: patient.identification_type || 'national_id',
+    identification_number: patient.identification_number || patient.national_id || '',
+    // Personal Information
     first_name: patient.first_name,
+    middle_name: patient.middle_name || '',
     last_name: patient.last_name,
+    title: (patient.title || '') as '' | 'Mr' | 'Mrs' | 'Miss' | 'Ms' | 'Dr' | 'Prof' | 'Hon' | 'Rev',
     date_of_birth: patient.date_of_birth ? parseISO(patient.date_of_birth) : undefined,
+    place_of_birth: patient.place_of_birth || '',
     gender: patient.gender as 'M' | 'F' | 'O',
-    national_id: patient.national_id || '',
+    nationality: patient.citizenship || 'Kenyan',
+    is_person_with_disability: patient.is_person_with_disability || false,
+    // Contact
     phone_number: patient.phone_number || '',
     email: patient.email || '',
+    address: patient.address || '',
+    // Location
     county: patient.county,
     sub_county: patient.sub_county,
     ward: patient.ward || undefined,
     village: patient.village || '',
-    referral_source: (patient.referral_source as 'self' | 'clinic' | 'other_facility') || 'self',
+    // Emergency Contact
     emergency_contact_name: patient.emergency_contact_name || '',
     emergency_contact_phone: patient.emergency_contact_phone || '',
     emergency_contact_relationship: patient.emergency_contact_relationship || '',
+    // Other
+    referral_source: (patient.referral_source as 'self' | 'clinic' | 'other_facility') || 'self',
     consent_given: patient.consent_given || false,
+    consent_deferred: patient.consent_deferred || false,
+    national_id: patient.national_id || '', // Legacy
   };
 
   return (

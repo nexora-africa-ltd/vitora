@@ -155,6 +155,9 @@ async function checkEligibility(
 /**
  * Get eligibility for a patient by patient ID
  * Combines member lookup + eligibility check
+ * 
+ * If no SHA member record exists in the local database, falls back to
+ * direct eligibility check using the patient's identification number.
  */
 async function checkPatientEligibility(
   patientId: number
@@ -163,6 +166,49 @@ async function checkPatientEligibility(
   const membersResponse = await getSHAMembers({ patient: patientId });
   
   if (!membersResponse.results.length) {
+    // No SHA member record - try direct eligibility check
+    // First fetch the patient to get their identification info
+    try {
+      const patientResponse = await apiClient.get(`/api/patients/${patientId}/`);
+      const patient = patientResponse.data;
+      
+      // Build eligibility check params based on available ID
+      const params: DirectEligibilityCheckRequest = {};
+      
+      if (patient.identification_type === 'national_id' && patient.identification_number) {
+        params.national_id = patient.identification_number;
+      } else if (patient.national_id) {
+        // Legacy field
+        params.national_id = patient.national_id;
+      } else if (patient.identification_type === 'cr_number' && patient.identification_number) {
+        params.sha_number = patient.identification_number;
+      } else if (patient.sha_number) {
+        params.sha_number = patient.sha_number;
+      } else if (patient.identification_number) {
+        // Try with whatever ID we have
+        params.identification_type = patient.identification_type;
+        params.identification_number = patient.identification_number;
+      }
+      
+      // If we have identification info, do direct check
+      if (Object.keys(params).length > 0) {
+        const directResponse = await checkDirectEligibility(params);
+        return {
+          is_eligible: directResponse.is_eligible,
+          copay_percentage: directResponse.copay_percentage,
+          checked_at: new Date().toISOString(),
+          verified_name: directResponse.full_name || undefined,
+          coverage_end_date: directResponse.coverage_end_date || undefined,
+          message: directResponse.is_eligible 
+            ? 'SHA coverage verified via direct lookup' 
+            : directResponse.reason || 'Patient is not eligible for SHA coverage',
+        };
+      }
+    } catch (error) {
+      console.error('Direct eligibility check failed:', error);
+    }
+    
+    // Fallback: no SHA member record and direct check failed
     return {
       is_eligible: false,
       copay_percentage: 100,
