@@ -7,6 +7,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Skeleton } from '@/components/ui/skeleton';
 import { PatientForm } from '@/components/patients/patient-form';
 import { usePatient, useUpdatePatient } from '@/lib/hooks/use-patients-enhanced';
+import { useRegisterInCR } from '@/lib/hooks/use-sha';
 import { useToast } from '@/lib/hooks/use-toast';
 import type { PatientCreateData } from '@/lib/types/patient';
 import { parseISO } from 'date-fns';
@@ -19,6 +20,7 @@ export default function EditPatientPage() {
 
   const { data: patient, isLoading, error } = usePatient(patientId);
   const updatePatient = useUpdatePatient();
+  const registerInCR = useRegisterInCR();
 
   const handleSubmit = async (data: PatientCreateData) => {
     try {
@@ -27,6 +29,26 @@ export default function EditPatientPage() {
         title: 'Patient updated',
         description: `Successfully updated ${data.first_name} ${data.last_name}`,
       });
+
+      // If patient doesn't have CR number and has identification, register in CR
+      if (!patient?.cr_number && !data.cr_number && data.identification_number) {
+        try {
+          const crResponse = await registerInCR.mutateAsync({
+            patient_id: patientId,
+          });
+          
+          if (crResponse.success && crResponse.client_number) {
+            toast({
+              title: 'Client Registry Registration Successful',
+              description: `CR Number: ${crResponse.client_number}`,
+            });
+          }
+        } catch (crError) {
+          console.error('CR registration failed:', crError);
+          // Don't show error toast - CR registration is optional
+        }
+      }
+
       router.push(`/patients/${patientId}`);
     } catch (error) {
       toast({
