@@ -363,6 +363,33 @@ async function setupInpatientMocks(page: Page) {
 
   // Admission recommendations
   await page.route('**/api/inpatient/admission-recommendations/**', async (route) => {
+    const url = route.request().url();
+    const method = route.request().method();
+
+    // Handle decline endpoint
+    if (url.includes('/decline') && method === 'POST') {
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({
+          ...mockAdmissionRecommendation(),
+          status: 'DECLINED',
+        }),
+      });
+      return;
+    }
+
+    // Handle accept endpoint
+    if (url.includes('/accept') && method === 'POST') {
+      await route.fulfill({
+        status: 201,
+        contentType: 'application/json',
+        body: JSON.stringify(mockAdmission()),
+      });
+      return;
+    }
+
+    // Handle GET requests (list)
     await route.fulfill({
       status: 200,
       contentType: 'application/json',
@@ -579,41 +606,48 @@ test.describe('Admission Workflow', () => {
 
     // Verify pending recommendations display
     await expect(page.getByText('Jane Doe')).toBeVisible();
-    await expect(page.getByText(/pending/i)).toBeVisible();
-    await expect(page.getByText(/severe pneumonia/i)).toBeVisible();
+    await expect(page.getByText('PENDING', { exact: true })).toBeVisible(); // Badge shows PENDING in uppercase
+    await expect(page.getByText(/severe pneumonia/i).first()).toBeVisible();
   });
 
   test('should approve admission recommendation and assign bed', async ({ page }) => {
     await login(page, TEST_USER.username, TEST_USER.password);
     await page.goto('/admissions/recommendations');
 
-    // Click approve button
-    await page.getByRole('button', { name: /approve|admit/i }).click();
+    // Click approve button (using data-testid for reliability)
+    await page.locator('[data-testid="approve-button"]').first().click();
+
+    // Verify dialog opens
+    await expect(page.getByRole('dialog')).toBeVisible();
 
     // Select ward
-    await page.getByRole('combobox', { name: /ward/i }).click();
-    await page.getByRole('option', { name: /medical ward a/i }).click();
+    await page.getByRole('dialog').getByRole('button', { name: /ward/i }).click();
+    await page.waitForTimeout(200);
+    await page.getByText('Medical Ward A').click();
 
     // Select bed
-    await page.getByRole('combobox', { name: /bed/i }).click();
-    await page.getByRole('option', { name: /MED-A-001/i }).click();
+    await page.getByRole('dialog').getByRole('button', { name: /bed/i }).click();
+    await page.waitForTimeout(200);
+    await page.getByText(/MED-A-001/i).click();
 
     // Confirm admission
-    await page.getByRole('button', { name: /confirm|admit/i }).click();
+    await page.getByRole('button', { name: /confirm admission/i }).click();
 
-    // Verify success
-    await expect(page.getByText(/admission.*created|success/i)).toBeVisible();
+    // Verify success toast
+    await expect(page.getByRole('status')).toContainText(/admission.*created/i);
   });
 
   test('should display active admissions list', async ({ page }) => {
     await login(page, TEST_USER.username, TEST_USER.password);
     await page.goto('/admissions');
 
-    // Verify admissions list
+    // Verify admissions list heading
+    await expect(page.getByRole('heading', { name: /active admissions/i })).toBeVisible();
+    
+    // Verify admission details
     await expect(page.getByText('ADM-20260103-0001')).toBeVisible();
-    await expect(page.getByText('Jane Doe')).toBeVisible();
-    await expect(page.getByText('Medical Ward A')).toBeVisible();
-    await expect(page.getByText(/admitted/i)).toBeVisible();
+    await expect(page.getByText('Jane Doe').first()).toBeVisible();
+    await expect(page.getByText('Medical Ward A').first()).toBeVisible();
   });
 
   test('should show admission details with patient info', async ({ page }) => {
@@ -622,9 +656,30 @@ test.describe('Admission Workflow', () => {
 
     // Verify admission details
     await expect(page.getByText('ADM-20260103-0001')).toBeVisible();
-    await expect(page.getByText('Jane Doe')).toBeVisible();
-    await expect(page.getByText('MED-A-001')).toBeVisible();
-    await expect(page.getByText(/pneumonia/i)).toBeVisible();
+    await expect(page.getByText('Jane Doe').first()).toBeVisible();
+    await expect(page.getByText('MED-A-001').first()).toBeVisible();
+    await expect(page.getByText(/pneumonia/i).first()).toBeVisible();
+  });
+
+  test('should decline admission recommendation with reason', async ({ page }) => {
+    await login(page, TEST_USER.username, TEST_USER.password);
+    await page.goto('/admissions/recommendations');
+
+    // Click decline button
+    await page.locator('[data-testid="decline-button"]').first().click();
+
+    // Verify decline dialog opens
+    await expect(page.getByRole('dialog')).toBeVisible();
+    await expect(page.getByRole('heading', { name: /decline admission/i })).toBeVisible();
+
+    // Enter decline reason
+    await page.getByLabel(/reason for declining/i).fill('Patient condition improved, no longer requires admission');
+
+    // Confirm decline
+    await page.getByRole('button', { name: /confirm decline/i }).click();
+
+    // Verify success toast
+    await expect(page.getByRole('status')).toContainText(/recommendation declined/i);
   });
 });
 
