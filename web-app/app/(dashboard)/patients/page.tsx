@@ -1,11 +1,12 @@
 'use client';
 
 import { useState } from 'react';
-import { useRouter } from 'next/navigation';
-import { Plus, Search, Filter } from 'lucide-react';
+import { useRouter, useSearchParams } from 'next/navigation';
+import { Plus, Search, Filter, ArrowLeft } from 'lucide-react';
 import { PageHeader } from '@/components/shared/page-header';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { Alert, AlertDescription } from '@/components/ui/alert';
 import {
   Select,
   SelectContent,
@@ -20,6 +21,12 @@ import { GENDER_OPTIONS } from '@/lib/utils/constants';
 
 export default function PatientsPage() {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  
+  // Check if we're in select mode (coming from another page that needs a patient)
+  const selectMode = searchParams.get('select') === 'true';
+  const returnTo = searchParams.get('returnTo');
+  
   const [search, setSearch] = useState('');
   const [gender, setGender] = useState<string>('');
   const [page, setPage] = useState(1);
@@ -36,16 +43,47 @@ export default function PatientsPage() {
 
   const totalPages = data ? Math.ceil(data.count / pageSize) : 0;
 
+  // Handle patient selection in select mode
+  const handlePatientSelect = (patientId: number) => {
+    if (selectMode && returnTo) {
+      // Append patient ID to the return URL
+      const separator = returnTo.includes('?') ? '&' : '?';
+      router.push(`${returnTo}${separator}patient=${patientId}`);
+    } else {
+      // Normal navigation to patient detail
+      router.push(`/patients/${patientId}`);
+    }
+  };
+
   return (
     <div className="container mx-auto py-6 space-y-6">
-      <PageHeader
-        title="Patients"
-        description={`${data?.count ?? 0} patients registered`}
-        actions={
-          <Button onClick={() => router.push('/patients/new')}>
-            <Plus className="h-4 w-4 mr-2" />
-            Register Patient
+      {/* Select mode header */}
+      {selectMode && (
+        <div className="flex items-center gap-2 mb-4">
+          <Button variant="ghost" size="icon" onClick={() => router.back()}>
+            <ArrowLeft className="h-5 w-5" />
           </Button>
+          <Alert className="flex-1">
+            <AlertDescription>
+              Select a patient to continue. Click on a patient row to select them.
+            </AlertDescription>
+          </Alert>
+        </div>
+      )}
+
+      <PageHeader
+        title={selectMode ? "Select Patient" : "Patients"}
+        description={selectMode 
+          ? "Choose a patient for the admission" 
+          : `${data?.count ?? 0} patients registered`
+        }
+        actions={
+          !selectMode && (
+            <Button onClick={() => router.push('/patients/new')}>
+              <Plus className="h-4 w-4 mr-2" />
+              Register Patient
+            </Button>
+          )
         }
       />
 
@@ -95,6 +133,8 @@ export default function PatientsPage() {
         page={page}
         totalPages={totalPages}
         onPageChange={setPage}
+        selectMode={selectMode}
+        onSelect={handlePatientSelect}
       />
     </div>
   );

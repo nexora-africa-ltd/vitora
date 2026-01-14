@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
-import { ArrowLeft, Save, Search, X, AlertCircle } from 'lucide-react';
+import { ArrowLeft, Save, Search, X, AlertCircle, User, UserPlus } from 'lucide-react';
 import { PageHeader } from '@/components/shared/page-header';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
@@ -13,6 +13,14 @@ import { Badge } from '@/components/ui/badge';
 import { Switch } from '@/components/ui/switch';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Alert, AlertDescription } from '@/components/ui/alert';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
 import {
   Select,
   SelectContent,
@@ -28,6 +36,7 @@ import {
 } from '@/lib/hooks/use-inpatient';
 import { useEncounter, useEncounterDiagnoses } from '@/lib/hooks/use-encounters';
 import { useICD10Search } from '@/lib/hooks/use-encounter-form';
+import { usePatient } from '@/lib/hooks/use-patients-enhanced';
 import { ICD11Select } from '@/components/billing/sha';
 import { cn } from '@/lib/utils/cn';
 
@@ -41,6 +50,19 @@ export default function NewAdmissionPage() {
   const encounterIdParam = searchParams.get('encounter');
   const patientId = patientIdParam ? Number(patientIdParam) : null;
   const encounterId = encounterIdParam ? Number(encounterIdParam) : null;
+
+  // Patient selection dialog state
+  const [showPatientDialog, setShowPatientDialog] = useState(false);
+
+  // Show dialog on mount if no patient selected
+  useEffect(() => {
+    if (!patientId) {
+      setShowPatientDialog(true);
+    }
+  }, [patientId]);
+
+  // Fetch patient details if patient ID is provided
+  const { data: patientData } = usePatient(patientId || 0);
 
   // Form state
   const [wardId, setWardId] = useState<string>('');
@@ -161,10 +183,59 @@ export default function NewAdmissionPage() {
           <CardDescription>Enter the patient and ward information for this admission</CardDescription>
         </CardHeader>
         <CardContent className="space-y-6">
-          {/* Patient ID */}
+          {/* Patient Selection */}
           <div className="space-y-2">
-            <Label>Patient ID</Label>
-            <Input value={patientId ?? ''} readOnly placeholder="Select a patient first" />
+            <Label>Patient</Label>
+            {patientId && patientData ? (
+              <div className="flex items-center gap-3 p-3 rounded-md border bg-muted/50">
+                <div className="flex items-center justify-center w-10 h-10 rounded-full bg-primary/10">
+                  <User className="h-5 w-5 text-primary" />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="font-medium truncate">
+                    {patientData.first_name} {patientData.last_name}
+                  </p>
+                  <p className="text-sm text-muted-foreground">
+                    MRN: {patientData.mrn} • ID: {patientId}
+                  </p>
+                </div>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={() => router.push(`/patients?select=true&returnTo=/admissions/new`)}
+                  data-testid="change-patient-button"
+                >
+                  Change Patient
+                </Button>
+              </div>
+            ) : patientId ? (
+              <div className="flex items-center gap-3 p-3 rounded-md border">
+                <Skeleton className="w-10 h-10 rounded-full" />
+                <div className="flex-1">
+                  <Skeleton className="h-5 w-32 mb-1" />
+                  <Skeleton className="h-4 w-24" />
+                </div>
+              </div>
+            ) : (
+              <div className="flex items-center gap-3 p-3 rounded-md border border-dashed">
+                <div className="flex items-center justify-center w-10 h-10 rounded-full bg-muted">
+                  <UserPlus className="h-5 w-5 text-muted-foreground" />
+                </div>
+                <div className="flex-1">
+                  <p className="text-muted-foreground">No patient selected</p>
+                </div>
+                <Button
+                  type="button"
+                  variant="default"
+                  size="sm"
+                  onClick={() => router.push(`/patients?select=true&returnTo=/admissions/new`)}
+                  data-testid="select-patient-button"
+                >
+                  Select Patient
+                </Button>
+              </div>
+            )}
           </div>
 
           {/* Ward and Bed Selection */}
@@ -392,6 +463,37 @@ export default function NewAdmissionPage() {
           </div>
         </CardContent>
       </Card>
+
+      {/* Patient Selection Required Dialog */}
+      <Dialog open={showPatientDialog} onOpenChange={setShowPatientDialog}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Patient Required</DialogTitle>
+            <DialogDescription>
+              You need to select a patient before creating an admission. Would you like to select a patient now?
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter className="flex gap-2 sm:gap-0">
+            <Button
+              variant="outline"
+              onClick={() => setShowPatientDialog(false)}
+              data-testid="continue-without-patient"
+            >
+              Continue Without Patient
+            </Button>
+            <Button
+              onClick={() => {
+                setShowPatientDialog(false);
+                router.push('/patients?select=true&returnTo=/admissions/new');
+              }}
+              data-testid="select-patient-dialog-button"
+            >
+              <User className="h-4 w-4 mr-2" />
+              Select Patient
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
