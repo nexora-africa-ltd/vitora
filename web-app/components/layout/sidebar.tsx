@@ -21,6 +21,8 @@ import {
   BedDouble,
   Building2,
   ClipboardList,
+  Microscope,
+  ScanLine,
 } from 'lucide-react';
 import { cn } from '@/lib/utils/cn';
 import { Button } from '@/components/ui/button';
@@ -73,7 +75,14 @@ const mainNavItems: NavItemType[] = [
     ],
   },
   { label: 'Pharmacy', href: '/pharmacy', icon: Pill },
-  { label: 'Diagnostics', href: '/laboratory', icon: FlaskConical },
+  { 
+    label: 'Diagnostics', 
+    icon: FlaskConical,
+    children: [
+      { label: 'Laboratory', href: '/laboratory', icon: Microscope },
+      { label: 'Imaging', href: '/imaging', icon: ScanLine },
+    ],
+  },
   { label: 'Billing & Insurance', href: '/billing', icon: CreditCard },
   { label: 'Reports', href: '/reports', icon: FileText },
 ];
@@ -85,7 +94,7 @@ const bottomNavItems: NavItem[] = [
 export function Sidebar({ collapsed, onCollapse, mobileOpen, onMobileClose }: SidebarProps) {
   const pathname = usePathname();
   const logout = useLogout();
-  const [openMenus, setOpenMenus] = useState<string[]>(['Inpatient']); // Default open
+  const [openMenus, setOpenMenus] = useState<string[]>(['Inpatient', 'Diagnostics']); // Default open
 
   const toggleMenu = (label: string) => {
     setOpenMenus(prev => 
