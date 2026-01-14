@@ -555,11 +555,11 @@ GET /api/locations/wards/?sub_county=<id>     # Cascading wards
 - [x] Implement JWT auth for mobile
 
 **Track C: RBAC Foundation**
-- [ ] **Write tests first**: Role and StaffProfile model tests
-- [ ] Implement Department, Role, StaffProfile models
-- [ ] **Write tests first**: RoleBasedPermission class tests
-- [ ] Implement basic role-based permission checking
-- [ ] Update Django Admin for role assignment
+- [x] **Write tests first**: Role and StaffProfile model tests ✅
+- [x] Implement Department, Role, StaffProfile models ✅
+- [x] **Write tests first**: RoleBasedPermission class tests ✅
+- [x] Implement basic role-based permission checking ✅
+- [x] Update Django Admin for role assignment ✅
 
 **Deliverables**:
 - Encounter module with vitals, diagnosis, treatment, and **status workflow**
@@ -585,33 +585,33 @@ def test_vital_signs_validation():
 **TDD Focus**: Test inventory tracking, stock alerts, lab orders, and web frontend foundation
 
 **Track A: Pharmacy Module**
-- [ ] **Write tests first**: Stock level tests, reorder alerts
-- [ ] Implement pharmacy inventory model
-- [ ] **Write tests first**: Drug dispensing tests with validations
-- [ ] Implement drug dispensing workflow
-- [ ] **Write tests first**: Expiry tracking tests
-- [ ] Implement expiry alerts and FEFO logic
-- [ ] **Write tests first**: Prescription tests
-- [ ] Implement prescription management
+- [x] **Write tests first**: Stock level tests, reorder alerts ✅
+- [x] Implement pharmacy inventory model ✅
+- [x] **Write tests first**: Drug dispensing tests with validations ✅
+- [x] Implement drug dispensing workflow ✅
+- [x] **Write tests first**: Expiry tracking tests ✅
+- [x] Implement expiry alerts and FEFO logic ✅
+- [x] **Write tests first**: Prescription tests ✅
+- [x] Implement prescription management ✅
 
 **Track B: Lab/Investigations Foundation**
-- [ ] **Write tests first**: LabOrder model tests (in-house vs external)
-- [ ] Implement LabOrder model with order_type field
-- [ ] **Write tests first**: LabResult model tests
-- [ ] Implement LabResult model linked to LabOrder
-- [ ] **Write tests first**: Lab order API tests
-- [ ] Implement lab order creation from encounter
-- [ ] **Write tests first**: LOINC code lookup tests
-- [ ] Implement basic LOINC code reference table
+- [x] **Write tests first**: LabOrder model tests (in-house vs external) ✅
+- [x] Implement LabOrder model with order_type field ✅
+- [x] **Write tests first**: LabResult model tests ✅
+- [x] Implement LabResult model linked to LabOrder ✅
+- [x] **Write tests first**: Lab order API tests ✅
+- [x] Implement lab order creation from encounter ✅
+- [x] **Write tests first**: LOINC code lookup tests ✅
+- [x] Implement basic LOINC code reference table ✅
 
 **Track C: Web Frontend Foundation (Next.js) - Moved from Phase 2**
-- [ ] **Write tests first**: Next.js setup and routing tests
-- [ ] Scaffold Next.js 14+ app with TypeScript
-- [ ] **Write tests first**: Auth flow tests (login, logout, refresh)
-- [ ] Implement JWT authentication with refresh tokens
-- [ ] **Write tests first**: Patient list/search tests (read-only)
-- [ ] Implement patient dashboard with search
-- [ ] Set up TailwindCSS + shadcn/ui component library
+- [x] **Write tests first**: Next.js setup and routing tests ✅
+- [x] Scaffold Next.js 14+ app with TypeScript ✅
+- [x] **Write tests first**: Auth flow tests (login, logout, refresh) ✅
+- [x] Implement JWT authentication with refresh tokens ✅
+- [x] **Write tests first**: Patient list/search tests (read-only) ✅
+- [x] Implement patient dashboard with search ✅
+- [x] Set up TailwindCSS + shadcn/ui component library ✅
 
 **Deliverables**:
 - Pharmacy stock management
@@ -626,26 +626,26 @@ def test_vital_signs_validation():
 **TDD Focus**: Test billing calculations, payment recording, lab workflows, web dashboard, inpatient admission, and triage workflow
 
 **Track A: Billing Module**
-- [ ] **Write tests first**: Invoice generation tests
-- [ ] Implement billing invoice system
-- [ ] **Write tests first**: Payment processing tests (cash, M-Pesa)
-- [ ] Implement payment recording
-- [ ] **Write tests first**: Receipt generation tests
-- [ ] Implement receipt printing
-- [ ] **Write tests first**: Billing report tests
-- [ ] Implement basic financial reports
+- [x] **Write tests first**: Invoice generation tests ✅
+- [x] Implement billing invoice system ✅
+- [x] **Write tests first**: Payment processing tests (cash, M-Pesa) ✅
+- [x] Implement payment recording ✅
+- [x] **Write tests first**: Receipt generation tests ✅
+- [x] Implement receipt printing ✅
+- [x] **Write tests first**: Billing report tests ✅
+- [x] Implement basic financial reports ✅
 
 **Track B: Lab Workflow Completion**
-- [ ] **Write tests first**: In-house lab workflow tests
-- [ ] Implement lab queue for in-house orders (status: ordered → in_progress → completed)
-- [ ] **Write tests first**: External lab requisition tests
-- [ ] Implement PDF requisition generation for external labs
-- [ ] **Write tests first**: Lab result entry tests
-- [ ] Implement lab result entry form (manual for external results)
-- [ ] **Write tests first**: Lab result notification tests
-- [ ] Implement clinician notification when results available
-- [ ] **Write tests first**: Lab result attachment tests
-- [ ] Implement scanned result attachment support
+- [x] **Write tests first**: In-house lab workflow tests ✅
+- [x] Implement lab queue for in-house orders (status: ordered → in_progress → completed) ✅
+- [x] **Write tests first**: External lab requisition tests ✅
+- [x] Implement PDF requisition generation for external labs ✅
+- [x] **Write tests first**: Lab result entry tests ✅
+- [x] Implement lab result entry form (manual for external results) ✅
+- [x] **Write tests first**: Lab result notification tests ✅
+- [x] Implement clinician notification when results available ✅
+- [x] **Write tests first**: Lab result attachment tests ✅
+- [x] Implement scanned result attachment support ✅
 
 **Track C: Web Frontend Dashboard**
 - [ ] **Write tests first**: Encounter view tests (web)
@@ -658,48 +658,48 @@ def test_vital_signs_validation():
 - [ ] Ensure mobile-responsive web experience
 
 **Track D: Inpatient Foundation (NEW)**
-- [ ] **Write tests first**: Ward model tests (ward types, capacity)
-- [ ] Implement Ward model with types (Medical, Surgical, Pediatric, Maternity, ICU, Isolation)
-- [ ] **Write tests first**: Bed model tests (status transitions, availability)
-- [ ] Implement Bed model with status (AVAILABLE, OCCUPIED, MAINTENANCE, RESERVED)
-- [ ] **Write tests first**: Admission recommendation tests (OPD → IPD workflow)
-- [ ] Implement AdmissionRecommendation model for clinician admission requests
-- [ ] **Write tests first**: Admission model tests (patient admission, bed assignment)
-- [ ] Implement Admission model linking patient, encounter, ward, and bed
-- [ ] **Write tests first**: Ward round tests (daily documentation)
-- [ ] Implement WardRound model for daily inpatient progress notes
-- [ ] **Write tests first**: Nursing Kardex tests (care plan, shift notes)
-- [ ] Implement NursingKardex model with sections (patient snapshot, orders, care plan, observations, shift notes, handover)
-- [ ] **Write tests first**: Shift handover tests
-- [ ] Implement ShiftHandover model for nursing handover documentation
-- [ ] **Write tests first**: Patient transfer tests (inter-ward)
-- [ ] Implement Transfer model for ward-to-ward patient movement
-- [ ] **Write tests first**: Discharge tests (summary, clearance, LOS)
-- [ ] Implement Discharge model with summary, medications, follow-up, and LOS calculation
+- [x] **Write tests first**: Ward model tests (ward types, capacity) ✅
+- [x] Implement Ward model with types (Medical, Surgical, Pediatric, Maternity, ICU, Isolation) ✅
+- [x] **Write tests first**: Bed model tests (status transitions, availability) ✅
+- [x] Implement Bed model with status (AVAILABLE, OCCUPIED, MAINTENANCE, RESERVED) ✅
+- [x] **Write tests first**: Admission recommendation tests (OPD → IPD workflow) ✅
+- [x] Implement AdmissionRecommendation model for clinician admission requests ✅
+- [x] **Write tests first**: Admission model tests (patient admission, bed assignment) ✅
+- [x] Implement Admission model linking patient, encounter, ward, and bed ✅
+- [x] **Write tests first**: Ward round tests (daily documentation) ✅
+- [x] Implement WardRound model for daily inpatient progress notes ✅
+- [x] **Write tests first**: Nursing Kardex tests (care plan, shift notes) ✅
+- [x] Implement NursingKardex model with sections (patient snapshot, orders, care plan, observations, shift notes, handover) ✅
+- [x] **Write tests first**: Shift handover tests ✅
+- [x] Implement ShiftHandover model for nursing handover documentation ✅
+- [x] **Write tests first**: Patient transfer tests (inter-ward) ✅
+- [x] Implement Transfer model for ward-to-ward patient movement ✅
+- [x] **Write tests first**: Discharge tests (summary, clearance, LOS) ✅
+- [x] Implement Discharge model with summary, medications, follow-up, and LOS calculation ✅
 - [ ] **Write tests first**: Bed occupancy dashboard tests
 - [ ] Implement real-time bed occupancy API and dashboard component
 
 **Track E: Triage Module MVP (NEW)**
-- [ ] **Write tests first**: TriageAssessment model tests (chief complaint, pain score, AVPU, mobility)
-- [ ] Implement TriageAssessment model linked to Encounter
-- [ ] **Write tests first**: Triage category calculation tests (KETA scale: RED/ORANGE/YELLOW/GREEN/BLUE)
-- [ ] Implement rules-based triage category auto-calculation
-- [ ] **Write tests first**: TriageVitalThreshold model tests (configurable per facility)
-- [ ] Implement TriageVitalThreshold model with critical/warning levels
-- [ ] **Write tests first**: Triage API endpoint tests (CRUD)
-- [ ] Implement triage assessment CRUD endpoints
-- [ ] **Write tests first**: TriageQueue model tests (priority sorting, status)
-- [ ] Implement TriageQueue with priority-based sorting (category + arrival time)
-- [ ] **Write tests first**: Queue management API tests (status updates, called, with_clinician)
-- [ ] Implement queue status update endpoints
-- [ ] **Write tests first**: Triage reporting tests (wait times, volume by category)
-- [ ] Implement basic triage wait time and volume reports
+- [x] **Write tests first**: TriageAssessment model tests (chief complaint, pain score, AVPU, mobility) ✅
+- [x] Implement TriageAssessment model linked to Encounter ✅
+- [x] **Write tests first**: Triage category calculation tests (KETA scale: RED/ORANGE/YELLOW/GREEN/BLUE) ✅
+- [x] Implement rules-based triage category auto-calculation ✅
+- [x] **Write tests first**: TriageVitalThreshold model tests (configurable per facility) ✅
+- [x] Implement TriageVitalThreshold model with critical/warning levels ✅
+- [x] **Write tests first**: Triage API endpoint tests (CRUD) ✅
+- [x] Implement triage assessment CRUD endpoints ✅
+- [x] **Write tests first**: TriageQueue model tests (priority sorting, status) ✅
+- [x] Implement TriageQueue with priority-based sorting (category + arrival time) ✅
+- [x] **Write tests first**: Queue management API tests (status updates, called, with_clinician) ✅
+- [x] Implement queue status update endpoints ✅
+- [x] **Write tests first**: Triage reporting tests (wait times, volume by category) ✅
+- [x] Implement basic triage wait time and volume reports ✅
 - [ ] **Write tests first**: Web triage form tests (Playwright)
 - [ ] Implement triage assessment form in web-app
 - [ ] **Write tests first**: Triage queue dashboard tests
 - [ ] Implement real-time triage queue display with color-coded priorities
-- [ ] **Write tests first**: Nurse override tests (category override with reason)
-- [ ] Implement category override with mandatory reason logging
+- [x] **Write tests first**: Nurse override tests (category override with reason) ✅
+- [x] Implement category override with mandatory reason logging ✅
 
 **Deliverables**:
 - Billing module with invoicing
@@ -829,12 +829,12 @@ def test_wait_time_exceeded_flag():
 **TDD Focus**: Test mobile clinical workflows, RBAC enforcement, and pharmacy features
 
 **Track A: Mobile Features**
-- [ ] **Write tests first**: Mobile vitals entry tests
-- [ ] Implement mobile vitals capture with offline queue
-- [ ] **Write tests first**: Mobile encounter creation tests
-- [ ] Implement mobile encounter workflow
-- [ ] **Write tests first**: Mobile prescription viewing tests
-- [ ] Implement prescription list in mobile app
+- [x] **Write tests first**: Mobile vitals entry tests ✅
+- [x] Implement mobile vitals capture with offline queue ✅
+- [x] **Write tests first**: Mobile encounter creation tests ✅
+- [x] Implement mobile encounter workflow ✅
+- [x] **Write tests first**: Mobile prescription viewing tests ✅
+- [x] Implement prescription list in mobile app ✅
 - [ ] **Write tests first**: Mobile-desktop sync conflict tests
 - [ ] Implement cross-device conflict resolution
 - [ ] **Write tests first**: Push notification tests
@@ -949,7 +949,7 @@ def test_wait_time_exceeded_flag():
 - Advanced inventory with suppliers
 - KHIS/DHIS2 automated reporting
 - Cloud sync introduction (optional)
-- **Web frontend enhancements** (full clinical workflows, moved foundation to Phase 1)
+- ~~Web frontend enhancements~~ (full clinical workflows, moved foundation to Phase 1)
 - Scale to 5 additional sites
 
 ### Sprint Breakdown (12 sprints × 2 weeks)
