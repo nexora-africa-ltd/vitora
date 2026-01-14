@@ -322,8 +322,9 @@ async function setupInpatientMocks(page: Page) {
   await page.route('**/api/inpatient/beds/**', async (route) => {
     if (route.request().method() === 'GET') {
       const url = route.request().url();
-      // Check if filtering for ICU ward (ward=2) or available beds
-      if (url.includes('ward=2') || url.includes('status=AVAILABLE')) {
+      // Check ward parameter to return appropriate beds
+      if (url.includes('ward=2')) {
+        // ICU ward beds
         await route.fulfill({
           status: 200,
           contentType: 'application/json',
@@ -335,7 +336,21 @@ async function setupInpatientMocks(page: Page) {
             ],
           }),
         });
+      } else if (url.includes('ward=1') || url.includes('status=AVAILABLE')) {
+        // Medical Ward A beds (ward=1) or general available beds query
+        await route.fulfill({
+          status: 200,
+          contentType: 'application/json',
+          body: JSON.stringify({
+            count: 2,
+            results: [
+              mockBed({ id: 1, bed_number: 'MED-A-001', ward: 1, ward_name: 'Medical Ward A', status: 'AVAILABLE' }),
+              mockBed({ id: 4, bed_number: 'MED-A-004', ward: 1, ward_name: 'Medical Ward A', status: 'AVAILABLE' }),
+            ],
+          }),
+        });
       } else {
+        // Default: all beds for Medical Ward A
         await route.fulfill({
           status: 200,
           contentType: 'application/json',
