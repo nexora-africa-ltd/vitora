@@ -139,13 +139,14 @@ class SHAAuthService:
         """
         now = int(time.time())
         
-        # JWT Header (compact JSON, no spaces)
-        header = {"alg":"HS256","typ":"JWT"}
+        # JWT Header - must match exact JavaScript JSON.stringify format (compact, no spaces)
+        header = {"alg": "HS256", "typ": "JWT"}
         
         # JWT Payload (matches Postman pre-request script)
-        payload = {"key":self.consumer_key,"iat":now,"exp":now+expires_in}
+        payload = {"key": self.consumer_key, "iat": now, "exp": now + expires_in}
         
-        # Encode header and payload (compact JSON)
+        # Encode header and payload using compact JSON (separators without spaces)
+        # This matches JavaScript's JSON.stringify() output exactly
         encoded_header = self._base64url_encode(json.dumps(header, separators=(',', ':')).encode('utf-8'))
         encoded_payload = self._base64url_encode(json.dumps(payload, separators=(',', ':')).encode('utf-8'))
         
