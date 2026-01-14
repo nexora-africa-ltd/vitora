@@ -3,14 +3,14 @@
 import { useMemo, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { ArrowLeft, MoveRight } from 'lucide-react';
+import { ArrowLeft, Clock, MoveRight, User } from 'lucide-react';
 import { PageHeader } from '@/components/shared/page-header';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Skeleton } from '@/components/ui/skeleton';
+import { Badge } from '@/components/ui/badge';
 import {
   Select,
   SelectContent,
@@ -22,9 +22,12 @@ import {
   useAdmission, 
   useBeds, 
   useCreateTransfer, 
-  useInpatientWards 
+  useInpatientWards,
+  useTransfers
 } from '@/lib/hooks/use-inpatient';
 import { useUser } from '@/lib/auth';
+import { useToast } from '@/lib/hooks/use-toast';
+import { formatDateTime } from '@/lib/utils/format';
 import type { TransferReason } from '@/lib/types/inpatient';
 
 const TRANSFER_REASONS: { value: TransferReason; label: string }[] = [
@@ -40,10 +43,12 @@ export default function TransferPage() {
   const params = useParams();
   const router = useRouter();
   const user = useUser();
+  const { toast } = useToast();
   const admissionId = Number(params.id);
 
   const { data: admission, isLoading } = useAdmission(admissionId);
   const { data: wards } = useInpatientWards();
+  const { data: transfersData } = useTransfers({ admission: admissionId });
   const createTransfer = useCreateTransfer();
 
   const [targetWardId, setTargetWardId] = useState<string>('');
@@ -54,9 +59,16 @@ export default function TransferPage() {
   const selectedWardId = useMemo(() => (targetWardId ? Number(targetWardId) : undefined), [targetWardId]);
   const { data: beds } = useBeds({ ward: selectedWardId, status: 'AVAILABLE' });
 
+  // Get transfers list from paginated response
+  const transfers = Array.isArray(transfersData) ? transfersData : transfersData?.results ?? [];
+
   const handleSubmit = async () => {
     if (!admission || !targetWardId || !targetBedId || !clinicalJustification) {
-      alert('Please fill in all required fields');
+      toast({
+        title: 'Validation Error',
+        description: 'Please fill in all required fields',
+        variant: 'destructive',
+      });
       return;
     }
 
@@ -71,10 +83,17 @@ export default function TransferPage() {
         clinical_justification: clinicalJustification,
         transferred_by: user?.id,
       });
-      alert('Patient transferred successfully');
+      toast({
+        title: 'Success',
+        description: 'Transfer completed successfully',
+      });
       router.push(`/admissions/${admissionId}`);
     } catch (error) {
-      alert('Failed to transfer patient');
+      toast({
+        title: 'Error',
+        description: 'Failed to transfer patient',
+        variant: 'destructive',
+      });
       console.error(error);
     }
   };
@@ -232,8 +251,9 @@ export default function TransferPage() {
 
           {/* Clinical Justification */}
           <div className="space-y-2">
-            <Label>Clinical Justification *</Label>
+            <Label htmlFor="clinical-justification">Clinical Justification *</Label>
             <Textarea
+              id="clinical-justification"
               value={clinicalJustification}
               onChange={(e) => setClinicalJustification(e.target.value)}
               placeholder="Provide the clinical justification for this transfer..."
@@ -242,6 +262,53 @@ export default function TransferPage() {
           </div>
         </CardContent>
       </Card>
+
+      {/* Transfer History */}
+      {transfers.length > 0 && (
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-lg flex items-center gap-2">
+              <Clock className="h-5 w-5" />
+              Transfer History
+            </CardTitle>
+            <CardDescription>Previous transfers for this admission</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-4">
+              {transfers.map((transfer: any) => (
+                <div
+                  key={transfer.id}
+                  className="flex items-start gap-4 p-4 border rounded-lg"
+                >
+                  <div className="flex-1 space-y-2">
+                    <div className="flex items-center gap-2">
+                      <span className="font-medium">{transfer.source_ward_name || transfer.from_ward_name}</span>
+                      <MoveRight className="h-4 w-4 text-muted-foreground" />
+                      <span className="font-medium">{transfer.destination_ward_name || transfer.to_ward_name}</span>
+                      <Badge variant="outline">
+                        {transfer.reason_display || transfer.reason}
+                      </Badge>
+                    </div>
+                    <p className="text-sm text-muted-foreground">
+                      {transfer.clinical_handover_notes || transfer.clinical_notes || transfer.reason_details}
+                    </p>
+                    <div className="flex items-center gap-4 text-xs text-muted-foreground">
+                      <span className="flex items-center gap-1">
+                        <User className="h-3 w-3" />
+                        {transfer.transferred_by_username || transfer.transferred_by_name}
+                      </span>
+                      <span className="flex items-center gap-1">
+                        <Clock className="h-3 w-3" />
+                        {formatDateTime(transfer.transfer_date)}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
       {/* Submit Buttons */}
       <div className="flex justify-end gap-2">
@@ -253,7 +320,7 @@ export default function TransferPage() {
           disabled={createTransfer.isPending || !targetWardId || !targetBedId || !clinicalJustification}
         >
           <MoveRight className="h-4 w-4 mr-2" />
-          {createTransfer.isPending ? 'Transferring...' : 'Transfer Patient'}
+          {createTransfer.isPending ? 'Transferring...' : 'Confirm Transfer'}
         </Button>
       </div>
     </div>

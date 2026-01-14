@@ -318,21 +318,37 @@ async function setupInpatientMocks(page: Page) {
     }
   });
 
-  // Beds list
+  // Beds list - return different beds based on ward filter
   await page.route('**/api/inpatient/beds/**', async (route) => {
     if (route.request().method() === 'GET') {
-      await route.fulfill({
-        status: 200,
-        contentType: 'application/json',
-        body: JSON.stringify({
-          count: 3,
-          results: [
-            mockBed(),
-            mockBed({ id: 2, bed_number: 'MED-A-002', status: 'OCCUPIED' }),
-            mockBed({ id: 3, bed_number: 'MED-A-003', status: 'MAINTENANCE' }),
-          ],
-        }),
-      });
+      const url = route.request().url();
+      // Check if filtering for ICU ward (ward=2) or available beds
+      if (url.includes('ward=2') || url.includes('status=AVAILABLE')) {
+        await route.fulfill({
+          status: 200,
+          contentType: 'application/json',
+          body: JSON.stringify({
+            count: 2,
+            results: [
+              mockBed({ id: 10, bed_number: 'ICU-001', ward: 2, ward_name: 'ICU', status: 'AVAILABLE' }),
+              mockBed({ id: 11, bed_number: 'ICU-002', ward: 2, ward_name: 'ICU', status: 'AVAILABLE' }),
+            ],
+          }),
+        });
+      } else {
+        await route.fulfill({
+          status: 200,
+          contentType: 'application/json',
+          body: JSON.stringify({
+            count: 3,
+            results: [
+              mockBed(),
+              mockBed({ id: 2, bed_number: 'MED-A-002', status: 'OCCUPIED' }),
+              mockBed({ id: 3, bed_number: 'MED-A-003', status: 'MAINTENANCE' }),
+            ],
+          }),
+        });
+      }
     } else {
       await route.continue();
     }
@@ -488,8 +504,8 @@ async function setupInpatientMocks(page: Page) {
     });
   });
 
-  // Transfers
-  await page.route('**/api/inpatient/transfer/**', async (route) => {
+  // Transfers - API endpoint is /api/inpatient/transfers/
+  await page.route(/\/api\/inpatient\/transfers\/?(\?.*)?$/, async (route) => {
     if (route.request().method() === 'POST') {
       await route.fulfill({
         status: 201,
@@ -1126,35 +1142,40 @@ test.describe('Patient Transfer', () => {
     await login(page, TEST_USER.username, TEST_USER.password);
     await page.goto('/admissions/1');
 
-    // Click transfer button
-    await page.getByRole('button', { name: /transfer/i }).click();
+    // Click transfer link (it's a Link component, not a button)
+    await page.getByRole('link', { name: /transfer/i }).click();
 
-    // Select destination ward
-    await page.getByRole('combobox', { name: /to ward/i }).click();
-    await page.getByRole('option', { name: /icu/i }).click();
+    // Wait for transfer page to load
+    await expect(page.getByRole('heading', { name: /transfer patient/i })).toBeVisible();
+
+    // Select destination ward (Radix Select renders as button)
+    await page.getByRole('button', { name: /select ward/i }).click();
+    // Radix Select options might be generic elements, use text selector
+    await page.getByText(/icu.*available/i).click();
 
     // Select destination bed
-    await page.getByRole('combobox', { name: /to bed/i }).click();
-    await page.getByRole('option', { name: /ICU-001/i }).click();
+    await page.getByRole('button', { name: /select bed/i }).click();
+    await page.getByText(/ICU-001/i).click();
 
-    // Enter reason
-    await page.getByLabel(/reason/i).fill('Respiratory deterioration');
+    // Enter clinical justification
+    await page.getByLabel(/clinical justification/i).fill('Respiratory deterioration requiring ICU monitoring');
 
     // Confirm transfer
     await page.getByRole('button', { name: /confirm.*transfer/i }).click();
 
-    // Verify success
-    await expect(page.getByText(/transfer.*completed|success/i)).toBeVisible();
+    // Verify success toast
+    await expect(page.getByText(/transfer.*completed|success/i).first()).toBeVisible();
   });
 
   test('should display transfer history', async ({ page }) => {
     await login(page, TEST_USER.username, TEST_USER.password);
     await page.goto('/admissions/1/transfer');
 
-    // Verify transfer history
-    await expect(page.getByText('Medical Ward A')).toBeVisible();
-    await expect(page.getByText('ICU')).toBeVisible();
-    await expect(page.getByText(/respiratory deterioration/i)).toBeVisible();
+    // Verify transfer history section displays
+    await expect(page.getByRole('heading', { name: /transfer history/i })).toBeVisible();
+    await expect(page.getByText('Medical Ward A').first()).toBeVisible();
+    await expect(page.getByText('ICU', { exact: true }).first()).toBeVisible();
+    await expect(page.getByText(/respiratory deterioration/i).first()).toBeVisible();
   });
 });
 

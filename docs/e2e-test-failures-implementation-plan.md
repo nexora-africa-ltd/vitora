@@ -88,23 +88,16 @@ All Nursing Kardex tests now pass after:
 
 ---
 
-### 5. Patient Transfer (2 failures)
+### ~~5. Patient Transfer (2 failures)~~ ✅ FIXED
 
-#### 5.1 `should initiate patient transfer`
-- **Route**: `/admissions/1`
-- **Error**: `getByRole('button', { name: /transfer/i })` not found (timeout)
-- **Root Cause**: No "Transfer" button on admission detail page
-- **Fix Required**:
-  - Add "Transfer Patient" button to admission detail page header/actions
-  - Link to `/admissions/[id]/transfer` OR open transfer modal
-
-#### 5.2 `should display transfer history`
-- **Route**: `/admissions/1/transfer`
-- **Error**: `getByText('Medical Ward A')` not found
-- **Root Cause**: Transfer page not rendering history OR API mock not applied
-- **Fix Required**:
-  - Verify transfer page exists and fetches transfer history
-  - Display: from ward, to ward, reason, date, transferred by
+All Patient Transfer tests now pass after:
+- Fixed API mock route pattern from `/transfer/` to `/transfers/` (plural)
+- Added transfer history section to transfer page using `useTransfers` hook
+- Updated test selectors to use `getByRole('link')` for Transfer link (not button)
+- Updated test selectors to use text matching for Radix Select options
+- Added conditional beds mock to return ICU beds when ward=2 or status=AVAILABLE
+- Replaced alert() calls with toast notifications for better UX
+- Added `.first()` to selectors for elements appearing multiple times
 
 ---
 
