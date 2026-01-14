@@ -111,7 +111,7 @@ export default function NewAdmissionPage() {
         else if (primaryDiagnosis.icd10_code || primaryDiagnosis.icd10_display) {
           setUseICD11(false);
           const displayParts = (primaryDiagnosis.icd10_display || '').split(' - ');
-          setIcd10Code(displayParts[0] || primaryDiagnosis.icd10_code || '');
+          setIcd10Code(displayParts[0] || String(primaryDiagnosis.icd10_code || ''));
           setIcd10Text(displayParts.slice(1).join(' - ') || primaryDiagnosis.free_text_diagnosis || '');
         }
         // Fallback to free text

@@ -69,6 +69,7 @@ export interface Admission {
   patient_name?: string;
   opd_encounter?: number | null;
   ipd_encounter?: number;
+  source_encounter?: number | null; // Source OPD encounter ID
   recommendation?: number | null;
   admission_date: string;
   admitting_diagnosis?: string;
@@ -102,6 +103,7 @@ export interface Admission {
 
 export type DischargeType =
   | 'NORMAL'
+  | 'ROUTINE'
   | 'AGAINST_ADVICE'
   | 'TRANSFERRED'
   | 'DECEASED'
@@ -162,6 +164,9 @@ export interface DischargeCreateData {
   patient_instructions: string;
   pharmacy_cleared?: boolean;
   billing_cleared?: boolean;
+  billing_clearance?: boolean;
+  pharmacy_clearance?: boolean;
+  nursing_clearance?: boolean;
   lab_results_acknowledged?: boolean;
 }
 
@@ -296,6 +301,7 @@ export interface KardexShiftNote {
   nurse: number;
   nurse_username?: string;
   content: string;
+  notes?: string; // Alias for content
   timestamp: string;
   created_at?: string;
 }
@@ -457,6 +463,7 @@ export interface DischargeListParams {
 }
 
 export interface TransferListParams {
+  admission?: number;
   source_ward?: number;
   destination_ward?: number;
   reason?: TransferReason;
