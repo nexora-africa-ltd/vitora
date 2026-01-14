@@ -934,7 +934,7 @@ export function PatientForm({
                   </FormItem>
                 )}
               />
-              
+              {/* TODO : modularise all reusable components */}
               {/* Payment Method - Compact selector with dialog */}
               {/* Payment Method - Compact selector with dialog */}
               <FormField
