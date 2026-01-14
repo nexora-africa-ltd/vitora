@@ -257,30 +257,51 @@ async function setupInpatientMocks(page: Page) {
     });
   });
 
-  // Wards list
+  // Wards list and ward beds
   await page.route('**/api/inpatient/wards/**', async (route) => {
     if (route.request().method() === 'GET') {
       const url = route.request().url();
-      if (url.includes('/1/') || url.includes('/1?')) {
-        await route.fulfill({
-          status: 200,
-          contentType: 'application/json',
-          body: JSON.stringify(mockWard()),
-        });
-      } else {
+      
+      // Handle ward beds endpoint: /api/inpatient/wards/{id}/beds/
+      if (url.includes('/beds')) {
         await route.fulfill({
           status: 200,
           contentType: 'application/json',
           body: JSON.stringify({
             count: 3,
             results: [
-              mockWard(),
-              mockWard({ id: 2, name: 'ICU', code: 'ICU', ward_type: 'ICU' }),
-              mockWard({ id: 3, name: 'Surgical Ward', code: 'SURG', ward_type: 'SURGICAL' }),
+              mockBed(),
+              mockBed({ id: 2, bed_number: 'MED-A-002', status: 'OCCUPIED', current_patient_name: 'Jane Doe' }),
+              mockBed({ id: 3, bed_number: 'MED-A-003', status: 'MAINTENANCE' }),
             ],
           }),
         });
+        return;
       }
+      
+      // Handle single ward endpoint: /api/inpatient/wards/1/
+      if (url.match(/\/wards\/\d+\/?$/)) {
+        await route.fulfill({
+          status: 200,
+          contentType: 'application/json',
+          body: JSON.stringify(mockWard()),
+        });
+        return;
+      }
+      
+      // Handle ward list endpoint: /api/inpatient/wards/
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({
+          count: 3,
+          results: [
+            mockWard(),
+            mockWard({ id: 2, name: 'ICU', code: 'ICU', ward_type: 'ICU' }),
+            mockWard({ id: 3, name: 'Surgical Ward', code: 'SURG', ward_type: 'SURGICAL' }),
+          ],
+        }),
+      });
     } else {
       await route.continue();
     }
@@ -505,23 +526,41 @@ test.describe('Bed Management', () => {
     await login(page, TEST_USER.username, TEST_USER.password);
     await page.goto('/wards/1');
 
-    // Verify beds tab displays
-    await expect(page.getByRole('tab', { name: /beds/i })).toBeVisible();
-    await page.getByRole('tab', { name: /beds/i }).click();
-
-    // Verify bed status badges
+    // Verify Bed Layout tab displays (default selected)
+    await expect(page.getByRole('tab', { name: /bed layout/i })).toBeVisible();
+    
+    // Verify bed status legend is visible
     await expect(page.getByText(/available/i).first()).toBeVisible();
+    await expect(page.getByText(/occupied/i).first()).toBeVisible();
+    await expect(page.getByText(/maintenance/i).first()).toBeVisible();
   });
 
   test('should change bed status to maintenance', async ({ page }) => {
     await login(page, TEST_USER.username, TEST_USER.password);
     await page.goto('/wards/1');
 
-    // Navigate to beds tab
-    await page.getByRole('tab', { name: /beds/i }).click();
+    // Click on the first AVAILABLE bed card (not occupied) to open status dialog
+    await page.locator('[data-testid="bed-card"]').first().click();
 
-    // Click on a bed card to see details
-    await expect(page.locator('[data-testid="bed-card"]').first()).toBeVisible();
+    // Verify status change dialog opens
+    await expect(page.getByRole('dialog')).toBeVisible();
+    await expect(page.getByRole('heading', { name: /change bed status/i })).toBeVisible();
+
+    // Open the status select dropdown
+    const statusTrigger = page.getByRole('dialog').getByRole('button', { name: /status/i });
+    await statusTrigger.click();
+    
+    // Wait for dropdown to open 
+    await page.waitForTimeout(300);
+    
+    // Click on Maintenance option in the dropdown (within the dialog)
+    await page.getByRole('dialog').getByText('Maintenance', { exact: true }).click();
+
+    // Save changes
+    await page.getByRole('button', { name: /save changes/i }).click();
+
+    // Verify success toast (uses status role)
+    await expect(page.getByRole('status')).toContainText(/bed status updated/i);
   });
 });
 

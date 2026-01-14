@@ -67,7 +67,7 @@ export default function WardDetailPage() {
   const [statusDialogOpen, setStatusDialogOpen] = useState(false);
 
   const { data: ward, isLoading: wardLoading } = useInpatientWard(wardId);
-  const { data: beds, isLoading: bedsLoading, mutate: mutateBeds } = useWardBeds(wardId);
+  const { data: beds, isLoading: bedsLoading, refetch: refetchBeds } = useWardBeds(wardId);
   const { data: admissions, isLoading: admissionsLoading } = useAdmissions({ 
     ward: wardId,
     admission_status: 'ACTIVE',
@@ -103,8 +103,8 @@ export default function WardDetailPage() {
       // In a real app, this would call an API
       // await updateBedStatus(bedId, { status, notes });
       
-      // Optimistic update
-      mutateBeds?.();
+      // Refresh beds data
+      refetchBeds();
       
       toast({
         title: 'Bed Status Updated',
