@@ -38,6 +38,7 @@ import {
   useAddKardexHandoverNote
 } from '@/lib/hooks/use-inpatient';
 import { useUser } from '@/lib/auth';
+import { useToast } from '@/lib/hooks/use-toast';
 import { formatDateTime } from '@/lib/utils/format';
 import type { RiskLevel, ShiftType } from '@/lib/types/inpatient';
 
@@ -56,6 +57,7 @@ export default function KardexPage() {
   const params = useParams();
   const router = useRouter();
   const user = useUser();
+  const { toast } = useToast();
   const admissionId = Number(params.id);
 
   const { data: admission, isLoading: admissionLoading } = useAdmission(admissionId);
@@ -126,11 +128,18 @@ export default function KardexPage() {
           isolation_type: isolationRequired ? isolationType : undefined,
         },
       });
-      alert('Kardex updated successfully');
+      toast({
+        title: 'Success',
+        description: 'Kardex updated successfully',
+      });
       setIsEditing(false);
       refetch();
     } catch (error) {
-      alert('Failed to update kardex');
+      toast({
+        title: 'Error',
+        description: 'Failed to update kardex',
+        variant: 'destructive',
+      });
       console.error(error);
     }
   };
@@ -145,12 +154,19 @@ export default function KardexPage() {
           content: shiftNoteContent,
         },
       });
-      alert('Shift note added');
+      toast({
+        title: 'Success',
+        description: 'Shift note added successfully',
+      });
       setShiftNoteOpen(false);
       setShiftNoteContent('');
       refetch();
     } catch (error) {
-      alert('Failed to add shift note');
+      toast({
+        title: 'Error',
+        description: 'Failed to add shift note',
+        variant: 'destructive',
+      });
       console.error(error);
     }
   };
@@ -166,12 +182,19 @@ export default function KardexPage() {
           content: handoverNoteContent,
         },
       });
-      alert('Handover note added');
+      toast({
+        title: 'Success',
+        description: 'Handover note added successfully',
+      });
       setHandoverNoteOpen(false);
       setHandoverNoteContent('');
       refetch();
     } catch (error) {
-      alert('Failed to add handover note');
+      toast({
+        title: 'Error',
+        description: 'Failed to add handover note',
+        variant: 'destructive',
+      });
       console.error(error);
     }
   };
@@ -224,6 +247,55 @@ export default function KardexPage() {
           description={`${kardex.patient_name} - ${kardex.ward_name} - Bed ${kardex.bed_number}`}
         />
         <div className="flex gap-2">
+          <Dialog open={shiftNoteOpen} onOpenChange={setShiftNoteOpen}>
+            <DialogTrigger asChild>
+              <Button variant="outline">
+                <Plus className="h-4 w-4 mr-2" />
+                Add Shift Note
+              </Button>
+            </DialogTrigger>
+            <DialogContent>
+              <DialogHeader>
+                <DialogTitle>Add Shift Note</DialogTitle>
+                <DialogDescription>
+                  Record observations and care provided during your shift.
+                </DialogDescription>
+              </DialogHeader>
+              <div className="space-y-4">
+                <div className="space-y-2">
+                  <Label htmlFor="shift-select">Shift</Label>
+                  <Select value={shiftNoteType} onValueChange={(v) => setShiftNoteType(v as ShiftType)}>
+                    <SelectTrigger id="shift-select">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {SHIFT_TYPES.map((shift) => (
+                        <SelectItem key={shift.value} value={shift.value}>
+                          {shift.label}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="notes-input">Notes</Label>
+                  <Textarea
+                    id="notes-input"
+                    value={shiftNoteContent}
+                    onChange={(e) => setShiftNoteContent(e.target.value)}
+                    placeholder="Record your observations..."
+                    rows={4}
+                  />
+                </div>
+              </div>
+              <DialogFooter>
+                <Button variant="outline" onClick={() => setShiftNoteOpen(false)}>Cancel</Button>
+                <Button onClick={handleAddShiftNote} disabled={!shiftNoteContent || addShiftNote.isPending}>
+                  {addShiftNote.isPending ? 'Adding...' : 'Save'}
+                </Button>
+              </DialogFooter>
+            </DialogContent>
+          </Dialog>
           {isEditing ? (
             <>
               <Button variant="outline" onClick={() => setIsEditing(false)}>Cancel</Button>
@@ -237,6 +309,99 @@ export default function KardexPage() {
           )}
         </div>
       </div>
+
+      {/* Quick Summary - Always Visible */}
+      <div className="grid gap-4 md:grid-cols-4">
+        {/* Allergies */}
+        <Card className="border-destructive/50">
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm flex items-center gap-2">
+              <AlertTriangle className="h-4 w-4 text-destructive" />
+              Allergies
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <p className="font-medium text-destructive">
+              {kardex.allergies || 'No known allergies'}
+            </p>
+          </CardContent>
+        </Card>
+
+        {/* Diet */}
+        <Card>
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm">Diet</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <p className="font-medium">
+              {kardex.dietary_requirements || kardex.diet || 'Regular diet'}
+            </p>
+          </CardContent>
+        </Card>
+
+        {/* Fall Risk */}
+        <Card>
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm">Fall Risk</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <Badge variant={kardex.fall_risk === 'HIGH' ? 'destructive' : kardex.fall_risk === 'MODERATE' ? 'warning' : 'success'}>
+              {kardex.fall_risk_display || kardex.fall_risk}
+            </Badge>
+          </CardContent>
+        </Card>
+
+        {/* Pressure Sore Risk */}
+        <Card>
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm">Pressure Sore Risk</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <Badge variant={kardex.pressure_sore_risk === 'HIGH' ? 'destructive' : kardex.pressure_sore_risk === 'MODERATE' ? 'warning' : 'success'}>
+              {kardex.pressure_sore_risk_display || kardex.pressure_sore_risk}
+            </Badge>
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Nursing Diagnosis Summary */}
+      {kardex.nursing_problems && (
+        <Card>
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm">Nursing Diagnosis</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <p className="text-sm">{kardex.nursing_problems}</p>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Recent Shift Notes - Always Visible */}
+      {(kardex.shift_notes?.length ?? 0) > 0 && (
+        <Card>
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm">Recent Shift Notes</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-3">
+              {kardex.shift_notes?.slice(0, 3).map((note) => (
+                <div key={note.id} className="border-l-2 border-primary/50 pl-3 py-1">
+                  <div className="flex items-center gap-2 text-sm">
+                    <span className="font-medium">{note.nurse_username}</span>
+                    <Badge variant="outline" className="text-xs">
+                      {note.shift_display || note.shift}
+                    </Badge>
+                    <span className="text-muted-foreground text-xs">
+                      {formatDateTime(note.timestamp || note.created_at)}
+                    </span>
+                  </div>
+                  <p className="text-sm text-muted-foreground mt-1">{note.content || note.notes}</p>
+                </div>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
       <Tabs defaultValue="care" className="space-y-4">
         <TabsList>

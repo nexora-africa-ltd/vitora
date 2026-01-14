@@ -75,47 +75,16 @@ All Ward Round Documentation tests now pass after:
 
 ---
 
-### 4. Nursing Kardex (4 failures)
+### ~~4. Nursing Kardex (4 failures)~~ ✅ FIXED
 
-#### 4.1 `should display patient kardex with care plan`
-- **Route**: `/admissions/1/kardex`
-- **Error**: `getByText(/penicillin/i)` not found
-- **Root Cause**: Kardex page not rendering mock data (allergies section)
-- **Fix Required**:
-  - Verify kardex page fetches and renders:
-    - Allergies section
-    - Diet orders
-    - Nursing diagnoses
-  - Check API mock route for kardex data
-
-#### 4.2 `should display risk assessments`
-- **Route**: `/admissions/1/kardex`
-- **Error**: `getByText(/fall risk/i)` not found
-- **Root Cause**: Risk assessment section missing from kardex page
-- **Fix Required**:
-  - Add risk assessment cards/section to kardex page:
-    - Fall risk score
-    - Pressure sore risk (Braden scale)
-    - Risk level badges (Low/Medium/High)
-
-#### 4.3 `should add shift note to kardex`
-- **Route**: `/admissions/1/kardex`
-- **Error**: `getByRole('button', { name: /add.*note/i })` not found
-- **Root Cause**: No "Add Note" button on kardex page
-- **Fix Required**:
-  - Add "Add Shift Note" button
-  - Implement shift note modal/form:
-    - Shift selector (Day/Evening/Night)
-    - Notes textarea
-    - Submit action
-
-#### 4.4 `should display shift notes history`
-- **Route**: `/admissions/1/kardex`
-- **Error**: `getByText('Nurse Mary')` not found
-- **Root Cause**: Shift notes history section not rendering
-- **Fix Required**:
-  - Add shift notes timeline/list to kardex page
-  - Display: author name, shift, timestamp, notes content
+All Nursing Kardex tests now pass after:
+- Fixed API mock route pattern to use regex `/api/inpatient/kardex/` matching query strings
+- Added mock data fields: `nursing_problems`, `ward_name`, `bed_number`, `dietary_requirements`
+- Added visible summary section above tabs showing allergies, diet, risks, and shift notes
+- Added "Add Shift Note" button to page header with proper dialog
+- Updated mock shift notes to include `nurse_username`, `content`, and `shift_display` fields
+- Replaced alert() calls with toast notifications for better UX
+- Updated test selectors to use `.first()` for elements appearing multiple times
 
 ---
 
