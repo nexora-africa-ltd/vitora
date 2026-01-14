@@ -2,7 +2,7 @@
 
 > **Generated**: January 14, 2026  
 > **Test File**: `web-app/e2e/inpatient.spec.ts`  
-> **Current Status**: 7 passed, 22 failed (29 total)
+> **Current Status**: 12 passed, 18 failed (30 total)
 
 ---
 
@@ -16,7 +16,7 @@ The inpatient E2E tests are failing primarily due to:
 
 ---
 
-## ✅ Passing Tests (7)
+## ✅ Passing Tests (12)
 
 | Test | Category |
 |------|----------|
@@ -26,6 +26,11 @@ The inpatient E2E tests are failing primarily due to:
 | should display bed status with color coding | Bed Management ✅ FIXED |
 | should filter beds by status | Bed Management ✅ FIXED |
 | should change bed status to maintenance | Bed Management ✅ FIXED |
+| should display pending admission recommendations | Admission Workflow ✅ FIXED |
+| should approve admission recommendation and assign bed | Admission Workflow ✅ FIXED |
+| should display active admissions list | Admission Workflow ✅ FIXED |
+| should show admission details with patient info | Admission Workflow ✅ FIXED |
+| should decline admission recommendation with reason | Admission Workflow ✅ NEW |
 
 ---
 
@@ -41,39 +46,14 @@ All Bed Management tests now pass after:
 
 ---
 
-### 2. Admission Workflow (4 failures)
+### ~~2. Admission Workflow (4 failures)~~ ✅ FIXED
 
-#### 2.1 `should display pending admission recommendations`
-- **Route**: `/admissions/recommendations`
-- **Error**: `getByText('Jane Doe')` not found
-- **Root Cause**: API mock for recommendations not being intercepted, or page not rendering mock data
-- **Fix Required**:
-  - Verify API route pattern: `**/api/inpatient/admission-recommendations/**`
-  - Check if recommendations page fetches from correct endpoint
-  - May need to update mock route to match actual API
-
-#### 2.2 `should approve admission recommendation and assign bed`
-- **Route**: `/admissions/recommendations`
-- **Error**: `getByRole('button', { name: /approve|admit/i })` not found
-- **Root Cause**: No approve/admit button on recommendations page
-- **Fix Required**:
-  - Add "Approve" or "Admit" action button to recommendation cards
-  - Implement approval modal with ward/bed selection
-
-#### 2.3 `should display active admissions list`
-- **Route**: `/admissions`
-- **Error**: Strict mode - `getByText('Medical Ward A')` resolved to 2 elements
-- **Root Cause**: Multiple admissions showing same ward name
-- **Fix Required**:
-  - Update test to use `.first()` or more specific selector
-  - Test passes if selector is fixed
-
-#### 2.4 `should show admission details with patient info`
-- **Route**: `/admissions/1`
-- **Error**: Strict mode - `getByText('Jane Doe')` resolved to 2 elements
-- **Root Cause**: Patient name appears in multiple places (header + card)
-- **Fix Required**:
-  - Update test to use `.first()` or more specific selector like `getByRole('heading', { name: /jane doe/i })`
+All Admission Workflow tests now pass after:
+- Fixed function name typo (`handleAcceptRecommendationConfirm` → `handleApproveConfirm`)
+- Added `data-testid="approve-button"` to recommendation cards
+- Updated test selectors to use `.first()` for strict mode compliance
+- Used `{ exact: true }` for "PENDING" badge text matching
+- Fixed dialog interaction selectors for Radix UI components
 
 ---
 
