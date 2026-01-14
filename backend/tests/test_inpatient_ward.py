@@ -211,6 +211,73 @@ class TestWardProperties:
         # Should have 4 AVAILABLE beds
         assert ward.available_beds == 4
 
+    def test_total_beds_with_no_beds(self):
+        """Should return 0 total beds when ward has no beds."""
+        ward = Ward.objects.create(
+            name="Empty Ward Total",
+            code="EWT-01",
+            ward_type="MEDICAL",
+            capacity=20,
+            daily_rate=Decimal("500.00"),
+        )
+        assert ward.total_beds == 0
+
+    def test_total_beds_calculation(self):
+        """Should correctly count total beds in ward."""
+        ward = Ward.objects.create(
+            name="Total Beds Test Ward",
+            code="TBTW-01",
+            ward_type="SURGICAL",
+            capacity=10,
+            daily_rate=Decimal("600.00"),
+        )
+
+        # Create 5 beds with various statuses
+        Bed.objects.create(ward=ward, bed_number="TB-01", status="AVAILABLE")
+        Bed.objects.create(ward=ward, bed_number="TB-02", status="OCCUPIED")
+        Bed.objects.create(ward=ward, bed_number="TB-03", status="MAINTENANCE")
+        Bed.objects.create(ward=ward, bed_number="TB-04", status="RESERVED")
+        Bed.objects.create(ward=ward, bed_number="TB-05", status="AVAILABLE")
+
+        # Total should be 5 regardless of status
+        assert ward.total_beds == 5
+
+    def test_occupied_beds_with_no_beds(self):
+        """Should return 0 occupied beds when ward has no beds."""
+        ward = Ward.objects.create(
+            name="Empty Ward Occupied",
+            code="EWO-01",
+            ward_type="MEDICAL",
+            capacity=20,
+            daily_rate=Decimal("500.00"),
+        )
+        assert ward.occupied_beds == 0
+
+    def test_occupied_beds_calculation(self):
+        """Should correctly count occupied beds."""
+        ward = Ward.objects.create(
+            name="Occupied Beds Test Ward",
+            code="OBTW-01",
+            ward_type="SURGICAL",
+            capacity=10,
+            daily_rate=Decimal("600.00"),
+        )
+
+        # Create 10 beds with different statuses
+        Bed.objects.create(ward=ward, bed_number="OB-01", status="AVAILABLE")
+        Bed.objects.create(ward=ward, bed_number="OB-02", status="AVAILABLE")
+        Bed.objects.create(ward=ward, bed_number="OB-03", status="OCCUPIED")
+        Bed.objects.create(ward=ward, bed_number="OB-04", status="OCCUPIED")
+        Bed.objects.create(ward=ward, bed_number="OB-05", status="OCCUPIED")
+        Bed.objects.create(ward=ward, bed_number="OB-06", status="MAINTENANCE")
+        Bed.objects.create(ward=ward, bed_number="OB-07", status="RESERVED")
+        Bed.objects.create(ward=ward, bed_number="OB-08", status="OCCUPIED")
+        Bed.objects.create(ward=ward, bed_number="OB-09", status="AVAILABLE")
+        Bed.objects.create(ward=ward, bed_number="OB-10", status="OCCUPIED")
+
+        # Should have 5 OCCUPIED beds
+        assert ward.occupied_beds == 5
+
     def test_occupancy_rate_with_no_beds(self):
         """Should return 0% occupancy when ward has no beds."""
         ward = Ward.objects.create(
@@ -359,3 +426,81 @@ class TestWardQueryOperations:
         results = Ward.objects.filter(code__icontains="MAT")
         assert results.count() >= 1
         assert "MAT" in results.first().code
+
+
+@pytest.mark.django_db
+class TestWardAPISerializer:
+    """Tests for Ward API serializer output."""
+
+    def test_ward_serializer_includes_bed_counts(self, authenticated_client):
+        """Should include total_beds and occupied_beds in API response."""
+        from rest_framework import status
+
+        # Create a ward
+        ward = Ward.objects.create(
+            name="API Test Ward",
+            code="ATW-01",
+            ward_type="MEDICAL",
+            capacity=10,
+            daily_rate=Decimal("500.00"),
+        )
+
+        # Create beds with various statuses
+        Bed.objects.create(ward=ward, bed_number="API-01", status="AVAILABLE")
+        Bed.objects.create(ward=ward, bed_number="API-02", status="AVAILABLE")
+        Bed.objects.create(ward=ward, bed_number="API-03", status="OCCUPIED")
+        Bed.objects.create(ward=ward, bed_number="API-04", status="OCCUPIED")
+        Bed.objects.create(ward=ward, bed_number="API-05", status="OCCUPIED")
+        Bed.objects.create(ward=ward, bed_number="API-06", status="MAINTENANCE")
+
+        # Get ward via API
+        response = authenticated_client.get(f"/api/inpatient/wards/{ward.id}/")
+
+        assert response.status_code == status.HTTP_200_OK
+        data = response.json()
+
+        # Verify new fields are present
+        assert "total_beds" in data
+        assert "occupied_beds" in data
+        assert "available_beds" in data
+        assert "occupancy_rate" in data
+
+        # Verify calculations are correct
+        assert data["total_beds"] == 6
+        assert data["occupied_beds"] == 3
+        assert data["available_beds"] == 2
+        assert data["occupancy_rate"] == 50.0  # 3/6 = 50%
+
+    def test_ward_list_api_includes_bed_counts(self, authenticated_client):
+        """Should include bed counts in ward list API response."""
+        from rest_framework import status
+
+        # Create a ward with beds
+        ward = Ward.objects.create(
+            name="List API Test Ward",
+            code="LATW-01",
+            ward_type="SURGICAL",
+            capacity=5,
+            daily_rate=Decimal("700.00"),
+        )
+
+        Bed.objects.create(ward=ward, bed_number="LIST-01", status="AVAILABLE")
+        Bed.objects.create(ward=ward, bed_number="LIST-02", status="OCCUPIED")
+        Bed.objects.create(ward=ward, bed_number="LIST-03", status="OCCUPIED")
+
+        # Get wards list via API
+        response = authenticated_client.get("/api/inpatient/wards/")
+
+        assert response.status_code == status.HTTP_200_OK
+        data = response.json()
+
+        # Find our test ward in results
+        results = data.get("results", data) if isinstance(data, dict) else data
+        test_ward = next((w for w in results if w["code"] == "LATW-01"), None)
+
+        assert test_ward is not None
+        assert test_ward["total_beds"] == 3
+        assert test_ward["occupied_beds"] == 2
+        assert test_ward["available_beds"] == 1
+        # occupancy_rate = 2/3 = 66.67%
+        assert test_ward["occupancy_rate"] == pytest.approx(66.67, rel=0.01)
