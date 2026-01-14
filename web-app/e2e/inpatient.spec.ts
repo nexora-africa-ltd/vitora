@@ -137,12 +137,17 @@ const mockNursingKardex = (overrides: Record<string, unknown> = {}) => ({
   admission: 1,
   patient_name: 'Jane Doe',
   patient_mrn: 'MRN-20260101-0001',
+  ward_name: 'Medical Ward A',
+  bed_number: 'MED-A-001',
   // Patient snapshot
   allergies: 'Penicillin',
+  dietary_requirements: 'Light diet',
   diet: 'Light diet',
-  mobility: 'Assisted ambulation',
+  mobility_status: 'Assisted ambulation',
   isolation_precautions: 'None',
-  // Care plan
+  isolation_required: false,
+  // Care plan - use nursing_problems (API field name)
+  nursing_problems: 'Impaired gas exchange related to pneumonia',
   nursing_diagnosis: 'Impaired gas exchange related to pneumonia',
   goals: 'Maintain SpO2 > 94% on room air',
   interventions: 'Oxygen therapy, deep breathing exercises, position changes',
@@ -151,13 +156,17 @@ const mockNursingKardex = (overrides: Record<string, unknown> = {}) => ({
   fall_risk_display: 'Low',
   pressure_sore_risk: 'LOW',
   pressure_sore_risk_display: 'Low',
-  // Shift notes
+  // Shift notes - include both nurse_name and nurse_username for compatibility
   shift_notes: [
     {
       id: 1,
       shift: 'DAY',
+      shift_display: 'Day Shift',
+      nurse_username: 'Nurse Mary',
       nurse_name: 'Nurse Mary',
+      content: 'Patient stable. Vitals within normal limits.',
       notes: 'Patient stable. Vitals within normal limits.',
+      timestamp: '2026-01-04T08:00:00Z',
       created_at: '2026-01-04T08:00:00Z',
     },
   ],
@@ -425,12 +434,57 @@ async function setupInpatientMocks(page: Page) {
     }
   });
 
-  // Nursing kardex
-  await page.route('**/api/inpatient/nursing-kardex/**', async (route) => {
+  // Nursing kardex - API endpoint is /api/inpatient/kardex/
+  await page.route(/\/api\/inpatient\/kardex\/?(\?.*)?$/, async (route) => {
+    if (route.request().method() === 'GET') {
+      // Check if it's a list request with admission param
+      const url = route.request().url();
+      if (url.includes('admission=') || !url.includes('/kardex/')) {
+        await route.fulfill({
+          status: 200,
+          contentType: 'application/json',
+          body: JSON.stringify({
+            count: 1,
+            results: [mockNursingKardex()],
+          }),
+        });
+      } else {
+        await route.fulfill({
+          status: 200,
+          contentType: 'application/json',
+          body: JSON.stringify(mockNursingKardex()),
+        });
+      }
+    } else if (route.request().method() === 'POST') {
+      // Add shift note
+      await route.fulfill({
+        status: 201,
+        contentType: 'application/json',
+        body: JSON.stringify({
+          id: 2,
+          shift: 'DAY',
+          nurse_username: 'Nurse Jane',
+          content: 'Patient resting comfortably. Vitals stable.',
+          created_at: new Date().toISOString(),
+        }),
+      });
+    } else {
+      await route.continue();
+    }
+  });
+
+  // Kardex shift note endpoint
+  await page.route('**/api/inpatient/kardex/*/add-shift-note/**', async (route) => {
     await route.fulfill({
-      status: 200,
+      status: 201,
       contentType: 'application/json',
-      body: JSON.stringify(mockNursingKardex()),
+      body: JSON.stringify({
+        id: 2,
+        shift: 'DAY',
+        nurse_username: 'Nurse Jane',
+        content: 'Patient resting comfortably. Vitals stable.',
+        created_at: new Date().toISOString(),
+      }),
     });
   });
 
@@ -1015,10 +1069,10 @@ test.describe('Nursing Kardex', () => {
     await login(page, TEST_USER.username, TEST_USER.password);
     await page.goto('/admissions/1/kardex');
 
-    // Verify kardex sections
-    await expect(page.getByText(/penicillin/i)).toBeVisible(); // Allergies
-    await expect(page.getByText(/light diet/i)).toBeVisible(); // Diet
-    await expect(page.getByText(/impaired gas exchange/i)).toBeVisible(); // Nursing diagnosis
+    // Verify kardex sections - use first() for elements that appear multiple times
+    await expect(page.getByText(/penicillin/i).first()).toBeVisible(); // Allergies
+    await expect(page.getByText(/light diet/i).first()).toBeVisible(); // Diet
+    await expect(page.getByText(/impaired gas exchange/i).first()).toBeVisible(); // Nursing diagnosis
   });
 
   test('should display risk assessments', async ({ page }) => {
@@ -1026,26 +1080,27 @@ test.describe('Nursing Kardex', () => {
     await page.goto('/admissions/1/kardex');
 
     // Verify risk assessments
-    await expect(page.getByText(/fall risk/i)).toBeVisible();
-    await expect(page.getByText(/pressure sore/i)).toBeVisible();
-    await expect(page.getByText(/low/i)).toBeVisible();
+    await expect(page.getByText(/fall risk/i).first()).toBeVisible();
+    await expect(page.getByText(/pressure sore/i).first()).toBeVisible();
+    await expect(page.getByText(/low/i).first()).toBeVisible();
   });
 
   test('should add shift note to kardex', async ({ page }) => {
     await login(page, TEST_USER.username, TEST_USER.password);
     await page.goto('/admissions/1/kardex');
 
-    // Add shift note
-    await page.getByRole('button', { name: /add.*note/i }).click();
-    await page.getByLabel(/shift/i).click();
-    await page.getByRole('option', { name: /day/i }).click();
-    await page.getByLabel(/notes/i).fill('Patient resting comfortably. Vitals stable.');
+    // Add shift note - use more specific selector for the button in header
+    await page.getByRole('button', { name: /add.*shift.*note/i }).click();
+    // Wait for dialog to be visible
+    await expect(page.getByRole('dialog', { name: /add shift note/i })).toBeVisible();
+    // The shift select already defaults to DAY, so just fill in the notes
+    await page.getByRole('textbox', { name: /notes/i }).fill('Patient resting comfortably. Vitals stable.');
 
     // Save
-    await page.getByRole('button', { name: /save|add/i }).click();
+    await page.getByRole('button', { name: /save/i }).click();
 
-    // Verify success
-    await expect(page.getByText(/note.*added|success/i)).toBeVisible();
+    // Verify success toast
+    await expect(page.getByText(/shift note added|success/i).first()).toBeVisible();
   });
 
   test('should display shift notes history', async ({ page }) => {
