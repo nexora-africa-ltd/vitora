@@ -18,13 +18,14 @@ export {
   useEligibilityCheck,
 } from './EligibilityBanner';
 
-// Terminology Selects
+// Terminology Selects - Re-export from centralized terminology module
+// DEPRECATED: Import directly from '@/components/terminology' instead
 export {
   SHAInterventionSelect,
   ICD11Select,
   LOINCSelect,
-  DrugSelect,
-} from './SHAInterventionSelect';
+  DrugProductSelect as DrugSelect, // Alias for backward compatibility
+} from '@/components/terminology';
 
 // Claims
 export {

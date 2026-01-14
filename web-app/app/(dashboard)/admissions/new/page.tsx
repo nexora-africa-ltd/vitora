@@ -37,7 +37,7 @@ import {
 import { useEncounter, useEncounterDiagnoses } from '@/lib/hooks/use-encounters';
 import { useICD10Search } from '@/lib/hooks/use-encounter-form';
 import { usePatient } from '@/lib/hooks/use-patients-enhanced';
-import { ICD11Select } from '@/components/billing/sha';
+import { ICD11Select } from '@/components/terminology';
 import { cn } from '@/lib/utils/cn';
 
 export default function NewAdmissionPage() {

@@ -12,7 +12,7 @@ import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Switch } from '@/components/ui/switch';
-import { ICD11Select } from '@/components/billing/sha';
+import { ICD11Select } from '@/components/terminology';
 import { useICD10Search } from '@/lib/hooks/use-encounter-form';
 import { cn } from '@/lib/utils/cn';
 import type { DiagnosisFormData, ICD10SearchResult } from '@/lib/types/encounter-form';

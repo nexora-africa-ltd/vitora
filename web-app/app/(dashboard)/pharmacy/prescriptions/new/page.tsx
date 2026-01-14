@@ -54,7 +54,7 @@ import {
   CommandList,
 } from '@/components/ui/command';
 import { Switch } from '@/components/ui/switch';
-import { DrugSelect } from '@/components/billing/sha';
+import { DrugProductSelect as DrugSelect } from '@/components/terminology';
 import { useToast } from '@/lib/hooks/use-toast';
 import { usePatient } from '@/lib/hooks/use-patients';
 import { useEncounter } from '@/lib/hooks/use-encounters';
