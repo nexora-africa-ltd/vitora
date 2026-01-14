@@ -1,0 +1,32 @@
+{
+  "threshold": 3,
+  "minLines": 10,
+  "minTokens": 70,
+  "reporters": [
+    "console",
+    "json",
+    "html"
+  ],
+  "output": "./reports/jscpd",
+  "ignore": [
+    "**/node_modules/**",
+    "**/dist/**",
+    "**/build/**",
+    "**/migrations/**",
+    "**/tests/**",
+    "**/e2e/**",
+    "**/__tests__/**",
+    "**/__mocks__/**",
+    "**/__pycache__/**",
+    "**/.venv/**"
+  ],
+  "formats": [
+    "javascript",
+    "typescript",
+    "python",
+    "jsx",
+    "tsx"
+  ],
+  "absolute": true,
+  "skipLocal": false
+}
