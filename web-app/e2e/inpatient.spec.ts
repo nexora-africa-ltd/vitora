@@ -227,6 +227,29 @@ const mockDischarge = (overrides: Record<string, unknown> = {}) => ({
   ...overrides,
 });
 
+const mockShiftHandover = (overrides: Record<string, unknown> = {}) => ({
+  id: 1,
+  ward: 1,
+  ward_name: 'Medical Ward A',
+  shift_ending: 'DAY',
+  shift_ending_display: 'Day Shift',
+  incoming_shift: 'EVENING',
+  incoming_shift_display: 'Evening Shift',
+  handover_date: '2026-01-14',
+  summary: 'All patients stable. No critical issues.',
+  critical_patients: 'Patient in bed 3 requires close monitoring',
+  pending_tasks: 'Lab results pending for patient in bed 5',
+  medications_due: 'IV antibiotics due at 18:00 for beds 2, 4',
+  outgoing_nurse: 1,
+  outgoing_nurse_name: 'Nurse Mary Wanjiku',
+  incoming_nurse: 2,
+  incoming_nurse_name: 'Nurse John Kamau',
+  is_acknowledged: false,
+  acknowledged_at: null,
+  created_at: '2026-01-14T14:00:00Z',
+  ...overrides,
+});
+
 const mockBedOccupancy = {
   summary: {
     total_beds: 100,
@@ -554,6 +577,35 @@ async function setupInpatientMocks(page: Page) {
         body: JSON.stringify({
           count: 1,
           results: [mockDischarge()],
+        }),
+      });
+    }
+  });
+
+  // Shift Handovers
+  await page.route('**/api/inpatient/shift-handovers/**', async (route) => {
+    if (route.request().method() === 'POST') {
+      await route.fulfill({
+        status: 201,
+        contentType: 'application/json',
+        body: JSON.stringify(mockShiftHandover()),
+      });
+    } else if (route.request().method() === 'PATCH') {
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify(mockShiftHandover({ is_acknowledged: true, acknowledged_at: new Date().toISOString() })),
+      });
+    } else {
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({
+          count: 2,
+          results: [
+            mockShiftHandover(),
+            mockShiftHandover({ id: 2, shift_ending: 'NIGHT', shift_ending_display: 'Night Shift', is_acknowledged: true }),
+          ],
         }),
       });
     }
@@ -1331,23 +1383,23 @@ test.describe('Shift Handover', () => {
     await login(page, TEST_USER.username, TEST_USER.password);
     await page.goto('/admissions/handover/new');
 
-    // Fill handover form
-    await page.getByRole('combobox', { name: /ward/i }).click();
-    await page.getByRole('option', { name: /medical ward a/i }).click();
+    // Fill handover form - Radix Select uses buttons, not combobox
+    await page.getByRole('button', { name: /ward/i }).click();
+    await page.getByText(/medical ward a/i).click();
 
-    await page.getByRole('combobox', { name: /outgoing shift/i }).click();
-    await page.getByRole('option', { name: /day/i }).click();
+    await page.getByRole('button', { name: /outgoing shift/i }).click();
+    await page.getByText(/day shift/i).click();
 
-    await page.getByRole('combobox', { name: /incoming shift/i }).click();
-    await page.getByRole('option', { name: /evening/i }).click();
+    await page.getByRole('button', { name: /incoming shift/i }).click();
+    await page.getByText(/evening shift/i).click();
 
     await page.getByLabel(/summary/i).fill('All patients stable. No critical issues.');
 
     // Submit
-    await page.getByRole('button', { name: /submit|save/i }).click();
+    await page.getByRole('button', { name: /submit.*handover/i }).click();
 
-    // Verify success
-    await expect(page.getByText(/handover.*submitted|success/i)).toBeVisible();
+    // Verify success toast
+    await expect(page.getByText(/handover.*submitted|success/i).first()).toBeVisible();
   });
 
   test('should display pending handovers for incoming shift', async ({ page }) => {
