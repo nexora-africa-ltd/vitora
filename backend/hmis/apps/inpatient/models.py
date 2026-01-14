@@ -137,6 +137,26 @@ class Ward(TimeStampedModel):
         return self.beds.filter(status="AVAILABLE").count()
 
     @property
+    def total_beds(self) -> int:
+        """
+        Total count of beds in this ward.
+
+        Returns:
+            Total number of beds
+        """
+        return self.beds.count()
+
+    @property
+    def occupied_beds(self) -> int:
+        """
+        Count of beds with status OCCUPIED.
+
+        Returns:
+            Number of beds in OCCUPIED status
+        """
+        return self.beds.filter(status="OCCUPIED").count()
+
+    @property
     def occupancy_rate(self) -> float:
         """
         Current occupancy percentage.

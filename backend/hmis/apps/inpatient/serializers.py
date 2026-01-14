@@ -25,6 +25,8 @@ class WardSerializer(serializers.ModelSerializer):
     """Serializer for Ward model."""
 
     available_beds = serializers.ReadOnlyField()
+    total_beds = serializers.ReadOnlyField()
+    occupied_beds = serializers.ReadOnlyField()
     occupancy_rate = serializers.ReadOnlyField()
     ward_type_display = serializers.CharField(source='get_ward_type_display', read_only=True)
 
@@ -42,6 +44,8 @@ class WardSerializer(serializers.ModelSerializer):
             'is_active',
             'daily_rate',
             'available_beds',
+            'total_beds',
+            'occupied_beds',
             'occupancy_rate',
             'created_at',
             'updated_at',
