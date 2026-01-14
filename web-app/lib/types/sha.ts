@@ -63,7 +63,11 @@ export interface ClientRegistryRegisterResponse {
 }
 
 export interface ClientRegistryUpdateRequest {
-  patient_id: number;
+  client_number: string;
+  phone_number?: string;
+  email?: string;
+  county?: string;
+  sub_county?: string;
 }
 
 export interface ClientRegistryUpdateResponse {

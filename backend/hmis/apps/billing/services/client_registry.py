@@ -21,6 +21,7 @@ import requests
 from django.conf import settings
 
 from .sha_auth import SHAAuthService, SHAAuthError
+from .sha_pii import SHADecryptionError, maybe_decrypt_client_registry_item
 
 logger = logging.getLogger(__name__)
 
@@ -415,6 +416,17 @@ class ClientRegistryService:
             # Some APIs return found=0 to indicate not found
             if client_data.get('found') == 0:
                 return None
+
+            # DHA sometimes returns encrypted payload in `_pii`.
+            # Decrypt server-side so the frontend receives usable fields.
+            try:
+                if isinstance(client_data, dict):
+                    client_data = maybe_decrypt_client_registry_item(client_data)
+            except SHADecryptionError as e:
+                raise ClientRegistryError(
+                    f"Unable to decrypt client registry response: {str(e)}",
+                    status_code=0,
+                )
             
             return ClientRegistryClient.from_api_response(client_data)
             

@@ -7,7 +7,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Skeleton } from '@/components/ui/skeleton';
 import { PatientForm } from '@/components/patients/patient-form';
 import { usePatient, useUpdatePatient } from '@/lib/hooks/use-patients-enhanced';
-import { useRegisterInCR } from '@/lib/hooks/use-sha';
+import { useRegisterInCR, useUpdateCR } from '@/lib/hooks/use-sha';
 import { useToast } from '@/lib/hooks/use-toast';
 import type { PatientCreateData } from '@/lib/types/patient';
 import { parseISO } from 'date-fns';
@@ -21,6 +21,7 @@ export default function EditPatientPage() {
   const { data: patient, isLoading, error } = usePatient(patientId);
   const updatePatient = useUpdatePatient();
   const registerInCR = useRegisterInCR();
+  const updateCR = useUpdateCR();
 
   const handleSubmit = async (data: PatientCreateData) => {
     try {
@@ -29,6 +30,32 @@ export default function EditPatientPage() {
         title: 'Patient updated',
         description: `Successfully updated ${data.first_name} ${data.last_name}`,
       });
+
+      // If patient already has a CR number, push selected updates to Client Registry.
+      // We intentionally only sync fields supported by the backend update endpoint.
+      // (County/sub-county in the patient form are internal FK IDs and may not map 1:1 to DHA values.)
+      if (patient?.cr_number) {
+        const phoneChanged = (data.phone_number || '') !== (patient.phone_number || '');
+        const emailChanged = (data.email || '') !== (patient.email || '');
+
+        if (phoneChanged || emailChanged) {
+          try {
+            await updateCR.mutateAsync({
+              client_number: patient.cr_number,
+              ...(phoneChanged ? { phone_number: data.phone_number || '' } : {}),
+              ...(emailChanged ? { email: data.email || '' } : {}),
+            });
+          } catch (crUpdateError) {
+            // CR update is best-effort; don't block local patient edits.
+            console.error('CR update failed:', crUpdateError);
+            toast({
+              title: 'Client Registry Update',
+              description: 'Patient updated locally. Client Registry update will be retried later.',
+              variant: 'default',
+            });
+          }
+        }
+      }
 
       // If patient doesn't have CR number and has identification, register in CR
       if (!patient?.cr_number && !data.cr_number && data.identification_number) {

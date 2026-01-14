@@ -222,6 +222,47 @@ class TestFetchClient:
         assert result.phone_number == '0712345678'
         assert result.email == 'alice@example.com'
 
+    def test_fetch_client_decrypts_pii_payload(self, service, mock_requests_get):
+        """Should decrypt DHA `_pii` payload and parse decrypted client fields."""
+
+        mock_requests_get.return_value = Mock(
+            status_code=200,
+            json=lambda: {
+                'message': {
+                    'total': 1,
+                    'result': [
+                        {
+                            '_pii': 'dummy-encrypted-pii',
+                        }
+                    ],
+                }
+            },
+        )
+
+        decrypted = {
+            'id': 'CR0000000000001-1',
+            'first_name': 'Omar',
+            'middle_name': 'Abdullahi',
+            'last_name': 'Mohamud',
+            'gender': 'Male',
+            'date_of_birth': '1977-01-01',
+            'identification_type': 'National ID',
+            'identification_number': '12345678',
+        }
+
+        with patch(
+            'hmis.apps.billing.services.client_registry.maybe_decrypt_client_registry_item',
+            return_value=decrypted,
+        ) as mock_decrypt:
+            result = service.fetch_client(national_id='12345678')
+
+        assert result is not None
+        assert result.client_number == 'CR0000000000001-1'
+        assert result.full_name == 'Omar Abdullahi Mohamud'
+        assert result.gender == 'M'
+        assert result.national_id == '12345678'
+        mock_decrypt.assert_called_once()
+
 
 # =============================================================================
 # Register Client Tests
