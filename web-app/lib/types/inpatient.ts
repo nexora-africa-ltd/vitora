@@ -218,6 +218,14 @@ export interface TransferCreateData {
 
 export type ConditionStatus = 'STABLE' | 'IMPROVING' | 'DETERIORATING' | 'CRITICAL';
 
+export interface WardRoundVitalSigns {
+  temperature?: number;
+  pulse?: number;
+  blood_pressure?: string;
+  respiratory_rate?: number;
+  spo2?: number;
+}
+
 export interface WardRound {
   id: number;
   admission: number;
@@ -227,6 +235,7 @@ export interface WardRound {
   round_time: string;
   conducted_by: number;
   conducted_by_username?: string;
+  conducted_by_name?: string; // Display name from mock data
   // SOAP notes - required per SHA/FHIR
   subjective: string;
   objective: string;
@@ -234,6 +243,16 @@ export interface WardRound {
   plan: string;
   // Legacy alias for display compatibility
   clinical_notes?: string;
+  // Vital signs can be nested object or individual fields
+  vital_signs?: WardRoundVitalSigns;
+  temperature?: number;
+  pulse?: number;
+  blood_pressure?: string;
+  respiratory_rate?: number;
+  spo2?: number;
+  // Additional fields
+  diet_orders?: string;
+  activity_level?: string;
   condition_status: ConditionStatus;
   condition_status_display?: string;
   requires_consultant_review: boolean;
