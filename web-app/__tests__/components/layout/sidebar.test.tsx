@@ -93,4 +93,19 @@ describe('Sidebar', () => {
     expect(screen.getByRole('link', { name: /wards/i })).toHaveAttribute('href', '/wards');
     expect(screen.getByRole('link', { name: /admissions/i })).toHaveAttribute('href', '/admissions');
   });
+
+  it('should have collapsible Diagnostics menu with Laboratory and Imaging', () => {
+    render(<Sidebar {...defaultProps} />);
+    
+    // Diagnostics parent should be visible
+    expect(screen.getByText('Diagnostics')).toBeInTheDocument();
+    
+    // Children should be visible (Diagnostics is open by default)
+    expect(screen.getByText('Laboratory')).toBeInTheDocument();
+    expect(screen.getByText('Imaging')).toBeInTheDocument();
+    
+    // Children should be links
+    expect(screen.getByRole('link', { name: /laboratory/i })).toHaveAttribute('href', '/laboratory');
+    expect(screen.getByRole('link', { name: /imaging/i })).toHaveAttribute('href', '/imaging');
+  });
 });
