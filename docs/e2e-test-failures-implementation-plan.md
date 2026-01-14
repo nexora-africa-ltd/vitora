@@ -2,7 +2,7 @@
 
 > **Generated**: January 14, 2026  
 > **Test File**: `web-app/e2e/inpatient.spec.ts`  
-> **Current Status**: 13 passed, 18 failed (31 total)
+> **Current Status**: 14 passed, 18 failed (32 total)
 
 ---
 
@@ -16,7 +16,7 @@ The inpatient E2E tests are failing primarily due to:
 
 ---
 
-## ✅ Passing Tests (13)
+## ✅ Passing Tests (14)
 
 | Test | Category |
 |------|----------|
@@ -32,6 +32,7 @@ The inpatient E2E tests are failing primarily due to:
 | should show admission details with patient info | Admission Workflow ✅ FIXED |
 | should decline admission recommendation with reason | Admission Workflow ✅ NEW |
 | should create new admission from form | Admission Workflow ✅ NEW |
+| should prefill diagnosis from OPD encounter | Admission Workflow ✅ NEW |
 
 ---
 

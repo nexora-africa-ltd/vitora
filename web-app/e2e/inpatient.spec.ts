@@ -704,15 +704,73 @@ test.describe('Admission Workflow', () => {
     await page.waitForTimeout(200);
     await page.getByText(/MED-A-001/i).click();
 
-    // Enter diagnosis
+    // Toggle to ICD-10 (default is ICD-11)
+    await page.getByRole('switch').click();
+    await page.waitForTimeout(100);
+
+    // Enter diagnosis code (triggers hasDiagnosis = true, shows badge)
     await page.getByPlaceholder(/e\.g\., B50\.0/i).fill('J18.9');
-    await page.getByPlaceholder(/e\.g\., Severe falciparum/i).fill('Community-acquired pneumonia');
+
+    // Verify diagnosis badge shows (code appears in badge)
+    await expect(page.getByText('J18.9')).toBeVisible();
 
     // Submit form
     await page.getByRole('button', { name: /create admission/i }).click();
 
     // Should redirect to admissions list
     await expect(page).toHaveURL('/admissions');
+  });
+
+  test('should prefill diagnosis from OPD encounter', async ({ page }) => {
+    await login(page, TEST_USER.username, TEST_USER.password);
+
+    // Mock encounter diagnoses endpoint BEFORE navigation
+    await page.route('**/api/encounters/1/diagnoses/**', async (route) => {
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify([
+          {
+            id: 1,
+            diagnosis_type: 'PRIMARY',
+            icd10_code: 'J18.9',
+            icd10_display: 'J18.9 - Pneumonia, unspecified organism',
+            free_text_diagnosis: 'Community-acquired pneumonia',
+          }
+        ]),
+      });
+    });
+
+    // Mock encounter endpoint BEFORE navigation
+    await page.route('**/api/encounters/1/', async (route) => {
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({
+          id: 1,
+          patient: 1,
+          patient_name: 'Jane Doe',
+          chief_complaint: 'Cough and fever for 3 days',
+          encounter_type: 'OPD',
+        }),
+      });
+    });
+    
+    // Navigate with both patient and encounter params
+    await page.goto('/admissions/new?patient=1&encounter=1');
+
+    // Wait for page to load
+    await expect(page.getByRole('heading', { name: /new admission/i })).toBeVisible();
+
+    // Verify encounter context banner
+    await expect(page.getByText(/from OPD Encounter/i)).toBeVisible();
+
+    // Wait for diagnosis prefill (uses useEffect)
+    await page.waitForTimeout(500);
+
+    // Verify diagnosis was prefilled - should show ICD-10 badge since that's what mock returns
+    await expect(page.getByText('J18.9')).toBeVisible({ timeout: 5000 });
+    await expect(page.getByText(/from encounter/i)).toBeVisible();
   });
 });
 
