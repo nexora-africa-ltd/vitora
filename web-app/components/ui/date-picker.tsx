@@ -13,7 +13,7 @@ import {
 } from "@/components/ui/popover";
 import { cn } from "@/lib/utils";
 
-interface DobPickerProps {
+interface DatePickerProps {
   value?: Date;
   onChange: (date?: Date) => void;
   disabled?: boolean;
@@ -22,14 +22,14 @@ interface DobPickerProps {
   error?: boolean;
 }
 
-export function DobPicker({
+export function DatePicker({
   value,
   onChange,
   disabled,
   placeholder = "Select",
   className,
   error,
-}: DobPickerProps) {
+}: DatePickerProps) {
   const [open, setOpen] = React.useState(false);
 
   const defaultMonth = React.useMemo(() => {
@@ -95,4 +95,4 @@ export function DobPicker({
   );
 }
 
-export default DobPicker;
+export default DatePicker;
