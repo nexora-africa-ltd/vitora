@@ -7,7 +7,7 @@ import { test as base, expect, Page } from '@playwright/test';
 // Test user credentials
 export const TEST_USER = {
   username: 'testuser',
-  password: 'password123',
+  password: 'testpassword123',
 };
 
 // API endpoints
