@@ -681,6 +681,39 @@ test.describe('Admission Workflow', () => {
     // Verify success toast
     await expect(page.getByRole('status')).toContainText(/recommendation declined/i);
   });
+
+  test('should create new admission from form', async ({ page }) => {
+    await login(page, TEST_USER.username, TEST_USER.password);
+    
+    // Navigate to new admission page with patient pre-selected
+    await page.goto('/admissions/new?patient=1');
+
+    // Verify page loaded
+    await expect(page.getByRole('heading', { name: /new admission/i })).toBeVisible();
+    
+    // Patient ID should be pre-filled (input has placeholder as accessible name)
+    await expect(page.getByRole('textbox', { name: /select a patient first/i })).toHaveValue('1');
+
+    // Select ward
+    await page.getByRole('button', { name: /select ward/i }).click();
+    await page.waitForTimeout(200);
+    await page.getByText('Medical Ward A').click();
+
+    // Select bed
+    await page.getByRole('button', { name: /select bed/i }).click();
+    await page.waitForTimeout(200);
+    await page.getByText(/MED-A-001/i).click();
+
+    // Enter diagnosis
+    await page.getByPlaceholder(/e\.g\., B50\.0/i).fill('J18.9');
+    await page.getByPlaceholder(/e\.g\., Severe falciparum/i).fill('Community-acquired pneumonia');
+
+    // Submit form
+    await page.getByRole('button', { name: /create admission/i }).click();
+
+    // Should redirect to admissions list
+    await expect(page).toHaveURL('/admissions');
+  });
 });
 
 // =============================================================================
