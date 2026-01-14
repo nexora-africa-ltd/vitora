@@ -89,7 +89,10 @@ export interface Diagnosis {
   encounter: number;
   icd10_code: number | null;
   icd10_code_display?: string;
+  icd10_display?: string; // Alias for display text
   icd10_description?: string;
+  icd11_code?: string;
+  icd11_display?: string;
   diagnosis_type: 'PRIMARY' | 'SECONDARY' | 'DIFFERENTIAL';
   free_text_diagnosis?: string;
   notes: string;
