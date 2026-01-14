@@ -127,29 +127,15 @@ All Bed Occupancy Dashboard tests now pass after:
 
 ---
 
-### 8. Shift Handover (2 failures)
+### ~~8. Shift Handover (2 failures)~~ ✅ FIXED
 
-#### 8.1 `should create shift handover report`
-- **Route**: `/admissions/handover/new`
-- **Error**: `getByRole('combobox', { name: /ward/i })` not found (timeout)
-- **Root Cause**: Route `/admissions/handover/new` doesn't exist
-- **Fix Required**:
-  - Create `/admissions/handover/new/page.tsx`
-  - Add handover form with:
-    - Ward selector
-    - Outgoing shift selector
-    - Patient summary section
-    - Notes/concerns textarea
-    - Submit button
-
-#### 8.2 `should display pending handovers for incoming shift`
-- **Route**: `/admissions/handover`
-- **Error**: `getByText(/pending.*handover/i)` not found
-- **Root Cause**: Route `/admissions/handover` doesn't exist
-- **Fix Required**:
-  - Create `/admissions/handover/page.tsx`
-  - Display list of pending handovers awaiting acknowledgment
-  - Filter by ward/shift
+All Shift Handover tests now pass after:
+- Created `/admissions/handover/page.tsx` with pending handovers list and "Pending Handovers" alert
+- Created `/admissions/handover/new/page.tsx` with handover form (ward, shifts, summary, critical info)
+- Updated test selectors to use `getByRole('button')` for Radix Select (not combobox)
+- Updated test selectors to use text matching for select options
+- Added `.first()` to success message assertion
+- Handover API mock already existed with proper data
 
 ---
 
