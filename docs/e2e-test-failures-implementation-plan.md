@@ -2,7 +2,7 @@
 
 > **Generated**: January 14, 2026  
 > **Test File**: `web-app/e2e/inpatient.spec.ts`  
-> **Current Status**: 4 passed, 25 failed (29 total)
+> **Current Status**: 7 passed, 22 failed (29 total)
 
 ---
 
@@ -16,36 +16,28 @@ The inpatient E2E tests are failing primarily due to:
 
 ---
 
-## ✅ Passing Tests (4)
+## ✅ Passing Tests (7)
 
 | Test | Category |
 |------|----------|
 | should display ward list with occupancy rates | Ward Management |
 | should filter wards by type | Ward Management |
 | should show ward details with bed list | Ward Management |
-| should display bed status with color coding | Bed Management |
+| should display bed status with color coding | Bed Management ✅ FIXED |
+| should filter beds by status | Bed Management ✅ FIXED |
+| should change bed status to maintenance | Bed Management ✅ FIXED |
 
 ---
 
 ## ❌ Failing Tests by Category
 
-### 1. Bed Management (2 failures)
+### ~~1. Bed Management (2 failures)~~ ✅ FIXED
 
-#### 1.1 `should filter beds by status`
-- **Route**: `/wards/1`
-- **Error**: `getByRole('tab', { name: /beds/i })` not found
-- **Root Cause**: Tab is named "Bed Layout", not "beds"
-- **Fix Required**: 
-  - Update test selector to `getByRole('tab', { name: /bed layout/i })`
-  - OR add a filter combobox for bed status on the ward detail page
-
-#### 1.2 `should change bed status to maintenance`
-- **Route**: `/wards/1`
-- **Error**: Waiting for tab with name `/beds/i`
-- **Root Cause**: Same as above - tab naming mismatch
-- **Fix Required**:
-  - Update test selector
-  - Add bed status change functionality (click bed card → modal → change status)
+All Bed Management tests now pass after:
+- Fixed API mock for ward beds endpoint (`/api/inpatient/wards/*/beds/`)
+- Added `data-testid="bed-card"` to BedCard component
+- Added BedStatusDialog component for changing bed status
+- Updated test selectors to match actual Radix UI component behavior
 
 ---
 
