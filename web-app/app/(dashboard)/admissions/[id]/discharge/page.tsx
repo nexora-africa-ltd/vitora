@@ -1,9 +1,9 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { ArrowLeft, Save, Plus, Trash2 } from 'lucide-react';
+import { ArrowLeft, Save, Plus, Trash2, Clock, CheckCircle2 } from 'lucide-react';
 import { PageHeader } from '@/components/shared/page-header';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -11,6 +11,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Skeleton } from '@/components/ui/skeleton';
+import { Checkbox } from '@/components/ui/checkbox';
 import {
   Select,
   SelectContent,
@@ -20,10 +21,12 @@ import {
 } from '@/components/ui/select';
 import { useAdmission, useCreateDischarge } from '@/lib/hooks/use-inpatient';
 import { useUser } from '@/lib/auth';
+import { useToast } from '@/lib/hooks/use-toast';
 import type { DischargeType, DischargeMedication } from '@/lib/types/inpatient';
 
 const DISCHARGE_TYPES: { value: DischargeType; label: string }[] = [
   { value: 'NORMAL', label: 'Normal Discharge' },
+  { value: 'ROUTINE', label: 'Routine Discharge' },
   { value: 'AGAINST_ADVICE', label: 'Against Medical Advice' },
   { value: 'TRANSFERRED', label: 'Transfer to Another Facility' },
   { value: 'DECEASED', label: 'Deceased' },
@@ -34,19 +37,39 @@ export default function DischargePage() {
   const params = useParams();
   const router = useRouter();
   const user = useUser();
+  const { toast } = useToast();
   const admissionId = Number(params.id);
 
   const { data: admission, isLoading } = useAdmission(admissionId);
   const createDischarge = useCreateDischarge();
 
   const [dischargeType, setDischargeType] = useState<DischargeType>('NORMAL');
-  const [treatmentSummary, setTreatmentSummary] = useState('');
+  const [dischargeDiagnosis, setDischargeDiagnosis] = useState('');
+  const [dischargeSummary, setDischargeSummary] = useState('');
+  const [followUpInstructions, setFollowUpInstructions] = useState('');
   const [finalDiagnosis, setFinalDiagnosis] = useState('');
   const [finalDiagnosisText, setFinalDiagnosisText] = useState('');
   const [patientInstructions, setPatientInstructions] = useState('');
   const [followUpDate, setFollowUpDate] = useState('');
-  const [followUpInstructions, setFollowUpInstructions] = useState('');
   const [medications, setMedications] = useState<DischargeMedication[]>([]);
+  
+  // Clearance states
+  const [billingClearance, setBillingClearance] = useState(false);
+  const [pharmacyClearance, setPharmacyClearance] = useState(false);
+  const [nursingClearance, setNursingClearance] = useState(false);
+
+  // Calculate length of stay
+  const lengthOfStay = useMemo(() => {
+    if (!admission?.admission_date) return 0;
+    const admissionDate = new Date(admission.admission_date);
+    const today = new Date();
+    const diffTime = Math.abs(today.getTime() - admissionDate.getTime());
+    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+    return diffDays;
+  }, [admission?.admission_date]);
+
+  // Check if all clearances are complete
+  const allClearancesComplete = billingClearance && pharmacyClearance && nursingClearance;
 
   const addMedication = () => {
     const newMed: DischargeMedication = { 
@@ -74,8 +97,21 @@ export default function DischargePage() {
   };
 
   const handleSubmit = async () => {
-    if (!admission || !treatmentSummary || !patientInstructions) {
-      alert('Please fill in all required fields');
+    if (!admission || !dischargeSummary || !patientInstructions) {
+      toast({
+        title: 'Validation Error',
+        description: 'Please fill in all required fields',
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    if (!allClearancesComplete) {
+      toast({
+        title: 'Clearances Required',
+        description: 'All department clearances must be completed before discharge',
+        variant: 'destructive',
+      });
       return;
     }
 
@@ -86,18 +122,28 @@ export default function DischargePage() {
         discharge_date: new Date().toISOString(),
         discharged_by: user?.id || 0,
         admission_diagnosis: admission.admitting_diagnosis || '',
-        final_diagnosis: finalDiagnosis || admission.admitting_diagnosis || '',
+        final_diagnosis: finalDiagnosis || dischargeDiagnosis || admission.admitting_diagnosis || '',
         final_diagnosis_text: finalDiagnosisText || admission.admitting_diagnosis_text || '',
-        treatment_summary: treatmentSummary,
+        treatment_summary: dischargeSummary,
         patient_instructions: patientInstructions,
         follow_up_date: followUpDate || undefined,
         follow_up_instructions: followUpInstructions || undefined,
         discharge_medications: medications.filter((m) => m.drug_name),
+        billing_clearance: billingClearance,
+        pharmacy_clearance: pharmacyClearance,
+        nursing_clearance: nursingClearance,
       });
-      alert('Patient discharged successfully');
+      toast({
+        title: 'Success',
+        description: 'Patient discharged successfully',
+      });
       router.push('/admissions');
     } catch (error) {
-      alert('Failed to discharge patient');
+      toast({
+        title: 'Error',
+        description: 'Failed to discharge patient',
+        variant: 'destructive',
+      });
       console.error(error);
     }
   };
@@ -151,13 +197,13 @@ export default function DischargePage() {
         description={`Discharging ${admission.patient_name} from ${admission.ward_name}`} 
       />
 
-      {/* Patient Summary */}
+      {/* Patient Summary with LOS */}
       <Card>
         <CardHeader>
           <CardTitle className="text-lg">Admission Summary</CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="grid gap-4 md:grid-cols-4">
+          <div className="grid gap-4 md:grid-cols-5">
             <div>
               <p className="text-sm text-muted-foreground">Admission Number</p>
               <p className="font-medium">{admission.admission_number}</p>
@@ -174,14 +220,73 @@ export default function DischargePage() {
               <p className="text-sm text-muted-foreground">Admitting Diagnosis</p>
               <p className="font-medium">{admission.admitting_diagnosis_text || admission.admitting_diagnosis}</p>
             </div>
+            <div>
+              <p className="text-sm text-muted-foreground">Length of Stay</p>
+              <p className="font-medium flex items-center gap-1">
+                <Clock className="h-4 w-4" />
+                {lengthOfStay} days
+              </p>
+            </div>
           </div>
+        </CardContent>
+      </Card>
+
+      {/* Department Clearances */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-lg flex items-center gap-2">
+            <CheckCircle2 className="h-5 w-5" />
+            Department Clearances
+          </CardTitle>
+          <CardDescription>
+            All clearances must be completed before discharge
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="grid gap-4 md:grid-cols-3">
+            <div className="flex items-center space-x-2">
+              <Checkbox 
+                id="billing-clearance" 
+                checked={billingClearance}
+                onCheckedChange={(checked) => setBillingClearance(checked === true)}
+              />
+              <Label htmlFor="billing-clearance" className="cursor-pointer">
+                Billing Clearance
+              </Label>
+            </div>
+            <div className="flex items-center space-x-2">
+              <Checkbox 
+                id="pharmacy-clearance" 
+                checked={pharmacyClearance}
+                onCheckedChange={(checked) => setPharmacyClearance(checked === true)}
+              />
+              <Label htmlFor="pharmacy-clearance" className="cursor-pointer">
+                Pharmacy Clearance
+              </Label>
+            </div>
+            <div className="flex items-center space-x-2">
+              <Checkbox 
+                id="nursing-clearance" 
+                checked={nursingClearance}
+                onCheckedChange={(checked) => setNursingClearance(checked === true)}
+              />
+              <Label htmlFor="nursing-clearance" className="cursor-pointer">
+                Nursing Clearance
+              </Label>
+            </div>
+          </div>
+          {!allClearancesComplete && (
+            <p className="text-sm text-amber-600 mt-4">
+              ⚠️ All clearances must be checked before you can discharge the patient.
+            </p>
+          )}
         </CardContent>
       </Card>
 
       {/* Discharge Form */}
       <Card>
         <CardHeader>
-          <CardTitle className="text-lg">Discharge Details</CardTitle>
+          <CardTitle className="text-lg">Discharge Summary</CardTitle>
           <CardDescription>
             Complete the discharge summary and follow-up instructions
           </CardDescription>
@@ -189,9 +294,9 @@ export default function DischargePage() {
         <CardContent className="space-y-6">
           {/* Discharge Type */}
           <div className="space-y-2">
-            <Label>Discharge Type *</Label>
+            <Label htmlFor="discharge-type">Discharge Type *</Label>
             <Select value={dischargeType} onValueChange={(v) => setDischargeType(v as DischargeType)}>
-              <SelectTrigger>
+              <SelectTrigger id="discharge-type" aria-label="Discharge Type">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
@@ -204,19 +309,32 @@ export default function DischargePage() {
             </Select>
           </div>
 
+          {/* Discharge Diagnosis */}
+          <div className="space-y-2">
+            <Label htmlFor="discharge-diagnosis">Discharge Diagnosis</Label>
+            <Input
+              id="discharge-diagnosis"
+              value={dischargeDiagnosis}
+              onChange={(e) => setDischargeDiagnosis(e.target.value)}
+              placeholder="e.g., J18.9 - Pneumonia (Resolved)"
+            />
+          </div>
+
           {/* Final Diagnosis */}
           <div className="grid gap-4 md:grid-cols-2">
             <div className="space-y-2">
-              <Label>Final Diagnosis (ICD-10)</Label>
+              <Label htmlFor="final-diagnosis">Final Diagnosis (ICD-10)</Label>
               <Input
+                id="final-diagnosis"
                 value={finalDiagnosis}
                 onChange={(e) => setFinalDiagnosis(e.target.value)}
                 placeholder="e.g., B50.0"
               />
             </div>
             <div className="space-y-2">
-              <Label>Final Diagnosis Text</Label>
+              <Label htmlFor="final-diagnosis-text">Final Diagnosis Text</Label>
               <Input
+                id="final-diagnosis-text"
                 value={finalDiagnosisText}
                 onChange={(e) => setFinalDiagnosisText(e.target.value)}
                 placeholder="e.g., Severe falciparum malaria"
@@ -224,12 +342,13 @@ export default function DischargePage() {
             </div>
           </div>
 
-          {/* Treatment Summary */}
+          {/* Discharge Summary (Treatment Summary) */}
           <div className="space-y-2">
-            <Label>Treatment Summary *</Label>
+            <Label htmlFor="discharge-summary">Discharge Summary *</Label>
             <Textarea
-              value={treatmentSummary}
-              onChange={(e) => setTreatmentSummary(e.target.value)}
+              id="discharge-summary"
+              value={dischargeSummary}
+              onChange={(e) => setDischargeSummary(e.target.value)}
               placeholder="Provide a comprehensive summary of the patient's hospital stay, treatment given, and outcomes..."
               rows={6}
             />
@@ -237,8 +356,9 @@ export default function DischargePage() {
 
           {/* Patient Instructions */}
           <div className="space-y-2">
-            <Label>Patient Instructions *</Label>
+            <Label htmlFor="patient-instructions">Patient Instructions *</Label>
             <Textarea
+              id="patient-instructions"
               value={patientInstructions}
               onChange={(e) => setPatientInstructions(e.target.value)}
               placeholder="Discharge instructions for patient..."
@@ -249,8 +369,9 @@ export default function DischargePage() {
           {/* Follow-up */}
           <div className="grid gap-4 md:grid-cols-2">
             <div className="space-y-2">
-              <Label>Follow-up Date</Label>
+              <Label htmlFor="follow-up-date">Follow-up Date</Label>
               <Input
+                id="follow-up-date"
                 type="date"
                 value={followUpDate}
                 onChange={(e) => setFollowUpDate(e.target.value)}
@@ -258,8 +379,9 @@ export default function DischargePage() {
               />
             </div>
             <div className="space-y-2">
-              <Label>Follow-up Instructions</Label>
+              <Label htmlFor="follow-up-instructions">Follow-up Instructions</Label>
               <Input
+                id="follow-up-instructions"
                 value={followUpInstructions}
                 onChange={(e) => setFollowUpInstructions(e.target.value)}
                 placeholder="e.g., Return to OPD in 2 weeks"
@@ -363,10 +485,10 @@ export default function DischargePage() {
         </Button>
         <Button 
           onClick={handleSubmit} 
-          disabled={createDischarge.isPending || !treatmentSummary || !patientInstructions}
+          disabled={createDischarge.isPending || !dischargeSummary || !patientInstructions || !allClearancesComplete}
         >
           <Save className="h-4 w-4 mr-2" />
-          {createDischarge.isPending ? 'Discharging...' : 'Discharge Patient'}
+          {createDischarge.isPending ? 'Discharging...' : 'Confirm Discharge'}
         </Button>
       </div>
     </div>
