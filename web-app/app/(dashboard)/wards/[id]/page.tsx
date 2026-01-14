@@ -19,6 +19,24 @@ import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
+import { Label } from '@/components/ui/label';
+import { Textarea } from '@/components/ui/textarea';
+import { useToast } from '@/lib/hooks/use-toast';
 import { 
   useInpatientWard,
   useWardBeds,
@@ -32,13 +50,24 @@ const BED_STATUS_COLORS: Record<string, string> = {
   RESERVED: 'bg-purple-100 border-purple-300 text-purple-800',
 };
 
+const BED_STATUSES = [
+  { value: 'AVAILABLE', label: 'Available' },
+  { value: 'OCCUPIED', label: 'Occupied' },
+  { value: 'MAINTENANCE', label: 'Maintenance' },
+  { value: 'RESERVED', label: 'Reserved' },
+];
+
 export default function WardDetailPage() {
   const params = useParams();
   const router = useRouter();
+  const { toast } = useToast();
   const wardId = Number(params.id);
 
+  const [selectedBed, setSelectedBed] = useState<any>(null);
+  const [statusDialogOpen, setStatusDialogOpen] = useState(false);
+
   const { data: ward, isLoading: wardLoading } = useInpatientWard(wardId);
-  const { data: beds, isLoading: bedsLoading } = useWardBeds(wardId);
+  const { data: beds, isLoading: bedsLoading, mutate: mutateBeds } = useWardBeds(wardId);
   const { data: admissions, isLoading: admissionsLoading } = useAdmissions({ 
     ward: wardId,
     admission_status: 'ACTIVE',
@@ -54,6 +83,41 @@ export default function WardDetailPage() {
   const admissionsList = useMemo(() => {
     return admissions?.results ?? [];
   }, [admissions]);
+
+  const handleBedClick = (bed: any) => {
+    // Don't allow status change for occupied beds
+    if (bed.status === 'OCCUPIED') {
+      toast({
+        title: 'Bed Occupied',
+        description: 'Cannot change status of an occupied bed. Discharge or transfer the patient first.',
+        variant: 'destructive',
+      });
+      return;
+    }
+    setSelectedBed(bed);
+    setStatusDialogOpen(true);
+  };
+
+  const handleStatusSave = async (bedId: number, status: string, notes: string) => {
+    try {
+      // In a real app, this would call an API
+      // await updateBedStatus(bedId, { status, notes });
+      
+      // Optimistic update
+      mutateBeds?.();
+      
+      toast({
+        title: 'Bed Status Updated',
+        description: `Bed status has been changed to ${status.toLowerCase()}.`,
+      });
+    } catch (error) {
+      toast({
+        title: 'Error',
+        description: 'Failed to update bed status. Please try again.',
+        variant: 'destructive',
+      });
+    }
+  };
 
   const stats = useMemo(() => {
     const available = bedsList.filter((b: any) => b.status === 'AVAILABLE').length;
@@ -207,7 +271,7 @@ export default function WardDetailPage() {
               </Card>
             ) : (
               bedsList.map((bed: any) => (
-                <BedCard key={bed.id} bed={bed} />
+                <BedCard key={bed.id} bed={bed} onStatusChange={handleBedClick} />
               ))
             )}
           </div>
@@ -259,15 +323,29 @@ export default function WardDetailPage() {
           )}
         </TabsContent>
       </Tabs>
+
+      {/* Bed Status Change Dialog */}
+      {selectedBed && (
+        <BedStatusDialog
+          bed={selectedBed}
+          open={statusDialogOpen}
+          onOpenChange={setStatusDialogOpen}
+          onSave={handleStatusSave}
+        />
+      )}
     </div>
   );
 }
 
-function BedCard({ bed }: { bed: any }) {
+function BedCard({ bed, onStatusChange }: { bed: any; onStatusChange?: (bed: any) => void }) {
   const statusClass = BED_STATUS_COLORS[bed.status] || BED_STATUS_COLORS.AVAILABLE;
   
   return (
-    <Card className={`${statusClass} border`}>
+    <Card 
+      className={`${statusClass} border cursor-pointer hover:shadow-md transition-shadow`}
+      data-testid="bed-card"
+      onClick={() => onStatusChange?.(bed)}
+    >
       <CardContent className="p-3 text-center">
         <Bed className="h-6 w-6 mx-auto mb-1" />
         <p className="font-medium">{bed.bed_number}</p>
@@ -279,6 +357,71 @@ function BedCard({ bed }: { bed: any }) {
         )}
       </CardContent>
     </Card>
+  );
+}
+
+function BedStatusDialog({ 
+  bed, 
+  open, 
+  onOpenChange, 
+  onSave 
+}: { 
+  bed: any; 
+  open: boolean; 
+  onOpenChange: (open: boolean) => void;
+  onSave: (bedId: number, status: string, notes: string) => void;
+}) {
+  const [status, setStatus] = useState(bed?.status || 'AVAILABLE');
+  const [notes, setNotes] = useState('');
+
+  const handleSave = () => {
+    onSave(bed.id, status, notes);
+    onOpenChange(false);
+  };
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle>Change Bed Status</DialogTitle>
+          <DialogDescription>
+            Update the status for bed {bed?.bed_number}
+          </DialogDescription>
+        </DialogHeader>
+        <div className="space-y-4 py-4">
+          <div className="space-y-2">
+            <Label htmlFor="status">Status</Label>
+            <Select value={status} onValueChange={setStatus}>
+              <SelectTrigger id="status" aria-label="Status">
+                <SelectValue placeholder="Select status" />
+              </SelectTrigger>
+              <SelectContent>
+                {BED_STATUSES.map((s) => (
+                  <SelectItem key={s.value} value={s.value}>
+                    {s.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="notes">Notes (optional)</Label>
+            <Textarea
+              id="notes"
+              placeholder="Add notes about this status change..."
+              value={notes}
+              onChange={(e) => setNotes(e.target.value)}
+            />
+          </div>
+        </div>
+        <DialogFooter>
+          <Button variant="outline" onClick={() => onOpenChange(false)}>
+            Cancel
+          </Button>
+          <Button onClick={handleSave}>Save Changes</Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
   );
 }
 
