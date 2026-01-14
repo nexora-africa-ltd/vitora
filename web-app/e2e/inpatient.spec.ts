@@ -479,6 +479,79 @@ async function setupInpatientMocks(page: Page) {
       body: JSON.stringify(mockBedOccupancy),
     });
   });
+
+  // Patients list (for patient selection flow)
+  await page.route('**/api/patients/**', async (route) => {
+    const url = route.request().url();
+    
+    // Single patient detail
+    if (url.match(/\/api\/patients\/\d+\/?$/)) {
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({
+          id: 1,
+          mrn: 'MRN-20260101-0001',
+          first_name: 'Jane',
+          last_name: 'Doe',
+          date_of_birth: '1990-05-15',
+          gender: 'F',
+          phone_number: '+254712345678',
+          county_name: 'Nairobi',
+          is_sensitive: false,
+          created_at: '2026-01-01T10:00:00Z',
+        }),
+      });
+      return;
+    }
+    
+    // Patients list
+    await route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({
+        count: 3,
+        results: [
+          {
+            id: 1,
+            mrn: 'MRN-20260101-0001',
+            first_name: 'Jane',
+            last_name: 'Doe',
+            date_of_birth: '1990-05-15',
+            gender: 'F',
+            phone_number: '+254712345678',
+            county_name: 'Nairobi',
+            is_sensitive: false,
+            created_at: '2026-01-01T10:00:00Z',
+          },
+          {
+            id: 2,
+            mrn: 'MRN-20260101-0002',
+            first_name: 'John',
+            last_name: 'Smith',
+            date_of_birth: '1985-03-20',
+            gender: 'M',
+            phone_number: '+254722345678',
+            county_name: 'Mombasa',
+            is_sensitive: false,
+            created_at: '2026-01-02T10:00:00Z',
+          },
+          {
+            id: 3,
+            mrn: 'MRN-20260101-0003',
+            first_name: 'Mary',
+            last_name: 'Johnson',
+            date_of_birth: '1995-08-10',
+            gender: 'F',
+            phone_number: '+254733345678',
+            county_name: 'Kisumu',
+            is_sensitive: false,
+            created_at: '2026-01-03T10:00:00Z',
+          },
+        ],
+      }),
+    });
+  });
 }
 
 // =============================================================================
@@ -691,8 +764,9 @@ test.describe('Admission Workflow', () => {
     // Verify page loaded
     await expect(page.getByRole('heading', { name: /new admission/i })).toBeVisible();
     
-    // Patient ID should be pre-filled (input has placeholder as accessible name)
-    await expect(page.getByRole('textbox', { name: /select a patient first/i })).toHaveValue('1');
+    // Patient should be displayed (name and MRN visible)
+    await expect(page.getByText('Jane Doe')).toBeVisible();
+    await expect(page.getByText(/MRN.*MRN-20260101-0001/i)).toBeVisible();
 
     // Select ward
     await page.getByRole('button', { name: /select ward/i }).click();
@@ -771,6 +845,107 @@ test.describe('Admission Workflow', () => {
     // Verify diagnosis was prefilled - should show ICD-10 badge since that's what mock returns
     await expect(page.getByText('J18.9')).toBeVisible({ timeout: 5000 });
     await expect(page.getByText(/from encounter/i)).toBeVisible();
+  });
+
+  test('should show patient selection dialog when no patient selected', async ({ page }) => {
+    await login(page, TEST_USER.username, TEST_USER.password);
+    
+    // Navigate to new admission without patient param
+    await page.goto('/admissions/new');
+
+    // Verify dialog appears
+    await expect(page.getByRole('dialog')).toBeVisible();
+    await expect(page.getByText(/patient required/i)).toBeVisible();
+    await expect(page.getByText(/select a patient before creating/i)).toBeVisible();
+  });
+
+  test('should dismiss dialog and show form when clicking continue without patient', async ({ page }) => {
+    await login(page, TEST_USER.username, TEST_USER.password);
+    await page.goto('/admissions/new');
+
+    // Wait for dialog
+    await expect(page.getByRole('dialog')).toBeVisible();
+
+    // Click "Continue Without Patient"
+    await page.getByTestId('continue-without-patient').click();
+
+    // Dialog should close
+    await expect(page.getByRole('dialog')).not.toBeVisible();
+
+    // Form should be visible with "No patient selected" state
+    await expect(page.getByText(/no patient selected/i)).toBeVisible();
+    await expect(page.getByTestId('select-patient-button')).toBeVisible();
+  });
+
+  test('should navigate to patient selection from dialog', async ({ page }) => {
+    await login(page, TEST_USER.username, TEST_USER.password);
+    await page.goto('/admissions/new');
+
+    // Wait for dialog
+    await expect(page.getByRole('dialog')).toBeVisible();
+
+    // Click "Select Patient" in dialog
+    await page.getByTestId('select-patient-dialog-button').click();
+
+    // Should navigate to patients page in select mode
+    await expect(page).toHaveURL(/\/patients\?select=true&returnTo=/);
+    await expect(page.getByRole('heading', { name: /select patient/i })).toBeVisible();
+    await expect(page.getByText(/choose a patient for the admission/i)).toBeVisible();
+  });
+
+  test('should complete patient selection flow and return to admission form', async ({ page }) => {
+    await login(page, TEST_USER.username, TEST_USER.password);
+    
+    // Start at patients page in select mode
+    await page.goto('/patients?select=true&returnTo=/admissions/new');
+
+    // Verify select mode UI
+    await expect(page.getByRole('heading', { name: /select patient/i })).toBeVisible();
+
+    // Click on first patient row
+    await page.getByTestId('patient-row-1').click();
+
+    // Should return to admission form with patient ID
+    await expect(page).toHaveURL(/\/admissions\/new\?patient=1/);
+    
+    // Wait for page to load
+    await expect(page.getByRole('heading', { name: /new admission/i })).toBeVisible();
+
+    // Verify patient is now selected and displayed
+    await expect(page.getByText('Jane Doe')).toBeVisible();
+    await expect(page.getByText(/MRN.*MRN-20260101-0001/i)).toBeVisible();
+    await expect(page.getByTestId('change-patient-button')).toBeVisible();
+  });
+
+  test('should allow changing patient from admission form', async ({ page }) => {
+    await login(page, TEST_USER.username, TEST_USER.password);
+    
+    // Start with patient already selected
+    await page.goto('/admissions/new?patient=1');
+
+    // Wait for page to load
+    await expect(page.getByRole('heading', { name: /new admission/i })).toBeVisible();
+
+    // Close the dialog if it appears (shouldn't appear since patient is selected)
+    const dialog = page.getByRole('dialog');
+    if (await dialog.isVisible()) {
+      await page.getByTestId('continue-without-patient').click();
+    }
+
+    // Verify patient is displayed
+    await expect(page.getByText('Jane Doe')).toBeVisible();
+
+    // Click "Change Patient" button
+    await page.getByTestId('change-patient-button').click();
+
+    // Should navigate to patients page in select mode
+    await expect(page).toHaveURL(/\/patients\?select=true&returnTo=/);
+    
+    // Select a different patient
+    await page.getByTestId('patient-row-2').click();
+
+    // Should return to admission form with new patient ID
+    await expect(page).toHaveURL(/\/admissions\/new\?patient=2/);
   });
 });
 

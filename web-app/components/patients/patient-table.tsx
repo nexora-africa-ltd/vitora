@@ -30,6 +30,8 @@ interface PatientTableProps {
   page: number;
   totalPages: number;
   onPageChange: (page: number) => void;
+  selectMode?: boolean;
+  onSelect?: (patientId: number) => void;
 }
 
 const genderLabels: Record<string, string> = {
@@ -51,8 +53,18 @@ export function PatientTable({
   page,
   totalPages,
   onPageChange,
+  selectMode = false,
+  onSelect,
 }: PatientTableProps) {
   const router = useRouter();
+
+  const handleRowClick = (patientId: number) => {
+    if (selectMode && onSelect) {
+      onSelect(patientId);
+    } else {
+      router.push(`/patients/${patientId}`);
+    }
+  };
 
   if (error) {
     return (
@@ -114,7 +126,8 @@ export function PatientTable({
                 <TableRow
                   key={patient.id}
                   className="cursor-pointer hover:bg-muted/50"
-                  onClick={() => router.push(`/patients/${patient.id}`)}
+                  onClick={() => handleRowClick(patient.id)}
+                  data-testid={`patient-row-${patient.id}`}
                 >
                   <TableCell className="font-mono text-sm">
                     {patient.mrn}
@@ -143,6 +156,7 @@ export function PatientTable({
                   <TableCell>{patient.county_name || '—'}</TableCell>
                   <TableCell>{formatDate(patient.created_at)}</TableCell>
                   <TableCell>
+                    {!selectMode && (
                     <DropdownMenu>
                       <DropdownMenuTrigger asChild onClick={(e) => e.stopPropagation()}>
                         <Button variant="ghost" size="icon">
@@ -173,6 +187,7 @@ export function PatientTable({
                         </DropdownMenuItem>
                       </DropdownMenuContent>
                     </DropdownMenu>
+                    )}
                   </TableCell>
                 </TableRow>
               ))
