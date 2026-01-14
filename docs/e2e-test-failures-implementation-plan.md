@@ -64,32 +64,14 @@ All Admission Workflow tests now pass after:
 
 ---
 
-### 3. Ward Round Documentation (3 failures)
+### ~~3. Ward Round Documentation (3 failures)~~ ✅ FIXED
 
-#### 3.1 `should display ward round history for admission`
-- **Route**: `/admissions/1/ward-round`
-- **Error**: `getByText('2026-01-04')` not found
-- **Root Cause**: Ward round page not displaying mock data OR API route mismatch
-- **Fix Required**:
-  - Verify ward round page exists and renders history
-  - Check API mock route pattern matches actual fetch
-  - Ensure date format matches what page renders
-
-#### 3.2 `should create new ward round entry`
-- **Route**: `/admissions/1/ward-round/new`
-- **Error**: `getByLabel(/clinical notes/i)` not found (timeout)
-- **Root Cause**: Ward round form missing OR route `/ward-round/new` doesn't exist
-- **Fix Required**:
-  - Create `/admissions/[id]/ward-round/new/page.tsx` if missing
-  - Add form with labeled inputs: clinical notes, temperature, pulse, BP, etc.
-
-#### 3.3 `should display vital signs trend in ward rounds`
-- **Route**: `/admissions/1/ward-round`
-- **Error**: `getByText(/37\.0/)` not found
-- **Root Cause**: Vital signs not being rendered from mock data
-- **Fix Required**:
-  - Ensure ward round page displays vitals in history
-  - May need vitals chart/table component
+All Ward Round Documentation tests now pass after:
+- Fixed mock data to use `admission_status: 'ACTIVE'` instead of `status: 'ADMITTED'`
+- Fixed API mock route pattern to use regex that matches query strings
+- Added proper label `htmlFor="clinicalNotes"` for Clinical Notes field
+- Fixed test selector for temperature to match `37°C` (JS strips trailing `.0`)
+- Fixed success message assertion to use exact text match
 
 ---
 

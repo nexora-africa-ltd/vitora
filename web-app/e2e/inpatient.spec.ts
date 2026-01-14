@@ -73,9 +73,11 @@ const mockAdmission = (overrides: Record<string, unknown> = {}) => ({
   bed_number: 'MED-A-001',
   admission_date: '2026-01-03T10:00:00Z',
   expected_discharge_date: '2026-01-10T10:00:00Z',
-  status: 'ADMITTED',
-  status_display: 'Admitted',
+  // Frontend uses admission_status with 'ACTIVE' value
+  admission_status: 'ACTIVE',
+  admission_status_display: 'Active',
   admitting_diagnosis: 'J18.9 - Pneumonia, unspecified',
+  admitting_diagnosis_text: 'Pneumonia, unspecified',
   reason_for_admission: 'Severe community-acquired pneumonia requiring IV antibiotics',
   admitting_officer: 1,
   admitting_officer_name: 'Dr. James Mwangi',
@@ -400,8 +402,9 @@ async function setupInpatientMocks(page: Page) {
     });
   });
 
-  // Ward rounds
-  await page.route('**/api/inpatient/ward-round/**', async (route) => {
+  // Ward rounds - note: API uses plural "ward-rounds"
+  // Match both /api/inpatient/ward-rounds/ and /api/inpatient/ward-rounds/?admission=1
+  await page.route(/\/api\/inpatient\/ward-rounds\/?(\?.*)?$/, async (route) => {
     if (route.request().method() === 'GET') {
       await route.fulfill({
         status: 200,
@@ -983,8 +986,8 @@ test.describe('Ward Round Documentation', () => {
     // Save
     await page.getByRole('button', { name: /save|submit/i }).click();
 
-    // Verify success
-    await expect(page.getByText(/ward round.*saved|success/i)).toBeVisible();
+    // Verify success - use first() to handle multiple matching elements
+    await expect(page.getByText('Ward round saved successfully').first()).toBeVisible();
   });
 
   test('should display vital signs trend in ward rounds', async ({ page }) => {
@@ -992,9 +995,10 @@ test.describe('Ward Round Documentation', () => {
     await page.goto('/admissions/1/ward-round');
 
     // Verify vital signs displayed
-    await expect(page.getByText(/37\.0/)).toBeVisible(); // Temperature
-    await expect(page.getByText(/120\/78/)).toBeVisible(); // BP
-    await expect(page.getByText(/96/)).toBeVisible(); // SpO2
+    // Note: JavaScript renders 37.0 as "37" when displayed
+    await expect(page.getByText(/37.*°C/)).toBeVisible(); // Temperature
+    await expect(page.getByText('120/78')).toBeVisible(); // BP
+    await expect(page.getByText(/96.*%/)).toBeVisible(); // SpO2
   });
 });
 

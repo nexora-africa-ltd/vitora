@@ -47,7 +47,7 @@ export default function AdmissionDetailPage() {
     return (
       <div className="container mx-auto py-12 text-center">
         <h2 className="text-xl font-semibold">Admission not found</h2>
-        <p className="text-muted-foreground mt-2">
+        <p className="text-accent-foreground mt-2">
           The admission record you&apos;re looking for doesn&apos;t exist or has been removed.
         </p>
         <Button onClick={() => router.push('/admissions')} className="mt-4">
@@ -83,7 +83,7 @@ export default function AdmissionDetailPage() {
                 {admission.admission_status_display || admission.admission_status}
               </Badge>
             </div>
-            <p className="text-muted-foreground">
+            <p className="text-accent-foreground">
               Patient: <span className="font-medium">{admission.patient_name}</span>
             </p>
           </div>
@@ -124,7 +124,7 @@ export default function AdmissionDetailPage() {
                 <Building2 className="h-5 w-5 text-blue-600 dark:text-blue-400" />
               </div>
               <div>
-                <p className="text-sm text-muted-foreground">Ward</p>
+                <p className="text-sm text-accent-foreground">Ward</p>
                 <p className="font-semibold">{admission.ward_name}</p>
               </div>
             </div>
@@ -138,7 +138,7 @@ export default function AdmissionDetailPage() {
                 <Bed className="h-5 w-5 text-green-600 dark:text-green-400" />
               </div>
               <div>
-                <p className="text-sm text-muted-foreground">Bed</p>
+                <p className="text-sm text-accent-foreground">Bed</p>
                 <p className="font-semibold">{admission.bed_number}</p>
               </div>
             </div>
@@ -152,7 +152,7 @@ export default function AdmissionDetailPage() {
                 <Calendar className="h-5 w-5 text-purple-600 dark:text-purple-400" />
               </div>
               <div>
-                <p className="text-sm text-muted-foreground">Admitted</p>
+                <p className="text-sm text-accent-foreground">Admitted</p>
                 <p className="font-semibold">{formatDate(admission.admission_date)}</p>
               </div>
             </div>
@@ -166,7 +166,7 @@ export default function AdmissionDetailPage() {
                 <Clock className="h-5 w-5 text-orange-600 dark:text-orange-400" />
               </div>
               <div>
-                <p className="text-sm text-muted-foreground">Days Admitted</p>
+                <p className="text-sm text-accent-foreground">Days Admitted</p>
                 <p className="font-semibold">{daysAdmitted} day{daysAdmitted !== 1 ? 's' : ''}</p>
               </div>
             </div>
@@ -227,7 +227,7 @@ export default function AdmissionDetailPage() {
                 <CardTitle className="text-lg">Clinical Notes</CardTitle>
               </CardHeader>
               <CardContent>
-                <p className="text-sm text-muted-foreground whitespace-pre-wrap">
+                <p className="text-sm text-accent-foreground whitespace-pre-wrap">
                   {admission.clinical_notes || 'No clinical notes recorded.'}
                 </p>
               </CardContent>
@@ -252,7 +252,7 @@ export default function AdmissionDetailPage() {
                 <CardTitle className="text-lg">Special Instructions</CardTitle>
               </CardHeader>
               <CardContent>
-                <p className="text-sm text-muted-foreground">
+                <p className="text-sm text-accent-foreground">
                   {admission.special_instructions || 'No special instructions.'}
                 </p>
               </CardContent>
@@ -279,8 +279,8 @@ export default function AdmissionDetailPage() {
           ) : (wardRounds?.results?.length ?? 0) === 0 ? (
             <Card>
               <CardContent className="py-8 text-center">
-                <Stethoscope className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
-                <p className="text-muted-foreground">No ward rounds recorded yet.</p>
+                <Stethoscope className="h-12 w-12 mx-auto text-accent-foreground mb-4" />
+                <p className="text-accent-foreground">No ward rounds recorded yet.</p>
               </CardContent>
             </Card>
           ) : (
@@ -301,12 +301,12 @@ export default function AdmissionDetailPage() {
                   <CardContent className="space-y-2">
                     <div>
                       <p className="text-sm font-medium">Clinical Notes</p>
-                      <p className="text-sm text-muted-foreground">{round.clinical_notes}</p>
+                      <p className="text-sm text-accent-foreground">{round.clinical_notes}</p>
                     </div>
                     {round.plan && (
                       <div>
                         <p className="text-sm font-medium">Plan</p>
-                        <p className="text-sm text-muted-foreground">{round.plan}</p>
+                        <p className="text-sm text-accent-foreground">{round.plan}</p>
                       </div>
                     )}
                   </CardContent>
@@ -335,9 +335,9 @@ export default function AdmissionDetailPage() {
           ) : !kardex ? (
             <Card>
               <CardContent className="py-8 text-center">
-                <ClipboardList className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
-                <p className="text-muted-foreground">No nursing kardex found.</p>
-                <p className="text-sm text-muted-foreground mt-1">
+                <ClipboardList className="h-12 w-12 mx-auto text-accent-foreground mb-4" />
+                <p className="text-accent-foreground">No nursing kardex found.</p>
+                <p className="text-sm text-accent-foreground mt-1">
                   A kardex is automatically created when a patient is admitted.
                 </p>
               </CardContent>
@@ -351,15 +351,15 @@ export default function AdmissionDetailPage() {
                 <CardContent className="space-y-3">
                   <div>
                     <p className="text-sm font-medium">Mobility Status</p>
-                    <p className="text-sm text-muted-foreground">{kardex.mobility_status || 'Not specified'}</p>
+                    <p className="text-sm text-accent-foreground">{kardex.mobility_status || 'Not specified'}</p>
                   </div>
                   <div>
                     <p className="text-sm font-medium">Diet</p>
-                    <p className="text-sm text-muted-foreground">{kardex.diet || 'Regular'}</p>
+                    <p className="text-sm text-accent-foreground">{kardex.diet || 'Regular'}</p>
                   </div>
                   <div>
                     <p className="text-sm font-medium">Allergies</p>
-                    <p className="text-sm text-muted-foreground">{kardex.allergies || 'None known'}</p>
+                    <p className="text-sm text-accent-foreground">{kardex.allergies || 'None known'}</p>
                   </div>
                   <div>
                     <p className="text-sm font-medium">Fall Risk</p>
@@ -375,7 +375,7 @@ export default function AdmissionDetailPage() {
                   <CardTitle className="text-lg">Nursing Notes</CardTitle>
                 </CardHeader>
                 <CardContent>
-                  <p className="text-sm text-muted-foreground whitespace-pre-wrap">
+                  <p className="text-sm text-accent-foreground whitespace-pre-wrap">
                     {kardex.nursing_notes || 'No nursing notes recorded.'}
                   </p>
                 </CardContent>
@@ -388,11 +388,11 @@ export default function AdmissionDetailPage() {
         <TabsContent value="orders" className="space-y-4">
           <Card>
             <CardContent className="py-8 text-center">
-              <FileText className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
-              <p className="text-muted-foreground">
+              <FileText className="h-12 w-12 mx-auto text-accent-foreground mb-4" />
+              <p className="text-accent-foreground">
                 Medical orders feature coming soon.
               </p>
-              <p className="text-sm text-muted-foreground mt-1">
+              <p className="text-sm text-accent-foreground mt-1">
                 View medication, lab, and imaging orders in this section.
               </p>
             </CardContent>
@@ -417,9 +417,9 @@ function InfoRow({
 }) {
   const content = (
     <div className="flex items-start gap-3">
-      <Icon className="h-4 w-4 mt-0.5 text-muted-foreground" />
+      <Icon className="h-4 w-4 mt-0.5 text-accent-foreground" />
       <div className="flex-1 min-w-0">
-        <p className="text-sm text-muted-foreground">{label}</p>
+        <p className="text-sm text-accent-foreground">{label}</p>
         <p className={`text-sm font-medium truncate ${link ? 'text-primary hover:underline' : ''}`}>
           {value || '—'}
         </p>
