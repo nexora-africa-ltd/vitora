@@ -22,7 +22,7 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { Search, FlaskConical, Check, X } from 'lucide-react';
-import { LOINCSelect } from '@/components/billing/sha';
+import { LOINCSelect } from '@/components/terminology';
 import { TestCatalog, TestCategory, OrderType } from '@/lib/types/laboratory';
 import { useTestCatalog, useTestSearch } from '@/lib/hooks/use-laboratory';
 import { useDebounce } from '@/lib/hooks';
