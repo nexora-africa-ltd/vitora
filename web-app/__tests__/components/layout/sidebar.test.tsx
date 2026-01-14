@@ -29,15 +29,17 @@ describe('Sidebar', () => {
     expect(screen.getByText('Dashboard')).toBeInTheDocument();
     expect(screen.getByText('Patients')).toBeInTheDocument();
     expect(screen.getByText('Encounters')).toBeInTheDocument();
-    expect(screen.getByText('Admissions')).toBeInTheDocument();
+    expect(screen.getByText('Inpatient')).toBeInTheDocument(); // Parent menu
+    expect(screen.getByText('Wards')).toBeInTheDocument(); // Child menu
+    expect(screen.getByText('Admissions')).toBeInTheDocument(); // Child menu
     expect(screen.getByText('Pharmacy')).toBeInTheDocument();
-    expect(screen.getByText('Laboratory')).toBeInTheDocument();
+    expect(screen.getByText('Diagnostics')).toBeInTheDocument();
   });
 
   it('should highlight active navigation item', () => {
     render(<Sidebar {...defaultProps} />);
     const dashboardLink = screen.getByText('Dashboard').closest('a');
-    expect(dashboardLink).toHaveClass('bg-primary');
+    expect(dashboardLink).toHaveAttribute('data-active', 'true');
   });
 
   it('should call onCollapse when collapse button clicked', () => {
@@ -75,5 +77,20 @@ describe('Sidebar', () => {
     render(<Sidebar {...defaultProps} mobileOpen={true} />);
     const aside = screen.getByRole('complementary');
     expect(aside).toHaveClass('translate-x-0');
+  });
+
+  it('should have collapsible Inpatient menu with Wards and Admissions', () => {
+    render(<Sidebar {...defaultProps} />);
+    
+    // Inpatient parent should be visible
+    expect(screen.getByText('Inpatient')).toBeInTheDocument();
+    
+    // Children should be visible (Inpatient is open by default)
+    expect(screen.getByText('Wards')).toBeInTheDocument();
+    expect(screen.getByText('Admissions')).toBeInTheDocument();
+    
+    // Children should be links
+    expect(screen.getByRole('link', { name: /wards/i })).toHaveAttribute('href', '/wards');
+    expect(screen.getByRole('link', { name: /admissions/i })).toHaveAttribute('href', '/admissions');
   });
 });

@@ -1,5 +1,6 @@
 'use client';
 
+import { useState } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import {
@@ -13,14 +14,23 @@ import {
   Settings,
   ChevronLeft,
   ChevronRight,
+  ChevronDown,
   LogOut,
   X,
   AlertTriangle,
+  BedDouble,
+  Building2,
+  ClipboardList,
 } from 'lucide-react';
 import { cn } from '@/lib/utils/cn';
 import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
+import {
+  Collapsible,
+  CollapsibleContent,
+  CollapsibleTrigger,
+} from '@/components/ui/collapsible';
 import { useLogout } from '@/lib/auth/hooks';
 
 interface SidebarProps {
@@ -37,12 +47,31 @@ interface NavItem {
   badge?: number;
 }
 
-const mainNavItems: NavItem[] = [
+interface NavItemWithChildren {
+  label: string;
+  icon: React.ComponentType<{ className?: string }>;
+  children: NavItem[];
+}
+
+type NavItemType = NavItem | NavItemWithChildren;
+
+function hasChildren(item: NavItemType): item is NavItemWithChildren {
+  return 'children' in item;
+}
+
+const mainNavItems: NavItemType[] = [
   { label: 'Dashboard', href: '/', icon: LayoutDashboard },
   { label: 'Patients', href: '/patients', icon: Users },
   { label: 'Triage', href: '/triage', icon: AlertTriangle },
   { label: 'Encounters', href: '/encounters', icon: Stethoscope },
-  { label: 'Admissions', href: '/admissions', icon: FileText },
+  { 
+    label: 'Inpatient', 
+    icon: BedDouble,
+    children: [
+      { label: 'Wards', href: '/wards', icon: Building2 },
+      { label: 'Admissions', href: '/admissions', icon: ClipboardList },
+    ],
+  },
   { label: 'Pharmacy', href: '/pharmacy', icon: Pill },
   { label: 'Diagnostics', href: '/laboratory', icon: FlaskConical },
   { label: 'Billing & Insurance', href: '/billing', icon: CreditCard },
@@ -56,8 +85,23 @@ const bottomNavItems: NavItem[] = [
 export function Sidebar({ collapsed, onCollapse, mobileOpen, onMobileClose }: SidebarProps) {
   const pathname = usePathname();
   const logout = useLogout();
+  const [openMenus, setOpenMenus] = useState<string[]>(['Inpatient']); // Default open
 
-  const NavLink = ({ item }: { item: NavItem }) => {
+  const toggleMenu = (label: string) => {
+    setOpenMenus(prev => 
+      prev.includes(label) 
+        ? prev.filter(l => l !== label)
+        : [...prev, label]
+    );
+  };
+
+  const isChildActive = (children: NavItem[]) => {
+    return children.some(child => 
+      pathname === child.href || pathname.startsWith(`${child.href}/`)
+    );
+  };
+
+  const NavLink = ({ item, isChild = false }: { item: NavItem; isChild?: boolean }) => {
     // Handle special case for dashboard: both '/' and '/dashboard' should match
     const isActive = item.href === '/' 
       ? (pathname === '/' || pathname === '/dashboard' || pathname.startsWith('/dashboard/'))
@@ -71,6 +115,7 @@ export function Sidebar({ collapsed, onCollapse, mobileOpen, onMobileClose }: Si
         data-active={isActive}
         className={cn(
           'flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-colors',
+          isChild && !collapsed && 'ml-4 pl-4 border-l border-border',
           isActive
             ? 'bg-teal-200 text-teal-900 hover:bg-teal-300 hover:text-teal-950'
             : 'text-muted-foreground hover:bg-[#3D000F] hover:text-accent-foreground'
@@ -99,6 +144,83 @@ export function Sidebar({ collapsed, onCollapse, mobileOpen, onMobileClose }: Si
     }
 
     return linkContent;
+  };
+
+  const NavGroup = ({ item }: { item: NavItemWithChildren }) => {
+    const Icon = item.icon;
+    const isOpen = openMenus.includes(item.label);
+    const hasActiveChild = isChildActive(item.children);
+
+    // In collapsed mode, show a dropdown with children on hover
+    if (collapsed) {
+      return (
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <button
+              aria-label={item.label}
+              className={cn(
+                'flex w-full items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-colors',
+                hasActiveChild
+                  ? 'bg-teal-200 text-teal-900'
+                  : 'text-muted-foreground hover:bg-[#3D000F] hover:text-accent-foreground'
+              )}
+            >
+              <Icon className="h-5 w-5 shrink-0" />
+            </button>
+          </TooltipTrigger>
+          <TooltipContent side="right" className="p-0">
+            <div className="py-1">
+              <div className="px-3 py-1.5 text-sm font-semibold">{item.label}</div>
+              {item.children.map((child) => (
+                <Link
+                  key={child.href}
+                  href={child.href}
+                  onClick={onMobileClose}
+                  className={cn(
+                    'flex items-center gap-2 px-3 py-1.5 text-sm transition-colors',
+                    pathname === child.href || pathname.startsWith(`${child.href}/`)
+                      ? 'bg-teal-100 text-teal-900'
+                      : 'hover:bg-muted'
+                  )}
+                >
+                  <child.icon className="h-4 w-4" />
+                  {child.label}
+                </Link>
+              ))}
+            </div>
+          </TooltipContent>
+        </Tooltip>
+      );
+    }
+
+    return (
+      <Collapsible open={isOpen} onOpenChange={() => toggleMenu(item.label)}>
+        <CollapsibleTrigger asChild>
+          <button
+            className={cn(
+              'flex w-full items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-colors',
+              hasActiveChild
+                ? 'bg-teal-100 text-teal-900'
+                : 'text-muted-foreground hover:bg-[#3D000F] hover:text-accent-foreground'
+            )}
+          >
+            <Icon className="h-5 w-5 shrink-0" />
+            <span className="flex-1 text-left">{item.label}</span>
+            <ChevronDown
+              className={cn(
+                'h-4 w-4 transition-transform duration-200',
+                isOpen && 'rotate-180'
+              )}
+            />
+          </button>
+        </CollapsibleTrigger>
+        <CollapsibleContent className="space-y-1 pt-1">
+          {item.children.map((child) => (
+            <NavLink key={child.href} item={child} isChild />
+          ))}
+        </CollapsibleContent>
+      </Collapsible>
+    );
   };
 
   return (
@@ -145,7 +267,11 @@ export function Sidebar({ collapsed, onCollapse, mobileOpen, onMobileClose }: Si
           {/* Main nav items */}
           <div className="flex-1 space-y-1">
             {mainNavItems.map((item) => (
-              <NavLink key={item.href} item={item} />
+              hasChildren(item) ? (
+                <NavGroup key={item.label} item={item} />
+              ) : (
+                <NavLink key={item.href} item={item} />
+              )
             ))}
           </div>
 
