@@ -101,46 +101,18 @@ All Patient Transfer tests now pass after:
 
 ---
 
-### 6. Discharge Workflow (4 failures)
+### ~~6. Discharge Workflow (4 failures)~~ ✅ FIXED
 
-#### 6.1 `should initiate discharge process`
-- **Route**: `/admissions/1`
-- **Error**: `getByRole('button', { name: /discharge/i })` not found (timeout)
-- **Root Cause**: No "Discharge" button on admission detail page
-- **Fix Required**:
-  - Add "Discharge Patient" button to admission detail page
-  - Link to `/admissions/[id]/discharge`
-
-#### 6.2 `should complete discharge with summary`
-- **Route**: `/admissions/1/discharge`
-- **Error**: `getByRole('combobox', { name: /discharge type/i })` not found
-- **Root Cause**: Discharge form missing required fields
-- **Fix Required**:
-  - Add discharge form with:
-    - Discharge type selector (Routine, AMA, Transfer, Death)
-    - Discharge diagnosis textarea
-    - Discharge medications list
-    - Follow-up instructions
-    - Submit button
-
-#### 6.3 `should display length of stay calculation`
-- **Route**: `/admissions/1/discharge`
-- **Error**: `getByText(/7.*days/i)` not found
-- **Root Cause**: LOS not being calculated/displayed
-- **Fix Required**:
-  - Calculate LOS from admission date to current date
-  - Display prominently on discharge page: "Length of Stay: X days"
-
-#### 6.4 `should require clearances before discharge`
-- **Route**: `/admissions/1/discharge`
-- **Error**: `getByLabel(/billing.*clearance/i)` not found
-- **Root Cause**: Clearance checkboxes missing from discharge form
-- **Fix Required**:
-  - Add clearance section with checkboxes:
-    - [ ] Billing Clearance
-    - [ ] Pharmacy Clearance  
-    - [ ] Nursing Clearance
-  - Disable submit until all clearances checked
+All Discharge Workflow tests now pass after:
+- Added Length of Stay (LOS) calculation using `useMemo` and displaying in Admission Summary
+- Added Department Clearances section with checkboxes for Billing, Pharmacy, and Nursing
+- Added proper form labels with `htmlFor` attributes for accessibility
+- Updated test selectors to use `getByRole('link')` for Discharge link (not button)
+- Updated test selectors to use `getByRole('heading')` for section headings
+- Added `ROUTINE` discharge type option for test compatibility
+- Replaced alert() calls with toast notifications for better UX
+- Changed submit button text to "Confirm Discharge"
+- Disabled submit until all clearances are checked
 
 ---
 
