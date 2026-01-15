@@ -3,13 +3,14 @@
  * Sprint 1.1-1.2 Track C: RBAC Foundation
  * 
  * Create a new staff profile with user account, role, and department.
+ * Professional details section moved first to support DHA registry auto-population.
  */
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { ArrowLeft, Save, User, Building2, Shield, Briefcase, Phone, Mail, IdCard } from 'lucide-react';
+import { ArrowLeft, Save, User, Building2, Shield, Briefcase, Phone, Mail, IdCard, Check, X, Loader2, Sparkles } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -22,11 +23,15 @@ import {
   SelectValue,
   SelectEmpty,
 } from '@/components/ui/select';
+import { Badge } from '@/components/ui/badge';
 import { useToast } from '@/lib/hooks/use-toast';
 import { useCreateStaffProfile, useDepartments, useRoles } from '@/lib/hooks/use-rbac';
 import { DatePicker } from '@/components/ui/date-picker';
 import { DHAPractitionerSearch } from '@/components/sha/practitioner-search';
+import { staffApi } from '@/lib/api/rbac';
 import type { DHAPractitioner } from '@/lib/types/sha';
+import type { Department, Role } from '@/lib/types/rbac';
+import { useDebouncedCallback } from 'use-debounce';
 
 export default function NewStaffPage() {
   const router = useRouter();
@@ -41,18 +46,28 @@ export default function NewStaffPage() {
     username: '',
     email: '',
     first_name: '',
+    middle_name: '',
     last_name: '',
     employee_id: '',
     department: '',
     role: '',
     phone_number: '',
+    hwr_id: '',
     license_number: '',
     license_expiry: undefined as Date | undefined,
+    licensing_body: '',
     specialization: '',
     hire_date: new Date(),
   });
 
   const [errors, setErrors] = useState<Record<string, string>>({});
+  
+  // Username validation state
+  const [usernameStatus, setUsernameStatus] = useState<'idle' | 'checking' | 'available' | 'taken'>('idle');
+  const [usernameSuggestions, setUsernameSuggestions] = useState<string[]>([]);
+  
+  // Track if professional details were auto-populated
+  const [isProfessionalDataPopulated, setIsProfessionalDataPopulated] = useState(false);
 
   const handleChange = (field: string, value: string) => {
     setFormData((prev) => ({ ...prev, [field]: value }));
@@ -65,11 +80,149 @@ export default function NewStaffPage() {
     }
   };
 
+  // Debounced username check
+  const checkUsername = useDebouncedCallback(async (username: string) => {
+    if (!username || username.length < 3) {
+      setUsernameStatus('idle');
+      setUsernameSuggestions([]);
+      return;
+    }
+
+    setUsernameStatus('checking');
+    try {
+      const result = await staffApi.checkUsername(username);
+      setUsernameStatus(result.available ? 'available' : 'taken');
+      setUsernameSuggestions(result.suggestions);
+    } catch {
+      setUsernameStatus('idle');
+    }
+  }, 500);
+
+  // Watch username changes
+  useEffect(() => {
+    checkUsername(formData.username);
+  }, [formData.username, checkUsername]);
+
+  // Suggest username when names change
+  const suggestUsername = useCallback(async () => {
+    if (formData.first_name && formData.last_name && !formData.username) {
+      try {
+        const result = await staffApi.suggestUsername(
+          formData.first_name,
+          formData.last_name,
+          formData.middle_name
+        );
+        if (result.suggestions.length > 0) {
+          setUsernameSuggestions(result.suggestions);
+        }
+      } catch {
+        // Silently fail
+      }
+    }
+  }, [formData.first_name, formData.last_name, formData.middle_name, formData.username]);
+
+  // Handle practitioner selection from DHA search
+  const handlePractitionerSelect = (practitioner: DHAPractitioner) => {
+    // Get the current/latest license
+    const currentLicense = practitioner.licenses?.find(l => 
+      l.license_end && l.license_end !== 'None' && new Date(l.license_end) >= new Date()
+    ) || practitioner.licenses?.[0];
+
+    // Calculate license expiry date from days if no license end date
+    const licenseExpiryDate = practitioner.membership.license_expires_in_days > 0
+      ? new Date(Date.now() + practitioner.membership.license_expires_in_days * 24 * 60 * 60 * 1000)
+      : undefined;
+    
+    const licenseExpiry = currentLicense?.license_end && currentLicense.license_end !== 'None'
+      ? new Date(currentLicense.license_end) 
+      : licenseExpiryDate;
+
+    // Count how many fields will be populated
+    let fieldsPopulated = 0;
+
+    setFormData(prev => {
+      const newData = { ...prev };
+      
+      // Names
+      if (!prev.first_name && practitioner.membership.first_name) {
+        newData.first_name = practitioner.membership.first_name;
+        fieldsPopulated++;
+      }
+      if (!prev.middle_name && practitioner.membership.middle_name) {
+        newData.middle_name = practitioner.membership.middle_name;
+        fieldsPopulated++;
+      }
+      if (!prev.last_name && practitioner.membership.last_name) {
+        newData.last_name = practitioner.membership.last_name;
+        fieldsPopulated++;
+      }
+      
+      // Contact
+      if (!prev.email && practitioner.contacts.email) {
+        newData.email = practitioner.contacts.email.toLowerCase();
+        fieldsPopulated++;
+      }
+      if (!prev.phone_number && practitioner.contacts.phone) {
+        newData.phone_number = practitioner.contacts.phone;
+        fieldsPopulated++;
+      }
+      
+      // Professional details - these always get set from registry
+      // HWR ID is the registration_id
+      newData.hwr_id = practitioner.membership.registration_id || practitioner.membership.id;
+      fieldsPopulated++;
+      
+      // License number is from licenses[].id
+      if (currentLicense?.id) {
+        newData.license_number = currentLicense.id;
+        fieldsPopulated++;
+      }
+      
+      // Licensing body
+      if (practitioner.membership.licensing_body) {
+        newData.licensing_body = practitioner.membership.licensing_body;
+        fieldsPopulated++;
+      }
+      
+      // License expiry (readonly from registry)
+      if (licenseExpiry) {
+        newData.license_expiry = licenseExpiry;
+        fieldsPopulated++;
+      }
+      
+      // Specialization
+      if (!prev.specialization) {
+        const specialty = practitioner.professional_details.specialty || 
+          practitioner.membership.specialty || 
+          practitioner.professional_details.professional_cadre;
+        if (specialty) {
+          newData.specialization = specialty;
+          fieldsPopulated++;
+        }
+      }
+
+      return newData;
+    });
+
+    setIsProfessionalDataPopulated(true);
+
+    // Show success toast with populated fields count
+    toast({
+      title: 'Practitioner Details Loaded',
+      description: `${practitioner.membership.full_name.trim()} - ${practitioner.professional_details.professional_cadre} (${fieldsPopulated} fields auto-populated)`,
+    });
+
+    // Suggest username after populating names
+    setTimeout(() => suggestUsername(), 100);
+  };
+
   const validate = () => {
     const newErrors: Record<string, string> = {};
 
     if (!formData.username.trim()) {
       newErrors.username = 'Username is required';
+    } else if (usernameStatus === 'taken') {
+      newErrors.username = 'Username is already taken';
     }
     if (!formData.email.trim()) {
       newErrors.email = 'Email is required';
@@ -107,14 +260,17 @@ export default function NewStaffPage() {
         email: formData.email,
         first_name: formData.first_name,
         last_name: formData.last_name,
+        middle_name: formData.middle_name || undefined,
         employee_id: formData.employee_id,
         department: parseInt(formData.department),
         role: parseInt(formData.role),
         phone_number: formData.phone_number || undefined,
+        hwr_id: formData.hwr_id || undefined,
         license_number: formData.license_number || undefined,
-        license_expiry: formData.license_expiry || undefined,
+        license_expiry: formData.license_expiry?.toISOString().split('T')[0],
+        licensing_body: formData.licensing_body || undefined,
         specialization: formData.specialization || undefined,
-        hire_date: formData.hire_date,
+        hire_date: formData.hire_date?.toISOString().split('T')[0],
       });
 
       toast({
@@ -148,6 +304,106 @@ export default function NewStaffPage() {
       </div>
 
       <form onSubmit={handleSubmit} className="space-y-6">
+        {/* Professional Details - FIRST for DHA lookup */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <IdCard className="h-5 w-5" />
+              Professional Details
+              {isProfessionalDataPopulated && (
+                <Badge variant="secondary" className="ml-2">
+                  <Sparkles className="h-3 w-3 mr-1" />
+                  Auto-populated
+                </Badge>
+              )}
+            </CardTitle>
+            <CardDescription>
+              Search by National ID to auto-populate from DHA Health Worker Registry, or enter manually
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            {/* DHA Practitioner Search */}
+            <DHAPractitionerSearch onSelect={handlePractitionerSelect} />
+            
+            <div className="grid gap-4 sm:grid-cols-2">
+              <div className="space-y-2">
+                <Label htmlFor="hwr_id">HWR ID (Registry Number)</Label>
+                <Input
+                  id="hwr_id"
+                  value={formData.hwr_id}
+                  onChange={(e) => handleChange('hwr_id', e.target.value)}
+                  placeholder="e.g., PUID-059839"
+                  className={isProfessionalDataPopulated && formData.hwr_id ? 'bg-muted' : ''}
+                />
+                <p className="text-xs text-muted-foreground">
+                  Health Worker Registry ID from DHA
+                </p>
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="license_number">License Number</Label>
+                <Input
+                  id="license_number"
+                  value={formData.license_number}
+                  onChange={(e) => handleChange('license_number', e.target.value)}
+                  placeholder="e.g., COC-Clinical Officer-2026-620095"
+                  className={isProfessionalDataPopulated && formData.license_number ? 'bg-muted' : ''}
+                />
+                <p className="text-xs text-muted-foreground">
+                  Current license ID from regulatory body
+                </p>
+              </div>
+            </div>
+            <div className="grid gap-4 sm:grid-cols-2">
+              <div className="space-y-2">
+                <Label htmlFor="licensing_body">Licensing Body</Label>
+                <Input
+                  id="licensing_body"
+                  value={formData.licensing_body}
+                  onChange={(e) => handleChange('licensing_body', e.target.value)}
+                  placeholder="e.g., Clinical Officers Council"
+                  className={isProfessionalDataPopulated && formData.licensing_body ? 'bg-muted' : ''}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="license_expiry">License Expiry</Label>
+                <DatePicker
+                  value={formData.license_expiry}
+                  onChange={() => {}} // Read-only - only set by registry lookup
+                  placeholder="Set by registry lookup"
+                  disabled={true}
+                />
+                <p className="text-xs text-muted-foreground">
+                  Auto-populated from DHA registry (read-only)
+                </p>
+              </div>
+            </div>
+            <div className="grid gap-4 sm:grid-cols-2">
+              <div className="space-y-2">
+                <Label htmlFor="specialization">Specialization</Label>
+                <Input
+                  id="specialization"
+                  value={formData.specialization}
+                  onChange={(e) => handleChange('specialization', e.target.value)}
+                  placeholder="e.g., Clinical Officer, Nursing"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="phone_number">Phone Number</Label>
+                <div className="relative">
+                  <Phone className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                  <Input
+                    id="phone_number"
+                    value={formData.phone_number}
+                    onChange={(e) => handleChange('phone_number', e.target.value)}
+                    placeholder="+254712345678"
+                    className="pl-9"
+                  />
+                </div>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
         {/* User Account */}
         <Card>
           <CardHeader>
@@ -160,20 +416,99 @@ export default function NewStaffPage() {
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
+            <div className="grid gap-4 sm:grid-cols-3">
+              <div className="space-y-2">
+                <Label htmlFor="first_name">
+                  First Name <span className="text-destructive">*</span>
+                </Label>
+                <Input
+                  id="first_name"
+                  value={formData.first_name}
+                  onChange={(e) => handleChange('first_name', e.target.value)}
+                  onBlur={suggestUsername}
+                  placeholder="James"
+                  className={errors.first_name ? 'border-destructive' : ''}
+                />
+                {errors.first_name && (
+                  <p className="text-sm text-destructive">{errors.first_name}</p>
+                )}
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="middle_name">Middle Name</Label>
+                <Input
+                  id="middle_name"
+                  value={formData.middle_name}
+                  onChange={(e) => handleChange('middle_name', e.target.value)}
+                  placeholder="Kamau (optional)"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="last_name">
+                  Last Name <span className="text-destructive">*</span>
+                </Label>
+                <Input
+                  id="last_name"
+                  value={formData.last_name}
+                  onChange={(e) => handleChange('last_name', e.target.value)}
+                  onBlur={suggestUsername}
+                  placeholder="Mwangi"
+                  className={errors.last_name ? 'border-destructive' : ''}
+                />
+                {errors.last_name && (
+                  <p className="text-sm text-destructive">{errors.last_name}</p>
+                )}
+              </div>
+            </div>
             <div className="grid gap-4 sm:grid-cols-2">
               <div className="space-y-2">
                 <Label htmlFor="username">
                   Username <span className="text-destructive">*</span>
                 </Label>
-                <Input
-                  id="username"
-                  value={formData.username}
-                  onChange={(e) => handleChange('username', e.target.value)}
-                  placeholder="e.g., dr.mwangi"
-                  className={errors.username ? 'border-destructive' : ''}
-                />
+                <div className="relative">
+                  <Input
+                    id="username"
+                    value={formData.username}
+                    onChange={(e) => handleChange('username', e.target.value.toLowerCase().replace(/\s/g, ''))}
+                    placeholder="e.g., james.mwangi"
+                    className={`pr-10 ${errors.username ? 'border-destructive' : usernameStatus === 'available' ? 'border-green-500' : usernameStatus === 'taken' ? 'border-destructive' : ''}`}
+                  />
+                  <div className="absolute right-3 top-1/2 -translate-y-1/2">
+                    {usernameStatus === 'checking' && (
+                      <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
+                    )}
+                    {usernameStatus === 'available' && (
+                      <Check className="h-4 w-4 text-green-500" />
+                    )}
+                    {usernameStatus === 'taken' && (
+                      <X className="h-4 w-4 text-destructive" />
+                    )}
+                  </div>
+                </div>
                 {errors.username && (
                   <p className="text-sm text-destructive">{errors.username}</p>
+                )}
+                {usernameStatus === 'available' && (
+                  <p className="text-sm text-green-600">Username is available</p>
+                )}
+                {(usernameStatus === 'taken' || (!formData.username && usernameSuggestions.length > 0)) && usernameSuggestions.length > 0 && (
+                  <div className="space-y-1">
+                    <p className="text-sm text-muted-foreground">
+                      {usernameStatus === 'taken' ? 'Try one of these:' : 'Suggested usernames:'}
+                    </p>
+                    <div className="flex flex-wrap gap-2">
+                      {usernameSuggestions.slice(0, 4).map((suggestion) => (
+                        <Button
+                          key={suggestion}
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          onClick={() => handleChange('username', suggestion)}
+                        >
+                          {suggestion}
+                        </Button>
+                      ))}
+                    </div>
+                  </div>
                 )}
               </div>
               <div className="space-y-2">
@@ -193,38 +528,6 @@ export default function NewStaffPage() {
                 </div>
                 {errors.email && (
                   <p className="text-sm text-destructive">{errors.email}</p>
-                )}
-              </div>
-            </div>
-            <div className="grid gap-4 sm:grid-cols-2">
-              <div className="space-y-2">
-                <Label htmlFor="first_name">
-                  First Name <span className="text-destructive">*</span>
-                </Label>
-                <Input
-                  id="first_name"
-                  value={formData.first_name}
-                  onChange={(e) => handleChange('first_name', e.target.value)}
-                  placeholder="James"
-                  className={errors.first_name ? 'border-destructive' : ''}
-                />
-                {errors.first_name && (
-                  <p className="text-sm text-destructive">{errors.first_name}</p>
-                )}
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="last_name">
-                  Last Name <span className="text-destructive">*</span>
-                </Label>
-                <Input
-                  id="last_name"
-                  value={formData.last_name}
-                  onChange={(e) => handleChange('last_name', e.target.value)}
-                  placeholder="Mwangi"
-                  className={errors.last_name ? 'border-destructive' : ''}
-                />
-                {errors.last_name && (
-                  <p className="text-sm text-destructive">{errors.last_name}</p>
                 )}
               </div>
             </div>
@@ -286,7 +589,7 @@ export default function NewStaffPage() {
                   </SelectTrigger>
                   <SelectContent>
                     {departments?.results && departments.results.length > 0 ? (
-                      departments.results.map((dept) => (
+                      departments.results.map((dept: Department) => (
                         <SelectItem key={dept.id} value={dept.id.toString()}>
                           {dept.name}
                         </SelectItem>
@@ -314,7 +617,7 @@ export default function NewStaffPage() {
                   </SelectTrigger>
                   <SelectContent>
                     {roles?.results && roles.results.length > 0 ? (
-                      roles.results.map((role) => (
+                      roles.results.map((role: Role) => (
                         <SelectItem key={role.id} value={role.id.toString()}>
                           {role.name}
                         </SelectItem>
@@ -332,107 +635,12 @@ export default function NewStaffPage() {
           </CardContent>
         </Card>
 
-        {/* Professional Details */}
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <IdCard className="h-5 w-5" />
-              Professional Details
-            </CardTitle>
-            <CardDescription>
-              Search by National ID or Passport to auto-populate from DHA registry, or enter manually
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            {/* DHA Practitioner Search */}
-            <DHAPractitionerSearch
-              onSelect={(practitioner: DHAPractitioner) => {
-                // Calculate license expiry date from days
-                const licenseExpiryDate = practitioner.membership.license_expires_in_days > 0
-                  ? new Date(Date.now() + practitioner.membership.license_expires_in_days * 24 * 60 * 60 * 1000)
-                  : undefined;
-
-                // Get the current/latest license end date if available
-                const currentLicense = practitioner.licenses?.find(l => 
-                  new Date(l.license_end) >= new Date()
-                );
-                const licenseExpiry = currentLicense 
-                  ? new Date(currentLicense.license_end) 
-                  : licenseExpiryDate;
-                
-                setFormData(prev => ({
-                  ...prev,
-                  // Only fill if not already set by user
-                  first_name: prev.first_name || practitioner.membership.first_name,
-                  last_name: prev.last_name || practitioner.membership.last_name,
-                  email: prev.email || practitioner.contacts.email?.toLowerCase() || '',
-                  phone_number: prev.phone_number || practitioner.contacts.phone || '',
-                  license_number: practitioner.membership.registration_id,
-                  specialization: prev.specialization || 
-                    practitioner.professional_details.specialty || 
-                    practitioner.membership.specialty || '',
-                  license_expiry: licenseExpiry,
-                }));
-
-                toast({
-                  title: 'Practitioner Verified',
-                  description: `${practitioner.membership.full_name.trim()} - ${practitioner.professional_details.professional_cadre}`,
-                });
-              }}
-            />
-            
-            <div className="grid gap-4 sm:grid-cols-2">
-              <div className="space-y-2">
-                <Label htmlFor="phone_number">Phone Number</Label>
-                <div className="relative">
-                  <Phone className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                  <Input
-                    id="phone_number"
-                    value={formData.phone_number}
-                    onChange={(e) => handleChange('phone_number', e.target.value)}
-                    placeholder="+254712345678"
-                    className="pl-9"
-                  />
-                </div>
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="specialization">Specialization</Label>
-                <Input
-                  id="specialization"
-                  value={formData.specialization}
-                  onChange={(e) => handleChange('specialization', e.target.value)}
-                  placeholder="e.g., Internal Medicine"
-                />
-              </div>
-            </div>
-            <div className="grid gap-4 sm:grid-cols-2">
-              <div className="space-y-2">
-                <Label htmlFor="license_number">License/HWR Number</Label>
-                <Input
-                  id="license_number"
-                  value={formData.license_number}
-                  onChange={(e) => handleChange('license_number', e.target.value)}
-                  placeholder="e.g., HW-12345"
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="license_expiry">License Expiry</Label>
-                <DatePicker
-                  value={formData.license_expiry}
-                  onChange={(date) => setFormData(prev => ({ ...prev, license_expiry: date }))}
-                  placeholder="Select expiry date"
-                />
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-
         {/* Actions */}
         <div className="flex justify-end gap-4">
           <Button variant="outline" type="button" asChild>
             <Link href="/admin/staff">Cancel</Link>
           </Button>
-          <Button type="submit" disabled={createStaff.isPending}>
+          <Button type="submit" disabled={createStaff.isPending || usernameStatus === 'taken'}>
             <Save className="h-4 w-4 mr-2" />
             {createStaff.isPending ? 'Creating...' : 'Create Staff Profile'}
           </Button>
