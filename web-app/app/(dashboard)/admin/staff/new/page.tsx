@@ -25,6 +25,8 @@ import {
 import { useToast } from '@/lib/hooks/use-toast';
 import { useCreateStaffProfile, useDepartments, useRoles } from '@/lib/hooks/use-rbac';
 import { DatePicker } from '@/components/ui/date-picker';
+import { SHAPractitionerSearch } from '@/components/sha/practitioner-search';
+import type { PractitionerInfo } from '@/lib/types/sha';
 
 export default function NewStaffPage() {
   const router = useRouter();
@@ -338,10 +340,38 @@ export default function NewStaffPage() {
               Professional Details
             </CardTitle>
             <CardDescription>
-              License and specialization information (optional)
+              Search by HWR number to auto-populate from SHA registry, or enter manually
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
+            {/* SHA Practitioner Search */}
+            <SHAPractitionerSearch
+              onSelect={(practitioner: PractitionerInfo) => {
+                // Parse name into first/last if not already set
+                const nameParts = practitioner.name.split(' ');
+                const firstName = nameParts[0] || '';
+                const lastName = nameParts.slice(1).join(' ') || '';
+                
+                setFormData(prev => ({
+                  ...prev,
+                  first_name: prev.first_name || firstName,
+                  last_name: prev.last_name || lastName,
+                  license_number: practitioner.hwr_number,
+                  specialization: practitioner.specialization || prev.specialization,
+                  license_expiry: practitioner.license_expiry 
+                    ? new Date(practitioner.license_expiry) 
+                    : prev.license_expiry,
+                }));
+
+                toast({
+                  title: 'Practitioner Verified',
+                  description: `${practitioner.name} - ${practitioner.cadre}`,
+                });
+              }}
+              label="Search SHA/DHA Registry"
+              placeholder="Enter HWR number (e.g., HW-12345)"
+            />
+            
             <div className="grid gap-4 sm:grid-cols-2">
               <div className="space-y-2">
                 <Label htmlFor="phone_number">Phone Number</Label>
@@ -368,12 +398,12 @@ export default function NewStaffPage() {
             </div>
             <div className="grid gap-4 sm:grid-cols-2">
               <div className="space-y-2">
-                <Label htmlFor="license_number">License Number</Label>
+                <Label htmlFor="license_number">License/HWR Number</Label>
                 <Input
                   id="license_number"
                   value={formData.license_number}
                   onChange={(e) => handleChange('license_number', e.target.value)}
-                  placeholder="e.g., MED-12345"
+                  placeholder="e.g., HW-12345"
                 />
               </div>
               <div className="space-y-2">
