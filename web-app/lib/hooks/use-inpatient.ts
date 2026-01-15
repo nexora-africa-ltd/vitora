@@ -14,6 +14,7 @@ import type {
   Discharge,
   DischargeCreateData,
   DischargeListParams,
+  InpatientWard,
   KardexHandoverNoteCreateData,
   KardexListParams,
   KardexShiftNoteCreateData,
@@ -81,6 +82,18 @@ export function useInpatientWard(wardId: number | undefined) {
     queryKey: inpatientQueryKeys.ward(wardId!),
     queryFn: () => inpatientApi.getWard(wardId!),
     enabled: typeof wardId === 'number',
+  });
+}
+
+export function useUpdateWard() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, data }: { id: number; data: Partial<InpatientWard> }) => 
+      inpatientApi.updateWard(id, data),
+    onSuccess: (_, { id }) => {
+      queryClient.invalidateQueries({ queryKey: inpatientQueryKeys.ward(id) });
+      queryClient.invalidateQueries({ queryKey: inpatientQueryKeys.wards() });
+    },
   });
 }
 

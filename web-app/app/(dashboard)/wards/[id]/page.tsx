@@ -174,9 +174,11 @@ export default function WardDetailPage() {
         </div>
 
         <div className="flex gap-2">
-          <Button variant="outline" size="sm">
-            <Settings className="h-4 w-4 mr-2" />
-            Manage Ward
+          <Button variant="outline" size="sm" asChild>
+            <Link href={`/wards/${wardId}/edit`}>
+              <Settings className="h-4 w-4 mr-2" />
+              Manage Ward
+            </Link>
           </Button>
           <Button size="sm" asChild disabled={stats.available === 0}>
             <Link href={`/admissions/new?ward=${wardId}`}>
