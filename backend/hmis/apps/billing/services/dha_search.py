@@ -140,101 +140,309 @@ class FacilityInfo:
 
 
 @dataclass
+class PractitionerLicense:
+    """
+    Individual license record from DHA HWR.
+    
+    Attributes:
+        id: License ID (e.g., 'COC-Clinical Officer-2026-620095')
+        external_reference_id: External reference (e.g., 'Rb01923/25')
+        license_type: Type of license (e.g., 'Clinical Officer', 'Annual')
+        license_start: Start date string
+        license_end: End date string (expiry)
+    """
+    id: str
+    external_reference_id: str
+    license_type: str
+    license_start: str
+    license_end: str
+
+
+@dataclass
+class PractitionerMembership:
+    """
+    Membership/registration details from DHA HWR.
+    
+    Attributes:
+        id: Member ID (e.g., 'PUID-0022840-4')
+        status: License status (e.g., 'Licensed', 'Suspended')
+        salutation: Title (e.g., 'Dr.', 'Mr.')
+        full_name: Full name as registered
+        gender: Gender
+        first_name: First name
+        middle_name: Middle name
+        last_name: Last name
+        registration_id: Registration ID (e.g., 'PUID-059839')
+        external_reference_id: External reference
+        licensing_body: Regulatory body (e.g., 'Clinical Officers Council')
+        specialty: Specialty (e.g., 'CLINICAL OFFICER')
+        is_active: 1 = active, 0 = inactive
+        is_withdrawn: 1 = withdrawn, 0 = not
+        withdrawal_reason: Reason for withdrawal
+        withdrawal_date: Date of withdrawal
+        license_expires_in_days: Days until license expires
+    """
+    id: str
+    status: str
+    salutation: str
+    full_name: str
+    gender: str
+    first_name: str
+    middle_name: str
+    last_name: str
+    registration_id: str
+    external_reference_id: str
+    licensing_body: str
+    specialty: str
+    is_active: int
+    is_withdrawn: int
+    withdrawal_reason: str
+    withdrawal_date: str
+    license_expires_in_days: int
+
+
+@dataclass
+class PractitionerProfessionalDetails:
+    """
+    Professional details from DHA HWR.
+    
+    Attributes:
+        professional_cadre: Cadre (e.g., 'CLINICAL OFFICER')
+        practice_type: Practice type (e.g., 'Clinical Officer')
+        specialty: Specialty
+        subspecialty: Subspecialty
+        discipline_name: Discipline (e.g., 'Clinical Officer')
+        educational_qualifications: Qualifications
+    """
+    professional_cadre: str
+    practice_type: str
+    specialty: str
+    subspecialty: str
+    discipline_name: str
+    educational_qualifications: str
+
+
+@dataclass
+class PractitionerContacts:
+    """
+    Contact information from DHA HWR.
+    
+    Attributes:
+        phone: Phone number
+        email: Email address
+        postal_address: Postal address
+    """
+    phone: str
+    email: str
+    postal_address: str
+
+
+@dataclass
+class PractitionerIdentifiers:
+    """
+    Identifier information from DHA HWR.
+    
+    Attributes:
+        identification_type: ID type (e.g., 'National ID')
+        identification_number: ID number
+        client_registry_id: Client registry ID
+        student_id: Student ID
+    """
+    identification_type: str
+    identification_number: str
+    client_registry_id: str
+    student_id: str
+
+
+@dataclass
 class PractitionerInfo:
     """
     Practitioner information from Health Worker Registry (HWR).
     
-    Represents a healthcare worker registered in Kenya's HWR.
+    Updated to match actual DHA API response format.
+    Based on: https://uat.dha.go.ke/v1/practitioner-search
     
     Attributes:
-        puid: Practitioner Unique ID
+        membership: Registration/membership details
+        licenses: List of license records
+        professional_details: Professional qualifications
+        contacts: Contact information
+        identifiers: ID documents
         found: Whether practitioner was found
-        first_name: First name
-        last_name: Last name
-        middle_name: Middle name
-        qualification: Professional qualification
-        cadre: Professional cadre
-        registration_number: Professional registration number
-        license_status: License status (Active, Expired, etc.)
-        license_expiry: License expiry date
-        specialty: Medical specialty (if applicable)
-        facility_code: Current facility MFL code
         raw_data: Original API response
     """
     
-    puid: str
-    found: bool
-    first_name: Optional[str] = None
-    last_name: Optional[str] = None
-    middle_name: Optional[str] = None
-    qualification: Optional[str] = None
-    cadre: Optional[str] = None
-    registration_number: Optional[str] = None
-    license_status: Optional[str] = None
-    license_expiry: Optional[date] = None
-    specialty: Optional[str] = None
-    facility_code: Optional[str] = None
+    membership: PractitionerMembership
+    licenses: List[PractitionerLicense]
+    professional_details: PractitionerProfessionalDetails
+    contacts: PractitionerContacts
+    identifiers: PractitionerIdentifiers
+    found: bool = True
     raw_data: dict = field(default_factory=dict)
+    
+    # Legacy compatibility properties
+    @property
+    def puid(self) -> str:
+        """Return PUID for backward compatibility."""
+        return self.membership.registration_id
+    
+    @property
+    def first_name(self) -> str:
+        """Return first name."""
+        return self.membership.first_name
+    
+    @property
+    def last_name(self) -> str:
+        """Return last name."""
+        return self.membership.last_name
+    
+    @property
+    def middle_name(self) -> str:
+        """Return middle name."""
+        return self.membership.middle_name
     
     @property
     def full_name(self) -> str:
         """Return full name."""
-        parts = [self.first_name]
-        if self.middle_name:
-            parts.append(self.middle_name)
-        if self.last_name:
-            parts.append(self.last_name)
-        return ' '.join(filter(None, parts))
+        return self.membership.full_name.strip()
+    
+    @property
+    def cadre(self) -> str:
+        """Return professional cadre."""
+        return self.professional_details.professional_cadre
+    
+    @property
+    def qualification(self) -> str:
+        """Return educational qualifications."""
+        return self.professional_details.educational_qualifications
+    
+    @property
+    def registration_number(self) -> str:
+        """Return registration number."""
+        return self.membership.registration_id
+    
+    @property
+    def license_status(self) -> str:
+        """Return license status."""
+        return self.membership.status
+    
+    @property
+    def license_expiry(self) -> Optional[date]:
+        """Calculate license expiry date from days remaining."""
+        if self.membership.license_expires_in_days <= 0:
+            return None
+        from datetime import timedelta
+        return date.today() + timedelta(days=self.membership.license_expires_in_days)
+    
+    @property
+    def specialty(self) -> str:
+        """Return specialty."""
+        return self.professional_details.specialty or self.membership.specialty
     
     @property
     def is_license_active(self) -> bool:
         """Check if license is active."""
-        if self.license_status:
-            return self.license_status.lower() == 'active'
-        # Check expiry date if status not provided
-        if self.license_expiry:
-            return self.license_expiry >= date.today()
-        return True  # Assume active if no info
+        return (
+            self.membership.is_active == 1 and 
+            self.membership.status.lower() == 'licensed' and
+            self.membership.license_expires_in_days > 0
+        )
     
     @classmethod
     def from_api_response(cls, data: dict) -> 'PractitionerInfo':
         """
         Create PractitionerInfo from HWR API response.
         
+        Handles the actual DHA API response format:
+        {
+            "message": {
+                "membership": {...},
+                "licenses": [...],
+                "professional_details": {...},
+                "contacts": {...},
+                "identifiers": {...}
+            }
+        }
+        
         Args:
-            data: API response data dict
+            data: API response data dict (can be full response or 'message' content)
             
         Returns:
             PractitionerInfo instance
         """
-        # Handle nested 'practitioner' field
-        practitioner_data = data.get('practitioner', data)
-        found = data.get('found', True)
+        # Handle nested 'message' field if present
+        message_data = data.get('message', data)
         
-        if isinstance(found, str):
-            found = found.lower() == 'true'
+        # Parse membership
+        membership_data = message_data.get('membership', {})
+        membership = PractitionerMembership(
+            id=membership_data.get('id', ''),
+            status=membership_data.get('status', ''),
+            salutation=membership_data.get('salutation', ''),
+            full_name=membership_data.get('full_name', ''),
+            gender=membership_data.get('gender', ''),
+            first_name=membership_data.get('first_name', ''),
+            middle_name=membership_data.get('middle_name', ''),
+            last_name=membership_data.get('last_name', ''),
+            registration_id=membership_data.get('registration_id', ''),
+            external_reference_id=membership_data.get('external_reference_id', ''),
+            licensing_body=membership_data.get('licensing_body', ''),
+            specialty=membership_data.get('specialty', ''),
+            is_active=membership_data.get('is_active', 0),
+            is_withdrawn=membership_data.get('is_withdrawn', 0),
+            withdrawal_reason=membership_data.get('withdrawal_reason', ''),
+            withdrawal_date=membership_data.get('withdrawal_date', ''),
+            license_expires_in_days=membership_data.get('license_expires_in_days', 0),
+        )
         
-        # Parse license expiry
-        expiry = practitioner_data.get('license_expiry')
-        if isinstance(expiry, str):
-            try:
-                expiry = datetime.strptime(expiry, '%Y-%m-%d').date()
-            except ValueError:
-                expiry = None
+        # Parse licenses
+        licenses_data = message_data.get('licenses', [])
+        licenses = [
+            PractitionerLicense(
+                id=lic.get('id', ''),
+                external_reference_id=lic.get('external_reference_id', ''),
+                license_type=lic.get('license_type', ''),
+                license_start=lic.get('license_start', ''),
+                license_end=lic.get('license_end', ''),
+            )
+            for lic in licenses_data
+        ]
+        
+        # Parse professional details
+        prof_data = message_data.get('professional_details', {})
+        professional_details = PractitionerProfessionalDetails(
+            professional_cadre=prof_data.get('professional_cadre', ''),
+            practice_type=prof_data.get('practice_type', ''),
+            specialty=prof_data.get('specialty', ''),
+            subspecialty=prof_data.get('subspecialty', ''),
+            discipline_name=prof_data.get('discipline_name', ''),
+            educational_qualifications=prof_data.get('educational_qualifications', ''),
+        )
+        
+        # Parse contacts
+        contacts_data = message_data.get('contacts', {})
+        contacts = PractitionerContacts(
+            phone=contacts_data.get('phone', ''),
+            email=contacts_data.get('email', ''),
+            postal_address=contacts_data.get('postal_address', ''),
+        )
+        
+        # Parse identifiers
+        identifiers_data = message_data.get('identifiers', {})
+        identifiers = PractitionerIdentifiers(
+            identification_type=identifiers_data.get('identification_type', ''),
+            identification_number=identifiers_data.get('identification_number', ''),
+            client_registry_id=identifiers_data.get('client_registry_id', ''),
+            student_id=identifiers_data.get('student_id', ''),
+        )
         
         return cls(
-            puid=practitioner_data.get('puid', ''),
-            found=found,
-            first_name=practitioner_data.get('first_name'),
-            last_name=practitioner_data.get('last_name'),
-            middle_name=practitioner_data.get('middle_name'),
-            qualification=practitioner_data.get('qualification'),
-            cadre=practitioner_data.get('cadre'),
-            registration_number=practitioner_data.get('registration_number'),
-            license_status=practitioner_data.get('license_status'),
-            license_expiry=expiry,
-            specialty=practitioner_data.get('specialty'),
-            facility_code=practitioner_data.get('facility_code'),
+            membership=membership,
+            licenses=licenses,
+            professional_details=professional_details,
+            contacts=contacts,
+            identifiers=identifiers,
+            found=True,
             raw_data=data,
         )
 
@@ -494,6 +702,7 @@ class DHASearchService:
     def search_practitioner(
         self,
         identification_number: Optional[str] = None,
+        identification_type: str = 'ID',
         registration_number: Optional[str] = None,
     ) -> Optional[PractitionerInfo]:
         """
@@ -501,8 +710,11 @@ class DHASearchService:
         
         At least one search parameter must be provided.
         
+        Based on DHA API: https://uat.dha.go.ke/v1/practitioner-search
+        
         Args:
-            identification_number: National ID number
+            identification_number: National ID or Passport number
+            identification_type: Type of ID ('ID' for National ID, 'passport')
             registration_number: Professional registration number (PUID)
             
         Returns:
@@ -514,7 +726,8 @@ class DHASearchService:
             
         Example:
             >>> practitioner = service.search_practitioner(
-            ...     identification_number='12345678'
+            ...     identification_number='12345678',
+            ...     identification_type='ID'
             ... )
             >>> if practitioner:
             ...     print(f"Found: {practitioner.full_name}")
@@ -523,10 +736,11 @@ class DHASearchService:
         if not any([identification_number, registration_number]):
             raise ValueError("At least one search parameter must be provided")
         
-        # Build query parameters
+        # Build query parameters per DHA API spec
         params = {}
         if identification_number:
             params['identification_number'] = identification_number
+            params['identification_type'] = identification_type
         elif registration_number:
             params['registration_number'] = registration_number
         

@@ -49,6 +49,10 @@ import type {
   FacilityValidationResponse,
   PractitionerValidationRequest,
   PractitionerValidationResponse,
+  // DHA Practitioner Registry
+  DHAPractitionerSearchRequest,
+  DHAPractitionerSearchResponse,
+  DHAPractitioner,
 } from '@/lib/types/sha';
 
 // ============================================================================
@@ -414,11 +418,34 @@ async function validateFacility(
 }
 
 // ============================================================================
-// Practitioner Validation API
+// DHA Health Worker Registry API
+// Based on: https://uat.dha.go.ke/v1/practitioner-search
 // ============================================================================
 
 /**
- * Validate practitioner HWR number with DHA
+ * Search DHA Health Worker Registry by National ID or Passport
+ * 
+ * This searches the Kenya Digital Health Authority registry for registered
+ * healthcare practitioners and returns comprehensive information including:
+ * - Membership status and registration details
+ * - License history with start/end dates
+ * - Professional qualifications and cadre
+ * - Contact information
+ * 
+ * @param params - Search parameters (ID type and number)
+ * @returns Practitioner data from DHA registry
+ */
+async function searchPractitioner(
+  params: DHAPractitionerSearchRequest
+): Promise<DHAPractitionerSearchResponse> {
+  const queryString = buildQueryString(params);
+  const response = await apiClient.get(`/api/billing/dha/practitioner-search/?${queryString}`);
+  return response.data;
+}
+
+/**
+ * Legacy: Validate practitioner HWR number with DHA
+ * @deprecated Use searchPractitioner instead for richer data
  */
 async function validatePractitioner(
   data: PractitionerValidationRequest
@@ -475,6 +502,9 @@ export const shaApi = {
   // Facility Validation
   validateFacility,
   
-  // Practitioner Validation
+  // DHA Health Worker Registry
+  searchPractitioner,
+  
+  // Legacy Practitioner Validation (deprecated)
   validatePractitioner,
 };

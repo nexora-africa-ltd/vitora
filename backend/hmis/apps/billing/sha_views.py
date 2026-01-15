@@ -1182,17 +1182,33 @@ class FacilitySearchView(APIView):
 
 class PractitionerSearchView(APIView):
     """
-    API view for practitioner validation via HWR.
+    API view for practitioner search via DHA Health Worker Registry.
+    
+    Searches by National ID or Passport number and returns comprehensive
+    practitioner information including membership, licenses, professional
+    details, and contact information.
+    
+    Based on: https://uat.dha.go.ke/v1/practitioner-search
     """
     permission_classes = [IsAuthenticated]
     
     def get(self, request):
         """
-        Search/validate practitioner in Health Worker Registry.
+        Search practitioner in Health Worker Registry.
         
-        GET /api/billing/practitioner/validate/?license_number=XXXXX
+        GET /api/billing/dha/practitioner-search/?identification_type=ID&identification_number=12345678
+        
+        Query Parameters:
+            identification_number: National ID or Passport number (required)
+            identification_type: 'ID' or 'passport' (default: 'ID')
+            registration_number: Alternative: search by registration number
+        
+        Returns:
+            Full practitioner data including membership, licenses, 
+            professional details, contacts, and identifiers.
         """
         identification_number = request.query_params.get('identification_number')
+        identification_type = request.query_params.get('identification_type', 'ID')
         registration_number = request.query_params.get('registration_number')
         license_number = request.query_params.get('license_number')
         
@@ -1210,38 +1226,78 @@ class PractitionerSearchView(APIView):
             service = DHASearchService()
             practitioner = service.search_practitioner(
                 identification_number=identification_number,
+                identification_type=identification_type,
                 registration_number=registration_number,
             )
             
             if practitioner and practitioner.found:
+                # Return the full rich data structure
                 return Response({
-                    'found': True,
-                    'practitioner': {
-                        'puid': practitioner.puid,
-                        'first_name': practitioner.first_name,
-                        'last_name': practitioner.last_name,
-                        'middle_name': practitioner.middle_name,
-                        'full_name': practitioner.full_name,
-                        'qualification': practitioner.qualification,
-                        'cadre': practitioner.cadre,
-                        'registration_number': practitioner.registration_number,
-                        'license_status': practitioner.license_status,
-                        'license_expiry': str(practitioner.license_expiry) if practitioner.license_expiry else None,
-                        'specialty': practitioner.specialty,
-                        'is_active': practitioner.is_active,
+                    'message': {
+                        'membership': {
+                            'id': practitioner.membership.id,
+                            'status': practitioner.membership.status,
+                            'salutation': practitioner.membership.salutation,
+                            'full_name': practitioner.membership.full_name,
+                            'gender': practitioner.membership.gender,
+                            'first_name': practitioner.membership.first_name,
+                            'middle_name': practitioner.membership.middle_name,
+                            'last_name': practitioner.membership.last_name,
+                            'registration_id': practitioner.membership.registration_id,
+                            'external_reference_id': practitioner.membership.external_reference_id,
+                            'licensing_body': practitioner.membership.licensing_body,
+                            'specialty': practitioner.membership.specialty,
+                            'is_active': practitioner.membership.is_active,
+                            'is_withdrawn': practitioner.membership.is_withdrawn,
+                            'withdrawal_reason': practitioner.membership.withdrawal_reason,
+                            'withdrawal_date': practitioner.membership.withdrawal_date,
+                            'license_expires_in_days': practitioner.membership.license_expires_in_days,
+                        },
+                        'licenses': [
+                            {
+                                'id': lic.id,
+                                'external_reference_id': lic.external_reference_id,
+                                'license_type': lic.license_type,
+                                'license_start': lic.license_start,
+                                'license_end': lic.license_end,
+                            }
+                            for lic in practitioner.licenses
+                        ],
+                        'professional_details': {
+                            'professional_cadre': practitioner.professional_details.professional_cadre,
+                            'practice_type': practitioner.professional_details.practice_type,
+                            'specialty': practitioner.professional_details.specialty,
+                            'subspecialty': practitioner.professional_details.subspecialty,
+                            'discipline_name': practitioner.professional_details.discipline_name,
+                            'educational_qualifications': practitioner.professional_details.educational_qualifications,
+                        },
+                        'contacts': {
+                            'phone': practitioner.contacts.phone,
+                            'email': practitioner.contacts.email,
+                            'postal_address': practitioner.contacts.postal_address,
+                        },
+                        'identifiers': {
+                            'identification_type': practitioner.identifiers.identification_type,
+                            'identification_number': practitioner.identifiers.identification_number,
+                            'client_registry_id': practitioner.identifiers.client_registry_id,
+                            'student_id': practitioner.identifiers.student_id,
+                        },
                     }
                 })
             else:
-                return Response({'found': False})
+                return Response({
+                    'error': 'No practitioner found with the provided identification',
+                    'message': None
+                }, status=status.HTTP_404_NOT_FOUND)
                 
         except SearchError as e:
             return Response(
-                {'error': str(e), 'found': False},
+                {'error': str(e), 'message': None},
                 status=status.HTTP_503_SERVICE_UNAVAILABLE
             )
         except Exception as e:
             return Response(
-                {'error': str(e), 'found': False},
+                {'error': str(e), 'message': None},
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR
             )
 

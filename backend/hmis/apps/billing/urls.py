@@ -62,6 +62,8 @@ urlpatterns = [
     # SHA Facility and Practitioner validation
     path('facility/validate/', FacilitySearchView.as_view(), name='facility-validate'),
     path('practitioner/validate/', PractitionerSearchView.as_view(), name='practitioner-validate'),
+    # DHA Health Worker Registry search (new rich endpoint)
+    path('dha/practitioner-search/', PractitionerSearchView.as_view(), name='dha-practitioner-search'),
     
     # SHA Eligibility check
     path('eligibility/check/', EligibilityCheckView.as_view(), name='eligibility-check'),

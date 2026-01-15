@@ -25,8 +25,8 @@ import {
 import { useToast } from '@/lib/hooks/use-toast';
 import { useCreateStaffProfile, useDepartments, useRoles } from '@/lib/hooks/use-rbac';
 import { DatePicker } from '@/components/ui/date-picker';
-import { SHAPractitionerSearch } from '@/components/sha/practitioner-search';
-import type { PractitionerInfo } from '@/lib/types/sha';
+import { DHAPractitionerSearch } from '@/components/sha/practitioner-search';
+import type { DHAPractitioner } from '@/lib/types/sha';
 
 export default function NewStaffPage() {
   const router = useRouter();
@@ -340,36 +340,45 @@ export default function NewStaffPage() {
               Professional Details
             </CardTitle>
             <CardDescription>
-              Search by HWR number to auto-populate from SHA registry, or enter manually
+              Search by National ID or Passport to auto-populate from DHA registry, or enter manually
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
-            {/* SHA Practitioner Search */}
-            <SHAPractitionerSearch
-              onSelect={(practitioner: PractitionerInfo) => {
-                // Parse name into first/last if not already set
-                const nameParts = practitioner.name.split(' ');
-                const firstName = nameParts[0] || '';
-                const lastName = nameParts.slice(1).join(' ') || '';
+            {/* DHA Practitioner Search */}
+            <DHAPractitionerSearch
+              onSelect={(practitioner: DHAPractitioner) => {
+                // Calculate license expiry date from days
+                const licenseExpiryDate = practitioner.membership.license_expires_in_days > 0
+                  ? new Date(Date.now() + practitioner.membership.license_expires_in_days * 24 * 60 * 60 * 1000)
+                  : undefined;
+
+                // Get the current/latest license end date if available
+                const currentLicense = practitioner.licenses?.find(l => 
+                  new Date(l.license_end) >= new Date()
+                );
+                const licenseExpiry = currentLicense 
+                  ? new Date(currentLicense.license_end) 
+                  : licenseExpiryDate;
                 
                 setFormData(prev => ({
                   ...prev,
-                  first_name: prev.first_name || firstName,
-                  last_name: prev.last_name || lastName,
-                  license_number: practitioner.hwr_number,
-                  specialization: practitioner.specialization || prev.specialization,
-                  license_expiry: practitioner.license_expiry 
-                    ? new Date(practitioner.license_expiry) 
-                    : prev.license_expiry,
+                  // Only fill if not already set by user
+                  first_name: prev.first_name || practitioner.membership.first_name,
+                  last_name: prev.last_name || practitioner.membership.last_name,
+                  email: prev.email || practitioner.contacts.email?.toLowerCase() || '',
+                  phone_number: prev.phone_number || practitioner.contacts.phone || '',
+                  license_number: practitioner.membership.registration_id,
+                  specialization: prev.specialization || 
+                    practitioner.professional_details.specialty || 
+                    practitioner.membership.specialty || '',
+                  license_expiry: licenseExpiry,
                 }));
 
                 toast({
                   title: 'Practitioner Verified',
-                  description: `${practitioner.name} - ${practitioner.cadre}`,
+                  description: `${practitioner.membership.full_name.trim()} - ${practitioner.professional_details.professional_cadre}`,
                 });
               }}
-              label="Search SHA/DHA Registry"
-              placeholder="Enter HWR number (e.g., HW-12345)"
             />
             
             <div className="grid gap-4 sm:grid-cols-2">
