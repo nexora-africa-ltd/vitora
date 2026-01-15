@@ -43,9 +43,9 @@
 
 **Migration Status:**
 - ✅ `app/(dashboard)/patients/[id]/page.tsx` - Now uses `usePatientContext()`
-- ⏳ `app/(dashboard)/encounters/[id]/page.tsx` - Pending migration
-- ⏳ `components/laboratory/lab-order-form.tsx` - Pending migration
-- ⏳ `components/billing/InvoiceForm.tsx` - Pending migration
+- ✅ `app/(dashboard)/encounters/[id]/page.tsx` - Now uses `useEncounterContext()`
+- ✅ `components/laboratory/lab-order-form.tsx` - Context-aware with fallback
+- ✅ `app/(dashboard)/pharmacy/prescriptions/new/page.tsx` - Context-aware with fallback
 
 ---
 
@@ -165,9 +165,6 @@
 | File | Change | Status |
 |------|--------|--------|
 | `lib/stores/patient-journey.ts` | Wire as authoritative store consumed by contexts | ⏳ Pending |
-| `app/(dashboard)/encounters/[id]/page.tsx` | Migrate to consume `useEncounterContext()` | ⏳ Next Batch |
-| `components/laboratory/lab-order-form.tsx` | Migrate to consume context | ⏳ Next Batch |
-| `components/pharmacy/prescription-form.tsx` | Migrate to consume context | ⏳ Next Batch |
 
 ### Files MODIFIED (Batch 2):
 
@@ -177,6 +174,15 @@
 | `components/billing/InvoiceForm.tsx` | Added `SimpleInvoiceForm` with encounter validation | ✅ Done |
 | `lib/auth/context.tsx` | Added `role` field to User type | ✅ Done |
 | `lib/types/index.ts` | Added `role` field to User type | ✅ Done |
+
+### Files MODIFIED (Batch 3):
+
+| File | Change | Status |
+|------|--------|--------|
+| `app/(dashboard)/encounters/[id]/page.tsx` | Uses `useEncounterContext()`, canPlaceOrders | ✅ Done |
+| `components/laboratory/lab-order-form.tsx` | Context-aware with prop fallback | ✅ Done |
+| `app/(dashboard)/laboratory/orders/new/page.tsx` | Context-aware, encounter status check | ✅ Done |
+| `app/(dashboard)/pharmacy/prescriptions/new/page.tsx` | Context-aware with URL param fallback | ✅ Done |
 
 ### Files UNTOUCHED (As Planned):
 
@@ -211,10 +217,11 @@
 | 7 | Migrate patients/[id]/page.tsx to consume context | Medium | ✅ Done |
 | 8 | Add usePermissions hook for RBAC | Medium | ✅ Done |
 | 9 | Billing encounter enforcement | Medium | ✅ Done |
-| 10 | Migrate encounter pages to consume context | Medium | ⏳ Next |
-| 11 | Migrate lab-order-form to consume context | Medium | ⏳ Next |
-| 12 | Wire patient-journey.ts store as authoritative backend sync | Low | ⏳ Future |
-| 13 | Add E2E tests for patient confusion prevention | Low | ⏳ Future |
+| 10 | Migrate encounter pages to consume context | Medium | ✅ Done |
+| 11 | Migrate lab-order-form to consume context | Medium | ✅ Done |
+| 12 | Migrate prescription page to consume context | Medium | ✅ Done |
+| 13 | Wire patient-journey.ts store as authoritative backend sync | Low | ⏳ Future |
+| 14 | Add E2E tests for patient confusion prevention | Low | ⏳ Future |
 
 ---
 
@@ -244,7 +251,11 @@
 | PatientDetailPage | 9 | Context consumption, permission-gated edit button |
 | BillingEncounter | 9 | Encounter requirement, SHA compliance warnings |
 | **Batch 2 Total** | **32** | All passing ✅ (2 skipped) |
-| **Grand Total** | **102** | All passing ✅ |
+| EncounterDetailPage | 7 | Context consumption, order permissions |
+| LabOrderFormContext | 6 | Context-aware form, encounter validation |
+| PatientDetailAdmit | 1 | Admission link integration |
+| **Batch 3 Total** | **14** | All passing ✅ |
+| **Grand Total** | **116** | 96 passing, 2 skipped ✅ |
 
 ---
 
