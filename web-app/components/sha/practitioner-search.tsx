@@ -76,7 +76,7 @@ export interface DHAPractitionerSearchProps {
   autoSelect?: boolean;
 }
 
-type IdentificationType = 'ID' | 'passport';
+type IdentificationType = 'National ID' | 'passport';
 
 export function DHAPractitionerSearch({
   onSelect,
@@ -86,7 +86,7 @@ export function DHAPractitionerSearch({
   showDetailedResult = true,
   autoSelect = true,
 }: DHAPractitionerSearchProps) {
-  const [idType, setIdType] = useState<IdentificationType>('ID');
+  const [idType, setIdType] = useState<IdentificationType>('National ID');
   const [idNumber, setIdNumber] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [practitioner, setPractitioner] = useState<DHAPractitioner | null>(null);
@@ -178,7 +178,7 @@ export function DHAPractitionerSearch({
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="ID">National ID</SelectItem>
+              <SelectItem value="National ID">National ID</SelectItem>
               <SelectItem value="passport">Passport</SelectItem>
             </SelectContent>
           </Select>
@@ -188,7 +188,7 @@ export function DHAPractitionerSearch({
               value={idNumber}
               onChange={(e) => setIdNumber(e.target.value)}
               onKeyDown={handleKeyDown}
-              placeholder={idType === 'ID' ? 'Enter National ID number' : 'Enter Passport number'}
+              placeholder={idType === 'National ID' ? 'Enter National ID number' : 'Enter Passport number'}
               disabled={disabled || isLoading}
               className="pl-9"
             />
