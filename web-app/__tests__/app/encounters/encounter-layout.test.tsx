@@ -46,38 +46,11 @@ jest.mock('@/lib/api/encounters', () => ({
 import { patientsApi } from '@/lib/api/patients';
 import { encountersApi } from '@/lib/api/encounters';
 import EncounterLayout from '@/app/(dashboard)/encounters/[id]/layout';
+import { mockPatient, mockEncounter } from '../../fixtures/patient-shell-fixtures';
 
 const mockPatientsApi = patientsApi as jest.Mocked<typeof patientsApi>;
 const mockEncountersApi = encountersApi as jest.Mocked<typeof encountersApi>;
 const mockUseParams = useParams as jest.MockedFunction<typeof useParams>;
-
-// Test fixtures
-const mockPatient = {
-  id: 1,
-  mrn: 'MRN-20260115-0001',
-  first_name: 'Jane',
-  last_name: 'Doe',
-  date_of_birth: '1985-05-20',
-  gender: 'F' as const,
-  phone_number: '+254712345678',
-  is_sensitive: false,
-  consent_given: true,
-  cr_number: 'CR-12345',
-  sha_number: 'SHA-67890',
-};
-
-const mockEncounter = {
-  id: 100,
-  patient: 1,
-  patient_name: 'Jane Doe',
-  patient_mrn: 'MRN-20260115-0001',
-  encounter_type: 'OPD',
-  encounter_date: '2026-01-15',
-  status: 'IN_PROGRESS',
-  triage_status: 'COMPLETED',
-  consultation_status: 'IN_PROGRESS',
-  chief_complaint: 'Persistent headache',
-};
 
 // Helper to create QueryClient wrapper
 function createWrapper() {
@@ -240,7 +213,7 @@ describe('Encounter Shell Layout', () => {
     });
 
     it('should provide canPlaceOrders = false for COMPLETED encounters', async () => {
-      const completedEncounter = { ...mockEncounter, status: 'COMPLETED' };
+      const completedEncounter = { ...mockEncounter, status: 'COMPLETED' as const };
       mockEncountersApi.get.mockResolvedValueOnce(completedEncounter);
       
       function ChildCheckingPermissions() {
