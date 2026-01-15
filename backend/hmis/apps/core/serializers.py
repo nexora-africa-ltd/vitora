@@ -2,10 +2,25 @@
 Serializers for core app.
 """
 
+from django.contrib.auth.models import Permission
 from django.utils import timezone
 from rest_framework import serializers
 
 from .models import AuditLog, County, Department, Notification, Role, StaffProfile, SubCounty, Ward
+
+
+class PermissionSerializer(serializers.ModelSerializer):
+    """Serializer for Django Permission model."""
+
+    app_label = serializers.CharField(source="content_type.app_label", read_only=True)
+    model = serializers.CharField(source="content_type.model", read_only=True)
+
+    class Meta:
+        """Meta options for PermissionSerializer."""
+
+        model = Permission
+        fields = ["id", "codename", "name", "app_label", "model"]
+        read_only_fields = fields
 
 
 class AuditLogSerializer(serializers.ModelSerializer):
