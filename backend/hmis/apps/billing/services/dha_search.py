@@ -702,7 +702,7 @@ class DHASearchService:
     def search_practitioner(
         self,
         identification_number: Optional[str] = None,
-        identification_type: str = 'ID',
+        identification_type: str = 'National ID',
         registration_number: Optional[str] = None,
     ) -> Optional[PractitionerInfo]:
         """
@@ -714,7 +714,7 @@ class DHASearchService:
         
         Args:
             identification_number: National ID or Passport number
-            identification_type: Type of ID ('ID' for National ID, 'passport')
+            identification_type: Type of ID ('National ID' or 'passport')
             registration_number: Professional registration number (PUID)
             
         Returns:
@@ -727,7 +727,7 @@ class DHASearchService:
         Example:
             >>> practitioner = service.search_practitioner(
             ...     identification_number='12345678',
-            ...     identification_type='ID'
+            ...     identification_type='National ID'
             ... )
             >>> if practitioner:
             ...     print(f"Found: {practitioner.full_name}")
