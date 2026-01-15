@@ -180,7 +180,7 @@ export function Sidebar({ collapsed, onCollapse, mobileOpen, onMobileClose }: Si
           'flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-colors',
           isChild && !collapsed && 'ml-4 pl-4 border-l border-border',
           isActive
-            ? 'bg-teal-200 text-teal-900 hover:bg-teal-300 hover:text-teal-950'
+            ? 'bg-cyan-300/10 text-accent-foreground hover:bg-cyan-450 hover:text-accent-foreground'
             : 'text-muted-foreground hover:bg-[#3D000F] hover:text-accent-foreground'
         )}
       >
@@ -198,7 +198,7 @@ export function Sidebar({ collapsed, onCollapse, mobileOpen, onMobileClose }: Si
       return (
         <Tooltip>
           <TooltipTrigger asChild>{linkContent}</TooltipTrigger>
-          <TooltipContent side="right">
+          <TooltipContent side="right" className="bg-cyan-300 text-cyan-900">
             {item.label}
             {item.badge && ` (${item.badge})`}
           </TooltipContent>
@@ -224,7 +224,7 @@ export function Sidebar({ collapsed, onCollapse, mobileOpen, onMobileClose }: Si
               className={cn(
                 'flex w-full items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-colors',
                 hasActiveChild
-                  ? 'bg-teal-200 text-teal-900'
+                  ? 'bg-cyan-400 text-cyan-900'
                   : 'text-muted-foreground hover:bg-[#3D000F] hover:text-accent-foreground'
               )}
             >
@@ -242,7 +242,7 @@ export function Sidebar({ collapsed, onCollapse, mobileOpen, onMobileClose }: Si
                   className={cn(
                     'flex items-center gap-2 px-3 py-1.5 text-sm transition-colors',
                     pathname === child.href || pathname.startsWith(`${child.href}/`)
-                      ? 'bg-teal-100 text-teal-900'
+                      ? 'bg-cyan-300 text-cyan-900'
                       : 'hover:bg-muted'
                   )}
                 >
@@ -263,7 +263,7 @@ export function Sidebar({ collapsed, onCollapse, mobileOpen, onMobileClose }: Si
             className={cn(
               'flex w-full items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-colors',
               hasActiveChild
-                ? 'bg-teal-100 text-teal-900'
+                ? 'bg-cyan-300 text-cyan-900'
                 : 'text-muted-foreground hover:bg-[#3D000F] hover:text-accent-foreground'
             )}
           >
