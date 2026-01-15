@@ -6,10 +6,10 @@
  */
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { ArrowLeft, Shield, Save, Loader2, Trash2, AlertTriangle } from 'lucide-react';
+import { ArrowLeft, Shield, Save, Loader2, Trash2, AlertTriangle, Check, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -36,6 +36,12 @@ import {
   AlertDialogTrigger,
 } from '@/components/ui/alert-dialog';
 import { Alert, AlertDescription } from '@/components/ui/alert';
+import {
+  Accordion,
+  AccordionContent,
+  AccordionItem,
+  AccordionTrigger,
+} from '@/components/ui/accordion';
 import { useToast } from '@/lib/hooks/use-toast';
 import { useRole, useUpdateRole, useDeleteRole, usePermissions } from '@/lib/hooks/use-rbac';
 import type { RoleCategory, Permission } from '@/lib/types/rbac';
@@ -59,6 +65,27 @@ function groupPermissions(permissions: Permission[]) {
     groups[appLabel].push(perm);
   });
   return groups;
+}
+
+// Convert permissions_matrix to flat permission codes
+function matrixToPermissionCodes(matrix: Record<string, Record<string, boolean>>): string[] {
+  const codes: string[] = [];
+  Object.entries(matrix).forEach(([resource, actions]) => {
+    Object.entries(actions).forEach(([action, granted]) => {
+      if (granted) {
+        // Convert to permission code format: app_label.action_model
+        // e.g., Patient { create: true } -> patients.add_patient
+        const appLabel = resource.toLowerCase() + 's'; // Simple pluralization
+        const codename = action === 'create' ? `add_${resource.toLowerCase()}`
+          : action === 'read' ? `view_${resource.toLowerCase()}`
+          : action === 'update' ? `change_${resource.toLowerCase()}`
+          : action === 'delete' ? `delete_${resource.toLowerCase()}`
+          : `${action}_${resource.toLowerCase()}`;
+        codes.push(`${appLabel}.${codename}`);
+      }
+    });
+  });
+  return codes;
 }
 
 export default function RoleEditPage() {
@@ -87,7 +114,9 @@ export default function RoleEditPage() {
       setCode(role.code);
       setDescription(role.description || '');
       setCategory(role.category);
-      setSelectedPermissions([]);
+      // Initialize permissions from the role's permissions_matrix
+      const initialPermissions = matrixToPermissionCodes(role.permissions_matrix || {});
+      setSelectedPermissions(initialPermissions);
       setIsDefault(false);
     }
   }, [role]);
@@ -171,6 +200,19 @@ export default function RoleEditPage() {
   const groupedPermissions = allPermissions 
     ? groupPermissions(allPermissions)
     : {};
+
+  // Calculate assigned/unassigned counts per group
+  const getGroupStats = (perms: Permission[]) => {
+    const assigned = perms.filter(p => 
+      selectedPermissions.includes(`${p.app_label}.${p.codename}`)
+    ).length;
+    return { assigned, total: perms.length, unassigned: perms.length - assigned };
+  };
+
+  // Get groups with any assigned permissions (for default open state)
+  const groupsWithAssigned = Object.entries(groupedPermissions)
+    .filter(([, perms]) => getGroupStats(perms).assigned > 0)
+    .map(([label]) => label);
 
   return (
     <div className="container mx-auto py-6 max-w-4xl">
@@ -279,36 +321,71 @@ export default function RoleEditPage() {
             </CardDescription>
           </CardHeader>
           <CardContent>
-            <div className="grid gap-6 md:grid-cols-2">
-              {Object.entries(groupedPermissions).map(([appLabel, perms]) => (
-                <div key={appLabel} className="space-y-3">
-                  <h4 className="font-medium capitalize flex items-center gap-2">
-                    <Badge variant="outline">{appLabel}</Badge>
-                  </h4>
-                  <div className="space-y-2 pl-4">
-                    {perms.map((perm) => {
-                      const permCode = `${perm.app_label}.${perm.codename}`;
-                      return (
-                        <div key={permCode} className="flex items-center space-x-2">
-                          <Checkbox
-                            id={permCode}
-                            checked={selectedPermissions.includes(permCode)}
-                            onCheckedChange={() => handlePermissionToggle(permCode)}
-                          />
-                          <Label htmlFor={permCode} className="text-sm font-normal">
-                            {perm.name}
-                          </Label>
-                        </div>
-                      );
-                    })}
-                  </div>
-                </div>
-              ))}
-            </div>
-            {Object.keys(groupedPermissions).length === 0 && (
+            {Object.keys(groupedPermissions).length === 0 ? (
               <p className="text-muted-foreground text-center py-4">
                 No permissions available
               </p>
+            ) : (
+              <Accordion 
+                type="multiple" 
+                defaultValue={groupsWithAssigned}
+                className="w-full"
+              >
+                {Object.entries(groupedPermissions).map(([appLabel, perms]) => {
+                  const stats = getGroupStats(perms);
+                  return (
+                    <AccordionItem key={appLabel} value={appLabel}>
+                      <AccordionTrigger className="hover:no-underline">
+                        <div className="flex items-center gap-3 flex-1">
+                          <span className="font-medium capitalize">{appLabel}</span>
+                          <div className="flex items-center gap-2 text-sm">
+                            {stats.assigned > 0 && (
+                              <Badge variant="default" className="gap-1">
+                                <Check className="h-3 w-3" />
+                                {stats.assigned}
+                              </Badge>
+                            )}
+                            {stats.unassigned > 0 && (
+                              <Badge variant="outline" className="gap-1 text-muted-foreground">
+                                <X className="h-3 w-3" />
+                                {stats.unassigned}
+                              </Badge>
+                            )}
+                          </div>
+                        </div>
+                      </AccordionTrigger>
+                      <AccordionContent>
+                        <div className="grid gap-2 sm:grid-cols-2 pt-2">
+                          {perms.map((perm) => {
+                            const permCode = `${perm.app_label}.${perm.codename}`;
+                            const isChecked = selectedPermissions.includes(permCode);
+                            return (
+                              <div 
+                                key={permCode} 
+                                className={`flex items-center space-x-2 p-2 rounded-md transition-colors ${
+                                  isChecked ? 'bg-primary/5' : 'hover:bg-muted/50'
+                                }`}
+                              >
+                                <Checkbox
+                                  id={permCode}
+                                  checked={isChecked}
+                                  onCheckedChange={() => handlePermissionToggle(permCode)}
+                                />
+                                <Label 
+                                  htmlFor={permCode} 
+                                  className="text-sm font-normal cursor-pointer flex-1"
+                                >
+                                  {perm.name}
+                                </Label>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      </AccordionContent>
+                    </AccordionItem>
+                  );
+                })}
+              </Accordion>
             )}
           </CardContent>
         </Card>

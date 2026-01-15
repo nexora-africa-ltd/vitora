@@ -283,6 +283,7 @@ class StaffProfileCreateSerializer(serializers.Serializer):
     def create(self, validated_data):
         """Create User and StaffProfile together."""
         from django.contrib.auth import get_user_model
+        from datetime import date
         import secrets
         
         User = get_user_model()
@@ -297,6 +298,10 @@ class StaffProfileCreateSerializer(serializers.Serializer):
         # Generate a random password if not provided
         if not password:
             password = secrets.token_urlsafe(12)
+        
+        # Ensure date_joined has a default value
+        if 'date_joined' not in validated_data or validated_data.get('date_joined') is None:
+            validated_data['date_joined'] = date.today()
         
         # Create the user
         user = User.objects.create_user(
