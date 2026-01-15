@@ -212,4 +212,28 @@ const SelectSeparator = React.forwardRef<
 ))
 SelectSeparator.displayName = "SelectSeparator"
 
-export { Select, SelectTrigger, SelectValue, SelectContent, SelectItem, SelectGroup, SelectLabel, SelectSeparator }
+interface SelectEmptyProps extends React.HTMLAttributes<HTMLDivElement> {
+  children?: React.ReactNode
+}
+
+const SelectEmpty = React.forwardRef<HTMLDivElement, SelectEmptyProps>(
+  ({ className, children, ...props }, ref) => {
+    return (
+      <div
+        ref={ref}
+        className={cn(
+          "flex flex-col items-center justify-center py-6 px-2 text-center",
+          className
+        )}
+        {...props}
+      >
+        <span className="text-sm text-muted-foreground">
+          {children || "No options available"}
+        </span>
+      </div>
+    )
+  }
+)
+SelectEmpty.displayName = "SelectEmpty"
+
+export { Select, SelectTrigger, SelectValue, SelectContent, SelectItem, SelectGroup, SelectLabel, SelectSeparator, SelectEmpty }
