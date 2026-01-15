@@ -139,21 +139,23 @@ describe('EncounterContext', () => {
       consoleSpy.mockRestore();
     });
 
-    it('should throw error when EncounterProvider is used outside PatientProvider', () => {
-      const consoleSpy = jest.spyOn(console, 'error').mockImplementation(() => {});
+    it('should work without PatientProvider for encounter-first flows', async () => {
+      // EncounterProvider can be used standalone for encounter-first navigation
+      // (e.g., /encounters/123 route where patient is derived from encounter)
+      mockEncountersApi.get.mockResolvedValueOnce(mockEncounter);
       
       const Wrapper = createWrapper();
-      expect(() => {
-        render(
-          <Wrapper>
-            <EncounterProvider encounterId={100}>
-              <TestEncounterConsumer />
-            </EncounterProvider>
-          </Wrapper>
-        );
-      }).toThrow('EncounterProvider must be used within a PatientProvider');
-      
-      consoleSpy.mockRestore();
+      render(
+        <Wrapper>
+          <EncounterProvider encounterId={100}>
+            <TestEncounterConsumer />
+          </EncounterProvider>
+        </Wrapper>
+      );
+
+      await waitFor(() => {
+        expect(screen.getByTestId('encounter-id')).toHaveTextContent('100');
+      });
     });
 
     it('should initialize with loading state when encounterId is provided', async () => {
