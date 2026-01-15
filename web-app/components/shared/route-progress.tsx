@@ -68,7 +68,7 @@ export function RouteProgress() {
     >
       <div
         className={cn(
-          'h-full bg-primary transition-all duration-200 ease-out',
+          'h-full bg-teal-100 transition-all duration-200 ease-out',
           progress === 100 && 'opacity-0'
         )}
         style={{ width: `${progress}%` }}
@@ -76,7 +76,7 @@ export function RouteProgress() {
       {/* Glow effect */}
       <div
         className={cn(
-          'absolute right-0 top-0 h-full w-24 bg-gradient-to-r from-transparent to-primary/50 blur-sm',
+          'absolute right-0 top-0 h-full w-24 bg-gradient-to-r from-transparent to-teal-100/50 blur-sm',
           progress === 100 && 'opacity-0'
         )}
         style={{ transform: `translateX(${progress < 100 ? '0' : '100%'})` }}
