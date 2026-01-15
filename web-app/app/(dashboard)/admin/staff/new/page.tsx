@@ -45,7 +45,7 @@ export default function NewStaffPage() {
     role: '',
     phone_number: '',
     license_number: '',
-    license_expiry: '',
+    license_expiry: undefined as Date | undefined,
     specialization: '',
     hire_date: new Date(),
   });
@@ -378,11 +378,10 @@ export default function NewStaffPage() {
               </div>
               <div className="space-y-2">
                 <Label htmlFor="license_expiry">License Expiry</Label>
-                <Input
-                  id="license_expiry"
-                  type="date"
+                <DatePicker
                   value={formData.license_expiry}
-                  onChange={(e) => handleChange('license_expiry', e.target.value)}
+                  onChange={(date) => setFormData(prev => ({ ...prev, license_expiry: date }))}
+                  placeholder="Select expiry date"
                 />
               </div>
             </div>
