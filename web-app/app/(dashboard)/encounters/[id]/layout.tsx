@@ -89,9 +89,9 @@ function EncounterLayoutContent({ children }: { children: React.ReactNode }) {
   }
 
   return (
-    <div className="flex flex-col min-h-screen">
+    <div className="flex flex-col min-h-full -m-4 md:-m-6 lg:-m-8">
       <PatientShellHeader />
-      <main className="flex-1">
+      <main className="flex-1 p-4 md:p-6 lg:p-8">
         {children}
       </main>
     </div>
