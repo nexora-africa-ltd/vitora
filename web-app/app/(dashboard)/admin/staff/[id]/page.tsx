@@ -76,13 +76,13 @@ export default function EditStaffPage() {
         first_name: staff.user_first_name || '',
         last_name: staff.user_last_name || '',
         employee_id: staff.employee_id || '',
-        department: staff.department?.toString() || '',
-        role: staff.role?.toString() || '',
+        department: staff.primary_department?.toString() || '',
+        role: staff.primary_role?.toString() || '',
         phone_number: staff.phone_number || '',
         license_number: staff.license_number || '',
         license_expiry: staff.license_expiry || '',
         specialization: staff.specialization || '',
-        is_active: staff.is_active ?? true,
+        is_active: staff.employment_status === 'ACTIVE',
       });
     }
   }, [staff]);
@@ -240,14 +240,14 @@ export default function EditStaffPage() {
             <p className="text-muted-foreground">
               {staff.full_name || `${staff.user_first_name} ${staff.user_last_name}`}
               {' • '}
-              <Badge variant={staff.is_active ? 'default' : 'secondary'}>
-                {staff.is_active ? 'Active' : 'Inactive'}
+              <Badge variant={staff.employment_status === 'ACTIVE' ? 'default' : 'secondary'}>
+                {staff.employment_status === 'ACTIVE' ? 'Active' : staff.employment_status?.toLowerCase() || 'Unknown'}
               </Badge>
             </p>
           </div>
         </div>
         
-        {staff.is_active && (
+        {staff.employment_status === 'ACTIVE' && (
           <AlertDialog>
             <AlertDialogTrigger asChild>
               <Button variant="destructive">Deactivate</Button>
