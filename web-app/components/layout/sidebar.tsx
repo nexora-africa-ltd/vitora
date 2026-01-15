@@ -35,6 +35,7 @@ import {
   CollapsibleContent,
   CollapsibleTrigger,
 } from '@/components/ui/collapsible';
+import { ScrollArea } from '@/components/ui/scroll-area';
 import { useLogout } from '@/lib/auth/hooks';
 
 interface SidebarProps {
@@ -283,60 +284,64 @@ export function Sidebar({ collapsed, onCollapse, mobileOpen, onMobileClose }: Si
         </div>
 
         {/* Navigation */}
-        <nav className="flex flex-col h-[calc(100vh-4rem)] p-3">
-          {/* Main nav items */}
-          <div className="flex-1 space-y-1">
-            {mainNavItems.map((item) => (
-              hasChildren(item) ? (
-                <NavGroup key={item.label} item={item} />
-              ) : (
+        <nav className="flex flex-col h-[calc(100vh-4rem)]">
+          <ScrollArea className="flex-1 px-3 pt-3">
+            {/* Main nav items */}
+            <div className="space-y-1">
+              {mainNavItems.map((item) => (
+                hasChildren(item) ? (
+                  <NavGroup key={item.label} item={item} />
+                ) : (
+                  <NavLink key={item.href} item={item} />
+                )
+              ))}
+            </div>
+          </ScrollArea>
+
+          <div className="px-3 pb-3">
+            <Separator className="my-2" />
+
+            {/* Bottom nav items */}
+            <div className="space-y-1">
+              {bottomNavItems.map((item) => (
                 <NavLink key={item.href} item={item} />
-              )
-            ))}
+              ))}
+
+              {/* Logout button */}
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <button
+                    onClick={logout}
+                    className={cn(
+                      'flex w-full items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium',
+                      'text-muted-foreground hover:bg-destructive/10 hover:text-destructive transition-colors'
+                    )}
+                  >
+                    <LogOut className="h-5 w-5 shrink-0" />
+                    {!collapsed && <span>Logout</span>}
+                  </button>
+                </TooltipTrigger>
+                {collapsed && <TooltipContent side="right">Logout</TooltipContent>}
+              </Tooltip>
+            </div>
+
+            {/* Collapse toggle (desktop only) */}
+            <Button
+              variant="ghost"
+              size="sm"
+              className="hidden lg:flex mt-2 w-full justify-center"
+              onClick={() => onCollapse(!collapsed)}
+            >
+              {collapsed ? (
+                <ChevronRight className="h-4 w-4" />
+              ) : (
+                <>
+                  <ChevronLeft className="h-4 w-4 mr-2" />
+                  <span>Collapse</span>
+                </>
+              )}
+            </Button>
           </div>
-
-          <Separator className="my-2" />
-
-          {/* Bottom nav items */}
-          <div className="space-y-1">
-            {bottomNavItems.map((item) => (
-              <NavLink key={item.href} item={item} />
-            ))}
-
-            {/* Logout button */}
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <button
-                  onClick={logout}
-                  className={cn(
-                    'flex w-full items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium',
-                    'text-muted-foreground hover:bg-destructive/10 hover:text-destructive transition-colors'
-                  )}
-                >
-                  <LogOut className="h-5 w-5 shrink-0" />
-                  {!collapsed && <span>Logout</span>}
-                </button>
-              </TooltipTrigger>
-              {collapsed && <TooltipContent side="right">Logout</TooltipContent>}
-            </Tooltip>
-          </div>
-
-          {/* Collapse toggle (desktop only) */}
-          <Button
-            variant="ghost"
-            size="sm"
-            className="hidden lg:flex mt-2 w-full justify-center"
-            onClick={() => onCollapse(!collapsed)}
-          >
-            {collapsed ? (
-              <ChevronRight className="h-4 w-4" />
-            ) : (
-              <>
-                <ChevronLeft className="h-4 w-4 mr-2" />
-                <span>Collapse</span>
-              </>
-            )}
-          </Button>
         </nav>
       </aside>
     </TooltipProvider>
