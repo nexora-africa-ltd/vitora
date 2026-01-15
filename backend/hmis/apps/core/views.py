@@ -258,6 +258,14 @@ class StaffProfileViewSet(viewsets.ModelViewSet):
     ordering_fields = ["employee_id", "date_joined", "created_at"]
     ordering = ["user__last_name", "user__first_name"]
 
+    def get_serializer_class(self):
+        """Return appropriate serializer class based on action."""
+        from .serializers import StaffProfileCreateSerializer
+        
+        if self.action == 'create':
+            return StaffProfileCreateSerializer
+        return StaffProfileSerializer
+
     def get_permissions(self):
         """Set permissions based on action."""
         if self.action in ["create", "destroy"]:
@@ -265,6 +273,16 @@ class StaffProfileViewSet(viewsets.ModelViewSet):
         else:
             permission_classes = [IsAuthenticated]
         return [permission() for permission in permission_classes]
+
+    def create(self, request, *args, **kwargs):
+        """Create a new staff profile with user account."""
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        staff_profile = serializer.save()
+        
+        # Return the full staff profile using the read serializer
+        read_serializer = StaffProfileSerializer(staff_profile)
+        return Response(read_serializer.data, status=status.HTTP_201_CREATED)
 
     @action(detail=False, methods=["get", "patch"])
     def me(self, request):

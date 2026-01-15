@@ -235,6 +235,7 @@ export interface StaffListParams {
 export interface AuditLogListParams {
   page?: number;
   page_size?: number;
+  search?: string;
   action?: AuditAction;
   user?: number;
   resource_type?: string;
