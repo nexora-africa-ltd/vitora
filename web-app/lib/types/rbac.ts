@@ -101,29 +101,41 @@ export interface PermissionGroup {
 // Staff Profile Types
 // =============================================================================
 
+export type EmploymentStatus = 'ACTIVE' | 'INACTIVE' | 'ON_LEAVE' | 'SUSPENDED' | 'TERMINATED';
+export type EmploymentType = 'PERMANENT' | 'CONTRACT' | 'LOCUM' | 'INTERN' | 'VOLUNTEER';
+
 export interface StaffProfile {
   id: number;
   user: number;
-  username: string;
-  email: string;
-  first_name: string;
-  last_name: string;
-  middle_name: string | null;
+  user_username: string;
+  user_email: string;
+  user_first_name: string;
+  user_last_name: string;
   full_name: string;
   employee_id: string;
-  department: number | null;
-  department_name: string | null;
-  role: number | null;
-  role_name: string | null;
-  phone_number: string;
+  title: string | null;
+  middle_name: string | null;
+  primary_role: number | null;
+  primary_role_name: string | null;
+  secondary_roles: number[];
+  primary_department: number | null;
+  primary_department_name: string | null;
+  secondary_departments: number[];
   hwr_id: string | null;
   license_number: string | null;
   license_expiry: string | null;
   license_verified: boolean;
   licensing_body: string | null;
+  is_license_valid: boolean;
   specialization: string | null;
-  is_active: boolean;
-  hire_date: string | null;
+  phone_number: string | null;
+  emergency_contact_name: string | null;
+  emergency_contact_phone: string | null;
+  employment_status: EmploymentStatus;
+  employment_type: EmploymentType | null;
+  date_joined: string | null;
+  date_left: string | null;
+  supervisor: number | null;
   created_at: string;
   updated_at: string;
 }

@@ -177,7 +177,7 @@ export default function StaffListPage() {
                       <TableCell>
                         <div>
                           <p className="font-medium">{staff.full_name}</p>
-                          <p className="text-sm text-muted-foreground">@{staff.username}</p>
+                          <p className="text-sm text-muted-foreground">@{staff.user_username}</p>
                         </div>
                       </TableCell>
                       <TableCell>
@@ -186,21 +186,21 @@ export default function StaffListPage() {
                       <TableCell>
                         <div className="flex items-center gap-1">
                           <Building2 className="h-3 w-3 text-muted-foreground" />
-                          <span>{staff.department_name || 'Unassigned'}</span>
+                          <span>{staff.primary_department_name || 'Unassigned'}</span>
                         </div>
                       </TableCell>
                       <TableCell>
                         <div className="flex items-center gap-1">
                           <Shield className="h-3 w-3 text-muted-foreground" />
-                          <span>{staff.role_name || 'Unassigned'}</span>
+                          <span>{staff.primary_role_name || 'Unassigned'}</span>
                         </div>
                       </TableCell>
                       <TableCell>
                         <div className="space-y-1">
-                          {staff.email && (
+                          {staff.user_email && (
                             <div className="flex items-center gap-1 text-sm">
                               <Mail className="h-3 w-3 text-muted-foreground" />
-                              <span className="truncate max-w-[150px]">{staff.email}</span>
+                              <span className="truncate max-w-[150px]">{staff.user_email}</span>
                             </div>
                           )}
                           {staff.phone_number && (
@@ -212,8 +212,8 @@ export default function StaffListPage() {
                         </div>
                       </TableCell>
                       <TableCell>
-                        <Badge variant={staff.is_active ? 'default' : 'secondary'}>
-                          {staff.is_active ? 'Active' : 'Inactive'}
+                        <Badge variant={staff.employment_status === 'ACTIVE' ? 'default' : 'secondary'}>
+                          {staff.employment_status === 'ACTIVE' ? 'Active' : staff.employment_status?.toLowerCase() || 'Unknown'}
                         </Badge>
                       </TableCell>
                       <TableCell className="text-right">
