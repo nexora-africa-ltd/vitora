@@ -73,7 +73,7 @@ export function PatientShellHeader({ className, compact = false }: PatientShellH
       <header
         data-testid="patient-shell-loading"
         className={cn(
-          'bg-card border-b px-4 py-3',
+          'w-full h-16 bg-card border-b px-4 flex items-center',
           className
         )}
         role="banner"
@@ -95,7 +95,7 @@ export function PatientShellHeader({ className, compact = false }: PatientShellH
     return (
       <header
         className={cn(
-          'bg-destructive/10 border-b border-destructive/20 px-4 py-3',
+          'w-full h-16 bg-destructive/10 border-b border-destructive/20 px-4 flex items-center',
           className
         )}
         role="alert"
@@ -116,14 +116,14 @@ export function PatientShellHeader({ className, compact = false }: PatientShellH
   return (
     <header
       className={cn(
-        'bg-card border-b px-4 py-3 sticky top-0 z-30',
+        'w-full h-16 bg-card border-b px-4 sticky top-0 z-30 flex items-center',
         isSensitive && 'border-l-4 border-l-destructive',
         className
       )}
       role="banner"
       aria-label="Patient information"
     >
-      <div className="flex flex-wrap items-center justify-between gap-4">
+      <div className="flex flex-wrap items-center justify-between gap-4 w-full">
         {/* Patient Identity Section */}
         <div className="flex items-center gap-4">
           {/* Avatar placeholder */}
