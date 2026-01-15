@@ -162,9 +162,12 @@
 
 ### Files to MODIFY (Future Work):
 
+*All core Patient Shell pattern work is complete. Future enhancements:*
+
 | File | Change | Status |
 |------|--------|--------|
-| `lib/stores/patient-journey.ts` | Wire as authoritative store consumed by contexts | ⏳ Pending |
+| E2E Tests | Add Playwright tests for patient confusion prevention | ⏳ Future |
+| Journey Dashboard | Build patient journey visualization UI | ⏳ Future |
 
 ### Files MODIFIED (Batch 2):
 
@@ -183,6 +186,13 @@
 | `components/laboratory/lab-order-form.tsx` | Context-aware with prop fallback | ✅ Done |
 | `app/(dashboard)/laboratory/orders/new/page.tsx` | Context-aware, encounter status check | ✅ Done |
 | `app/(dashboard)/pharmacy/prescriptions/new/page.tsx` | Context-aware with URL param fallback | ✅ Done |
+
+### Files MODIFIED (Patient Journey Integration):
+
+| File | Change | Status |
+|------|--------|--------|
+| `lib/context/patient-context.tsx` | Syncs with patient-journey store, exposes journeyStage | ✅ Done |
+| `lib/context/encounter-context.tsx` | Syncs triage/consultation status to journey store | ✅ Done |
 
 ### Files UNTOUCHED (As Planned):
 
@@ -220,7 +230,7 @@
 | 10 | Migrate encounter pages to consume context | Medium | ✅ Done |
 | 11 | Migrate lab-order-form to consume context | Medium | ✅ Done |
 | 12 | Migrate prescription page to consume context | Medium | ✅ Done |
-| 13 | Wire patient-journey.ts store as authoritative backend sync | Low | ⏳ Future |
+| 13 | Wire patient-journey.ts store as authoritative backend sync | Low | ✅ Done |
 | 14 | Add E2E tests for patient confusion prevention | Low | ⏳ Future |
 
 ---
