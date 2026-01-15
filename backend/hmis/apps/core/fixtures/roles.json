@@ -158,7 +158,7 @@
       "code": "CLINICAL_OFFICER",
       "name": "Clinical Officer",
       "category": "CLINICAL",
-      "description": "Licensed clinical officer (COK - Clinical Officers Council registered). Ranks below Medical Doctor but above Nurse.",
+      "description": "Licensed clinical officer (COC - Clinical Officers Council registered). Ranks below Medical Doctor but above Nurse.",
       "permissions_matrix": {
         "Patient": {"create": true, "read": true, "update": true, "delete": false, "view_sensitive": true},
         "Encounter": {"create": true, "read": true, "update": true, "delete": false},
@@ -168,7 +168,7 @@
       "parent_role": null,
       "django_group": 4,
       "requires_license": true,
-      "license_body": "COK",
+      "license_body": "COC",
       "is_active": true,
       "created_at": "2026-01-01T00:00:00Z",
       "updated_at": "2026-01-01T00:00:00Z"

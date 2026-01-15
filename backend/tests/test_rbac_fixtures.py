@@ -34,7 +34,7 @@ EXPECTED_ROLES = [
 LICENSED_ROLES = {
     "DOCTOR": "KMPDB",
     "CONSULTANT": "KMPDB",  # External doctors still need KMPDB license
-    "CLINICAL_OFFICER": "COK",  # Clinical Officers Council (not KMPDB)
+    "CLINICAL_OFFICER": "COC",  # Clinical Officers Council (not KMPDB)
     "NURSE": "NCK",
     "LAB_TECH": "KMLTTB",
     "PHARMACIST": "PPB",
@@ -244,16 +244,16 @@ class TestDefaultRolesFixture:
             assert patient_perms.get("read") is True, \
                 f"Role {code} should be able to read patients"
 
-    def test_clinical_officer_registered_by_cok(self, fixture_path):
-        """Clinical Officers should be registered by COK (Clinical Officers Council)."""
+    def test_clinical_officer_registered_by_COC(self, fixture_path):
+        """Clinical Officers should be registered by COC (Clinical Officers Council)."""
         from hmis.apps.core.models import Role
 
         call_command("loaddata", str(fixture_path), verbosity=0)
 
         clinical_officer = Role.objects.get(code="CLINICAL_OFFICER")
         assert clinical_officer.requires_license is True
-        assert clinical_officer.license_body == "COK", \
-            "Clinical Officer should be registered by COK, not KMPDB"
+        assert clinical_officer.license_body == "COC", \
+            "Clinical Officer should be registered by COC, not KMPDB"
 
     def test_clinical_officer_ranks_above_nurse(self, fixture_path):
         """Clinical Officer should rank higher than Registered Nurse."""

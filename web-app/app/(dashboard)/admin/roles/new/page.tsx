@@ -26,13 +26,14 @@ import {
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { useToast } from '@/lib/hooks/use-toast';
 import { useCreateRole, usePermissions } from '@/lib/hooks/use-rbac';
-import type { Permission, RoleType } from '@/lib/types/rbac';
+import type { Permission, RoleCategory } from '@/lib/types/rbac';
 
-const ROLE_TYPES: { value: RoleType; label: string }[] = [
-  { value: 'CLINICAL', label: 'Clinical' },
+const ROLE_CATEGORIES: { value: RoleCategory; label: string }[] = [
+  { value: 'CLINICAL', label: 'Clinical Staff' },
   { value: 'ADMINISTRATIVE', label: 'Administrative' },
-  { value: 'SUPPORT', label: 'Support' },
-  { value: 'SYSTEM', label: 'System' },
+  { value: 'TECHNICAL', label: 'Technical Staff' },
+  { value: 'MANAGEMENT', label: 'Management' },
+  { value: 'COMMUNITY', label: 'Community Health' },
 ];
 
 export default function NewRolePage() {
@@ -45,7 +46,7 @@ export default function NewRolePage() {
     name: '',
     code: '',
     description: '',
-    role_type: '',
+    category: '',
     permissions: [] as string[],
   });
 
@@ -57,8 +58,8 @@ export default function NewRolePage() {
         name: formData.name,
         code: formData.code,
         description: formData.description,
-        role_type: formData.role_type as RoleType,
-        permissions: formData.permissions,
+        category: formData.category as RoleCategory,
+        permissions_matrix: {},
       });
 
       toast({
@@ -148,18 +149,18 @@ export default function NewRolePage() {
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="type">Role Type *</Label>
+              <Label htmlFor="category">Category *</Label>
               <Select
-                value={formData.role_type}
-                onValueChange={(value) => setFormData({ ...formData, role_type: value })}
+                value={formData.category}
+                onValueChange={(value) => setFormData({ ...formData, category: value })}
               >
-                <SelectTrigger id="type" aria-label="Type">
-                  <SelectValue placeholder="Select type" />
+                <SelectTrigger id="category" aria-label="Category">
+                  <SelectValue placeholder="Select category" />
                 </SelectTrigger>
                 <SelectContent>
-                  {ROLE_TYPES.map((type) => (
-                    <SelectItem key={type.value} value={type.value}>
-                      {type.label}
+                  {ROLE_CATEGORIES.map((cat) => (
+                    <SelectItem key={cat.value} value={cat.value}>
+                      {cat.label}
                     </SelectItem>
                   ))}
                 </SelectContent>
