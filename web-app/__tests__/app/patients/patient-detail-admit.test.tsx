@@ -22,7 +22,7 @@ jest.mock('next/navigation', () => ({
 jest.mock('@/lib/api/patients', () => ({
   patientsApi: {
     getPatient: jest.fn(),
-    getPatientEmergencyContacts: jest.fn(),
+    getEmergencyContacts: jest.fn(),
   },
 }));
 
@@ -98,7 +98,7 @@ describe('PatientDetailPage -> Admissions integration', () => {
     jest.clearAllMocks();
 
     (patientsApi.getPatient as jest.Mock).mockResolvedValue(mockPatient);
-    (patientsApi.getPatientEmergencyContacts as jest.Mock).mockResolvedValue([]);
+    (patientsApi.getEmergencyContacts as jest.Mock).mockResolvedValue([]);
     (encountersApi.list as jest.Mock).mockResolvedValue({ results: [], count: 0, next: null, previous: null });
   });
 

@@ -9,6 +9,7 @@
  * - Order permissions: Exposes canPlaceOrders based on encounter status
  * - Triage/Consultation tracking: Provides status for workflow decisions
  * - Single fetch guarantee: Encounter data fetched ONCE and shared
+ * - Patient Journey Sync: Syncs encounter data to zustand store for journey tracking
  * 
  * Usage:
  * ```tsx
@@ -26,6 +27,7 @@ import React, { createContext, useContext, useMemo, useEffect, useState, ReactNo
 import { useQuery } from '@tanstack/react-query';
 import { encountersApi } from '@/lib/api/encounters';
 import { useOptionalPatientContext } from './patient-context';
+import { usePatientJourneyStore, type TriageStatus, type ConsultationStatus, type TriageBypassReason } from '@/lib/stores/patient-journey';
 import type { Encounter } from '@/lib/types/encounter';
 
 // =============================================================================
@@ -76,6 +78,14 @@ export function EncounterProvider({ encounterId, children }: EncounterProviderPr
   // Get patient context (optional - may be used standalone for encounter-first flows)
   const patientContext = useOptionalPatientContext();
   
+  // Access patient journey store for syncing
+  const {
+    setEncounter,
+    syncFromEncounter,
+    checkInPatient,
+    activePatients,
+  } = usePatientJourneyStore();
+  
   // Track validation error separately
   const [validationError, setValidationError] = useState<Error | null>(null);
 
@@ -105,6 +115,55 @@ export function EncounterProvider({ encounterId, children }: EncounterProviderPr
       setValidationError(null);
     }
   }, [encounter, patientContext?.patient]);
+
+  // Sync encounter to journey store when loaded
+  // Note: We only sync on encounter data changes, not on store action changes
+  useEffect(() => {
+    if (encounter && !validationError) {
+      const patientId = encounter.patient;
+      
+      // Check if patient is already in journey store
+      const journeyPatient = activePatients[patientId];
+      
+      if (journeyPatient) {
+        // Set encounter on existing journey patient
+        setEncounter(patientId, encounter.id, encounter.encounter_type);
+        
+        // Sync triage and consultation status from encounter
+        // Use type assertion for fields that may exist on backend but not in TS types yet
+        const encounterAny = encounter as unknown as Record<string, unknown>;
+        const triageStatus = (encounter.triage_status || 'PENDING') as TriageStatus;
+        const consultationStatus = (encounterAny.consultation_status as string || 'WAITING') as ConsultationStatus;
+        const triageBypassReason = encounterAny.triage_bypass_reason as TriageBypassReason | undefined;
+        const triageCategory = encounterAny.triage_category as 'RED' | 'ORANGE' | 'YELLOW' | 'GREEN' | 'BLUE' | undefined;
+        
+        syncFromEncounter(patientId, {
+          triage_status: triageStatus,
+          consultation_status: consultationStatus,
+          triage_bypass_reason: triageBypassReason,
+          triage_category: triageCategory,
+        });
+      } else if (patientContext?.patient) {
+        // Patient not in journey yet - check them in
+        checkInPatient(patientId, {
+          encounter_id: encounter.id,
+          encounter_type: encounter.encounter_type,
+          chief_complaint: encounter.chief_complaint,
+        });
+        
+        // Then sync status
+        const encounterAny = encounter as unknown as Record<string, unknown>;
+        const triageStatus = (encounter.triage_status || 'PENDING') as TriageStatus;
+        const consultationStatus = (encounterAny.consultation_status as string || 'WAITING') as ConsultationStatus;
+        
+        syncFromEncounter(patientId, {
+          triage_status: triageStatus,
+          consultation_status: consultationStatus,
+        });
+      }
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- Store actions are stable, only sync on encounter/validation changes
+  }, [encounter?.id, encounter?.triage_status, validationError, patientContext?.patient?.id]);
 
   // Derive order permissions
   const canPlaceOrders = useMemo(() => {
