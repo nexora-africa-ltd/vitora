@@ -371,12 +371,9 @@ describe('PatientContext', () => {
     it('should provide patient data as readonly', async () => {
       mockPatientsApi.getPatient.mockResolvedValueOnce(mockPatient);
       
-      let capturedPatient: typeof mockPatient | null = null;
-      
       function ContextCapture() {
         const { patient } = usePatientContext();
-        capturedPatient = patient;
-        return null;
+        return <span data-testid="captured-mrn">{patient?.mrn || 'loading'}</span>;
       }
       
       const Wrapper = createWrapper();
@@ -388,12 +385,13 @@ describe('PatientContext', () => {
         </Wrapper>
       );
 
+      // Wait for patient data to load
       await waitFor(() => {
-        expect(capturedPatient).toBeDefined();
+        expect(screen.getByTestId('captured-mrn')).toHaveTextContent('MRN-20260115-0001');
       });
 
-      // Patient data should be frozen/readonly
-      expect(capturedPatient?.mrn).toBe('MRN-20260115-0001');
+      // Patient data should be available and correct
+      expect(screen.getByTestId('captured-mrn')).toHaveTextContent('MRN-20260115-0001');
     });
   });
 

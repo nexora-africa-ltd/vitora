@@ -214,13 +214,11 @@ describe('Patient Shell Layout', () => {
         </Wrapper>
       );
 
-      // Should show error state or redirect
+      // Should show error alert
       await waitFor(() => {
-        expect(
-          screen.getByText(/invalid patient|not found|error/i) ||
-          screen.getByRole('alert')
-        ).toBeInTheDocument();
+        expect(screen.getByRole('alert')).toBeInTheDocument();
       });
+      expect(screen.getByText(/Invalid patient ID/i)).toBeInTheDocument();
     });
 
     it('should handle missing patientId in params', async () => {
@@ -235,13 +233,11 @@ describe('Patient Shell Layout', () => {
         </Wrapper>
       );
 
-      // Should show error or redirect
+      // Should show error alert
       await waitFor(() => {
-        expect(
-          screen.getByText(/patient.*required|no patient|error/i) ||
-          screen.getByRole('alert')
-        ).toBeInTheDocument();
+        expect(screen.getByRole('alert')).toBeInTheDocument();
       });
+      expect(screen.getByText(/Invalid patient ID/i)).toBeInTheDocument();
     });
 
     it('should handle patient not found error', async () => {
@@ -257,8 +253,9 @@ describe('Patient Shell Layout', () => {
       );
 
       await waitFor(() => {
-        expect(screen.getByText(/not found|error/i)).toBeInTheDocument();
+        expect(screen.getByRole('alert')).toBeInTheDocument();
       });
+      expect(screen.getByText('Patient not found')).toBeInTheDocument();
     });
   });
 
