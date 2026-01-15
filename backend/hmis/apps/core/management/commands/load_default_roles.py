@@ -2,7 +2,13 @@
 Management command to load default RBAC roles for Vitora HMIS.
 
 Sprint 1.1-1.2 Track C: RBAC Foundation - Phase 3
+
+This command loads roles from the fixture file (roles.json) instead of
+hardcoding them, ensuring a single source of truth.
 """
+
+import json
+from pathlib import Path
 
 from django.contrib.auth.models import Group
 from django.core.management.base import BaseCommand
@@ -12,16 +18,16 @@ from hmis.apps.core.models import Role
 
 
 class Command(BaseCommand):
-    """Load default RBAC roles with permission matrices."""
+    """Load default RBAC roles from fixture file."""
 
-    help = "Load default RBAC roles for Kenya hospital setup"
+    help = "Load default RBAC roles from fixture file for Kenya hospital setup"
 
     def add_arguments(self, parser):
         """Add command arguments."""
         parser.add_argument(
             "--update",
             action="store_true",
-            help="Update existing roles with default values",
+            help="Update existing roles with values from fixture",
         )
         parser.add_argument(
             "--dry-run",
@@ -33,27 +39,69 @@ class Command(BaseCommand):
             action="store_true",
             help="Show detailed progress information",
         )
+        parser.add_argument(
+            "--fixture",
+            type=str,
+            default=None,
+            help="Path to custom fixture file (default: core/fixtures/roles.json)",
+        )
 
     def handle(self, *args, **options):
         """Execute the command."""
         update = options["update"]
         dry_run = options["dry_run"]
         verbose = options["verbose"]
+        fixture_path = options["fixture"]
 
-        # Default roles configuration
-        default_roles = self._get_default_roles()
+        # Load roles from fixture file
+        try:
+            roles_data, groups_data = self._load_fixture(fixture_path)
+        except FileNotFoundError as e:
+            self.stdout.write(self.style.ERROR(str(e)))
+            return
+        except json.JSONDecodeError as e:
+            self.stdout.write(self.style.ERROR(f"Invalid JSON in fixture file: {e}"))
+            return
 
         if dry_run:
             self.stdout.write(
                 self.style.WARNING("DRY RUN MODE - No changes will be made")
             )
 
+        # First, create Django groups
+        groups_created = 0
+        groups_map = {}  # pk -> Group instance
+
+        self.stdout.write(self.style.MIGRATE_HEADING("Processing Django Groups..."))
+
+        for group_data in groups_data:
+            pk = group_data["pk"]
+            name = group_data["fields"]["name"]
+
+            if dry_run:
+                if verbose:
+                    self.stdout.write(f"  Would create/get group: {name}")
+                groups_created += 1
+            else:
+                group, created = Group.objects.get_or_create(name=name)
+                groups_map[pk] = group
+                if created:
+                    groups_created += 1
+                    if verbose:
+                        self.stdout.write(f"  Created group: {name}")
+                elif verbose:
+                    self.stdout.write(f"  Found existing group: {name}")
+
+        # Now create/update roles
         created_count = 0
         updated_count = 0
         skipped_count = 0
 
-        for role_data in default_roles:
-            code = role_data["code"]
+        self.stdout.write(self.style.MIGRATE_HEADING("Processing Roles..."))
+
+        for role_data in roles_data:
+            fields = role_data["fields"]
+            code = fields["code"]
 
             try:
                 with transaction.atomic():
@@ -62,23 +110,7 @@ class Command(BaseCommand):
                     if existing_role:
                         if update and not dry_run:
                             # Update existing role
-                            # For permissions_matrix, merge instead of replace
-                            existing_perms = existing_role.permissions_matrix.copy()
-
-                            for key, value in role_data.items():
-                                if key != "code":  # Don't update code
-                                    if key == "permissions_matrix":
-                                        # Merge permissions - keep custom ones, update default ones
-                                        for resource, actions in value.items():
-                                            existing_perms[resource] = actions
-                                        setattr(existing_role, key, existing_perms)
-                                    else:
-                                        setattr(existing_role, key, value)
-                            existing_role.save()
-
-                            # Ensure Django group exists
-                            self._ensure_django_group(existing_role)
-
+                            self._update_role(existing_role, fields, groups_map)
                             updated_count += 1
                             if verbose:
                                 self.stdout.write(
@@ -87,332 +119,137 @@ class Command(BaseCommand):
                         else:
                             skipped_count += 1
                             if verbose:
-                                self.stdout.write(
-                                    f"  Skipped existing role: {code}"
-                                )
+                                self.stdout.write(f"  Skipped existing role: {code}")
                     else:
                         if dry_run:
                             self.stdout.write(
-                                f"  Would create role: {code} - {role_data['name']}"
+                                f"  Would create role: {code} - {fields['name']}"
                             )
                             created_count += 1
                         else:
                             # Create new role
-                            role = Role.objects.create(**role_data)
-
-                            # Create linked Django group
-                            self._ensure_django_group(role)
-
+                            role = self._create_role(fields, groups_map)
                             created_count += 1
                             if verbose:
-                                self.stdout.write(
-                                    f"  Created role: {code} - {role.name}"
-                                )
+                                self.stdout.write(f"  Created role: {code} - {role.name}")
 
             except Exception as e:
                 self.stdout.write(
-                    self.style.ERROR(
-                        f"Error processing role {code}: {str(e)}"
-                    )
+                    self.style.ERROR(f"Error processing role {code}: {str(e)}")
                 )
 
         # Summary
+        self.stdout.write("")
         if dry_run:
             self.stdout.write(
                 self.style.SUCCESS(
-                    f"\nDry run complete. Would create {created_count} roles."
+                    f"Dry run complete. Would create {groups_created} groups and {created_count} roles."
                 )
             )
         else:
-            self.stdout.write(
-                self.style.SUCCESS(
-                    "\nSuccessfully loaded default roles:"
-                )
-            )
+            self.stdout.write(self.style.SUCCESS("Successfully loaded default roles:"))
+            if groups_created > 0:
+                self.stdout.write(f"  Groups created: {groups_created}")
             if created_count > 0:
-                self.stdout.write(f"  Created: {created_count}")
+                self.stdout.write(f"  Roles created: {created_count}")
             if updated_count > 0:
-                self.stdout.write(f"  Updated: {updated_count}")
+                self.stdout.write(f"  Roles updated: {updated_count}")
             if skipped_count > 0:
-                self.stdout.write(f"  Skipped: {skipped_count}")
+                self.stdout.write(f"  Roles skipped: {skipped_count}")
 
-    def _ensure_django_group(self, role):
-        """Ensure Django Group exists for role."""
-        if not role.django_group:
-            group, created = Group.objects.get_or_create(name=role.name)
-            role.django_group = group
-            role.save()
+    def _load_fixture(self, custom_path=None):
+        """
+        Load roles and groups from fixture file.
 
-    def _get_default_roles(self):
-        """Get default roles configuration."""
-        return [
-            {
-                "code": "ADMIN",
-                "name": "System Administrator",
-                "category": "ADMINISTRATIVE",
-                "hierarchy_level": 0,
-                "requires_license": False,
-                "permissions_matrix": {
-                    "Patient": {
-                        "create": True,
-                        "read": True,
-                        "update": True,
-                        "delete": True,
-                        "view_sensitive": True,
-                    },
-                    "Encounter": {
-                        "create": True,
-                        "read": True,
-                        "update": True,
-                        "delete": True,
-                    },
-                    "StaffProfile": {
-                        "create": True,
-                        "read": True,
-                        "update": True,
-                        "delete": True,
-                    },
-                    "Role": {
-                        "create": True,
-                        "read": True,
-                        "update": True,
-                        "delete": True,
-                    },
-                    "Department": {
-                        "create": True,
-                        "read": True,
-                        "update": True,
-                        "delete": True,
-                    },
-                    "AuditLog": {
-                        "create": False,
-                        "read": True,
-                        "update": False,
-                        "delete": False,
-                    },
-                },
-            },
-            {
-                "code": "DOCTOR",
-                "name": "Medical Doctor",
-                "category": "CLINICAL",
-                "hierarchy_level": 2,
-                "requires_license": True,
-                "license_body": "KMPDB",
-                "permissions_matrix": {
-                    "Patient": {
-                        "create": True,
-                        "read": True,
-                        "update": True,
-                        "delete": False,
-                        "view_sensitive": True,
-                    },
-                    "Encounter": {
-                        "create": True,
-                        "read": True,
-                        "update": True,
-                        "delete": False,
-                    },
-                    "LabOrder": {
-                        "create": True,
-                        "read": True,
-                        "update": True,
-                        "delete": False,
-                    },
-                    "Prescription": {
-                        "create": True,
-                        "read": True,
-                        "update": True,
-                        "delete": False,
-                    },
-                },
-            },
-            {
-                "code": "NURSE",
-                "name": "Registered Nurse",
-                "category": "CLINICAL",
-                "hierarchy_level": 3,
-                "requires_license": True,
-                "license_body": "NCK",
-                "permissions_matrix": {
-                    "Patient": {
-                        "create": True,
-                        "read": True,
-                        "update": True,
-                        "delete": False,
-                        "view_sensitive": False,
-                    },
-                    "Encounter": {
-                        "create": True,
-                        "read": True,
-                        "update": True,
-                        "delete": False,
-                    },
-                    "LabOrder": {
-                        "create": False,
-                        "read": True,
-                        "update": False,
-                        "delete": False,
-                    },
-                },
-            },
-            {
-                "code": "CLINICAL_OFFICER",
-                "name": "Clinical Officer",
-                "category": "CLINICAL",
-                "hierarchy_level": 3,
-                "requires_license": True,
-                "license_body": "KMPDB",
-                "permissions_matrix": {
-                    "Patient": {
-                        "create": True,
-                        "read": True,
-                        "update": True,
-                        "delete": False,
-                        "view_sensitive": True,
-                    },
-                    "Encounter": {
-                        "create": True,
-                        "read": True,
-                        "update": True,
-                        "delete": False,
-                    },
-                    "LabOrder": {
-                        "create": True,
-                        "read": True,
-                        "update": False,
-                        "delete": False,
-                    },
-                },
-            },
-            {
-                "code": "LAB_TECH",
-                "name": "Laboratory Technician",
-                "category": "TECHNICAL",
-                "hierarchy_level": 4,
-                "requires_license": True,
-                "license_body": "KMLTTB",
-                "permissions_matrix": {
-                    "Patient": {
-                        "create": False,
-                        "read": True,
-                        "update": False,
-                        "delete": False,
-                        "view_sensitive": False,
-                    },
-                    "LabOrder": {
-                        "create": False,
-                        "read": True,
-                        "update": False,
-                        "delete": False,
-                    },
-                    "LabResult": {
-                        "create": True,
-                        "read": True,
-                        "update": True,
-                        "delete": False,
-                    },
-                },
-            },
-            {
-                "code": "PHARMACIST",
-                "name": "Pharmacist",
-                "category": "TECHNICAL",
-                "hierarchy_level": 4,
-                "requires_license": True,
-                "license_body": "PPB",
-                "permissions_matrix": {
-                    "Patient": {
-                        "create": False,
-                        "read": True,
-                        "update": False,
-                        "delete": False,
-                        "view_sensitive": False,
-                    },
-                    "Prescription": {
-                        "create": False,
-                        "read": True,
-                        "update": True,
-                        "delete": False,
-                    },
-                    "DrugDispensing": {
-                        "create": True,
-                        "read": True,
-                        "update": True,
-                        "delete": False,
-                    },
-                    "PharmacyInventory": {
-                        "create": True,
-                        "read": True,
-                        "update": True,
-                        "delete": True,
-                    },
-                },
-            },
-            {
-                "code": "RECEPTIONIST",
-                "name": "Receptionist",
-                "category": "ADMINISTRATIVE",
-                "hierarchy_level": 5,
-                "requires_license": False,
-                "permissions_matrix": {
-                    "Patient": {
-                        "create": True,
-                        "read": True,
-                        "update": True,
-                        "delete": False,
-                        "view_sensitive": False,
-                    },
-                    "Encounter": {
-                        "create": False,
-                        "read": True,
-                        "update": False,
-                        "delete": False,
-                    },
-                },
-            },
-            {
-                "code": "RECORDS_CLERK",
-                "name": "Medical Records Clerk",
-                "category": "ADMINISTRATIVE",
-                "hierarchy_level": 5,
-                "requires_license": False,
-                "permissions_matrix": {
-                    "Patient": {
-                        "create": True,
-                        "read": True,
-                        "update": True,
-                        "delete": False,
-                        "view_sensitive": False,
-                    },
-                    "Encounter": {
-                        "create": False,
-                        "read": True,
-                        "update": False,
-                        "delete": False,
-                    },
-                },
-            },
-            {
-                "code": "CHW",
-                "name": "Community Health Worker",
-                "category": "CLINICAL",
-                "hierarchy_level": 6,
-                "requires_license": False,
-                "permissions_matrix": {
-                    "Patient": {
-                        "create": True,
-                        "read": True,
-                        "update": True,
-                        "delete": False,
-                        "view_sensitive": False,
-                    },
-                    "Encounter": {
-                        "create": True,
-                        "read": True,
-                        "update": False,
-                        "delete": False,
-                    },
-                },
-            },
-        ]
+        Returns:
+            tuple: (roles_data, groups_data) - lists of role and group definitions
+        """
+        if custom_path:
+            fixture_path = Path(custom_path)
+        else:
+            # Default fixture path
+            fixture_path = (
+                Path(__file__).resolve().parent.parent.parent
+                / "fixtures"
+                / "roles.json"
+            )
+
+        if not fixture_path.exists():
+            raise FileNotFoundError(
+                f"Fixture file not found: {fixture_path}\n"
+                f"Expected at: hmis/apps/core/fixtures/roles.json"
+            )
+
+        self.stdout.write(f"Loading fixture from: {fixture_path}")
+
+        with open(fixture_path, "r") as f:
+            data = json.load(f)
+
+        # Separate groups and roles
+        groups_data = [item for item in data if item["model"] == "auth.group"]
+        roles_data = [item for item in data if item["model"] == "core.role"]
+
+        self.stdout.write(
+            f"Found {len(groups_data)} groups and {len(roles_data)} roles in fixture"
+        )
+
+        return roles_data, groups_data
+
+    def _create_role(self, fields, groups_map):
+        """Create a new role from fixture fields."""
+        # Get the Django group if referenced
+        django_group = None
+        if fields.get("django_group"):
+            django_group = groups_map.get(fields["django_group"])
+            if not django_group:
+                # Fallback: create group with role name
+                django_group, _ = Group.objects.get_or_create(name=fields["name"])
+
+        # Get parent role if referenced
+        parent_role = None
+        if fields.get("parent_role"):
+            parent_role = Role.objects.filter(pk=fields["parent_role"]).first()
+
+        role = Role.objects.create(
+            code=fields["code"],
+            name=fields["name"],
+            category=fields.get("category", "CLINICAL"),
+            description=fields.get("description", ""),
+            permissions_matrix=fields.get("permissions_matrix", {}),
+            hierarchy_level=fields.get("hierarchy_level", 5),
+            parent_role=parent_role,
+            django_group=django_group,
+            requires_license=fields.get("requires_license", False),
+            license_body=fields.get("license_body", ""),
+            is_active=fields.get("is_active", True),
+        )
+
+        return role
+
+    def _update_role(self, role, fields, groups_map):
+        """Update an existing role from fixture fields."""
+        # Update basic fields
+        role.name = fields.get("name", role.name)
+        role.category = fields.get("category", role.category)
+        role.description = fields.get("description", role.description)
+        role.hierarchy_level = fields.get("hierarchy_level", role.hierarchy_level)
+        role.requires_license = fields.get("requires_license", role.requires_license)
+        role.license_body = fields.get("license_body", role.license_body)
+        role.is_active = fields.get("is_active", role.is_active)
+
+        # Merge permissions matrix (keep custom, update from fixture)
+        if fields.get("permissions_matrix"):
+            existing_perms = role.permissions_matrix.copy() if role.permissions_matrix else {}
+            for resource, actions in fields["permissions_matrix"].items():
+                existing_perms[resource] = actions
+            role.permissions_matrix = existing_perms
+
+        # Update Django group reference
+        if fields.get("django_group") and fields["django_group"] in groups_map:
+            role.django_group = groups_map[fields["django_group"]]
+
+        # Update parent role
+        if fields.get("parent_role"):
+            role.parent_role = Role.objects.filter(pk=fields["parent_role"]).first()
+
+        role.save()
