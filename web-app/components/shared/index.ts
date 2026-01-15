@@ -6,3 +6,4 @@ export {
   TableRowSkeleton 
 } from './loading-spinner';
 export { RouteProgress } from './route-progress';
+export { EntityCard, EntityGrid, type Gender } from './entity-card';

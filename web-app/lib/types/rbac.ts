@@ -103,6 +103,7 @@ export interface PermissionGroup {
 
 export type EmploymentStatus = 'ACTIVE' | 'INACTIVE' | 'ON_LEAVE' | 'SUSPENDED' | 'TERMINATED';
 export type EmploymentType = 'PERMANENT' | 'CONTRACT' | 'LOCUM' | 'INTERN' | 'VOLUNTEER';
+export type Gender = 'M' | 'F' | 'O';
 
 export interface StaffProfile {
   id: number;
@@ -115,6 +116,8 @@ export interface StaffProfile {
   employee_id: string;
   title: string | null;
   middle_name: string | null;
+  gender: Gender | null;
+  date_of_birth: string | null;
   primary_role: number | null;
   primary_role_name: string | null;
   secondary_roles: number[];

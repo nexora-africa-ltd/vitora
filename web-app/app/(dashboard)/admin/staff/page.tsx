@@ -3,12 +3,13 @@
  * Sprint 1.1-1.2 Track C: RBAC Foundation
  * 
  * Lists all staff profiles with roles, departments, and status.
+ * Supports list and grid view modes.
  */
 'use client';
 
 import { useState } from 'react';
 import Link from 'next/link';
-import { Plus, Users, Search, Building2, Shield, Mail, Phone } from 'lucide-react';
+import { Plus, Users, Search, Building2, Shield, Mail, Phone, IdCard } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -29,13 +30,17 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { Skeleton } from '@/components/ui/skeleton';
+import { ViewToggle, type ViewMode } from '@/components/ui/view-toggle';
+import { EntityCard, EntityGrid } from '@/components/shared/entity-card';
 import { useStaffList, useDepartments, useRoles } from '@/lib/hooks/use-rbac';
+import type { StaffProfile } from '@/lib/types/rbac';
 
 export default function StaffListPage() {
   const [search, setSearch] = useState('');
   const [departmentFilter, setDepartmentFilter] = useState('');
   const [roleFilter, setRoleFilter] = useState('');
   const [statusFilter, setStatusFilter] = useState('');
+  const [viewMode, setViewMode] = useState<ViewMode>('list');
 
   const { data: departments } = useDepartments({ is_active: true });
   const { data: roles } = useRoles();
@@ -83,7 +88,7 @@ export default function StaffListPage() {
       {/* Filters */}
       <Card>
         <CardContent className="pt-6">
-          <div className="flex flex-wrap gap-4">
+          <div className="flex flex-wrap gap-4 items-center">
             <div className="flex-1 min-w-[200px]">
               <div className="relative">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
@@ -132,105 +137,195 @@ export default function StaffListPage() {
                 <SelectItem value="inactive">Inactive</SelectItem>
               </SelectContent>
             </Select>
+            <ViewToggle value={viewMode} onChange={setViewMode} />
           </div>
         </CardContent>
       </Card>
 
-      {/* Staff Table */}
+      {/* Staff List/Grid */}
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <Users className="h-5 w-5" />
             Staff List
+            {data?.count !== undefined && (
+              <Badge variant="secondary" className="ml-2">
+                {data.count}
+              </Badge>
+            )}
           </CardTitle>
         </CardHeader>
         <CardContent>
           {isLoading ? (
-            <div className="space-y-3">
-              {[...Array(5)].map((_, i) => (
-                <Skeleton key={i} className="h-12 w-full" />
-              ))}
-            </div>
+            viewMode === 'list' ? (
+              <div className="space-y-3">
+                {[...Array(5)].map((_, i) => (
+                  <Skeleton key={i} className="h-12 w-full" />
+                ))}
+              </div>
+            ) : (
+              <EntityGrid>
+                {[...Array(8)].map((_, i) => (
+                  <Skeleton key={i} className="h-40 w-full rounded-lg" />
+                ))}
+              </EntityGrid>
+            )
+          ) : viewMode === 'list' ? (
+            <StaffTableView staff={data?.results || []} />
           ) : (
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Employee</TableHead>
-                  <TableHead>Employee ID</TableHead>
-                  <TableHead>Department</TableHead>
-                  <TableHead>Role</TableHead>
-                  <TableHead>Contact</TableHead>
-                  <TableHead>Status</TableHead>
-                  <TableHead className="text-right">Actions</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {data?.results?.length === 0 ? (
-                  <TableRow>
-                    <TableCell colSpan={7} className="text-center py-8 text-muted-foreground">
-                      No staff profiles found.
-                    </TableCell>
-                  </TableRow>
-                ) : (
-                  data?.results?.map((staff) => (
-                    <TableRow key={staff.id}>
-                      <TableCell>
-                        <div>
-                          <p className="font-medium">{staff.full_name}</p>
-                          <p className="text-sm text-muted-foreground">@{staff.user_username}</p>
-                        </div>
-                      </TableCell>
-                      <TableCell>
-                        <code className="text-sm">{staff.employee_id}</code>
-                      </TableCell>
-                      <TableCell>
-                        <div className="flex items-center gap-1">
-                          <Building2 className="h-3 w-3 text-muted-foreground" />
-                          <span>{staff.primary_department_name || 'Unassigned'}</span>
-                        </div>
-                      </TableCell>
-                      <TableCell>
-                        <div className="flex items-center gap-1">
-                          <Shield className="h-3 w-3 text-muted-foreground" />
-                          <span>{staff.primary_role_name || 'Unassigned'}</span>
-                        </div>
-                      </TableCell>
-                      <TableCell>
-                        <div className="space-y-1">
-                          {staff.user_email && (
-                            <div className="flex items-center gap-1 text-sm">
-                              <Mail className="h-3 w-3 text-muted-foreground" />
-                              <span className="truncate max-w-[150px]">{staff.user_email}</span>
-                            </div>
-                          )}
-                          {staff.phone_number && (
-                            <div className="flex items-center gap-1 text-sm">
-                              <Phone className="h-3 w-3 text-muted-foreground" />
-                              <span>{staff.phone_number}</span>
-                            </div>
-                          )}
-                        </div>
-                      </TableCell>
-                      <TableCell>
-                        <Badge variant={staff.employment_status === 'ACTIVE' ? 'default' : 'secondary'}>
-                          {staff.employment_status === 'ACTIVE' ? 'Active' : staff.employment_status?.toLowerCase() || 'Unknown'}
-                        </Badge>
-                      </TableCell>
-                      <TableCell className="text-right">
-                        <Button variant="ghost" size="sm" asChild>
-                          <Link href={`/admin/staff/${staff.id}`}>
-                            Edit
-                          </Link>
-                        </Button>
-                      </TableCell>
-                    </TableRow>
-                  ))
-                )}
-              </TableBody>
-            </Table>
+            <StaffGridView staff={data?.results || []} />
           )}
         </CardContent>
       </Card>
     </div>
   );
+}
+
+/**
+ * Staff Table View Component
+ */
+function StaffTableView({ staff }: { staff: StaffProfile[] }) {
+  if (staff.length === 0) {
+    return (
+      <div className="text-center py-8 text-muted-foreground">
+        No staff profiles found.
+      </div>
+    );
+  }
+
+  return (
+    <Table>
+      <TableHeader>
+        <TableRow>
+          <TableHead>Employee</TableHead>
+          <TableHead>Employee ID</TableHead>
+          <TableHead>Department</TableHead>
+          <TableHead>Role</TableHead>
+          <TableHead>Contact</TableHead>
+          <TableHead>Status</TableHead>
+          <TableHead className="text-right">Actions</TableHead>
+        </TableRow>
+      </TableHeader>
+      <TableBody>
+        {staff.map((member) => (
+          <TableRow key={member.id}>
+            <TableCell>
+              <div>
+                <p className="font-medium">{member.full_name}</p>
+                <p className="text-sm text-muted-foreground">@{member.user_username}</p>
+              </div>
+            </TableCell>
+            <TableCell>
+              <code className="text-sm">{member.employee_id}</code>
+            </TableCell>
+            <TableCell>
+              <div className="flex items-center gap-1">
+                <Building2 className="h-3 w-3 text-muted-foreground" />
+                <span>{member.primary_department_name || 'Unassigned'}</span>
+              </div>
+            </TableCell>
+            <TableCell>
+              <div className="flex items-center gap-1">
+                <Shield className="h-3 w-3 text-muted-foreground" />
+                <span>{member.primary_role_name || 'Unassigned'}</span>
+              </div>
+            </TableCell>
+            <TableCell>
+              <div className="space-y-1">
+                {member.user_email && (
+                  <div className="flex items-center gap-1 text-sm">
+                    <Mail className="h-3 w-3 text-muted-foreground" />
+                    <span className="truncate max-w-[150px]">{member.user_email}</span>
+                  </div>
+                )}
+                {member.phone_number && (
+                  <div className="flex items-center gap-1 text-sm">
+                    <Phone className="h-3 w-3 text-muted-foreground" />
+                    <span>{member.phone_number}</span>
+                  </div>
+                )}
+              </div>
+            </TableCell>
+            <TableCell>
+              <Badge variant={member.employment_status === 'ACTIVE' ? 'default' : 'secondary'}>
+                {member.employment_status === 'ACTIVE' ? 'Active' : member.employment_status?.toLowerCase() || 'Unknown'}
+              </Badge>
+            </TableCell>
+            <TableCell className="text-right">
+              <Button variant="ghost" size="sm" asChild>
+                <Link href={`/admin/staff/${member.id}`}>
+                  Edit
+                </Link>
+              </Button>
+            </TableCell>
+          </TableRow>
+        ))}
+      </TableBody>
+    </Table>
+  );
+}
+
+/**
+ * Staff Grid View Component
+ */
+function StaffGridView({ staff }: { staff: StaffProfile[] }) {
+  if (staff.length === 0) {
+    return (
+      <div className="text-center py-8 text-muted-foreground">
+        No staff profiles found.
+      </div>
+    );
+  }
+
+  return (
+    <EntityGrid>
+      {staff.map((member) => (
+        <EntityCard
+          key={member.id}
+          title={member.full_name}
+          subtitle={`@${member.user_username}`}
+          initials={getInitials(member.user_first_name, member.user_last_name)}
+          gender={member.gender}
+          href={`/admin/staff/${member.id}`}
+          status={{
+            label: member.employment_status === 'ACTIVE' ? 'Active' : member.employment_status?.toLowerCase() || 'Unknown',
+            variant: member.employment_status === 'ACTIVE' ? 'default' : 'secondary',
+          }}
+          badges={member.primary_role_name ? [{ label: member.primary_role_name }] : []}
+          metadata={[
+            {
+              icon: <IdCard className="h-3 w-3" />,
+              label: 'ID',
+              value: member.employee_id,
+            },
+            {
+              icon: <Building2 className="h-3 w-3" />,
+              label: 'Dept',
+              value: member.primary_department_name || 'Unassigned',
+            },
+            ...(member.user_email
+              ? [{
+                  icon: <Mail className="h-3 w-3" />,
+                  label: 'Email',
+                  value: member.user_email,
+                }]
+              : []),
+          ]}
+          actions={[
+            { label: 'Edit Profile', href: `/admin/staff/${member.id}` },
+            { label: 'View Activity', href: `/admin/audit-logs?user=${member.user}` },
+          ]}
+        />
+      ))}
+    </EntityGrid>
+  );
+}
+
+/**
+ * Get initials from first and last name
+ */
+function getInitials(firstName?: string, lastName?: string): string {
+  const first = firstName?.charAt(0) || '';
+  const last = lastName?.charAt(0) || '';
+  return (first + last).toUpperCase() || '??';
 }
