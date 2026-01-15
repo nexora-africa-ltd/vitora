@@ -97,6 +97,7 @@ export interface StaffProfile {
   email: string;
   first_name: string;
   last_name: string;
+  middle_name: string | null;
   full_name: string;
   employee_id: string;
   department: number | null;
@@ -104,8 +105,11 @@ export interface StaffProfile {
   role: number | null;
   role_name: string | null;
   phone_number: string;
+  hwr_id: string | null;
   license_number: string | null;
   license_expiry: string | null;
+  license_verified: boolean;
+  licensing_body: string | null;
   specialization: string | null;
   is_active: boolean;
   hire_date: string | null;
@@ -118,13 +122,16 @@ export interface StaffProfileCreateData {
   email: string;
   first_name: string;
   last_name: string;
-  password: string;
+  middle_name?: string;
+  password?: string; // Auto-generated if not provided
   employee_id: string;
   department?: number | null;
   role?: number | null;
   phone_number?: string;
+  hwr_id?: string;
   license_number?: string;
   license_expiry?: string;
+  licensing_body?: string;
   specialization?: string;
   is_active?: boolean;
   hire_date?: string;
@@ -132,6 +139,18 @@ export interface StaffProfileCreateData {
 
 export interface StaffProfileUpdateData extends Partial<Omit<StaffProfileCreateData, 'password'>> {
   password?: string;
+}
+
+// Username check response
+export interface UsernameCheckResponse {
+  username: string;
+  available: boolean;
+  suggestions: string[];
+}
+
+// Username suggestion response
+export interface UsernameSuggestionResponse {
+  suggestions: string[];
 }
 
 // =============================================================================

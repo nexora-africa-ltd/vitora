@@ -282,6 +282,133 @@ class StaffProfileViewSet(viewsets.ModelViewSet):
             serializer.save()
             return Response(serializer.data)
 
+    @action(detail=False, methods=["get"])
+    def check_username(self, request):
+        """
+        Check if a username is available.
+
+        GET /api/staff/check_username/?username=johndoe
+
+        Returns:
+            - available: bool - whether the username is available
+            - username: str - the checked username
+            - suggestions: list - suggested alternatives if unavailable
+        """
+        from django.contrib.auth import get_user_model
+
+        User = get_user_model()
+
+        username = request.query_params.get("username", "").strip().lower()
+
+        if not username:
+            return Response(
+                {"error": "username parameter is required"},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        # Validate username format
+        if len(username) < 3:
+            return Response(
+                {"error": "Username must be at least 3 characters"},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        # Check if username exists
+        is_available = not User.objects.filter(username__iexact=username).exists()
+
+        response_data = {
+            "username": username,
+            "available": is_available,
+            "suggestions": [],
+        }
+
+        # Generate suggestions if username is taken
+        if not is_available:
+            base_username = username
+            suggestions = []
+            counter = 1
+            while len(suggestions) < 3 and counter <= 10:
+                suggested = f"{base_username}{counter}"
+                if not User.objects.filter(username__iexact=suggested).exists():
+                    suggestions.append(suggested)
+                counter += 1
+            response_data["suggestions"] = suggestions
+
+        return Response(response_data)
+
+    @action(detail=False, methods=["post"])
+    def suggest_username(self, request):
+        """
+        Suggest a unique username based on first name and last name.
+
+        POST /api/staff/suggest_username/
+        Body: {"first_name": "John", "last_name": "Mwangi", "middle_name": "Kamau"}
+
+        Returns:
+            - suggestions: list of available username suggestions
+        """
+        from django.contrib.auth import get_user_model
+        import re
+
+        User = get_user_model()
+
+        first_name = request.data.get("first_name", "").strip().lower()
+        last_name = request.data.get("last_name", "").strip().lower()
+        middle_name = request.data.get("middle_name", "").strip().lower()
+
+        if not first_name or not last_name:
+            return Response(
+                {"error": "first_name and last_name are required"},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        # Clean names - remove non-alphanumeric characters
+        first_name = re.sub(r'[^a-z0-9]', '', first_name)
+        last_name = re.sub(r'[^a-z0-9]', '', last_name)
+        middle_name = re.sub(r'[^a-z0-9]', '', middle_name)
+
+        # Generate potential usernames
+        candidates = []
+
+        # Pattern 1: first.last (e.g., john.mwangi)
+        candidates.append(f"{first_name}.{last_name}")
+
+        # Pattern 2: flast (e.g., jmwangi)
+        if first_name:
+            candidates.append(f"{first_name[0]}{last_name}")
+
+        # Pattern 3: firstl (e.g., johnm)
+        if last_name:
+            candidates.append(f"{first_name}{last_name[0]}")
+
+        # Pattern 4: first.middle.last (if middle name provided)
+        if middle_name:
+            candidates.append(f"{first_name}.{middle_name[0]}.{last_name}")
+            candidates.append(f"{first_name[0]}{middle_name[0]}{last_name}")
+
+        # Pattern 5: first_last
+        candidates.append(f"{first_name}_{last_name}")
+
+        # Find available usernames
+        suggestions = []
+        for candidate in candidates:
+            if len(candidate) >= 3 and not User.objects.filter(username__iexact=candidate).exists():
+                suggestions.append(candidate)
+                if len(suggestions) >= 5:
+                    break
+
+        # If all taken, add numbers
+        if len(suggestions) < 3:
+            base = f"{first_name}.{last_name}"
+            counter = 1
+            while len(suggestions) < 5 and counter <= 20:
+                numbered = f"{base}{counter}"
+                if not User.objects.filter(username__iexact=numbered).exists():
+                    suggestions.append(numbered)
+                counter += 1
+
+        return Response({"suggestions": suggestions})
+
     def perform_destroy(self, instance):
         """
         Deactivate staff instead of deleting.

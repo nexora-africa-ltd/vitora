@@ -960,6 +960,11 @@ class StaffProfile(models.Model):
         blank=True,
         help_text="Title (e.g., Dr., Nurse)",
     )
+    middle_name = models.CharField(
+        max_length=100,
+        blank=True,
+        help_text="Middle name (optional)",
+    )
 
     # Role and Department
     primary_role = models.ForeignKey(
@@ -988,10 +993,15 @@ class StaffProfile(models.Model):
     )
 
     # Professional details (Kenya-specific)
-    license_number = models.CharField(
+    hwr_id = models.CharField(
         max_length=50,
         blank=True,
-        help_text="Professional license number",
+        help_text="Health Worker Registry ID (e.g., PUID-059839)",
+    )
+    license_number = models.CharField(
+        max_length=100,
+        blank=True,
+        help_text="Professional license number from licensing body (e.g., COC-Clinical Officer-2026-620095)",
     )
     license_expiry = models.DateField(
         null=True,
@@ -1000,7 +1010,12 @@ class StaffProfile(models.Model):
     )
     license_verified = models.BooleanField(
         default=False,
-        help_text="Whether license has been verified by admin",
+        help_text="Whether license has been verified via DHA registry lookup",
+    )
+    licensing_body = models.CharField(
+        max_length=100,
+        blank=True,
+        help_text="Regulatory body (e.g., Clinical Officers Council, NCK)",
     )
     specialization = models.CharField(
         max_length=100,

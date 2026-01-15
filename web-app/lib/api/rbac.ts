@@ -21,6 +21,8 @@ import type {
   UserPermissions,
   AuditLogEntry,
   AuditLogListParams,
+  UsernameCheckResponse,
+  UsernameSuggestionResponse,
 } from '@/lib/types/rbac';
 
 // =============================================================================
@@ -131,6 +133,28 @@ export const staffApi = {
 
   delete: async (id: number): Promise<void> => {
     await apiClient.delete(`/api/staff/${id}/`);
+  },
+
+  /**
+   * Check if a username is available
+   */
+  checkUsername: async (username: string): Promise<UsernameCheckResponse> => {
+    const response = await apiClient.get<UsernameCheckResponse>('/api/staff/check_username/', {
+      params: { username },
+    });
+    return response.data;
+  },
+
+  /**
+   * Suggest unique usernames based on name
+   */
+  suggestUsername: async (firstName: string, lastName: string, middleName?: string): Promise<UsernameSuggestionResponse> => {
+    const response = await apiClient.post<UsernameSuggestionResponse>('/api/staff/suggest_username/', {
+      first_name: firstName,
+      last_name: lastName,
+      middle_name: middleName || '',
+    });
+    return response.data;
   },
 };
 
