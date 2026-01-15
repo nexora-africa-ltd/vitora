@@ -55,6 +55,11 @@ export const inpatientApi = {
     return response.data;
   },
 
+  async updateWard(wardId: number, data: Partial<InpatientWard>): Promise<InpatientWard> {
+    const response = await apiClient.patch<InpatientWard>(`/api/inpatient/wards/${wardId}/`, data);
+    return response.data;
+  },
+
   async listWardBeds(
     wardId: number,
     params?: Omit<BedListParams, 'ward'> & { page?: number; page_size?: number }
