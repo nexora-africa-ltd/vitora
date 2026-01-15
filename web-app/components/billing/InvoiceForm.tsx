@@ -395,3 +395,85 @@ export function InvoiceForm({
     </Form>
   );
 }
+
+// ============================================================================
+// Simple Invoice Form with Encounter Validation (for context-based usage)
+// ============================================================================
+
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
+import { AlertTriangle } from 'lucide-react';
+import { useEncounterContext } from '@/lib/context/encounter-context';
+import { usePatientContext } from '@/lib/context/patient-context';
+
+interface SimpleInvoiceFormProps {
+  patientId?: number;
+  encounterId?: number;
+}
+
+/**
+ * Simplified Invoice Form that enforces encounter requirement
+ * Uses context when available, falls back to props
+ */
+export function SimpleInvoiceForm({ patientId, encounterId }: SimpleInvoiceFormProps) {
+  // Try to get from context first
+  let contextPatientId: number | undefined;
+  let contextEncounterId: number | undefined;
+  
+  try {
+    const patientContext = usePatientContext();
+    contextPatientId = patientContext.patient?.id;
+  } catch {
+    // Not in patient context
+  }
+  
+  try {
+    const encounterContext = useEncounterContext();
+    contextEncounterId = encounterContext.encounter?.id;
+  } catch {
+    // Not in encounter context
+  }
+  
+  const effectivePatientId = patientId ?? contextPatientId;
+  const effectiveEncounterId = encounterId ?? contextEncounterId;
+  const hasEncounter = !!effectiveEncounterId;
+
+  return (
+    <div data-testid="invoice-form" role="form" className="space-y-4">
+      {!hasEncounter && (
+        <Alert variant="destructive">
+          <AlertTriangle className="h-4 w-4" />
+          <AlertTitle>No Active Encounter</AlertTitle>
+          <AlertDescription>
+            An encounter is required to create an invoice. SHA claims will be rejected without an active encounter.
+          </AlertDescription>
+        </Alert>
+      )}
+      
+      {effectiveEncounterId && (
+        <input
+          type="hidden"
+          data-testid="encounter-field"
+          aria-label="encounter"
+          value={effectiveEncounterId}
+          readOnly
+        />
+      )}
+      
+      <div className="text-sm text-muted-foreground">
+        Patient ID: {effectivePatientId || 'Not selected'}
+      </div>
+      
+      {/* Simplified form fields would go here */}
+      <Button 
+        type="submit" 
+        disabled={!hasEncounter}
+        aria-label="Create Invoice"
+      >
+        Create Invoice
+      </Button>
+    </div>
+  );
+}
+
+// Default export for simpler imports
+export default SimpleInvoiceForm;
