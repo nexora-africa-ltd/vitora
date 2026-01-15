@@ -24,8 +24,8 @@ interface NavigationProgressProps {
 }
 
 export function NavigationProgress({
-  color = 'hsl(var(--primary))',
-  height = 3,
+  color = 'teal-100',
+  height = 4,
   startPosition = 0.08,
   delay = 100,
   completionDuration = 200,
@@ -161,21 +161,31 @@ export function NavigationProgress({
       aria-valuemax={100}
       aria-valuenow={progressValue}
       className={cn(
-        'fixed top-16 left-0 right-0 z-50 pointer-events-none',
+        'fixed top-0 left-0 right-0 z-[100] pointer-events-none',
         'transition-opacity duration-200',
         isLoading ? 'opacity-100' : 'opacity-0'
       )}
     >
-      {/* eslint-disable-next-line react/forbid-dom-props */}
+      {/* Progress bar */}
       <div
         className={cn(
-          'transition-all duration-200 ease-out bg-primary',
-          'shadow-[0_0_8px_hsl(var(--primary)),0_0_4px_hsl(var(--primary))]'
+          'transition-all duration-200 ease-out bg-teal-100',
+          progressValue === 100 && 'opacity-0'
         )}
         style={{
           height: `${height}px`,
           width: `${progressValue}%`,
-          backgroundColor: color !== 'hsl(var(--primary))' ? color : undefined,
+        }}
+      />
+      {/* Glow effect */}
+      <div
+        className={cn(
+          'absolute right-0 top-0 w-24 bg-gradient-to-r from-transparent to-teal-100/50 blur-sm',
+          progressValue === 100 && 'opacity-0'
+        )}
+        style={{
+          height: `${height}px`,
+          transform: `translateX(${progressValue < 100 ? '0' : '100%'})`,
         }}
       />
     </div>

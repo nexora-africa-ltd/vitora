@@ -5,7 +5,7 @@ import { ThemeProvider } from 'next-themes';
 import { useState, ReactNode, Suspense, lazy } from 'react';
 import { AuthProvider } from '@/lib/auth/context';
 import { Toaster } from '@/components/ui/toaster';
-import { RouteProgress } from '@/components/shared/route-progress';
+import { NavigationProgress } from '@/components/layout/navigation-progress';
 
 // Lazy load devtools only in development
 const ReactQueryDevtools = lazy(() =>
@@ -24,7 +24,7 @@ interface ProvidersProps {
  * - QueryClientProvider: React Query for data fetching
  * - ThemeProvider: next-themes for dark/light mode
  * - AuthProvider: JWT authentication state
- * - RouteProgress: Top progress bar for route transitions
+ * - NavigationProgress: Top progress bar for route transitions
  * - Toaster: Toast notifications
  */
 export function Providers({ children }: ProvidersProps) {
@@ -54,7 +54,7 @@ export function Providers({ children }: ProvidersProps) {
       >
         <AuthProvider>
           <Suspense fallback={null}>
-            <RouteProgress />
+            <NavigationProgress />
           </Suspense>
           {children}
           <Toaster />

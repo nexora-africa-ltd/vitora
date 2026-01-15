@@ -1,11 +1,10 @@
 'use client';
 
-import { Suspense, useState } from 'react';
+import { useState } from 'react';
 import { AuthGuard } from '@/lib/auth/guard';
 import { SyncProvider } from '@/lib/context/sync-context';
 import { Sidebar } from '@/components/layout/sidebar';
 import { Header } from '@/components/layout/header';
-import { NavigationProgress } from '@/components/layout/navigation-progress';
 import { cn } from '@/lib/utils/cn';
 
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
@@ -16,11 +15,6 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     <AuthGuard>
       <SyncProvider>
         <div className="min-h-screen bg-background">
-          {/* Navigation Progress Bar - positioned under header */}
-          <Suspense fallback={null}>
-            <NavigationProgress />
-          </Suspense>
-          
           {/* Sidebar */}
           <Sidebar
             collapsed={sidebarCollapsed}
