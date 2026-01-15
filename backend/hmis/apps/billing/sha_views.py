@@ -1196,19 +1196,23 @@ class PractitionerSearchView(APIView):
         """
         Search practitioner in Health Worker Registry.
         
-        GET /api/billing/dha/practitioner-search/?identification_type=ID&identification_number=12345678
+        GET /api/sha/practitioner/validate/?identification_type=National+ID&identification_number=12345678
         
         Query Parameters:
             identification_number: National ID or Passport number (required)
-            identification_type: 'ID' or 'passport' (default: 'ID')
-            registration_number: Alternative: search by registration number
+            identification_type: 'National ID' or 'passport' (default: 'National ID')
+            registration_number: Alternative: search by registration number (PUID)
         
         Returns:
             Full practitioner data including membership, licenses, 
             professional details, contacts, and identifiers.
+        
+        Note:
+            The DHA API requires 'National ID' as the identification_type value,
+            not just 'ID'. Using 'ID' may cause timeouts or errors.
         """
         identification_number = request.query_params.get('identification_number')
-        identification_type = request.query_params.get('identification_type', 'ID')
+        identification_type = request.query_params.get('identification_type', 'National ID')
         registration_number = request.query_params.get('registration_number')
         license_number = request.query_params.get('license_number')
         
