@@ -24,6 +24,7 @@ import {
 } from '@/components/ui/select';
 import { useToast } from '@/lib/hooks/use-toast';
 import { useCreateStaffProfile, useDepartments, useRoles } from '@/lib/hooks/use-rbac';
+import { DatePicker } from '@/components/ui/date-picker';
 
 export default function NewStaffPage() {
   const router = useRouter();
@@ -46,7 +47,7 @@ export default function NewStaffPage() {
     license_number: '',
     license_expiry: '',
     specialization: '',
-    hire_date: new Date().toISOString().split('T')[0],
+    hire_date: new Date(),
   });
 
   const [errors, setErrors] = useState<Record<string, string>>({});
@@ -261,11 +262,10 @@ export default function NewStaffPage() {
               </div>
               <div className="space-y-2">
                 <Label htmlFor="hire_date">Hire Date</Label>
-                <Input
-                  id="hire_date"
-                  type="date"
-                  value={formData.hire_date}
-                  onChange={(e) => handleChange('hire_date', e.target.value)}
+                <DatePicker
+                  value={formData.hire_date instanceof Date ? formData.hire_date : undefined}
+                  onChange={(date) => setFormData(prev => ({ ...prev, hire_date: date || new Date() }))}
+                  placeholder="Select hire date"
                 />
               </div>
             </div>
