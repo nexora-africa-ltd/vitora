@@ -984,7 +984,7 @@ KENYA_LICENSE_BODIES = {
     'NCK': 'Nursing Council of Kenya',
     'KMLTTB': 'Kenya Medical Laboratory Technicians and Technologists Board',
     'PPB': 'Pharmacy and Poisons Board',
-    'COK': 'Clinical Officers Council',
+    'COC': 'Clinical Officers Council',
 }
 
 # Default hierarchy levels

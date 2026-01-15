@@ -38,22 +38,25 @@ import {
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { useToast } from '@/lib/hooks/use-toast';
 import { useRole, useUpdateRole, useDeleteRole, usePermissions } from '@/lib/hooks/use-rbac';
+import type { RoleCategory, Permission } from '@/lib/types/rbac';
 
-const ROLE_TYPES = [
-  { value: 'CLINICAL', label: 'Clinical' },
-  { value: 'ANCILLARY', label: 'Ancillary' },
+const ROLE_CATEGORIES = [
+  { value: 'CLINICAL', label: 'Clinical Staff' },
   { value: 'ADMINISTRATIVE', label: 'Administrative' },
+  { value: 'TECHNICAL', label: 'Technical Staff' },
+  { value: 'MANAGEMENT', label: 'Management' },
+  { value: 'COMMUNITY', label: 'Community Health' },
 ];
 
-// Group permissions by category for display
-function groupPermissions(permissions: string[]) {
-  const groups: Record<string, string[]> = {};
+// Group permissions by app_label for display
+function groupPermissions(permissions: Permission[]) {
+  const groups: Record<string, Permission[]> = {};
   permissions.forEach((perm) => {
-    const [category] = perm.split('.');
-    if (!groups[category]) {
-      groups[category] = [];
+    const appLabel = perm.app_label || 'other';
+    if (!groups[appLabel]) {
+      groups[appLabel] = [];
     }
-    groups[category].push(perm);
+    groups[appLabel].push(perm);
   });
   return groups;
 }
@@ -73,7 +76,7 @@ export default function RoleEditPage() {
   const [name, setName] = useState('');
   const [code, setCode] = useState('');
   const [description, setDescription] = useState('');
-  const [roleType, setRoleType] = useState('CLINICAL');
+  const [category, setCategory] = useState('CLINICAL');
   const [selectedPermissions, setSelectedPermissions] = useState<string[]>([]);
   const [isDefault, setIsDefault] = useState(false);
 
@@ -83,9 +86,9 @@ export default function RoleEditPage() {
       setName(role.name);
       setCode(role.code);
       setDescription(role.description || '');
-      setRoleType(role.role_type);
-      setSelectedPermissions(role.permissions || []);
-      setIsDefault(role.is_default);
+      setCategory(role.category);
+      setSelectedPermissions([]);
+      setIsDefault(false);
     }
   }, [role]);
 
@@ -107,9 +110,7 @@ export default function RoleEditPage() {
           name,
           code,
           description,
-          role_type: roleType,
-          permissions: selectedPermissions,
-          is_default: isDefault,
+          category: category as RoleCategory,
         },
       });
 
@@ -167,8 +168,8 @@ export default function RoleEditPage() {
     );
   }
 
-  const groupedPermissions = allPermissions?.results 
-    ? groupPermissions(allPermissions.results.map((p) => p.codename))
+  const groupedPermissions = allPermissions 
+    ? groupPermissions(allPermissions)
     : {};
 
   return (
@@ -191,12 +192,12 @@ export default function RoleEditPage() {
         </div>
       </div>
 
-      {/* System Role Warning */}
-      {role.is_system && (
+      {/* Inactive Role Warning */}
+      {!role.is_active && (
         <Alert className="mb-6">
           <AlertTriangle className="h-4 w-4" />
           <AlertDescription>
-            This is a system role and cannot be deleted. Some fields may be restricted.
+            This role is inactive. Staff members cannot be assigned to this role.
           </AlertDescription>
         </Alert>
       )}
@@ -218,7 +219,6 @@ export default function RoleEditPage() {
                   onChange={(e) => setName(e.target.value)}
                   placeholder="e.g., Senior Nurse"
                   required
-                  disabled={role.is_system}
                 />
               </div>
               <div className="space-y-2">
@@ -229,7 +229,6 @@ export default function RoleEditPage() {
                   onChange={(e) => setCode(e.target.value.toUpperCase())}
                   placeholder="e.g., SR_NURSE"
                   required
-                  disabled={role.is_system}
                 />
               </div>
             </div>
@@ -245,15 +244,15 @@ export default function RoleEditPage() {
             </div>
             <div className="grid gap-4 md:grid-cols-2">
               <div className="space-y-2">
-                <Label htmlFor="role_type">Type *</Label>
-                <Select value={roleType} onValueChange={setRoleType} disabled={role.is_system}>
-                  <SelectTrigger id="role_type">
-                    <SelectValue placeholder="Select type" />
+                <Label htmlFor="category">Category *</Label>
+                <Select value={category} onValueChange={setCategory} disabled={role.is_active === false}>
+                  <SelectTrigger id="category">
+                    <SelectValue placeholder="Select category" />
                   </SelectTrigger>
                   <SelectContent>
-                    {ROLE_TYPES.map((type) => (
-                      <SelectItem key={type.value} value={type.value}>
-                        {type.label}
+                    {ROLE_CATEGORIES.map((cat) => (
+                      <SelectItem key={cat.value} value={cat.value}>
+                        {cat.label}
                       </SelectItem>
                     ))}
                   </SelectContent>
@@ -281,24 +280,27 @@ export default function RoleEditPage() {
           </CardHeader>
           <CardContent>
             <div className="grid gap-6 md:grid-cols-2">
-              {Object.entries(groupedPermissions).map(([category, perms]) => (
-                <div key={category} className="space-y-3">
+              {Object.entries(groupedPermissions).map(([appLabel, perms]) => (
+                <div key={appLabel} className="space-y-3">
                   <h4 className="font-medium capitalize flex items-center gap-2">
-                    <Badge variant="outline">{category}</Badge>
+                    <Badge variant="outline">{appLabel}</Badge>
                   </h4>
                   <div className="space-y-2 pl-4">
-                    {perms.map((perm) => (
-                      <div key={perm} className="flex items-center space-x-2">
-                        <Checkbox
-                          id={perm}
-                          checked={selectedPermissions.includes(perm)}
-                          onCheckedChange={() => handlePermissionToggle(perm)}
-                        />
-                        <Label htmlFor={perm} className="text-sm font-normal">
-                          {perm.split('.')[1]?.replace(/_/g, ' ')}
-                        </Label>
-                      </div>
-                    ))}
+                    {perms.map((perm) => {
+                      const permCode = `${perm.app_label}.${perm.codename}`;
+                      return (
+                        <div key={permCode} className="flex items-center space-x-2">
+                          <Checkbox
+                            id={permCode}
+                            checked={selectedPermissions.includes(permCode)}
+                            onCheckedChange={() => handlePermissionToggle(permCode)}
+                          />
+                          <Label htmlFor={permCode} className="text-sm font-normal">
+                            {perm.name}
+                          </Label>
+                        </div>
+                      );
+                    })}
                   </div>
                 </div>
               ))}
@@ -318,7 +320,7 @@ export default function RoleEditPage() {
               <Button 
                 type="button" 
                 variant="destructive" 
-                disabled={role.is_system || deleteRole.isPending}
+                disabled={deleteRole.isPending}
               >
                 <Trash2 className="h-4 w-4 mr-2" />
                 Delete Role

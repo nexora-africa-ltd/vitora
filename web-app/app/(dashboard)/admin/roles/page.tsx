@@ -30,22 +30,29 @@ import {
 } from '@/components/ui/select';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useRoles } from '@/lib/hooks/use-rbac';
+import type { RoleCategory } from '@/lib/types/rbac';
 
-const ROLE_TYPES = [
-  { value: '', label: 'All Types' },
-  { value: 'CLINICAL', label: 'Clinical' },
-  { value: 'ANCILLARY', label: 'Ancillary' },
+const ROLE_CATEGORIES = [
+  { value: '', label: 'All Categories' },
+  { value: 'CLINICAL', label: 'Clinical Staff' },
   { value: 'ADMINISTRATIVE', label: 'Administrative' },
+  { value: 'TECHNICAL', label: 'Technical Staff' },
+  { value: 'MANAGEMENT', label: 'Management' },
+  { value: 'COMMUNITY', label: 'Community Health' },
 ];
 
-function getRoleTypeBadgeVariant(type: string) {
-  switch (type) {
+function getCategoryBadgeVariant(category: string) {
+  switch (category) {
     case 'CLINICAL':
       return 'default';
-    case 'ANCILLARY':
+    case 'TECHNICAL':
       return 'secondary';
     case 'ADMINISTRATIVE':
       return 'outline';
+    case 'MANAGEMENT':
+      return 'default';
+    case 'COMMUNITY':
+      return 'secondary';
     default:
       return 'secondary';
   }
@@ -57,7 +64,7 @@ export default function RolesListPage() {
 
   const { data, isLoading, error } = useRoles({
     search: search || undefined,
-    role_type: roleType || undefined,
+    category: (roleType || undefined) as RoleCategory | undefined,
   });
 
   if (error) {
@@ -110,13 +117,13 @@ export default function RolesListPage() {
               </div>
             </div>
             <Select value={roleType} onValueChange={setRoleType}>
-              <SelectTrigger className="w-[180px]" aria-label="Type">
-                <SelectValue placeholder="All Types" />
+              <SelectTrigger className="w-[180px]" aria-label="Category">
+                <SelectValue placeholder="All Categories" />
               </SelectTrigger>
               <SelectContent>
-                {ROLE_TYPES.map((type) => (
-                  <SelectItem key={type.value} value={type.value}>
-                    {type.label}
+                {ROLE_CATEGORIES.map((cat) => (
+                  <SelectItem key={cat.value} value={cat.value}>
+                    {cat.label}
                   </SelectItem>
                 ))}
               </SelectContent>
@@ -146,10 +153,9 @@ export default function RolesListPage() {
                 <TableRow>
                   <TableHead>Name</TableHead>
                   <TableHead>Code</TableHead>
-                  <TableHead>Type</TableHead>
-                  <TableHead>Permissions</TableHead>
-                  <TableHead>Staff Count</TableHead>
-                  <TableHead>System</TableHead>
+                  <TableHead>Category</TableHead>
+                  <TableHead>License Required</TableHead>
+                  <TableHead>Hierarchy</TableHead>
                   <TableHead className="text-right">Actions</TableHead>
                 </TableRow>
               </TableHeader>
@@ -163,25 +169,19 @@ export default function RolesListPage() {
                       </code>
                     </TableCell>
                     <TableCell>
-                      <Badge variant={getRoleTypeBadgeVariant(role.role_type)}>
-                        {role.role_type_display || role.role_type}
+                      <Badge variant={getCategoryBadgeVariant(role.category)}>
+                        {role.category_display || role.category}
                       </Badge>
                     </TableCell>
                     <TableCell>
-                      <span className="text-muted-foreground">
-                        {role.permissions?.length || 0} permissions
-                      </span>
-                    </TableCell>
-                    <TableCell>
-                      <div className="flex items-center gap-1">
-                        <Users className="h-4 w-4 text-muted-foreground" />
-                        <span>{role.staff_count || 0} staff</span>
-                      </div>
-                    </TableCell>
-                    <TableCell>
-                      {role.is_system && (
-                        <Badge variant="secondary">System</Badge>
+                      {role.requires_license ? (
+                        <Badge variant="outline">{role.license_body || 'Yes'}</Badge>
+                      ) : (
+                        <span className="text-muted-foreground">No</span>
                       )}
+                    </TableCell>
+                    <TableCell>
+                      <span className="text-muted-foreground">Level {role.hierarchy_level}</span>
                     </TableCell>
                     <TableCell className="text-right">
                       <Button variant="ghost" size="sm" asChild>

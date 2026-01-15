@@ -42,19 +42,27 @@ export interface DepartmentUpdateData extends Partial<DepartmentCreateData> {}
 // Role Types
 // =============================================================================
 
-export type RoleType = 'CLINICAL' | 'ADMINISTRATIVE' | 'SUPPORT' | 'SYSTEM';
+/**
+ * Role categories matching backend ROLE_CATEGORIES
+ */
+export type RoleCategory = 'CLINICAL' | 'ADMINISTRATIVE' | 'TECHNICAL' | 'MANAGEMENT' | 'COMMUNITY';
 
 export interface Role {
   id: number;
   name: string;
   code: string;
   description: string;
-  role_type: RoleType;
-  role_type_display: string;
-  permissions: string[];
-  is_default: boolean;
-  is_system: boolean;
-  staff_count: number;
+  category: RoleCategory;
+  category_display?: string;
+  permissions_matrix: Record<string, Record<string, boolean>>;
+  hierarchy_level: number;
+  parent_role: number | null;
+  parent_role_name?: string;
+  django_group: number | null;
+  django_group_name?: string;
+  requires_license: boolean;
+  license_body: string;
+  is_active: boolean;
   created_at: string;
   updated_at: string;
 }
@@ -63,9 +71,12 @@ export interface RoleCreateData {
   name: string;
   code: string;
   description?: string;
-  role_type: RoleType;
-  permissions: string[];
-  is_default?: boolean;
+  category: RoleCategory;
+  permissions_matrix?: Record<string, Record<string, boolean>>;
+  hierarchy_level?: number;
+  parent_role?: number | null;
+  requires_license?: boolean;
+  license_body?: string;
 }
 
 export interface RoleUpdateData extends Partial<RoleCreateData> {}
@@ -208,8 +219,8 @@ export interface RoleListParams {
   page?: number;
   page_size?: number;
   search?: string;
-  role_type?: RoleType;
-  is_system?: boolean;
+  category?: RoleCategory;
+  is_active?: boolean;
 }
 
 export interface StaffListParams {

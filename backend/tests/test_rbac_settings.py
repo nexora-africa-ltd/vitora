@@ -31,7 +31,7 @@ class TestRBACSettings:
         assert isinstance(settings.KENYA_LICENSE_BODIES, dict)
 
         # Verify all required license bodies
-        required_bodies = ['KMPDB', 'NCK', 'KMLTTB', 'PPB', 'COK']
+        required_bodies = ['KMPDB', 'NCK', 'KMLTTB', 'PPB', 'COC']
         for body in required_bodies:
             assert body in settings.KENYA_LICENSE_BODIES
             assert isinstance(settings.KENYA_LICENSE_BODIES[body], str)
@@ -45,7 +45,7 @@ class TestRBACSettings:
         assert bodies['NCK'] == 'Nursing Council of Kenya'
         assert bodies['KMLTTB'] == 'Kenya Medical Laboratory Technicians and Technologists Board'
         assert bodies['PPB'] == 'Pharmacy and Poisons Board'
-        assert bodies['COK'] == 'Clinical Officers Council'
+        assert bodies['COC'] == 'Clinical Officers Council'
 
     def test_rbac_hierarchy_levels_setting(self):
         """Should have RBAC_HIERARCHY_LEVELS dictionary."""
