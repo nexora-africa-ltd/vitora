@@ -18,5 +18,7 @@
     "lib": "@/lib",
     "hooks": "@/hooks"
   },
-  "registries": {}
+  "registries": {
+    "@gooseui": "https://gooseui.pro/r/{name}.json"
+  }
 }
