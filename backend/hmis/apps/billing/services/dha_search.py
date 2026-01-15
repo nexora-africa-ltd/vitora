@@ -749,11 +749,32 @@ class DHASearchService:
         try:
             headers = self.auth_service.get_auth_headers()
             
+            # Build full URL for logging
+            full_url = f"{self.api_base_url}{self.practitioner_endpoint}"
+            
+            # Log the actual request being made (excluding auth token for security)
+            logger.info(
+                f"DHA Practitioner Search API Request:\n"
+                f"  URL: {full_url}\n"
+                f"  Method: GET\n"
+                f"  Params: {params}\n"
+                f"  Headers: {{'Content-Type': '{headers.get('Content-Type', 'N/A')}', "
+                f"'Authorization': 'Bearer ***REDACTED***'}}"
+            )
+            
             response = requests.get(
-                f"{self.api_base_url}{self.practitioner_endpoint}",
+                full_url,
                 params=params,
                 headers=headers,
                 timeout=self.timeout,
+            )
+            
+            # Log full response details
+            logger.info(
+                f"DHA Practitioner Search API Response:\n"
+                f"  Status Code: {response.status_code}\n"
+                f"  Response Headers: {dict(response.headers)}\n"
+                f"  Response Body: {response.text[:2000] if response.text else 'Empty'}"
             )
             
             logger.debug(f"HWR search response status: {response.status_code}")
@@ -779,12 +800,19 @@ class DHASearchService:
             # Response format: {"message": {...}} or {"found": true, "practitioner": {...}}
             message_data = data.get('message', data)
             
-            # Check if practitioner was found
-            found = message_data.get('found', False)
-            if isinstance(found, str):
-                found = found.lower() == 'true'
-            if not found:
-                return None
+            # Check if practitioner was found - DHA API returns membership data directly
+            # if found, or has explicit 'found' field
+            found = message_data.get('found')
+            if found is not None:
+                # Explicit found field exists
+                if isinstance(found, str):
+                    found = found.lower() == 'true'
+                if not found:
+                    return None
+            else:
+                # No explicit found field - check if membership data exists
+                if not message_data.get('membership'):
+                    return None
             
             return PractitionerInfo.from_api_response(message_data)
             
