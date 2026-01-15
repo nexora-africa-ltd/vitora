@@ -26,11 +26,13 @@ import {
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { useToast } from '@/lib/hooks/use-toast';
 import { useCreateRole, usePermissions } from '@/lib/hooks/use-rbac';
+import type { Permission, RoleType } from '@/lib/types/rbac';
 
-const ROLE_TYPES = [
+const ROLE_TYPES: { value: RoleType; label: string }[] = [
   { value: 'CLINICAL', label: 'Clinical' },
-  { value: 'ANCILLARY', label: 'Ancillary' },
   { value: 'ADMINISTRATIVE', label: 'Administrative' },
+  { value: 'SUPPORT', label: 'Support' },
+  { value: 'SYSTEM', label: 'System' },
 ];
 
 export default function NewRolePage() {
@@ -55,7 +57,7 @@ export default function NewRolePage() {
         name: formData.name,
         code: formData.code,
         description: formData.description,
-        role_type: formData.role_type as 'CLINICAL' | 'ANCILLARY' | 'ADMINISTRATIVE',
+        role_type: formData.role_type as RoleType,
         permissions: formData.permissions,
       });
 
@@ -83,8 +85,8 @@ export default function NewRolePage() {
     }));
   };
 
-  // Group permissions by app
-  const groupedPermissions = permissionsData?.results.reduce(
+  // Group permissions by app (permissionsData is a plain array, not paginated)
+  const groupedPermissions = permissionsData?.reduce<Record<string, Permission[]>>(
     (acc, perm) => {
       const appLabel = perm.app_label || 'other';
       if (!acc[appLabel]) {
@@ -93,7 +95,7 @@ export default function NewRolePage() {
       acc[appLabel].push(perm);
       return acc;
     },
-    {} as Record<string, typeof permissionsData.results>
+    {}
   );
 
   return (

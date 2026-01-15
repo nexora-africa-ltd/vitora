@@ -3,7 +3,8 @@
  * Sprint 1.1-1.2 Track C: RBAC Foundation
  */
 
-import { apiClient, type PaginatedResponse } from './client';
+import { apiClient } from './client';
+import type { PaginatedResponse } from '@/lib/types';
 import type {
   Department,
   DepartmentCreateData,
