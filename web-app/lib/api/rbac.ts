@@ -90,8 +90,8 @@ export const rolesApi = {
 // =============================================================================
 
 export const permissionsApi = {
-  list: async (): Promise<PaginatedResponse<Permission>> => {
-    const response = await apiClient.get<PaginatedResponse<Permission>>('/api/permissions/');
+  list: async (): Promise<Permission[]> => {
+    const response = await apiClient.get<Permission[]>('/api/permissions/');
     return response.data;
   },
 

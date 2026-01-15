@@ -2,6 +2,7 @@
 Views for core app.
 """
 
+from django.contrib.auth.models import Permission
 from django.contrib.auth.signals import user_logged_in, user_login_failed
 from rest_framework import filters, status, viewsets
 from rest_framework.decorators import action
@@ -16,6 +17,7 @@ from .serializers import (
     AuditLogSerializer,
     CountySerializer,
     DepartmentSerializer,
+    PermissionSerializer,
     RoleSerializer,
     StaffProfileSerializer,
     SubCountySerializer,
@@ -37,6 +39,23 @@ class AuditLogViewSet(ListModelMixin, RetrieveModelMixin, viewsets.GenericViewSe
     search_fields = ["action", "resource_type", "user__username"]
     ordering_fields = ["timestamp", "action"]
     ordering = ["-timestamp"]
+
+
+class PermissionViewSet(ListModelMixin, RetrieveModelMixin, viewsets.GenericViewSet):
+    """
+    ViewSet for listing and retrieving Django permissions (read-only).
+
+    Accessible to authenticated users for role management UI.
+    """
+
+    queryset = Permission.objects.select_related("content_type").all()
+    serializer_class = PermissionSerializer
+    permission_classes = [IsAuthenticated]
+    filter_backends = [filters.SearchFilter, filters.OrderingFilter]
+    search_fields = ["codename", "name", "content_type__app_label"]
+    ordering_fields = ["codename", "name"]
+    ordering = ["content_type__app_label", "codename"]
+    pagination_class = None  # Return all permissions without pagination
 
 
 class CountyViewSet(ListModelMixin, RetrieveModelMixin, viewsets.GenericViewSet):

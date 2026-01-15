@@ -16,6 +16,7 @@ from hmis.apps.core.views import (
     CountyViewSet,
     DepartmentViewSet,
     NotificationViewSet,
+    PermissionViewSet,
     RoleViewSet,
     StaffProfileViewSet,
     SubCountyViewSet,
@@ -57,6 +58,7 @@ router.register(r"treatment-templates", TreatmentPlanTemplateViewSet, basename="
 router.register(r"departments", DepartmentViewSet, basename="department")
 router.register(r"roles", RoleViewSet, basename="role")
 router.register(r"staff", StaffProfileViewSet, basename="staffprofile")
+router.register(r"permissions", PermissionViewSet, basename="permission")
 
 # Notification endpoints
 router.register(r"notifications", NotificationViewSet, basename="notification")
