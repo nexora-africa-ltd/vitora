@@ -72,9 +72,9 @@ export default function EditStaffPage() {
   useEffect(() => {
     if (staff) {
       setFormData({
-        email: staff.email || '',
-        first_name: staff.first_name || '',
-        last_name: staff.last_name || '',
+        email: staff.user_email || '',
+        first_name: staff.user_first_name || '',
+        last_name: staff.user_last_name || '',
         employee_id: staff.employee_id || '',
         department: staff.department?.toString() || '',
         role: staff.role?.toString() || '',
@@ -173,7 +173,7 @@ export default function EditStaffPage() {
 
       toast({
         title: 'Staff deactivated',
-        description: `${staff?.first_name} ${staff?.last_name} has been deactivated`,
+        description: `${staff?.user_first_name} ${staff?.user_last_name} has been deactivated`,
       });
 
       router.push('/admin/staff');
@@ -238,7 +238,7 @@ export default function EditStaffPage() {
           <div>
             <h1 className="text-2xl font-bold">Edit Staff Profile</h1>
             <p className="text-muted-foreground">
-              {staff.full_name || `${staff.first_name} ${staff.last_name}`}
+              {staff.full_name || `${staff.user_first_name} ${staff.user_last_name}`}
               {' • '}
               <Badge variant={staff.is_active ? 'default' : 'secondary'}>
                 {staff.is_active ? 'Active' : 'Inactive'}
@@ -256,7 +256,7 @@ export default function EditStaffPage() {
               <AlertDialogHeader>
                 <AlertDialogTitle>Deactivate Staff Member?</AlertDialogTitle>
                 <AlertDialogDescription>
-                  This will revoke {staff.first_name}&apos;s access to the system. 
+                  This will revoke {staff.user_first_name}&apos;s access to the system. 
                   They will no longer be able to log in. This action can be reversed.
                 </AlertDialogDescription>
               </AlertDialogHeader>
@@ -280,7 +280,7 @@ export default function EditStaffPage() {
               Staff Information
             </CardTitle>
             <CardDescription>
-              Username: {staff.username}
+              Username: {staff.user_username}
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
