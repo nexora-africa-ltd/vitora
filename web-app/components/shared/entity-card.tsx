@@ -55,6 +55,8 @@ interface EntityCardProps {
   metadata?: MetadataItem[];
   /** Link for the entire card */
   href?: string;
+  /** Click handler (alternative to href) */
+  onClick?: () => void;
   /** Dropdown menu actions */
   actions?: ActionItem[];
   /** Additional class name */
@@ -116,16 +118,20 @@ export function EntityCard({
   badges = [],
   metadata = [],
   href,
+  onClick,
   actions = [],
   className,
 }: EntityCardProps) {
+  const isClickable = href || onClick;
+  
   const cardContent = (
     <Card
       className={cn(
         'group relative overflow-hidden transition-all hover:shadow-md',
-        href && 'cursor-pointer hover:border-primary/50',
+        isClickable && 'cursor-pointer transition-colors hover:border-teal-400/50 hover:scale-105',
         className
       )}
+      onClick={onClick}
     >
       <CardContent className="p-4">
         {/* Actions dropdown */}
