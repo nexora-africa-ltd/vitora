@@ -439,7 +439,7 @@ async function searchPractitioner(
   params: DHAPractitionerSearchRequest
 ): Promise<DHAPractitionerSearchResponse> {
   const queryString = buildQueryString(params);
-  const response = await apiClient.get(`/api/billing/dha/practitioner-search/?${queryString}`);
+  const response = await apiClient.get(`/api/sha/practitioner/validate/?${queryString}`);
   return response.data;
 }
 
