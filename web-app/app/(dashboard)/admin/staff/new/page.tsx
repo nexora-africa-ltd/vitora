@@ -20,6 +20,7 @@ import {
   SelectItem,
   SelectTrigger,
   SelectValue,
+  SelectEmpty,
 } from '@/components/ui/select';
 import { useToast } from '@/lib/hooks/use-toast';
 import { useCreateStaffProfile, useDepartments, useRoles } from '@/lib/hooks/use-rbac';
@@ -282,11 +283,15 @@ export default function NewStaffPage() {
                     <SelectValue placeholder="Select department" />
                   </SelectTrigger>
                   <SelectContent>
-                    {departments?.results?.map((dept) => (
-                      <SelectItem key={dept.id} value={dept.id.toString()}>
-                        {dept.name}
-                      </SelectItem>
-                    ))}
+                    {departments?.results && departments.results.length > 0 ? (
+                      departments.results.map((dept) => (
+                        <SelectItem key={dept.id} value={dept.id.toString()}>
+                          {dept.name}
+                        </SelectItem>
+                      ))
+                    ) : (
+                      <SelectEmpty>No departments available</SelectEmpty>
+                    )}
                   </SelectContent>
                 </Select>
                 {errors.department && (
@@ -306,11 +311,15 @@ export default function NewStaffPage() {
                     <SelectValue placeholder="Select role" />
                   </SelectTrigger>
                   <SelectContent>
-                    {roles?.results?.map((role) => (
-                      <SelectItem key={role.id} value={role.id.toString()}>
-                        {role.name}
-                      </SelectItem>
-                    ))}
+                    {roles?.results && roles.results.length > 0 ? (
+                      roles.results.map((role) => (
+                        <SelectItem key={role.id} value={role.id.toString()}>
+                          {role.name}
+                        </SelectItem>
+                      ))
+                    ) : (
+                      <SelectEmpty>No roles available</SelectEmpty>
+                    )}
                   </SelectContent>
                 </Select>
                 {errors.role && (
