@@ -174,6 +174,8 @@ import-drugs:
 load-roles:
 	@echo "Loading default roles and permissions..."
 	poetry run python manage.py load_default_roles
+	@echo "Syncing Role permissions_matrix to Django Groups..."
+	poetry run python manage.py sync_role_permissions
 
 load-templates:
 	@echo "Loading clinical templates..."
