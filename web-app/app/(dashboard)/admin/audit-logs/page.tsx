@@ -28,7 +28,7 @@ import {
   TableRow,
 } from '@/components/ui/table';
 import { Skeleton } from '@/components/ui/skeleton';
-import { useAuditLogs } from '@/lib/hooks/use-rbac';
+import { useAuditLogs, type AuditAction } from '@/lib/hooks/use-rbac';
 import { formatDistanceToNow } from 'date-fns';
 
 const ACTION_TYPES = [
@@ -66,7 +66,7 @@ export default function AuditLogsPage() {
 
   const { data, isLoading, error } = useAuditLogs({
     search: search || undefined,
-    action: actionFilter !== 'all' ? actionFilter : undefined,
+    action: actionFilter !== 'all' ? (actionFilter as AuditAction) : undefined,
   });
 
   return (

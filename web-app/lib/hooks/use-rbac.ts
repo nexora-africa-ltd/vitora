@@ -16,7 +16,11 @@ import type {
   StaffProfileUpdateData,
   StaffListParams,
   AuditLogListParams,
+  AuditAction,
 } from '@/lib/types/rbac';
+
+// Re-export types for convenience
+export type { AuditAction } from '@/lib/types/rbac';
 
 // =============================================================================
 // Department Hooks
