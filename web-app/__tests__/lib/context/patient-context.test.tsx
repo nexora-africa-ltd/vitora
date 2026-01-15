@@ -25,32 +25,12 @@ jest.mock('@/lib/api/patients', () => ({
 }));
 
 import { patientsApi } from '@/lib/api/patients';
+import {
+  mockPatient,
+  mockPatientMinimal,
+} from '../../fixtures/patient-shell-fixtures';
 
 const mockPatientsApi = patientsApi as jest.Mocked<typeof patientsApi>;
-
-// Test fixtures
-const mockPatient = {
-  id: 1,
-  mrn: 'MRN-20260115-0001',
-  first_name: 'Jane',
-  last_name: 'Doe',
-  date_of_birth: '1985-05-20',
-  gender: 'F' as const,
-  phone_number: '+254712345678',
-  email: 'jane.doe@example.com',
-  county: 1,
-  county_name: 'Nairobi',
-  sub_county: 1,
-  sub_county_name: 'Westlands',
-  ward: 1,
-  ward_name: 'Parklands',
-  is_sensitive: false,
-  consent_given: true,
-  cr_number: 'CR-12345',
-  sha_number: 'SHA-67890',
-  created_at: '2026-01-15T10:00:00Z',
-  updated_at: '2026-01-15T10:00:00Z',
-};
 
 // Helper to create QueryClient wrapper
 function createWrapper() {
@@ -247,7 +227,7 @@ describe('PatientContext', () => {
     });
 
     it('should indicate not verified when cr_number is missing', async () => {
-      const unverifiedPatient = { ...mockPatient, cr_number: null, sha_number: null };
+      const unverifiedPatient = { ...mockPatient, cr_number: undefined, sha_number: undefined };
       mockPatientsApi.getPatient.mockResolvedValueOnce(unverifiedPatient);
       
       const Wrapper = createWrapper();

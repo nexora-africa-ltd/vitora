@@ -36,24 +36,10 @@ jest.mock('@/lib/api/patients', () => ({
 
 import { patientsApi } from '@/lib/api/patients';
 import PatientLayout from '@/app/(dashboard)/patients/[id]/layout';
+import { mockPatient } from '../../fixtures/patient-shell-fixtures';
 
 const mockPatientsApi = patientsApi as jest.Mocked<typeof patientsApi>;
 const mockUseParams = useParams as jest.MockedFunction<typeof useParams>;
-
-// Test fixtures
-const mockPatient = {
-  id: 1,
-  mrn: 'MRN-20260115-0001',
-  first_name: 'Jane',
-  last_name: 'Doe',
-  date_of_birth: '1985-05-20',
-  gender: 'F' as const,
-  phone_number: '+254712345678',
-  is_sensitive: false,
-  consent_given: true,
-  cr_number: 'CR-12345',
-  sha_number: 'SHA-67890',
-};
 
 // Helper to create QueryClient wrapper
 function createWrapper() {

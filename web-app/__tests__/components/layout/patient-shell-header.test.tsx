@@ -36,57 +36,15 @@ jest.mock('@/lib/api/encounters', () => ({
 
 import { patientsApi } from '@/lib/api/patients';
 import { encountersApi } from '@/lib/api/encounters';
+import {
+  mockPatient,
+  mockSensitivePatient,
+  mockUnverifiedPatient,
+  mockEncounter,
+} from '../../fixtures/patient-shell-fixtures';
 
 const mockPatientsApi = patientsApi as jest.Mocked<typeof patientsApi>;
 const mockEncountersApi = encountersApi as jest.Mocked<typeof encountersApi>;
-
-// Test fixtures
-const mockPatient = {
-  id: 1,
-  mrn: 'MRN-20260115-0001',
-  first_name: 'Jane',
-  last_name: 'Doe',
-  date_of_birth: '1985-05-20',
-  gender: 'F' as const,
-  phone_number: '+254712345678',
-  email: 'jane.doe@example.com',
-  county: 1,
-  county_name: 'Nairobi',
-  sub_county: 1,
-  sub_county_name: 'Westlands',
-  is_sensitive: false,
-  consent_given: true,
-  cr_number: 'CR-12345',
-  sha_number: 'SHA-67890',
-};
-
-const mockSensitivePatient = {
-  ...mockPatient,
-  id: 2,
-  mrn: 'MRN-20260115-0002',
-  is_sensitive: true,
-};
-
-const mockUnverifiedPatient = {
-  ...mockPatient,
-  id: 3,
-  mrn: 'MRN-20260115-0003',
-  cr_number: null,
-  sha_number: null,
-};
-
-const mockEncounter = {
-  id: 100,
-  patient: 1,
-  patient_name: 'Jane Doe',
-  patient_mrn: 'MRN-20260115-0001',
-  encounter_type: 'OPD',
-  encounter_date: '2026-01-15',
-  status: 'IN_PROGRESS',
-  triage_status: 'COMPLETED',
-  consultation_status: 'IN_PROGRESS',
-  chief_complaint: 'Persistent headache',
-};
 
 // Helper to create QueryClient wrapper
 function createWrapper() {
@@ -525,9 +483,10 @@ describe('PatientShellHeader', () => {
 
       await waitFor(() => {
         const sensitiveIndicator = screen.getByText(/Sensitive|Confidential|Protected/i);
-        // Should have accessible labeling
-        expect(sensitiveIndicator).toHaveAttribute('aria-label') || 
-          expect(sensitiveIndicator.closest('[aria-label]')).toBeInTheDocument();
+        // Should have accessible labeling - check either the element or a parent
+        const hasAriaLabel = sensitiveIndicator.hasAttribute('aria-label') || 
+          sensitiveIndicator.closest('[aria-label]') !== null;
+        expect(hasAriaLabel).toBe(true);
       });
     });
   });
