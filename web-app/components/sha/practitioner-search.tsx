@@ -1,21 +1,28 @@
 /**
- * SHA Practitioner Search Component
+ * DHA Practitioner Search Component
  * 
- * Reusable component that searches the SHA/DHA Health Worker Registry
- * by HWR (Health Worker Registry) number and returns practitioner details.
+ * Reusable component that searches the DHA (Digital Health Authority)
+ * Health Worker Registry by National ID or Passport number.
  * 
- * Can be used to auto-populate staff profile forms with verified data.
+ * Returns comprehensive practitioner information including:
+ * - Membership status and registration details
+ * - License history with validity dates
+ * - Professional qualifications and cadre
+ * - Contact information
+ * 
+ * Based on: https://uat.dha.go.ke/v1/practitioner-search API
  * 
  * @example
- * <SHAPractitionerSearch
+ * <DHAPractitionerSearch
  *   onSelect={(practitioner) => {
  *     setFormData({
  *       ...formData,
- *       license_number: practitioner.hwr_number,
- *       first_name: practitioner.name.split(' ')[0],
- *       last_name: practitioner.name.split(' ').slice(1).join(' '),
- *       specialization: practitioner.specialization,
- *       license_expiry: practitioner.license_expiry,
+ *       first_name: practitioner.membership.first_name,
+ *       last_name: practitioner.membership.last_name,
+ *       email: practitioner.contacts.email,
+ *       phone_number: practitioner.contacts.phone,
+ *       license_number: practitioner.membership.registration_id,
+ *       specialization: practitioner.professional_details.specialty,
  *     });
  *   }}
  * />
@@ -23,79 +30,101 @@
 'use client';
 
 import { useState, useCallback } from 'react';
-import { Search, CheckCircle2, XCircle, Loader2, UserCheck, AlertTriangle } from 'lucide-react';
+import { 
+  Search, 
+  CheckCircle2, 
+  XCircle, 
+  Loader2, 
+  UserCheck, 
+  GraduationCap,
+  Phone,
+  Mail,
+  MapPin,
+  Calendar,
+  Shield,
+  IdCard,
+} from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Card, CardContent } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
+import { Separator } from '@/components/ui/separator';
 import { cn } from '@/lib/utils/cn';
 import { shaApi } from '@/lib/api/sha';
-import type { PractitionerInfo } from '@/lib/types/sha';
+import type { DHAPractitioner, DHAPractitionerLicense } from '@/lib/types/sha';
 
-export interface SHAPractitionerSearchProps {
-  /** Callback when practitioner is selected/verified */
-  onSelect?: (practitioner: PractitionerInfo) => void;
-  /** Callback when validation fails */
-  onError?: (errors: string[]) => void;
-  /** Initial HWR number value */
-  defaultValue?: string;
+export interface DHAPractitionerSearchProps {
+  /** Callback when practitioner is found and selected */
+  onSelect?: (practitioner: DHAPractitioner) => void;
+  /** Callback when search fails */
+  onError?: (error: string) => void;
   /** Whether the search is disabled */
   disabled?: boolean;
-  /** Custom label */
-  label?: string;
-  /** Custom placeholder */
-  placeholder?: string;
-  /** Whether to show the result card */
-  showResultCard?: boolean;
   /** Custom class name */
   className?: string;
+  /** Whether to show the detailed result card */
+  showDetailedResult?: boolean;
+  /** Whether to auto-select on successful search */
+  autoSelect?: boolean;
 }
 
-export function SHAPractitionerSearch({
+type IdentificationType = 'ID' | 'passport';
+
+export function DHAPractitionerSearch({
   onSelect,
   onError,
-  defaultValue = '',
   disabled = false,
-  label = 'HWR Number',
-  placeholder = 'Enter HWR number (e.g., HW-12345)',
-  showResultCard = true,
   className,
-}: SHAPractitionerSearchProps) {
-  const [hwrNumber, setHwrNumber] = useState(defaultValue);
+  showDetailedResult = true,
+  autoSelect = true,
+}: DHAPractitionerSearchProps) {
+  const [idType, setIdType] = useState<IdentificationType>('ID');
+  const [idNumber, setIdNumber] = useState('');
   const [isLoading, setIsLoading] = useState(false);
-  const [result, setResult] = useState<{
-    valid: boolean;
-    practitioner?: PractitionerInfo;
-    errors: string[];
-  } | null>(null);
+  const [practitioner, setPractitioner] = useState<DHAPractitioner | null>(null);
+  const [error, setError] = useState<string | null>(null);
 
   const handleSearch = useCallback(async () => {
-    if (!hwrNumber.trim()) {
-      setResult({ valid: false, errors: ['Please enter an HWR number'] });
+    if (!idNumber.trim()) {
+      setError('Please enter an identification number');
       return;
     }
 
     setIsLoading(true);
-    setResult(null);
+    setError(null);
+    setPractitioner(null);
 
     try {
-      const response = await shaApi.validatePractitioner({ hwr_number: hwrNumber.trim() });
-      setResult(response);
+      const response = await shaApi.searchPractitioner({
+        identification_type: idType,
+        identification_number: idNumber.trim(),
+      });
 
-      if (response.valid && response.practitioner) {
-        onSelect?.(response.practitioner);
-      } else if (response.errors?.length > 0) {
-        onError?.(response.errors);
+      if (response.message) {
+        setPractitioner(response.message);
+        if (autoSelect && onSelect) {
+          onSelect(response.message);
+        }
+      } else {
+        setError('No practitioner found with this identification');
+        onError?.('No practitioner found');
       }
-    } catch (error) {
-      const errorMessage = error instanceof Error ? error.message : 'Failed to validate practitioner';
-      setResult({ valid: false, errors: [errorMessage] });
-      onError?.([errorMessage]);
+    } catch (err) {
+      const errorMessage = err instanceof Error ? err.message : 'Failed to search practitioner';
+      setError(errorMessage);
+      onError?.(errorMessage);
     } finally {
       setIsLoading(false);
     }
-  }, [hwrNumber, onSelect, onError]);
+  }, [idType, idNumber, autoSelect, onSelect, onError]);
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === 'Enter') {
@@ -104,9 +133,18 @@ export function SHAPractitionerSearch({
     }
   };
 
-  const getLicenseStatusColor = (status: string) => {
+  const handleUseData = () => {
+    if (practitioner && onSelect) {
+      onSelect(practitioner);
+    }
+  };
+
+  const getStatusColor = (status: string, isActive: number) => {
+    if (!isActive) {
+      return 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400';
+    }
     const normalizedStatus = status.toLowerCase();
-    if (normalizedStatus === 'active' || normalizedStatus === 'valid') {
+    if (normalizedStatus === 'licensed' || normalizedStatus === 'active') {
       return 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400';
     }
     if (normalizedStatus === 'expired') {
@@ -118,19 +156,39 @@ export function SHAPractitionerSearch({
     return 'bg-gray-100 text-gray-800 dark:bg-gray-900/30 dark:text-gray-400';
   };
 
+  const formatLicenseExpiry = (days: number) => {
+    if (days < 0) return { text: 'Expired', color: 'text-red-600' };
+    if (days <= 30) return { text: `${days} days`, color: 'text-red-600' };
+    if (days <= 90) return { text: `${days} days`, color: 'text-yellow-600' };
+    return { text: `${days} days`, color: 'text-green-600' };
+  };
+
   return (
-    <div className={cn('space-y-3', className)}>
-      <div className="space-y-2">
-        <Label htmlFor="hwr-search">{label}</Label>
+    <div className={cn('space-y-4', className)}>
+      {/* Search Form */}
+      <div className="space-y-3">
+        <Label>Search DHA Health Worker Registry</Label>
         <div className="flex gap-2">
+          <Select
+            value={idType}
+            onValueChange={(value) => setIdType(value as IdentificationType)}
+            disabled={disabled || isLoading}
+          >
+            <SelectTrigger className="w-[140px]">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="ID">National ID</SelectItem>
+              <SelectItem value="passport">Passport</SelectItem>
+            </SelectContent>
+          </Select>
           <div className="relative flex-1">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+            <IdCard className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
             <Input
-              id="hwr-search"
-              value={hwrNumber}
-              onChange={(e) => setHwrNumber(e.target.value)}
+              value={idNumber}
+              onChange={(e) => setIdNumber(e.target.value)}
               onKeyDown={handleKeyDown}
-              placeholder={placeholder}
+              placeholder={idType === 'ID' ? 'Enter National ID number' : 'Enter Passport number'}
               disabled={disabled || isLoading}
               className="pl-9"
             />
@@ -138,120 +196,248 @@ export function SHAPractitionerSearch({
           <Button
             type="button"
             onClick={handleSearch}
-            disabled={disabled || isLoading || !hwrNumber.trim()}
+            disabled={disabled || isLoading || !idNumber.trim()}
             variant="secondary"
           >
             {isLoading ? (
               <Loader2 className="h-4 w-4 animate-spin" />
             ) : (
-              <UserCheck className="h-4 w-4" />
+              <Search className="h-4 w-4" />
             )}
-            <span className="ml-2 hidden sm:inline">Verify</span>
+            <span className="ml-2 hidden sm:inline">Search</span>
           </Button>
         </div>
+        <p className="text-xs text-muted-foreground">
+          Search the Kenya Digital Health Authority registry to verify and auto-fill practitioner details
+        </p>
       </div>
 
-      {/* Result display */}
-      {result && showResultCard && (
-        <Card className={cn(
-          'border-2 transition-colors',
-          result.valid 
-            ? 'border-green-500 bg-green-50/50 dark:bg-green-950/20' 
-            : 'border-destructive bg-destructive/5'
-        )}>
-          <CardContent className="pt-4">
-            {result.valid && result.practitioner ? (
-              <div className="space-y-3">
-                <div className="flex items-center gap-2">
-                  <CheckCircle2 className="h-5 w-5 text-green-600" />
-                  <span className="font-semibold text-green-700 dark:text-green-400">
-                    Practitioner Verified
-                  </span>
-                </div>
-                
-                <div className="grid gap-3 sm:grid-cols-2">
-                  <div>
-                    <p className="text-xs text-muted-foreground">Full Name</p>
-                    <p className="font-medium">{result.practitioner.name}</p>
-                  </div>
-                  <div>
-                    <p className="text-xs text-muted-foreground">HWR Number</p>
-                    <p className="font-mono text-sm">{result.practitioner.hwr_number}</p>
-                  </div>
-                  <div>
-                    <p className="text-xs text-muted-foreground">Cadre</p>
-                    <p className="font-medium">{result.practitioner.cadre}</p>
-                  </div>
-                  {result.practitioner.specialization && (
-                    <div>
-                      <p className="text-xs text-muted-foreground">Specialization</p>
-                      <p className="font-medium">{result.practitioner.specialization}</p>
-                    </div>
-                  )}
-                  <div>
-                    <p className="text-xs text-muted-foreground">License Status</p>
-                    <Badge className={getLicenseStatusColor(result.practitioner.license_status)}>
-                      {result.practitioner.license_status}
-                    </Badge>
-                  </div>
-                  {result.practitioner.license_expiry && (
-                    <div>
-                      <p className="text-xs text-muted-foreground">License Expiry</p>
-                      <p className="font-medium">{result.practitioner.license_expiry}</p>
-                    </div>
-                  )}
-                  {result.practitioner.registration_board && (
-                    <div>
-                      <p className="text-xs text-muted-foreground">Registration Board</p>
-                      <p className="font-medium">{result.practitioner.registration_board}</p>
-                    </div>
-                  )}
-                </div>
+      {/* Error Display */}
+      {error && (
+        <div className="flex items-center gap-2 p-3 rounded-lg bg-destructive/10 border border-destructive/20">
+          <XCircle className="h-5 w-5 text-destructive shrink-0" />
+          <span className="text-sm text-destructive">{error}</span>
+        </div>
+      )}
+
+      {/* Result Display */}
+      {practitioner && showDetailedResult && (
+        <Card className="border-2 border-green-500 bg-green-50/50 dark:bg-green-950/20">
+          <CardHeader className="pb-3">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <CheckCircle2 className="h-5 w-5 text-green-600" />
+                <CardTitle className="text-lg text-green-700 dark:text-green-400">
+                  Practitioner Found
+                </CardTitle>
               </div>
-            ) : (
-              <div className="space-y-2">
-                <div className="flex items-center gap-2">
-                  <XCircle className="h-5 w-5 text-destructive" />
-                  <span className="font-semibold text-destructive">Validation Failed</span>
+              {!autoSelect && (
+                <Button size="sm" onClick={handleUseData}>
+                  <UserCheck className="h-4 w-4 mr-2" />
+                  Use This Data
+                </Button>
+              )}
+            </div>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            {/* Membership Info */}
+            <div className="space-y-3">
+              <div className="flex items-center justify-between">
+                <h4 className="font-semibold flex items-center gap-2">
+                  <Shield className="h-4 w-4" />
+                  Registration Details
+                </h4>
+                <Badge className={getStatusColor(practitioner.membership.status, practitioner.membership.is_active)}>
+                  {practitioner.membership.status}
+                </Badge>
+              </div>
+              <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+                <div>
+                  <p className="text-xs text-muted-foreground">Full Name</p>
+                  <p className="font-medium">
+                    {practitioner.membership.salutation} {practitioner.membership.full_name.trim()}
+                  </p>
                 </div>
-                {result.errors.length > 0 && (
-                  <ul className="space-y-1">
-                    {result.errors.map((error, index) => (
-                      <li key={index} className="flex items-start gap-2 text-sm text-destructive">
-                        <AlertTriangle className="h-4 w-4 mt-0.5 shrink-0" />
-                        {error}
-                      </li>
-                    ))}
-                  </ul>
+                <div>
+                  <p className="text-xs text-muted-foreground">Registration ID</p>
+                  <p className="font-mono text-sm">{practitioner.membership.registration_id}</p>
+                </div>
+                <div>
+                  <p className="text-xs text-muted-foreground">Licensing Body</p>
+                  <p className="font-medium text-sm">{practitioner.membership.licensing_body}</p>
+                </div>
+                <div>
+                  <p className="text-xs text-muted-foreground">Specialty</p>
+                  <p className="font-medium text-sm">{practitioner.membership.specialty || 'N/A'}</p>
+                </div>
+                <div>
+                  <p className="text-xs text-muted-foreground">License Expires In</p>
+                  {(() => {
+                    const expiry = formatLicenseExpiry(practitioner.membership.license_expires_in_days);
+                    return <p className={cn('font-medium text-sm', expiry.color)}>{expiry.text}</p>;
+                  })()}
+                </div>
+                {practitioner.membership.is_withdrawn === 1 && (
+                  <div>
+                    <p className="text-xs text-muted-foreground">Withdrawal Reason</p>
+                    <p className="font-medium text-sm text-red-600">{practitioner.membership.withdrawal_reason || 'N/A'}</p>
+                  </div>
                 )}
               </div>
+            </div>
+
+            <Separator />
+
+            {/* Professional Details */}
+            <div className="space-y-3">
+              <h4 className="font-semibold flex items-center gap-2">
+                <GraduationCap className="h-4 w-4" />
+                Professional Details
+              </h4>
+              <div className="grid gap-3 sm:grid-cols-2">
+                <div>
+                  <p className="text-xs text-muted-foreground">Professional Cadre</p>
+                  <p className="font-medium text-sm">{practitioner.professional_details.professional_cadre}</p>
+                </div>
+                <div>
+                  <p className="text-xs text-muted-foreground">Practice Type</p>
+                  <p className="font-medium text-sm">{practitioner.professional_details.practice_type}</p>
+                </div>
+                {practitioner.professional_details.specialty && (
+                  <div>
+                    <p className="text-xs text-muted-foreground">Specialty</p>
+                    <p className="font-medium text-sm">{practitioner.professional_details.specialty}</p>
+                  </div>
+                )}
+                {practitioner.professional_details.subspecialty && (
+                  <div>
+                    <p className="text-xs text-muted-foreground">Subspecialty</p>
+                    <p className="font-medium text-sm">{practitioner.professional_details.subspecialty}</p>
+                  </div>
+                )}
+              </div>
+              {practitioner.professional_details.educational_qualifications && (
+                <div>
+                  <p className="text-xs text-muted-foreground">Educational Qualifications</p>
+                  <p className="font-medium text-sm">{practitioner.professional_details.educational_qualifications}</p>
+                </div>
+              )}
+            </div>
+
+            <Separator />
+
+            {/* Contact Info */}
+            <div className="space-y-3">
+              <h4 className="font-semibold flex items-center gap-2">
+                <Phone className="h-4 w-4" />
+                Contact Information
+              </h4>
+              <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+                {practitioner.contacts.phone && (
+                  <div className="flex items-center gap-2">
+                    <Phone className="h-4 w-4 text-muted-foreground" />
+                    <span className="text-sm">{practitioner.contacts.phone}</span>
+                  </div>
+                )}
+                {practitioner.contacts.email && (
+                  <div className="flex items-center gap-2">
+                    <Mail className="h-4 w-4 text-muted-foreground" />
+                    <span className="text-sm lowercase">{practitioner.contacts.email}</span>
+                  </div>
+                )}
+                {practitioner.contacts.postal_address && (
+                  <div className="flex items-center gap-2 col-span-full">
+                    <MapPin className="h-4 w-4 text-muted-foreground shrink-0" />
+                    <span className="text-sm">{practitioner.contacts.postal_address}</span>
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {/* License History */}
+            {practitioner.licenses && practitioner.licenses.length > 0 && (
+              <>
+                <Separator />
+                <div className="space-y-3">
+                  <h4 className="font-semibold flex items-center gap-2">
+                    <Calendar className="h-4 w-4" />
+                    License History
+                  </h4>
+                  <div className="space-y-2">
+                    {practitioner.licenses.map((license, index) => (
+                      <div
+                        key={license.id || index}
+                        className="flex items-center justify-between p-2 rounded bg-muted/50 text-sm"
+                      >
+                        <div>
+                          <span className="font-medium">{license.license_type}</span>
+                          <span className="text-muted-foreground ml-2">({license.external_reference_id})</span>
+                        </div>
+                        <div className="text-right text-muted-foreground">
+                          {license.license_start !== 'None' && (
+                            <span>{license.license_start} → </span>
+                          )}
+                          <span className={
+                            new Date(license.license_end) < new Date() ? 'text-red-600' : ''
+                          }>
+                            {license.license_end}
+                          </span>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </>
             )}
+
+            {/* Identifiers */}
+            <Separator />
+            <div className="space-y-3">
+              <h4 className="font-semibold flex items-center gap-2">
+                <IdCard className="h-4 w-4" />
+                Identifiers
+              </h4>
+              <div className="grid gap-3 sm:grid-cols-2">
+                <div>
+                  <p className="text-xs text-muted-foreground">{practitioner.identifiers.identification_type}</p>
+                  <p className="font-mono text-sm">{practitioner.identifiers.identification_number}</p>
+                </div>
+                {practitioner.identifiers.client_registry_id && (
+                  <div>
+                    <p className="text-xs text-muted-foreground">Client Registry ID</p>
+                    <p className="font-mono text-sm">{practitioner.identifiers.client_registry_id}</p>
+                  </div>
+                )}
+              </div>
+            </div>
           </CardContent>
         </Card>
       )}
 
-      {/* Inline status (when showResultCard is false) */}
-      {result && !showResultCard && (
-        <div className="flex items-center gap-2 text-sm">
-          {result.valid ? (
-            <>
-              <CheckCircle2 className="h-4 w-4 text-green-600" />
-              <span className="text-green-600">
-                Verified: {result.practitioner?.name}
-              </span>
-            </>
-          ) : (
-            <>
-              <XCircle className="h-4 w-4 text-destructive" />
-              <span className="text-destructive">
-                {result.errors[0] || 'Validation failed'}
-              </span>
-            </>
-          )}
+      {/* Compact result (when showDetailedResult is false) */}
+      {practitioner && !showDetailedResult && (
+        <div className="flex items-center justify-between p-3 rounded-lg bg-green-50 dark:bg-green-950/20 border border-green-200 dark:border-green-800">
+          <div className="flex items-center gap-2">
+            <CheckCircle2 className="h-5 w-5 text-green-600" />
+            <div>
+              <p className="font-medium text-green-700 dark:text-green-400">
+                {practitioner.membership.full_name.trim()}
+              </p>
+              <p className="text-sm text-green-600 dark:text-green-500">
+                {practitioner.professional_details.professional_cadre} • {practitioner.membership.licensing_body}
+              </p>
+            </div>
+          </div>
+          <Badge className={getStatusColor(practitioner.membership.status, practitioner.membership.is_active)}>
+            {practitioner.membership.status}
+          </Badge>
         </div>
       )}
     </div>
   );
 }
 
-export default SHAPractitionerSearch;
+// Re-export for backward compatibility (alias)
+export { DHAPractitionerSearch as SHAPractitionerSearch };
+
+export default DHAPractitionerSearch;

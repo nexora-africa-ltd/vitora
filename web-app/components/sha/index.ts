@@ -1,8 +1,9 @@
 /**
- * SHA Components Index
+ * SHA/DHA Components Index
  * 
- * Reusable components for SHA (Social Health Authority) integration.
+ * Reusable components for SHA (Social Health Authority) and
+ * DHA (Digital Health Authority) integration.
  */
 
-export { SHAPractitionerSearch } from './practitioner-search';
-export type { SHAPractitionerSearchProps } from './practitioner-search';
+export { DHAPractitionerSearch, SHAPractitionerSearch } from './practitioner-search';
+export type { DHAPractitionerSearchProps } from './practitioner-search';

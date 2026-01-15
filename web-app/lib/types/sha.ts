@@ -466,9 +466,102 @@ export type FacilityValidationStatus =
   | 'error';
 
 // ============================================================================
-// Practitioner Validation Types
+// DHA Practitioner/Health Worker Registry Types
+// Based on: https://uat.dha.go.ke/v1/practitioner-search API
 // ============================================================================
 
+/**
+ * Practitioner membership details from DHA registry
+ */
+export interface DHAPractitionerMembership {
+  id: string;                        // e.g., "PUID-0022840-4"
+  status: string;                    // e.g., "Licensed", "Suspended", "Expired"
+  salutation: string;                // e.g., "Dr.", "Mr.", "Ms."
+  full_name: string;                 // Full name as registered
+  gender: string;                    // e.g., "M", "F"
+  first_name: string;
+  middle_name: string;
+  last_name: string;
+  registration_id: string;           // e.g., "PUID-059839"
+  external_reference_id: string;     // e.g., "24120"
+  licensing_body: string;            // e.g., "Clinical Officers Council", "KMPDB", "NCK"
+  specialty: string;                 // e.g., "CLINICAL OFFICER", "MEDICAL OFFICER"
+  is_active: number;                 // 1 = active, 0 = inactive
+  is_withdrawn: number;              // 1 = withdrawn, 0 = not withdrawn
+  withdrawal_reason: string;
+  withdrawal_date: string;
+  license_expires_in_days: number;   // Days until license expires
+}
+
+/**
+ * Practitioner license record from DHA
+ */
+export interface DHAPractitionerLicense {
+  id: string;                        // e.g., "COC-Clinical Officer-2026-620095"
+  external_reference_id: string;     // e.g., "Rb01923/25"
+  license_type: string;              // e.g., "Clinical Officer", "Annual"
+  license_start: string;             // Date string or "None"
+  license_end: string;               // Date string (expiry)
+}
+
+/**
+ * Professional details from DHA
+ */
+export interface DHAPractitionerProfessionalDetails {
+  professional_cadre: string;        // e.g., "CLINICAL OFFICER", "MEDICAL OFFICER"
+  practice_type: string;             // e.g., "Clinical Officer"
+  specialty: string;
+  subspecialty: string;
+  discipline_name: string;           // e.g., "Clinical Officer"
+  educational_qualifications: string; // e.g., "DIPLOMA - CLINICAL MEDICINE & SURGERY (KMTC)"
+}
+
+/**
+ * Contact information from DHA
+ */
+export interface DHAPractitionerContacts {
+  phone: string;                     // e.g., "0769005262"
+  email: string;                     // e.g., "example@gmail.com"
+  postal_address: string;            // e.g., "P O BOX 221-20303 OL KALAU"
+}
+
+/**
+ * Identifier information from DHA
+ */
+export interface DHAPractitionerIdentifiers {
+  identification_type: string;       // e.g., "National ID", "Passport"
+  identification_number: string;     // e.g., "34221265"
+  client_registry_id: string;
+  student_id: string;
+}
+
+/**
+ * Complete practitioner data from DHA Health Worker Registry
+ */
+export interface DHAPractitioner {
+  membership: DHAPractitionerMembership;
+  licenses: DHAPractitionerLicense[];
+  professional_details: DHAPractitionerProfessionalDetails;
+  contacts: DHAPractitionerContacts;
+  identifiers: DHAPractitionerIdentifiers;
+}
+
+/**
+ * DHA API response wrapper
+ */
+export interface DHAPractitionerSearchResponse {
+  message: DHAPractitioner;
+}
+
+/**
+ * Search request parameters
+ */
+export interface DHAPractitionerSearchRequest {
+  identification_type: 'ID' | 'passport';
+  identification_number: string;
+}
+
+// Legacy types kept for backward compatibility
 export interface PractitionerInfo {
   hwr_number: string;
   name: string;
