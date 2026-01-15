@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useRef, useEffect, useCallback } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import {
@@ -15,6 +15,7 @@ import {
   ChevronLeft,
   ChevronRight,
   ChevronDown,
+  ChevronUp,
   LogOut,
   X,
   AlertTriangle,
@@ -107,6 +108,45 @@ export function Sidebar({ collapsed, onCollapse, mobileOpen, onMobileClose }: Si
   const pathname = usePathname();
   const logout = useLogout();
   const [openMenus, setOpenMenus] = useState<string[]>(['Inpatient', 'Diagnostics', 'Admin']); // Default open
+  
+  // Scroll indicators
+  const scrollRef = useRef<HTMLDivElement>(null);
+  const [canScrollUp, setCanScrollUp] = useState(false);
+  const [canScrollDown, setCanScrollDown] = useState(false);
+
+  const checkScroll = useCallback(() => {
+    const el = scrollRef.current;
+    if (!el) return;
+    
+    const viewport = el.querySelector('[data-slot="scroll-area-viewport"]') as HTMLElement;
+    if (!viewport) return;
+    
+    setCanScrollUp(viewport.scrollTop > 10);
+    setCanScrollDown(viewport.scrollTop + viewport.clientHeight < viewport.scrollHeight - 10);
+  }, []);
+
+  useEffect(() => {
+    const el = scrollRef.current;
+    if (!el) return;
+    
+    const viewport = el.querySelector('[data-slot="scroll-area-viewport"]') as HTMLElement;
+    if (!viewport) return;
+
+    // Initial check
+    checkScroll();
+    
+    // Check on scroll
+    viewport.addEventListener('scroll', checkScroll);
+    
+    // Check on resize
+    const resizeObserver = new ResizeObserver(checkScroll);
+    resizeObserver.observe(viewport);
+    
+    return () => {
+      viewport.removeEventListener('scroll', checkScroll);
+      resizeObserver.disconnect();
+    };
+  }, [checkScroll]);
 
   const toggleMenu = (label: string) => {
     setOpenMenus(prev => 
@@ -285,9 +325,19 @@ export function Sidebar({ collapsed, onCollapse, mobileOpen, onMobileClose }: Si
 
         {/* Navigation */}
         <nav className="flex flex-col h-[calc(100vh-4rem)]">
-          <ScrollArea className="flex-1 px-3 pt-3">
+          {/* Scroll up indicator */}
+          <div 
+            className={cn(
+              'flex justify-center py-1 bg-gradient-to-b from-card to-transparent transition-opacity duration-200',
+              canScrollUp ? 'opacity-100' : 'opacity-0 pointer-events-none'
+            )}
+          >
+            <ChevronUp className="h-4 w-4 text-muted-foreground animate-bounce" />
+          </div>
+          
+          <ScrollArea ref={scrollRef} className="flex-1 px-3">
             {/* Main nav items */}
-            <div className="space-y-1">
+            <div className="space-y-1 pb-2">
               {mainNavItems.map((item) => (
                 hasChildren(item) ? (
                   <NavGroup key={item.label} item={item} />
@@ -297,6 +347,16 @@ export function Sidebar({ collapsed, onCollapse, mobileOpen, onMobileClose }: Si
               ))}
             </div>
           </ScrollArea>
+          
+          {/* Scroll down indicator */}
+          <div 
+            className={cn(
+              'flex justify-center py-1 bg-gradient-to-t from-card to-transparent transition-opacity duration-200',
+              canScrollDown ? 'opacity-100' : 'opacity-0 pointer-events-none'
+            )}
+          >
+            <ChevronDown className="h-4 w-4 text-muted-foreground animate-bounce" />
+          </div>
 
           <div className="px-3 pb-3">
             <Separator className="my-2" />
