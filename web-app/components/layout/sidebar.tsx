@@ -26,6 +26,7 @@ import {
   ScanLine,
   Shield,
   UserCog,
+  ScrollText,
 } from 'lucide-react';
 import { cn } from '@/lib/utils/cn';
 import { Button } from '@/components/ui/button';
@@ -96,6 +97,7 @@ const mainNavItems: NavItemType[] = [
       { label: 'Departments', href: '/admin/departments', icon: Building2 },
       { label: 'Roles', href: '/admin/roles', icon: Shield },
       { label: 'Staff', href: '/admin/staff', icon: UserCog },
+      { label: 'Audit Logs', href: '/admin/audit-logs', icon: ScrollText },
     ],
   },
 ];
