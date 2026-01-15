@@ -14,6 +14,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
+import { ViewToggle, type ViewMode } from '@/components/ui/view-toggle';
 import { PatientTable } from '@/components/patients/patient-table';
 import { usePatients } from '@/lib/hooks/use-patients-enhanced';
 import { useDebounce } from '@/lib/hooks/use-debounce';
@@ -30,7 +31,8 @@ export default function PatientsPage() {
   const [search, setSearch] = useState('');
   const [gender, setGender] = useState<string>('');
   const [page, setPage] = useState(1);
-  const pageSize = 10;
+  const [viewMode, setViewMode] = useState<ViewMode>('list');
+  const pageSize = viewMode === 'grid' ? 12 : 10; // More items in grid view
 
   const debouncedSearch = useDebounce(search, 300);
 
@@ -123,9 +125,11 @@ export default function PatientsPage() {
             ))}
           </SelectContent>
         </Select>
+
+        <ViewToggle value={viewMode} onChange={setViewMode} />
       </div>
 
-      {/* Patient table */}
+      {/* Patient table/grid */}
       <PatientTable
         patients={data?.results ?? []}
         isLoading={isLoading}
@@ -135,6 +139,7 @@ export default function PatientsPage() {
         onPageChange={setPage}
         selectMode={selectMode}
         onSelect={handlePatientSelect}
+        viewMode={viewMode}
       />
     </div>
   );
