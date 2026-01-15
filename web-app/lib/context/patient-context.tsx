@@ -9,6 +9,7 @@
  * - Verification status: Tracks CR and SHA verification
  * - Read-only by design: No mutation methods exposed
  * - Error handling: Graceful error state management
+ * - Patient Journey Sync: Syncs patient data to zustand store for journey tracking
  * 
  * Usage:
  * ```tsx
@@ -20,9 +21,10 @@
  */
 'use client';
 
-import React, { createContext, useContext, useMemo, ReactNode } from 'react';
+import React, { createContext, useContext, useMemo, useEffect, ReactNode } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { patientsApi } from '@/lib/api/patients';
+import { usePatientJourneyStore, type PatientStage } from '@/lib/stores/patient-journey';
 import type { Patient } from '@/lib/types/patient';
 
 // =============================================================================
@@ -46,6 +48,8 @@ export interface PatientContextValue {
   patientId: number | null;
   /** Refetch patient data (use sparingly) */
   refetch: () => void;
+  /** Current patient journey stage (from zustand store) */
+  journeyStage: PatientStage | null;
 }
 
 // =============================================================================
@@ -66,6 +70,14 @@ export interface PatientProviderProps {
 }
 
 export function PatientProvider({ patientId, children }: PatientProviderProps) {
+  // Access patient journey store
+  const { 
+    registerPatient, 
+    getPatient: getJourneyPatient,
+    selectPatient,
+    activePatients,
+  } = usePatientJourneyStore();
+
   // Fetch patient data using React Query
   const {
     data: patient,
@@ -79,6 +91,34 @@ export function PatientProvider({ patientId, children }: PatientProviderProps) {
     staleTime: 5 * 60 * 1000, // 5 minutes - patient data doesn't change often
     gcTime: 10 * 60 * 1000, // Keep in cache for 10 minutes
   });
+
+  // Sync patient to journey store when loaded
+  useEffect(() => {
+    if (patient && patientId) {
+      // Register/update patient in journey store if not already present
+      const journeyPatient = activePatients[patientId];
+      if (!journeyPatient) {
+        registerPatient({
+          id: patient.id,
+          mrn: patient.mrn,
+          name: `${patient.first_name} ${patient.last_name}`,
+          date_of_birth: patient.date_of_birth,
+          gender: patient.gender as 'M' | 'F' | 'O' | undefined,
+          phone: patient.phone_number,
+        });
+      }
+      // Select this patient for UI operations
+      selectPatient(patientId);
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- Store actions are stable, only sync on patient changes
+  }, [patient?.id, patientId]);
+
+  // Get journey stage for this patient
+  const journeyStage = useMemo(() => {
+    if (!patientId) return null;
+    const journeyPatient = activePatients[patientId];
+    return journeyPatient?.stage ?? null;
+  }, [patientId, activePatients]);
 
   // Derive verification status
   const isVerified = useMemo(() => {
@@ -103,7 +143,8 @@ export function PatientProvider({ patientId, children }: PatientProviderProps) {
     isSensitive,
     patientId,
     refetch,
-  }), [patient, isLoading, error, isVerified, hasSHA, isSensitive, patientId, refetch]);
+    journeyStage,
+  }), [patient, isLoading, error, isVerified, hasSHA, isSensitive, patientId, refetch, journeyStage]);
 
   return (
     <PatientContext.Provider value={contextValue}>
