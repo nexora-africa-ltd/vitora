@@ -694,10 +694,10 @@ def test_vital_signs_validation():
 - [x] Implement queue status update endpoints ✅
 - [x] **Write tests first**: Triage reporting tests (wait times, volume by category) ✅
 - [x] Implement basic triage wait time and volume reports ✅
-- [ ] **Write tests first**: Web triage form tests (Playwright)
-- [ ] Implement triage assessment form in web-app
-- [ ] **Write tests first**: Triage queue dashboard tests
-- [ ] Implement real-time triage queue display with color-coded priorities
+- [x] **Write tests first**: Web triage form tests (Playwright)
+- [x] Implement triage assessment form in web-app
+- [x] **Write tests first**: Triage queue dashboard tests
+- [x] Implement real-time triage queue display with color-coded priorities
 - [x] **Write tests first**: Nurse override tests (category override with reason) ✅
 - [x] Implement category override with mandatory reason logging ✅
 
