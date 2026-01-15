@@ -103,9 +103,32 @@ export default function NewStaffPage() {
     checkUsername(formData.username);
   }, [formData.username, checkUsername]);
 
-  // Suggest username when names change
+  // Debounced username suggestion based on names
+  const suggestUsernameFromNames = useDebouncedCallback(
+    async (firstName: string, lastName: string, middleName: string) => {
+      // Need at least first name (2+ chars) and last name (2+ chars) to suggest
+      if (firstName.length >= 2 && lastName.length >= 2) {
+        try {
+          const result = await staffApi.suggestUsername(firstName, lastName, middleName);
+          if (result.suggestions.length > 0) {
+            setUsernameSuggestions(result.suggestions);
+          }
+        } catch {
+          // Silently fail
+        }
+      }
+    },
+    400 // Debounce for 400ms
+  );
+
+  // Auto-suggest usernames as names are typed
+  useEffect(() => {
+    suggestUsernameFromNames(formData.first_name, formData.last_name, formData.middle_name);
+  }, [formData.first_name, formData.last_name, formData.middle_name, suggestUsernameFromNames]);
+
+  // Legacy callback for programmatic suggestion (e.g., after DHA select)
   const suggestUsername = useCallback(async () => {
-    if (formData.first_name && formData.last_name && !formData.username) {
+    if (formData.first_name && formData.last_name) {
       try {
         const result = await staffApi.suggestUsername(
           formData.first_name,
@@ -119,7 +142,7 @@ export default function NewStaffPage() {
         // Silently fail
       }
     }
-  }, [formData.first_name, formData.last_name, formData.middle_name, formData.username]);
+  }, [formData.first_name, formData.last_name, formData.middle_name]);
 
   // Handle practitioner selection from DHA search
   const handlePractitionerSelect = (practitioner: DHAPractitioner) => {
@@ -487,21 +510,22 @@ export default function NewStaffPage() {
                 {errors.username && (
                   <p className="text-sm text-destructive">{errors.username}</p>
                 )}
-                {usernameStatus === 'available' && (
+                {usernameStatus === 'available' && formData.username && (
                   <p className="text-sm text-green-600">Username is available</p>
                 )}
-                {(usernameStatus === 'taken' || (!formData.username && usernameSuggestions.length > 0)) && usernameSuggestions.length > 0 && (
+                {usernameSuggestions.length > 0 && (
                   <div className="space-y-1">
                     <p className="text-sm text-muted-foreground">
-                      {usernameStatus === 'taken' ? 'Try one of these:' : 'Suggested usernames:'}
+                      {usernameStatus === 'taken' ? 'Username taken. Try:' : 'Suggested usernames:'}
                     </p>
                     <div className="flex flex-wrap gap-2">
-                      {usernameSuggestions.slice(0, 4).map((suggestion) => (
+                      {usernameSuggestions.slice(0, 5).map((suggestion) => (
                         <Button
                           key={suggestion}
                           type="button"
-                          variant="outline"
+                          variant={formData.username === suggestion ? 'default' : 'outline'}
                           size="sm"
+                          className="h-7 text-xs"
                           onClick={() => handleChange('username', suggestion)}
                         >
                           {suggestion}
