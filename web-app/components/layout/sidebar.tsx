@@ -23,6 +23,8 @@ import {
   ClipboardList,
   Microscope,
   ScanLine,
+  Shield,
+  UserCog,
 } from 'lucide-react';
 import { cn } from '@/lib/utils/cn';
 import { Button } from '@/components/ui/button';
@@ -85,6 +87,15 @@ const mainNavItems: NavItemType[] = [
   },
   { label: 'Billing & Insurance', href: '/billing', icon: CreditCard },
   { label: 'Reports', href: '/reports', icon: FileText },
+  { 
+    label: 'Admin', 
+    icon: Shield,
+    children: [
+      { label: 'Departments', href: '/admin/departments', icon: Building2 },
+      { label: 'Roles', href: '/admin/roles', icon: Shield },
+      { label: 'Staff', href: '/admin/staff', icon: UserCog },
+    ],
+  },
 ];
 
 const bottomNavItems: NavItem[] = [
@@ -94,7 +105,7 @@ const bottomNavItems: NavItem[] = [
 export function Sidebar({ collapsed, onCollapse, mobileOpen, onMobileClose }: SidebarProps) {
   const pathname = usePathname();
   const logout = useLogout();
-  const [openMenus, setOpenMenus] = useState<string[]>(['Inpatient', 'Diagnostics']); // Default open
+  const [openMenus, setOpenMenus] = useState<string[]>(['Inpatient', 'Diagnostics', 'Admin']); // Default open
 
   const toggleMenu = (label: string) => {
     setOpenMenus(prev => 
