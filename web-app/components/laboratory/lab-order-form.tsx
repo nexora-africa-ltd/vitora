@@ -21,13 +21,16 @@ import {
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
-import { Plus, Trash2, FlaskConical, Search, User } from 'lucide-react';
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
+import { Plus, Trash2, FlaskConical, Search, User, AlertTriangle } from 'lucide-react';
 import { TestSelector } from './test-selector';
 import { LabOrderCreateData, OrderType, LabPriority, TestCatalog } from '@/lib/types/laboratory';
 import { useCreateLabOrder } from '@/lib/hooks/use-laboratory';
 import { useToast } from '@/lib/hooks';
 import { formatCurrency } from '@/lib/utils/format';
 import { useAuth } from '@/lib/auth';
+import { useOptionalPatientContext } from '@/lib/context/patient-context';
+import { useOptionalEncounterContext } from '@/lib/context/encounter-context';
 
 const orderSchema = z.object({
   patient: z.number().positive('Patient is required'),
@@ -51,8 +54,10 @@ const orderSchema = z.object({
 type OrderFormData = z.infer<typeof orderSchema>;
 
 interface LabOrderFormProps {
-  patientId: number;
-  encounterId: number;
+  /** Patient ID - optional if using PatientContext */
+  patientId?: number;
+  /** Encounter ID - optional if using EncounterContext */
+  encounterId?: number;
   patientName?: string;
   patientMrn?: string;
   patientGender?: string;
@@ -76,15 +81,15 @@ const ORDER_TYPE_OPTIONS = [
 ];
 
 export function LabOrderForm({
-  patientId,
-  encounterId,
-  patientName,
-  patientMrn,
-  patientGender,
-  patientDateOfBirth,
-  encounterType,
-  encounterDate,
-  chiefComplaint,
+  patientId: propPatientId,
+  encounterId: propEncounterId,
+  patientName: propPatientName,
+  patientMrn: propPatientMrn,
+  patientGender: propPatientGender,
+  patientDateOfBirth: propPatientDateOfBirth,
+  encounterType: propEncounterType,
+  encounterDate: propEncounterDate,
+  chiefComplaint: propChiefComplaint,
   onSuccess,
   onCancel,
 }: LabOrderFormProps) {
@@ -92,6 +97,33 @@ export function LabOrderForm({
   const { user } = useAuth();
   const createOrder = useCreateLabOrder();
   const [showTestSelector, setShowTestSelector] = useState(false);
+  
+  // Try to get data from context (optional - may not be in context)
+  const patientContext = useOptionalPatientContext();
+  const encounterContext = useOptionalEncounterContext();
+  
+  // Use context data if available, otherwise fall back to props
+  const contextPatient = patientContext?.patient;
+  const contextEncounter = encounterContext?.encounter;
+  const canPlaceOrders = encounterContext?.canPlaceOrders ?? true;
+  
+  // Resolved values: context takes precedence over props
+  const patientId = contextPatient?.id ?? propPatientId;
+  const encounterId = contextEncounter?.id ?? propEncounterId;
+  const patientName = contextPatient 
+    ? `${contextPatient.first_name} ${contextPatient.last_name}` 
+    : propPatientName;
+  const patientMrn = contextPatient?.mrn ?? propPatientMrn;
+  const patientGender = contextPatient?.gender ?? propPatientGender;
+  const patientDateOfBirth = contextPatient?.date_of_birth ?? propPatientDateOfBirth;
+  const encounterType = contextEncounter?.encounter_type ?? propEncounterType;
+  const encounterDate = contextEncounter?.encounter_date ?? propEncounterDate;
+  const chiefComplaint = contextEncounter?.chief_complaint ?? propChiefComplaint;
+  
+  // Validation: both patient and encounter are required
+  const hasPatient = !!patientId;
+  const hasEncounter = !!encounterId;
+  const isValid = hasPatient && hasEncounter && canPlaceOrders;
   
   // Current date/time for "Requested At"
   const requestedAt = new Date();
@@ -106,8 +138,8 @@ export function LabOrderForm({
   const form = useForm<OrderFormData>({
     resolver: zodResolver(orderSchema),
     defaultValues: {
-      patient: patientId,
-      encounter: encounterId,
+      patient: patientId || 0,
+      encounter: encounterId || 0,
       order_type: 'IN_HOUSE',
       priority: 'ROUTINE',
       clinical_notes: '',
@@ -224,6 +256,34 @@ export function LabOrderForm({
       });
     }
   };
+
+  // Show warning if no encounter context
+  if (!hasEncounter) {
+    return (
+      <Alert variant="destructive">
+        <AlertTriangle className="h-4 w-4" />
+        <AlertTitle>Encounter Required</AlertTitle>
+        <AlertDescription>
+          Lab orders must be created within the context of a patient encounter.
+          Please select or create an encounter first.
+        </AlertDescription>
+      </Alert>
+    );
+  }
+
+  // Show warning if encounter is not active
+  if (!canPlaceOrders) {
+    return (
+      <Alert variant="destructive">
+        <AlertTriangle className="h-4 w-4" />
+        <AlertTitle>Encounter Not Active</AlertTitle>
+        <AlertDescription>
+          Lab orders can only be created for active encounters. This encounter has been 
+          completed or cancelled. Please create a new encounter to place orders.
+        </AlertDescription>
+      </Alert>
+    );
+  }
 
   return (
     <Form {...form}>

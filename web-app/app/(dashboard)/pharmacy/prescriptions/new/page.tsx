@@ -5,6 +5,10 @@
  * Allows clinicians to create prescriptions for patients during encounters.
  * Features smart dosage suggestions based on selected drug properties.
  * Accessed from the encounter edit page's prescription tab.
+ * 
+ * Supports both:
+ * - URL params (encounter=X&patient=Y)
+ * - Context providers (PatientContext, EncounterContext)
  */
 
 'use client';
@@ -60,6 +64,8 @@ import { usePatient } from '@/lib/hooks/use-patients';
 import { useEncounter } from '@/lib/hooks/use-encounters';
 import { useDrugs, useCreatePrescription } from '@/lib/hooks/use-pharmacy';
 import { useAuth } from '@/lib/auth';
+import { useOptionalPatientContext } from '@/lib/context/patient-context';
+import { useOptionalEncounterContext } from '@/lib/context/encounter-context';
 import {
   generateDosageSuggestions,
   getSuggestedRoute,
@@ -98,17 +104,38 @@ export default function NewPrescriptionPage() {
   const { toast } = useToast();
   const { user } = useAuth();
 
-  // Get encounter and patient IDs from URL params
-  const encounterId = searchParams.get('encounter')
+  // Try to get from context first (if within patient/encounter shell)
+  const patientContext = useOptionalPatientContext();
+  const encounterContext = useOptionalEncounterContext();
+
+  // Get encounter and patient IDs from URL params (fallback)
+  const urlEncounterId = searchParams.get('encounter')
     ? parseInt(searchParams.get('encounter')!)
     : undefined;
-  const patientId = searchParams.get('patient')
+  const urlPatientId = searchParams.get('patient')
     ? parseInt(searchParams.get('patient')!)
     : undefined;
 
-  // Fetch patient and encounter data
-  const { data: patient, isLoading: patientLoading } = usePatient(patientId || 0);
-  const { data: encounter, isLoading: encounterLoading } = useEncounter(encounterId || 0);
+  // Resolve IDs: context takes priority over URL params
+  const resolvedPatientId = patientContext?.patient?.id || urlPatientId;
+  const resolvedEncounterId = encounterContext?.encounter?.id || urlEncounterId;
+
+  // Fetch patient and encounter data (only if not from context)
+  const { data: fetchedPatient, isLoading: patientLoading } = usePatient(
+    !patientContext?.patient && resolvedPatientId ? resolvedPatientId : 0
+  );
+  const { data: fetchedEncounter, isLoading: encounterLoading } = useEncounter(
+    !encounterContext?.encounter && resolvedEncounterId ? resolvedEncounterId : 0
+  );
+
+  // Use context data if available, otherwise fetched data
+  const patient = patientContext?.patient || fetchedPatient;
+  const encounter = encounterContext?.encounter || fetchedEncounter;
+  const patientId = resolvedPatientId;
+  const encounterId = resolvedEncounterId;
+  
+  // Check if orders can be placed (from encounter context)
+  const canPlaceOrders = encounterContext?.canPlaceOrders ?? true;
 
   // Get prescriber name
   const prescriberName = user 
