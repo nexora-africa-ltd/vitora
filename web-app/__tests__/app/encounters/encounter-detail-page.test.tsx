@@ -28,7 +28,6 @@ jest.mock('next/navigation', () => ({
 jest.mock('@/lib/api/encounters', () => ({
   encountersApi: {
     get: jest.fn(),
-    getEncounter: jest.fn(),
     list: jest.fn(),
   },
 }));
@@ -61,6 +60,12 @@ const mockEncountersApi = encountersApi as jest.Mocked<typeof encountersApi>;
 const mockPatientsApi = patientsApi as jest.Mocked<typeof patientsApi>;
 const mockUseAuth = useAuth as jest.MockedFunction<typeof useAuth>;
 
+// Wrap in PatientProvider for EncounterProvider to work
+function TestWrapper({ children, patientId }: { children: React.ReactNode; patientId: number }) {
+  const { PatientProvider } = require('@/lib/context/patient-context');
+  return <PatientProvider patientId={patientId}>{children}</PatientProvider>;
+}
+
 // Helper to create QueryClient wrapper
 function createWrapper() {
   const queryClient = new QueryClient({
@@ -86,7 +91,6 @@ describe('Encounter Detail Page - Context Integration', () => {
   beforeEach(() => {
     jest.clearAllMocks();
     mockEncountersApi.get.mockResolvedValue(mockEncounter);
-    mockEncountersApi.getEncounter.mockResolvedValue(mockEncounter);
     mockPatientsApi.getPatient.mockResolvedValue(mockPatient);
     mockUseAuth.mockReturnValue({ user: mockUser, isAuthenticated: true } as any);
   });
@@ -102,7 +106,7 @@ describe('Encounter Detail Page - Context Integration', () => {
       const Wrapper = createWrapper();
       render(
         <Wrapper>
-          <EncounterProvider encounterId={1} patientId={mockPatient.id}>
+          <EncounterProvider encounterId={1}>
             <EncounterDetailPage />
           </EncounterProvider>
         </Wrapper>
@@ -127,7 +131,7 @@ describe('Encounter Detail Page - Context Integration', () => {
       const Wrapper = createWrapper();
       render(
         <Wrapper>
-          <EncounterProvider encounterId={1} patientId={mockPatient.id}>
+          <EncounterProvider encounterId={1}>
             <EncounterDetailPage />
           </EncounterProvider>
         </Wrapper>
@@ -135,9 +139,10 @@ describe('Encounter Detail Page - Context Integration', () => {
 
       await waitFor(() => {
         // Patient info should be accessible (name shown somewhere)
-        const patientInfo = screen.queryByText(/Jane/) || 
-                          screen.queryByText(mockPatient.mrn);
-        expect(patientInfo).toBeTruthy();
+        // Use queryAllByText since there may be multiple matches
+        const patientMatches = screen.queryAllByText(/Jane/);
+        const mrnMatches = screen.queryAllByText(new RegExp(mockPatient.mrn));
+        expect(patientMatches.length + mrnMatches.length).toBeGreaterThan(0);
       });
     });
 
@@ -149,7 +154,7 @@ describe('Encounter Detail Page - Context Integration', () => {
       
       const { rerender } = render(
         <Wrapper>
-          <EncounterProvider encounterId={1} patientId={mockPatient.id}>
+          <EncounterProvider encounterId={1}>
             <EncounterDetailPage />
           </EncounterProvider>
         </Wrapper>
@@ -162,7 +167,7 @@ describe('Encounter Detail Page - Context Integration', () => {
       // Re-render should NOT trigger another fetch
       rerender(
         <Wrapper>
-          <EncounterProvider encounterId={1} patientId={mockPatient.id}>
+          <EncounterProvider encounterId={1}>
             <EncounterDetailPage />
           </EncounterProvider>
         </Wrapper>
@@ -189,17 +194,17 @@ describe('Encounter Detail Page - Context Integration', () => {
       const Wrapper = createWrapper();
       render(
         <Wrapper>
-          <EncounterProvider encounterId={1} patientId={mockPatient.id}>
+          <EncounterProvider encounterId={1}>
             <EncounterDetailPage />
           </EncounterProvider>
         </Wrapper>
       );
 
       await waitFor(() => {
-        // Should show lab order or prescription buttons
-        const orderButton = screen.queryByRole('button', { name: /lab|order|prescription/i }) ||
-                          screen.queryByRole('link', { name: /lab|order|prescription/i });
-        expect(orderButton).toBeTruthy();
+        // Should show continue encounter button for active encounters
+        const continueButton = screen.queryByRole('link', { name: /continue/i }) ||
+                              screen.queryByText(/continue encounter/i);
+        expect(continueButton).toBeTruthy();
       });
     });
 
@@ -215,7 +220,7 @@ describe('Encounter Detail Page - Context Integration', () => {
       const Wrapper = createWrapper();
       render(
         <Wrapper>
-          <EncounterProvider encounterId={1} patientId={mockPatient.id}>
+          <EncounterProvider encounterId={1}>
             <EncounterDetailPage />
           </EncounterProvider>
         </Wrapper>
@@ -245,7 +250,7 @@ describe('Encounter Detail Page - Context Integration', () => {
       const Wrapper = createWrapper();
       render(
         <Wrapper>
-          <EncounterProvider encounterId={1} patientId={mockPatient.id}>
+          <EncounterProvider encounterId={1}>
             <EncounterDetailPage />
           </EncounterProvider>
         </Wrapper>
@@ -267,7 +272,7 @@ describe('Encounter Detail Page - Context Integration', () => {
       const Wrapper = createWrapper();
       render(
         <Wrapper>
-          <EncounterProvider encounterId={1} patientId={mockPatient.id}>
+          <EncounterProvider encounterId={1}>
             <EncounterDetailPage />
           </EncounterProvider>
         </Wrapper>

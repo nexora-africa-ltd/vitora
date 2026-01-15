@@ -8,7 +8,8 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Skeleton } from '@/components/ui/skeleton';
-import { useEncounter, useEncounterDiagnoses, useEncounterTreatmentPlan } from '@/lib/hooks/use-encounters';
+import { useEncounterContext } from '@/lib/context/encounter-context';
+import { useEncounterDiagnoses, useEncounterTreatmentPlan } from '@/lib/hooks/use-encounters';
 import { useEncounterLabOrders } from '@/lib/hooks/use-laboratory';
 import { useEncounterPrescriptions } from '@/lib/hooks/use-pharmacy';
 import { formatDate } from '@/lib/utils/format';
@@ -39,7 +40,8 @@ export default function EncounterDetailPage() {
   const router = useRouter();
   const encounterId = Number(params.id);
 
-  const { data: encounter, isLoading, error } = useEncounter(encounterId);
+  // Use encounter context instead of independent fetch
+  const { encounter, isLoading, error, canPlaceOrders } = useEncounterContext();
   const { data: diagnoses } = useEncounterDiagnoses(encounterId);
   const { data: treatmentPlan } = useEncounterTreatmentPlan(encounterId);
   const { data: labOrders } = useEncounterLabOrders(encounterId);
