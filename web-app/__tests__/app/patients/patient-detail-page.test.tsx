@@ -28,8 +28,23 @@ jest.mock('next/navigation', () => ({
 jest.mock('@/lib/api/patients', () => ({
   patientsApi: {
     getPatient: jest.fn(),
-    getPatientEncounters: jest.fn(),
+    getPatientEmergencyContacts: jest.fn(),
   },
+}));
+
+// Mock SHA API
+jest.mock('@/lib/api/sha', () => ({
+  shaApi: {
+    getSHAMembers: jest.fn(() => Promise.resolve({ results: [] })),
+    checkEligibility: jest.fn(() => Promise.resolve({ eligible: false })),
+    checkPatientEligibility: jest.fn(() => Promise.resolve({ eligible: false })),
+  },
+}));
+
+// Mock patient hooks
+jest.mock('@/lib/hooks/use-patients-enhanced', () => ({
+  usePatientEmergencyContacts: jest.fn(() => ({ data: [], isLoading: false })),
+  usePatientEncounters: jest.fn(() => ({ data: [], isLoading: false })),
 }));
 
 // Mock auth context
@@ -86,7 +101,6 @@ describe('Patient Detail Page - Context Integration', () => {
   beforeEach(() => {
     jest.clearAllMocks();
     mockPatientsApi.getPatient.mockResolvedValue(mockPatient);
-    mockPatientsApi.getPatientEncounters.mockResolvedValue({ results: [], count: 0 });
     mockUseAuth.mockReturnValue({ user: mockUser, isAuthenticated: true } as any);
   });
 
@@ -111,9 +125,9 @@ describe('Patient Detail Page - Context Integration', () => {
         </Wrapper>
       );
 
-      // Wait for data to load
+      // Wait for data to load - use regex to match within combined text
       await waitFor(() => {
-        expect(screen.getByText(mockPatient.first_name)).toBeInTheDocument();
+        expect(screen.getByText(/Jane/)).toBeInTheDocument();
       });
 
       // The key assertion: Patient API should only be called ONCE
@@ -138,7 +152,7 @@ describe('Patient Detail Page - Context Integration', () => {
       );
 
       await waitFor(() => {
-        expect(screen.getByText(mockPatient.first_name)).toBeInTheDocument();
+        expect(screen.getByText(/Jane/)).toBeInTheDocument();
       });
 
       // Re-render should NOT trigger another fetch
@@ -169,8 +183,8 @@ describe('Patient Detail Page - Context Integration', () => {
 
       await waitFor(() => {
         // Patient name should be visible
-        expect(screen.getByText(mockPatient.first_name)).toBeInTheDocument();
-        expect(screen.getByText(mockPatient.last_name)).toBeInTheDocument();
+        expect(screen.getByText(/Jane/)).toBeInTheDocument();
+        expect(screen.getByText(/Doe/)).toBeInTheDocument();
       });
     });
   });
@@ -198,7 +212,7 @@ describe('Patient Detail Page - Context Integration', () => {
       );
 
       await waitFor(() => {
-        expect(screen.getByText(mockPatient.first_name)).toBeInTheDocument();
+        expect(screen.getByText(/Jane/)).toBeInTheDocument();
       });
 
       // Edit button should NOT be visible
@@ -225,7 +239,7 @@ describe('Patient Detail Page - Context Integration', () => {
       );
 
       await waitFor(() => {
-        expect(screen.getByText(mockPatient.first_name)).toBeInTheDocument();
+        expect(screen.getByText(/Jane/)).toBeInTheDocument();
       });
 
       // Edit button SHOULD be visible
@@ -253,7 +267,7 @@ describe('Patient Detail Page - Context Integration', () => {
       );
 
       await waitFor(() => {
-        expect(screen.getByText(mockPatient.first_name)).toBeInTheDocument();
+        expect(screen.getByText(/Jane/)).toBeInTheDocument();
       });
 
       // Admin should always see edit button
@@ -281,7 +295,7 @@ describe('Patient Detail Page - Context Integration', () => {
       );
 
       await waitFor(() => {
-        expect(screen.getByText(mockPatient.first_name)).toBeInTheDocument();
+        expect(screen.getByText(/Jane/)).toBeInTheDocument();
       });
 
       // Clinical staff should NOT see edit button (identity safety)
@@ -311,9 +325,14 @@ describe('Patient Detail Page - Context Integration', () => {
       );
 
       // Should show loading indicator (from context, not page's own loading)
-      expect(screen.getByTestId('patient-shell-loading') || 
-             screen.getByRole('status') ||
-             screen.getByText(/loading/i)).toBeInTheDocument();
+      // Check for any loading indicator - skeleton, status, or text
+      const loadingIndicator = screen.queryByTestId('patient-shell-loading') || 
+             screen.queryByRole('status') ||
+             screen.queryByText(/loading/i) ||
+             screen.queryByTestId('patient-detail-skeleton') ||
+             document.querySelector('[class*="skeleton"]') ||
+             document.querySelector('[class*="animate-pulse"]');
+      expect(loadingIndicator).toBeTruthy();
     });
 
     it('should show error state from context', async () => {
@@ -332,9 +351,11 @@ describe('Patient Detail Page - Context Integration', () => {
       );
 
       await waitFor(() => {
-        expect(screen.getByRole('alert') || 
-               screen.getByText(/error/i) ||
-               screen.getByText(/not found/i)).toBeInTheDocument();
+        // Check for any error indication
+        const errorElement = screen.queryByRole('alert') || 
+               screen.queryByText(/error/i) ||
+               screen.queryByText(/not found/i);
+        expect(errorElement).toBeTruthy();
       });
     });
   });

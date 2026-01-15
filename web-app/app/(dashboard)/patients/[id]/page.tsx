@@ -22,7 +22,9 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Skeleton } from '@/components/ui/skeleton';
-import { usePatient, usePatientEmergencyContacts } from '@/lib/hooks/use-patients-enhanced';
+import { usePatientEmergencyContacts } from '@/lib/hooks/use-patients-enhanced';
+import { usePatientContext } from '@/lib/context/patient-context';
+import { usePermissions } from '@/lib/hooks/use-permissions';
 import { calculateAge, formatDate, formatPhoneNumber } from '@/lib/utils/format';
 import { PatientEncounters } from '@/components/patients/patient-encounters';
 import { EmergencyContactsList } from '@/components/patients/emergency-contacts-list';
@@ -41,7 +43,9 @@ export default function PatientDetailPage() {
   const patientId = Number(params.id);
   const [showDependents, setShowDependents] = useState(false);
 
-  const { data: patient, isLoading, error } = usePatient(patientId);
+  // Use patient context instead of independent fetch
+  const { patient, isLoading, error } = usePatientContext();
+  const { canEditPatient } = usePermissions();
   const { data: emergencyContacts } = usePatientEmergencyContacts(patientId);
   
   // Fetch SHA member for this patient to check if they're a principal
@@ -110,16 +114,20 @@ export default function PatientDetailPage() {
               History
             </Link>
           </Button>
-          <Button variant="outline" asChild>
-            <Link href={`/patients/${patient.id}/edit`}>
-              <Edit className="h-4 w-4 mr-2" />
-              Edit
-            </Link>
-          </Button>
-          <Button variant="outline" className="text-destructive hover:bg-destructive/10">
-            <Trash2 className="h-4 w-4 mr-2" />
-            Delete
-          </Button>
+          {canEditPatient && (
+            <Button variant="outline" asChild>
+              <Link href={`/patients/${patient.id}/edit`}>
+                <Edit className="h-4 w-4 mr-2" />
+                Edit
+              </Link>
+            </Button>
+          )}
+          {canEditPatient && (
+            <Button variant="outline" className="text-destructive hover:bg-destructive/10">
+              <Trash2 className="h-4 w-4 mr-2" />
+              Delete
+            </Button>
+          )}
         </div>
       </div>
 

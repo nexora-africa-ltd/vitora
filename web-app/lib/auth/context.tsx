@@ -11,6 +11,7 @@ export interface User {
   last_name: string;
   is_staff: boolean;
   permissions: string[];
+  role?: string;  // User role (ADMIN, NURSE, DOCTOR, BILLING_CLERK, etc.)
 }
 
 // Auth tokens
