@@ -129,8 +129,8 @@ const NavLink = memo(function NavLink({
         'flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-normal transition-colors',
         isChild && !collapsed && 'ml-4 pl-4 border-l border-border',
         isActive
-          ? 'bg-primary/15 text-primary font-medium'
-          : 'text-muted-foreground hover:bg-accent hover:text-accent-foreground'
+          ? 'bg-cyan-400/20 text-cyan-700 dark:text-cyan-300 font-medium'
+          : 'text-muted-foreground hover:bg-cyan-400/10 hover:text-cyan-700 dark:hover:text-cyan-300'
       )}
     >
       <Icon className="h-5 w-5 shrink-0" />
@@ -188,8 +188,8 @@ const NavGroup = memo(function NavGroup({
             className={cn(
               'flex w-full items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-colors',
               hasActiveChild
-                ? 'bg-primary/15 text-primary'
-                : 'text-muted-foreground hover:bg-accent hover:text-accent-foreground'
+                ? 'bg-cyan-400/20 text-cyan-700 dark:text-cyan-300'
+                : 'text-muted-foreground hover:bg-cyan-400/10 hover:text-cyan-700 dark:hover:text-cyan-300'
             )}
           >
             <Icon className="h-5 w-5 shrink-0" />
@@ -209,8 +209,8 @@ const NavGroup = memo(function NavGroup({
                   className={cn(
                     'flex items-center gap-2 px-3 py-1.5 text-sm transition-colors',
                     isChildActive
-                      ? 'bg-primary/15 text-primary font-medium'
-                      : 'hover:bg-accent'
+                      ? 'bg-cyan-400/20 text-cyan-700 dark:text-cyan-300 font-medium'
+                      : 'hover:bg-cyan-400/10 hover:text-cyan-700 dark:hover:text-cyan-300'
                   )}
                 >
                   <child.icon className="h-4 w-4" />
@@ -232,8 +232,8 @@ const NavGroup = memo(function NavGroup({
           className={cn(
             'flex w-full items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-colors',
             hasActiveChild
-              ? 'bg-primary/15 text-primary'
-              : 'text-muted-foreground hover:bg-accent hover:text-accent-foreground'
+              ? 'bg-cyan-400/20 text-cyan-700 dark:text-cyan-300'
+              : 'text-muted-foreground hover:bg-cyan-400/10 hover:text-cyan-700 dark:hover:text-cyan-300'
           )}
         >
           <Icon className="h-5 w-5 shrink-0" />

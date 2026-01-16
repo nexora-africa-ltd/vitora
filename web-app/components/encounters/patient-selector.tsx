@@ -131,7 +131,7 @@ export function PatientSelector({
           <CardContent className="p-2">
             {/* Section header */}
             {searchQuery.length < 2 && (
-              <div className="flex items-center gap-2 px-2 py-1 text-xs text-muted-foreground mb-2">
+              <div className="flex items-center gap-2 px-2 py-1 text-xs text-accent-foreground mb-2">
                 <Clock className="h-3 w-3" />
                 <span>Recent Patients</span>
               </div>
