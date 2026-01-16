@@ -32,7 +32,7 @@ export function RecentPatients() {
 
   if (!patients?.results?.length) {
     return (
-      <p className="text-sm text-muted-foreground text-center py-4">
+      <p className="text-sm text-accent-foreground text-center py-4">
         No patients found
       </p>
     );
@@ -46,7 +46,7 @@ export function RecentPatients() {
         <Link
           key={patient.id}
           href={`/patients/${patient.id}`}
-          className="flex items-center gap-3 p-2 rounded-lg hover:bg-accent transition-colors"
+          className="flex items-center gap-3 p-2 rounded-lg hover:bg-accent hover:text-bg-accent-foreground transition-colors"
         >
           <Avatar>
             <AvatarFallback>
@@ -58,11 +58,11 @@ export function RecentPatients() {
             <p className="text-sm font-medium truncate">
               {patient.first_name} {patient.last_name}
             </p>
-            <p className="text-xs text-muted-foreground">
+            <p className="text-xs text-accent hover:text-primary truncate">
               MRN: {patient.mrn}
             </p>
           </div>
-          <Badge variant="outline" className="text-xs">
+          <Badge variant="secondary" className="text-xs hover:text-inherit">
             {formatRelativeTime(patient.created_at)}
           </Badge>
         </Link>
