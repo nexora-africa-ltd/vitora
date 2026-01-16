@@ -185,11 +185,20 @@ class TestPractitionerSearch:
         """Create DHASearchService instance with mocked auth."""
         return DHASearchService()
 
+    def _create_mock_response(self, status_code=200, json_data=None):
+        """Create a mock response with headers configured."""
+        mock = Mock()
+        mock.status_code = status_code
+        mock.json = lambda: json_data or {}
+        mock.text = str(json_data or {})
+        mock.headers = {'Content-Type': 'application/json'}
+        return mock
+
     def test_search_practitioner_by_national_id(self, service, mock_requests_get):
         """Should search practitioner by National ID."""
-        mock_requests_get.return_value = Mock(
+        mock_requests_get.return_value = self._create_mock_response(
             status_code=200,
-            json=lambda: {
+            json_data={
                 'message': {
                     'found': True,
                     'practitioner': {
@@ -211,9 +220,9 @@ class TestPractitionerSearch:
 
     def test_search_practitioner_by_registration(self, service, mock_requests_get):
         """Should search practitioner by registration number."""
-        mock_requests_get.return_value = Mock(
+        mock_requests_get.return_value = self._create_mock_response(
             status_code=200,
-            json=lambda: {
+            json_data={
                 'message': {
                     'found': True,
                     'practitioner': {
@@ -231,9 +240,9 @@ class TestPractitionerSearch:
 
     def test_search_practitioner_not_found(self, service, mock_requests_get):
         """Should return None when not found."""
-        mock_requests_get.return_value = Mock(
+        mock_requests_get.return_value = self._create_mock_response(
             status_code=200,
-            json=lambda: {'message': {'found': False}}
+            json_data={'message': {'found': False}}
         )
 
         result = service.search_practitioner(identification_number='99999999')
@@ -242,9 +251,9 @@ class TestPractitionerSearch:
 
     def test_practitioner_license_status(self, service, mock_requests_get):
         """Should include license status."""
-        mock_requests_get.return_value = Mock(
+        mock_requests_get.return_value = self._create_mock_response(
             status_code=200,
-            json=lambda: {
+            json_data={
                 'message': {
                     'found': True,
                     'practitioner': {
@@ -262,9 +271,9 @@ class TestPractitionerSearch:
 
     def test_validate_practitioner_for_claims(self, service, mock_requests_get):
         """Should validate practitioner for claims."""
-        mock_requests_get.return_value = Mock(
+        mock_requests_get.return_value = self._create_mock_response(
             status_code=200,
-            json=lambda: {
+            json_data={
                 'message': {
                     'found': True,
                     'practitioner': {

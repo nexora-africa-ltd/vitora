@@ -10,6 +10,25 @@ from unittest.mock import Mock, patch
 import pytest
 
 
+def create_mock_response(status_code=200, json_data=None, text=""):
+    """Create a properly configured mock response with headers.
+
+    Args:
+        status_code: HTTP status code
+        json_data: Data to return from json() method
+        text: Response text
+
+    Returns:
+        Mock object configured like a requests.Response
+    """
+    mock = Mock()
+    mock.status_code = status_code
+    mock.json = lambda: json_data or {}
+    mock.text = text or str(json_data or {})
+    mock.headers = {'Content-Type': 'application/json'}
+    return mock
+
+
 @pytest.fixture
 def mock_sha_auth():
     """
