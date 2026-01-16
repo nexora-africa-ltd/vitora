@@ -53,7 +53,7 @@ def broadcast_patient_called_notification(encounter, called_by, target_users=Non
     """
     from django.contrib.auth import get_user_model
 
-    User = get_user_model()
+    get_user_model()  # Validates the model is available
 
     patient = encounter.patient
     patient_name = f"{patient.first_name} {patient.last_name}"

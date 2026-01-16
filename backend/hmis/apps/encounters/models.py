@@ -707,7 +707,7 @@ class Encounter(models.Model):
 
         # Blood pressure alerts
         systolic = self.get_systolic_bp()
-        diastolic = self.get_diastolic_bp()
+        _ = self.get_diastolic_bp()  # Calculated but not yet used in alerts
         if systolic is not None:
             bp_status = self.get_vital_status("systolic_bp")
             if bp_status == "critical":
@@ -912,7 +912,6 @@ class Encounter(models.Model):
             # Already cancelled, no action needed
             return
 
-        old_status = self.status
         self.status = "CANCELLED"
         self.cancellation_reason = reason
         self.save(update_fields=["status", "cancellation_reason", "updated_at"])
