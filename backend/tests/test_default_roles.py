@@ -17,7 +17,7 @@ class TestDefaultRolesFixture:
     """Tests for default roles data and loading."""
 
     def test_all_default_roles_load_successfully(self):
-        """Should load all 9 default roles without errors."""
+        """Should load all 11 default roles without errors."""
         from hmis.apps.core.models import Role
 
         # Load default roles
@@ -25,12 +25,12 @@ class TestDefaultRolesFixture:
         call_command("load_default_roles", stdout=out)
 
         # Check all roles created
-        assert Role.objects.count() == 9
+        assert Role.objects.count() == 11
 
         # Check specific roles exist
-        role_codes = ["ADMIN", "DOCTOR", "NURSE", "CLINICAL_OFFICER",
-                      "LAB_TECH", "PHARMACIST", "RECEPTIONIST",
-                      "RECORDS_CLERK", "CHW"]
+        role_codes = ["ADMIN", "DOCTOR", "CONSULTANT", "NURSE", "NURSE_AIDE",
+                      "CLINICAL_OFFICER", "LAB_TECH", "PHARMACIST",
+                      "RECEPTIONIST", "RECORDS_CLERK", "CHW"]
 
         for code in role_codes:
             assert Role.objects.filter(code=code).exists(), f"Role {code} not found"
@@ -111,7 +111,7 @@ class TestDefaultRolesFixture:
 
         call_command("load_default_roles", stdout=StringIO())
 
-        valid_categories = ["CLINICAL", "ADMINISTRATIVE", "TECHNICAL", "MANAGEMENT"]
+        valid_categories = ["CLINICAL", "ADMINISTRATIVE", "TECHNICAL", "MANAGEMENT", "COMMUNITY"]
 
         for role in Role.objects.all():
             assert role.category in valid_categories
@@ -239,7 +239,7 @@ class TestLoadDefaultRolesCommand:
 
         # Should have same count (no duplicates)
         assert first_count == second_count
-        assert first_count == 9
+        assert first_count == 11
 
     def test_command_with_update_flag(self):
         """Should update existing roles with --update flag."""
