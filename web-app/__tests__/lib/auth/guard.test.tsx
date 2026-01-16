@@ -1,30 +1,17 @@
 /**
- * TDD Tests for AuthGuard Component
- * Tests authentication guard for protected routes
+ * TDD Tests for PermissionGuard Component
+ * Tests permission-based access control for protected routes
+ * 
+ * Note: Authentication is now handled by middleware.ts (server-side redirect).
+ * These tests focus only on permission checking.
  */
-// import React from 'react';
-import { render, screen, waitFor } from '@testing-library/react';
-import { AuthGuard } from '@/lib/auth/guard';
+import { render, screen } from '@testing-library/react';
+import { PermissionGuard, AuthGuard } from '@/lib/auth/guard';
 import { useAuth } from '@/lib/auth/context';
 
 // Mock the auth context
 jest.mock('@/lib/auth/context', () => ({
   useAuth: jest.fn(),
-}));
-
-// Mock next/navigation
-const mockPush = jest.fn();
-jest.mock('next/navigation', () => ({
-  useRouter: () => ({
-    push: mockPush,
-  }),
-}));
-
-// Mock PageLoading (used by AuthGuard)
-jest.mock('@/components/shared/loading-spinner', () => ({
-  PageLoading: ({ message }: { message: string }) => (
-    <div data-testid="loading-spinner">{message}</div>
-  ),
 }));
 
 const mockUseAuth = useAuth as jest.MockedFunction<typeof useAuth>;
@@ -40,92 +27,33 @@ const createMockUser = (overrides: Partial<ReturnType<typeof useAuth>['user']> =
   ...overrides,
 });
 
-describe('AuthGuard', () => {
+const createMockAuthState = (overrides: Partial<ReturnType<typeof useAuth>> = {}) => ({
+  isAuthenticated: true,
+  isLoading: false,
+  user: createMockUser(),
+  tokens: { access: 'token', refresh: 'refresh' },
+  login: jest.fn(),
+  logout: jest.fn(),
+  refreshToken: jest.fn(),
+  ...overrides,
+});
+
+describe('PermissionGuard', () => {
   beforeEach(() => {
     jest.clearAllMocks();
   });
 
-  it('should show loading spinner while checking auth', () => {
-    mockUseAuth.mockReturnValue({
-      isAuthenticated: false,
-      isLoading: true,
-      user: null,
-      tokens: null,
-      login: jest.fn(),
-      logout: jest.fn(),
-      refreshToken: jest.fn(),
-    });
-
-    render(
-      <AuthGuard>
-        <div>Protected Content</div>
-      </AuthGuard>
-    );
-
-    expect(screen.getByTestId('loading-spinner')).toBeInTheDocument();
-    expect(screen.queryByText('Protected Content')).not.toBeInTheDocument();
-  });
-
-  it('should redirect to login when not authenticated', async () => {
-    mockUseAuth.mockReturnValue({
-      isAuthenticated: false,
-      isLoading: false,
-      user: null,
-      tokens: null,
-      login: jest.fn(),
-      logout: jest.fn(),
-      refreshToken: jest.fn(),
-    });
-
-    render(
-      <AuthGuard>
-        <div>Protected Content</div>
-      </AuthGuard>
-    );
-
-    await waitFor(() => {
-      expect(mockPush).toHaveBeenCalledWith('/login');
-    });
-
-    expect(screen.queryByText('Protected Content')).not.toBeInTheDocument();
-  });
-
-  it('should render children when authenticated', () => {
-    mockUseAuth.mockReturnValue({
-      isAuthenticated: true,
-      isLoading: false,
-      user: createMockUser(),
-      tokens: { access: 'token', refresh: 'refresh' },
-      login: jest.fn(),
-      logout: jest.fn(),
-      refreshToken: jest.fn(),
-    });
-
-    render(
-      <AuthGuard>
-        <div>Protected Content</div>
-      </AuthGuard>
-    );
-
-    expect(screen.getByText('Protected Content')).toBeInTheDocument();
-    expect(mockPush).not.toHaveBeenCalled();
-  });
-
   it('should show access denied for missing required permission', () => {
-    mockUseAuth.mockReturnValue({
-      isAuthenticated: true,
-      isLoading: false,
-      user: createMockUser({ permissions: ['read:patients'] }),
-      tokens: { access: 'token', refresh: 'refresh' },
-      login: jest.fn(),
-      logout: jest.fn(),
-      refreshToken: jest.fn(),
-    });
+    mockUseAuth.mockReturnValue(
+      createMockAuthState({
+        user: createMockUser({ permissions: ['read:patients'] }),
+      })
+    );
 
     render(
-      <AuthGuard requiredPermission="admin:dashboard">
+      <PermissionGuard requiredPermission="admin:dashboard">
         <div>Admin Content</div>
-      </AuthGuard>
+      </PermissionGuard>
     );
 
     expect(screen.getByText('Access Denied')).toBeInTheDocument();
@@ -134,42 +62,74 @@ describe('AuthGuard', () => {
   });
 
   it('should render children when user has required permission', () => {
-    mockUseAuth.mockReturnValue({
-      isAuthenticated: true,
-      isLoading: false,
-      user: createMockUser({ username: 'admin', permissions: ['admin:dashboard', 'read:patients'] }),
-      tokens: { access: 'token', refresh: 'refresh' },
-      login: jest.fn(),
-      logout: jest.fn(),
-      refreshToken: jest.fn(),
-    });
+    mockUseAuth.mockReturnValue(
+      createMockAuthState({
+        user: createMockUser({ permissions: ['admin:dashboard', 'read:patients'] }),
+      })
+    );
 
     render(
-      <AuthGuard requiredPermission="admin:dashboard">
+      <PermissionGuard requiredPermission="admin:dashboard">
         <div>Admin Content</div>
-      </AuthGuard>
+      </PermissionGuard>
     );
 
     expect(screen.getByText('Admin Content')).toBeInTheDocument();
+    expect(screen.queryByText('Access Denied')).not.toBeInTheDocument();
   });
 
-  it('should render children when no permission required', () => {
-    mockUseAuth.mockReturnValue({
-      isAuthenticated: true,
-      isLoading: false,
-      user: createMockUser(),
-      tokens: { access: 'token', refresh: 'refresh' },
-      login: jest.fn(),
-      logout: jest.fn(),
-      refreshToken: jest.fn(),
-    });
+  it('should show custom fallback when provided', () => {
+    mockUseAuth.mockReturnValue(
+      createMockAuthState({
+        user: createMockUser({ permissions: [] }),
+      })
+    );
+
+    render(
+      <PermissionGuard 
+        requiredPermission="admin:dashboard"
+        fallback={<div>Custom Denied Message</div>}
+      >
+        <div>Admin Content</div>
+      </PermissionGuard>
+    );
+
+    expect(screen.getByText('Custom Denied Message')).toBeInTheDocument();
+    expect(screen.queryByText('Admin Content')).not.toBeInTheDocument();
+  });
+
+  it('should show access denied when user has no permissions array', () => {
+    mockUseAuth.mockReturnValue(
+      createMockAuthState({
+        user: createMockUser({ permissions: undefined as unknown as string[] }),
+      })
+    );
+
+    render(
+      <PermissionGuard requiredPermission="admin:dashboard">
+        <div>Admin Content</div>
+      </PermissionGuard>
+    );
+
+    expect(screen.getByText('Access Denied')).toBeInTheDocument();
+  });
+});
+
+describe('AuthGuard (deprecated)', () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+  });
+
+  it('should be a passthrough component (no-op)', () => {
+    mockUseAuth.mockReturnValue(createMockAuthState());
 
     render(
       <AuthGuard>
-        <div>General Content</div>
+        <div>Protected Content</div>
       </AuthGuard>
     );
 
-    expect(screen.getByText('General Content')).toBeInTheDocument();
+    // AuthGuard is now a no-op - auth is handled by middleware
+    expect(screen.getByText('Protected Content')).toBeInTheDocument();
   });
 });
