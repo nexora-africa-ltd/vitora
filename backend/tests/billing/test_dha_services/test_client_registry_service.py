@@ -299,7 +299,7 @@ class TestRegisterClient:
         mock_requests_post.assert_called_once()
 
     def test_register_client_with_all_fields(self, service, mock_requests_post):
-        """Should include all optional fields in registration."""
+        """Should include identification fields in registration."""
         mock_requests_post.return_value = Mock(
             status_code=201,
             json=lambda: {
@@ -322,10 +322,11 @@ class TestRegisterClient:
 
         assert result.client_number == 'CR-FULL12345'
 
-        # Verify all fields were sent
+        # Verify identification fields were sent (per DHA UAT API format)
         call_kwargs = mock_requests_post.call_args
         json_data = call_kwargs.kwargs.get('json', call_kwargs[1].get('json', {}))
-        assert json_data.get('middle_name') == 'Wambui'
+        assert json_data.get('identification_type') == 'National ID'
+        assert json_data.get('identification_number') == '87654321'
 
     def test_register_client_validates_required_fields(self, service):
         """Should validate required fields."""
@@ -385,6 +386,7 @@ class TestRegisterClient:
             last_name='Doe',
             date_of_birth=date(1990, 1, 15),
             gender='M',
+            national_id='12345678',  # Required identification
         )
 
         assert result.client_number == 'CR-DATE12345'
