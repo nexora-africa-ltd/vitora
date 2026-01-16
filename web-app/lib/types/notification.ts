@@ -50,6 +50,7 @@ export interface MarkAllReadResponse {
 
 export interface NotificationListParams {
   notification_type?: NotificationType;
+  priority?: NotificationPriority;
   is_read?: boolean;
   created_after?: string;
   page?: number;
