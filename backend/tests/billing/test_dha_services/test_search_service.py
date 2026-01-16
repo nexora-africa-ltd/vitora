@@ -478,39 +478,145 @@ class TestPractitionerInfo:
 
     def test_from_api_response(self):
         """Should create from API response."""
+        # Use actual DHA HWR API response format
         data = {
-            'found': True,
-            'practitioner': {
-                'puid': 'PUID-12345',
-                'first_name': 'John',
-                'last_name': 'Doctor',
-                'license_status': 'Active',
+            'message': {
+                'membership': {
+                    'id': 'MEM-12345',
+                    'status': 'licensed',
+                    'salutation': 'Dr.',
+                    'full_name': 'John Kamau Doctor',
+                    'gender': 'Male',
+                    'first_name': 'John',
+                    'middle_name': 'Kamau',
+                    'last_name': 'Doctor',
+                    'registration_id': 'PUID-12345',
+                    'external_reference_id': '',
+                    'licensing_body': 'KMPDB',
+                    'specialty': '',
+                    'is_active': 1,
+                    'is_withdrawn': 0,
+                    'withdrawal_reason': '',
+                    'withdrawal_date': '',
+                    'license_expires_in_days': 365,
+                },
+                'licenses': [],
+                'professional_details': {},
+                'contacts': {},
+                'identifiers': {},
             }
         }
 
         practitioner = PractitionerInfo.from_api_response(data)
 
-        assert practitioner.puid == 'PUID-12345'
-        assert practitioner.first_name == 'John'
+        # Use backward compatibility properties
+        assert practitioner.puid == 'PUID-12345'  # from membership.registration_id
+        assert practitioner.first_name == 'John'   # from membership.first_name
 
     def test_full_name_property(self):
         """Should format full name."""
+        from hmis.apps.billing.services.dha_search import (
+            PractitionerContacts,
+            PractitionerIdentifiers,
+            PractitionerMembership,
+            PractitionerProfessionalDetails,
+        )
+
         practitioner = PractitionerInfo(
-            puid='PUID-12345',
+            membership=PractitionerMembership(
+                id='MEM-12345',
+                status='licensed',
+                salutation='Dr.',
+                full_name='John Kamau Doctor',
+                gender='Male',
+                first_name='John',
+                middle_name='Kamau',
+                last_name='Doctor',
+                registration_id='PUID-12345',
+                external_reference_id='',
+                licensing_body='KMPDB',
+                specialty='',
+                is_active=1,
+                is_withdrawn=0,
+                withdrawal_reason='',
+                withdrawal_date='',
+                license_expires_in_days=365,
+            ),
+            licenses=[],
+            professional_details=PractitionerProfessionalDetails(
+                professional_cadre='',
+                practice_type='',
+                specialty='',
+                subspecialty='',
+                discipline_name='',
+                educational_qualifications='',
+            ),
+            contacts=PractitionerContacts(
+                phone='',
+                email='',
+                postal_address='',
+            ),
+            identifiers=PractitionerIdentifiers(
+                identification_type='',
+                identification_number='',
+                client_registry_id='',
+                student_id='',
+            ),
             found=True,
-            first_name='John',
-            middle_name='Kamau',
-            last_name='Doctor',
         )
 
         assert practitioner.full_name == 'John Kamau Doctor'
 
     def test_is_license_active_property(self):
         """Should check license status."""
+        from hmis.apps.billing.services.dha_search import (
+            PractitionerContacts,
+            PractitionerIdentifiers,
+            PractitionerMembership,
+            PractitionerProfessionalDetails,
+        )
+
         practitioner = PractitionerInfo(
-            puid='PUID-12345',
+            membership=PractitionerMembership(
+                id='MEM-12345',
+                status='licensed',
+                salutation='',
+                full_name='John Doctor',
+                gender='Male',
+                first_name='John',
+                middle_name='',
+                last_name='Doctor',
+                registration_id='PUID-12345',
+                external_reference_id='',
+                licensing_body='KMPDB',
+                specialty='',
+                is_active=1,
+                is_withdrawn=0,
+                withdrawal_reason='',
+                withdrawal_date='',
+                license_expires_in_days=365,
+            ),
+            licenses=[],
+            professional_details=PractitionerProfessionalDetails(
+                professional_cadre='',
+                practice_type='',
+                specialty='',
+                subspecialty='',
+                discipline_name='',
+                educational_qualifications='',
+            ),
+            contacts=PractitionerContacts(
+                phone='',
+                email='',
+                postal_address='',
+            ),
+            identifiers=PractitionerIdentifiers(
+                identification_type='',
+                identification_number='',
+                client_registry_id='',
+                student_id='',
+            ),
             found=True,
-            license_status='Active',
         )
 
         assert practitioner.is_license_active is True
