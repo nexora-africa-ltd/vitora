@@ -78,12 +78,13 @@ describe('PatientForm Component', () => {
     jest.clearAllMocks();
   });
 
-  it('should render form with basic information section', () => {
+  it('should render form with personal information section', () => {
     render(
       <PatientForm onSubmit={mockOnSubmit} onCancel={mockOnCancel} />
     );
 
-    expect(screen.getByText('Basic Information')).toBeInTheDocument();
+    // Section is now called "Personal Information" not "Basic Information"
+    expect(screen.getByText('Personal Information')).toBeInTheDocument();
   });
 
   it('should render first name field', () => {
@@ -224,7 +225,8 @@ describe('PatientForm Component', () => {
       <PatientForm onSubmit={mockOnSubmit} onCancel={mockOnCancel} />
     );
 
-    expect(screen.getByText(/Kenya phone format/i)).toBeInTheDocument();
+    // Text is now "Kenya format" not "Kenya phone format"
+    expect(screen.getByText(/Kenya format/i)).toBeInTheDocument();
   });
 
   it('should render gender selection', () => {
