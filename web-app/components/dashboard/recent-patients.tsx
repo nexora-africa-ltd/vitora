@@ -32,7 +32,7 @@ export function RecentPatients() {
 
   if (!patients?.results?.length) {
     return (
-      <p className="text-sm text-accent-foreground text-center py-4">
+      <p className="text-sm text-primary text-center hover:text-accent-foreground py-4">
         No patients found
       </p>
     );
@@ -46,7 +46,7 @@ export function RecentPatients() {
         <Link
           key={patient.id}
           href={`/patients/${patient.id}`}
-          className="flex items-center gap-3 p-2 rounded-lg hover:bg-accent hover:text-bg-accent-foreground transition-colors"
+          className="flex items-center gap-3 p-2 rounded-lg hover:bg-accent hover:text-bg-primary "
         >
           <Avatar>
             <AvatarFallback>
@@ -54,11 +54,11 @@ export function RecentPatients() {
               {patient.last_name[0]}
             </AvatarFallback>
           </Avatar>
-          <div className="flex-1 min-w-0">
-            <p className="text-sm font-medium truncate">
+          <div className="flex-1 min-w-0 hover:text-primary">
+            <p className="text-sm hover:text-primary font-medium ">
               {patient.first_name} {patient.last_name}
             </p>
-            <p className="text-xs text-accent hover:text-primary truncate">
+            <p className="text-xs text-accent-foreground hover:text-primary">
               MRN: {patient.mrn}
             </p>
           </div>
