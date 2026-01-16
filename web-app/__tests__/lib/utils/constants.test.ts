@@ -59,15 +59,35 @@ describe('constants', () => {
   });
 
   describe('ENCOUNTER_TYPES', () => {
-    it('should have OPD, IPD, and EMERGENCY types', () => {
-      expect(ENCOUNTER_TYPES).toHaveLength(3);
-      expect(ENCOUNTER_TYPES.map((e) => e.value)).toEqual(['OPD', 'IPD', 'EMERGENCY']);
+    it('should have all encounter types including walk-in, scheduled, and pre-assessed', () => {
+      expect(ENCOUNTER_TYPES).toHaveLength(16);
+      // Core types should exist
+      expect(ENCOUNTER_TYPES.map((e) => e.value)).toContain('OPD');
+      expect(ENCOUNTER_TYPES.map((e) => e.value)).toContain('IPD');
+      expect(ENCOUNTER_TYPES.map((e) => e.value)).toContain('EMERGENCY');
     });
 
     it('should have human readable labels', () => {
-      expect(ENCOUNTER_TYPES.find((e) => e.value === 'OPD')?.label).toBe('Outpatient');
+      expect(ENCOUNTER_TYPES.find((e) => e.value === 'OPD')?.label).toBe('Outpatient (Walk-in)');
       expect(ENCOUNTER_TYPES.find((e) => e.value === 'IPD')?.label).toBe('Inpatient');
       expect(ENCOUNTER_TYPES.find((e) => e.value === 'EMERGENCY')?.label).toBe('Emergency');
+    });
+
+    it('should group encounter types by triage requirement', () => {
+      const walkInTypes = ENCOUNTER_TYPES.filter((e) => e.group === 'walk-in');
+      const scheduledTypes = ENCOUNTER_TYPES.filter((e) => e.group === 'scheduled');
+      const preAssessedTypes = ENCOUNTER_TYPES.filter((e) => e.group === 'pre-assessed');
+
+      expect(walkInTypes.length).toBeGreaterThan(0);
+      expect(scheduledTypes.length).toBeGreaterThan(0);
+      expect(preAssessedTypes.length).toBeGreaterThan(0);
+    });
+
+    it('should have group property on all types', () => {
+      ENCOUNTER_TYPES.forEach((type) => {
+        expect(type).toHaveProperty('group');
+        expect(['walk-in', 'scheduled', 'pre-assessed']).toContain(type.group);
+      });
     });
   });
 

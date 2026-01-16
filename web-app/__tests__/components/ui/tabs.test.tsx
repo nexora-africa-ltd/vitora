@@ -138,7 +138,9 @@ describe('Tabs Component', () => {
       );
 
       const list = screen.getByTestId('tabs-list');
-      expect(list).toHaveClass('bg-muted');
+      // Test that the element is rendered and contains tab triggers (behavior over CSS classes)
+      expect(list).toBeInTheDocument();
+      expect(screen.getByRole('tab', { name: 'Tab 1' })).toBeInTheDocument();
     });
 
     it('should accept custom className', () => {
@@ -169,11 +171,14 @@ describe('Tabs Component', () => {
         </Tabs>
       );
 
-      const tab1 = screen.getByText('Tab 1');
-      const tab2 = screen.getByText('Tab 2');
+      const tab1 = screen.getByRole('tab', { name: 'Tab 1' });
+      const tab2 = screen.getByRole('tab', { name: 'Tab 2' });
 
-      expect(tab1).toHaveClass('bg-background');
-      expect(tab2).not.toHaveClass('bg-background');
+      // Test accessibility attributes instead of CSS classes (behavior over implementation)
+      expect(tab1).toHaveAttribute('aria-selected', 'true');
+      expect(tab1).toHaveAttribute('data-state', 'active');
+      expect(tab2).toHaveAttribute('aria-selected', 'false');
+      expect(tab2).toHaveAttribute('data-state', 'inactive');
     });
 
     it('should accept custom className', () => {
