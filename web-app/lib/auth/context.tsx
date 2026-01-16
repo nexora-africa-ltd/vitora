@@ -42,6 +42,8 @@ const AuthContext = createContext<AuthContextValue | undefined>(undefined);
 const ACCESS_TOKEN_KEY = 'vitora_access_token';
 const REFRESH_TOKEN_KEY = 'vitora_refresh_token';
 const USER_KEY = 'vitora_user';
+// Cookie name for middleware auth check (must match middleware.ts)
+const AUTH_COOKIE_NAME = 'vitora_authenticated';
 
 /**
  * Auth provider component
@@ -124,6 +126,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       localStorage.setItem(ACCESS_TOKEN_KEY, tokens.access);
       localStorage.setItem(REFRESH_TOKEN_KEY, tokens.refresh);
       localStorage.setItem(USER_KEY, JSON.stringify(user));
+      
+      // Set auth cookie for middleware (httpOnly: false so JS can read, but middleware needs it)
+      document.cookie = `${AUTH_COOKIE_NAME}=true; path=/; max-age=${60 * 60 * 24 * 7}; SameSite=Lax`;
 
       setState({
         user,
@@ -142,6 +147,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     localStorage.removeItem(ACCESS_TOKEN_KEY);
     localStorage.removeItem(REFRESH_TOKEN_KEY);
     localStorage.removeItem(USER_KEY);
+    
+    // Clear auth cookie
+    document.cookie = `${AUTH_COOKIE_NAME}=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT`;
 
     setState({
       user: null,
