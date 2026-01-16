@@ -18,7 +18,7 @@ import {
   ClipboardList,
   Microscope,
   ScanLine,
-  Shield,
+  ShieldUser,
   UserCog,
   ScrollText,
 } from 'lucide-react';
@@ -71,10 +71,10 @@ export const mainNavItems: NavItemType[] = [
   { label: 'Reports', href: '/reports', icon: FileText },
   { 
     label: 'Admin', 
-    icon: Shield,
+    icon: ShieldUser,
     children: [
       { label: 'Departments', href: '/admin/departments', icon: Building2 },
-      { label: 'Roles', href: '/admin/roles', icon: Shield },
+      { label: 'Roles', href: '/admin/roles', icon: ShieldUser },
       { label: 'Staff', href: '/admin/staff', icon: UserCog },
       { label: 'Audit Logs', href: '/admin/audit-logs', icon: ScrollText },
     ],

@@ -165,7 +165,8 @@ describe('NotificationPanel Component', () => {
       await userEvent.click(screen.getByRole('button', { name: /notifications/i }));
 
       await waitFor(() => {
-        expect(screen.getByText(/no notifications/i)).toBeInTheDocument();
+        expect(screen.getByText(/all caught up/i)).toBeInTheDocument();
+        expect(screen.getByText(/no new notifications/i)).toBeInTheDocument();
       });
     });
   });
