@@ -40,7 +40,7 @@ class TestDHAPractitionerSearchAPI:
         monkeypatch.setattr(DHASearchService, "search_practitioner", _fake_search_practitioner)
 
         response = authenticated_client.get(
-            f"{self.ENDPOINT}?identification_type=National%20ID&identification_number=34221265"
+            f"{self.ENDPOINT}?identification_type=National%20ID&identification_number=12345678"
         )
 
         assert response.status_code == 404
