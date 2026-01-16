@@ -44,8 +44,8 @@ jobs:
 
       - name: Check Node.js Dependencies
         run: |
-          if [ -f "frontend-web/package.json" ]; then
-            cd frontend-web
+          if [ -f "web-app/package.json" ]; then
+            cd web-app
             npm audit --json || true
           else
             echo "⏭️  No Node.js dependencies yet"
@@ -179,8 +179,8 @@ jobs:
 
       - name: Check Node.js License Compliance
         run: |
-          if [ -f "frontend-web/package.json" ]; then
-            cd frontend-web
+          if [ -f "web-app/package.json" ]; then
+            cd web-app
             npx license-checker --summary || true
           else
             echo "⏭️  No Node.js dependencies yet"

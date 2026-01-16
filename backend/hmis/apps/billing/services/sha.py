@@ -65,15 +65,15 @@ class SHAEligibilityService:
 class SHAClaimsService:
     """
     SHA (Social Health Authority) claims integration stub.
-    
+
     Note: This is a stub for Phase 1. Full integration planned for Phase 2
     when SHA API becomes available.
-    
+
     Features:
     - Submit insurance claims to SHA
     - Query claim status
     - Get preauthorization for services
-    
+
     All methods return mock responses for testing purposes.
     """
 
@@ -84,13 +84,13 @@ class SHAClaimsService:
     def submit_claim(self, invoice) -> dict[str, Any]:
         """
         Submit claim to SHA (stub).
-        
+
         Args:
             invoice: Invoice object to submit claim for
-            
+
         Returns:
             Dict with claim submission response
-            
+
         Example:
             >>> service = SHAClaimsService()
             >>> result = service.submit_claim(invoice)
@@ -111,13 +111,13 @@ class SHAClaimsService:
     def query_claim_status(self, claim_number: str) -> dict[str, Any]:
         """
         Query claim status (stub).
-        
+
         Args:
             claim_number: SHA claim number to query
-            
+
         Returns:
             Dict with claim status information
-            
+
         Example:
             >>> service = SHAClaimsService()
             >>> result = service.query_claim_status('SHA-STUB-INV-20260102-0001')
@@ -136,14 +136,14 @@ class SHAClaimsService:
     def get_preauthorization(self, patient_id: str, service_codes: list[str]) -> dict[str, Any]:
         """
         Get preauthorization for services (stub).
-        
+
         Args:
             patient_id: Patient MRN or identifier
             service_codes: List of SHA service codes to preauthorize
-            
+
         Returns:
             Dict with preauthorization information
-            
+
         Example:
             >>> service = SHAClaimsService()
             >>> result = service.get_preauthorization('MRN-20260102-0001', ['SHA-001'])

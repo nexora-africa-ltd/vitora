@@ -37,9 +37,9 @@ logger = logging.getLogger(__name__)
 class InterventionCode:
     """
     SHA Intervention code for reimbursement.
-    
+
     Represents a standardized SHA intervention for billing and claims.
-    
+
     Attributes:
         code: SHA intervention code (e.g., 'SHA-INT-001')
         name: Intervention name
@@ -97,10 +97,10 @@ class InterventionCode:
 class ICD11Code:
     """
     ICD-11 disease classification code.
-    
+
     Represents a disease/condition code from the WHO ICD-11
     classification system.
-    
+
     Attributes:
         code: ICD-11 code (e.g., '1A00')
         title: Disease/condition title
@@ -137,9 +137,9 @@ class ICD11Code:
 class DrugProduct:
     """
     Drug product from NMRA catalog.
-    
+
     Represents a registered pharmaceutical product.
-    
+
     Attributes:
         product_id: Unique product identifier
         brand_name: Commercial brand name
@@ -190,9 +190,9 @@ class DrugProduct:
 class ActiveComponent:
     """
     Active pharmaceutical ingredient (API).
-    
+
     Represents a drug's active ingredient.
-    
+
     Attributes:
         component_id: Unique component identifier
         name: Component name (INN)
@@ -223,12 +223,12 @@ class ActiveComponent:
 class RemoteLOINCCode:
     """
     LOINC observation code from remote API.
-    
+
     Represents a laboratory observation code from Regenstrief's
     LOINC database, fetched from DHA API.
-    
+
     Note: Falls back to local LOINCCode model if API unavailable.
-    
+
     Attributes:
         loinc_num: LOINC code number (e.g., '2345-7')
         component: What is measured
@@ -277,10 +277,10 @@ class RemoteLOINCCode:
 class ICHICode:
     """
     ICHI intervention classification code.
-    
+
     Represents an intervention from WHO's International
     Classification of Health Interventions.
-    
+
     Attributes:
         code: ICHI code
         title: Intervention title
@@ -320,7 +320,7 @@ class ICHICode:
 class TerminologyError(Exception):
     """
     Base exception for Terminology operations.
-    
+
     Attributes:
         message: Error description
         status_code: HTTP status code if applicable
@@ -367,16 +367,16 @@ class CodeNotFoundError(TerminologyError):
 class TerminologyService:
     """
     Service for interacting with Kenya DHA Terminology APIs.
-    
+
     This service provides methods to search and retrieve standardized
     medical codes from various terminology systems via the Digital
     Health Agency APIs.
-    
+
     Strategy:
         - Remote API first for most up-to-date data
         - Local database fallback when API unavailable
         - Caching for frequently accessed codes
-    
+
     Supported Terminologies:
         - SHA Interventions: Kenya SHA reimbursement codes
         - ICD-11: WHO disease classification
@@ -384,13 +384,13 @@ class TerminologyService:
         - Active Components: Pharmaceutical ingredients
         - LOINC: Lab observation codes (remote + local fallback)
         - ICHI: Health intervention classification
-    
+
     Attributes:
         api_base_url: DHA API base URL
         timeout: Request timeout in seconds
         auth_service: SHAAuthService instance
         use_local_fallback: Whether to use local DB on API failure
-    
+
     Example:
         >>> ts = TerminologyService()
         >>> interventions = ts.search_interventions('consultation')
@@ -401,7 +401,7 @@ class TerminologyService:
     def __init__(self, use_local_fallback: bool = True):
         """
         Initialize TerminologyService.
-        
+
         Args:
             use_local_fallback: If True, use local DB when API fails
         """
@@ -435,21 +435,21 @@ class TerminologyService:
     ) -> list[InterventionCode]:
         """
         Search SHA interventions catalog.
-        
+
         Searches for reimbursable interventions by name or code.
-        
+
         Args:
             query: Search term (name or code)
             facility_level: Filter by minimum facility level (1-6)
             category: Filter by category
             limit: Maximum results to return
-            
+
         Returns:
             List of matching InterventionCode objects
-            
+
         Raises:
             TerminologyError: If search fails
-            
+
         Example:
             >>> results = service.search_interventions('consultation')
             >>> print(f"Found {len(results)} interventions")
@@ -513,13 +513,13 @@ class TerminologyService:
     def get_intervention(self, code: str) -> InterventionCode:
         """
         Get a specific SHA intervention by code.
-        
+
         Args:
             code: SHA intervention code
-            
+
         Returns:
             InterventionCode for the specified code
-            
+
         Raises:
             CodeNotFoundError: If code not found
             TerminologyError: If request fails
@@ -557,10 +557,10 @@ class TerminologyService:
     ) -> list[InterventionCode]:
         """
         Get all interventions available at a facility level.
-        
+
         Args:
             facility_level: Facility level (1-6)
-            
+
         Returns:
             List of InterventionCode available at that level
         """
@@ -582,15 +582,15 @@ class TerminologyService:
     ) -> list[ICD11Code]:
         """
         Search ICD-11 disease codes.
-        
+
         Args:
             query: Search term (title or code)
             chapter: Filter by ICD-11 chapter
             limit: Maximum results
-            
+
         Returns:
             List of matching ICD11Code objects
-            
+
         Raises:
             TerminologyError: If search fails
         """
@@ -642,13 +642,13 @@ class TerminologyService:
     def get_icd11(self, code: str) -> ICD11Code:
         """
         Get a specific ICD-11 code.
-        
+
         Args:
             code: ICD-11 code (e.g., '1A00')
-            
+
         Returns:
             ICD11Code for the specified code
-            
+
         Raises:
             CodeNotFoundError: If code not found
         """
@@ -690,11 +690,11 @@ class TerminologyService:
     ) -> list[DrugProduct]:
         """
         Search drug products catalog.
-        
+
         Args:
             query: Search term (brand name or generic name)
             limit: Maximum results
-            
+
         Returns:
             List of matching DrugProduct objects
         """
@@ -731,13 +731,13 @@ class TerminologyService:
     def get_drug_product(self, product_id: str) -> DrugProduct:
         """
         Get a specific drug product by ID.
-        
+
         Args:
             product_id: Product identifier
-            
+
         Returns:
             DrugProduct for the specified ID
-            
+
         Raises:
             CodeNotFoundError: If product not found
         """
@@ -779,11 +779,11 @@ class TerminologyService:
     ) -> list[ActiveComponent]:
         """
         Search active pharmaceutical components.
-        
+
         Args:
             query: Search term (component name or ATC code)
             limit: Maximum results
-            
+
         Returns:
             List of matching ActiveComponent objects
         """
@@ -828,13 +828,13 @@ class TerminologyService:
     ) -> list[RemoteLOINCCode]:
         """
         Search LOINC lab observation codes.
-        
+
         Strategy: Remote API first, local database fallback.
-        
+
         Args:
             query: Search term
             limit: Maximum results
-            
+
         Returns:
             List of RemoteLOINCCode objects
         """
@@ -920,13 +920,13 @@ class TerminologyService:
     def get_loinc(self, loinc_num: str) -> RemoteLOINCCode:
         """
         Get a specific LOINC code.
-        
+
         Args:
             loinc_num: LOINC number (e.g., '2345-7')
-            
+
         Returns:
             RemoteLOINCCode for the specified number
-            
+
         Raises:
             CodeNotFoundError: If code not found
         """
@@ -996,11 +996,11 @@ class TerminologyService:
     ) -> list[ICHICode]:
         """
         Search ICHI intervention codes.
-        
+
         Args:
             query: Search term
             limit: Maximum results
-            
+
         Returns:
             List of matching ICHICode objects
         """
@@ -1037,13 +1037,13 @@ class TerminologyService:
     def get_ichi(self, code: str) -> ICHICode:
         """
         Get a specific ICHI code.
-        
+
         Args:
             code: ICHI code
-            
+
         Returns:
             ICHICode for the specified code
-            
+
         Raises:
             CodeNotFoundError: If code not found
         """
@@ -1081,7 +1081,7 @@ class TerminologyService:
     def is_configured(self) -> bool:
         """
         Check if Terminology service is properly configured.
-        
+
         Returns:
             True if service can be used
         """
@@ -1097,11 +1097,11 @@ class TerminologyService:
     ) -> tuple[bool, str | None]:
         """
         Validate an intervention is available at facility level.
-        
+
         Args:
             intervention_code: SHA intervention code
             facility_level: Facility level (1-6)
-            
+
         Returns:
             Tuple of (is_valid, error_message)
         """

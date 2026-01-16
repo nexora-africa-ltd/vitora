@@ -19,7 +19,7 @@ class BillingReportService:
     def daily_collection_report(self, date: date) -> dict[str, Any]:
         """
         Daily cash collection report.
-        
+
         Returns:
             - Total collections by payment method
             - Invoice count
@@ -72,7 +72,7 @@ class BillingReportService:
     def revenue_summary(self, start_date: date, end_date: date) -> dict[str, Any]:
         """
         Revenue summary for date range.
-        
+
         Returns:
             - Total revenue
             - Revenue by category
@@ -153,7 +153,7 @@ class BillingReportService:
     def outstanding_balances(self) -> list[dict[str, Any]]:
         """
         List of invoices with outstanding balances.
-        
+
         Returns:
             - Invoice details
             - Patient info
@@ -198,7 +198,7 @@ class BillingReportService:
     def service_utilization(self, start_date: date, end_date: date) -> dict[str, Any]:
         """
         Service utilization report.
-        
+
         Returns:
             - Service count
             - Revenue per service
@@ -250,7 +250,7 @@ class BillingReportService:
     def payment_method_analysis(self, start_date: date, end_date: date) -> dict[str, Any]:
         """
         Payment method breakdown.
-        
+
         Returns:
             - Collections by method
             - M-Pesa success rate

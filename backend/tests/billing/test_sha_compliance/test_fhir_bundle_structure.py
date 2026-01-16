@@ -34,7 +34,7 @@ class TestFHIRBundleRootStructure:
     def test_bundle_has_correct_type(self, sha_claim_with_items):
         """
         SHA Requirement: Bundle type must be 'message'.
-        
+
         Reference: docs/sha-guides/claims.md - Bundle Structure section
         Quote: 'type: Always "message" for claim bundles'
         """
@@ -50,7 +50,7 @@ class TestFHIRBundleRootStructure:
     def test_bundle_has_resource_type(self, sha_claim_with_items):
         """
         SHA Requirement: Bundle must have resourceType 'Bundle'.
-        
+
         Reference: docs/sha-guides/claims.md
         """
         service = SHAClaimsService()
@@ -64,7 +64,7 @@ class TestFHIRBundleRootStructure:
     def test_bundle_has_unique_id(self, sha_claim_with_items):
         """
         SHA Requirement: Bundle must have a unique GUID identifier.
-        
+
         Reference: docs/sha-guides/claims.md
         Quote: 'Generate a unique GUID for each claim'
         """
@@ -83,7 +83,7 @@ class TestFHIRBundleRootStructure:
     def test_bundle_has_meta_profile(self, sha_claim_with_items):
         """
         SHA Requirement: Bundle must have meta.profile referencing SHA StructureDefinition.
-        
+
         Reference: docs/sha-guides/claims.md
         Quote: 'meta.profile: https://qa-mis.apeiro-digital.com/fhir/StructureDefinition/bundle|1.0.0'
         """
@@ -107,7 +107,7 @@ class TestFHIRBundleRootStructure:
     def test_bundle_has_valid_timestamp(self, sha_claim_with_items):
         """
         SHA Requirement: Bundle must have ISO format timestamp.
-        
+
         Reference: docs/sha-guides/claims.md
         Quote: 'timestamp: Current datetime in ISO format (YYYY-MM-DDThh:mm:ss.ssssss)'
         """
@@ -128,7 +128,7 @@ class TestFHIRBundleRootStructure:
     def test_bundle_has_entry_array(self, sha_claim_with_items):
         """
         SHA Requirement: Bundle must have entry array with resources.
-        
+
         Reference: docs/sha-guides/claims.md
         Quote: 'entry: Array of all resources (Organization, Coverage, Patient, Claim)'
         """
@@ -149,7 +149,7 @@ class TestFHIRBundleRequiredResources:
     def test_bundle_contains_organization_resource(self, sha_claim_with_items):
         """
         SHA Requirement: Bundle must contain Organization resource.
-        
+
         Reference: docs/sha-guides/claims.md
         Quote: 'Organization - Details about the healthcare provider/facility'
         """
@@ -170,7 +170,7 @@ class TestFHIRBundleRequiredResources:
     def test_bundle_contains_coverage_resource(self, sha_claim_with_items):
         """
         SHA Requirement: Bundle must contain Coverage resource.
-        
+
         Reference: docs/sha-guides/claims.md
         Quote: 'Coverage - Patient's insurance/coverage information'
         """
@@ -191,7 +191,7 @@ class TestFHIRBundleRequiredResources:
     def test_bundle_contains_patient_resource(self, sha_claim_with_items):
         """
         SHA Requirement: Bundle must contain Patient resource.
-        
+
         Reference: docs/sha-guides/claims.md
         Quote: 'Patient - Patient demographic and identification information'
         """
@@ -212,7 +212,7 @@ class TestFHIRBundleRequiredResources:
     def test_bundle_contains_claim_resource(self, sha_claim_with_items):
         """
         SHA Requirement: Bundle must contain Claim resource.
-        
+
         Reference: docs/sha-guides/claims.md
         Quote: 'Claim - The actual claim with diagnoses, services provided, and costs'
         """
@@ -237,7 +237,7 @@ class TestFHIREntryFullUrls:
     def test_all_entries_have_fullurl(self, sha_claim_with_items):
         """
         SHA Requirement: Each entry must have a fullUrl field.
-        
+
         Reference: docs/sha-guides/claims-submission.md - Integration Checklist
         Quote: 'Each resource entry in bundle must have a fullUrl field'
         """
@@ -254,9 +254,9 @@ class TestFHIREntryFullUrls:
     def test_fullurls_use_correct_base(self, sha_claim_with_items):
         """
         SHA Requirement: fullUrl must use correct environment base URL.
-        
+
         Reference: docs/sha-guides/claims-submission.md
-        Quote: 
+        Quote:
             - Dev/UAT: https://qa-mis.apeiro-digital.com
             - Prod: https://fhir.sha.go.ke
         """
@@ -281,9 +281,9 @@ class TestFHIREntryFullUrls:
     def test_references_are_resolvable(self, sha_claim_with_items):
         """
         SHA Requirement: All references must point to resources in the bundle.
-        
+
         Reference: docs/sha-guides/claims-submission.md - Integration Checklist
-        Quote: 'All references mentioned in the bundle must point to a resource 
+        Quote: 'All references mentioned in the bundle must point to a resource
                in bundle with matching fullUrl value'
         """
         service = SHAClaimsService()
@@ -321,7 +321,7 @@ class TestFHIROrganizationResource:
     def test_organization_has_facility_id(self, sha_claim_with_items):
         """
         SHA Requirement: Organization must have facility identifier (FID).
-        
+
         Reference: docs/sha-guides/claims.md
         Quote: 'id: The facility identifier (FID) as obtained from HFR'
         """
@@ -341,7 +341,7 @@ class TestFHIROrganizationResource:
     def test_organization_has_name(self, sha_claim_with_items):
         """
         SHA Requirement: Organization must have facility name.
-        
+
         Reference: docs/sha-guides/claims.md
         Quote: 'name: Name of the healthcare facility'
         """
@@ -358,7 +358,7 @@ class TestFHIROrganizationResource:
     def test_organization_has_facility_level_extension(self, sha_claim_with_items):
         """
         SHA Requirement: Organization must have facility-level extension.
-        
+
         Reference: docs/sha-guides/claims.md
         Quote: 'extension: Contains facility-level information'
         """
@@ -386,7 +386,7 @@ class TestFHIROrganizationResource:
     def test_organization_type_is_provider(self, sha_claim_with_items):
         """
         SHA Requirement: Organization type must be 'prov' for provider.
-        
+
         Reference: docs/sha-guides/claims.md
         Quote: 'type: Organization type (should be "prov" for provider)'
         """
@@ -426,7 +426,7 @@ class TestFHIRCoverageResource:
     def test_coverage_has_sha_scheme_extension(self, sha_claim_with_items):
         """
         SHA Requirement: Coverage must have schemeCategoryCode extension.
-        
+
         Reference: docs/sha-guides/claims.md
         Quote: 'Set schemeCategoryCode as CAT-SHA-001 and schemeCategoryName as SOCIAL HEALTH AUTHORITY'
         """
@@ -466,7 +466,7 @@ class TestFHIRCoverageResource:
     def test_coverage_has_beneficiary_reference(self, sha_claim_with_items):
         """
         SHA Requirement: Coverage must have beneficiary reference to Patient.
-        
+
         Reference: docs/sha-guides/claims.md
         Quote: 'beneficiary: Reference to the patient (must match Patient resource)'
         """
@@ -487,7 +487,7 @@ class TestFHIRCoverageResource:
     def test_coverage_status_is_active(self, sha_claim_with_items):
         """
         SHA Requirement: Coverage status should be 'active'.
-        
+
         Reference: docs/sha-guides/claims.md
         Quote: 'status: Coverage status (should be "active")'
         """
@@ -505,7 +505,7 @@ class TestFHIRCoverageResource:
     def test_coverage_identifier_includes_cr_number(self, sha_claim_with_items):
         """
         SHA Requirement: Coverage identifier should include CR Number.
-        
+
         Reference: docs/sha-guides/claims.md
         Quote: 'identifier: Include the CR Number of the patient. e.g CR0000000000001-1-sha-coverage'
         """
@@ -539,7 +539,7 @@ class TestFHIREncounterResource:
     def test_encounter_class_coding_system(self, sha_claim_with_items):
         """
         SHA Requirement: Encounter class must use HL7 ActCode system.
-        
+
         Reference: docs/sha-guides/fhir-guide.md
         Quote: 'class.system: http://terminology.hl7.org/CodeSystem/v3-ActCode'
         """
@@ -555,7 +555,7 @@ class TestFHIREncounterResource:
     def test_outpatient_encounter_code(self):
         """
         SHA Requirement: Outpatient encounter class code should be 'OP'.
-        
+
         Reference: docs/sha-guides/fhir-guide.md
         Quote: 'code: "OP", display: "outpatient encounter"'
         """

@@ -46,7 +46,7 @@ class HasViewQueuePermission(BasePermission):
 class TriageAssessmentViewSet(viewsets.ModelViewSet):
     """
     ViewSet for TriageAssessment model.
-    
+
     Provides CRUD operations with:
     - Auto-calculation of triage category
     - Alert generation
@@ -83,7 +83,7 @@ class TriageAssessmentViewSet(viewsets.ModelViewSet):
 
     def create(self, request, *args, **kwargs):
         """Create triage assessment with audit logging.
-        
+
         Also updates the WaitingQueue entry to mark triage as complete.
         """
         # Use create serializer for validation and creation
@@ -151,7 +151,7 @@ class TriageAssessmentViewSet(viewsets.ModelViewSet):
     def calculate_category(self, request):
         """
         Calculate triage category without creating assessment.
-        
+
         Used for decision support and "what-if" scenarios.
         """
         serializer = TriageCategoryCalculationSerializer(data=request.data)
@@ -166,7 +166,7 @@ class TriageAssessmentViewSet(viewsets.ModelViewSet):
     def complete_triage(self, request, pk=None):
         """
         Complete a triage assessment.
-        
+
         Sets triage_end_time to now and marks the triage as complete.
         This is important for reporting on triage duration metrics.
         """
@@ -207,9 +207,9 @@ class TriageAssessmentViewSet(viewsets.ModelViewSet):
 class WaitingQueueViewSet(viewsets.ModelViewSet):
     """
     ViewSet for waiting queue (patients awaiting triage).
-    
+
     This is the entry point for patients who have registered/checked in
-    and are waiting to be triaged. Once triaged, they move to the 
+    and are waiting to be triaged. Once triaged, they move to the
     priority-based TriageQueue.
     """
 
@@ -282,7 +282,7 @@ class WaitingQueueViewSet(viewsets.ModelViewSet):
 class VitalThresholdsViewSet(viewsets.ReadOnlyModelViewSet):
     """
     ViewSet for vital thresholds.
-    
+
     Read-only for regular users, admin can update via admin panel.
     """
 
@@ -294,7 +294,7 @@ class VitalThresholdsViewSet(viewsets.ReadOnlyModelViewSet):
 class TriageQueueViewSet(viewsets.ReadOnlyModelViewSet):
     """
     ViewSet for triage queue.
-    
+
     Provides queue display and management actions.
     """
 

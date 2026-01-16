@@ -2,8 +2,8 @@
 Tests for PFMS (Public Finance Management System) Dual Coverage Support.
 
 SHA Integration Checklist Item #13:
-"If the patient is eligible for PFMS coverage then both SHA and PFMS coverage 
-must be mentioned in insurance section. Also an extension to be added to show 
+"If the patient is eligible for PFMS coverage then both SHA and PFMS coverage
+must be mentioned in insurance section. Also an extension to be added to show
 which claim item belongs to which coverage."
 
 Reference: docs/sha-guides/claims-submission.md
@@ -102,7 +102,7 @@ class TestPFMSEligibilityModel:
     def test_sha_member_has_pfms_eligible_field(self, sample_patient, test_user):
         """
         SHA Requirement: SHAMember must track PFMS eligibility.
-        
+
         PFMS covers vulnerable populations (indigent, elderly, disabled, orphans).
         """
         from hmis.apps.billing.models import SHAMember
@@ -123,7 +123,7 @@ class TestPFMSEligibilityModel:
     def test_sha_member_pfms_category_field(self, sample_patient, test_user):
         """
         SHA Requirement: PFMS-eligible members should have a category.
-        
+
         Categories: vulnerable, elderly, disabled, orphan, indigent
         """
         from hmis.apps.billing.models import SHAMember
@@ -185,7 +185,7 @@ class TestPFMSClaimItemCoverage:
     def test_claim_item_has_coverage_type_field(self, sha_claim_with_items):
         """
         SHA Requirement: Each claim item must indicate which coverage applies.
-        
+
         Reference: claims-submission.md item #13
         """
 
@@ -214,7 +214,7 @@ class TestPFMSDualCoverageBundle:
     def test_pfms_bundle_has_two_coverage_resources(self, pfms_claim_with_items):
         """
         SHA Requirement: PFMS-eligible claims must have both coverages.
-        
+
         Reference: claims-submission.md item #13
         "both SHA and PFMS coverage must be mentioned in insurance section"
         """
@@ -279,7 +279,7 @@ class TestPFMSDualCoverageBundle:
     def test_claim_items_have_coverage_extension(self, pfms_claim_with_items):
         """
         SHA Requirement: Claim items must have extension showing coverage.
-        
+
         Reference: claims-submission.md item #13
         "an extension to be added to show which claim item belongs to which coverage"
         """

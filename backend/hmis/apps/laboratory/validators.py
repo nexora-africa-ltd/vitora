@@ -17,15 +17,15 @@ MAX_FILE_SIZE = 10 * 1024 * 1024
 def validate_lab_attachment(file):
     """
     Validate lab result attachment file.
-    
+
     Checks:
     - File extension is in allowed list
     - File size is under maximum limit
     - Content type is acceptable
-    
+
     Args:
         file: UploadedFile instance
-        
+
     Raises:
         ValidationError: If file fails validation
     """

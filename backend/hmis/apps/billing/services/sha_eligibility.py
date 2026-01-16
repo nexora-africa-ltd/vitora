@@ -23,25 +23,25 @@ from hmis.apps.billing.services.sha_auth import SHAAuthError, SHAAuthService
 class SHAEligibilityService:
     """
     Service for verifying SHA member eligibility.
-    
+
     Handles API communication with SHA, caching, and retry logic.
     Uses the official Kenya Digital Superhighway eligibility endpoint.
-    
+
     Official API:
         GET /v2/eligibility?doc_type={doc_type}&doc_value={doc_value}
-        
+
     Supported doc_types:
         - national_id
         - kra_pin
         - sha_number
         - cr_number (Client Registry number)
-    
+
     Attributes:
         api_base_url: Base URL for SHA API
         auth_service: SHA authentication service
         timeout: Request timeout in seconds
         max_retries: Maximum number of retry attempts
-    
+
     Example:
         >>> service = SHAEligibilityService()
         >>> check = service.check_eligibility(sha_member, user)
@@ -72,15 +72,15 @@ class SHAEligibilityService:
     ) -> SHAEligibilityCheck:
         """
         Check eligibility for a SHA member.
-        
+
         Args:
             sha_member: The member to check
             user: User performing the check
             force_refresh: Bypass cache and always call API
-        
+
         Returns:
             SHAEligibilityCheck record with results
-        
+
         Example:
             >>> service = SHAEligibilityService()
             >>> check = service.check_eligibility(member, user)
@@ -123,14 +123,14 @@ class SHAEligibilityService:
     def _build_request(self, sha_member: SHAMember) -> dict:
         """
         Build API request parameters for eligibility check.
-        
+
         Per official SHA API spec, uses query parameters:
         - doc_type: Type of document (sha_number, national_id, etc.)
         - doc_value: The document value
-        
+
         Args:
             sha_member: The member to build request for
-            
+
         Returns:
             Dict containing request parameters
         """
@@ -155,18 +155,18 @@ class SHAEligibilityService:
     def _call_api(self, request_params: dict) -> dict:
         """
         Make API call with retry logic.
-        
+
         Uses GET request to /v2/eligibility with query parameters
         per the official SHA API specification.
-        
+
         Implements exponential backoff: 1s, 2s, 4s between retries.
-        
+
         Args:
             request_params: Query parameters to send
-            
+
         Returns:
             Dict containing API response data
-            
+
         Raises:
             requests.Timeout: If all retries timeout
             requests.RequestException: If all retries fail
@@ -229,7 +229,7 @@ class SHAEligibilityService:
     ) -> SHAEligibilityCheck:
         """
         Process API response and create check record.
-        
+
         Official SHA response format:
         {
             "eligible": true,
@@ -241,14 +241,14 @@ class SHAEligibilityService:
                 "copay_percentage": 10
             }
         }
-        
+
         Args:
             sha_member: The member checked
             user: User who performed the check
             request_data: Original request parameters
             response: API response data (already extracted from wrapper)
             response_time: Response time in milliseconds
-            
+
         Returns:
             SHAEligibilityCheck record with parsed results
         """
@@ -296,14 +296,14 @@ class SHAEligibilityService:
     ) -> SHAEligibilityCheck:
         """
         Create a cached eligibility check result from stored member data.
-        
+
         Used when the member has a recent valid eligibility check and
         force_refresh is False.
-        
+
         Args:
             sha_member: The member with cached eligibility data
             user: User performing the check
-            
+
         Returns:
             SHAEligibilityCheck record based on cached data
         """
@@ -343,16 +343,16 @@ class SHAEligibilityService:
     ) -> SHAEligibilityCheck:
         """
         Create an error eligibility check result.
-        
+
         Used when API call fails due to timeout or other errors.
-        
+
         Args:
             sha_member: The member being checked
             user: User performing the check
             request_data: Original request payload
             error_code: Error code (e.g., 'TIMEOUT', 'API_ERROR')
             error_message: Human-readable error message
-            
+
         Returns:
             SHAEligibilityCheck record with error details
         """
@@ -381,10 +381,10 @@ class SHAEligibilityService:
     def _parse_decimal(self, value: Any) -> Decimal | None:
         """
         Safely parse a value to Decimal.
-        
+
         Args:
             value: Value to parse (string, int, float, or None)
-            
+
         Returns:
             Decimal value or None if parsing fails
         """
@@ -398,10 +398,10 @@ class SHAEligibilityService:
     def _parse_date(self, value: Any) -> date | None:
         """
         Safely parse a value to date.
-        
+
         Args:
             value: ISO format date string or None
-            
+
         Returns:
             date object or None if parsing fails
         """
@@ -421,16 +421,16 @@ class SHAEligibilityService:
     ) -> dict:
         """
         Check eligibility directly via SHA API without requiring an SHAMember record.
-        
+
         This is useful during patient registration/lookup to verify SHA coverage
         before creating a local SHAMember record.
-        
+
         Official API: GET /v2/eligibility?identification_type={type}&identification_number={value}
-        
+
         Args:
             identification_type: Type of ID ('National ID', 'SHA Number', etc.)
             identification_number: The ID number value
-            
+
         Returns:
             Dict with eligibility information:
             {

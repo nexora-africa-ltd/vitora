@@ -877,10 +877,10 @@ class StockAdjustment(models.Model):
 class AlertSettings(models.Model):
     """
     Global alert configuration settings.
-    
+
     Stores configuration for automated alert generation including
     thresholds for low stock and expiry warnings.
-    
+
     Only one instance should exist (enforced at application level).
     """
 
@@ -947,7 +947,7 @@ class AlertSettings(models.Model):
     def get_settings(cls):
         """
         Get or create the singleton alert settings instance.
-        
+
         Returns:
             AlertSettings: The alert settings instance
         """

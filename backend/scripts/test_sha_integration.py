@@ -17,11 +17,11 @@ Prerequisites:
 Usage:
     # Credentials loaded automatically from .env
     poetry run python scripts/test_sha_integration.py
-    
+
     # Run specific test
     poetry run python scripts/test_sha_integration.py --test eligibility
     poetry run python scripts/test_sha_integration.py --test claims
-    
+
     # Use specific member for testing
     poetry run python scripts/test_sha_integration.py --sha-number "SHA-123456789"
     poetry run python scripts/test_sha_integration.py --national-id "12345678"
@@ -96,7 +96,7 @@ class SHACredentials:
 class SHAIntegrationTester:
     """
     Test SHA API integration with real credentials.
-    
+
     Tests the following official endpoints:
     - /v1/hie-auth - Authentication (Basic Auth → JWT)
     - /v2/eligibility - Member eligibility verification
@@ -147,14 +147,14 @@ class SHAIntegrationTester:
     ) -> tuple[int, dict | None, str | None]:
         """
         Make an API request to SHA.
-        
+
         Args:
             method: HTTP method
             endpoint: API endpoint path
             data: JSON body data
             params: Query parameters
             use_basic_auth: Use Basic Auth instead of Bearer token
-        
+
         Returns:
             Tuple of (status_code, response_json, error_message)
         """
@@ -205,7 +205,7 @@ class SHAIntegrationTester:
     def test_authentication(self) -> bool:
         """
         Test authentication endpoint.
-        
+
         Official: GET /v1/hie-auth?key={consumer_key}
         Uses Basic Auth to obtain JWT token.
         """
@@ -247,7 +247,7 @@ class SHAIntegrationTester:
     ) -> bool:
         """
         Test eligibility verification endpoint.
-        
+
         Official: GET /v2/eligibility?doc_type={type}&doc_value={value}
         """
         self._log("=" * 60)
@@ -299,7 +299,7 @@ class SHAIntegrationTester:
     def test_terminology_lookup(self) -> bool:
         """
         Test terminology service endpoints.
-        
+
         Official: GET /terminology/v1/icd11?code={code}
         """
         self._log("=" * 60)
@@ -337,7 +337,7 @@ class SHAIntegrationTester:
     def test_claim_submission(self, sha_number: str) -> str | None:
         """
         Test claim submission.
-        
+
         Official: POST /v1/shr-med/bundle
         Submits FHIR Bundle format.
         """
@@ -443,7 +443,7 @@ class SHAIntegrationTester:
     def test_claim_status(self, claim_ref: str) -> bool:
         """
         Test claim status lookup.
-        
+
         Official: GET /v1/shr-med/claim-status?claim_id={claim_id}
         """
         self._log("=" * 60)
@@ -489,11 +489,11 @@ class SHAIntegrationTester:
     ) -> dict:
         """
         Run all integration tests.
-        
+
         Args:
             sha_number: SHA member number for testing
             national_id: National ID for eligibility testing
-            
+
         Returns:
             Summary of test results
         """
@@ -566,22 +566,22 @@ def main():
 Examples:
     # Run all tests with default settings
     python scripts/test_sha_integration.py
-    
+
     # Test eligibility for specific member
     python scripts/test_sha_integration.py --sha-number "SHA-123456789"
-    
+
     # Test with national ID
     python scripts/test_sha_integration.py --national-id "12345678"
-    
+
     # Run specific test only
     python scripts/test_sha_integration.py --test eligibility
-    
+
 Environment Variables (required):
     SHA_API_BASE_URL  - SHA API base URL (default: https://uat.dha.go.ke)
     SHA_CONSUMER_KEY  - Consumer key for API access
     SHA_USERNAME      - API username for Basic Auth
     SHA_PASSWORD      - API password for Basic Auth
-    
+
 Optional:
     SHA_CLIENT_SECRET - Client secret (if required)
         """

@@ -1017,7 +1017,7 @@ class LabResultTemplate(models.Model):
 class LabResultAttachment(models.Model):
     """
     Scanned or uploaded lab result document.
-    
+
     Supports external lab results, scanned reports, images, and graphs.
     Files are validated for type (PDF, PNG, JPG, TIFF) and size (<10MB).
     """
@@ -1095,7 +1095,7 @@ class LabResultAttachment(models.Model):
     def _get_mime_type(self) -> str:
         """
         Determine MIME type from file.
-        
+
         Returns:
             str: MIME type (e.g., 'application/pdf', 'image/png')
         """

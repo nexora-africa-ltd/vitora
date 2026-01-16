@@ -17,7 +17,7 @@ import pytest  # type: ignore
 class RefillCalculator:
     """
     Refill balance calculator per SHR specification.
-    
+
     Reference: docs/sha-guides/shr-integration.md Section 5
     """
 
@@ -25,13 +25,13 @@ class RefillCalculator:
     def calculate_refill_balance(ips_bundle: dict, medication_request_id: str) -> dict:
         """
         Calculate remaining refills based on the IPS data.
-        
+
         This is the Python implementation from the SHR spec.
-        
+
         Args:
             ips_bundle: IPS FHIR bundle containing MedicationRequest and MedicationDispense
             medication_request_id: ID of the MedicationRequest to check
-            
+
         Returns:
             dict with refill information
         """
@@ -205,14 +205,14 @@ def ips_with_2_dispenses(prescription_with_5_refills, dispense_record_factory):
 class TestRefillCalculationBasics:
     """
     Tests for basic refill calculation logic per SHR specification.
-    
+
     Reference: docs/sha-guides/shr-integration.md Section 5
     """
 
     def test_total_fills_equals_repeats_plus_one(self, refill_calculator, ips_with_no_dispenses):
         """
         SHR Requirement: Total allowed fills = numberOfRepeatsAllowed + 1.
-        
+
         Quote: 'Total allowed fills: This is the initial fill plus all refills'
         Quote: 'If the doctor allows 5 refills, the total is 6 fills (1 initial + 5 refills)'
         """
@@ -242,7 +242,7 @@ class TestRefillCalculationBasics:
     def test_remaining_refills_after_2_dispenses(self, refill_calculator, ips_with_2_dispenses):
         """
         SHR Requirement: Remaining = Total - Dispensed.
-        
+
         Quote from example: 'fillsDispensed: 2, remainingRefills: 4'
         """
         result = refill_calculator.calculate_refill_balance(
@@ -260,7 +260,7 @@ class TestRefillCalculationBasics:
 class TestNextRefillDateCalculation:
     """
     Tests for next refill date calculation.
-    
+
     Reference: docs/sha-guides/shr-integration.md
     Quote: 'Add those days to the last pickup date to find when they can get their next refill'
     """
@@ -294,7 +294,7 @@ class TestNextRefillDateCalculation:
     def test_uses_most_recent_dispense(self, prescription_with_5_refills, dispense_record_factory, refill_calculator):
         """
         SHR Requirement: Use most recent dispense for calculation.
-        
+
         Quote: 'Look at when the patient last picked up their medication'
         """
         rx_id = prescription_with_5_refills["id"]
@@ -324,7 +324,7 @@ class TestNextRefillDateCalculation:
 class TestPrescriptionValidity:
     """
     Tests for prescription validity checking.
-    
+
     Reference: docs/sha-guides/shr-integration.md
     Quote: 'If today's date is past the end date, the prescription is no longer valid'
     """
@@ -447,14 +447,14 @@ class TestRefillCalculationErrors:
 class TestRefillCalculationOutput:
     """
     Tests for refill calculation output format.
-    
+
     Reference: docs/sha-guides/shr-integration.md Example Output
     """
 
     def test_output_contains_all_required_fields(self, refill_calculator, ips_with_2_dispenses):
         """
         SHR Requirement: Output must contain all specified fields.
-        
+
         Quote from example output: medicationRequestId, totalAllowedFills, fillsDispensed,
         remainingRefills, nextRefillDueDate, isPrescriptionValid, prescriptionExpiryDate
         """

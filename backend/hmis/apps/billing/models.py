@@ -91,15 +91,15 @@ class Service(models.Model):
     def __str__(self):
         return f"{self.code} - {self.name}"
 
-    def clean(self):
-        """Validate service data."""
-        if self.unit_price is not None and self.unit_price <= 0:
-            raise ValidationError({'unit_price': 'Unit price must be greater than 0.'})
-
     def save(self, *args, **kwargs):
         """Override save to run validation."""
         self.full_clean()
         super().save(*args, **kwargs)
+
+    def clean(self):
+        """Validate service data."""
+        if self.unit_price is not None and self.unit_price <= 0:
+            raise ValidationError({'unit_price': 'Unit price must be greater than 0.'})
 
     def get_display_name(self) -> str:
         """Return formatted display name."""
@@ -244,13 +244,6 @@ class Invoice(models.Model):
     def __str__(self):
         return f"{self.invoice_number} - {self.patient}"
 
-    def clean(self):
-        """Validate invoice data."""
-        if self.due_date and self.invoice_date and self.due_date < self.invoice_date:
-            raise ValidationError({
-                'due_date': 'Due date must be on or after invoice date.'
-            })
-
     def save(self, *args, **kwargs):
         """Override save to generate invoice number and validate."""
         if not self.invoice_number:
@@ -261,6 +254,13 @@ class Invoice(models.Model):
             )
         self.full_clean()
         super().save(*args, **kwargs)
+
+    def clean(self):
+        """Validate invoice data."""
+        if self.due_date and self.invoice_date and self.due_date < self.invoice_date:
+            raise ValidationError({
+                'due_date': 'Due date must be on or after invoice date.'
+            })
 
     @staticmethod
     def generate_invoice_number() -> str:
@@ -365,10 +365,12 @@ class Invoice(models.Model):
     def mark_overdue(self):
         """Mark invoice as overdue if past grace period."""
         grace_period = timedelta(days=settings.BILLING_OVERDUE_GRACE_DAYS)
-        if date.today() > (self.due_date + grace_period):
-            if self.status in [self.Status.PENDING, self.Status.PARTIAL]:
-                self.status = self.Status.OVERDUE
-                self.save(update_fields=['status', 'updated_at'])
+        if (
+            date.today() > (self.due_date + grace_period)
+            and self.status in [self.Status.PENDING, self.Status.PARTIAL]
+        ):
+            self.status = self.Status.OVERDUE
+            self.save(update_fields=['status', 'updated_at'])
 
     def can_be_edited(self) -> bool:
         """Check if invoice can be edited."""
@@ -469,20 +471,6 @@ class InvoiceItem(models.Model):
     def __str__(self):
         return f"{self.description} - {self.quantity} x {self.unit_price}"
 
-    def clean(self):
-        """Validate invoice item data."""
-        if self.quantity is not None and self.quantity <= 0:
-            raise ValidationError({'quantity': 'Quantity must be greater than 0.'})
-        if self.unit_price is not None and self.unit_price <= 0:
-            raise ValidationError({'unit_price': 'Unit price must be greater than 0.'})
-
-    def calculate_line_total(self) -> Decimal:
-        """Calculate line total."""
-        from decimal import ROUND_HALF_UP, Decimal
-        line_total = (self.quantity * self.unit_price) - self.discount_amount
-        # Round to 2 decimal places to avoid validation errors
-        return line_total.quantize(Decimal('0.01'), rounding=ROUND_HALF_UP)
-
     def save(self, *args, **kwargs):
         """Override save to calculate line total and update invoice."""
         # Calculate line_total before validation if not set
@@ -494,11 +482,25 @@ class InvoiceItem(models.Model):
         # Update invoice totals
         self.invoice.calculate_totals()
 
+    def clean(self):
+        """Validate invoice item data."""
+        if self.quantity is not None and self.quantity <= 0:
+            raise ValidationError({'quantity': 'Quantity must be greater than 0.'})
+        if self.unit_price is not None and self.unit_price <= 0:
+            raise ValidationError({'unit_price': 'Unit price must be greater than 0.'})
+
     def delete(self, *args, **kwargs):
         """Override delete to update invoice totals."""
         invoice = self.invoice
         super().delete(*args, **kwargs)
         invoice.calculate_totals()
+
+    def calculate_line_total(self) -> Decimal:
+        """Calculate line total."""
+        from decimal import ROUND_HALF_UP, Decimal
+        line_total = (self.quantity * self.unit_price) - self.discount_amount
+        # Round to 2 decimal places to avoid validation errors
+        return line_total.quantize(Decimal('0.01'), rounding=ROUND_HALF_UP)
 
 
 class Payment(models.Model):
@@ -572,6 +574,13 @@ class Payment(models.Model):
     def __str__(self):
         return f"{self.payment_reference} - {self.amount}"
 
+    def save(self, *args, **kwargs):
+        """Override save to generate payment reference and validate."""
+        if not self.payment_reference:
+            self.payment_reference = self.generate_reference()
+        self.full_clean()
+        super().save(*args, **kwargs)
+
     def clean(self):
         """Validate payment data."""
         if self.amount is not None and self.amount <= 0:
@@ -582,20 +591,12 @@ class Payment(models.Model):
             return
 
         # Check invoice balance
-        if self.invoice and self.amount:
-            if self.amount > self.invoice.balance_due:
-                raise ValidationError({'amount': 'Payment amount exceeds invoice balance.'})
+        if self.invoice and self.amount and self.amount > self.invoice.balance_due:
+            raise ValidationError({'amount': 'Payment amount exceeds invoice balance.'})
 
         # Check invoice status
         if self.invoice and self.invoice.status == Invoice.Status.CANCELLED:
             raise ValidationError('Cannot create payment for cancelled invoice.')
-
-    def save(self, *args, **kwargs):
-        """Override save to generate payment reference and validate."""
-        if not self.payment_reference:
-            self.payment_reference = self.generate_reference()
-        self.full_clean()
-        super().save(*args, **kwargs)
 
     @staticmethod
     def generate_reference() -> str:
@@ -849,6 +850,13 @@ class CreditNote(models.Model):
     def __str__(self):
         return f"{self.credit_note_number} - {self.amount}"
 
+    def save(self, *args, **kwargs):
+        """Override save to generate credit note number and validate."""
+        if not self.credit_note_number:
+            self.credit_note_number = self.generate_credit_note_number()
+        self.full_clean()
+        super().save(*args, **kwargs)
+
     def clean(self):
         """Validate credit note data."""
         if self.amount is not None and self.amount <= 0:
@@ -857,13 +865,6 @@ class CreditNote(models.Model):
         # Check against invoice total
         if self.invoice and self.amount and self.amount > self.invoice.total_amount:
             raise ValidationError({'amount': 'Credit note amount cannot exceed invoice total.'})
-
-    def save(self, *args, **kwargs):
-        """Override save to generate credit note number and validate."""
-        if not self.credit_note_number:
-            self.credit_note_number = self.generate_credit_note_number()
-        self.full_clean()
-        super().save(*args, **kwargs)
 
     @staticmethod
     def generate_credit_note_number() -> str:
@@ -898,7 +899,7 @@ class CreditNote(models.Model):
         self.approved_at = timezone.now()
         self.save()
 
-    def reject(self, user, reason: str):
+    def reject(self, _user, reason: str):
         """Reject credit note."""
         if self.status != self.Status.DRAFT:
             raise ValidationError("Only draft credit notes can be rejected.")
@@ -1068,6 +1069,11 @@ class SHAMember(models.Model):
     def __str__(self):
         return f"{self.sha_number} - {self.patient}"
 
+    def save(self, *args, **kwargs):
+        """Override save to run validation."""
+        self.full_clean()
+        super().save(*args, **kwargs)
+
     def clean(self):
         """Validate SHA member data."""
         errors = {}
@@ -1077,28 +1083,40 @@ class SHAMember(models.Model):
             errors['sha_number'] = 'SHA number must start with "SHA-"'
 
         # Principal members should have a National ID; dependents may not
-        if self.membership_type == self.MembershipType.PRINCIPAL:
-            if not self.national_id:
-                errors['national_id'] = 'National ID is required for principal members'
+        if (
+            self.membership_type == self.MembershipType.PRINCIPAL
+            and not self.national_id
+        ):
+            errors['national_id'] = 'National ID is required for principal members'
 
         # Dependents must have principal SHA number or principal FK
-        if self.membership_type != self.MembershipType.PRINCIPAL:
-            if not self.principal_sha_number and not self.principal:
-                errors['principal_sha_number'] = (
-                    'Dependents must have a principal SHA number or principal member reference'
-                )
-            # Validate principal FK points to a principal member
-            if self.principal and self.principal.membership_type != self.MembershipType.PRINCIPAL:
-                errors['principal'] = (
-                    'Principal reference must point to a principal member'
-                )
+        if (
+            self.membership_type != self.MembershipType.PRINCIPAL
+            and not self.principal_sha_number
+            and not self.principal
+        ):
+            errors['principal_sha_number'] = (
+                'Dependents must have a principal SHA number or principal member reference'
+            )
+        # Validate principal FK points to a principal member
+        if (
+            self.membership_type != self.MembershipType.PRINCIPAL
+            and self.principal
+            and self.principal.membership_type != self.MembershipType.PRINCIPAL
+        ):
+            errors['principal'] = (
+                'Principal reference must point to a principal member'
+            )
 
         # Coverage dates validation
-        if self.coverage_start_date and self.coverage_end_date:
-            if self.coverage_end_date < self.coverage_start_date:
-                errors['coverage_end_date'] = (
-                    'Coverage end date must be after start date'
-                )
+        if (
+            self.coverage_start_date
+            and self.coverage_end_date
+            and self.coverage_end_date < self.coverage_start_date
+        ):
+            errors['coverage_end_date'] = (
+                'Coverage end date must be after start date'
+            )
 
         # PFMS validation: category required when PFMS eligible
         if self.is_pfms_eligible and not self.pfms_category:
@@ -1108,11 +1126,6 @@ class SHAMember(models.Model):
 
         if errors:
             raise ValidationError(errors)
-
-    def save(self, *args, **kwargs):
-        """Override save to run validation."""
-        self.full_clean()
-        super().save(*args, **kwargs)
 
     def is_eligible(self) -> bool:
         """
@@ -1291,6 +1304,11 @@ class SHATariff(models.Model):
     def __str__(self):
         return f"{self.code} - {self.name} (KES {self.sha_amount})"
 
+    def save(self, *args, **kwargs):
+        """Override save to run validation."""
+        self.full_clean()
+        super().save(*args, **kwargs)
+
     def clean(self):
         """Validate tariff data."""
         errors = {}
@@ -1300,9 +1318,12 @@ class SHATariff(models.Model):
             errors['sha_amount'] = 'SHA amount must be greater than 0'
 
         # Expiry date must be after effective date
-        if self.expiry_date and self.effective_date:
-            if self.expiry_date < self.effective_date:
-                errors['expiry_date'] = 'Expiry date must be after effective date'
+        if (
+            self.expiry_date
+            and self.effective_date
+            and self.expiry_date < self.effective_date
+        ):
+            errors['expiry_date'] = 'Expiry date must be after effective date'
 
         # Max quantity must be at least 1
         if self.max_quantity_per_claim < 1:
@@ -1310,11 +1331,6 @@ class SHATariff(models.Model):
 
         if errors:
             raise ValidationError(errors)
-
-    def save(self, *args, **kwargs):
-        """Override save to run validation."""
-        self.full_clean()
-        super().save(*args, **kwargs)
 
     def is_valid_on_date(self, check_date: date = None) -> bool:
         """
@@ -1644,6 +1660,13 @@ class SHAClaim(models.Model):
     def __str__(self):
         return f"{self.claim_number} - {self.patient} ({self.get_status_display()})"
 
+    def save(self, *args, **kwargs):
+        """Override save to generate claim number and run validation."""
+        if not self.claim_number:
+            self.claim_number = self.generate_claim_number()
+        self.full_clean()
+        super().save(*args, **kwargs)
+
     def clean(self):
         """Validate claim data."""
         errors = {}
@@ -1657,14 +1680,16 @@ class SHAClaim(models.Model):
             errors['service_date'] = 'Service date cannot be in the future'
 
         # Validate inpatient claims have admission date
-        if self.claim_type == self.ClaimType.INPATIENT:
-            if not self.admission_date:
-                errors['admission_date'] = 'Inpatient claims require admission date'
+        if self.claim_type == self.ClaimType.INPATIENT and not self.admission_date:
+            errors['admission_date'] = 'Inpatient claims require admission date'
 
         # Validate discharge after admission
-        if self.admission_date and self.discharge_date:
-            if self.discharge_date < self.admission_date:
-                errors['discharge_date'] = 'Discharge date must be on or after admission date'
+        if (
+            self.admission_date
+            and self.discharge_date
+            and self.discharge_date < self.admission_date
+        ):
+            errors['discharge_date'] = 'Discharge date must be on or after admission date'
 
         # Validate claimed amount is not negative
         if self.claimed_amount is not None and self.claimed_amount < 0:
@@ -1680,13 +1705,6 @@ class SHAClaim(models.Model):
 
         if errors:
             raise ValidationError(errors)
-
-    def save(self, *args, **kwargs):
-        """Override save to generate claim number and run validation."""
-        if not self.claim_number:
-            self.claim_number = self.generate_claim_number()
-        self.full_clean()
-        super().save(*args, **kwargs)
 
     @staticmethod
     def generate_claim_number() -> str:
@@ -1818,7 +1836,7 @@ class SHAClaim(models.Model):
         Create an appeal (resubmission) of this claim.
 
         Args:
-            reason: Reason for appeal
+            reason: Reason for appeal (stored in appeal notes)
             user: User creating the appeal
 
         Returns:
@@ -1832,7 +1850,7 @@ class SHAClaim(models.Model):
                 '__all__': [f"Claim with status '{self.get_status_display()}' cannot be appealed"]
             })
 
-        # Create new claim as appeal
+        # Create new claim as appeal with reason stored in notes
         appeal = SHAClaim.objects.create(
             patient=self.patient,
             sha_member=self.sha_member,
@@ -1850,6 +1868,7 @@ class SHAClaim(models.Model):
             preauth_number=self.preauth_number,
             preauth_date=self.preauth_date,
             preauth_valid_until=self.preauth_valid_until,
+            adjudication_notes=f"Appeal reason: {reason}",
             version=self.version + 1,
             parent_claim=self,
             created_by=user,
@@ -1995,29 +2014,6 @@ class SHAClaimItem(models.Model):
     def __str__(self):
         return f"{self.claim.claim_number} - {self.description}"
 
-    def clean(self):
-        """Validate claim item data."""
-        errors = {}
-
-        # Quantity must be positive
-        if self.quantity is not None and self.quantity <= 0:
-            errors['quantity'] = 'Quantity must be greater than 0'
-
-        # Unit price cannot be negative
-        if self.unit_price is not None and self.unit_price < 0:
-            errors['unit_price'] = 'Unit price cannot be negative'
-
-        # Validate against tariff max quantity
-        if self.tariff and self.quantity:
-            if self.quantity > self.tariff.max_quantity_per_claim:
-                errors['quantity'] = (
-                    f'Exceeds maximum quantity ({self.tariff.max_quantity_per_claim}) '
-                    f'for this tariff'
-                )
-
-        if errors:
-            raise ValidationError(errors)
-
     def save(self, *args, **kwargs):
         """Override save to auto-calculate claimed amount and validate."""
         # Auto-calculate claimed amount (quantize to 2 decimal places)
@@ -2031,6 +2027,32 @@ class SHAClaimItem(models.Model):
 
         # Update parent claim total
         self.claim.calculate_claimed_amount()
+
+    def clean(self):
+        """Validate claim item data."""
+        errors = {}
+
+        # Quantity must be positive
+        if self.quantity is not None and self.quantity <= 0:
+            errors['quantity'] = 'Quantity must be greater than 0'
+
+        # Unit price cannot be negative
+        if self.unit_price is not None and self.unit_price < 0:
+            errors['unit_price'] = 'Unit price cannot be negative'
+
+        # Validate against tariff max quantity
+        if (
+            self.tariff
+            and self.quantity
+            and self.quantity > self.tariff.max_quantity_per_claim
+        ):
+            errors['quantity'] = (
+                f'Exceeds maximum quantity ({self.tariff.max_quantity_per_claim}) '
+                f'for this tariff'
+            )
+
+        if errors:
+            raise ValidationError(errors)
 
     def apply_tariff(self, tariff: 'SHATariff'):
         """
@@ -2186,6 +2208,10 @@ class SHAClaimAttachment(models.Model):
     def __str__(self):
         return f"{self.claim.claim_number} - {self.get_attachment_type_display()}"
 
+    def save(self, *args, **kwargs):
+        self.full_clean()
+        super().save(*args, **kwargs)
+
     def clean(self):
         """Validate attachment."""
         # Max file size: 10MB
@@ -2199,10 +2225,6 @@ class SHAClaimAttachment(models.Model):
             raise ValidationError({
                 'mime_type': f'File type not allowed. Allowed types: PDF, JPEG, PNG, TIFF. Got: {self.mime_type}'
             })
-
-    def save(self, *args, **kwargs):
-        self.full_clean()
-        super().save(*args, **kwargs)
 
     @classmethod
     def get_required_types(cls, claim_type: str) -> list[str]:

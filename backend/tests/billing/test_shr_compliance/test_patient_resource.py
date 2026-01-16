@@ -12,7 +12,7 @@ Reference: https://hl7.org/fhir/R4/patient.html
 class TestPatientResourceRequiredFields:
     """
     Tests for required Patient resource fields per SHR specification.
-    
+
     Reference: docs/sha-guides/shr-integration.md Section 1
     Quote: 'PUT {{base_url}}/v1/patient-resource?cr_id=CR06XX3268000-3-1'
     """
@@ -31,7 +31,7 @@ class TestPatientResourceRequiredFields:
     def test_patient_has_id(self, valid_patient_resource_fhir):
         """
         SHR Requirement: Patient must have id (CR ID).
-        
+
         Quote from spec: '"id": "CR06XX3268000-3-1"'
         """
         assert 'id' in valid_patient_resource_fhir, (
@@ -44,7 +44,7 @@ class TestPatientResourceRequiredFields:
     def test_patient_id_is_cr_id(self, valid_patient_resource_fhir):
         """
         SHR Requirement: Patient id should be the Client Registry ID.
-        
+
         Format: CR{county_code}{facility_code}{patient_number}
         """
         patient_id = valid_patient_resource_fhir.get('id', '')
@@ -58,7 +58,7 @@ class TestPatientResourceRequiredFields:
 class TestPatientResourceIdentifier:
     """
     Tests for Patient identifier per SHR specification.
-    
+
     Reference: docs/sha-guides/shr-integration.md
     Quote: '"identifier": [{"use": "official", "system": "https://cr.tiberbu.app/...", "value": "CR..."}]'
     """
@@ -77,7 +77,7 @@ class TestPatientResourceIdentifier:
     def test_identifier_has_use(self, valid_patient_resource_fhir):
         """
         SHR Requirement: Identifier should have use designation.
-        
+
         Quote: '"use": "official"'
         """
         identifier = valid_patient_resource_fhir.get('identifier', [{}])[0]
@@ -91,7 +91,7 @@ class TestPatientResourceIdentifier:
     def test_identifier_has_system(self, valid_patient_resource_fhir):
         """
         SHR Requirement: Identifier must have system URI.
-        
+
         Quote: '"system": "https://cr.tiberbu.app/app/client-registry/..."'
         """
         identifier = valid_patient_resource_fhir.get('identifier', [{}])[0]
@@ -129,7 +129,7 @@ class TestPatientResourceIdentifier:
 class TestPatientResourceName:
     """
     Tests for Patient name per SHR specification.
-    
+
     Reference: docs/sha-guides/shr-integration.md
     Quote: '"name": [{"text": "STEPHEN GITAU", "family": "GITAU", "given": ["STEPHEN"]}]'
     """
@@ -148,7 +148,7 @@ class TestPatientResourceName:
     def test_name_has_family(self, valid_patient_resource_fhir):
         """
         SHR Requirement: Name must have family name.
-        
+
         Quote: '"family": "GITAU"'
         """
         name = valid_patient_resource_fhir.get('name', [{}])[0]
@@ -162,7 +162,7 @@ class TestPatientResourceName:
     def test_name_has_given(self, valid_patient_resource_fhir):
         """
         SHR Requirement: Name must have given name(s).
-        
+
         Quote: '"given": ["STEPHEN"]'
         """
         name = valid_patient_resource_fhir.get('name', [{}])[0]
@@ -179,7 +179,7 @@ class TestPatientResourceName:
     def test_name_has_text(self, valid_patient_resource_fhir):
         """
         SHR Requirement: Name should have text (full name).
-        
+
         Quote: '"text": "STEPHEN GITAU"'
         """
         name = valid_patient_resource_fhir.get('name', [{}])[0]
@@ -191,7 +191,7 @@ class TestPatientResourceName:
 class TestPatientResourceGender:
     """
     Tests for Patient gender per SHR specification.
-    
+
     Reference: docs/sha-guides/shr-integration.md
     Quote: '"gender": "male"'
     """
@@ -207,7 +207,7 @@ class TestPatientResourceGender:
     def test_gender_is_fhir_compliant(self, valid_patient_resource_fhir):
         """
         SHR Requirement: Gender must use FHIR administrative gender codes.
-        
+
         FHIR gender codes: male, female, other, unknown
         """
         gender = valid_patient_resource_fhir.get('gender', '')
@@ -231,14 +231,14 @@ class TestPatientResourceGender:
 class TestPatientResourceOptionalFields:
     """
     Tests for optional but recommended Patient fields.
-    
+
     Reference: https://hl7.org/fhir/R4/patient.html
     """
 
     def test_patient_can_have_birth_date(self, valid_patient_resource_fhir):
         """
         SHR Recommendation: Patient should have birthDate for proper identification.
-        
+
         Format: YYYY-MM-DD (FHIR date format)
         """
         assert 'birthDate' in valid_patient_resource_fhir, (
@@ -257,7 +257,7 @@ class TestPatientResourceOptionalFields:
     def test_patient_can_have_telecom(self, valid_patient_resource_fhir):
         """
         SHR Recommendation: Patient should have contact information.
-        
+
         Reference: https://hl7.org/fhir/R4/datatypes.html#ContactPoint
         """
         assert 'telecom' in valid_patient_resource_fhir, (
@@ -279,7 +279,7 @@ class TestPatientResourceOptionalFields:
     def test_patient_can_have_address(self, valid_patient_resource_fhir):
         """
         SHR Recommendation: Patient should have address.
-        
+
         Reference: https://hl7.org/fhir/R4/datatypes.html#Address
         """
         assert 'address' in valid_patient_resource_fhir, (
@@ -303,7 +303,7 @@ class TestPatientResourceOptionalFields:
     def test_telecom_phone_format(self, valid_patient_resource_fhir):
         """
         SHR Recommendation: Phone numbers should be in E.164 format for Kenya.
-        
+
         Format: +254XXXXXXXXX
         """
         telecom = valid_patient_resource_fhir.get('telecom', [])
@@ -319,7 +319,7 @@ class TestPatientResourceOptionalFields:
     def test_address_has_country_code(self, valid_patient_resource_fhir):
         """
         SHR Recommendation: Address should include country code for Kenya.
-        
+
         ISO 3166-1 alpha-2: KE
         """
         addresses = valid_patient_resource_fhir.get('address', [])
@@ -334,7 +334,7 @@ class TestPatientResourceOptionalFields:
 class TestPatientResourceAPIEndpoint:
     """
     Tests for Patient resource API endpoint configuration.
-    
+
     Reference: docs/sha-guides/shr-integration.md
     Quote: 'PUT {{base_url}}/v1/patient-resource?cr_id=CR06XX3268000-3-1'
     """
@@ -353,7 +353,7 @@ class TestPatientResourceAPIEndpoint:
     def test_patient_resource_uses_put_method(self):
         """
         SHR Requirement: Patient registration uses PUT for upsert behavior.
-        
+
         Quote: 'PUT {{base_url}}/v1/patient-resource?cr_id=...'
         """
         # This is a documentation/spec test - actual HTTP method tested in integration tests
@@ -365,7 +365,7 @@ class TestPatientResourceAPIEndpoint:
     def test_patient_resource_requires_cr_id_query_param(self):
         """
         SHR Requirement: Patient resource endpoint requires cr_id query parameter.
-        
+
         Quote: 'PUT {{base_url}}/v1/patient-resource?cr_id=CR06XX3268000-3-1'
         """
         # Spec requirement documentation test
@@ -402,7 +402,7 @@ class TestPatientResourceCRIDFormat:
     def test_cr_id_format_matches_spec(self, valid_patient_resource_fhir):
         """
         SHR Requirement: CR ID should follow Kenya CR format.
-        
+
         Format appears to be: CR{facility_code}{patient_id}-{segment}-{sequence}
         Example: CR06XX3268000-3-1
         """

@@ -11,13 +11,13 @@ Sprint 1.5-1.6 Track E: Triage Module MVP
 def calculate_map(systolic: int, diastolic: int) -> int:
     """
     Calculate Mean Arterial Pressure (MAP).
-    
+
     MAP = (SBP + 2 × DBP) / 3
-    
+
     Args:
         systolic: Systolic blood pressure (mmHg)
         diastolic: Diastolic blood pressure (mmHg)
-        
+
     Returns:
         MAP value (rounded to nearest integer)
     """
@@ -27,12 +27,12 @@ def calculate_map(systolic: int, diastolic: int) -> int:
 def get_age_group(age_years: float) -> str:
     """
     Classify patient age for MAP thresholds.
-    
+
     Args:
         age_years: Patient age in years
-        
+
     Returns:
-        Age group string: 'adult', 'adolescent', 'school_age', 
+        Age group string: 'adult', 'adolescent', 'school_age',
                          'young_child', 'infant', 'neonate'
     """
     if age_years >= 18:
@@ -63,12 +63,12 @@ MAP_THRESHOLDS = {
 def check_map_status(systolic: int, diastolic: int, age_years: float = 30) -> tuple[str, str | None]:
     """
     Check MAP against age-appropriate thresholds.
-    
+
     Args:
         systolic: Systolic blood pressure (mmHg)
         diastolic: Diastolic blood pressure (mmHg)
         age_years: Patient age in years (default 30 for adult)
-        
+
     Returns:
         Tuple of (status, alert_message)
         status: 'critical', 'warning', or 'normal'
@@ -100,7 +100,7 @@ def check_map_status(systolic: int, diastolic: int, age_years: float = 30) -> tu
 class TriageCategoryCalculator:
     """
     Calculates triage category using KETA (Kenya Emergency Triage Assessment) rules.
-    
+
     Priority Order:
     1. RED - Life-threatening emergencies (immediate)
     2. ORANGE - Very urgent (<10 minutes)
@@ -112,7 +112,7 @@ class TriageCategoryCalculator:
     def __init__(self, thresholds: dict = None):
         """
         Initialize with custom or default thresholds.
-        
+
         Args:
             thresholds: Optional custom thresholds dict, uses defaults if None
         """
@@ -133,16 +133,16 @@ class TriageCategoryCalculator:
     ) -> tuple[str, list[str]]:
         """
         Calculate triage category and generate alerts.
-        
+
         Args:
-            vitals: Dict with spo2, systolic_bp, diastolic_bp, heart_rate, 
+            vitals: Dict with spo2, systolic_bp, diastolic_bp, heart_rate,
                    temperature, respiratory_rate
             mental_status: AVPU scale value (A/V/P/U)
             chief_complaint_category: From CHIEF_COMPLAINT_CHOICES
             pain_score: 0-10 pain scale (optional)
             mobility: Mobility status (optional)
             patient_age_years: Patient age in years (for age-adjusted MAP thresholds)
-        
+
         Returns:
             Tuple of (category, alerts_list)
         """
@@ -189,7 +189,7 @@ class TriageCategoryCalculator:
     ) -> list[str]:
         """
         Check for RED (Emergency) criteria.
-        
+
         RED if:
         - Mental status U (Unresponsive) or P (Responds to Pain)
         - SpO2 ≤ 90% (moderate-severe hypoxemia)
@@ -198,13 +198,13 @@ class TriageCategoryCalculator:
         - Heart rate < 40 or > 150
         - Altered consciousness chief complaint
         - Responds to voice only with altered consciousness
-        
+
         Args:
             vitals: Dictionary of vital signs
             mental_status: AVPU scale (A/V/P/U)
             chief_complaint: Chief complaint category
             patient_age_years: Patient age in years (for MAP thresholds)
-            
+
         Returns:
             List of RED-level alerts, empty if no RED criteria met
         """
@@ -275,19 +275,19 @@ class TriageCategoryCalculator:
     ) -> list[str]:
         """
         Check for ORANGE (Very Urgent) criteria.
-        
+
         ORANGE if:
         - Chest pain with BP > 140 or significant pain
         - Difficulty breathing with SpO2 < 95%
         - Pain score 9-10
         - Trauma with immobile status
-        
+
         Args:
             vitals: Dictionary of vital signs
             pain_score: Pain level 0-10
             chief_complaint: Chief complaint category
             mobility: Mobility status
-            
+
         Returns:
             List of ORANGE-level alerts, empty if no ORANGE criteria met
         """
@@ -327,16 +327,16 @@ class TriageCategoryCalculator:
     ) -> list[str]:
         """
         Check for YELLOW (Urgent) criteria.
-        
+
         YELLOW if:
         - Pain score 7-8
         - Fever with SpO2 < 95% or elevated temperature
-        
+
         Args:
             vitals: Dictionary of vital signs
             pain_score: Pain level 0-10
             chief_complaint: Chief complaint category
-            
+
         Returns:
             List of YELLOW-level alerts, empty if no YELLOW criteria met
         """
@@ -365,10 +365,10 @@ class TriageCategoryCalculator:
     def _check_vital_alerts(self, vitals: dict) -> list[str]:
         """
         Generate alerts for abnormal vitals (warning level).
-        
+
         Args:
             vitals: Dictionary of vital signs
-            
+
         Returns:
             List of warning-level alerts for abnormal vitals
         """

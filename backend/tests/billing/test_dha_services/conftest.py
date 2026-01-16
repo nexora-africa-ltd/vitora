@@ -14,10 +14,10 @@ import pytest
 def mock_sha_auth():
     """
     Mock SHAAuthService to prevent real auth API calls.
-    
+
     This fixture patches SHAAuthService at the module level before
     any service is instantiated, ensuring tests never hit real APIs.
-    
+
     Usage:
         def test_something(self, mock_sha_auth, service):
             # mock_sha_auth is already active
@@ -94,7 +94,7 @@ class SharedMock:
 def mock_requests_get():
     """
     Mock requests.get for API calls.
-    
+
     Patches at all service module locations to ensure
     all HTTP GET calls are intercepted. Returns a SharedMock
     that syncs return_value across all patches.
@@ -117,7 +117,7 @@ def mock_requests_get():
 def mock_requests_post():
     """
     Mock requests.post for API calls.
-    
+
     Patches at all service module locations to ensure
     all HTTP POST calls are intercepted.
     Note: sha_auth.requests.post is handled separately to always return valid token.
@@ -134,7 +134,7 @@ def mock_requests_post():
 def mock_requests_put():
     """
     Mock requests.put for API calls.
-    
+
     Patches at all service module locations to ensure
     all HTTP PUT calls are intercepted.
     """

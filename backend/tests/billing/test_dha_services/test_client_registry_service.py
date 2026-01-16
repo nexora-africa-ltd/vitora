@@ -396,12 +396,12 @@ class TestRegisterClient:
 
 class TestUpdateClient:
     """Tests for updating clients in Client Registry.
-    
+
     API: PUT /v3/update-client
-    
+
     Updatable fields per DHA docs:
     - email: Patient email address
-    - phone: Patient phone number  
+    - phone: Patient phone number
     - county: Patient county of residence
     - sub_county: Patient sub-county of residence
     """

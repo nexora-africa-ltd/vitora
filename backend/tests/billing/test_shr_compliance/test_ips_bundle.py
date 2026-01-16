@@ -12,7 +12,7 @@ Reference: https://hl7.org/fhir/uv/ips/
 class TestIPSBundleStructure:
     """
     Tests for IPS bundle structure per SHR specification.
-    
+
     Reference: docs/sha-guides/shr-integration.md Section 3
     Quote: 'GET {{base_url}}/v1/shr/summary?cr_id=CR06XX3268000-3-1'
     """
@@ -31,7 +31,7 @@ class TestIPSBundleStructure:
     def test_ips_has_type_document(self, valid_ips_bundle):
         """
         SHR Requirement: IPS bundle type must be 'document'.
-        
+
         Quote from spec: '"type": "document"'
         """
         assert 'type' in valid_ips_bundle, (
@@ -55,7 +55,7 @@ class TestIPSBundleStructure:
     def test_ips_has_timestamp(self, valid_ips_bundle):
         """
         SHR Requirement: IPS bundle must have timestamp.
-        
+
         Quote from spec: '"timestamp": "2025-03-28T10:58:27.831+00:00"'
         """
         assert 'timestamp' in valid_ips_bundle, (
@@ -84,7 +84,7 @@ class TestIPSBundleStructure:
 class TestIPSCompositionResource:
     """
     Tests for Composition resource in IPS bundle.
-    
+
     Reference: docs/sha-guides/shr-integration.md
     The first entry should be a Composition resource.
     """
@@ -103,7 +103,7 @@ class TestIPSCompositionResource:
     def test_composition_has_status(self, valid_ips_bundle):
         """
         SHR Requirement: Composition must have status.
-        
+
         Quote: '"status": "final"'
         """
         composition = self._get_composition(valid_ips_bundle)
@@ -117,7 +117,7 @@ class TestIPSCompositionResource:
     def test_composition_has_type(self, valid_ips_bundle):
         """
         SHR Requirement: Composition must have type with LOINC code.
-        
+
         Quote: '"code": "60591-5", "display": "Patient summary Document"'
         """
         composition = self._get_composition(valid_ips_bundle)
@@ -136,7 +136,7 @@ class TestIPSCompositionResource:
     def test_composition_has_subject(self, valid_ips_bundle):
         """
         SHR Requirement: Composition must reference the patient.
-        
+
         Quote: '"subject": {"reference": "Patient/CR06XX3268000-3-1"}'
         """
         composition = self._get_composition(valid_ips_bundle)
@@ -162,7 +162,7 @@ class TestIPSCompositionResource:
     def test_composition_has_author(self, valid_ips_bundle):
         """
         SHR Requirement: Composition must have author.
-        
+
         Quote: '"author": [{"reference": "Practitioner/789012"}]'
         """
         composition = self._get_composition(valid_ips_bundle)
@@ -176,7 +176,7 @@ class TestIPSCompositionResource:
     def test_composition_has_title(self, valid_ips_bundle):
         """
         SHR Requirement: Composition must have title.
-        
+
         Quote: '"title": "Patient Summary"'
         """
         composition = self._get_composition(valid_ips_bundle)
@@ -196,7 +196,7 @@ class TestIPSCompositionResource:
 class TestIPSCompositionSections:
     """
     Tests for Composition sections in IPS bundle.
-    
+
     Reference: docs/sha-guides/shr-integration.md
     """
 
@@ -215,7 +215,7 @@ class TestIPSCompositionSections:
     def test_allergies_section_present(self, valid_ips_bundle):
         """
         SHR Requirement: IPS should have allergies section.
-        
+
         Quote: '"title": "Allergies and Intolerances"'
         """
         composition = self._get_composition(valid_ips_bundle)
@@ -232,7 +232,7 @@ class TestIPSCompositionSections:
     def test_allergies_section_has_loinc_code(self, valid_ips_bundle):
         """
         SHR Requirement: Allergies section must have LOINC code.
-        
+
         Quote: '"code": "48765-2", "display": "Allergies and adverse reactions"'
         """
         composition = self._get_composition(valid_ips_bundle)
@@ -252,7 +252,7 @@ class TestIPSCompositionSections:
     def test_medication_section_present(self, valid_ips_bundle):
         """
         SHR Requirement: IPS should have medication list section.
-        
+
         Quote: '"title": "Medication List"'
         """
         composition = self._get_composition(valid_ips_bundle)
@@ -269,7 +269,7 @@ class TestIPSCompositionSections:
     def test_medication_section_has_loinc_code(self, valid_ips_bundle):
         """
         SHR Requirement: Medication section must have LOINC code.
-        
+
         Quote: '"code": "10160-0", "display": "History of Medication use"'
         """
         composition = self._get_composition(valid_ips_bundle)
@@ -371,7 +371,7 @@ class TestIPSBundleEntryFormat:
     def test_entries_have_full_url(self, valid_ips_bundle):
         """
         SHR Requirement: Bundle entries should have fullUrl.
-        
+
         Quote: '"fullUrl": "urn:uuid:..."'
         """
         for entry in valid_ips_bundle.get('entry', []):
@@ -402,7 +402,7 @@ class TestIPSBundleEntryFormat:
 class TestIPSSummaryAPIEndpoint:
     """
     Tests for IPS summary API endpoint configuration.
-    
+
     Reference: docs/sha-guides/shr-integration.md
     Quote: 'GET {{base_url}}/v1/shr/summary?cr_id=CR06XX3268000-3-1'
     """
@@ -421,7 +421,7 @@ class TestIPSSummaryAPIEndpoint:
     def test_shr_summary_uses_get_method(self):
         """
         SHR Requirement: IPS summary uses GET method.
-        
+
         Quote: 'GET {{base_url}}/v1/shr/summary?cr_id=...'
         """
         expected_method = 'GET'

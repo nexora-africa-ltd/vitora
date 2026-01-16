@@ -12,7 +12,7 @@ Reference: https://hl7.org/fhir/R4/medicationrequest.html
 class TestMedicationRequestRequiredFields:
     """
     Tests for required MedicationRequest fields per SHR specification.
-    
+
     Reference: docs/sha-guides/shr-integration.md Section 2
     Quote: 'POST {{base_url}}/v1/shr-submission?resource=MedicationRequest'
     """
@@ -42,7 +42,7 @@ class TestMedicationRequestRequiredFields:
     def test_medication_request_has_status(self, valid_medication_request_fhir):
         """
         SHR Requirement: MedicationRequest must have status.
-        
+
         Quote from spec: '"status": "active"'
         """
         assert 'status' in valid_medication_request_fhir, (
@@ -57,7 +57,7 @@ class TestMedicationRequestRequiredFields:
     def test_medication_request_has_intent(self, valid_medication_request_fhir):
         """
         SHR Requirement: MedicationRequest must have intent.
-        
+
         Quote from spec: '"intent": "order"'
         """
         assert 'intent' in valid_medication_request_fhir, (
@@ -72,7 +72,7 @@ class TestMedicationRequestRequiredFields:
     def test_medication_request_has_medication(self, valid_medication_request_fhir):
         """
         SHR Requirement: MedicationRequest must specify medication.
-        
+
         Quote from spec: '"medicationCodeableConcept": {...}'
         """
         has_medication = (
@@ -86,7 +86,7 @@ class TestMedicationRequestRequiredFields:
     def test_medication_request_has_subject(self, valid_medication_request_fhir):
         """
         SHR Requirement: MedicationRequest must reference the patient.
-        
+
         Quote from spec: '"subject": {"reference": "Patient/CR06XX3268000-3-1"}'
         """
         assert 'subject' in valid_medication_request_fhir, (
@@ -102,7 +102,7 @@ class TestMedicationRequestRequiredFields:
     def test_medication_request_has_authored_on(self, valid_medication_request_fhir):
         """
         SHR Requirement: MedicationRequest must have authoredOn date.
-        
+
         Quote from spec: '"authoredOn": "2025-03-28"'
         """
         assert 'authoredOn' in valid_medication_request_fhir, (
@@ -112,7 +112,7 @@ class TestMedicationRequestRequiredFields:
     def test_medication_request_has_requester(self, valid_medication_request_fhir):
         """
         SHR Requirement: MedicationRequest must have requester (prescriber).
-        
+
         Quote from spec: '"requester": {"reference": "Practitioner/123456"}'
         """
         assert 'requester' in valid_medication_request_fhir, (
@@ -126,7 +126,7 @@ class TestMedicationRequestRequiredFields:
 class TestMedicationRequestMedicationCoding:
     """
     Tests for medication coding in MedicationRequest.
-    
+
     Reference: docs/sha-guides/shr-integration.md
     Quote: 'coding: [{"system": "http://www.nlm.nih.gov/research/umls/rxnorm", ...}]'
     """
@@ -146,7 +146,7 @@ class TestMedicationRequestMedicationCoding:
     def test_medication_coding_has_system(self, valid_medication_request_fhir):
         """
         SHR Requirement: Medication coding must have system.
-        
+
         Expected: RxNorm, SNOMED-CT, or local coding system
         """
         medication = valid_medication_request_fhir.get('medicationCodeableConcept', {})
@@ -181,7 +181,7 @@ class TestMedicationRequestMedicationCoding:
     def test_medication_has_text(self, valid_medication_request_fhir):
         """
         SHR Requirement: Medication should have text description.
-        
+
         Quote from spec: '"text": "Amlodipine 5mg tablet"'
         """
         medication = valid_medication_request_fhir.get('medicationCodeableConcept', {})
@@ -193,7 +193,7 @@ class TestMedicationRequestMedicationCoding:
 class TestMedicationRequestDosageInstruction:
     """
     Tests for dosage instructions in MedicationRequest.
-    
+
     Reference: docs/sha-guides/shr-integration.md
     Quote: '"dosageInstruction": [{...}]'
     """
@@ -212,7 +212,7 @@ class TestMedicationRequestDosageInstruction:
     def test_dosage_instruction_has_text(self, valid_medication_request_fhir):
         """
         SHR Requirement: Dosage instruction must have text.
-        
+
         Quote: '"text": "Take one tablet by mouth once daily"'
         """
         dosage = valid_medication_request_fhir.get('dosageInstruction', [{}])[0]
@@ -243,7 +243,7 @@ class TestMedicationRequestDosageInstruction:
     def test_repeat_has_frequency(self, valid_medication_request_fhir):
         """
         SHR Requirement: Repeat must specify frequency.
-        
+
         Quote: '"frequency": 1, "period": 1, "periodUnit": "d"'
         """
         dosage = valid_medication_request_fhir.get('dosageInstruction', [{}])[0]
@@ -262,7 +262,7 @@ class TestMedicationRequestDosageInstruction:
     def test_dosage_has_route(self, valid_medication_request_fhir):
         """
         SHR Requirement: Dosage should specify route of administration.
-        
+
         Quote: '"route": {"coding": [{"system": "http://snomed.info/sct", ...}]}'
         """
         dosage = valid_medication_request_fhir.get('dosageInstruction', [{}])[0]
@@ -283,7 +283,7 @@ class TestMedicationRequestDosageInstruction:
 class TestMedicationRequestDispenseRequest:
     """
     Tests for dispense request in MedicationRequest.
-    
+
     Reference: docs/sha-guides/shr-integration.md
     Quote: '"dispenseRequest": {...}'
     """
@@ -299,7 +299,7 @@ class TestMedicationRequestDispenseRequest:
     def test_dispense_request_has_validity_period(self, valid_medication_request_fhir):
         """
         SHR Requirement: DispenseRequest must have validityPeriod.
-        
+
         Quote: '"validityPeriod": {"start": "2025-03-28", "end": "2025-09-28"}'
         """
         dispense_request = valid_medication_request_fhir.get('dispenseRequest', {})
@@ -318,7 +318,7 @@ class TestMedicationRequestDispenseRequest:
     def test_dispense_request_has_number_of_repeats(self, valid_medication_request_fhir):
         """
         SHR Requirement: DispenseRequest must specify number of refills.
-        
+
         Quote: '"numberOfRepeatsAllowed": 5'
         """
         dispense_request = valid_medication_request_fhir.get('dispenseRequest', {})
@@ -332,7 +332,7 @@ class TestMedicationRequestDispenseRequest:
     def test_dispense_request_has_quantity(self, valid_medication_request_fhir):
         """
         SHR Requirement: DispenseRequest must specify quantity per fill.
-        
+
         Quote: '"quantity": {"value": 30, "unit": "tablets"}'
         """
         dispense_request = valid_medication_request_fhir.get('dispenseRequest', {})
@@ -351,7 +351,7 @@ class TestMedicationRequestDispenseRequest:
     def test_dispense_request_has_supply_duration(self, valid_medication_request_fhir):
         """
         SHR Requirement: DispenseRequest should specify supply duration.
-        
+
         Quote: '"expectedSupplyDuration": {"value": 30, "unit": "days"}'
         """
         dispense_request = valid_medication_request_fhir.get('dispenseRequest', {})
@@ -368,7 +368,7 @@ class TestMedicationRequestReasonCode:
     def test_has_reason_code(self, valid_medication_request_fhir):
         """
         SHR Requirement: MedicationRequest should have reasonCode (diagnosis).
-        
+
         Quote: '"reasonCode": [{"coding": [{"system": "http://hl7.org/fhir/sid/icd-10", ...}]}]'
         """
         assert 'reasonCode' in valid_medication_request_fhir, (
@@ -399,7 +399,7 @@ class TestMedicationRequestSubstitution:
     def test_has_substitution(self, valid_medication_request_fhir):
         """
         SHR Requirement: MedicationRequest should specify substitution policy.
-        
+
         Quote: '"substitution": {"allowedBoolean": true, ...}'
         """
         assert 'substitution' in valid_medication_request_fhir, (
@@ -428,7 +428,7 @@ class TestMedicationRequestRecorder:
     def test_has_recorder(self, valid_medication_request_fhir):
         """
         SHR Requirement: MedicationRequest should have recorder.
-        
+
         Quote: '"recorder": {"reference": "Practitioner/123456"}'
         """
         assert 'recorder' in valid_medication_request_fhir, (

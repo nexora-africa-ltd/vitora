@@ -30,10 +30,10 @@ logger = logging.getLogger(__name__)
 class FacilityInfo:
     """
     Facility information from Master Facility List (MFL).
-    
+
     Represents a healthcare facility registered in Kenya's
     Master Facility List.
-    
+
     Attributes:
         facility_code: MFL code (e.g., '24979')
         found: Whether facility was found (1 = found, 0 = not found)
@@ -89,10 +89,10 @@ class FacilityInfo:
     def from_api_response(cls, data: dict) -> 'FacilityInfo':
         """
         Create FacilityInfo from MFL API response.
-        
+
         Args:
             data: API response data dict (from 'message' field)
-            
+
         Returns:
             FacilityInfo instance
         """
@@ -142,7 +142,7 @@ class FacilityInfo:
 class PractitionerLicense:
     """
     Individual license record from DHA HWR.
-    
+
     Attributes:
         id: License ID (e.g., 'COC-Clinical Officer-2026-620095')
         external_reference_id: External reference (e.g., 'Rb01923/25')
@@ -161,7 +161,7 @@ class PractitionerLicense:
 class PractitionerMembership:
     """
     Membership/registration details from DHA HWR.
-    
+
     Attributes:
         id: Member ID (e.g., 'PUID-0022840-4')
         status: License status (e.g., 'Licensed', 'Suspended')
@@ -204,7 +204,7 @@ class PractitionerMembership:
 class PractitionerProfessionalDetails:
     """
     Professional details from DHA HWR.
-    
+
     Attributes:
         professional_cadre: Cadre (e.g., 'CLINICAL OFFICER')
         practice_type: Practice type (e.g., 'Clinical Officer')
@@ -225,7 +225,7 @@ class PractitionerProfessionalDetails:
 class PractitionerContacts:
     """
     Contact information from DHA HWR.
-    
+
     Attributes:
         phone: Phone number
         email: Email address
@@ -240,7 +240,7 @@ class PractitionerContacts:
 class PractitionerIdentifiers:
     """
     Identifier information from DHA HWR.
-    
+
     Attributes:
         identification_type: ID type (e.g., 'National ID')
         identification_number: ID number
@@ -257,10 +257,10 @@ class PractitionerIdentifiers:
 class PractitionerInfo:
     """
     Practitioner information from Health Worker Registry (HWR).
-    
+
     Updated to match actual DHA API response format.
     Based on: https://uat.dha.go.ke/v1/practitioner-search
-    
+
     Attributes:
         membership: Registration/membership details
         licenses: List of license records
@@ -351,7 +351,7 @@ class PractitionerInfo:
     def from_api_response(cls, data: dict) -> 'PractitionerInfo':
         """
         Create PractitionerInfo from HWR API response.
-        
+
         Handles the actual DHA API response format:
         {
             "message": {
@@ -362,10 +362,10 @@ class PractitionerInfo:
                 "identifiers": {...}
             }
         }
-        
+
         Args:
             data: API response data dict (can be full response or 'message' content)
-            
+
         Returns:
             PractitionerInfo instance
         """
@@ -453,7 +453,7 @@ class PractitionerInfo:
 class SearchError(Exception):
     """
     Exception raised for DHA search errors.
-    
+
     Attributes:
         message: Error description
         status_code: HTTP status code if applicable
@@ -488,23 +488,23 @@ class SearchError(Exception):
 class DHASearchService:
     """
     Service for searching Kenya DHA registries.
-    
+
     This service provides methods to search:
         - Master Facility List (MFL) for healthcare facilities
         - Health Worker Registry (HWR) for practitioners
-    
+
     These searches are crucial for:
         - Validating facilities for SHA claims
         - Verifying practitioner credentials
         - Claims pre-submission validation
-    
+
     Attributes:
         api_base_url: DHA API base URL
         facility_endpoint: MFL search endpoint
         practitioner_endpoint: HWR search endpoint
         timeout: Request timeout in seconds
         auth_service: SHAAuthService instance
-    
+
     Example:
         >>> search = DHASearchService()
         >>> facility = search.search_facility(facility_code='24979')
@@ -537,21 +537,21 @@ class DHASearchService:
     ) -> FacilityInfo | None:
         """
         Search for a facility in the Master Facility List.
-        
+
         At least one search parameter must be provided.
-        
+
         Args:
             facility_code: MFL facility code (e.g., '24979')
             fid: Facility ID (FID format)
             registration_number: Official registration number
-            
+
         Returns:
             FacilityInfo if found, None otherwise
-            
+
         Raises:
             SearchError: If search request fails
             ValueError: If no search parameter provided
-            
+
         Example:
             >>> facility = service.search_facility(facility_code='24979')
             >>> if facility:
@@ -640,20 +640,20 @@ class DHASearchService:
     ) -> tuple[bool, list[str]]:
         """
         Validate a facility can submit SHA claims.
-        
+
         Checks that facility:
             - Exists in MFL
             - Is approved for SHA
             - Is operational
             - Has valid license
-        
+
         Args:
             facility_code: MFL facility code
             fid: Facility ID
-            
+
         Returns:
             Tuple of (is_valid, list_of_errors)
-            
+
         Example:
             >>> valid, errors = service.validate_facility_for_claims(
             ...     facility_code='24979'
@@ -706,23 +706,23 @@ class DHASearchService:
     ) -> PractitionerInfo | None:
         """
         Search for a practitioner in the Health Worker Registry.
-        
+
         At least one search parameter must be provided.
-        
+
         Based on DHA API: https://uat.dha.go.ke/v1/practitioner-search
-        
+
         Args:
             identification_number: National ID or Passport number
             identification_type: Type of ID ('National ID' or 'passport')
             registration_number: Professional registration number (PUID)
-            
+
         Returns:
             PractitionerInfo if found, None otherwise
-            
+
         Raises:
             SearchError: If search request fails
             ValueError: If no search parameter provided
-            
+
         Example:
             >>> practitioner = service.search_practitioner(
             ...     identification_number='12345678',
@@ -841,18 +841,18 @@ class DHASearchService:
     ) -> tuple[bool, list[str]]:
         """
         Validate a practitioner can be referenced in SHA claims.
-        
+
         Checks that practitioner:
             - Exists in HWR
             - Has active license
-        
+
         Args:
             identification_number: National ID number
             registration_number: Professional registration number
-            
+
         Returns:
             Tuple of (is_valid, list_of_errors)
-            
+
         Example:
             >>> valid, errors = service.validate_practitioner_for_claims(
             ...     identification_number='12345678'
@@ -889,7 +889,7 @@ class DHASearchService:
     def is_configured(self) -> bool:
         """
         Check if Search service is properly configured.
-        
+
         Returns:
             True if service can be used
         """

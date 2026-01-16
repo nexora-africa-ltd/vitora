@@ -13,14 +13,14 @@ from django.conf import settings
 class TestSHRAPIEndpointConfiguration:
     """
     Tests for SHR API endpoint configuration.
-    
+
     Reference: docs/sha-guides/shr-integration.md
     """
 
     def test_shr_base_url_configured(self):
         """
         SHR Requirement: SHR base URL must be configured.
-        
+
         This may be shared with SHA_FHIR_BASE_URL or separate.
         """
         has_shr_url = (
@@ -54,7 +54,7 @@ class TestSHRAPIEndpointConfiguration:
 class TestSHRAuthenticationConfiguration:
     """
     Tests for SHR authentication configuration.
-    
+
     Reference: docs/sha-guides/shr-integration.md
     Quote: 'Basic Authentication'
     """
@@ -62,7 +62,7 @@ class TestSHRAuthenticationConfiguration:
     def test_shr_uses_basic_auth(self):
         """
         SHR Requirement: SHR API uses Basic Authentication.
-        
+
         Quote: 'Authentication: Basic Authentication'
         """
         # Document the authentication requirement
@@ -89,7 +89,7 @@ class TestSHRAuthenticationConfiguration:
     def test_shr_credentials_not_hardcoded(self):
         """
         Security Requirement: Credentials must not be hardcoded.
-        
+
         SHA_USERNAME and SHA_PASSWORD should be loaded from environment
         variables, not hardcoded in settings.
         """
@@ -108,7 +108,7 @@ class TestSHRAuthenticationConfiguration:
 class TestSHRSubmissionEndpointConfiguration:
     """
     Tests for SHR submission endpoint configuration.
-    
+
     Reference: docs/sha-guides/shr-integration.md
     Quote: 'POST {{base_url}}/v1/shr-submission?resource=MedicationRequest'
     """
@@ -134,7 +134,7 @@ class TestSHRSubmissionEndpointConfiguration:
     def test_shr_submission_uses_query_param(self):
         """
         SHR Requirement: Resource type specified via query parameter.
-        
+
         Quote: '?resource=MedicationRequest'
         """
         query_param_name = 'resource'
@@ -146,7 +146,7 @@ class TestSHRSubmissionEndpointConfiguration:
 class TestPatientResourceEndpointConfiguration:
     """
     Tests for Patient resource endpoint configuration.
-    
+
     Reference: docs/sha-guides/shr-integration.md
     Quote: 'PUT {{base_url}}/v1/patient-resource?cr_id=...'
     """
@@ -173,7 +173,7 @@ class TestPatientResourceEndpointConfiguration:
 class TestIPSSummaryEndpointConfiguration:
     """
     Tests for IPS summary endpoint configuration.
-    
+
     Reference: docs/sha-guides/shr-integration.md
     Quote: 'GET {{base_url}}/v1/shr/summary?cr_id=...'
     """
@@ -259,7 +259,7 @@ class TestSHRDataFlowConfiguration:
     def test_client_registry_integration_path(self):
         """
         SHR Requirement: Client Registry integration must be configured.
-        
+
         The CR ID comes from Kenya's Client Registry system.
         """
         # This is a documentation/spec test
@@ -271,7 +271,7 @@ class TestSHRDataFlowConfiguration:
     def test_shr_supports_medication_workflow(self):
         """
         SHR Requirement: System must support full medication workflow.
-        
+
         1. Patient registration
         2. Prescription creation (MedicationRequest)
         3. IPS retrieval
@@ -299,7 +299,7 @@ class TestSHRCodingSystemConfiguration:
     def test_rxnorm_system_url(self):
         """
         SHR Requirement: RxNorm system URL must be correct.
-        
+
         Quote: '"system": "http://www.nlm.nih.gov/research/umls/rxnorm"'
         """
         rxnorm_url = "http://www.nlm.nih.gov/research/umls/rxnorm"
@@ -310,7 +310,7 @@ class TestSHRCodingSystemConfiguration:
     def test_snomed_system_url(self):
         """
         SHR Requirement: SNOMED-CT system URL must be correct.
-        
+
         Quote: '"system": "http://snomed.info/sct"'
         """
         snomed_url = "http://snomed.info/sct"
@@ -321,7 +321,7 @@ class TestSHRCodingSystemConfiguration:
     def test_icd10_system_url(self):
         """
         SHR Requirement: ICD-10 system URL must be correct.
-        
+
         Quote: '"system": "http://hl7.org/fhir/sid/icd-10"'
         """
         icd10_url = "http://hl7.org/fhir/sid/icd-10"
@@ -332,7 +332,7 @@ class TestSHRCodingSystemConfiguration:
     def test_loinc_system_url(self):
         """
         SHR Requirement: LOINC system URL must be correct (for IPS).
-        
+
         Quote: '"system": "http://loinc.org"'
         """
         loinc_url = "http://loinc.org"
@@ -343,7 +343,7 @@ class TestSHRCodingSystemConfiguration:
     def test_units_of_measure_system_url(self):
         """
         SHR Requirement: Units of measure system URL must be correct.
-        
+
         Quote: '"system": "http://unitsofmeasure.org"'
         """
         ucum_url = "http://unitsofmeasure.org"

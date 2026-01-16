@@ -40,9 +40,9 @@ class TestDiagnosisCodingCompliance:
     def test_icd11_support_documented(self):
         """
         SHA Requirement: HMIS must support ICD-11 as primary diagnostic classification.
-        
+
         Reference: docs/sha-guides/claims-submission.md - ICD-11 Diagnostic Coding
-        Quote: 'Your HMIS must fully support ICD-11 as the primary diagnostic 
+        Quote: 'Your HMIS must fully support ICD-11 as the primary diagnostic
                classification system for SHA'
         """
         # This is a documentation/awareness test
@@ -67,7 +67,7 @@ class TestDiagnosisCodingCompliance:
     def test_claim_has_diagnosis_codes(self, sha_claim_with_items):
         """
         SHA Requirement: All claims must include valid diagnostic codes.
-        
+
         Reference: docs/sha-guides/claims-submission.md
         Quote: 'All claims must include valid ICD-11 diagnostic codes'
         """
@@ -90,7 +90,7 @@ class TestDiagnosisCodingCompliance:
     def test_diagnosis_has_sequence_and_code(self, sha_claim_with_items):
         """
         SHA Requirement: Each diagnosis must have sequence number and code.
-        
+
         Reference: FHIR Claim.diagnosis specification
         """
         service = SHAClaimsService()
@@ -123,9 +123,9 @@ class TestClaimItemCompliance:
     def test_claim_items_have_sha_codes(self, sha_claim_with_items):
         """
         SHA Requirement: ProductOrService must be valid SHA intervention code.
-        
+
         Reference: docs/sha-guides/claims-submission.md - Integration Checklist
-        Quote: 'ProductOrService mentioned in claim item, must be a valid 
+        Quote: 'ProductOrService mentioned in claim item, must be a valid
                SHA/PFMS intervention code'
         """
         service = SHAClaimsService()
@@ -171,7 +171,7 @@ class TestClaimItemCompliance:
     def test_total_amount_equals_sum_of_items(self, sha_claim_with_items):
         """
         SHA Requirement: Total amount must equal sum of all item net amounts.
-        
+
         Reference: docs/sha-guides/claims-submission.md - Integration Checklist
         Quote: 'Total amount must be Sum of Net Amount of all items in claim'
         """
@@ -214,9 +214,9 @@ class TestClaimIdentificationCompliance:
     def test_claim_has_unique_id(self, sha_claim_with_items):
         """
         SHA Requirement: Each claim ID must be unique.
-        
+
         Reference: docs/sha-guides/claims-submission.md - Integration Checklist
-        Quote: 'Each claim Id must be unique. If you submit the same claim Id again 
+        Quote: 'Each claim Id must be unique. If you submit the same claim Id again
                then system will just treat it as duplicate'
         """
         service = SHAClaimsService()
@@ -241,7 +241,7 @@ class TestClaimIdentificationCompliance:
     def test_claim_id_matches_bundle_id(self, sha_claim_with_items):
         """
         SHA Requirement: Claim ID should match bundle ID.
-        
+
         Reference: docs/sha-guides/claims.md
         Quote: 'This same GUID will be used in the Claim resource fullUrl,
                resource.id and resource.identifier.value'
@@ -277,7 +277,7 @@ class TestInsuranceAndCoverageCompliance:
     def test_claim_has_insurance_reference(self, sha_claim_with_items):
         """
         SHA Requirement: Claim must include Insurance object referencing Coverage.
-        
+
         Reference: docs/sha-guides/claims-submission.md - Integration Checklist
         Quote: 'Ensure that Insurance and Coverage objects are included in JSON'
         """
@@ -305,7 +305,7 @@ class TestInsuranceAndCoverageCompliance:
     def test_insurance_has_focal_flag(self, sha_claim_with_items):
         """
         SHA Requirement: Insurance must have focal flag.
-        
+
         FHIR spec: At least one insurance entry must have focal=true
         """
         service = SHAClaimsService()
@@ -335,7 +335,7 @@ class TestCareTeamCompliance:
     def test_claim_has_care_team(self, sha_claim_with_items):
         """
         SHA Requirement: Claim must have CareTeam with practitioner reference.
-        
+
         Reference: docs/sha-guides/claims-submission.md - Integration Checklist
         Quote: 'Ensure CareTeam has valid details including reference to Practitioner'
         """
@@ -370,9 +370,9 @@ class TestPHCClaimCompliance:
     def test_phc_zero_amount_documented(self):
         """
         SHA Requirement: PHC claims must have zero total amount.
-        
+
         Reference: docs/sha-guides/claims-submission.md - Integration Checklist
-        Quote: 'Any PHC claim must have zero total amount. PHC claims are 
+        Quote: 'Any PHC claim must have zero total amount. PHC claims are
                identified by eligible SHA intervention codes'
         """
         # Documentation test - PHC claims are special
@@ -389,7 +389,7 @@ class TestClaimStatusStates:
     def test_claim_states_are_documented(self):
         """
         SHA Requirement: System must handle all possible claim states.
-        
+
         Reference: docs/sha-guides/claims-submission.md - Integration Checklist #15
         Valid states:
             - queued: Request received, in queue for processing
@@ -432,9 +432,9 @@ class TestPreAuthorizationCompliance:
     def test_preauth_flow_documented(self):
         """
         SHA Requirement: Some services require pre-authorization.
-        
+
         Reference: docs/sha-guides/claims-submission.md - Service Mapping
-        Quote: 'Pre-authorization Requirements: Flag services requiring 
+        Quote: 'Pre-authorization Requirements: Flag services requiring
                pre-authorization to prevent claim rejections'
         """
         # Documentation test

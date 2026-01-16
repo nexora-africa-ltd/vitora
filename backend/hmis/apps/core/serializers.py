@@ -223,7 +223,7 @@ class StaffProfileSerializer(serializers.ModelSerializer):
 class StaffProfileCreateSerializer(serializers.Serializer):
     """
     Serializer for creating a StaffProfile with a new User.
-    
+
     This handles the combined creation of a User account and StaffProfile.
     """
 
