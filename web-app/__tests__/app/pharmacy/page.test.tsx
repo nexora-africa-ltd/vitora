@@ -16,16 +16,39 @@ jest.mock('@/lib/hooks/use-pharmacy', () => ({
   useStockBatches: jest.fn(),
   useStockAlerts: jest.fn(),
   usePrescriptions: jest.fn(),
+  useDispensings: jest.fn(),
   useLowStockAlerts: jest.fn(),
   useExpiringAlerts: jest.fn(),
   usePendingPrescriptions: jest.fn(),
+  useBatchesForDrug: jest.fn(() => ({
+    data: [],
+    isLoading: false,
+  })),
+  useCreateDispensing: jest.fn(() => ({
+    mutateAsync: jest.fn(),
+    isPending: false,
+  })),
   useAcknowledgeAlert: jest.fn(() => ({
-    mutate: jest.fn(),
+    mutateAsync: jest.fn(),
     isPending: false,
   })),
   useResolveAlert: jest.fn(() => ({
-    mutate: jest.fn(),
+    mutateAsync: jest.fn(),
     isPending: false,
+  })),
+  useAlertSettings: jest.fn(() => ({
+    data: { expiry_warning_days: 90, low_stock_threshold: 100 },
+  })),
+  useUpdateAlertSettings: jest.fn(() => ({
+    mutateAsync: jest.fn(),
+    isPending: false,
+  })),
+}));
+
+// Mock the toast hook
+jest.mock('@/lib/hooks/use-toast', () => ({
+  useToast: jest.fn(() => ({
+    toast: jest.fn(),
   })),
 }));
 
@@ -45,6 +68,7 @@ import {
   useStockAlerts,
   usePrescriptions,
   usePendingPrescriptions,
+  useDispensings,
 } from '@/lib/hooks/use-pharmacy';
 import { mockDrugs, mockStockBatches, mockStockAlerts, mockPrescriptions } from '@/__tests__/mocks/pharmacy-data';
 
@@ -86,6 +110,7 @@ describe('PharmacyPage', () => {
       data: { results: mockStockAlerts, count: mockStockAlerts.length },
       isLoading: false,
       error: null,
+      refetch: jest.fn(),
     });
 
     (usePrescriptions as jest.Mock).mockReturnValue({
@@ -98,6 +123,13 @@ describe('PharmacyPage', () => {
       data: mockPrescriptions.filter((p) => p.status === 'PENDING'),
       isLoading: false,
       error: null,
+    });
+
+    (useDispensings as jest.Mock).mockReturnValue({
+      data: { results: [], count: 0 },
+      isLoading: false,
+      error: null,
+      refetch: jest.fn(),
     });
   });
 
@@ -261,8 +293,9 @@ describe('PharmacyPage', () => {
       await user.click(screen.getByText('Alerts'));
       
       await waitFor(() => {
-        expect(screen.getByText(/amoxicillin 500mg stock is below reorder level/i)).toBeInTheDocument();
-        expect(screen.getByText(/metformin 500mg is out of stock/i)).toBeInTheDocument();
+        // Use getAllByText for text that may appear multiple times (in widget and main panel)
+        expect(screen.getAllByText(/amoxicillin 500mg stock is below reorder level/i).length).toBeGreaterThan(0);
+        expect(screen.getAllByText(/metformin 500mg is out of stock/i).length).toBeGreaterThan(0);
       });
     });
   });

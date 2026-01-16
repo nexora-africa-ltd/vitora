@@ -167,11 +167,12 @@ describe('DrugTable', () => {
   });
 
   describe('Row actions', () => {
-    it('should show view button for each drug', () => {
+    it('should show more actions menu for each drug', () => {
       render(<DrugTable {...defaultProps} />);
 
-      const viewButtons = screen.getAllByRole('button', { name: /view/i });
-      expect(viewButtons.length).toBe(mockDrugs.length);
+      // The view action is in a dropdown menu, not a direct button
+      const moreActionsButtons = screen.getAllByRole('button', { name: /more actions/i });
+      expect(moreActionsButtons.length).toBe(mockDrugs.length);
     });
   });
 });
