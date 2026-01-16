@@ -32,6 +32,21 @@ def pytest_configure(config):
     config.addinivalue_line("markers", "slow: Mark test as slow running")
 
 
+def pytest_pycollect_makeitem(collector, name, obj):
+    """
+    Filter out classes that should not be collected as tests.
+
+    The laboratory.models.TestCatalog is a Django model, not a test class,
+    but pytest tries to collect it because the name starts with 'Test'.
+    This hook returns None to skip such classes.
+    """
+    # Skip TestCatalog model class (it's a Django model, not a test)
+    if name == "TestCatalog" and hasattr(obj, "_meta"):
+        return None
+    # Return None to let pytest handle normally
+    return None
+
+
 # ============================================================================
 # Django Database Fixtures
 # ============================================================================
