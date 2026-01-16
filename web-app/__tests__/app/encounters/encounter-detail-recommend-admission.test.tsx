@@ -4,6 +4,7 @@
  * Ensures OPD -> IPD transition entry point exists as per ideal flow.
  */
 
+import React from 'react';
 import { render, screen } from '@/__tests__/utils/test-utils';
 import EncounterDetailPage from '@/app/(dashboard)/encounters/[id]/page';
 
@@ -21,6 +22,38 @@ jest.mock('@/lib/hooks/use-encounters', () => ({
   useEncounter: jest.fn(),
   useEncounterDiagnoses: jest.fn(),
   useEncounterTreatmentPlan: jest.fn(),
+}));
+
+// Mock the encounter context
+jest.mock('@/lib/context/encounter-context', () => ({
+  EncounterProvider: ({ children }: { children: React.ReactNode }) => children,
+  useEncounterContext: jest.fn(() => ({
+    encounter: {
+      id: 1,
+      patient: 42,
+      patient_name: 'John Doe',
+      patient_mrn: 'MRN-20260103-0042',
+      encounter_type: 'OPD',
+      encounter_date: '2026-01-03',
+      chief_complaint: 'Fever and chills',
+      status: 'COMPLETED',
+    },
+    isLoading: false,
+    error: null,
+    vitals: null,
+    diagnoses: [],
+    treatmentPlan: null,
+    prescriptions: [],
+    labOrders: [],
+    notes: [],
+    updateEncounter: jest.fn(),
+    addDiagnosis: jest.fn(),
+    removeDiagnosis: jest.fn(),
+    updateTreatmentPlan: jest.fn(),
+    addPrescription: jest.fn(),
+    addLabOrder: jest.fn(),
+    addNote: jest.fn(),
+  })),
 }));
 
 import { useEncounter, useEncounterDiagnoses, useEncounterTreatmentPlan } from '@/lib/hooks/use-encounters';

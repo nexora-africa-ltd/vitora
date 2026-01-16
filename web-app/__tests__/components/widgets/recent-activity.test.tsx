@@ -1,3 +1,4 @@
+import React from 'react';
 import { render, screen } from '@testing-library/react';
 import { RecentActivity } from '@/components/widgets/recent-activity';
 import type { RecentActivity as RecentActivityType } from '@/lib/types/dashboard';
@@ -10,6 +11,12 @@ jest.mock('next/link', () => {
   MockLink.displayName = 'MockLink';
   return MockLink;
 });
+
+// Mock ScrollArea to avoid Radix React 19 issues
+jest.mock('@/components/ui/scroll-area', () => ({
+  ScrollArea: ({ children, style, className }: { children: React.ReactNode; style?: React.CSSProperties; className?: string }) =>
+    React.createElement('div', { 'data-testid': 'scroll-area', style, className }, children),
+}));
 
 // Mock format utility
 jest.mock('@/lib/utils/format', () => ({

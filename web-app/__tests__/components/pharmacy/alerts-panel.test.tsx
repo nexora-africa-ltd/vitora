@@ -69,12 +69,12 @@ describe('AlertsPanel', () => {
       expect(screen.getByText(/metformin 500mg is out of stock/i)).toBeInTheDocument();
     });
 
-    it('should show drug name for each alert', () => {
+    it('should show drug names in alerts', () => {
       render(<AlertsPanel {...defaultProps} />);
 
-      // Drug names appear in alert items
-      expect(screen.getByText(/Amoxicillin 500mg/)).toBeInTheDocument();
-      expect(screen.getByText(/Metformin 500mg/)).toBeInTheDocument();
+      // Drug names can appear multiple times (in list and links), use getAllByText
+      expect(screen.getAllByText(/Amoxicillin 500mg/i).length).toBeGreaterThan(0);
+      expect(screen.getAllByText(/Metformin 500mg/i).length).toBeGreaterThan(0);
     });
   });
 
@@ -88,11 +88,12 @@ describe('AlertsPanel', () => {
   });
 
   describe('Alert status', () => {
-    it('should show acknowledged status for acknowledged alerts', () => {
+    it('should show acknowledged info for acknowledged alerts', () => {
       render(<AlertsPanel {...defaultProps} />);
 
-      // Alert id 2 is acknowledged - look for acknowledgement info
-      expect(screen.getByText(/Acknowledged by/i)).toBeInTheDocument();
+      // Alert id 2 is acknowledged - look for acknowledgement info with getAllByText
+      // since "Acknowledged by" text might appear multiple times
+      expect(screen.getAllByText(/Acknowledged by/i).length).toBeGreaterThan(0);
     });
 
     it('should show acknowledge button for unacknowledged alerts', () => {
