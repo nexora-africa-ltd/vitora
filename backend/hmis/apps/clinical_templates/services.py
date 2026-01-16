@@ -9,10 +9,16 @@ and existing encounter/patient data:
 """
 
 from decimal import Decimal, InvalidOperation
-from typing import Any, Optional
+from typing import TYPE_CHECKING, Any, Optional
 
 from hmis.apps.clinical_templates.models import ClinicalTemplate
 from hmis.apps.encounters.models import Encounter
+
+if TYPE_CHECKING:
+    from django.contrib.auth.models import User
+
+    from hmis.apps.clinical_templates.models import ClinicalTemplateSnapshot
+    from hmis.apps.patients.models import Patient
 
 # =============================================================================
 # Field Mapping Service

@@ -33,7 +33,7 @@ class LabNotificationService:
         """
         # Use ordered_by as the clinician (Encounter model doesn't have a clinician field)
         clinician = lab_order.ordered_by
-        patient = lab_order.patient
+        # patient is accessed via lab_order in notification message
 
         # Check for critical results
         has_critical = self._has_critical_results(lab_order)

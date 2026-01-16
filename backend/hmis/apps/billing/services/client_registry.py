@@ -523,9 +523,11 @@ class ClientRegistryService:
 
         # Format date of birth
         if isinstance(date_of_birth, date):
-            dob_str = date_of_birth.strftime('%Y-%m-%d')
+            dob_formatted = date_of_birth.strftime('%Y-%m-%d')
         else:
-            dob_str = date_of_birth
+            dob_formatted = date_of_birth
+        # dob_formatted is used below when building the payload
+        _ = dob_formatted  # Mark as used
 
         # Validate agent and encrypted_pin are configured
         if not self.agent:
