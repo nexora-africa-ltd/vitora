@@ -1,10 +1,11 @@
+import { PageLoading } from '@/components/shared/loading-spinner';
+
 /**
  * Dashboard loading state.
  * 
- * Returns an empty fragment because AuthGuard in layout.tsx already handles
- * the loading state during authentication checks.
- * This prevents showing two loading indicators.
+ * Shows during route transitions within the dashboard.
+ * Used by Next.js App Router when navigating between dashboard pages.
  */
 export default function DashboardLoading() {
-  return <></>;
+  return <PageLoading message="Loading..." />;
 }
