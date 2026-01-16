@@ -53,6 +53,18 @@ export type {
   PatientEncounter,
 } from './patient';
 
+// Re-export notification types
+export type {
+  Notification,
+  NotificationPriority,
+  NotificationType,
+  NotificationListResponse,
+  NotificationListParams,
+  UnreadCountResponse,
+  MarkReadResponse,
+  MarkAllReadResponse,
+} from './notification';
+
 // Re-export timeline types
 export type {
   TimelineEvent,

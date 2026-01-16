@@ -1,6 +1,6 @@
 'use client';
 
-import { Menu, Bell, Search, Sun, Moon, User, Wifi, WifiOff, RefreshCw } from 'lucide-react';
+import { Menu, Search, Sun, Moon, User, Wifi, WifiOff, RefreshCw } from 'lucide-react';
 import { useTheme } from 'next-themes';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -25,6 +25,7 @@ import { useLogout } from '@/lib/auth/hooks';
 import { useNetworkStatus } from '@/lib/hooks/use-network-status';
 import { useSyncStatus, formatLastSync } from '@/lib/context/sync-context';
 import { Breadcrumb } from '@/components/layout/breadcrumb';
+import { NotificationPanel } from '@/components/notifications/notification-panel';
 import { cn } from '@/lib/utils/cn';
 
 interface HeaderProps {
@@ -178,44 +179,7 @@ export function Header({ onMenuClick, sidebarCollapsed }: HeaderProps) {
           </div>
 
           {/* Notifications */}
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button variant="ghost" size="icon" className="relative">
-                <Bell className="h-5 w-5" />
-                <Badge
-                  variant="destructive"
-                  className="absolute -top-1 -right-1 h-5 w-5 rounded-full p-0 text-xs flex items-center justify-center"
-                >
-                  3
-                </Badge>
-                <span className="sr-only">Notifications</span>
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end" className="w-80">
-              <DropdownMenuLabel>Notifications</DropdownMenuLabel>
-              <DropdownMenuSeparator />
-              <DropdownMenuItem>
-                <div className="flex flex-col gap-1">
-                  <span className="font-medium">Low Stock Alert</span>
-                  <span className="text-sm text-muted-foreground">
-                    Paracetamol 500mg is running low
-                  </span>
-                </div>
-              </DropdownMenuItem>
-              <DropdownMenuItem>
-                <div className="flex flex-col gap-1">
-                  <span className="font-medium">Critical Vital</span>
-                  <span className="text-sm text-muted-foreground">
-                    Patient John Doe has SpO2 &lt; 95%
-                  </span>
-                </div>
-              </DropdownMenuItem>
-              <DropdownMenuSeparator />
-              <DropdownMenuItem className="text-center text-primary">
-                View all notifications
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
+          <NotificationPanel />
 
           {/* Theme toggle */}
           <Button
