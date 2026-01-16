@@ -5,12 +5,11 @@ This module provides shared utility functions used across the application.
 """
 
 from datetime import datetime
-from typing import Optional
 
 from django.conf import settings
 
 
-def generate_prc_number(facility_code: Optional[str] = None) -> str:
+def generate_prc_number(facility_code: str | None = None) -> str:
     """
     Generate a unique Post-Rape Care (PRC) Number.
 
@@ -48,13 +47,13 @@ def generate_prc_number(facility_code: Optional[str] = None) -> str:
         if encounter.clinical_template_data:
             # Check various section structures
             prc_number = None
-            
+
             # Try "Survivor Information" section
             if "Survivor Information" in encounter.clinical_template_data:
                 prc_number = encounter.clinical_template_data.get(
                     "Survivor Information", {}
                 ).get("prc_number")
-            
+
             # Try flat structure
             if not prc_number and "prc_number" in encounter.clinical_template_data:
                 prc_number = encounter.clinical_template_data.get("prc_number")
@@ -72,7 +71,7 @@ def generate_prc_number(facility_code: Optional[str] = None) -> str:
     return f"{prefix_pattern}{next_sequence:04d}{suffix}"
 
 
-def generate_ob_number(facility_code: Optional[str] = None) -> str:
+def generate_ob_number(facility_code: str | None = None) -> str:
     """
     Generate a reference OB (Occurrence Book) Number format.
 
@@ -94,7 +93,7 @@ def generate_ob_number(facility_code: Optional[str] = None) -> str:
     return f"OB/____/{year}"
 
 
-def generate_case_number(prefix: str, facility_code: Optional[str] = None) -> str:
+def generate_case_number(prefix: str, facility_code: str | None = None) -> str:
     """
     Generate a generic case number with a given prefix.
 

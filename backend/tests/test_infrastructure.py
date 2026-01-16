@@ -7,7 +7,7 @@ They should pass even without any application code.
 
 import sys
 
-import pytest # type: ignore
+import pytest  # type: ignore
 
 
 @pytest.mark.unit

@@ -18,7 +18,6 @@ import logging
 import time
 from dataclasses import dataclass
 from datetime import datetime, timedelta
-from typing import Optional
 
 import requests
 from django.conf import settings
@@ -29,22 +28,22 @@ logger = logging.getLogger(__name__)
 @dataclass
 class SHAToken:
     """Container for SHA JWT token with expiry tracking."""
-    
+
     token: str
     obtained_at: datetime
     expires_in_seconds: int = 18  # Default 1 hour
-    
+
     @property
     def expires_at(self) -> datetime:
         """Calculate token expiry time."""
         return self.obtained_at + timedelta(seconds=self.expires_in_seconds)
-    
+
     @property
     def is_expired(self) -> bool:
         """Check if token is expired (with 5 minute buffer)."""
         buffer = timedelta(minutes=5)
         return datetime.now() >= (self.expires_at - buffer)
-    
+
     @property
     def is_valid(self) -> bool:
         """Check if token is valid and not expired."""
@@ -76,11 +75,11 @@ class SHAAuthService:
         >>> headers = auth_service.get_auth_headers()
         >>> response = requests.get(url, headers=headers)
     """
-    
+
     # Class-level token cache for efficiency
-    _token_cache: Optional[SHAToken] = None
-    _terminology_token_cache: Optional[SHAToken] = None
-    
+    _token_cache: SHAToken | None = None
+    _terminology_token_cache: SHAToken | None = None
+
     def __init__(self):
         """Initialize SHAAuthService with settings from Django config."""
         self.base_url = settings.SHA_API_BASE_URL.rstrip('/')
@@ -89,7 +88,7 @@ class SHAAuthService:
         self.username = settings.SHA_USERNAME
         self.password = settings.SHA_PASSWORD
         self.timeout = getattr(settings, 'SHA_API_TIMEOUT', 19)
-    
+
     def _base64url_encode(self, data: bytes) -> str:
         """
         Base64url encode data (JWT-compatible).
@@ -97,7 +96,7 @@ class SHAAuthService:
         Removes padding and replaces +/ with -_
         """
         return base64.urlsafe_b64encode(data).rstrip(b'=').decode('utf-8')
-    
+
     def _create_basic_auth_header(self) -> str:
         """
         Create Basic Auth header value.
@@ -114,7 +113,7 @@ class SHAAuthService:
         credentials = f"{self.username}:{self.password}"
         encoded = base64.b64encode(credentials.encode()).decode()
         return encoded
-    
+
     def generate_terminology_token(self, expires_in: int = 20) -> str:
         """
         Generate a self-signed JWT for terminology API calls.
@@ -138,18 +137,18 @@ class SHAAuthService:
             the short 20-second TTL makes caching counterproductive.
         """
         now = int(time.time())
-        
+
         # JWT Header - must match exact JavaScript JSON.stringify format (compact, no spaces)
         header = {"alg": "HS256", "typ": "JWT"}
-        
+
         # JWT Payload (matches Postman pre-request script)
         payload = {"key": self.consumer_key, "iat": now, "exp": now + expires_in}
-        
+
         # Encode header and payload using compact JSON (separators without spaces)
         # This matches JavaScript's JSON.stringify() output exactly
         encoded_header = self._base64url_encode(json.dumps(header, separators=(',', ':')).encode('utf-8'))
         encoded_payload = self._base64url_encode(json.dumps(payload, separators=(',', ':')).encode('utf-8'))
-        
+
         # Create signature
         message = f"{encoded_header}.{encoded_payload}"
         signature = hmac.new(
@@ -158,13 +157,13 @@ class SHAAuthService:
             hashlib.sha256
         ).digest()
         encoded_signature = self._base64url_encode(signature)
-        
+
         # Combine to form JWT
         token = f"{encoded_header}.{encoded_payload}.{encoded_signature}"
-        
+
         logger.debug(f"Generated fresh terminology JWT (expires in {expires_in}s)")
         return token
-    
+
     def get_terminology_headers(self) -> dict:
         """
         Get HTTP headers for terminology API requests.
@@ -179,7 +178,7 @@ class SHAAuthService:
             'Authorization': f'Bearer {token}',
             'Accept': 'application/json',
         }
-    
+
     def get_token(self, force_refresh: bool = False) -> str:
         """
         Get a valid JWT token from SHA API.
@@ -204,12 +203,12 @@ class SHAAuthService:
         if not force_refresh and self._token_cache and self._token_cache.is_valid:
             logger.debug("Using cached SHA token")
             return self._token_cache.token
-        
+
         # Fetch new token
         logger.info("Fetching new SHA authentication token")
-        
+
         basic_auth = self._create_basic_auth_header()
-        
+
         try:
             response = requests.get(
                 f"{self.base_url}/v1/hie-auth",
@@ -220,33 +219,33 @@ class SHAAuthService:
                 },
                 timeout=self.timeout,
             )
-            
+
             # Log response for debugging
             logger.debug(f"SHA auth response status: {response.status_code}")
-            
+
             if response.status_code == 401:
                 raise SHAAuthError(
                     "Authentication failed: Invalid credentials",
                     status_code=401
                 )
-            
+
             if response.status_code == 403:
                 raise SHAAuthError(
                     "Authentication failed: Access denied",
                     status_code=403
                 )
-            
+
             response.raise_for_status()
-            
+
             # Handle different response formats
             # The API may return:
             # 1. Plain text JWT token directly
             # 2. JSON with {"token": "..."}
             # 3. JSON with {"IsSuccess": true, "Data": {"token": "..."}}
-            
+
             content_type = response.headers.get('Content-Type', '')
             response_text = response.text.strip()
-            
+
             if 'application/json' in content_type:
                 data = response.json()
                 # Official format: {"token": "..."}
@@ -265,31 +264,31 @@ class SHAAuthService:
                         f"Unexpected response format: {response_text[:100]}",
                         status_code=response.status_code
                     )
-            
+
             if not token:
                 raise SHAAuthError(
                     f"No token in response: {data}",
                     status_code=response.status_code
                 )
-            
+
             # Parse expiry if provided
             expires_in = int(data.get('expires_in', 19))
-            
+
             # Cache the token
             SHAAuthService._token_cache = SHAToken(
                 token=token,
                 obtained_at=datetime.now(),
                 expires_in_seconds=expires_in,
             )
-            
+
             logger.info("Successfully obtained SHA authentication token")
             return token
-            
+
         except requests.Timeout:
             raise SHAAuthError("Authentication request timed out", status_code=0)
         except requests.RequestException as e:
             raise SHAAuthError(f"Authentication request failed: {str(e)}", status_code=0)
-    
+
     def get_auth_headers(self, force_refresh: bool = False) -> dict:
         """
         Get HTTP headers with valid Bearer token.
@@ -311,7 +310,7 @@ class SHAAuthService:
             'Authorization': f'Bearer {token}',
             'Content-Type': 'application/json',
         }
-    
+
     def clear_token_cache(self):
         """
         Clear the cached token.
@@ -320,7 +319,7 @@ class SHAAuthService:
         """
         SHAAuthService._token_cache = None
         logger.debug("SHA token cache cleared")
-    
+
     def is_configured(self) -> bool:
         """
         Check if SHA authentication is properly configured.
@@ -344,12 +343,12 @@ class SHAAuthError(Exception):
         message: Error description
         status_code: HTTP status code if applicable
     """
-    
+
     def __init__(self, message: str, status_code: int = 0):
         self.message = message
         self.status_code = status_code
         super().__init__(message)
-    
+
     def __str__(self):
         if self.status_code:
             return f"SHAAuthError ({self.status_code}): {self.message}"

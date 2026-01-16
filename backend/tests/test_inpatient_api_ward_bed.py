@@ -13,7 +13,7 @@ Phase 7a: Ward & Bed Management API (8 tests)
 """
 
 
-import pytest # type: ignore
+import pytest  # type: ignore
 from rest_framework import status
 
 from hmis.apps.core.models import AuditLog

@@ -9,7 +9,7 @@ This module tests the Notification model functionality including:
 - Filtering and ordering
 """
 
-import pytest # type: ignore
+import pytest  # type: ignore
 from django.contrib.auth import get_user_model
 from django.utils import timezone
 

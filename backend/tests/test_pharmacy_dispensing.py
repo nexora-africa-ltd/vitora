@@ -7,7 +7,7 @@ Following TDD approach: Write tests FIRST, then implement model.
 from datetime import date, timedelta
 from decimal import Decimal
 
-import pytest # type: ignore
+import pytest  # type: ignore
 from django.core.exceptions import ValidationError
 
 # ============================================================================

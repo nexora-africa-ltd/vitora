@@ -8,12 +8,13 @@ Targets uncovered lines in:
 - WaitingQueue methods
 """
 
-import pytest # type: ignore
 from datetime import timedelta
 from decimal import Decimal
+
+import pytest  # type: ignore
 from django.utils import timezone
 
-from hmis.apps.triage.models import WaitingQueue, TriageAssessment, TriageVitalThreshold
+from hmis.apps.triage.models import TriageAssessment, TriageVitalThreshold, WaitingQueue
 
 
 @pytest.mark.django_db

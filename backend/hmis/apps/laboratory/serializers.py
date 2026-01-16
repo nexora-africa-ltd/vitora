@@ -266,10 +266,10 @@ class LabQueueSerializer(serializers.ModelSerializer):
     order_number = serializers.CharField(source="lab_order.order_number", read_only=True)
     patient_name = serializers.SerializerMethodField()
     patient_mrn = serializers.CharField(source="lab_order.patient.mrn", read_only=True)
-    
+
     # Test info
     tests = serializers.SerializerMethodField()
-    
+
     # User info
     assigned_technician_name = serializers.SerializerMethodField()
     collected_by_name = serializers.SerializerMethodField()

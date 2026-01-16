@@ -11,7 +11,7 @@ Following TDD methodology - these tests are written BEFORE implementation.
 """
 
 
-import pytest # type: ignore
+import pytest  # type: ignore
 from django.contrib.auth import get_user_model
 from django.core.exceptions import ValidationError
 

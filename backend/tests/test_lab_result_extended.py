@@ -13,7 +13,7 @@ Test Coverage:
 from datetime import date
 from decimal import Decimal
 
-import pytest # type: ignore
+import pytest  # type: ignore
 from django.contrib.auth import get_user_model
 from django.utils import timezone
 

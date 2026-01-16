@@ -14,10 +14,9 @@ Tests cover:
 Following TDD methodology - these tests are written BEFORE implementation.
 """
 
-from datetime import date, timedelta
-from decimal import Decimal
+from datetime import date
 
-import pytest # type: ignore
+import pytest  # type: ignore
 from django.contrib.auth import get_user_model
 from django.utils import timezone
 from rest_framework import status
@@ -122,7 +121,7 @@ class TestPreTriageQueueEndpoint:
 
         response = auth_client.get("/api/encounters/pre_triage_queue/")
         assert response.status_code == status.HTTP_200_OK
-        
+
         results = response.data.get("results", response.data)
         assert len(results) == 1
         assert results[0]["id"] == encounter.id
@@ -143,7 +142,7 @@ class TestPreTriageQueueEndpoint:
 
         response = auth_client.get("/api/encounters/pre_triage_queue/")
         assert response.status_code == status.HTTP_200_OK
-        
+
         results = response.data.get("results", response.data)
         assert len(results) == 1
         assert results[0]["id"] == encounter.id
@@ -164,7 +163,7 @@ class TestPreTriageQueueEndpoint:
 
         response = auth_client.get("/api/encounters/pre_triage_queue/")
         assert response.status_code == status.HTTP_200_OK
-        
+
         results = response.data.get("results", response.data)
         assert len(results) == 0
 
@@ -184,7 +183,7 @@ class TestPreTriageQueueEndpoint:
 
         response = auth_client.get("/api/encounters/pre_triage_queue/")
         assert response.status_code == status.HTTP_200_OK
-        
+
         results = response.data.get("results", response.data)
         assert len(results) == 0
 
@@ -207,7 +206,7 @@ class TestPreTriageQueueEndpoint:
 
         response = auth_client.get("/api/encounters/pre_triage_queue/")
         assert response.status_code == status.HTTP_200_OK
-        
+
         results = response.data.get("results", response.data)
         assert len(results) == 0
 
@@ -225,7 +224,7 @@ class TestPreTriageQueueEndpoint:
 
         response = auth_client.get("/api/encounters/pre_triage_queue/")
         assert response.status_code == status.HTTP_200_OK
-        
+
         results = response.data.get("results", response.data)
         assert len(results) == 0
 
@@ -240,14 +239,14 @@ class TestPreTriageQueueEndpoint:
             encounter_date=date.today(),
             chief_complaint="First patient",
         )
-        
+
         encounter2 = Encounter.objects.create(
             patient=second_patient,
             encounter_type="EMERGENCY",
             encounter_date=date.today(),
             chief_complaint="Second patient",
         )
-        
+
         encounter3 = Encounter.objects.create(
             patient=third_patient,
             encounter_type="FOLLOW_UP",
@@ -257,7 +256,7 @@ class TestPreTriageQueueEndpoint:
 
         response = auth_client.get("/api/encounters/pre_triage_queue/")
         assert response.status_code == status.HTTP_200_OK
-        
+
         results = response.data.get("results", response.data)
         assert len(results) == 3
         # Should be in order of creation (FIFO)
@@ -278,10 +277,10 @@ class TestPreTriageQueueEndpoint:
 
         response = auth_client.get("/api/encounters/pre_triage_queue/")
         assert response.status_code == status.HTTP_200_OK
-        
+
         results = response.data.get("results", response.data)
         assert len(results) == 1
-        
+
         item = results[0]
         assert "patient_name" in item
         assert "patient_mrn" in item
@@ -301,10 +300,10 @@ class TestPreTriageQueueEndpoint:
 
         response = auth_client.get("/api/encounters/pre_triage_queue/")
         assert response.status_code == status.HTTP_200_OK
-        
+
         results = response.data.get("results", response.data)
         assert len(results) == 1
-        
+
         item = results[0]
         assert item["encounter_type"] == "OPD"
         assert item["chief_complaint"] == "Headache and fever"
@@ -323,10 +322,10 @@ class TestPreTriageQueueEndpoint:
 
         response = auth_client.get("/api/encounters/pre_triage_queue/")
         assert response.status_code == status.HTTP_200_OK
-        
+
         results = response.data.get("results", response.data)
         assert len(results) == 1
-        
+
         item = results[0]
         # wait_time_minutes should be present (at least 0)
         assert "wait_time_minutes" in item
@@ -344,7 +343,7 @@ class TestPreTriageQueueEndpoint:
             encounter_date=date.today(),
             chief_complaint="OPD visit",
         )
-        
+
         # OPTIONAL
         encounter2 = Encounter.objects.create(
             patient=second_patient,
@@ -355,14 +354,14 @@ class TestPreTriageQueueEndpoint:
 
         response = auth_client.get("/api/encounters/pre_triage_queue/")
         assert response.status_code == status.HTTP_200_OK
-        
+
         results = response.data.get("results", response.data)
         assert len(results) == 2
-        
+
         # Find each encounter
         opd_result = next(r for r in results if r["id"] == encounter1.id)
         followup_result = next(r for r in results if r["id"] == encounter2.id)
-        
+
         assert opd_result["triage_requirement"] == "MANDATORY"
         assert followup_result["triage_requirement"] == "OPTIONAL"
 
@@ -377,7 +376,7 @@ class TestPreTriageQueueEndpoint:
             encounter_date=date.today(),
             chief_complaint="OPD visit",
         )
-        
+
         # OPTIONAL
         encounter2 = Encounter.objects.create(
             patient=second_patient,
@@ -389,7 +388,7 @@ class TestPreTriageQueueEndpoint:
         # Filter for MANDATORY only
         response = auth_client.get("/api/encounters/pre_triage_queue/?triage_requirement=MANDATORY")
         assert response.status_code == status.HTTP_200_OK
-        
+
         results = response.data.get("results", response.data)
         assert len(results) == 1
         assert results[0]["id"] == encounter1.id
@@ -405,7 +404,7 @@ class TestPreTriageQueueEndpoint:
             encounter_date=date.today(),
             chief_complaint="OPD visit",
         )
-        
+
         # EMERGENCY
         encounter2 = Encounter.objects.create(
             patient=second_patient,
@@ -417,7 +416,7 @@ class TestPreTriageQueueEndpoint:
         # Filter for EMERGENCY only
         response = auth_client.get("/api/encounters/pre_triage_queue/?encounter_type=EMERGENCY")
         assert response.status_code == status.HTTP_200_OK
-        
+
         results = response.data.get("results", response.data)
         assert len(results) == 1
         assert results[0]["id"] == encounter2.id
@@ -438,7 +437,7 @@ class TestPreTriageQueueEndpoint:
 
         response = auth_client.get("/api/encounters/pre_triage_queue/")
         assert response.status_code == status.HTTP_200_OK
-        
+
         results = response.data.get("results", response.data)
         assert len(results) == 0
 
@@ -458,7 +457,7 @@ class TestPreTriageQueueEndpoint:
 
         response = auth_client.get("/api/encounters/pre_triage_queue/")
         assert response.status_code == status.HTTP_200_OK
-        
+
         results = response.data.get("results", response.data)
         # Should NOT include IN_PROGRESS (they're being triaged)
         assert len(results) == 0
@@ -477,7 +476,7 @@ class TestPreTriageQueueEndpoint:
             encounter_date=date.today(),
             chief_complaint="First patient",
         )
-        
+
         # IN_PROGRESS
         encounter2 = Encounter.objects.create(
             patient=second_patient,
@@ -490,6 +489,6 @@ class TestPreTriageQueueEndpoint:
 
         response = auth_client.get("/api/encounters/pre_triage_queue/?include_in_progress=true")
         assert response.status_code == status.HTTP_200_OK
-        
+
         results = response.data.get("results", response.data)
         assert len(results) == 2

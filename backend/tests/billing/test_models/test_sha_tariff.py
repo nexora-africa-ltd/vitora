@@ -29,7 +29,7 @@ Test Coverage (18 tests):
 from datetime import date, timedelta
 from decimal import Decimal
 
-import pytest # type: ignore
+import pytest  # type: ignore
 from django.core.exceptions import ValidationError
 from django.db import IntegrityError
 

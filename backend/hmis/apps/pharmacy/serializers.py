@@ -277,7 +277,7 @@ class PrescriptionSerializer(serializers.ModelSerializer):
     def get_is_valid_prescription(self, obj):
         """Get prescription validity status."""
         return obj.is_valid()
-    
+
     def get_is_valid(self, obj):
         """Alias for is_valid_prescription."""
         return obj.is_valid()
@@ -427,9 +427,9 @@ class StockAdjustmentSerializer(serializers.ModelSerializer):
 
 class AlertSettingsSerializer(serializers.ModelSerializer):
     """Serializer for AlertSettings model."""
-    
+
     updated_by_name = serializers.SerializerMethodField()
-    
+
     class Meta:
         model = AlertSettings
         fields = [
@@ -450,27 +450,27 @@ class AlertSettingsSerializer(serializers.ModelSerializer):
             "updated_at",
             "created_at",
         ]
-    
+
     def get_updated_by_name(self, obj):
         """Get updater full name."""
         if obj.updated_by:
             return obj.updated_by.get_full_name() or obj.updated_by.username
         return None
-    
+
     def validate(self, data):
         """Validate settings data."""
         expiry_warning = data.get('expiry_warning_days')
         expiry_critical = data.get('expiry_critical_days')
-        
+
         if expiry_critical and expiry_warning and expiry_critical >= expiry_warning:
             raise serializers.ValidationError(
                 "Critical days should be less than warning days"
             )
-        
+
         low_stock = data.get('low_stock_threshold')
         if low_stock is not None and low_stock < 0:
             raise serializers.ValidationError(
                 "Low stock threshold must be non-negative"
             )
-        
+
         return data

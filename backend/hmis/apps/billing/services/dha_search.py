@@ -13,12 +13,11 @@ Official Endpoints:
 import logging
 from dataclasses import dataclass, field
 from datetime import date, datetime
-from typing import List, Optional, Tuple
 
 import requests
 from django.conf import settings
 
-from .sha_auth import SHAAuthService, SHAAuthError
+from .sha_auth import SHAAuthError, SHAAuthService
 
 logger = logging.getLogger(__name__)
 
@@ -52,40 +51,40 @@ class FacilityInfo:
         registration_number: Official registration number
         raw_data: Original API response
     """
-    
+
     facility_code: str
     found: bool
-    name: Optional[str] = None
-    approved: Optional[bool] = None
-    level: Optional[int] = None
-    operational_status: Optional[str] = None
-    license_expiry: Optional[date] = None
-    county: Optional[str] = None
-    sub_county: Optional[str] = None
-    ward: Optional[str] = None
-    ownership: Optional[str] = None
-    facility_type: Optional[str] = None
-    fid: Optional[str] = None
-    registration_number: Optional[str] = None
+    name: str | None = None
+    approved: bool | None = None
+    level: int | None = None
+    operational_status: str | None = None
+    license_expiry: date | None = None
+    county: str | None = None
+    sub_county: str | None = None
+    ward: str | None = None
+    ownership: str | None = None
+    facility_type: str | None = None
+    fid: str | None = None
+    registration_number: str | None = None
     raw_data: dict = field(default_factory=dict)
-    
+
     @property
     def is_operational(self) -> bool:
         """Check if facility is operational."""
         return self.operational_status == 'Operational'
-    
+
     @property
     def is_license_valid(self) -> bool:
         """Check if license is valid (not expired)."""
         if not self.license_expiry:
             return True  # Assume valid if no expiry info
         return self.license_expiry >= date.today()
-    
+
     @property
     def is_approved_for_sha(self) -> bool:
         """Check if facility is approved for SHA claims."""
         return bool(self.approved)
-    
+
     @classmethod
     def from_api_response(cls, data: dict) -> 'FacilityInfo':
         """
@@ -101,7 +100,7 @@ class FacilityInfo:
         found = data.get('found', 0)
         if isinstance(found, int):
             found = found == 1
-        
+
         # Parse facility level
         level = data.get('facility_level')
         if isinstance(level, str) and level.startswith('LEVEL '):
@@ -111,7 +110,7 @@ class FacilityInfo:
                 level = int(level)
             except ValueError:
                 level = None
-        
+
         # Parse license expiry date
         expiry = data.get('current_license_expiry_date')
         if isinstance(expiry, str):
@@ -119,7 +118,7 @@ class FacilityInfo:
                 expiry = datetime.strptime(expiry, '%Y-%m-%d').date()
             except ValueError:
                 expiry = None
-        
+
         return cls(
             facility_code=data.get('facility_code', ''),
             found=found,
@@ -271,83 +270,83 @@ class PractitionerInfo:
         found: Whether practitioner was found
         raw_data: Original API response
     """
-    
+
     membership: PractitionerMembership
-    licenses: List[PractitionerLicense]
+    licenses: list[PractitionerLicense]
     professional_details: PractitionerProfessionalDetails
     contacts: PractitionerContacts
     identifiers: PractitionerIdentifiers
     found: bool = True
     raw_data: dict = field(default_factory=dict)
-    
+
     # Legacy compatibility properties
     @property
     def puid(self) -> str:
         """Return PUID for backward compatibility."""
         return self.membership.registration_id
-    
+
     @property
     def first_name(self) -> str:
         """Return first name."""
         return self.membership.first_name
-    
+
     @property
     def last_name(self) -> str:
         """Return last name."""
         return self.membership.last_name
-    
+
     @property
     def middle_name(self) -> str:
         """Return middle name."""
         return self.membership.middle_name
-    
+
     @property
     def full_name(self) -> str:
         """Return full name."""
         return self.membership.full_name.strip()
-    
+
     @property
     def cadre(self) -> str:
         """Return professional cadre."""
         return self.professional_details.professional_cadre
-    
+
     @property
     def qualification(self) -> str:
         """Return educational qualifications."""
         return self.professional_details.educational_qualifications
-    
+
     @property
     def registration_number(self) -> str:
         """Return registration number."""
         return self.membership.registration_id
-    
+
     @property
     def license_status(self) -> str:
         """Return license status."""
         return self.membership.status
-    
+
     @property
-    def license_expiry(self) -> Optional[date]:
+    def license_expiry(self) -> date | None:
         """Calculate license expiry date from days remaining."""
         if self.membership.license_expires_in_days <= 0:
             return None
         from datetime import timedelta
         return date.today() + timedelta(days=self.membership.license_expires_in_days)
-    
+
     @property
     def specialty(self) -> str:
         """Return specialty."""
         return self.professional_details.specialty or self.membership.specialty
-    
+
     @property
     def is_license_active(self) -> bool:
         """Check if license is active."""
         return (
-            self.membership.is_active == 1 and 
+            self.membership.is_active == 1 and
             self.membership.status.lower() == 'licensed' and
             self.membership.license_expires_in_days > 0
         )
-    
+
     @classmethod
     def from_api_response(cls, data: dict) -> 'PractitionerInfo':
         """
@@ -372,7 +371,7 @@ class PractitionerInfo:
         """
         # Handle nested 'message' field if present
         message_data = data.get('message', data)
-        
+
         # Parse membership
         membership_data = message_data.get('membership', {})
         membership = PractitionerMembership(
@@ -394,7 +393,7 @@ class PractitionerInfo:
             withdrawal_date=membership_data.get('withdrawal_date', ''),
             license_expires_in_days=membership_data.get('license_expires_in_days', 0),
         )
-        
+
         # Parse licenses
         licenses_data = message_data.get('licenses', [])
         licenses = [
@@ -407,7 +406,7 @@ class PractitionerInfo:
             )
             for lic in licenses_data
         ]
-        
+
         # Parse professional details
         prof_data = message_data.get('professional_details', {})
         professional_details = PractitionerProfessionalDetails(
@@ -418,7 +417,7 @@ class PractitionerInfo:
             discipline_name=prof_data.get('discipline_name', ''),
             educational_qualifications=prof_data.get('educational_qualifications', ''),
         )
-        
+
         # Parse contacts
         contacts_data = message_data.get('contacts', {})
         contacts = PractitionerContacts(
@@ -426,7 +425,7 @@ class PractitionerInfo:
             email=contacts_data.get('email', ''),
             postal_address=contacts_data.get('postal_address', ''),
         )
-        
+
         # Parse identifiers
         identifiers_data = message_data.get('identifiers', {})
         identifiers = PractitionerIdentifiers(
@@ -435,7 +434,7 @@ class PractitionerInfo:
             client_registry_id=identifiers_data.get('client_registry_id', ''),
             student_id=identifiers_data.get('student_id', ''),
         )
-        
+
         return cls(
             membership=membership,
             licenses=licenses,
@@ -460,18 +459,18 @@ class SearchError(Exception):
         status_code: HTTP status code if applicable
         search_type: Which search failed (facility/practitioner)
     """
-    
+
     def __init__(
         self,
         message: str,
         status_code: int = 0,
-        search_type: Optional[str] = None,
+        search_type: str | None = None,
     ):
         self.message = message
         self.status_code = status_code
         self.search_type = search_type
         super().__init__(message)
-    
+
     def __str__(self):
         parts = ["SearchError"]
         if self.search_type:
@@ -512,30 +511,30 @@ class DHASearchService:
         >>> if facility and facility.is_operational:
         ...     print(f"Facility {facility.name} is operational")
     """
-    
+
     def __init__(self):
         """Initialize DHASearchService with settings from Django config."""
         self.api_base_url = settings.SHA_API_BASE_URL.rstrip('/')
         self.timeout = getattr(settings, 'SHA_API_TIMEOUT', 30)
-        
+
         # Get endpoint paths from settings
         endpoints = getattr(settings, 'SHA_ENDPOINTS', {})
         self.facility_endpoint = endpoints.get('facility_search', '/v1/facility-search')
         self.practitioner_endpoint = endpoints.get('practitioner_search', '/v1/practitioner-search')
-        
+
         # Initialize auth service
         self.auth_service = SHAAuthService()
-    
+
     # =========================================================================
     # Facility Search
     # =========================================================================
-    
+
     def search_facility(
         self,
-        facility_code: Optional[str] = None,
-        fid: Optional[str] = None,
-        registration_number: Optional[str] = None,
-    ) -> Optional[FacilityInfo]:
+        facility_code: str | None = None,
+        fid: str | None = None,
+        registration_number: str | None = None,
+    ) -> FacilityInfo | None:
         """
         Search for a facility in the Master Facility List.
         
@@ -561,7 +560,7 @@ class DHASearchService:
         # Validate at least one parameter
         if not any([facility_code, fid, registration_number]):
             raise ValueError("At least one search parameter must be provided")
-        
+
         # Build query parameters
         params = {}
         if facility_code:
@@ -570,51 +569,51 @@ class DHASearchService:
             params['fid'] = fid
         elif registration_number:
             params['registration_number'] = registration_number
-        
+
         logger.info(f"Searching MFL with params: {params}")
-        
+
         try:
             headers = self.auth_service.get_auth_headers()
-            
+
             response = requests.get(
                 f"{self.api_base_url}{self.facility_endpoint}",
                 params=params,
                 headers=headers,
                 timeout=self.timeout,
             )
-            
+
             logger.debug(f"MFL search response status: {response.status_code}")
-            
+
             if response.status_code == 401:
                 raise SearchError(
                     "Authentication failed",
                     status_code=401,
                     search_type="FACILITY",
                 )
-            
+
             if response.status_code == 500:
                 raise SearchError(
                     "Server error",
                     status_code=500,
                     search_type="FACILITY",
                 )
-            
+
             response.raise_for_status()
-            
+
             data = response.json()
-            
+
             # Response format: {"message": {...}}
             message_data = data.get('message', data)
-            
+
             # Check if facility was found
             found = message_data.get('found', 0)
             if isinstance(found, int) and found == 0:
                 return None
             if isinstance(found, bool) and not found:
                 return None
-            
+
             return FacilityInfo.from_api_response(message_data)
-            
+
         except SHAAuthError as e:
             raise SearchError(
                 f"Authentication error: {str(e)}",
@@ -633,12 +632,12 @@ class DHASearchService:
                 f"Request failed: {str(e)}",
                 search_type="FACILITY",
             )
-    
+
     def validate_facility_for_claims(
         self,
-        facility_code: Optional[str] = None,
-        fid: Optional[str] = None,
-    ) -> Tuple[bool, List[str]]:
+        facility_code: str | None = None,
+        fid: str | None = None,
+    ) -> tuple[bool, list[str]]:
         """
         Validate a facility can submit SHA claims.
         
@@ -664,47 +663,47 @@ class DHASearchService:
             ...         print(f"Error: {error}")
         """
         errors = []
-        
+
         try:
             facility = self.search_facility(
                 facility_code=facility_code,
                 fid=fid,
             )
-            
+
             if not facility:
                 return False, ["Facility not found in Master Facility List"]
-            
+
             if not facility.found:
                 return False, ["Facility not found in Master Facility List"]
-            
+
             if facility.approved is not None and not facility.approved:
                 errors.append("Facility is not approved for SHA claims")
-            
+
             if not facility.is_operational:
                 errors.append(
                     f"Facility is not operational (status: {facility.operational_status})"
                 )
-            
+
             if not facility.is_license_valid:
                 errors.append(
                     f"Facility license has expired (expiry: {facility.license_expiry})"
                 )
-            
+
             return len(errors) == 0, errors
-            
+
         except SearchError as e:
             return False, [f"Facility validation failed: {str(e)}"]
-    
+
     # =========================================================================
     # Practitioner Search
     # =========================================================================
-    
+
     def search_practitioner(
         self,
-        identification_number: Optional[str] = None,
+        identification_number: str | None = None,
         identification_type: str = 'National ID',
-        registration_number: Optional[str] = None,
-    ) -> Optional[PractitionerInfo]:
+        registration_number: str | None = None,
+    ) -> PractitionerInfo | None:
         """
         Search for a practitioner in the Health Worker Registry.
         
@@ -735,7 +734,7 @@ class DHASearchService:
         # Validate at least one parameter
         if not any([identification_number, registration_number]):
             raise ValueError("At least one search parameter must be provided")
-        
+
         # Build query parameters per DHA API spec
         params = {}
         if identification_number:
@@ -743,15 +742,15 @@ class DHASearchService:
             params['identification_type'] = identification_type
         elif registration_number:
             params['registration_number'] = registration_number
-        
+
         logger.info(f"Searching HWR with params: {list(params.keys())}")
-        
+
         try:
             headers = self.auth_service.get_auth_headers()
-            
+
             # Build full URL for logging
             full_url = f"{self.api_base_url}{self.practitioner_endpoint}"
-            
+
             # Log the actual request being made (excluding auth token for security)
             logger.info(
                 f"DHA Practitioner Search API Request:\n"
@@ -761,14 +760,14 @@ class DHASearchService:
                 f"  Headers: {{'Content-Type': '{headers.get('Content-Type', 'N/A')}', "
                 f"'Authorization': 'Bearer ***REDACTED***'}}"
             )
-            
+
             response = requests.get(
                 full_url,
                 params=params,
                 headers=headers,
                 timeout=self.timeout,
             )
-            
+
             # Log full response details
             logger.info(
                 f"DHA Practitioner Search API Response:\n"
@@ -776,30 +775,30 @@ class DHASearchService:
                 f"  Response Headers: {dict(response.headers)}\n"
                 f"  Response Body: {response.text[:2000] if response.text else 'Empty'}"
             )
-            
+
             logger.debug(f"HWR search response status: {response.status_code}")
-            
+
             if response.status_code == 401:
                 raise SearchError(
                     "Authentication failed",
                     status_code=401,
                     search_type="PRACTITIONER",
                 )
-            
+
             if response.status_code == 500:
                 raise SearchError(
                     "Server error",
                     status_code=500,
                     search_type="PRACTITIONER",
                 )
-            
+
             response.raise_for_status()
-            
+
             data = response.json()
-            
+
             # Response format: {"message": {...}} or {"found": true, "practitioner": {...}}
             message_data = data.get('message', data)
-            
+
             # Check if practitioner was found - DHA API returns membership data directly
             # if found, or has explicit 'found' field
             found = message_data.get('found')
@@ -813,9 +812,9 @@ class DHASearchService:
                 # No explicit found field - check if membership data exists
                 if not message_data.get('membership'):
                     return None
-            
+
             return PractitionerInfo.from_api_response(message_data)
-            
+
         except SHAAuthError as e:
             raise SearchError(
                 f"Authentication error: {str(e)}",
@@ -834,12 +833,12 @@ class DHASearchService:
                 f"Request failed: {str(e)}",
                 search_type="PRACTITIONER",
             )
-    
+
     def validate_practitioner_for_claims(
         self,
-        identification_number: Optional[str] = None,
-        registration_number: Optional[str] = None,
-    ) -> Tuple[bool, List[str]]:
+        identification_number: str | None = None,
+        registration_number: str | None = None,
+    ) -> tuple[bool, list[str]]:
         """
         Validate a practitioner can be referenced in SHA claims.
         
@@ -863,30 +862,30 @@ class DHASearchService:
             ...         print(f"Error: {error}")
         """
         errors = []
-        
+
         try:
             practitioner = self.search_practitioner(
                 identification_number=identification_number,
                 registration_number=registration_number,
             )
-            
+
             if not practitioner:
                 return False, ["Practitioner not found or not registered in Health Worker Registry"]
-            
+
             if not practitioner.is_license_active:
                 errors.append(
                     f"Practitioner license is not active (status: {practitioner.license_status})"
                 )
-            
+
             return len(errors) == 0, errors
-            
+
         except SearchError as e:
             return False, [f"Practitioner validation failed: {str(e)}"]
-    
+
     # =========================================================================
     # Utility Methods
     # =========================================================================
-    
+
     def is_configured(self) -> bool:
         """
         Check if Search service is properly configured.

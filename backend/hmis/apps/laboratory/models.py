@@ -407,7 +407,7 @@ class LabOrder(models.Model):
         self.specimen_collected_at = timezone.now()
         self.specimen_collected_by = user
         self.update_status("SPECIMEN_COLLECTED", user)
-        
+
         # Also update the LabQueue if it exists (SSOT)
         try:
             queue = self.queue_entry
@@ -518,7 +518,7 @@ class LabResult(models.Model):
         ("VERIFIED", "Verified"),
         ("REJECTED", "Rejected"),
     ]
-    
+
     # Common lab result units
     RESULT_UNITS = [
         # Concentrations

@@ -6,7 +6,7 @@ ensuring proper validation and audit logging.
 """
 
 
-import pytest # type: ignore
+import pytest  # type: ignore
 from django.contrib.auth import get_user_model
 
 from hmis.apps.core.models import AuditLog

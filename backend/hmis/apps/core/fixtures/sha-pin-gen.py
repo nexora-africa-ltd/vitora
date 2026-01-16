@@ -36,7 +36,7 @@ import sys
 from pathlib import Path
 
 try:
-    from cryptography.hazmat.primitives import serialization, hashes
+    from cryptography.hazmat.primitives import hashes, serialization
     from cryptography.hazmat.primitives.asymmetric import padding
 except ImportError:
     print("Error: cryptography package required. Install with: pip install cryptography")
@@ -70,7 +70,7 @@ def generate_secure_pin(digits: int = 4) -> str:
     """
     if digits < 1 or digits > 10:
         raise ValueError("PIN must be between 1 and 10 digits")
-    
+
     max_value = 10 ** digits
     pin_int = secrets.randbelow(max_value)
     return f"{pin_int:0{digits}d}"
@@ -85,12 +85,12 @@ def find_public_key() -> Path | None:
         if path.exists():
             return path
         print(f"Warning: SHA_PUBLIC_KEY_PATH set but file not found: {env_path}")
-    
+
     # Check default locations
     for path in DEFAULT_KEY_PATHS:
         if path.exists():
             return path
-    
+
     return None
 
 
@@ -110,11 +110,11 @@ def load_public_key(key_path: Path | None = None, key_pem: bytes | None = None):
     """
     if key_pem:
         return serialization.load_pem_public_key(key_pem)
-    
+
     if key_path:
         with open(key_path, "rb") as f:
             return serialization.load_pem_public_key(f.read())
-    
+
     raise ValueError("No public key provided")
 
 
@@ -141,13 +141,13 @@ def encrypt_pin(pin: str, public_key) -> dict:
             label=None
         )
     )
-    
+
     # Base64 encode for API transmission
     base64_ciphertext = base64.b64encode(ciphertext).decode('utf-8')
-    
+
     # Binary string representation (for debugging/verification)
     binary_ciphertext = ''.join(format(byte, '08b') for byte in ciphertext)
-    
+
     return {
         'base64_ciphertext': base64_ciphertext,
         'binary_ciphertext': binary_ciphertext,
@@ -173,16 +173,16 @@ def encrypt_pin_simple(pin: str, key_path: Path | str | None = None) -> str:
     """
     if key_path is None:
         key_path = find_public_key()
-    
+
     if key_path is None:
         raise FileNotFoundError(
             "No SHA public key found. Set SHA_PUBLIC_KEY_PATH environment variable "
             "or place sha.pub in backend/ directory."
         )
-    
+
     if isinstance(key_path, str):
         key_path = Path(key_path)
-    
+
     public_key = load_public_key(key_path=key_path)
     result = encrypt_pin(pin, public_key)
     return result['base64_ciphertext']
@@ -236,9 +236,9 @@ Examples:
         action="store_true",
         help="Show additional verification information"
     )
-    
+
     args = parser.parse_args()
-    
+
     # Determine PIN (provided or generated)
     if args.generate:
         pin = generate_secure_pin(args.digits)
@@ -248,10 +248,10 @@ Examples:
         generated = False
     else:
         parser.error("Either provide a PIN or use --generate")
-    
+
     # Find or use provided key
     key_path = args.key or find_public_key()
-    
+
     if key_path is None:
         print("Error: No public key found.", file=sys.stderr)
         print("", file=sys.stderr)
@@ -260,15 +260,15 @@ Examples:
         print("  2. Set SHA_PUBLIC_KEY_PATH environment variable", file=sys.stderr)
         print("  3. Use --key flag to specify path", file=sys.stderr)
         sys.exit(1)
-    
+
     if not key_path.exists():
         print(f"Error: Public key file not found: {key_path}", file=sys.stderr)
         sys.exit(1)
-    
+
     try:
         public_key = load_public_key(key_path=key_path)
         result = encrypt_pin(pin, public_key)
-        
+
         if args.quiet:
             if generated:
                 # Output both PIN and encrypted for scripting: PIN,ENCRYPTED
@@ -276,25 +276,25 @@ Examples:
             else:
                 print(result['base64_ciphertext'])
         else:
-            print(f"SHA PIN Encryption")
-            print(f"=" * 50)
+            print("SHA PIN Encryption")
+            print("=" * 50)
             if generated:
                 print(f"Generated PIN: {pin} ({len(pin)} digits, cryptographically secure)")
             else:
                 print(f"Input PIN: {'*' * len(pin)} ({len(pin)} digits)")
             print(f"Public Key: {key_path}")
-            print(f"")
-            print(f"Encrypted PIN (Base64):")
+            print("")
+            print("Encrypted PIN (Base64):")
             print(f"{result['base64_ciphertext']}")
-            
+
             if args.verify:
-                print(f"")
-                print(f"Verification Info:")
+                print("")
+                print("Verification Info:")
                 print(f"  - Ciphertext length: {len(result['raw_bytes'])} bytes")
                 print(f"  - Base64 length: {len(result['base64_ciphertext'])} chars")
-                print(f"  - Algorithm: RSA-OAEP (SHA-1)")
-                print(f"  - Random source: secrets.randbelow() (CSPRNG)" if generated else "")
-                
+                print("  - Algorithm: RSA-OAEP (SHA-1)")
+                print("  - Random source: secrets.randbelow() (CSPRNG)" if generated else "")
+
     except Exception as e:
         print(f"Error: {e}", file=sys.stderr)
         sys.exit(1)

@@ -7,7 +7,7 @@ Following TDD approach: Write tests FIRST, then implement models.
 from datetime import date, timedelta
 from decimal import Decimal
 
-import pytest # type: ignore
+import pytest  # type: ignore
 
 # ============================================================================
 # StockAlert Model Tests (12 tests as per sprint deliverables)
@@ -474,7 +474,7 @@ class TestPrescriptionModel:
         assert prescription.prescription_number is not None
         assert prescription.prescription_number.startswith("RX-")
         assert len(prescription.prescription_number) == 16  # RX-YYYYMMDD-XXXX
-        
+
         # Create another prescription on the same day
         prescription2 = Prescription.objects.create(
             encounter=encounter,
@@ -483,7 +483,7 @@ class TestPrescriptionModel:
             valid_until=date.today() + timedelta(days=30),
             clinical_notes="Test prescription 2",
         )
-        
+
         # Check sequential numbering
         num1 = int(prescription.prescription_number.split("-")[-1])
         num2 = int(prescription2.prescription_number.split("-")[-1])

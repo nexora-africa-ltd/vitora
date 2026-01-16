@@ -7,7 +7,7 @@ Reference: Deliverables spec § 8, lines 847-889 (Invoice API pattern)
 
 from decimal import Decimal
 
-import pytest # type: ignore
+import pytest  # type: ignore
 from rest_framework import status
 from rest_framework.test import APIClient
 

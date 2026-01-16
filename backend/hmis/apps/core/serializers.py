@@ -3,7 +3,6 @@ Serializers for core app.
 """
 
 from django.contrib.auth.models import Permission
-from django.utils import timezone
 from rest_framework import serializers
 
 from .models import AuditLog, County, Department, Notification, Role, StaffProfile, SubCounty, Ward
@@ -227,14 +226,14 @@ class StaffProfileCreateSerializer(serializers.Serializer):
     
     This handles the combined creation of a User account and StaffProfile.
     """
-    
+
     # User fields
     username = serializers.CharField(max_length=150)
     email = serializers.EmailField()
     first_name = serializers.CharField(max_length=150)
     last_name = serializers.CharField(max_length=150)
     password = serializers.CharField(max_length=128, required=False, write_only=True)
-    
+
     # StaffProfile fields
     employee_id = serializers.CharField(max_length=20)
     middle_name = serializers.CharField(max_length=100, required=False, allow_blank=True)
@@ -257,7 +256,7 @@ class StaffProfileCreateSerializer(serializers.Serializer):
     licensing_body = serializers.CharField(max_length=100, required=False, allow_blank=True)
     specialization = serializers.CharField(max_length=100, required=False, allow_blank=True)
     hire_date = serializers.DateField(required=False, allow_null=True, source='date_joined')
-    
+
     def validate_username(self, value):
         """Validate username is unique."""
         from django.contrib.auth import get_user_model
@@ -265,7 +264,7 @@ class StaffProfileCreateSerializer(serializers.Serializer):
         if User.objects.filter(username__iexact=value).exists():
             raise serializers.ValidationError("This username is already taken.")
         return value.lower()
-    
+
     def validate_email(self, value):
         """Validate email is unique."""
         from django.contrib.auth import get_user_model
@@ -273,36 +272,37 @@ class StaffProfileCreateSerializer(serializers.Serializer):
         if User.objects.filter(email__iexact=value).exists():
             raise serializers.ValidationError("This email is already registered.")
         return value.lower()
-    
+
     def validate_employee_id(self, value):
         """Validate employee_id is unique."""
         if StaffProfile.objects.filter(employee_id=value).exists():
             raise serializers.ValidationError("This employee ID is already in use.")
         return value
-    
+
     def create(self, validated_data):
         """Create User and StaffProfile together."""
-        from django.contrib.auth import get_user_model
-        from datetime import date
         import secrets
-        
+        from datetime import date
+
+        from django.contrib.auth import get_user_model
+
         User = get_user_model()
-        
+
         # Extract user fields
         username = validated_data.pop('username')
         email = validated_data.pop('email')
         first_name = validated_data.pop('first_name')
         last_name = validated_data.pop('last_name')
         password = validated_data.pop('password', None)
-        
+
         # Generate a random password if not provided
         if not password:
             password = secrets.token_urlsafe(12)
-        
+
         # Ensure date_joined has a default value
         if 'date_joined' not in validated_data or validated_data.get('date_joined') is None:
             validated_data['date_joined'] = date.today()
-        
+
         # Create the user
         user = User.objects.create_user(
             username=username,
@@ -311,13 +311,13 @@ class StaffProfileCreateSerializer(serializers.Serializer):
             last_name=last_name,
             password=password,
         )
-        
+
         # Create the staff profile
         staff_profile = StaffProfile.objects.create(
             user=user,
             **validated_data
         )
-        
+
         return staff_profile
 
 

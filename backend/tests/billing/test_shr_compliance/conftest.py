@@ -5,9 +5,9 @@ These fixtures provide test data for validating SHA SHR integration compliance.
 Covers MedicationRequest, MedicationDispense, and Patient Summary workflows.
 """
 
+import uuid
 from datetime import date, timedelta
 from decimal import Decimal
-import uuid
 
 import pytest  # type: ignore
 from django.contrib.auth import get_user_model
@@ -18,11 +18,11 @@ User = get_user_model()
 # Try to import models - may fail if not fully implemented
 try:
     from hmis.apps.pharmacy.models import (
+        Dispensing,
         Drug,
-        StockBatch,
         Prescription,
         PrescriptionItem,
-        Dispensing,
+        StockBatch,
     )
     HAS_PHARMACY_MODELS = True
 except ImportError:
@@ -82,7 +82,7 @@ def sample_county(db):
     """Create a sample Kenya county."""
     if not HAS_LOCATION_MODELS:
         pytest.skip("Location models not available")
-    
+
     county, _ = County.objects.get_or_create(
         code=1,
         defaults={'name': 'Mombasa'}
@@ -95,7 +95,7 @@ def sample_sub_county(db, sample_county):
     """Create a sample sub-county."""
     if not HAS_LOCATION_MODELS:
         pytest.skip("Location models not available")
-    
+
     sub_county, _ = SubCounty.objects.get_or_create(
         county=sample_county,
         name='Mvita'
@@ -108,7 +108,7 @@ def sample_ward(db, sample_sub_county):
     """Create a sample ward."""
     if not HAS_LOCATION_MODELS:
         pytest.skip("Location models not available")
-    
+
     ward, _ = Ward.objects.get_or_create(
         sub_county=sample_sub_county,
         name='Mji Wa Kale'
@@ -121,7 +121,7 @@ def sample_patient(db, shr_test_user, sample_county, sample_sub_county, sample_w
     """Create a sample patient for SHR tests."""
     if not HAS_PATIENT_MODEL:
         pytest.skip("Patient model not available")
-    
+
     patient = Patient.objects.create(
         first_name='Stephen',
         last_name='Gitau',
@@ -151,7 +151,7 @@ def sample_encounter(db, sample_patient, shr_test_user):
     """Create a sample encounter for prescription."""
     if not HAS_ENCOUNTER_MODEL:
         pytest.skip("Encounter model not available")
-    
+
     encounter = Encounter.objects.create(
         patient=sample_patient,
         encounter_type='opd',
@@ -167,7 +167,7 @@ def sample_drug(db):
     """Create a sample drug (Amlodipine) for prescription tests."""
     if not HAS_PHARMACY_MODELS:
         pytest.skip("Pharmacy models not available")
-    
+
     drug, _ = Drug.objects.get_or_create(
         code='AMLO5',
         defaults={
@@ -191,7 +191,7 @@ def sample_stock_batch(db, sample_drug, shr_test_user):
     """Create a sample stock batch for dispensing tests."""
     if not HAS_PHARMACY_MODELS:
         pytest.skip("Pharmacy models not available")
-    
+
     batch = StockBatch.objects.create(
         drug=sample_drug,
         batch_number='BATCH-2025-001',
@@ -212,7 +212,7 @@ def sample_prescription(db, sample_encounter, sample_patient, shr_test_user):
     """Create a sample prescription."""
     if not HAS_PHARMACY_MODELS:
         pytest.skip("Pharmacy models not available")
-    
+
     prescription = Prescription.objects.create(
         encounter=sample_encounter,
         patient=sample_patient,
@@ -228,7 +228,7 @@ def sample_prescription_item(db, sample_prescription, sample_drug):
     """Create a sample prescription item."""
     if not HAS_PHARMACY_MODELS:
         pytest.skip("Pharmacy models not available")
-    
+
     item = PrescriptionItem.objects.create(
         prescription=sample_prescription,
         drug=sample_drug,
@@ -248,7 +248,7 @@ def sample_dispensing(db, sample_prescription_item, sample_patient, sample_drug,
     """Create a sample dispensing record."""
     if not HAS_PHARMACY_MODELS:
         pytest.skip("Pharmacy models not available")
-    
+
     dispensing = Dispensing.objects.create(
         prescription_item=sample_prescription_item,
         patient=sample_patient,
@@ -522,7 +522,7 @@ def valid_ips_bundle():
     Reference: docs/sha-guides/shr-integration.md Section 3
     """
     medication_request_id = str(uuid.uuid4())
-    
+
     return {
         "resourceType": "Bundle",
         "type": "document",
@@ -620,16 +620,16 @@ def ips_bundle_with_dispense_history(valid_ips_bundle, valid_medication_request_
     """
     bundle = valid_ips_bundle.copy()
     bundle['entry'] = list(bundle['entry'])
-    
+
     # Update medication request ID to match
     medication_request_id = valid_medication_request_fhir['id']
-    
+
     # Add MedicationRequest
     bundle['entry'].append({
         "fullUrl": f"urn:uuid:{medication_request_id}",
         "resource": valid_medication_request_fhir
     })
-    
+
     # Add MedicationDispense
     dispense = valid_medication_dispense_fhir.copy()
     dispense['authorizingPrescription'] = [
@@ -639,7 +639,7 @@ def ips_bundle_with_dispense_history(valid_ips_bundle, valid_medication_request_
         "fullUrl": f"urn:uuid:{valid_medication_dispense_fhir['id']}",
         "resource": dispense
     })
-    
+
     return bundle
 
 

@@ -7,7 +7,6 @@ as documented in docs/sha-guides/shr-integration.md Section 4.
 Reference: https://hl7.org/fhir/R4/medicationdispense.html
 """
 
-import pytest  # type: ignore
 
 
 class TestMedicationDispenseRequiredFields:
@@ -49,7 +48,7 @@ class TestMedicationDispenseRequiredFields:
         assert 'status' in valid_medication_dispense_fhir, (
             "MedicationDispense must have 'status' field"
         )
-        valid_statuses = ['preparation', 'in-progress', 'cancelled', 'on-hold', 
+        valid_statuses = ['preparation', 'in-progress', 'cancelled', 'on-hold',
                          'completed', 'entered-in-error', 'stopped', 'declined', 'unknown']
         assert valid_medication_dispense_fhir['status'] in valid_statuses, (
             f"status must be one of {valid_statuses}"
@@ -104,7 +103,7 @@ class TestMedicationDispenseMedicationCoding:
         """
         medication = valid_medication_dispense_fhir.get('medicationCodeableConcept', {})
         coding = medication.get('coding', [{}])[0]
-        
+
         assert 'system' in coding, (
             "medication coding must have 'system' field"
         )
@@ -115,7 +114,7 @@ class TestMedicationDispenseMedicationCoding:
         """
         medication = valid_medication_dispense_fhir.get('medicationCodeableConcept', {})
         coding = medication.get('coding', [{}])[0]
-        
+
         assert 'code' in coding, (
             "medication coding must have 'code' field"
         )
@@ -126,10 +125,10 @@ class TestMedicationDispenseMedicationCoding:
         """
         dispense_med = valid_medication_dispense_fhir.get('medicationCodeableConcept', {})
         request_med = valid_medication_request_fhir.get('medicationCodeableConcept', {})
-        
+
         dispense_code = dispense_med.get('coding', [{}])[0].get('code')
         request_code = request_med.get('coding', [{}])[0].get('code')
-        
+
         assert dispense_code == request_code, (
             "Dispensed medication code should match prescribed medication code"
         )
@@ -169,7 +168,7 @@ class TestMedicationDispensePerformer:
         """
         performer = valid_medication_dispense_fhir.get('performer', [{}])[0]
         actor = performer.get('actor', {})
-        
+
         assert 'reference' in actor, (
             "performer actor must have 'reference' field"
         )
@@ -239,7 +238,7 @@ class TestMedicationDispenseAuthorizingPrescription:
         """
         auth_rx = valid_medication_dispense_fhir.get('authorizingPrescription', [{}])[0]
         reference = auth_rx.get('reference', '')
-        
+
         assert reference.startswith('MedicationRequest/'), (
             "authorizingPrescription reference must start with 'MedicationRequest/'"
         )
@@ -276,7 +275,7 @@ class TestMedicationDispenseType:
         """
         dispense_type = valid_medication_dispense_fhir.get('type', {})
         coding = dispense_type.get('coding', [{}])[0]
-        
+
         assert 'system' in coding, (
             "type coding must have 'system' field"
         )
@@ -434,7 +433,7 @@ class TestMedicationDispenseSubjectConsistency:
         """
         dispense_subject = valid_medication_dispense_fhir.get('subject', {}).get('reference', '')
         request_subject = valid_medication_request_fhir.get('subject', {}).get('reference', '')
-        
+
         assert dispense_subject == request_subject, (
             "MedicationDispense subject must match MedicationRequest subject"
         )

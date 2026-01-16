@@ -4,8 +4,9 @@ Tests for Lab Queue API endpoints.
 TDD: Sprint 1.5-1.6 Track B - Lab Queue Management
 """
 
-import pytest # type: ignore
 from datetime import timedelta
+
+import pytest  # type: ignore
 from django.contrib.auth import get_user_model
 from django.utils import timezone
 from rest_framework import status
@@ -16,7 +17,6 @@ from hmis.apps.laboratory.models import (
     LabQueue,
     TestCatalog,
 )
-from hmis.apps.encounters.models import Encounter
 
 User = get_user_model()
 
@@ -91,7 +91,7 @@ class TestLabQueueList:
     def test_list_lab_queue_authenticated(self, authenticated_client, sample_lab_queue):
         """Should list lab queue entries for authenticated users."""
         response = authenticated_client.get("/api/lab/queue/")
-        
+
         assert response.status_code == status.HTTP_200_OK
         # Handle paginated or non-paginated response
         data = response.data.get("results", response.data) if isinstance(response.data, dict) else response.data
@@ -101,13 +101,13 @@ class TestLabQueueList:
     def test_list_lab_queue_unauthenticated(self, api_client, sample_lab_queue):
         """Should reject unauthenticated requests."""
         response = api_client.get("/api/lab/queue/")
-        
+
         assert response.status_code == status.HTTP_401_UNAUTHORIZED
 
     def test_filter_by_status(self, authenticated_client, sample_lab_queue):
         """Should filter queue by status."""
         response = authenticated_client.get("/api/lab/queue/?queue_status=PENDING")
-        
+
         assert response.status_code == status.HTTP_200_OK
         data = response.data.get("results", response.data) if isinstance(response.data, dict) else response.data
         assert len(data) >= 1
@@ -116,7 +116,7 @@ class TestLabQueueList:
     def test_filter_by_priority(self, authenticated_client, sample_lab_queue):
         """Should filter queue by priority."""
         response = authenticated_client.get("/api/lab/queue/?priority=ROUTINE")
-        
+
         assert response.status_code == status.HTTP_200_OK
         data = response.data.get("results", response.data) if isinstance(response.data, dict) else response.data
         assert len(data) >= 1
@@ -129,7 +129,7 @@ class TestLabQueueDetail:
     def test_get_lab_queue_detail(self, authenticated_client, sample_lab_queue):
         """Should retrieve lab queue entry by queue number."""
         response = authenticated_client.get(f"/api/lab/queue/{sample_lab_queue.queue_number}/")
-        
+
         assert response.status_code == status.HTTP_200_OK
         assert response.data["queue_number"] == sample_lab_queue.queue_number
         assert response.data["queue_status"] == "PENDING"
@@ -138,7 +138,7 @@ class TestLabQueueDetail:
     def test_get_nonexistent_queue(self, authenticated_client):
         """Should return 404 for nonexistent queue entry."""
         response = authenticated_client.get("/api/lab/queue/QUE-99999999-0001/")
-        
+
         assert response.status_code == status.HTTP_404_NOT_FOUND
 
 
@@ -151,11 +151,11 @@ class TestLabQueueCollectSample:
             f"/api/lab/queue/{sample_lab_queue.queue_number}/collect/",
             {"sample_id": "TUBE-001"},
         )
-        
+
         assert response.status_code == status.HTTP_200_OK
         assert response.data["queue_status"] == "COLLECTED"
         assert response.data["sample_id"] == "TUBE-001"
-        
+
         # Verify database
         sample_lab_queue.refresh_from_db()
         assert sample_lab_queue.queue_status == "COLLECTED"
@@ -165,12 +165,12 @@ class TestLabQueueCollectSample:
         """Should handle already collected samples."""
         sample_lab_queue.queue_status = "COLLECTED"
         sample_lab_queue.save()
-        
+
         response = authenticated_client.post(
             f"/api/lab/queue/{sample_lab_queue.queue_number}/collect/",
             {"sample_id": "TUBE-002"},
         )
-        
+
         # Should still work (idempotent) or return appropriate error
         assert response.status_code in [status.HTTP_200_OK, status.HTTP_400_BAD_REQUEST]
 
@@ -184,9 +184,9 @@ class TestLabQueueAssign:
             f"/api/lab/queue/{sample_lab_queue.queue_number}/assign/",
             {"technician_id": test_user.id},
         )
-        
+
         assert response.status_code == status.HTTP_200_OK
-        
+
         # Verify database
         sample_lab_queue.refresh_from_db()
         assert sample_lab_queue.assigned_technician == test_user
@@ -200,14 +200,14 @@ class TestLabQueueStartProcessing:
         # First collect the sample
         sample_lab_queue.queue_status = "COLLECTED"
         sample_lab_queue.save()
-        
+
         response = authenticated_client.post(
             f"/api/lab/queue/{sample_lab_queue.queue_number}/start-processing/"
         )
-        
+
         assert response.status_code == status.HTTP_200_OK
         assert response.data["queue_status"] == "PROCESSING"
-        
+
         # Verify database
         sample_lab_queue.refresh_from_db()
         assert sample_lab_queue.queue_status == "PROCESSING"
@@ -222,14 +222,14 @@ class TestLabQueueSubmitForReview:
         # First set to processing
         sample_lab_queue.queue_status = "PROCESSING"
         sample_lab_queue.save()
-        
+
         response = authenticated_client.post(
             f"/api/lab/queue/{sample_lab_queue.queue_number}/submit-review/"
         )
-        
+
         assert response.status_code == status.HTTP_200_OK
         assert response.data["queue_status"] == "REVIEW"
-        
+
         # Verify database
         sample_lab_queue.refresh_from_db()
         assert sample_lab_queue.queue_status == "REVIEW"
@@ -243,14 +243,14 @@ class TestLabQueueReleaseResults:
         # First set to review
         sample_lab_queue.queue_status = "REVIEW"
         sample_lab_queue.save()
-        
+
         response = authenticated_client.post(
             f"/api/lab/queue/{sample_lab_queue.queue_number}/release/"
         )
-        
+
         assert response.status_code == status.HTTP_200_OK
         assert response.data["queue_status"] == "RELEASED"
-        
+
         # Verify database
         sample_lab_queue.refresh_from_db()
         assert sample_lab_queue.queue_status == "RELEASED"
@@ -263,7 +263,7 @@ class TestLabQueueStatistics:
     def test_get_queue_stats(self, authenticated_client, sample_lab_queue):
         """Should return queue statistics."""
         response = authenticated_client.get("/api/lab/queue/stats/")
-        
+
         assert response.status_code == status.HTTP_200_OK
         assert "pending" in response.data
         assert "collected" in response.data
@@ -284,7 +284,7 @@ class TestLabQueueSampleIdCollection:
             f"/api/lab/queue/{sample_lab_queue.queue_number}/collect/",
             {"sample_id": "BAR-20260106-001"},
         )
-        
+
         assert response.status_code == status.HTTP_200_OK
         assert response.data["sample_id"] == "BAR-20260106-001"
         assert response.data["collected_by_name"] is not None
@@ -296,7 +296,7 @@ class TestLabQueueSampleIdCollection:
             f"/api/lab/queue/{sample_lab_queue.queue_number}/collect/",
             {},
         )
-        
+
         assert response.status_code == status.HTTP_200_OK
         assert response.data["queue_status"] == "COLLECTED"
 
@@ -306,9 +306,9 @@ class TestLabQueueSampleIdCollection:
             f"/api/lab/queue/{sample_lab_queue.queue_number}/collect/",
             {"sample_id": "TUBE-001"},
         )
-        
+
         assert response.status_code == status.HTTP_200_OK
-        
+
         sample_lab_queue.refresh_from_db()
         assert sample_lab_queue.collected_by == test_user
 
@@ -325,15 +325,15 @@ class TestLabQueueRejectSample:
         """Should reject sample with reason."""
         sample_lab_queue.queue_status = "COLLECTED"
         sample_lab_queue.save()
-        
+
         response = authenticated_client.post(
             f"/api/lab/queue/{sample_lab_queue.queue_number}/reject/",
             {"reason": "Hemolyzed sample - cannot process"},
         )
-        
+
         assert response.status_code == status.HTTP_200_OK
         assert response.data["rejection_reason"] == "Hemolyzed sample - cannot process"
-        
+
         sample_lab_queue.refresh_from_db()
         assert sample_lab_queue.rejection_reason == "Hemolyzed sample - cannot process"
 
@@ -341,12 +341,12 @@ class TestLabQueueRejectSample:
         """Should require rejection reason."""
         sample_lab_queue.queue_status = "COLLECTED"
         sample_lab_queue.save()
-        
+
         response = authenticated_client.post(
             f"/api/lab/queue/{sample_lab_queue.queue_number}/reject/",
             {},
         )
-        
+
         assert response.status_code == status.HTTP_400_BAD_REQUEST
 
     def test_reject_sample_from_pending(self, authenticated_client, sample_lab_queue):
@@ -355,31 +355,31 @@ class TestLabQueueRejectSample:
             f"/api/lab/queue/{sample_lab_queue.queue_number}/reject/",
             {"reason": "Patient refused blood draw"},
         )
-        
+
         assert response.status_code == status.HTTP_200_OK
 
     def test_reject_sample_from_processing(self, authenticated_client, sample_lab_queue):
         """Should allow rejecting from PROCESSING status."""
         sample_lab_queue.queue_status = "PROCESSING"
         sample_lab_queue.save()
-        
+
         response = authenticated_client.post(
             f"/api/lab/queue/{sample_lab_queue.queue_number}/reject/",
             {"reason": "Equipment malfunction - sample contaminated"},
         )
-        
+
         assert response.status_code == status.HTTP_200_OK
 
     def test_cannot_reject_released_sample(self, authenticated_client, sample_lab_queue):
         """Should not allow rejecting released samples."""
         sample_lab_queue.queue_status = "RELEASED"
         sample_lab_queue.save()
-        
+
         response = authenticated_client.post(
             f"/api/lab/queue/{sample_lab_queue.queue_number}/reject/",
             {"reason": "Late rejection attempt"},
         )
-        
+
         assert response.status_code == status.HTTP_400_BAD_REQUEST
 
 
@@ -395,12 +395,12 @@ class TestLabQueueTechnicianNotes:
         """Should add technician notes."""
         sample_lab_queue.queue_status = "PROCESSING"
         sample_lab_queue.save()
-        
+
         response = authenticated_client.post(
             f"/api/lab/queue/{sample_lab_queue.queue_number}/notes/",
             {"notes": "Sample appears slightly lipemic. Ran centrifuge at 3000 RPM for 10 min."},
         )
-        
+
         assert response.status_code == status.HTTP_200_OK
         assert "lipemic" in response.data["technician_notes"]
 
@@ -409,12 +409,12 @@ class TestLabQueueTechnicianNotes:
         sample_lab_queue.queue_status = "PROCESSING"
         sample_lab_queue.technician_notes = "Initial note"
         sample_lab_queue.save()
-        
+
         response = authenticated_client.post(
             f"/api/lab/queue/{sample_lab_queue.queue_number}/notes/",
             {"notes": "Updated note with more details"},
         )
-        
+
         assert response.status_code == status.HTTP_200_OK
         assert response.data["technician_notes"] == "Updated note with more details"
 
@@ -423,12 +423,12 @@ class TestLabQueueTechnicianNotes:
         sample_lab_queue.queue_status = "PROCESSING"
         sample_lab_queue.technician_notes = "First observation."
         sample_lab_queue.save()
-        
+
         response = authenticated_client.post(
             f"/api/lab/queue/{sample_lab_queue.queue_number}/notes/",
             {"notes": "Second observation.", "append": True},
         )
-        
+
         assert response.status_code == status.HTTP_200_OK
         assert "First observation." in response.data["technician_notes"]
         assert "Second observation." in response.data["technician_notes"]
@@ -445,7 +445,7 @@ class TestLabQueueTurnaroundTime:
     def test_tat_included_in_response(self, authenticated_client, sample_lab_queue):
         """Should include TAT info in queue response."""
         response = authenticated_client.get(f"/api/lab/queue/{sample_lab_queue.queue_number}/")
-        
+
         assert response.status_code == status.HTTP_200_OK
         assert "expected_tat_hours" in response.data
         assert "elapsed_hours" in response.data
@@ -456,9 +456,9 @@ class TestLabQueueTurnaroundTime:
         sample_lab_queue.queue_status = "RELEASED"
         sample_lab_queue.released_at = timezone.now()
         sample_lab_queue.save()
-        
+
         response = authenticated_client.get(f"/api/lab/queue/{sample_lab_queue.queue_number}/")
-        
+
         assert response.status_code == status.HTTP_200_OK
         assert "actual_tat_hours" in response.data
 
@@ -467,9 +467,9 @@ class TestLabQueueTurnaroundTime:
         # Set created_at to 48 hours ago (overdue for 24-hour TAT)
         sample_lab_queue.created_at = timezone.now() - timedelta(hours=48)
         sample_lab_queue.save(update_fields=["created_at"])
-        
+
         response = authenticated_client.get(f"/api/lab/queue/{sample_lab_queue.queue_number}/")
-        
+
         assert response.status_code == status.HTTP_200_OK
         assert response.data["is_overdue"] is True
 
@@ -487,9 +487,9 @@ class TestLabQueueBarcodeLookup:
         sample_lab_queue.sample_id = "BAR-20260106-001"
         sample_lab_queue.queue_status = "COLLECTED"
         sample_lab_queue.save()
-        
+
         response = authenticated_client.get("/api/lab/queue/lookup/?barcode=BAR-20260106-001")
-        
+
         assert response.status_code == status.HTTP_200_OK
         assert response.data["queue_number"] == sample_lab_queue.queue_number
 
@@ -498,20 +498,20 @@ class TestLabQueueBarcodeLookup:
         response = authenticated_client.get(
             f"/api/lab/queue/lookup/?barcode={sample_lab_queue.queue_number}"
         )
-        
+
         assert response.status_code == status.HTTP_200_OK
         assert response.data["queue_number"] == sample_lab_queue.queue_number
 
     def test_lookup_not_found(self, authenticated_client):
         """Should return 404 for unknown barcode."""
         response = authenticated_client.get("/api/lab/queue/lookup/?barcode=UNKNOWN-123")
-        
+
         assert response.status_code == status.HTTP_404_NOT_FOUND
 
     def test_lookup_requires_barcode_param(self, authenticated_client):
         """Should require barcode parameter."""
         response = authenticated_client.get("/api/lab/queue/lookup/")
-        
+
         assert response.status_code == status.HTTP_400_BAD_REQUEST
 
 
@@ -529,7 +529,7 @@ class TestLabQueueTechnicianAssignment:
             f"/api/lab/queue/{sample_lab_queue.queue_number}/assign/",
             {"technician_id": lab_technician.id},
         )
-        
+
         assert response.status_code == status.HTTP_200_OK
         assert response.data["assigned_technician"] == lab_technician.id
         assert response.data["assigned_technician_name"] == "Lab Technician"
@@ -538,12 +538,12 @@ class TestLabQueueTechnicianAssignment:
         """Should allow reassigning to different technician."""
         sample_lab_queue.assigned_technician = test_user
         sample_lab_queue.save()
-        
+
         response = authenticated_client.post(
             f"/api/lab/queue/{sample_lab_queue.queue_number}/assign/",
             {"technician_id": lab_technician.id},
         )
-        
+
         assert response.status_code == status.HTTP_200_OK
         assert response.data["assigned_technician"] == lab_technician.id
 
@@ -551,12 +551,12 @@ class TestLabQueueTechnicianAssignment:
         """Should allow unassigning technician."""
         sample_lab_queue.assigned_technician = lab_technician
         sample_lab_queue.save()
-        
+
         response = authenticated_client.post(
             f"/api/lab/queue/{sample_lab_queue.queue_number}/assign/",
             {"technician_id": None},
         )
-        
+
         assert response.status_code == status.HTTP_200_OK
         assert response.data["assigned_technician"] is None
 
@@ -566,13 +566,13 @@ class TestLabQueueTechnicianAssignment:
             f"/api/lab/queue/{sample_lab_queue.queue_number}/assign/",
             {"technician_id": 99999},
         )
-        
+
         assert response.status_code == status.HTTP_404_NOT_FOUND
 
     def test_list_available_technicians(self, authenticated_client, lab_technician):
         """Should list available lab technicians."""
         response = authenticated_client.get("/api/lab/queue/technicians/")
-        
+
         assert response.status_code == status.HTTP_200_OK
         assert isinstance(response.data, list)
         assert len(response.data) >= 1
@@ -603,10 +603,10 @@ class TestLabQueueAutoCreation:
             test=test_catalog,
             unit_cost=test_catalog.cost,
         )
-        
+
         # Refresh to trigger signal and check queue exists
         order.refresh_from_db()
-        
+
         assert hasattr(order, 'queue_entry')
         queue = order.queue_entry
         assert queue.queue_status == "PENDING"
@@ -631,7 +631,7 @@ class TestLabQueueAutoCreation:
             test=test_catalog,
             unit_cost=test_catalog.cost,
         )
-        
+
         # Queue should NOT exist for external orders
         assert not LabQueue.objects.filter(lab_order=order).exists()
 
@@ -656,14 +656,14 @@ class TestLabOrderQueueSync:
             test=test_catalog,
             unit_cost=test_catalog.cost,
         )
-        
+
         # Get the auto-created queue
         queue = LabQueue.objects.get(lab_order=order)
         assert queue.queue_status == "PENDING"
-        
+
         # Collect specimen via LabOrder
         order.mark_specimen_collected(test_user)
-        
+
         # LabQueue should also be updated (SSOT)
         queue.refresh_from_db()
         assert queue.queue_status == "COLLECTED"

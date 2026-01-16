@@ -21,10 +21,7 @@ Test Coverage (10 tests):
 from datetime import date, timedelta
 from decimal import Decimal
 
-import pytest # type: ignore
-from django.core.exceptions import ValidationError
-from django.utils import timezone
-
+import pytest  # type: ignore
 
 # =============================================================================
 # Fixtures specific to SHAEligibilityCheck tests
@@ -450,7 +447,7 @@ class TestSHAEligibilityCheckMeta:
         check2 = SHAEligibilityCheck.objects.create(**valid_check_data)
 
         checks = list(SHAEligibilityCheck.objects.all())
-        
+
         # Most recent should be first
         assert checks[0].pk == check2.pk
 

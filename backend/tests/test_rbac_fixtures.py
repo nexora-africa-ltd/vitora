@@ -8,7 +8,7 @@ Sprint 1.1-1.2 Track C: RBAC Foundation - Default Roles Fixture
 import json
 from pathlib import Path
 
-import pytest # type: ignore
+import pytest  # type: ignore
 from django.contrib.auth import get_user_model
 from django.core.management import call_command
 

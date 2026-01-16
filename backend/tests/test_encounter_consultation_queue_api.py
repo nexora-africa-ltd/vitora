@@ -14,10 +14,9 @@ Tests cover:
 Following TDD methodology - these tests are written BEFORE implementation.
 """
 
-from datetime import date, timedelta
-from decimal import Decimal
+from datetime import date
 
-import pytest # type: ignore
+import pytest  # type: ignore
 from django.contrib.auth import get_user_model
 from django.utils import timezone
 from rest_framework import status
@@ -164,7 +163,7 @@ class TestEncounterSerializerTriageFields:
     def test_serializer_includes_triage_requirement(self, auth_client, mandatory_encounter):
         """Serializer should include triage_requirement field."""
         response = auth_client.get(f"/api/encounters/{mandatory_encounter.id}/")
-        
+
         assert response.status_code == status.HTTP_200_OK
         assert "triage_requirement" in response.data
         assert response.data["triage_requirement"] == "MANDATORY"
@@ -172,7 +171,7 @@ class TestEncounterSerializerTriageFields:
     def test_serializer_includes_triage_status(self, auth_client, mandatory_encounter):
         """Serializer should include triage_status field."""
         response = auth_client.get(f"/api/encounters/{mandatory_encounter.id}/")
-        
+
         assert response.status_code == status.HTTP_200_OK
         assert "triage_status" in response.data
         assert response.data["triage_status"] == "PENDING"
@@ -180,7 +179,7 @@ class TestEncounterSerializerTriageFields:
     def test_serializer_includes_triage_bypass_fields(self, auth_client, bypassed_encounter):
         """Serializer should include triage bypass fields."""
         response = auth_client.get(f"/api/encounters/{bypassed_encounter.id}/")
-        
+
         assert response.status_code == status.HTTP_200_OK
         assert "triage_bypass_reason" in response.data
         assert "triage_bypassed_by" in response.data
@@ -190,7 +189,7 @@ class TestEncounterSerializerTriageFields:
     def test_serializer_includes_consultation_status(self, auth_client, mandatory_encounter):
         """Serializer should include consultation_status field."""
         response = auth_client.get(f"/api/encounters/{mandatory_encounter.id}/")
-        
+
         assert response.status_code == status.HTTP_200_OK
         assert "consultation_status" in response.data
         assert response.data["consultation_status"] == "WAITING"
@@ -198,21 +197,21 @@ class TestEncounterSerializerTriageFields:
     def test_serializer_includes_called_at(self, auth_client, mandatory_encounter):
         """Serializer should include called_at field."""
         response = auth_client.get(f"/api/encounters/{mandatory_encounter.id}/")
-        
+
         assert response.status_code == status.HTTP_200_OK
         assert "called_at" in response.data
 
     def test_serializer_includes_consultation_started_at(self, auth_client, mandatory_encounter):
         """Serializer should include consultation_started_at field."""
         response = auth_client.get(f"/api/encounters/{mandatory_encounter.id}/")
-        
+
         assert response.status_code == status.HTTP_200_OK
         assert "consultation_started_at" in response.data
 
     def test_serializer_includes_can_enter_consultation(self, auth_client, triaged_encounter):
         """Serializer should include can_enter_consultation computed field."""
         response = auth_client.get(f"/api/encounters/{triaged_encounter.id}/")
-        
+
         assert response.status_code == status.HTTP_200_OK
         assert "can_enter_consultation" in response.data
         assert response.data["can_enter_consultation"] is True
@@ -220,7 +219,7 @@ class TestEncounterSerializerTriageFields:
     def test_not_required_encounter_shows_not_applicable(self, auth_client, not_required_encounter):
         """NOT_REQUIRED encounters should have triage_status=NOT_APPLICABLE."""
         response = auth_client.get(f"/api/encounters/{not_required_encounter.id}/")
-        
+
         assert response.status_code == status.HTTP_200_OK
         assert response.data["triage_status"] == "NOT_APPLICABLE"
         assert response.data["can_enter_consultation"] is True
@@ -241,7 +240,7 @@ class TestBypassTriageEndpoint:
             f"/api/encounters/{optional_encounter.id}/bypass_triage/",
             {"reason": "STABLE_FOLLOW_UP"},
         )
-        
+
         assert response.status_code == status.HTTP_200_OK
         assert response.data["triage_status"] == "BYPASSED"
         assert response.data["triage_bypass_reason"] == "STABLE_FOLLOW_UP"
@@ -255,7 +254,7 @@ class TestBypassTriageEndpoint:
             {"reason": "CHRONIC_CARE_REVIEW"},
         )
         after = timezone.now()
-        
+
         assert response.status_code == status.HTTP_200_OK
         assert response.data["triage_bypassed_at"] is not None
         # Parse timestamp and verify it's within range
@@ -269,7 +268,7 @@ class TestBypassTriageEndpoint:
             f"/api/encounters/{mandatory_encounter.id}/bypass_triage/",
             {"reason": "CONSULTANT_DECISION"},
         )
-        
+
         assert response.status_code == status.HTTP_400_BAD_REQUEST
         assert "mandatory" in response.data["detail"].lower()
 
@@ -279,7 +278,7 @@ class TestBypassTriageEndpoint:
             f"/api/encounters/{optional_encounter.id}/bypass_triage/",
             {},
         )
-        
+
         assert response.status_code == status.HTTP_400_BAD_REQUEST
 
     def test_bypass_triage_fails_with_invalid_reason(self, auth_client, optional_encounter):
@@ -288,7 +287,7 @@ class TestBypassTriageEndpoint:
             f"/api/encounters/{optional_encounter.id}/bypass_triage/",
             {"reason": "INVALID_REASON"},
         )
-        
+
         assert response.status_code == status.HTTP_400_BAD_REQUEST
 
     def test_bypass_triage_fails_if_already_completed(self, auth_client, triaged_encounter):
@@ -297,7 +296,7 @@ class TestBypassTriageEndpoint:
             f"/api/encounters/{triaged_encounter.id}/bypass_triage/",
             {"reason": "STABLE_FOLLOW_UP"},
         )
-        
+
         assert response.status_code == status.HTTP_400_BAD_REQUEST
 
     def test_bypass_triage_requires_authentication(self, api_client, optional_encounter):
@@ -306,7 +305,7 @@ class TestBypassTriageEndpoint:
             f"/api/encounters/{optional_encounter.id}/bypass_triage/",
             {"reason": "STABLE_FOLLOW_UP"},
         )
-        
+
         assert response.status_code == status.HTTP_401_UNAUTHORIZED
 
     def test_bypass_triage_not_found(self, auth_client):
@@ -315,7 +314,7 @@ class TestBypassTriageEndpoint:
             "/api/encounters/99999/bypass_triage/",
             {"reason": "STABLE_FOLLOW_UP"},
         )
-        
+
         assert response.status_code == status.HTTP_404_NOT_FOUND
 
 
@@ -331,7 +330,7 @@ class TestCallPatientEndpoint:
     def test_call_patient_success(self, auth_client, triaged_encounter):
         """Should successfully call patient for consultation."""
         response = auth_client.post(f"/api/encounters/{triaged_encounter.id}/call/")
-        
+
         assert response.status_code == status.HTTP_200_OK
         assert response.data["consultation_status"] == "CALLED"
         assert response.data["called_at"] is not None
@@ -341,7 +340,7 @@ class TestCallPatientEndpoint:
         before = timezone.now()
         response = auth_client.post(f"/api/encounters/{triaged_encounter.id}/call/")
         after = timezone.now()
-        
+
         assert response.status_code == status.HTTP_200_OK
         from django.utils.dateparse import parse_datetime
         called_at = parse_datetime(response.data["called_at"])
@@ -351,21 +350,21 @@ class TestCallPatientEndpoint:
         """Should reject call if encounter not ready for consultation."""
         # mandatory_encounter has triage_status=PENDING, cannot enter consultation
         response = auth_client.post(f"/api/encounters/{mandatory_encounter.id}/call/")
-        
+
         assert response.status_code == status.HTTP_400_BAD_REQUEST
         assert "triage" in response.data["detail"].lower() or "consultation" in response.data["detail"].lower()
 
     def test_call_patient_works_for_bypassed(self, auth_client, bypassed_encounter):
         """Should allow calling patients with bypassed triage."""
         response = auth_client.post(f"/api/encounters/{bypassed_encounter.id}/call/")
-        
+
         assert response.status_code == status.HTTP_200_OK
         assert response.data["consultation_status"] == "CALLED"
 
     def test_call_patient_works_for_not_applicable(self, auth_client, not_required_encounter):
         """Should allow calling patients with NOT_APPLICABLE triage."""
         response = auth_client.post(f"/api/encounters/{not_required_encounter.id}/call/")
-        
+
         assert response.status_code == status.HTTP_200_OK
         assert response.data["consultation_status"] == "CALLED"
 
@@ -373,10 +372,10 @@ class TestCallPatientEndpoint:
         """Should allow re-calling a patient."""
         # First call
         auth_client.post(f"/api/encounters/{triaged_encounter.id}/call/")
-        
+
         # Re-call
         response = auth_client.post(f"/api/encounters/{triaged_encounter.id}/call/")
-        
+
         assert response.status_code == status.HTTP_200_OK
         assert response.data["consultation_status"] == "CALLED"
 
@@ -384,15 +383,15 @@ class TestCallPatientEndpoint:
         """Should reject call if consultation already in progress."""
         triaged_encounter.consultation_status = "IN_PROGRESS"
         triaged_encounter.save()
-        
+
         response = auth_client.post(f"/api/encounters/{triaged_encounter.id}/call/")
-        
+
         assert response.status_code == status.HTTP_400_BAD_REQUEST
 
     def test_call_patient_requires_authentication(self, api_client, triaged_encounter):
         """Should require authentication."""
         response = api_client.post(f"/api/encounters/{triaged_encounter.id}/call/")
-        
+
         assert response.status_code == status.HTTP_401_UNAUTHORIZED
 
 
@@ -408,7 +407,7 @@ class TestStartConsultationEndpoint:
     def test_start_consultation_success(self, auth_client, triaged_encounter):
         """Should successfully start consultation."""
         response = auth_client.post(f"/api/encounters/{triaged_encounter.id}/start_consultation/")
-        
+
         assert response.status_code == status.HTTP_200_OK
         assert response.data["consultation_status"] == "IN_PROGRESS"
         assert response.data["consultation_started_at"] is not None
@@ -418,7 +417,7 @@ class TestStartConsultationEndpoint:
         before = timezone.now()
         response = auth_client.post(f"/api/encounters/{triaged_encounter.id}/start_consultation/")
         after = timezone.now()
-        
+
         assert response.status_code == status.HTTP_200_OK
         from django.utils.dateparse import parse_datetime
         started_at = parse_datetime(response.data["consultation_started_at"])
@@ -427,9 +426,9 @@ class TestStartConsultationEndpoint:
     def test_start_consultation_from_waiting(self, auth_client, triaged_encounter):
         """Should allow starting consultation from WAITING status."""
         assert triaged_encounter.consultation_status == "WAITING"
-        
+
         response = auth_client.post(f"/api/encounters/{triaged_encounter.id}/start_consultation/")
-        
+
         assert response.status_code == status.HTTP_200_OK
         assert response.data["consultation_status"] == "IN_PROGRESS"
 
@@ -437,40 +436,40 @@ class TestStartConsultationEndpoint:
         """Should allow starting consultation from CALLED status."""
         triaged_encounter.consultation_status = "CALLED"
         triaged_encounter.save()
-        
+
         response = auth_client.post(f"/api/encounters/{triaged_encounter.id}/start_consultation/")
-        
+
         assert response.status_code == status.HTTP_200_OK
         assert response.data["consultation_status"] == "IN_PROGRESS"
 
     def test_start_consultation_fails_if_not_ready(self, auth_client, mandatory_encounter):
         """Should reject if encounter not ready for consultation."""
         response = auth_client.post(f"/api/encounters/{mandatory_encounter.id}/start_consultation/")
-        
+
         assert response.status_code == status.HTTP_400_BAD_REQUEST
 
     def test_start_consultation_fails_if_already_in_progress(self, auth_client, triaged_encounter):
         """Should reject if consultation already in progress."""
         triaged_encounter.consultation_status = "IN_PROGRESS"
         triaged_encounter.save()
-        
+
         response = auth_client.post(f"/api/encounters/{triaged_encounter.id}/start_consultation/")
-        
+
         assert response.status_code == status.HTTP_400_BAD_REQUEST
 
     def test_start_consultation_fails_if_completed(self, auth_client, triaged_encounter):
         """Should reject if consultation already completed."""
         triaged_encounter.consultation_status = "COMPLETED"
         triaged_encounter.save()
-        
+
         response = auth_client.post(f"/api/encounters/{triaged_encounter.id}/start_consultation/")
-        
+
         assert response.status_code == status.HTTP_400_BAD_REQUEST
 
     def test_start_consultation_requires_authentication(self, api_client, triaged_encounter):
         """Should require authentication."""
         response = api_client.post(f"/api/encounters/{triaged_encounter.id}/start_consultation/")
-        
+
         assert response.status_code == status.HTTP_401_UNAUTHORIZED
 
 
@@ -486,7 +485,7 @@ class TestConsultationQueueEndpoint:
     def test_consultation_queue_returns_list(self, auth_client):
         """Should return a list of encounters ready for consultation."""
         response = auth_client.get("/api/encounters/consultation_queue/")
-        
+
         assert response.status_code == status.HTTP_200_OK
         assert "results" in response.data or isinstance(response.data, list)
 
@@ -495,7 +494,7 @@ class TestConsultationQueueEndpoint:
     ):
         """Should include encounters with COMPLETED triage."""
         response = auth_client.get("/api/encounters/consultation_queue/")
-        
+
         assert response.status_code == status.HTTP_200_OK
         encounter_ids = [e["id"] for e in response.data.get("results", response.data)]
         assert triaged_encounter.id in encounter_ids
@@ -505,7 +504,7 @@ class TestConsultationQueueEndpoint:
     ):
         """Should include encounters with BYPASSED triage."""
         response = auth_client.get("/api/encounters/consultation_queue/")
-        
+
         assert response.status_code == status.HTTP_200_OK
         encounter_ids = [e["id"] for e in response.data.get("results", response.data)]
         assert bypassed_encounter.id in encounter_ids
@@ -515,7 +514,7 @@ class TestConsultationQueueEndpoint:
     ):
         """Should include encounters with NOT_APPLICABLE triage."""
         response = auth_client.get("/api/encounters/consultation_queue/")
-        
+
         assert response.status_code == status.HTTP_200_OK
         encounter_ids = [e["id"] for e in response.data.get("results", response.data)]
         assert not_required_encounter.id in encounter_ids
@@ -525,7 +524,7 @@ class TestConsultationQueueEndpoint:
     ):
         """Should exclude MANDATORY encounters with PENDING triage."""
         response = auth_client.get("/api/encounters/consultation_queue/")
-        
+
         assert response.status_code == status.HTTP_200_OK
         encounter_ids = [e["id"] for e in response.data.get("results", response.data)]
         assert mandatory_encounter.id not in encounter_ids
@@ -536,9 +535,9 @@ class TestConsultationQueueEndpoint:
         """Should exclude encounters with IN_PROGRESS consultation."""
         triaged_encounter.consultation_status = "IN_PROGRESS"
         triaged_encounter.save()
-        
+
         response = auth_client.get("/api/encounters/consultation_queue/")
-        
+
         assert response.status_code == status.HTTP_200_OK
         encounter_ids = [e["id"] for e in response.data.get("results", response.data)]
         assert triaged_encounter.id not in encounter_ids
@@ -549,9 +548,9 @@ class TestConsultationQueueEndpoint:
         """Should exclude encounters with COMPLETED consultation."""
         triaged_encounter.consultation_status = "COMPLETED"
         triaged_encounter.save()
-        
+
         response = auth_client.get("/api/encounters/consultation_queue/")
-        
+
         assert response.status_code == status.HTTP_200_OK
         encounter_ids = [e["id"] for e in response.data.get("results", response.data)]
         assert triaged_encounter.id not in encounter_ids
@@ -574,9 +573,9 @@ class TestConsultationQueueEndpoint:
             triage_status="COMPLETED",
             consultation_status="CALLED",
         )
-        
+
         response = auth_client.get("/api/encounters/consultation_queue/")
-        
+
         assert response.status_code == status.HTTP_200_OK
         encounter_ids = [e["id"] for e in response.data.get("results", response.data)]
         assert waiting.id in encounter_ids
@@ -587,11 +586,11 @@ class TestConsultationQueueEndpoint:
     ):
         """Should include patient information in queue items."""
         response = auth_client.get("/api/encounters/consultation_queue/")
-        
+
         assert response.status_code == status.HTTP_200_OK
         results = response.data.get("results", response.data)
         encounter_data = next(e for e in results if e["id"] == triaged_encounter.id)
-        
+
         assert "patient_name" in encounter_data or "patient" in encounter_data
         assert "patient_mrn" in encounter_data or "patient" in encounter_data
 
@@ -600,11 +599,11 @@ class TestConsultationQueueEndpoint:
     ):
         """Should include wait time information."""
         response = auth_client.get("/api/encounters/consultation_queue/")
-        
+
         assert response.status_code == status.HTTP_200_OK
         results = response.data.get("results", response.data)
         encounter_data = next(e for e in results if e["id"] == triaged_encounter.id)
-        
+
         # Should have some form of wait time indication
         assert "wait_time_minutes" in encounter_data or "created_at" in encounter_data
 
@@ -625,7 +624,7 @@ class TestConsultationQueueEndpoint:
         # Sleep briefly to ensure different timestamps
         import time
         time.sleep(0.01)
-        
+
         red = Encounter.objects.create(
             patient=second_patient,
             encounter_type="EMERGENCY",
@@ -633,9 +632,9 @@ class TestConsultationQueueEndpoint:
             triage_status="COMPLETED",
             consultation_status="WAITING",
         )
-        
+
         response = auth_client.get("/api/encounters/consultation_queue/")
-        
+
         assert response.status_code == status.HTTP_200_OK
         results = response.data.get("results", response.data)
         # Emergency encounters should appear before non-emergency
@@ -645,7 +644,7 @@ class TestConsultationQueueEndpoint:
         green_idx = next(
             (i for i, e in enumerate(results) if e["id"] == green.id), None
         )
-        
+
         if emergency_idx is not None and green_idx is not None:
             assert emergency_idx < green_idx
 
@@ -657,7 +656,7 @@ class TestConsultationQueueEndpoint:
             "/api/encounters/consultation_queue/",
             {"triage_status": "COMPLETED"},
         )
-        
+
         assert response.status_code == status.HTTP_200_OK
         encounter_ids = [e["id"] for e in response.data.get("results", response.data)]
         assert triaged_encounter.id in encounter_ids
@@ -674,12 +673,12 @@ class TestConsultationQueueEndpoint:
             triage_status="COMPLETED",
             consultation_status="WAITING",
         )
-        
+
         response = auth_client.get(
             "/api/encounters/consultation_queue/",
             {"consultation_status": "WAITING"},
         )
-        
+
         assert response.status_code == status.HTTP_200_OK
         results = response.data.get("results", response.data)
         for encounter in results:
@@ -688,7 +687,7 @@ class TestConsultationQueueEndpoint:
     def test_consultation_queue_requires_authentication(self, api_client):
         """Should require authentication."""
         response = api_client.get("/api/encounters/consultation_queue/")
-        
+
         assert response.status_code == status.HTTP_401_UNAUTHORIZED
 
 
@@ -710,24 +709,24 @@ class TestConsultationQueueWorkflow:
         )
         assert response.status_code == status.HTTP_200_OK
         assert response.data["triage_status"] == "BYPASSED"
-        
+
         # 2. Verify in queue
         response = auth_client.get("/api/encounters/consultation_queue/")
         encounter_ids = [e["id"] for e in response.data.get("results", response.data)]
         assert optional_encounter.id in encounter_ids
-        
+
         # 3. Call patient
         response = auth_client.post(f"/api/encounters/{optional_encounter.id}/call/")
         assert response.status_code == status.HTTP_200_OK
         assert response.data["consultation_status"] == "CALLED"
-        
+
         # 4. Start consultation
         response = auth_client.post(
             f"/api/encounters/{optional_encounter.id}/start_consultation/"
         )
         assert response.status_code == status.HTTP_200_OK
         assert response.data["consultation_status"] == "IN_PROGRESS"
-        
+
         # 5. Verify removed from queue
         response = auth_client.get("/api/encounters/consultation_queue/")
         encounter_ids = [e["id"] for e in response.data.get("results", response.data)]
@@ -739,17 +738,17 @@ class TestConsultationQueueWorkflow:
         response = auth_client.get("/api/encounters/consultation_queue/")
         encounter_ids = [e["id"] for e in response.data.get("results", response.data)]
         assert triaged_encounter.id in encounter_ids
-        
+
         # 2. Call patient
         response = auth_client.post(f"/api/encounters/{triaged_encounter.id}/call/")
         assert response.status_code == status.HTTP_200_OK
-        
+
         # 3. Start consultation
         response = auth_client.post(
             f"/api/encounters/{triaged_encounter.id}/start_consultation/"
         )
         assert response.status_code == status.HTTP_200_OK
-        
+
         # 4. Verify removed from queue
         response = auth_client.get("/api/encounters/consultation_queue/")
         encounter_ids = [e["id"] for e in response.data.get("results", response.data)]
@@ -761,11 +760,11 @@ class TestConsultationQueueWorkflow:
         response = auth_client.get("/api/encounters/consultation_queue/")
         encounter_ids = [e["id"] for e in response.data.get("results", response.data)]
         assert not_required_encounter.id in encounter_ids
-        
+
         # 2. Call patient directly
         response = auth_client.post(f"/api/encounters/{not_required_encounter.id}/call/")
         assert response.status_code == status.HTTP_200_OK
-        
+
         # 3. Start consultation
         response = auth_client.post(
             f"/api/encounters/{not_required_encounter.id}/start_consultation/"

@@ -10,16 +10,14 @@ Following TDD approach: Write tests FIRST, then implement.
 """
 
 from datetime import timedelta
-from decimal import Decimal
 
-import pytest # type: ignore
+import pytest  # type: ignore
 from django.contrib.auth import get_user_model
 from django.utils import timezone
 from rest_framework import status
 
 from hmis.apps.core.models import Notification
 from hmis.apps.encounters.models import Encounter
-from hmis.apps.patients.models import Patient
 
 User = get_user_model()
 
@@ -94,7 +92,7 @@ class TestNotificationModel:
             title="Patient Called",
             message="Patient has been called",
         )
-        
+
         assert notification.id is not None
         assert notification.user == notification_user
         assert notification.notification_type == "patient_called"
@@ -105,9 +103,9 @@ class TestNotificationModel:
         """Should mark notification as read with timestamp."""
         assert sample_notification.is_read is False
         assert sample_notification.read_at is None
-        
+
         sample_notification.mark_as_read()
-        
+
         assert sample_notification.is_read is True
         assert sample_notification.read_at is not None
 
@@ -122,14 +120,14 @@ class TestNotificationModel:
         # Force older timestamp
         older.created_at = timezone.now() - timedelta(hours=1)
         older.save()
-        
+
         newer = Notification.objects.create(
             user=notification_user,
             notification_type="test",
             title="Newer",
             message="Newer notification",
         )
-        
+
         notifications = list(Notification.objects.filter(user=notification_user))
         assert notifications[0].title == "Newer"
         assert notifications[1].title == "Older"
@@ -153,9 +151,9 @@ class TestNotificationAPIEndpoints:
             title="Test Notification",
             message="Test message",
         )
-        
+
         response = authenticated_client.get("/api/notifications/")
-        
+
         assert response.status_code == status.HTTP_200_OK
         assert "results" in response.data
         assert len(response.data["results"]) == 1
@@ -163,7 +161,7 @@ class TestNotificationAPIEndpoints:
     def test_list_notifications_unauthenticated(self, api_client):
         """Should reject unauthenticated requests."""
         response = api_client.get("/api/notifications/")
-        
+
         assert response.status_code == status.HTTP_401_UNAUTHORIZED
 
     def test_list_only_own_notifications(self, authenticated_client, test_user, notification_user):
@@ -175,7 +173,7 @@ class TestNotificationAPIEndpoints:
             title="Other User's Notification",
             message="Should not see this",
         )
-        
+
         # Create notification for test_user
         Notification.objects.create(
             user=test_user,
@@ -183,9 +181,9 @@ class TestNotificationAPIEndpoints:
             title="My Notification",
             message="Should see this",
         )
-        
+
         response = authenticated_client.get("/api/notifications/")
-        
+
         assert response.status_code == status.HTTP_200_OK
         assert len(response.data["results"]) == 1
         assert response.data["results"][0]["title"] == "My Notification"
@@ -204,9 +202,9 @@ class TestNotificationAPIEndpoints:
             title="Lab",
             message="Lab result ready",
         )
-        
+
         response = authenticated_client.get("/api/notifications/?notification_type=patient_called")
-        
+
         assert response.status_code == status.HTTP_200_OK
         assert len(response.data["results"]) == 1
         assert response.data["results"][0]["notification_type"] == "patient_called"
@@ -226,9 +224,9 @@ class TestNotificationAPIEndpoints:
             message="Read notification",
             is_read=True,
         )
-        
+
         response = authenticated_client.get("/api/notifications/?is_read=false")
-        
+
         assert response.status_code == status.HTTP_200_OK
         assert len(response.data["results"]) == 1
         assert response.data["results"][0]["title"] == "Unread"
@@ -241,9 +239,9 @@ class TestNotificationAPIEndpoints:
             title="Test",
             message="Test message",
         )
-        
+
         response = authenticated_client.get(f"/api/notifications/{notification.id}/")
-        
+
         assert response.status_code == status.HTTP_200_OK
         assert response.data["title"] == "Test"
         assert response.data["message"] == "Test message"
@@ -256,9 +254,9 @@ class TestNotificationAPIEndpoints:
             title="Other's Notification",
             message="Should not access",
         )
-        
+
         response = authenticated_client.get(f"/api/notifications/{notification.id}/")
-        
+
         assert response.status_code == status.HTTP_404_NOT_FOUND
 
     def test_mark_notification_as_read(self, authenticated_client, test_user):
@@ -269,9 +267,9 @@ class TestNotificationAPIEndpoints:
             title="Test",
             message="Test message",
         )
-        
+
         response = authenticated_client.post(f"/api/notifications/{notification.id}/mark_read/")
-        
+
         assert response.status_code == status.HTTP_200_OK
         notification.refresh_from_db()
         assert notification.is_read is True
@@ -291,9 +289,9 @@ class TestNotificationAPIEndpoints:
             title="Notification 2",
             message="Message 2",
         )
-        
+
         response = authenticated_client.post("/api/notifications/mark_all_read/")
-        
+
         assert response.status_code == status.HTTP_200_OK
         assert response.data["marked_count"] == 2
         assert Notification.objects.filter(user=test_user, is_read=False).count() == 0
@@ -319,9 +317,9 @@ class TestNotificationAPIEndpoints:
             message="Message",
             is_read=True,
         )
-        
+
         response = authenticated_client.get("/api/notifications/unread_count/")
-        
+
         assert response.status_code == status.HTTP_200_OK
         assert response.data["unread_count"] == 2
 
@@ -340,9 +338,9 @@ class TestPatientCalledNotification:
         response = authenticated_client.post(
             f"/api/encounters/{consultation_ready_encounter.id}/call/"
         )
-        
+
         assert response.status_code == status.HTTP_200_OK
-        
+
         # Check notification was created
         notifications = Notification.objects.filter(
             notification_type="patient_called",
@@ -356,14 +354,14 @@ class TestPatientCalledNotification:
         response = authenticated_client.post(
             f"/api/encounters/{consultation_ready_encounter.id}/call/"
         )
-        
+
         assert response.status_code == status.HTTP_200_OK
-        
+
         notification = Notification.objects.filter(
             notification_type="patient_called",
             related_id=consultation_ready_encounter.id,
         ).first()
-        
+
         assert notification is not None
         assert sample_patient.first_name in notification.title or sample_patient.last_name in notification.title
         assert "called" in notification.message.lower()
@@ -373,14 +371,14 @@ class TestPatientCalledNotification:
         response = authenticated_client.post(
             f"/api/encounters/{consultation_ready_encounter.id}/call/"
         )
-        
+
         assert response.status_code == status.HTTP_200_OK
-        
+
         notification = Notification.objects.filter(
             notification_type="patient_called",
             related_id=consultation_ready_encounter.id,
         ).first()
-        
+
         assert notification is not None
         assert notification.priority == "high"
 
@@ -389,14 +387,14 @@ class TestPatientCalledNotification:
         response = authenticated_client.post(
             f"/api/encounters/{consultation_ready_encounter.id}/call/"
         )
-        
+
         assert response.status_code == status.HTTP_200_OK
-        
+
         notification = Notification.objects.filter(
             notification_type="patient_called",
             related_id=consultation_ready_encounter.id,
         ).first()
-        
+
         assert notification is not None
         assert notification.action_url != ""
         assert str(consultation_ready_encounter.id) in notification.action_url
@@ -423,12 +421,12 @@ class TestNotificationSerializer:
             action_url="/encounters/123",
             priority="high",
         )
-        
+
         response = authenticated_client.get("/api/notifications/")
-        
+
         assert response.status_code == status.HTTP_200_OK
         notification = response.data["results"][0]
-        
+
         assert "id" in notification
         assert "notification_type" in notification
         assert "title" in notification
@@ -450,9 +448,9 @@ class TestNotificationSerializer:
             message="Test message",
         )
         notification.mark_as_read()
-        
+
         response = authenticated_client.get(f"/api/notifications/{notification.id}/")
-        
+
         assert response.status_code == status.HTTP_200_OK
         # Should be ISO format
         assert "T" in response.data["created_at"]
@@ -481,10 +479,10 @@ class TestNotificationPolling:
         old_time = timezone.now() - timedelta(minutes=10)
         Notification.objects.filter(pk=old.pk).update(created_at=old_time)
         old.refresh_from_db()
-        
+
         # Get timestamp for polling - 5 minutes ago (between old and new)
         poll_since = timezone.now() - timedelta(minutes=5)
-        
+
         # Create newer notification (will have current timestamp)
         new = Notification.objects.create(
             user=test_user,
@@ -492,12 +490,12 @@ class TestNotificationPolling:
             title="New",
             message="New notification",
         )
-        
+
         # Poll for notifications since timestamp
         response = authenticated_client.get(
             f"/api/notifications/?created_after={poll_since.isoformat()}"
         )
-        
+
         assert response.status_code == status.HTTP_200_OK
         assert len(response.data["results"]) == 1
         assert response.data["results"][0]["title"] == "New"
@@ -510,9 +508,9 @@ class TestNotificationPolling:
             title="Test",
             message="Test message",
         )
-        
+
         response = authenticated_client.get("/api/notifications/")
-        
+
         assert response.status_code == status.HTTP_200_OK
         # Should include server_time for polling
         assert "server_time" in response.data or "timestamp" in response.data
@@ -530,12 +528,12 @@ class TestNotificationService:
     def test_create_patient_called_notification(self, consultation_ready_encounter, clinician_user, sample_patient):
         """Should create patient called notification via service."""
         from hmis.apps.encounters.services import create_patient_called_notification
-        
+
         notification = create_patient_called_notification(
             encounter=consultation_ready_encounter,
             called_by=clinician_user,
         )
-        
+
         assert notification is not None
         assert notification.notification_type == "patient_called"
         assert notification.priority == "high"
@@ -544,20 +542,19 @@ class TestNotificationService:
 
     def test_notification_sent_to_waiting_room_users(self, consultation_ready_encounter, clinician_user):
         """Should create notifications for users with waiting room view permission."""
-        from hmis.apps.encounters.services import create_patient_called_notification
-        
         # Create user with waiting room permission
-        from django.contrib.auth.models import Permission
+
+        from hmis.apps.encounters.services import create_patient_called_notification
         waiting_room_user = User.objects.create_user(
             username="waiting_room",
             email="waiting@example.com",
             password="testpass123",
         )
         # In real implementation, check for specific permission
-        
+
         notification = create_patient_called_notification(
             encounter=consultation_ready_encounter,
             called_by=clinician_user,
         )
-        
+
         assert notification is not None

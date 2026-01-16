@@ -31,10 +31,9 @@ Reference: docs/sprint-2.1-2.2-sha-claims-integration-deliverables.md § Service
 
 from datetime import date, timedelta
 from decimal import Decimal
-from unittest.mock import MagicMock, Mock, patch
+from unittest.mock import patch
 
-import pytest # type: ignore
-import requests
+import pytest  # type: ignore
 from django.conf import settings
 from django.core.exceptions import ValidationError
 from django.utils import timezone
@@ -51,7 +50,6 @@ from hmis.apps.billing.models import (
     SHATariff,
 )
 from hmis.apps.core.models import AuditLog
-
 
 # ============================================================================
 # Fixtures
@@ -157,7 +155,7 @@ def claims_icd10_code(db):
 @pytest.fixture
 def claims_encounter_opd(db, claims_patient, claims_icd10_code, test_user):
     """Create an OPD encounter for claims tests with diagnosis."""
-    from hmis.apps.encounters.models import Encounter, Diagnosis
+    from hmis.apps.encounters.models import Diagnosis, Encounter
     encounter = Encounter.objects.create(
         patient=claims_patient,
         encounter_type='OPD',
@@ -177,7 +175,7 @@ def claims_encounter_opd(db, claims_patient, claims_icd10_code, test_user):
 @pytest.fixture
 def claims_encounter_ipd(db, claims_patient, claims_icd10_code, test_user):
     """Create an IPD encounter for claims tests with diagnosis."""
-    from hmis.apps.encounters.models import Encounter, Diagnosis
+    from hmis.apps.encounters.models import Diagnosis, Encounter
     encounter = Encounter.objects.create(
         patient=claims_patient,
         encounter_type='IPD',
@@ -200,7 +198,7 @@ def claims_encounter_ipd(db, claims_patient, claims_icd10_code, test_user):
 @pytest.fixture
 def claims_encounter_emergency(db, claims_patient, claims_icd10_code, test_user):
     """Create an EMERGENCY encounter for claims tests with diagnosis."""
-    from hmis.apps.encounters.models import Encounter, Diagnosis
+    from hmis.apps.encounters.models import Diagnosis, Encounter
     encounter = Encounter.objects.create(
         patient=claims_patient,
         encounter_type='EMERGENCY',
@@ -220,7 +218,7 @@ def claims_encounter_emergency(db, claims_patient, claims_icd10_code, test_user)
 @pytest.fixture
 def claims_encounter_no_sha(db, claims_patient_no_sha, claims_icd10_code, test_user):
     """Create an encounter for patient without SHA."""
-    from hmis.apps.encounters.models import Encounter, Diagnosis
+    from hmis.apps.encounters.models import Diagnosis, Encounter
     encounter = Encounter.objects.create(
         patient=claims_patient_no_sha,
         encounter_type='OPD',
@@ -264,7 +262,7 @@ def claims_invoice_item(db, claims_invoice, claims_service):
 
 
 @pytest.fixture
-def valid_claim(db, claims_patient, claims_sha_member, claims_encounter_opd, 
+def valid_claim(db, claims_patient, claims_sha_member, claims_encounter_opd,
                 claims_invoice, claims_invoice_item, claims_tariff, claims_service, test_user):
     """Create a valid claim with items and attachments for submission tests."""
     claim = SHAClaim.objects.create(
@@ -280,7 +278,7 @@ def valid_claim(db, claims_patient, claims_sha_member, claims_encounter_opd,
         facility_level=SHATariff.TariffLevel.LEVEL_3,
         created_by=test_user,
     )
-    
+
     # Add claim item
     SHAClaimItem.objects.create(
         claim=claim,
@@ -290,7 +288,7 @@ def valid_claim(db, claims_patient, claims_sha_member, claims_encounter_opd,
         quantity=Decimal('1'),
         unit_price=Decimal('450.00'),
     )
-    
+
     # Add required attachments
     SHAClaimAttachment.objects.create(
         claim=claim,
@@ -310,7 +308,7 @@ def valid_claim(db, claims_patient, claims_sha_member, claims_encounter_opd,
         original_filename='invoice.pdf',
         uploaded_by=test_user,
     )
-    
+
     return claim
 
 
@@ -347,15 +345,15 @@ class TestSHAClaimsServiceCreateClaim:
         Then: SHAClaim is created with SHAClaimItem for each invoice item
         """
         from hmis.apps.billing.services.sha_claims import SHAClaimsService
-        
+
         service = SHAClaimsService()
-        
+
         claim = service.create_claim_from_encounter(
             encounter=claims_encounter_opd,
             invoice=claims_invoice,
             user=test_user,
         )
-        
+
         # Verify claim created
         assert isinstance(claim, SHAClaim)
         assert claim.patient == claims_encounter_opd.patient
@@ -366,7 +364,7 @@ class TestSHAClaimsServiceCreateClaim:
         assert claim.facility_code == settings.FACILITY_MFL_CODE
         assert claim.facility_level == settings.FACILITY_LEVEL
         assert claim.created_by == test_user
-        
+
         # Verify claim items created from invoice items
         assert claim.items.count() == 1
         claim_item = claim.items.first()
@@ -384,15 +382,15 @@ class TestSHAClaimsServiceCreateClaim:
         Then: Claim type is set to OUTPATIENT
         """
         from hmis.apps.billing.services.sha_claims import SHAClaimsService
-        
+
         service = SHAClaimsService()
-        
+
         claim = service.create_claim_from_encounter(
             encounter=claims_encounter_opd,
             invoice=claims_invoice,
             user=test_user,
         )
-        
+
         assert claim.claim_type == SHAClaim.ClaimType.OUTPATIENT
 
     def test_claim_type_auto_detection_for_ipd(
@@ -406,19 +404,19 @@ class TestSHAClaimsServiceCreateClaim:
         Then: Claim type is set to INPATIENT
         """
         from hmis.apps.billing.services.sha_claims import SHAClaimsService
-        
+
         # Update invoice to use IPD encounter
         claims_invoice.encounter = claims_encounter_ipd
         claims_invoice.save()
-        
+
         service = SHAClaimsService()
-        
+
         claim = service.create_claim_from_encounter(
             encounter=claims_encounter_ipd,
             invoice=claims_invoice,
             user=test_user,
         )
-        
+
         assert claim.claim_type == SHAClaim.ClaimType.INPATIENT
 
     def test_claim_type_auto_detection_for_emergency(
@@ -432,19 +430,19 @@ class TestSHAClaimsServiceCreateClaim:
         Then: Claim type is set to EMERGENCY
         """
         from hmis.apps.billing.services.sha_claims import SHAClaimsService
-        
+
         # Update invoice to use emergency encounter
         claims_invoice.encounter = claims_encounter_emergency
         claims_invoice.save()
-        
+
         service = SHAClaimsService()
-        
+
         claim = service.create_claim_from_encounter(
             encounter=claims_encounter_emergency,
             invoice=claims_invoice,
             user=test_user,
         )
-        
+
         assert claim.claim_type == SHAClaim.ClaimType.EMERGENCY
 
     def test_patient_without_sha_membership_raises_error(
@@ -458,21 +456,21 @@ class TestSHAClaimsServiceCreateClaim:
         Then: ValidationError is raised with appropriate message
         """
         from hmis.apps.billing.services.sha_claims import SHAClaimsService
-        
+
         # Update invoice patient to match encounter
         claims_invoice.patient = claims_encounter_no_sha.patient
         claims_invoice.encounter = claims_encounter_no_sha
         claims_invoice.save()
-        
+
         service = SHAClaimsService()
-        
+
         with pytest.raises(ValidationError) as exc_info:
             service.create_claim_from_encounter(
                 encounter=claims_encounter_no_sha,
                 invoice=claims_invoice,
                 user=test_user,
             )
-        
+
         assert 'SHA membership' in str(exc_info.value)
 
 
@@ -489,15 +487,15 @@ class TestSHAClaimsServiceValidation:
         Then: Returns result from model's validate_for_submission()
         """
         from hmis.apps.billing.services.sha_claims import SHAClaimsService
-        
+
         service = SHAClaimsService()
-        
+
         is_valid, errors = service.validate_claim(valid_claim)
-        
+
         # Should return tuple (bool, list)
         assert isinstance(is_valid, bool)
         assert isinstance(errors, list)
-        
+
         # Valid claim should pass validation
         assert is_valid is True
         assert len(errors) == 0
@@ -518,11 +516,11 @@ class TestSHAClaimsServicePackaging:
         Reference: docs/sha-guides/claims.md - Bundle must have type 'message'
         """
         from hmis.apps.billing.services.sha_claims import SHAClaimsService
-        
+
         service = SHAClaimsService()
-        
+
         bundle = service.package_claim(valid_claim)
-        
+
         assert isinstance(bundle, dict)
         assert bundle['resourceType'] == 'Bundle'
         # SHA requires 'message' bundle type (not 'collection')
@@ -545,25 +543,25 @@ class TestSHAClaimsServicePackaging:
         
         Reference: docs/sha-guides/claims.md - Claim Resource section
         """
+
         from hmis.apps.billing.services.sha_claims import SHAClaimsService
-        import uuid
-        
+
         service = SHAClaimsService()
-        
+
         bundle = service.package_claim(valid_claim)
-        
+
         # Find Claim resource in bundle
         claim_entry = next(
             (e for e in bundle['entry'] if e['resource'].get('resourceType') == 'Claim'),
             None
         )
-        
+
         assert claim_entry is not None
         # SHA requires fullUrl in entry
         assert 'fullUrl' in claim_entry
-        
+
         claim_resource = claim_entry['resource']
-        
+
         # Verify required FHIR Claim fields (SHA-compliant)
         assert claim_resource['resourceType'] == 'Claim'
         assert 'id' in claim_resource  # SHA requires id
@@ -597,17 +595,17 @@ class TestSHAClaimsServicePackaging:
         Then: Bundle contains Patient resource
         """
         from hmis.apps.billing.services.sha_claims import SHAClaimsService
-        
+
         service = SHAClaimsService()
-        
+
         bundle = service.package_claim(valid_claim)
-        
+
         # Find Patient resource in bundle
         patient_entry = next(
             (e for e in bundle['entry'] if e['resource'].get('resourceType') == 'Patient'),
             None
         )
-        
+
         assert patient_entry is not None
         # SHA requires fullUrl
         assert 'fullUrl' in patient_entry
@@ -630,17 +628,17 @@ class TestSHAClaimsServicePackaging:
         Reference: docs/sha-guides/claims.md - Coverage Resource section
         """
         from hmis.apps.billing.services.sha_claims import SHAClaimsService
-        
+
         service = SHAClaimsService()
-        
+
         bundle = service.package_claim(valid_claim)
-        
+
         # Find Coverage resource in bundle
         coverage_entry = next(
             (e for e in bundle['entry'] if e['resource'].get('resourceType') == 'Coverage'),
             None
         )
-        
+
         assert coverage_entry is not None
         # SHA requires fullUrl
         assert 'fullUrl' in coverage_entry
@@ -648,11 +646,11 @@ class TestSHAClaimsServicePackaging:
         assert coverage_resource['resourceType'] == 'Coverage'
         # SHA requires scheme extensions (flat format per spec)
         assert 'extension' in coverage_resource
-        
+
         # Find schemeCategoryCode extension with CAT-SHA-001
         # Per SHA spec: flat extension with url ending in 'schemeCategoryCode'
         scheme_code_ext = next(
-            (ext for ext in coverage_resource['extension'] 
+            (ext for ext in coverage_resource['extension']
              if 'schemeCategoryCode' in ext.get('url', '')),
             None
         )
@@ -662,10 +660,10 @@ class TestSHAClaimsServicePackaging:
         assert scheme_code_ext.get('valueString') == 'CAT-SHA-001', (
             "schemeCategoryCode must be CAT-SHA-001"
         )
-        
+
         # Find schemeCategoryName extension
         scheme_name_ext = next(
-            (ext for ext in coverage_resource['extension'] 
+            (ext for ext in coverage_resource['extension']
              if 'schemeCategoryName' in ext.get('url', '')),
             None
         )
@@ -687,17 +685,17 @@ class TestSHAClaimsServicePackaging:
         Reference: docs/sha-guides/claims.md - Organization Resource section
         """
         from hmis.apps.billing.services.sha_claims import SHAClaimsService
-        
+
         service = SHAClaimsService()
-        
+
         bundle = service.package_claim(valid_claim)
-        
+
         # Find Organization resource in bundle
         org_entry = next(
             (e for e in bundle['entry'] if e['resource'].get('resourceType') == 'Organization'),
             None
         )
-        
+
         assert org_entry is not None
         # SHA requires fullUrl
         assert 'fullUrl' in org_entry
@@ -726,11 +724,11 @@ class TestSHAClaimsServiceSubmission:
         Then: Claim is queued for offline submission
         """
         from hmis.apps.billing.services.sha_claims import SHAClaimsService
-        
+
         service = SHAClaimsService()
-        
+
         response = service.submit_claim(valid_claim, test_user)
-        
+
         # Offline-first implementation queues claims
         assert response['status'] == 'queued'
         assert response['message'] == 'Claim queued for submission when online'
@@ -748,14 +746,14 @@ class TestSHAClaimsServiceSubmission:
         Then: Claim status is PENDING_SUBMISSION (queued for later)
         """
         from hmis.apps.billing.services.sha_claims import SHAClaimsService
-        
+
         service = SHAClaimsService()
-        
+
         service.submit_claim(valid_claim, test_user)
-        
+
         # Refresh from database
         valid_claim.refresh_from_db()
-        
+
         # Offline-first: claim is queued, not submitted directly
         assert valid_claim.status == SHAClaim.ClaimStatus.PENDING_SUBMISSION
         assert 'queued' in valid_claim.submission_response
@@ -773,18 +771,18 @@ class TestSHAClaimsServiceSubmission:
         Then: AuditLog entry is created for sha_claim_queued action
         """
         from hmis.apps.billing.services.sha_claims import SHAClaimsService
-        
+
         service = SHAClaimsService()
-        
+
         # Check for queued action (offline-first implementation)
         initial_audit_count = AuditLog.objects.filter(action='sha_claim_queued').count()
-        
+
         service.submit_claim(valid_claim, test_user)
-        
+
         # Check audit log was created for queuing
         final_audit_count = AuditLog.objects.filter(action='sha_claim_queued').count()
         assert final_audit_count == initial_audit_count + 1
-        
+
         # Verify audit log content
         audit_log = AuditLog.objects.filter(action='sha_claim_queued').latest('timestamp')
         assert audit_log.user == test_user
@@ -801,9 +799,9 @@ class TestSHAClaimsServiceSubmission:
         Then: ValidationError is raised
         """
         from hmis.apps.billing.services.sha_claims import SHAClaimsService
-        
+
         service = SHAClaimsService()
-        
+
         # Mock package_claim to raise validation error
         with patch.object(
             service, 'package_claim',
@@ -811,7 +809,7 @@ class TestSHAClaimsServiceSubmission:
         ):
             with pytest.raises(ValidationError) as exc_info:
                 service.submit_claim(valid_claim, test_user)
-        
+
         assert 'Invalid claim data' in str(exc_info.value)
 
     def test_claim_queued_creates_sync_queue_entry(
@@ -826,21 +824,21 @@ class TestSHAClaimsServiceSubmission:
         """
         from hmis.apps.billing.services.sha_claims import SHAClaimsService
         from hmis.apps.core.models import SyncQueue
-        
+
         service = SHAClaimsService()
-        
+
         initial_queue_count = SyncQueue.objects.filter(
             model_name='SHAClaimSubmission'
         ).count()
-        
+
         service.submit_claim(valid_claim, test_user)
-        
+
         # Verify queue entry was created
         final_queue_count = SyncQueue.objects.filter(
             model_name='SHAClaimSubmission'
         ).count()
         assert final_queue_count == initial_queue_count + 1
-        
+
         # Verify queue entry data
         queue_entry = SyncQueue.objects.filter(
             model_name='SHAClaimSubmission'
@@ -862,15 +860,15 @@ class TestSHAClaimsServiceConfiguration:
         Then: Service uses settings values
         """
         from hmis.apps.billing.services.sha_claims import SHAClaimsService
-        
+
         service = SHAClaimsService()
-        
+
         assert hasattr(service, 'api_base_url')
         assert hasattr(service, 'api_key')
         assert hasattr(service, 'facility_code')
         assert hasattr(service, 'facility_level')
         assert hasattr(service, 'auth_service')
-        
+
         assert service.api_base_url == settings.SHA_API_BASE_URL.rstrip('/')
         assert service.api_key == settings.SHA_API_KEY
         assert service.facility_code == settings.FACILITY_MFL_CODE

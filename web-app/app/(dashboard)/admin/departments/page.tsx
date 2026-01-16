@@ -44,7 +44,7 @@ function getDepartmentTypeBadgeVariant(type: DepartmentType) {
     case 'ANCILLARY':
       return 'secondary';
     case 'ADMINISTRATIVE':
-      return 'outline';
+      return 'default';
     case 'SUPPORT':
       return 'destructive';
     default:

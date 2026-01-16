@@ -18,7 +18,7 @@ Test Coverage (12 tests):
 
 from decimal import Decimal
 
-import pytest # type: ignore
+import pytest  # type: ignore
 from django.db import IntegrityError
 
 from hmis.apps.inpatient.models import Bed, Ward

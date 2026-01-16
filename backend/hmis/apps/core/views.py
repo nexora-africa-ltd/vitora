@@ -261,7 +261,7 @@ class StaffProfileViewSet(viewsets.ModelViewSet):
     def get_serializer_class(self):
         """Return appropriate serializer class based on action."""
         from .serializers import StaffProfileCreateSerializer
-        
+
         if self.action == 'create':
             return StaffProfileCreateSerializer
         return StaffProfileSerializer
@@ -279,7 +279,7 @@ class StaffProfileViewSet(viewsets.ModelViewSet):
         serializer = self.get_serializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         staff_profile = serializer.save()
-        
+
         # Return the full staff profile using the read serializer
         read_serializer = StaffProfileSerializer(staff_profile)
         return Response(read_serializer.data, status=status.HTTP_201_CREATED)
@@ -384,8 +384,9 @@ class StaffProfileViewSet(viewsets.ModelViewSet):
         Returns:
             - suggestions: list of available username suggestions
         """
-        from django.contrib.auth import get_user_model
         import re
+
+        from django.contrib.auth import get_user_model
 
         User = get_user_model()
 
@@ -488,7 +489,6 @@ class NotificationViewSet(viewsets.ModelViewSet):
 
     def get_queryset(self):
         """Filter notifications to current user only."""
-        from django.utils import timezone
         from django.utils.dateparse import parse_datetime
 
         from .models import Notification
@@ -572,7 +572,8 @@ class NotificationViewSet(viewsets.ModelViewSet):
 # ============================================================================
 
 
-from rest_framework.decorators import api_view, permission_classes as perm_classes
+from rest_framework.decorators import api_view
+from rest_framework.decorators import permission_classes as perm_classes
 from rest_framework.permissions import IsAuthenticated as IsAuth
 
 

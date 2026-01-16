@@ -5,7 +5,7 @@ Following TDD principles: Write tests FIRST, then implement.
 These tests define the expected behavior of the EmergencyContact model.
 """
 
-import pytest # type: ignore
+import pytest  # type: ignore
 from django.core.exceptions import ValidationError
 from django.db import IntegrityError
 

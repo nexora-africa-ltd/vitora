@@ -4,7 +4,7 @@ Tests for the audit logging middleware.
 Sprint 0.6: Coverage improvement tests for middleware.py (0% -> 100%)
 """
 
-import pytest # type: ignore
+import pytest  # type: ignore
 from django.contrib.auth import get_user_model
 from django.test import RequestFactory
 

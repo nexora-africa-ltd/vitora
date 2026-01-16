@@ -15,12 +15,12 @@ Official Endpoints:
 import logging
 from dataclasses import dataclass, field
 from datetime import date, datetime
-from typing import Any, Optional, Union
+from typing import Any
 
 import requests
 from django.conf import settings
 
-from .sha_auth import SHAAuthService, SHAAuthError
+from .sha_auth import SHAAuthError, SHAAuthService
 from .sha_pii import SHADecryptionError, maybe_decrypt_client_registry_item
 
 logger = logging.getLogger(__name__)
@@ -56,24 +56,24 @@ class ClientRegistryClient:
         ward_of_residence: Ward code
         raw_data: Original API response data
     """
-    
+
     client_number: str
     first_name: str
     last_name: str
     date_of_birth: date
     gender: str
-    middle_name: Optional[str] = None
-    national_id: Optional[str] = None
-    huduma_number: Optional[str] = None
-    passport_number: Optional[str] = None
-    birth_certificate_number: Optional[str] = None
-    phone_number: Optional[str] = None
-    email: Optional[str] = None
-    county_of_residence: Optional[str] = None
-    sub_county_of_residence: Optional[str] = None
-    ward_of_residence: Optional[str] = None
+    middle_name: str | None = None
+    national_id: str | None = None
+    huduma_number: str | None = None
+    passport_number: str | None = None
+    birth_certificate_number: str | None = None
+    phone_number: str | None = None
+    email: str | None = None
+    county_of_residence: str | None = None
+    sub_county_of_residence: str | None = None
+    ward_of_residence: str | None = None
     raw_data: dict = field(default_factory=dict)
-    
+
     @property
     def full_name(self) -> str:
         """Return full name with middle name if available."""
@@ -82,7 +82,7 @@ class ClientRegistryClient:
             parts.append(self.middle_name)
         parts.append(self.last_name)
         return ' '.join(parts)
-    
+
     @property
     def age(self) -> int:
         """Calculate age from date of birth."""
@@ -90,7 +90,7 @@ class ClientRegistryClient:
         return today.year - self.date_of_birth.year - (
             (today.month, today.day) < (self.date_of_birth.month, self.date_of_birth.day)
         )
-    
+
     @classmethod
     def from_api_response(cls, data: dict) -> 'ClientRegistryClient':
         """
@@ -121,7 +121,7 @@ class ClientRegistryClient:
                 dob = datetime.strptime(dob, '%Y-%m-%d').date()
             except ValueError:
                 dob = None
-        
+
         # Normalize gender: DHA returns 'Male'/'Female'/'Other', we need 'M'/'F'/'O'
         raw_gender = data.get('gender', '')
         if raw_gender:
@@ -133,15 +133,15 @@ class ClientRegistryClient:
             gender = gender_map.get(raw_gender.lower(), raw_gender[0].upper() if raw_gender else 'O')
         else:
             gender = ''
-        
+
         # Extract national ID from identification fields if present
         national_id = data.get('national_id')
         if not national_id and data.get('identification_type') == 'National ID':
             national_id = data.get('identification_number')
-        
+
         # Client number: DHA uses 'id' field for CR number (e.g., CR000000000-2)
         client_number = data.get('client_number') or data.get('id', '')
-        
+
         return cls(
             client_number=client_number,
             first_name=data.get('first_name', '').strip(),
@@ -175,18 +175,18 @@ class ClientRegistryError(Exception):
         status_code: HTTP status code if applicable
         error_code: CR-specific error code
     """
-    
+
     def __init__(
-        self, 
-        message: str, 
+        self,
+        message: str,
         status_code: int = 0,
-        error_code: Optional[str] = None,
+        error_code: str | None = None,
     ):
         self.message = message
         self.status_code = status_code
         self.error_code = error_code
         super().__init__(message)
-    
+
     def __str__(self):
         parts = ["ClientRegistryError"]
         if self.status_code:
@@ -199,7 +199,7 @@ class ClientRegistryError(Exception):
 
 class ClientNotFoundError(ClientRegistryError):
     """Raised when client is not found in the registry."""
-    
+
     def __init__(self, identifier: str, identifier_type: str = "ID"):
         self.identifier = identifier
         self.identifier_type = identifier_type
@@ -211,16 +211,16 @@ class ClientNotFoundError(ClientRegistryError):
 
 class ClientRegistrationError(ClientRegistryError):
     """Raised when client registration fails."""
-    
-    def __init__(self, message: str, validation_errors: Optional[dict] = None):
+
+    def __init__(self, message: str, validation_errors: dict | None = None):
         self.validation_errors = validation_errors or {}
         super().__init__(message=message, status_code=400)
 
 
 class DuplicateClientError(ClientRegistryError):
     """Raised when attempting to register a duplicate client."""
-    
-    def __init__(self, existing_client_number: Optional[str] = None):
+
+    def __init__(self, existing_client_number: str | None = None):
         self.existing_client_number = existing_client_number
         message = "A client with this identifier already exists"
         if existing_client_number:
@@ -258,22 +258,22 @@ class ClientRegistryService:
         >>> if client:
         ...     print(f"Found: {client.full_name}")
     """
-    
+
     def __init__(self):
         """Initialize ClientRegistryService with settings from Django config."""
         self.api_base_url = settings.SHA_API_BASE_URL.rstrip('/')
         self.timeout = getattr(settings, 'SHA_API_TIMEOUT', 19)
-        
+
         # Get agent from settings (required for API calls)
         self.agent = getattr(settings, 'SHA_AGENT', '')
-        
+
         # Get encrypted PIN from settings (required for CR registration/update)
         self.encrypted_pin = getattr(settings, 'SHA_ENCRYPTED_PIN', '')
-        
+
         # Get endpoint paths from settings
         endpoints = getattr(settings, 'SHA_ENDPOINTS', {})
         self.fetch_endpoint = endpoints.get(
-            'client_registry', 
+            'client_registry',
             '/v3/client-registry/fetch-client'
         )
         self.register_endpoint = endpoints.get(
@@ -284,19 +284,19 @@ class ClientRegistryService:
             'client_update',
             '/v3/update-client'
         )
-        
+
         # Initialize auth service
         self.auth_service = SHAAuthService()
-    
+
     def fetch_client(
         self,
-        national_id: Optional[str] = None,
-        client_number: Optional[str] = None,
-        huduma_number: Optional[str] = None,
-        passport_number: Optional[str] = None,
-        identification_type: Optional[str] = None,
-        identification_number: Optional[str] = None,
-    ) -> Optional[ClientRegistryClient]:
+        national_id: str | None = None,
+        client_number: str | None = None,
+        huduma_number: str | None = None,
+        passport_number: str | None = None,
+        identification_type: str | None = None,
+        identification_number: str | None = None,
+    ) -> ClientRegistryClient | None:
         """
         Fetch a client from the Client Registry.
         
@@ -324,16 +324,16 @@ class ClientRegistryService:
             ...     print(client.client_number)
         """
         # Validate at least one identifier is provided
-        if not any([national_id, client_number, huduma_number, passport_number, 
+        if not any([national_id, client_number, huduma_number, passport_number,
                     (identification_type and identification_number)]):
             raise ValueError("At least one identifier must be provided")
-        
+
         # Build query parameters per official API spec
         # API requires: identification_type, identification_number, agent
         params = {
             'agent': self.agent,
         }
-        
+
         # Priority: explicit identification_type/number > named params
         if identification_type and identification_number:
             params['identification_type'] = identification_type
@@ -350,51 +350,51 @@ class ClientRegistryService:
         elif passport_number:
             params['identification_type'] = 'passport_number'
             params['identification_number'] = passport_number
-        
+
         logger.info(f"Fetching client from CR with params: {params}")
-        
+
         try:
             headers = self.auth_service.get_auth_headers()
-            
+
             response = requests.get(
                 f"{self.api_base_url}{self.fetch_endpoint}",
                 params=params,
                 headers=headers,
                 timeout=self.timeout,
             )
-            
+
             logger.debug(f"CR fetch response status: {response.status_code}")
-            
+
             if response.status_code == 404:
                 return None
-            
+
             if response.status_code == 401:
                 raise ClientRegistryError(
                     "Authentication failed",
                     status_code=401,
                 )
-            
+
             response.raise_for_status()
-            
+
             data = response.json()
-            
+
             # Handle DHA API response format:
             # Official format: {"message": {"total": N, "result": [...]}}
             # The result array contains client records
-            # 
+            #
             # Also handle alternative formats for backward compatibility:
             # Format 1: {"client": {...}}
             # Format 2: {"data": {"client": {...}}}
             # Format 3: Direct client data
-            
+
             client_data = None
-            
+
             # Check for official DHA format: {"message": {"result": [...]}}
             if 'message' in data and isinstance(data['message'], dict):
                 message = data['message']
                 total = message.get('total', 0)
                 result = message.get('result', [])
-                
+
                 if total > 0 and result:
                     # Get the first matching client
                     client_data = result[0]
@@ -408,11 +408,11 @@ class ClientRegistryService:
             else:
                 # Assume direct client data
                 client_data = data
-            
+
             # Check if client was found
             if not client_data:
                 return None
-            
+
             # Some APIs return found=0 to indicate not found
             if client_data.get('found') == 0:
                 return None
@@ -427,9 +427,9 @@ class ClientRegistryService:
                     f"Unable to decrypt client registry response: {str(e)}",
                     status_code=0,
                 )
-            
+
             return ClientRegistryClient.from_api_response(client_data)
-            
+
         except SHAAuthError as e:
             raise ClientRegistryError(
                 f"Authentication error: {str(e)}",
@@ -445,23 +445,23 @@ class ClientRegistryService:
                 f"Request failed: {str(e)}",
                 status_code=getattr(e.response, 'status_code', 0) if hasattr(e, 'response') else 0,
             )
-    
+
     def register_client(
         self,
         first_name: str,
         last_name: str,
-        date_of_birth: Union[str, date],
+        date_of_birth: str | date,
         gender: str,
-        national_id: Optional[str] = None,
-        middle_name: Optional[str] = None,
-        huduma_number: Optional[str] = None,
-        passport_number: Optional[str] = None,
-        birth_certificate_number: Optional[str] = None,
-        phone_number: Optional[str] = None,
-        email: Optional[str] = None,
-        county_of_residence: Optional[str] = None,
-        sub_county_of_residence: Optional[str] = None,
-        ward_of_residence: Optional[str] = None,
+        national_id: str | None = None,
+        middle_name: str | None = None,
+        huduma_number: str | None = None,
+        passport_number: str | None = None,
+        birth_certificate_number: str | None = None,
+        phone_number: str | None = None,
+        email: str | None = None,
+        county_of_residence: str | None = None,
+        sub_county_of_residence: str | None = None,
+        ward_of_residence: str | None = None,
     ) -> ClientRegistryClient:
         """
         Register a new client in the Client Registry.
@@ -513,20 +513,20 @@ class ClientRegistryService:
                     'gender': 'required' if not gender else None,
                 }
             )
-        
+
         # Validate gender
         if gender not in ('M', 'F', 'O'):
             raise ClientRegistrationError(
                 "Gender must be 'M', 'F', or 'O'",
                 validation_errors={'gender': 'invalid'}
             )
-        
+
         # Format date of birth
         if isinstance(date_of_birth, date):
             dob_str = date_of_birth.strftime('%Y-%m-%d')
         else:
             dob_str = date_of_birth
-        
+
         # Validate agent and encrypted_pin are configured
         if not self.agent:
             raise ClientRegistrationError(
@@ -538,12 +538,12 @@ class ClientRegistryService:
                 "SHA_ENCRYPTED_PIN is not configured. Use sha-pin-gen.py to generate and set in environment.",
                 validation_errors={'encrypted_pin': 'required'}
             )
-        
+
         # Determine identification type and number for DHA API
         # DHA expects identification_type and identification_number, not individual ID fields
         identification_type = None
         identification_number = None
-        
+
         if national_id:
             identification_type = 'National ID'
             identification_number = national_id
@@ -556,13 +556,13 @@ class ClientRegistryService:
         elif birth_certificate_number:
             identification_type = 'Birth Certificate'
             identification_number = birth_certificate_number
-        
+
         if not identification_number:
             raise ClientRegistrationError(
                 "At least one identification (national_id, huduma_number, passport_number, or birth_certificate_number) is required",
                 validation_errors={'identification': 'required'}
             )
-        
+
         # Build request payload - DHA UAT CR registration API format
         # Reference: Kenya Digital Superhighway Postman Collection
         payload = {
@@ -571,34 +571,34 @@ class ClientRegistryService:
             'identification_type': identification_type,
             'identification_number': identification_number,
         }
-        
+
         logger.info(f"Registering new client in CR: {first_name} {last_name} ({identification_type}: {identification_number[:4]}...)")
-        
+
         try:
             headers = self.auth_service.get_auth_headers()
-            
+
             response = requests.post(
                 f"{self.api_base_url}{self.register_endpoint}",
                 json=payload,
                 headers=headers,
                 timeout=self.timeout,
             )
-            
+
             logger.debug(f"CR registration response status: {response.status_code}")
-            
+
             # Log response body for debugging (truncate if too long)
             try:
                 response_text = response.text[:1000] if response.text else "(empty)"
                 logger.debug(f"CR registration response body: {response_text}")
             except Exception:
                 pass
-            
+
             if response.status_code == 409:
                 # Duplicate client
                 data = response.json()
                 existing_number = data.get('client_number')
                 raise DuplicateClientError(existing_client_number=existing_number)
-            
+
             if response.status_code == 400:
                 # Validation error
                 data = response.json()
@@ -606,13 +606,13 @@ class ClientRegistryService:
                     data.get('message', 'Validation failed'),
                     validation_errors=data.get('errors', {}),
                 )
-            
+
             if response.status_code == 401:
                 raise ClientRegistryError(
                     "Authentication failed",
                     status_code=401,
                 )
-            
+
             if response.status_code >= 500:
                 # Server error - include response body for debugging
                 error_body = response.text[:500] if response.text else "No response body"
@@ -621,21 +621,21 @@ class ClientRegistryService:
                     f"DHA server error: {error_body}",
                     status_code=response.status_code,
                 )
-            
+
             response.raise_for_status()
-            
+
             data = response.json()
-            
+
             # Extract client data from response
             # Response format: {"client_number": "CR-12345", ...}
             client_data = data.get('client') or data
-            
+
             # Add submitted data if not in response
             if 'first_name' not in client_data:
                 client_data.update(payload)
-            
+
             return ClientRegistryClient.from_api_response(client_data)
-            
+
         except SHAAuthError as e:
             raise ClientRegistryError(
                 f"Authentication error: {str(e)}",
@@ -653,7 +653,7 @@ class ClientRegistryService:
                 f"Request failed: {str(e)}",
                 status_code=getattr(e.response, 'status_code', 0) if hasattr(e, 'response') else 0,
             )
-    
+
     def update_client(
         self,
         client_number: str,
@@ -691,58 +691,58 @@ class ClientRegistryService:
         """
         if not client_number:
             raise ValueError("client_number is required")
-        
+
         if not updates:
             raise ValueError("At least one field to update is required")
-        
+
         # Allowed update fields
         allowed_fields = {
             'phone_number', 'email', 'county_of_residence',
             'sub_county_of_residence', 'ward_of_residence',
             'middle_name',
         }
-        
+
         # Filter to allowed fields only
         payload = {
             'client_number': client_number,
             **{k: v for k, v in updates.items() if k in allowed_fields}
         }
-        
+
         logger.info(f"Updating client {client_number} in CR")
-        
+
         try:
             headers = self.auth_service.get_auth_headers()
-            
+
             response = requests.put(
                 f"{self.api_base_url}{self.update_endpoint}",
                 json=payload,
                 headers=headers,
                 timeout=self.timeout,
             )
-            
+
             logger.debug(f"CR update response status: {response.status_code}")
-            
+
             if response.status_code == 404:
                 raise ClientNotFoundError(
                     identifier=client_number,
                     identifier_type="client_number",
                 )
-            
+
             if response.status_code == 401:
                 raise ClientRegistryError(
                     "Authentication failed",
                     status_code=401,
                 )
-            
+
             response.raise_for_status()
-            
+
             data = response.json()
-            
+
             # Extract updated client data
             client_data = data.get('client') or data
-            
+
             return ClientRegistryClient.from_api_response(client_data)
-            
+
         except SHAAuthError as e:
             raise ClientRegistryError(
                 f"Authentication error: {str(e)}",
@@ -760,7 +760,7 @@ class ClientRegistryService:
                 f"Request failed: {str(e)}",
                 status_code=getattr(e.response, 'status_code', 0) if hasattr(e, 'response') else 0,
             )
-    
+
     def is_configured(self) -> bool:
         """
         Check if Client Registry integration is properly configured.

@@ -12,21 +12,21 @@ APIs Covered:
 Reference: docs/dha-api-usage-analysis.md
 """
 
-import pytest # type: ignore
-import requests
-from unittest.mock import Mock, patch
 from datetime import date
+from unittest.mock import Mock, patch
+
+import pytest  # type: ignore
+import requests
 from django.conf import settings
 
 from hmis.apps.billing.services.client_registry import (
-    ClientRegistryService,
-    ClientRegistryClient,
-    ClientRegistryError,
     ClientNotFoundError,
     ClientRegistrationError,
+    ClientRegistryClient,
+    ClientRegistryError,
+    ClientRegistryService,
     DuplicateClientError,
 )
-
 
 # =============================================================================
 # Service Configuration Tests
@@ -38,7 +38,7 @@ class TestClientRegistryServiceInit:
     def test_service_initializes_with_settings(self):
         """Should initialize with Django settings."""
         service = ClientRegistryService()
-        
+
         assert service.api_base_url == settings.SHA_API_BASE_URL.rstrip('/')
         assert service.timeout > 0
         assert service.auth_service is not None
@@ -46,7 +46,7 @@ class TestClientRegistryServiceInit:
     def test_service_uses_sha_endpoints(self):
         """Should use endpoints from SHA_ENDPOINTS settings."""
         service = ClientRegistryService()
-        
+
         # Verify endpoints are set (from settings or defaults)
         assert service.fetch_endpoint is not None
         assert service.register_endpoint is not None
@@ -55,7 +55,7 @@ class TestClientRegistryServiceInit:
     def test_service_is_configured_check(self):
         """Should report configuration status."""
         service = ClientRegistryService()
-        
+
         # Service should be configured if auth is configured
         result = service.is_configured()
         assert isinstance(result, bool)
@@ -88,9 +88,9 @@ class TestFetchClient:
                 }
             }
         )
-        
+
         result = service.fetch_client(national_id='12345678')
-        
+
         assert result is not None
         assert result.client_number == 'CR-12345678'
         assert result.first_name == 'John'
@@ -111,9 +111,9 @@ class TestFetchClient:
                 }
             }
         )
-        
+
         result = service.fetch_client(client_number='CR-87654321')
-        
+
         assert result is not None
         assert result.client_number == 'CR-87654321'
 
@@ -132,9 +132,9 @@ class TestFetchClient:
                 }
             }
         )
-        
+
         result = service.fetch_client(huduma_number='HN-123456')
-        
+
         assert result is not None
         assert result.client_number == 'CR-11111111'
 
@@ -153,9 +153,9 @@ class TestFetchClient:
                 }
             }
         )
-        
+
         result = service.fetch_client(passport_number='AB1234567')
-        
+
         assert result is not None
         assert result.client_number == 'CR-22222222'
 
@@ -165,35 +165,35 @@ class TestFetchClient:
             status_code=404,
             json=lambda: {'message': 'Client not found'}
         )
-        
+
         result = service.fetch_client(national_id='99999999')
-        
+
         assert result is None
 
     def test_fetch_client_requires_identifier(self, service):
         """Should raise error if no identifier provided."""
         with pytest.raises(ValueError) as exc_info:
             service.fetch_client()
-        
+
         assert 'identifier' in str(exc_info.value).lower()
 
     def test_fetch_client_auth_failure(self, service, mock_requests_get):
         """Should raise error on auth failure."""
         mock_requests_get.return_value = Mock(status_code=401)
-        
+
         with pytest.raises(ClientRegistryError) as exc_info:
             service.fetch_client(national_id='12345678')
-        
+
         assert exc_info.value.status_code == 401
 
     def test_fetch_client_timeout(self, service, mock_requests_get):
         """Should handle timeout gracefully."""
         import requests as req
         mock_requests_get.side_effect = req.Timeout()
-        
+
         with pytest.raises(ClientRegistryError) as exc_info:
             service.fetch_client(national_id='12345678')
-        
+
         assert 'timed out' in str(exc_info.value).lower() or 'timeout' in str(exc_info.value).lower()
 
     def test_client_data_parsing(self, service, mock_requests_get):
@@ -215,9 +215,9 @@ class TestFetchClient:
                 }
             }
         )
-        
+
         result = service.fetch_client(national_id='33333333')
-        
+
         assert result.full_name == 'Alice Wanjiku Njoroge'
         assert result.phone_number == '0712345678'
         assert result.email == 'alice@example.com'
@@ -286,7 +286,7 @@ class TestRegisterClient:
                 'last_name': 'Doe',
             }
         )
-        
+
         result = service.register_client(
             first_name='John',
             last_name='Doe',
@@ -294,7 +294,7 @@ class TestRegisterClient:
             gender='M',
             national_id='12345678',
         )
-        
+
         assert result.client_number == 'CR-NEW12345'
         mock_requests_post.assert_called_once()
 
@@ -306,7 +306,7 @@ class TestRegisterClient:
                 'client_number': 'CR-FULL12345',
             }
         )
-        
+
         result = service.register_client(
             first_name='Jane',
             last_name='Smith',
@@ -319,9 +319,9 @@ class TestRegisterClient:
             county_of_residence='Nairobi',
             sub_county_of_residence='Westlands',
         )
-        
+
         assert result.client_number == 'CR-FULL12345'
-        
+
         # Verify all fields were sent
         call_kwargs = mock_requests_post.call_args
         json_data = call_kwargs.kwargs.get('json', call_kwargs[1].get('json', {}))
@@ -336,7 +336,7 @@ class TestRegisterClient:
                 date_of_birth='1990-01-15',
                 gender='M',
             )
-        
+
         # Should indicate validation error
         assert exc_info.value.validation_errors or 'required' in str(exc_info.value).lower()
 
@@ -349,7 +349,7 @@ class TestRegisterClient:
                 date_of_birth='1990-01-15',
                 gender='X',  # Invalid
             )
-        
+
         assert 'gender' in str(exc_info.value).lower()
 
     def test_register_client_handles_duplicate(self, service, mock_requests_post):
@@ -361,7 +361,7 @@ class TestRegisterClient:
                 'client_number': 'CR-EXISTING',
             }
         )
-        
+
         with pytest.raises(DuplicateClientError) as exc_info:
             service.register_client(
                 first_name='John',
@@ -370,7 +370,7 @@ class TestRegisterClient:
                 gender='M',
                 national_id='12345678',
             )
-        
+
         assert exc_info.value.existing_client_number == 'CR-EXISTING'
 
     def test_register_client_with_date_object(self, service, mock_requests_post):
@@ -379,14 +379,14 @@ class TestRegisterClient:
             status_code=201,
             json=lambda: {'client_number': 'CR-DATE12345'}
         )
-        
+
         result = service.register_client(
             first_name='John',
             last_name='Doe',
             date_of_birth=date(1990, 1, 15),
             gender='M',
         )
-        
+
         assert result.client_number == 'CR-DATE12345'
 
 
@@ -426,12 +426,12 @@ class TestUpdateClient:
                 }
             }
         )
-        
+
         result = service.update_client(
             client_number='CR-12345678',
             phone_number='0799999999',
         )
-        
+
         assert result.phone_number == '0799999999'
 
     def test_update_client_email(self, service, mock_requests_put):
@@ -449,12 +449,12 @@ class TestUpdateClient:
                 }
             }
         )
-        
+
         result = service.update_client(
             client_number='CR-12345678',
             email='john.doe@example.com',
         )
-        
+
         assert result.email == 'john.doe@example.com'
         mock_requests_put.assert_called_once()
         # Verify request body contains email
@@ -477,13 +477,13 @@ class TestUpdateClient:
                 }
             }
         )
-        
+
         result = service.update_client(
             client_number='CR-12345678',
             county_of_residence='Nairobi',
             sub_county_of_residence='Westlands',
         )
-        
+
         assert result.county_of_residence == 'Nairobi'
         assert result.sub_county_of_residence == 'Westlands'
 
@@ -505,7 +505,7 @@ class TestUpdateClient:
                 }
             }
         )
-        
+
         result = service.update_client(
             client_number='CR-12345678',
             phone_number='0722123456',
@@ -513,7 +513,7 @@ class TestUpdateClient:
             county_of_residence='Mombasa',
             sub_county_of_residence='Nyali',
         )
-        
+
         assert result.phone_number == '0722123456'
         assert result.email == 'john@example.com'
         assert result.county_of_residence == 'Mombasa'
@@ -526,26 +526,26 @@ class TestUpdateClient:
                 client_number='',  # Empty
                 phone_number='0799999999',
             )
-        
+
         assert 'client_number' in str(exc_info.value).lower()
 
     def test_update_client_requires_at_least_one_update(self, service):
         """Should require at least one field to update."""
         with pytest.raises(ValueError) as exc_info:
             service.update_client(client_number='CR-12345678')
-        
+
         assert 'update' in str(exc_info.value).lower()
 
     def test_update_client_not_found(self, service, mock_requests_put):
         """Should raise error if client not found."""
         mock_requests_put.return_value = Mock(status_code=404)
-        
+
         with pytest.raises(ClientNotFoundError) as exc_info:
             service.update_client(
                 client_number='CR-NOTEXIST',
                 phone_number='0799999999',
             )
-        
+
         assert 'CR-NOTEXIST' in str(exc_info.value)
 
     def test_update_client_bad_request(self, service, mock_requests_put):
@@ -556,26 +556,26 @@ class TestUpdateClient:
         )
         mock_response.raise_for_status.side_effect = requests.HTTPError(response=mock_response)
         mock_requests_put.return_value = mock_response
-        
+
         with pytest.raises(ClientRegistryError) as exc_info:
             service.update_client(
                 client_number='CR-12345678',
                 email='invalid-email',
             )
-        
+
         # Should capture the error
         assert exc_info.value is not None
 
     def test_update_client_unauthorized(self, service, mock_requests_put):
         """Should handle 401 Unauthorized for invalid credentials."""
         mock_requests_put.return_value = Mock(status_code=401)
-        
+
         with pytest.raises(ClientRegistryError) as exc_info:
             service.update_client(
                 client_number='CR-12345678',
                 phone_number='0799999999',
             )
-        
+
         # Should indicate auth failure
         assert 'auth' in str(exc_info.value).lower() or '401' in str(exc_info.value)
 
@@ -594,12 +594,12 @@ class TestUpdateClient:
                 }
             }
         )
-        
+
         service.update_client(
             client_number='CR-12345678',
             phone_number='0799999999',
         )
-        
+
         # Verify correct endpoint was called
         call_args = mock_requests_put.call_args
         assert '/v3/update-client' in call_args[0][0] or 'update-client' in str(call_args)
@@ -621,7 +621,7 @@ class TestClientRegistryClient:
             date_of_birth=date(1990, 1, 15),
             gender='M',
         )
-        
+
         assert client.full_name == 'John Doe'
 
     def test_full_name_with_middle(self):
@@ -634,7 +634,7 @@ class TestClientRegistryClient:
             date_of_birth=date(1990, 1, 15),
             gender='M',
         )
-        
+
         assert client.full_name == 'John Kamau Doe'
 
     def test_age_calculation(self):
@@ -646,7 +646,7 @@ class TestClientRegistryClient:
             date_of_birth=date(1990, 1, 15),
             gender='M',
         )
-        
+
         # Age should be calculated (will vary based on current date)
         assert isinstance(client.age, int)
         assert client.age > 0
@@ -661,9 +661,9 @@ class TestClientRegistryClient:
             'gender': 'F',
             'phone_number': '0712345678',
         }
-        
+
         client = ClientRegistryClient.from_api_response(api_data)
-        
+
         assert client.client_number == 'CR-98765'
         assert client.first_name == 'Jane'
         assert client.date_of_birth == date(1985, 6, 20)
@@ -686,9 +686,9 @@ class TestClientRegistryClient:
             'sub_county': 'Kasarani',
             'ward': 'kasarani',
         }
-        
+
         client = ClientRegistryClient.from_api_response(api_data)
-        
+
         assert client.client_number == 'CR000000000000-2'
         assert client.first_name == 'Jane'  # Should strip whitespace
         assert client.middle_name == 'Doe'
@@ -704,20 +704,20 @@ class TestClientRegistryClient:
     def test_from_api_response_gender_mapping(self):
         """Should correctly map all gender formats."""
         # Test 'Male' -> 'M'
-        male_data = {'id': 'CR1', 'first_name': 'Test', 'last_name': 'User', 
+        male_data = {'id': 'CR1', 'first_name': 'Test', 'last_name': 'User',
                     'date_of_birth': '1990-01-01', 'gender': 'Male'}
         assert ClientRegistryClient.from_api_response(male_data).gender == 'M'
-        
+
         # Test 'Female' -> 'F'
         female_data = {'id': 'CR2', 'first_name': 'Test', 'last_name': 'User',
                       'date_of_birth': '1990-01-01', 'gender': 'Female'}
         assert ClientRegistryClient.from_api_response(female_data).gender == 'F'
-        
+
         # Test 'Other' -> 'O'
         other_data = {'id': 'CR3', 'first_name': 'Test', 'last_name': 'User',
                      'date_of_birth': '1990-01-01', 'gender': 'Other'}
         assert ClientRegistryClient.from_api_response(other_data).gender == 'O'
-        
+
         # Test lowercase also works
         lowercase_data = {'id': 'CR4', 'first_name': 'Test', 'last_name': 'User',
                          'date_of_birth': '1990-01-01', 'gender': 'male'}
@@ -764,9 +764,9 @@ class TestDHAOfficialFormatParsing:
                 }
             }
         )
-        
+
         result = service.fetch_client(national_id='32440686')
-        
+
         assert result is not None
         assert result.client_number == 'CR000000000000-2'
         assert result.first_name == 'Jane'
@@ -786,9 +786,9 @@ class TestDHAOfficialFormatParsing:
                 }
             }
         )
-        
+
         result = service.fetch_client(national_id='99999999')
-        
+
         assert result is None
 
     def test_fetch_client_dha_multiple_results(self, service, mock_requests_get):
@@ -817,9 +817,9 @@ class TestDHAOfficialFormatParsing:
                 }
             }
         )
-        
+
         result = service.fetch_client(national_id='12345678')
-        
+
         assert result is not None
         assert result.client_number == 'CR000000000001-1'
         assert result.first_name == 'First'

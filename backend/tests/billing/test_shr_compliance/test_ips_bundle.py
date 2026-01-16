@@ -7,7 +7,6 @@ as documented in docs/sha-guides/shr-integration.md Section 3.
 Reference: https://hl7.org/fhir/uv/ips/
 """
 
-import pytest  # type: ignore
 
 
 class TestIPSBundleStructure:
@@ -96,7 +95,7 @@ class TestIPSCompositionResource:
         """
         first_entry = valid_ips_bundle.get('entry', [{}])[0]
         resource = first_entry.get('resource', {})
-        
+
         assert resource.get('resourceType') == 'Composition', (
             "First entry in IPS bundle must be a Composition resource"
         )
@@ -125,7 +124,7 @@ class TestIPSCompositionResource:
         assert 'type' in composition, (
             "Composition must have 'type' field"
         )
-        
+
         type_coding = composition['type'].get('coding', [{}])[0]
         assert type_coding.get('system') == 'http://loinc.org', (
             "Composition type must use LOINC system"
@@ -221,7 +220,7 @@ class TestIPSCompositionSections:
         """
         composition = self._get_composition(valid_ips_bundle)
         sections = composition.get('section', [])
-        
+
         allergy_section = next(
             (s for s in sections if 'Allerg' in s.get('title', '')),
             None
@@ -238,7 +237,7 @@ class TestIPSCompositionSections:
         """
         composition = self._get_composition(valid_ips_bundle)
         sections = composition.get('section', [])
-        
+
         allergy_section = next(
             (s for s in sections if 'Allerg' in s.get('title', '')),
             None
@@ -258,7 +257,7 @@ class TestIPSCompositionSections:
         """
         composition = self._get_composition(valid_ips_bundle)
         sections = composition.get('section', [])
-        
+
         med_section = next(
             (s for s in sections if 'Medication' in s.get('title', '')),
             None
@@ -275,7 +274,7 @@ class TestIPSCompositionSections:
         """
         composition = self._get_composition(valid_ips_bundle)
         sections = composition.get('section', [])
-        
+
         med_section = next(
             (s for s in sections if 'Medication' in s.get('title', '')),
             None
@@ -293,7 +292,7 @@ class TestIPSCompositionSections:
         """
         composition = self._get_composition(valid_ips_bundle)
         sections = composition.get('section', [])
-        
+
         med_section = next(
             (s for s in sections if 'Medication' in s.get('title', '')),
             None

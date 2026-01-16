@@ -9,7 +9,7 @@ Ensures clinical template JSON content follows a defined schema for consistency.
 Following TDD methodology - these tests are written BEFORE implementation.
 """
 
-import pytest # type: ignore
+import pytest  # type: ignore
 from django.core.exceptions import ValidationError
 
 pytestmark = pytest.mark.django_db

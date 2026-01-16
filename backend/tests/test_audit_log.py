@@ -13,7 +13,7 @@ The audit logging system tracks:
 
 from datetime import datetime
 
-import pytest # type: ignore
+import pytest  # type: ignore
 from django.contrib.auth import get_user_model
 from django.urls import reverse
 from rest_framework import status

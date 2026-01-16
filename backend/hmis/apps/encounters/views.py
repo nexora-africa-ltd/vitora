@@ -733,8 +733,6 @@ class EncounterViewSet(viewsets.ModelViewSet):
 
         GET /api/encounters/pre_triage_queue/
         """
-        from datetime import datetime
-        from django.utils import timezone
 
         queryset = self.get_queryset()
 
@@ -928,7 +926,7 @@ class EncounterViewSet(viewsets.ModelViewSet):
         }
         - Creates a new immutable snapshot
         """
-        from hmis.apps.clinical_templates.models import ClinicalTemplate, ClinicalTemplateSnapshot
+        from hmis.apps.clinical_templates.models import ClinicalTemplate
         from hmis.apps.clinical_templates.services import TemplateSnapshotService
 
         encounter = self.get_object()

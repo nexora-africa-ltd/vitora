@@ -5,6 +5,17 @@ URL configuration for billing app.
 from django.urls import include, path
 from rest_framework import routers
 
+from hmis.apps.billing.sha_views import (
+    ClientRegistryView,
+    DirectEligibilityCheckView,
+    EligibilityCheckView,
+    FacilitySearchView,
+    PractitionerSearchView,
+    SHAClaimViewSet,
+    SHAMemberViewSet,
+    SHATariffViewSet,
+    TerminologySearchView,
+)
 from hmis.apps.billing.views import (
     CreditNoteViewSet,
     InvoiceViewSet,
@@ -13,17 +24,6 @@ from hmis.apps.billing.views import (
     ReportViewSet,
     ServiceCategoryViewSet,
     ServiceViewSet,
-)
-from hmis.apps.billing.sha_views import (
-    SHAClaimViewSet,
-    SHAMemberViewSet,
-    SHATariffViewSet,
-    TerminologySearchView,
-    ClientRegistryView,
-    FacilitySearchView,
-    PractitionerSearchView,
-    EligibilityCheckView,
-    DirectEligibilityCheckView,
 )
 
 router = routers.DefaultRouter()
@@ -50,21 +50,21 @@ urlpatterns = [
         InvoiceViewSet.as_view({'delete': 'remove_item'}),
         name='invoice-item-delete'
     ),
-    
+
     # SHA Terminology endpoints
     path('terminology/<str:terminology_type>/', TerminologySearchView.as_view(), name='terminology-search'),
-    
+
     # SHA Client Registry endpoints
     path('client-registry/fetch/', ClientRegistryView.as_view(), name='client-registry-fetch'),
     path('client-registry/register/', ClientRegistryView.as_view(), name='client-registry-register'),
     path('client-registry/update/', ClientRegistryView.as_view(), name='client-registry-update'),
-    
+
     # SHA Facility and Practitioner validation
     path('facility/validate/', FacilitySearchView.as_view(), name='facility-validate'),
     path('practitioner/validate/', PractitionerSearchView.as_view(), name='practitioner-validate'),
     # DHA Health Worker Registry search (new rich endpoint)
     path('dha/practitioner-search/', PractitionerSearchView.as_view(), name='dha-practitioner-search'),
-    
+
     # SHA Eligibility check
     path('eligibility/check/', EligibilityCheckView.as_view(), name='eligibility-check'),
     path('eligibility/direct/', DirectEligibilityCheckView.as_view(), name='eligibility-direct'),

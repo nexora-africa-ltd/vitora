@@ -7,7 +7,7 @@ Tests for PDF requisition generation and CSV result import.
 from datetime import date
 from decimal import Decimal
 
-import pytest # type: ignore
+import pytest  # type: ignore
 from django.contrib.auth import get_user_model
 from django.core.files.uploadedfile import SimpleUploadedFile
 

@@ -10,7 +10,7 @@ Following TDD principles - these tests are written BEFORE implementation.
 from datetime import date
 from decimal import Decimal
 
-import pytest # type: ignore
+import pytest  # type: ignore
 
 pytestmark = pytest.mark.django_db
 

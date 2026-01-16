@@ -27,7 +27,7 @@ class TestSHRAPIEndpointConfiguration:
             hasattr(settings, 'SHR_BASE_URL') or
             hasattr(settings, 'SHA_FHIR_BASE_URL')
         )
-        
+
         assert has_shr_url, (
             "Settings must include SHR_BASE_URL or SHA_FHIR_BASE_URL. "
             "See docs/sha-guides/shr-integration.md"
@@ -42,7 +42,7 @@ class TestSHRAPIEndpointConfiguration:
             '/v1/shr-submission': 'MedicationRequest/MedicationDispense submission',
             '/v1/shr/summary': 'IPS/Patient summary retrieval',
         }
-        
+
         for endpoint, description in expected_endpoints.items():
             assert any(
                 endpoint in v for v in shr_api_endpoints.values()
@@ -80,7 +80,7 @@ class TestSHRAuthenticationConfiguration:
             hasattr(settings, 'SHA_USERNAME') and
             hasattr(settings, 'SHA_PASSWORD')
         )
-        
+
         assert has_sha_creds, (
             "SHA_USERNAME and SHA_PASSWORD must be configured in settings. "
             "SHR API reuses SHA Basic Auth credentials."
@@ -95,13 +95,12 @@ class TestSHRAuthenticationConfiguration:
         """
         # Verify credentials are loaded from os.getenv() in settings
         # This is enforced by the settings structure itself
-        import os
-        
+
         # In test environment, settings will have empty strings as defaults
         # The important thing is that the setting EXISTS and CAN be overridden
         assert hasattr(settings, 'SHA_USERNAME'), "SHA_USERNAME setting must exist"
         assert hasattr(settings, 'SHA_PASSWORD'), "SHA_PASSWORD setting must exist"
-        
+
         # Verify the settings module uses os.getenv for these values
         # (This is a documentation/compliance test - actual security is in settings.py)
 
@@ -212,9 +211,9 @@ class TestSHRSettingsStructure:
             'SHA_FHIR_BASE_URL',
             'SHA_API_ENDPOINTS',
         ]
-        
+
         missing = [s for s in sha_settings if not hasattr(settings, s)]
-        
+
         assert not missing, (
             f"Required SHA settings not configured: {missing}. "
             "These are required for SHR integration."
@@ -225,7 +224,7 @@ class TestSHRSettingsStructure:
         Requirement: Pharmacy settings should be defined for SHR workflow.
         """
         has_pharmacy_settings = hasattr(settings, 'PHARMACY_SETTINGS')
-        
+
         if not has_pharmacy_settings:
             pytest.skip(
                 "PHARMACY_SETTINGS not configured. "
@@ -238,15 +237,15 @@ class TestSHRSettingsStructure:
         """
         if not hasattr(settings, 'PHARMACY_SETTINGS'):
             pytest.skip("PHARMACY_SETTINGS not configured")
-        
+
         pharmacy_settings = settings.PHARMACY_SETTINGS
-        
+
         # These settings support SHR workflow
         relevant_keys = [
             'EXPIRY_WARNING_DAYS',
             'CRITICAL_EXPIRY_DAYS',
         ]
-        
+
         for key in relevant_keys:
             if key not in pharmacy_settings:
                 pytest.skip(f"PHARMACY_SETTINGS.{key} not configured")
@@ -286,7 +285,7 @@ class TestSHRDataFlowConfiguration:
             'dispense_recording',
             'refill_calculation'
         ]
-        
+
         assert len(workflow_steps) == 5, (
             "SHR workflow has 5 main steps per documentation"
         )

@@ -7,7 +7,6 @@ as documented in docs/sha-guides/shr-integration.md Section 1.
 Reference: https://hl7.org/fhir/R4/patient.html
 """
 
-import pytest  # type: ignore
 
 
 class TestPatientResourceRequiredFields:
@@ -121,7 +120,7 @@ class TestPatientResourceIdentifier:
         """
         patient_id = valid_patient_resource_fhir.get('id', '')
         identifier_value = valid_patient_resource_fhir.get('identifier', [{}])[0].get('value', '')
-        
+
         assert patient_id == identifier_value, (
             "identifier value should match resource id (CR ID)"
         )
@@ -213,7 +212,7 @@ class TestPatientResourceGender:
         """
         gender = valid_patient_resource_fhir.get('gender', '')
         valid_genders = ['male', 'female', 'other', 'unknown']
-        
+
         assert gender in valid_genders, (
             f"gender must be one of {valid_genders}. "
             "See http://hl7.org/fhir/R4/valueset-administrative-gender.html"
@@ -268,7 +267,7 @@ class TestPatientResourceOptionalFields:
         assert len(telecom) > 0, (
             "telecom array should have at least one contact method"
         )
-        
+
         # Validate telecom structure
         for contact in telecom:
             assert 'system' in contact, "telecom entry must have 'system'"
@@ -290,7 +289,7 @@ class TestPatientResourceOptionalFields:
         assert len(address) > 0, (
             "address array should have at least one address"
         )
-        
+
         # Validate address structure
         for addr in address:
             # At minimum, address should have some identifying information
@@ -309,9 +308,8 @@ class TestPatientResourceOptionalFields:
         """
         telecom = valid_patient_resource_fhir.get('telecom', [])
         phone_entries = [t for t in telecom if t.get('system') == 'phone']
-        
+
         if phone_entries:
-            import re
             # E.164 format or local Kenya format
             phone_pattern = r'^(\+254|0)[17]\d{8}$'
             for phone in phone_entries:
@@ -325,7 +323,7 @@ class TestPatientResourceOptionalFields:
         ISO 3166-1 alpha-2: KE
         """
         addresses = valid_patient_resource_fhir.get('address', [])
-        
+
         for addr in addresses:
             if 'country' in addr:
                 assert addr['country'] in ['KE', 'Kenya'], (

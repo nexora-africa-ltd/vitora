@@ -35,14 +35,12 @@ Test Coverage (25 tests):
 
 from datetime import date, timedelta
 from decimal import Decimal
-from unittest.mock import patch, PropertyMock
 
-import pytest # type: ignore
+import pytest  # type: ignore
 from django.core.exceptions import ValidationError
 from django.core.files.uploadedfile import SimpleUploadedFile
 from django.db import IntegrityError
 from django.utils import timezone
-
 
 # =============================================================================
 # Fixtures specific to SHAClaim tests
@@ -253,7 +251,7 @@ class TestSHAClaimModel:
         self, sample_patient, sample_encounter, test_user, sample_county, sample_sub_county
     ):
         """Should reject claims for patients without SHA membership."""
-        from hmis.apps.billing.models import SHAClaim, SHAMember
+        from hmis.apps.billing.models import SHAClaim
         from hmis.apps.encounters.models import Encounter
         from hmis.apps.patients.models import Patient
 
@@ -444,9 +442,6 @@ class TestSHAClaimModel:
 
         for status in valid_statuses:
             # Clean slate for each iteration
-            from hmis.apps.billing.models import SHAMember
-            from hmis.apps.patients.models import Patient
-            from hmis.apps.encounters.models import Encounter
 
             # Just test that the choice is valid by checking it exists
             assert status in [s[0] for s in SHAClaim.ClaimStatus.choices]
@@ -549,7 +544,7 @@ class TestSHAClaimValidateForSubmission:
         self, valid_claim_data, sha_tariff, test_user
     ):
         """Should pass validation for a properly configured claim."""
-        from hmis.apps.billing.models import SHAClaim, SHAClaimItem, SHAClaimAttachment
+        from hmis.apps.billing.models import SHAClaim, SHAClaimAttachment, SHAClaimItem
 
         claim = SHAClaim.objects.create(**valid_claim_data)
 
@@ -602,7 +597,7 @@ class TestSHAClaimValidateForSubmission:
         self, ineligible_sha_member, sample_encounter, test_user, sha_tariff
     ):
         """Should fail validation when SHA member is not eligible."""
-        from hmis.apps.billing.models import SHAClaim, SHAClaimItem, SHAClaimAttachment
+        from hmis.apps.billing.models import SHAClaim, SHAClaimAttachment, SHAClaimItem
 
         claim = SHAClaim.objects.create(
             patient=ineligible_sha_member.patient,
@@ -700,7 +695,7 @@ class TestSHAClaimValidateForSubmission:
         self, valid_claim_data, test_user
     ):
         """Should fail validation when items are missing tariff codes."""
-        from hmis.apps.billing.models import SHAClaim, SHAClaimItem, SHAClaimAttachment
+        from hmis.apps.billing.models import SHAClaim, SHAClaimAttachment, SHAClaimItem
 
         claim = SHAClaim.objects.create(**valid_claim_data)
 
@@ -821,7 +816,7 @@ class TestSHAClaimValidateForSubmission:
         self, valid_claim_data, sha_tariff, test_user
     ):
         """Should fail validation when claim is already submitted."""
-        from hmis.apps.billing.models import SHAClaim, SHAClaimItem, SHAClaimAttachment
+        from hmis.apps.billing.models import SHAClaim, SHAClaimAttachment, SHAClaimItem
 
         claim = SHAClaim.objects.create(**valid_claim_data)
         claim.status = SHAClaim.ClaimStatus.SUBMITTED
@@ -882,7 +877,7 @@ class TestSHAClaimSubmit:
         self, valid_claim_data, sha_tariff, test_user
     ):
         """Should update status to SUBMITTED and set timestamps."""
-        from hmis.apps.billing.models import SHAClaim, SHAClaimItem, SHAClaimAttachment
+        from hmis.apps.billing.models import SHAClaim, SHAClaimAttachment, SHAClaimItem
 
         claim = SHAClaim.objects.create(**valid_claim_data)
 
@@ -968,7 +963,7 @@ class TestSHAClaimGetAgeDays:
         self, valid_claim_data, sha_tariff, test_user
     ):
         """Should return 0 for claims submitted today."""
-        from hmis.apps.billing.models import SHAClaim, SHAClaimItem, SHAClaimAttachment
+        from hmis.apps.billing.models import SHAClaim, SHAClaimAttachment, SHAClaimItem
 
         claim = SHAClaim.objects.create(**valid_claim_data)
         SHAClaimItem.objects.create(
@@ -1008,7 +1003,7 @@ class TestSHAClaimGetAgeDays:
 
     def test_get_age_days_submitted_days_ago(self, valid_claim_data, sha_tariff, test_user):
         """Should return correct days since submission."""
-        from hmis.apps.billing.models import SHAClaim, SHAClaimItem, SHAClaimAttachment
+        from hmis.apps.billing.models import SHAClaim, SHAClaimAttachment, SHAClaimItem
 
         claim = SHAClaim.objects.create(**valid_claim_data)
         SHAClaimItem.objects.create(
@@ -1237,8 +1232,8 @@ class TestSHAClaimModelMeta:
     def test_claim_ordering_by_created_at_desc(self, valid_claim_data, sample_county, sample_sub_county, test_user):
         """Should order claims by created_at descending."""
         from hmis.apps.billing.models import SHAClaim, SHAMember
-        from hmis.apps.patients.models import Patient
         from hmis.apps.encounters.models import Encounter
+        from hmis.apps.patients.models import Patient
 
         # Create first claim
         claim1 = SHAClaim.objects.create(**valid_claim_data)
