@@ -444,6 +444,7 @@ export interface AdmissionListParams {
   ward?: number;
   payer_type?: string;
   ordering?: string;
+  search?: string;
   page?: number;
   page_size?: number;
 }
