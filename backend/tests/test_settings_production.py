@@ -166,14 +166,26 @@ class TestProductionSettings:
             os.environ.pop("EMAIL_HOST_PASSWORD", None)
 
     def test_logging_has_file_handler(self):
-        """Logging should include file handler in production."""
-        from hmis.settings import production
+        """Logging should include file handler in production when LOG_FILE is set."""
+        import importlib
+        original = os.environ.get("LOG_FILE")
 
-        assert "file" in production.LOGGING["handlers"]
-        assert (
-            production.LOGGING["handlers"]["file"]["class"]
-            == "logging.handlers.RotatingFileHandler"
-        )
+        try:
+            # File handler is only added when LOG_FILE env var is set
+            os.environ["LOG_FILE"] = "/tmp/test.log"
+            from hmis.settings import production
+            importlib.reload(production)
+
+            assert "file" in production.LOGGING["handlers"]
+            assert (
+                production.LOGGING["handlers"]["file"]["class"]
+                == "logging.handlers.RotatingFileHandler"
+            )
+        finally:
+            if original:
+                os.environ["LOG_FILE"] = original
+            else:
+                os.environ.pop("LOG_FILE", None)
 
     def test_log_file_from_env(self):
         """Log file path should be configurable."""
