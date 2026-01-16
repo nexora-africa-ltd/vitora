@@ -180,7 +180,7 @@ export function Sidebar({ collapsed, onCollapse, mobileOpen, onMobileClose }: Si
           'flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-colors',
           isChild && !collapsed && 'ml-4 pl-4 border-l border-border',
           isActive
-            ? 'bg-cyan-300/10 text-accent-foreground hover:bg-cyan-450 hover:text-accent-foreground'
+            ? 'bg-cyan-300 transform scale-100 text-cyan-800 hover:bg-cyan-450 hover:text-900'
             : 'text-muted-foreground hover:bg-[#3D000F] hover:text-accent-foreground'
         )}
       >
