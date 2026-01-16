@@ -180,7 +180,7 @@ export function Sidebar({ collapsed, onCollapse, mobileOpen, onMobileClose }: Si
           'flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-colors',
           isChild && !collapsed && 'ml-4 pl-4 border-l border-border',
           isActive
-            ? 'bg-cyan-300 transform scale-100 text-cyan-800 hover:bg-cyan-450 hover:text-900'
+            ? 'bg-cyan-300/90  text-primary hover:bg-cyan-450 hover:text-900'
             : 'text-muted-foreground hover:bg-[#3D000F] hover:text-accent-foreground'
         )}
       >
@@ -242,7 +242,7 @@ export function Sidebar({ collapsed, onCollapse, mobileOpen, onMobileClose }: Si
                   className={cn(
                     'flex items-center gap-2 px-3 py-1.5 text-sm transition-colors',
                     pathname === child.href || pathname.startsWith(`${child.href}/`)
-                      ? 'bg-cyan-300 text-cyan-900'
+                      ? 'bg-orange-300 text-cyan-900'
                       : 'hover:bg-muted'
                   )}
                 >
