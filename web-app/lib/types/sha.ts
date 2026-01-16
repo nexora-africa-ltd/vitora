@@ -530,7 +530,7 @@ export interface DHAPractitionerContacts {
  */
 export interface DHAPractitionerIdentifiers {
   identification_type: string;       // e.g., "National ID", "Passport"
-  identification_number: string;     // e.g., "34221265"
+  identification_number: string;     // e.g., "1111111"
   client_registry_id: string;
   student_id: string;
 }
