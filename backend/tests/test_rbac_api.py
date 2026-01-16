@@ -298,17 +298,16 @@ class TestStaffProfileAPI:
             category="TECHNICAL",
         )
 
-        user = User.objects.create_user(
-            username="labtech1",
-            password="pass123"
-        )
-
+        # StaffProfileCreateSerializer expects user fields to create a new user
         data = {
-            'user': user.id,
+            'username': 'labtech1',
+            'email': 'labtech1@example.com',
+            'first_name': 'Lab',
+            'last_name': 'Technician',
             'employee_id': 'VH-2026-002',
-            'primary_role': role.id,
-            'primary_department': department.id,
-            'date_joined': str(date.today()),
+            'role': role.id,
+            'department': department.id,
+            'hire_date': str(date.today()),
         }
 
         response = authenticated_client.post('/api/staff/', data)
