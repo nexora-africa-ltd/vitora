@@ -1,7 +1,7 @@
 # Vitora HMIS - Comprehensive Development Roadmap
 
 **Version**: 1.3
-**Last Updated**: January 9, 2026
+**Last Updated**: January 17, 2026
 **Target Completion**: Q4 2027
 **Methodology**: Test-Driven Development (TDD) with Agile Sprints
 
@@ -545,14 +545,14 @@ GET /api/locations/wards/?sub_county=<id>     # Cascading wards
 - [x] Implement toggleable list/grid view for patient list ✅
 
 **Track B: Mobile App Foundation (Parallel)**
-- [x] **Write tests first**: React Native setup tests
-- [x] Scaffold React Native app with Expo
-- [x] **Write tests first**: SQLite mobile storage tests
-- [x] Implement WatermelonDB/Expo SQLite setup
-- [x] **Write tests first**: Mobile patient list tests (offline)
-- [x] Implement offline patient lookup
-- [x] **Write tests first**: Mobile auth tests
-- [x] Implement JWT auth for mobile
+- [x] **Write tests first**: React Native setup tests ✅
+- [x] Scaffold React Native app with Expo ✅
+- [x] **Write tests first**: SQLite mobile storage tests ✅
+- [x] Implement WatermelonDB/Expo SQLite setup ✅
+- [x] **Write tests first**: Mobile patient list tests (offline) ✅
+- [x] Implement offline patient lookup ✅
+- [x] **Write tests first**: Mobile auth tests ✅
+- [x] Implement JWT auth for mobile ✅
 
 **Track C: RBAC Foundation**
 - [x] **Write tests first**: Role and StaffProfile model tests ✅
@@ -604,7 +604,7 @@ def test_vital_signs_validation():
 - [x] **Write tests first**: LOINC code lookup tests ✅
 - [x] Implement basic LOINC code reference table ✅
 
-**Track C: Web Frontend Foundation (Next.js) - Moved from Phase 2**
+**Track C: Web Frontend Foundation (Next.js) - Moved from Phase 2** ✅ COMPLETED
 - [x] **Write tests first**: Next.js setup and routing tests ✅
 - [x] Scaffold Next.js 14+ app with TypeScript ✅
 - [x] **Write tests first**: Auth flow tests (login, logout, refresh) ✅
@@ -647,15 +647,15 @@ def test_vital_signs_validation():
 - [x] **Write tests first**: Lab result attachment tests ✅
 - [x] Implement scanned result attachment support ✅
 
-**Track C: Web Frontend Dashboard**
-- [ ] **Write tests first**: Encounter view tests (web)
-- [ ] Implement encounter details view (read-only)
-- [ ] **Write tests first**: Patient timeline tests (web)
-- [ ] Implement patient encounter history in web app
-- [ ] **Write tests first**: Reporting dashboard tests
-- [ ] Implement basic reporting dashboard for stakeholders
-- [ ] **Write tests first**: Responsive design tests (Playwright)
-- [ ] Ensure mobile-responsive web experience
+**Track C: Web Frontend Dashboard** ✅ COMPLETED
+- [x] **Write tests first**: Encounter view tests (web) ✅
+- [x] Implement encounter details view (read-only) ✅
+- [x] **Write tests first**: Patient timeline tests (web) ✅
+- [x] Implement patient encounter history in web app ✅
+- [x] **Write tests first**: Reporting dashboard tests ✅
+- [x] Implement basic reporting dashboard for stakeholders ✅
+- [x] **Write tests first**: Responsive design tests (Playwright) ✅
+- [x] Ensure mobile-responsive web experience ✅
 
 **Track D: Inpatient Foundation (NEW)**
 - [x] **Write tests first**: Ward model tests (ward types, capacity) ✅
@@ -676,8 +676,8 @@ def test_vital_signs_validation():
 - [x] Implement Transfer model for ward-to-ward patient movement ✅
 - [x] **Write tests first**: Discharge tests (summary, clearance, LOS) ✅
 - [x] Implement Discharge model with summary, medications, follow-up, and LOS calculation ✅
-- [ ] **Write tests first**: Bed occupancy dashboard tests
-- [ ] Implement real-time bed occupancy API and dashboard component
+- [x] **Write tests first**: Bed occupancy dashboard tests ✅
+- [x] Implement real-time bed occupancy API and dashboard component ✅
 
 **Track E: Triage Module MVP (NEW)**
 - [x] **Write tests first**: TriageAssessment model tests (chief complaint, pain score, AVPU, mobility) ✅
@@ -694,8 +694,8 @@ def test_vital_signs_validation():
 - [x] Implement queue status update endpoints ✅
 - [x] **Write tests first**: Triage reporting tests (wait times, volume by category) ✅
 - [x] Implement basic triage wait time and volume reports ✅
-- [x] **Write tests first**: Web triage form tests (Playwright)
-- [x] Implement triage assessment form in web-app
+- [x] **Write tests first**: Web triage form tests (Playwright) ✅
+- [x] Implement triage assessment form in web-app ✅
 - [x] **Write tests first**: Triage queue dashboard tests
 - [x] Implement real-time triage queue display with color-coded priorities
 - [x] **Write tests first**: Nurse override tests (category override with reason) ✅
@@ -828,37 +828,37 @@ def test_wait_time_exceeded_flag():
 #### Sprint 1.7-1.8: Mobile Features + RBAC Enforcement + Pharmacy Integration (Weeks 13-16)
 **TDD Focus**: Test mobile clinical workflows, RBAC enforcement, and pharmacy features
 
-**Track A: Mobile Features**
+**Track A: Mobile Features** ✅ COMPLETED
 - [x] **Write tests first**: Mobile vitals entry tests ✅
 - [x] Implement mobile vitals capture with offline queue ✅
 - [x] **Write tests first**: Mobile encounter creation tests ✅
 - [x] Implement mobile encounter workflow ✅
 - [x] **Write tests first**: Mobile prescription viewing tests ✅
 - [x] Implement prescription list in mobile app ✅
-- [ ] **Write tests first**: Mobile-desktop sync conflict tests
-- [ ] Implement cross-device conflict resolution
-- [ ] **Write tests first**: Push notification tests
-- [ ] Implement critical alert notifications (SpO2, etc.)
+- [x] **Write tests first**: Mobile-desktop sync conflict tests ✅
+- [x] Implement cross-device conflict resolution ✅
+- [x] **Write tests first**: Push notification tests ✅
+- [x] Implement critical alert notifications (SpO2, etc.) ✅
 
-**Track B: RBAC Full Implementation**
-- [ ] **Write tests first**: Permission matrix enforcement tests
-- [ ] Implement full RoleBasedPermission with action/resource matrix
-- [ ] **Write tests first**: Department-based filtering tests
-- [ ] Implement department-scoped data access
-- [ ] **Write tests first**: Role-based UI rendering tests
-- [ ] Implement UI element visibility based on role
-- [ ] **Write tests first**: Role assignment API tests
-- [ ] Implement role management endpoints
-- [ ] **Write tests first**: Audit log for role changes
-- [ ] Log all role/permission modifications
+**Track B: RBAC Full Implementation** ✅ COMPLETED
+- [x] **Write tests first**: Permission matrix enforcement tests ✅
+- [x] Implement full RoleBasedPermission with action/resource matrix ✅
+- [x] **Write tests first**: Department-based filtering tests ✅
+- [x] Implement department-scoped data access ✅
+- [x] **Write tests first**: Role-based UI rendering tests ✅
+- [x] Implement UI element visibility based on role ✅
+- [x] **Write tests first**: Role assignment API tests ✅
+- [x] Implement role management endpoints ✅
+- [x] **Write tests first**: Audit log for role changes ✅
+- [x] Log all role/permission modifications ✅
 
-**Track C: Lab Integration with Roles**
-- [ ] **Write tests first**: Lab technician role tests
-- [ ] Implement lab technician permissions (result entry only)
-- [ ] **Write tests first**: Doctor lab order tests
-- [ ] Ensure only authorized roles can order labs
-- [ ] **Write tests first**: Lab result viewing permissions
-- [ ] Implement role-based lab result access
+**Track C: Lab Integration with Roles** ✅ COMPLETED
+- [x] **Write tests first**: Lab technician role tests ✅
+- [x] Implement lab technician permissions (result entry only) ✅
+- [x] **Write tests first**: Doctor lab order tests ✅
+- [x] Ensure only authorized roles can order labs ✅
+- [x] **Write tests first**: Lab result viewing permissions ✅
+- [x] Implement role-based lab result access ✅
 
 **Deliverables**:
 - Mobile vitals entry with validation
