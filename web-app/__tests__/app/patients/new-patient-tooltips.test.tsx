@@ -4,6 +4,7 @@
 import React from 'react';
 import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import NewPatientPage from '@/app/(dashboard)/patients/new/page';
 
 beforeAll(() => {
@@ -41,6 +42,36 @@ jest.mock('@/lib/hooks/use-triage', () => ({
   }),
 }));
 
+// Mock SHA API hooks
+jest.mock('@/lib/api/sha', () => ({
+  shaApi: {
+    registerInClientRegistry: jest.fn(),
+    searchClientRegistry: jest.fn(),
+    searchSHAMember: jest.fn(),
+    searchSHAMemberDependants: jest.fn(),
+  },
+}));
+
+// Mock SHA hooks
+jest.mock('@/lib/hooks/use-sha', () => ({
+  useSearchClientRegistry: () => ({
+    mutateAsync: jest.fn(),
+    isPending: false,
+  }),
+  useRegisterInCR: () => ({
+    mutateAsync: jest.fn(),
+    isPending: false,
+  }),
+  useSearchSHAMember: () => ({
+    mutateAsync: jest.fn(),
+    isPending: false,
+  }),
+  useSearchSHAMemberDependants: () => ({
+    mutateAsync: jest.fn(),
+    isPending: false,
+  }),
+}));
+
 // Mock PatientForm to avoid filling large form fields.
 jest.mock('@/components/patients/patient-form', () => ({
   PatientForm: ({ onSubmit }: { onSubmit: (data: any) => void }) => (
@@ -63,6 +94,21 @@ jest.mock('@/components/patients/patient-form', () => ({
   ),
 }));
 
+const createTestQueryClient = () =>
+  new QueryClient({
+    defaultOptions: {
+      queries: { retry: false },
+      mutations: { retry: false },
+    },
+  });
+
+const renderWithQueryClient = (ui: React.ReactElement) => {
+  const queryClient = createTestQueryClient();
+  return render(
+    <QueryClientProvider client={queryClient}>{ui}</QueryClientProvider>
+  );
+};
+
 describe('NewPatientPage tooltips', () => {
   beforeEach(() => {
     jest.clearAllMocks();
@@ -79,7 +125,7 @@ describe('NewPatientPage tooltips', () => {
       date_of_birth: '1980-01-01',
     });
 
-    render(<NewPatientPage />);
+    renderWithQueryClient(<NewPatientPage />);
 
     await user.click(screen.getByRole('button', { name: /submit/i }));
 
@@ -105,7 +151,7 @@ describe('NewPatientPage tooltips', () => {
       date_of_birth: '1980-01-01',
     });
 
-    render(<NewPatientPage />);
+    renderWithQueryClient(<NewPatientPage />);
 
     await user.click(screen.getByRole('button', { name: /submit/i }));
 

@@ -1,3 +1,4 @@
+import React from 'react';
 import { render, screen, fireEvent } from '@testing-library/react';
 import { Header } from '@/components/layout/header';
 
@@ -24,6 +25,44 @@ jest.mock('@/lib/auth/context', () => ({
 // Mock auth hooks
 jest.mock('@/lib/auth/hooks', () => ({
   useLogout: jest.fn(() => jest.fn()),
+}));
+
+// Mock network status hook
+jest.mock('@/lib/hooks/use-network-status', () => ({
+  useNetworkStatus: jest.fn(() => ({
+    isOnline: true,
+  })),
+}));
+
+// Mock sync context
+jest.mock('@/lib/context/sync-context', () => ({
+  useSyncStatus: jest.fn(() => ({
+    lastSyncTime: new Date(),
+    isSyncing: false,
+    pendingChanges: 0,
+    lastError: null,
+    triggerSync: jest.fn(),
+  })),
+  formatLastSync: jest.fn(() => 'Just now'),
+}));
+
+// Mock NotificationPanel component
+jest.mock('@/components/notifications/notification-panel', () => ({
+  NotificationPanel: () => React.createElement('div', { 'data-testid': 'notification-panel' }, null),
+}));
+
+// Mock Breadcrumb component
+jest.mock('@/components/layout/breadcrumb', () => ({
+  Breadcrumb: () => React.createElement('div', { 'data-testid': 'breadcrumb' }, 'Dashboard'),
+}));
+
+// Mock Tooltip components to avoid Radix issues
+jest.mock('@/components/ui/tooltip', () => ({
+  TooltipProvider: ({ children }: { children: React.ReactNode }) => children,
+  Tooltip: ({ children }: { children: React.ReactNode }) => children,
+  TooltipTrigger: ({ children, asChild }: { children: React.ReactNode; asChild?: boolean }) =>
+    asChild ? children : React.createElement('span', null, children),
+  TooltipContent: () => null,
 }));
 
 describe('Header', () => {
@@ -54,14 +93,16 @@ describe('Header', () => {
     expect(screen.getByPlaceholderText(/search patients/i)).toBeInTheDocument();
   });
 
-  it('should render notification bell with badge', () => {
+  it('should render notification panel', () => {
     render(<Header {...defaultProps} />);
-    expect(screen.getByRole('button', { name: /notifications/i })).toBeInTheDocument();
+    expect(screen.getByTestId('notification-panel')).toBeInTheDocument();
   });
 
   it('should render theme toggle button', () => {
     render(<Header {...defaultProps} />);
-    expect(screen.getByRole('button', { name: /toggle theme/i })).toBeInTheDocument();
+    // Theme toggle might be a dropdown trigger with sun/moon icon
+    const themeButton = screen.getByRole('button', { name: /toggle theme/i });
+    expect(themeButton).toBeInTheDocument();
   });
 
   it('should render user avatar with initials', () => {
