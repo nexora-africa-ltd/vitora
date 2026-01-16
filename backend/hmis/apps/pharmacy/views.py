@@ -598,7 +598,7 @@ class StockMovementReportView(APIView):
 class AlertSettingsView(APIView):
     """
     API view for alert settings configuration.
-    
+
     GET - Retrieve current alert settings
     PUT/PATCH - Update alert settings
     """

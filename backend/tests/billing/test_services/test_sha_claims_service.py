@@ -339,7 +339,7 @@ class TestSHAClaimsServiceCreateClaim:
     ):
         """
         Test that create_claim_from_encounter() creates claim and items.
-        
+
         Given: An encounter with invoice and items
         When: create_claim_from_encounter() is called
         Then: SHAClaim is created with SHAClaimItem for each invoice item
@@ -376,7 +376,7 @@ class TestSHAClaimsServiceCreateClaim:
     ):
         """
         Test that OPD encounters result in OUTPATIENT claim type.
-        
+
         Given: An OPD encounter
         When: create_claim_from_encounter() is called without explicit claim_type
         Then: Claim type is set to OUTPATIENT
@@ -398,7 +398,7 @@ class TestSHAClaimsServiceCreateClaim:
     ):
         """
         Test that IPD encounters result in INPATIENT claim type.
-        
+
         Given: An IPD encounter
         When: create_claim_from_encounter() is called without explicit claim_type
         Then: Claim type is set to INPATIENT
@@ -424,7 +424,7 @@ class TestSHAClaimsServiceCreateClaim:
     ):
         """
         Test that EMERGENCY encounters result in EMERGENCY claim type.
-        
+
         Given: An EMERGENCY encounter
         When: create_claim_from_encounter() is called without explicit claim_type
         Then: Claim type is set to EMERGENCY
@@ -450,7 +450,7 @@ class TestSHAClaimsServiceCreateClaim:
     ):
         """
         Test that creating claim for patient without SHA raises ValidationError.
-        
+
         Given: An encounter for patient without SHA membership
         When: create_claim_from_encounter() is called
         Then: ValidationError is raised with appropriate message
@@ -481,7 +481,7 @@ class TestSHAClaimsServiceValidation:
     def test_validate_claim_delegation_to_model(self, valid_claim):
         """
         Test that validate_claim() delegates to model's validate_for_submission().
-        
+
         Given: A valid claim
         When: validate_claim() is called
         Then: Returns result from model's validate_for_submission()
@@ -508,11 +508,11 @@ class TestSHAClaimsServicePackaging:
     def test_package_claim_returns_fhir_bundle(self, valid_claim):
         """
         Test that package_claim() returns SHA-compliant FHIR bundle.
-        
+
         Given: A valid claim
         When: package_claim() is called
         Then: Returns dict with FHIR Bundle structure (type: 'message' per SHA spec)
-        
+
         Reference: docs/sha-guides/claims.md - Bundle must have type 'message'
         """
         from hmis.apps.billing.services.sha_claims import SHAClaimsService
@@ -536,11 +536,11 @@ class TestSHAClaimsServicePackaging:
     def test_fhir_claim_resource_structure(self, valid_claim):
         """
         Test that FHIR Claim resource has correct SHA-compliant structure.
-        
+
         Given: A valid claim
         When: package_claim() is called
         Then: Bundle contains properly structured Claim resource per SHA spec
-        
+
         Reference: docs/sha-guides/claims.md - Claim Resource section
         """
 
@@ -589,7 +589,7 @@ class TestSHAClaimsServicePackaging:
     def test_fhir_patient_resource_included(self, valid_claim):
         """
         Test that FHIR Patient resource is included in bundle.
-        
+
         Given: A valid claim
         When: package_claim() is called
         Then: Bundle contains Patient resource
@@ -620,11 +620,11 @@ class TestSHAClaimsServicePackaging:
     def test_fhir_coverage_resource_included(self, valid_claim):
         """
         Test that FHIR Coverage resource is included in bundle.
-        
+
         Given: A valid claim
         When: package_claim() is called
         Then: Bundle contains Coverage resource with SHA scheme extensions
-        
+
         Reference: docs/sha-guides/claims.md - Coverage Resource section
         """
         from hmis.apps.billing.services.sha_claims import SHAClaimsService
@@ -677,11 +677,11 @@ class TestSHAClaimsServicePackaging:
     def test_fhir_organization_resource_included(self, valid_claim):
         """
         Test that FHIR Organization resource is included in bundle.
-        
+
         Given: A valid claim
         When: package_claim() is called
         Then: Bundle contains Organization resource for the healthcare facility
-        
+
         Reference: docs/sha-guides/claims.md - Organization Resource section
         """
         from hmis.apps.billing.services.sha_claims import SHAClaimsService
@@ -718,7 +718,7 @@ class TestSHAClaimsServiceSubmission:
     ):
         """
         Test successful claim submission flow (offline-first queuing).
-        
+
         Given: A valid claim ready for submission
         When: submit_claim() is called
         Then: Claim is queued for offline submission
@@ -740,7 +740,7 @@ class TestSHAClaimsServiceSubmission:
     ):
         """
         Test that submit_claim() updates claim status to PENDING_SUBMISSION.
-        
+
         Given: A valid claim
         When: submit_claim() is called
         Then: Claim status is PENDING_SUBMISSION (queued for later)
@@ -765,7 +765,7 @@ class TestSHAClaimsServiceSubmission:
     ):
         """
         Test that submit_claim() creates audit log entry for queuing.
-        
+
         Given: A valid claim
         When: submit_claim() is called
         Then: AuditLog entry is created for sha_claim_queued action
@@ -793,7 +793,7 @@ class TestSHAClaimsServiceSubmission:
     def test_submit_claim_handles_validation_error(self, valid_claim, test_user):
         """
         Test that submit_claim() handles validation errors.
-        
+
         Given: A valid claim with validation issues in packaging
         When: Packaging fails
         Then: ValidationError is raised
@@ -817,7 +817,7 @@ class TestSHAClaimsServiceSubmission:
     ):
         """
         Test that submit_claim() creates sync queue entry for offline processing.
-        
+
         Given: A valid claim
         When: submit_claim() is called
         Then: SyncQueue entry is created with PENDING status
@@ -854,7 +854,7 @@ class TestSHAClaimsServiceConfiguration:
     def test_service_uses_settings_for_configuration(self):
         """
         Test that service reads configuration from Django settings.
-        
+
         Given: Django settings with facility configuration
         When: SHAClaimsService is instantiated
         Then: Service uses settings values

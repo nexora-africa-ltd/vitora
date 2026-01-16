@@ -1180,10 +1180,10 @@ class StaffProfile(models.Model):
 class Notification(models.Model):
     """
     In-app notification for users.
-    
+
     Supports notifications for lab results, appointments, and other system events.
     Priority levels determine urgency and delivery method (e.g., email for critical).
-    
+
     Attributes:
         user: User receiving the notification
         notification_type: Category of notification (e.g., 'lab_result', 'appointment')

@@ -19,7 +19,7 @@ logger = logging.getLogger(__name__)
 def create_lab_queue_entry(sender, instance, created, **kwargs):
     """
     Automatically create a LabQueue entry when a LabOrder is created.
-    
+
     Only creates queue entries for in-house orders (not external lab referrals).
     Queue entry is created when order status is ORDERED or when initially created.
     """
@@ -53,7 +53,7 @@ def create_lab_queue_entry(sender, instance, created, **kwargs):
 def create_lab_queue_on_item_add(sender, instance, created, **kwargs):
     """
     Create LabQueue entry when first item is added to an in-house order.
-    
+
     This handles the case where items are added after the order is created,
     and the signal needs the specimen type from the test catalog.
     """
@@ -105,7 +105,7 @@ def sync_lab_queue_priority(sender, instance, created, **kwargs):
 def update_order_status_on_result(sender, instance, created, **kwargs):
     """
     Update LabOrder and LabQueue status when results are entered.
-    
+
     - First result: Order -> IN_PROGRESS, Queue -> PROCESSING
     - All results entered: Order -> COMPLETED, Queue -> REVIEW
     """

@@ -3,7 +3,7 @@ Management command to import drugs from CSV catalog.
 
 Usage:
     python manage.py import_drugs [--clear]
-    
+
 Options:
     --clear: Delete all existing drugs before importing
 """

@@ -47,10 +47,10 @@ class ICD11Code:
 class ICD11LocalService:
     """
     Service for querying the local WHO ICD-11 API.
-    
+
     Uses the whoicd/icd-api Docker container running locally.
     Default URL: http://localhost:5080
-    
+
     Example:
         >>> service = ICD11LocalService()
         >>> results = service.search('malaria')
@@ -95,12 +95,12 @@ class ICD11LocalService:
     ) -> list[ICD11Code]:
         """
         Search for ICD-11 codes by text query.
-        
+
         Args:
             query: Search text (e.g., 'malaria', 'diabetes')
             limit: Maximum number of results (default 50)
             use_flexisearch: Use flexible search matching (default True)
-            
+
         Returns:
             List of ICD11Code objects
         """
@@ -185,10 +185,10 @@ class ICD11LocalService:
     def get_by_code(self, code: str) -> ICD11Code | None:
         """
         Get ICD-11 entity by code.
-        
+
         Args:
             code: ICD-11 code (e.g., '1A00', '5A11')
-            
+
         Returns:
             ICD11Code if found, None otherwise
         """

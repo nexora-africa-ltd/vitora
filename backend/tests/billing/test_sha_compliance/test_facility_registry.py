@@ -29,7 +29,7 @@ class TestFacilityConfiguration:
     def test_facility_code_configured(self):
         """
         SHA Requirement: Facility code (MFL code) must be configured.
-        
+
         Reference: docs/sha-guides/facilities.md - Facility Identifiers
         Quote: 'Facility Code: A unique code assigned to each healthcare facility'
         """
@@ -43,10 +43,10 @@ class TestFacilityConfiguration:
     def test_facility_level_configured(self):
         """
         SHA Requirement: Facility level must be configured.
-        
+
         Reference: docs/sha-guides/facilities.md
         Quote: 'Facility Level'
-        
+
         Valid levels: Level 1, Level 2, Level 3A, Level 3B, Level 4, Level 5, Level 6
         """
         facility_level = getattr(settings, 'FACILITY_LEVEL', None)
@@ -60,7 +60,7 @@ class TestFacilityConfiguration:
     def test_facility_name_configured(self):
         """
         SHA Requirement: Facility name should be configured.
-        
+
         Reference: docs/sha-guides/claims.md - Organization Resource
         Quote: 'name: Name of the healthcare facility'
         """
@@ -81,7 +81,7 @@ class TestFacilityLevelCompliance:
     def test_valid_facility_levels(self):
         """
         SHA Requirement: Facility level must be valid Kenya MoH level.
-        
+
         Reference: docs/sha-guides/facilities.md
         """
         valid_levels = [
@@ -111,9 +111,9 @@ class TestFacilitySearchAPICompliance:
     def test_facility_search_endpoint_documented(self):
         """
         SHA Requirement: Know how to search facility registry.
-        
+
         Reference: docs/sha-guides/facilities.md - Search Facility API Endpoint
-        
+
         Endpoint: GET /v1/facility-search?facility_code={{facility_code}}
         """
         expected_endpoint = '/v1/facility-search'
@@ -126,9 +126,9 @@ class TestFacilitySearchAPICompliance:
     def test_facility_search_response_fields(self):
         """
         SHA Requirement: Handle facility search response fields.
-        
+
         Reference: docs/sha-guides/facilities.md - Response
-        
+
         Response fields:
             - facility_code
             - found
@@ -158,7 +158,7 @@ class TestOrganizationResourceCompliance:
     def test_organization_structure(self, sha_claim_with_items):
         """
         SHA Requirement: Organization resource has required structure.
-        
+
         Reference: docs/sha-guides/claims.md - Organization Resource
         """
         service = SHAClaimsService()
@@ -178,7 +178,7 @@ class TestOrganizationResourceCompliance:
     def test_organization_has_meta_profile(self, sha_claim_with_items):
         """
         SHA Requirement: Organization has meta.profile.
-        
+
         Reference: docs/sha-guides/claims.md
         Quote: 'meta.profile: https://mis.apeiro-digital.com/fhir/StructureDefinition/provider-organization|1.0.0'
         """
@@ -201,7 +201,7 @@ class TestOrganizationResourceCompliance:
     def test_organization_active_status(self, sha_claim_with_items):
         """
         SHA Requirement: Organization should show active status.
-        
+
         Reference: docs/sha-guides/claims.md
         Quote: 'active: Whether the facility is active (should be "True")'
         """
@@ -232,9 +232,9 @@ class TestFacilityDataElements:
     def test_core_facility_components(self):
         """
         SHA Requirement: Understand core facility data components.
-        
+
         Reference: docs/sha-guides/facilities.md - Core Components
-        
+
         Components:
             - Organizational Information (name, type, ownership, status)
             - Location Details (address, coordinates, admin divisions)
@@ -253,9 +253,9 @@ class TestFacilityDataElements:
     def test_facility_category_types(self):
         """
         SHA Reference: Facility category/type examples.
-        
+
         Reference: docs/sha-guides/facilities.md
-        
+
         Example: 'facility_category: Private Practice'
         """
         example_categories = [
@@ -277,10 +277,10 @@ class TestFacilityValidation:
     def test_verify_facility_before_transactions(self):
         """
         SHA Best Practice: Verify facility status before transactions.
-        
+
         Reference: docs/sha-guides/facilities.md - Best Practices
-        Quote: 'Verify Facility Status Before Transactions: Ensure the facility 
-               is operational and licensed before proceeding with medical 
+        Quote: 'Verify Facility Status Before Transactions: Ensure the facility
+               is operational and licensed before proceeding with medical
                transactions or referrals'
         """
         assert True, (
@@ -291,10 +291,10 @@ class TestFacilityValidation:
     def test_handle_missing_facility_data(self):
         """
         SHA Best Practice: Handle missing facility metadata gracefully.
-        
+
         Reference: docs/sha-guides/facilities.md - Best Practices
-        Quote: 'Handle Missing Data Gracefully: Not all facilities may have 
-               complete metadata (e.g., approval status or license expiry 
+        Quote: 'Handle Missing Data Gracefully: Not all facilities may have
+               complete metadata (e.g., approval status or license expiry
                date may be null)'
         """
         assert True, (

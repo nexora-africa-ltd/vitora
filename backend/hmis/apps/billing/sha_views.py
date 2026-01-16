@@ -196,7 +196,7 @@ class SHAMemberViewSet(viewsets.ModelViewSet):
         Get all dependents for a principal SHA member.
 
         GET /api/billing/sha-members/{id}/dependents/
-        
+
         Returns list of SHA members who have this member as their principal.
         Uses the principal FK for integrity, falls back to principal_sha_number for legacy data.
         Only applicable for principal members.
@@ -368,7 +368,7 @@ class SHAClaimViewSet(viewsets.ModelViewSet):
         Submit a claim to SHA.
 
         POST /api/sha/claims/{id}/submit/
-        
+
         Supports offline queuing - if the system is offline, the claim
         will be queued for later submission.
         """
@@ -749,9 +749,9 @@ from hmis.apps.billing.services.terminology import TerminologyError, Terminology
 class TerminologySearchView(APIView):
     """
     API view for searching medical terminologies.
-    
+
     Supports ICD-11, LOINC, ICHI, Interventions, and Drug Products.
-    
+
     For ICD-11, uses local WHO ICD-11 API container by default (ICD11_USE_LOCAL=true).
     """
     permission_classes = [IsAuthenticated]
@@ -759,9 +759,9 @@ class TerminologySearchView(APIView):
     def get(self, request, terminology_type):
         """
         Search terminology codes.
-        
+
         GET /api/billing/terminology/{type}/?search=query&limit=50
-        
+
         Types: icd11, loinc, ichi, interventions, drugs, active-components
         """
         search = request.query_params.get('search', '')
@@ -826,11 +826,11 @@ class TerminologySearchView(APIView):
     def _search_icd11_local(self, search: str, limit: int):
         """
         Search ICD-11 using local WHO ICD-11 API container.
-        
+
         Args:
             search: Search query
             limit: Maximum results
-            
+
         Returns:
             Response with ICD-11 codes
         """
@@ -871,12 +871,12 @@ class ClientRegistryView(APIView):
     def get(self, request):
         """
         Fetch client from Client Registry.
-        
+
         GET /api/billing/client-registry/fetch/?national_id=XXX
         GET /api/billing/client-registry/fetch/?client_number=XXX
         GET /api/billing/client-registry/fetch/?huduma_number=XXX
         GET /api/billing/client-registry/fetch/?identification_type=National ID&identification_number=XXX
-        
+
         Query Parameters:
             national_id: Kenya National ID number
             client_number: CR client number
@@ -947,9 +947,9 @@ class ClientRegistryView(APIView):
     def post(self, request):
         """
         Register a new client in Client Registry.
-        
+
         POST /api/billing/client-registry/register/
-        
+
         Accepts either:
         - patient_id: ID of existing patient (will fetch data automatically)
         - Individual fields: first_name, last_name, date_of_birth, gender (required)
@@ -1042,18 +1042,18 @@ class ClientRegistryView(APIView):
     def put(self, request):
         """
         Update an existing client in Client Registry.
-        
+
         PUT /api/billing/client-registry/update/
-        
+
         Request Body:
             client_number: CR client number (required)
             phone_number: Updated phone number (optional)
             email: Updated email address (optional)
             county: Updated county of residence (optional)
             sub_county: Updated sub-county of residence (optional)
-            
+
         At least one field to update must be provided alongside client_number.
-        
+
         Per DHA API: PUT /v3/update-client
         """
         data = request.data
@@ -1129,7 +1129,7 @@ class FacilitySearchView(APIView):
     def get(self, request):
         """
         Search/validate facility in Master Facility List.
-        
+
         GET /api/billing/facility/validate/?facility_code=XXXXX
         """
         facility_code = request.query_params.get('facility_code')
@@ -1183,11 +1183,11 @@ class FacilitySearchView(APIView):
 class PractitionerSearchView(APIView):
     """
     API view for practitioner search via DHA Health Worker Registry.
-    
+
     Searches by National ID or Passport number and returns comprehensive
     practitioner information including membership, licenses, professional
     details, and contact information.
-    
+
     Based on: https://uat.dha.go.ke/v1/practitioner-search
     """
     permission_classes = [IsAuthenticated]
@@ -1195,18 +1195,18 @@ class PractitionerSearchView(APIView):
     def get(self, request):
         """
         Search practitioner in Health Worker Registry.
-        
+
         GET /api/sha/practitioner/validate/?identification_type=National+ID&identification_number=12345678
-        
+
         Query Parameters:
             identification_number: National ID or Passport number (required)
             identification_type: 'National ID' or 'passport' (default: 'National ID')
             registration_number: Alternative: search by registration number (PUID)
-        
+
         Returns:
-            Full practitioner data including membership, licenses, 
+            Full practitioner data including membership, licenses,
             professional details, contacts, and identifiers.
-        
+
         Note:
             The DHA API requires 'National ID' as the identification_type value,
             not just 'ID'. Using 'ID' may cause timeouts or errors.
@@ -1315,7 +1315,7 @@ class EligibilityCheckView(APIView):
     def post(self, request):
         """
         Check eligibility for a patient or SHA member.
-        
+
         POST /api/billing/eligibility/check/
         {
             "patient_id": 123,
@@ -1370,7 +1370,7 @@ class EligibilityCheckView(APIView):
 class DirectEligibilityCheckView(APIView):
     """
     API view for direct SHA eligibility verification by ID number.
-    
+
     This endpoint checks eligibility directly with SHA API without
     requiring a pre-existing SHAMember record. Useful during patient
     registration or lookup to verify SHA coverage status.
@@ -1380,16 +1380,16 @@ class DirectEligibilityCheckView(APIView):
     def get(self, request):
         """
         Check SHA eligibility by identification.
-        
+
         GET /api/billing/eligibility/direct/?national_id=12345678
         GET /api/billing/eligibility/direct/?sha_number=CR1234567890-0
-        
+
         Query Parameters:
             national_id: Kenya National ID number
             sha_number: SHA/CR number
             identification_type: Custom ID type (default: 'National ID')
             identification_number: ID value (if using custom type)
-        
+
         Returns:
             {
                 "is_eligible": true/false,
@@ -1451,15 +1451,15 @@ class DirectEligibilityCheckView(APIView):
 class SHAWebhookView(APIView):
     """
     Webhook endpoint for receiving DHA/SHA claim responses.
-    
+
     This is the callback URL that DHA calls to notify us about:
     - Claim status changes (approved, rejected, pending-verification)
     - ClaimResponse FHIR resources
     - Payment notifications
-    
+
     Register this URL with DHA as your Callback URL:
     https://your-domain/api/sha/webhook/
-    
+
     DHA Sandbox expects: https://taifa-hmis.com/callback
     Replace with your actual production URL.
     """
@@ -1471,7 +1471,7 @@ class SHAWebhookView(APIView):
     def post(self, request):
         """
         Receive ClaimResponse from DHA.
-        
+
         Expected payload (FHIR ClaimResponse):
         {
             "resourceType": "ClaimResponse",
@@ -1488,7 +1488,7 @@ class SHAWebhookView(APIView):
             "item": [...],
             "total": {"value": 1500.00, "currency": "KES"}
         }
-        
+
         Or simplified notification:
         {
             "claim_reference": "SHA-CLM-2026-001",
@@ -1668,10 +1668,10 @@ class SHAWebhookView(APIView):
 class SHAValidateView(APIView):
     """
     Validation endpoint for DHA to verify our system is reachable.
-    
+
     This is the Validate URL that DHA uses to test connectivity:
     https://your-domain/api/sha/validate/
-    
+
     DHA Sandbox expects: https://taifa-hmis/validate
     Replace with your actual production URL.
     """
@@ -1681,7 +1681,7 @@ class SHAValidateView(APIView):
     def get(self, request):
         """
         Health check endpoint for DHA validation.
-        
+
         Returns system status and readiness for claim processing.
         """
         from django.conf import settings
@@ -1702,7 +1702,7 @@ class SHAValidateView(APIView):
     def post(self, request):
         """
         Validate a test payload from DHA.
-        
+
         DHA may send test claims to verify integration.
         """
         payload = request.data

@@ -157,7 +157,7 @@ class LabAlertService:
     def notify_ordering_clinician(order: LabOrder) -> None:
         """
         Notify clinician when results are ready.
-        
+
         Sends in-app notification and email for critical results.
 
         Args:

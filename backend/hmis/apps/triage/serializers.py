@@ -198,12 +198,12 @@ class TriageAssessmentSerializer(serializers.ModelSerializer):
 
 class TriageAssessmentCreateSerializer(serializers.ModelSerializer):
     """Serializer for creating triage assessments.
-    
+
     Time fields behavior:
     - arrival_time: Set by frontend (when patient arrived/checked in)
     - triage_start_time: Auto-set to now when assessment is created
     - triage_end_time: Auto-set when triage is completed via complete action
-    
+
     These time fields are read-only for regular users (only editable by admins).
     """
 
@@ -315,12 +315,12 @@ class TriageAssessmentCreateSerializer(serializers.ModelSerializer):
 
     def validate(self, data):
         """Ensure override reason provided if category differs from auto-calculated.
-        
+
         The frontend sends auto_calculated_category to indicate what was shown
         to the user as the "suggested" category. We use this for comparison
         to determine if the user overrode the suggestion (requires reason) or
         accepted it (no reason needed).
-        
+
         If frontend doesn't send auto_calculated_category, we fall back to
         calculating it server-side.
         """
@@ -367,7 +367,7 @@ class TriageAssessmentCreateSerializer(serializers.ModelSerializer):
 
     def create(self, validated_data):
         """Auto-calculate category, generate alerts, add to queue.
-        
+
         Auto-sets triage_start_time to now (when triage assessment begins).
         """
         from django.utils import timezone

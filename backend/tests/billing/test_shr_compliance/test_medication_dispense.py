@@ -12,7 +12,7 @@ Reference: https://hl7.org/fhir/R4/medicationdispense.html
 class TestMedicationDispenseRequiredFields:
     """
     Tests for required MedicationDispense fields per SHR specification.
-    
+
     Reference: docs/sha-guides/shr-integration.md Section 4
     Quote: 'POST {{base_url}}/v1/shr-submission?resource=MedicationDispense'
     """
@@ -42,7 +42,7 @@ class TestMedicationDispenseRequiredFields:
     def test_medication_dispense_has_status(self, valid_medication_dispense_fhir):
         """
         SHR Requirement: MedicationDispense must have status.
-        
+
         Quote from spec: '"status": "completed"'
         """
         assert 'status' in valid_medication_dispense_fhir, (
@@ -69,7 +69,7 @@ class TestMedicationDispenseRequiredFields:
     def test_medication_dispense_has_subject(self, valid_medication_dispense_fhir):
         """
         SHR Requirement: MedicationDispense must reference the patient.
-        
+
         Quote from spec: '"subject": {"reference": "Patient/CR06XX3268000-3-1"}'
         """
         assert 'subject' in valid_medication_dispense_fhir, (
@@ -137,7 +137,7 @@ class TestMedicationDispenseMedicationCoding:
 class TestMedicationDispensePerformer:
     """
     Tests for performer (pharmacist/organization) in MedicationDispense.
-    
+
     Reference: docs/sha-guides/shr-integration.md
     Quote: '"performer": [{"actor": {"reference": "Practitioner/pharm-789"}}]'
     """
@@ -176,7 +176,7 @@ class TestMedicationDispensePerformer:
     def test_performer_includes_pharmacist(self, valid_medication_dispense_fhir):
         """
         SHR Requirement: Performer should include pharmacist.
-        
+
         Quote: '"actor": {"reference": "Practitioner/pharm-789", "display": "Pharmacist Bob Green"}'
         """
         performers = valid_medication_dispense_fhir.get('performer', [])
@@ -191,7 +191,7 @@ class TestMedicationDispensePerformer:
     def test_performer_includes_organization(self, valid_medication_dispense_fhir):
         """
         SHR Requirement: Performer should include dispensing organization.
-        
+
         Quote: '"actor": {"reference": "Organization/org-123", "display": "Community Pharmacy"}'
         """
         performers = valid_medication_dispense_fhir.get('performer', [])
@@ -207,7 +207,7 @@ class TestMedicationDispensePerformer:
 class TestMedicationDispenseAuthorizingPrescription:
     """
     Tests for authorizing prescription reference in MedicationDispense.
-    
+
     Reference: docs/sha-guides/shr-integration.md
     Quote: '"authorizingPrescription": [{"reference": "MedicationRequest/..."}]'
     """
@@ -247,7 +247,7 @@ class TestMedicationDispenseAuthorizingPrescription:
 class TestMedicationDispenseType:
     """
     Tests for dispense type in MedicationDispense.
-    
+
     Reference: docs/sha-guides/shr-integration.md
     Quote: '"type": {"coding": [{"code": "RF", "display": "Refill"}]}'
     """
@@ -287,7 +287,7 @@ class TestMedicationDispenseType:
 class TestMedicationDispenseQuantity:
     """
     Tests for quantity in MedicationDispense.
-    
+
     Reference: docs/sha-guides/shr-integration.md
     Quote: '"quantity": {"value": 30, "unit": "tablets"}'
     """
@@ -325,7 +325,7 @@ class TestMedicationDispenseQuantity:
 class TestMedicationDispenseDaysSupply:
     """
     Tests for days supply in MedicationDispense.
-    
+
     Reference: docs/sha-guides/shr-integration.md
     Quote: '"daysSupply": {"value": 30, "unit": "days"}'
     """
@@ -363,7 +363,7 @@ class TestMedicationDispenseDaysSupply:
 class TestMedicationDispenseTimestamps:
     """
     Tests for timestamps in MedicationDispense.
-    
+
     Reference: docs/sha-guides/shr-integration.md
     Quote: '"whenPrepared": "2025-04-27T09:15:00Z", "whenHandedOver": "2025-04-27T10:30:00Z"'
     """
@@ -379,7 +379,7 @@ class TestMedicationDispenseTimestamps:
     def test_has_when_handed_over(self, valid_medication_dispense_fhir):
         """
         SHR Requirement: MedicationDispense must have whenHandedOver for refill calculation.
-        
+
         This is critical for computing the next refill date.
         """
         assert 'whenHandedOver' in valid_medication_dispense_fhir, (
@@ -413,7 +413,7 @@ class TestMedicationDispenseDosageInstruction:
     def test_dosage_instruction_has_text(self, valid_medication_dispense_fhir):
         """
         SHR Requirement: Dosage instruction must have text.
-        
+
         Quote: '"text": "Take one tablet by mouth once daily"'
         """
         dosage = valid_medication_dispense_fhir.get('dosageInstruction', [{}])[0]

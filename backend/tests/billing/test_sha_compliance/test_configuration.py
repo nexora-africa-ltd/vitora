@@ -22,7 +22,7 @@ class TestSHAAPIConfiguration:
     def test_sha_enabled_setting_exists(self):
         """
         Configuration: SHA_ENABLED setting should exist.
-        
+
         This controls whether SHA integration features are active.
         """
         has_setting = hasattr(settings, 'SHA_ENABLED')
@@ -35,7 +35,7 @@ class TestSHAAPIConfiguration:
     def test_sha_api_base_url_configured(self):
         """
         SHA Requirement: API base URL must be configured.
-        
+
         Reference: docs/sha-guides/claims-submission.md - Integration Checklist
         Environments:
             - Dev/UAT: https://uat.dha.go.ke
@@ -55,9 +55,9 @@ class TestSHAAPIConfiguration:
     def test_sha_fhir_base_url_configured(self):
         """
         SHA Requirement: FHIR base URL must be configured.
-        
+
         Reference: docs/sha-guides/claims-submission.md - Integration Checklist #7
-        
+
         Environments:
             - Dev/UAT: https://qa-mis.apeiro-digital.com
             - Prod: https://fhir.sha.go.ke
@@ -90,7 +90,7 @@ class TestSHAAuthenticationConfiguration:
     def test_sha_consumer_key_exists(self):
         """
         SHA Requirement: Consumer key (API key) must be configured.
-        
+
         Reference: docs/sha-guides/claims-submission.md - Integration Checklist #1
         Quote: 'Get Access key/Secret key to payer system APIs'
         """
@@ -148,7 +148,7 @@ class TestSHAEndpointsConfiguration:
     def test_eligibility_endpoint_configured(self):
         """
         SHA Requirement: Eligibility endpoint must be configured.
-        
+
         Reference: docs/sha-guides/eligibility.md
         Expected: /v2/eligibility
         """
@@ -168,7 +168,7 @@ class TestSHAEndpointsConfiguration:
     def test_claims_submit_endpoint_configured(self):
         """
         SHA Requirement: Claims submission endpoint must be configured.
-        
+
         Reference: docs/sha-guides/claims-submission.md
         Expected: /v1/shr-med/bundle
         """
@@ -184,7 +184,7 @@ class TestSHAEndpointsConfiguration:
     def test_claims_status_endpoint_configured(self):
         """
         SHA Requirement: Claims status endpoint must be configured.
-        
+
         Reference: docs/sha-guides/claims-submission.md
         Expected: /v1/shr-med/claim-status
         """
@@ -204,7 +204,7 @@ class TestFacilityConfiguration:
     def test_facility_mfl_code_configured(self):
         """
         SHA Requirement: Facility MFL code must be configured.
-        
+
         Reference: docs/sha-guides/facilities.md
         This is the Master Facility List code from Kenya HFR.
         """
@@ -218,7 +218,7 @@ class TestFacilityConfiguration:
     def test_facility_level_configured(self):
         """
         SHA Requirement: Facility level must be configured.
-        
+
         Reference: docs/sha-guides/claims.md - Organization Resource
         Valid levels: Level 1-6, L1-L6, LEVEL 1-6
         """
@@ -232,7 +232,7 @@ class TestFacilityConfiguration:
     def test_facility_name_configured(self):
         """
         SHA Requirement: Facility name should be configured.
-        
+
         Reference: docs/sha-guides/claims.md
         """
         name = getattr(settings, 'FACILITY_NAME', None)
@@ -268,13 +268,13 @@ class TestEnvironmentURLAlignment:
     def test_api_and_fhir_urls_match_environment(self):
         """
         SHA Requirement: API and FHIR URLs should match environment.
-        
+
         Reference: docs/sha-guides/claims-submission.md - Integration Checklist #7
-        
+
         UAT:
             - API: https://uat.dha.go.ke
             - FHIR: https://qa-mis.apeiro-digital.com
-        
+
         Production:
             - API: TBD
             - FHIR: https://fhir.sha.go.ke
@@ -303,9 +303,9 @@ class TestCallbackConfiguration:
     def test_callback_url_documented(self):
         """
         SHA Requirement: Callback URL should be configured.
-        
+
         Reference: docs/sha-guides/claims-submission.md - Integration Checklist #2
-        Quote: 'Share response callback url with Payer technical team to configure. 
+        Quote: 'Share response callback url with Payer technical team to configure.
                Callback url must have a POST method and should be secured with basic auth'
         """
         callback_url = getattr(settings, 'SHA_CALLBACK_URL', None)
@@ -324,9 +324,9 @@ class TestIntegrationChecklistSummary:
     def test_integration_checklist_awareness(self):
         """
         SHA Reference: Review full integration checklist.
-        
+
         Reference: docs/sha-guides/claims-submission.md - Integration Checklist
-        
+
         Checklist items:
             1. Get Access key/Secret key to payer system APIs
             2. Share response callback url with Payer technical team

@@ -25,16 +25,16 @@ class InvalidTransitionError(Exception):
 class LabOrderWorkflow:
     """
     Manages lab order state transitions.
-    
+
     In-House Flow:
     ordered → collected → in_progress → completed
-    
+
     External Flow:
     ordered → collected (sample sent) → completed (results received)
-    
+
     Baseline: Follows deliverables spec code snippet from
     docs/sprint-1.5-1.6-track-b-lab-workflow-deliverables.md
-    
+
     Improvements:
     - Enhanced error handling with specific error messages
     - Type hints for better code clarity
@@ -53,7 +53,7 @@ class LabOrderWorkflow:
     def __init__(self, lab_order: LabOrder):
         """
         Initialize workflow for a lab order.
-        
+
         Args:
             lab_order: LabOrder instance to manage
         """
@@ -62,10 +62,10 @@ class LabOrderWorkflow:
     def can_transition_to(self, new_status: str) -> bool:
         """
         Check if transition is valid.
-        
+
         Args:
             new_status: Target status to transition to
-            
+
         Returns:
             True if transition is allowed, False otherwise
         """
@@ -75,15 +75,15 @@ class LabOrderWorkflow:
     def transition_to(self, new_status: str, user: User, **kwargs: Any) -> LabOrder:
         """
         Transition order to new status with validation.
-        
+
         Args:
             new_status: Target status
             user: User performing the action
             **kwargs: Additional data (e.g., sample_id, cancellation_reason)
-            
+
         Returns:
             Updated LabOrder
-            
+
         Raises:
             InvalidTransitionError: If transition is not allowed
         """
@@ -127,7 +127,7 @@ class LabOrderWorkflow:
     def _handle_collection(self, user: User, kwargs: dict) -> None:
         """
         Handle sample collection.
-        
+
         Args:
             user: User collecting the sample
             kwargs: Should contain 'sample_id' (optional)
@@ -146,10 +146,10 @@ class LabOrderWorkflow:
     def _handle_processing_start(self, user: User) -> None:
         """
         Handle processing start (in-house only).
-        
+
         Args:
             user: Technician starting processing
-            
+
         Raises:
             InvalidTransitionError: If order is not in-house
         """
@@ -171,11 +171,11 @@ class LabOrderWorkflow:
     def _handle_completion(self, user: User, kwargs: dict) -> None:
         """
         Handle order completion.
-        
+
         Args:
             user: User completing the order
             kwargs: Additional completion data
-            
+
         Raises:
             InvalidTransitionError: If no results exist
         """
@@ -196,11 +196,11 @@ class LabOrderWorkflow:
     def _handle_cancellation(self, user: User, kwargs: dict) -> None:
         """
         Handle order cancellation.
-        
+
         Args:
             user: User cancelling the order
             kwargs: Must contain 'cancellation_reason'
-            
+
         Raises:
             InvalidTransitionError: If reason is missing
         """

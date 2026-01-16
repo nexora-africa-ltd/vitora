@@ -9,7 +9,7 @@ Official FHIR Bundle Spec: docs/sha-guides/claims.md
 Official Endpoints:
     - Submit: POST /v1/shr-med/bundle
     - Status: GET /v1/shr-med/claim-status?claim_id={claim_id}
-    
+
 FHIR Bundle Requirements (SHA MIS):
     - Bundle type: "message"
     - Required resources: Organization, Patient, Coverage, Claim
@@ -41,20 +41,20 @@ logger = logging.getLogger(__name__)
 class SHAClaimsService:
     """
     Service for SHA claims management.
-    
+
     Handles claim creation, validation, packaging, and submission
     using the official Kenya Digital Superhighway API.
-    
+
     Official Endpoints:
         - POST /v1/shr-med/bundle - Submit FHIR claim bundle
         - GET /v1/shr-med/claim-status?claim_id={id} - Check claim status
-    
+
     Attributes:
         api_base_url: Base URL for SHA API
         auth_service: SHA authentication service
         facility_code: MFL (Master Facility List) code
         facility_level: Facility level (L1-L6)
-    
+
     Example:
         >>> service = SHAClaimsService()
         >>> claim = service.create_claim_from_encounter(encounter, invoice, user)
@@ -99,19 +99,19 @@ class SHAClaimsService:
     ) -> SHAClaim:
         """
         Create a new claim from an encounter and invoice.
-        
+
         Args:
             encounter: The encounter to claim for
             invoice: Associated invoice
             user: User creating the claim
             claim_type: Override claim type (auto-detected if None)
-        
+
         Returns:
             New SHAClaim instance
-        
+
         Raises:
             ValidationError: If patient does not have SHA membership
-        
+
         Example:
             >>> claim = service.create_claim_from_encounter(
             ...     encounter=encounter,
@@ -201,10 +201,10 @@ class SHAClaimsService:
     def _determine_claim_type(self, encounter) -> str:
         """
         Auto-determine claim type from encounter.
-        
+
         Args:
             encounter: Encounter to determine type from
-            
+
         Returns:
             ClaimType value string
         """
@@ -217,12 +217,12 @@ class SHAClaimsService:
     def validate_claim(self, claim: SHAClaim) -> tuple[bool, list[str]]:
         """
         Comprehensive claim validation.
-        
+
         Delegates to model's validate_for_submission() method.
-        
+
         Args:
             claim: SHAClaim to validate
-            
+
         Returns:
             Tuple of (is_valid, list_of_errors)
         """
@@ -231,15 +231,15 @@ class SHAClaimsService:
     def _get_practitioner_id(self, user) -> str:
         """
         Get or generate practitioner identifier for a user.
-        
+
         Priority:
         1. StaffProfile license_number if available (maps to PUID)
         2. Fallback to employee_id with PUID prefix
         3. Final fallback: use user PK with prefix
-        
+
         Args:
             user: Django User instance
-            
+
         Returns:
             PUID-style identifier string
         """
@@ -263,13 +263,13 @@ class SHAClaimsService:
     def _build_practitioner_resource(self, user, practitioner_id: str) -> dict:
         """
         Build FHIR Practitioner resource from User.
-        
+
         Reference: docs/sha-guides/claims-submission.md - Reference PreAuth JSON
-        
+
         Args:
             user: Django User instance (from encounter.finalized_by)
             practitioner_id: PUID-style identifier
-            
+
         Returns:
             FHIR Practitioner resource dict
         """
@@ -337,7 +337,7 @@ class SHAClaimsService:
     def package_claim(self, claim: SHAClaim) -> dict:
         """
         Package claim for submission in SHA-required FHIR format.
-        
+
         Creates a FHIR Bundle (type: "message") containing:
         - Practitioner resource (attending healthcare worker)
         - Organization resource (healthcare facility)
@@ -345,12 +345,12 @@ class SHAClaimsService:
         - PFMS Coverage resource (if PFMS eligible - checklist item #13)
         - Patient resource (patient demographics)
         - Claim resource (claim details with careTeam)
-        
+
         Reference: docs/sha-guides/claims.md
-        
+
         Args:
             claim: SHAClaim to package
-            
+
         Returns:
             SHA-compliant FHIR Bundle dict
         """
@@ -429,10 +429,10 @@ class SHAClaimsService:
     def _build_organization_resource(self) -> dict:
         """
         Build FHIR Organization resource for the healthcare facility.
-        
+
         This resource identifies the facility submitting the claim.
         Data should match the Health Facilities Registry (HFR).
-        
+
         Returns:
             FHIR Organization resource dict
         """
@@ -488,7 +488,7 @@ class SHAClaimsService:
     ) -> dict:
         """
         Build FHIR Claim resource per SHA specification.
-        
+
         Args:
             claim: SHAClaim to build resource from
             bundle_guid: Unique GUID for this claim bundle
@@ -496,7 +496,7 @@ class SHAClaimsService:
             practitioner_id: PUID for the attending practitioner
             practitioner_user: User instance for practitioner details
             is_pfms_eligible: Whether member has PFMS coverage (checklist #13)
-            
+
         Returns:
             FHIR Claim resource dict
         """
@@ -605,12 +605,12 @@ class SHAClaimsService:
     def _build_diagnosis_list(self, claim: SHAClaim) -> list[dict]:
         """
         Build FHIR diagnosis list from claim.
-        
+
         NOTE: SHA uses ICD-11 coding system, NOT ICD-10!
-        
+
         Args:
             claim: SHAClaim to extract diagnoses from
-            
+
         Returns:
             List of FHIR diagnosis dicts
         """
@@ -654,17 +654,17 @@ class SHAClaimsService:
     def _build_item_list(self, claim: SHAClaim, cr_number: str) -> list[dict]:
         """
         Build FHIR item list from claim items.
-        
+
         Each item includes:
         - SHA intervention code (productOrService)
         - Serviced period (not just date)
         - Category (procedure, drug, etc.)
         - Coverage extension reference
-        
+
         Args:
             claim: SHAClaim to extract items from
             cr_number: SHA CR Number for coverage reference
-            
+
         Returns:
             List of FHIR item dicts
         """
@@ -759,18 +759,18 @@ class SHAClaimsService:
     def _build_patient_resource(self, patient, sha_member) -> dict:
         """
         Build FHIR Patient resource per SHA specification.
-        
+
         IMPORTANT: SHA requires the patient ID to be the SHA CR Number,
         NOT the internal patient ID. The identifier must use the SHA
         identifier system.
-        
+
         Args:
             patient: Patient model instance
             sha_member: SHAMember model instance (provides CR Number)
-            
+
         Returns:
             FHIR Patient resource dict with SHA-compliant structure
-            
+
         Reference: docs/sha-guides/claims.md - Patient Resource section
         """
         cr_number = sha_member.sha_number
@@ -800,18 +800,18 @@ class SHAClaimsService:
     def _build_coverage_resource(self, sha_member, cr_number: str) -> dict:
         """
         Build FHIR Coverage resource for SHA membership.
-        
+
         IMPORTANT: SHA requires specific scheme extensions:
         - schemeCategoryCode: CAT-SHA-001
         - schemeCategoryName: SOCIAL HEALTH AUTHORITY
-        
+
         Args:
             sha_member: SHAMember model instance
             cr_number: SHA CR Number (e.g., CR0000000000001-1)
-            
+
         Returns:
             FHIR Coverage resource dict with SHA-compliant structure
-            
+
         Reference: docs/sha-guides/claims.md - Coverage Resource section
         """
         coverage_id = f'{cr_number}-sha-coverage'
@@ -888,10 +888,10 @@ class SHAClaimsService:
     def get_pfms_scheme_code(self, category: str) -> str:
         """
         Get PFMS scheme category code for a given category.
-        
+
         Args:
             category: PFMS category (vulnerable, elderly, disabled, orphan, indigent)
-            
+
         Returns:
             PFMS scheme code (e.g., CAT-PFMS-001)
         """
@@ -900,10 +900,10 @@ class SHAClaimsService:
     def get_pfms_scheme_name(self, category: str) -> str:
         """
         Get PFMS scheme name for a given category.
-        
+
         Args:
             category: PFMS category
-            
+
         Returns:
             PFMS scheme display name
         """
@@ -914,16 +914,16 @@ class SHAClaimsService:
     ) -> dict:
         """
         Build FHIR Coverage resource for PFMS (government subsidy) coverage.
-        
+
         SHA Integration Checklist item #13:
-        "If the patient is eligible for PFMS coverage then both SHA and PFMS 
+        "If the patient is eligible for PFMS coverage then both SHA and PFMS
         coverage must be mentioned in insurance section."
-        
+
         Args:
             sha_member: SHAMember model instance
             cr_number: SHA CR Number
             pfms_category: PFMS category (vulnerable, elderly, disabled, orphan, indigent)
-            
+
         Returns:
             FHIR Coverage resource dict for PFMS
         """
@@ -983,12 +983,12 @@ class SHAClaimsService:
     def _format_date(self, date_value) -> str | None:
         """
         Format a date value as ISO string.
-        
+
         Handles both date objects and already-formatted strings.
-        
+
         Args:
             date_value: Date object or string
-            
+
         Returns:
             ISO formatted date string or None
         """
@@ -1003,10 +1003,10 @@ class SHAClaimsService:
     def _map_gender(self, gender: str) -> str:
         """
         Map internal gender code to FHIR gender.
-        
+
         Args:
             gender: Internal gender code (M/F/O)
-            
+
         Returns:
             FHIR gender code
         """
@@ -1020,19 +1020,19 @@ class SHAClaimsService:
     def submit_claim(self, claim: SHAClaim, user, force_online: bool = False) -> dict:
         """
         Submit claim to SHA.
-        
+
         Validates claim, packages it, submits to SHA API, and updates
         claim status with response. If offline, queues the claim for
         later submission.
-        
+
         Args:
             claim: SHAClaim to submit
             user: User performing the submission
             force_online: If True, fail immediately if offline (don't queue)
-            
+
         Returns:
             Submission response dict from SHA API or queue confirmation
-            
+
         Raises:
             ValidationError: If claim is not valid for submission or API fails
         """
@@ -1094,14 +1094,14 @@ class SHAClaimsService:
     def _queue_claim_for_submission(self, claim: SHAClaim, user) -> dict:
         """
         Queue a claim for offline submission.
-        
+
         Creates a SyncQueue entry for the claim and updates claim status
         to PENDING_SUBMISSION.
-        
+
         Args:
             claim: SHAClaim to queue
             user: User who initiated the submission
-            
+
         Returns:
             Queue confirmation dict
         """
@@ -1163,10 +1163,10 @@ class SHAClaimsService:
     def _is_network_error(self, exception: Exception) -> bool:
         """
         Check if an exception is a network-related error.
-        
+
         Args:
             exception: The exception to check
-            
+
         Returns:
             True if network error, False otherwise
         """
@@ -1180,9 +1180,9 @@ class SHAClaimsService:
     def process_queued_claims(self) -> dict:
         """
         Process all queued claim submissions.
-        
+
         Called when connectivity is restored to submit all pending claims.
-        
+
         Returns:
             Summary of processed claims
         """
@@ -1256,16 +1256,16 @@ class SHAClaimsService:
     def _submit_to_sha_api(self, bundle: dict, claim: SHAClaim) -> dict:
         """
         Submit claim bundle to SHA API.
-        
+
         Uses the official endpoint: POST /v1/shr-med/bundle
-        
+
         Args:
             bundle: FHIR Bundle to submit
             claim: SHAClaim (for attachments)
-            
+
         Returns:
             API response dict
-            
+
         Raises:
             requests.RequestException: If API call fails
             SHAAuthError: If authentication fails
@@ -1310,15 +1310,15 @@ class SHAClaimsService:
     def get_claim_status(self, claim_id: str) -> dict:
         """
         Get claim status from SHA API.
-        
+
         Uses the official endpoint: GET /v1/shr-med/claim-status?claim_id={claim_id}
-        
+
         Args:
             claim_id: SHA claim reference/ID
-            
+
         Returns:
             Claim status response dict
-            
+
         Raises:
             requests.RequestException: If API call fails
             SHAAuthError: If authentication fails

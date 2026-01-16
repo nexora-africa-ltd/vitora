@@ -87,14 +87,14 @@ def log_request():
 def check_eligibility():
     """
     Check member eligibility for SHA coverage.
-    
+
     Request Body:
         {
             "sha_number": "SHA-123456789",
             "national_id": "12345678",  # Optional
             "service_date": "2026-01-07"  # Optional
         }
-    
+
     Response (200):
         {
             "eligible": true,
@@ -187,7 +187,7 @@ def check_eligibility():
 def batch_eligibility_check():
     """
     Check eligibility for multiple members at once.
-    
+
     Request Body:
         {
             "members": [
@@ -229,7 +229,7 @@ def batch_eligibility_check():
 def submit_claim():
     """
     Submit a claim to SHA for processing.
-    
+
     Request Body (FHIR Bundle or simplified format):
         {
             "facility_code": "FAC001",
@@ -249,7 +249,7 @@ def submit_claim():
             ],
             "attachments": []
         }
-    
+
     Response (202 Accepted):
         {
             "status": "acknowledged",
@@ -318,7 +318,7 @@ def submit_claim():
 def get_claim_status(claim_ref):
     """
     Get the current status of a submitted claim.
-    
+
     Response (200):
         {
             "claim_reference": "SHA-20260107-A1B2C3D4",
@@ -485,7 +485,7 @@ def batch_claim_status():
 def request_preauth():
     """
     Request pre-authorization for a planned procedure.
-    
+
     Request Body:
         {
             "sha_number": "SHA-123456789",
@@ -568,7 +568,7 @@ def get_preauth_status(preauth_ref):
 def list_tariffs():
     """
     List available SHA tariff codes.
-    
+
     Query Parameters:
         - category: Filter by category (consultation, procedure, lab, imaging, pharmacy)
         - search: Search tariff description

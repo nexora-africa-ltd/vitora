@@ -36,7 +36,7 @@ class TestEligibilityEndpointCompliance:
     def test_uses_correct_endpoint(self):
         """
         SHA Requirement: Eligibility endpoint must be GET /v2/eligibility.
-        
+
         Reference: docs/sha-guides/eligibility.md - API Specification
         Quote: 'GET {{base_url}}/v2/eligibility'
         """
@@ -55,7 +55,7 @@ class TestEligibilityEndpointCompliance:
     def test_service_has_auth_service(self):
         """
         SHA Requirement: API requires Bearer token authentication.
-        
+
         Reference: docs/sha-guides/eligibility.md - Authentication
         Quote: 'Authorization Header: Bearer {{token}}'
         """
@@ -73,7 +73,7 @@ class TestEligibilityRequestParameters:
     def test_supported_identification_types_documented(self):
         """
         SHA Requirement: System must support all identification types.
-        
+
         Reference: docs/sha-guides/eligibility.md - Request Parameters
         Supported types:
             - National ID
@@ -138,9 +138,9 @@ class TestEligibilityResponseHandling:
     def test_response_fields_documented(self):
         """
         SHA Requirement: System must handle all response fields.
-        
+
         Reference: docs/sha-guides/eligibility.md - Response Fields Explained
-        
+
         Key fields:
             - id: Unique identifier (CR number)
             - eligible: Primary status (1=eligible, 0=not eligible)
@@ -167,7 +167,7 @@ class TestEligibilityResponseHandling:
     def test_eligible_field_interpretation(self):
         """
         SHA Requirement: Correctly interpret 'eligible' field values.
-        
+
         Reference: docs/sha-guides/eligibility.md - Response Fields Explained
         Quote: 'eligible: Primary eligibility status (1 = eligible, 0 = not eligible)'
         """
@@ -188,7 +188,7 @@ class TestEligibilityResponseHandling:
     def test_eligibility_check_model_stores_required_fields(self):
         """
         SHA Requirement: Store key eligibility response data.
-        
+
         Tests that SHAEligibilityCheck model has fields to store
         eligibility check results as required by SHA guidelines.
         """
@@ -218,9 +218,9 @@ class TestEligibilityErrorHandling:
     def test_http_status_codes_documented(self):
         """
         SHA Requirement: Handle all possible HTTP status codes.
-        
+
         Reference: docs/sha-guides/eligibility.md - Error Handling
-        
+
         Status codes:
             - 200: Successful eligibility check
             - 400: Bad request (invalid parameters)
@@ -274,9 +274,9 @@ class TestEligibilityWorkflow:
     def test_workflow_documented(self):
         """
         SHA Requirement: Follow correct eligibility workflow.
-        
+
         Reference: docs/sha-guides/eligibility.md - Example Workflow
-        
+
         Steps:
             1. Patient arrives and presents identification
             2. Staff enters identification details
@@ -297,9 +297,9 @@ class TestEligibilityWorkflow:
     def test_possible_solution_usage(self):
         """
         SHA Requirement: Use possible_solution field for eligibility issues.
-        
+
         Reference: docs/sha-guides/eligibility.md - Response Fields
-        Quote: 'Guides facilities and patients on steps to take when 
+        Quote: 'Guides facilities and patients on steps to take when
                eligibility issues are encountered'
         """
         # Example solutions from the API
@@ -322,9 +322,9 @@ class TestEligibilityUseCases:
     def test_primary_use_cases_documented(self):
         """
         SHA Requirement: Support all primary eligibility use cases.
-        
+
         Reference: docs/sha-guides/eligibility.md - Primary Use Cases
-        
+
         Use cases:
             - Patient Registration: Verify eligibility when patients register
             - Service Authorization: Check coverage before specialized services
@@ -343,7 +343,7 @@ class TestEligibilityUseCases:
     def test_claims_prereq_eligibility_check(self):
         """
         SHA Requirement: Validate eligibility before claim submission.
-        
+
         Reference: docs/sha-guides/eligibility.md - Use Cases
         Quote: 'Claims Submission: Validate eligibility before submitting claims to SHA'
         """

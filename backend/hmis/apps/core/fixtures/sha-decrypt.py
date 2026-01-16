@@ -7,10 +7,10 @@ Decrypts encrypted _pii fields from DHA API responses using RSA/AES hybrid encry
 Usage:
     # As Django management command context
     cd backend && poetry run python hmis/apps/core/fixtures/sha-decrypt.py '{"message": {...}}'
-    
+
     # Pipe from curl
     curl -s "https://uat.dha.go.ke/v3/..." | poetry run python hmis/apps/core/fixtures/sha-decrypt.py
-    
+
     # From file
     cat response.json | poetry run python hmis/apps/core/fixtures/sha-decrypt.py
 """

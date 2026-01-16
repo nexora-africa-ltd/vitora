@@ -34,10 +34,10 @@ logger = logging.getLogger(__name__)
 class ClientRegistryClient:
     """
     Client record from Kenya Client Registry.
-    
+
     Represents a person's identity as registered in the national
     Client Registry system.
-    
+
     Attributes:
         client_number: Unique CR identifier (e.g., 'CR-12345')
         first_name: Client's first name
@@ -95,17 +95,17 @@ class ClientRegistryClient:
     def from_api_response(cls, data: dict) -> 'ClientRegistryClient':
         """
         Create ClientRegistryClient from CR API response.
-        
+
         Args:
             data: API response data dict
-            
+
         Returns:
             ClientRegistryClient instance
-            
+
         Note:
             DHA API returns gender as full words: 'Male', 'Female', 'Other'
             We normalize to single char: 'M', 'F', 'O'
-            
+
             DHA API field names differ from our model:
             - 'id' -> client_number (CR number like CR000000000-2)
             - 'county' -> county_of_residence
@@ -169,7 +169,7 @@ class ClientRegistryClient:
 class ClientRegistryError(Exception):
     """
     Base exception for Client Registry operations.
-    
+
     Attributes:
         message: Error description
         status_code: HTTP status code if applicable
@@ -235,15 +235,15 @@ class DuplicateClientError(ClientRegistryError):
 class ClientRegistryService:
     """
     Service for interacting with Kenya Client Registry.
-    
+
     This service provides methods to:
         - Fetch existing clients by various identifiers
         - Register new clients in the CR
         - Update existing client records
-    
+
     The Client Registry is Kenya's master patient index, providing
     unique identification across healthcare facilities.
-    
+
     Attributes:
         api_base_url: DHA API base URL
         fetch_endpoint: Endpoint path for fetching clients
@@ -251,7 +251,7 @@ class ClientRegistryService:
         update_endpoint: Endpoint path for updates
         timeout: Request timeout in seconds
         auth_service: SHAAuthService instance for authentication
-    
+
     Example:
         >>> cr_service = ClientRegistryService()
         >>> client = cr_service.fetch_client(national_id='12345678')
@@ -299,10 +299,10 @@ class ClientRegistryService:
     ) -> ClientRegistryClient | None:
         """
         Fetch a client from the Client Registry.
-        
+
         At least one identifier must be provided. The method will
         search using the provided identifier(s) in priority order.
-        
+
         Args:
             national_id: Kenya National ID number
             client_number: Existing CR client number
@@ -310,14 +310,14 @@ class ClientRegistryService:
             passport_number: Passport number
             identification_type: Generic ID type (e.g., 'National ID', 'Passport')
             identification_number: Generic ID value (used with identification_type)
-            
+
         Returns:
             ClientRegistryClient if found, None otherwise
-            
+
         Raises:
             ClientRegistryError: If API request fails
             ValueError: If no identifier is provided
-            
+
         Example:
             >>> client = service.fetch_client(national_id='12345678')
             >>> if client:
@@ -465,10 +465,10 @@ class ClientRegistryService:
     ) -> ClientRegistryClient:
         """
         Register a new client in the Client Registry.
-        
+
         Creates a new client record in Kenya's CR and returns the
         assigned client number.
-        
+
         Args:
             first_name: Client's first name (required)
             last_name: Client's last name (required)
@@ -484,14 +484,14 @@ class ClientRegistryService:
             county_of_residence: County code
             sub_county_of_residence: Sub-county code
             ward_of_residence: Ward code
-            
+
         Returns:
             ClientRegistryClient with assigned client_number
-            
+
         Raises:
             ClientRegistrationError: If registration fails
             DuplicateClientError: If client already exists
-            
+
         Example:
             >>> client = service.register_client(
             ...     first_name='John',
@@ -661,10 +661,10 @@ class ClientRegistryService:
     ) -> ClientRegistryClient:
         """
         Update an existing client in the Client Registry.
-        
+
         Updates specified fields for an existing client record.
         Only provided fields will be updated.
-        
+
         Args:
             client_number: The CR client number to update (required)
             **updates: Field-value pairs to update. Supported fields:
@@ -673,15 +673,15 @@ class ClientRegistryService:
                 - county_of_residence
                 - sub_county_of_residence
                 - ward_of_residence
-                
+
         Returns:
             Updated ClientRegistryClient
-            
+
         Raises:
             ClientNotFoundError: If client not found
             ClientRegistryError: If update fails
             ValueError: If no updates provided
-            
+
         Example:
             >>> updated = service.update_client(
             ...     client_number='CR-12345',
@@ -764,7 +764,7 @@ class ClientRegistryService:
     def is_configured(self) -> bool:
         """
         Check if Client Registry integration is properly configured.
-        
+
         Returns:
             True if CR integration can be used
         """

@@ -22,12 +22,12 @@ class LabNotificationService:
     def send_result_notification(self, lab_order: LabOrder) -> Notification:
         """
         Send notification when results are ready.
-        
+
         Creates in-app notification and optionally sends email for critical results.
-        
+
         Args:
             lab_order: LabOrder instance with completed results
-            
+
         Returns:
             Created Notification instance
         """
@@ -70,11 +70,11 @@ class LabNotificationService:
     def _get_notification_title(self, lab_order: LabOrder, has_critical: bool) -> str:
         """
         Generate notification title.
-        
+
         Args:
             lab_order: LabOrder instance
             has_critical: Whether order has critical results
-            
+
         Returns:
             Notification title string
         """
@@ -89,11 +89,11 @@ class LabNotificationService:
     def _get_notification_message(self, lab_order: LabOrder, has_critical: bool) -> str:
         """
         Generate notification message.
-        
+
         Args:
             lab_order: LabOrder instance
             has_critical: Whether order has critical results
-            
+
         Returns:
             Notification message string
         """
@@ -118,7 +118,7 @@ class LabNotificationService:
     def _send_critical_email(self, clinician: User, lab_order: LabOrder) -> None:
         """
         Send email for critical lab results.
-        
+
         Args:
             clinician: User to send email to
             lab_order: LabOrder with critical results

@@ -1095,7 +1095,7 @@ class WardRound(TimeStampedModel):
 class NursingKardex(models.Model):
     """
     Nursing Kardex for inpatient care coordination.
-    
+
     One-to-one relationship with Admission. Auto-created when admission is saved.
     Contains nursing care plan, risk assessments, and related shift/handover notes.
     """
@@ -1191,7 +1191,7 @@ class NursingKardex(models.Model):
 class KardexShiftNote(models.Model):
     """
     Individual shift note entry in Kardex (append-only design).
-    
+
     Nurses add notes throughout their shift documenting patient status,
     care provided, and observations. Notes are immutable once created
     (timestamp auto-set on creation and cannot be changed).
@@ -1240,7 +1240,7 @@ class KardexShiftNote(models.Model):
 class KardexHandoverNote(models.Model):
     """
     Handover notes for shift transitions.
-    
+
     Documents pending tasks, escalations, and important information
     to be communicated between outgoing and incoming nursing staff.
     """
@@ -1295,10 +1295,10 @@ class KardexHandoverNote(models.Model):
 class ShiftHandover(TimeStampedModel):
     """
     Formal ward-level shift handover record.
-    
+
     Documents shift handovers between nursing teams for ward-level patient care
     coordination. Tracks patient counts, critical cases, and pending tasks.
-    
+
     Attributes:
         ward: Hospital ward where handover occurs
         shift_date: Date of the shift
@@ -1393,7 +1393,7 @@ class ShiftHandover(TimeStampedModel):
     def acknowledge(self, user: AbstractUser) -> None:
         """
         Acknowledge handover receipt.
-        
+
         Args:
             user: User acknowledging the handover (should be incoming_nurse)
         """
@@ -1403,7 +1403,7 @@ class ShiftHandover(TimeStampedModel):
     def auto_populate_counts(self) -> None:
         """
         Auto-populate patient counts from ward data.
-        
+
         Queries current ward admissions to calculate:
         - Total patients
         - Critical patients (based on ward round condition status)
@@ -1451,7 +1451,7 @@ from django.dispatch import receiver
 def create_kardex_for_admission(sender, instance, created, **kwargs):
     """
     Auto-create Nursing Kardex when an Admission is created.
-    
+
     This ensures every admission has a Kardex for nursing care coordination.
     """
     if created:

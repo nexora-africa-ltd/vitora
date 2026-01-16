@@ -138,7 +138,7 @@ def sha_member(db, sha_test_patient, sha_test_user):
 @pytest.fixture
 def sha_member_no_sha_number(db, sha_test_patient, sha_test_user, sample_county, sample_sub_county):
     """Create an SHA member without SHA number for national_id fallback tests.
-    
+
     The sha_number field is required by the model, but we can simulate a fallback
     scenario by having the test mock/patch sha_member.sha_number to empty string.
     """

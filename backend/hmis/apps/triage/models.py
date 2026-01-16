@@ -17,7 +17,7 @@ from django.utils import timezone
 class WaitingQueue(models.Model):
     """
     Queue for patients who have checked in but not yet been triaged.
-    
+
     This represents the initial waiting state before triage assessment.
     Once triaged, patients move to TriageQueue with their priority category.
     """
@@ -655,7 +655,7 @@ class TriageQueue(models.Model):
     @classmethod
     def get_active_queue(cls, area: str = None):
         """Get active queue entries, optionally filtered by area.
-        
+
         Returns queryset sorted by triage priority (RED first) then arrival time (FIFO).
         """
         queryset = cls.objects.exclude(status__in=["COMPLETED", "LEFT_WITHOUT_BEING_SEEN"]).select_related('triage_assessment')

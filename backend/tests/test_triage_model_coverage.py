@@ -2,7 +2,7 @@
 Additional tests to improve triage model coverage.
 
 Targets uncovered lines in:
-- TriageAssessment.calculate_triage_category() 
+- TriageAssessment.calculate_triage_category()
 - TriageAssessment.generate_alerts()
 - TriageAssessment.is_wait_time_exceeded()
 - WaitingQueue methods

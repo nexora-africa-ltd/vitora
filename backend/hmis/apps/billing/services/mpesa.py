@@ -17,13 +17,13 @@ from django.core.exceptions import ValidationError
 class MpesaService:
     """
     M-Pesa Daraja API integration service.
-    
+
     Handles:
     - OAuth token management with automatic refresh
     - STK Push (Lipa Na M-Pesa Online) initiation
     - Payment callback processing
     - Transaction status queries
-    
+
     Configuration in settings:
     - MPESA_CONSUMER_KEY
     - MPESA_CONSUMER_SECRET
@@ -55,19 +55,19 @@ class MpesaService:
     def format_phone(self, phone: str) -> str:
         """
         Normalize phone number to 254XXXXXXXXX format.
-        
+
         Handles various Kenyan phone number formats:
         - 0712345678 → 254712345678
         - +254712345678 → 254712345678
         - 254712345678 → 254712345678
         - 712345678 → 254712345678
-        
+
         Args:
             phone: Phone number in any common format
-            
+
         Returns:
             str: Phone number in 254XXXXXXXXX format
-            
+
         Raises:
             ValidationError: If phone number is invalid
         """
@@ -101,12 +101,12 @@ class MpesaService:
     def get_access_token(self) -> str:
         """
         Get OAuth access token from Daraja API.
-        
+
         Caches token until expiration, then refreshes automatically.
-        
+
         Returns:
             str: Valid OAuth access token
-            
+
         Raises:
             ValidationError: If OAuth request fails
         """
@@ -144,12 +144,12 @@ class MpesaService:
     def generate_password(self, timestamp: str) -> str:
         """
         Generate M-Pesa API password.
-        
+
         Password = Base64(Shortcode + Passkey + Timestamp)
-        
+
         Args:
             timestamp: Timestamp in format YYYYMMDDHHmmss
-            
+
         Returns:
             str: Base64-encoded password
         """
@@ -166,16 +166,16 @@ class MpesaService:
     ) -> dict:
         """
         Initiate STK Push (Lipa Na M-Pesa Online) payment request.
-        
+
         Args:
             phone_number: Customer phone number (any common format - will be normalized)
             amount: Payment amount (minimum 1 KES)
             account_reference: Reference for the transaction (e.g., invoice number)
             transaction_desc: Description of the transaction
-            
+
         Returns:
             dict: M-Pesa API response with CheckoutRequestID
-            
+
         Raises:
             ValidationError: If STK Push request fails
         """
@@ -247,13 +247,13 @@ class MpesaService:
     def process_callback(self, callback_data: dict) -> dict:
         """
         Process M-Pesa payment callback.
-        
+
         Args:
             callback_data: Callback data from M-Pesa
-            
+
         Returns:
             dict: Processed payment data
-            
+
         Raises:
             ValidationError: If callback processing fails
         """
@@ -294,13 +294,13 @@ class MpesaService:
     def query_transaction_status(self, checkout_request_id: str) -> dict:
         """
         Query the status of an STK Push transaction.
-        
+
         Args:
             checkout_request_id: CheckoutRequestID from STK Push response
-            
+
         Returns:
             dict: Transaction status information
-            
+
         Raises:
             ValidationError: If query request fails
         """

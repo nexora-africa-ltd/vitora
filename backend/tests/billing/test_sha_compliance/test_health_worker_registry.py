@@ -27,9 +27,9 @@ class TestPractitionerIdentifiers:
     def test_supported_identifier_types(self):
         """
         SHA Requirement: Support practitioner identification types.
-        
+
         Reference: docs/sha-guides/hwr.md - Identifiers
-        
+
         Supported types:
             - National ID
             - Passport
@@ -50,7 +50,7 @@ class TestPractitionerIdentifiers:
     def test_puid_format_understanding(self):
         """
         SHA Requirement: Understand PUID format.
-        
+
         Reference: docs/sha-guides/claims-submission.md - Reference PreAuth JSON
         Example: 'PUID-0002532-1'
         """
@@ -67,9 +67,9 @@ class TestPractitionerSearchAPI:
     def test_search_endpoint_documented(self):
         """
         SHA Requirement: Know practitioner search endpoint.
-        
+
         Reference: docs/sha-guides/hwr.md - Endpoint
-        
+
         Endpoint: GET /v1/practitioner-search?identification_type={type}&identification_number={number}
         """
         expected_endpoint = '/v1/practitioner-search'
@@ -83,9 +83,9 @@ class TestPractitionerSearchAPI:
     def test_search_request_parameters(self):
         """
         SHA Requirement: Include required parameters.
-        
+
         Reference: docs/sha-guides/hwr.md - Request Parameters
-        
+
         Required:
             - identification_type (string): Type (passport, ID, etc.)
             - identification_number (string): ID number
@@ -100,9 +100,9 @@ class TestPractitionerSearchAPI:
     def test_search_response_fields(self):
         """
         SHA Requirement: Handle response fields.
-        
+
         Reference: docs/sha-guides/hwr.md - Response
-        
+
         Response fields:
             - registration_number
             - found (1 = found, 0 = not found)
@@ -123,10 +123,10 @@ class TestPractitionerInFHIRBundle:
     def test_practitioner_resource_documented(self):
         """
         SHA Requirement: Practitioner resource in claims.
-        
+
         Reference: docs/sha-guides/claims.md
-        Quote: 'Practitioner - The medical/health practitioner providing or 
-               requesting the service. This can be the ID number of any licensed 
+        Quote: 'Practitioner - The medical/health practitioner providing or
+               requesting the service. This can be the ID number of any licensed
                Health Worker in your facility.'
         """
         assert True, (
@@ -138,7 +138,7 @@ class TestPractitionerInFHIRBundle:
     def test_claim_has_care_team_with_practitioner(self, sha_claim_with_items):
         """
         SHA Requirement: CareTeam references practitioner.
-        
+
         Reference: docs/sha-guides/claims-submission.md - Integration Checklist
         Quote: 'Ensure CareTeam has valid details including reference to Practitioner'
         """
@@ -163,9 +163,9 @@ class TestPractitionerInFHIRBundle:
     def test_practitioner_resource_structure(self):
         """
         SHA Requirement: Practitioner resource structure.
-        
+
         Reference: docs/sha-guides/claims-submission.md - Reference PreAuth JSON
-        
+
         Required fields:
             - resourceType: "Practitioner"
             - id: PUID
@@ -197,9 +197,9 @@ class TestHWRRoleAndFunctions:
     def test_hwr_purposes_documented(self):
         """
         SHA Reference: Understand Health Worker Registry purposes.
-        
+
         Reference: docs/sha-guides/hwr.md - What is a Health Worker Registry?
-        
+
         Functions:
             - Centralized Identity Management
             - Standardized Data for Workforce Planning
@@ -220,9 +220,9 @@ class TestHWRRoleAndFunctions:
     def test_practitioner_data_elements(self):
         """
         SHA Reference: Core practitioner data elements.
-        
+
         Reference: docs/sha-guides/hwr.md - Core Components
-        
+
         Elements:
             - Personal/Professional Identifiers (PUID, National ID, License #)
             - Demographic Information (Name, DOB, Gender)
@@ -247,7 +247,7 @@ class TestPractitionerValidation:
     def test_validate_practitioner_before_claim(self):
         """
         SHA Best Practice: Validate practitioner exists in HWR before claim.
-        
+
         The practitioner included in a claim should be a valid, active
         healthcare worker registered in the Health Worker Registry.
         """
@@ -259,7 +259,7 @@ class TestPractitionerValidation:
     def test_license_status_check(self):
         """
         SHA Consideration: Check practitioner license status.
-        
+
         Reference: docs/sha-guides/hwr.md - Licensing Information
         Quote: 'Maintain a record of professional credentials, licenses, and certifications'
         """

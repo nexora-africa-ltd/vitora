@@ -158,7 +158,7 @@ class TestSHAEligibilityServiceCheckEligibility:
     ):
         """
         Test successful eligibility check creates SHAEligibilityCheck record.
-        
+
         Given: A SHA member needing verification
         When: check_eligibility() is called
         Then: SHAEligibilityCheck record is created with ELIGIBLE result
@@ -186,7 +186,7 @@ class TestSHAEligibilityServiceCheckEligibility:
     ):
         """
         Test that cached result is used when eligibility is still valid.
-        
+
         Given: A SHA member with recent valid eligibility check
         When: check_eligibility() is called without force_refresh
         Then: Cached result is returned without API call
@@ -211,7 +211,7 @@ class TestSHAEligibilityServiceCheckEligibility:
     ):
         """
         Test that force_refresh=True bypasses cache and calls API.
-        
+
         Given: A SHA member with recent valid eligibility check
         When: check_eligibility() is called with force_refresh=True
         Then: API is called regardless of cache status
@@ -241,7 +241,7 @@ class TestSHAEligibilityServiceErrorHandling:
     def test_api_timeout_handling(self, sha_member_needs_check, test_user):
         """
         Test handling of API timeout.
-        
+
         Given: A SHA member needing verification
         When: API call times out
         Then: SHAEligibilityCheck is created with TIMEOUT result and error details
@@ -262,7 +262,7 @@ class TestSHAEligibilityServiceErrorHandling:
     def test_api_error_handling(self, sha_member_needs_check, test_user):
         """
         Test handling of general API errors.
-        
+
         Given: A SHA member needing verification
         When: API call fails with RequestException
         Then: SHAEligibilityCheck is created with ERROR result
@@ -286,7 +286,7 @@ class TestSHAEligibilityServiceErrorHandling:
     def test_retry_logic_with_exponential_backoff(self, sha_member_needs_check, test_user):
         """
         Test that API calls are retried with exponential backoff.
-        
+
         Given: API call fails on first two attempts
         When: _call_api() is called
         Then: API is retried with exponential backoff before succeeding
@@ -336,7 +336,7 @@ class TestSHAEligibilityServiceRequestPayload:
     def test_request_payload_format(self, sha_member):
         """
         Test that request payload has correct format for official SHA API.
-        
+
         Given: A SHA member
         When: _build_request() is called
         Then: Payload contains doc_type and doc_value per official spec
@@ -364,7 +364,7 @@ class TestSHAEligibilityServiceResponseParsing:
     ):
         """
         Test parsing of eligible response.
-        
+
         Given: API returns eligible=True
         When: Response is processed
         Then: SHAEligibilityCheck has correct eligibility fields
@@ -390,7 +390,7 @@ class TestSHAEligibilityServiceResponseParsing:
     ):
         """
         Test parsing of ineligible response.
-        
+
         Given: API returns eligible=False with reason
         When: Response is processed
         Then: SHAEligibilityCheck has ineligibility details
@@ -417,7 +417,7 @@ class TestSHAEligibilityServiceMemberUpdate:
     ):
         """
         Test that SHA member status is updated after eligibility check.
-        
+
         Given: A SHA member with PENDING_VERIFICATION status
         When: Eligibility check returns eligible=True
         Then: Member status is updated to ACTIVE
@@ -446,7 +446,7 @@ class TestSHAEligibilityServiceMemberUpdate:
     ):
         """
         Test that SHA member status is set to EXPIRED when reason contains 'expired'.
-        
+
         Given: A SHA member
         When: Eligibility check returns ineligible with 'expired' reason
         Then: Member status is updated to EXPIRED
@@ -467,7 +467,7 @@ class TestSHAEligibilityServiceMemberUpdate:
     ):
         """
         Test that SHA member status is set to SUSPENDED when reason contains 'suspended'.
-        
+
         Given: A SHA member
         When: Eligibility check returns ineligible with 'suspended' reason
         Then: Member status is updated to SUSPENDED
@@ -493,7 +493,7 @@ class TestSHAEligibilityServiceLogging:
     ):
         """
         Test that eligibility checks are logged in database.
-        
+
         Given: A SHA member
         When: check_eligibility() is called
         Then: SHAEligibilityCheck record is created with all details
@@ -527,7 +527,7 @@ class TestSHAEligibilityServiceMockAPI:
     def test_mock_api_for_unit_tests(self, sha_member_needs_check, test_user):
         """
         Test that SHA API can be properly mocked for unit tests.
-        
+
         Given: A SHA member
         When: Service is used with mocked API
         Then: Mock responses are handled correctly
@@ -571,7 +571,7 @@ class TestSHAEligibilityServiceConfiguration:
     def test_service_uses_settings_for_api_config(self):
         """
         Test that service reads API configuration from Django settings.
-        
+
         Given: Django settings with SHA API configuration
         When: SHAEligibilityService is instantiated
         Then: Service uses settings for api_base_url, api_key, and timeout
@@ -593,7 +593,7 @@ class TestSHAEligibilityServiceConfiguration:
     def test_service_reads_from_django_settings(self):
         """
         Test that service configuration matches Django settings.
-        
+
         Given: SHA_API_BASE_URL, SHA_API_KEY, SHA_API_TIMEOUT in settings
         When: Service is instantiated
         Then: Service uses those values

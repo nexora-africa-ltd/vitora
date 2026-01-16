@@ -24,10 +24,10 @@ class ExternalLabRequisition:
     def __init__(self, lab_order: LabOrder):
         """
         Initialize requisition generator.
-        
+
         Args:
             lab_order: LabOrder instance (must be external type)
-            
+
         Raises:
             ValueError: If order is not external type
         """
@@ -41,7 +41,7 @@ class ExternalLabRequisition:
     def generate_pdf(self) -> BytesIO:
         """
         Generate PDF requisition form.
-        
+
         Returns:
             BytesIO buffer containing PDF
         """

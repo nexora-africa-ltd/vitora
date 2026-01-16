@@ -34,9 +34,9 @@ class TestPatientIdentifierCompliance:
     def test_supported_identifier_types(self):
         """
         SHA Requirement: Support all SHA patient identifier types.
-        
+
         Reference: docs/sha-guides/patients.md - Patient Identifiers
-        
+
         Required types:
             - HIE Patient ID (CR number)
             - National ID
@@ -65,7 +65,7 @@ class TestPatientIdentifierCompliance:
     def test_sha_member_has_sha_number_field(self):
         """
         SHA Requirement: Store SHA/CR number for patients.
-        
+
         Reference: docs/sha-guides/patients.md
         Quote: 'CR ID (Client Registry unique identifier)'
         """
@@ -86,7 +86,7 @@ class TestPatientIdentifierCompliance:
     def test_sha_number_format_validation(self, sha_member):
         """
         SHA Requirement: SHA number should start with SHA- prefix.
-        
+
         Reference: SHA number format observed in API responses
         """
         # Typical format: SHA12345678901234-5 or CR12345678901234-5
@@ -109,9 +109,9 @@ class TestPatientDemographicsAlignment:
     def test_required_demographic_fields(self):
         """
         SHA Requirement: Patient resource must have core demographics.
-        
+
         Reference: docs/sha-guides/patients.md - Patient Data Elements
-        
+
         Required fields:
             - Basic demographics (name, date of birth, gender)
             - Contact information (address, phone numbers, email)
@@ -151,7 +151,7 @@ class TestPatientDemographicsAlignment:
     def test_patient_has_kenya_location_fields(self):
         """
         SHA Requirement: Patient has Kenya location hierarchy.
-        
+
         Reference: docs/sha-guides/patients.md
         Quote: 'Location details (County, Sub-County, Ward)'
         """
@@ -170,9 +170,9 @@ class TestClientRegistryPIIAlignment:
     def test_pii_fields_documented(self):
         """
         SHA Requirement: Align PII with Client Registry fields.
-        
+
         Reference: docs/sha-guides/patients.md - Patient Identification Data Alignment
-        
+
         Key PII fields:
             - CR ID
             - Title (e.g., 'Miss')
@@ -217,11 +217,11 @@ class TestClientRegistryAPICompliance:
     def test_fetch_patient_endpoint_documented(self):
         """
         SHA Requirement: Use correct endpoint to fetch patient from CR.
-        
+
         Reference: docs/sha-guides/patients.md - Fetch Patient API
-        
+
         Endpoint: GET /v3/client-registry/fetch-client
-        
+
         Required parameters:
             - identification_type
             - identification_number
@@ -237,7 +237,7 @@ class TestClientRegistryAPICompliance:
     def test_fetch_patient_parameters(self):
         """
         SHA Requirement: Include required parameters for patient fetch.
-        
+
         Reference: docs/sha-guides/patients.md - Query Parameters
         """
         required_params = [
@@ -255,9 +255,9 @@ class TestClientRegistryRole:
     def test_cr_purpose_documented(self):
         """
         SHA Requirement: Understand Client Registry role in HIE.
-        
+
         Reference: docs/sha-guides/cr.md - Understanding the Client Registry
-        
+
         CR Functions:
             - Maintains Master Patient Index (MPI)
             - Links fragmented patient records
@@ -278,9 +278,9 @@ class TestClientRegistryRole:
     def test_cr_number_uniqueness(self):
         """
         SHA Requirement: CR number is the unique patient identifier.
-        
+
         Reference: docs/sha-guides/cr.md
-        Quote: 'Each patient is assigned a single, permanent identifier, 
+        Quote: 'Each patient is assigned a single, permanent identifier,
                which remains consistent across different healthcare providers'
         """
         # CR number should be unique across the system
@@ -297,9 +297,9 @@ class TestPatientSearchCapabilities:
     def test_fuzzy_search_recommended(self):
         """
         SHA Recommendation: Support fuzzy/partial matching for patient search.
-        
+
         Reference: docs/sha-guides/cr.md - Implementation Considerations
-        Quote: 'Robust Search Capabilities: The system should allow searching 
+        Quote: 'Robust Search Capabilities: The system should allow searching
                for patients using partial or fuzzy matching techniques'
         """
         # Patient search should support partial matches
@@ -317,9 +317,9 @@ class TestPatientSearchCapabilities:
     def test_duplicate_handling(self):
         """
         SHA Requirement: Handle duplicate patient records.
-        
+
         Reference: docs/sha-guides/cr.md - Implementation Considerations
-        Quote: 'Handling Duplicates and Merges: Establish workflows to reconcile 
+        Quote: 'Handling Duplicates and Merges: Establish workflows to reconcile
                duplicate records and merge them into a single profile'
         """
         assert True, (

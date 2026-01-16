@@ -53,23 +53,23 @@ class SHAToken:
 class SHAAuthService:
     """
     SHA Authentication Service.
-    
+
     Handles authentication with the SHA Kenya Digital Superhighway API
     using Basic Auth to obtain JWT tokens.
-    
+
     Official Flow:
         1. Send GET request to /v1/hie-auth?key={consumer_key}
         2. Include Basic Auth header with username:password
         3. Receive JWT token in response
         4. Use JWT token as Bearer token for subsequent requests
-    
+
     Attributes:
         base_url: SHA API base URL
         consumer_key: SHA consumer key (API key)
         username: SHA API username
         password: SHA API password
         timeout: Request timeout in seconds
-    
+
     Example:
         >>> auth_service = SHAAuthService()
         >>> headers = auth_service.get_auth_headers()
@@ -92,7 +92,7 @@ class SHAAuthService:
     def _base64url_encode(self, data: bytes) -> str:
         """
         Base64url encode data (JWT-compatible).
-        
+
         Removes padding and replaces +/ with -_
         """
         return base64.urlsafe_b64encode(data).rstrip(b'=').decode('utf-8')
@@ -100,12 +100,12 @@ class SHAAuthService:
     def _create_basic_auth_header(self) -> str:
         """
         Create Basic Auth header value.
-        
+
         Encodes username:password as base64 per HTTP Basic Auth spec.
-        
+
         Returns:
             Base64-encoded credentials string
-            
+
         Example:
             >>> auth._create_basic_auth_header()
             'dXNlcm5hbWU6cGFzc3dvcmQ='
@@ -117,21 +117,21 @@ class SHAAuthService:
     def generate_terminology_token(self, expires_in: int = 20) -> str:
         """
         Generate a self-signed JWT for terminology API calls.
-        
+
         The terminology APIs (ICD-11, LOINC, ICHI, etc.) require a JWT
         that is locally signed using the client_secret as the HMAC key.
         This is different from the /v1/hie-auth endpoint which returns
         a server-signed token.
-        
+
         Args:
             expires_in: Token validity in seconds (default 20)
-            
+
         Returns:
             Self-signed JWT token string
-            
+
         Example:
             >>> token = auth_service.generate_terminology_token()
-        
+
         Note:
             Tokens are generated fresh each time (no caching) because
             the short 20-second TTL makes caching counterproductive.
@@ -167,9 +167,9 @@ class SHAAuthService:
     def get_terminology_headers(self) -> dict:
         """
         Get HTTP headers for terminology API requests.
-        
+
         Uses self-signed JWT for terminology endpoints.
-        
+
         Returns:
             Dict with Authorization and Accept headers
         """
@@ -182,19 +182,19 @@ class SHAAuthService:
     def get_token(self, force_refresh: bool = False) -> str:
         """
         Get a valid JWT token from SHA API.
-        
+
         Uses cached token if available and not expired. Otherwise,
         obtains a new token from the SHA auth endpoint.
-        
+
         Args:
             force_refresh: If True, always fetch a new token
-            
+
         Returns:
             JWT token string
-            
+
         Raises:
             SHAAuthError: If authentication fails
-            
+
         Example:
             >>> token = auth_service.get_token()
             >>> print(f"Bearer {token}")
@@ -292,15 +292,15 @@ class SHAAuthService:
     def get_auth_headers(self, force_refresh: bool = False) -> dict:
         """
         Get HTTP headers with valid Bearer token.
-        
+
         Convenience method that returns headers ready for API requests.
-        
+
         Args:
             force_refresh: If True, force token refresh
-            
+
         Returns:
             Dict with Authorization and Content-Type headers
-            
+
         Example:
             >>> headers = auth_service.get_auth_headers()
             >>> response = requests.get(url, headers=headers)
@@ -314,7 +314,7 @@ class SHAAuthService:
     def clear_token_cache(self):
         """
         Clear the cached token.
-        
+
         Use this if the token becomes invalid before expiry.
         """
         SHAAuthService._token_cache = None
@@ -323,7 +323,7 @@ class SHAAuthService:
     def is_configured(self) -> bool:
         """
         Check if SHA authentication is properly configured.
-        
+
         Returns:
             True if all required credentials are set
         """
@@ -338,7 +338,7 @@ class SHAAuthService:
 class SHAAuthError(Exception):
     """
     Exception raised for SHA authentication errors.
-    
+
     Attributes:
         message: Error description
         status_code: HTTP status code if applicable

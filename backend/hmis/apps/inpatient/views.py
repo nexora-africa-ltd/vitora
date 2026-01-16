@@ -45,13 +45,13 @@ User = get_user_model()
 class WardViewSet(viewsets.ReadOnlyModelViewSet):
     """
     ViewSet for Ward model (read-only).
-    
+
     Provides listing and detail views for wards with:
     - Real-time occupancy statistics
     - Bed availability tracking
     - Filtering by ward type
     - Search by name or code
-    
+
     Endpoints:
     - GET /api/inpatient/wards/ - List all wards
     - GET /api/inpatient/wards/{id}/ - Ward detail
@@ -71,7 +71,7 @@ class WardViewSet(viewsets.ReadOnlyModelViewSet):
     def beds(self, request, pk=None):
         """
         List all beds for a specific ward.
-        
+
         Query parameters:
         - status: Filter by bed status (AVAILABLE, OCCUPIED, MAINTENANCE, RESERVED)
         """
@@ -96,12 +96,12 @@ class WardViewSet(viewsets.ReadOnlyModelViewSet):
 class BedViewSet(viewsets.ModelViewSet):
     """
     ViewSet for Bed model.
-    
+
     Provides CRUD operations for beds with:
     - Bed status management
     - Audit logging for status changes
     - Filtering by ward and status
-    
+
     Endpoints:
     - GET /api/inpatient/beds/ - List all beds
     - GET /api/inpatient/beds/{id}/ - Bed detail
@@ -141,12 +141,12 @@ class BedViewSet(viewsets.ModelViewSet):
 class AdmissionRecommendationViewSet(viewsets.ModelViewSet):
     """
     ViewSet for AdmissionRecommendation model.
-    
+
     Provides CRUD operations for admission recommendations with:
     - Workflow methods (accept, decline)
     - Filtering by status and urgency
     - Expiry tracking
-    
+
     Endpoints:
     - GET /api/inpatient/admission-recommendations/ - List all recommendations
     - GET /api/inpatient/admission-recommendations/{id}/ - Recommendation detail
@@ -186,7 +186,7 @@ class AdmissionRecommendationViewSet(viewsets.ModelViewSet):
     def accept(self, request, pk=None):
         """
         Accept a pending admission recommendation.
-        
+
         Request body:
         - user: User ID who is accepting
         """
@@ -231,7 +231,7 @@ class AdmissionRecommendationViewSet(viewsets.ModelViewSet):
     def decline(self, request, pk=None):
         """
         Decline a pending admission recommendation.
-        
+
         Request body:
         - user: User ID who is declining
         - reason: Reason for declining (required)
@@ -281,13 +281,13 @@ class AdmissionRecommendationViewSet(viewsets.ModelViewSet):
 class AdmissionViewSet(viewsets.ModelViewSet):
     """
     ViewSet for Admission model.
-    
+
     Provides CRUD operations for admissions with:
     - Auto-generated admission numbers
     - Bed status management
     - Length of stay tracking
     - Filtering by ward, status, patient
-    
+
     Endpoints:
     - GET /api/inpatient/admissions/ - List all admissions
     - GET /api/inpatient/admissions/{id}/ - Admission detail
@@ -327,12 +327,12 @@ class AdmissionViewSet(viewsets.ModelViewSet):
 class DischargeViewSet(viewsets.ModelViewSet):
     """
     ViewSet for Discharge model.
-    
+
     Provides CRUD operations for discharges with:
     - Automatic admission/bed status updates
     - Clearance tracking
     - Filtering by discharge type
-    
+
     Endpoints:
     - GET /api/inpatient/discharges/ - List all discharges
     - GET /api/inpatient/discharges/{id}/ - Discharge detail
@@ -372,12 +372,12 @@ class DischargeViewSet(viewsets.ModelViewSet):
 class TransferViewSet(viewsets.ModelViewSet):
     """
     ViewSet for Transfer model.
-    
+
     Provides CRUD operations for patient transfers with:
     - Automatic bed status updates
     - Ward/bed validation
     - Clinical handover tracking
-    
+
     Endpoints:
     - GET /api/inpatient/transfers/ - List all transfers
     - GET /api/inpatient/transfers/{id}/ - Transfer detail
@@ -417,12 +417,12 @@ class TransferViewSet(viewsets.ModelViewSet):
 class WardRoundViewSet(viewsets.ModelViewSet):
     """
     ViewSet for WardRound model.
-    
+
     Provides CRUD operations for ward rounds with:
     - SOAP notes documentation
     - Patient condition tracking
     - Consultant review flagging
-    
+
     Endpoints:
     - GET /api/inpatient/ward-rounds/ - List all ward rounds
     - GET /api/inpatient/ward-rounds/{id}/ - Ward round detail
@@ -462,12 +462,12 @@ class WardRoundViewSet(viewsets.ModelViewSet):
 class NursingKardexViewSet(viewsets.ModelViewSet):
     """
     ViewSet for NursingKardex model.
-    
+
     Provides CRUD operations for nursing kardex with:
     - Nursing care plans
     - Risk assessments
     - Shift notes and handovers
-    
+
     Endpoints:
     - GET /api/inpatient/kardex/ - List all kardexes
     - GET /api/inpatient/kardex/{id}/ - Kardex detail
@@ -489,7 +489,7 @@ class NursingKardexViewSet(viewsets.ModelViewSet):
     def add_shift_note(self, request, pk=None):
         """
         Add a shift note to the kardex.
-        
+
         Request body:
         - shift: DAY or NIGHT
         - content: Note content
@@ -532,7 +532,7 @@ class NursingKardexViewSet(viewsets.ModelViewSet):
     def add_handover_note(self, request, pk=None):
         """
         Add a handover note to the kardex.
-        
+
         Request body:
         - incoming_nurse: User ID of incoming nurse
         - shift_ending: DAY or NIGHT
@@ -590,12 +590,12 @@ class NursingKardexViewSet(viewsets.ModelViewSet):
 class ShiftHandoverViewSet(viewsets.ModelViewSet):
     """
     ViewSet for ShiftHandover model.
-    
+
     Provides CRUD operations for ward-level shift handovers with:
     - Patient counts tracking
     - Handover acknowledgment
     - Auto-populate counts from ward data
-    
+
     Endpoints:
     - GET /api/inpatient/shift-handovers/ - List all handovers
     - GET /api/inpatient/shift-handovers/{id}/ - Handover detail

@@ -422,7 +422,7 @@ class LOINCCodeViewSet(viewsets.ReadOnlyModelViewSet):
 class LabQueueViewSet(viewsets.ModelViewSet):
     """
     ViewSet for lab queue management.
-    
+
     Provides queue listing, filtering, and workflow actions:
     - collect: Record sample collection
     - assign: Assign to technician

@@ -38,7 +38,7 @@ from hmis.apps.billing.serializers import (
 class ServiceCategoryViewSet(viewsets.ModelViewSet):
     """
     ViewSet for ServiceCategory model.
-    
+
     Provides CRUD operations for service categories.
     """
     queryset = ServiceCategory.objects.all()
@@ -53,7 +53,7 @@ class ServiceCategoryViewSet(viewsets.ModelViewSet):
 class ServiceViewSet(viewsets.ModelViewSet):
     """
     ViewSet for Service model.
-    
+
     Provides CRUD operations for billable services with filtering.
     """
     queryset = Service.objects.select_related('category', 'created_by').all()
@@ -74,7 +74,7 @@ class ServiceViewSet(viewsets.ModelViewSet):
 class InvoiceViewSet(viewsets.ModelViewSet):
     """
     ViewSet for Invoice model.
-    
+
     Provides CRUD operations for invoices with custom actions.
     """
     queryset = Invoice.objects.select_related(
@@ -230,7 +230,7 @@ class InvoiceViewSet(viewsets.ModelViewSet):
 class PaymentViewSet(viewsets.ModelViewSet):
     """
     ViewSet for Payment model.
-    
+
     Provides operations for recording and managing payments.
     """
     queryset = Payment.objects.select_related('invoice', 'received_by').all()
@@ -268,7 +268,7 @@ class PaymentViewSet(viewsets.ModelViewSet):
 class CreditNoteViewSet(viewsets.ModelViewSet):
     """
     ViewSet for CreditNote model.
-    
+
     Provides operations for credit notes with approval workflow.
     """
     queryset = CreditNote.objects.select_related(
@@ -325,7 +325,7 @@ class CreditNoteViewSet(viewsets.ModelViewSet):
 class MpesaViewSet(viewsets.ViewSet):
     """
     ViewSet for M-Pesa integration.
-    
+
     Provides endpoints for:
     - STK Push initiation
     - Payment callback handling
@@ -337,9 +337,9 @@ class MpesaViewSet(viewsets.ViewSet):
     def initiate(self, request):
         """
         Initiate M-Pesa STK Push payment.
-        
+
         POST /api/billing/mpesa/initiate/
-        
+
         Request body:
         {
             "invoice_id": 123,
@@ -394,9 +394,9 @@ class MpesaViewSet(viewsets.ViewSet):
     def callback(self, request):
         """
         Handle M-Pesa payment callback.
-        
+
         POST /api/billing/mpesa/callback/
-        
+
         This endpoint receives callbacks from Safaricom M-Pesa API.
         No authentication required for M-Pesa callbacks.
         """
@@ -435,7 +435,7 @@ class MpesaViewSet(viewsets.ViewSet):
     def query(self, request, checkout_request_id=None):
         """
         Query M-Pesa transaction status.
-        
+
         GET /api/billing/mpesa/query/{checkout_request_id}/
         """
         from django.core.exceptions import ValidationError
@@ -469,7 +469,7 @@ class MpesaViewSet(viewsets.ViewSet):
 class ReportViewSet(viewsets.ViewSet):
     """
     ViewSet for billing reports.
-    
+
     Provides read-only endpoints for financial reports.
     """
     permission_classes = [IsAuthenticated]

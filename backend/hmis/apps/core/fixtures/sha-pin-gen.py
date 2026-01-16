@@ -54,16 +54,16 @@ DEFAULT_KEY_PATHS = [
 def generate_secure_pin(digits: int = 4) -> str:
     """
     Generate a cryptographically secure random PIN.
-    
+
     Uses Python's `secrets` module which is suitable for security-sensitive
     applications like generating authentication tokens and PINs.
-    
+
     Args:
         digits: Number of digits in the PIN (default: 4, max: 10)
-        
+
     Returns:
         Zero-padded PIN string (e.g., "0042", "9381")
-        
+
     Example:
         >>> pin = generate_secure_pin()  # "7392"
         >>> pin = generate_secure_pin(6)  # "029481"
@@ -97,14 +97,14 @@ def find_public_key() -> Path | None:
 def load_public_key(key_path: Path | None = None, key_pem: bytes | None = None):
     """
     Load RSA public key from file or PEM bytes.
-    
+
     Args:
         key_path: Path to PEM public key file
         key_pem: PEM-encoded public key bytes
-        
+
     Returns:
         RSA public key object
-        
+
     Raises:
         ValueError: If no key provided or key is invalid
     """
@@ -121,11 +121,11 @@ def load_public_key(key_path: Path | None = None, key_pem: bytes | None = None):
 def encrypt_pin(pin: str, public_key) -> dict:
     """
     Encrypt a PIN using RSA-OAEP as required by SHA API.
-    
+
     Args:
         pin: The PIN to encrypt (string)
         public_key: RSA public key object
-        
+
     Returns:
         Dictionary with:
             - base64_ciphertext: Base64-encoded encrypted PIN
@@ -158,14 +158,14 @@ def encrypt_pin(pin: str, public_key) -> dict:
 def encrypt_pin_simple(pin: str, key_path: Path | str | None = None) -> str:
     """
     Simple helper to encrypt a PIN and return base64 string.
-    
+
     Args:
         pin: The PIN to encrypt
         key_path: Optional path to public key (uses default if not provided)
-        
+
     Returns:
         Base64-encoded encrypted PIN string
-        
+
     Example:
         >>> from hmis.apps.core.fixtures import sha_pin_gen
         >>> encrypted = sha_pin_gen.encrypt_pin_simple("1234")
