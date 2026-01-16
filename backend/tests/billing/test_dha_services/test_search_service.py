@@ -196,18 +196,50 @@ class TestPractitionerSearch:
 
     def test_search_practitioner_by_national_id(self, service, mock_requests_get):
         """Should search practitioner by National ID."""
+        # Use actual DHA HWR API response format
         mock_requests_get.return_value = self._create_mock_response(
             status_code=200,
             json_data={
                 'message': {
-                    'found': True,
-                    'practitioner': {
-                        'puid': 'PUID-143557',
+                    'membership': {
+                        'id': 'PUID-143557',
+                        'status': 'licensed',
+                        'salutation': 'Dr.',
+                        'full_name': 'John Doctor',
+                        'gender': 'Male',
                         'first_name': 'John',
+                        'middle_name': '',
                         'last_name': 'Doctor',
-                        'qualification': 'Medical Officer',
-                        'license_status': 'Active',
-                    }
+                        'registration_id': 'A12345',
+                        'external_reference_id': '',
+                        'licensing_body': 'KMPDB',
+                        'specialty': 'General Practice',
+                        'is_active': 1,
+                        'is_withdrawn': 0,
+                        'withdrawal_reason': '',
+                        'withdrawal_date': '',
+                        'license_expires_in_days': 365,
+                    },
+                    'licenses': [],
+                    'professional_details': {
+                        'professional_cadre': 'MEDICAL OFFICER',
+                        'practice_type': 'Medical Officer',
+                        'specialty': '',
+                        'subspecialty': '',
+                        'discipline_name': 'Medical Officer',
+                        'educational_qualifications': 'MBChB',
+                    },
+                    'contacts': {
+                        'phone': '',
+                        'email': '',
+                        'postal_address': '',
+                    },
+                    'identifiers': {
+                        'identification_type': 'National ID',
+                        'identification_number': '22334289',
+                        'client_registry_id': '',
+                        'student_id': '',
+                    },
                 }
             }
         )
@@ -215,8 +247,9 @@ class TestPractitionerSearch:
         result = service.search_practitioner(identification_number='22334289')
 
         assert result is not None
-        assert result.puid == 'PUID-143557'
-        assert result.first_name == 'John'
+        # Access via membership dataclass
+        assert result.membership.id == 'PUID-143557'
+        assert result.membership.first_name == 'John'
 
     def test_search_practitioner_by_registration(self, service, mock_requests_get):
         """Should search practitioner by registration number."""
@@ -224,11 +257,29 @@ class TestPractitionerSearch:
             status_code=200,
             json_data={
                 'message': {
-                    'found': True,
-                    'practitioner': {
-                        'puid': 'PUID-143557',
-                        'registration_number': 'A12345',
-                    }
+                    'membership': {
+                        'id': 'PUID-143557',
+                        'status': 'licensed',
+                        'salutation': '',
+                        'full_name': 'John Doctor',
+                        'gender': 'Male',
+                        'first_name': 'John',
+                        'middle_name': '',
+                        'last_name': 'Doctor',
+                        'registration_id': 'A12345',
+                        'external_reference_id': '',
+                        'licensing_body': 'KMPDB',
+                        'specialty': '',
+                        'is_active': 1,
+                        'is_withdrawn': 0,
+                        'withdrawal_reason': '',
+                        'withdrawal_date': '',
+                        'license_expires_in_days': 365,
+                    },
+                    'licenses': [],
+                    'professional_details': {},
+                    'contacts': {},
+                    'identifiers': {},
                 }
             }
         )
@@ -236,7 +287,7 @@ class TestPractitionerSearch:
         result = service.search_practitioner(registration_number='PUID-143557')
 
         assert result is not None
-        assert result.registration_number == 'A12345'
+        assert result.membership.registration_id == 'A12345'
 
     def test_search_practitioner_not_found(self, service, mock_requests_get):
         """Should return None when not found."""
@@ -255,18 +306,37 @@ class TestPractitionerSearch:
             status_code=200,
             json_data={
                 'message': {
-                    'found': True,
-                    'practitioner': {
-                        'puid': 'PUID-143557',
-                        'license_status': 'Active',
-                    }
+                    'membership': {
+                        'id': 'PUID-143557',
+                        'status': 'licensed',
+                        'salutation': '',
+                        'full_name': 'John Doctor',
+                        'gender': 'Male',
+                        'first_name': 'John',
+                        'middle_name': '',
+                        'last_name': 'Doctor',
+                        'registration_id': '',
+                        'external_reference_id': '',
+                        'licensing_body': 'KMPDB',
+                        'specialty': '',
+                        'is_active': 1,
+                        'is_withdrawn': 0,
+                        'withdrawal_reason': '',
+                        'withdrawal_date': '',
+                        'license_expires_in_days': 365,
+                    },
+                    'licenses': [],
+                    'professional_details': {},
+                    'contacts': {},
+                    'identifiers': {},
                 }
             }
         )
 
         result = service.search_practitioner(identification_number='22334289')
 
-        assert result.license_status == 'Active'
+        # License is active when: is_active=1, status='licensed', license_expires_in_days > 0
+        assert result.membership.status == 'licensed'
         assert result.is_license_active is True
 
     def test_validate_practitioner_for_claims(self, service, mock_requests_get):
@@ -275,11 +345,29 @@ class TestPractitionerSearch:
             status_code=200,
             json_data={
                 'message': {
-                    'found': True,
-                    'practitioner': {
-                        'puid': 'PUID-143557',
-                        'license_status': 'Active',
-                    }
+                    'membership': {
+                        'id': 'PUID-143557',
+                        'status': 'licensed',
+                        'salutation': '',
+                        'full_name': 'John Doctor',
+                        'gender': 'Male',
+                        'first_name': 'John',
+                        'middle_name': '',
+                        'last_name': 'Doctor',
+                        'registration_id': '',
+                        'external_reference_id': '',
+                        'licensing_body': 'KMPDB',
+                        'specialty': '',
+                        'is_active': 1,
+                        'is_withdrawn': 0,
+                        'withdrawal_reason': '',
+                        'withdrawal_date': '',
+                        'license_expires_in_days': 365,
+                    },
+                    'licenses': [],
+                    'professional_details': {},
+                    'contacts': {},
+                    'identifiers': {},
                 }
             }
         )
