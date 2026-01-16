@@ -216,7 +216,7 @@ class PrescriptionSerializer(serializers.ModelSerializer):
     patient_name = serializers.SerializerMethodField()
     patient_mrn = serializers.CharField(source="patient.mrn", read_only=True)
     prescriber_name = serializers.SerializerMethodField()
-    prescribed_date = serializers.DateField(source="prescribed_at", read_only=True)
+    prescribed_date = serializers.SerializerMethodField()
     is_valid_prescription = serializers.SerializerMethodField()
     is_fully_dispensed_status = serializers.BooleanField(
         source="is_fully_dispensed", read_only=True
@@ -273,6 +273,12 @@ class PrescriptionSerializer(serializers.ModelSerializer):
     def get_prescriber_name(self, obj):
         """Get prescriber full name."""
         return obj.prescribed_by.get_full_name() or obj.prescribed_by.username
+
+    def get_prescribed_date(self, obj):
+        """Get prescription date (date only, not datetime)."""
+        if obj.prescribed_at:
+            return obj.prescribed_at.date()
+        return None
 
     def get_is_valid_prescription(self, obj):
         """Get prescription validity status."""
