@@ -103,18 +103,21 @@ describe('StockTable', () => {
   });
 
   describe('Row actions', () => {
-    it('should show adjust stock button for available batches', () => {
+    it('should show more actions menu for available batches', () => {
       render(<StockTable {...defaultProps} />);
 
+      // The actions are in a dropdown menu, not a direct "adjust" button
       const batch001Row = screen.getByText('BATCH001').closest('tr');
-      expect(within(batch001Row!).getByRole('button', { name: /adjust/i })).toBeInTheDocument();
+      // Look for the "More actions" button that opens the dropdown
+      expect(within(batch001Row!).getByRole('button', { name: /more actions/i })).toBeInTheDocument();
     });
 
-    it('should not show adjust button for expired batches', () => {
+    it('should not show actions menu for expired batches', () => {
       render(<StockTable {...defaultProps} />);
 
       const batch003Row = screen.getByText('BATCH003').closest('tr');
-      expect(within(batch003Row!).queryByRole('button', { name: /adjust/i })).not.toBeInTheDocument();
+      // Expired batches should not have the actions dropdown
+      expect(within(batch003Row!).queryByRole('button', { name: /more actions/i })).not.toBeInTheDocument();
     });
   });
 });
