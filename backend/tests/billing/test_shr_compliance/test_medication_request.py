@@ -7,7 +7,6 @@ as documented in docs/sha-guides/shr-integration.md Section 2.
 Reference: https://hl7.org/fhir/R4/medicationrequest.html
 """
 
-import pytest  # type: ignore
 
 
 class TestMedicationRequestRequiredFields:
@@ -49,7 +48,7 @@ class TestMedicationRequestRequiredFields:
         assert 'status' in valid_medication_request_fhir, (
             "MedicationRequest must have 'status' field"
         )
-        valid_statuses = ['active', 'on-hold', 'cancelled', 'completed', 
+        valid_statuses = ['active', 'on-hold', 'cancelled', 'completed',
                          'entered-in-error', 'stopped', 'draft', 'unknown']
         assert valid_medication_request_fhir['status'] in valid_statuses, (
             f"status must be one of {valid_statuses}"
@@ -64,7 +63,7 @@ class TestMedicationRequestRequiredFields:
         assert 'intent' in valid_medication_request_fhir, (
             "MedicationRequest must have 'intent' field"
         )
-        valid_intents = ['proposal', 'plan', 'order', 'original-order', 
+        valid_intents = ['proposal', 'plan', 'order', 'original-order',
                         'reflex-order', 'filler-order', 'instance-order', 'option']
         assert valid_medication_request_fhir['intent'] in valid_intents, (
             f"intent must be one of {valid_intents}"
@@ -152,7 +151,7 @@ class TestMedicationRequestMedicationCoding:
         """
         medication = valid_medication_request_fhir.get('medicationCodeableConcept', {})
         coding = medication.get('coding', [{}])[0]
-        
+
         assert 'system' in coding, (
             "medication coding must have 'system' field"
         )
@@ -163,7 +162,7 @@ class TestMedicationRequestMedicationCoding:
         """
         medication = valid_medication_request_fhir.get('medicationCodeableConcept', {})
         coding = medication.get('coding', [{}])[0]
-        
+
         assert 'code' in coding, (
             "medication coding must have 'code' field"
         )
@@ -174,7 +173,7 @@ class TestMedicationRequestMedicationCoding:
         """
         medication = valid_medication_request_fhir.get('medicationCodeableConcept', {})
         coding = medication.get('coding', [{}])[0]
-        
+
         assert 'display' in coding, (
             "medication coding should have 'display' field for human readability"
         )
@@ -236,7 +235,7 @@ class TestMedicationRequestDosageInstruction:
         """
         dosage = valid_medication_request_fhir.get('dosageInstruction', [{}])[0]
         timing = dosage.get('timing', {})
-        
+
         assert 'repeat' in timing, (
             "timing should have 'repeat' field"
         )
@@ -249,7 +248,7 @@ class TestMedicationRequestDosageInstruction:
         """
         dosage = valid_medication_request_fhir.get('dosageInstruction', [{}])[0]
         repeat = dosage.get('timing', {}).get('repeat', {})
-        
+
         assert 'frequency' in repeat, (
             "repeat must have 'frequency' field"
         )
@@ -307,7 +306,7 @@ class TestMedicationRequestDispenseRequest:
         assert 'validityPeriod' in dispense_request, (
             "dispenseRequest must have 'validityPeriod' field"
         )
-        
+
         validity = dispense_request['validityPeriod']
         assert 'start' in validity, (
             "validityPeriod must have 'start' date"
@@ -340,7 +339,7 @@ class TestMedicationRequestDispenseRequest:
         assert 'quantity' in dispense_request, (
             "dispenseRequest must have 'quantity' field"
         )
-        
+
         quantity = dispense_request['quantity']
         assert 'value' in quantity, (
             "quantity must have 'value' field"
@@ -413,7 +412,7 @@ class TestMedicationRequestSubstitution:
         """
         substitution = valid_medication_request_fhir.get('substitution', {})
         has_allowed = (
-            'allowedBoolean' in substitution or 
+            'allowedBoolean' in substitution or
             'allowedCodeableConcept' in substitution
         )
         assert has_allowed, (

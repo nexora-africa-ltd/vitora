@@ -10,7 +10,7 @@ import logging
 from django.db.models.signals import post_save
 from django.dispatch import receiver
 
-from .models import LabOrder, LabQueue, LabOrderItem, LabResult
+from .models import LabOrder, LabOrderItem, LabQueue, LabResult
 
 logger = logging.getLogger(__name__)
 
@@ -26,18 +26,18 @@ def create_lab_queue_entry(sender, instance, created, **kwargs):
     # Only process for in-house orders
     if instance.order_type != "IN_HOUSE":
         return
-    
+
     # Check if queue entry already exists
     if LabQueue.objects.filter(lab_order=instance).exists():
         return
-    
+
     # Create queue entry when order is placed (status = ORDERED or DRAFT for new orders)
     if instance.status in ["ORDERED", "DRAFT"]:
         try:
             # Get specimen type from first order item
             first_item = instance.items.first()
             specimen_type = first_item.test.specimen_type if first_item else "BLOOD"
-            
+
             LabQueue.objects.create(
                 lab_order=instance,
                 priority=instance.priority,
@@ -59,17 +59,17 @@ def create_lab_queue_on_item_add(sender, instance, created, **kwargs):
     """
     if not created:
         return
-    
+
     lab_order = instance.lab_order
-    
+
     # Only process for in-house orders
     if lab_order.order_type != "IN_HOUSE":
         return
-    
+
     # Check if queue entry already exists
     if LabQueue.objects.filter(lab_order=lab_order).exists():
         return
-    
+
     # Create queue entry with specimen type from this item
     try:
         LabQueue.objects.create(
@@ -90,7 +90,7 @@ def sync_lab_queue_priority(sender, instance, created, **kwargs):
     """
     if created:
         return
-    
+
     try:
         queue_entry = LabQueue.objects.filter(lab_order=instance).first()
         if queue_entry and queue_entry.priority != instance.priority:
@@ -111,23 +111,23 @@ def update_order_status_on_result(sender, instance, created, **kwargs):
     """
     if not created:
         return
-    
+
     try:
         lab_order = instance.order_item.lab_order
-        
+
         # Count total items and items with results
         total_items = lab_order.items.count()
         items_with_results = lab_order.items.filter(result__isnull=False).count()
-        
+
         # Get the user who entered the result for status update
         user = instance.entered_by
-        
+
         if items_with_results == 1:
             # First result - transition to IN_PROGRESS
             if lab_order.status == "SPECIMEN_COLLECTED":
                 lab_order.update_status("IN_PROGRESS", user)
                 logger.info(f"Order {lab_order.order_number} transitioned to IN_PROGRESS")
-                
+
                 # Also update queue to PROCESSING
                 queue_entry = LabQueue.objects.filter(lab_order=lab_order).first()
                 if queue_entry and queue_entry.queue_status in ["COLLECTED", "PENDING"]:
@@ -135,7 +135,7 @@ def update_order_status_on_result(sender, instance, created, **kwargs):
                     queue_entry.processing_started_at = instance.entered_at
                     queue_entry.save(update_fields=["queue_status", "processing_started_at", "updated_at"])
                     logger.info(f"Queue {queue_entry.queue_number} transitioned to PROCESSING")
-        
+
         if items_with_results == total_items:
             # All results entered - keep in IN_PROGRESS but queue goes to REVIEW
             queue_entry = LabQueue.objects.filter(lab_order=lab_order).first()
@@ -144,6 +144,6 @@ def update_order_status_on_result(sender, instance, created, **kwargs):
                 queue_entry.processing_completed_at = instance.entered_at
                 queue_entry.save(update_fields=["queue_status", "processing_completed_at", "updated_at"])
                 logger.info(f"Queue {queue_entry.queue_number} transitioned to REVIEW (all results entered)")
-                
+
     except Exception as e:
         logger.error(f"Failed to update order status after result entry: {e}")

@@ -278,7 +278,7 @@ class EncounterSerializer(serializers.ModelSerializer):
         source="triage_bypassed_by.username", read_only=True, allow_null=True
     )
     wait_time_minutes = serializers.SerializerMethodField()
-    
+
     # Chief complaint edit tracking
     chief_complaint_edited_by_username = serializers.CharField(
         source="chief_complaint_edited_by.username", read_only=True, allow_null=True

@@ -24,9 +24,8 @@ Test Coverage (15 tests):
 """
 
 from datetime import date, timedelta
-from decimal import Decimal
 
-import pytest # type: ignore
+import pytest  # type: ignore
 from django.core.exceptions import ValidationError
 from django.db import IntegrityError
 from django.utils import timezone
@@ -601,7 +600,7 @@ class TestSHAMemberModelMeta:
         index_fields = [
             str(idx.fields) for idx in SHAMember._meta.indexes
         ]
-        
+
         # Check expected indexes exist (as strings or tuples)
         assert any('sha_number' in str(idx) for idx in index_fields)
         assert any('national_id' in str(idx) for idx in index_fields)
@@ -710,8 +709,8 @@ class TestSHAMemberPrincipalForeignKey:
     def test_dependent_with_principal_fk_accepted(self, test_user):
         """Dependent with principal FK should be accepted without principal_sha_number."""
         from hmis.apps.billing.models import SHAMember
-        from hmis.apps.patients.models import Patient
         from hmis.apps.core.models import County, SubCounty
+        from hmis.apps.patients.models import Patient
 
         county = County.objects.first()
         sub_county = SubCounty.objects.filter(county=county).first()
@@ -765,8 +764,8 @@ class TestSHAMemberPrincipalForeignKey:
     def test_principal_can_access_dependents_via_related_name(self, test_user):
         """Principal member should access dependents via related_name='dependents'."""
         from hmis.apps.billing.models import SHAMember
-        from hmis.apps.patients.models import Patient
         from hmis.apps.core.models import County, SubCounty
+        from hmis.apps.patients.models import Patient
 
         county = County.objects.first()
         sub_county = SubCounty.objects.filter(county=county).first()
@@ -818,8 +817,8 @@ class TestSHAMemberPrincipalForeignKey:
     def test_principal_fk_must_reference_principal_member(self, test_user):
         """Principal FK must point to a member with membership_type=PRINCIPAL."""
         from hmis.apps.billing.models import SHAMember
-        from hmis.apps.patients.models import Patient
         from hmis.apps.core.models import County, SubCounty
+        from hmis.apps.patients.models import Patient
 
         county = County.objects.first()
         sub_county = SubCounty.objects.filter(county=county).first()

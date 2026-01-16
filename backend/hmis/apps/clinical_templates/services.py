@@ -8,15 +8,11 @@ and existing encounter/patient data:
 - Create immutable snapshots of completed templates
 """
 
-from datetime import datetime
 from decimal import Decimal, InvalidOperation
 from typing import Any, Optional
 
-from django.db import transaction
-
 from hmis.apps.clinical_templates.models import ClinicalTemplate
 from hmis.apps.encounters.models import Encounter
-
 
 # =============================================================================
 # Field Mapping Service
@@ -99,7 +95,7 @@ class TemplateFieldMapper:
         "height": lambda x: Decimal(str(x)) if x else None,
     }
 
-    def get_source_field(self, template_field: str) -> Optional[tuple[str, str]]:
+    def get_source_field(self, template_field: str) -> tuple[str, str] | None:
         """
         Get the source and field name for a template field.
 
@@ -151,7 +147,7 @@ class TemplateDataSynchronizer:
         self,
         template: ClinicalTemplate,
         encounter: Encounter,
-        existing_data: Optional[dict] = None,
+        existing_data: dict | None = None,
         structure_by_section: bool = False,
     ) -> dict[str, Any]:
         """
@@ -175,7 +171,7 @@ class TemplateDataSynchronizer:
         for section in sections:
             section_name = section.get("name", "")
             section_data = {} if structure_by_section else populated
-            
+
             if structure_by_section and section_name not in populated:
                 populated[section_name] = {}
                 section_data = populated[section_name]
@@ -248,7 +244,7 @@ class TemplateDataSynchronizer:
             Updated encounter, or tuple of (encounter, changed_fields)
         """
         changed_fields = []
-        
+
         # Flatten nested structure if needed
         flat_data = self._flatten_template_data(template_data)
 
@@ -261,14 +257,14 @@ class TemplateDataSynchronizer:
                 continue
 
             _, encounter_field = mapping
-            
+
             # Skip None values (don't overwrite with None)
             if value is None:
                 continue
 
             # Convert value to appropriate type
             converted_value = self.mapper.convert_value(field_name, value)
-            
+
             # Check if value actually changed
             current_value = getattr(encounter, encounter_field, None)
             if current_value != converted_value:
@@ -278,8 +274,8 @@ class TemplateDataSynchronizer:
         # Save encounter if there were changes
         if changed_fields:
             encounter.save(update_fields=[
-                self.mapper.get_source_field(f)[1] 
-                for f in changed_fields 
+                self.mapper.get_source_field(f)[1]
+                for f in changed_fields
                 if self.mapper.get_source_field(f)
             ])
 
@@ -382,7 +378,7 @@ class TemplateSnapshotService:
 def populate_template_from_encounter(
     template: ClinicalTemplate,
     encounter: Encounter,
-    existing_data: Optional[dict] = None,
+    existing_data: dict | None = None,
 ) -> dict[str, Any]:
     """
     Convenience function to populate template from encounter.

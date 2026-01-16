@@ -469,7 +469,7 @@ class Encounter(models.Model):
         ("MISUNDERSTANDING", "Triage miscommunication"),
         ("OTHER", "Other (specify)"),
     ]
-    
+
     chief_complaint_original = models.TextField(
         blank=True,
         default="",

@@ -8,7 +8,7 @@ Tests for: API endpoints, validation, import command, and edge cases.
 import io
 from datetime import date
 
-import pytest # type: ignore
+import pytest  # type: ignore
 from django.core.exceptions import ValidationError
 from django.core.management import call_command
 

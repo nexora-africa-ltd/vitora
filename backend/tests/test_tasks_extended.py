@@ -7,7 +7,7 @@ Sprint 0.6: Coverage improvement tests for tasks.py
 from datetime import timedelta
 from unittest.mock import MagicMock, patch
 
-import pytest # type: ignore
+import pytest  # type: ignore
 from django.utils import timezone
 
 from hmis.apps.core.models import SyncQueue

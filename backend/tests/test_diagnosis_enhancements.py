@@ -9,7 +9,7 @@ Tests cover:
 
 from datetime import date
 
-import pytest # type: ignore
+import pytest  # type: ignore
 from django.contrib.auth import get_user_model
 from django.core.exceptions import ValidationError
 from django.db import IntegrityError

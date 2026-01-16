@@ -5,7 +5,7 @@ Following TDD principles: Write tests FIRST, then implement.
 SpO2 (oxygen saturation) is a critical vital sign.
 """
 
-import pytest # type: ignore
+import pytest  # type: ignore
 from django.core.exceptions import ValidationError
 
 

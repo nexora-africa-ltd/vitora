@@ -28,26 +28,26 @@ sys.path.insert(0, backend_dir)
 
 # Now we can import Django and crypto libraries
 import django
+
 django.setup()
 
-from django.conf import settings
-from Crypto.Cipher import AES
+from Crypto.Cipher import AES, PKCS1_OAEP
 from Crypto.PublicKey import RSA
 from Crypto.Util.Padding import unpad
-from Crypto.Cipher import PKCS1_OAEP
+from django.conf import settings
 
 
 def get_private_key() -> str:
     """Load RSA private key from sha.pem file in backend directory."""
     pem_path = os.path.join(backend_dir, 'sha.pem')
-    
+
     if not os.path.exists(pem_path):
         raise FileNotFoundError(
             f"Private key file not found at {pem_path}\n"
             "Please create backend/sha.pem with your RSA private key."
         )
-    
-    with open(pem_path, 'r') as f:
+
+    with open(pem_path) as f:
         return f.read()
 
 
@@ -98,26 +98,26 @@ def main():
         private_key = get_private_key()
         agent = get_agent()
         print(f"Using DHA Agent: {agent}")
-        print(f"Private key loaded from: backend/sha.pem\n")
+        print("Private key loaded from: backend/sha.pem\n")
     except (FileNotFoundError, ValueError) as e:
         print(f"Configuration Error: {e}", file=sys.stderr)
         sys.exit(1)
-    
+
     if len(sys.argv) > 1:
         # Read from command line argument (JSON string)
         input_data = sys.argv[1]
     else:
         # Read from stdin
         input_data = sys.stdin.read()
-    
+
     try:
         data = json.loads(input_data)
-        
+
         # Handle the API response format: {"message": {"total": N, "result": [...]}}
         if "message" in data and "result" in data["message"]:
             results = data["message"]["result"]
             decrypted_results = []
-            
+
             for i, item in enumerate(results):
                 if "_pii" in item:
                     try:
@@ -130,17 +130,17 @@ def main():
                         print(f"Failed to decrypt: {e}")
                 else:
                     decrypted_results.append(item)
-            
+
             print(f"\n\n=== Summary: Decrypted {len(decrypted_results)} records ===")
-        
+
         # Handle single _pii field
         elif "_pii" in data:
             decrypted = decrypt_pii(data["_pii"], private_key)
             print("Decrypted JSON Data:", json.dumps(decrypted, indent=2))
-        
+
         else:
             print("No _pii field found in input")
-            
+
     except json.JSONDecodeError as e:
         # Try treating input as raw base64 _pii value
         try:

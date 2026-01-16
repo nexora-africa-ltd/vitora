@@ -11,18 +11,18 @@ APIs Covered:
 Reference: docs/dha-api-usage-analysis.md
 """
 
-import pytest # type: ignore
-from unittest.mock import Mock, patch
 from datetime import date
-from django.conf import settings # type: ignore
+from unittest.mock import Mock
+
+import pytest  # type: ignore
+from django.conf import settings  # type: ignore
 
 from hmis.apps.billing.services.dha_search import (
     DHASearchService,
-    SearchError,
     FacilityInfo,
     PractitionerInfo,
+    SearchError,
 )
-
 
 # =============================================================================
 # Facility Search Tests
@@ -51,9 +51,9 @@ class TestFacilitySearch:
                 }
             }
         )
-        
+
         result = service.search_facility(facility_code='24979')
-        
+
         assert result is not None
         assert result.facility_code == '24979'
         assert result.found is True
@@ -71,9 +71,9 @@ class TestFacilitySearch:
                 }
             }
         )
-        
+
         result = service.search_facility(fid='FID-47-103706-5')
-        
+
         assert result is not None
         assert result.fid == 'FID-47-103706-5'
 
@@ -88,9 +88,9 @@ class TestFacilitySearch:
                 }
             }
         )
-        
+
         result = service.search_facility(facility_code='99999')
-        
+
         assert result is None
 
     def test_facility_operational_status(self, service, mock_requests_get):
@@ -105,9 +105,9 @@ class TestFacilitySearch:
                 }
             }
         )
-        
+
         result = service.search_facility(facility_code='24979')
-        
+
         assert result.operational_status == 'Operational'
         assert result.is_operational is True
 
@@ -123,9 +123,9 @@ class TestFacilitySearch:
                 }
             }
         )
-        
+
         result = service.search_facility(facility_code='24979')
-        
+
         assert result.license_expiry == date(2026, 12, 31)
         assert result.is_license_valid is True
 
@@ -143,9 +143,9 @@ class TestFacilitySearch:
                 }
             }
         )
-        
+
         is_valid, errors = service.validate_facility_for_claims(facility_code='24979')
-        
+
         assert is_valid is True
         assert len(errors) == 0
 
@@ -161,9 +161,9 @@ class TestFacilitySearch:
                 }
             }
         )
-        
+
         is_valid, errors = service.validate_facility_for_claims(facility_code='24979')
-        
+
         assert is_valid is False
         assert len(errors) > 0
 
@@ -202,9 +202,9 @@ class TestPractitionerSearch:
                 }
             }
         )
-        
+
         result = service.search_practitioner(identification_number='22334289')
-        
+
         assert result is not None
         assert result.puid == 'PUID-143557'
         assert result.first_name == 'John'
@@ -223,9 +223,9 @@ class TestPractitionerSearch:
                 }
             }
         )
-        
+
         result = service.search_practitioner(registration_number='PUID-143557')
-        
+
         assert result is not None
         assert result.registration_number == 'A12345'
 
@@ -235,9 +235,9 @@ class TestPractitionerSearch:
             status_code=200,
             json=lambda: {'message': {'found': False}}
         )
-        
+
         result = service.search_practitioner(identification_number='99999999')
-        
+
         assert result is None
 
     def test_practitioner_license_status(self, service, mock_requests_get):
@@ -254,9 +254,9 @@ class TestPractitionerSearch:
                 }
             }
         )
-        
+
         result = service.search_practitioner(identification_number='22334289')
-        
+
         assert result.license_status == 'Active'
         assert result.is_license_active is True
 
@@ -274,11 +274,11 @@ class TestPractitionerSearch:
                 }
             }
         )
-        
+
         is_valid, errors = service.validate_practitioner_for_claims(
             identification_number='22334289'
         )
-        
+
         assert is_valid is True
         assert len(errors) == 0
 
@@ -293,21 +293,21 @@ class TestDHASearchServiceConfig:
     def test_service_uses_sha_endpoints(self, mock_sha_auth):
         """Should use endpoints from settings."""
         service = DHASearchService()
-        
+
         assert service.facility_endpoint is not None
         assert service.practitioner_endpoint is not None
 
     def test_service_initializes_with_settings(self, mock_sha_auth):
         """Should initialize with Django settings."""
         service = DHASearchService()
-        
+
         assert service.api_base_url == settings.SHA_API_BASE_URL.rstrip('/')
         assert service.auth_service is not None
 
     def test_service_has_timeout(self, mock_sha_auth):
         """Should have configurable timeout."""
         service = DHASearchService()
-        
+
         assert service.timeout > 0
 
 
@@ -327,19 +327,19 @@ class TestSearchErrorHandling:
         """Should handle API timeout."""
         import requests as req
         mock_requests_get.side_effect = req.Timeout()
-        
+
         with pytest.raises(SearchError) as exc_info:
             service.search_facility(facility_code='24979')
-        
+
         assert 'timed out' in str(exc_info.value).lower() or 'timeout' in str(exc_info.value).lower()
 
     def test_handles_auth_failure(self, service, mock_requests_get):
         """Should handle authentication failure."""
         mock_requests_get.return_value = Mock(status_code=401)
-        
+
         with pytest.raises(SearchError) as exc_info:
             service.search_facility(facility_code='24979')
-        
+
         assert exc_info.value.status_code == 401
 
 
@@ -358,9 +358,9 @@ class TestFacilityInfo:
             'facility_level': 'LEVEL 4',
             'operational_status': 'Operational',
         }
-        
+
         facility = FacilityInfo.from_api_response(data)
-        
+
         assert facility.facility_code == '24979'
         assert facility.found is True
         assert facility.level == 4
@@ -372,7 +372,7 @@ class TestFacilityInfo:
             found=True,
             operational_status='Operational',
         )
-        
+
         assert facility.is_operational is True
 
 
@@ -390,9 +390,9 @@ class TestPractitionerInfo:
                 'license_status': 'Active',
             }
         }
-        
+
         practitioner = PractitionerInfo.from_api_response(data)
-        
+
         assert practitioner.puid == 'PUID-12345'
         assert practitioner.first_name == 'John'
 
@@ -405,7 +405,7 @@ class TestPractitionerInfo:
             middle_name='Kamau',
             last_name='Doctor',
         )
-        
+
         assert practitioner.full_name == 'John Kamau Doctor'
 
     def test_is_license_active_property(self):
@@ -415,5 +415,5 @@ class TestPractitionerInfo:
             found=True,
             license_status='Active',
         )
-        
+
         assert practitioner.is_license_active is True

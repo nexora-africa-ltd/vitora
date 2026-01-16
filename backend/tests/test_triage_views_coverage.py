@@ -7,13 +7,13 @@ Targets uncovered lines in:
 - Triage serializers validation
 """
 
-import pytest # type: ignore
 from datetime import timedelta
-from decimal import Decimal
+
+import pytest  # type: ignore
 from django.utils import timezone
 from rest_framework import status
 
-from hmis.apps.triage.models import WaitingQueue, TriageAssessment
+from hmis.apps.triage.models import TriageAssessment, WaitingQueue
 
 
 @pytest.mark.django_db
@@ -103,10 +103,10 @@ class TestTriageAssessmentViewSetActions:
     ):
         """Creating triage assessment should work with valid data."""
         from hmis.apps.triage.models import TriageAssessment
-        
+
         # Delete any existing assessment for this encounter
         TriageAssessment.objects.filter(encounter=sample_encounter).delete()
-        
+
         now = timezone.now()
         data = {
             "encounter": sample_encounter.id,
@@ -136,12 +136,12 @@ class TestTriageAssessmentViewSetActions:
     ):
         """Updating triage category should work."""
         from django.contrib.auth.models import Permission
-        
+
         # Add perform_triage permission
         permission = Permission.objects.filter(codename='perform_triage').first()
         if permission:
             test_user.user_permissions.add(permission)
-        
+
         data = {
             "triage_category": "ORANGE",
             "category_override_reason": "Clinical judgement",
@@ -272,12 +272,12 @@ class TestTriageQueueViewSet:
     def test_list_triage_queue(self, authenticated_client, test_user):
         """Should be able to list triage queue with permission."""
         from django.contrib.auth.models import Permission
-        
+
         # Add the required permission
         permission = Permission.objects.filter(codename='view_triage_queue').first()
         if permission:
             test_user.user_permissions.add(permission)
-        
+
         response = authenticated_client.get("/api/triage/queue/")
 
         # May get 200 or 403 depending on permissions
@@ -297,10 +297,10 @@ class TestTriageVitalThresholdViewSet:
     def test_create_threshold(self, authenticated_client):
         """Creating vital threshold may not be allowed (read-only viewset)."""
         from hmis.apps.triage.models import TriageVitalThreshold
-        
+
         # Delete existing if any to avoid unique constraint
         TriageVitalThreshold.objects.filter(vital_type="SPO2").delete()
-        
+
         data = {
             "vital_type": "SPO2",
             "critical_low": 90,

@@ -7,7 +7,7 @@ These fixtures provide test data for validating SHA integration compliance.
 from datetime import date, timedelta
 from decimal import Decimal
 
-import pytest # type: ignore
+import pytest  # type: ignore
 from django.contrib.auth import get_user_model
 
 User = get_user_model()
@@ -16,15 +16,15 @@ User = get_user_model()
 # Try to import SHA models - may fail if not fully implemented
 try:
     from hmis.apps.billing.models import (
+        Invoice,
+        InvoiceItem,
+        Service,
+        ServiceCategory,
         SHAClaim,
         SHAClaimItem,
         SHAEligibilityCheck,
         SHAMember,
         SHATariff,
-        Invoice,
-        InvoiceItem,
-        Service,
-        ServiceCategory,
     )
     HAS_SHA_MODELS = True
 except ImportError:
@@ -64,7 +64,7 @@ def sample_county(db):
     """Create a sample Kenya county."""
     if not HAS_LOCATION_MODELS:
         pytest.skip("Location models not available")
-    
+
     county, _ = County.objects.get_or_create(
         code=1,
         defaults={'name': 'Mombasa'}
@@ -77,7 +77,7 @@ def sample_sub_county(db, sample_county):
     """Create a sample sub-county."""
     if not HAS_LOCATION_MODELS:
         pytest.skip("Location models not available")
-    
+
     sub_county, _ = SubCounty.objects.get_or_create(
         county=sample_county,
         name='Mvita'
@@ -90,7 +90,7 @@ def sample_ward(db, sample_sub_county):
     """Create a sample ward."""
     if not HAS_LOCATION_MODELS:
         pytest.skip("Location models not available")
-    
+
     ward, _ = Ward.objects.get_or_create(
         sub_county=sample_sub_county,
         name='Mji Wa Kale'
@@ -103,7 +103,7 @@ def sha_test_patient(db, sha_test_user, sample_county, sample_sub_county, sample
     """Create a test patient for SHA compliance tests."""
     if not HAS_PATIENT_MODEL:
         pytest.skip("Patient model not available")
-    
+
     return Patient.objects.create(
         first_name='John',
         last_name='Doe',
@@ -123,7 +123,7 @@ def sha_member(db, sha_test_patient, sha_test_user):
     """Create an SHA member for compliance tests."""
     if not HAS_SHA_MODELS:
         pytest.skip("SHA models not available")
-    
+
     # Use lowercase values matching model's TextChoices
     return SHAMember.objects.create(
         patient=sha_test_patient,
@@ -144,7 +144,7 @@ def sha_member_no_sha_number(db, sha_test_patient, sha_test_user, sample_county,
     """
     if not HAS_SHA_MODELS:
         pytest.skip("SHA models not available")
-    
+
     # Create another patient for this member
     patient = Patient.objects.create(
         first_name='Jane',
@@ -157,7 +157,7 @@ def sha_member_no_sha_number(db, sha_test_patient, sha_test_user, sample_county,
         national_id='87654321',
         registered_by=sha_test_user,
     )
-    
+
     # Create member with sha_number (required by model)
     member = SHAMember.objects.create(
         patient=patient,
@@ -167,7 +167,7 @@ def sha_member_no_sha_number(db, sha_test_patient, sha_test_user, sample_county,
         status='active',
         created_by=sha_test_user,
     )
-    
+
     # Clear sha_number in memory for fallback test (not saved to DB)
     member.sha_number = ''
     return member
@@ -178,7 +178,7 @@ def sha_service_category(db):
     """Create a service category for SHA tests."""
     if not HAS_SHA_MODELS:
         pytest.skip("SHA models not available")
-    
+
     return ServiceCategory.objects.create(
         name='Consultation',
         code='CONS',
@@ -192,7 +192,7 @@ def sha_service(db, sha_service_category, sha_test_user):
     """Create a service with SHA code."""
     if not HAS_SHA_MODELS:
         pytest.skip("SHA models not available")
-    
+
     return Service.objects.create(
         category=sha_service_category,
         code='CONS-GEN',
@@ -209,7 +209,7 @@ def sha_tariff(db, sha_test_user):
     """Create an SHA tariff for tests."""
     if not HAS_SHA_MODELS:
         pytest.skip("SHA models not available")
-    
+
     # Use lowercase values matching TariffCategory and TariffLevel choices
     return SHATariff.objects.create(
         code='SHA-08-001',
@@ -229,7 +229,7 @@ def sha_test_encounter(db, sha_test_patient, sha_test_user):
     """Create a test encounter for SHA tests."""
     if not HAS_ENCOUNTER_MODEL:
         pytest.skip("Encounter model not available")
-    
+
     return Encounter.objects.create(
         patient=sha_test_patient,
         encounter_type='OPD',
@@ -245,7 +245,7 @@ def sha_test_invoice(db, sha_test_patient, sha_test_user):
     """Create a test invoice for SHA tests."""
     if not HAS_SHA_MODELS:
         pytest.skip("SHA models not available")
-    
+
     return Invoice.objects.create(
         patient=sha_test_patient,
         invoice_date=date.today(),
@@ -261,7 +261,7 @@ def sha_invoice_item(db, sha_test_invoice, sha_service, sha_test_user):
     """Create an invoice item for SHA tests."""
     if not HAS_SHA_MODELS:
         pytest.skip("SHA models not available")
-    
+
     return InvoiceItem.objects.create(
         invoice=sha_test_invoice,
         service=sha_service,
@@ -276,7 +276,7 @@ def sha_claim(db, sha_test_patient, sha_member, sha_test_encounter, sha_test_inv
     """Create an SHA claim for tests."""
     if not HAS_SHA_MODELS:
         pytest.skip("SHA models not available")
-    
+
     # Use lowercase values matching model's TextChoices (standard FHIR format)
     return SHAClaim.objects.create(
         patient=sha_test_patient,
@@ -300,7 +300,7 @@ def sha_claim_item(db, sha_claim, sha_tariff, sha_service, sha_invoice_item):
     """Create a claim item for SHA tests."""
     if not HAS_SHA_MODELS:
         pytest.skip("SHA models not available")
-    
+
     return SHAClaimItem.objects.create(
         claim=sha_claim,
         tariff=sha_tariff,

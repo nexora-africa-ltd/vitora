@@ -2,8 +2,7 @@
 Tests for core utility functions.
 """
 
-import pytest # type: ignore
-from django.conf import settings
+import pytest  # type: ignore
 
 from hmis.apps.core.utils import (
     generate_case_number,

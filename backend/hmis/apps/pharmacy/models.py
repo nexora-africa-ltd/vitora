@@ -16,11 +16,11 @@ All models follow TDD approach and Kenya healthcare requirements.
 from datetime import date, datetime, timedelta
 from decimal import Decimal
 
+from django.apps import apps
 from django.conf import settings
 from django.core.exceptions import ValidationError
 from django.db import models
 from django.utils import timezone
-from django.apps import apps
 
 
 def generate_prescription_number():
@@ -883,13 +883,13 @@ class AlertSettings(models.Model):
     
     Only one instance should exist (enforced at application level).
     """
-    
+
     # Stock alert thresholds
     low_stock_threshold = models.IntegerField(
         default=100,
         help_text="Generate alert when stock falls below this quantity"
     )
-    
+
     # Expiry warning periods (in days)
     expiry_warning_days = models.IntegerField(
         default=90,
@@ -899,7 +899,7 @@ class AlertSettings(models.Model):
         default=30,
         help_text="Days before expiry to generate critical alert"
     )
-    
+
     # Email notification settings
     enable_email_notifications = models.BooleanField(
         default=False,
@@ -909,7 +909,7 @@ class AlertSettings(models.Model):
         blank=True,
         help_text="Comma-separated list of email addresses to notify"
     )
-    
+
     # Metadata
     updated_by = models.ForeignKey(
         settings.AUTH_USER_MODEL,
@@ -919,30 +919,30 @@ class AlertSettings(models.Model):
     )
     updated_at = models.DateTimeField(auto_now=True)
     created_at = models.DateTimeField(auto_now_add=True)
-    
+
     class Meta:
         verbose_name = "Alert Settings"
         verbose_name_plural = "Alert Settings"
-    
+
     def __str__(self):
         return f"Alert Settings (Updated: {self.updated_at})"
-    
+
     def clean(self):
         """Validate settings."""
         if self.low_stock_threshold < 0:
             raise ValidationError("Low stock threshold must be non-negative")
-        
+
         if self.expiry_warning_days < 0:
             raise ValidationError("Expiry warning days must be non-negative")
-        
+
         if self.expiry_critical_days < 0:
             raise ValidationError("Expiry critical days must be non-negative")
-        
+
         if self.expiry_critical_days >= self.expiry_warning_days:
             raise ValidationError(
                 "Critical days should be less than warning days"
             )
-    
+
     @classmethod
     def get_settings(cls):
         """

@@ -6,7 +6,7 @@ Following TDD approach - tests written first.
 """
 from datetime import date, timedelta
 
-import pytest # type: ignore
+import pytest  # type: ignore
 from django.urls import reverse
 from rest_framework import status
 

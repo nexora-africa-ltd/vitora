@@ -22,8 +22,8 @@ from .serializers import (
     TriageCategoryCalculationSerializer,
     TriageQueueSerializer,
     TriageVitalThresholdSerializer,
-    WaitingQueueSerializer,
     WaitingQueueCreateSerializer,
+    WaitingQueueSerializer,
 )
 
 
@@ -90,7 +90,7 @@ class TriageAssessmentViewSet(viewsets.ModelViewSet):
         serializer = self.get_serializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         instance = serializer.save()
-        
+
         # Update the WaitingQueue entry for this encounter to mark as triaged
         encounter_id = instance.encounter_id
         WaitingQueue.objects.filter(
@@ -171,20 +171,20 @@ class TriageAssessmentViewSet(viewsets.ModelViewSet):
         This is important for reporting on triage duration metrics.
         """
         from django.utils import timezone
-        
+
         instance = self.get_object()
-        
+
         # Check if already completed
         if instance.triage_end_time:
             return Response(
                 {'detail': 'Triage assessment already completed.'},
                 status=status.HTTP_400_BAD_REQUEST
             )
-        
+
         # Set end time
         instance.triage_end_time = timezone.now()
         instance.save(update_fields=['triage_end_time'])
-        
+
         # Log the completion
         AuditLog.log(
             action="triage_complete",
@@ -198,7 +198,7 @@ class TriageAssessmentViewSet(viewsets.ModelViewSet):
                 "duration_seconds": (instance.triage_end_time - instance.triage_start_time).total_seconds() if instance.triage_start_time else None,
             },
         )
-        
+
         # Return updated assessment
         serializer = TriageAssessmentSerializer(instance, context={'request': request})
         return Response(serializer.data, status=status.HTTP_200_OK)
@@ -229,12 +229,12 @@ class WaitingQueueViewSet(viewsets.ModelViewSet):
     def get_queryset(self):
         """Return waiting patients by default."""
         queryset = super().get_queryset()
-        
+
         # By default, show only patients waiting for triage
         show_all = self.request.query_params.get('show_all', 'false').lower() == 'true'
         if not show_all:
             queryset = queryset.filter(status__in=["WAITING_TRIAGE", "IN_TRIAGE"])
-        
+
         return queryset
 
     def create(self, request, *args, **kwargs):

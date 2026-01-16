@@ -13,7 +13,7 @@ from __future__ import annotations
 
 from decimal import Decimal
 
-import pytest # type: ignore
+import pytest  # type: ignore
 from django.contrib.auth.models import Permission
 from django.utils import timezone
 from rest_framework import status

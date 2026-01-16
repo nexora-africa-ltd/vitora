@@ -5,8 +5,9 @@ This conftest provides common mocking for all DHA service tests,
 ensuring the auth service doesn't make real API calls.
 """
 
+from unittest.mock import Mock, patch
+
 import pytest
-from unittest.mock import Mock, MagicMock, patch, PropertyMock
 
 
 @pytest.fixture
@@ -29,57 +30,57 @@ def mock_sha_auth():
     }
     mock_instance.is_configured.return_value = True
     mock_instance.get_token.return_value = 'test-token'
-    
+
     # Patch all locations where SHAAuthService is imported
     patches = [
         patch('hmis.apps.billing.services.dha_search.SHAAuthService', return_value=mock_instance),
         patch('hmis.apps.billing.services.client_registry.SHAAuthService', return_value=mock_instance),
         patch('hmis.apps.billing.services.terminology.SHAAuthService', return_value=mock_instance),
     ]
-    
+
     for p in patches:
         p.start()
-    
+
     yield mock_instance
-    
+
     for p in patches:
         p.stop()
 
 
 class SharedMock:
     """A wrapper that syncs return_value and side_effect across multiple mocks."""
-    
+
     def __init__(self, *mocks):
         self.mocks = mocks
         self._return_value = None
         self._side_effect = None
-    
+
     @property
     def return_value(self):
         return self._return_value
-    
+
     @return_value.setter
     def return_value(self, value):
         self._return_value = value
         for mock in self.mocks:
             mock.return_value = value
-    
+
     @property
     def side_effect(self):
         return self._side_effect
-    
+
     @side_effect.setter
     def side_effect(self, value):
         self._side_effect = value
         for mock in self.mocks:
             mock.side_effect = value
-    
+
     def assert_called_once(self):
         """Check that at least one mock was called once."""
         call_count = sum(m.call_count for m in self.mocks)
         if call_count != 1:
             raise AssertionError(f"Expected exactly 1 call, got {call_count}")
-    
+
     @property
     def call_args(self):
         """Return the call args of the first mock that was called."""

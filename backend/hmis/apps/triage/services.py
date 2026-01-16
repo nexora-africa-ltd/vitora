@@ -77,23 +77,23 @@ def check_map_status(systolic: int, diastolic: int, age_years: float = 30) -> tu
     map_value = calculate_map(systolic, diastolic)
     age_group = get_age_group(age_years)
     thresholds = MAP_THRESHOLDS[age_group]
-    
+
     # Critical: MAP at or below minimum for adequate organ perfusion
     if map_value <= thresholds['critical_low']:
         return ('critical', f"CRITICAL: Hypotension - MAP {map_value} mmHg indicates inadequate blood pressure (≤{thresholds['critical_low']})")
-    
+
     # Critical: Severely elevated MAP (>120 for adults)
     if map_value >= thresholds['elevated_high'] + 15:
         return ('critical', f"CRITICAL: Hypertension - MAP {map_value} mmHg indicates severely elevated blood pressure")
-    
+
     # Warning: MAP below normal range
     if map_value < thresholds['normal_low']:
         return ('warning', f"Warning: Low blood pressure - MAP {map_value} mmHg below normal ({thresholds['normal_low']}-{thresholds['normal_high']})")
-    
+
     # Warning: MAP above normal
     if map_value > thresholds['elevated_high']:
         return ('warning', f"Warning: Elevated blood pressure - MAP {map_value} mmHg (>{thresholds['elevated_high']})")
-    
+
     return ('normal', None)
 
 

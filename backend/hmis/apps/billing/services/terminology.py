@@ -19,14 +19,12 @@ import logging
 from dataclasses import dataclass, field
 from datetime import date, datetime
 from decimal import Decimal
-from enum import Enum
-from typing import Any, List, Optional, Union
 
 import requests
 from django.conf import settings
 from django.db.models import Q
 
-from .sha_auth import SHAAuthService, SHAAuthError
+from .sha_auth import SHAAuthError, SHAAuthService
 
 logger = logging.getLogger(__name__)
 
@@ -53,17 +51,17 @@ class InterventionCode:
         effective_date: When this intervention became effective
         raw_data: Original API response
     """
-    
+
     code: str
     name: str
-    description: Optional[str] = None
-    category: Optional[str] = None
-    price: Optional[Decimal] = None
-    facility_level: Optional[int] = None
+    description: str | None = None
+    category: str | None = None
+    price: Decimal | None = None
+    facility_level: int | None = None
     is_active: bool = True
-    effective_date: Optional[date] = None
+    effective_date: date | None = None
     raw_data: dict = field(default_factory=dict)
-    
+
     @classmethod
     def from_api_response(cls, data: dict) -> 'InterventionCode':
         """Create from API response."""
@@ -71,17 +69,17 @@ class InterventionCode:
         price = data.get('price') or data.get('sha_price')
         if price is not None:
             price = Decimal(str(price))
-        
+
         # Parse facility level
         level = data.get('facility_level') or data.get('min_facility_level')
         if isinstance(level, str):
             level = int(level.replace('LEVEL ', '').strip())
-        
+
         # Parse effective date
         eff_date = data.get('effective_date')
         if isinstance(eff_date, str):
             eff_date = datetime.strptime(eff_date, '%Y-%m-%d').date()
-        
+
         return cls(
             code=data.get('code', ''),
             name=data.get('name', ''),
@@ -112,15 +110,15 @@ class ICD11Code:
         is_leaf: Whether this is a leaf node (most specific)
         raw_data: Original API response
     """
-    
+
     code: str
     title: str
-    description: Optional[str] = None
-    parent_code: Optional[str] = None
-    chapter: Optional[str] = None
+    description: str | None = None
+    parent_code: str | None = None
+    chapter: str | None = None
     is_leaf: bool = True
     raw_data: dict = field(default_factory=dict)
-    
+
     @classmethod
     def from_api_response(cls, data: dict) -> 'ICD11Code':
         """Create from API response."""
@@ -154,18 +152,18 @@ class DrugProduct:
         is_active: Registration status
         raw_data: Original API response
     """
-    
+
     product_id: str
     brand_name: str
-    generic_name: Optional[str] = None
-    manufacturer: Optional[str] = None
-    dosage_form: Optional[str] = None
-    strength: Optional[str] = None
-    registration_number: Optional[str] = None
-    active_components: List[str] = field(default_factory=list)
+    generic_name: str | None = None
+    manufacturer: str | None = None
+    dosage_form: str | None = None
+    strength: str | None = None
+    registration_number: str | None = None
+    active_components: list[str] = field(default_factory=list)
     is_active: bool = True
     raw_data: dict = field(default_factory=dict)
-    
+
     @classmethod
     def from_api_response(cls, data: dict) -> 'DrugProduct':
         """Create from API response."""
@@ -173,7 +171,7 @@ class DrugProduct:
         components = data.get('active_components', [])
         if isinstance(components, str):
             components = [c.strip() for c in components.split(',')]
-        
+
         return cls(
             product_id=data.get('product_id', '') or data.get('id', ''),
             brand_name=data.get('brand_name', '') or data.get('name', ''),
@@ -202,13 +200,13 @@ class ActiveComponent:
         description: Description
         raw_data: Original API response
     """
-    
+
     component_id: str
     name: str
-    atc_code: Optional[str] = None
-    description: Optional[str] = None
+    atc_code: str | None = None
+    description: str | None = None
     raw_data: dict = field(default_factory=dict)
-    
+
     @classmethod
     def from_api_response(cls, data: dict) -> 'ActiveComponent':
         """Create from API response."""
@@ -244,19 +242,19 @@ class RemoteLOINCCode:
         status: Active, deprecated, etc.
         raw_data: Original API response
     """
-    
+
     loinc_num: str
     component: str
-    property: Optional[str] = None
-    time_aspect: Optional[str] = None
-    system: Optional[str] = None
-    scale_type: Optional[str] = None
-    method_type: Optional[str] = None
-    long_common_name: Optional[str] = None
-    short_name: Optional[str] = None
+    property: str | None = None
+    time_aspect: str | None = None
+    system: str | None = None
+    scale_type: str | None = None
+    method_type: str | None = None
+    long_common_name: str | None = None
+    short_name: str | None = None
     status: str = 'ACTIVE'
     raw_data: dict = field(default_factory=dict)
-    
+
     @classmethod
     def from_api_response(cls, data: dict) -> 'RemoteLOINCCode':
         """Create from API response."""
@@ -292,15 +290,15 @@ class ICHICode:
         means: Means of intervention
         raw_data: Original API response
     """
-    
+
     code: str
     title: str
-    definition: Optional[str] = None
-    target: Optional[str] = None
-    action: Optional[str] = None
-    means: Optional[str] = None
+    definition: str | None = None
+    target: str | None = None
+    action: str | None = None
+    means: str | None = None
     raw_data: dict = field(default_factory=dict)
-    
+
     @classmethod
     def from_api_response(cls, data: dict) -> 'ICHICode':
         """Create from API response."""
@@ -328,18 +326,18 @@ class TerminologyError(Exception):
         status_code: HTTP status code if applicable
         terminology_type: Which terminology system failed
     """
-    
+
     def __init__(
         self,
         message: str,
         status_code: int = 0,
-        terminology_type: Optional[str] = None,
+        terminology_type: str | None = None,
     ):
         self.message = message
         self.status_code = status_code
         self.terminology_type = terminology_type
         super().__init__(message)
-    
+
     def __str__(self):
         parts = ["TerminologyError"]
         if self.terminology_type:
@@ -352,7 +350,7 @@ class TerminologyError(Exception):
 
 class CodeNotFoundError(TerminologyError):
     """Raised when a terminology code is not found."""
-    
+
     def __init__(self, code: str, terminology: str):
         self.code = code
         super().__init__(
@@ -399,7 +397,7 @@ class TerminologyService:
         >>> for i in interventions:
         ...     print(f"{i.code}: {i.name} - KES {i.price}")
     """
-    
+
     def __init__(self, use_local_fallback: bool = True):
         """
         Initialize TerminologyService.
@@ -410,7 +408,7 @@ class TerminologyService:
         self.api_base_url = settings.SHA_API_BASE_URL.rstrip('/')
         self.timeout = getattr(settings, 'SHA_API_TIMEOUT', 30)
         self.use_local_fallback = use_local_fallback
-        
+
         # Get endpoint paths from settings (Official Kenya Digital Superhighway paths)
         # Reference: Kenya Digital Superhighway.postman_collection.json
         endpoints = getattr(settings, 'SHA_ENDPOINTS', {})
@@ -420,21 +418,21 @@ class TerminologyService:
         self.components_endpoint = endpoints.get('active_components', '/terminology/v1/active-component')
         self.loinc_endpoint = endpoints.get('loinc', '/terminology/v1/loinc')
         self.ichi_endpoint = endpoints.get('ichi', '/terminology/v1/ichi')
-        
+
         # Initialize auth service
         self.auth_service = SHAAuthService()
-    
+
     # =========================================================================
     # SHA Interventions
     # =========================================================================
-    
+
     def search_interventions(
         self,
         query: str,
-        facility_level: Optional[int] = None,
-        category: Optional[str] = None,
+        facility_level: int | None = None,
+        category: str | None = None,
         limit: int = 50,
-    ) -> List[InterventionCode]:
+    ) -> list[InterventionCode]:
         """
         Search SHA interventions catalog.
         
@@ -457,7 +455,7 @@ class TerminologyService:
             >>> print(f"Found {len(results)} interventions")
         """
         logger.info(f"Searching SHA interventions: query='{query}'")
-        
+
         params = {
             'search': query,
             'limit': limit,
@@ -466,35 +464,35 @@ class TerminologyService:
             params['facility_level'] = facility_level
         if category:
             params['category'] = category
-        
+
         try:
             headers = self.auth_service.get_terminology_headers()
-            
+
             response = requests.get(
                 f"{self.api_base_url}{self.interventions_endpoint}",
                 params=params,
                 headers=headers,
                 timeout=self.timeout,
             )
-            
+
             if response.status_code == 401:
                 raise TerminologyError(
                     "Authentication failed",
                     status_code=401,
                     terminology_type="SHA_INTERVENTIONS",
                 )
-            
+
             response.raise_for_status()
-            
+
             data = response.json()
-            
+
             # Handle response format
             results = data.get('interventions') or data.get('results') or data.get('data') or []
             if isinstance(results, dict):
                 results = [results]
-            
+
             return [InterventionCode.from_api_response(r) for r in results]
-            
+
         except SHAAuthError as e:
             raise TerminologyError(
                 f"Authentication error: {str(e)}",
@@ -511,7 +509,7 @@ class TerminologyService:
                 f"Request failed: {str(e)}",
                 terminology_type="SHA_INTERVENTIONS",
             )
-    
+
     def get_intervention(self, code: str) -> InterventionCode:
         """
         Get a specific SHA intervention by code.
@@ -527,36 +525,36 @@ class TerminologyService:
             TerminologyError: If request fails
         """
         logger.info(f"Fetching SHA intervention: {code}")
-        
+
         try:
             headers = self.auth_service.get_terminology_headers()
-            
+
             response = requests.get(
                 f"{self.api_base_url}{self.interventions_endpoint}/{code}",
                 headers=headers,
                 timeout=self.timeout,
             )
-            
+
             if response.status_code == 404:
                 raise CodeNotFoundError(code, "SHA_INTERVENTIONS")
-            
+
             response.raise_for_status()
-            
+
             data = response.json()
             intervention_data = data.get('intervention') or data
-            
+
             return InterventionCode.from_api_response(intervention_data)
-            
+
         except (SHAAuthError, requests.RequestException) as e:
             raise TerminologyError(
                 f"Failed to fetch intervention: {str(e)}",
                 terminology_type="SHA_INTERVENTIONS",
             )
-    
+
     def get_interventions_for_facility_level(
         self,
         facility_level: int,
-    ) -> List[InterventionCode]:
+    ) -> list[InterventionCode]:
         """
         Get all interventions available at a facility level.
         
@@ -571,17 +569,17 @@ class TerminologyService:
             facility_level=facility_level,
             limit=1000,
         )
-    
+
     # =========================================================================
     # ICD-11
     # =========================================================================
-    
+
     def search_icd11(
         self,
         query: str,
-        chapter: Optional[str] = None,
+        chapter: str | None = None,
         limit: int = 50,
-    ) -> List[ICD11Code]:
+    ) -> list[ICD11Code]:
         """
         Search ICD-11 disease codes.
         
@@ -597,38 +595,38 @@ class TerminologyService:
             TerminologyError: If search fails
         """
         logger.info(f"Searching ICD-11: query='{query}'")
-        
+
         params = {
             'search': query,
             'limit': limit,
         }
         if chapter:
             params['chapter'] = chapter
-        
+
         try:
             headers = self.auth_service.get_terminology_headers()
-            
+
             response = requests.get(
                 f"{self.api_base_url}{self.icd11_endpoint}",
                 params=params,
                 headers=headers,
                 timeout=self.timeout,
             )
-            
+
             if response.status_code == 401:
                 raise TerminologyError(
                     "Authentication failed",
                     status_code=401,
                     terminology_type="ICD11",
                 )
-            
+
             response.raise_for_status()
-            
+
             data = response.json()
             results = data.get('codes') or data.get('results') or data.get('data') or []
-            
+
             return [ICD11Code.from_api_response(r) for r in results]
-            
+
         except SHAAuthError as e:
             raise TerminologyError(
                 f"Authentication error: {str(e)}",
@@ -640,7 +638,7 @@ class TerminologyService:
                 f"Request failed: {str(e)}",
                 terminology_type="ICD11",
             )
-    
+
     def get_icd11(self, code: str) -> ICD11Code:
         """
         Get a specific ICD-11 code.
@@ -655,41 +653,41 @@ class TerminologyService:
             CodeNotFoundError: If code not found
         """
         logger.info(f"Fetching ICD-11 code: {code}")
-        
+
         try:
             headers = self.auth_service.get_terminology_headers()
-            
+
             response = requests.get(
                 f"{self.api_base_url}{self.icd11_endpoint}/{code}",
                 headers=headers,
                 timeout=self.timeout,
             )
-            
+
             if response.status_code == 404:
                 raise CodeNotFoundError(code, "ICD11")
-            
+
             response.raise_for_status()
-            
+
             data = response.json()
             code_data = data.get('code') or data
-            
+
             return ICD11Code.from_api_response(code_data)
-            
+
         except (SHAAuthError, requests.RequestException) as e:
             raise TerminologyError(
                 f"Failed to fetch ICD-11 code: {str(e)}",
                 terminology_type="ICD11",
             )
-    
+
     # =========================================================================
     # Drug Products
     # =========================================================================
-    
+
     def search_drug_products(
         self,
         query: str,
         limit: int = 50,
-    ) -> List[DrugProduct]:
+    ) -> list[DrugProduct]:
         """
         Search drug products catalog.
         
@@ -701,35 +699,35 @@ class TerminologyService:
             List of matching DrugProduct objects
         """
         logger.info(f"Searching drug products: query='{query}'")
-        
+
         params = {
             'search': query,
             'limit': limit,
         }
-        
+
         try:
             headers = self.auth_service.get_terminology_headers()
-            
+
             response = requests.get(
                 f"{self.api_base_url}{self.products_endpoint}",
                 params=params,
                 headers=headers,
                 timeout=self.timeout,
             )
-            
+
             response.raise_for_status()
-            
+
             data = response.json()
             results = data.get('products') or data.get('results') or data.get('data') or []
-            
+
             return [DrugProduct.from_api_response(r) for r in results]
-            
+
         except (SHAAuthError, requests.RequestException) as e:
             raise TerminologyError(
                 f"Failed to search drug products: {str(e)}",
                 terminology_type="DRUG_PRODUCTS",
             )
-    
+
     def get_drug_product(self, product_id: str) -> DrugProduct:
         """
         Get a specific drug product by ID.
@@ -744,41 +742,41 @@ class TerminologyService:
             CodeNotFoundError: If product not found
         """
         logger.info(f"Fetching drug product: {product_id}")
-        
+
         try:
             headers = self.auth_service.get_terminology_headers()
-            
+
             response = requests.get(
                 f"{self.api_base_url}{self.products_endpoint}/{product_id}",
                 headers=headers,
                 timeout=self.timeout,
             )
-            
+
             if response.status_code == 404:
                 raise CodeNotFoundError(product_id, "DRUG_PRODUCTS")
-            
+
             response.raise_for_status()
-            
+
             data = response.json()
             product_data = data.get('product') or data
-            
+
             return DrugProduct.from_api_response(product_data)
-            
+
         except (SHAAuthError, requests.RequestException) as e:
             raise TerminologyError(
                 f"Failed to fetch drug product: {str(e)}",
                 terminology_type="DRUG_PRODUCTS",
             )
-    
+
     # =========================================================================
     # Active Components
     # =========================================================================
-    
+
     def search_active_components(
         self,
         query: str,
         limit: int = 50,
-    ) -> List[ActiveComponent]:
+    ) -> list[ActiveComponent]:
         """
         Search active pharmaceutical components.
         
@@ -790,44 +788,44 @@ class TerminologyService:
             List of matching ActiveComponent objects
         """
         logger.info(f"Searching active components: query='{query}'")
-        
+
         params = {
             'search': query,
             'limit': limit,
         }
-        
+
         try:
             headers = self.auth_service.get_terminology_headers()
-            
+
             response = requests.get(
                 f"{self.api_base_url}{self.components_endpoint}",
                 params=params,
                 headers=headers,
                 timeout=self.timeout,
             )
-            
+
             response.raise_for_status()
-            
+
             data = response.json()
             results = data.get('components') or data.get('results') or data.get('data') or []
-            
+
             return [ActiveComponent.from_api_response(r) for r in results]
-            
+
         except (SHAAuthError, requests.RequestException) as e:
             raise TerminologyError(
                 f"Failed to search active components: {str(e)}",
                 terminology_type="ACTIVE_COMPONENTS",
             )
-    
+
     # =========================================================================
     # LOINC (with local fallback)
     # =========================================================================
-    
+
     def search_loinc(
         self,
         query: str,
         limit: int = 50,
-    ) -> List[RemoteLOINCCode]:
+    ) -> list[RemoteLOINCCode]:
         """
         Search LOINC lab observation codes.
         
@@ -841,7 +839,7 @@ class TerminologyService:
             List of RemoteLOINCCode objects
         """
         logger.info(f"Searching LOINC codes: query='{query}'")
-        
+
         # Try remote API first
         try:
             return self._search_loinc_remote(query, limit)
@@ -850,56 +848,56 @@ class TerminologyService:
                 logger.warning("Remote LOINC search failed, using local fallback")
                 return self._search_loinc_local(query, limit)
             raise
-    
+
     def _search_loinc_remote(
         self,
         query: str,
         limit: int,
-    ) -> List[RemoteLOINCCode]:
+    ) -> list[RemoteLOINCCode]:
         """Search LOINC via remote API."""
         params = {
             'search': query,
             'limit': limit,
         }
-        
+
         headers = self.auth_service.get_terminology_headers()
-        
+
         response = requests.get(
             f"{self.api_base_url}{self.loinc_endpoint}",
             params=params,
             headers=headers,
             timeout=self.timeout,
         )
-        
+
         if response.status_code == 401:
             raise TerminologyError(
                 "Authentication failed",
                 status_code=401,
                 terminology_type="LOINC",
             )
-        
+
         response.raise_for_status()
-        
+
         data = response.json()
         results = data.get('codes') or data.get('results') or data.get('data') or []
-        
+
         return [RemoteLOINCCode.from_api_response(r) for r in results]
-    
+
     def _search_loinc_local(
         self,
         query: str,
         limit: int,
-    ) -> List[RemoteLOINCCode]:
+    ) -> list[RemoteLOINCCode]:
         """Search LOINC in local database fallback."""
         try:
             from hmis.apps.lab.models import LOINCCode
-            
+
             local_codes = LOINCCode.objects.filter(
                 Q(loinc_num__icontains=query) |
                 Q(component__icontains=query) |
                 Q(long_common_name__icontains=query)
             )[:limit]
-            
+
             return [
                 RemoteLOINCCode(
                     loinc_num=c.loinc_num,
@@ -918,7 +916,7 @@ class TerminologyService:
         except Exception as e:
             logger.error(f"Local LOINC fallback failed: {e}")
             return []
-    
+
     def get_loinc(self, loinc_num: str) -> RemoteLOINCCode:
         """
         Get a specific LOINC code.
@@ -933,27 +931,27 @@ class TerminologyService:
             CodeNotFoundError: If code not found
         """
         logger.info(f"Fetching LOINC code: {loinc_num}")
-        
+
         # Try remote first
         try:
             headers = self.auth_service.get_terminology_headers()
-            
+
             response = requests.get(
                 f"{self.api_base_url}{self.loinc_endpoint}/{loinc_num}",
                 headers=headers,
                 timeout=self.timeout,
             )
-            
+
             if response.status_code == 404:
                 raise CodeNotFoundError(loinc_num, "LOINC")
-            
+
             response.raise_for_status()
-            
+
             data = response.json()
             code_data = data.get('code') or data
-            
+
             return RemoteLOINCCode.from_api_response(code_data)
-            
+
         except CodeNotFoundError:
             if self.use_local_fallback:
                 return self._get_loinc_local(loinc_num)
@@ -965,12 +963,12 @@ class TerminologyService:
                 f"Failed to fetch LOINC code: {loinc_num}",
                 terminology_type="LOINC",
             )
-    
+
     def _get_loinc_local(self, loinc_num: str) -> RemoteLOINCCode:
         """Get LOINC from local database."""
         try:
             from hmis.apps.lab.models import LOINCCode
-            
+
             c = LOINCCode.objects.get(loinc_num=loinc_num)
             return RemoteLOINCCode(
                 loinc_num=c.loinc_num,
@@ -986,16 +984,16 @@ class TerminologyService:
             )
         except Exception:
             raise CodeNotFoundError(loinc_num, "LOINC")
-    
+
     # =========================================================================
     # ICHI
     # =========================================================================
-    
+
     def search_ichi(
         self,
         query: str,
         limit: int = 50,
-    ) -> List[ICHICode]:
+    ) -> list[ICHICode]:
         """
         Search ICHI intervention codes.
         
@@ -1007,35 +1005,35 @@ class TerminologyService:
             List of matching ICHICode objects
         """
         logger.info(f"Searching ICHI codes: query='{query}'")
-        
+
         params = {
             'search': query,
             'limit': limit,
         }
-        
+
         try:
             headers = self.auth_service.get_terminology_headers()
-            
+
             response = requests.get(
                 f"{self.api_base_url}{self.ichi_endpoint}",
                 params=params,
                 headers=headers,
                 timeout=self.timeout,
             )
-            
+
             response.raise_for_status()
-            
+
             data = response.json()
             results = data.get('codes') or data.get('results') or data.get('data') or []
-            
+
             return [ICHICode.from_api_response(r) for r in results]
-            
+
         except (SHAAuthError, requests.RequestException) as e:
             raise TerminologyError(
                 f"Failed to search ICHI codes: {str(e)}",
                 terminology_type="ICHI",
             )
-    
+
     def get_ichi(self, code: str) -> ICHICode:
         """
         Get a specific ICHI code.
@@ -1050,36 +1048,36 @@ class TerminologyService:
             CodeNotFoundError: If code not found
         """
         logger.info(f"Fetching ICHI code: {code}")
-        
+
         try:
             headers = self.auth_service.get_terminology_headers()
-            
+
             response = requests.get(
                 f"{self.api_base_url}{self.ichi_endpoint}/{code}",
                 headers=headers,
                 timeout=self.timeout,
             )
-            
+
             if response.status_code == 404:
                 raise CodeNotFoundError(code, "ICHI")
-            
+
             response.raise_for_status()
-            
+
             data = response.json()
             code_data = data.get('code') or data
-            
+
             return ICHICode.from_api_response(code_data)
-            
+
         except (SHAAuthError, requests.RequestException) as e:
             raise TerminologyError(
                 f"Failed to fetch ICHI code: {str(e)}",
                 terminology_type="ICHI",
             )
-    
+
     # =========================================================================
     # Utility Methods
     # =========================================================================
-    
+
     def is_configured(self) -> bool:
         """
         Check if Terminology service is properly configured.
@@ -1091,12 +1089,12 @@ class TerminologyService:
             self.api_base_url and
             self.auth_service.is_configured()
         )
-    
+
     def validate_intervention_for_facility(
         self,
         intervention_code: str,
         facility_level: int,
-    ) -> tuple[bool, Optional[str]]:
+    ) -> tuple[bool, str | None]:
         """
         Validate an intervention is available at facility level.
         
@@ -1109,18 +1107,18 @@ class TerminologyService:
         """
         try:
             intervention = self.get_intervention(intervention_code)
-            
+
             if not intervention.is_active:
                 return False, f"Intervention {intervention_code} is not active"
-            
+
             if intervention.facility_level and facility_level < intervention.facility_level:
                 return False, (
                     f"Intervention {intervention_code} requires minimum "
                     f"Level {intervention.facility_level} facility"
                 )
-            
+
             return True, None
-            
+
         except CodeNotFoundError:
             return False, f"Intervention {intervention_code} not found"
         except TerminologyError as e:

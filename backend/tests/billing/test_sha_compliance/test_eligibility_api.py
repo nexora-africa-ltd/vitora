@@ -13,7 +13,7 @@ Key Requirements:
     - Correct interpretation of eligible field (1=eligible, 0=not eligible)
 """
 
-import pytest # type: ignore
+import pytest  # type: ignore
 
 # Try to import the service - may fail if not fully implemented
 try:
@@ -23,7 +23,7 @@ except ImportError:
     HAS_ELIGIBILITY_SERVICE = False
 
 try:
-    from hmis.apps.billing.models import SHAMember, SHAEligibilityCheck
+    from hmis.apps.billing.models import SHAEligibilityCheck, SHAMember
     HAS_SHA_MODELS = True
 except ImportError:
     HAS_SHA_MODELS = False
@@ -31,7 +31,7 @@ except ImportError:
 
 class TestEligibilityEndpointCompliance:
     """Tests for eligibility API endpoint compliance."""
-    
+
     @pytest.mark.skipif(not HAS_ELIGIBILITY_SERVICE, reason="SHAEligibilityService not available")
     def test_uses_correct_endpoint(self):
         """
@@ -41,16 +41,16 @@ class TestEligibilityEndpointCompliance:
         Quote: 'GET {{base_url}}/v2/eligibility'
         """
         service = SHAEligibilityService()
-        
+
         expected_endpoint = '/v2/eligibility'
         actual_endpoint = service.eligibility_endpoint
-        
+
         assert expected_endpoint in actual_endpoint or actual_endpoint == expected_endpoint, (
             f"Eligibility endpoint should be '{expected_endpoint}', "
             f"got '{actual_endpoint}'. "
             "See docs/sha-guides/eligibility.md - API Specification"
         )
-    
+
     @pytest.mark.skipif(not HAS_ELIGIBILITY_SERVICE, reason="SHAEligibilityService not available")
     def test_service_has_auth_service(self):
         """
@@ -60,7 +60,7 @@ class TestEligibilityEndpointCompliance:
         Quote: 'Authorization Header: Bearer {{token}}'
         """
         service = SHAEligibilityService()
-        
+
         assert hasattr(service, 'auth_service'), (
             "SHAEligibilityService must have auth_service for Bearer token auth. "
             "See docs/sha-guides/eligibility.md - Authentication"
@@ -69,7 +69,7 @@ class TestEligibilityEndpointCompliance:
 
 class TestEligibilityRequestParameters:
     """Tests for eligibility request parameter compliance."""
-    
+
     def test_supported_identification_types_documented(self):
         """
         SHA Requirement: System must support all identification types.
@@ -85,17 +85,17 @@ class TestEligibilityRequestParameters:
         """
         supported_types = [
             'National ID',
-            'Alien ID', 
+            'Alien ID',
             'Mandate Number',
             'Temporary ID',
             'SHA Number',
             'Refugee ID',
         ]
-        
+
         assert len(supported_types) >= 6, (
             "System should support at least 6 identification types"
         )
-    
+
     @pytest.mark.skipif(not HAS_ELIGIBILITY_SERVICE, reason="SHAEligibilityService not available")
     @pytest.mark.skipif(not HAS_SHA_MODELS, reason="SHA models not available")
     def test_request_builder_uses_sha_number(self, sha_member):
@@ -103,28 +103,28 @@ class TestEligibilityRequestParameters:
         SHA Requirement: Request should prefer SHA number if available.
         """
         service = SHAEligibilityService()
-        
+
         # Set SHA number on member
         sha_member.sha_number = 'SHA-12345678901234-5'
         sha_member.save()
-        
+
         request_params = service._build_request(sha_member)
-        
+
         # Should use sha_number as identifier
         assert 'doc_type' in request_params or 'identification_type' in request_params, (
             "Request must have identification type parameter"
         )
-    
-    @pytest.mark.skipif(not HAS_ELIGIBILITY_SERVICE, reason="SHAEligibilityService not available") 
+
+    @pytest.mark.skipif(not HAS_ELIGIBILITY_SERVICE, reason="SHAEligibilityService not available")
     @pytest.mark.skipif(not HAS_SHA_MODELS, reason="SHA models not available")
     def test_request_builder_falls_back_to_national_id(self, sha_member_no_sha_number):
         """
         SHA Requirement: Fall back to National ID if SHA number not available.
         """
         service = SHAEligibilityService()
-        
+
         request_params = service._build_request(sha_member_no_sha_number)
-        
+
         # Should fall back to national_id
         doc_type = request_params.get('doc_type', request_params.get('identification_type', ''))
         assert 'national_id' in doc_type.lower() or doc_type == 'national_id', (
@@ -134,7 +134,7 @@ class TestEligibilityRequestParameters:
 
 class TestEligibilityResponseHandling:
     """Tests for eligibility response field handling."""
-    
+
     def test_response_fields_documented(self):
         """
         SHA Requirement: System must handle all response fields.
@@ -158,12 +158,12 @@ class TestEligibilityResponseHandling:
             'message',
             'coverageEndDate',
         ]
-        
+
         # These are the fields we must be able to process
         assert len(required_response_fields) >= 6, (
             "Must handle at least 6 key response fields"
         )
-    
+
     def test_eligible_field_interpretation(self):
         """
         SHA Requirement: Correctly interpret 'eligible' field values.
@@ -173,17 +173,17 @@ class TestEligibilityResponseHandling:
         """
         # Value 1 = eligible
         assert 1 == 1, "eligible=1 means patient is eligible"
-        
+
         # Value 0 = not eligible
         assert 0 == 0, "eligible=0 means patient is not eligible"
-        
+
         # Boolean interpretation
         eligible_1 = bool(1)  # True
         eligible_0 = bool(0)  # False
-        
+
         assert eligible_1 == True
         assert eligible_0 == False
-    
+
     @pytest.mark.skipif(not HAS_SHA_MODELS, reason="SHA models not available")
     def test_eligibility_check_model_stores_required_fields(self):
         """
@@ -201,20 +201,20 @@ class TestEligibilityResponseHandling:
             'response_data',     # Full API response stored as JSON
             'ineligibility_reason',  # Reason for ineligibility if applicable
         ]
-        
+
         missing_fields = []
         for field in required_fields:
             try:
                 SHAEligibilityCheck._meta.get_field(field)
             except Exception:
                 missing_fields.append(field)
-        
+
         assert not missing_fields, f"Missing required fields: {missing_fields}"
 
 
 class TestEligibilityErrorHandling:
     """Tests for eligibility API error handling."""
-    
+
     def test_http_status_codes_documented(self):
         """
         SHA Requirement: Handle all possible HTTP status codes.
@@ -235,32 +235,32 @@ class TestEligibilityErrorHandling:
             404: 'Individual not found in the system',
             500: 'Internal server error',
         }
-        
+
         assert 200 in expected_codes, "Must handle 200 success"
         assert 401 in expected_codes, "Must handle 401 authentication errors"
         assert 404 in expected_codes, "Must handle 404 not found"
-    
+
     @pytest.mark.skipif(not HAS_ELIGIBILITY_SERVICE, reason="SHAEligibilityService not available")
     def test_service_has_retry_logic(self):
         """
         Best practice: Service should have retry logic for transient failures.
         """
         service = SHAEligibilityService()
-        
+
         assert hasattr(service, 'max_retries'), (
             "Service should have max_retries for resilience"
         )
         assert service.max_retries >= 1, (
             "Should retry at least once on failure"
         )
-    
+
     @pytest.mark.skipif(not HAS_ELIGIBILITY_SERVICE, reason="SHAEligibilityService not available")
     def test_service_has_timeout(self):
         """
         Best practice: Service should have request timeout.
         """
         service = SHAEligibilityService()
-        
+
         assert hasattr(service, 'timeout'), (
             "Service should have timeout configuration"
         )
@@ -270,7 +270,7 @@ class TestEligibilityErrorHandling:
 
 class TestEligibilityWorkflow:
     """Tests for eligibility check workflow compliance."""
-    
+
     def test_workflow_documented(self):
         """
         SHA Requirement: Follow correct eligibility workflow.
@@ -291,9 +291,9 @@ class TestEligibilityWorkflow:
             'System calls Eligibility API',
             'Route based on eligibility result',
         ]
-        
+
         assert len(workflow_steps) == 4, "Workflow has 4 main steps"
-    
+
     def test_possible_solution_usage(self):
         """
         SHA Requirement: Use possible_solution field for eligibility issues.
@@ -307,7 +307,7 @@ class TestEligibilityWorkflow:
             "Employer to submit by-product for Eligibility processing",
             "Patient to register for SHA coverage",
         ]
-        
+
         # System should display/log these solutions when eligibility fails
         assert True, (
             "COMPLIANCE NOTE: When eligibility check returns eligible=0, "
@@ -318,7 +318,7 @@ class TestEligibilityWorkflow:
 
 class TestEligibilityUseCases:
     """Tests for eligibility use case coverage."""
-    
+
     def test_primary_use_cases_documented(self):
         """
         SHA Requirement: Support all primary eligibility use cases.
@@ -337,9 +337,9 @@ class TestEligibilityUseCases:
             'claims_submission',
             'emergency_services',
         ]
-        
+
         assert len(use_cases) == 4, "Should support 4 primary use cases"
-    
+
     def test_claims_prereq_eligibility_check(self):
         """
         SHA Requirement: Validate eligibility before claim submission.

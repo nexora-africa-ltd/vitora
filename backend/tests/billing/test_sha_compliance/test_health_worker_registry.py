@@ -11,7 +11,7 @@ Key Requirements:
     - Valid practitioner lookup before claims
 """
 
-import pytest # type: ignore
+import pytest  # type: ignore
 
 # Try to import models
 try:
@@ -23,7 +23,7 @@ except ImportError:
 
 class TestPractitionerIdentifiers:
     """Tests for practitioner identifier requirements."""
-    
+
     def test_supported_identifier_types(self):
         """
         SHA Requirement: Support practitioner identification types.
@@ -42,11 +42,11 @@ class TestPractitionerIdentifiers:
             'Registration Number',
             'PUID',
         ]
-        
+
         assert len(identifier_types) >= 4, (
             "Support at least 4 practitioner identifier types"
         )
-    
+
     def test_puid_format_understanding(self):
         """
         SHA Requirement: Understand PUID format.
@@ -55,7 +55,7 @@ class TestPractitionerIdentifiers:
         Example: 'PUID-0002532-1'
         """
         example_puid = 'PUID-0002532-1'
-        
+
         assert example_puid.startswith('PUID-'), (
             "PUID format starts with 'PUID-'"
         )
@@ -63,7 +63,7 @@ class TestPractitionerIdentifiers:
 
 class TestPractitionerSearchAPI:
     """Tests for practitioner search API compliance."""
-    
+
     def test_search_endpoint_documented(self):
         """
         SHA Requirement: Know practitioner search endpoint.
@@ -73,13 +73,13 @@ class TestPractitionerSearchAPI:
         Endpoint: GET /v1/practitioner-search?identification_type={type}&identification_number={number}
         """
         expected_endpoint = '/v1/practitioner-search'
-        
+
         # Document the endpoint
         assert True, (
             f"Practitioner search endpoint: {expected_endpoint}. "
             "Use to verify practitioner before including in claims."
         )
-    
+
     def test_search_request_parameters(self):
         """
         SHA Requirement: Include required parameters.
@@ -94,9 +94,9 @@ class TestPractitionerSearchAPI:
             'identification_type',
             'identification_number',
         ]
-        
+
         assert len(required_params) == 2, "2 required parameters"
-    
+
     def test_search_response_fields(self):
         """
         SHA Requirement: Handle response fields.
@@ -113,13 +113,13 @@ class TestPractitionerSearchAPI:
             'found',
             'is_active',
         ]
-        
+
         assert len(response_fields) >= 3, "Handle at least 3 response fields"
 
 
 class TestPractitionerInFHIRBundle:
     """Tests for Practitioner resource in FHIR bundles."""
-    
+
     def test_practitioner_resource_documented(self):
         """
         SHA Requirement: Practitioner resource in claims.
@@ -133,7 +133,7 @@ class TestPractitionerInFHIRBundle:
             "COMPLIANCE NOTE: Include Practitioner resource in claims. "
             "This identifies the healthcare worker who provided/requested the service."
         )
-    
+
     @pytest.mark.skipif(not HAS_SHA_CLAIMS_SERVICE, reason="SHAClaimsService not available")
     def test_claim_has_care_team_with_practitioner(self, sha_claim_with_items):
         """
@@ -144,22 +144,22 @@ class TestPractitionerInFHIRBundle:
         """
         service = SHAClaimsService()
         bundle = service.package_claim(sha_claim_with_items)
-        
+
         claim = self._get_resource_by_type(bundle, 'Claim')
         if claim is None:
             pytest.skip("Claim resource not found")
-        
+
         care_team = claim.get('careTeam', [])
-        
+
         # CareTeam is expected for claims
         if not care_team:
             pytest.skip("CareTeam not included - consider adding")
-        
+
         for member in care_team:
             assert 'provider' in member, (
                 "CareTeam member must have provider reference"
             )
-    
+
     def test_practitioner_resource_structure(self):
         """
         SHA Requirement: Practitioner resource structure.
@@ -180,9 +180,9 @@ class TestPractitionerInFHIRBundle:
             'identifier',
             'active',
         ]
-        
+
         assert len(required_fields) >= 5, "Practitioner needs 5+ fields"
-    
+
     def _get_resource_by_type(self, bundle: dict, resource_type: str) -> dict | None:
         """Helper to extract a resource by type from bundle."""
         for entry in bundle.get('entry', []):
@@ -193,7 +193,7 @@ class TestPractitionerInFHIRBundle:
 
 class TestHWRRoleAndFunctions:
     """Tests for understanding HWR role in HIE."""
-    
+
     def test_hwr_purposes_documented(self):
         """
         SHA Reference: Understand Health Worker Registry purposes.
@@ -214,9 +214,9 @@ class TestHWRRoleAndFunctions:
             'interoperability',
             'licensing_credentialing',
         ]
-        
+
         assert len(hwr_functions) >= 5, "HWR serves 5+ key functions"
-    
+
     def test_practitioner_data_elements(self):
         """
         SHA Reference: Core practitioner data elements.
@@ -237,13 +237,13 @@ class TestHWRRoleAndFunctions:
             'education',
             'licensing',
         ]
-        
+
         assert len(data_elements) == 5, "5 core data element categories"
 
 
 class TestPractitionerValidation:
     """Tests for practitioner validation workflow."""
-    
+
     def test_validate_practitioner_before_claim(self):
         """
         SHA Best Practice: Validate practitioner exists in HWR before claim.
@@ -255,7 +255,7 @@ class TestPractitionerValidation:
             "BEST PRACTICE: Verify practitioner is registered and active "
             "in HWR before including in claims. Use practitioner-search API."
         )
-    
+
     def test_license_status_check(self):
         """
         SHA Consideration: Check practitioner license status.

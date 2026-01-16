@@ -16,7 +16,6 @@ from hmis.apps.pharmacy.models import (
     Dispensing,
     Drug,
     Prescription,
-    PrescriptionItem,
     StockAdjustment,
     StockAlert,
     StockBatch,
@@ -603,42 +602,42 @@ class AlertSettingsView(APIView):
     GET - Retrieve current alert settings
     PUT/PATCH - Update alert settings
     """
-    
+
     permission_classes = [IsAuthenticated]
-    
+
     def get(self, request):
         """Get current alert settings."""
         from hmis.apps.pharmacy.models import AlertSettings
         from hmis.apps.pharmacy.serializers import AlertSettingsSerializer
-        
+
         settings = AlertSettings.get_settings()
         serializer = AlertSettingsSerializer(settings)
         return Response(serializer.data)
-    
+
     def put(self, request):
         """Update alert settings (full update)."""
         return self._update(request, partial=False)
-    
+
     def patch(self, request):
         """Update alert settings (partial update)."""
         return self._update(request, partial=True)
-    
+
     def _update(self, request, partial=False):
         """Internal method to handle updates."""
         from hmis.apps.pharmacy.models import AlertSettings
         from hmis.apps.pharmacy.serializers import AlertSettingsSerializer
-        
+
         settings = AlertSettings.get_settings()
         serializer = AlertSettingsSerializer(
             settings,
             data=request.data,
             partial=partial
         )
-        
+
         if serializer.is_valid():
             serializer.save(updated_by=request.user)
             return Response(serializer.data)
-        
+
         return Response(
             serializer.errors,
             status=status.HTTP_400_BAD_REQUEST

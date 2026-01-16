@@ -7,7 +7,7 @@ Total: 12 tests as specified.
 
 from decimal import Decimal
 
-import pytest # type: ignore
+import pytest  # type: ignore
 from django.core.exceptions import ValidationError
 
 from hmis.apps.billing.models import InvoiceItem

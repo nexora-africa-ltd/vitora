@@ -19,14 +19,10 @@ Test Coverage (10 tests):
 """
 
 from datetime import date, timedelta
-from decimal import Decimal
-from io import BytesIO
-from unittest.mock import MagicMock, patch
 
-import pytest # type: ignore
+import pytest  # type: ignore
 from django.core.exceptions import ValidationError
 from django.core.files.uploadedfile import SimpleUploadedFile
-
 
 # =============================================================================
 # Fixtures specific to SHAClaimAttachment tests
@@ -278,7 +274,7 @@ class TestSHAClaimAttachmentModel:
         valid_attachment_data['checksum'] = checksum
 
         attachment = SHAClaimAttachment.objects.create(**valid_attachment_data)
-        
+
         retrieved = SHAClaimAttachment.objects.get(pk=attachment.pk)
         assert retrieved.checksum == checksum
 
@@ -390,7 +386,7 @@ class TestSHAClaimAttachmentRelationships:
 
         # Create multiple attachments
         attachment1 = SHAClaimAttachment.objects.create(**valid_attachment_data)
-        
+
         valid_attachment_data['attachment_type'] = 'invoice'
         valid_attachment_data['name'] = 'Invoice'
         attachment2 = SHAClaimAttachment.objects.create(**valid_attachment_data)
@@ -459,13 +455,13 @@ class TestSHAClaimAttachmentMeta:
 
         # Create attachments with different types
         att1 = SHAClaimAttachment.objects.create(**valid_attachment_data)
-        
+
         valid_attachment_data['attachment_type'] = 'invoice'
         valid_attachment_data['name'] = 'Invoice'
         att2 = SHAClaimAttachment.objects.create(**valid_attachment_data)
 
         attachments = list(SHAClaimAttachment.objects.all())
-        
+
         # Verify ordering is applied (by claim then attachment_type)
         assert len(attachments) == 2
 

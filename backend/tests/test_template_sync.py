@@ -5,19 +5,16 @@ This module tests the bidirectional sync between clinical templates
 and existing encounter/patient data.
 """
 
-import pytest # type: ignore
-from datetime import date, datetime
 from decimal import Decimal
 
-from hmis.apps.clinical_templates.models import ClinicalTemplate
+import pytest  # type: ignore
+
 from hmis.apps.clinical_templates.services import (
-    TemplateFieldMapper,
     TemplateDataSynchronizer,
+    TemplateFieldMapper,
     TemplateSnapshotService,
 )
 from hmis.apps.encounters.models import Encounter
-from hmis.apps.patients.models import Patient
-
 
 # =============================================================================
 # Field Mapping Tests
@@ -29,7 +26,7 @@ class TestTemplateFieldMapper:
     def test_get_field_mapping_returns_known_mappings(self):
         """Should return mapping for known template field names."""
         mapper = TemplateFieldMapper()
-        
+
         # Vitals mappings
         assert mapper.get_source_field("temperature") == ("encounter", "temperature")
         assert mapper.get_source_field("pulse") == ("encounter", "pulse")
@@ -42,13 +39,13 @@ class TestTemplateFieldMapper:
     def test_get_field_mapping_returns_patient_mappings(self):
         """Should return patient field mappings."""
         mapper = TemplateFieldMapper()
-        
+
         # Patient demographics are on patient model
         assert mapper.get_source_field("mrn") == ("patient", "mrn")
         assert mapper.get_source_field("date_of_birth") == ("patient", "date_of_birth")
         assert mapper.get_source_field("gender") == ("patient", "gender")
-        
-        # Medical history is on encounter (per-visit) 
+
+        # Medical history is on encounter (per-visit)
         assert mapper.get_source_field("allergies") == ("encounter", "allergies")
         assert mapper.get_source_field("chronic_conditions") == ("encounter", "chronic_conditions")
         assert mapper.get_source_field("current_medications") == ("encounter", "current_medications")
@@ -56,7 +53,7 @@ class TestTemplateFieldMapper:
     def test_get_field_mapping_returns_none_for_unknown(self):
         """Should return None for unmapped fields."""
         mapper = TemplateFieldMapper()
-        
+
         assert mapper.get_source_field("prc_number") is None
         assert mapper.get_source_field("custom_field_xyz") is None
 
@@ -64,7 +61,7 @@ class TestTemplateFieldMapper:
         """Should return all known field mappings."""
         mapper = TemplateFieldMapper()
         mappings = mapper.get_all_mappings()
-        
+
         assert isinstance(mappings, dict)
         assert "temperature" in mappings
         assert "allergies" in mappings
@@ -73,7 +70,7 @@ class TestTemplateFieldMapper:
     def test_is_syncable_field(self):
         """Should identify fields that can sync back to encounter/patient."""
         mapper = TemplateFieldMapper()
-        
+
         assert mapper.is_syncable_field("temperature") is True
         assert mapper.is_syncable_field("pulse") is True
         assert mapper.is_syncable_field("prc_number") is False
@@ -92,12 +89,12 @@ class TestTemplateAutoPopulation:
     ):
         """Should populate template fields from encounter vitals."""
         synchronizer = TemplateDataSynchronizer()
-        
+
         populated = synchronizer.populate_from_encounter(
             template=sample_template_with_vitals,
             encounter=sample_encounter_with_vitals,
         )
-        
+
         # Check vitals are populated
         assert populated.get("temperature") == sample_encounter_with_vitals.temperature
         assert populated.get("pulse") == sample_encounter_with_vitals.pulse
@@ -108,18 +105,18 @@ class TestTemplateAutoPopulation:
     ):
         """Should populate template fields from encounter medical history."""
         synchronizer = TemplateDataSynchronizer()
-        
+
         # Medical history is stored on encounter, not patient
         encounter = sample_encounter_with_vitals
         encounter.allergies = "Penicillin, Sulfa"
         encounter.chronic_conditions = "Hypertension, Diabetes Type 2"
         encounter.save()
-        
+
         populated = synchronizer.populate_from_encounter(
             template=sample_template_with_history,
             encounter=encounter,
         )
-        
+
         assert "Penicillin" in str(populated.get("allergies", ""))
         assert "Hypertension" in str(populated.get("chronic_conditions", ""))
 
@@ -128,16 +125,16 @@ class TestTemplateAutoPopulation:
     ):
         """Should not overwrite existing template data values."""
         synchronizer = TemplateDataSynchronizer()
-        
+
         # Pre-existing data in template
         existing_data = {"notes": "Patient reports improvement"}
-        
+
         populated = synchronizer.populate_from_encounter(
             template=sample_template_with_vitals,
             encounter=sample_encounter_with_vitals,
             existing_data=existing_data,
         )
-        
+
         # Existing data should be preserved
         assert populated.get("notes") == "Patient reports improvement"
         # But vitals should still be populated
@@ -153,13 +150,13 @@ class TestTemplateAutoPopulation:
             encounter_type="OPD",
             chief_complaint="Test complaint",
         )
-        
+
         synchronizer = TemplateDataSynchronizer()
         populated = synchronizer.populate_from_encounter(
             template=sample_template_with_vitals,
             encounter=encounter,
         )
-        
+
         # Should not crash, null values should be excluded or None
         assert isinstance(populated, dict)
 
@@ -168,13 +165,13 @@ class TestTemplateAutoPopulation:
     ):
         """Should structure populated data by template sections."""
         synchronizer = TemplateDataSynchronizer()
-        
+
         populated = synchronizer.populate_from_encounter(
             template=sample_template_with_sections,
             encounter=sample_encounter_with_vitals,
             structure_by_section=True,
         )
-        
+
         # Should be structured as {section_name: {field_name: value}}
         assert isinstance(populated, dict)
         # Check at least one section exists
@@ -194,18 +191,18 @@ class TestTemplateSyncBack:
     ):
         """Should update encounter vitals from template data."""
         synchronizer = TemplateDataSynchronizer()
-        
+
         template_data = {
             "temperature": Decimal("38.5"),
             "pulse": 88,
             "spo2": Decimal("97.0"),
         }
-        
+
         updated_encounter = synchronizer.sync_to_encounter(
             template_data=template_data,
             encounter=sample_encounter_with_vitals,
         )
-        
+
         assert updated_encounter.temperature == Decimal("38.5")
         assert updated_encounter.pulse == 88
         assert updated_encounter.spo2 == Decimal("97.0")
@@ -216,17 +213,17 @@ class TestTemplateSyncBack:
         """Should not overwrite existing values with None."""
         synchronizer = TemplateDataSynchronizer()
         original_temp = sample_encounter_with_vitals.temperature
-        
+
         template_data = {
             "temperature": None,  # Should not overwrite
             "pulse": 92,  # Should update
         }
-        
+
         updated_encounter = synchronizer.sync_to_encounter(
             template_data=template_data,
             encounter=sample_encounter_with_vitals,
         )
-        
+
         assert updated_encounter.temperature == original_temp  # Preserved
         assert updated_encounter.pulse == 92  # Updated
 
@@ -235,7 +232,7 @@ class TestTemplateSyncBack:
     ):
         """Should handle nested section structure in template data."""
         synchronizer = TemplateDataSynchronizer()
-        
+
         template_data = {
             "Vital Signs": {
                 "temperature": Decimal("37.8"),
@@ -245,12 +242,12 @@ class TestTemplateSyncBack:
                 "notes": "Patient stable",
             },
         }
-        
+
         updated_encounter = synchronizer.sync_to_encounter(
             template_data=template_data,
             encounter=sample_encounter_with_vitals,
         )
-        
+
         assert updated_encounter.temperature == Decimal("37.8")
         assert updated_encounter.pulse == 76
 
@@ -259,17 +256,17 @@ class TestTemplateSyncBack:
     ):
         """Should validate and convert data types appropriately."""
         synchronizer = TemplateDataSynchronizer()
-        
+
         template_data = {
             "temperature": "37.5",  # String should convert to Decimal
             "pulse": "80",  # String should convert to int
         }
-        
+
         updated_encounter = synchronizer.sync_to_encounter(
             template_data=template_data,
             encounter=sample_encounter_with_vitals,
         )
-        
+
         assert updated_encounter.temperature == Decimal("37.5")
         assert updated_encounter.pulse == 80
 
@@ -278,18 +275,18 @@ class TestTemplateSyncBack:
     ):
         """Should return list of fields that were changed."""
         synchronizer = TemplateDataSynchronizer()
-        
+
         template_data = {
             "temperature": Decimal("38.0"),
             "pulse": sample_encounter_with_vitals.pulse,  # Same value
         }
-        
+
         updated_encounter, changed_fields = synchronizer.sync_to_encounter(
             template_data=template_data,
             encounter=sample_encounter_with_vitals,
             return_changes=True,
         )
-        
+
         assert "temperature" in changed_fields
         assert "pulse" not in changed_fields  # Not changed
 
@@ -307,20 +304,20 @@ class TestTemplateSnapshot:
     ):
         """Should create a snapshot with template data."""
         service = TemplateSnapshotService()
-        
+
         # Use JSON-serializable values (strings/floats instead of Decimal)
         template_data = {
             "temperature": 37.5,
             "pulse": 80,
             "notes": "Patient stable",
         }
-        
+
         snapshot = service.create_snapshot(
             encounter=sample_encounter_with_vitals,
             template=sample_template_with_vitals,
             template_data=template_data,
         )
-        
+
         assert snapshot is not None
         assert snapshot.encounter == sample_encounter_with_vitals
         assert snapshot.template == sample_template_with_vitals
@@ -331,14 +328,14 @@ class TestTemplateSnapshot:
     ):
         """Should include metadata in snapshot."""
         service = TemplateSnapshotService()
-        
+
         snapshot = service.create_snapshot(
             encounter=sample_encounter_with_vitals,
             template=sample_template_with_vitals,
             template_data={"notes": "Test"},
             created_by=test_user,
         )
-        
+
         assert snapshot.created_by == test_user
         assert snapshot.created_at is not None
         assert snapshot.template_name == sample_template_with_vitals.name
@@ -349,7 +346,7 @@ class TestTemplateSnapshot:
     ):
         """Should retrieve all snapshots for an encounter."""
         service = TemplateSnapshotService()
-        
+
         # Create multiple snapshots
         service.create_snapshot(
             encounter=sample_encounter_with_vitals,
@@ -361,11 +358,11 @@ class TestTemplateSnapshot:
             template=sample_template_with_vitals,
             template_data={"visit": 2},
         )
-        
+
         snapshots = service.get_snapshots_for_encounter(
             sample_encounter_with_vitals
         )
-        
+
         assert len(snapshots) >= 2
 
     def test_snapshot_generates_pdf_attachment(
@@ -373,13 +370,13 @@ class TestTemplateSnapshot:
     ):
         """Should be able to generate PDF from snapshot."""
         service = TemplateSnapshotService()
-        
+
         snapshot = service.create_snapshot(
             encounter=sample_encounter_with_vitals,
             template=sample_template_with_vitals,
             template_data={"notes": "Complete assessment"},
         )
-        
+
         # PDF generation is optional, check method exists
         assert hasattr(service, 'generate_pdf')
 
@@ -388,16 +385,16 @@ class TestTemplateSnapshot:
     ):
         """Snapshot data should not be modifiable after creation."""
         service = TemplateSnapshotService()
-        
+
         snapshot = service.create_snapshot(
             encounter=sample_encounter_with_vitals,
             template=sample_template_with_vitals,
             template_data={"notes": "Original"},
         )
-        
+
         # Attempting to modify should raise or be ignored
         original_data = snapshot.data.copy()
-        
+
         # Verify data integrity
         snapshot.refresh_from_db()
         assert snapshot.data == original_data
@@ -419,7 +416,7 @@ class TestTemplatePopulateAPI:
             f"/api/encounters/{sample_encounter_with_vitals.id}/populate-template/",
             {"template_id": sample_template_with_vitals.id},
         )
-        
+
         assert response.status_code == 200
         assert "populated_data" in response.data
         assert isinstance(response.data["populated_data"], dict)
@@ -431,7 +428,7 @@ class TestTemplatePopulateAPI:
         response = authenticated_client.get(
             f"/api/encounters/{sample_encounter_with_vitals.id}/populate-template/",
         )
-        
+
         assert response.status_code == 400
 
     def test_sync_endpoint_updates_encounter(
@@ -449,9 +446,9 @@ class TestTemplatePopulateAPI:
             },
             format="json",
         )
-        
+
         assert response.status_code == 200
-        
+
         # Verify encounter was updated
         sample_encounter_with_vitals.refresh_from_db()
         assert sample_encounter_with_vitals.temperature == Decimal("38.0")
@@ -468,7 +465,7 @@ class TestTemplatePopulateAPI:
             },
             format="json",
         )
-        
+
         assert response.status_code == 201
         assert "id" in response.data
 
@@ -479,6 +476,6 @@ class TestTemplatePopulateAPI:
         response = authenticated_client.get(
             f"/api/encounters/{sample_encounter_with_vitals.id}/template-snapshots/",
         )
-        
+
         assert response.status_code == 200
         assert isinstance(response.data, list)

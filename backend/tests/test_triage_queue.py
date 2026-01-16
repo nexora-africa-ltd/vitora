@@ -7,7 +7,7 @@ Sprint 1.5-1.6 Track E: Triage Module MVP
 
 from datetime import timedelta
 
-import pytest # type: ignore
+import pytest  # type: ignore
 from django.utils import timezone
 
 

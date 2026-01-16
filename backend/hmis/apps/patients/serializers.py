@@ -36,10 +36,10 @@ class PatientSerializer(serializers.ModelSerializer):
     county_name = serializers.CharField(source="county.name", read_only=True)
     sub_county_name = serializers.CharField(source="sub_county.name", read_only=True)
     ward_name = serializers.CharField(source="ward.name", read_only=True, allow_null=True)
-    
+
     # Emergency contacts - nested serializer (read-only for list view)
     emergency_contacts = EmergencyContactSerializer(many=True, read_only=True)
-    
+
     # Convenience fields for primary emergency contact (first one)
     emergency_contact_name = serializers.SerializerMethodField()
     emergency_contact_phone = serializers.SerializerMethodField()
@@ -123,12 +123,12 @@ class PatientSerializer(serializers.ModelSerializer):
         """Get the primary emergency contact's name."""
         contact = obj.emergency_contacts.first()
         return contact.full_name if contact else None
-    
+
     def get_emergency_contact_phone(self, obj):
         """Get the primary emergency contact's phone number."""
         contact = obj.emergency_contacts.first()
         return contact.phone_number if contact else None
-    
+
     def get_emergency_contact_relationship(self, obj):
         """Get the primary emergency contact's relationship."""
         contact = obj.emergency_contacts.first()

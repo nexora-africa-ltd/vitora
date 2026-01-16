@@ -46,7 +46,6 @@ import sys
 from dataclasses import dataclass
 from datetime import datetime
 from pathlib import Path
-from typing import Any, Optional
 
 import requests
 
@@ -66,11 +65,11 @@ class SHACredentials:
     """SHA API credentials container."""
     api_base_url: str
     consumer_key: str
-    client_secret: Optional[str] = None
-    username: Optional[str] = None
-    password: Optional[str] = None
-    access_token: Optional[str] = None
-    
+    client_secret: str | None = None
+    username: str | None = None
+    password: str | None = None
+    access_token: str | None = None
+
     @classmethod
     def from_env(cls) -> 'SHACredentials':
         """Load credentials from environment variables (supports .env file)."""
@@ -81,11 +80,11 @@ class SHACredentials:
             username=os.getenv('SHA_USERNAME'),
             password=os.getenv('SHA_PASSWORD'),
         )
-    
+
     def is_valid(self) -> bool:
         """Check if credentials are configured."""
         return bool(self.api_base_url and self.consumer_key and self.username and self.password)
-    
+
     def get_basic_auth_header(self) -> str:
         """Create Basic Auth header value."""
         if not self.username or not self.password:
@@ -105,24 +104,24 @@ class SHAIntegrationTester:
     - /v1/shr-med/claim-status - Claim status check
     - /terminology/v1/* - Terminology services
     """
-    
+
     def __init__(self, credentials: SHACredentials):
         self.credentials = credentials
         self.session = requests.Session()
         self.results: list[dict] = []
-        self.jwt_token: Optional[str] = None
-        
+        self.jwt_token: str | None = None
+
         # Configure session defaults
         self.session.headers.update({
             'Content-Type': 'application/json',
             'Accept': 'application/json',
         })
-    
+
     def _log(self, message: str, level: str = 'INFO'):
         """Log a message with timestamp."""
         timestamp = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
         print(f"[{timestamp}] [{level}] {message}")
-    
+
     def _log_result(self, test_name: str, success: bool, details: dict):
         """Log and store test result."""
         result = {
@@ -132,20 +131,20 @@ class SHAIntegrationTester:
             **details,
         }
         self.results.append(result)
-        
+
         status = '✅ PASS' if success else '❌ FAIL'
         self._log(f"{status} - {test_name}")
         if not success:
             self._log(f"  Details: {details.get('error', 'Unknown error')}", 'ERROR')
-    
+
     def _make_request(
         self,
         method: str,
         endpoint: str,
-        data: Optional[dict] = None,
-        params: Optional[dict] = None,
+        data: dict | None = None,
+        params: dict | None = None,
         use_basic_auth: bool = False,
-    ) -> tuple[int, Optional[dict], Optional[str]]:
+    ) -> tuple[int, dict | None, str | None]:
         """
         Make an API request to SHA.
         
@@ -160,13 +159,13 @@ class SHAIntegrationTester:
             Tuple of (status_code, response_json, error_message)
         """
         url = f"{self.credentials.api_base_url.rstrip('/')}/{endpoint.lstrip('/')}"
-        
+
         self._log(f"Request: {method} {url}")
         if params:
             self._log(f"  Params: {params}")
         if data:
             self._log(f"  Body: {json.dumps(data)[:500]}")
-        
+
         # Set up headers
         headers = dict(self.session.headers)
         if use_basic_auth:
@@ -174,7 +173,7 @@ class SHAIntegrationTester:
             headers['Authorization'] = f'Basic {basic_auth}'
         elif self.jwt_token:
             headers['Authorization'] = f'Bearer {self.jwt_token}'
-        
+
         try:
             response = self.session.request(
                 method=method,
@@ -184,25 +183,25 @@ class SHAIntegrationTester:
                 headers=headers,
                 timeout=30,
             )
-            
+
             self._log(f"  Response: {response.status_code}")
-            
+
             try:
                 response_data = response.json()
                 self._log(f"  Data: {json.dumps(response_data, indent=2)[:1000]}")
                 return response.status_code, response_data, None
             except json.JSONDecodeError:
                 return response.status_code, None, response.text[:500]
-                
+
         except requests.Timeout:
             return 0, None, 'Request timeout'
         except requests.RequestException as e:
             return 0, None, str(e)
-    
+
     # =========================================================================
     # Test Methods - Official SHA API Endpoints
     # =========================================================================
-    
+
     def test_authentication(self) -> bool:
         """
         Test authentication endpoint.
@@ -213,20 +212,20 @@ class SHAIntegrationTester:
         self._log("=" * 60)
         self._log("Testing SHA Authentication (Official Endpoint)")
         self._log("=" * 60)
-        
+
         status_code, data, error = self._make_request(
             'GET',
             '/v1/hie-auth',
             params={'key': self.credentials.consumer_key},
             use_basic_auth=True,
         )
-        
+
         if status_code == 200 and data:
             # Extract token from response
             token = data.get('token')
             if not token and data.get('Data'):
                 token = data['Data'].get('token')
-            
+
             if token:
                 self.jwt_token = token
                 self._log_result('test_authentication', True, {
@@ -234,17 +233,17 @@ class SHAIntegrationTester:
                     'token_preview': f"{token[:20]}..." if len(token) > 20 else token,
                 })
                 return True
-        
+
         self._log_result('test_authentication', False, {
             'error': error or 'Failed to obtain JWT token',
             'status_code': status_code,
         })
         return False
-    
+
     def test_eligibility_check(
         self,
-        sha_number: Optional[str] = None,
-        national_id: Optional[str] = None,
+        sha_number: str | None = None,
+        national_id: str | None = None,
     ) -> bool:
         """
         Test eligibility verification endpoint.
@@ -254,7 +253,7 @@ class SHAIntegrationTester:
         self._log("=" * 60)
         self._log("Testing Eligibility Check (Official Endpoint)")
         self._log("=" * 60)
-        
+
         # Ensure we have a token
         if not self.jwt_token:
             self._log("No JWT token - attempting authentication first")
@@ -263,7 +262,7 @@ class SHAIntegrationTester:
                     'error': 'Authentication required before eligibility check',
                 })
                 return False
-        
+
         # Build request parameters per official spec
         if sha_number:
             params = {'doc_type': 'sha_number', 'doc_value': sha_number}
@@ -272,17 +271,17 @@ class SHAIntegrationTester:
         else:
             # Use test data
             params = {'doc_type': 'national_id', 'doc_value': '12345678'}
-        
+
         status_code, data, error = self._make_request(
             'GET',
             '/v2/eligibility',
             params=params,
         )
-        
+
         if status_code == 200 and data:
             # Handle wrapped response format
             result_data = data.get('Data', data)
-            
+
             self._log_result('test_eligibility_check', True, {
                 'params': params,
                 'eligible': result_data.get('eligible'),
@@ -290,13 +289,13 @@ class SHAIntegrationTester:
                 'coverage_end': result_data.get('coverageEndDate'),
             })
             return True
-        
+
         self._log_result('test_eligibility_check', False, {
             'error': error or f'API returned {status_code}',
             'params': params,
         })
         return False
-    
+
     def test_terminology_lookup(self) -> bool:
         """
         Test terminology service endpoints.
@@ -306,21 +305,21 @@ class SHAIntegrationTester:
         self._log("=" * 60)
         self._log("Testing Terminology Lookup (Official Endpoints)")
         self._log("=" * 60)
-        
+
         if not self.jwt_token:
             if not self.test_authentication():
                 self._log_result('test_terminology_lookup', False, {
                     'error': 'Authentication required',
                 })
                 return False
-        
+
         # Test ICD-11 lookup
         endpoints = [
             ('/terminology/v1/icd11', {'code': 'BA00'}),
             ('/terminology/v1/sha-intervention', {'code': 'SHA'}),
             ('/terminology/v1/loinc', {'code': '2339-0'}),
         ]
-        
+
         any_success = False
         for endpoint, params in endpoints:
             status_code, data, error = self._make_request('GET', endpoint, params=params)
@@ -329,13 +328,13 @@ class SHAIntegrationTester:
                 self._log(f"  ✅ {endpoint} - Success")
             else:
                 self._log(f"  ❌ {endpoint} - Failed ({status_code})")
-        
+
         self._log_result('test_terminology_lookup', any_success, {
             'message': 'At least one terminology endpoint accessible' if any_success else 'No terminology endpoints accessible',
         })
         return any_success
-    
-    def test_claim_submission(self, sha_number: str) -> Optional[str]:
+
+    def test_claim_submission(self, sha_number: str) -> str | None:
         """
         Test claim submission.
         
@@ -345,20 +344,20 @@ class SHAIntegrationTester:
         self._log("=" * 60)
         self._log("Testing Claim Submission (Official Endpoint)")
         self._log("=" * 60)
-        
+
         if not self.jwt_token:
             if not self.test_authentication():
                 self._log_result('test_claim_submission', False, {
                     'error': 'Authentication required',
                 })
                 return None
-        
+
         # Build FHIR Bundle claim data (SHA-compliant message bundle)
         import uuid
         bundle_guid = str(uuid.uuid4())
         fhir_base_url = 'https://qa-mis.apeiro-digital.com'
         facility_code = os.getenv('FACILITY_MFL_CODE', 'TEST-001')
-        
+
         bundle = {
             'id': bundle_guid,
             'meta': {
@@ -419,28 +418,28 @@ class SHAIntegrationTester:
             ],
             '_test': True,  # Mark as test claim
         }
-        
+
         status_code, data, error = self._make_request(
             'POST',
             '/v1/shr-med/bundle',
             data=bundle,
         )
-        
+
         if status_code in (200, 201, 202) and data:
             result_data = data.get('Data', data)
             claim_ref = result_data.get('claim_reference') or result_data.get('claimReference') or result_data.get('id')
-            
+
             self._log_result('test_claim_submission', True, {
                 'claim_reference': claim_ref,
                 'status': result_data.get('status'),
             })
             return claim_ref
-        
+
         self._log_result('test_claim_submission', False, {
             'error': error or f'Submission failed with status {status_code}',
         })
         return None
-    
+
     def test_claim_status(self, claim_ref: str) -> bool:
         """
         Test claim status lookup.
@@ -450,43 +449,43 @@ class SHAIntegrationTester:
         self._log("=" * 60)
         self._log("Testing Claim Status Lookup (Official Endpoint)")
         self._log("=" * 60)
-        
+
         if not self.jwt_token:
             if not self.test_authentication():
                 self._log_result('test_claim_status', False, {
                     'error': 'Authentication required',
                 })
                 return False
-        
+
         status_code, data, error = self._make_request(
             'GET',
             '/v1/shr-med/claim-status',
             params={'claim_id': claim_ref},
         )
-        
+
         if status_code == 200 and data:
             result_data = data.get('Data', data)
-            
+
             self._log_result('test_claim_status', True, {
                 'claim_reference': claim_ref,
                 'claim_status': result_data.get('status'),
             })
             return True
-        
+
         self._log_result('test_claim_status', False, {
             'error': error or f'Status check failed with {status_code}',
             'claim_ref': claim_ref,
         })
         return False
-    
+
     # =========================================================================
     # Run All Tests
     # =========================================================================
-    
+
     def run_all_tests(
         self,
-        sha_number: Optional[str] = None,
-        national_id: Optional[str] = None,
+        sha_number: str | None = None,
+        national_id: str | None = None,
     ) -> dict:
         """
         Run all integration tests.
@@ -505,44 +504,44 @@ class SHAIntegrationTester:
         self._log(f"Consumer Key: {'*' * 10 + self.credentials.consumer_key[-4:] if len(self.credentials.consumer_key) > 4 else '(not set)'}")
         self._log(f"Username: {self.credentials.username or '(not set)'}")
         self._log("")
-        
+
         # Test 1: Authentication (required first)
         auth_ok = self.test_authentication()
         if not auth_ok:
             self._log("Cannot proceed without authentication", 'ERROR')
             return self._generate_summary()
-        
+
         # Test 2: Eligibility
         self.test_eligibility_check(
             sha_number=sha_number,
             national_id=national_id,
         )
-        
+
         # Test 3: Terminology Services
         self.test_terminology_lookup()
-        
+
         # Test 4: Claim submission (optional - requires valid member)
         if sha_number:
             claim_ref = self.test_claim_submission(sha_number)
-            
+
             # Test 5: Claim status (if submission succeeded)
             if claim_ref:
                 self.test_claim_status(claim_ref)
         else:
             self._log("Skipping claim tests (no SHA number provided)")
-        
+
         return self._generate_summary()
-    
+
     def _generate_summary(self) -> dict:
         """Generate test summary."""
         self._log("")
         self._log("=" * 60)
         self._log("Test Summary")
         self._log("=" * 60)
-        
+
         passed = sum(1 for r in self.results if r['success'])
         failed = len(self.results) - passed
-        
+
         summary = {
             'total': len(self.results),
             'passed': passed,
@@ -550,12 +549,12 @@ class SHAIntegrationTester:
             'pass_rate': f"{(passed / len(self.results) * 100):.1f}%" if self.results else "N/A",
             'results': self.results,
         }
-        
+
         self._log(f"Total: {summary['total']}")
         self._log(f"Passed: {summary['passed']} ✅")
         self._log(f"Failed: {summary['failed']} ❌")
         self._log(f"Pass Rate: {summary['pass_rate']}")
-        
+
         return summary
 
 
@@ -587,7 +586,7 @@ Optional:
     SHA_CLIENT_SECRET - Client secret (if required)
         """
     )
-    
+
     parser.add_argument(
         '--sha-number',
         help='SHA membership number for testing'
@@ -614,18 +613,18 @@ Optional:
         '--output',
         help='Save results to JSON file'
     )
-    
+
     args = parser.parse_args()
-    
+
     # Load credentials
     credentials = SHACredentials.from_env()
-    
+
     # Override from command line
     if args.api_url:
         credentials.api_base_url = args.api_url
     if args.consumer_key:
         credentials.consumer_key = args.consumer_key
-    
+
     # Validate credentials
     if not credentials.is_valid():
         print("❌ Error: SHA credentials not configured")
@@ -640,10 +639,10 @@ Optional:
         print("  --api-url 'https://uat.dha.go.ke'")
         print("  --consumer-key 'your-consumer-key'")
         sys.exit(1)
-    
+
     # Create tester
     tester = SHAIntegrationTester(credentials)
-    
+
     # Run tests
     if args.test == 'all':
         summary = tester.run_all_tests(
@@ -670,13 +669,13 @@ Optional:
         if claim_ref:
             tester.test_claim_status(claim_ref)
         summary = tester._generate_summary()
-    
+
     # Save results if requested
     if args.output:
         with open(args.output, 'w') as f:
             json.dump(summary, f, indent=2)
         print(f"\nResults saved to: {args.output}")
-    
+
     # Exit with appropriate code
     sys.exit(0 if summary['failed'] == 0 else 1)
 

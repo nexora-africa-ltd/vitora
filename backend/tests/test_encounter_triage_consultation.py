@@ -14,9 +14,8 @@ They define the expected behavior for:
 - Signal to auto-set triage_status when TriageAssessment created
 """
 
-from datetime import date
 
-import pytest # type: ignore
+import pytest  # type: ignore
 from django.core.exceptions import ValidationError
 from django.utils import timezone
 
@@ -873,7 +872,7 @@ class TestChiefComplaintEditAuditTrail:
             encounter_type="OPD",
             chief_complaint="Initial complaint",
         )
-        
+
         # Check fields exist
         assert hasattr(encounter, 'chief_complaint_original')
         assert hasattr(encounter, 'chief_complaint_edited')

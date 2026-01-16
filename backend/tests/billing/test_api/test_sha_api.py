@@ -26,15 +26,13 @@ API Test Coverage (30 tests):
 
 from datetime import date, timedelta
 from decimal import Decimal
-from io import BytesIO
-from unittest.mock import patch, MagicMock
+from unittest.mock import MagicMock, patch
 
-from django.utils import timezone
-
-import pytest # type: ignore
+import pytest  # type: ignore
 from django.contrib.auth import get_user_model
 from django.contrib.auth.models import Permission
 from django.core.files.uploadedfile import SimpleUploadedFile
+from django.utils import timezone
 from rest_framework import status
 from rest_framework.test import APIClient
 
@@ -159,7 +157,7 @@ def sample_sha_claim(db, sample_sha_member, sample_encounter, test_user):
 @pytest.fixture
 def sample_claim_with_items(db, sample_sha_claim, sample_sha_tariff, test_user):
     """Create a claim with items and attachments ready for submission."""
-    from hmis.apps.billing.models import SHAClaimItem, SHAClaimAttachment
+    from hmis.apps.billing.models import SHAClaimAttachment, SHAClaimItem
 
     # Add claim item
     SHAClaimItem.objects.create(
@@ -215,8 +213,8 @@ def sample_claim_with_items(db, sample_sha_claim, sample_sha_tariff, test_user):
 def multiple_sha_members(db, test_user):
     """Create multiple SHA members for pagination testing."""
     from hmis.apps.billing.models import SHAMember
-    from hmis.apps.patients.models import Patient
     from hmis.apps.core.models import County, SubCounty
+    from hmis.apps.patients.models import Patient
 
     county = County.objects.first() or County.objects.create(code=1, name='Test County')
     sub_county = SubCounty.objects.filter(county=county).first() or SubCounty.objects.create(
@@ -632,8 +630,8 @@ class TestSHAAPIErrorResponses:
     def test_400_for_duplicate_sha_number(self, sha_client, sample_sha_member, sample_patient):
         """Should return 400 for duplicate SHA number."""
         # Create another patient for the new member
-        from hmis.apps.patients.models import Patient
         from hmis.apps.core.models import County, SubCounty
+        from hmis.apps.patients.models import Patient
 
         county = County.objects.first()
         sub_county = SubCounty.objects.filter(county=county).first()
@@ -685,8 +683,8 @@ class TestSHAMemberRegistration:
     def test_create_dependent_member(self, sha_client, sample_patient, sample_sha_member):
         """Should create dependent member with principal reference."""
         # Create another patient for dependent
-        from hmis.apps.patients.models import Patient
         from hmis.apps.core.models import County, SubCounty
+        from hmis.apps.patients.models import Patient
 
         county = County.objects.first()
         sub_county = SubCounty.objects.filter(county=county).first()
@@ -1383,20 +1381,20 @@ class TestOfflineClaimQueuing:
         sample_sha_claim = sample_claim_with_items
         sample_sha_claim.status = 'validated'
         sample_sha_claim.save()
-        
+
         # Mock connectivity checker to return offline
         with patch('hmis.apps.billing.services.sha_claims.ConnectivityChecker') as MockChecker:
             mock_instance = MagicMock()
             mock_instance.check.return_value = False  # Offline
             MockChecker.return_value = mock_instance
-            
+
             response = sha_client.post(f'/api/sha/claims/{sample_sha_claim.id}/submit/')
-        
+
         assert response.status_code == status.HTTP_200_OK
         assert response.data.get('status') == 'queued'
         assert 'queue_entry_id' in response.data
         assert response.data.get('claim_number') == sample_sha_claim.claim_number
-        
+
         # Verify claim status updated
         sample_sha_claim.refresh_from_db()
         assert sample_sha_claim.status == 'pending_submission'
@@ -1407,25 +1405,25 @@ class TestOfflineClaimQueuing:
         sample_sha_claim = sample_claim_with_items
         sample_sha_claim.status = 'validated'
         sample_sha_claim.save()
-        
+
         # Mock connectivity checker to return online
         with patch('hmis.apps.billing.services.sha_claims.ConnectivityChecker') as MockChecker, \
              patch('hmis.apps.billing.services.sha_claims.SHAClaimsService._submit_to_sha_api') as mock_submit:
             mock_instance = MagicMock()
             mock_instance.check.return_value = True  # Online
             MockChecker.return_value = mock_instance
-            
+
             mock_submit.return_value = {
                 'claim_reference': 'SHA-REF-12345',
                 'status': 'received',
             }
-            
+
             response = sha_client.post(f'/api/sha/claims/{sample_sha_claim.id}/submit/')
-        
+
         assert response.status_code == status.HTTP_200_OK
         # Should NOT be queued - submitted directly
         assert response.data.get('status') != 'queued'
-        
+
         # Verify claim submitted
         sample_sha_claim.refresh_from_db()
         assert sample_sha_claim.status == 'submitted'
@@ -1435,18 +1433,18 @@ class TestOfflineClaimQueuing:
         sample_sha_claim = sample_claim_with_items
         sample_sha_claim.status = 'validated'
         sample_sha_claim.save()
-        
+
         # Mock connectivity checker to return offline
         with patch('hmis.apps.billing.services.sha_claims.ConnectivityChecker') as MockChecker:
             mock_instance = MagicMock()
             mock_instance.check.return_value = False  # Offline
             MockChecker.return_value = mock_instance
-            
+
             response = sha_client.post(
                 f'/api/sha/claims/{sample_sha_claim.id}/submit/',
                 {'force_online': True}
             )
-        
+
         # Should fail since we're offline and force_online=True
         assert response.status_code == status.HTTP_400_BAD_REQUEST
 
@@ -1455,33 +1453,33 @@ class TestOfflineClaimQueuing:
     ):
         """Should create SyncQueue entry when claim queued offline."""
         from hmis.apps.core.models import SyncQueue
-        
+
         sample_sha_claim = sample_claim_with_items
         sample_sha_claim.status = 'validated'
         sample_sha_claim.save()
-        
+
         initial_queue_count = SyncQueue.objects.filter(
             model_name='SHAClaimSubmission'
         ).count()
-        
+
         with patch('hmis.apps.billing.services.sha_claims.ConnectivityChecker') as MockChecker:
             mock_instance = MagicMock()
             mock_instance.check.return_value = False  # Offline
             MockChecker.return_value = mock_instance
-            
+
             sha_client.post(f'/api/sha/claims/{sample_sha_claim.id}/submit/')
-        
+
         final_queue_count = SyncQueue.objects.filter(
             model_name='SHAClaimSubmission'
         ).count()
-        
+
         assert final_queue_count == initial_queue_count + 1
-        
+
         # Verify queue entry data
         queue_entry = SyncQueue.objects.filter(
             model_name='SHAClaimSubmission'
         ).latest('created_at')
-        
+
         assert queue_entry.status == 'PENDING'
         assert queue_entry.data.get('claim_id') == sample_sha_claim.id
 
@@ -1490,23 +1488,23 @@ class TestOfflineClaimQueuing:
     ):
         """Should queue claim when network error occurs during submission."""
         import requests
-        
+
         sample_sha_claim = sample_claim_with_items
         sample_sha_claim.status = 'validated'
         sample_sha_claim.save()
-        
+
         # Mock connectivity as online but submission fails with network error
         with patch('hmis.apps.billing.services.sha_claims.ConnectivityChecker') as MockChecker, \
              patch('hmis.apps.billing.services.sha_claims.SHAClaimsService._submit_to_sha_api') as mock_submit:
             mock_instance = MagicMock()
             mock_instance.check.return_value = True  # Online
             MockChecker.return_value = mock_instance
-            
+
             # Simulate network error
             mock_submit.side_effect = requests.exceptions.ConnectionError("Network unreachable")
-            
+
             response = sha_client.post(f'/api/sha/claims/{sample_sha_claim.id}/submit/')
-        
+
         # Should be queued instead of failing
         assert response.status_code == status.HTTP_200_OK
         assert response.data.get('status') == 'queued'
@@ -1520,25 +1518,24 @@ class TestProcessQueuedClaims:
         self, sha_client, sample_claim_with_items, user_with_sha_permissions
     ):
         """Should process queued claims when connectivity restored."""
-        from hmis.apps.core.models import SyncQueue
         from hmis.apps.billing.services.sha_claims import SHAClaimsService
-        
+
         sample_sha_claim = sample_claim_with_items
         sample_sha_claim.status = 'validated'
         sample_sha_claim.save()
-        
+
         # First, queue the claim by simulating offline
         with patch('hmis.apps.billing.services.sha_claims.ConnectivityChecker') as MockChecker:
             mock_instance = MagicMock()
             mock_instance.check.return_value = False
             MockChecker.return_value = mock_instance
-            
+
             sha_client.post(f'/api/sha/claims/{sample_sha_claim.id}/submit/')
-        
+
         # Verify claim is queued
         sample_sha_claim.refresh_from_db()
         assert sample_sha_claim.status == 'pending_submission'
-        
+
         # Now process queued claims (simulating connectivity restored)
         with patch.object(
             SHAClaimsService, '_submit_to_sha_api'
@@ -1547,18 +1544,18 @@ class TestProcessQueuedClaims:
             mock_instance = MagicMock()
             mock_instance.check.return_value = True  # Back online
             MockChecker.return_value = mock_instance
-            
+
             mock_submit.return_value = {
                 'claim_reference': 'SHA-QUEUED-REF',
                 'status': 'received',
             }
-            
+
             service = SHAClaimsService()
             results = service.process_queued_claims()
-        
+
         assert results['processed'] >= 1
         assert results['succeeded'] >= 1
-        
+
         # Verify claim is now submitted
         sample_sha_claim.refresh_from_db()
         assert sample_sha_claim.status == 'submitted'
@@ -1568,23 +1565,23 @@ class TestProcessQueuedClaims:
         self, sha_client, sample_claim_with_items
     ):
         """Should mark queue entry as SYNCED after successful submission."""
-        from hmis.apps.core.models import SyncQueue
         from hmis.apps.billing.services.sha_claims import SHAClaimsService
-        
+        from hmis.apps.core.models import SyncQueue
+
         sample_sha_claim = sample_claim_with_items
         sample_sha_claim.status = 'validated'
         sample_sha_claim.save()
-        
+
         # Queue the claim
         with patch('hmis.apps.billing.services.sha_claims.ConnectivityChecker') as MockChecker:
             mock_instance = MagicMock()
             mock_instance.check.return_value = False
             MockChecker.return_value = mock_instance
-            
+
             response = sha_client.post(f'/api/sha/claims/{sample_sha_claim.id}/submit/')
-        
+
         queue_entry_id = response.data['queue_entry_id']
-        
+
         # Process queued claims
         with patch.object(
             SHAClaimsService, '_submit_to_sha_api'
@@ -1593,11 +1590,11 @@ class TestProcessQueuedClaims:
             mock_instance = MagicMock()
             mock_instance.check.return_value = True
             MockChecker.return_value = mock_instance
-            
+
             mock_submit.return_value = {'claim_reference': 'REF', 'status': 'received'}
-            
+
             SHAClaimsService().process_queued_claims()
-        
+
         # Verify queue entry status
         queue_entry = SyncQueue.objects.get(id=queue_entry_id)
         assert queue_entry.status == 'SYNCED'
@@ -1607,32 +1604,32 @@ class TestProcessQueuedClaims:
         self, sha_client, sample_claim_with_items
     ):
         """Should increment retry count on failed processing."""
-        from hmis.apps.core.models import SyncQueue
         from hmis.apps.billing.services.sha_claims import SHAClaimsService
-        
+        from hmis.apps.core.models import SyncQueue
+
         sample_sha_claim = sample_claim_with_items
         sample_sha_claim.status = 'validated'
         sample_sha_claim.save()
-        
+
         # Queue the claim
         with patch('hmis.apps.billing.services.sha_claims.ConnectivityChecker') as MockChecker:
             mock_instance = MagicMock()
             mock_instance.check.return_value = False
             MockChecker.return_value = mock_instance
-            
+
             response = sha_client.post(f'/api/sha/claims/{sample_sha_claim.id}/submit/')
-        
+
         queue_entry_id = response.data['queue_entry_id']
-        
+
         # Process with failure
         with patch.object(
             SHAClaimsService, 'submit_claim'
         ) as mock_submit, \
              patch('hmis.apps.billing.services.sha_claims.ConnectivityChecker') as MockChecker:
             mock_submit.side_effect = Exception("API Error")
-            
+
             SHAClaimsService().process_queued_claims()
-        
+
         # Verify retry count incremented
         queue_entry = SyncQueue.objects.get(id=queue_entry_id)
         assert queue_entry.retry_count == 1

@@ -7,7 +7,7 @@ Sprint 1.1-1.2 Track C: RBAC Foundation - Phase 4
 
 from datetime import date
 
-import pytest # type: ignore
+import pytest  # type: ignore
 from django.contrib.admin.sites import AdminSite
 from django.contrib.auth import get_user_model
 from django.test import RequestFactory

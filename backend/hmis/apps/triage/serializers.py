@@ -15,7 +15,6 @@ from hmis.apps.patients.models import Patient
 from .models import TriageAssessment, TriageQueue, TriageVitalThreshold, WaitingQueue
 from .services import TriageCategoryCalculator
 
-
 # =============================================================================
 # WAITING QUEUE SERIALIZERS
 # =============================================================================
@@ -69,7 +68,7 @@ class WaitingQueueCreateSerializer(serializers.ModelSerializer):
             patient = Patient.objects.get(pk=value)
         except Patient.DoesNotExist:
             raise serializers.ValidationError("Patient not found.")
-        
+
         # Check if patient is already in waiting queue
         existing = WaitingQueue.objects.filter(
             patient=patient,
@@ -79,16 +78,16 @@ class WaitingQueueCreateSerializer(serializers.ModelSerializer):
             raise serializers.ValidationError(
                 f"Patient is already in the waiting queue (checked in at {existing.check_in_time.strftime('%H:%M')})."
             )
-        
+
         return value
 
     def create(self, validated_data):
         patient_id = validated_data.pop('patient_id')
         create_encounter = validated_data.pop('create_encounter', True)
-        
+
         patient = Patient.objects.get(pk=patient_id)
         request = self.context.get('request')
-        
+
         # Create encounter if requested
         encounter = None
         if create_encounter:
@@ -99,7 +98,7 @@ class WaitingQueueCreateSerializer(serializers.ModelSerializer):
                 chief_complaint=validated_data.get('reason_for_visit', 'Check-in'),
                 status='DRAFT',
             )
-        
+
         # Create waiting queue entry
         waiting_entry = WaitingQueue.objects.create(
             patient=patient,
@@ -108,7 +107,7 @@ class WaitingQueueCreateSerializer(serializers.ModelSerializer):
             checked_in_by=request.user if request else None,
             **validated_data
         )
-        
+
         return waiting_entry
 
 
@@ -214,7 +213,7 @@ class TriageAssessmentCreateSerializer(serializers.ModelSerializer):
         required=False,
         allow_null=True,
     )
-    
+
     # Frontend-calculated category for comparison (not stored)
     # This allows frontend to send what it showed as "suggested" so we can
     # properly detect if user overrode it vs selected the suggestion
@@ -224,7 +223,7 @@ class TriageAssessmentCreateSerializer(serializers.ModelSerializer):
         allow_null=True,
         write_only=True,
     )
-    
+
     # Time fields - arrival_time comes from frontend, others are auto-set
     triage_start_time = serializers.DateTimeField(read_only=True)
     triage_end_time = serializers.DateTimeField(read_only=True)
@@ -330,10 +329,10 @@ class TriageAssessmentCreateSerializer(serializers.ModelSerializer):
         if not user_category:
             # No category selected, will be auto-calculated in create()
             return data
-        
+
         # Get the auto-calculated category - prefer frontend's value
         frontend_auto_category = data.get('auto_calculated_category')
-        
+
         if frontend_auto_category:
             # Use frontend's auto-calculated category for comparison
             # This ensures consistency with what the user saw in the UI
@@ -372,14 +371,14 @@ class TriageAssessmentCreateSerializer(serializers.ModelSerializer):
         Auto-sets triage_start_time to now (when triage assessment begins).
         """
         from django.utils import timezone
-        
+
         # Get the encounter
         encounter = validated_data['encounter']
-        
+
         # Remove frontend's auto_calculated_category (used only for validation)
         # We'll calculate and set the backend's value below
         validated_data.pop('auto_calculated_category', None)
-        
+
         # Auto-set triage_start_time to now
         validated_data['triage_start_time'] = timezone.now()
 
@@ -431,7 +430,7 @@ class TriageQueueSerializer(serializers.ModelSerializer):
     patient_mrn = serializers.CharField(source='triage_assessment.encounter.patient.mrn', read_only=True)
     patient_age = serializers.SerializerMethodField()
     patient_gender = serializers.CharField(source='triage_assessment.encounter.patient.gender', read_only=True)
-    
+
     # Flattened triage assessment fields
     triage_category = serializers.CharField(source='triage_assessment.triage_category', read_only=True)
     chief_complaint_category = serializers.CharField(source='triage_assessment.chief_complaint_category', read_only=True)
@@ -442,7 +441,7 @@ class TriageQueueSerializer(serializers.ModelSerializer):
     triage_time = serializers.DateTimeField(source='triage_assessment.triage_start_time', read_only=True)
     wait_time_minutes = serializers.SerializerMethodField()
     alerts_count = serializers.SerializerMethodField()
-    
+
     # Queue-specific fields
     called_by_name = serializers.CharField(source='called_by.get_full_name', read_only=True, allow_null=True)
 
@@ -471,7 +470,6 @@ class TriageQueueSerializer(serializers.ModelSerializer):
         # Calculate age if not a property
         from datetime import date
 
-        from django.utils import timezone
         today = date.today()
         dob = patient.date_of_birth
         # Handle if dob is a string

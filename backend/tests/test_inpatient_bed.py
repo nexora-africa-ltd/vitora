@@ -21,7 +21,7 @@ Test Coverage (15 tests):
 
 from decimal import Decimal
 
-import pytest # type: ignore
+import pytest  # type: ignore
 from django.contrib.auth import get_user_model
 from django.db import IntegrityError
 

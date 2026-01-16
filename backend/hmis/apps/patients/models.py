@@ -160,7 +160,7 @@ class Patient(models.Model):
     )
     email = models.EmailField(blank=True, default="", help_text="Patient's email address")
     address = models.TextField(blank=True, default="", help_text="Patient's physical address")
-    
+
     # Legacy field - kept for backward compatibility, use identification_number instead
     national_id = models.CharField(
         max_length=50, blank=True, null=True, help_text="Patient's national ID number (legacy)"

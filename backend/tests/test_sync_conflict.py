@@ -10,7 +10,7 @@ are detected and resolved correctly.
 
 from datetime import date
 
-import pytest # type: ignore
+import pytest  # type: ignore
 
 
 @pytest.mark.unit

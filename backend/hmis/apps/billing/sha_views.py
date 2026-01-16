@@ -6,9 +6,9 @@ Provides ViewSets for SHA Members, Tariffs, Claims, and related operations.
 
 import csv
 import hashlib
-from datetime import date, timedelta
+from datetime import date
 from decimal import Decimal, InvalidOperation
-from io import BytesIO, StringIO
+from io import BytesIO
 
 from django.db import models
 from django.db.models import Count, Sum
@@ -31,6 +31,8 @@ from hmis.apps.billing.models import (
     SHAMember,
     SHATariff,
 )
+from hmis.apps.billing.renderers import CSVRenderer, XLSXRenderer
+from hmis.apps.billing.services.sha_eligibility import SHAEligibilityService
 from hmis.apps.billing.sha_serializers import (
     SHAClaimAppealSerializer,
     SHAClaimAttachmentSerializer,
@@ -40,14 +42,11 @@ from hmis.apps.billing.sha_serializers import (
     SHAClaimSerializer,
     SHAClaimSubmitSerializer,
     SHAClaimValidationSerializer,
-    SHAEligibilityCheckSerializer,
     SHAEligibilityVerifySerializer,
     SHAMemberDetailSerializer,
     SHAMemberSerializer,
     SHATariffSerializer,
 )
-from hmis.apps.billing.renderers import CSVRenderer, XLSXRenderer
-from hmis.apps.billing.services.sha_eligibility import SHAEligibilityService
 from hmis.apps.core.permissions import SHAPermission
 
 
@@ -203,24 +202,24 @@ class SHAMemberViewSet(viewsets.ModelViewSet):
         Only applicable for principal members.
         """
         member = self.get_object()
-        
+
         # Check if the member is a principal
         if member.membership_type != SHAMember.MembershipType.PRINCIPAL:
             return Response(
                 {'detail': 'Only principal members can have dependents.'},
                 status=status.HTTP_400_BAD_REQUEST
             )
-        
+
         # Get all dependents linked to this principal (via FK or legacy string field)
         dependents = SHAMember.objects.filter(
             models.Q(principal=member) | models.Q(principal_sha_number=member.sha_number)
         ).select_related('patient', 'created_by').distinct()
-        
+
         page = self.paginate_queryset(dependents)
         if page is not None:
             serializer = self.get_serializer(page, many=True)
             return self.get_paginated_response(serializer.data)
-        
+
         serializer = self.get_serializer(dependents, many=True)
         return Response({'results': serializer.data, 'count': dependents.count()})
 
@@ -374,14 +373,14 @@ class SHAClaimViewSet(viewsets.ModelViewSet):
         will be queued for later submission.
         """
         from hmis.apps.billing.services.sha_claims import SHAClaimsService
-        
+
         claim = self.get_object()
         force_online = request.data.get('force_online', False)
 
         try:
             service = SHAClaimsService()
             result = service.submit_claim(claim, request.user, force_online=force_online)
-            
+
             # If claim was queued (offline), return queue info
             if result.get('status') == 'queued':
                 return Response({
@@ -390,7 +389,7 @@ class SHAClaimViewSet(viewsets.ModelViewSet):
                     'queue_entry_id': result.get('queue_entry_id'),
                     'claim_number': claim.claim_number,
                 })
-            
+
             # Normal submission response
             claim.refresh_from_db()
             serializer = SHAClaimSubmitSerializer({
@@ -734,16 +733,17 @@ class SHAClaimViewSet(viewsets.ModelViewSet):
 # Terminology API Views
 # =============================================================================
 
-from rest_framework.views import APIView
 from django.conf import settings as django_settings
-from hmis.apps.billing.services.terminology import TerminologyService, TerminologyError
-from hmis.apps.billing.services.icd11_local import ICD11LocalService
-from hmis.apps.billing.services.dha_search import DHASearchService, SearchError
+from rest_framework.views import APIView
+
 from hmis.apps.billing.services.client_registry import (
-    ClientRegistryService,
-    ClientRegistryError,
     ClientNotFoundError,
+    ClientRegistryError,
+    ClientRegistryService,
 )
+from hmis.apps.billing.services.dha_search import DHASearchService, SearchError
+from hmis.apps.billing.services.icd11_local import ICD11LocalService
+from hmis.apps.billing.services.terminology import TerminologyError, TerminologyService
 
 
 class TerminologySearchView(APIView):
@@ -755,7 +755,7 @@ class TerminologySearchView(APIView):
     For ICD-11, uses local WHO ICD-11 API container by default (ICD11_USE_LOCAL=true).
     """
     permission_classes = [IsAuthenticated]
-    
+
     def get(self, request, terminology_type):
         """
         Search terminology codes.
@@ -766,20 +766,20 @@ class TerminologySearchView(APIView):
         """
         search = request.query_params.get('search', '')
         limit = int(request.query_params.get('limit', 50))
-        
+
         if len(search) < 2:
             return Response({
                 'results': [],
                 'message': 'Search query must be at least 2 characters'
             })
-        
+
         try:
             # Use local ICD-11 API for icd11 terminology if enabled
             if terminology_type == 'icd11' and getattr(django_settings, 'ICD11_USE_LOCAL', True):
                 return self._search_icd11_local(search, limit)
-            
+
             service = TerminologyService()
-            
+
             if terminology_type == 'icd11':
                 results = service.search_icd11(search, limit=limit)
             elif terminology_type == 'loinc':
@@ -797,7 +797,7 @@ class TerminologySearchView(APIView):
                     {'error': f'Unknown terminology type: {terminology_type}'},
                     status=status.HTTP_400_BAD_REQUEST
                 )
-            
+
             # Convert dataclasses to dicts
             data = []
             for item in results:
@@ -806,12 +806,12 @@ class TerminologySearchView(APIView):
                     data.append(item_dict)
                 else:
                     data.append(item)
-            
+
             return Response({
                 'results': data,
                 'count': len(data),
             })
-            
+
         except TerminologyError as e:
             return Response(
                 {'error': str(e), 'status_code': e.status_code},
@@ -822,7 +822,7 @@ class TerminologySearchView(APIView):
                 {'error': str(e)},
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR
             )
-    
+
     def _search_icd11_local(self, search: str, limit: int):
         """
         Search ICD-11 using local WHO ICD-11 API container.
@@ -836,25 +836,25 @@ class TerminologySearchView(APIView):
         """
         try:
             service = ICD11LocalService()
-            
+
             # Check if service is available
             if not service.is_available():
                 return Response(
                     {'error': 'Local ICD-11 API is not available. Start the container: docker compose -f backend/compose.yml up -d'},
                     status=status.HTTP_503_SERVICE_UNAVAILABLE
                 )
-            
+
             results = service.search(search, limit=limit)
-            
+
             # Convert to dict format
             data = [code.to_dict() for code in results]
-            
+
             return Response({
                 'results': data,
                 'count': len(data),
                 'source': 'local_who_icd11',
             })
-            
+
         except Exception as e:
             return Response(
                 {'error': f'ICD-11 local search failed: {str(e)}'},
@@ -867,7 +867,7 @@ class ClientRegistryView(APIView):
     API view for Kenya Client Registry operations.
     """
     permission_classes = [IsAuthenticated]
-    
+
     def get(self, request):
         """
         Fetch client from Client Registry.
@@ -891,14 +891,14 @@ class ClientRegistryView(APIView):
         passport_number = request.query_params.get('passport_number')
         identification_type = request.query_params.get('identification_type')
         identification_number = request.query_params.get('identification_number')
-        
+
         if not any([national_id, client_number, huduma_number, passport_number,
                     (identification_type and identification_number)]):
             return Response(
                 {'error': 'At least one identifier is required (national_id, client_number, huduma_number, passport_number, or identification_type+identification_number)'},
                 status=status.HTTP_400_BAD_REQUEST
             )
-        
+
         try:
             service = ClientRegistryService()
             client = service.fetch_client(
@@ -909,7 +909,7 @@ class ClientRegistryView(APIView):
                 identification_type=identification_type,
                 identification_number=identification_number,
             )
-            
+
             if client:
                 return Response({
                     'found': True,
@@ -930,7 +930,7 @@ class ClientRegistryView(APIView):
                 })
             else:
                 return Response({'found': False})
-                
+
         except ClientNotFoundError:
             return Response({'found': False})
         except ClientRegistryError as e:
@@ -943,7 +943,7 @@ class ClientRegistryView(APIView):
                 {'error': str(e), 'found': False},
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR
             )
-    
+
     def post(self, request):
         """
         Register a new client in Client Registry.
@@ -955,10 +955,10 @@ class ClientRegistryView(APIView):
         - Individual fields: first_name, last_name, date_of_birth, gender (required)
         """
         from hmis.apps.patients.models import Patient
-        
+
         data = request.data
         patient_id = data.get('patient_id')
-        
+
         # If patient_id provided, fetch patient data
         if patient_id:
             try:
@@ -1001,7 +1001,7 @@ class ClientRegistryView(APIView):
             passport_number = data.get('passport_number')
             phone_number = data.get('phone_number')
             email = data.get('email')
-        
+
         try:
             service = ClientRegistryService()
             client = service.register_client(
@@ -1016,18 +1016,18 @@ class ClientRegistryView(APIView):
                 phone_number=phone_number,
                 email=email,
             )
-            
+
             # If patient_id provided, update patient with CR number
             if patient_id and client.client_number:
                 patient.cr_number = client.client_number
                 patient.save(update_fields=['cr_number'])
-            
+
             return Response({
                 'success': True,
                 'client_number': client.client_number,
                 'message': 'Client registered successfully',
             }, status=status.HTTP_201_CREATED)
-            
+
         except ClientRegistryError as e:
             return Response(
                 {'error': str(e), 'success': False},
@@ -1038,7 +1038,7 @@ class ClientRegistryView(APIView):
                 {'error': str(e), 'success': False},
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR
             )
-    
+
     def put(self, request):
         """
         Update an existing client in Client Registry.
@@ -1057,14 +1057,14 @@ class ClientRegistryView(APIView):
         Per DHA API: PUT /v3/update-client
         """
         data = request.data
-        
+
         client_number = data.get('client_number')
         if not client_number:
             return Response(
                 {'error': 'client_number is required'},
                 status=status.HTTP_400_BAD_REQUEST
             )
-        
+
         # Extract updatable fields
         update_fields = {}
         if 'phone_number' in data:
@@ -1075,20 +1075,20 @@ class ClientRegistryView(APIView):
             update_fields['county_of_residence'] = data['county']
         if 'sub_county' in data:
             update_fields['sub_county_of_residence'] = data['sub_county']
-        
+
         if not update_fields:
             return Response(
                 {'error': 'At least one field to update is required (phone_number, email, county, sub_county)'},
                 status=status.HTTP_400_BAD_REQUEST
             )
-        
+
         try:
             service = ClientRegistryService()
             client = service.update_client(
                 client_number=client_number,
                 **update_fields
             )
-            
+
             return Response({
                 'success': True,
                 'client': {
@@ -1102,7 +1102,7 @@ class ClientRegistryView(APIView):
                 },
                 'message': 'Client updated successfully',
             })
-            
+
         except ClientNotFoundError as e:
             return Response(
                 {'error': str(e), 'success': False},
@@ -1125,7 +1125,7 @@ class FacilitySearchView(APIView):
     API view for facility validation via MFL.
     """
     permission_classes = [IsAuthenticated]
-    
+
     def get(self, request):
         """
         Search/validate facility in Master Facility List.
@@ -1134,20 +1134,20 @@ class FacilitySearchView(APIView):
         """
         facility_code = request.query_params.get('facility_code')
         fid = request.query_params.get('fid')
-        
+
         if not facility_code and not fid:
             return Response(
                 {'error': 'facility_code or fid is required'},
                 status=status.HTTP_400_BAD_REQUEST
             )
-        
+
         try:
             service = DHASearchService()
             facility = service.search_facility(
                 facility_code=facility_code,
                 fid=fid,
             )
-            
+
             if facility and facility.found:
                 return Response({
                     'found': True,
@@ -1167,7 +1167,7 @@ class FacilitySearchView(APIView):
                 })
             else:
                 return Response({'found': False})
-                
+
         except SearchError as e:
             return Response(
                 {'error': str(e), 'found': False},
@@ -1191,7 +1191,7 @@ class PractitionerSearchView(APIView):
     Based on: https://uat.dha.go.ke/v1/practitioner-search
     """
     permission_classes = [IsAuthenticated]
-    
+
     def get(self, request):
         """
         Search practitioner in Health Worker Registry.
@@ -1215,17 +1215,17 @@ class PractitionerSearchView(APIView):
         identification_type = request.query_params.get('identification_type', 'National ID')
         registration_number = request.query_params.get('registration_number')
         license_number = request.query_params.get('license_number')
-        
+
         # license_number is an alias for registration_number
         if license_number and not registration_number:
             registration_number = license_number
-        
+
         if not identification_number and not registration_number:
             return Response(
                 {'error': 'identification_number or registration_number is required'},
                 status=status.HTTP_400_BAD_REQUEST
             )
-        
+
         try:
             service = DHASearchService()
             practitioner = service.search_practitioner(
@@ -1233,7 +1233,7 @@ class PractitionerSearchView(APIView):
                 identification_type=identification_type,
                 registration_number=registration_number,
             )
-            
+
             if practitioner and practitioner.found:
                 # Return the full rich data structure
                 return Response({
@@ -1293,7 +1293,7 @@ class PractitionerSearchView(APIView):
                     'error': 'No practitioner found with the provided identification',
                     'message': None
                 }, status=status.HTTP_404_NOT_FOUND)
-                
+
         except SearchError as e:
             return Response(
                 {'error': str(e), 'message': None},
@@ -1311,7 +1311,7 @@ class EligibilityCheckView(APIView):
     API view for SHA eligibility verification.
     """
     permission_classes = [IsAuthenticated]
-    
+
     def post(self, request):
         """
         Check eligibility for a patient or SHA member.
@@ -1324,13 +1324,13 @@ class EligibilityCheckView(APIView):
         """
         patient_id = request.data.get('patient_id')
         sha_number = request.data.get('sha_number')
-        
+
         if not patient_id and not sha_number:
             return Response(
                 {'error': 'patient_id or sha_number is required'},
                 status=status.HTTP_400_BAD_REQUEST
             )
-        
+
         try:
             # Try to find SHA member
             member = None
@@ -1338,18 +1338,18 @@ class EligibilityCheckView(APIView):
                 member = SHAMember.objects.filter(sha_number=sha_number).first()
             elif patient_id:
                 member = SHAMember.objects.filter(patient_id=patient_id).first()
-            
+
             if not member:
                 return Response({
                     'is_eligible': False,
                     'result': 'NOT_FOUND',
                     'message': 'No SHA membership found for this patient',
                 })
-            
+
             # Check eligibility
             service = SHAEligibilityService()
             check = service.check_eligibility(member, request.user)
-            
+
             return Response({
                 'is_eligible': getattr(check, 'is_eligible', False),
                 'result': getattr(check, 'result', ''),
@@ -1359,7 +1359,7 @@ class EligibilityCheckView(APIView):
                 'sha_number': member.sha_number,
                 'membership_type': member.membership_type,
             })
-            
+
         except Exception as e:
             return Response(
                 {'error': str(e), 'is_eligible': False},
@@ -1376,7 +1376,7 @@ class DirectEligibilityCheckView(APIView):
     registration or lookup to verify SHA coverage status.
     """
     permission_classes = [IsAuthenticated]
-    
+
     def get(self, request):
         """
         Check SHA eligibility by identification.
@@ -1406,7 +1406,7 @@ class DirectEligibilityCheckView(APIView):
         sha_number = request.query_params.get('sha_number')
         identification_type = request.query_params.get('identification_type')
         identification_number = request.query_params.get('identification_number')
-        
+
         # Determine identification type and number
         if national_id:
             id_type = 'National ID'
@@ -1422,17 +1422,17 @@ class DirectEligibilityCheckView(APIView):
                 {'error': 'national_id, sha_number, or identification_type+identification_number is required'},
                 status=status.HTTP_400_BAD_REQUEST
             )
-        
+
         try:
             service = SHAEligibilityService()
             result = service.check_eligibility_direct(id_type, id_number)
-            
+
             # Return appropriate status based on result
             if result.get('error'):
                 return Response(result, status=status.HTTP_503_SERVICE_UNAVAILABLE)
-            
+
             return Response(result)
-            
+
         except Exception as e:
             return Response(
                 {
@@ -1463,11 +1463,11 @@ class SHAWebhookView(APIView):
     DHA Sandbox expects: https://taifa-hmis.com/callback
     Replace with your actual production URL.
     """
-    
+
     # Allow unauthenticated access since DHA will call this
     # Use signature verification instead
     permission_classes = []
-    
+
     def post(self, request):
         """
         Receive ClaimResponse from DHA.
@@ -1501,11 +1501,11 @@ class SHAWebhookView(APIView):
         """
         import logging
         logger = logging.getLogger('hmis.sha.webhook')
-        
+
         try:
             payload = request.data
             logger.info(f"SHA Webhook received: {payload}")
-            
+
             # Verify signature if provided (DHA may include HMAC signature)
             signature = request.headers.get('X-SHA-Signature')
             if signature and not self._verify_signature(request.body, signature):
@@ -1514,56 +1514,57 @@ class SHAWebhookView(APIView):
                     {'error': 'Invalid signature'},
                     status=status.HTTP_401_UNAUTHORIZED
                 )
-            
+
             # Handle FHIR ClaimResponse
             if payload.get('resourceType') == 'ClaimResponse':
                 return self._handle_fhir_claim_response(payload)
-            
+
             # Handle simple notification format
             if 'claim_reference' in payload:
                 return self._handle_simple_notification(payload)
-            
+
             # Unknown format - log and acknowledge
             logger.warning(f"Unknown webhook payload format: {payload}")
             return Response({'status': 'received', 'warning': 'Unknown format'})
-            
+
         except Exception as e:
             logger.exception(f"Error processing SHA webhook: {e}")
             return Response(
                 {'error': 'Processing error', 'detail': str(e)},
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR
             )
-    
+
     def _verify_signature(self, body: bytes, signature: str) -> bool:
         """Verify HMAC signature from DHA."""
-        from django.conf import settings
         import hmac
-        
+
+        from django.conf import settings
+
         secret = getattr(settings, 'SHA_WEBHOOK_SECRET', None)
         if not secret:
             # No secret configured, skip verification
             return True
-        
+
         expected = hmac.new(
             secret.encode(),
             body,
             hashlib.sha256
         ).hexdigest()
-        
+
         return hmac.compare_digest(expected, signature)
-    
+
     def _handle_fhir_claim_response(self, payload: dict) -> Response:
         """Process FHIR ClaimResponse resource."""
         import logging
         logger = logging.getLogger('hmis.sha.webhook')
-        
+
         # Extract claim reference from request.reference
         request_ref = payload.get('request', {}).get('reference', '')
         claim_id = request_ref.replace('Claim/', '') if request_ref else None
-        
+
         outcome = payload.get('outcome', '')  # complete, queued, error, partial
         disposition = payload.get('disposition', '')
-        
+
         # Map FHIR outcome to our status
         status_map = {
             'complete': 'approved',
@@ -1572,11 +1573,11 @@ class SHAWebhookView(APIView):
             'partial': 'partially_approved',
         }
         new_status = status_map.get(outcome, 'pending_verification')
-        
+
         # Get approved amount from total
         total = payload.get('total', {})
         approved_amount = total.get('value', 0)
-        
+
         # Update claim if we can find it
         if claim_id:
             updated = self._update_claim_status(
@@ -1590,24 +1591,24 @@ class SHAWebhookView(APIView):
                 logger.info(f"Updated claim {claim_id} to status {new_status}")
             else:
                 logger.warning(f"Could not find claim with reference {claim_id}")
-        
+
         return Response({
             'status': 'processed',
             'claim_reference': claim_id,
             'outcome': outcome,
             'new_status': new_status
         })
-    
+
     def _handle_simple_notification(self, payload: dict) -> Response:
         """Process simple notification format."""
         import logging
         logger = logging.getLogger('hmis.sha.webhook')
-        
+
         claim_reference = payload.get('claim_reference')
         new_status = payload.get('status', 'pending_verification')
         disposition = payload.get('disposition', '')
         approved_amount = payload.get('approved_amount', 0)
-        
+
         updated = self._update_claim_status(
             claim_reference=claim_reference,
             new_status=new_status,
@@ -1615,18 +1616,18 @@ class SHAWebhookView(APIView):
             approved_amount=approved_amount,
             response_payload=payload
         )
-        
+
         if updated:
             logger.info(f"Updated claim {claim_reference} to status {new_status}")
         else:
             logger.warning(f"Could not find claim with reference {claim_reference}")
-        
+
         return Response({
             'status': 'processed',
             'claim_reference': claim_reference,
             'updated': updated
         })
-    
+
     def _update_claim_status(
         self,
         claim_reference: str,
@@ -1637,30 +1638,30 @@ class SHAWebhookView(APIView):
     ) -> bool:
         """Update claim status in database."""
         from decimal import Decimal
-        
+
         # Try to find claim by SHA reference or claim number
         claim = SHAClaim.objects.filter(
             sha_claim_reference=claim_reference
         ).first()
-        
+
         if not claim:
             claim = SHAClaim.objects.filter(
                 claim_number=claim_reference
             ).first()
-        
+
         if not claim:
             return False
-        
+
         # Update claim
         claim.status = new_status
         claim.disposition = disposition
         claim.approved_amount = Decimal(str(approved_amount)) if approved_amount else None
         claim.submission_response = response_payload
         claim.save(update_fields=[
-            'status', 'disposition', 'approved_amount', 
+            'status', 'disposition', 'approved_amount',
             'submission_response', 'updated_at'
         ])
-        
+
         return True
 
 
@@ -1674,9 +1675,9 @@ class SHAValidateView(APIView):
     DHA Sandbox expects: https://taifa-hmis/validate
     Replace with your actual production URL.
     """
-    
+
     permission_classes = []  # Allow unauthenticated for health checks
-    
+
     def get(self, request):
         """
         Health check endpoint for DHA validation.
@@ -1684,7 +1685,7 @@ class SHAValidateView(APIView):
         Returns system status and readiness for claim processing.
         """
         from django.conf import settings
-        
+
         return Response({
             'status': 'active',
             'system': 'Vitora HMIS',
@@ -1697,7 +1698,7 @@ class SHAValidateView(APIView):
             'timestamp': timezone.now().isoformat(),
             'ready': True
         })
-    
+
     def post(self, request):
         """
         Validate a test payload from DHA.
@@ -1705,14 +1706,14 @@ class SHAValidateView(APIView):
         DHA may send test claims to verify integration.
         """
         payload = request.data
-        
+
         # Basic validation of payload structure
         validation_result = {
             'valid': True,
             'errors': [],
             'warnings': []
         }
-        
+
         # Check for required FHIR bundle fields if it's a bundle
         if payload.get('resourceType') == 'Bundle':
             if 'type' not in payload:
@@ -1720,7 +1721,7 @@ class SHAValidateView(APIView):
                 validation_result['valid'] = False
             if 'entry' not in payload:
                 validation_result['warnings'].append('Bundle has no entries')
-        
+
         return Response({
             'status': 'validated',
             'result': validation_result,

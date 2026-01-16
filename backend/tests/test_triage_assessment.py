@@ -8,7 +8,7 @@ Sprint 1.5-1.6 Track E: Triage Module MVP
 from datetime import timedelta
 from decimal import Decimal
 
-import pytest # type: ignore
+import pytest  # type: ignore
 from django.core.exceptions import ValidationError
 from django.utils import timezone
 

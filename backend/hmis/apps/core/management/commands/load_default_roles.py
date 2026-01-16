@@ -182,7 +182,7 @@ class Command(BaseCommand):
 
         self.stdout.write(f"Loading fixture from: {fixture_path}")
 
-        with open(fixture_path, "r") as f:
+        with open(fixture_path) as f:
             data = json.load(f)
 
         # Separate groups and roles

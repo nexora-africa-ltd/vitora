@@ -56,9 +56,9 @@ class Command(BaseCommand):
         error_count = 0
         errors = []
 
-        with open(csv_path, "r", encoding="utf-8") as f:
+        with open(csv_path, encoding="utf-8") as f:
             reader = csv.DictReader(f)
-            
+
             # Process in batches for performance
             batch_size = 500
             drugs_to_create = []
@@ -67,10 +67,10 @@ class Command(BaseCommand):
             for row_num, row in enumerate(reader, start=2):  # Start at 2 (1 is header)
                 try:
                     drug_data = self._parse_row(row)
-                    
+
                     # Check if drug already exists
                     existing = Drug.objects.filter(code=drug_data["code"]).first()
-                    
+
                     if existing:
                         # Update existing drug
                         for key, value in drug_data.items():
@@ -79,7 +79,7 @@ class Command(BaseCommand):
                     else:
                         # Create new drug
                         drugs_to_create.append(Drug(**drug_data))
-                    
+
                     # Batch save
                     if len(drugs_to_create) >= batch_size:
                         with transaction.atomic():
@@ -87,7 +87,7 @@ class Command(BaseCommand):
                         created_count += len(drugs_to_create)
                         drugs_to_create = []
                         self.stdout.write(f"  Created {created_count} drugs...")
-                    
+
                     if len(drugs_to_update) >= batch_size:
                         with transaction.atomic():
                             Drug.objects.bulk_update(
@@ -132,13 +132,13 @@ class Command(BaseCommand):
 
         # Summary
         self.stdout.write("")
-        self.stdout.write(self.style.SUCCESS(f"Import complete!"))
+        self.stdout.write(self.style.SUCCESS("Import complete!"))
         self.stdout.write(f"  Created: {created_count}")
         self.stdout.write(f"  Updated: {updated_count}")
         if error_count:
             self.stdout.write(self.style.WARNING(f"  Errors: {error_count}"))
             if error_count > 10:
-                self.stdout.write(f"  (Showing first 10 errors only)")
+                self.stdout.write("  (Showing first 10 errors only)")
 
         # Total in database
         total = Drug.objects.count()

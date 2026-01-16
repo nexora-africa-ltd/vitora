@@ -11,11 +11,10 @@ Official Endpoint: GET /v2/eligibility?doc_type={type}&doc_value={value}
 import time
 from datetime import date
 from decimal import Decimal, InvalidOperation
-from typing import Any, Optional
+from typing import Any
 
 import requests
 from django.conf import settings
-from django.utils import timezone
 
 from hmis.apps.billing.models import SHAEligibilityCheck, SHAMember
 from hmis.apps.billing.services.sha_auth import SHAAuthError, SHAAuthService
@@ -49,22 +48,22 @@ class SHAEligibilityService:
         >>> print(check.is_eligible)
         True
     """
-    
+
     def __init__(self):
         """Initialize SHAEligibilityService with settings from Django config."""
         self.api_base_url = settings.SHA_API_BASE_URL.rstrip('/')
         self.auth_service = SHAAuthService()
         self.timeout = settings.SHA_API_TIMEOUT
         self.max_retries = 3
-        
+
         # Backward compatible attributes for tests
         self.api_key = settings.SHA_API_KEY
-        
+
         # Get endpoint from settings
         self.eligibility_endpoint = settings.SHA_ENDPOINTS.get(
             'eligibility', '/v2/eligibility'
         )
-    
+
     def check_eligibility(
         self,
         sha_member: SHAMember,
@@ -91,16 +90,16 @@ class SHAEligibilityService:
         # Check if we can use cached result
         if not force_refresh and not sha_member.needs_eligibility_check():
             return self._create_cached_result(sha_member, user)
-        
+
         # Build request
         request_data = self._build_request(sha_member)
-        
+
         # Call API with retry
         start_time = time.time()
         try:
             response = self._call_api(request_data)
             response_time = int((time.time() - start_time) * 1000)
-            
+
             # Parse response
             check = self._process_response(
                 sha_member, user, request_data, response, response_time
@@ -115,12 +114,12 @@ class SHAEligibilityService:
                 sha_member, user, request_data,
                 'API_ERROR', str(e)
             )
-        
+
         # Update member record
         check.update_member_eligibility()
-        
+
         return check
-    
+
     def _build_request(self, sha_member: SHAMember) -> dict:
         """
         Build API request parameters for eligibility check.
@@ -152,7 +151,7 @@ class SHAEligibilityService:
                 'doc_type': 'cr_number',
                 'doc_value': sha_member.cr_number or '',
             }
-    
+
     def _call_api(self, request_params: dict) -> dict:
         """
         Make API call with retry logic.
@@ -173,13 +172,13 @@ class SHAEligibilityService:
             requests.RequestException: If all retries fail
             SHAAuthError: If authentication fails
         """
-        last_exception: Optional[Exception] = None
-        
+        last_exception: Exception | None = None
+
         for attempt in range(self.max_retries):
             try:
                 # Get fresh auth headers (handles token refresh)
                 headers = self.auth_service.get_auth_headers()
-                
+
                 # Make GET request with query parameters (official spec)
                 response = requests.get(
                     f'{self.api_base_url}{self.eligibility_endpoint}',
@@ -187,7 +186,7 @@ class SHAEligibilityService:
                     headers=headers,
                     timeout=self.timeout,
                 )
-                
+
                 # Handle auth errors
                 if response.status_code == 401:
                     # Token might be expired, clear cache and retry
@@ -195,19 +194,19 @@ class SHAEligibilityService:
                     if attempt < self.max_retries - 1:
                         continue
                     raise SHAAuthError("Authentication failed", status_code=401)
-                
+
                 response.raise_for_status()
-                
+
                 # Parse response - handle official wrapper format
                 data = response.json()
-                
+
                 # Official format: {"IsSuccess": true, "Data": {...}}
                 if 'Data' in data and data.get('IsSuccess'):
                     return data['Data']
-                
+
                 # Direct format fallback
                 return data
-                
+
             except SHAAuthError:
                 raise
             except requests.RequestException as e:
@@ -216,10 +215,10 @@ class SHAEligibilityService:
                     raise
                 # Exponential backoff: 2^0=1, 2^1=2, 2^2=4 seconds
                 time.sleep(2 ** attempt)
-        
+
         # Should not reach here, but satisfy type checker
         raise last_exception  # type: ignore
-    
+
     def _process_response(
         self,
         sha_member: SHAMember,
@@ -254,24 +253,24 @@ class SHAEligibilityService:
             SHAEligibilityCheck record with parsed results
         """
         is_eligible = response.get('eligible', False)
-        
+
         # Parse benefit balance (if provided)
         benefit_balance = self._parse_decimal(response.get('balance'))
-        
+
         # Parse eligible_until date - official field is 'coverageEndDate'
         eligible_until = self._parse_date(
             response.get('coverageEndDate') or response.get('valid_until')
         )
-        
+
         # Get ineligibility reason
         reason = response.get('reason', '')
-        
+
         # Store full response including means testing details
         full_response = {
             **response,
             'raw_response': response,  # Keep original for debugging
         }
-        
+
         return SHAEligibilityCheck.objects.create(
             sha_member=sha_member,
             patient=sha_member.patient,
@@ -289,7 +288,7 @@ class SHAEligibilityService:
             ineligibility_reason=reason if not is_eligible else '',
             checked_by=user,
         )
-    
+
     def _create_cached_result(
         self,
         sha_member: SHAMember,
@@ -310,7 +309,7 @@ class SHAEligibilityService:
         """
         cached_response = sha_member.eligibility_response or {}
         is_eligible = cached_response.get('eligible', sha_member.is_eligible())
-        
+
         return SHAEligibilityCheck.objects.create(
             sha_member=sha_member,
             patient=sha_member.patient,
@@ -333,7 +332,7 @@ class SHAEligibilityService:
             ineligibility_reason=cached_response.get('reason', ''),
             checked_by=user,
         )
-    
+
     def _create_error_result(
         self,
         sha_member: SHAMember,
@@ -362,7 +361,7 @@ class SHAEligibilityService:
             result = SHAEligibilityCheck.CheckResult.TIMEOUT
         else:
             result = SHAEligibilityCheck.CheckResult.ERROR
-        
+
         return SHAEligibilityCheck.objects.create(
             sha_member=sha_member,
             patient=sha_member.patient,
@@ -378,8 +377,8 @@ class SHAEligibilityService:
             error_message=error_message,
             checked_by=user,
         )
-    
-    def _parse_decimal(self, value: Any) -> Optional[Decimal]:
+
+    def _parse_decimal(self, value: Any) -> Decimal | None:
         """
         Safely parse a value to Decimal.
         
@@ -395,8 +394,8 @@ class SHAEligibilityService:
             return Decimal(str(value))
         except (InvalidOperation, ValueError, TypeError):
             return None
-    
-    def _parse_date(self, value: Any) -> Optional[date]:
+
+    def _parse_date(self, value: Any) -> date | None:
         """
         Safely parse a value to date.
         
@@ -414,7 +413,7 @@ class SHAEligibilityService:
             return date.fromisoformat(str(value))
         except (ValueError, TypeError):
             return None
-    
+
     def check_eligibility_direct(
         self,
         identification_type: str,
@@ -447,28 +446,28 @@ class SHAEligibilityService:
         """
         import logging
         logger = logging.getLogger(__name__)
-        
+
         request_params = {
             'identification_type': identification_type,
             'identification_number': identification_number,
         }
-        
+
         logger.info(f"Direct eligibility check: {identification_type}={identification_number}")
-        
+
         try:
             response = self._call_api(request_params)
-            
+
             # Parse response - official format has eligibility data in 'message' wrapper
             # or directly in the response
             data = response.get('message', response) if isinstance(response.get('message'), dict) else response
-            
+
             # Check if eligible - SHA uses 'eligible' field (1 = eligible, 0 = not)
             eligible_value = data.get('eligible', 0)
             is_eligible = eligible_value == 1 or eligible_value is True
-            
+
             # Get SHA number (CR number)
             sha_number = data.get('id') or data.get('sha_number') or data.get('cr_number')
-            
+
             # Coverage end date
             coverage_end_date = data.get('coverageEndDate')
             if coverage_end_date:
@@ -480,15 +479,15 @@ class SHAEligibilityService:
                         coverage_end_date = dt.date().isoformat()
                 except (ValueError, AttributeError):
                     pass
-            
+
             # Determine copay - means testing details may have this
             means_testing = data.get('means_testing_details', {})
             copay_percentage = means_testing.get('copay_percentage', 0)
-            
+
             # If employed, typically standard 0% copay for SHIF
             if data.get('isEmployed') and is_eligible:
                 copay_percentage = 0
-            
+
             # Format means testing info for frontend
             means_testing_info = None
             if means_testing and means_testing.get('means_testing_done'):
@@ -502,11 +501,11 @@ class SHAEligibilityService:
                     'income_prediction_category': means_testing.get('income_prediction_category'),
                     'means_testing_done': means_testing.get('means_testing_done'),
                 }
-            
+
             # Fetch dependents if we have a SHA number (regardless of eligibility status)
             dependents = []
             dependents_covered = data.get('dependents_covered', 0)
-            
+
             if sha_number:
                 try:
                     from hmis.apps.billing.models import SHAMember
@@ -515,14 +514,14 @@ class SHAEligibilityService:
                         sha_number=sha_number,
                         membership_type=SHAMember.MembershipType.PRINCIPAL
                     ).first()
-                    
+
                     if principal:
                         # Get dependents via FK or legacy string field
                         from django.db.models import Q
                         dependent_members = SHAMember.objects.filter(
                             Q(principal=principal) | Q(principal_sha_number=sha_number)
                         ).select_related('patient')
-                        
+
                         for dep in dependent_members:
                             dependents.append({
                                 'name': dep.patient.full_name if dep.patient else 'Unknown',
@@ -531,12 +530,12 @@ class SHAEligibilityService:
                                 'sha_number': dep.sha_number,
                                 'is_active': dep.status == SHAMember.MembershipStatus.ACTIVE,
                             })
-                        
+
                         if not dependents_covered:
                             dependents_covered = len(dependents)
                 except Exception as e:
                     logger.warning(f"Could not fetch dependents: {e}")
-            
+
             return {
                 'is_eligible': is_eligible,
                 'sha_number': sha_number,
@@ -555,7 +554,7 @@ class SHAEligibilityService:
                 'raw_response': response,
                 'error': None,
             }
-            
+
         except SHAAuthError as e:
             logger.error(f"Auth error during eligibility check: {e}")
             return {

@@ -29,9 +29,9 @@ Reference: docs/sprint-2.1-2.2-sha-claims-integration-deliverables.md § Service
 
 from datetime import date, timedelta
 from decimal import Decimal
-from unittest.mock import MagicMock, Mock, patch
+from unittest.mock import Mock, patch
 
-import pytest # type: ignore
+import pytest  # type: ignore
 import requests
 from django.conf import settings
 from django.utils import timezone
@@ -165,12 +165,12 @@ class TestSHAEligibilityServiceCheckEligibility:
         """
         # Import service - will fail until implementation exists
         from hmis.apps.billing.services.sha_eligibility import SHAEligibilityService
-        
+
         service = SHAEligibilityService()
-        
+
         with patch.object(service, '_call_api', return_value=mock_sha_api_success_response):
             check = service.check_eligibility(sha_member_needs_check, test_user)
-        
+
         # Assertions
         assert isinstance(check, SHAEligibilityCheck)
         assert check.result == SHAEligibilityCheck.CheckResult.ELIGIBLE
@@ -192,16 +192,16 @@ class TestSHAEligibilityServiceCheckEligibility:
         Then: Cached result is returned without API call
         """
         from hmis.apps.billing.services.sha_eligibility import SHAEligibilityService
-        
+
         service = SHAEligibilityService()
-        
+
         # Mock _call_api to verify it's NOT called
         with patch.object(service, '_call_api') as mock_api:
             check = service.check_eligibility(sha_member_with_recent_check, test_user)
-            
+
             # API should NOT be called when cache is valid
             mock_api.assert_not_called()
-        
+
         # Should return a cached result
         assert isinstance(check, SHAEligibilityCheck)
         assert check.is_eligible is True
@@ -217,19 +217,19 @@ class TestSHAEligibilityServiceCheckEligibility:
         Then: API is called regardless of cache status
         """
         from hmis.apps.billing.services.sha_eligibility import SHAEligibilityService
-        
+
         service = SHAEligibilityService()
-        
+
         with patch.object(
             service, '_call_api', return_value=mock_sha_api_success_response
         ) as mock_api:
             check = service.check_eligibility(
                 sha_member_with_recent_check, test_user, force_refresh=True
             )
-            
+
             # API SHOULD be called when force_refresh=True
             mock_api.assert_called_once()
-        
+
         assert isinstance(check, SHAEligibilityCheck)
         assert check.is_eligible is True
 
@@ -247,12 +247,12 @@ class TestSHAEligibilityServiceErrorHandling:
         Then: SHAEligibilityCheck is created with TIMEOUT result and error details
         """
         from hmis.apps.billing.services.sha_eligibility import SHAEligibilityService
-        
+
         service = SHAEligibilityService()
-        
+
         with patch.object(service, '_call_api', side_effect=requests.Timeout()):
             check = service.check_eligibility(sha_member_needs_check, test_user)
-        
+
         assert isinstance(check, SHAEligibilityCheck)
         assert check.result == SHAEligibilityCheck.CheckResult.TIMEOUT
         assert check.is_eligible is False
@@ -268,15 +268,15 @@ class TestSHAEligibilityServiceErrorHandling:
         Then: SHAEligibilityCheck is created with ERROR result
         """
         from hmis.apps.billing.services.sha_eligibility import SHAEligibilityService
-        
+
         service = SHAEligibilityService()
-        
+
         with patch.object(
             service, '_call_api',
             side_effect=requests.RequestException("Connection refused")
         ):
             check = service.check_eligibility(sha_member_needs_check, test_user)
-        
+
         assert isinstance(check, SHAEligibilityCheck)
         assert check.result == SHAEligibilityCheck.CheckResult.ERROR
         assert check.is_eligible is False
@@ -292,18 +292,18 @@ class TestSHAEligibilityServiceErrorHandling:
         Then: API is retried with exponential backoff before succeeding
         """
         from hmis.apps.billing.services.sha_eligibility import SHAEligibilityService
-        
+
         service = SHAEligibilityService()
-        
+
         # Track sleep calls to verify exponential backoff
         sleep_calls = []
-        
+
         def mock_sleep(seconds):
             sleep_calls.append(seconds)
-        
+
         # First 2 calls fail, third succeeds
         call_count = 0
-        
+
         def mock_get(*args, **kwargs):
             nonlocal call_count
             call_count += 1
@@ -314,14 +314,14 @@ class TestSHAEligibilityServiceErrorHandling:
             mock_response.raise_for_status = Mock()
             mock_response.status_code = 200
             return mock_response
-        
+
         with patch('time.sleep', side_effect=mock_sleep):
             with patch('requests.get', side_effect=mock_get):
                 with patch.object(service.auth_service, 'get_auth_headers', return_value={'Authorization': 'Bearer test'}):
                     # _call_api handles retries internally
                     request_data = service._build_request(sha_member_needs_check)
                     result = service._call_api(request_data)
-        
+
         # Verify exponential backoff pattern: 2^0=1, 2^1=2 seconds
         assert len(sleep_calls) == 2
         assert sleep_calls[0] == 1  # 2^0
@@ -342,11 +342,11 @@ class TestSHAEligibilityServiceRequestPayload:
         Then: Payload contains doc_type and doc_value per official spec
         """
         from hmis.apps.billing.services.sha_eligibility import SHAEligibilityService
-        
+
         service = SHAEligibilityService()
-        
+
         request_data = service._build_request(sha_member)
-        
+
         # Official API uses doc_type and doc_value
         assert 'doc_type' in request_data
         assert 'doc_value' in request_data
@@ -370,12 +370,12 @@ class TestSHAEligibilityServiceResponseParsing:
         Then: SHAEligibilityCheck has correct eligibility fields
         """
         from hmis.apps.billing.services.sha_eligibility import SHAEligibilityService
-        
+
         service = SHAEligibilityService()
-        
+
         with patch.object(service, '_call_api', return_value=mock_sha_api_success_response):
             check = service.check_eligibility(sha_member_needs_check, test_user)
-        
+
         assert check.result == SHAEligibilityCheck.CheckResult.ELIGIBLE
         assert check.is_eligible is True
         assert check.eligible_until is not None
@@ -396,12 +396,12 @@ class TestSHAEligibilityServiceResponseParsing:
         Then: SHAEligibilityCheck has ineligibility details
         """
         from hmis.apps.billing.services.sha_eligibility import SHAEligibilityService
-        
+
         service = SHAEligibilityService()
-        
+
         with patch.object(service, '_call_api', return_value=mock_sha_api_ineligible_response):
             check = service.check_eligibility(sha_member_needs_check, test_user)
-        
+
         assert check.result == SHAEligibilityCheck.CheckResult.INELIGIBLE
         assert check.is_eligible is False
         assert check.ineligibility_reason == 'Membership expired'
@@ -423,18 +423,18 @@ class TestSHAEligibilityServiceMemberUpdate:
         Then: Member status is updated to ACTIVE
         """
         from hmis.apps.billing.services.sha_eligibility import SHAEligibilityService
-        
+
         service = SHAEligibilityService()
-        
+
         # Verify initial status
         assert sha_member_needs_check.status == SHAMember.MembershipStatus.PENDING_VERIFICATION
-        
+
         with patch.object(service, '_call_api', return_value=mock_sha_api_success_response):
             check = service.check_eligibility(sha_member_needs_check, test_user)
-        
+
         # Refresh member from database
         sha_member_needs_check.refresh_from_db()
-        
+
         assert sha_member_needs_check.status == SHAMember.MembershipStatus.ACTIVE
         assert sha_member_needs_check.last_eligibility_check is not None
         # Response includes raw_response for debugging, check key fields match
@@ -452,14 +452,14 @@ class TestSHAEligibilityServiceMemberUpdate:
         Then: Member status is updated to EXPIRED
         """
         from hmis.apps.billing.services.sha_eligibility import SHAEligibilityService
-        
+
         service = SHAEligibilityService()
-        
+
         with patch.object(service, '_call_api', return_value=mock_sha_api_ineligible_response):
             check = service.check_eligibility(sha_member_needs_check, test_user)
-        
+
         sha_member_needs_check.refresh_from_db()
-        
+
         assert sha_member_needs_check.status == SHAMember.MembershipStatus.EXPIRED
 
     def test_member_status_updated_to_suspended(
@@ -473,14 +473,14 @@ class TestSHAEligibilityServiceMemberUpdate:
         Then: Member status is updated to SUSPENDED
         """
         from hmis.apps.billing.services.sha_eligibility import SHAEligibilityService
-        
+
         service = SHAEligibilityService()
-        
+
         with patch.object(service, '_call_api', return_value=mock_sha_api_suspended_response):
             check = service.check_eligibility(sha_member_needs_check, test_user)
-        
+
         sha_member_needs_check.refresh_from_db()
-        
+
         assert sha_member_needs_check.status == SHAMember.MembershipStatus.SUSPENDED
 
 
@@ -499,17 +499,17 @@ class TestSHAEligibilityServiceLogging:
         Then: SHAEligibilityCheck record is created with all details
         """
         from hmis.apps.billing.services.sha_eligibility import SHAEligibilityService
-        
+
         service = SHAEligibilityService()
-        
+
         initial_check_count = SHAEligibilityCheck.objects.count()
-        
+
         with patch.object(service, '_call_api', return_value=mock_sha_api_success_response):
             check = service.check_eligibility(sha_member_needs_check, test_user)
-        
+
         # Verify check was persisted
         assert SHAEligibilityCheck.objects.count() == initial_check_count + 1
-        
+
         # Verify check has all required fields
         persisted_check = SHAEligibilityCheck.objects.get(pk=check.pk)
         assert persisted_check.sha_member == sha_member_needs_check
@@ -533,9 +533,9 @@ class TestSHAEligibilityServiceMockAPI:
         Then: Mock responses are handled correctly
         """
         from hmis.apps.billing.services.sha_eligibility import SHAEligibilityService
-        
+
         service = SHAEligibilityService()
-        
+
         # Create a mock response
         mock_response = Mock()
         mock_response.json.return_value = {
@@ -545,22 +545,22 @@ class TestSHAEligibilityServiceMockAPI:
         }
         mock_response.raise_for_status = Mock()
         mock_response.status_code = 200
-        
+
         with patch('requests.get', return_value=mock_response) as mock_get:
             with patch.object(service.auth_service, 'get_auth_headers', return_value={'Authorization': 'Bearer test'}):
                 check = service.check_eligibility(sha_member_needs_check, test_user)
-                
+
                 # Verify requests.get was called with correct parameters
                 mock_get.assert_called()
                 call_args = mock_get.call_args
-                
+
                 # Verify URL contains eligibility endpoint
                 assert 'eligibility' in call_args[0][0] or 'eligibility' in str(call_args)
-                
+
                 # Verify headers include Authorization
                 assert 'headers' in call_args[1]
                 assert 'Authorization' in call_args[1]['headers']
-        
+
         assert check.is_eligible is True
 
 
@@ -577,16 +577,16 @@ class TestSHAEligibilityServiceConfiguration:
         Then: Service uses settings for api_base_url, api_key, and timeout
         """
         from hmis.apps.billing.services.sha_eligibility import SHAEligibilityService
-        
+
         service = SHAEligibilityService()
-        
+
         # Verify service has configuration from settings
         assert hasattr(service, 'api_base_url')
         assert hasattr(service, 'api_key')
         assert hasattr(service, 'timeout')
         assert hasattr(service, 'max_retries')
         assert hasattr(service, 'auth_service')
-        
+
         # Verify max_retries is 3 as per spec
         assert service.max_retries == 3
 
@@ -599,9 +599,9 @@ class TestSHAEligibilityServiceConfiguration:
         Then: Service uses those values
         """
         from hmis.apps.billing.services.sha_eligibility import SHAEligibilityService
-        
+
         service = SHAEligibilityService()
-        
+
         # These settings should be defined in Django settings
         assert service.api_base_url == settings.SHA_API_BASE_URL.rstrip('/')
         assert service.api_key == settings.SHA_API_KEY

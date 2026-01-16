@@ -8,7 +8,7 @@ Tests cover:
 4. Filtering billable vs non-billable codes
 """
 
-import pytest # type: ignore
+import pytest  # type: ignore
 
 pytestmark = pytest.mark.django_db
 

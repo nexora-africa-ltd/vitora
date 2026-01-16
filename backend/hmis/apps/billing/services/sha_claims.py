@@ -21,8 +21,6 @@ FHIR Bundle Requirements (SHA MIS):
 import logging
 import uuid
 from datetime import date
-from decimal import Decimal
-from typing import Any, Optional
 
 import requests
 from django.conf import settings
@@ -64,7 +62,7 @@ class SHAClaimsService:
         >>> if is_valid:
         ...     response = service.submit_claim(claim, user)
     """
-    
+
     def __init__(self):
         """Initialize SHAClaimsService with settings from Django config."""
         self.api_base_url = settings.SHA_API_BASE_URL.rstrip('/')
@@ -72,18 +70,18 @@ class SHAClaimsService:
         self.facility_code = settings.FACILITY_MFL_CODE
         self.facility_level = settings.FACILITY_LEVEL
         self.facility_name = getattr(settings, 'FACILITY_NAME', 'Healthcare Facility')
-        
+
         # SHA MIS FHIR Base URL (different from API base URL)
         # UAT: https://qa-mis.apeiro-digital.com
         # Production: https://mis.apeiro-digital.com
         self.fhir_base_url = getattr(
-            settings, 'SHA_FHIR_BASE_URL', 
+            settings, 'SHA_FHIR_BASE_URL',
             'https://qa-mis.apeiro-digital.com'
         ).rstrip('/')
-        
+
         # Backward compatible attributes for tests
         self.api_key = settings.SHA_API_KEY
-        
+
         # Get endpoints from settings
         self.claims_submit_endpoint = settings.SHA_ENDPOINTS.get(
             'claims_submit', '/v1/shr-med/bundle'
@@ -91,7 +89,7 @@ class SHAClaimsService:
         self.claims_status_endpoint = settings.SHA_ENDPOINTS.get(
             'claims_status', '/v1/shr-med/claim-status'
         )
-    
+
     def create_claim_from_encounter(
         self,
         encounter,
@@ -122,23 +120,23 @@ class SHAClaimsService:
             ... )
         """
         patient = encounter.patient
-        
+
         # Verify SHA membership
         if not hasattr(patient, 'sha_member'):
             raise ValidationError("Patient does not have SHA membership")
-        
+
         sha_member = patient.sha_member
-        
+
         # Determine claim type
         if not claim_type:
             claim_type = self._determine_claim_type(encounter)
-        
+
         # Extract diagnosis info from encounter if available
         # Get diagnosis from encounter's diagnoses relation if available
         primary_diagnosis_code = ''
         primary_diagnosis_description = ''
         secondary_diagnosis_codes = []
-        
+
         # Check if encounter has diagnoses relation
         if hasattr(encounter, 'diagnoses') and encounter.diagnoses.exists():
             # Get primary diagnosis first
@@ -150,21 +148,21 @@ class SHAClaimsService:
                 elif primary.free_text_diagnosis:
                     primary_diagnosis_code = 'UNSPECIFIED'
                     primary_diagnosis_description = primary.free_text_diagnosis
-            
+
             # Get secondary diagnoses
             secondaries = encounter.diagnoses.filter(diagnosis_type='SECONDARY')
             for diag in secondaries:
                 if diag.icd10_code:
                     secondary_diagnosis_codes.append(diag.icd10_code.code)
-        
+
         # Fall back to direct attributes if no diagnoses relation
         if not primary_diagnosis_code:
             primary_diagnosis_code = getattr(encounter, 'primary_diagnosis_code', '') or ''
             primary_diagnosis_description = getattr(encounter, 'primary_diagnosis_description', '') or ''
-        
+
         if not secondary_diagnosis_codes:
             secondary_diagnosis_codes = getattr(encounter, 'secondary_diagnosis_codes', []) or []
-        
+
         # Build claim data - always include required fields even if empty (model validation will catch)
         claim_data = {
             'patient': patient,
@@ -177,29 +175,29 @@ class SHAClaimsService:
             'facility_level': self.facility_level,
             'created_by': user,
         }
-        
+
         # Add diagnosis info
         if primary_diagnosis_code:
             claim_data['primary_diagnosis_code'] = primary_diagnosis_code
             claim_data['primary_diagnosis_description'] = primary_diagnosis_description
         if secondary_diagnosis_codes:
             claim_data['secondary_diagnosis_codes'] = secondary_diagnosis_codes
-        
+
         # For IPD claims, extract admission date
         if claim_type == SHAClaim.ClaimType.INPATIENT:
             admission_date = getattr(encounter, 'admission_date', None)
             if admission_date:
                 claim_data['admission_date'] = admission_date
-        
+
         # Create claim
         claim = SHAClaim.objects.create(**claim_data)
-        
+
         # Create claim items from invoice items
         for invoice_item in invoice.items.all():
             SHAClaimItem.create_from_invoice_item(claim, invoice_item)
-        
+
         return claim
-    
+
     def _determine_claim_type(self, encounter) -> str:
         """
         Auto-determine claim type from encounter.
@@ -215,7 +213,7 @@ class SHAClaimsService:
         elif encounter.encounter_type == 'EMERGENCY':
             return SHAClaim.ClaimType.EMERGENCY
         return SHAClaim.ClaimType.OUTPATIENT
-    
+
     def validate_claim(self, claim: SHAClaim) -> tuple[bool, list[str]]:
         """
         Comprehensive claim validation.
@@ -229,7 +227,7 @@ class SHAClaimsService:
             Tuple of (is_valid, list_of_errors)
         """
         return claim.validate_for_submission()
-    
+
     def _get_practitioner_id(self, user) -> str:
         """
         Get or generate practitioner identifier for a user.
@@ -247,10 +245,10 @@ class SHAClaimsService:
         """
         if user is None:
             return 'PUID-UNKNOWN-1'
-        
+
         # Try to get StaffProfile
         staff_profile = getattr(user, 'staff_profile', None)
-        
+
         if staff_profile:
             # Use license number if available
             if staff_profile.license_number:
@@ -258,10 +256,10 @@ class SHAClaimsService:
             # Fallback to employee_id
             if staff_profile.employee_id:
                 return f'PUID-{staff_profile.employee_id}'
-        
+
         # Final fallback: user PK
         return f'PUID-USR-{user.pk}'
-    
+
     def _build_practitioner_resource(self, user, practitioner_id: str) -> dict:
         """
         Build FHIR Practitioner resource from User.
@@ -287,13 +285,13 @@ class SHAClaimsService:
                 'name': [{'text': 'Unknown Practitioner'}],
                 'active': True,
             }
-        
+
         # Build name
         full_name = user.get_full_name() or user.username
         staff_profile = getattr(user, 'staff_profile', None)
         if staff_profile and staff_profile.title:
             full_name = f'{staff_profile.title} {full_name}'
-        
+
         # Build identifiers
         identifiers = [
             {
@@ -302,7 +300,7 @@ class SHAClaimsService:
                 'value': practitioner_id
             }
         ]
-        
+
         if staff_profile:
             if staff_profile.license_number:
                 identifiers.append({
@@ -310,14 +308,14 @@ class SHAClaimsService:
                     'system': f'{self.fhir_base_url}/fhir/Practitioner/PractitionerRegistrationNumber',
                     'value': staff_profile.license_number
                 })
-        
+
         # Build qualifications from staff profile
         qualifications = []
         if staff_profile and staff_profile.specialization:
             qualifications.append({
                 'code': {'text': staff_profile.specialization}
             })
-        
+
         resource = {
             'resourceType': 'Practitioner',
             'id': practitioner_id,
@@ -330,12 +328,12 @@ class SHAClaimsService:
             'identifier': identifiers,
             'active': True,
         }
-        
+
         if qualifications:
             resource['qualification'] = qualifications
-        
+
         return resource
-    
+
     def package_claim(self, claim: SHAClaim) -> dict:
         """
         Package claim for submission in SHA-required FHIR format.
@@ -358,19 +356,19 @@ class SHAClaimsService:
         """
         # Generate unique bundle ID (same as claim ID in FHIR)
         bundle_guid = str(uuid.uuid4())
-        
+
         # Get SHA CR Number (used as patient identifier in SHA system)
         cr_number = claim.sha_member.sha_number
-        
+
         # Get practitioner from encounter
         practitioner_user = None
         if claim.encounter:
             practitioner_user = claim.encounter.finalized_by
         practitioner_id = self._get_practitioner_id(practitioner_user)
-        
+
         # Check for PFMS eligibility (checklist item #13)
         is_pfms_eligible = getattr(claim.sha_member, 'is_pfms_eligible', False)
-        
+
         # Build base entries
         entries = [
             # Order per SHA spec: Practitioner, Organization, Coverage, Patient, Claim
@@ -387,7 +385,7 @@ class SHAClaimsService:
                 'resource': self._build_coverage_resource(claim.sha_member, cr_number)
             },
         ]
-        
+
         # Add PFMS coverage if eligible (SHA Integration Checklist item #13)
         if is_pfms_eligible:
             pfms_category = getattr(claim.sha_member, 'pfms_category', 'vulnerable')
@@ -397,7 +395,7 @@ class SHAClaimsService:
                     claim.sha_member, cr_number, pfms_category
                 )
             })
-        
+
         # Add patient and claim resources
         entries.extend([
             {
@@ -412,7 +410,7 @@ class SHAClaimsService:
                 )
             },
         ])
-        
+
         bundle = {
             'id': bundle_guid,
             'meta': {
@@ -425,9 +423,9 @@ class SHAClaimsService:
             'entry': entries,
             'resourceType': 'Bundle'
         }
-        
+
         return bundle
-    
+
     def _build_organization_resource(self) -> dict:
         """
         Build FHIR Organization resource for the healthcare facility.
@@ -478,11 +476,11 @@ class SHAClaimsService:
             }],
             'resourceType': 'Organization'
         }
-    
+
     def _build_claim_resource(
-        self, 
-        claim: SHAClaim, 
-        bundle_guid: str, 
+        self,
+        claim: SHAClaim,
+        bundle_guid: str,
         cr_number: str,
         practitioner_id: str | None = None,
         practitioner_user=None,
@@ -504,11 +502,11 @@ class SHAClaimsService:
         """
         # Determine claim subType (op=outpatient, ip=inpatient)
         sub_type = 'ip' if claim.claim_type == 'inpatient' else 'op'
-        
+
         # Build billable period from service date
         service_date = claim.service_date or date.today()
         end_date = claim.discharge_date or service_date
-        
+
         # Get practitioner display name
         practitioner_display = 'Unknown Practitioner'
         if practitioner_user:
@@ -516,7 +514,7 @@ class SHAClaimsService:
             staff_profile = getattr(practitioner_user, 'staff_profile', None)
             if staff_profile and staff_profile.title:
                 practitioner_display = f'{staff_profile.title} {practitioner_display}'
-        
+
         # Build insurance array (SHA Integration Checklist item #13)
         insurance_entries = [{
             'sequence': 1,
@@ -525,7 +523,7 @@ class SHAClaimsService:
                 'reference': f'{self.fhir_base_url}/fhir/Coverage/{cr_number}-sha-coverage'
             }
         }]
-        
+
         # Add PFMS coverage if eligible
         if is_pfms_eligible:
             insurance_entries.append({
@@ -535,7 +533,7 @@ class SHAClaimsService:
                     'reference': f'{self.fhir_base_url}/fhir/Coverage/{cr_number}-pfms-coverage'
                 }
             })
-        
+
         claim_resource = {
             'id': bundle_guid,
             'identifier': [{
@@ -601,9 +599,9 @@ class SHAClaimsService:
             },
             'resourceType': 'Claim'
         }
-        
+
         return claim_resource
-    
+
     def _build_diagnosis_list(self, claim: SHAClaim) -> list[dict]:
         """
         Build FHIR diagnosis list from claim.
@@ -617,7 +615,7 @@ class SHAClaimsService:
             List of FHIR diagnosis dicts
         """
         diagnoses = []
-        
+
         # Primary diagnosis (using ICD-11 system per SHA spec)
         if claim.primary_diagnosis_code:
             diagnoses.append({
@@ -630,7 +628,7 @@ class SHAClaimsService:
                     }]
                 }
             })
-        
+
         # Secondary diagnoses
         for idx, code in enumerate(claim.secondary_diagnosis_codes or [], start=2):
             if isinstance(code, dict):
@@ -639,7 +637,7 @@ class SHAClaimsService:
             else:
                 diag_code = code
                 diag_desc = code
-            
+
             diagnoses.append({
                 'sequence': idx,
                 'diagnosisCodeableConcept': {
@@ -650,9 +648,9 @@ class SHAClaimsService:
                     }]
                 }
             })
-        
+
         return diagnoses
-    
+
     def _build_item_list(self, claim: SHAClaim, cr_number: str) -> list[dict]:
         """
         Build FHIR item list from claim items.
@@ -671,16 +669,16 @@ class SHAClaimsService:
             List of FHIR item dicts
         """
         items = []
-        
+
         for idx, claim_item in enumerate(claim.items.all(), start=1):
             # Get service date or use claim service date
             service_date = claim_item.service_date or claim.service_date or date.today()
-            
+
             # Get SHA intervention code from tariff
             sha_code = ''
             if claim_item.tariff:
                 sha_code = claim_item.tariff.code
-            
+
             # Determine category based on item type or tariff category
             category_code = 'procedure'  # Default
             if claim_item.tariff and hasattr(claim_item.tariff, 'category'):
@@ -696,14 +694,14 @@ class SHAClaimsService:
                     'radiology': 'procedure',
                 }
                 category_code = category_mapping.get(
-                    str(claim_item.tariff.category).lower(), 
+                    str(claim_item.tariff.category).lower(),
                     'procedure'
                 )
-            
+
             # Determine coverage reference based on item's coverage_type
             # SHA Integration Checklist item #13: extension to show which item belongs to which coverage
             coverage_type = getattr(claim_item, 'coverage_type', 'sha')
-            
+
             # Build coverage extension based on coverage type
             if coverage_type == 'pfms':
                 coverage_ref = f'{self.fhir_base_url}/fhir/Coverage/{cr_number}-pfms-coverage'
@@ -713,7 +711,7 @@ class SHAClaimsService:
             else:
                 # Default to SHA coverage
                 coverage_ref = f'{self.fhir_base_url}/fhir/Coverage/{cr_number}-sha-coverage'
-            
+
             item = {
                 'sequence': idx,
                 'productOrService': {
@@ -753,11 +751,11 @@ class SHAClaimsService:
                     }
                 }]
             }
-            
+
             items.append(item)
-        
+
         return items
-    
+
     def _build_patient_resource(self, patient, sha_member) -> dict:
         """
         Build FHIR Patient resource per SHA specification.
@@ -776,7 +774,7 @@ class SHAClaimsService:
         Reference: docs/sha-guides/claims.md - Patient Resource section
         """
         cr_number = sha_member.sha_number
-        
+
         return {
             'resourceType': 'Patient',
             'id': cr_number,
@@ -798,7 +796,7 @@ class SHAClaimsService:
             'gender': self._map_gender(patient.gender),
             'birthDate': self._format_date(patient.date_of_birth),
         }
-    
+
     def _build_coverage_resource(self, sha_member, cr_number: str) -> dict:
         """
         Build FHIR Coverage resource for SHA membership.
@@ -817,7 +815,7 @@ class SHAClaimsService:
         Reference: docs/sha-guides/claims.md - Coverage Resource section
         """
         coverage_id = f'{cr_number}-sha-coverage'
-        
+
         return {
             'resourceType': 'Coverage',
             'id': coverage_id,
@@ -868,7 +866,7 @@ class SHAClaimsService:
                 'display': 'Social Health Authority (SHA)'
             }]
         }
-    
+
     # PFMS scheme code mapping
     # Reference: SHA Integration Checklist item #13
     PFMS_SCHEME_CODES = {
@@ -878,7 +876,7 @@ class SHAClaimsService:
         'orphan': 'CAT-PFMS-004',
         'indigent': 'CAT-PFMS-005',
     }
-    
+
     PFMS_SCHEME_NAMES = {
         'vulnerable': 'PFMS VULNERABLE POPULATION',
         'elderly': 'PFMS ELDERLY (65+)',
@@ -886,7 +884,7 @@ class SHAClaimsService:
         'orphan': 'PFMS ORPHANS AND VULNERABLE CHILDREN',
         'indigent': 'PFMS INDIGENT',
     }
-    
+
     def get_pfms_scheme_code(self, category: str) -> str:
         """
         Get PFMS scheme category code for a given category.
@@ -898,7 +896,7 @@ class SHAClaimsService:
             PFMS scheme code (e.g., CAT-PFMS-001)
         """
         return self.PFMS_SCHEME_CODES.get(category.lower(), 'CAT-PFMS-001')
-    
+
     def get_pfms_scheme_name(self, category: str) -> str:
         """
         Get PFMS scheme name for a given category.
@@ -910,7 +908,7 @@ class SHAClaimsService:
             PFMS scheme display name
         """
         return self.PFMS_SCHEME_NAMES.get(category.lower(), 'PFMS VULNERABLE POPULATION')
-    
+
     def _build_pfms_coverage_resource(
         self, sha_member, cr_number: str, pfms_category: str
     ) -> dict:
@@ -932,7 +930,7 @@ class SHAClaimsService:
         coverage_id = f'{cr_number}-pfms-coverage'
         scheme_code = self.get_pfms_scheme_code(pfms_category)
         scheme_name = self.get_pfms_scheme_name(pfms_category)
-        
+
         return {
             'resourceType': 'Coverage',
             'id': coverage_id,
@@ -981,7 +979,7 @@ class SHAClaimsService:
                 'display': 'Government of Kenya - PFMS'
             }]
         }
-    
+
     def _format_date(self, date_value) -> str | None:
         """
         Format a date value as ISO string.
@@ -1001,7 +999,7 @@ class SHAClaimsService:
         if hasattr(date_value, 'isoformat'):
             return date_value.isoformat()
         return str(date_value)
-    
+
     def _map_gender(self, gender: str) -> str:
         """
         Map internal gender code to FHIR gender.
@@ -1018,7 +1016,7 @@ class SHAClaimsService:
             'O': 'other',
         }
         return mapping.get(gender, 'unknown')
-    
+
     def submit_claim(self, claim: SHAClaim, user, force_online: bool = False) -> dict:
         """
         Submit claim to SHA.
@@ -1042,25 +1040,25 @@ class SHAClaimsService:
         is_valid, errors = self.validate_claim(claim)
         if not is_valid:
             raise ValidationError({'errors': errors})
-        
+
         # Check connectivity
         checker = ConnectivityChecker(server_url=self.api_base_url)
         is_online = checker.check()
-        
+
         if not is_online and not force_online:
             # Queue for offline submission
             return self._queue_claim_for_submission(claim, user)
-        
+
         if not is_online and force_online:
             raise ValidationError("Cannot submit claim: system is offline")
-        
+
         # Package claim
         bundle = self.package_claim(claim)
-        
+
         # Submit via API
         try:
             response = self._submit_to_sha_api(bundle, claim)
-            
+
             # Update claim status
             claim.status = SHAClaim.ClaimStatus.SUBMITTED
             claim.submitted_at = timezone.now()
@@ -1071,7 +1069,7 @@ class SHAClaimsService:
                 'status', 'submitted_at', 'submitted_by',
                 'sha_claim_reference', 'submission_response', 'updated_at'
             ])
-            
+
             # Log audit
             AuditLog.log(
                 action='sha_claim_submit',
@@ -1080,19 +1078,19 @@ class SHAClaimsService:
                 resource_id=claim.id,
                 details={'sha_reference': claim.sha_claim_reference}
             )
-            
+
             return response
-            
+
         except requests.RequestException as e:
             # If submission fails due to network, queue for retry
             if self._is_network_error(e):
                 logger.warning(f"Network error submitting claim {claim.claim_number}, queueing for retry")
                 return self._queue_claim_for_submission(claim, user)
-            
+
             claim.submission_response = {'error': str(e)}
             claim.save(update_fields=['submission_response', 'updated_at'])
             raise ValidationError(f"Submission failed: {str(e)}")
-    
+
     def _queue_claim_for_submission(self, claim: SHAClaim, user) -> dict:
         """
         Queue a claim for offline submission.
@@ -1108,10 +1106,10 @@ class SHAClaimsService:
             Queue confirmation dict
         """
         from hmis.apps.billing.sha_serializers import SHAClaimSerializer
-        
+
         # Package the claim data
         bundle = self.package_claim(claim)
-        
+
         # Serialize claim data for sync queue
         serializer = SHAClaimSerializer(claim)
         claim_data = {
@@ -1122,7 +1120,7 @@ class SHAClaimsService:
             'submitted_by_id': user.id,
             'queued_at': timezone.now().isoformat(),
         }
-        
+
         # Create sync queue entry
         sync_manager = SyncManager()
         queue_entry = sync_manager.queue_change(
@@ -1131,7 +1129,7 @@ class SHAClaimsService:
             record_id=claim.id,
             data=claim_data,
         )
-        
+
         # Update claim status to show it's queued
         claim.status = SHAClaim.ClaimStatus.PENDING_SUBMISSION
         claim.submission_response = {
@@ -1140,7 +1138,7 @@ class SHAClaimsService:
             'queued_at': timezone.now().isoformat(),
         }
         claim.save(update_fields=['status', 'submission_response', 'updated_at'])
-        
+
         # Log audit
         AuditLog.log(
             action='sha_claim_queued',
@@ -1152,16 +1150,16 @@ class SHAClaimsService:
                 'reason': 'offline_submission',
             }
         )
-        
+
         logger.info(f"Claim {claim.claim_number} queued for offline submission (queue_id={queue_entry.id})")
-        
+
         return {
             'status': 'queued',
             'message': 'Claim queued for submission when online',
             'queue_entry_id': queue_entry.id,
             'claim_number': claim.claim_number,
         }
-    
+
     def _is_network_error(self, exception: Exception) -> bool:
         """
         Check if an exception is a network-related error.
@@ -1178,7 +1176,7 @@ class SHAClaimsService:
             requests.exceptions.ConnectTimeout,
         )
         return isinstance(exception, network_errors)
-    
+
     def process_queued_claims(self) -> dict:
         """
         Process all queued claim submissions.
@@ -1188,37 +1186,38 @@ class SHAClaimsService:
         Returns:
             Summary of processed claims
         """
-        from hmis.apps.core.models import SyncQueue
         from django.contrib.auth import get_user_model
-        
+
+        from hmis.apps.core.models import SyncQueue
+
         User = get_user_model()
-        
+
         # Get all pending claim submissions
         pending_entries = SyncQueue.objects.filter(
             model_name='SHAClaimSubmission',
             status='PENDING',
         ).order_by('created_at')
-        
+
         results = {
             'processed': 0,
             'succeeded': 0,
             'failed': 0,
             'details': [],
         }
-        
+
         for entry in pending_entries:
             entry.mark_syncing()
-            
+
             try:
                 claim_id = entry.data.get('claim_id')
                 user_id = entry.data.get('submitted_by_id')
-                
+
                 claim = SHAClaim.objects.get(id=claim_id)
                 user = User.objects.get(id=user_id)
-                
+
                 # Submit with force_online to prevent re-queueing
                 response = self.submit_claim(claim, user, force_online=True)
-                
+
                 entry.mark_synced()
                 results['succeeded'] += 1
                 results['details'].append({
@@ -1226,16 +1225,16 @@ class SHAClaimsService:
                     'status': 'submitted',
                     'sha_reference': response.get('claim_reference', ''),
                 })
-                
+
             except Exception as e:
                 entry.retry_count += 1
                 entry.error_message = str(e)
-                
+
                 if entry.retry_count >= 3:
                     entry.status = 'FAILED'
                 else:
                     entry.status = 'PENDING'
-                
+
                 entry.save()
                 results['failed'] += 1
                 results['details'].append({
@@ -1244,16 +1243,16 @@ class SHAClaimsService:
                     'error': str(e),
                     'retry_count': entry.retry_count,
                 })
-            
+
             results['processed'] += 1
-        
+
         logger.info(
             f"Processed {results['processed']} queued claims: "
             f"{results['succeeded']} succeeded, {results['failed']} failed"
         )
-        
+
         return results
-    
+
     def _submit_to_sha_api(self, bundle: dict, claim: SHAClaim) -> dict:
         """
         Submit claim bundle to SHA API.
@@ -1274,7 +1273,7 @@ class SHAClaimsService:
         # Get auth headers
         headers = self.auth_service.get_auth_headers()
         headers['Content-Type'] = 'application/fhir+json'
-        
+
         # Prepare multipart with attachments if any
         files = []
         for attachment in claim.attachments.all():
@@ -1282,7 +1281,7 @@ class SHAClaimsService:
                 'attachments',
                 (attachment.original_filename, attachment.file, attachment.mime_type)
             ))
-        
+
         # Submit to official endpoint: /v1/shr-med/bundle
         response = requests.post(
             f'{self.api_base_url}{self.claims_submit_endpoint}',
@@ -1291,23 +1290,23 @@ class SHAClaimsService:
             headers=headers,
             timeout=60,
         )
-        
+
         # Handle auth errors
         if response.status_code == 401:
             self.auth_service.clear_token_cache()
             raise SHAAuthError("Authentication failed during claim submission", status_code=401)
-        
+
         response.raise_for_status()
-        
+
         # Parse response - handle official wrapper format
         data = response.json()
-        
+
         # Official format: {"IsSuccess": true, "Data": {...}}
         if 'Data' in data and data.get('IsSuccess'):
             return data['Data']
-        
+
         return data
-    
+
     def get_claim_status(self, claim_id: str) -> dict:
         """
         Get claim status from SHA API.
@@ -1325,24 +1324,24 @@ class SHAClaimsService:
             SHAAuthError: If authentication fails
         """
         headers = self.auth_service.get_auth_headers()
-        
+
         response = requests.get(
             f'{self.api_base_url}{self.claims_status_endpoint}',
             params={'claim_id': claim_id},
             headers=headers,
             timeout=30,
         )
-        
+
         if response.status_code == 401:
             self.auth_service.clear_token_cache()
             raise SHAAuthError("Authentication failed during status check", status_code=401)
-        
+
         response.raise_for_status()
-        
+
         data = response.json()
-        
+
         # Handle official wrapper format
         if 'Data' in data and data.get('IsSuccess'):
             return data['Data']
-        
+
         return data

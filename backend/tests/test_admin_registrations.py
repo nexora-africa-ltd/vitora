@@ -9,7 +9,7 @@ Tests cover:
 5. Admin list_display and search_fields
 """
 
-import pytest # type: ignore
+import pytest  # type: ignore
 
 pytestmark = pytest.mark.django_db
 
