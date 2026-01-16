@@ -29,13 +29,13 @@ const SKIP_PATTERNS = [
 ];
 
 /**
- * Middleware for server-side authentication routing.
+ * Proxy for server-side authentication routing.
  * 
  * - Unauthenticated users are redirected to /login
  * - Authenticated users on /login are redirected to /dashboard
  * - Root path (/) redirects based on auth status
  */
-export function middleware(request: NextRequest) {
+export function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
   // Skip middleware for static assets and API routes

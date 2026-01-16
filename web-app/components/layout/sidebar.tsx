@@ -177,11 +177,11 @@ export function Sidebar({ collapsed, onCollapse, mobileOpen, onMobileClose }: Si
         onClick={onMobileClose}
         data-active={isActive}
         className={cn(
-          'flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-colors',
+          'flex items-center gap-3 rounded-lg px-3 py-2 text-sm transform scale-105 font-normal transition-colors',
           isChild && !collapsed && 'ml-4 pl-4 border-l border-border',
           isActive
-            ? 'bg-cyan-300/90  text-primary hover:bg-cyan-450 hover:text-900'
-            : 'text-muted-foreground hover:bg-[#3D000F] hover:text-accent-foreground'
+            ? 'bg-cyan-350  text-primary hover:bg-cyan-450 hover:text-900'
+            : 'text-accent-foreground hover:bg-primary hover:text-accent-foreground'
         )}
       >
         <Icon className="h-5 w-5 shrink-0" />
@@ -225,7 +225,7 @@ export function Sidebar({ collapsed, onCollapse, mobileOpen, onMobileClose }: Si
                 'flex w-full items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-colors',
                 hasActiveChild
                   ? 'bg-cyan-400 text-cyan-900'
-                  : 'text-muted-foreground hover:bg-[#3D000F] hover:text-accent-foreground'
+                  : 'text-muted-foreground hover:bg-primary hover:text-accent-foreground'
               )}
             >
               <Icon className="h-5 w-5 shrink-0" />
@@ -243,7 +243,7 @@ export function Sidebar({ collapsed, onCollapse, mobileOpen, onMobileClose }: Si
                     'flex items-center gap-2 px-3 py-1.5 text-sm transition-colors',
                     pathname === child.href || pathname.startsWith(`${child.href}/`)
                       ? 'bg-orange-300 text-cyan-900'
-                      : 'hover:bg-muted'
+                      : 'hover:bg-primary'
                   )}
                 >
                   <child.icon className="h-4 w-4" />
@@ -264,7 +264,7 @@ export function Sidebar({ collapsed, onCollapse, mobileOpen, onMobileClose }: Si
               'flex w-full items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-colors',
               hasActiveChild
                 ? 'bg-cyan-300 text-cyan-900'
-                : 'text-muted-foreground hover:bg-[#3D000F] hover:text-accent-foreground'
+                : 'text-muted-foreground hover:bg-primary hover:text-accent-foreground'
             )}
           >
             <Icon className="h-5 w-5 shrink-0" />
