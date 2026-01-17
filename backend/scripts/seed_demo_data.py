@@ -12,7 +12,7 @@ Usage:
     cd backend
     poetry shell
     python manage.py shell < scripts/seed_demo_data.py
-    
+
     # Or run directly:
     DJANGO_SETTINGS_MODULE=hmis.settings.staging python scripts/seed_demo_data.py
 
@@ -34,11 +34,10 @@ django.setup()
 
 from django.contrib.auth import get_user_model
 from django.contrib.auth.models import Group, Permission
-from django.contrib.contenttypes.models import ContentType
 from django.db import transaction
 
 from hmis.apps.core.models import County, SubCounty, Ward
-from hmis.apps.encounters.models import Encounter, ICD10Code
+from hmis.apps.encounters.models import Encounter
 from hmis.apps.patients.models import Patient
 
 User = get_user_model()
@@ -456,7 +455,7 @@ def create_sample_patients(counties, count=20):
 
 def create_sample_encounters(patients, count_per_patient=2):
     """Create sample encounters for patients."""
-    print(f"\nCreating sample encounters...")
+    print("\nCreating sample encounters...")
 
     # Get clinician user
     try:
