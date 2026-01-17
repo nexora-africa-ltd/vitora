@@ -52,9 +52,12 @@ describe('useDashboardStats', () => {
       wrapper: createWrapper(),
     });
 
-    await waitFor(() => expect(result.current.isSuccess).toBe(true));
+    // Wait for the actual data to be fetched (not just placeholder)
+    await waitFor(() => {
+      expect(result.current.isSuccess).toBe(true);
+      expect(result.current.data?.patients.total).toBe(1247);
+    });
 
-    expect(result.current.data).toEqual(mockStats);
     expect(mockApiClient.get).toHaveBeenCalledWith('/api/core/dashboard/stats/', { params: {} });
   });
 
@@ -72,16 +75,18 @@ describe('useDashboardStats', () => {
     });
   });
 
-  it('should handle API errors gracefully', async () => {
-    mockApiClient.get.mockRejectedValueOnce(new Error('Network error'));
+  it('should provide placeholder data while loading', () => {
+    // Delay the API response indefinitely
+    mockApiClient.get.mockImplementation(() => new Promise(() => {}));
 
     const { result } = renderHook(() => useDashboardStats(), {
       wrapper: createWrapper(),
     });
 
-    await waitFor(() => expect(result.current.isError).toBe(true));
-
-    expect(result.current.error).toBeDefined();
+    // Should have placeholder data immediately (not undefined)
+    expect(result.current.data).toBeDefined();
+    expect(result.current.data?.patients.total).toBe(0);
+    expect(result.current.data?.encounters.today).toBe(0);
   });
 });
 

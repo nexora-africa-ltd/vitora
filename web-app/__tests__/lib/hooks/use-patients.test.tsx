@@ -81,7 +81,7 @@ describe('usePatients', () => {
 
     const url = mockApiClient.get.mock.calls[0]?.[0];
     expect(url).toContain('page=2');
-    expect(url).toContain('limit=25');
+    expect(url).toContain('page_size=25'); // Django REST Framework uses page_size
   });
 
   it('should handle API errors', async () => {
