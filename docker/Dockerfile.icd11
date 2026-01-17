@@ -14,13 +14,14 @@
 #
 # Note: Render requires services to listen on $PORT (10000 by default).
 # The WHO ICD-11 API listens on port 80, so we use socat as a port forwarder.
+# The base image is Alpine-based, so we use apk (not apt-get).
 # =============================================================================
 
 FROM whoicd/icd-api:latest
 
-# Install socat for port forwarding
+# Install socat for port forwarding (Alpine uses apk, not apt-get)
 USER root
-RUN apt-get update && apt-get install -y socat && rm -rf /var/lib/apt/lists/*
+RUN apk add --no-cache socat curl bash
 
 # Environment variables for WHO ICD-11 API
 ENV acceptLicense=true
