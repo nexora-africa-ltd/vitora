@@ -1,6 +1,6 @@
 # Vitora HMIS - Comprehensive Development Roadmap
 
-**Version**: 1.3
+**Version**: 1.4
 **Last Updated**: January 17, 2026
 **Target Completion**: Q4 2027
 **Methodology**: Test-Driven Development (TDD) with Agile Sprints
@@ -14,9 +14,19 @@ This roadmap outlines the complete development journey for Vitora HMIS from Janu
 ### Current Status: Phase 1 IN PROGRESS 🚧
 - **Phase 0 (Sprints 0.1-0.7)**: All completed ✅
 - **Phase 1 (Sprint 1.x)**: SHA Integration fast-tracked and COMPLETE ✅
-- **Test Coverage**: 82%+ backend (900+ tests), 66 frontend tests
+- **Test Coverage**: 82%+ backend (900+ tests), 1470+ frontend tests
 - **Desktop App**: Offline-first with login UI, JWT auth, patient registration, encounters
+- **Web App**: Next.js dashboard with full clinical workflows
 - **Security**: Fernet encryption, audit logging, DPIA completed
+- **Staging Environment**: Ready for stakeholder demos ✅ (NEW)
+
+**🎯 Staging Environment Setup** (January 2026):
+- ✅ Backend `staging.py` settings - Production-like with DEMO_MODE flag
+- ✅ Frontend `.env.staging` - Demo banner, watermark, all features enabled
+- ✅ Demo banner component - Prominent "Demo Mode" indicator
+- ✅ Sample data seeding script - 7 demo users, 20 patients, encounters
+- ✅ Render blueprint updated - Separate staging services
+- ✅ Stakeholder feedback checklist - Comprehensive workflow review form
 
 **🚀 SHA Integration FAST-TRACKED** (Originally Phase 2, moved to Phase 1):
 - ✅ DHA Authentication Service - JWT token management with caching
@@ -67,6 +77,65 @@ This roadmap outlines the complete development journey for Vitora HMIS from Janu
 4. **Compliance-First**: Security and privacy in every sprint
 5. **Hybrid Scalability**: Offline-first with optional cloud sync
 6. **Kenya-First**: Affordable, localized, with global standards (FHIR, WHO)
+
+---
+
+## Staging Environment (Stakeholder Demos)
+
+### URLs
+| Service | URL |
+|---------|-----|
+| **Frontend (Staging)** | https://vitora-hmis-staging.onrender.com |
+| **Backend API (Staging)** | https://vitora-staging.onrender.com |
+| **Frontend (Production)** | https://vitora-hmis.onrender.com |
+| **Backend API (Production)** | https://vitora.onrender.com |
+
+### Demo User Credentials
+| Role | Username | Password |
+|------|----------|----------|
+| System Administrator | `demo_admin` | `DemoAdmin2026!` |
+| Receptionist | `demo_receptionist` | `DemoReception2026!` |
+| Nurse (Triage) | `demo_nurse` | `DemoNurse2026!` |
+| Doctor | `demo_doctor` | `DemoDoctor2026!` |
+| Pharmacist | `demo_pharmacist` | `DemoPharmacy2026!` |
+| Lab Technician | `demo_labtech` | `DemoLab2026!` |
+| Billing Clerk | `demo_billing` | `DemoBilling2026!` |
+
+### Staging Configuration Files
+| File | Purpose |
+|------|---------|
+| `backend/hmis/settings/staging.py` | Django staging settings (DEBUG=False, DEMO_MODE=True) |
+| `web-app/.env.staging` | Next.js environment variables for staging |
+| `backend/scripts/seed_demo_data.py` | Seed demo users and sample patients |
+| `render.yaml` | Render blueprint with staging + production services |
+| `docs/stakeholder-workflow-review-checklist.md` | Feedback form for stakeholders |
+
+### Running Locally in Staging Mode
+```bash
+# Backend
+cd backend
+DJANGO_ENV=staging python manage.py runserver
+
+# Seed demo data (first time)
+DJANGO_ENV=staging python scripts/seed_demo_data.py
+
+# Frontend
+cd web-app
+npm run dev:staging
+```
+
+### Features Enabled in Staging
+All modules are enabled in staging environment:
+- ✅ Patient Registration & Management
+- ✅ Triage & Vitals Assessment
+- ✅ Clinical Encounters & Consultations
+- ✅ ICD-10/ICD-11 Diagnosis Coding
+- ✅ Pharmacy & Dispensing
+- ✅ Laboratory Orders & Results
+- ✅ Billing & Invoicing
+- ✅ SHA Integration (UAT endpoint)
+- ✅ Inpatient/Ward Management
+- ✅ Reports & Dashboard
 
 ---
 

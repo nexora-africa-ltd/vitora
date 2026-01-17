@@ -7,7 +7,87 @@
 
 services:
   # ===========================================================================
-  # Backend API (Django)
+  # Backend API - STAGING (Django)
+  # ===========================================================================
+  - type: web
+    name: vitora-staging
+    runtime: python
+    region: frankfurt
+    plan: free
+    rootDir: backend
+    buildCommand: |
+      pip install poetry &&
+      poetry config virtualenvs.create false &&
+      poetry install --only main --no-interaction &&
+      python manage.py collectstatic --noinput &&
+      python manage.py migrate --noinput
+    startCommand: gunicorn hmis.wsgi:application --bind 0.0.0.0:$PORT --workers 2
+    healthCheckPath: /api/health/
+    envVars:
+      - key: DJANGO_SETTINGS_MODULE
+        value: hmis.settings.staging
+      - key: DJANGO_SECRET_KEY
+        generateValue: true
+      - key: ALLOWED_HOSTS
+        value: vitora-staging.onrender.com,localhost
+      - key: CORS_ALLOWED_ORIGINS
+        value: https://vitora-hmis-staging.onrender.com,http://localhost:3009
+      - key: CSRF_TRUSTED_ORIGINS
+        value: https://vitora-staging.onrender.com,https://vitora-hmis-staging.onrender.com
+      - key: ENCRYPTION_KEY
+        value: zPvPKpZGcLmqPJ3L2oXZBCH_gJGWl5C6FZp8YMfFgFA=
+      - key: DEMO_MODE
+        value: "true"
+      - key: DEMO_FACILITY_NAME
+        value: "Demo Health Facility"
+      - key: SHA_ENABLED
+        value: "true"
+      - key: SHA_API_BASE_URL
+        value: https://uat.dha.go.ke
+      - key: CELERY_TASK_ALWAYS_EAGER
+        value: "true"
+      - key: ICD11_USE_LOCAL
+        value: "false"
+      - key: DATABASE_URL
+        fromDatabase:
+          name: vitora-staging-db
+          property: connectionString
+
+  # ===========================================================================
+  # Frontend - STAGING (Next.js)
+  # ===========================================================================
+  - type: web
+    name: vitora-hmis-staging
+    runtime: node
+    region: frankfurt
+    plan: free
+    rootDir: web-app
+    buildCommand: npm install && npm run build
+    startCommand: npm start
+    envVars:
+      - key: NEXT_PUBLIC_API_URL
+        value: https://vitora-staging.onrender.com
+      - key: NEXT_PUBLIC_APP_NAME
+        value: Vitora HMIS
+      - key: NEXT_PUBLIC_ENV
+        value: staging
+      - key: NEXT_PUBLIC_DEMO_MODE
+        value: "true"
+      - key: NEXT_PUBLIC_DEMO_FACILITY
+        value: "Demo Health Facility"
+      - key: NEXT_PUBLIC_ENABLE_BILLING
+        value: "true"
+      - key: NEXT_PUBLIC_ENABLE_LAB
+        value: "true"
+      - key: NEXT_PUBLIC_ENABLE_PHARMACY
+        value: "true"
+      - key: NEXT_PUBLIC_ENABLE_TRIAGE
+        value: "true"
+      - key: NODE_ENV
+        value: production
+
+  # ===========================================================================
+  # Backend API - PRODUCTION (Django)
   # ===========================================================================
   - type: web
     name: vitora
@@ -24,8 +104,8 @@ services:
     startCommand: gunicorn hmis.wsgi:application --bind 0.0.0.0:$PORT --workers 2
     healthCheckPath: /api/health/
     envVars:
-      - key: DJANGO_ENV
-        value: production
+      - key: DJANGO_SETTINGS_MODULE
+        value: hmis.settings.production
       - key: DJANGO_SECRET_KEY
         generateValue: true
       - key: ALLOWED_HOSTS
@@ -50,7 +130,7 @@ services:
           property: connectionString
 
   # ===========================================================================
-  # Frontend (Next.js)
+  # Frontend - PRODUCTION (Next.js)
   # ===========================================================================
   - type: web
     name: vitora-hmis
@@ -66,14 +146,22 @@ services:
       - key: NEXT_PUBLIC_APP_NAME
         value: Vitora HMIS
       - key: NEXT_PUBLIC_ENV
-        value: staging
+        value: production
       - key: NODE_ENV
         value: production
 
 # =============================================================================
-# Database
+# Databases
 # =============================================================================
 databases:
+  # Staging Database (for demos)
+  - name: vitora-staging-db
+    plan: free
+    region: frankfurt
+    databaseName: vitora_staging
+    user: vitora_staging_user
+
+  # Production Database
   - name: vitora-db
     plan: free  # free (90 days), starter, standard, pro
     region: frankfurt

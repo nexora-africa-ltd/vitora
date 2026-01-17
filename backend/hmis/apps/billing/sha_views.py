@@ -803,9 +803,9 @@ class TerminologySearchView(APIView):
             )
 
         try:
-            # Use local ICD-11 API for icd11 terminology if enabled
-            if terminology_type == "icd11" and getattr(django_settings, "ICD11_USE_LOCAL", True):
-                return self._search_icd11_local(search, limit)
+            # For ICD-11: Try DHA API first, fall back to local container
+            if terminology_type == "icd11":
+                return self._search_icd11_with_fallback(search, limit)
 
             service = TerminologyService()
 
@@ -850,6 +850,105 @@ class TerminologySearchView(APIView):
             )
         except Exception as e:
             return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+    def _search_icd11_with_fallback(self, search: str, limit: int):
+        """
+        Search ICD-11 with fallback: DHA API first, then local container.
+
+        Priority:
+        1. If ICD11_USE_LOCAL=True, use local container only
+        2. Otherwise, try DHA Terminology API first
+        3. If DHA fails, fall back to local container
+
+        Args:
+            search: Search query
+            limit: Maximum results
+
+        Returns:
+            Response with ICD-11 codes and source indicator
+        """
+        import logging
+
+        logger = logging.getLogger(__name__)
+
+        # If explicitly configured to use local only, skip DHA
+        use_local_only = getattr(django_settings, "ICD11_USE_LOCAL", False)
+
+        if use_local_only:
+            logger.debug("ICD11_USE_LOCAL=True, using local container only")
+            return self._search_icd11_local(search, limit)
+
+        # Try DHA Terminology API first
+        try:
+            logger.debug("Attempting DHA Terminology API for ICD-11 search")
+            service = TerminologyService()
+            results = service.search_icd11(search, limit=limit)
+
+            if results:
+                # Convert dataclasses to dicts
+                data = []
+                for item in results:
+                    if hasattr(item, "__dict__"):
+                        item_dict = {
+                            k: v for k, v in item.__dict__.items() if not k.startswith("_")
+                        }
+                        data.append(item_dict)
+                    else:
+                        data.append(item)
+
+                return Response(
+                    {
+                        "results": data,
+                        "count": len(data),
+                        "source": "dha_terminology_api",
+                    }
+                )
+            else:
+                # Empty results from DHA, try local
+                logger.info("DHA API returned empty results, trying local container")
+                raise TerminologyError("Empty results from DHA API", status_code=503)
+
+        except (TerminologyError, Exception) as dha_error:
+            logger.warning(f"DHA Terminology API failed: {dha_error}, falling back to local")
+
+            # Fall back to local ICD-11 container
+            try:
+                local_service = ICD11LocalService()
+
+                if local_service.is_available():
+                    results = local_service.search(search, limit=limit)
+                    data = [code.to_dict() for code in results]
+
+                    return Response(
+                        {
+                            "results": data,
+                            "count": len(data),
+                            "source": "local_who_icd11",
+                            "fallback": True,
+                            "fallback_reason": str(dha_error),
+                        }
+                    )
+                else:
+                    # Neither DHA nor local available
+                    return Response(
+                        {
+                            "error": "ICD-11 service unavailable. DHA API failed and local container is not running.",
+                            "dha_error": str(dha_error),
+                            "hint": "Start local container: cd backend && docker compose up -d",
+                        },
+                        status=status.HTTP_503_SERVICE_UNAVAILABLE,
+                    )
+
+            except Exception as local_error:
+                logger.error(f"Local ICD-11 fallback also failed: {local_error}")
+                return Response(
+                    {
+                        "error": "ICD-11 service unavailable",
+                        "dha_error": str(dha_error),
+                        "local_error": str(local_error),
+                    },
+                    status=status.HTTP_503_SERVICE_UNAVAILABLE,
+                )
 
     def _search_icd11_local(self, search: str, limit: int):
         """
