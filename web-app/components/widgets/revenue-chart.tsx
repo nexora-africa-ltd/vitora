@@ -8,6 +8,7 @@ import {
   Legend,
   Tooltip,
 } from 'recharts';
+import type { TooltipProps } from 'recharts';
 import type { RevenueData } from '@/lib/types/dashboard';
 
 interface RevenueBreakdownChartProps {
@@ -31,9 +32,11 @@ export function RevenueBreakdownChart({ data, showLegend = true }: RevenueBreakd
     color: item.color || COLORS[index % COLORS.length],
   }));
 
-  const formatCurrency = (value: number | undefined) => {
-    if (value === undefined) return ['N/A', 'Revenue'] as const;
-    return [`KES ${value.toLocaleString()}`, 'Revenue'] as const;
+  const formatCurrency: NonNullable<TooltipProps<number, string>['formatter']> = (value) => {
+    const numericValue = typeof value === 'number' ? value : Number(value);
+
+    if (!Number.isFinite(numericValue)) return ['N/A', 'Revenue'];
+    return [`KES ${numericValue.toLocaleString()}`, 'Revenue'];
   };
 
   return (
@@ -55,7 +58,7 @@ export function RevenueBreakdownChart({ data, showLegend = true }: RevenueBreakd
               <Cell key={`cell-${index}`} fill={entry.color} />
             ))}
           </Pie>
-          <Tooltip
+          <Tooltip<number, string>
             contentStyle={{
               backgroundColor: 'hsl(var(--popover))',
               border: '1px solid hsl(var(--border))',

@@ -110,10 +110,10 @@ export function CustomToast({
       <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-muted/50">
         <div
           className={cn(
-            "h-full transition-all duration-[16ms] ease-linear",
+            "h-full transition-all ease-linear",
             progressColor,
           )}
-          style={{ width: `${progress}%` }}
+          style={{ width: `${progress}%`, transitionDuration: '16ms' }}
         />
       </div>
     </div>
