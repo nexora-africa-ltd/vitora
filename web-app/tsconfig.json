@@ -48,11 +48,14 @@
     "jest.setup.ts",
     "jest.config.js",
     "jest-cucumber.config.js",
+    "playwright.config.ts",
+    "playwright-bdd.config.ts",
     "**/*.test.ts",
     "**/*.test.tsx",
     "**/*.spec.ts",
     "**/*.spec.tsx",
     "__tests__",
-    "tests"
+    "tests",
+    "e2e"
   ]
 }
