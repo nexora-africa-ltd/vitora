@@ -17,16 +17,18 @@ from hmis.apps.billing.models import InvoiceItem, Payment, Receipt
 class TestReceipt:
     """Test Receipt model following deliverables spec requirements."""
 
-    def test_receipt_creation_with_payment(self, sample_invoice, billing_user, consultation_service):
+    def test_receipt_creation_with_payment(
+        self, sample_invoice, billing_user, consultation_service
+    ):
         """Test receipt linked to payment."""
         # Add item to invoice
         InvoiceItem.objects.create(
             invoice=sample_invoice,
             service=consultation_service,
-            description='Consultation',
-            quantity=Decimal('1.00'),
-            unit_price=Decimal('1000.00'),
-            line_total=Decimal('1000.00')
+            description="Consultation",
+            quantity=Decimal("1.00"),
+            unit_price=Decimal("1000.00"),
+            line_total=Decimal("1000.00"),
         )
         sample_invoice.refresh_from_db()
 
@@ -34,8 +36,8 @@ class TestReceipt:
         payment = Payment.objects.create(
             invoice=sample_invoice,
             method=Payment.Method.CASH,
-            amount=Decimal('1000.00'),
-            received_by=billing_user
+            amount=Decimal("1000.00"),
+            received_by=billing_user,
         )
         payment.process()
 
@@ -46,25 +48,27 @@ class TestReceipt:
             patient=sample_invoice.patient,
             amount=payment.amount,
             payment_method=payment.method,
-            issued_by=billing_user
+            issued_by=billing_user,
         )
 
         assert receipt.payment == payment
         assert receipt.invoice == sample_invoice
         assert receipt.patient == sample_invoice.patient
-        assert receipt.amount == Decimal('1000.00')
+        assert receipt.amount == Decimal("1000.00")
         assert receipt.issued_by == billing_user
 
-    def test_receipt_number_auto_generated(self, sample_invoice, billing_user, consultation_service):
+    def test_receipt_number_auto_generated(
+        self, sample_invoice, billing_user, consultation_service
+    ):
         """Test number follows RCP-YYYYMMDD-XXXX format."""
         # Add item to invoice
         InvoiceItem.objects.create(
             invoice=sample_invoice,
             service=consultation_service,
-            description='Consultation',
-            quantity=Decimal('1.00'),
-            unit_price=Decimal('1000.00'),
-            line_total=Decimal('1000.00')
+            description="Consultation",
+            quantity=Decimal("1.00"),
+            unit_price=Decimal("1000.00"),
+            line_total=Decimal("1000.00"),
         )
         sample_invoice.refresh_from_db()
 
@@ -72,8 +76,8 @@ class TestReceipt:
         payment = Payment.objects.create(
             invoice=sample_invoice,
             method=Payment.Method.CASH,
-            amount=Decimal('1000.00'),
-            received_by=billing_user
+            amount=Decimal("1000.00"),
+            received_by=billing_user,
         )
         payment.process()
 
@@ -84,16 +88,16 @@ class TestReceipt:
             patient=sample_invoice.patient,
             amount=payment.amount,
             payment_method=payment.method,
-            issued_by=billing_user
+            issued_by=billing_user,
         )
 
         assert receipt.receipt_number is not None
-        assert receipt.receipt_number.startswith('RCP-')
+        assert receipt.receipt_number.startswith("RCP-")
 
         # Check format: RCP-YYYYMMDD-XXXX
-        parts = receipt.receipt_number.split('-')
+        parts = receipt.receipt_number.split("-")
         assert len(parts) == 3
-        assert parts[0] == 'RCP'
+        assert parts[0] == "RCP"
         assert len(parts[1]) == 8  # YYYYMMDD
         assert len(parts[2]) == 4  # XXXX
         assert parts[2].isdigit()
@@ -104,10 +108,10 @@ class TestReceipt:
         InvoiceItem.objects.create(
             invoice=sample_invoice,
             service=consultation_service,
-            description='Consultation',
-            quantity=Decimal('1.00'),
-            unit_price=Decimal('1000.00'),
-            line_total=Decimal('1000.00')
+            description="Consultation",
+            quantity=Decimal("1.00"),
+            unit_price=Decimal("1000.00"),
+            line_total=Decimal("1000.00"),
         )
         sample_invoice.refresh_from_db()
 
@@ -115,16 +119,16 @@ class TestReceipt:
         payment1 = Payment.objects.create(
             invoice=sample_invoice,
             method=Payment.Method.CASH,
-            amount=Decimal('500.00'),
-            received_by=billing_user
+            amount=Decimal("500.00"),
+            received_by=billing_user,
         )
         payment1.process()
 
         payment2 = Payment.objects.create(
             invoice=sample_invoice,
             method=Payment.Method.CASH,
-            amount=Decimal('500.00'),
-            received_by=billing_user
+            amount=Decimal("500.00"),
+            received_by=billing_user,
         )
         payment2.process()
 
@@ -135,7 +139,7 @@ class TestReceipt:
             patient=sample_invoice.patient,
             amount=payment1.amount,
             payment_method=payment1.method,
-            issued_by=billing_user
+            issued_by=billing_user,
         )
 
         receipt2 = Receipt.objects.create(
@@ -144,7 +148,7 @@ class TestReceipt:
             patient=sample_invoice.patient,
             amount=payment2.amount,
             payment_method=payment2.method,
-            issued_by=billing_user
+            issued_by=billing_user,
         )
 
         # Receipt numbers should be unique
@@ -156,10 +160,10 @@ class TestReceipt:
         InvoiceItem.objects.create(
             invoice=sample_invoice,
             service=consultation_service,
-            description='Consultation',
-            quantity=Decimal('1.00'),
-            unit_price=Decimal('1200.00'),
-            line_total=Decimal('1200.00')
+            description="Consultation",
+            quantity=Decimal("1.00"),
+            unit_price=Decimal("1200.00"),
+            line_total=Decimal("1200.00"),
         )
         sample_invoice.refresh_from_db()
 
@@ -167,8 +171,8 @@ class TestReceipt:
         payment = Payment.objects.create(
             invoice=sample_invoice,
             method=Payment.Method.CASH,
-            amount=Decimal('1200.00'),
-            received_by=billing_user
+            amount=Decimal("1200.00"),
+            received_by=billing_user,
         )
         payment.process()
 
@@ -179,23 +183,28 @@ class TestReceipt:
             patient=sample_invoice.patient,
             amount=payment.amount,
             payment_method=payment.method,
-            issued_by=billing_user
+            issued_by=billing_user,
         )
 
         assert receipt.amount_in_words is not None
-        assert 'thousand' in receipt.amount_in_words.lower()
-        assert 'two hundred' in receipt.amount_in_words.lower() or 'twelve hundred' in receipt.amount_in_words.lower()
+        assert "thousand" in receipt.amount_in_words.lower()
+        assert (
+            "two hundred" in receipt.amount_in_words.lower()
+            or "twelve hundred" in receipt.amount_in_words.lower()
+        )
 
-    def test_receipt_patient_denormalization(self, sample_invoice, billing_user, consultation_service):
+    def test_receipt_patient_denormalization(
+        self, sample_invoice, billing_user, consultation_service
+    ):
         """Test patient details copied."""
         # Add item to invoice
         InvoiceItem.objects.create(
             invoice=sample_invoice,
             service=consultation_service,
-            description='Consultation',
-            quantity=Decimal('1.00'),
-            unit_price=Decimal('1000.00'),
-            line_total=Decimal('1000.00')
+            description="Consultation",
+            quantity=Decimal("1.00"),
+            unit_price=Decimal("1000.00"),
+            line_total=Decimal("1000.00"),
         )
         sample_invoice.refresh_from_db()
 
@@ -203,8 +212,8 @@ class TestReceipt:
         payment = Payment.objects.create(
             invoice=sample_invoice,
             method=Payment.Method.CASH,
-            amount=Decimal('1000.00'),
-            received_by=billing_user
+            amount=Decimal("1000.00"),
+            received_by=billing_user,
         )
         payment.process()
 
@@ -217,14 +226,16 @@ class TestReceipt:
             payment_method=payment.method,
             patient_name=f"{sample_invoice.patient.first_name} {sample_invoice.patient.last_name}",
             patient_mrn=sample_invoice.patient.mrn,
-            issued_by=billing_user
+            issued_by=billing_user,
         )
 
         assert receipt.patient_name is not None
         assert receipt.patient_mrn is not None
         assert receipt.patient_mrn == sample_invoice.patient.mrn
 
-    def test_receipt_facility_denormalization(self, sample_invoice, billing_user, consultation_service):
+    def test_receipt_facility_denormalization(
+        self, sample_invoice, billing_user, consultation_service
+    ):
         """Test facility details copied."""
         from django.conf import settings
 
@@ -232,10 +243,10 @@ class TestReceipt:
         InvoiceItem.objects.create(
             invoice=sample_invoice,
             service=consultation_service,
-            description='Consultation',
-            quantity=Decimal('1.00'),
-            unit_price=Decimal('1000.00'),
-            line_total=Decimal('1000.00')
+            description="Consultation",
+            quantity=Decimal("1.00"),
+            unit_price=Decimal("1000.00"),
+            line_total=Decimal("1000.00"),
         )
         sample_invoice.refresh_from_db()
 
@@ -243,8 +254,8 @@ class TestReceipt:
         payment = Payment.objects.create(
             invoice=sample_invoice,
             method=Payment.Method.CASH,
-            amount=Decimal('1000.00'),
-            received_by=billing_user
+            amount=Decimal("1000.00"),
+            received_by=billing_user,
         )
         payment.process()
 
@@ -259,7 +270,7 @@ class TestReceipt:
             facility_address=settings.FACILITY_ADDRESS,
             facility_phone=settings.FACILITY_PHONE,
             facility_kra_pin=settings.FACILITY_KRA_PIN,
-            issued_by=billing_user
+            issued_by=billing_user,
         )
 
         assert receipt.facility_name is not None
@@ -271,10 +282,10 @@ class TestReceipt:
         InvoiceItem.objects.create(
             invoice=sample_invoice,
             service=consultation_service,
-            description='Consultation',
-            quantity=Decimal('1.00'),
-            unit_price=Decimal('1000.00'),
-            line_total=Decimal('1000.00')
+            description="Consultation",
+            quantity=Decimal("1.00"),
+            unit_price=Decimal("1000.00"),
+            line_total=Decimal("1000.00"),
         )
         sample_invoice.refresh_from_db()
 
@@ -282,8 +293,8 @@ class TestReceipt:
         payment = Payment.objects.create(
             invoice=sample_invoice,
             method=Payment.Method.CASH,
-            amount=Decimal('1000.00'),
-            received_by=billing_user
+            amount=Decimal("1000.00"),
+            received_by=billing_user,
         )
         payment.process()
 
@@ -294,27 +305,29 @@ class TestReceipt:
             patient=sample_invoice.patient,
             amount=payment.amount,
             payment_method=payment.method,
-            issued_by=billing_user
+            issued_by=billing_user,
         )
 
         # Void receipt
-        receipt.void(billing_user, 'Receipt error')
+        receipt.void(billing_user, "Receipt error")
 
         assert receipt.is_voided is True
         assert receipt.voided_by == billing_user
         assert receipt.voided_at is not None
-        assert receipt.void_reason == 'Receipt error'
+        assert receipt.void_reason == "Receipt error"
 
-    def test_voided_receipt_cannot_be_voided_again(self, sample_invoice, billing_user, consultation_service):
+    def test_voided_receipt_cannot_be_voided_again(
+        self, sample_invoice, billing_user, consultation_service
+    ):
         """Test double void prevented."""
         # Add item to invoice
         InvoiceItem.objects.create(
             invoice=sample_invoice,
             service=consultation_service,
-            description='Consultation',
-            quantity=Decimal('1.00'),
-            unit_price=Decimal('1000.00'),
-            line_total=Decimal('1000.00')
+            description="Consultation",
+            quantity=Decimal("1.00"),
+            unit_price=Decimal("1000.00"),
+            line_total=Decimal("1000.00"),
         )
         sample_invoice.refresh_from_db()
 
@@ -322,8 +335,8 @@ class TestReceipt:
         payment = Payment.objects.create(
             invoice=sample_invoice,
             method=Payment.Method.CASH,
-            amount=Decimal('1000.00'),
-            received_by=billing_user
+            amount=Decimal("1000.00"),
+            received_by=billing_user,
         )
         payment.process()
 
@@ -334,15 +347,15 @@ class TestReceipt:
             patient=sample_invoice.patient,
             amount=payment.amount,
             payment_method=payment.method,
-            issued_by=billing_user
+            issued_by=billing_user,
         )
 
         # Void receipt
-        receipt.void(billing_user, 'First void')
+        receipt.void(billing_user, "First void")
 
         # Try to void again
         with pytest.raises(ValidationError):
-            receipt.void(billing_user, 'Second void')
+            receipt.void(billing_user, "Second void")
 
     def test_receipt_pdf_generation(self, sample_invoice, billing_user, consultation_service):
         """Test PDF created successfully."""
@@ -350,10 +363,10 @@ class TestReceipt:
         InvoiceItem.objects.create(
             invoice=sample_invoice,
             service=consultation_service,
-            description='Consultation',
-            quantity=Decimal('1.00'),
-            unit_price=Decimal('1000.00'),
-            line_total=Decimal('1000.00')
+            description="Consultation",
+            quantity=Decimal("1.00"),
+            unit_price=Decimal("1000.00"),
+            line_total=Decimal("1000.00"),
         )
         sample_invoice.refresh_from_db()
 
@@ -361,8 +374,8 @@ class TestReceipt:
         payment = Payment.objects.create(
             invoice=sample_invoice,
             method=Payment.Method.CASH,
-            amount=Decimal('1000.00'),
-            received_by=billing_user
+            amount=Decimal("1000.00"),
+            received_by=billing_user,
         )
         payment.process()
 
@@ -373,7 +386,7 @@ class TestReceipt:
             patient=sample_invoice.patient,
             amount=payment.amount,
             payment_method=payment.method,
-            issued_by=billing_user
+            issued_by=billing_user,
         )
 
         # Generate PDF (method to be implemented)
@@ -388,10 +401,10 @@ class TestReceipt:
         InvoiceItem.objects.create(
             invoice=sample_invoice,
             service=consultation_service,
-            description='Consultation',
-            quantity=Decimal('1.00'),
-            unit_price=Decimal('1000.00'),
-            line_total=Decimal('1000.00')
+            description="Consultation",
+            quantity=Decimal("1.00"),
+            unit_price=Decimal("1000.00"),
+            line_total=Decimal("1000.00"),
         )
         sample_invoice.refresh_from_db()
 
@@ -399,8 +412,8 @@ class TestReceipt:
         payment = Payment.objects.create(
             invoice=sample_invoice,
             method=Payment.Method.CASH,
-            amount=Decimal('1000.00'),
-            received_by=billing_user
+            amount=Decimal("1000.00"),
+            received_by=billing_user,
         )
         payment.process()
 
@@ -411,7 +424,7 @@ class TestReceipt:
             patient=sample_invoice.patient,
             amount=payment.amount,
             payment_method=payment.method,
-            issued_by=billing_user
+            issued_by=billing_user,
         )
 
         assert receipt.issued_by == billing_user

@@ -11,12 +11,7 @@ from django.contrib.auth import get_user_model
 from django.utils import timezone
 from rest_framework import status
 
-from hmis.apps.laboratory.models import (
-    LabOrder,
-    LabOrderItem,
-    LabQueue,
-    TestCatalog,
-)
+from hmis.apps.laboratory.models import LabOrder, LabOrderItem, LabQueue, TestCatalog
 
 User = get_user_model()
 
@@ -94,7 +89,11 @@ class TestLabQueueList:
 
         assert response.status_code == status.HTTP_200_OK
         # Handle paginated or non-paginated response
-        data = response.data.get("results", response.data) if isinstance(response.data, dict) else response.data
+        data = (
+            response.data.get("results", response.data)
+            if isinstance(response.data, dict)
+            else response.data
+        )
         assert len(data) >= 1
         assert data[0]["queue_number"] == sample_lab_queue.queue_number
 
@@ -109,7 +108,11 @@ class TestLabQueueList:
         response = authenticated_client.get("/api/lab/queue/?queue_status=PENDING")
 
         assert response.status_code == status.HTTP_200_OK
-        data = response.data.get("results", response.data) if isinstance(response.data, dict) else response.data
+        data = (
+            response.data.get("results", response.data)
+            if isinstance(response.data, dict)
+            else response.data
+        )
         assert len(data) >= 1
         assert all(item["queue_status"] == "PENDING" for item in data)
 
@@ -118,7 +121,11 @@ class TestLabQueueList:
         response = authenticated_client.get("/api/lab/queue/?priority=ROUTINE")
 
         assert response.status_code == status.HTTP_200_OK
-        data = response.data.get("results", response.data) if isinstance(response.data, dict) else response.data
+        data = (
+            response.data.get("results", response.data)
+            if isinstance(response.data, dict)
+            else response.data
+        )
         assert len(data) >= 1
         assert all(item["priority"] == "ROUTINE" for item in data)
 
@@ -300,7 +307,9 @@ class TestLabQueueSampleIdCollection:
         assert response.status_code == status.HTTP_200_OK
         assert response.data["queue_status"] == "COLLECTED"
 
-    def test_collect_sample_records_collector(self, authenticated_client, sample_lab_queue, test_user):
+    def test_collect_sample_records_collector(
+        self, authenticated_client, sample_lab_queue, test_user
+    ):
         """Should record who collected the sample."""
         response = authenticated_client.post(
             f"/api/lab/queue/{sample_lab_queue.queue_number}/collect/",
@@ -523,7 +532,9 @@ class TestLabQueueBarcodeLookup:
 class TestLabQueueTechnicianAssignment:
     """Tests for technician assignment functionality."""
 
-    def test_assign_technician_success(self, authenticated_client, sample_lab_queue, lab_technician):
+    def test_assign_technician_success(
+        self, authenticated_client, sample_lab_queue, lab_technician
+    ):
         """Should assign technician to queue entry."""
         response = authenticated_client.post(
             f"/api/lab/queue/{sample_lab_queue.queue_number}/assign/",
@@ -534,7 +545,9 @@ class TestLabQueueTechnicianAssignment:
         assert response.data["assigned_technician"] == lab_technician.id
         assert response.data["assigned_technician_name"] == "Lab Technician"
 
-    def test_reassign_technician(self, authenticated_client, sample_lab_queue, lab_technician, test_user):
+    def test_reassign_technician(
+        self, authenticated_client, sample_lab_queue, lab_technician, test_user
+    ):
         """Should allow reassigning to different technician."""
         sample_lab_queue.assigned_technician = test_user
         sample_lab_queue.save()
@@ -607,7 +620,7 @@ class TestLabQueueAutoCreation:
         # Refresh to trigger signal and check queue exists
         order.refresh_from_db()
 
-        assert hasattr(order, 'queue_entry')
+        assert hasattr(order, "queue_entry")
         queue = order.queue_entry
         assert queue.queue_status == "PENDING"
         assert queue.priority == "ROUTINE"

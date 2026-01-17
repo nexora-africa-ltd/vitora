@@ -109,7 +109,9 @@ class StockAlertSerializer(serializers.ModelSerializer):
     """Serializer for StockAlert model."""
 
     drug_name = serializers.CharField(source="drug.generic_name", read_only=True)
-    batch_number = serializers.CharField(source="batch.batch_number", read_only=True, allow_null=True)
+    batch_number = serializers.CharField(
+        source="batch.batch_number", read_only=True, allow_null=True
+    )
     # Aliases for frontend compatibility
     acknowledged = serializers.BooleanField(source="is_acknowledged", read_only=True)
     resolved = serializers.BooleanField(source="is_resolved", read_only=True)
@@ -135,7 +137,14 @@ class StockAlertSerializer(serializers.ModelSerializer):
             "resolution_notes",
             "created_at",
         ]
-        read_only_fields = ["id", "created_at", "drug_name", "batch_number", "acknowledged", "resolved"]
+        read_only_fields = [
+            "id",
+            "created_at",
+            "drug_name",
+            "batch_number",
+            "acknowledged",
+            "resolved",
+        ]
 
 
 class PrescriptionItemSerializer(serializers.ModelSerializer):
@@ -198,14 +207,12 @@ class PrescriptionItemWriteSerializer(serializers.Serializer):
     def validate(self, data):
         """Ensure we have a quantity value."""
         # Accept either quantity_prescribed or quantity
-        qty = data.get('quantity_prescribed') or data.get('quantity')
+        qty = data.get("quantity_prescribed") or data.get("quantity")
         if not qty or qty < 1:
-            raise serializers.ValidationError({
-                'quantity': 'Quantity must be at least 1'
-            })
+            raise serializers.ValidationError({"quantity": "Quantity must be at least 1"})
         # Normalize to 'quantity' for model
-        data['quantity'] = qty
-        data.pop('quantity_prescribed', None)
+        data["quantity"] = qty
+        data.pop("quantity_prescribed", None)
         return data
 
 
@@ -223,7 +230,9 @@ class PrescriptionSerializer(serializers.ModelSerializer):
     )
     # Aliases for frontend compatibility
     is_valid = serializers.SerializerMethodField()
-    is_fully_dispensed = serializers.BooleanField(source="is_fully_dispensed_status", read_only=True)
+    is_fully_dispensed = serializers.BooleanField(
+        source="is_fully_dispensed_status", read_only=True
+    )
 
     class Meta:
         model = Prescription
@@ -292,7 +301,9 @@ class PrescriptionSerializer(serializers.ModelSerializer):
 class PrescriptionCreateSerializer(serializers.ModelSerializer):
     """Serializer for creating prescriptions with nested items."""
 
-    items = PrescriptionItemWriteSerializer(many=True, write_only=True, required=False, default=list)
+    items = PrescriptionItemWriteSerializer(
+        many=True, write_only=True, required=False, default=list
+    )
 
     class Meta:
         model = Prescription
@@ -307,14 +318,11 @@ class PrescriptionCreateSerializer(serializers.ModelSerializer):
 
     def create(self, validated_data):
         """Create prescription with nested items."""
-        items_data = validated_data.pop('items', [])
+        items_data = validated_data.pop("items", [])
         prescription = Prescription.objects.create(**validated_data)
 
         for item_data in items_data:
-            PrescriptionItem.objects.create(
-                prescription=prescription,
-                **item_data
-            )
+            PrescriptionItem.objects.create(prescription=prescription, **item_data)
 
         return prescription
 
@@ -465,18 +473,14 @@ class AlertSettingsSerializer(serializers.ModelSerializer):
 
     def validate(self, data):
         """Validate settings data."""
-        expiry_warning = data.get('expiry_warning_days')
-        expiry_critical = data.get('expiry_critical_days')
+        expiry_warning = data.get("expiry_warning_days")
+        expiry_critical = data.get("expiry_critical_days")
 
         if expiry_critical and expiry_warning and expiry_critical >= expiry_warning:
-            raise serializers.ValidationError(
-                "Critical days should be less than warning days"
-            )
+            raise serializers.ValidationError("Critical days should be less than warning days")
 
-        low_stock = data.get('low_stock_threshold')
+        low_stock = data.get("low_stock_threshold")
         if low_stock is not None and low_stock < 0:
-            raise serializers.ValidationError(
-                "Low stock threshold must be non-negative"
-            )
+            raise serializers.ValidationError("Low stock threshold must be non-negative")
 
         return data

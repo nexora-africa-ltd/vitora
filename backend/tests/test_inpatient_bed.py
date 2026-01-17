@@ -321,6 +321,7 @@ class TestBedStatusAudit:
 
         # Wait a moment and change status
         import time
+
         time.sleep(0.1)
 
         bed.mark_occupied(test_user)

@@ -199,8 +199,10 @@ class TestTriageQueueModel:
         TriageQueue.objects.create(triage_assessment=red_early, position=0)
 
         # Get queue in priority order (using Python sorting)
-        queue = list(TriageQueue.objects.all().select_related('triage_assessment'))
-        queue.sort(key=lambda x: (x.triage_assessment.category_priority, x.triage_assessment.arrival_time))
+        queue = list(TriageQueue.objects.all().select_related("triage_assessment"))
+        queue.sort(
+            key=lambda x: (x.triage_assessment.category_priority, x.triage_assessment.arrival_time)
+        )
 
         # RED patients should come first (by arrival), then YELLOW
         assert queue[0].triage_assessment == red_early  # RED, earlier arrival
@@ -252,8 +254,10 @@ class TestTriageQueueModel:
         TriageQueue.objects.create(triage_assessment=red_assessment, position=0)
 
         # Get queue sorted by priority (using Python sorting)
-        queue = list(TriageQueue.objects.all().select_related('triage_assessment'))
-        queue.sort(key=lambda x: (x.triage_assessment.category_priority, x.triage_assessment.arrival_time))
+        queue = list(TriageQueue.objects.all().select_related("triage_assessment"))
+        queue.sort(
+            key=lambda x: (x.triage_assessment.category_priority, x.triage_assessment.arrival_time)
+        )
 
         # RED should be first despite arriving later
         assert queue[0].triage_assessment == red_assessment
@@ -265,7 +269,9 @@ class TestTriageQueueModel:
 
         # Create three GREEN assessments with different arrival times
         encounters = [
-            Encounter.objects.create(patient=sample_patient, encounter_type="OPD", chief_complaint=f"Test {i}")
+            Encounter.objects.create(
+                patient=sample_patient, encounter_type="OPD", chief_complaint=f"Test {i}"
+            )
             for i in range(3)
         ]
 

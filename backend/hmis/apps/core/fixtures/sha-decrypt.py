@@ -20,10 +20,12 @@ import os
 import sys
 
 # Setup Django settings before importing anything else
-os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'hmis.settings.development')
+os.environ.setdefault("DJANGO_SETTINGS_MODULE", "hmis.settings.development")
 
 # Add the backend directory to the path
-backend_dir = os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))))
+backend_dir = os.path.dirname(
+    os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
+)
 sys.path.insert(0, backend_dir)
 
 # Now we can import Django and crypto libraries
@@ -39,7 +41,7 @@ from django.conf import settings
 
 def get_private_key() -> str:
     """Load RSA private key from sha.pem file in backend directory."""
-    pem_path = os.path.join(backend_dir, 'sha.pem')
+    pem_path = os.path.join(backend_dir, "sha.pem")
 
     if not os.path.exists(pem_path):
         raise FileNotFoundError(
@@ -53,13 +55,14 @@ def get_private_key() -> str:
 
 def get_agent() -> str:
     """Get DHA agent code from Django settings."""
-    agent = getattr(settings, 'SHA_AGENT', None)
+    agent = getattr(settings, "SHA_AGENT", None)
     if not agent:
         raise ValueError(
             "SHA_AGENT not configured in Django settings.\n"
             "Set SHA_AGENT environment variable or add to your settings file."
         )
     return agent
+
 
 # Function to decrypt AES key using RSA private key
 def decrypt_with_rsa(private_key: str, encrypted_data: str) -> bytes:
@@ -68,11 +71,13 @@ def decrypt_with_rsa(private_key: str, encrypted_data: str) -> bytes:
     decrypted_data = cipher.decrypt(base64.b64decode(encrypted_data))
     return base64.b64decode(decrypted_data)
 
+
 # Function to decrypt AES-encrypted data
 def decrypt_with_aes(encrypted_data: str, aes_key: bytes, iv: bytes) -> str:
     cipher = AES.new(aes_key, AES.MODE_CBC, iv)
     decrypted_data = unpad(cipher.decrypt(base64.b64decode(encrypted_data)), AES.block_size)
     return decrypted_data.decode()
+
 
 # Main execution
 def decrypt_pii(combined_base64: str, private_key: str) -> dict:
@@ -149,6 +154,7 @@ def main():
         except Exception as e2:
             print(f"Failed to parse input: {e}")
             print(f"Failed to decrypt as raw base64: {e2}")
+
 
 if __name__ == "__main__":
     main()

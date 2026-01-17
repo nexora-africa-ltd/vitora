@@ -509,9 +509,7 @@ class TestStaffProfileModel:
 
         role = Role.objects.create(code="DOCTOR", name="Doctor", category="CLINICAL")
 
-        department = Department.objects.create(
-            code="OPD", name="OPD", department_type="CLINICAL"
-        )
+        department = Department.objects.create(code="OPD", name="OPD", department_type="CLINICAL")
 
         user = User.objects.create_user(username="doctor1", password="test123")
 
@@ -535,9 +533,7 @@ class TestStaffProfileModel:
 
         role = Role.objects.create(code="NURSE", name="Nurse", category="CLINICAL")
 
-        department = Department.objects.create(
-            code="WARD", name="Ward", department_type="CLINICAL"
-        )
+        department = Department.objects.create(code="WARD", name="Ward", department_type="CLINICAL")
 
         user1 = User.objects.create_user(username="staff1", password="test123")
         StaffProfile.objects.create(
@@ -610,19 +606,11 @@ class TestStaffProfileModel:
         """Should support multiple secondary roles."""
         from hmis.apps.core.models import Department, Role, StaffProfile
 
-        primary_role = Role.objects.create(
-            code="DOCTOR", name="Doctor", category="CLINICAL"
-        )
-        secondary_role1 = Role.objects.create(
-            code="TRAINER", name="Trainer", category="MANAGEMENT"
-        )
-        secondary_role2 = Role.objects.create(
-            code="AUDITOR", name="Auditor", category="MANAGEMENT"
-        )
+        primary_role = Role.objects.create(code="DOCTOR", name="Doctor", category="CLINICAL")
+        secondary_role1 = Role.objects.create(code="TRAINER", name="Trainer", category="MANAGEMENT")
+        secondary_role2 = Role.objects.create(code="AUDITOR", name="Auditor", category="MANAGEMENT")
 
-        department = Department.objects.create(
-            code="OPD", name="OPD", department_type="CLINICAL"
-        )
+        department = Department.objects.create(code="OPD", name="OPD", department_type="CLINICAL")
 
         user = User.objects.create_user(username="multirole", password="test123")
 
@@ -664,9 +652,7 @@ class TestStaffProfileModel:
 
         role = Role.objects.create(code="DOCTOR", name="Doctor", category="CLINICAL")
 
-        primary_dept = Department.objects.create(
-            code="OPD", name="OPD", department_type="CLINICAL"
-        )
+        primary_dept = Department.objects.create(code="OPD", name="OPD", department_type="CLINICAL")
         secondary_dept1 = Department.objects.create(
             code="IPD", name="IPD", department_type="CLINICAL"
         )
@@ -700,9 +686,7 @@ class TestStaffProfileModel:
             license_body="KMPDB",
         )
 
-        department = Department.objects.create(
-            code="OPD", name="OPD", department_type="CLINICAL"
-        )
+        department = Department.objects.create(code="OPD", name="OPD", department_type="CLINICAL")
 
         user = User.objects.create_user(username="doctor2", password="test123")
 
@@ -729,9 +713,7 @@ class TestStaffProfileModel:
             license_body="NCK",
         )
 
-        department = Department.objects.create(
-            code="WARD", name="Ward", department_type="CLINICAL"
-        )
+        department = Department.objects.create(code="WARD", name="Ward", department_type="CLINICAL")
 
         user = User.objects.create_user(username="nurse2", password="test123")
 
@@ -839,9 +821,7 @@ class TestStaffProfileModel:
 
         role = Role.objects.create(code="DOCTOR", name="Doctor", category="CLINICAL")
 
-        department = Department.objects.create(
-            code="OPD", name="OPD", department_type="CLINICAL"
-        )
+        department = Department.objects.create(code="OPD", name="OPD", department_type="CLINICAL")
 
         user = User.objects.create_user(
             username="jdoe",
@@ -865,16 +845,10 @@ class TestStaffProfileModel:
         """Should return primary + secondary roles."""
         from hmis.apps.core.models import Department, Role, StaffProfile
 
-        primary_role = Role.objects.create(
-            code="DOCTOR", name="Doctor", category="CLINICAL"
-        )
-        secondary_role = Role.objects.create(
-            code="TRAINER", name="Trainer", category="MANAGEMENT"
-        )
+        primary_role = Role.objects.create(code="DOCTOR", name="Doctor", category="CLINICAL")
+        secondary_role = Role.objects.create(code="TRAINER", name="Trainer", category="MANAGEMENT")
 
-        department = Department.objects.create(
-            code="OPD", name="OPD", department_type="CLINICAL"
-        )
+        department = Department.objects.create(code="OPD", name="OPD", department_type="CLINICAL")
 
         user = User.objects.create_user(username="multirole2", password="test123")
 
@@ -913,9 +887,7 @@ class TestStaffProfileModel:
             permissions_matrix=secondary_perms,
         )
 
-        department = Department.objects.create(
-            code="WARD", name="Ward", department_type="CLINICAL"
-        )
+        department = Department.objects.create(code="WARD", name="Ward", department_type="CLINICAL")
 
         user = User.objects.create_user(username="aggregator", password="test123")
 

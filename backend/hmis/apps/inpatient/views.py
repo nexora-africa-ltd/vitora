@@ -62,12 +62,12 @@ class WardViewSet(viewsets.ReadOnlyModelViewSet):
     serializer_class = WardSerializer
     permission_classes = [IsAuthenticated]
     filter_backends = [DjangoFilterBackend, filters.SearchFilter, filters.OrderingFilter]
-    filterset_fields = ['ward_type', 'is_active']
-    search_fields = ['name', 'code']
-    ordering_fields = ['name', 'code', 'ward_type', 'capacity']
-    ordering = ['name']
+    filterset_fields = ["ward_type", "is_active"]
+    search_fields = ["name", "code"]
+    ordering_fields = ["name", "code", "ward_type", "capacity"]
+    ordering = ["name"]
 
-    @action(detail=True, methods=['get'])
+    @action(detail=True, methods=["get"])
     def beds(self, request, pk=None):
         """
         List all beds for a specific ward.
@@ -79,7 +79,7 @@ class WardViewSet(viewsets.ReadOnlyModelViewSet):
         beds = Bed.objects.filter(ward=ward)
 
         # Filter by status if provided
-        status_filter = request.query_params.get('status')
+        status_filter = request.query_params.get("status")
         if status_filter:
             beds = beds.filter(status=status_filter)
 
@@ -112,10 +112,10 @@ class BedViewSet(viewsets.ModelViewSet):
     serializer_class = BedSerializer
     permission_classes = [IsAuthenticated]
     filter_backends = [DjangoFilterBackend, filters.SearchFilter, filters.OrderingFilter]
-    filterset_fields = ['ward', 'status']
-    search_fields = ['bed_number']
-    ordering_fields = ['bed_number', 'status', 'status_changed_at']
-    ordering = ['bed_number']
+    filterset_fields = ["ward", "status"]
+    search_fields = ["bed_number"]
+    ordering_fields = ["bed_number", "status", "status_changed_at"]
+    ordering = ["bed_number"]
 
     def perform_update(self, serializer):
         """Update bed and log status changes."""
@@ -125,14 +125,14 @@ class BedViewSet(viewsets.ModelViewSet):
         # Log bed status update
         if instance.status != old_status:
             AuditLog.log(
-                action='bed_status_update',
+                action="bed_status_update",
                 user=self.request.user,
-                resource_type='Bed',
+                resource_type="Bed",
                 resource_id=instance.id,
                 details={
-                    'old_status': old_status,
-                    'new_status': instance.status,
-                    'notes': instance.notes,
+                    "old_status": old_status,
+                    "new_status": instance.status,
+                    "notes": instance.notes,
                 },
                 ip_address=get_client_ip(self.request),
             )
@@ -159,10 +159,10 @@ class AdmissionRecommendationViewSet(viewsets.ModelViewSet):
     serializer_class = AdmissionRecommendationSerializer
     permission_classes = [IsAuthenticated]
     filter_backends = [DjangoFilterBackend, filters.SearchFilter, filters.OrderingFilter]
-    filterset_fields = ['status', 'urgency', 'recommended_by', 'preferred_ward_type']
-    search_fields = ['reason', 'provisional_diagnosis_text']
-    ordering_fields = ['created_at', 'expires_at', 'urgency']
-    ordering = ['-created_at']
+    filterset_fields = ["status", "urgency", "recommended_by", "preferred_ward_type"]
+    search_fields = ["reason", "provisional_diagnosis_text"]
+    ordering_fields = ["created_at", "expires_at", "urgency"]
+    ordering = ["-created_at"]
 
     def perform_create(self, serializer):
         """Create recommendation and log action."""
@@ -170,19 +170,19 @@ class AdmissionRecommendationViewSet(viewsets.ModelViewSet):
 
         # Log recommendation creation
         AuditLog.log(
-            action='admission_recommendation_create',
+            action="admission_recommendation_create",
             user=self.request.user,
-            resource_type='AdmissionRecommendation',
+            resource_type="AdmissionRecommendation",
             resource_id=instance.id,
             details={
-                'encounter': instance.encounter.id,
-                'urgency': instance.urgency,
-                'reason': instance.reason,
+                "encounter": instance.encounter.id,
+                "urgency": instance.urgency,
+                "reason": instance.reason,
             },
             ip_address=get_client_ip(self.request),
         )
 
-    @action(detail=True, methods=['post'])
+    @action(detail=True, methods=["post"])
     def accept(self, request, pk=None):
         """
         Accept a pending admission recommendation.
@@ -191,13 +191,10 @@ class AdmissionRecommendationViewSet(viewsets.ModelViewSet):
         - user: User ID who is accepting
         """
         recommendation = self.get_object()
-        user_id = request.data.get('user')
+        user_id = request.data.get("user")
 
         if not user_id:
-            return Response(
-                {'error': 'User ID required'},
-                status=status.HTTP_400_BAD_REQUEST
-            )
+            return Response({"error": "User ID required"}, status=status.HTTP_400_BAD_REQUEST)
 
         try:
             user = User.objects.get(id=user_id)
@@ -205,11 +202,11 @@ class AdmissionRecommendationViewSet(viewsets.ModelViewSet):
 
             # Log acceptance
             AuditLog.log(
-                action='admission_recommendation_accept',
+                action="admission_recommendation_accept",
                 user=request.user,
-                resource_type='AdmissionRecommendation',
+                resource_type="AdmissionRecommendation",
                 resource_id=recommendation.id,
-                details={'accepted_by': user.username},
+                details={"accepted_by": user.username},
                 ip_address=get_client_ip(request),
             )
 
@@ -217,17 +214,11 @@ class AdmissionRecommendationViewSet(viewsets.ModelViewSet):
             return Response(serializer.data)
 
         except User.DoesNotExist:
-            return Response(
-                {'error': 'User not found'},
-                status=status.HTTP_404_NOT_FOUND
-            )
+            return Response({"error": "User not found"}, status=status.HTTP_404_NOT_FOUND)
         except ValueError as e:
-            return Response(
-                {'error': str(e)},
-                status=status.HTTP_400_BAD_REQUEST
-            )
+            return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
 
-    @action(detail=True, methods=['post'])
+    @action(detail=True, methods=["post"])
     def decline(self, request, pk=None):
         """
         Decline a pending admission recommendation.
@@ -237,13 +228,12 @@ class AdmissionRecommendationViewSet(viewsets.ModelViewSet):
         - reason: Reason for declining (required)
         """
         recommendation = self.get_object()
-        user_id = request.data.get('user')
-        reason = request.data.get('reason')
+        user_id = request.data.get("user")
+        reason = request.data.get("reason")
 
         if not user_id or not reason:
             return Response(
-                {'error': 'User ID and reason required'},
-                status=status.HTTP_400_BAD_REQUEST
+                {"error": "User ID and reason required"}, status=status.HTTP_400_BAD_REQUEST
             )
 
         try:
@@ -252,13 +242,13 @@ class AdmissionRecommendationViewSet(viewsets.ModelViewSet):
 
             # Log decline
             AuditLog.log(
-                action='admission_recommendation_decline',
+                action="admission_recommendation_decline",
                 user=request.user,
-                resource_type='AdmissionRecommendation',
+                resource_type="AdmissionRecommendation",
                 resource_id=recommendation.id,
                 details={
-                    'declined_by': user.username,
-                    'reason': reason,
+                    "declined_by": user.username,
+                    "reason": reason,
                 },
                 ip_address=get_client_ip(request),
             )
@@ -267,15 +257,9 @@ class AdmissionRecommendationViewSet(viewsets.ModelViewSet):
             return Response(serializer.data)
 
         except User.DoesNotExist:
-            return Response(
-                {'error': 'User not found'},
-                status=status.HTTP_404_NOT_FOUND
-            )
+            return Response({"error": "User not found"}, status=status.HTTP_404_NOT_FOUND)
         except ValueError as e:
-            return Response(
-                {'error': str(e)},
-                status=status.HTTP_400_BAD_REQUEST
-            )
+            return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
 
 
 class AdmissionViewSet(viewsets.ModelViewSet):
@@ -299,10 +283,10 @@ class AdmissionViewSet(viewsets.ModelViewSet):
     serializer_class = AdmissionSerializer
     permission_classes = [IsAuthenticated]
     filter_backends = [DjangoFilterBackend, filters.SearchFilter, filters.OrderingFilter]
-    filterset_fields = ['patient', 'ward', 'admission_status', 'payer_type']
-    search_fields = ['admission_number', 'patient__first_name', 'patient__last_name']
-    ordering_fields = ['admission_date', 'created_at', 'admission_number']
-    ordering = ['-admission_date']
+    filterset_fields = ["patient", "ward", "admission_status", "payer_type"]
+    search_fields = ["admission_number", "patient__first_name", "patient__last_name"]
+    ordering_fields = ["admission_date", "created_at", "admission_number"]
+    ordering = ["-admission_date"]
 
     def perform_create(self, serializer):
         """Create admission and log action."""
@@ -310,15 +294,15 @@ class AdmissionViewSet(viewsets.ModelViewSet):
 
         # Log admission creation
         AuditLog.log(
-            action='admission_create',
+            action="admission_create",
             user=self.request.user,
-            resource_type='Admission',
+            resource_type="Admission",
             resource_id=instance.id,
             details={
-                'admission_number': instance.admission_number,
-                'patient': instance.patient.id,
-                'ward': instance.ward.name,
-                'bed': instance.bed.bed_number,
+                "admission_number": instance.admission_number,
+                "patient": instance.patient.id,
+                "ward": instance.ward.name,
+                "bed": instance.bed.bed_number,
             },
             ip_address=get_client_ip(self.request),
         )
@@ -344,10 +328,14 @@ class DischargeViewSet(viewsets.ModelViewSet):
     serializer_class = DischargeSerializer
     permission_classes = [IsAuthenticated]
     filter_backends = [DjangoFilterBackend, filters.SearchFilter, filters.OrderingFilter]
-    filterset_fields = ['discharge_type', 'pharmacy_cleared', 'billing_cleared', 'discharged_by']
-    search_fields = ['admission__admission_number', 'admission__patient__first_name', 'admission__patient__last_name']
-    ordering_fields = ['discharge_date', 'created_at']
-    ordering = ['-discharge_date']
+    filterset_fields = ["discharge_type", "pharmacy_cleared", "billing_cleared", "discharged_by"]
+    search_fields = [
+        "admission__admission_number",
+        "admission__patient__first_name",
+        "admission__patient__last_name",
+    ]
+    ordering_fields = ["discharge_date", "created_at"]
+    ordering = ["-discharge_date"]
 
     def perform_create(self, serializer):
         """Create discharge and log action."""
@@ -355,15 +343,15 @@ class DischargeViewSet(viewsets.ModelViewSet):
 
         # Log discharge creation
         AuditLog.log(
-            action='discharge_create',
+            action="discharge_create",
             user=self.request.user,
-            resource_type='Discharge',
+            resource_type="Discharge",
             resource_id=instance.id,
             details={
-                'admission_number': instance.admission.admission_number,
-                'patient': instance.admission.patient.id,
-                'discharge_type': instance.discharge_type,
-                'length_of_stay': instance.length_of_stay,
+                "admission_number": instance.admission.admission_number,
+                "patient": instance.admission.patient.id,
+                "discharge_type": instance.discharge_type,
+                "length_of_stay": instance.length_of_stay,
             },
             ip_address=get_client_ip(self.request),
         )
@@ -388,10 +376,14 @@ class TransferViewSet(viewsets.ModelViewSet):
     serializer_class = TransferSerializer
     permission_classes = [IsAuthenticated]
     filter_backends = [DjangoFilterBackend, filters.SearchFilter, filters.OrderingFilter]
-    filterset_fields = ['source_ward', 'destination_ward', 'reason', 'transferred_by']
-    search_fields = ['admission__admission_number', 'admission__patient__first_name', 'admission__patient__last_name']
-    ordering_fields = ['transfer_date', 'created_at']
-    ordering = ['-transfer_date']
+    filterset_fields = ["source_ward", "destination_ward", "reason", "transferred_by"]
+    search_fields = [
+        "admission__admission_number",
+        "admission__patient__first_name",
+        "admission__patient__last_name",
+    ]
+    ordering_fields = ["transfer_date", "created_at"]
+    ordering = ["-transfer_date"]
 
     def perform_create(self, serializer):
         """Create transfer and log action."""
@@ -399,16 +391,16 @@ class TransferViewSet(viewsets.ModelViewSet):
 
         # Log transfer creation
         AuditLog.log(
-            action='transfer_create',
+            action="transfer_create",
             user=self.request.user,
-            resource_type='Transfer',
+            resource_type="Transfer",
             resource_id=instance.id,
             details={
-                'admission_number': instance.admission.admission_number,
-                'patient': instance.admission.patient.id,
-                'source_ward': instance.source_ward.name,
-                'destination_ward': instance.destination_ward.name,
-                'reason': instance.reason,
+                "admission_number": instance.admission.admission_number,
+                "patient": instance.admission.patient.id,
+                "source_ward": instance.source_ward.name,
+                "destination_ward": instance.destination_ward.name,
+                "reason": instance.reason,
             },
             ip_address=get_client_ip(self.request),
         )
@@ -434,10 +426,21 @@ class WardRoundViewSet(viewsets.ModelViewSet):
     serializer_class = WardRoundSerializer
     permission_classes = [IsAuthenticated]
     filter_backends = [DjangoFilterBackend, filters.SearchFilter, filters.OrderingFilter]
-    filterset_fields = ['admission', 'condition_status', 'requires_consultant_review', 'conducted_by']
-    search_fields = ['admission__admission_number', 'admission__patient__first_name', 'admission__patient__last_name', 'subjective', 'assessment']
-    ordering_fields = ['round_date', 'round_time', 'created_at']
-    ordering = ['-round_date', '-round_time']
+    filterset_fields = [
+        "admission",
+        "condition_status",
+        "requires_consultant_review",
+        "conducted_by",
+    ]
+    search_fields = [
+        "admission__admission_number",
+        "admission__patient__first_name",
+        "admission__patient__last_name",
+        "subjective",
+        "assessment",
+    ]
+    ordering_fields = ["round_date", "round_time", "created_at"]
+    ordering = ["-round_date", "-round_time"]
 
     def perform_create(self, serializer):
         """Create ward round and log action."""
@@ -445,15 +448,15 @@ class WardRoundViewSet(viewsets.ModelViewSet):
 
         # Log ward round creation
         AuditLog.log(
-            action='ward_round_create',
+            action="ward_round_create",
             user=self.request.user,
-            resource_type='WardRound',
+            resource_type="WardRound",
             resource_id=instance.id,
             details={
-                'admission_number': instance.admission.admission_number,
-                'patient': instance.admission.patient.id,
-                'condition_status': instance.condition_status,
-                'requires_consultant_review': instance.requires_consultant_review,
+                "admission_number": instance.admission.admission_number,
+                "patient": instance.admission.patient.id,
+                "condition_status": instance.condition_status,
+                "requires_consultant_review": instance.requires_consultant_review,
             },
             ip_address=get_client_ip(self.request),
         )
@@ -480,12 +483,17 @@ class NursingKardexViewSet(viewsets.ModelViewSet):
     serializer_class = NursingKardexSerializer
     permission_classes = [IsAuthenticated]
     filter_backends = [DjangoFilterBackend, filters.SearchFilter, filters.OrderingFilter]
-    filterset_fields = ['admission', 'fall_risk', 'pressure_sore_risk']
-    search_fields = ['admission__admission_number', 'admission__patient__first_name', 'admission__patient__last_name', 'nursing_problems']
-    ordering_fields = ['created_at', 'updated_at']
-    ordering = ['-created_at']
+    filterset_fields = ["admission", "fall_risk", "pressure_sore_risk"]
+    search_fields = [
+        "admission__admission_number",
+        "admission__patient__first_name",
+        "admission__patient__last_name",
+        "nursing_problems",
+    ]
+    ordering_fields = ["created_at", "updated_at"]
+    ordering = ["-created_at"]
 
-    @action(detail=True, methods=['post'], url_path='add-shift-note')
+    @action(detail=True, methods=["post"], url_path="add-shift-note")
     def add_shift_note(self, request, pk=None):
         """
         Add a shift note to the kardex.
@@ -495,32 +503,28 @@ class NursingKardexViewSet(viewsets.ModelViewSet):
         - content: Note content
         """
         kardex = self.get_object()
-        shift = request.data.get('shift')
-        content = request.data.get('content')
+        shift = request.data.get("shift")
+        content = request.data.get("content")
 
         if not shift or not content:
             return Response(
-                {'error': 'Shift and content are required'},
-                status=status.HTTP_400_BAD_REQUEST
+                {"error": "Shift and content are required"}, status=status.HTTP_400_BAD_REQUEST
             )
 
         note = KardexShiftNote.objects.create(
-            kardex=kardex,
-            shift=shift,
-            nurse=request.user,
-            content=content
+            kardex=kardex, shift=shift, nurse=request.user, content=content
         )
 
         # Log shift note creation
         AuditLog.log(
-            action='kardex_shift_note_create',
+            action="kardex_shift_note_create",
             user=request.user,
-            resource_type='KardexShiftNote',
+            resource_type="KardexShiftNote",
             resource_id=note.id,
             details={
-                'kardex_id': kardex.id,
-                'admission_number': kardex.admission.admission_number,
-                'shift': shift,
+                "kardex_id": kardex.id,
+                "admission_number": kardex.admission.admission_number,
+                "shift": shift,
             },
             ip_address=get_client_ip(request),
         )
@@ -528,7 +532,7 @@ class NursingKardexViewSet(viewsets.ModelViewSet):
         serializer = KardexShiftNoteSerializer(note)
         return Response(serializer.data, status=status.HTTP_201_CREATED)
 
-    @action(detail=True, methods=['post'], url_path='add-handover-note')
+    @action(detail=True, methods=["post"], url_path="add-handover-note")
     def add_handover_note(self, request, pk=None):
         """
         Add a handover note to the kardex.
@@ -540,24 +544,21 @@ class NursingKardexViewSet(viewsets.ModelViewSet):
         - escalations: Issues escalated (optional)
         """
         kardex = self.get_object()
-        incoming_nurse_id = request.data.get('incoming_nurse')
-        shift_ending = request.data.get('shift_ending')
-        pending_tasks = request.data.get('pending_tasks')
-        escalations = request.data.get('escalations', '')
+        incoming_nurse_id = request.data.get("incoming_nurse")
+        shift_ending = request.data.get("shift_ending")
+        pending_tasks = request.data.get("pending_tasks")
+        escalations = request.data.get("escalations", "")
 
         if not incoming_nurse_id or not shift_ending or not pending_tasks:
             return Response(
-                {'error': 'incoming_nurse, shift_ending, and pending_tasks are required'},
-                status=status.HTTP_400_BAD_REQUEST
+                {"error": "incoming_nurse, shift_ending, and pending_tasks are required"},
+                status=status.HTTP_400_BAD_REQUEST,
             )
 
         try:
             incoming_nurse = User.objects.get(id=incoming_nurse_id)
         except User.DoesNotExist:
-            return Response(
-                {'error': 'Incoming nurse not found'},
-                status=status.HTTP_404_NOT_FOUND
-            )
+            return Response({"error": "Incoming nurse not found"}, status=status.HTTP_404_NOT_FOUND)
 
         note = KardexHandoverNote.objects.create(
             kardex=kardex,
@@ -565,20 +566,20 @@ class NursingKardexViewSet(viewsets.ModelViewSet):
             incoming_nurse=incoming_nurse,
             shift_ending=shift_ending,
             pending_tasks=pending_tasks,
-            escalations=escalations
+            escalations=escalations,
         )
 
         # Log handover note creation
         AuditLog.log(
-            action='kardex_handover_note_create',
+            action="kardex_handover_note_create",
             user=request.user,
-            resource_type='KardexHandoverNote',
+            resource_type="KardexHandoverNote",
             resource_id=note.id,
             details={
-                'kardex_id': kardex.id,
-                'admission_number': kardex.admission.admission_number,
-                'shift_ending': shift_ending,
-                'incoming_nurse': incoming_nurse.username,
+                "kardex_id": kardex.id,
+                "admission_number": kardex.admission.admission_number,
+                "shift_ending": shift_ending,
+                "incoming_nurse": incoming_nurse.username,
             },
             ip_address=get_client_ip(request),
         )
@@ -608,10 +609,10 @@ class ShiftHandoverViewSet(viewsets.ModelViewSet):
     serializer_class = ShiftHandoverSerializer
     permission_classes = [IsAuthenticated]
     filter_backends = [DjangoFilterBackend, filters.SearchFilter, filters.OrderingFilter]
-    filterset_fields = ['ward', 'shift_date', 'shift_ending', 'outgoing_nurse', 'incoming_nurse']
-    search_fields = ['ward__name', 'general_notes']
-    ordering_fields = ['shift_date', 'created_at']
-    ordering = ['-shift_date', '-created_at']
+    filterset_fields = ["ward", "shift_date", "shift_ending", "outgoing_nurse", "incoming_nurse"]
+    search_fields = ["ward__name", "general_notes"]
+    ordering_fields = ["shift_date", "created_at"]
+    ordering = ["-shift_date", "-created_at"]
 
     def perform_create(self, serializer):
         """Create shift handover and log action."""
@@ -619,20 +620,20 @@ class ShiftHandoverViewSet(viewsets.ModelViewSet):
 
         # Log shift handover creation
         AuditLog.log(
-            action='shift_handover_create',
+            action="shift_handover_create",
             user=self.request.user,
-            resource_type='ShiftHandover',
+            resource_type="ShiftHandover",
             resource_id=instance.id,
             details={
-                'ward': instance.ward.name,
-                'shift_date': str(instance.shift_date),
-                'shift_ending': instance.shift_ending,
-                'total_patients': instance.total_patients,
+                "ward": instance.ward.name,
+                "shift_date": str(instance.shift_date),
+                "shift_ending": instance.shift_ending,
+                "total_patients": instance.total_patients,
             },
             ip_address=get_client_ip(self.request),
         )
 
-    @action(detail=True, methods=['post'])
+    @action(detail=True, methods=["post"])
     def acknowledge(self, request, pk=None):
         """
         Acknowledge the handover by the incoming nurse.
@@ -641,28 +642,27 @@ class ShiftHandoverViewSet(viewsets.ModelViewSet):
 
         if handover.is_acknowledged:
             return Response(
-                {'error': 'Handover already acknowledged'},
-                status=status.HTTP_400_BAD_REQUEST
+                {"error": "Handover already acknowledged"}, status=status.HTTP_400_BAD_REQUEST
             )
 
         if request.user != handover.incoming_nurse:
             return Response(
-                {'error': 'Only the incoming nurse can acknowledge the handover'},
-                status=status.HTTP_403_FORBIDDEN
+                {"error": "Only the incoming nurse can acknowledge the handover"},
+                status=status.HTTP_403_FORBIDDEN,
             )
 
         handover.acknowledge(request.user)
 
         # Log acknowledgment
         AuditLog.log(
-            action='shift_handover_acknowledge',
+            action="shift_handover_acknowledge",
             user=request.user,
-            resource_type='ShiftHandover',
+            resource_type="ShiftHandover",
             resource_id=handover.id,
             details={
-                'ward': handover.ward.name,
-                'shift_date': str(handover.shift_date),
-                'shift_ending': handover.shift_ending,
+                "ward": handover.ward.name,
+                "shift_date": str(handover.shift_date),
+                "shift_ending": handover.shift_ending,
             },
             ip_address=get_client_ip(request),
         )
@@ -670,7 +670,7 @@ class ShiftHandoverViewSet(viewsets.ModelViewSet):
         serializer = self.get_serializer(handover)
         return Response(serializer.data)
 
-    @action(detail=True, methods=['post'], url_path='auto-populate')
+    @action(detail=True, methods=["post"], url_path="auto-populate")
     def auto_populate(self, request, pk=None):
         """
         Auto-populate patient counts from ward data.

@@ -29,9 +29,7 @@ from hmis.apps.inpatient.models import WardRound
 class TestWardRoundCreation:
     """Tests for creating ward rounds."""
 
-    def test_create_ward_round_with_valid_data(
-        self, sample_admission, test_user
-    ):
+    def test_create_ward_round_with_valid_data(self, sample_admission, test_user):
         """Should create ward round with valid SOAP notes."""
         ward_round = WardRound.objects.create(
             admission=sample_admission,
@@ -51,9 +49,7 @@ class TestWardRoundCreation:
         assert ward_round.condition_status == "IMPROVING"
         assert "Post-operative" in ward_round.assessment
 
-    def test_create_ward_round_with_consultant_flag(
-        self, sample_admission, test_user
-    ):
+    def test_create_ward_round_with_consultant_flag(self, sample_admission, test_user):
         """Should create ward round requiring consultant review."""
         ward_round = WardRound.objects.create(
             admission=sample_admission,
@@ -149,9 +145,7 @@ class TestMultipleRoundsPerDay:
         from django.contrib.auth import get_user_model
 
         User = get_user_model()
-        doctor2 = User.objects.create_user(
-            username="doctor2", password="password123"
-        )
+        doctor2 = User.objects.create_user(username="doctor2", password="password123")
 
         # First round
         WardRound.objects.create(
@@ -180,13 +174,12 @@ class TestMultipleRoundsPerDay:
         )
 
         assert round2.id is not None
-        assert WardRound.objects.filter(
-            admission=sample_admission, round_date=date.today()
-        ).count() == 2
+        assert (
+            WardRound.objects.filter(admission=sample_admission, round_date=date.today()).count()
+            == 2
+        )
 
-    def test_duplicate_round_same_doctor_same_day_fails(
-        self, sample_admission, test_user
-    ):
+    def test_duplicate_round_same_doctor_same_day_fails(self, sample_admission, test_user):
         """Should prevent duplicate round by same doctor on same day."""
         WardRound.objects.create(
             admission=sample_admission,
@@ -272,9 +265,7 @@ class TestWardRoundQueries:
         assert yesterday_rounds.count() == 1
         assert yesterday_rounds.first().subjective == "Yesterday"
 
-    def test_rounds_ordered_by_date_descending(
-        self, sample_admission, test_user
-    ):
+    def test_rounds_ordered_by_date_descending(self, sample_admission, test_user):
         """Should order rounds by date/time descending (most recent first)."""
         for i in range(3):
             WardRound.objects.create(
@@ -303,9 +294,7 @@ class TestWardRoundQueries:
 class TestConditionStatusTracking:
     """Tests for patient condition status tracking."""
 
-    def test_condition_status_transition_stable_to_deteriorating(
-        self, sample_admission, test_user
-    ):
+    def test_condition_status_transition_stable_to_deteriorating(self, sample_admission, test_user):
         """Should track condition status changes over time."""
         # Day 1 - Stable
         WardRound.objects.create(
@@ -347,15 +336,11 @@ class TestConditionStatusTracking:
         )
 
         # Verify status progression
-        rounds = WardRound.objects.filter(
-            admission=sample_admission
-        ).order_by("round_date")
+        rounds = WardRound.objects.filter(admission=sample_admission).order_by("round_date")
         statuses = [r.condition_status for r in rounds]
         assert statuses == ["STABLE", "DETERIORATING", "IMPROVING"]
 
-    def test_critical_status_requires_consultant(
-        self, sample_admission, test_user
-    ):
+    def test_critical_status_requires_consultant(self, sample_admission, test_user):
         """Should flag consultant review for critical patients."""
         critical_round = WardRound.objects.create(
             admission=sample_admission,

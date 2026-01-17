@@ -64,9 +64,7 @@ class Command(BaseCommand):
             return
 
         if dry_run:
-            self.stdout.write(
-                self.style.WARNING("DRY RUN MODE - No changes will be made")
-            )
+            self.stdout.write(self.style.WARNING("DRY RUN MODE - No changes will be made"))
 
         # First, create Django groups
         groups_created = 0
@@ -113,18 +111,14 @@ class Command(BaseCommand):
                             self._update_role(existing_role, fields, groups_map)
                             updated_count += 1
                             if verbose:
-                                self.stdout.write(
-                                    f"  Updated role: {code} - {existing_role.name}"
-                                )
+                                self.stdout.write(f"  Updated role: {code} - {existing_role.name}")
                         else:
                             skipped_count += 1
                             if verbose:
                                 self.stdout.write(f"  Skipped existing role: {code}")
                     else:
                         if dry_run:
-                            self.stdout.write(
-                                f"  Would create role: {code} - {fields['name']}"
-                            )
+                            self.stdout.write(f"  Would create role: {code} - {fields['name']}")
                             created_count += 1
                         else:
                             # Create new role
@@ -134,9 +128,7 @@ class Command(BaseCommand):
                                 self.stdout.write(f"  Created role: {code} - {role.name}")
 
             except Exception as e:
-                self.stdout.write(
-                    self.style.ERROR(f"Error processing role {code}: {str(e)}")
-                )
+                self.stdout.write(self.style.ERROR(f"Error processing role {code}: {str(e)}"))
 
         # Summary
         self.stdout.write("")
@@ -168,11 +160,7 @@ class Command(BaseCommand):
             fixture_path = Path(custom_path)
         else:
             # Default fixture path
-            fixture_path = (
-                Path(__file__).resolve().parent.parent.parent
-                / "fixtures"
-                / "roles.json"
-            )
+            fixture_path = Path(__file__).resolve().parent.parent.parent / "fixtures" / "roles.json"
 
         if not fixture_path.exists():
             raise FileNotFoundError(
@@ -189,9 +177,7 @@ class Command(BaseCommand):
         groups_data = [item for item in data if item["model"] == "auth.group"]
         roles_data = [item for item in data if item["model"] == "core.role"]
 
-        self.stdout.write(
-            f"Found {len(groups_data)} groups and {len(roles_data)} roles in fixture"
-        )
+        self.stdout.write(f"Found {len(groups_data)} groups and {len(roles_data)} roles in fixture")
 
         return roles_data, groups_data
 

@@ -133,7 +133,9 @@ def update_order_status_on_result(sender, instance, created, **kwargs):
                 if queue_entry and queue_entry.queue_status in ["COLLECTED", "PENDING"]:
                     queue_entry.queue_status = "PROCESSING"
                     queue_entry.processing_started_at = instance.entered_at
-                    queue_entry.save(update_fields=["queue_status", "processing_started_at", "updated_at"])
+                    queue_entry.save(
+                        update_fields=["queue_status", "processing_started_at", "updated_at"]
+                    )
                     logger.info(f"Queue {queue_entry.queue_number} transitioned to PROCESSING")
 
         if items_with_results == total_items:
@@ -142,8 +144,12 @@ def update_order_status_on_result(sender, instance, created, **kwargs):
             if queue_entry and queue_entry.queue_status == "PROCESSING":
                 queue_entry.queue_status = "REVIEW"
                 queue_entry.processing_completed_at = instance.entered_at
-                queue_entry.save(update_fields=["queue_status", "processing_completed_at", "updated_at"])
-                logger.info(f"Queue {queue_entry.queue_number} transitioned to REVIEW (all results entered)")
+                queue_entry.save(
+                    update_fields=["queue_status", "processing_completed_at", "updated_at"]
+                )
+                logger.info(
+                    f"Queue {queue_entry.queue_number} transitioned to REVIEW (all results entered)"
+                )
 
     except Exception as e:
         logger.error(f"Failed to update order status after result entry: {e}")

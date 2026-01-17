@@ -19,15 +19,17 @@ class TestTriageAssessmentAPI:
 
     def test_list_requires_authentication(self, api_client):
         """Should require authentication for list endpoint."""
-        response = api_client.get('/api/triage/assessments/')
+        response = api_client.get("/api/triage/assessments/")
         assert response.status_code == status.HTTP_401_UNAUTHORIZED
 
     def test_create_requires_authentication(self, api_client):
         """Should require authentication for create endpoint."""
-        response = api_client.post('/api/triage/assessments/', {})
+        response = api_client.post("/api/triage/assessments/", {})
         assert response.status_code == status.HTTP_401_UNAUTHORIZED
 
-    def test_create_requires_perform_triage_permission(self, authenticated_client, sample_encounter):
+    def test_create_requires_perform_triage_permission(
+        self, authenticated_client, sample_encounter
+    ):
         """Should require perform_triage permission for create."""
         data = {
             "encounter": sample_encounter.id,
@@ -40,13 +42,15 @@ class TestTriageAssessmentAPI:
             "triage_start_time": timezone.now().isoformat(),
         }
 
-        response = authenticated_client.post('/api/triage/assessments/', data, format='json')
+        response = authenticated_client.post("/api/triage/assessments/", data, format="json")
         assert response.status_code == status.HTTP_403_FORBIDDEN
 
-    def test_create_triage_assessment_with_permission(self, authenticated_client, test_user, sample_encounter):
+    def test_create_triage_assessment_with_permission(
+        self, authenticated_client, test_user, sample_encounter
+    ):
         """Should create triage assessment with valid data and permission."""
         # Grant permission
-        permission = Permission.objects.get(codename='perform_triage')
+        permission = Permission.objects.get(codename="perform_triage")
         test_user.user_permissions.add(permission)
 
         data = {
@@ -60,16 +64,16 @@ class TestTriageAssessmentAPI:
             "triage_start_time": timezone.now().isoformat(),
         }
 
-        response = authenticated_client.post('/api/triage/assessments/', data, format='json')
+        response = authenticated_client.post("/api/triage/assessments/", data, format="json")
         assert response.status_code == status.HTTP_201_CREATED
-        assert 'auto_calculated_category' in response.data
-        assert 'alerts' in response.data
+        assert "auto_calculated_category" in response.data
+        assert "alerts" in response.data
 
     def test_create_auto_adds_to_queue(self, authenticated_client, test_user, sample_encounter):
         """Should automatically add to queue when creating assessment."""
         from hmis.apps.triage.models import TriageQueue
 
-        permission = Permission.objects.get(codename='perform_triage')
+        permission = Permission.objects.get(codename="perform_triage")
         test_user.user_permissions.add(permission)
 
         data = {
@@ -83,11 +87,11 @@ class TestTriageAssessmentAPI:
             "triage_start_time": timezone.now().isoformat(),
         }
 
-        response = authenticated_client.post('/api/triage/assessments/', data, format='json')
+        response = authenticated_client.post("/api/triage/assessments/", data, format="json")
         assert response.status_code == status.HTTP_201_CREATED
 
         # Check queue entry exists
-        queue_exists = TriageQueue.objects.filter(triage_assessment_id=response.data['id']).exists()
+        queue_exists = TriageQueue.objects.filter(triage_assessment_id=response.data["id"]).exists()
         assert queue_exists
 
     def test_list_triage_assessments(self, authenticated_client, sample_encounter, test_user):
@@ -109,9 +113,9 @@ class TestTriageAssessmentAPI:
             triaged_by=test_user,
         )
 
-        response = authenticated_client.get('/api/triage/assessments/')
+        response = authenticated_client.get("/api/triage/assessments/")
         assert response.status_code == status.HTTP_200_OK
-        assert 'results' in response.data or isinstance(response.data, list)
+        assert "results" in response.data or isinstance(response.data, list)
 
     def test_filter_by_triage_category(self, authenticated_client, sample_patient, test_user):
         """Should filter assessments by triage category."""
@@ -119,7 +123,9 @@ class TestTriageAssessmentAPI:
         from hmis.apps.triage.models import TriageAssessment
 
         # Create RED assessment
-        encounter1 = Encounter.objects.create(patient=sample_patient, encounter_type="EMERGENCY", chief_complaint="Test 1")
+        encounter1 = Encounter.objects.create(
+            patient=sample_patient, encounter_type="EMERGENCY", chief_complaint="Test 1"
+        )
         TriageAssessment.objects.create(
             encounter=encounter1,
             chief_complaint="Critical",
@@ -135,7 +141,9 @@ class TestTriageAssessmentAPI:
         )
 
         # Create GREEN assessment
-        encounter2 = Encounter.objects.create(patient=sample_patient, encounter_type="OPD", chief_complaint="Test 2")
+        encounter2 = Encounter.objects.create(
+            patient=sample_patient, encounter_type="OPD", chief_complaint="Test 2"
+        )
         TriageAssessment.objects.create(
             encounter=encounter2,
             chief_complaint="Minor",
@@ -150,11 +158,11 @@ class TestTriageAssessmentAPI:
             triaged_by=test_user,
         )
 
-        response = authenticated_client.get('/api/triage/assessments/?triage_category=RED')
+        response = authenticated_client.get("/api/triage/assessments/?triage_category=RED")
         assert response.status_code == status.HTTP_200_OK
-        data = response.data.get('results', response.data)
+        data = response.data.get("results", response.data)
         assert len(data) == 1
-        assert data[0]['triage_category'] == 'RED'
+        assert data[0]["triage_category"] == "RED"
 
     def test_retrieve_triage_assessment(self, authenticated_client, sample_encounter, test_user):
         """Should retrieve specific triage assessment."""
@@ -174,9 +182,9 @@ class TestTriageAssessmentAPI:
             triaged_by=test_user,
         )
 
-        response = authenticated_client.get(f'/api/triage/assessments/{assessment.id}/')
+        response = authenticated_client.get(f"/api/triage/assessments/{assessment.id}/")
         assert response.status_code == status.HTTP_200_OK
-        assert response.data['id'] == assessment.id
+        assert response.data["id"] == assessment.id
 
 
 @pytest.mark.django_db
@@ -185,7 +193,7 @@ class TestCalculateCategoryEndpoint:
 
     def test_calculate_category_requires_auth(self, api_client):
         """Should require authentication."""
-        response = api_client.post('/api/triage/assessments/calculate-category/', {})
+        response = api_client.post("/api/triage/assessments/calculate-category/", {})
         assert response.status_code == status.HTTP_401_UNAUTHORIZED
 
     def test_calculate_category_returns_result(self, authenticated_client):
@@ -198,10 +206,12 @@ class TestCalculateCategoryEndpoint:
             "pain_score": 5,
         }
 
-        response = authenticated_client.post('/api/triage/assessments/calculate-category/', data, format='json')
+        response = authenticated_client.post(
+            "/api/triage/assessments/calculate-category/", data, format="json"
+        )
         assert response.status_code == status.HTTP_200_OK
-        assert 'category' in response.data
-        assert 'alerts' in response.data
+        assert "category" in response.data
+        assert "alerts" in response.data
 
     def test_calculate_category_red_for_critical_vitals(self, authenticated_client):
         """Should return RED for critical vitals."""
@@ -212,10 +222,12 @@ class TestCalculateCategoryEndpoint:
             "heart_rate": 160,  # Critical
         }
 
-        response = authenticated_client.post('/api/triage/assessments/calculate-category/', data, format='json')
+        response = authenticated_client.post(
+            "/api/triage/assessments/calculate-category/", data, format="json"
+        )
         assert response.status_code == status.HTTP_200_OK
-        assert response.data['category'] == 'RED'
-        assert len(response.data['alerts']) > 0
+        assert response.data["category"] == "RED"
+        assert len(response.data["alerts"]) > 0
 
 
 @pytest.mark.django_db
@@ -224,7 +236,7 @@ class TestVitalThresholdsEndpoints:
 
     def test_get_thresholds_requires_auth(self, api_client):
         """Should require authentication."""
-        response = api_client.get('/api/triage/vital-thresholds/')
+        response = api_client.get("/api/triage/vital-thresholds/")
         assert response.status_code == status.HTTP_401_UNAUTHORIZED
 
     def test_get_vital_thresholds(self, authenticated_client):
@@ -238,7 +250,7 @@ class TestVitalThresholdsEndpoints:
             warning_low=Decimal("95.00"),
         )
 
-        response = authenticated_client.get('/api/triage/vital-thresholds/')
+        response = authenticated_client.get("/api/triage/vital-thresholds/")
         assert response.status_code == status.HTTP_200_OK
         assert len(response.data) >= 1
 
@@ -258,9 +270,14 @@ class TestVitalThresholdsEndpoints:
             "warning_low": "92.00",
         }
 
-        response = authenticated_client.put(f'/api/triage/vital-thresholds/{threshold.id}/', data, format='json')
+        response = authenticated_client.put(
+            f"/api/triage/vital-thresholds/{threshold.id}/", data, format="json"
+        )
         # Should fail - not admin
-        assert response.status_code in [status.HTTP_403_FORBIDDEN, status.HTTP_405_METHOD_NOT_ALLOWED]
+        assert response.status_code in [
+            status.HTTP_403_FORBIDDEN,
+            status.HTTP_405_METHOD_NOT_ALLOWED,
+        ]
 
 
 @pytest.mark.django_db
@@ -269,7 +286,7 @@ class TestQueueEndpoints:
 
     def test_get_queue_requires_permission(self, authenticated_client):
         """Should require view_triage_queue permission."""
-        response = authenticated_client.get('/api/triage/queue/')
+        response = authenticated_client.get("/api/triage/queue/")
         assert response.status_code == status.HTTP_403_FORBIDDEN
 
     def test_get_queue_with_permission(self, authenticated_client, test_user, sample_encounter):
@@ -277,7 +294,7 @@ class TestQueueEndpoints:
         from hmis.apps.triage.models import TriageAssessment, TriageQueue
 
         # Grant permission
-        permission = Permission.objects.get(codename='view_triage_queue')
+        permission = Permission.objects.get(codename="view_triage_queue")
         test_user.user_permissions.add(permission)
 
         # Create assessment and queue entry
@@ -301,7 +318,7 @@ class TestQueueEndpoints:
             status="WAITING",
         )
 
-        response = authenticated_client.get('/api/triage/queue/')
+        response = authenticated_client.get("/api/triage/queue/")
         assert response.status_code == status.HTTP_200_OK
         assert len(response.data) >= 1
 
@@ -309,7 +326,7 @@ class TestQueueEndpoints:
         """Should exclude completed entries from queue."""
         from hmis.apps.triage.models import TriageAssessment, TriageQueue
 
-        permission = Permission.objects.get(codename='view_triage_queue')
+        permission = Permission.objects.get(codename="view_triage_queue")
         test_user.user_permissions.add(permission)
 
         assessment = TriageAssessment.objects.create(
@@ -333,17 +350,21 @@ class TestQueueEndpoints:
             status="COMPLETED",
         )
 
-        response = authenticated_client.get('/api/triage/queue/')
+        response = authenticated_client.get("/api/triage/queue/")
         assert response.status_code == status.HTTP_200_OK
         # Completed entries should not appear
-        data = response.data.get('results', response.data) if isinstance(response.data, dict) else response.data
+        data = (
+            response.data.get("results", response.data)
+            if isinstance(response.data, dict)
+            else response.data
+        )
         assert len(data) == 0
 
     def test_call_patient_endpoint(self, authenticated_client, test_user, sample_encounter):
         """Should mark patient as called."""
         from hmis.apps.triage.models import TriageAssessment, TriageQueue
 
-        permission = Permission.objects.get(codename='view_triage_queue')
+        permission = Permission.objects.get(codename="view_triage_queue")
         test_user.user_permissions.add(permission)
 
         assessment = TriageAssessment.objects.create(
@@ -366,7 +387,7 @@ class TestQueueEndpoints:
             status="WAITING",
         )
 
-        response = authenticated_client.post(f'/api/triage/queue/{queue_entry.id}/call/')
+        response = authenticated_client.post(f"/api/triage/queue/{queue_entry.id}/call/")
         assert response.status_code == status.HTTP_200_OK
 
         queue_entry.refresh_from_db()
@@ -388,9 +409,7 @@ class TestReportEndpoints:
         # Create some assessments with different wait times
         for i in range(3):
             encounter = Encounter.objects.create(
-                patient=sample_patient,
-                encounter_type="OPD",
-                chief_complaint=f"Test {i}"
+                patient=sample_patient, encounter_type="OPD", chief_complaint=f"Test {i}"
             )
             TriageAssessment.objects.create(
                 encounter=encounter,
@@ -401,14 +420,14 @@ class TestReportEndpoints:
                 triage_category="GREEN",
                 auto_calculated_category="GREEN",
                 assigned_area="OPD",
-                arrival_time=timezone.now() - timedelta(minutes=30+i*10),
+                arrival_time=timezone.now() - timedelta(minutes=30 + i * 10),
                 triage_start_time=timezone.now(),
                 triaged_by=test_user,
             )
 
-        response = authenticated_client.get('/api/triage/reports/wait-times/')
+        response = authenticated_client.get("/api/triage/reports/wait-times/")
         assert response.status_code == status.HTTP_200_OK
-        assert 'average_wait_time' in response.data or 'avg_wait_time' in response.data
+        assert "average_wait_time" in response.data or "avg_wait_time" in response.data
 
     def test_volume_report(self, authenticated_client, test_user, sample_patient):
         """Should return volume counts by category."""
@@ -416,11 +435,9 @@ class TestReportEndpoints:
         from hmis.apps.triage.models import TriageAssessment
 
         # Create assessments of different categories
-        for category in ['RED', 'YELLOW', 'GREEN']:
+        for category in ["RED", "YELLOW", "GREEN"]:
             encounter = Encounter.objects.create(
-                patient=sample_patient,
-                encounter_type="OPD",
-                chief_complaint=f"Test {category}"
+                patient=sample_patient, encounter_type="OPD", chief_complaint=f"Test {category}"
             )
             TriageAssessment.objects.create(
                 encounter=encounter,
@@ -436,7 +453,7 @@ class TestReportEndpoints:
                 triaged_by=test_user,
             )
 
-        response = authenticated_client.get('/api/triage/reports/volume/')
+        response = authenticated_client.get("/api/triage/reports/volume/")
         assert response.status_code == status.HTTP_200_OK
         assert isinstance(response.data, (list, dict))
 
@@ -447,12 +464,12 @@ class TestErrorHandling:
 
     def test_404_for_nonexistent_assessment(self, authenticated_client):
         """Should return 404 for non-existent assessment."""
-        response = authenticated_client.get('/api/triage/99999/')
+        response = authenticated_client.get("/api/triage/99999/")
         assert response.status_code == status.HTTP_404_NOT_FOUND
 
     def test_400_for_invalid_data(self, authenticated_client, test_user):
         """Should return 400 for invalid data."""
-        permission = Permission.objects.get(codename='perform_triage')
+        permission = Permission.objects.get(codename="perform_triage")
         test_user.user_permissions.add(permission)
 
         data = {
@@ -460,5 +477,5 @@ class TestErrorHandling:
             # Missing required fields
         }
 
-        response = authenticated_client.post('/api/triage/assessments/', data, format='json')
+        response = authenticated_client.post("/api/triage/assessments/", data, format="json")
         assert response.status_code == status.HTTP_400_BAD_REQUEST

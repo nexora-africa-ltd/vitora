@@ -17,16 +17,16 @@ from .views import (
 )
 
 router = DefaultRouter()
-router.register(r'assessments', TriageAssessmentViewSet, basename='triageassessment')
-router.register(r'queue', TriageQueueViewSet, basename='triagequeue')
-router.register(r'waiting', WaitingQueueViewSet, basename='waitingqueue')
-router.register(r'vital-thresholds', VitalThresholdsViewSet, basename='vitalthreshold')
+router.register(r"assessments", TriageAssessmentViewSet, basename="triageassessment")
+router.register(r"queue", TriageQueueViewSet, basename="triagequeue")
+router.register(r"waiting", WaitingQueueViewSet, basename="waitingqueue")
+router.register(r"vital-thresholds", VitalThresholdsViewSet, basename="vitalthreshold")
 
-app_name = 'triage'
+app_name = "triage"
 
 urlpatterns = [
     # Report endpoints
-    path('reports/wait-times/', WaitTimesReportView.as_view(), name='wait-times-report'),
-    path('reports/volume/', VolumeReportView.as_view(), name='volume-report'),
-    path('', include(router.urls)),
+    path("reports/wait-times/", WaitTimesReportView.as_view(), name="wait-times-report"),
+    path("reports/volume/", VolumeReportView.as_view(), name="volume-report"),
+    path("", include(router.urls)),
 ]

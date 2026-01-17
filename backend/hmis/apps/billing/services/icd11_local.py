@@ -35,12 +35,12 @@ class ICD11Code:
     def to_dict(self) -> dict:
         """Convert to dictionary for serialization."""
         return {
-            'code': self.code,
-            'title': self.title,
-            'entity_id': self.entity_id,
-            'chapter': self.chapter,
-            'browser_url': self.browser_url,
-            'is_leaf': self.is_leaf,
+            "code": self.code,
+            "title": self.title,
+            "entity_id": self.entity_id,
+            "chapter": self.chapter,
+            "browser_url": self.browser_url,
+            "is_leaf": self.is_leaf,
         }
 
 
@@ -60,26 +60,24 @@ class ICD11LocalService:
 
     def __init__(self):
         """Initialize with local API URL from settings."""
-        self.base_url = getattr(
-            settings,
-            'ICD11_LOCAL_API_URL',
-            'http://localhost:5080'
-        ).rstrip('/')
-        self.timeout = getattr(settings, 'ICD11_API_TIMEOUT', 10)
-        self.api_version = 'v2'
-        self.language = 'en'
+        self.base_url = getattr(settings, "ICD11_LOCAL_API_URL", "http://localhost:5080").rstrip(
+            "/"
+        )
+        self.timeout = getattr(settings, "ICD11_API_TIMEOUT", 10)
+        self.api_version = "v2"
+        self.language = "en"
 
     def _get_headers(self) -> dict:
         """Get required headers for WHO ICD-11 API."""
         return {
-            'API-Version': self.api_version,
-            'Accept-Language': self.language,
-            'Accept': 'application/json',
+            "API-Version": self.api_version,
+            "Accept-Language": self.language,
+            "Accept": "application/json",
         }
 
     def _strip_html(self, text: str) -> str:
         """Remove HTML tags from text (e.g., <em class='found'>)."""
-        return re.sub(r'<[^>]+>', '', text)
+        return re.sub(r"<[^>]+>", "", text)
 
     def _extract_code_from_url(self, url: str) -> str | None:
         """Extract ICD-11 code from entity URL by fetching the entity."""
@@ -110,12 +108,12 @@ class ICD11LocalService:
         try:
             # Use the search endpoint
             params = {
-                'q': query,
-                'subtreeFilterUsesFoundationDescendants': 'false',
-                'includeKeywordResult': 'true',
-                'useFlexisearch': str(use_flexisearch).lower(),
-                'flatResults': 'true',
-                'highlightingEnabled': 'false',  # Disable HTML highlighting
+                "q": query,
+                "subtreeFilterUsesFoundationDescendants": "false",
+                "includeKeywordResult": "true",
+                "useFlexisearch": str(use_flexisearch).lower(),
+                "flatResults": "true",
+                "highlightingEnabled": "false",  # Disable HTML highlighting
             }
 
             response = requests.get(
@@ -128,15 +126,15 @@ class ICD11LocalService:
             data = response.json()
 
             results = []
-            entities = data.get('destinationEntities', [])
+            entities = data.get("destinationEntities", [])
 
             for entity in entities[:limit]:
                 # Get the ICD code - need to fetch from linearization
-                entity_id = entity.get('id', '')
-                title = self._strip_html(entity.get('title', ''))
-                chapter = entity.get('chapter', '')
-                the_code = entity.get('theCode')  # May be null
-                is_leaf = entity.get('isLeaf', False)
+                entity_id = entity.get("id", "")
+                title = self._strip_html(entity.get("title", ""))
+                chapter = entity.get("chapter", "")
+                the_code = entity.get("theCode")  # May be null
+                is_leaf = entity.get("isLeaf", False)
 
                 # If no code, try to get from MMS linearization
                 code = the_code
@@ -144,7 +142,7 @@ class ICD11LocalService:
 
                 if entity_id:
                     # Convert foundation URI to MMS URI for code lookup
-                    entity_num = entity_id.split('/')[-1]
+                    entity_num = entity_id.split("/")[-1]
                     mms_url = f"{self.base_url}/icd/release/11/2025-01/mms/{entity_num}"
 
                     try:
@@ -155,8 +153,8 @@ class ICD11LocalService:
                         )
                         if mms_response.status_code == 200:
                             mms_data = mms_response.json()
-                            code = mms_data.get('code', code)
-                            browser_url = mms_data.get('browserUrl')
+                            code = mms_data.get("code", code)
+                            browser_url = mms_data.get("browserUrl")
                     except Exception:
                         pass  # Use what we have
 
@@ -164,14 +162,16 @@ class ICD11LocalService:
                     # Skip entries without codes
                     continue
 
-                results.append(ICD11Code(
-                    code=code,
-                    title=title,
-                    entity_id=entity_id,
-                    chapter=chapter,
-                    browser_url=browser_url,
-                    is_leaf=is_leaf,
-                ))
+                results.append(
+                    ICD11Code(
+                        code=code,
+                        title=title,
+                        entity_id=entity_id,
+                        chapter=chapter,
+                        browser_url=browser_url,
+                        is_leaf=is_leaf,
+                    )
+                )
 
             return results
 
@@ -207,13 +207,13 @@ class ICD11LocalService:
             data = response.json()
 
             # Get the stem entity for full details
-            stem_id = data.get('stemId', '')
+            stem_id = data.get("stemId", "")
 
             return ICD11Code(
                 code=code,
-                title=data.get('title', {}).get('@value', ''),
+                title=data.get("title", {}).get("@value", ""),
                 entity_id=stem_id,
-                browser_url=data.get('browserUrl'),
+                browser_url=data.get("browserUrl"),
             )
 
         except requests.exceptions.RequestException as e:

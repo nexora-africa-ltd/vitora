@@ -11,11 +11,7 @@ from django.core.exceptions import ValidationError
 from django.db import IntegrityError
 from django.utils import timezone
 
-from hmis.apps.inpatient.models import (
-    KardexHandoverNote,
-    KardexShiftNote,
-    NursingKardex,
-)
+from hmis.apps.inpatient.models import KardexHandoverNote, KardexShiftNote, NursingKardex
 
 
 @pytest.mark.django_db
@@ -25,7 +21,7 @@ class TestNursingKardex:
     def test_kardex_auto_creation_on_admission(self, sample_admission):
         """Kardex should be auto-created when admission is saved."""
         # Kardex should exist for the admission
-        assert hasattr(sample_admission, 'kardex')
+        assert hasattr(sample_admission, "kardex")
         kardex = sample_admission.kardex
         assert kardex is not None
         assert kardex.admission == sample_admission
@@ -59,35 +55,35 @@ class TestNursingKardex:
         kardex = sample_admission.kardex
 
         # Default should be LOW
-        assert kardex.fall_risk == 'LOW'
+        assert kardex.fall_risk == "LOW"
 
         # Update to HIGH
-        kardex.fall_risk = 'HIGH'
+        kardex.fall_risk = "HIGH"
         kardex.save()
 
         kardex.refresh_from_db()
-        assert kardex.fall_risk == 'HIGH'
+        assert kardex.fall_risk == "HIGH"
 
     def test_kardex_pressure_sore_risk_assessment(self, sample_admission):
         """Kardex should track pressure sore risk levels."""
         kardex = sample_admission.kardex
 
         # Default should be LOW
-        assert kardex.pressure_sore_risk == 'LOW'
+        assert kardex.pressure_sore_risk == "LOW"
 
         # Update to MODERATE
-        kardex.pressure_sore_risk = 'MODERATE'
+        kardex.pressure_sore_risk = "MODERATE"
         kardex.save()
 
         kardex.refresh_from_db()
-        assert kardex.pressure_sore_risk == 'MODERATE'
+        assert kardex.pressure_sore_risk == "MODERATE"
 
     def test_kardex_risk_assessment_choices(self, sample_admission):
         """Kardex risk assessments should only accept valid choices."""
         kardex = sample_admission.kardex
 
         # Valid choices
-        for risk_level in ['LOW', 'MODERATE', 'HIGH']:
+        for risk_level in ["LOW", "MODERATE", "HIGH"]:
             kardex.fall_risk = risk_level
             kardex.pressure_sore_risk = risk_level
             kardex.save()
@@ -106,14 +102,14 @@ class TestKardexShiftNote:
 
         shift_note = KardexShiftNote.objects.create(
             kardex=kardex,
-            shift='DAY',
+            shift="DAY",
             nurse=test_user,
-            content="Patient stable, all vitals within normal range. Pain controlled."
+            content="Patient stable, all vitals within normal range. Pain controlled.",
         )
 
         assert shift_note.id is not None
         assert shift_note.kardex == kardex
-        assert shift_note.shift == 'DAY'
+        assert shift_note.shift == "DAY"
         assert shift_note.nurse == test_user
         assert "stable" in shift_note.content
         assert shift_note.timestamp is not None
@@ -124,10 +120,7 @@ class TestKardexShiftNote:
 
         before_creation = timezone.now()
         shift_note = KardexShiftNote.objects.create(
-            kardex=kardex,
-            shift='NIGHT',
-            nurse=test_user,
-            content="Night shift report"
+            kardex=kardex, shift="NIGHT", nurse=test_user, content="Night shift report"
         )
         after_creation = timezone.now()
 
@@ -138,10 +131,7 @@ class TestKardexShiftNote:
         kardex = sample_admission.kardex
 
         shift_note = KardexShiftNote.objects.create(
-            kardex=kardex,
-            shift='DAY',
-            nurse=test_user,
-            content="Initial content"
+            kardex=kardex, shift="DAY", nurse=test_user, content="Initial content"
         )
 
         original_timestamp = shift_note.timestamp
@@ -159,24 +149,15 @@ class TestKardexShiftNote:
         kardex = sample_admission.kardex
 
         note1 = KardexShiftNote.objects.create(
-            kardex=kardex,
-            shift='DAY',
-            nurse=test_user,
-            content="Morning update"
+            kardex=kardex, shift="DAY", nurse=test_user, content="Morning update"
         )
 
         note2 = KardexShiftNote.objects.create(
-            kardex=kardex,
-            shift='DAY',
-            nurse=test_user,
-            content="Afternoon update"
+            kardex=kardex, shift="DAY", nurse=test_user, content="Afternoon update"
         )
 
         note3 = KardexShiftNote.objects.create(
-            kardex=kardex,
-            shift='NIGHT',
-            nurse=test_user,
-            content="Night update"
+            kardex=kardex, shift="NIGHT", nurse=test_user, content="Night update"
         )
 
         assert kardex.shift_notes.count() == 3
@@ -190,17 +171,11 @@ class TestKardexShiftNote:
 
         # Create notes with slight delays to ensure different timestamps
         note1 = KardexShiftNote.objects.create(
-            kardex=kardex,
-            shift='DAY',
-            nurse=test_user,
-            content="First note"
+            kardex=kardex, shift="DAY", nurse=test_user, content="First note"
         )
 
         note2 = KardexShiftNote.objects.create(
-            kardex=kardex,
-            shift='DAY',
-            nurse=test_user,
-            content="Second note"
+            kardex=kardex, shift="DAY", nurse=test_user, content="Second note"
         )
 
         notes = list(kardex.shift_notes.all())
@@ -213,12 +188,9 @@ class TestKardexShiftNote:
         kardex = sample_admission.kardex
 
         # Valid choices
-        for shift in ['DAY', 'NIGHT']:
+        for shift in ["DAY", "NIGHT"]:
             note = KardexShiftNote.objects.create(
-                kardex=kardex,
-                shift=shift,
-                nurse=test_user,
-                content=f"{shift} shift report"
+                kardex=kardex, shift=shift, nurse=test_user, content=f"{shift} shift report"
             )
             assert note.shift == shift
 
@@ -235,16 +207,16 @@ class TestKardexHandoverNote:
             kardex=kardex,
             outgoing_nurse=test_user,
             incoming_nurse=another_user,
-            shift_ending='DAY',
+            shift_ending="DAY",
             pending_tasks="IV line change due at 2000hrs, pain assessment overdue",
-            escalations="Patient complained of chest pain - escalated to doctor"
+            escalations="Patient complained of chest pain - escalated to doctor",
         )
 
         assert handover.id is not None
         assert handover.kardex == kardex
         assert handover.outgoing_nurse == test_user
         assert handover.incoming_nurse == another_user
-        assert handover.shift_ending == 'DAY'
+        assert handover.shift_ending == "DAY"
         assert "IV line change" in handover.pending_tasks
         assert "chest pain" in handover.escalations
         assert handover.acknowledged_at is None  # Not acknowledged yet
@@ -257,9 +229,9 @@ class TestKardexHandoverNote:
             kardex=kardex,
             outgoing_nurse=test_user,
             incoming_nurse=another_user,
-            shift_ending='NIGHT',
+            shift_ending="NIGHT",
             pending_tasks="Routine observations",
-            escalations=""  # Optional
+            escalations="",  # Optional
         )
 
         assert handover.escalations == ""
@@ -272,8 +244,8 @@ class TestKardexHandoverNote:
             kardex=kardex,
             outgoing_nurse=test_user,
             incoming_nurse=another_user,
-            shift_ending='DAY',
-            pending_tasks="Routine tasks"
+            shift_ending="DAY",
+            pending_tasks="Routine tasks",
         )
 
         assert handover.acknowledged_at is None
@@ -293,16 +265,16 @@ class TestKardexHandoverNote:
             kardex=kardex,
             outgoing_nurse=test_user,
             incoming_nurse=another_user,
-            shift_ending='DAY',
-            pending_tasks="Day shift tasks"
+            shift_ending="DAY",
+            pending_tasks="Day shift tasks",
         )
 
         handover2 = KardexHandoverNote.objects.create(
             kardex=kardex,
             outgoing_nurse=another_user,
             incoming_nurse=test_user,
-            shift_ending='NIGHT',
-            pending_tasks="Night shift tasks"
+            shift_ending="NIGHT",
+            pending_tasks="Night shift tasks",
         )
 
         assert kardex.handover_notes.count() == 2
@@ -319,8 +291,8 @@ class TestKardexHandoverNote:
             kardex=kardex,
             outgoing_nurse=test_user,
             incoming_nurse=test_user,  # Same nurse (allowed but unusual)
-            shift_ending='DAY',
-            pending_tasks="Tasks"
+            shift_ending="DAY",
+            pending_tasks="Tasks",
         )
 
         assert handover.outgoing_nurse == handover.incoming_nurse
@@ -336,17 +308,11 @@ class TestKardexIntegration:
 
         # Add shift notes
         KardexShiftNote.objects.create(
-            kardex=kardex,
-            shift='DAY',
-            nurse=test_user,
-            content="Day shift note"
+            kardex=kardex, shift="DAY", nurse=test_user, content="Day shift note"
         )
 
         KardexShiftNote.objects.create(
-            kardex=kardex,
-            shift='NIGHT',
-            nurse=another_user,
-            content="Night shift note"
+            kardex=kardex, shift="NIGHT", nurse=another_user, content="Night shift note"
         )
 
         # Add handover
@@ -354,8 +320,8 @@ class TestKardexIntegration:
             kardex=kardex,
             outgoing_nurse=test_user,
             incoming_nurse=another_user,
-            shift_ending='DAY',
-            pending_tasks="Handover tasks"
+            shift_ending="DAY",
+            pending_tasks="Handover tasks",
         )
 
         assert kardex.shift_notes.count() == 2
@@ -366,19 +332,14 @@ class TestKardexIntegration:
         kardex = sample_admission.kardex
 
         # Create associated notes
-        KardexShiftNote.objects.create(
-            kardex=kardex,
-            shift='DAY',
-            nurse=test_user,
-            content="Note"
-        )
+        KardexShiftNote.objects.create(kardex=kardex, shift="DAY", nurse=test_user, content="Note")
 
         KardexHandoverNote.objects.create(
             kardex=kardex,
             outgoing_nurse=test_user,
             incoming_nurse=another_user,
-            shift_ending='DAY',
-            pending_tasks="Tasks"
+            shift_ending="DAY",
+            pending_tasks="Tasks",
         )
 
         kardex_id = kardex.id
@@ -398,12 +359,7 @@ class TestKardexIntegration:
         kardex_id = kardex.id
 
         # Create shift note
-        KardexShiftNote.objects.create(
-            kardex=kardex,
-            shift='DAY',
-            nurse=test_user,
-            content="Note"
-        )
+        KardexShiftNote.objects.create(kardex=kardex, shift="DAY", nurse=test_user, content="Note")
 
         assert NursingKardex.objects.filter(id=kardex_id).exists()
         assert KardexShiftNote.objects.filter(kardex=kardex).exists()

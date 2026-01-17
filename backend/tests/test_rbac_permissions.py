@@ -39,9 +39,7 @@ class TestRoleBasedPermission:
         view.get_queryset.return_value.model.__name__ = "Patient"
         return view
 
-    def test_permission_denied_for_unauthenticated(
-        self, permission_class, factory, mock_view
-    ):
+    def test_permission_denied_for_unauthenticated(self, permission_class, factory, mock_view):
         """Should deny access to unauthenticated users."""
         request = factory.get("/api/patients/")
         request.user = None
@@ -50,9 +48,7 @@ class TestRoleBasedPermission:
 
         assert has_perm is False
 
-    def test_permission_denied_for_anonymous(
-        self, permission_class, factory, mock_view
-    ):
+    def test_permission_denied_for_anonymous(self, permission_class, factory, mock_view):
         """Should deny access to anonymous users."""
         from django.contrib.auth.models import AnonymousUser
 
@@ -63,9 +59,7 @@ class TestRoleBasedPermission:
 
         assert has_perm is False
 
-    def test_permission_allowed_for_superuser(
-        self, permission_class, factory, mock_view
-    ):
+    def test_permission_allowed_for_superuser(self, permission_class, factory, mock_view):
         """Should allow superusers all access."""
         user = User.objects.create_superuser(
             username="superuser", email="super@test.com", password="test123"
@@ -89,9 +83,7 @@ class TestRoleBasedPermission:
             permissions_matrix={"Patient": {"read": True, "create": False}},
         )
 
-        department = Department.objects.create(
-            code="OPD", name="OPD", department_type="CLINICAL"
-        )
+        department = Department.objects.create(code="OPD", name="OPD", department_type="CLINICAL")
 
         user = User.objects.create_user(username="reader", password="test123")
         StaffProfile.objects.create(
@@ -120,9 +112,7 @@ class TestRoleBasedPermission:
             permissions_matrix={"Patient": {"read": False, "create": True}},
         )
 
-        department = Department.objects.create(
-            code="OPD", name="OPD", department_type="CLINICAL"
-        )
+        department = Department.objects.create(code="OPD", name="OPD", department_type="CLINICAL")
 
         user = User.objects.create_user(username="creator", password="test123")
         StaffProfile.objects.create(
@@ -140,9 +130,7 @@ class TestRoleBasedPermission:
 
         assert has_perm is True
 
-    def test_put_patch_maps_to_update_action(
-        self, permission_class, factory, mock_view
-    ):
+    def test_put_patch_maps_to_update_action(self, permission_class, factory, mock_view):
         """Should map PUT/PATCH requests to 'update' action."""
         from hmis.apps.core.models import Department, Role, StaffProfile
 
@@ -153,9 +141,7 @@ class TestRoleBasedPermission:
             permissions_matrix={"Patient": {"update": True}},
         )
 
-        department = Department.objects.create(
-            code="OPD", name="OPD", department_type="CLINICAL"
-        )
+        department = Department.objects.create(code="OPD", name="OPD", department_type="CLINICAL")
 
         user = User.objects.create_user(username="updater", password="test123")
         StaffProfile.objects.create(
@@ -218,9 +204,7 @@ class TestRoleBasedPermission:
             permissions_matrix={"Patient": {"read": True, "create": True}},
         )
 
-        department = Department.objects.create(
-            code="WARD", name="Ward", department_type="CLINICAL"
-        )
+        department = Department.objects.create(code="WARD", name="Ward", department_type="CLINICAL")
 
         user = User.objects.create_user(username="primary", password="test123")
         StaffProfile.objects.create(
@@ -278,9 +262,7 @@ class TestRoleBasedPermission:
         # Should have permission from secondary role
         assert has_perm is True
 
-    def test_permission_inheritance_from_parent(
-        self, permission_class, factory, mock_view
-    ):
+    def test_permission_inheritance_from_parent(self, permission_class, factory, mock_view):
         """Should inherit permissions from parent role."""
         from hmis.apps.core.models import Department, Role, StaffProfile
 
@@ -320,9 +302,7 @@ class TestRoleBasedPermission:
         # Should inherit read permission from parent
         assert has_perm is True
 
-    def test_permission_denied_missing_action(
-        self, permission_class, factory, mock_view
-    ):
+    def test_permission_denied_missing_action(self, permission_class, factory, mock_view):
         """Should deny if action not in permission matrix."""
         from hmis.apps.core.models import Department, Role, StaffProfile
 
@@ -354,9 +334,7 @@ class TestRoleBasedPermission:
 
         assert has_perm is False
 
-    def test_permission_denied_missing_resource(
-        self, permission_class, factory, mock_view
-    ):
+    def test_permission_denied_missing_resource(self, permission_class, factory, mock_view):
         """Should deny if resource not in permission matrix."""
         from hmis.apps.core.models import Department, Role, StaffProfile
 
@@ -387,9 +365,7 @@ class TestRoleBasedPermission:
 
         assert has_perm is False
 
-    def test_fallback_to_django_permissions(
-        self, permission_class, factory, mock_view
-    ):
+    def test_fallback_to_django_permissions(self, permission_class, factory, mock_view):
         """Should fallback to Django perms if no StaffProfile."""
         from django.contrib.auth.models import Permission
         from django.contrib.contenttypes.models import ContentType
@@ -398,9 +374,7 @@ class TestRoleBasedPermission:
 
         # Give user a Django permission
         content_type = ContentType.objects.get(app_label="patients", model="patient")
-        permission = Permission.objects.get(
-            content_type=content_type, codename="view_patient"
-        )
+        permission = Permission.objects.get(content_type=content_type, codename="view_patient")
         user.user_permissions.add(permission)
 
         request = factory.get("/api/patients/")
@@ -411,9 +385,7 @@ class TestRoleBasedPermission:
         # Should use Django permissions as fallback
         assert has_perm is True
 
-    def test_object_level_department_check(
-        self, permission_class, factory, mock_view
-    ):
+    def test_object_level_department_check(self, permission_class, factory, mock_view):
         """Should check department access at object level."""
         from hmis.apps.core.models import Department, Role, StaffProfile
         from hmis.apps.patients.models import Patient
@@ -548,9 +520,7 @@ class TestRoleBasedPermission:
 
         assert has_perm is True
 
-    def test_unlicensed_role_denied_clinical(
-        self, permission_class, factory, mock_view
-    ):
+    def test_unlicensed_role_denied_clinical(self, permission_class, factory, mock_view):
         """Should deny unlicensed roles from clinical resources."""
         from hmis.apps.core.models import Department, Role, StaffProfile
 
@@ -622,9 +592,7 @@ class TestRoleBasedPermission:
         # Should be denied if license is expired
         assert has_perm is False
 
-    def test_permission_check_audit_logging(
-        self, permission_class, factory, mock_view
-    ):
+    def test_permission_check_audit_logging(self, permission_class, factory, mock_view):
         """Should log permission check results."""
         from hmis.apps.core.models import Department, Role, StaffProfile
 

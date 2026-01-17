@@ -41,8 +41,8 @@ def sha_member(db, sample_patient, test_user):
 
     return SHAMember.objects.create(
         patient=sample_patient,
-        sha_number='SHA-1234567890',
-        national_id='12345678',
+        sha_number="SHA-1234567890",
+        national_id="12345678",
         membership_type=SHAMember.MembershipType.PRINCIPAL,
         status=SHAMember.MembershipStatus.ACTIVE,
         coverage_start_date=date.today() - timedelta(days=365),
@@ -58,11 +58,11 @@ def sha_tariff(db):
     from hmis.apps.billing.models import SHATariff
 
     return SHATariff.objects.create(
-        code='SHA-CONS-001',
-        name='General Consultation',
+        code="SHA-CONS-001",
+        name="General Consultation",
         category=SHATariff.TariffCategory.CONSULTATION,
         facility_level=SHATariff.TariffLevel.LEVEL_3,
-        sha_amount=Decimal('500.00'),
+        sha_amount=Decimal("500.00"),
         effective_date=date.today() - timedelta(days=30),
         is_active=True,
         max_quantity_per_claim=5,
@@ -75,11 +75,11 @@ def sha_tariff_with_low_max_quantity(db):
     from hmis.apps.billing.models import SHATariff
 
     return SHATariff.objects.create(
-        code='SHA-LAB-001',
-        name='Lab Test',
+        code="SHA-LAB-001",
+        name="Lab Test",
         category=SHATariff.TariffCategory.LABORATORY,
         facility_level=SHATariff.TariffLevel.LEVEL_3,
-        sha_amount=Decimal('200.00'),
+        sha_amount=Decimal("200.00"),
         effective_date=date.today() - timedelta(days=30),
         is_active=True,
         max_quantity_per_claim=2,  # Low max for testing
@@ -113,10 +113,10 @@ def sha_claim(db, sha_member, sample_encounter, sample_invoice, test_user):
         invoice=sample_invoice,
         claim_type=SHAClaim.ClaimType.OUTPATIENT,
         service_date=date.today(),
-        primary_diagnosis_code='J06.9',
-        primary_diagnosis_description='Acute upper respiratory infection',
-        facility_code='MFL-12345',
-        facility_level='L3',
+        primary_diagnosis_code="J06.9",
+        primary_diagnosis_description="Acute upper respiratory infection",
+        facility_code="MFL-12345",
+        facility_level="L3",
         created_by=test_user,
     )
 
@@ -127,9 +127,9 @@ def sample_service_category(db):
     from hmis.apps.billing.models import ServiceCategory
 
     return ServiceCategory.objects.create(
-        code='CONS',
-        name='Consultation',
-        description='Consultation services',
+        code="CONS",
+        name="Consultation",
+        description="Consultation services",
         is_active=True,
     )
 
@@ -140,10 +140,10 @@ def sample_service(db, sample_service_category, test_user):
     from hmis.apps.billing.models import Service
 
     return Service.objects.create(
-        code='SVC-CONS-001',
-        name='General Consultation',
+        code="SVC-CONS-001",
+        name="General Consultation",
         category=sample_service_category,
-        unit_price=Decimal('600.00'),
+        unit_price=Decimal("600.00"),
         is_active=True,
         created_by=test_user,
     )
@@ -158,10 +158,10 @@ def sample_invoice_item(db, sample_invoice, sample_service):
         invoice=sample_invoice,
         item_type=InvoiceItem.ItemType.SERVICE,
         service=sample_service,
-        description='General Consultation Service',
-        quantity=Decimal('1.00'),
-        unit_price=Decimal('600.00'),
-        line_total=Decimal('600.00'),
+        description="General Consultation Service",
+        quantity=Decimal("1.00"),
+        unit_price=Decimal("600.00"),
+        line_total=Decimal("600.00"),
     )
 
 
@@ -184,20 +184,20 @@ class TestSHAClaimItemModel:
         item = SHAClaimItem.objects.create(
             claim=sha_claim,
             tariff=sha_tariff,
-            description='General Consultation',
+            description="General Consultation",
             quantity=1,
-            unit_price=Decimal('500.00'),
-            claimed_amount=Decimal('500.00'),
+            unit_price=Decimal("500.00"),
+            claimed_amount=Decimal("500.00"),
         )
 
         assert item.id is not None
         assert item.claim == sha_claim
         assert item.tariff == sha_tariff
-        assert item.description == 'General Consultation'
+        assert item.description == "General Consultation"
         assert item.quantity == 1
-        assert item.unit_price == Decimal('500.00')
-        assert item.claimed_amount == Decimal('500.00')
-        assert item.rejection_reason == ''
+        assert item.unit_price == Decimal("500.00")
+        assert item.claimed_amount == Decimal("500.00")
+        assert item.rejection_reason == ""
 
     # =========================================================================
     # Test 2: Quantity must be positive
@@ -210,13 +210,13 @@ class TestSHAClaimItemModel:
             SHAClaimItem.objects.create(
                 claim=sha_claim,
                 tariff=sha_tariff,
-                description='Test Item',
+                description="Test Item",
                 quantity=0,  # Invalid - must be positive
-                unit_price=Decimal('500.00'),
-                claimed_amount=Decimal('0.00'),
+                unit_price=Decimal("500.00"),
+                claimed_amount=Decimal("0.00"),
             )
 
-        assert 'quantity' in str(exc_info.value)
+        assert "quantity" in str(exc_info.value)
 
     def test_negative_quantity_rejected(self, sha_claim, sha_tariff):
         """Should reject negative quantity."""
@@ -226,13 +226,13 @@ class TestSHAClaimItemModel:
             SHAClaimItem.objects.create(
                 claim=sha_claim,
                 tariff=sha_tariff,
-                description='Test Item',
+                description="Test Item",
                 quantity=-1,  # Invalid - negative
-                unit_price=Decimal('500.00'),
-                claimed_amount=Decimal('-500.00'),
+                unit_price=Decimal("500.00"),
+                claimed_amount=Decimal("-500.00"),
             )
 
-        assert 'quantity' in str(exc_info.value)
+        assert "quantity" in str(exc_info.value)
 
     # =========================================================================
     # Test 3: Unit price cannot be negative
@@ -245,13 +245,13 @@ class TestSHAClaimItemModel:
             SHAClaimItem.objects.create(
                 claim=sha_claim,
                 tariff=sha_tariff,
-                description='Test Item',
+                description="Test Item",
                 quantity=1,
-                unit_price=Decimal('-100.00'),  # Invalid - negative
-                claimed_amount=Decimal('-100.00'),
+                unit_price=Decimal("-100.00"),  # Invalid - negative
+                claimed_amount=Decimal("-100.00"),
             )
 
-        assert 'unit_price' in str(exc_info.value)
+        assert "unit_price" in str(exc_info.value)
 
     def test_zero_unit_price_allowed(self, sha_claim):
         """Should allow zero unit price (free services)."""
@@ -260,13 +260,13 @@ class TestSHAClaimItemModel:
         # Zero price should be allowed (e.g., free services covered by SHA)
         item = SHAClaimItem.objects.create(
             claim=sha_claim,
-            description='Free Service',
+            description="Free Service",
             quantity=1,
-            unit_price=Decimal('0.00'),
-            claimed_amount=Decimal('0.00'),
+            unit_price=Decimal("0.00"),
+            claimed_amount=Decimal("0.00"),
         )
 
-        assert item.unit_price == Decimal('0.00')
+        assert item.unit_price == Decimal("0.00")
 
     # =========================================================================
     # Test 4: Claimed amount auto-calculated on save
@@ -278,15 +278,15 @@ class TestSHAClaimItemModel:
         item = SHAClaimItem(
             claim=sha_claim,
             tariff=sha_tariff,
-            description='Multiple Units',
+            description="Multiple Units",
             quantity=3,
-            unit_price=Decimal('200.00'),
-            claimed_amount=Decimal('0.00'),  # Will be overwritten
+            unit_price=Decimal("200.00"),
+            claimed_amount=Decimal("0.00"),  # Will be overwritten
         )
         item.save()
 
         # Should auto-calculate: 3 × 200 = 600
-        assert item.claimed_amount == Decimal('600.00')
+        assert item.claimed_amount == Decimal("600.00")
 
     def test_claimed_amount_recalculated_on_update(self, sha_claim, sha_tariff):
         """Should recalculate claimed amount when quantity or price changes."""
@@ -295,10 +295,10 @@ class TestSHAClaimItemModel:
         item = SHAClaimItem.objects.create(
             claim=sha_claim,
             tariff=sha_tariff,
-            description='Test Item',
+            description="Test Item",
             quantity=1,
-            unit_price=Decimal('500.00'),
-            claimed_amount=Decimal('500.00'),
+            unit_price=Decimal("500.00"),
+            claimed_amount=Decimal("500.00"),
         )
 
         # Update quantity
@@ -306,7 +306,7 @@ class TestSHAClaimItemModel:
         item.save()
 
         # Should recalculate: 2 × 500 = 1000
-        assert item.claimed_amount == Decimal('1000.00')
+        assert item.claimed_amount == Decimal("1000.00")
 
     # =========================================================================
     # Test 5: Max quantity validation against tariff
@@ -322,14 +322,14 @@ class TestSHAClaimItemModel:
             SHAClaimItem.objects.create(
                 claim=sha_claim,
                 tariff=sha_tariff_with_low_max_quantity,
-                description='Lab Test',
+                description="Lab Test",
                 quantity=5,  # Exceeds max of 2
-                unit_price=Decimal('200.00'),
-                claimed_amount=Decimal('1000.00'),
+                unit_price=Decimal("200.00"),
+                claimed_amount=Decimal("1000.00"),
             )
 
-        assert 'quantity' in str(exc_info.value)
-        assert 'maximum' in str(exc_info.value).lower() or 'max' in str(exc_info.value).lower()
+        assert "quantity" in str(exc_info.value)
+        assert "maximum" in str(exc_info.value).lower() or "max" in str(exc_info.value).lower()
 
     def test_quantity_at_max_allowed(self, sha_claim, sha_tariff_with_low_max_quantity):
         """Should allow quantity exactly at max_quantity_per_claim."""
@@ -339,10 +339,10 @@ class TestSHAClaimItemModel:
         item = SHAClaimItem.objects.create(
             claim=sha_claim,
             tariff=sha_tariff_with_low_max_quantity,
-            description='Lab Test',
+            description="Lab Test",
             quantity=2,  # Exactly at max
-            unit_price=Decimal('200.00'),
-            claimed_amount=Decimal('400.00'),
+            unit_price=Decimal("200.00"),
+            claimed_amount=Decimal("400.00"),
         )
 
         assert item.quantity == 2
@@ -356,18 +356,18 @@ class TestSHAClaimItemModel:
 
         item = SHAClaimItem.objects.create(
             claim=sha_claim,
-            description='Test Item',
+            description="Test Item",
             quantity=2,
-            unit_price=Decimal('100.00'),  # Initial price
-            claimed_amount=Decimal('200.00'),
+            unit_price=Decimal("100.00"),  # Initial price
+            claimed_amount=Decimal("200.00"),
         )
 
         # Apply tariff with sha_amount = 500.00
         item.apply_tariff(sha_tariff)
 
         assert item.tariff == sha_tariff
-        assert item.unit_price == Decimal('500.00')
-        assert item.claimed_amount == Decimal('1000.00')  # 2 × 500
+        assert item.unit_price == Decimal("500.00")
+        assert item.claimed_amount == Decimal("1000.00")  # 2 × 500
 
     def test_apply_tariff_saves_item(self, sha_claim, sha_tariff):
         """Should save item after applying tariff."""
@@ -375,10 +375,10 @@ class TestSHAClaimItemModel:
 
         item = SHAClaimItem.objects.create(
             claim=sha_claim,
-            description='Test Item',
+            description="Test Item",
             quantity=1,
-            unit_price=Decimal('100.00'),
-            claimed_amount=Decimal('100.00'),
+            unit_price=Decimal("100.00"),
+            claimed_amount=Decimal("100.00"),
         )
 
         item.apply_tariff(sha_tariff)
@@ -386,14 +386,12 @@ class TestSHAClaimItemModel:
         # Reload from database
         item.refresh_from_db()
         assert item.tariff == sha_tariff
-        assert item.unit_price == Decimal('500.00')
+        assert item.unit_price == Decimal("500.00")
 
     # =========================================================================
     # Test 7: create_from_invoice_item() with tariff
     # =========================================================================
-    def test_create_from_invoice_item_with_tariff(
-        self, sha_claim, sample_invoice_item, sha_tariff
-    ):
+    def test_create_from_invoice_item_with_tariff(self, sha_claim, sample_invoice_item, sha_tariff):
         """Should create claim item from invoice item with provided tariff."""
         from hmis.apps.billing.models import SHAClaimItem
 
@@ -422,11 +420,11 @@ class TestSHAClaimItemModel:
 
         # Create a tariff that maps to the service via internal_service FK
         tariff = SHATariff.objects.create(
-            code='SHA-AUTO-001',
-            name='Auto-matched Tariff',
+            code="SHA-AUTO-001",
+            name="Auto-matched Tariff",
             category=SHATariff.TariffCategory.CONSULTATION,
             facility_level=SHATariff.TariffLevel.LEVEL_3,  # Matches claim facility_level
-            sha_amount=Decimal('450.00'),
+            sha_amount=Decimal("450.00"),
             effective_date=date.today() - timedelta(days=30),
             is_active=True,
             internal_service=sample_service,  # Link tariff to service
@@ -475,27 +473,27 @@ class TestSHAClaimItemModel:
         SHAClaimItem.objects.create(
             claim=sha_claim,
             tariff=sha_tariff,
-            description='First Item',
+            description="First Item",
             quantity=1,
-            unit_price=Decimal('500.00'),
-            claimed_amount=Decimal('500.00'),
+            unit_price=Decimal("500.00"),
+            claimed_amount=Decimal("500.00"),
         )
 
         sha_claim.refresh_from_db()
-        assert sha_claim.claimed_amount == Decimal('500.00')
+        assert sha_claim.claimed_amount == Decimal("500.00")
 
         # Add another item
         SHAClaimItem.objects.create(
             claim=sha_claim,
             tariff=sha_tariff,
-            description='Second Item',
+            description="Second Item",
             quantity=2,
-            unit_price=Decimal('300.00'),
-            claimed_amount=Decimal('600.00'),
+            unit_price=Decimal("300.00"),
+            claimed_amount=Decimal("600.00"),
         )
 
         sha_claim.refresh_from_db()
-        assert sha_claim.claimed_amount == Decimal('1100.00')  # 500 + 600
+        assert sha_claim.claimed_amount == Decimal("1100.00")  # 500 + 600
 
     # =========================================================================
     # Test 11: Item status choices
@@ -504,15 +502,15 @@ class TestSHAClaimItemModel:
         """Should accept all valid item status choices."""
         from hmis.apps.billing.models import SHAClaimItem
 
-        statuses = ['pending', 'approved', 'rejected', 'adjusted']
+        statuses = ["pending", "approved", "rejected", "adjusted"]
 
         for status in statuses:
             item = SHAClaimItem.objects.create(
                 claim=sha_claim,
-                description=f'Item with {status} status',
+                description=f"Item with {status} status",
                 quantity=1,
-                unit_price=Decimal('100.00'),
-                claimed_amount=Decimal('100.00'),
+                unit_price=Decimal("100.00"),
+                claimed_amount=Decimal("100.00"),
                 status=status,
             )
             assert item.status == status
@@ -525,11 +523,11 @@ class TestSHAClaimItemModel:
         with pytest.raises(ValidationError):
             item = SHAClaimItem(
                 claim=sha_claim,
-                description='Test Item',
+                description="Test Item",
                 quantity=1,
-                unit_price=Decimal('100.00'),
-                claimed_amount=Decimal('100.00'),
-                status='invalid_status',
+                unit_price=Decimal("100.00"),
+                claimed_amount=Decimal("100.00"),
+                status="invalid_status",
             )
             item.full_clean()
 
@@ -543,17 +541,17 @@ class TestSHAClaimItemModel:
         item = SHAClaimItem.objects.create(
             claim=sha_claim,
             tariff=sha_tariff,
-            description='Test Item',
+            description="Test Item",
             quantity=3,
-            unit_price=Decimal('500.00'),
-            claimed_amount=Decimal('1500.00'),
-            status='approved',
+            unit_price=Decimal("500.00"),
+            claimed_amount=Decimal("1500.00"),
+            status="approved",
             approved_quantity=2,  # SHA approved 2 of 3
-            approved_amount=Decimal('1000.00'),  # 2 × 500
+            approved_amount=Decimal("1000.00"),  # 2 × 500
         )
 
         assert item.approved_quantity == 2
-        assert item.approved_amount == Decimal('1000.00')
+        assert item.approved_amount == Decimal("1000.00")
 
     def test_approved_fields_nullable(self, sha_claim):
         """Should allow null approved fields for pending items."""
@@ -561,11 +559,11 @@ class TestSHAClaimItemModel:
 
         item = SHAClaimItem.objects.create(
             claim=sha_claim,
-            description='Pending Item',
+            description="Pending Item",
             quantity=1,
-            unit_price=Decimal('500.00'),
-            claimed_amount=Decimal('500.00'),
-            status='pending',
+            unit_price=Decimal("500.00"),
+            claimed_amount=Decimal("500.00"),
+            status="pending",
             # approved_quantity and approved_amount not set
         )
 
@@ -582,15 +580,15 @@ class TestSHAClaimItemModel:
         item = SHAClaimItem.objects.create(
             claim=sha_claim,
             tariff=sha_tariff,
-            description='Test Item',
+            description="Test Item",
             quantity=1,
-            unit_price=Decimal('500.00'),
-            claimed_amount=Decimal('500.00'),
-            status='rejected',
-            rejection_reason='Service not covered under patient benefit plan',
+            unit_price=Decimal("500.00"),
+            claimed_amount=Decimal("500.00"),
+            status="rejected",
+            rejection_reason="Service not covered under patient benefit plan",
         )
 
-        assert item.rejection_reason == 'Service not covered under patient benefit plan'
+        assert item.rejection_reason == "Service not covered under patient benefit plan"
 
     def test_rejection_reason_blank_for_approved(self, sha_claim):
         """Should allow blank rejection reason for approved items."""
@@ -598,15 +596,15 @@ class TestSHAClaimItemModel:
 
         item = SHAClaimItem.objects.create(
             claim=sha_claim,
-            description='Approved Item',
+            description="Approved Item",
             quantity=1,
-            unit_price=Decimal('500.00'),
-            claimed_amount=Decimal('500.00'),
-            status='approved',
-            rejection_reason='',  # Blank is fine
+            unit_price=Decimal("500.00"),
+            claimed_amount=Decimal("500.00"),
+            status="approved",
+            rejection_reason="",  # Blank is fine
         )
 
-        assert item.rejection_reason == ''
+        assert item.rejection_reason == ""
 
     # =========================================================================
     # Test 14: Service date validation
@@ -620,10 +618,10 @@ class TestSHAClaimItemModel:
         item = SHAClaimItem.objects.create(
             claim=sha_claim,
             tariff=sha_tariff,
-            description='Test Item',
+            description="Test Item",
             quantity=1,
-            unit_price=Decimal('500.00'),
-            claimed_amount=Decimal('500.00'),
+            unit_price=Decimal("500.00"),
+            claimed_amount=Decimal("500.00"),
             service_date=service_date,
         )
 
@@ -654,18 +652,18 @@ class TestSHAClaimItemModel:
         item1 = SHAClaimItem.objects.create(
             claim=sha_claim,
             tariff=sha_tariff,
-            description='Item 1',
+            description="Item 1",
             quantity=1,
-            unit_price=Decimal('500.00'),
-            claimed_amount=Decimal('500.00'),
+            unit_price=Decimal("500.00"),
+            claimed_amount=Decimal("500.00"),
         )
         item2 = SHAClaimItem.objects.create(
             claim=sha_claim,
             tariff=sha_tariff,
-            description='Item 2',
+            description="Item 2",
             quantity=1,
-            unit_price=Decimal('300.00'),
-            claimed_amount=Decimal('300.00'),
+            unit_price=Decimal("300.00"),
+            claimed_amount=Decimal("300.00"),
         )
 
         item1_id = item1.id
@@ -687,10 +685,10 @@ class TestSHAClaimItemModel:
         item = SHAClaimItem.objects.create(
             claim=sha_claim,
             tariff=sha_tariff,
-            description='Test Item',
+            description="Test Item",
             quantity=1,
-            unit_price=Decimal('500.00'),
-            claimed_amount=Decimal('500.00'),
+            unit_price=Decimal("500.00"),
+            claimed_amount=Decimal("500.00"),
         )
 
         tariff_id = sha_tariff.id
@@ -718,10 +716,10 @@ class TestSHAClaimItemStringRepresentation:
         item = SHAClaimItem.objects.create(
             claim=sha_claim,
             tariff=sha_tariff,
-            description='General Consultation',
+            description="General Consultation",
             quantity=1,
-            unit_price=Decimal('500.00'),
-            claimed_amount=Decimal('500.00'),
+            unit_price=Decimal("500.00"),
+            claimed_amount=Decimal("500.00"),
         )
 
         expected = f"{sha_claim.claim_number} - General Consultation"
@@ -751,18 +749,18 @@ class TestSHAClaimItemMetaOptions:
         item1 = SHAClaimItem.objects.create(
             claim=sha_claim,
             tariff=sha_tariff,
-            description='First',
+            description="First",
             quantity=1,
-            unit_price=Decimal('100.00'),
-            claimed_amount=Decimal('100.00'),
+            unit_price=Decimal("100.00"),
+            claimed_amount=Decimal("100.00"),
         )
         item2 = SHAClaimItem.objects.create(
             claim=sha_claim,
             tariff=sha_tariff,
-            description='Second',
+            description="Second",
             quantity=1,
-            unit_price=Decimal('200.00'),
-            claimed_amount=Decimal('200.00'),
+            unit_price=Decimal("200.00"),
+            claimed_amount=Decimal("200.00"),
         )
 
         items = list(SHAClaimItem.objects.filter(claim=sha_claim))

@@ -15,12 +15,7 @@ from .client_registry import (
     ClientRegistryService,
     DuplicateClientError,
 )
-from .dha_search import (
-    DHASearchService,
-    FacilityInfo,
-    PractitionerInfo,
-    SearchError,
-)
+from .dha_search import DHASearchService, FacilityInfo, PractitionerInfo, SearchError
 from .mpesa import MpesaService
 from .sha import SHAClaimsService as SHAClaimsServiceStub
 from .sha_auth import SHAAuthError, SHAAuthService, SHAToken
@@ -40,34 +35,34 @@ from .terminology import (
 
 __all__ = [
     # Core SHA services
-    'SHAClaimsService',
-    'SHAClaimsServiceStub',
-    'SHAEligibilityService',
-    'SHAAuthService',
-    'SHAAuthError',
-    'SHAToken',
+    "SHAClaimsService",
+    "SHAClaimsServiceStub",
+    "SHAEligibilityService",
+    "SHAAuthService",
+    "SHAAuthError",
+    "SHAToken",
     # Payment
-    'MpesaService',
+    "MpesaService",
     # Client Registry
-    'ClientRegistryService',
-    'ClientRegistryClient',
-    'ClientRegistryError',
-    'ClientNotFoundError',
-    'ClientRegistrationError',
-    'DuplicateClientError',
+    "ClientRegistryService",
+    "ClientRegistryClient",
+    "ClientRegistryError",
+    "ClientNotFoundError",
+    "ClientRegistrationError",
+    "DuplicateClientError",
     # Terminology
-    'TerminologyService',
-    'TerminologyError',
-    'CodeNotFoundError',
-    'InterventionCode',
-    'ICD11Code',
-    'DrugProduct',
-    'ActiveComponent',
-    'RemoteLOINCCode',
-    'ICHICode',
+    "TerminologyService",
+    "TerminologyError",
+    "CodeNotFoundError",
+    "InterventionCode",
+    "ICD11Code",
+    "DrugProduct",
+    "ActiveComponent",
+    "RemoteLOINCCode",
+    "ICHICode",
     # Search
-    'DHASearchService',
-    'SearchError',
-    'FacilityInfo',
-    'PractitionerInfo',
+    "DHASearchService",
+    "SearchError",
+    "FacilityInfo",
+    "PractitionerInfo",
 ]

@@ -129,8 +129,18 @@ class TestDischargeCreation:
             procedures_performed="Appendectomy performed",
             treatment_summary="Patient underwent emergency appendectomy. Post-operative recovery uneventful.",
             discharge_medications=[
-                {"name": "Amoxicillin", "dosage": "500mg", "frequency": "TID", "duration": "7 days"},
-                {"name": "Paracetamol", "dosage": "500mg", "frequency": "PRN", "duration": "5 days"},
+                {
+                    "name": "Amoxicillin",
+                    "dosage": "500mg",
+                    "frequency": "TID",
+                    "duration": "7 days",
+                },
+                {
+                    "name": "Paracetamol",
+                    "dosage": "500mg",
+                    "frequency": "PRN",
+                    "duration": "5 days",
+                },
             ],
             follow_up_date=(timezone.now() + timedelta(days=7)).date(),
             follow_up_instructions="Return for suture removal in 7 days",

@@ -28,9 +28,7 @@ class TestDepartmentAPI:
     def admin_user(self):
         """Create admin user."""
         return User.objects.create_superuser(
-            username="admin",
-            email="admin@test.com",
-            password="adminpass123"
+            username="admin", email="admin@test.com", password="adminpass123"
         )
 
     @pytest.fixture
@@ -52,54 +50,51 @@ class TestDepartmentAPI:
 
     def test_list_departments_authenticated(self, authenticated_client, sample_department):
         """Should list departments for authenticated users."""
-        response = authenticated_client.get('/api/departments/')
+        response = authenticated_client.get("/api/departments/")
 
         assert response.status_code == status.HTTP_200_OK
-        assert len(response.data['results']) >= 1
-        assert any(d['code'] == 'OPD' for d in response.data['results'])
+        assert len(response.data["results"]) >= 1
+        assert any(d["code"] == "OPD" for d in response.data["results"])
 
     def test_list_departments_unauthenticated(self, api_client, sample_department):
         """Should deny access to unauthenticated users."""
-        response = api_client.get('/api/departments/')
+        response = api_client.get("/api/departments/")
 
         assert response.status_code == status.HTTP_401_UNAUTHORIZED
 
     def test_create_department_admin_only(self, authenticated_client):
         """Should allow admins to create departments."""
         data = {
-            'code': 'LAB',
-            'name': 'Laboratory',
-            'department_type': 'LABORATORY',
+            "code": "LAB",
+            "name": "Laboratory",
+            "department_type": "LABORATORY",
         }
 
-        response = authenticated_client.post('/api/departments/', data)
+        response = authenticated_client.post("/api/departments/", data)
 
         assert response.status_code == status.HTTP_201_CREATED
-        assert response.data['code'] == 'LAB'
+        assert response.data["code"] == "LAB"
 
     def test_get_department_details(self, authenticated_client, sample_department):
         """Should retrieve department details."""
-        response = authenticated_client.get(f'/api/departments/{sample_department.id}/')
+        response = authenticated_client.get(f"/api/departments/{sample_department.id}/")
 
         assert response.status_code == status.HTTP_200_OK
-        assert response.data['code'] == 'OPD'
-        assert response.data['name'] == 'Outpatient Department'
+        assert response.data["code"] == "OPD"
+        assert response.data["name"] == "Outpatient Department"
 
     def test_update_department_admin_only(self, authenticated_client, sample_department):
         """Should allow admins to update departments."""
-        data = {'name': 'Updated OPD'}
+        data = {"name": "Updated OPD"}
 
-        response = authenticated_client.patch(
-            f'/api/departments/{sample_department.id}/',
-            data
-        )
+        response = authenticated_client.patch(f"/api/departments/{sample_department.id}/", data)
 
         assert response.status_code == status.HTTP_200_OK
-        assert response.data['name'] == 'Updated OPD'
+        assert response.data["name"] == "Updated OPD"
 
     def test_delete_department_admin_only(self, authenticated_client, sample_department):
         """Should allow admins to delete departments."""
-        response = authenticated_client.delete(f'/api/departments/{sample_department.id}/')
+        response = authenticated_client.delete(f"/api/departments/{sample_department.id}/")
 
         assert response.status_code == status.HTTP_204_NO_CONTENT
 
@@ -118,7 +113,7 @@ class TestDepartmentAPI:
             date_joined=date.today(),
         )
 
-        response = authenticated_client.get(f'/api/departments/{sample_department.id}/staff/')
+        response = authenticated_client.get(f"/api/departments/{sample_department.id}/staff/")
 
         assert response.status_code == status.HTTP_200_OK
         assert len(response.data) >= 1
@@ -137,9 +132,7 @@ class TestRoleAPI:
     def admin_user(self):
         """Create admin user."""
         return User.objects.create_superuser(
-            username="admin",
-            email="admin@test.com",
-            password="adminpass123"
+            username="admin", email="admin@test.com", password="adminpass123"
         )
 
     @pytest.fixture
@@ -161,55 +154,53 @@ class TestRoleAPI:
             license_body="KMPDB",
             permissions_matrix={
                 "Patient": {"read": True, "create": True, "update": True, "delete": False}
-            }
+            },
         )
 
     def test_list_roles_authenticated(self, authenticated_client, sample_role):
         """Should list roles for authenticated users."""
-        response = authenticated_client.get('/api/roles/')
+        response = authenticated_client.get("/api/roles/")
 
         assert response.status_code == status.HTTP_200_OK
-        assert len(response.data['results']) >= 1
+        assert len(response.data["results"]) >= 1
 
     def test_list_roles_unauthenticated(self, api_client, sample_role):
         """Should deny access to unauthenticated users."""
-        response = api_client.get('/api/roles/')
+        response = api_client.get("/api/roles/")
 
         assert response.status_code == status.HTTP_401_UNAUTHORIZED
 
     def test_create_role_admin_only(self, authenticated_client):
         """Should allow admins to create roles."""
         data = {
-            'code': 'NURSE',
-            'name': 'Registered Nurse',
-            'category': 'CLINICAL',
-            'requires_license': True,
-            'license_body': 'NCK',
-            'permissions_matrix': {
-                'Patient': {'read': True, 'create': True}
-            }
+            "code": "NURSE",
+            "name": "Registered Nurse",
+            "category": "CLINICAL",
+            "requires_license": True,
+            "license_body": "NCK",
+            "permissions_matrix": {"Patient": {"read": True, "create": True}},
         }
 
-        response = authenticated_client.post('/api/roles/', data, format='json')
+        response = authenticated_client.post("/api/roles/", data, format="json")
 
         assert response.status_code == status.HTTP_201_CREATED
-        assert response.data['code'] == 'NURSE'
+        assert response.data["code"] == "NURSE"
 
     def test_get_role_details(self, authenticated_client, sample_role):
         """Should retrieve role details."""
-        response = authenticated_client.get(f'/api/roles/{sample_role.id}/')
+        response = authenticated_client.get(f"/api/roles/{sample_role.id}/")
 
         assert response.status_code == status.HTTP_200_OK
-        assert response.data['code'] == 'DOCTOR'
-        assert response.data['requires_license'] is True
+        assert response.data["code"] == "DOCTOR"
+        assert response.data["requires_license"] is True
 
     def test_get_role_permissions_matrix(self, authenticated_client, sample_role):
         """Should return role's permission matrix."""
-        response = authenticated_client.get(f'/api/roles/{sample_role.id}/permissions/')
+        response = authenticated_client.get(f"/api/roles/{sample_role.id}/permissions/")
 
         assert response.status_code == status.HTTP_200_OK
-        assert 'Patient' in response.data
-        assert response.data['Patient']['read'] is True
+        assert "Patient" in response.data
+        assert response.data["Patient"]["read"] is True
 
 
 @pytest.mark.django_db
@@ -225,9 +216,7 @@ class TestStaffProfileAPI:
     def admin_user(self):
         """Create admin user."""
         return User.objects.create_superuser(
-            username="admin",
-            email="admin@test.com",
-            password="adminpass123"
+            username="admin", email="admin@test.com", password="adminpass123"
         )
 
     @pytest.fixture
@@ -258,7 +247,7 @@ class TestStaffProfileAPI:
             email="doctor1@test.com",
             password="pass123",
             first_name="John",
-            last_name="Doe"
+            last_name="Doe",
         )
 
         return StaffProfile.objects.create(
@@ -271,14 +260,14 @@ class TestStaffProfileAPI:
 
     def test_list_staff_authenticated(self, authenticated_client, sample_staff):
         """Should list staff for authenticated users."""
-        response = authenticated_client.get('/api/staff/')
+        response = authenticated_client.get("/api/staff/")
 
         assert response.status_code == status.HTTP_200_OK
-        assert len(response.data['results']) >= 1
+        assert len(response.data["results"]) >= 1
 
     def test_list_staff_unauthenticated(self, api_client, sample_staff):
         """Should deny access to unauthenticated users."""
-        response = api_client.get('/api/staff/')
+        response = api_client.get("/api/staff/")
 
         assert response.status_code == status.HTTP_401_UNAUTHORIZED
 
@@ -300,70 +289,67 @@ class TestStaffProfileAPI:
 
         # StaffProfileCreateSerializer expects user fields to create a new user
         data = {
-            'username': 'labtech1',
-            'email': 'labtech1@example.com',
-            'first_name': 'Lab',
-            'last_name': 'Technician',
-            'employee_id': 'VH-2026-002',
-            'role': role.id,
-            'department': department.id,
-            'hire_date': str(date.today()),
+            "username": "labtech1",
+            "email": "labtech1@example.com",
+            "first_name": "Lab",
+            "last_name": "Technician",
+            "employee_id": "VH-2026-002",
+            "role": role.id,
+            "department": department.id,
+            "hire_date": str(date.today()),
         }
 
-        response = authenticated_client.post('/api/staff/', data)
+        response = authenticated_client.post("/api/staff/", data)
 
         assert response.status_code == status.HTTP_201_CREATED
-        assert response.data['employee_id'] == 'VH-2026-002'
+        assert response.data["employee_id"] == "VH-2026-002"
 
     def test_get_staff_profile(self, authenticated_client, sample_staff):
         """Should retrieve staff profile."""
-        response = authenticated_client.get(f'/api/staff/{sample_staff.id}/')
+        response = authenticated_client.get(f"/api/staff/{sample_staff.id}/")
 
         assert response.status_code == status.HTTP_200_OK
-        assert response.data['employee_id'] == 'VH-2026-001'
+        assert response.data["employee_id"] == "VH-2026-001"
 
     def test_update_staff_profile(self, authenticated_client, sample_staff):
         """Should allow updating staff profile."""
-        data = {'title': 'Dr.'}
+        data = {"title": "Dr."}
 
-        response = authenticated_client.patch(
-            f'/api/staff/{sample_staff.id}/',
-            data
-        )
+        response = authenticated_client.patch(f"/api/staff/{sample_staff.id}/", data)
 
         assert response.status_code == status.HTTP_200_OK
-        assert response.data['title'] == 'Dr.'
+        assert response.data["title"] == "Dr."
 
     def test_get_current_user_profile(self, api_client, sample_staff):
         """Should return current user's staff profile."""
         api_client.force_authenticate(user=sample_staff.user)
 
-        response = api_client.get('/api/staff/me/')
+        response = api_client.get("/api/staff/me/")
 
         assert response.status_code == status.HTTP_200_OK
-        assert response.data['employee_id'] == 'VH-2026-001'
+        assert response.data["employee_id"] == "VH-2026-001"
 
     def test_staff_search(self, authenticated_client, sample_staff):
         """Should search staff by name or employee_id."""
-        response = authenticated_client.get('/api/staff/?search=VH-2026')
+        response = authenticated_client.get("/api/staff/?search=VH-2026")
 
         assert response.status_code == status.HTTP_200_OK
-        assert len(response.data['results']) >= 1
+        assert len(response.data["results"]) >= 1
 
     def test_staff_filter_by_department(self, authenticated_client, sample_staff):
         """Should filter staff by department."""
         response = authenticated_client.get(
-            f'/api/staff/?primary_department={sample_staff.primary_department.id}'
+            f"/api/staff/?primary_department={sample_staff.primary_department.id}"
         )
 
         assert response.status_code == status.HTTP_200_OK
-        assert len(response.data['results']) >= 1
+        assert len(response.data["results"]) >= 1
 
     def test_staff_filter_by_role(self, authenticated_client, sample_staff):
         """Should filter staff by role."""
         response = authenticated_client.get(
-            f'/api/staff/?primary_role={sample_staff.primary_role.id}'
+            f"/api/staff/?primary_role={sample_staff.primary_role.id}"
         )
 
         assert response.status_code == status.HTTP_200_OK
-        assert len(response.data['results']) >= 1
+        assert len(response.data["results"]) >= 1

@@ -15,11 +15,7 @@ from django.contrib.auth import get_user_model
 from django.utils import timezone
 
 from hmis.apps.encounters.models import Encounter
-from hmis.apps.laboratory.models import (
-    LabOrder,
-    LabOrderItem,
-    TestCatalog,
-)
+from hmis.apps.laboratory.models import LabOrder, LabOrderItem, TestCatalog
 from hmis.apps.patients.models import Patient
 
 User = get_user_model()
@@ -135,7 +131,9 @@ class TestLabQueueModel:
         assert today in queue.queue_number
         assert len(queue.queue_number) == 17  # LAB-YYYYMMDD-XXXX
 
-    def test_queue_number_uniqueness(self, sample_lab_order, sample_patient, sample_encounter, sample_user, sample_test):
+    def test_queue_number_uniqueness(
+        self, sample_lab_order, sample_patient, sample_encounter, sample_user, sample_test
+    ):
         """Each queue number must be unique."""
         from hmis.apps.laboratory.models import LabQueue
 
@@ -307,7 +305,9 @@ class TestLabQueueModel:
         assert tat is not None
         assert tat.total_seconds() > 0
 
-    def test_queue_filtering_by_status(self, sample_patient, sample_encounter, sample_user, sample_test):
+    def test_queue_filtering_by_status(
+        self, sample_patient, sample_encounter, sample_user, sample_test
+    ):
         """Should be able to filter queue by status."""
         from hmis.apps.laboratory.models import LabQueue
 
@@ -339,7 +339,9 @@ class TestLabQueueModel:
         assert pending.count() == 1
         assert processing.count() == 1
 
-    def test_queue_filtering_by_technician(self, sample_patient, sample_encounter, sample_user, sample_test, lab_technician):
+    def test_queue_filtering_by_technician(
+        self, sample_patient, sample_encounter, sample_user, sample_test, lab_technician
+    ):
         """Should be able to filter queue by assigned technician."""
         from hmis.apps.laboratory.models import LabQueue
 

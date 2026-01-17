@@ -168,12 +168,14 @@ class TestProductionSettings:
     def test_logging_has_file_handler(self):
         """Logging should include file handler in production when LOG_FILE is set."""
         import importlib
+
         original = os.environ.get("LOG_FILE")
 
         try:
             # File handler is only added when LOG_FILE env var is set
             os.environ["LOG_FILE"] = "/tmp/test.log"
             from hmis.settings import production
+
             importlib.reload(production)
 
             assert "file" in production.LOGGING["handlers"]

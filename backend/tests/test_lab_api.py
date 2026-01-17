@@ -152,9 +152,7 @@ class TestLabOrderAPI:
         response = api_client.post("/api/lab/orders/", order_data, format="json")
         assert response.status_code == status.HTTP_401_UNAUTHORIZED
 
-    def test_create_lab_order_with_items(
-        self, auth_client, sample_encounter, sample_test_catalog
-    ):
+    def test_create_lab_order_with_items(self, auth_client, sample_encounter, sample_test_catalog):
         """Should create lab order with test items."""
         order_data = {
             "patient": sample_encounter.patient.id,
@@ -174,9 +172,7 @@ class TestLabOrderAPI:
         assert response.data["order_number"].startswith("LAB-")
         assert len(response.data["items"]) == 2
 
-    def test_order_number_auto_generated(
-        self, auth_client, sample_encounter, sample_test_catalog
-    ):
+    def test_order_number_auto_generated(self, auth_client, sample_encounter, sample_test_catalog):
         """Order number should be auto-generated."""
         order_data = {
             "patient": sample_encounter.patient.id,
@@ -224,9 +220,7 @@ class TestLabOrderAPI:
         assert response.data["order_number"] == order_number
         assert "items" in response.data
 
-    def test_filter_orders_by_patient(
-        self, auth_client, sample_encounter, sample_test_catalog
-    ):
+    def test_filter_orders_by_patient(self, auth_client, sample_encounter, sample_test_catalog):
         """Should filter orders by patient."""
         # Create order
         order_data = {
@@ -237,17 +231,13 @@ class TestLabOrderAPI:
         auth_client.post("/api/lab/orders/", order_data, format="json")
 
         # Filter by patient
-        response = auth_client.get(
-            f"/api/lab/orders/?patient={sample_encounter.patient.id}"
-        )
+        response = auth_client.get(f"/api/lab/orders/?patient={sample_encounter.patient.id}")
 
         assert response.status_code == status.HTTP_200_OK
         results = response.data["results"]
         assert all(order["patient"] == sample_encounter.patient.id for order in results)
 
-    def test_filter_orders_by_status(
-        self, auth_client, sample_encounter, sample_test_catalog
-    ):
+    def test_filter_orders_by_status(self, auth_client, sample_encounter, sample_test_catalog):
         """Should filter orders by status."""
         # Create order
         order_data = {
@@ -284,9 +274,7 @@ class TestLabOrderWorkflowAPI:
 
     def test_submit_order(self, auth_client, sample_order):
         """Should submit order for processing."""
-        response = auth_client.post(
-            f"/api/lab/orders/{sample_order.order_number}/submit/"
-        )
+        response = auth_client.post(f"/api/lab/orders/{sample_order.order_number}/submit/")
 
         assert response.status_code == status.HTTP_200_OK
         assert response.data["status"] == "ORDERED"
@@ -317,9 +305,7 @@ class TestLabOrderWorkflowAPI:
 
     def test_generate_requisition_pdf(self, auth_client, sample_order):
         """Should generate PDF requisition."""
-        response = auth_client.get(
-            f"/api/lab/orders/{sample_order.order_number}/requisition/"
-        )
+        response = auth_client.get(f"/api/lab/orders/{sample_order.order_number}/requisition/")
 
         assert response.status_code == status.HTTP_200_OK
         assert response["Content-Type"] == "application/pdf"
@@ -330,9 +316,7 @@ class TestLabResultAPI:
     """Tests for lab result API endpoints."""
 
     @pytest.fixture
-    def sample_order_item(
-        self, sample_encounter, sample_test_catalog, authenticated_user
-    ):
+    def sample_order_item(self, sample_encounter, sample_test_catalog, authenticated_user):
         """Create a sample order item ready for results."""
         order = LabOrder.objects.create(
             patient=sample_encounter.patient,
@@ -395,9 +379,7 @@ class TestLabResultAPI:
             "interpretation": "Slightly elevated",
         }
 
-        response = auth_client.patch(
-            f"/api/lab/results/{result.id}/", update_data, format="json"
-        )
+        response = auth_client.patch(f"/api/lab/results/{result.id}/", update_data, format="json")
 
         assert response.status_code == status.HTTP_200_OK
         # Decimal may be returned with trailing zeros
@@ -506,9 +488,7 @@ class TestNestedLabRoutes:
             ordered_by=authenticated_user,
         )
 
-        response = auth_client.get(
-            f"/api/patients/{sample_encounter.patient.id}/lab-orders/"
-        )
+        response = auth_client.get(f"/api/patients/{sample_encounter.patient.id}/lab-orders/")
 
         assert response.status_code == status.HTTP_200_OK
         assert len(response.data) >= 1
@@ -540,9 +520,7 @@ class TestNestedLabRoutes:
             entered_by=authenticated_user,
         )
 
-        response = auth_client.get(
-            f"/api/patients/{sample_encounter.patient.id}/lab-results/"
-        )
+        response = auth_client.get(f"/api/patients/{sample_encounter.patient.id}/lab-results/")
 
         assert response.status_code == status.HTTP_200_OK
         assert len(response.data) >= 1
@@ -555,9 +533,7 @@ class TestNestedLabRoutes:
             ordered_by=authenticated_user,
         )
 
-        response = auth_client.get(
-            f"/api/encounters/{sample_encounter.id}/lab-orders/"
-        )
+        response = auth_client.get(f"/api/encounters/{sample_encounter.id}/lab-orders/")
 
         assert response.status_code == status.HTTP_200_OK
         assert len(response.data) >= 1
@@ -645,9 +621,7 @@ class TestLabOrderItemManagement:
             unit_cost=test.cost,
         )
 
-        response = auth_client.delete(
-            f"/api/lab/orders/{order.order_number}/items/{item.id}/"
-        )
+        response = auth_client.delete(f"/api/lab/orders/{order.order_number}/items/{item.id}/")
 
         assert response.status_code == status.HTTP_204_NO_CONTENT
         assert order.items.count() == 0
@@ -677,9 +651,7 @@ class TestLabOrderItemManagement:
             unit_cost=test.cost,
         )
 
-        response = auth_client.delete(
-            f"/api/lab/orders/{order.order_number}/items/{item.id}/"
-        )
+        response = auth_client.delete(f"/api/lab/orders/{order.order_number}/items/{item.id}/")
 
         assert response.status_code == status.HTTP_400_BAD_REQUEST
 
@@ -796,10 +768,9 @@ class TestResultAttachmentUpload:
         # Create a fake PDF file
         pdf_content = b"%PDF-1.4 fake pdf content"
         from django.core.files.uploadedfile import SimpleUploadedFile
+
         pdf_file = SimpleUploadedFile(
-            "external_result.pdf",
-            pdf_content,
-            content_type="application/pdf"
+            "external_result.pdf", pdf_content, content_type="application/pdf"
         )
 
         response = auth_client.post(
@@ -813,7 +784,9 @@ class TestResultAttachmentUpload:
         assert result.is_external_result is True
         assert result.external_result_attachment is not None
 
-    def test_upload_invalid_file_type_fails(self, auth_client, sample_encounter, authenticated_user):
+    def test_upload_invalid_file_type_fails(
+        self, auth_client, sample_encounter, authenticated_user
+    ):
         """Should reject invalid file types."""
         test = TestCatalog.objects.create(
             code="INV_TEST",
@@ -842,10 +815,9 @@ class TestResultAttachmentUpload:
 
         # Create a fake executable file
         from django.core.files.uploadedfile import SimpleUploadedFile
+
         exe_file = SimpleUploadedFile(
-            "malware.exe",
-            b"fake exe content",
-            content_type="application/x-msdownload"
+            "malware.exe", b"fake exe content", content_type="application/x-msdownload"
         )
 
         response = auth_client.post(

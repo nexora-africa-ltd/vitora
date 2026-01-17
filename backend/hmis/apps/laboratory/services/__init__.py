@@ -11,10 +11,10 @@ from .requisition import ExternalLabRequisition
 from .workflow import InvalidTransitionError, LabOrderWorkflow
 
 __all__ = [
-    'LabOrderWorkflow',
-    'InvalidTransitionError',
-    'ExternalLabRequisition',
-    'LabNotificationService',
-    'LabWorkflowService',
-    'LabAlertService',
+    "LabOrderWorkflow",
+    "InvalidTransitionError",
+    "ExternalLabRequisition",
+    "LabNotificationService",
+    "LabWorkflowService",
+    "LabAlertService",
 ]

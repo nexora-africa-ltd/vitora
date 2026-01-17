@@ -631,9 +631,7 @@ class TestTriageAssessmentSignal:
         encounter.refresh_from_db()
         assert encounter.triage_status == "COMPLETED"
 
-    def test_triage_status_not_changed_for_not_required_encounters(
-        self, sample_patient, test_user
-    ):
+    def test_triage_status_not_changed_for_not_required_encounters(self, sample_patient, test_user):
         """TriageAssessment on NOT_REQUIRED encounters keeps NOT_APPLICABLE status."""
         from hmis.apps.encounters.models import Encounter
         from hmis.apps.triage.models import TriageAssessment
@@ -861,7 +859,9 @@ class TestChiefComplaintEditAuditTrail:
         choice_values = [choice[0] for choice in Encounter.CHIEF_COMPLAINT_EDIT_REASON_CHOICES]
 
         for reason in expected_reasons:
-            assert reason in choice_values, f"{reason} should be in CHIEF_COMPLAINT_EDIT_REASON_CHOICES"
+            assert (
+                reason in choice_values
+            ), f"{reason} should be in CHIEF_COMPLAINT_EDIT_REASON_CHOICES"
 
     def test_encounter_has_chief_complaint_audit_fields(self, sample_patient):
         """Verify encounter model has all chief complaint audit fields."""
@@ -874,12 +874,12 @@ class TestChiefComplaintEditAuditTrail:
         )
 
         # Check fields exist
-        assert hasattr(encounter, 'chief_complaint_original')
-        assert hasattr(encounter, 'chief_complaint_edited')
-        assert hasattr(encounter, 'chief_complaint_edit_reason')
-        assert hasattr(encounter, 'chief_complaint_edit_reason_other')
-        assert hasattr(encounter, 'chief_complaint_edited_by')
-        assert hasattr(encounter, 'chief_complaint_edited_at')
+        assert hasattr(encounter, "chief_complaint_original")
+        assert hasattr(encounter, "chief_complaint_edited")
+        assert hasattr(encounter, "chief_complaint_edit_reason")
+        assert hasattr(encounter, "chief_complaint_edit_reason_other")
+        assert hasattr(encounter, "chief_complaint_edited_by")
+        assert hasattr(encounter, "chief_complaint_edited_at")
 
     def test_edit_chief_complaint_stores_original(self, authenticated_client, sample_patient):
         """Test that editing chief complaint stores the original value."""
@@ -933,7 +933,9 @@ class TestChiefComplaintEditAuditTrail:
         assert response.status_code == 400
         assert "reason" in response.data.get("detail", "").lower()
 
-    def test_edit_chief_complaint_other_requires_details(self, authenticated_client, sample_patient):
+    def test_edit_chief_complaint_other_requires_details(
+        self, authenticated_client, sample_patient
+    ):
         """Test that 'OTHER' reason requires specification."""
         from hmis.apps.encounters.models import Encounter
 
@@ -954,9 +956,14 @@ class TestChiefComplaintEditAuditTrail:
         )
 
         assert response.status_code == 400
-        assert "specify" in response.data.get("detail", "").lower() or "other" in response.data.get("detail", "").lower()
+        assert (
+            "specify" in response.data.get("detail", "").lower()
+            or "other" in response.data.get("detail", "").lower()
+        )
 
-    def test_edit_chief_complaint_other_with_details_succeeds(self, authenticated_client, sample_patient):
+    def test_edit_chief_complaint_other_with_details_succeeds(
+        self, authenticated_client, sample_patient
+    ):
         """Test that 'OTHER' reason with details succeeds."""
         from hmis.apps.encounters.models import Encounter
 
@@ -981,7 +988,9 @@ class TestChiefComplaintEditAuditTrail:
         assert encounter.chief_complaint_edit_reason == "OTHER"
         assert "trust" in encounter.chief_complaint_edit_reason_other
 
-    def test_edit_chief_complaint_preserves_first_original(self, authenticated_client, sample_patient):
+    def test_edit_chief_complaint_preserves_first_original(
+        self, authenticated_client, sample_patient
+    ):
         """Test that multiple edits preserve the first original value."""
         from hmis.apps.encounters.models import Encounter
 

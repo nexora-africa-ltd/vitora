@@ -35,8 +35,8 @@ def sha_member(db, sample_patient, test_user):
 
     return SHAMember.objects.create(
         patient=sample_patient,
-        sha_number='SHA-1234567890',
-        national_id='12345678',
+        sha_number="SHA-1234567890",
+        national_id="12345678",
         membership_type=SHAMember.MembershipType.PRINCIPAL,
         status=SHAMember.MembershipStatus.PENDING_VERIFICATION,
         created_by=test_user,
@@ -47,24 +47,24 @@ def sha_member(db, sample_patient, test_user):
 def valid_check_data(sha_member, test_user):
     """Valid eligibility check data for tests."""
     return {
-        'sha_member': sha_member,
-        'patient': sha_member.patient,
-        'request_data': {
-            'sha_number': sha_member.sha_number,
-            'national_id': sha_member.national_id,
-            'check_type': 'eligibility',
+        "sha_member": sha_member,
+        "patient": sha_member.patient,
+        "request_data": {
+            "sha_number": sha_member.sha_number,
+            "national_id": sha_member.national_id,
+            "check_type": "eligibility",
         },
-        'result': 'eligible',
-        'response_data': {
-            'status': 'ELIGIBLE',
-            'message': 'Member is eligible',
-            'valid_until': '2026-12-31',
+        "result": "eligible",
+        "response_data": {
+            "status": "ELIGIBLE",
+            "message": "Member is eligible",
+            "valid_until": "2026-12-31",
         },
-        'response_time_ms': 250,
-        'is_eligible': True,
-        'eligible_until': date.today() + timedelta(days=365),
-        'benefit_balance': Decimal('50000.00'),
-        'checked_by': test_user,
+        "response_time_ms": 250,
+        "is_eligible": True,
+        "eligible_until": date.today() + timedelta(days=365),
+        "benefit_balance": Decimal("50000.00"),
+        "checked_by": test_user,
     }
 
 
@@ -87,13 +87,13 @@ class TestSHAEligibilityCheckModel:
         check = SHAEligibilityCheck.objects.create(**valid_check_data)
 
         assert check.id is not None
-        assert check.sha_member == valid_check_data['sha_member']
-        assert check.patient == valid_check_data['patient']
-        assert check.result == 'eligible'
+        assert check.sha_member == valid_check_data["sha_member"]
+        assert check.patient == valid_check_data["patient"]
+        assert check.result == "eligible"
         assert check.is_eligible is True
         assert check.response_time_ms == 250
         assert check.check_date is not None
-        assert check.checked_by == valid_check_data['checked_by']
+        assert check.checked_by == valid_check_data["checked_by"]
 
     def test_eligibility_check_string_representation(self, valid_check_data):
         """Should return descriptive string representation."""
@@ -102,8 +102,8 @@ class TestSHAEligibilityCheckModel:
         check = SHAEligibilityCheck.objects.create(**valid_check_data)
 
         str_repr = str(check)
-        assert valid_check_data['sha_member'].sha_number in str_repr
-        assert 'eligible' in str_repr.lower()
+        assert valid_check_data["sha_member"].sha_number in str_repr
+        assert "eligible" in str_repr.lower()
 
     # =========================================================================
     # Test 2: Result choices validation
@@ -112,47 +112,47 @@ class TestSHAEligibilityCheckModel:
         """Should accept 'eligible' result choice."""
         from hmis.apps.billing.models import SHAEligibilityCheck
 
-        valid_check_data['result'] = 'eligible'
+        valid_check_data["result"] = "eligible"
         check = SHAEligibilityCheck.objects.create(**valid_check_data)
-        assert check.result == 'eligible'
+        assert check.result == "eligible"
 
     def test_result_choice_ineligible(self, valid_check_data):
         """Should accept 'ineligible' result choice."""
         from hmis.apps.billing.models import SHAEligibilityCheck
 
-        valid_check_data['result'] = 'ineligible'
-        valid_check_data['is_eligible'] = False
+        valid_check_data["result"] = "ineligible"
+        valid_check_data["is_eligible"] = False
         check = SHAEligibilityCheck.objects.create(**valid_check_data)
-        assert check.result == 'ineligible'
+        assert check.result == "ineligible"
 
     def test_result_choice_pending(self, valid_check_data):
         """Should accept 'pending' result choice."""
         from hmis.apps.billing.models import SHAEligibilityCheck
 
-        valid_check_data['result'] = 'pending'
-        valid_check_data['is_eligible'] = False
+        valid_check_data["result"] = "pending"
+        valid_check_data["is_eligible"] = False
         check = SHAEligibilityCheck.objects.create(**valid_check_data)
-        assert check.result == 'pending'
+        assert check.result == "pending"
 
     def test_result_choice_error(self, valid_check_data):
         """Should accept 'error' result choice."""
         from hmis.apps.billing.models import SHAEligibilityCheck
 
-        valid_check_data['result'] = 'error'
-        valid_check_data['is_eligible'] = False
-        valid_check_data['error_code'] = 'API_001'
-        valid_check_data['error_message'] = 'Connection timeout'
+        valid_check_data["result"] = "error"
+        valid_check_data["is_eligible"] = False
+        valid_check_data["error_code"] = "API_001"
+        valid_check_data["error_message"] = "Connection timeout"
         check = SHAEligibilityCheck.objects.create(**valid_check_data)
-        assert check.result == 'error'
+        assert check.result == "error"
 
     def test_result_choice_timeout(self, valid_check_data):
         """Should accept 'timeout' result choice."""
         from hmis.apps.billing.models import SHAEligibilityCheck
 
-        valid_check_data['result'] = 'timeout'
-        valid_check_data['is_eligible'] = False
+        valid_check_data["result"] = "timeout"
+        valid_check_data["is_eligible"] = False
         check = SHAEligibilityCheck.objects.create(**valid_check_data)
-        assert check.result == 'timeout'
+        assert check.result == "timeout"
 
 
 # =============================================================================
@@ -171,19 +171,19 @@ class TestSHAEligibilityCheckUpdateMember:
         """Should update member to ACTIVE status when eligible."""
         from hmis.apps.billing.models import SHAEligibilityCheck, SHAMember
 
-        valid_check_data['is_eligible'] = True
-        valid_check_data['eligible_until'] = date.today() + timedelta(days=365)
+        valid_check_data["is_eligible"] = True
+        valid_check_data["eligible_until"] = date.today() + timedelta(days=365)
 
         check = SHAEligibilityCheck.objects.create(**valid_check_data)
         check.update_member_eligibility()
 
         # Refresh member from DB
-        member = SHAMember.objects.get(pk=valid_check_data['sha_member'].pk)
+        member = SHAMember.objects.get(pk=valid_check_data["sha_member"].pk)
 
         assert member.status == SHAMember.MembershipStatus.ACTIVE
-        assert member.eligibility_valid_until == valid_check_data['eligible_until']
+        assert member.eligibility_valid_until == valid_check_data["eligible_until"]
         assert member.last_eligibility_check is not None
-        assert member.eligibility_response == valid_check_data['response_data']
+        assert member.eligibility_response == valid_check_data["response_data"]
 
     # =========================================================================
     # Test 4: update_member_eligibility() with expired status
@@ -192,14 +192,14 @@ class TestSHAEligibilityCheckUpdateMember:
         """Should update member to EXPIRED status when expired."""
         from hmis.apps.billing.models import SHAEligibilityCheck, SHAMember
 
-        valid_check_data['is_eligible'] = False
-        valid_check_data['result'] = 'ineligible'
-        valid_check_data['ineligibility_reason'] = 'Membership expired on 2025-12-31'
+        valid_check_data["is_eligible"] = False
+        valid_check_data["result"] = "ineligible"
+        valid_check_data["ineligibility_reason"] = "Membership expired on 2025-12-31"
 
         check = SHAEligibilityCheck.objects.create(**valid_check_data)
         check.update_member_eligibility()
 
-        member = SHAMember.objects.get(pk=valid_check_data['sha_member'].pk)
+        member = SHAMember.objects.get(pk=valid_check_data["sha_member"].pk)
         assert member.status == SHAMember.MembershipStatus.EXPIRED
 
     # =========================================================================
@@ -209,28 +209,28 @@ class TestSHAEligibilityCheckUpdateMember:
         """Should update member to SUSPENDED status when suspended."""
         from hmis.apps.billing.models import SHAEligibilityCheck, SHAMember
 
-        valid_check_data['is_eligible'] = False
-        valid_check_data['result'] = 'ineligible'
-        valid_check_data['ineligibility_reason'] = 'Account suspended due to non-payment'
+        valid_check_data["is_eligible"] = False
+        valid_check_data["result"] = "ineligible"
+        valid_check_data["ineligibility_reason"] = "Account suspended due to non-payment"
 
         check = SHAEligibilityCheck.objects.create(**valid_check_data)
         check.update_member_eligibility()
 
-        member = SHAMember.objects.get(pk=valid_check_data['sha_member'].pk)
+        member = SHAMember.objects.get(pk=valid_check_data["sha_member"].pk)
         assert member.status == SHAMember.MembershipStatus.SUSPENDED
 
     def test_update_member_eligibility_inactive_other(self, valid_check_data):
         """Should update member to INACTIVE for other ineligibility reasons."""
         from hmis.apps.billing.models import SHAEligibilityCheck, SHAMember
 
-        valid_check_data['is_eligible'] = False
-        valid_check_data['result'] = 'ineligible'
-        valid_check_data['ineligibility_reason'] = 'Member not found in system'
+        valid_check_data["is_eligible"] = False
+        valid_check_data["result"] = "ineligible"
+        valid_check_data["ineligibility_reason"] = "Member not found in system"
 
         check = SHAEligibilityCheck.objects.create(**valid_check_data)
         check.update_member_eligibility()
 
-        member = SHAMember.objects.get(pk=valid_check_data['sha_member'].pk)
+        member = SHAMember.objects.get(pk=valid_check_data["sha_member"].pk)
         assert member.status == SHAMember.MembershipStatus.INACTIVE
 
 
@@ -250,7 +250,7 @@ class TestSHAEligibilityCheckTracking:
         """Should store API response time in milliseconds."""
         from hmis.apps.billing.models import SHAEligibilityCheck
 
-        valid_check_data['response_time_ms'] = 523
+        valid_check_data["response_time_ms"] = 523
         check = SHAEligibilityCheck.objects.create(**valid_check_data)
 
         assert check.response_time_ms == 523
@@ -259,7 +259,7 @@ class TestSHAEligibilityCheckTracking:
         """Should allow null response time for failed requests."""
         from hmis.apps.billing.models import SHAEligibilityCheck
 
-        valid_check_data['response_time_ms'] = None
+        valid_check_data["response_time_ms"] = None
         check = SHAEligibilityCheck.objects.create(**valid_check_data)
 
         assert check.response_time_ms is None
@@ -271,27 +271,27 @@ class TestSHAEligibilityCheckTracking:
         """Should store error code for failed checks."""
         from hmis.apps.billing.models import SHAEligibilityCheck
 
-        valid_check_data['result'] = 'error'
-        valid_check_data['is_eligible'] = False
-        valid_check_data['error_code'] = 'SHA_ERR_001'
-        valid_check_data['error_message'] = 'Invalid SHA number format'
+        valid_check_data["result"] = "error"
+        valid_check_data["is_eligible"] = False
+        valid_check_data["error_code"] = "SHA_ERR_001"
+        valid_check_data["error_message"] = "Invalid SHA number format"
 
         check = SHAEligibilityCheck.objects.create(**valid_check_data)
 
-        assert check.error_code == 'SHA_ERR_001'
-        assert check.error_message == 'Invalid SHA number format'
+        assert check.error_code == "SHA_ERR_001"
+        assert check.error_message == "Invalid SHA number format"
 
     def test_error_fields_empty_for_success(self, valid_check_data):
         """Should have empty error fields for successful checks."""
         from hmis.apps.billing.models import SHAEligibilityCheck
 
-        valid_check_data['error_code'] = ''
-        valid_check_data['error_message'] = ''
+        valid_check_data["error_code"] = ""
+        valid_check_data["error_message"] = ""
 
         check = SHAEligibilityCheck.objects.create(**valid_check_data)
 
-        assert check.error_code == ''
-        assert check.error_message == ''
+        assert check.error_code == ""
+        assert check.error_message == ""
 
     # =========================================================================
     # Test 8: Benefit balance storage
@@ -300,16 +300,16 @@ class TestSHAEligibilityCheckTracking:
         """Should store benefit balance from eligibility response."""
         from hmis.apps.billing.models import SHAEligibilityCheck
 
-        valid_check_data['benefit_balance'] = Decimal('75000.50')
+        valid_check_data["benefit_balance"] = Decimal("75000.50")
         check = SHAEligibilityCheck.objects.create(**valid_check_data)
 
-        assert check.benefit_balance == Decimal('75000.50')
+        assert check.benefit_balance == Decimal("75000.50")
 
     def test_benefit_balance_null_allowed(self, valid_check_data):
         """Should allow null benefit balance."""
         from hmis.apps.billing.models import SHAEligibilityCheck
 
-        valid_check_data['benefit_balance'] = None
+        valid_check_data["benefit_balance"] = None
         check = SHAEligibilityCheck.objects.create(**valid_check_data)
 
         assert check.benefit_balance is None
@@ -318,10 +318,10 @@ class TestSHAEligibilityCheckTracking:
         """Should handle decimal precision correctly."""
         from hmis.apps.billing.models import SHAEligibilityCheck
 
-        valid_check_data['benefit_balance'] = Decimal('1234567890.99')
+        valid_check_data["benefit_balance"] = Decimal("1234567890.99")
         check = SHAEligibilityCheck.objects.create(**valid_check_data)
 
-        assert check.benefit_balance == Decimal('1234567890.99')
+        assert check.benefit_balance == Decimal("1234567890.99")
 
 
 # =============================================================================
@@ -341,46 +341,46 @@ class TestSHAEligibilityCheckJSONFields:
         from hmis.apps.billing.models import SHAEligibilityCheck
 
         request_data = {
-            'sha_number': 'SHA-1234567890',
-            'national_id': '12345678',
-            'check_type': 'eligibility',
-            'timestamp': '2026-01-07T10:30:00Z',
+            "sha_number": "SHA-1234567890",
+            "national_id": "12345678",
+            "check_type": "eligibility",
+            "timestamp": "2026-01-07T10:30:00Z",
         }
-        valid_check_data['request_data'] = request_data
+        valid_check_data["request_data"] = request_data
 
         check = SHAEligibilityCheck.objects.create(**valid_check_data)
 
         assert check.request_data == request_data
-        assert check.request_data['sha_number'] == 'SHA-1234567890'
+        assert check.request_data["sha_number"] == "SHA-1234567890"
 
     def test_response_data_json_storage(self, valid_check_data):
         """Should store response data as JSON."""
         from hmis.apps.billing.models import SHAEligibilityCheck
 
         response_data = {
-            'status': 'ELIGIBLE',
-            'message': 'Member is eligible for services',
-            'valid_until': '2026-12-31',
-            'benefit_package': 'COMPREHENSIVE',
-            'coverage_details': {
-                'outpatient': True,
-                'inpatient': True,
-                'maternity': True,
+            "status": "ELIGIBLE",
+            "message": "Member is eligible for services",
+            "valid_until": "2026-12-31",
+            "benefit_package": "COMPREHENSIVE",
+            "coverage_details": {
+                "outpatient": True,
+                "inpatient": True,
+                "maternity": True,
             },
         }
-        valid_check_data['response_data'] = response_data
+        valid_check_data["response_data"] = response_data
 
         check = SHAEligibilityCheck.objects.create(**valid_check_data)
 
         assert check.response_data == response_data
-        assert check.response_data['coverage_details']['outpatient'] is True
+        assert check.response_data["coverage_details"]["outpatient"] is True
 
     def test_json_fields_default_to_empty_dict(self, valid_check_data):
         """Should default JSON fields to empty dict."""
         from hmis.apps.billing.models import SHAEligibilityCheck
 
-        valid_check_data['request_data'] = {}
-        valid_check_data['response_data'] = {}
+        valid_check_data["request_data"] = {}
+        valid_check_data["response_data"] = {}
 
         check = SHAEligibilityCheck.objects.create(**valid_check_data)
 
@@ -392,21 +392,21 @@ class TestSHAEligibilityCheckJSONFields:
         from hmis.apps.billing.models import SHAEligibilityCheck
 
         response_data = {
-            'member': {
-                'id': 12345,
-                'dependents': [
-                    {'name': 'Child 1', 'age': 10},
-                    {'name': 'Child 2', 'age': 8},
+            "member": {
+                "id": 12345,
+                "dependents": [
+                    {"name": "Child 1", "age": 10},
+                    {"name": "Child 2", "age": 8},
                 ],
             },
-            'benefits': ['OPD', 'IPD', 'DENTAL'],
+            "benefits": ["OPD", "IPD", "DENTAL"],
         }
-        valid_check_data['response_data'] = response_data
+        valid_check_data["response_data"] = response_data
 
         check = SHAEligibilityCheck.objects.create(**valid_check_data)
 
-        assert check.response_data['member']['dependents'][0]['name'] == 'Child 1'
-        assert 'OPD' in check.response_data['benefits']
+        assert check.response_data["member"]["dependents"][0]["name"] == "Child 1"
+        assert "OPD" in check.response_data["benefits"]
 
 
 # =============================================================================
@@ -431,8 +431,8 @@ class TestSHAEligibilityCheckMeta:
 
         # Check that sha_member and check_date are indexed together
         # and result is indexed
-        assert 'sha_member' in index_fields or any(
-            'sha_member' in idx.fields for idx in SHAEligibilityCheck._meta.indexes
+        assert "sha_member" in index_fields or any(
+            "sha_member" in idx.fields for idx in SHAEligibilityCheck._meta.indexes
         )
 
     def test_ordering_by_check_date_desc(self, valid_check_data):
@@ -442,8 +442,8 @@ class TestSHAEligibilityCheckMeta:
         # Create multiple checks
         check1 = SHAEligibilityCheck.objects.create(**valid_check_data)
 
-        valid_check_data['result'] = 'ineligible'
-        valid_check_data['is_eligible'] = False
+        valid_check_data["result"] = "ineligible"
+        valid_check_data["is_eligible"] = False
         check2 = SHAEligibilityCheck.objects.create(**valid_check_data)
 
         checks = list(SHAEligibilityCheck.objects.all())
@@ -462,14 +462,14 @@ class TestSHAEligibilityCheckMeta:
         """Should allow empty ineligibility reason."""
         from hmis.apps.billing.models import SHAEligibilityCheck
 
-        valid_check_data['ineligibility_reason'] = ''
+        valid_check_data["ineligibility_reason"] = ""
         check = SHAEligibilityCheck.objects.create(**valid_check_data)
-        assert check.ineligibility_reason == ''
+        assert check.ineligibility_reason == ""
 
     def test_eligible_until_optional(self, valid_check_data):
         """Should allow null eligible_until date."""
         from hmis.apps.billing.models import SHAEligibilityCheck
 
-        valid_check_data['eligible_until'] = None
+        valid_check_data["eligible_until"] = None
         check = SHAEligibilityCheck.objects.create(**valid_check_data)
         assert check.eligible_until is None

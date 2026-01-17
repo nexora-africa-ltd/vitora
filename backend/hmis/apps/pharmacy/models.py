@@ -886,28 +886,23 @@ class AlertSettings(models.Model):
 
     # Stock alert thresholds
     low_stock_threshold = models.IntegerField(
-        default=100,
-        help_text="Generate alert when stock falls below this quantity"
+        default=100, help_text="Generate alert when stock falls below this quantity"
     )
 
     # Expiry warning periods (in days)
     expiry_warning_days = models.IntegerField(
-        default=90,
-        help_text="Days before expiry to generate warning alert"
+        default=90, help_text="Days before expiry to generate warning alert"
     )
     expiry_critical_days = models.IntegerField(
-        default=30,
-        help_text="Days before expiry to generate critical alert"
+        default=30, help_text="Days before expiry to generate critical alert"
     )
 
     # Email notification settings
     enable_email_notifications = models.BooleanField(
-        default=False,
-        help_text="Enable email notifications for critical alerts"
+        default=False, help_text="Enable email notifications for critical alerts"
     )
     notification_email_recipients = models.TextField(
-        blank=True,
-        help_text="Comma-separated list of email addresses to notify"
+        blank=True, help_text="Comma-separated list of email addresses to notify"
     )
 
     # Metadata
@@ -915,7 +910,7 @@ class AlertSettings(models.Model):
         settings.AUTH_USER_MODEL,
         on_delete=models.SET_NULL,
         null=True,
-        related_name='alert_settings_updates'
+        related_name="alert_settings_updates",
     )
     updated_at = models.DateTimeField(auto_now=True)
     created_at = models.DateTimeField(auto_now_add=True)
@@ -939,9 +934,7 @@ class AlertSettings(models.Model):
             raise ValidationError("Expiry critical days must be non-negative")
 
         if self.expiry_critical_days >= self.expiry_warning_days:
-            raise ValidationError(
-                "Critical days should be less than warning days"
-            )
+            raise ValidationError("Critical days should be less than warning days")
 
     @classmethod
     def get_settings(cls):

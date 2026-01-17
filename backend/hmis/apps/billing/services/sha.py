@@ -44,19 +44,19 @@ class SHAEligibilityService:
         if self.is_stub:
             # Determine eligibility based on member status and coverage dates
             is_eligible = (
-                sha_member.status == 'active' and
-                sha_member.coverage_end_date and
-                sha_member.coverage_end_date >= timezone.now().date()
+                sha_member.status == "active"
+                and sha_member.coverage_end_date
+                and sha_member.coverage_end_date >= timezone.now().date()
             )
 
             return {
-                'is_eligible': is_eligible,
-                'result': 'eligible' if is_eligible else 'ineligible',
-                'eligible_until': sha_member.coverage_end_date,
-                'benefit_balance': Decimal('50000.00') if is_eligible else None,
-                'ineligibility_reason': '' if is_eligible else 'Coverage expired or inactive',
-                'error_code': None,
-                'error_message': None,
+                "is_eligible": is_eligible,
+                "result": "eligible" if is_eligible else "ineligible",
+                "eligible_until": sha_member.coverage_end_date,
+                "benefit_balance": Decimal("50000.00") if is_eligible else None,
+                "ineligibility_reason": "" if is_eligible else "Coverage expired or inactive",
+                "error_code": None,
+                "error_message": None,
             }
 
         raise NotImplementedError("SHA eligibility API not yet implemented")
@@ -99,11 +99,11 @@ class SHAClaimsService:
         """
         if self.is_stub:
             return {
-                'success': True,
-                'claim_number': f"SHA-STUB-{invoice.invoice_number}",
-                'status': 'pending_review',
-                'message': 'Stub: Claim submitted for review',
-                'submitted_at': timezone.now().isoformat(),
+                "success": True,
+                "claim_number": f"SHA-STUB-{invoice.invoice_number}",
+                "status": "pending_review",
+                "message": "Stub: Claim submitted for review",
+                "submitted_at": timezone.now().isoformat(),
             }
         # Real implementation in Phase 2
         raise NotImplementedError("SHA integration not yet implemented")
@@ -126,10 +126,10 @@ class SHAClaimsService:
         """
         if self.is_stub:
             return {
-                'claim_number': claim_number,
-                'status': 'approved',  # or 'rejected', 'pending'
-                'approved_amount': Decimal('1000.00'),
-                'message': 'Stub: Claim approved',
+                "claim_number": claim_number,
+                "status": "approved",  # or 'rejected', 'pending'
+                "approved_amount": Decimal("1000.00"),
+                "message": "Stub: Claim approved",
             }
         raise NotImplementedError("SHA integration not yet implemented")
 
@@ -152,9 +152,9 @@ class SHAClaimsService:
         """
         if self.is_stub:
             return {
-                'preauth_number': f"PA-STUB-{patient_id[:8]}",
-                'status': 'approved',
-                'valid_until': (timezone.now() + timedelta(days=30)).isoformat(),
-                'approved_services': service_codes,
+                "preauth_number": f"PA-STUB-{patient_id[:8]}",
+                "status": "approved",
+                "valid_until": (timezone.now() + timedelta(days=30)).isoformat(),
+                "approved_services": service_codes,
             }
         raise NotImplementedError("SHA integration not yet implemented")

@@ -5,15 +5,7 @@ Django admin configuration for billing app.
 from django.contrib import admin
 from django.utils.html import format_html
 
-from .models import (
-    CreditNote,
-    Invoice,
-    InvoiceItem,
-    Payment,
-    Receipt,
-    Service,
-    ServiceCategory,
-)
+from .models import CreditNote, Invoice, InvoiceItem, Payment, Receipt, Service, ServiceCategory
 
 
 class InvoiceItemInline(admin.TabularInline):
@@ -39,11 +31,7 @@ class ServiceCategoryAdmin(admin.ModelAdmin):
     def description_short(self, obj):
         """Return truncated description."""
         if obj.description:
-            return (
-                obj.description[:50] + "..."
-                if len(obj.description) > 50
-                else obj.description
-            )
+            return obj.description[:50] + "..." if len(obj.description) > 50 else obj.description
         return "-"
 
 

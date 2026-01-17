@@ -558,7 +558,9 @@ class EncounterViewSet(viewsets.ModelViewSet):
         encounter.chief_complaint = new_complaint
         encounter.chief_complaint_edited = True
         encounter.chief_complaint_edit_reason = edit_reason
-        encounter.chief_complaint_edit_reason_other = edit_reason_other if edit_reason == "OTHER" else ""
+        encounter.chief_complaint_edit_reason_other = (
+            edit_reason_other if edit_reason == "OTHER" else ""
+        )
         encounter.chief_complaint_edited_by = request.user
         encounter.chief_complaint_edited_at = timezone.now()
         encounter.save()
@@ -743,7 +745,9 @@ class EncounterViewSet(viewsets.ModelViewSet):
 
         # By default, only show PENDING status
         # If include_in_progress=true, also show IN_PROGRESS
-        include_in_progress = request.query_params.get("include_in_progress", "false").lower() == "true"
+        include_in_progress = (
+            request.query_params.get("include_in_progress", "false").lower() == "true"
+        )
         if include_in_progress:
             queryset = queryset.filter(triage_status__in=["PENDING", "IN_PROGRESS"])
         else:
@@ -821,7 +825,9 @@ class EncounterViewSet(viewsets.ModelViewSet):
 
         # Populate from encounter
         synchronizer = TemplateDataSynchronizer()
-        structure_by_section = request.query_params.get("structure_by_section", "false").lower() == "true"
+        structure_by_section = (
+            request.query_params.get("structure_by_section", "false").lower() == "true"
+        )
 
         populated_data = synchronizer.populate_from_encounter(
             template=template,
@@ -830,11 +836,13 @@ class EncounterViewSet(viewsets.ModelViewSet):
             structure_by_section=structure_by_section,
         )
 
-        return Response({
-            "populated_data": populated_data,
-            "template_id": template.id,
-            "template_name": template.name,
-        })
+        return Response(
+            {
+                "populated_data": populated_data,
+                "template_id": template.id,
+                "template_name": template.name,
+            }
+        )
 
     @action(detail=True, methods=["post"], url_path="sync-template")
     def sync_template(self, request, pk=None):
@@ -906,10 +914,12 @@ class EncounterViewSet(viewsets.ModelViewSet):
         updated_encounter.save(update_fields=["clinical_template", "clinical_template_data"])
 
         serializer = self.get_serializer(updated_encounter)
-        return Response({
-            **serializer.data,
-            "changed_fields": changed_fields,
-        })
+        return Response(
+            {
+                **serializer.data,
+                "changed_fields": changed_fields,
+            }
+        )
 
     @action(detail=True, methods=["get", "post"], url_path="template-snapshots")
     def template_snapshots(self, request, pk=None):
@@ -934,18 +944,20 @@ class EncounterViewSet(viewsets.ModelViewSet):
 
         if request.method == "GET":
             snapshots = service.get_snapshots_for_encounter(encounter)
-            return Response([
-                {
-                    "id": s.id,
-                    "template_id": s.template_id,
-                    "template_name": s.template_name,
-                    "template_version": s.template_version,
-                    "data": s.data,
-                    "created_by": s.created_by.username if s.created_by else None,
-                    "created_at": s.created_at.isoformat(),
-                }
-                for s in snapshots
-            ])
+            return Response(
+                [
+                    {
+                        "id": s.id,
+                        "template_id": s.template_id,
+                        "template_name": s.template_name,
+                        "template_version": s.template_version,
+                        "data": s.data,
+                        "created_by": s.created_by.username if s.created_by else None,
+                        "created_at": s.created_at.isoformat(),
+                    }
+                    for s in snapshots
+                ]
+            )
 
         # POST - Create snapshot
         template_id = request.data.get("template_id")

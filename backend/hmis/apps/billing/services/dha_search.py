@@ -26,6 +26,7 @@ logger = logging.getLogger(__name__)
 # Data Classes
 # =============================================================================
 
+
 @dataclass
 class FacilityInfo:
     """
@@ -71,7 +72,7 @@ class FacilityInfo:
     @property
     def is_operational(self) -> bool:
         """Check if facility is operational."""
-        return self.operational_status == 'Operational'
+        return self.operational_status == "Operational"
 
     @property
     def is_license_valid(self) -> bool:
@@ -86,7 +87,7 @@ class FacilityInfo:
         return bool(self.approved)
 
     @classmethod
-    def from_api_response(cls, data: dict) -> 'FacilityInfo':
+    def from_api_response(cls, data: dict) -> "FacilityInfo":
         """
         Create FacilityInfo from MFL API response.
 
@@ -97,14 +98,14 @@ class FacilityInfo:
             FacilityInfo instance
         """
         # Parse found status
-        found = data.get('found', 0)
+        found = data.get("found", 0)
         if isinstance(found, int):
             found = found == 1
 
         # Parse facility level
-        level = data.get('facility_level')
-        if isinstance(level, str) and level.startswith('LEVEL '):
-            level = int(level.replace('LEVEL ', '').strip())
+        level = data.get("facility_level")
+        if isinstance(level, str) and level.startswith("LEVEL "):
+            level = int(level.replace("LEVEL ", "").strip())
         elif isinstance(level, str):
             try:
                 level = int(level)
@@ -112,28 +113,28 @@ class FacilityInfo:
                 level = None
 
         # Parse license expiry date
-        expiry = data.get('current_license_expiry_date')
+        expiry = data.get("current_license_expiry_date")
         if isinstance(expiry, str):
             try:
-                expiry = datetime.strptime(expiry, '%Y-%m-%d').date()
+                expiry = datetime.strptime(expiry, "%Y-%m-%d").date()
             except ValueError:
                 expiry = None
 
         return cls(
-            facility_code=data.get('facility_code', ''),
+            facility_code=data.get("facility_code", ""),
             found=found,
-            name=data.get('name') or data.get('facility_name'),
-            approved=data.get('approved'),
+            name=data.get("name") or data.get("facility_name"),
+            approved=data.get("approved"),
             level=level,
-            operational_status=data.get('operational_status'),
+            operational_status=data.get("operational_status"),
             license_expiry=expiry,
-            county=data.get('county'),
-            sub_county=data.get('sub_county'),
-            ward=data.get('ward'),
-            ownership=data.get('ownership'),
-            facility_type=data.get('facility_type'),
-            fid=data.get('fid'),
-            registration_number=data.get('registration_number'),
+            county=data.get("county"),
+            sub_county=data.get("sub_county"),
+            ward=data.get("ward"),
+            ownership=data.get("ownership"),
+            facility_type=data.get("facility_type"),
+            fid=data.get("fid"),
+            registration_number=data.get("registration_number"),
             raw_data=data,
         )
 
@@ -150,6 +151,7 @@ class PractitionerLicense:
         license_start: Start date string
         license_end: End date string (expiry)
     """
+
     id: str
     external_reference_id: str
     license_type: str
@@ -181,6 +183,7 @@ class PractitionerMembership:
         withdrawal_date: Date of withdrawal
         license_expires_in_days: Days until license expires
     """
+
     id: str
     status: str
     salutation: str
@@ -213,6 +216,7 @@ class PractitionerProfessionalDetails:
         discipline_name: Discipline (e.g., 'Clinical Officer')
         educational_qualifications: Qualifications
     """
+
     professional_cadre: str
     practice_type: str
     specialty: str
@@ -231,6 +235,7 @@ class PractitionerContacts:
         email: Email address
         postal_address: Postal address
     """
+
     phone: str
     email: str
     postal_address: str
@@ -247,6 +252,7 @@ class PractitionerIdentifiers:
         client_registry_id: Client registry ID
         student_id: Student ID
     """
+
     identification_type: str
     identification_number: str
     client_registry_id: str
@@ -331,6 +337,7 @@ class PractitionerInfo:
         if self.membership.license_expires_in_days <= 0:
             return None
         from datetime import timedelta
+
         return date.today() + timedelta(days=self.membership.license_expires_in_days)
 
     @property
@@ -342,13 +349,13 @@ class PractitionerInfo:
     def is_license_active(self) -> bool:
         """Check if license is active."""
         return (
-            self.membership.is_active == 1 and
-            self.membership.status.lower() == 'licensed' and
-            self.membership.license_expires_in_days > 0
+            self.membership.is_active == 1
+            and self.membership.status.lower() == "licensed"
+            and self.membership.license_expires_in_days > 0
         )
 
     @classmethod
-    def from_api_response(cls, data: dict) -> 'PractitionerInfo':
+    def from_api_response(cls, data: dict) -> "PractitionerInfo":
         """
         Create PractitionerInfo from HWR API response.
 
@@ -370,69 +377,69 @@ class PractitionerInfo:
             PractitionerInfo instance
         """
         # Handle nested 'message' field if present
-        message_data = data.get('message', data)
+        message_data = data.get("message", data)
 
         # Parse membership
-        membership_data = message_data.get('membership', {})
+        membership_data = message_data.get("membership", {})
         membership = PractitionerMembership(
-            id=membership_data.get('id', ''),
-            status=membership_data.get('status', ''),
-            salutation=membership_data.get('salutation', ''),
-            full_name=membership_data.get('full_name', ''),
-            gender=membership_data.get('gender', ''),
-            first_name=membership_data.get('first_name', ''),
-            middle_name=membership_data.get('middle_name', ''),
-            last_name=membership_data.get('last_name', ''),
-            registration_id=membership_data.get('registration_id', ''),
-            external_reference_id=membership_data.get('external_reference_id', ''),
-            licensing_body=membership_data.get('licensing_body', ''),
-            specialty=membership_data.get('specialty', ''),
-            is_active=membership_data.get('is_active', 0),
-            is_withdrawn=membership_data.get('is_withdrawn', 0),
-            withdrawal_reason=membership_data.get('withdrawal_reason', ''),
-            withdrawal_date=membership_data.get('withdrawal_date', ''),
-            license_expires_in_days=membership_data.get('license_expires_in_days', 0),
+            id=membership_data.get("id", ""),
+            status=membership_data.get("status", ""),
+            salutation=membership_data.get("salutation", ""),
+            full_name=membership_data.get("full_name", ""),
+            gender=membership_data.get("gender", ""),
+            first_name=membership_data.get("first_name", ""),
+            middle_name=membership_data.get("middle_name", ""),
+            last_name=membership_data.get("last_name", ""),
+            registration_id=membership_data.get("registration_id", ""),
+            external_reference_id=membership_data.get("external_reference_id", ""),
+            licensing_body=membership_data.get("licensing_body", ""),
+            specialty=membership_data.get("specialty", ""),
+            is_active=membership_data.get("is_active", 0),
+            is_withdrawn=membership_data.get("is_withdrawn", 0),
+            withdrawal_reason=membership_data.get("withdrawal_reason", ""),
+            withdrawal_date=membership_data.get("withdrawal_date", ""),
+            license_expires_in_days=membership_data.get("license_expires_in_days", 0),
         )
 
         # Parse licenses
-        licenses_data = message_data.get('licenses', [])
+        licenses_data = message_data.get("licenses", [])
         licenses = [
             PractitionerLicense(
-                id=lic.get('id', ''),
-                external_reference_id=lic.get('external_reference_id', ''),
-                license_type=lic.get('license_type', ''),
-                license_start=lic.get('license_start', ''),
-                license_end=lic.get('license_end', ''),
+                id=lic.get("id", ""),
+                external_reference_id=lic.get("external_reference_id", ""),
+                license_type=lic.get("license_type", ""),
+                license_start=lic.get("license_start", ""),
+                license_end=lic.get("license_end", ""),
             )
             for lic in licenses_data
         ]
 
         # Parse professional details
-        prof_data = message_data.get('professional_details', {})
+        prof_data = message_data.get("professional_details", {})
         professional_details = PractitionerProfessionalDetails(
-            professional_cadre=prof_data.get('professional_cadre', ''),
-            practice_type=prof_data.get('practice_type', ''),
-            specialty=prof_data.get('specialty', ''),
-            subspecialty=prof_data.get('subspecialty', ''),
-            discipline_name=prof_data.get('discipline_name', ''),
-            educational_qualifications=prof_data.get('educational_qualifications', ''),
+            professional_cadre=prof_data.get("professional_cadre", ""),
+            practice_type=prof_data.get("practice_type", ""),
+            specialty=prof_data.get("specialty", ""),
+            subspecialty=prof_data.get("subspecialty", ""),
+            discipline_name=prof_data.get("discipline_name", ""),
+            educational_qualifications=prof_data.get("educational_qualifications", ""),
         )
 
         # Parse contacts
-        contacts_data = message_data.get('contacts', {})
+        contacts_data = message_data.get("contacts", {})
         contacts = PractitionerContacts(
-            phone=contacts_data.get('phone', ''),
-            email=contacts_data.get('email', ''),
-            postal_address=contacts_data.get('postal_address', ''),
+            phone=contacts_data.get("phone", ""),
+            email=contacts_data.get("email", ""),
+            postal_address=contacts_data.get("postal_address", ""),
         )
 
         # Parse identifiers
-        identifiers_data = message_data.get('identifiers', {})
+        identifiers_data = message_data.get("identifiers", {})
         identifiers = PractitionerIdentifiers(
-            identification_type=identifiers_data.get('identification_type', ''),
-            identification_number=identifiers_data.get('identification_number', ''),
-            client_registry_id=identifiers_data.get('client_registry_id', ''),
-            student_id=identifiers_data.get('student_id', ''),
+            identification_type=identifiers_data.get("identification_type", ""),
+            identification_number=identifiers_data.get("identification_number", ""),
+            client_registry_id=identifiers_data.get("client_registry_id", ""),
+            student_id=identifiers_data.get("student_id", ""),
         )
 
         return cls(
@@ -449,6 +456,7 @@ class PractitionerInfo:
 # =============================================================================
 # Custom Exception
 # =============================================================================
+
 
 class SearchError(Exception):
     """
@@ -478,12 +486,13 @@ class SearchError(Exception):
         if self.status_code:
             parts.append(f"({self.status_code})")
         parts.append(f": {self.message}")
-        return ''.join(parts)
+        return "".join(parts)
 
 
 # =============================================================================
 # Service Class
 # =============================================================================
+
 
 class DHASearchService:
     """
@@ -514,13 +523,13 @@ class DHASearchService:
 
     def __init__(self):
         """Initialize DHASearchService with settings from Django config."""
-        self.api_base_url = settings.SHA_API_BASE_URL.rstrip('/')
-        self.timeout = getattr(settings, 'SHA_API_TIMEOUT', 30)
+        self.api_base_url = settings.SHA_API_BASE_URL.rstrip("/")
+        self.timeout = getattr(settings, "SHA_API_TIMEOUT", 30)
 
         # Get endpoint paths from settings
-        endpoints = getattr(settings, 'SHA_ENDPOINTS', {})
-        self.facility_endpoint = endpoints.get('facility_search', '/v1/facility-search')
-        self.practitioner_endpoint = endpoints.get('practitioner_search', '/v1/practitioner-search')
+        endpoints = getattr(settings, "SHA_ENDPOINTS", {})
+        self.facility_endpoint = endpoints.get("facility_search", "/v1/facility-search")
+        self.practitioner_endpoint = endpoints.get("practitioner_search", "/v1/practitioner-search")
 
         # Initialize auth service
         self.auth_service = SHAAuthService()
@@ -564,11 +573,11 @@ class DHASearchService:
         # Build query parameters
         params = {}
         if facility_code:
-            params['facility_code'] = facility_code
+            params["facility_code"] = facility_code
         elif fid:
-            params['fid'] = fid
+            params["fid"] = fid
         elif registration_number:
-            params['registration_number'] = registration_number
+            params["registration_number"] = registration_number
 
         logger.info(f"Searching MFL with params: {params}")
 
@@ -603,10 +612,10 @@ class DHASearchService:
             data = response.json()
 
             # Response format: {"message": {...}}
-            message_data = data.get('message', data)
+            message_data = data.get("message", data)
 
             # Check if facility was found
-            found = message_data.get('found', 0)
+            found = message_data.get("found", 0)
             if isinstance(found, int) and found == 0:
                 return None
             if isinstance(found, bool) and not found:
@@ -685,9 +694,7 @@ class DHASearchService:
                 )
 
             if not facility.is_license_valid:
-                errors.append(
-                    f"Facility license has expired (expiry: {facility.license_expiry})"
-                )
+                errors.append(f"Facility license has expired (expiry: {facility.license_expiry})")
 
             return len(errors) == 0, errors
 
@@ -701,7 +708,7 @@ class DHASearchService:
     def search_practitioner(
         self,
         identification_number: str | None = None,
-        identification_type: str = 'National ID',
+        identification_type: str = "National ID",
         registration_number: str | None = None,
     ) -> PractitionerInfo | None:
         """
@@ -738,10 +745,10 @@ class DHASearchService:
         # Build query parameters per DHA API spec
         params = {}
         if identification_number:
-            params['identification_number'] = identification_number
-            params['identification_type'] = identification_type
+            params["identification_number"] = identification_number
+            params["identification_type"] = identification_type
         elif registration_number:
-            params['registration_number'] = registration_number
+            params["registration_number"] = registration_number
 
         logger.info(f"Searching HWR with params: {list(params.keys())}")
 
@@ -797,20 +804,20 @@ class DHASearchService:
             data = response.json()
 
             # Response format: {"message": {...}} or {"found": true, "practitioner": {...}}
-            message_data = data.get('message', data)
+            message_data = data.get("message", data)
 
             # Check if practitioner was found - DHA API returns membership data directly
             # if found, or has explicit 'found' field
-            found = message_data.get('found')
+            found = message_data.get("found")
             if found is not None:
                 # Explicit found field exists
                 if isinstance(found, str):
-                    found = found.lower() == 'true'
+                    found = found.lower() == "true"
                 if not found:
                     return None
             else:
                 # No explicit found field - check if membership data exists
-                if not message_data.get('membership'):
+                if not message_data.get("membership"):
                     return None
 
             return PractitionerInfo.from_api_response(message_data)
@@ -894,8 +901,8 @@ class DHASearchService:
             True if service can be used
         """
         return bool(
-            self.api_base_url and
-            self.facility_endpoint and
-            self.practitioner_endpoint and
-            self.auth_service.is_configured()
+            self.api_base_url
+            and self.facility_endpoint
+            and self.practitioner_endpoint
+            and self.auth_service.is_configured()
         )

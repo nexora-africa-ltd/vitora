@@ -218,7 +218,6 @@ class AdmissionAdmin(admin.ModelAdmin):
     )
 
 
-
 @admin.register(Discharge)
 class DischargeAdmin(admin.ModelAdmin):
     """Admin interface for Discharge model."""
@@ -309,6 +308,7 @@ class DischargeAdmin(admin.ModelAdmin):
     def length_of_stay_days(self, obj):
         """Display length of stay."""
         return f"{obj.length_of_stay} days"
+
     length_of_stay_days.short_description = "Length of Stay"
 
 
@@ -368,9 +368,7 @@ class TransferAdmin(admin.ModelAdmin):
         ),
         (
             "Clinical Handover",
-            {
-                "fields": ("clinical_handover_notes",)
-            },
+            {"fields": ("clinical_handover_notes",)},
         ),
         (
             "Timestamps",
@@ -477,9 +475,7 @@ class NursingKardexAdmin(admin.ModelAdmin):
     fieldsets = (
         (
             "Admission",
-            {
-                "fields": ("admission",)
-            },
+            {"fields": ("admission",)},
         ),
         (
             "Nursing Care Plan",
@@ -525,7 +521,15 @@ class KardexHandoverNoteInline(admin.TabularInline):
 
     model = KardexHandoverNote
     extra = 0
-    readonly_fields = ["outgoing_nurse", "incoming_nurse", "shift_ending", "pending_tasks", "escalations", "acknowledged_at", "created_at"]
+    readonly_fields = [
+        "outgoing_nurse",
+        "incoming_nurse",
+        "shift_ending",
+        "pending_tasks",
+        "escalations",
+        "acknowledged_at",
+        "created_at",
+    ]
     can_delete = False
 
 
@@ -581,7 +585,15 @@ class KardexHandoverNoteAdmin(admin.ModelAdmin):
         "pending_tasks",
         "escalations",
     ]
-    readonly_fields = ["kardex", "outgoing_nurse", "incoming_nurse", "shift_ending", "pending_tasks", "escalations", "created_at"]
+    readonly_fields = [
+        "kardex",
+        "outgoing_nurse",
+        "incoming_nurse",
+        "shift_ending",
+        "pending_tasks",
+        "escalations",
+        "created_at",
+    ]
     ordering = ["-created_at"]
 
     def has_add_permission(self, request):
@@ -663,4 +675,5 @@ class ShiftHandoverAdmin(admin.ModelAdmin):
     def is_acknowledged_display(self, obj):
         """Display acknowledgment status."""
         return "✓ Acknowledged" if obj.is_acknowledged else "⏳ Pending"
+
     is_acknowledged_display.short_description = "Status"

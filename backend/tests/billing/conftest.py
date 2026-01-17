@@ -25,9 +25,7 @@ User = get_user_model()
 def billing_user(db):
     """Create a user for billing tests."""
     return User.objects.create_user(
-        username='billinguser',
-        password='testpass123',
-        email='billing@test.com'
+        username="billinguser", password="testpass123", email="billing@test.com"
     )
 
 
@@ -35,10 +33,10 @@ def billing_user(db):
 def service_category(db):
     """Create a service category."""
     return ServiceCategory.objects.create(
-        name='Consultation',
-        code='CONS',
-        description='Doctor consultation services',
-        display_order=1
+        name="Consultation",
+        code="CONS",
+        description="Doctor consultation services",
+        display_order=1,
     )
 
 
@@ -47,12 +45,12 @@ def consultation_service(db, service_category, billing_user):
     """Create a consultation service."""
     return Service.objects.create(
         category=service_category,
-        code='CONS-GEN',
-        name='General Consultation',
-        description='General doctor consultation',
-        unit_price=Decimal('500.00'),
-        sha_code='SHA-CONS-001',
-        created_by=billing_user
+        code="CONS-GEN",
+        name="General Consultation",
+        description="General doctor consultation",
+        unit_price=Decimal("500.00"),
+        sha_code="SHA-CONS-001",
+        created_by=billing_user,
     )
 
 
@@ -60,12 +58,12 @@ def consultation_service(db, service_category, billing_user):
 def sample_invoice_data(sample_patient, billing_user):
     """Sample invoice data for tests."""
     return {
-        'patient': sample_patient,
-        'invoice_date': date.today(),
-        'due_date': date.today() + timedelta(days=30),
-        'status': 'draft',
-        'payment_type': 'cash',
-        'created_by': billing_user,
+        "patient": sample_patient,
+        "invoice_date": date.today(),
+        "due_date": date.today() + timedelta(days=30),
+        "status": "draft",
+        "payment_type": "cash",
+        "created_by": billing_user,
     }
 
 
@@ -86,10 +84,10 @@ def sample_invoice(db, sample_patient, billing_user):
 def sample_category(db):
     """Alias for service_category for consistency."""
     return ServiceCategory.objects.create(
-        name='Consultation',
-        code='CONS',
-        description='Doctor consultation services',
-        display_order=1
+        name="Consultation",
+        code="CONS",
+        description="Doctor consultation services",
+        display_order=1,
     )
 
 
@@ -98,12 +96,12 @@ def sample_service(db, sample_category, test_user):
     """Create a sample service."""
     return Service.objects.create(
         category=sample_category,
-        code='CONS-GEN',
-        name='General Consultation',
-        description='General doctor consultation',
-        unit_price=Decimal('500.00'),
-        sha_code='SHA-CONS-001',
-        created_by=test_user
+        code="CONS-GEN",
+        name="General Consultation",
+        description="General doctor consultation",
+        unit_price=Decimal("500.00"),
+        sha_code="SHA-CONS-001",
+        created_by=test_user,
     )
 
 
@@ -115,7 +113,7 @@ def sample_invoice_item(db, sample_invoice, sample_service):
         service=sample_service,
         description=sample_service.name,
         quantity=1,
-        unit_price=sample_service.unit_price
+        unit_price=sample_service.unit_price,
     )
 
 
@@ -129,8 +127,8 @@ def sample_payment(db, sample_invoice, sample_invoice_item, test_user):
     payment = Payment.objects.create(
         invoice=sample_invoice,
         method=Payment.Method.CASH,
-        amount=Decimal('500.00'),
-        received_by=test_user
+        amount=Decimal("500.00"),
+        received_by=test_user,
     )
     payment.process()
     return payment
@@ -145,7 +143,7 @@ def sample_receipt(db, sample_payment, sample_invoice, test_user):
         patient=sample_invoice.patient,
         amount=sample_payment.amount,
         payment_method=sample_payment.method,
-        issued_by=test_user
+        issued_by=test_user,
     )
 
 
@@ -159,10 +157,10 @@ def sample_credit_note(db, sample_invoice, sample_invoice_item, test_user):
     return CreditNote.objects.create(
         invoice=sample_invoice,
         patient=sample_invoice.patient,
-        amount=Decimal('50.00'),  # Less than invoice total
+        amount=Decimal("50.00"),  # Less than invoice total
         reason=CreditNote.Reason.OVERCHARGE,
-        reason_detail='Test overcharge',
-        requested_by=test_user
+        reason_detail="Test overcharge",
+        requested_by=test_user,
     )
 
 
@@ -170,7 +168,5 @@ def sample_credit_note(db, sample_invoice, sample_invoice_item, test_user):
 def test_user_2(db):
     """Create a second test user for approval workflows."""
     return User.objects.create_user(
-        username='approver',
-        password='approver123',
-        email='approver@test.com'
+        username="approver", password="approver123", email="approver@test.com"
     )

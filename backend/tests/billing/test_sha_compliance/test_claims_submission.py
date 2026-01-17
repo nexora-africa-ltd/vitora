@@ -23,12 +23,14 @@ import pytest  # type: ignore
 # Try to import the service - may fail if not fully implemented
 try:
     from hmis.apps.billing.services.sha_claims import SHAClaimsService
+
     HAS_SHA_CLAIMS_SERVICE = True
 except ImportError:
     HAS_SHA_CLAIMS_SERVICE = False
 
 try:
     from hmis.apps.billing.models import SHAClaim, SHAClaimItem, SHATariff
+
     HAS_SHA_MODELS = True
 except ImportError:
     HAS_SHA_MODELS = False
@@ -49,6 +51,7 @@ class TestDiagnosisCodingCompliance:
         # Check if ICD-11 model or field exists
         try:
             from hmis.apps.encounters.models import ICD10Code  # Current system uses ICD-10
+
             icd10_exists = True
         except ImportError:
             icd10_exists = False
@@ -74,16 +77,16 @@ class TestDiagnosisCodingCompliance:
         service = SHAClaimsService()
         bundle = service.package_claim(sha_claim_with_items)
 
-        claim = self._get_resource_by_type(bundle, 'Claim')
+        claim = self._get_resource_by_type(bundle, "Claim")
         assert claim is not None, "Claim resource not found"
 
         # Check for diagnosis array
-        assert 'diagnosis' in claim, (
+        assert "diagnosis" in claim, (
             "Claim must have 'diagnosis' array. "
             "See docs/sha-guides/claims-submission.md - ICD-11 Diagnostic Coding"
         )
 
-        diagnoses = claim.get('diagnosis', [])
+        diagnoses = claim.get("diagnosis", [])
         assert len(diagnoses) > 0, "Claim must have at least one diagnosis"
 
     @pytest.mark.skipif(not HAS_SHA_CLAIMS_SERVICE, reason="SHAClaimsService not available")
@@ -96,23 +99,21 @@ class TestDiagnosisCodingCompliance:
         service = SHAClaimsService()
         bundle = service.package_claim(sha_claim_with_items)
 
-        claim = self._get_resource_by_type(bundle, 'Claim')
+        claim = self._get_resource_by_type(bundle, "Claim")
         if claim is None:
             pytest.skip("Claim resource not found")
 
-        for i, diagnosis in enumerate(claim.get('diagnosis', [])):
-            assert 'sequence' in diagnosis, (
-                f"Diagnosis {i} must have 'sequence' field"
-            )
-            assert 'diagnosisCodeableConcept' in diagnosis or 'diagnosisReference' in diagnosis, (
-                f"Diagnosis {i} must have diagnosisCodeableConcept or diagnosisReference"
-            )
+        for i, diagnosis in enumerate(claim.get("diagnosis", [])):
+            assert "sequence" in diagnosis, f"Diagnosis {i} must have 'sequence' field"
+            assert (
+                "diagnosisCodeableConcept" in diagnosis or "diagnosisReference" in diagnosis
+            ), f"Diagnosis {i} must have diagnosisCodeableConcept or diagnosisReference"
 
     def _get_resource_by_type(self, bundle: dict, resource_type: str) -> dict | None:
         """Helper to extract a resource by type from bundle."""
-        for entry in bundle.get('entry', []):
-            if entry.get('resource', {}).get('resourceType') == resource_type:
-                return entry['resource']
+        for entry in bundle.get("entry", []):
+            if entry.get("resource", {}).get("resourceType") == resource_type:
+                return entry["resource"]
         return None
 
 
@@ -131,22 +132,18 @@ class TestClaimItemCompliance:
         service = SHAClaimsService()
         bundle = service.package_claim(sha_claim_with_items)
 
-        claim = self._get_resource_by_type(bundle, 'Claim')
+        claim = self._get_resource_by_type(bundle, "Claim")
         if claim is None:
             pytest.skip("Claim resource not found")
 
-        items = claim.get('item', [])
+        items = claim.get("item", [])
         assert len(items) > 0, "Claim must have at least one item"
 
         for i, item in enumerate(items):
-            assert 'productOrService' in item, (
-                f"Item {i} must have 'productOrService' field"
-            )
+            assert "productOrService" in item, f"Item {i} must have 'productOrService' field"
 
-            product = item['productOrService']
-            assert 'coding' in product, (
-                f"Item {i} productOrService must have 'coding' array"
-            )
+            product = item["productOrService"]
+            assert "coding" in product, f"Item {i} productOrService must have 'coding' array"
 
     @pytest.mark.skipif(not HAS_SHA_CLAIMS_SERVICE, reason="SHAClaimsService not available")
     def test_claim_item_amounts(self, sha_claim_with_items):
@@ -156,16 +153,14 @@ class TestClaimItemCompliance:
         service = SHAClaimsService()
         bundle = service.package_claim(sha_claim_with_items)
 
-        claim = self._get_resource_by_type(bundle, 'Claim')
+        claim = self._get_resource_by_type(bundle, "Claim")
         if claim is None:
             pytest.skip("Claim resource not found")
 
-        for i, item in enumerate(claim.get('item', [])):
+        for i, item in enumerate(claim.get("item", [])):
             # Check for net or unitPrice
-            has_pricing = 'net' in item or 'unitPrice' in item
-            assert has_pricing, (
-                f"Item {i} must have pricing information (net or unitPrice)"
-            )
+            has_pricing = "net" in item or "unitPrice" in item
+            assert has_pricing, f"Item {i} must have pricing information (net or unitPrice)"
 
     @pytest.mark.skipif(not HAS_SHA_CLAIMS_SERVICE, reason="SHAClaimsService not available")
     def test_total_amount_equals_sum_of_items(self, sha_claim_with_items):
@@ -178,21 +173,21 @@ class TestClaimItemCompliance:
         service = SHAClaimsService()
         bundle = service.package_claim(sha_claim_with_items)
 
-        claim = self._get_resource_by_type(bundle, 'Claim')
+        claim = self._get_resource_by_type(bundle, "Claim")
         if claim is None:
             pytest.skip("Claim resource not found")
 
         # Calculate sum of items
-        item_total = Decimal('0')
-        for item in claim.get('item', []):
-            net = item.get('net', {})
-            if isinstance(net, dict) and 'value' in net:
-                item_total += Decimal(str(net['value']))
+        item_total = Decimal("0")
+        for item in claim.get("item", []):
+            net = item.get("net", {})
+            if isinstance(net, dict) and "value" in net:
+                item_total += Decimal(str(net["value"]))
 
         # Get claim total
-        claim_total = claim.get('total', {})
-        if isinstance(claim_total, dict) and 'value' in claim_total:
-            total_value = Decimal(str(claim_total['value']))
+        claim_total = claim.get("total", {})
+        if isinstance(claim_total, dict) and "value" in claim_total:
+            total_value = Decimal(str(claim_total["value"]))
 
             assert total_value == item_total, (
                 f"Total amount ({total_value}) must equal sum of items ({item_total}). "
@@ -201,9 +196,9 @@ class TestClaimItemCompliance:
 
     def _get_resource_by_type(self, bundle: dict, resource_type: str) -> dict | None:
         """Helper to extract a resource by type from bundle."""
-        for entry in bundle.get('entry', []):
-            if entry.get('resource', {}).get('resourceType') == resource_type:
-                return entry['resource']
+        for entry in bundle.get("entry", []):
+            if entry.get("resource", {}).get("resourceType") == resource_type:
+                return entry["resource"]
         return None
 
 
@@ -222,13 +217,13 @@ class TestClaimIdentificationCompliance:
         service = SHAClaimsService()
         bundle = service.package_claim(sha_claim_with_items)
 
-        claim = self._get_resource_by_type(bundle, 'Claim')
+        claim = self._get_resource_by_type(bundle, "Claim")
         assert claim is not None, "Claim resource not found"
 
-        assert 'id' in claim, "Claim must have 'id' field"
+        assert "id" in claim, "Claim must have 'id' field"
 
         # Should be a valid GUID
-        claim_id = claim['id']
+        claim_id = claim["id"]
         try:
             uuid.UUID(claim_id)
         except ValueError:
@@ -249,13 +244,13 @@ class TestClaimIdentificationCompliance:
         service = SHAClaimsService()
         bundle = service.package_claim(sha_claim_with_items)
 
-        bundle_id = bundle.get('id')
+        bundle_id = bundle.get("id")
 
-        claim = self._get_resource_by_type(bundle, 'Claim')
+        claim = self._get_resource_by_type(bundle, "Claim")
         if claim is None:
             pytest.skip("Claim resource not found")
 
-        claim_id = claim.get('id')
+        claim_id = claim.get("id")
 
         assert claim_id == bundle_id, (
             f"Claim ID ({claim_id}) should match Bundle ID ({bundle_id}). "
@@ -264,9 +259,9 @@ class TestClaimIdentificationCompliance:
 
     def _get_resource_by_type(self, bundle: dict, resource_type: str) -> dict | None:
         """Helper to extract a resource by type from bundle."""
-        for entry in bundle.get('entry', []):
-            if entry.get('resource', {}).get('resourceType') == resource_type:
-                return entry['resource']
+        for entry in bundle.get("entry", []):
+            if entry.get("resource", {}).get("resourceType") == resource_type:
+                return entry["resource"]
         return None
 
 
@@ -284,22 +279,20 @@ class TestInsuranceAndCoverageCompliance:
         service = SHAClaimsService()
         bundle = service.package_claim(sha_claim_with_items)
 
-        claim = self._get_resource_by_type(bundle, 'Claim')
+        claim = self._get_resource_by_type(bundle, "Claim")
         assert claim is not None, "Claim resource not found"
 
-        assert 'insurance' in claim, (
+        assert "insurance" in claim, (
             "Claim must have 'insurance' array. "
             "See docs/sha-guides/claims-submission.md - Integration Checklist #6"
         )
 
-        insurances = claim.get('insurance', [])
+        insurances = claim.get("insurance", [])
         assert len(insurances) > 0, "Claim must have at least one insurance entry"
 
         # Check first insurance has coverage reference
         first_insurance = insurances[0]
-        assert 'coverage' in first_insurance, (
-            "Insurance entry must have 'coverage' reference"
-        )
+        assert "coverage" in first_insurance, "Insurance entry must have 'coverage' reference"
 
     @pytest.mark.skipif(not HAS_SHA_CLAIMS_SERVICE, reason="SHAClaimsService not available")
     def test_insurance_has_focal_flag(self, sha_claim_with_items):
@@ -311,20 +304,20 @@ class TestInsuranceAndCoverageCompliance:
         service = SHAClaimsService()
         bundle = service.package_claim(sha_claim_with_items)
 
-        claim = self._get_resource_by_type(bundle, 'Claim')
+        claim = self._get_resource_by_type(bundle, "Claim")
         if claim is None:
             pytest.skip("Claim resource not found")
 
-        insurances = claim.get('insurance', [])
+        insurances = claim.get("insurance", [])
 
-        has_focal = any(ins.get('focal') for ins in insurances)
+        has_focal = any(ins.get("focal") for ins in insurances)
         assert has_focal, "At least one insurance entry must have focal=true"
 
     def _get_resource_by_type(self, bundle: dict, resource_type: str) -> dict | None:
         """Helper to extract a resource by type from bundle."""
-        for entry in bundle.get('entry', []):
-            if entry.get('resource', {}).get('resourceType') == resource_type:
-                return entry['resource']
+        for entry in bundle.get("entry", []):
+            if entry.get("resource", {}).get("resourceType") == resource_type:
+                return entry["resource"]
         return None
 
 
@@ -342,25 +335,25 @@ class TestCareTeamCompliance:
         service = SHAClaimsService()
         bundle = service.package_claim(sha_claim_with_items)
 
-        claim = self._get_resource_by_type(bundle, 'Claim')
+        claim = self._get_resource_by_type(bundle, "Claim")
         if claim is None:
             pytest.skip("Claim resource not found")
 
         # CareTeam is optional but recommended
-        care_team = claim.get('careTeam', [])
+        care_team = claim.get("careTeam", [])
 
         if care_team:
             for i, member in enumerate(care_team):
-                assert 'provider' in member, (
+                assert "provider" in member, (
                     f"CareTeam member {i} must have 'provider' reference. "
                     "See docs/sha-guides/claims-submission.md - Integration Checklist #10"
                 )
 
     def _get_resource_by_type(self, bundle: dict, resource_type: str) -> dict | None:
         """Helper to extract a resource by type from bundle."""
-        for entry in bundle.get('entry', []):
-            if entry.get('resource', {}).get('resourceType') == resource_type:
-                return entry['resource']
+        for entry in bundle.get("entry", []):
+            if entry.get("resource", {}).get("resourceType") == resource_type:
+                return entry["resource"]
         return None
 
 
@@ -403,15 +396,15 @@ class TestClaimStatusStates:
             - payment-declined: Payment declined due to banking issues
         """
         valid_states = [
-            'queued',
-            'approved',
-            'rejected',
-            'in-review',
-            'clinical-review',
-            'sent-for-payment-processing',
-            'sent-to-surveillance',
-            'payment-completed',
-            'payment-declined',
+            "queued",
+            "approved",
+            "rejected",
+            "in-review",
+            "clinical-review",
+            "sent-for-payment-processing",
+            "sent-to-surveillance",
+            "payment-completed",
+            "payment-declined",
         ]
 
         # Verify we know about all states
@@ -420,7 +413,7 @@ class TestClaimStatusStates:
         # Check if model defines these states
         if HAS_SHA_MODELS:
             # Check if SHAClaim has status choices
-            status_choices = getattr(SHAClaim, 'Status', None)
+            status_choices = getattr(SHAClaim, "Status", None)
             if status_choices:
                 # This is informational - verify model supports key states
                 pass
@@ -450,7 +443,7 @@ class TestPreAuthorizationCompliance:
         SHA Requirement: Tariffs should indicate if pre-auth required.
         """
         # Check if SHATariff has requires_preauthorization field
-        if hasattr(SHATariff, 'requires_preauthorization'):
+        if hasattr(SHATariff, "requires_preauthorization"):
             assert True, "SHATariff has requires_preauthorization field"
         else:
             pytest.fail(

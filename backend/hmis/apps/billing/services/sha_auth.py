@@ -82,12 +82,12 @@ class SHAAuthService:
 
     def __init__(self):
         """Initialize SHAAuthService with settings from Django config."""
-        self.base_url = settings.SHA_API_BASE_URL.rstrip('/')
+        self.base_url = settings.SHA_API_BASE_URL.rstrip("/")
         self.consumer_key = settings.SHA_CONSUMER_KEY
-        self.client_secret = getattr(settings, 'SHA_CLIENT_SECRET', '')
+        self.client_secret = getattr(settings, "SHA_CLIENT_SECRET", "")
         self.username = settings.SHA_USERNAME
         self.password = settings.SHA_PASSWORD
-        self.timeout = getattr(settings, 'SHA_API_TIMEOUT', 19)
+        self.timeout = getattr(settings, "SHA_API_TIMEOUT", 19)
 
     def _base64url_encode(self, data: bytes) -> str:
         """
@@ -95,7 +95,7 @@ class SHAAuthService:
 
         Removes padding and replaces +/ with -_
         """
-        return base64.urlsafe_b64encode(data).rstrip(b'=').decode('utf-8')
+        return base64.urlsafe_b64encode(data).rstrip(b"=").decode("utf-8")
 
     def _create_basic_auth_header(self) -> str:
         """
@@ -146,15 +146,17 @@ class SHAAuthService:
 
         # Encode header and payload using compact JSON (separators without spaces)
         # This matches JavaScript's JSON.stringify() output exactly
-        encoded_header = self._base64url_encode(json.dumps(header, separators=(',', ':')).encode('utf-8'))
-        encoded_payload = self._base64url_encode(json.dumps(payload, separators=(',', ':')).encode('utf-8'))
+        encoded_header = self._base64url_encode(
+            json.dumps(header, separators=(",", ":")).encode("utf-8")
+        )
+        encoded_payload = self._base64url_encode(
+            json.dumps(payload, separators=(",", ":")).encode("utf-8")
+        )
 
         # Create signature
         message = f"{encoded_header}.{encoded_payload}"
         signature = hmac.new(
-            self.client_secret.encode('utf-8'),
-            message.encode('utf-8'),
-            hashlib.sha256
+            self.client_secret.encode("utf-8"), message.encode("utf-8"), hashlib.sha256
         ).digest()
         encoded_signature = self._base64url_encode(signature)
 
@@ -175,8 +177,8 @@ class SHAAuthService:
         """
         token = self.generate_terminology_token()
         return {
-            'Authorization': f'Bearer {token}',
-            'Accept': 'application/json',
+            "Authorization": f"Bearer {token}",
+            "Accept": "application/json",
         }
 
     def get_token(self, force_refresh: bool = False) -> str:
@@ -212,10 +214,10 @@ class SHAAuthService:
         try:
             response = requests.get(
                 f"{self.base_url}/v1/hie-auth",
-                params={'key': self.consumer_key},
+                params={"key": self.consumer_key},
                 headers={
-                    'Authorization': f'Basic {basic_auth}',
-                    'Content-Type': 'application/json',
+                    "Authorization": f"Basic {basic_auth}",
+                    "Content-Type": "application/json",
                 },
                 timeout=self.timeout,
             )
@@ -224,16 +226,10 @@ class SHAAuthService:
             logger.debug(f"SHA auth response status: {response.status_code}")
 
             if response.status_code == 401:
-                raise SHAAuthError(
-                    "Authentication failed: Invalid credentials",
-                    status_code=401
-                )
+                raise SHAAuthError("Authentication failed: Invalid credentials", status_code=401)
 
             if response.status_code == 403:
-                raise SHAAuthError(
-                    "Authentication failed: Access denied",
-                    status_code=403
-                )
+                raise SHAAuthError("Authentication failed: Access denied", status_code=403)
 
             response.raise_for_status()
 
@@ -243,36 +239,35 @@ class SHAAuthService:
             # 2. JSON with {"token": "..."}
             # 3. JSON with {"IsSuccess": true, "Data": {"token": "..."}}
 
-            content_type = response.headers.get('Content-Type', '')
+            content_type = response.headers.get("Content-Type", "")
             response_text = response.text.strip()
 
-            if 'application/json' in content_type:
+            if "application/json" in content_type:
                 data = response.json()
                 # Official format: {"token": "..."}
                 # Alternative: {"IsSuccess": true, "Data": {"token": "..."}}
-                token = data.get('token')
-                if not token and data.get('Data'):
-                    token = data['Data'].get('token')
+                token = data.get("token")
+                if not token and data.get("Data"):
+                    token = data["Data"].get("token")
             else:
                 # Plain text JWT token (official DHA format)
                 # Check if it looks like a JWT (starts with eyJ)
-                if response_text.startswith('eyJ'):
+                if response_text.startswith("eyJ"):
                     token = response_text
-                    data = {'token': token}
+                    data = {"token": token}
                 else:
                     raise SHAAuthError(
                         f"Unexpected response format: {response_text[:100]}",
-                        status_code=response.status_code
+                        status_code=response.status_code,
                     )
 
             if not token:
                 raise SHAAuthError(
-                    f"No token in response: {data}",
-                    status_code=response.status_code
+                    f"No token in response: {data}", status_code=response.status_code
                 )
 
             # Parse expiry if provided
-            expires_in = int(data.get('expires_in', 19))
+            expires_in = int(data.get("expires_in", 19))
 
             # Cache the token
             SHAAuthService._token_cache = SHAToken(
@@ -307,8 +302,8 @@ class SHAAuthService:
         """
         token = self.get_token(force_refresh=force_refresh)
         return {
-            'Authorization': f'Bearer {token}',
-            'Content-Type': 'application/json',
+            "Authorization": f"Bearer {token}",
+            "Content-Type": "application/json",
         }
 
     def clear_token_cache(self):
@@ -327,12 +322,14 @@ class SHAAuthService:
         Returns:
             True if all required credentials are set
         """
-        return all([
-            self.base_url,
-            self.consumer_key,
-            self.username,
-            self.password,
-        ])
+        return all(
+            [
+                self.base_url,
+                self.consumer_key,
+                self.username,
+                self.password,
+            ]
+        )
 
 
 class SHAAuthError(Exception):

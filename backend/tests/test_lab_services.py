@@ -13,12 +13,7 @@ from django.contrib.auth import get_user_model
 from django.utils import timezone
 
 from hmis.apps.encounters.models import Encounter
-from hmis.apps.laboratory.models import (
-    LabOrder,
-    LabOrderItem,
-    LabResult,
-    TestCatalog,
-)
+from hmis.apps.laboratory.models import LabOrder, LabOrderItem, LabResult, TestCatalog
 from hmis.apps.laboratory.services import LabAlertService, LabWorkflowService
 from hmis.apps.patients.models import Patient
 
@@ -100,7 +95,9 @@ class TestLabWorkflowService:
             specimen_type="BLOOD",
             result_type="NUMERIC",
         )
-        item = LabOrderItem.objects.create(lab_order=sample_order, test=test, unit_cost=Decimal("100"))
+        item = LabOrderItem.objects.create(
+            lab_order=sample_order, test=test, unit_cost=Decimal("100")
+        )
 
         # Add result
         LabResult.objects.create(
@@ -135,8 +132,12 @@ class TestLabWorkflowService:
             result_type="NUMERIC",
         )
 
-        item1 = LabOrderItem.objects.create(lab_order=sample_order, test=test1, unit_cost=Decimal("100"))
-        item2 = LabOrderItem.objects.create(lab_order=sample_order, test=test2, unit_cost=Decimal("100"))
+        item1 = LabOrderItem.objects.create(
+            lab_order=sample_order, test=test1, unit_cost=Decimal("100")
+        )
+        item2 = LabOrderItem.objects.create(
+            lab_order=sample_order, test=test2, unit_cost=Decimal("100")
+        )
 
         # Only add result for item1
         LabResult.objects.create(
@@ -177,7 +178,9 @@ class TestLabWorkflowService:
             result_unit="g/dL",
             normal_range_male="13.0-17.0",
         )
-        item = LabOrderItem.objects.create(lab_order=sample_order, test=test, unit_cost=Decimal("100"))
+        item = LabOrderItem.objects.create(
+            lab_order=sample_order, test=test, unit_cost=Decimal("100")
+        )
 
         # Create critical result
         result = LabResult.objects.create(

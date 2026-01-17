@@ -335,9 +335,7 @@ class TestTriageAssessmentMethods:
         result = triage.calculate_triage_category()
         assert result == "RED"
 
-    def test_calculate_category_orange_for_chest_pain_high_bp(
-        self, sample_encounter, test_user
-    ):
+    def test_calculate_category_orange_for_chest_pain_high_bp(self, sample_encounter, test_user):
         """Should return ORANGE for chest pain with systolic BP > 140."""
         sample_encounter.blood_pressure = "150/95"
         sample_encounter.save()
@@ -406,9 +404,7 @@ class TestTriageAssessmentMethods:
         result = triage.calculate_triage_category()
         assert result == "ORANGE"
 
-    def test_calculate_category_yellow_for_moderate_pain(
-        self, sample_encounter, test_user
-    ):
+    def test_calculate_category_yellow_for_moderate_pain(self, sample_encounter, test_user):
         """Should return YELLOW for pain score 7-8."""
         now = timezone.now()
         triage = TriageAssessment.objects.create(
@@ -429,9 +425,7 @@ class TestTriageAssessmentMethods:
         result = triage.calculate_triage_category()
         assert result == "YELLOW"
 
-    def test_calculate_category_yellow_for_fever_with_low_spo2(
-        self, sample_encounter, test_user
-    ):
+    def test_calculate_category_yellow_for_fever_with_low_spo2(self, sample_encounter, test_user):
         """Should return YELLOW for fever with SpO2 < 95."""
         sample_encounter.spo2 = Decimal("94.00")
         sample_encounter.save()
@@ -514,9 +508,7 @@ class TestTriageAssessmentMethods:
         result = triage.calculate_triage_category()
         assert result == "BLUE"
 
-    def test_calculate_category_handles_invalid_bp_format(
-        self, sample_encounter, test_user
-    ):
+    def test_calculate_category_handles_invalid_bp_format(self, sample_encounter, test_user):
         """Should handle invalid blood pressure format gracefully."""
         sample_encounter.blood_pressure = "invalid"
         sample_encounter.save()

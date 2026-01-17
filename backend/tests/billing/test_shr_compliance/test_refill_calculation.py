@@ -42,13 +42,18 @@ class RefillCalculator:
         for entry in ips_bundle.get("entry", []):
             resource = entry.get("resource", {})
 
-            if (resource.get("resourceType") == "MedicationRequest" and
-                resource.get("id") == medication_request_id):
+            if (
+                resource.get("resourceType") == "MedicationRequest"
+                and resource.get("id") == medication_request_id
+            ):
                 medication_request = resource
 
             if resource.get("resourceType") == "MedicationDispense":
                 for prescription in resource.get("authorizingPrescription", []):
-                    if prescription.get("reference") == f"MedicationRequest/{medication_request_id}":
+                    if (
+                        prescription.get("reference")
+                        == f"MedicationRequest/{medication_request_id}"
+                    ):
                         medication_dispenses.append(resource)
 
         if not medication_request:
@@ -57,7 +62,9 @@ class RefillCalculator:
             }
 
         # Calculate refill information
-        total_allowed_fills = medication_request.get("dispenseRequest", {}).get("numberOfRepeatsAllowed", 0) + 1
+        total_allowed_fills = (
+            medication_request.get("dispenseRequest", {}).get("numberOfRepeatsAllowed", 0) + 1
+        )
         total_dispenses = len(medication_dispenses)
         remaining_refills = total_allowed_fills - total_dispenses
 
@@ -65,9 +72,7 @@ class RefillCalculator:
         next_refill_date = None
         if medication_dispenses:
             sorted_dispenses = sorted(
-                medication_dispenses,
-                key=lambda x: x.get("whenHandedOver", ""),
-                reverse=True
+                medication_dispenses, key=lambda x: x.get("whenHandedOver", ""), reverse=True
             )
 
             latest_dispense = sorted_dispenses[0]
@@ -84,7 +89,10 @@ class RefillCalculator:
         current_date = datetime.now()
         prescription_expiry = None
 
-        if "dispenseRequest" in medication_request and "validityPeriod" in medication_request["dispenseRequest"]:
+        if (
+            "dispenseRequest" in medication_request
+            and "validityPeriod" in medication_request["dispenseRequest"]
+        ):
             end_date_str = medication_request["dispenseRequest"]["validityPeriod"].get("end")
             prescription_expiry = end_date_str
             if end_date_str:
@@ -99,7 +107,7 @@ class RefillCalculator:
             "remainingRefills": remaining_refills,
             "nextRefillDueDate": next_refill_date,
             "isPrescriptionValid": is_valid,
-            "prescriptionExpiryDate": prescription_expiry
+            "prescriptionExpiryDate": prescription_expiry,
         }
 
 
@@ -119,25 +127,26 @@ def prescription_with_5_refills():
         "intent": "order",
         "medicationCodeableConcept": {
             "coding": [{"code": "197319", "display": "Amlodipine 5mg"}],
-            "text": "Amlodipine 5mg"
+            "text": "Amlodipine 5mg",
         },
         "subject": {"reference": "Patient/CR06XX3268000-3-1"},
         "authoredOn": date.today().isoformat(),
         "dispenseRequest": {
             "validityPeriod": {
                 "start": date.today().isoformat(),
-                "end": (date.today() + timedelta(days=180)).isoformat()
+                "end": (date.today() + timedelta(days=180)).isoformat(),
             },
             "numberOfRepeatsAllowed": 5,
             "quantity": {"value": 30, "unit": "tablets"},
-            "expectedSupplyDuration": {"value": 30, "unit": "days"}
-        }
+            "expectedSupplyDuration": {"value": 30, "unit": "days"},
+        },
     }
 
 
 @pytest.fixture
 def dispense_record_factory():
     """Factory for creating dispense records."""
+
     def create_dispense(medication_request_id: str, when_handed_over: str, days_supply: int = 30):
         return {
             "resourceType": "MedicationDispense",
@@ -145,7 +154,7 @@ def dispense_record_factory():
             "status": "completed",
             "medicationCodeableConcept": {
                 "coding": [{"code": "197319", "display": "Amlodipine 5mg"}],
-                "text": "Amlodipine 5mg"
+                "text": "Amlodipine 5mg",
             },
             "subject": {"reference": "Patient/CR06XX3268000-3-1"},
             "authorizingPrescription": [
@@ -153,8 +162,9 @@ def dispense_record_factory():
             ],
             "quantity": {"value": 30, "unit": "tablets"},
             "daysSupply": {"value": days_supply, "unit": "days"},
-            "whenHandedOver": when_handed_over
+            "whenHandedOver": when_handed_over,
         }
+
     return create_dispense
 
 
@@ -165,12 +175,7 @@ def ips_with_no_dispenses(prescription_with_5_refills):
         "resourceType": "Bundle",
         "type": "document",
         "id": str(uuid.uuid4()),
-        "entry": [
-            {
-                "fullUrl": f"urn:uuid:{uuid.uuid4()}",
-                "resource": prescription_with_5_refills
-            }
-        ]
+        "entry": [{"fullUrl": f"urn:uuid:{uuid.uuid4()}", "resource": prescription_with_5_refills}],
     }
 
 
@@ -186,19 +191,16 @@ def ips_with_2_dispenses(prescription_with_5_refills, dispense_record_factory):
         "type": "document",
         "id": str(uuid.uuid4()),
         "entry": [
+            {"fullUrl": f"urn:uuid:{uuid.uuid4()}", "resource": prescription_with_5_refills},
             {
                 "fullUrl": f"urn:uuid:{uuid.uuid4()}",
-                "resource": prescription_with_5_refills
+                "resource": dispense_record_factory(rx_id, dispense1_date),
             },
             {
                 "fullUrl": f"urn:uuid:{uuid.uuid4()}",
-                "resource": dispense_record_factory(rx_id, dispense1_date)
+                "resource": dispense_record_factory(rx_id, dispense2_date),
             },
-            {
-                "fullUrl": f"urn:uuid:{uuid.uuid4()}",
-                "resource": dispense_record_factory(rx_id, dispense2_date)
-            }
-        ]
+        ],
     }
 
 
@@ -216,28 +218,18 @@ class TestRefillCalculationBasics:
         Quote: 'Total allowed fills: This is the initial fill plus all refills'
         Quote: 'If the doctor allows 5 refills, the total is 6 fills (1 initial + 5 refills)'
         """
-        result = refill_calculator.calculate_refill_balance(
-            ips_with_no_dispenses, "rx-12345"
-        )
+        result = refill_calculator.calculate_refill_balance(ips_with_no_dispenses, "rx-12345")
 
-        assert result["totalAllowedFills"] == 6, (
-            "5 refills + 1 initial = 6 total fills"
-        )
+        assert result["totalAllowedFills"] == 6, "5 refills + 1 initial = 6 total fills"
 
     def test_remaining_refills_with_no_dispenses(self, refill_calculator, ips_with_no_dispenses):
         """
         SHR Requirement: Remaining = Total - Dispensed.
         """
-        result = refill_calculator.calculate_refill_balance(
-            ips_with_no_dispenses, "rx-12345"
-        )
+        result = refill_calculator.calculate_refill_balance(ips_with_no_dispenses, "rx-12345")
 
-        assert result["fillsDispensed"] == 0, (
-            "No dispenses yet"
-        )
-        assert result["remainingRefills"] == 6, (
-            "All 6 fills remaining"
-        )
+        assert result["fillsDispensed"] == 0, "No dispenses yet"
+        assert result["remainingRefills"] == 6, "All 6 fills remaining"
 
     def test_remaining_refills_after_2_dispenses(self, refill_calculator, ips_with_2_dispenses):
         """
@@ -245,16 +237,10 @@ class TestRefillCalculationBasics:
 
         Quote from example: 'fillsDispensed: 2, remainingRefills: 4'
         """
-        result = refill_calculator.calculate_refill_balance(
-            ips_with_2_dispenses, "rx-12345"
-        )
+        result = refill_calculator.calculate_refill_balance(ips_with_2_dispenses, "rx-12345")
 
-        assert result["fillsDispensed"] == 2, (
-            "2 dispenses recorded"
-        )
-        assert result["remainingRefills"] == 4, (
-            "6 total - 2 dispensed = 4 remaining"
-        )
+        assert result["fillsDispensed"] == 2, "2 dispenses recorded"
+        assert result["remainingRefills"] == 4, "6 total - 2 dispensed = 4 remaining"
 
 
 class TestNextRefillDateCalculation:
@@ -269,13 +255,9 @@ class TestNextRefillDateCalculation:
         """
         SHR Requirement: Next refill = last dispense date + days supply.
         """
-        result = refill_calculator.calculate_refill_balance(
-            ips_with_2_dispenses, "rx-12345"
-        )
+        result = refill_calculator.calculate_refill_balance(ips_with_2_dispenses, "rx-12345")
 
-        assert result["nextRefillDueDate"] is not None, (
-            "Next refill date should be calculated"
-        )
+        assert result["nextRefillDueDate"] is not None, "Next refill date should be calculated"
         # The next refill should be approximately today (30 days after last dispense)
         # which was 30 days ago
 
@@ -283,15 +265,13 @@ class TestNextRefillDateCalculation:
         """
         SHR Requirement: No next refill date if no dispenses yet.
         """
-        result = refill_calculator.calculate_refill_balance(
-            ips_with_no_dispenses, "rx-12345"
-        )
+        result = refill_calculator.calculate_refill_balance(ips_with_no_dispenses, "rx-12345")
 
-        assert result["nextRefillDueDate"] is None, (
-            "No next refill date without prior dispenses"
-        )
+        assert result["nextRefillDueDate"] is None, "No next refill date without prior dispenses"
 
-    def test_uses_most_recent_dispense(self, prescription_with_5_refills, dispense_record_factory, refill_calculator):
+    def test_uses_most_recent_dispense(
+        self, prescription_with_5_refills, dispense_record_factory, refill_calculator
+    ):
         """
         SHR Requirement: Use most recent dispense for calculation.
 
@@ -309,16 +289,16 @@ class TestNextRefillDateCalculation:
             "entry": [
                 {"resource": prescription_with_5_refills},
                 {"resource": old_dispense},
-                {"resource": recent_dispense}
-            ]
+                {"resource": recent_dispense},
+            ],
         }
 
         result = refill_calculator.calculate_refill_balance(bundle, rx_id)
 
         # Next refill should be based on Jan 5 + 30 days = Feb 4
-        assert "2025-02-04" in result["nextRefillDueDate"], (
-            "Next refill should be calculated from most recent dispense (Jan 5 + 30 days)"
-        )
+        assert (
+            "2025-02-04" in result["nextRefillDueDate"]
+        ), "Next refill should be calculated from most recent dispense (Jan 5 + 30 days)"
 
 
 class TestPrescriptionValidity:
@@ -333,13 +313,11 @@ class TestPrescriptionValidity:
         """
         SHR Requirement: Prescription valid if within validity period.
         """
-        result = refill_calculator.calculate_refill_balance(
-            ips_with_no_dispenses, "rx-12345"
-        )
+        result = refill_calculator.calculate_refill_balance(ips_with_no_dispenses, "rx-12345")
 
-        assert result["isPrescriptionValid"] is True, (
-            "Prescription should be valid within validity period"
-        )
+        assert (
+            result["isPrescriptionValid"] is True
+        ), "Prescription should be valid within validity period"
 
     def test_expired_prescription(self, refill_calculator):
         """
@@ -353,37 +331,28 @@ class TestPrescriptionValidity:
             "medicationCodeableConcept": {"text": "Test Med"},
             "subject": {"reference": "Patient/test"},
             "dispenseRequest": {
-                "validityPeriod": {
-                    "start": "2024-01-01",
-                    "end": "2024-06-01"  # Expired
-                },
-                "numberOfRepeatsAllowed": 5
-            }
+                "validityPeriod": {"start": "2024-01-01", "end": "2024-06-01"},  # Expired
+                "numberOfRepeatsAllowed": 5,
+            },
         }
 
-        bundle = {
-            "resourceType": "Bundle",
-            "type": "document",
-            "entry": [{"resource": expired_rx}]
-        }
+        bundle = {"resourceType": "Bundle", "type": "document", "entry": [{"resource": expired_rx}]}
 
         result = refill_calculator.calculate_refill_balance(bundle, "rx-expired")
 
-        assert result["isPrescriptionValid"] is False, (
-            "Expired prescription should be marked invalid"
-        )
+        assert (
+            result["isPrescriptionValid"] is False
+        ), "Expired prescription should be marked invalid"
 
     def test_returns_prescription_expiry_date(self, refill_calculator, ips_with_no_dispenses):
         """
         SHR Requirement: Return prescription expiry date.
         """
-        result = refill_calculator.calculate_refill_balance(
-            ips_with_no_dispenses, "rx-12345"
-        )
+        result = refill_calculator.calculate_refill_balance(ips_with_no_dispenses, "rx-12345")
 
-        assert result["prescriptionExpiryDate"] is not None, (
-            "Should return prescription expiry date"
-        )
+        assert (
+            result["prescriptionExpiryDate"] is not None
+        ), "Should return prescription expiry date"
 
 
 class TestRefillCalculationErrors:
@@ -395,20 +364,14 @@ class TestRefillCalculationErrors:
         """
         SHR Requirement: Return error if MedicationRequest not found.
         """
-        empty_bundle = {
-            "resourceType": "Bundle",
-            "type": "document",
-            "entry": []
-        }
+        empty_bundle = {"resourceType": "Bundle", "type": "document", "entry": []}
 
         result = refill_calculator.calculate_refill_balance(empty_bundle, "non-existent")
 
-        assert "error" in result, (
-            "Should return error when MedicationRequest not found"
-        )
-        assert "not found" in result["error"].lower(), (
-            "Error message should indicate MedicationRequest not found"
-        )
+        assert "error" in result, "Should return error when MedicationRequest not found"
+        assert (
+            "not found" in result["error"].lower()
+        ), "Error message should indicate MedicationRequest not found"
 
     def test_handles_missing_days_supply(self, prescription_with_5_refills, refill_calculator):
         """
@@ -429,19 +392,17 @@ class TestRefillCalculationErrors:
             "type": "document",
             "entry": [
                 {"resource": prescription_with_5_refills},
-                {"resource": dispense_without_days_supply}
-            ]
+                {"resource": dispense_without_days_supply},
+            ],
         }
 
         result = refill_calculator.calculate_refill_balance(bundle, rx_id)
 
         # Should not error, should use default 30 days
-        assert "error" not in result, (
-            "Should handle missing daysSupply gracefully"
-        )
-        assert result["nextRefillDueDate"] is not None, (
-            "Should calculate next refill with default 30 days"
-        )
+        assert "error" not in result, "Should handle missing daysSupply gracefully"
+        assert (
+            result["nextRefillDueDate"] is not None
+        ), "Should calculate next refill with default 30 days"
 
 
 class TestRefillCalculationOutput:
@@ -458,9 +419,7 @@ class TestRefillCalculationOutput:
         Quote from example output: medicationRequestId, totalAllowedFills, fillsDispensed,
         remainingRefills, nextRefillDueDate, isPrescriptionValid, prescriptionExpiryDate
         """
-        result = refill_calculator.calculate_refill_balance(
-            ips_with_2_dispenses, "rx-12345"
-        )
+        result = refill_calculator.calculate_refill_balance(ips_with_2_dispenses, "rx-12345")
 
         required_fields = [
             "medicationRequestId",
@@ -469,40 +428,30 @@ class TestRefillCalculationOutput:
             "remainingRefills",
             "nextRefillDueDate",
             "isPrescriptionValid",
-            "prescriptionExpiryDate"
+            "prescriptionExpiryDate",
         ]
 
         for field in required_fields:
-            assert field in result, (
-                f"Output must contain '{field}' field"
-            )
+            assert field in result, f"Output must contain '{field}' field"
 
     def test_medication_request_id_in_output(self, refill_calculator, ips_with_2_dispenses):
         """
         SHR Requirement: Output includes the queried medication request ID.
         """
-        result = refill_calculator.calculate_refill_balance(
-            ips_with_2_dispenses, "rx-12345"
-        )
+        result = refill_calculator.calculate_refill_balance(ips_with_2_dispenses, "rx-12345")
 
-        assert result["medicationRequestId"] == "rx-12345", (
-            "Output should include the queried medication request ID"
-        )
+        assert (
+            result["medicationRequestId"] == "rx-12345"
+        ), "Output should include the queried medication request ID"
 
     def test_numeric_fields_are_integers(self, refill_calculator, ips_with_2_dispenses):
         """
         SHR Requirement: Numeric fields should be integers.
         """
-        result = refill_calculator.calculate_refill_balance(
-            ips_with_2_dispenses, "rx-12345"
-        )
+        result = refill_calculator.calculate_refill_balance(ips_with_2_dispenses, "rx-12345")
 
-        assert isinstance(result["totalAllowedFills"], int), (
-            "totalAllowedFills should be an integer"
-        )
-        assert isinstance(result["fillsDispensed"], int), (
-            "fillsDispensed should be an integer"
-        )
-        assert isinstance(result["remainingRefills"], int), (
-            "remainingRefills should be an integer"
-        )
+        assert isinstance(
+            result["totalAllowedFills"], int
+        ), "totalAllowedFills should be an integer"
+        assert isinstance(result["fillsDispensed"], int), "fillsDispensed should be an integer"
+        assert isinstance(result["remainingRefills"], int), "remainingRefills should be an integer"

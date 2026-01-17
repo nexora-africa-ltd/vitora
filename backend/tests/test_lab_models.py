@@ -13,13 +13,7 @@ from django.contrib.auth import get_user_model
 from django.core.exceptions import ValidationError
 
 from hmis.apps.encounters.models import Encounter
-from hmis.apps.laboratory.models import (
-    LabOrder,
-    LabOrderItem,
-    LabResult,
-    LOINCCode,
-    TestCatalog,
-)
+from hmis.apps.laboratory.models import LabOrder, LabOrderItem, LabResult, LOINCCode, TestCatalog
 from hmis.apps.patients.models import Patient
 
 User = get_user_model()
@@ -644,8 +638,12 @@ class TestLabOrderItem:
             cost=Decimal("200.00"),
         )
 
-        item1 = LabOrderItem.objects.create(lab_order=sample_order, test=test1, unit_cost=test1.cost)
-        item2 = LabOrderItem.objects.create(lab_order=sample_order, test=test2, unit_cost=test2.cost)
+        item1 = LabOrderItem.objects.create(
+            lab_order=sample_order, test=test1, unit_cost=test1.cost
+        )
+        item2 = LabOrderItem.objects.create(
+            lab_order=sample_order, test=test2, unit_cost=test2.cost
+        )
 
         assert sample_order.items.count() == 2
         assert item1 in sample_order.items.all()
@@ -1274,6 +1272,7 @@ class TestLabResultAdvanced:
         result.verification_status = "REJECTED"
         result.verified_by = user
         from django.utils import timezone
+
         result.verified_at = timezone.now()
         result.interpretation = "Rejected: Sample hemolyzed"
         result.save()
@@ -1310,4 +1309,3 @@ class TestTestCatalogAdvanced:
             result_type="NUMERIC",
         )
         assert test.specimen_type == "URINE"
-

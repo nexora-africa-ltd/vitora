@@ -19,6 +19,7 @@ User = get_user_model()
 
 class InvalidTransitionError(Exception):
     """Raised when an invalid state transition is attempted."""
+
     pass
 
 
@@ -43,11 +44,11 @@ class LabOrderWorkflow:
     """
 
     VALID_TRANSITIONS = {
-        'ORDERED': ['SPECIMEN_COLLECTED', 'CANCELLED'],
-        'SPECIMEN_COLLECTED': ['IN_PROGRESS', 'CANCELLED'],
-        'IN_PROGRESS': ['COMPLETED', 'CANCELLED'],
-        'COMPLETED': [],  # Terminal state
-        'CANCELLED': [],  # Terminal state
+        "ORDERED": ["SPECIMEN_COLLECTED", "CANCELLED"],
+        "SPECIMEN_COLLECTED": ["IN_PROGRESS", "CANCELLED"],
+        "IN_PROGRESS": ["COMPLETED", "CANCELLED"],
+        "COMPLETED": [],  # Terminal state
+        "CANCELLED": [],  # Terminal state
     }
 
     def __init__(self, lab_order: LabOrder):
@@ -96,13 +97,13 @@ class LabOrderWorkflow:
         previous_status = self.lab_order.status
 
         # Perform transition with appropriate actions
-        if new_status == 'SPECIMEN_COLLECTED':
+        if new_status == "SPECIMEN_COLLECTED":
             self._handle_collection(user, kwargs)
-        elif new_status == 'IN_PROGRESS':
+        elif new_status == "IN_PROGRESS":
             self._handle_processing_start(user)
-        elif new_status == 'COMPLETED':
+        elif new_status == "COMPLETED":
             self._handle_completion(user, kwargs)
-        elif new_status == 'CANCELLED':
+        elif new_status == "CANCELLED":
             self._handle_cancellation(user, kwargs)
 
         # Update order status
@@ -111,15 +112,11 @@ class LabOrderWorkflow:
 
         # Create audit log
         AuditLog.log(
-            action=f'lab_order_{new_status}',
+            action=f"lab_order_{new_status}",
             user=user,
-            resource_type='LabOrder',
+            resource_type="LabOrder",
             resource_id=self.lab_order.id,
-            details={
-                'previous_status': previous_status,
-                'new_status': new_status,
-                **kwargs
-            }
+            details={"previous_status": previous_status, "new_status": new_status, **kwargs},
         )
 
         return self.lab_order
@@ -132,16 +129,11 @@ class LabOrderWorkflow:
             user: User collecting the sample
             kwargs: Should contain 'sample_id' (optional)
         """
-        if not hasattr(self.lab_order, 'queue_entry'):
-            raise InvalidTransitionError(
-                "Lab order must have an associated queue entry"
-            )
+        if not hasattr(self.lab_order, "queue_entry"):
+            raise InvalidTransitionError("Lab order must have an associated queue entry")
 
         queue = self.lab_order.queue_entry
-        queue.collect_sample(
-            collector=user,
-            sample_id=kwargs.get('sample_id', '')
-        )
+        queue.collect_sample(collector=user, sample_id=kwargs.get("sample_id", ""))
 
     def _handle_processing_start(self, user: User) -> None:
         """
@@ -153,15 +145,11 @@ class LabOrderWorkflow:
         Raises:
             InvalidTransitionError: If order is not in-house
         """
-        if self.lab_order.order_type != 'IN_HOUSE':
-            raise InvalidTransitionError(
-                "Only in-house orders can be marked as IN_PROGRESS"
-            )
+        if self.lab_order.order_type != "IN_HOUSE":
+            raise InvalidTransitionError("Only in-house orders can be marked as IN_PROGRESS")
 
-        if not hasattr(self.lab_order, 'queue_entry'):
-            raise InvalidTransitionError(
-                "Lab order must have an associated queue entry"
-            )
+        if not hasattr(self.lab_order, "queue_entry"):
+            raise InvalidTransitionError("Lab order must have an associated queue entry")
 
         queue = self.lab_order.queue_entry
         queue.start_processing()
@@ -182,11 +170,9 @@ class LabOrderWorkflow:
         # Verify results exist (check if any order items have results)
         has_results = any(item.has_result() for item in self.lab_order.items.all())
         if not has_results:
-            raise InvalidTransitionError(
-                "Cannot complete order without results"
-            )
+            raise InvalidTransitionError("Cannot complete order without results")
 
-        if hasattr(self.lab_order, 'queue_entry'):
+        if hasattr(self.lab_order, "queue_entry"):
             queue = self.lab_order.queue_entry
             queue.release_results(user)
 
@@ -204,11 +190,9 @@ class LabOrderWorkflow:
         Raises:
             InvalidTransitionError: If reason is missing
         """
-        reason = kwargs.get('cancellation_reason', '')
+        reason = kwargs.get("cancellation_reason", "")
         if not reason:
-            raise InvalidTransitionError(
-                "Cancellation requires a reason"
-            )
+            raise InvalidTransitionError("Cancellation requires a reason")
 
         self.lab_order.cancellation_reason = reason
         self.lab_order.cancelled_by = user
@@ -217,5 +201,6 @@ class LabOrderWorkflow:
     def _notify_clinician(self) -> None:
         """Send notification when results are ready."""
         from hmis.apps.laboratory.services.notifications import LabNotificationService
+
         service = LabNotificationService()
         service.send_result_notification(self.lab_order)

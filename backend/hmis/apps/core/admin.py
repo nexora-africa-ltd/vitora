@@ -483,46 +483,50 @@ class StaffProfileAdmin(admin.ModelAdmin):
         writer = csv.writer(response)
 
         # Write header row
-        writer.writerow([
-            "Employee ID",
-            "Full Name",
-            "Title",
-            "Username",
-            "Email",
-            "Primary Role",
-            "Primary Department",
-            "Employment Status",
-            "Employment Type",
-            "License Number",
-            "License Expiry",
-            "License Verified",
-            "License Valid",
-            "Date Joined",
-            "Supervisor",
-            "Phone Number",
-        ])
+        writer.writerow(
+            [
+                "Employee ID",
+                "Full Name",
+                "Title",
+                "Username",
+                "Email",
+                "Primary Role",
+                "Primary Department",
+                "Employment Status",
+                "Employment Type",
+                "License Number",
+                "License Expiry",
+                "License Verified",
+                "License Valid",
+                "Date Joined",
+                "Supervisor",
+                "Phone Number",
+            ]
+        )
 
         # Write data rows
         for staff in queryset.select_related(
             "user", "primary_role", "primary_department", "supervisor"
         ):
-            writer.writerow([
-                staff.employee_id,
-                staff.get_full_name(),
-                staff.title or "",
-                staff.user.username,
-                staff.user.email or "",
-                staff.primary_role.name,
-                staff.primary_department.name,
-                staff.get_employment_status_display(),
-                staff.get_employment_type_display(),
-                staff.license_number or "",
-                staff.license_expiry.isoformat() if staff.license_expiry else "",
-                "Yes" if staff.license_verified else "No",
-                "Yes" if staff.is_license_valid() else "No",
-                staff.date_joined.isoformat() if staff.date_joined else "",
-                staff.supervisor.get_full_name() if staff.supervisor else "",
-                staff.phone_number or "",
-            ])
+            writer.writerow(
+                [
+                    staff.employee_id,
+                    staff.get_full_name(),
+                    staff.title or "",
+                    staff.user.username,
+                    staff.user.email or "",
+                    staff.primary_role.name,
+                    staff.primary_department.name,
+                    staff.get_employment_status_display(),
+                    staff.get_employment_type_display(),
+                    staff.license_number or "",
+                    staff.license_expiry.isoformat() if staff.license_expiry else "",
+                    "Yes" if staff.license_verified else "No",
+                    "Yes" if staff.is_license_valid() else "No",
+                    staff.date_joined.isoformat() if staff.date_joined else "",
+                    staff.supervisor.get_full_name() if staff.supervisor else "",
+                    staff.phone_number or "",
+                ]
+            )
 
         return response

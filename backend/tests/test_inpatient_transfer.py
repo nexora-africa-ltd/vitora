@@ -131,8 +131,13 @@ class TestTransferCreation:
     """Tests for Transfer creation."""
 
     def test_create_transfer_with_all_details(
-        self, active_admission, source_ward, source_bed,
-        destination_ward, destination_bed, test_user
+        self,
+        active_admission,
+        source_ward,
+        source_bed,
+        destination_ward,
+        destination_bed,
+        test_user,
     ):
         """Should create transfer with complete details."""
         transfer = Transfer.objects.create(
@@ -159,8 +164,13 @@ class TestTransferCreation:
         assert "SpO2" in transfer.clinical_handover_notes
 
     def test_source_bed_status_update_on_transfer(
-        self, active_admission, source_ward, source_bed,
-        destination_ward, destination_bed, test_user
+        self,
+        active_admission,
+        source_ward,
+        source_bed,
+        destination_ward,
+        destination_bed,
+        test_user,
     ):
         """Should update source bed status to AVAILABLE."""
         assert source_bed.status == "OCCUPIED"
@@ -181,8 +191,13 @@ class TestTransferCreation:
         assert source_bed.status == "AVAILABLE"
 
     def test_destination_bed_status_update_on_transfer(
-        self, active_admission, source_ward, source_bed,
-        destination_ward, destination_bed, test_user
+        self,
+        active_admission,
+        source_ward,
+        source_bed,
+        destination_ward,
+        destination_bed,
+        test_user,
     ):
         """Should update destination bed status to OCCUPIED."""
         assert destination_bed.status == "AVAILABLE"
@@ -203,8 +218,13 @@ class TestTransferCreation:
         assert destination_bed.status == "OCCUPIED"
 
     def test_admission_ward_and_bed_update_on_transfer(
-        self, active_admission, source_ward, source_bed,
-        destination_ward, destination_bed, test_user
+        self,
+        active_admission,
+        source_ward,
+        source_bed,
+        destination_ward,
+        destination_bed,
+        test_user,
     ):
         """Should update admission's current ward and bed."""
         assert active_admission.ward == source_ward
@@ -231,9 +251,7 @@ class TestTransferCreation:
 class TestTransferValidation:
     """Tests for Transfer validation."""
 
-    def test_prevent_same_ward_transfer(
-        self, active_admission, source_ward, source_bed, test_user
-    ):
+    def test_prevent_same_ward_transfer(self, active_admission, source_ward, source_bed, test_user):
         """Should prevent transfer within the same ward."""
         same_ward_bed = Bed.objects.create(
             ward=source_ward,
@@ -257,8 +275,7 @@ class TestTransferValidation:
             transfer.clean()
 
     def test_destination_bed_must_be_available(
-        self, active_admission, source_ward, source_bed,
-        destination_ward, test_user
+        self, active_admission, source_ward, source_bed, destination_ward, test_user
     ):
         """Should validate destination bed is available."""
         occupied_bed = Bed.objects.create(
@@ -283,8 +300,13 @@ class TestTransferValidation:
             transfer.clean()
 
     def test_transfer_date_not_before_admission(
-        self, active_admission, source_ward, source_bed,
-        destination_ward, destination_bed, test_user
+        self,
+        active_admission,
+        source_ward,
+        source_bed,
+        destination_ward,
+        destination_bed,
+        test_user,
     ):
         """Should validate transfer date is not before admission date."""
         past_date = active_admission.admission_date - timedelta(days=1)
@@ -310,8 +332,13 @@ class TestTransferReasons:
     """Tests for different transfer reasons."""
 
     def test_step_up_care_transfer(
-        self, active_admission, source_ward, source_bed,
-        destination_ward, destination_bed, test_user
+        self,
+        active_admission,
+        source_ward,
+        source_bed,
+        destination_ward,
+        destination_bed,
+        test_user,
     ):
         """Should document step-up care transfer (e.g., to ICU)."""
         transfer = Transfer.objects.create(
@@ -330,9 +357,7 @@ class TestTransferReasons:
         assert transfer.reason == "STEP_UP"
         assert "intensive monitoring" in transfer.reason_details
 
-    def test_specialty_care_transfer(
-        self, active_admission, source_ward, source_bed, test_user
-    ):
+    def test_specialty_care_transfer(self, active_admission, source_ward, source_bed, test_user):
         """Should document specialty care transfer."""
         surgical_ward = Ward.objects.create(
             name="Surgical Ward",
@@ -368,8 +393,13 @@ class TestTransferQueries:
     """Tests for Transfer query operations."""
 
     def test_transfer_string_representation(
-        self, active_admission, source_ward, source_bed,
-        destination_ward, destination_bed, test_user
+        self,
+        active_admission,
+        source_ward,
+        source_bed,
+        destination_ward,
+        destination_bed,
+        test_user,
     ):
         """Should return proper string representation."""
         transfer = Transfer.objects.create(

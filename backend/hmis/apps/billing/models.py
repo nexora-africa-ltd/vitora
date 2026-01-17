@@ -38,7 +38,7 @@ class ServiceCategory(models.Model):
     class Meta:
         verbose_name = "Service Category"
         verbose_name_plural = "Service Categories"
-        ordering = ['display_order', 'name']
+        ordering = ["display_order", "name"]
 
     def __str__(self):
         return self.name
@@ -48,11 +48,7 @@ class Service(models.Model):
     """Billable service with pricing."""
 
     id = models.BigAutoField(primary_key=True)
-    category = models.ForeignKey(
-        ServiceCategory,
-        on_delete=models.PROTECT,
-        related_name='services'
-    )
+    category = models.ForeignKey(ServiceCategory, on_delete=models.PROTECT, related_name="services")
 
     # Service identification
     code = models.CharField(max_length=20, unique=True)  # e.g., "CONS-001", "LAB-CBC"
@@ -61,7 +57,7 @@ class Service(models.Model):
 
     # Pricing
     unit_price = models.DecimalField(max_digits=10, decimal_places=2)
-    currency = models.CharField(max_length=3, default='KES')
+    currency = models.CharField(max_length=3, default="KES")
 
     # SHA/Insurance coding
     sha_code = models.CharField(max_length=20, blank=True)  # SHA service code
@@ -76,16 +72,14 @@ class Service(models.Model):
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
     created_by = models.ForeignKey(
-        settings.AUTH_USER_MODEL,
-        on_delete=models.PROTECT,
-        related_name='services_created'
+        settings.AUTH_USER_MODEL, on_delete=models.PROTECT, related_name="services_created"
     )
 
     class Meta:
-        ordering = ['category', 'name']
+        ordering = ["category", "name"]
         indexes = [
-            models.Index(fields=['code']),
-            models.Index(fields=['sha_code']),
+            models.Index(fields=["code"]),
+            models.Index(fields=["sha_code"]),
         ]
 
     def __str__(self):
@@ -99,7 +93,7 @@ class Service(models.Model):
     def clean(self):
         """Validate service data."""
         if self.unit_price is not None and self.unit_price <= 0:
-            raise ValidationError({'unit_price': 'Unit price must be greater than 0.'})
+            raise ValidationError({"unit_price": "Unit price must be greater than 0."})
 
     def get_display_name(self) -> str:
         """Return formatted display name."""
@@ -118,20 +112,20 @@ class Invoice(models.Model):
     """Patient invoice for services rendered."""
 
     class Status(models.TextChoices):
-        DRAFT = 'draft', 'Draft'
-        PENDING = 'pending', 'Pending Payment'
-        PARTIAL = 'partial', 'Partially Paid'
-        PAID = 'paid', 'Paid'
-        OVERDUE = 'overdue', 'Overdue'
-        CANCELLED = 'cancelled', 'Cancelled'
-        WRITTEN_OFF = 'written_off', 'Written Off'
+        DRAFT = "draft", "Draft"
+        PENDING = "pending", "Pending Payment"
+        PARTIAL = "partial", "Partially Paid"
+        PAID = "paid", "Paid"
+        OVERDUE = "overdue", "Overdue"
+        CANCELLED = "cancelled", "Cancelled"
+        WRITTEN_OFF = "written_off", "Written Off"
 
     class PaymentType(models.TextChoices):
-        CASH = 'cash', 'Cash'
-        MPESA = 'mpesa', 'M-Pesa'
-        INSURANCE = 'insurance', 'Insurance'
-        CORPORATE = 'corporate', 'Corporate Account'
-        MIXED = 'mixed', 'Mixed Payment'
+        CASH = "cash", "Cash"
+        MPESA = "mpesa", "M-Pesa"
+        INSURANCE = "insurance", "Insurance"
+        CORPORATE = "corporate", "Corporate Account"
+        MIXED = "mixed", "Mixed Payment"
 
     id = models.BigAutoField(primary_key=True)
 
@@ -140,28 +134,20 @@ class Invoice(models.Model):
 
     # Patient and encounter linkage
     patient = models.ForeignKey(
-        'patients.Patient',
-        on_delete=models.PROTECT,
-        related_name='invoices'
+        "patients.Patient", on_delete=models.PROTECT, related_name="invoices"
     )
     encounter = models.ForeignKey(
-        'encounters.Encounter',
+        "encounters.Encounter",
         on_delete=models.PROTECT,
-        related_name='invoices',
+        related_name="invoices",
         null=True,
-        blank=True
+        blank=True,
     )
 
     # Status
-    status = models.CharField(
-        max_length=20,
-        choices=Status.choices,
-        default=Status.DRAFT
-    )
+    status = models.CharField(max_length=20, choices=Status.choices, default=Status.DRAFT)
     payment_type = models.CharField(
-        max_length=20,
-        choices=PaymentType.choices,
-        default=PaymentType.CASH
+        max_length=20, choices=PaymentType.choices, default=PaymentType.CASH
     )
 
     # Dates
@@ -169,47 +155,19 @@ class Invoice(models.Model):
     due_date = models.DateField()
 
     # Amounts (calculated from items)
-    subtotal = models.DecimalField(
-        max_digits=12,
-        decimal_places=2,
-        default=Decimal('0.00')
-    )
-    tax_amount = models.DecimalField(
-        max_digits=12,
-        decimal_places=2,
-        default=Decimal('0.00')
-    )
-    discount_amount = models.DecimalField(
-        max_digits=12,
-        decimal_places=2,
-        default=Decimal('0.00')
-    )
+    subtotal = models.DecimalField(max_digits=12, decimal_places=2, default=Decimal("0.00"))
+    tax_amount = models.DecimalField(max_digits=12, decimal_places=2, default=Decimal("0.00"))
+    discount_amount = models.DecimalField(max_digits=12, decimal_places=2, default=Decimal("0.00"))
     discount_reason = models.CharField(max_length=200, blank=True)
-    total_amount = models.DecimalField(
-        max_digits=12,
-        decimal_places=2,
-        default=Decimal('0.00')
-    )
-    amount_paid = models.DecimalField(
-        max_digits=12,
-        decimal_places=2,
-        default=Decimal('0.00')
-    )
-    balance_due = models.DecimalField(
-        max_digits=12,
-        decimal_places=2,
-        default=Decimal('0.00')
-    )
+    total_amount = models.DecimalField(max_digits=12, decimal_places=2, default=Decimal("0.00"))
+    amount_paid = models.DecimalField(max_digits=12, decimal_places=2, default=Decimal("0.00"))
+    balance_due = models.DecimalField(max_digits=12, decimal_places=2, default=Decimal("0.00"))
 
     # Insurance/SHA details (if applicable)
     insurance_provider = models.CharField(max_length=100, blank=True)
     insurance_member_no = models.CharField(max_length=50, blank=True)
     sha_claim_number = models.CharField(max_length=50, blank=True)
-    insurance_amount = models.DecimalField(
-        max_digits=12,
-        decimal_places=2,
-        default=Decimal('0.00')
-    )
+    insurance_amount = models.DecimalField(max_digits=12, decimal_places=2, default=Decimal("0.00"))
 
     # Notes
     notes = models.TextField(blank=True)
@@ -219,26 +177,24 @@ class Invoice(models.Model):
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
     created_by = models.ForeignKey(
-        settings.AUTH_USER_MODEL,
-        on_delete=models.PROTECT,
-        related_name='invoices_created'
+        settings.AUTH_USER_MODEL, on_delete=models.PROTECT, related_name="invoices_created"
     )
     cancelled_by = models.ForeignKey(
         settings.AUTH_USER_MODEL,
         on_delete=models.PROTECT,
-        related_name='invoices_cancelled',
+        related_name="invoices_cancelled",
         null=True,
-        blank=True
+        blank=True,
     )
     cancelled_at = models.DateTimeField(null=True, blank=True)
     cancellation_reason = models.TextField(blank=True)
 
     class Meta:
-        ordering = ['-invoice_date', '-created_at']
+        ordering = ["-invoice_date", "-created_at"]
         indexes = [
-            models.Index(fields=['invoice_number']),
-            models.Index(fields=['patient', 'status']),
-            models.Index(fields=['status', 'due_date']),
+            models.Index(fields=["invoice_number"]),
+            models.Index(fields=["patient", "status"]),
+            models.Index(fields=["status", "due_date"]),
         ]
 
     def __str__(self):
@@ -249,18 +205,14 @@ class Invoice(models.Model):
         if not self.invoice_number:
             self.invoice_number = self.generate_invoice_number()
         if not self.due_date:
-            self.due_date = self.invoice_date + timedelta(
-                days=settings.BILLING_DEFAULT_DUE_DAYS
-            )
+            self.due_date = self.invoice_date + timedelta(days=settings.BILLING_DEFAULT_DUE_DAYS)
         self.full_clean()
         super().save(*args, **kwargs)
 
     def clean(self):
         """Validate invoice data."""
         if self.due_date and self.invoice_date and self.due_date < self.invoice_date:
-            raise ValidationError({
-                'due_date': 'Due date must be on or after invoice date.'
-            })
+            raise ValidationError({"due_date": "Due date must be on or after invoice date."})
 
     @staticmethod
     def generate_invoice_number() -> str:
@@ -268,17 +220,19 @@ class Invoice(models.Model):
         from datetime import date
 
         today = date.today()
-        date_str = today.strftime('%Y%m%d')
+        date_str = today.strftime("%Y%m%d")
         prefix = f"{settings.BILLING_INVOICE_PREFIX}{date_str}-"
 
         # Get the last invoice number for today
-        last_invoice = Invoice.objects.filter(
-            invoice_number__startswith=prefix
-        ).order_by('-invoice_number').first()
+        last_invoice = (
+            Invoice.objects.filter(invoice_number__startswith=prefix)
+            .order_by("-invoice_number")
+            .first()
+        )
 
         if last_invoice:
             # Extract the sequence number and increment
-            last_seq = int(last_invoice.invoice_number.split('-')[-1])
+            last_seq = int(last_invoice.invoice_number.split("-")[-1])
             new_seq = last_seq + 1
         else:
             new_seq = 1
@@ -288,15 +242,10 @@ class Invoice(models.Model):
     def calculate_totals(self):
         """Calculate invoice totals from items."""
         items = self.items.all()
-        self.subtotal = sum(item.line_total for item in items) if items else Decimal('0.00')
+        self.subtotal = sum(item.line_total for item in items) if items else Decimal("0.00")
         self.total_amount = self.subtotal - self.discount_amount + self.tax_amount
         self.balance_due = self.total_amount - self.amount_paid
-        self.save(update_fields=[
-            'subtotal',
-            'total_amount',
-            'balance_due',
-            'updated_at'
-        ])
+        self.save(update_fields=["subtotal", "total_amount", "balance_due", "updated_at"])
 
     def apply_discount(self, amount: Decimal, reason: str):
         """Apply discount to invoice."""
@@ -304,7 +253,7 @@ class Invoice(models.Model):
             raise ValidationError("Discount amount must be positive.")
 
         # Handle zero subtotal case (no items yet)
-        if self.subtotal == Decimal('0.00') and amount > Decimal('0.00'):
+        if self.subtotal == Decimal("0.00") and amount > Decimal("0.00"):
             raise ValidationError("Cannot apply discount to invoice with zero subtotal.")
 
         if amount > self.subtotal:
@@ -336,12 +285,7 @@ class Invoice(models.Model):
         elif self.amount_paid > 0:
             self.status = self.Status.PARTIAL
 
-        self.save(update_fields=[
-            'amount_paid',
-            'balance_due',
-            'status',
-            'updated_at'
-        ])
+        self.save(update_fields=["amount_paid", "balance_due", "status", "updated_at"])
 
     def cancel(self, user, reason: str):
         """Cancel the invoice."""
@@ -365,12 +309,12 @@ class Invoice(models.Model):
     def mark_overdue(self):
         """Mark invoice as overdue if past grace period."""
         grace_period = timedelta(days=settings.BILLING_OVERDUE_GRACE_DAYS)
-        if (
-            date.today() > (self.due_date + grace_period)
-            and self.status in [self.Status.PENDING, self.Status.PARTIAL]
-        ):
+        if date.today() > (self.due_date + grace_period) and self.status in [
+            self.Status.PENDING,
+            self.Status.PARTIAL,
+        ]:
             self.status = self.Status.OVERDUE
-            self.save(update_fields=['status', 'updated_at'])
+            self.save(update_fields=["status", "updated_at"])
 
     def can_be_edited(self) -> bool:
         """Check if invoice can be edited."""
@@ -381,92 +325,74 @@ class InvoiceItem(models.Model):
     """Line item on an invoice."""
 
     class ItemType(models.TextChoices):
-        SERVICE = 'service', 'Service'
-        PHARMACY = 'pharmacy', 'Pharmacy Item'
-        LAB = 'lab', 'Lab Test'
-        CONSUMABLE = 'consumable', 'Consumable'
-        OTHER = 'other', 'Other'
+        SERVICE = "service", "Service"
+        PHARMACY = "pharmacy", "Pharmacy Item"
+        LAB = "lab", "Lab Test"
+        CONSUMABLE = "consumable", "Consumable"
+        OTHER = "other", "Other"
 
     id = models.BigAutoField(primary_key=True)
-    invoice = models.ForeignKey(
-        Invoice,
-        on_delete=models.CASCADE,
-        related_name='items'
-    )
+    invoice = models.ForeignKey(Invoice, on_delete=models.CASCADE, related_name="items")
 
     # Item identification
-    item_type = models.CharField(
-        max_length=20,
-        choices=ItemType.choices,
-        default=ItemType.SERVICE
-    )
+    item_type = models.CharField(max_length=20, choices=ItemType.choices, default=ItemType.SERVICE)
     service = models.ForeignKey(
-        'billing.Service',
+        "billing.Service",
         on_delete=models.PROTECT,
         null=True,
         blank=True,
-        related_name='invoice_items'
+        related_name="invoice_items",
     )
 
     # For pharmacy items (future integration)
     drug = models.ForeignKey(
-        'pharmacy.Drug',
+        "pharmacy.Drug",
         on_delete=models.PROTECT,
         null=True,
         blank=True,
-        related_name='invoice_items'
+        related_name="invoice_items",
     )
     dispensing = models.ForeignKey(
-        'pharmacy.Dispensing',
+        "pharmacy.Dispensing",
         on_delete=models.PROTECT,
         null=True,
         blank=True,
-        related_name='invoice_items'
+        related_name="invoice_items",
     )
 
     # For lab items (future integration)
     lab_order = models.ForeignKey(
-        'laboratory.LabOrder',
+        "laboratory.LabOrder",
         on_delete=models.PROTECT,
         null=True,
         blank=True,
-        related_name='invoice_items'
+        related_name="invoice_items",
     )
 
     # Item details
     description = models.CharField(max_length=300)
-    quantity = models.DecimalField(
-        max_digits=10,
-        decimal_places=2,
-        default=Decimal('1.00')
-    )
+    quantity = models.DecimalField(max_digits=10, decimal_places=2, default=Decimal("1.00"))
     unit_price = models.DecimalField(max_digits=10, decimal_places=2)
 
     # Calculated
     line_total = models.DecimalField(max_digits=12, decimal_places=2)
 
     # Discount at item level (optional)
-    discount_amount = models.DecimalField(
-        max_digits=10,
-        decimal_places=2,
-        default=Decimal('0.00')
-    )
+    discount_amount = models.DecimalField(max_digits=10, decimal_places=2, default=Decimal("0.00"))
     discount_reason = models.CharField(max_length=200, blank=True)
 
     # For insurance claims
     sha_code = models.CharField(max_length=20, blank=True)
     is_covered_by_insurance = models.BooleanField(default=False)
     insurance_approved_amount = models.DecimalField(
-        max_digits=10,
-        decimal_places=2,
-        default=Decimal('0.00')
+        max_digits=10, decimal_places=2, default=Decimal("0.00")
     )
 
     # Audit
     created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:
-        ordering = ['created_at']
+        ordering = ["created_at"]
 
     def __str__(self):
         return f"{self.description} - {self.quantity} x {self.unit_price}"
@@ -485,9 +411,9 @@ class InvoiceItem(models.Model):
     def clean(self):
         """Validate invoice item data."""
         if self.quantity is not None and self.quantity <= 0:
-            raise ValidationError({'quantity': 'Quantity must be greater than 0.'})
+            raise ValidationError({"quantity": "Quantity must be greater than 0."})
         if self.unit_price is not None and self.unit_price <= 0:
-            raise ValidationError({'unit_price': 'Unit price must be greater than 0.'})
+            raise ValidationError({"unit_price": "Unit price must be greater than 0."})
 
     def delete(self, *args, **kwargs):
         """Override delete to update invoice totals."""
@@ -498,29 +424,30 @@ class InvoiceItem(models.Model):
     def calculate_line_total(self) -> Decimal:
         """Calculate line total."""
         from decimal import ROUND_HALF_UP, Decimal
+
         line_total = (self.quantity * self.unit_price) - self.discount_amount
         # Round to 2 decimal places to avoid validation errors
-        return line_total.quantize(Decimal('0.01'), rounding=ROUND_HALF_UP)
+        return line_total.quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
 
 
 class Payment(models.Model):
     """Payment record against an invoice."""
 
     class Method(models.TextChoices):
-        CASH = 'cash', 'Cash'
-        MPESA = 'mpesa', 'M-Pesa'
-        CARD = 'card', 'Card'
-        BANK_TRANSFER = 'bank_transfer', 'Bank Transfer'
-        INSURANCE = 'insurance', 'Insurance Claim'
-        CORPORATE = 'corporate', 'Corporate Account'
-        CHEQUE = 'cheque', 'Cheque'
+        CASH = "cash", "Cash"
+        MPESA = "mpesa", "M-Pesa"
+        CARD = "card", "Card"
+        BANK_TRANSFER = "bank_transfer", "Bank Transfer"
+        INSURANCE = "insurance", "Insurance Claim"
+        CORPORATE = "corporate", "Corporate Account"
+        CHEQUE = "cheque", "Cheque"
 
     class Status(models.TextChoices):
-        PENDING = 'pending', 'Pending'
-        COMPLETED = 'completed', 'Completed'
-        FAILED = 'failed', 'Failed'
-        REVERSED = 'reversed', 'Reversed'
-        REFUNDED = 'refunded', 'Refunded'
+        PENDING = "pending", "Pending"
+        COMPLETED = "completed", "Completed"
+        FAILED = "failed", "Failed"
+        REVERSED = "reversed", "Reversed"
+        REFUNDED = "refunded", "Refunded"
 
     id = models.BigAutoField(primary_key=True)
 
@@ -528,12 +455,12 @@ class Payment(models.Model):
     payment_reference = models.CharField(max_length=100, unique=True, editable=False)
 
     # Linkage
-    invoice = models.ForeignKey(Invoice, on_delete=models.PROTECT, related_name='payments')
+    invoice = models.ForeignKey(Invoice, on_delete=models.PROTECT, related_name="payments")
 
     # Payment details
     method = models.CharField(max_length=20, choices=Method.choices)
     amount = models.DecimalField(max_digits=12, decimal_places=2)
-    currency = models.CharField(max_length=3, default='KES')
+    currency = models.CharField(max_length=3, default="KES")
 
     # Status
     status = models.CharField(max_length=20, choices=Status.choices, default=Status.PENDING)
@@ -558,17 +485,15 @@ class Payment(models.Model):
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
     received_by = models.ForeignKey(
-        settings.AUTH_USER_MODEL,
-        on_delete=models.PROTECT,
-        related_name='payments_received'
+        settings.AUTH_USER_MODEL, on_delete=models.PROTECT, related_name="payments_received"
     )
 
     class Meta:
-        ordering = ['-payment_date']
+        ordering = ["-payment_date"]
         indexes = [
-            models.Index(fields=['payment_reference']),
-            models.Index(fields=['mpesa_receipt_number']),
-            models.Index(fields=['invoice', 'status']),
+            models.Index(fields=["payment_reference"]),
+            models.Index(fields=["mpesa_receipt_number"]),
+            models.Index(fields=["invoice", "status"]),
         ]
 
     def __str__(self):
@@ -584,7 +509,7 @@ class Payment(models.Model):
     def clean(self):
         """Validate payment data."""
         if self.amount is not None and self.amount <= 0:
-            raise ValidationError({'amount': 'Payment amount must be greater than 0.'})
+            raise ValidationError({"amount": "Payment amount must be greater than 0."})
 
         # Skip balance validation if payment is being reversed or refunded
         if self.pk and self.status in [self.Status.REVERSED, self.Status.REFUNDED]:
@@ -592,26 +517,28 @@ class Payment(models.Model):
 
         # Check invoice balance
         if self.invoice and self.amount and self.amount > self.invoice.balance_due:
-            raise ValidationError({'amount': 'Payment amount exceeds invoice balance.'})
+            raise ValidationError({"amount": "Payment amount exceeds invoice balance."})
 
         # Check invoice status
         if self.invoice and self.invoice.status == Invoice.Status.CANCELLED:
-            raise ValidationError('Cannot create payment for cancelled invoice.')
+            raise ValidationError("Cannot create payment for cancelled invoice.")
 
     @staticmethod
     def generate_reference() -> str:
         """Generate unique payment reference in format PAY-YYYYMMDD-XXXX."""
         today = date.today()
-        date_str = today.strftime('%Y%m%d')
+        date_str = today.strftime("%Y%m%d")
         prefix = f"{settings.BILLING_PAYMENT_PREFIX}{date_str}-"
 
         # Get the last payment reference for today
-        last_payment = Payment.objects.filter(
-            payment_reference__startswith=prefix
-        ).order_by('-payment_reference').first()
+        last_payment = (
+            Payment.objects.filter(payment_reference__startswith=prefix)
+            .order_by("-payment_reference")
+            .first()
+        )
 
         if last_payment:
-            last_seq = int(last_payment.payment_reference.split('-')[-1])
+            last_seq = int(last_payment.payment_reference.split("-")[-1])
             new_seq = last_seq + 1
         else:
             new_seq = 1
@@ -622,7 +549,7 @@ class Payment(models.Model):
         """Mark payment as completed and update invoice."""
         self.status = self.Status.COMPLETED
         self.processed_at = timezone.now()
-        self.save(update_fields=['status', 'processed_at', 'updated_at'])
+        self.save(update_fields=["status", "processed_at", "updated_at"])
 
         # Update invoice
         self.invoice.record_payment(self.amount)
@@ -634,7 +561,7 @@ class Payment(models.Model):
 
         self.status = self.Status.REVERSED
         self.failure_reason = reason
-        self.save(update_fields=['status', 'failure_reason', 'updated_at'])
+        self.save(update_fields=["status", "failure_reason", "updated_at"])
 
         # Update invoice (reverse the payment)
         self.invoice.amount_paid -= self.amount
@@ -646,7 +573,7 @@ class Payment(models.Model):
         elif self.invoice.amount_paid > 0:
             self.invoice.status = Invoice.Status.PARTIAL
 
-        self.invoice.save(update_fields=['amount_paid', 'balance_due', 'status', 'updated_at'])
+        self.invoice.save(update_fields=["amount_paid", "balance_due", "status", "updated_at"])
 
     def refund(self, amount: Decimal, reason: str):
         """Process refund."""
@@ -655,7 +582,7 @@ class Payment(models.Model):
 
         self.status = self.Status.REFUNDED
         self.notes = f"Refund: {reason}"
-        self.save(update_fields=['status', 'notes', 'updated_at'])
+        self.save(update_fields=["status", "notes", "updated_at"])
 
     def is_mpesa(self) -> bool:
         """Check if M-Pesa payment."""
@@ -671,9 +598,11 @@ class Receipt(models.Model):
     receipt_number = models.CharField(max_length=50, unique=True, editable=False)
 
     # Linkage
-    payment = models.OneToOneField(Payment, on_delete=models.PROTECT, related_name='receipt')
-    invoice = models.ForeignKey(Invoice, on_delete=models.PROTECT, related_name='receipts')
-    patient = models.ForeignKey('patients.Patient', on_delete=models.PROTECT, related_name='receipts')
+    payment = models.OneToOneField(Payment, on_delete=models.PROTECT, related_name="receipt")
+    invoice = models.ForeignKey(Invoice, on_delete=models.PROTECT, related_name="receipts")
+    patient = models.ForeignKey(
+        "patients.Patient", on_delete=models.PROTECT, related_name="receipts"
+    )
 
     # Receipt details
     receipt_date = models.DateTimeField(default=timezone.now)
@@ -704,16 +633,16 @@ class Receipt(models.Model):
     voided_by = models.ForeignKey(
         settings.AUTH_USER_MODEL,
         on_delete=models.PROTECT,
-        related_name='receipts_voided',
+        related_name="receipts_voided",
         null=True,
-        blank=True
+        blank=True,
     )
     void_reason = models.TextField(blank=True)
 
     class Meta:
-        ordering = ['-receipt_date']
+        ordering = ["-receipt_date"]
         indexes = [
-            models.Index(fields=['receipt_number']),
+            models.Index(fields=["receipt_number"]),
         ]
 
     def __str__(self):
@@ -731,16 +660,18 @@ class Receipt(models.Model):
     def generate_receipt_number() -> str:
         """Generate unique receipt number in format RCP-YYYYMMDD-XXXX."""
         today = date.today()
-        date_str = today.strftime('%Y%m%d')
+        date_str = today.strftime("%Y%m%d")
         prefix = f"{settings.BILLING_RECEIPT_PREFIX}{date_str}-"
 
         # Get the last receipt number for today
-        last_receipt = Receipt.objects.filter(
-            receipt_number__startswith=prefix
-        ).order_by('-receipt_number').first()
+        last_receipt = (
+            Receipt.objects.filter(receipt_number__startswith=prefix)
+            .order_by("-receipt_number")
+            .first()
+        )
 
         if last_receipt:
-            last_seq = int(last_receipt.receipt_number.split('-')[-1])
+            last_seq = int(last_receipt.receipt_number.split("-")[-1])
             new_seq = last_seq + 1
         else:
             new_seq = 1
@@ -750,6 +681,7 @@ class Receipt(models.Model):
     def convert_amount_to_words(self) -> str:
         """Convert amount to words."""
         from num2words import num2words
+
         # num2words doesn't support KES directly, so use generic currency
         amount_int = int(self.amount)
         amount_cents = int((self.amount - amount_int) * 100)
@@ -783,18 +715,18 @@ class CreditNote(models.Model):
     """Credit note for refunds or adjustments."""
 
     class Reason(models.TextChoices):
-        SERVICE_NOT_RENDERED = 'service_not_rendered', 'Service Not Rendered'
-        OVERCHARGE = 'overcharge', 'Overcharge Correction'
-        DUPLICATE_CHARGE = 'duplicate', 'Duplicate Charge'
-        INSURANCE_ADJUSTMENT = 'insurance', 'Insurance Adjustment'
-        GOODWILL = 'goodwill', 'Goodwill Gesture'
-        OTHER = 'other', 'Other'
+        SERVICE_NOT_RENDERED = "service_not_rendered", "Service Not Rendered"
+        OVERCHARGE = "overcharge", "Overcharge Correction"
+        DUPLICATE_CHARGE = "duplicate", "Duplicate Charge"
+        INSURANCE_ADJUSTMENT = "insurance", "Insurance Adjustment"
+        GOODWILL = "goodwill", "Goodwill Gesture"
+        OTHER = "other", "Other"
 
     class Status(models.TextChoices):
-        DRAFT = 'draft', 'Draft'
-        APPROVED = 'approved', 'Approved'
-        REFUNDED = 'refunded', 'Refunded'
-        REJECTED = 'rejected', 'Rejected'
+        DRAFT = "draft", "Draft"
+        APPROVED = "approved", "Approved"
+        REFUNDED = "refunded", "Refunded"
+        REJECTED = "rejected", "Rejected"
 
     id = models.BigAutoField(primary_key=True)
 
@@ -802,14 +734,12 @@ class CreditNote(models.Model):
     credit_note_number = models.CharField(max_length=50, unique=True, editable=False)
 
     # Linkage
-    invoice = models.ForeignKey(Invoice, on_delete=models.PROTECT, related_name='credit_notes')
-    patient = models.ForeignKey('patients.Patient', on_delete=models.PROTECT, related_name='credit_notes')
+    invoice = models.ForeignKey(Invoice, on_delete=models.PROTECT, related_name="credit_notes")
+    patient = models.ForeignKey(
+        "patients.Patient", on_delete=models.PROTECT, related_name="credit_notes"
+    )
     original_payment = models.ForeignKey(
-        Payment,
-        on_delete=models.PROTECT,
-        related_name='credit_notes',
-        null=True,
-        blank=True
+        Payment, on_delete=models.PROTECT, related_name="credit_notes", null=True, blank=True
     )
 
     # Credit details
@@ -827,16 +757,14 @@ class CreditNote(models.Model):
 
     # Approval workflow
     requested_by = models.ForeignKey(
-        settings.AUTH_USER_MODEL,
-        on_delete=models.PROTECT,
-        related_name='credit_notes_requested'
+        settings.AUTH_USER_MODEL, on_delete=models.PROTECT, related_name="credit_notes_requested"
     )
     approved_by = models.ForeignKey(
         settings.AUTH_USER_MODEL,
         on_delete=models.PROTECT,
-        related_name='credit_notes_approved',
+        related_name="credit_notes_approved",
         null=True,
-        blank=True
+        blank=True,
     )
     approved_at = models.DateTimeField(null=True, blank=True)
 
@@ -845,7 +773,7 @@ class CreditNote(models.Model):
     updated_at = models.DateTimeField(auto_now=True)
 
     class Meta:
-        ordering = ['-created_at']
+        ordering = ["-created_at"]
 
     def __str__(self):
         return f"{self.credit_note_number} - {self.amount}"
@@ -860,26 +788,28 @@ class CreditNote(models.Model):
     def clean(self):
         """Validate credit note data."""
         if self.amount is not None and self.amount <= 0:
-            raise ValidationError({'amount': 'Credit note amount must be greater than 0.'})
+            raise ValidationError({"amount": "Credit note amount must be greater than 0."})
 
         # Check against invoice total
         if self.invoice and self.amount and self.amount > self.invoice.total_amount:
-            raise ValidationError({'amount': 'Credit note amount cannot exceed invoice total.'})
+            raise ValidationError({"amount": "Credit note amount cannot exceed invoice total."})
 
     @staticmethod
     def generate_credit_note_number() -> str:
         """Generate unique credit note number in format CN-YYYYMMDD-XXXX."""
         today = date.today()
-        date_str = today.strftime('%Y%m%d')
+        date_str = today.strftime("%Y%m%d")
         prefix = f"CN-{date_str}-"
 
         # Get the last credit note number for today
-        last_credit_note = CreditNote.objects.filter(
-            credit_note_number__startswith=prefix
-        ).order_by('-credit_note_number').first()
+        last_credit_note = (
+            CreditNote.objects.filter(credit_note_number__startswith=prefix)
+            .order_by("-credit_note_number")
+            .first()
+        )
 
         if last_credit_note:
-            last_seq = int(last_credit_note.credit_note_number.split('-')[-1])
+            last_seq = int(last_credit_note.credit_note_number.split("-")[-1])
             new_seq = last_seq + 1
         else:
             new_seq = 1
@@ -931,110 +861,95 @@ class SHAMember(models.Model):
     """
 
     class MembershipStatus(models.TextChoices):
-        ACTIVE = 'active', 'Active'
-        INACTIVE = 'inactive', 'Inactive'
-        SUSPENDED = 'suspended', 'Suspended'
-        EXPIRED = 'expired', 'Expired'
-        PENDING_VERIFICATION = 'pending_verification', 'Pending Verification'
+        ACTIVE = "active", "Active"
+        INACTIVE = "inactive", "Inactive"
+        SUSPENDED = "suspended", "Suspended"
+        EXPIRED = "expired", "Expired"
+        PENDING_VERIFICATION = "pending_verification", "Pending Verification"
 
     class MembershipType(models.TextChoices):
-        PRINCIPAL = 'principal', 'Principal Member'
-        SPOUSE = 'spouse', 'Spouse'
-        CHILD = 'child', 'Child/Dependent'
-        PARENT = 'parent', 'Parent'
-        OTHER_DEPENDENT = 'other', 'Other Dependent'
+        PRINCIPAL = "principal", "Principal Member"
+        SPOUSE = "spouse", "Spouse"
+        CHILD = "child", "Child/Dependent"
+        PARENT = "parent", "Parent"
+        OTHER_DEPENDENT = "other", "Other Dependent"
 
     id = models.BigAutoField(primary_key=True)
 
     # Patient linkage - OneToOne ensures one SHA membership per patient
     patient = models.OneToOneField(
-        'patients.Patient',
-        on_delete=models.CASCADE,
-        related_name='sha_member'
+        "patients.Patient", on_delete=models.CASCADE, related_name="sha_member"
     )
 
     # SHA identification
     sha_number = models.CharField(
-        max_length=20,
-        unique=True,
-        help_text="SHA member number (format: SHA-XXXXXXXXXX)"
+        max_length=20, unique=True, help_text="SHA member number (format: SHA-XXXXXXXXXX)"
     )
     national_id = models.CharField(
-        max_length=20,
-        db_index=True,
-        blank=True,
-        help_text="Kenya National ID linked to SHA"
+        max_length=20, db_index=True, blank=True, help_text="Kenya National ID linked to SHA"
     )
 
     # Membership details
     membership_type = models.CharField(
-        max_length=20,
-        choices=MembershipType.choices,
-        default=MembershipType.PRINCIPAL
+        max_length=20, choices=MembershipType.choices, default=MembershipType.PRINCIPAL
     )
     principal_sha_number = models.CharField(
         max_length=20,
         blank=True,
-        help_text="Principal member's SHA number (for dependents) - external reference"
+        help_text="Principal member's SHA number (for dependents) - external reference",
     )
     # ForeignKey for internal referential integrity
     principal = models.ForeignKey(
-        'self',
+        "self",
         on_delete=models.PROTECT,
         null=True,
         blank=True,
-        related_name='dependents',
-        help_text="Principal member this dependent belongs to"
+        related_name="dependents",
+        help_text="Principal member this dependent belongs to",
     )
 
     # Status
     status = models.CharField(
         max_length=20,
         choices=MembershipStatus.choices,
-        default=MembershipStatus.PENDING_VERIFICATION
+        default=MembershipStatus.PENDING_VERIFICATION,
     )
 
     # Eligibility cache
     last_eligibility_check = models.DateTimeField(null=True, blank=True)
     eligibility_valid_until = models.DateField(null=True, blank=True)
     eligibility_response = models.JSONField(
-        default=dict,
-        blank=True,
-        help_text="Cached response from last eligibility check"
+        default=dict, blank=True, help_text="Cached response from last eligibility check"
     )
 
     # Coverage details
     coverage_start_date = models.DateField(null=True, blank=True)
     coverage_end_date = models.DateField(null=True, blank=True)
     benefit_package = models.CharField(
-        max_length=50,
-        blank=True,
-        help_text="SHA benefit package code"
+        max_length=50, blank=True, help_text="SHA benefit package code"
     )
 
     # PFMS (Public Finance Management System) Coverage
     # For vulnerable populations: indigent, elderly, disabled, orphans
     # Reference: SHA Integration Checklist item #13
     class PFMSCategory(models.TextChoices):
-        VULNERABLE = 'vulnerable', 'Vulnerable Population'
-        ELDERLY = 'elderly', 'Elderly (65+)'
-        DISABLED = 'disabled', 'Persons with Disability'
-        ORPHAN = 'orphan', 'Orphan/Vulnerable Child'
-        INDIGENT = 'indigent', 'Indigent'
+        VULNERABLE = "vulnerable", "Vulnerable Population"
+        ELDERLY = "elderly", "Elderly (65+)"
+        DISABLED = "disabled", "Persons with Disability"
+        ORPHAN = "orphan", "Orphan/Vulnerable Child"
+        INDIGENT = "indigent", "Indigent"
 
     is_pfms_eligible = models.BooleanField(
-        default=False,
-        help_text="Is this member eligible for PFMS (government subsidy)?"
+        default=False, help_text="Is this member eligible for PFMS (government subsidy)?"
     )
     pfms_category = models.CharField(
         max_length=20,
         choices=PFMSCategory.choices,
         blank=True,
-        help_text="PFMS category for government-subsidized coverage"
+        help_text="PFMS category for government-subsidized coverage",
     )
     pfms_verified = models.BooleanField(
-        default=False,
-        help_text="Has PFMS eligibility been verified?"
+        default=False, help_text="Has PFMS eligibility been verified?"
     )
     pfms_verified_at = models.DateTimeField(null=True, blank=True)
 
@@ -1042,28 +957,26 @@ class SHAMember(models.Model):
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
     created_by = models.ForeignKey(
-        settings.AUTH_USER_MODEL,
-        on_delete=models.PROTECT,
-        related_name='sha_members_created'
+        settings.AUTH_USER_MODEL, on_delete=models.PROTECT, related_name="sha_members_created"
     )
     verified_by = models.ForeignKey(
         settings.AUTH_USER_MODEL,
         on_delete=models.PROTECT,
-        related_name='sha_members_verified',
+        related_name="sha_members_verified",
         null=True,
-        blank=True
+        blank=True,
     )
     verified_at = models.DateTimeField(null=True, blank=True)
 
     class Meta:
         verbose_name = "SHA Member"
         verbose_name_plural = "SHA Members"
-        ordering = ['-created_at']
+        ordering = ["-created_at"]
         indexes = [
-            models.Index(fields=['sha_number']),
-            models.Index(fields=['national_id']),
-            models.Index(fields=['status']),
-            models.Index(fields=['is_pfms_eligible']),
+            models.Index(fields=["sha_number"]),
+            models.Index(fields=["national_id"]),
+            models.Index(fields=["status"]),
+            models.Index(fields=["is_pfms_eligible"]),
         ]
 
     def __str__(self):
@@ -1079,15 +992,12 @@ class SHAMember(models.Model):
         errors = {}
 
         # Validate SHA number format (must start with SHA-)
-        if self.sha_number and not self.sha_number.startswith('SHA-'):
-            errors['sha_number'] = 'SHA number must start with "SHA-"'
+        if self.sha_number and not self.sha_number.startswith("SHA-"):
+            errors["sha_number"] = 'SHA number must start with "SHA-"'
 
         # Principal members should have a National ID; dependents may not
-        if (
-            self.membership_type == self.MembershipType.PRINCIPAL
-            and not self.national_id
-        ):
-            errors['national_id'] = 'National ID is required for principal members'
+        if self.membership_type == self.MembershipType.PRINCIPAL and not self.national_id:
+            errors["national_id"] = "National ID is required for principal members"
 
         # Dependents must have principal SHA number or principal FK
         if (
@@ -1095,18 +1005,16 @@ class SHAMember(models.Model):
             and not self.principal_sha_number
             and not self.principal
         ):
-            errors['principal_sha_number'] = (
-                'Dependents must have a principal SHA number or principal member reference'
-            )
+            errors[
+                "principal_sha_number"
+            ] = "Dependents must have a principal SHA number or principal member reference"
         # Validate principal FK points to a principal member
         if (
             self.membership_type != self.MembershipType.PRINCIPAL
             and self.principal
             and self.principal.membership_type != self.MembershipType.PRINCIPAL
         ):
-            errors['principal'] = (
-                'Principal reference must point to a principal member'
-            )
+            errors["principal"] = "Principal reference must point to a principal member"
 
         # Coverage dates validation
         if (
@@ -1114,15 +1022,11 @@ class SHAMember(models.Model):
             and self.coverage_end_date
             and self.coverage_end_date < self.coverage_start_date
         ):
-            errors['coverage_end_date'] = (
-                'Coverage end date must be after start date'
-            )
+            errors["coverage_end_date"] = "Coverage end date must be after start date"
 
         # PFMS validation: category required when PFMS eligible
         if self.is_pfms_eligible and not self.pfms_category:
-            errors['pfms_category'] = (
-                'PFMS category is required when member is PFMS eligible'
-            )
+            errors["pfms_category"] = "PFMS category is required when member is PFMS eligible"
 
         if errors:
             raise ValidationError(errors)
@@ -1190,101 +1094,84 @@ class SHATariff(models.Model):
 
     class TariffCategory(models.TextChoices):
         """Categories of SHA tariff codes."""
-        CONSULTATION = 'consultation', 'Consultation'
-        LABORATORY = 'laboratory', 'Laboratory'
-        RADIOLOGY = 'radiology', 'Radiology/Imaging'
-        PHARMACY = 'pharmacy', 'Pharmacy/Drugs'
-        PROCEDURE = 'procedure', 'Procedures'
-        SURGERY = 'surgery', 'Surgery'
-        INPATIENT = 'inpatient', 'Inpatient Services'
-        MATERNITY = 'maternity', 'Maternity'
-        DENTAL = 'dental', 'Dental'
-        OPTICAL = 'optical', 'Optical'
-        PHYSIOTHERAPY = 'physiotherapy', 'Physiotherapy'
-        DIALYSIS = 'dialysis', 'Dialysis'
-        ONCOLOGY = 'oncology', 'Oncology'
-        OTHER = 'other', 'Other Services'
+
+        CONSULTATION = "consultation", "Consultation"
+        LABORATORY = "laboratory", "Laboratory"
+        RADIOLOGY = "radiology", "Radiology/Imaging"
+        PHARMACY = "pharmacy", "Pharmacy/Drugs"
+        PROCEDURE = "procedure", "Procedures"
+        SURGERY = "surgery", "Surgery"
+        INPATIENT = "inpatient", "Inpatient Services"
+        MATERNITY = "maternity", "Maternity"
+        DENTAL = "dental", "Dental"
+        OPTICAL = "optical", "Optical"
+        PHYSIOTHERAPY = "physiotherapy", "Physiotherapy"
+        DIALYSIS = "dialysis", "Dialysis"
+        ONCOLOGY = "oncology", "Oncology"
+        OTHER = "other", "Other Services"
 
     class TariffLevel(models.TextChoices):
         """Kenya healthcare facility levels."""
-        LEVEL_1 = 'L1', 'Level 1 (Dispensary)'
-        LEVEL_2 = 'L2', 'Level 2 (Health Centre)'
-        LEVEL_3 = 'L3', 'Level 3 (Sub-County Hospital)'
-        LEVEL_4 = 'L4', 'Level 4 (County Hospital)'
-        LEVEL_5 = 'L5', 'Level 5 (National Referral)'
-        LEVEL_6 = 'L6', 'Level 6 (Tertiary/Specialized)'
+
+        LEVEL_1 = "L1", "Level 1 (Dispensary)"
+        LEVEL_2 = "L2", "Level 2 (Health Centre)"
+        LEVEL_3 = "L3", "Level 3 (Sub-County Hospital)"
+        LEVEL_4 = "L4", "Level 4 (County Hospital)"
+        LEVEL_5 = "L5", "Level 5 (National Referral)"
+        LEVEL_6 = "L6", "Level 6 (Tertiary/Specialized)"
 
     id = models.BigAutoField(primary_key=True)
 
     # Tariff identification
     code = models.CharField(
-        max_length=20,
-        unique=True,
-        help_text="SHA tariff code (e.g., SHA-CONS-001)"
+        max_length=20, unique=True, help_text="SHA tariff code (e.g., SHA-CONS-001)"
     )
     name = models.CharField(max_length=200)
     description = models.TextField(blank=True)
 
     # Classification
-    category = models.CharField(
-        max_length=20,
-        choices=TariffCategory.choices,
-        db_index=True
-    )
+    category = models.CharField(max_length=20, choices=TariffCategory.choices, db_index=True)
     facility_level = models.CharField(
-        max_length=5,
-        choices=TariffLevel.choices,
-        help_text="Applicable facility level"
+        max_length=5, choices=TariffLevel.choices, help_text="Applicable facility level"
     )
 
     # Pricing
     sha_amount = models.DecimalField(
-        max_digits=10,
-        decimal_places=2,
-        help_text="SHA approved reimbursement amount (KES)"
+        max_digits=10, decimal_places=2, help_text="SHA approved reimbursement amount (KES)"
     )
-    currency = models.CharField(max_length=3, default='KES')
+    currency = models.CharField(max_length=3, default="KES")
 
     # Validity
-    effective_date = models.DateField(
-        help_text="Date from which this tariff is effective"
-    )
+    effective_date = models.DateField(help_text="Date from which this tariff is effective")
     expiry_date = models.DateField(
-        null=True,
-        blank=True,
-        help_text="Date when tariff expires (null = no expiry)"
+        null=True, blank=True, help_text="Date when tariff expires (null = no expiry)"
     )
     is_active = models.BooleanField(default=True)
 
     # Mapping to internal services
     internal_service = models.ForeignKey(
-        'billing.Service',
+        "billing.Service",
         on_delete=models.SET_NULL,
         null=True,
         blank=True,
-        related_name='sha_tariffs',
-        help_text="Linked internal service for auto-mapping"
+        related_name="sha_tariffs",
+        help_text="Linked internal service for auto-mapping",
     )
 
     # ICD-10 linkage (for diagnosis-based tariffs)
     applicable_icd10_codes = models.JSONField(
-        default=list,
-        blank=True,
-        help_text="List of ICD-10 codes this tariff applies to"
+        default=list, blank=True, help_text="List of ICD-10 codes this tariff applies to"
     )
 
     # Requirements
     requires_preauthorization = models.BooleanField(
-        default=False,
-        help_text="Whether pre-authorization is required"
+        default=False, help_text="Whether pre-authorization is required"
     )
     max_quantity_per_claim = models.IntegerField(
-        default=1,
-        help_text="Maximum quantity claimable per encounter"
+        default=1, help_text="Maximum quantity claimable per encounter"
     )
     waiting_period_days = models.IntegerField(
-        default=0,
-        help_text="Waiting period before claimable (days)"
+        default=0, help_text="Waiting period before claimable (days)"
     )
 
     # Audit
@@ -1294,11 +1181,11 @@ class SHATariff(models.Model):
     class Meta:
         verbose_name = "SHA Tariff"
         verbose_name_plural = "SHA Tariffs"
-        ordering = ['category', 'code']
+        ordering = ["category", "code"]
         indexes = [
-            models.Index(fields=['code']),
-            models.Index(fields=['category', 'is_active']),
-            models.Index(fields=['facility_level']),
+            models.Index(fields=["code"]),
+            models.Index(fields=["category", "is_active"]),
+            models.Index(fields=["facility_level"]),
         ]
 
     def __str__(self):
@@ -1315,19 +1202,15 @@ class SHATariff(models.Model):
 
         # SHA amount must be positive
         if self.sha_amount is not None and self.sha_amount <= 0:
-            errors['sha_amount'] = 'SHA amount must be greater than 0'
+            errors["sha_amount"] = "SHA amount must be greater than 0"
 
         # Expiry date must be after effective date
-        if (
-            self.expiry_date
-            and self.effective_date
-            and self.expiry_date < self.effective_date
-        ):
-            errors['expiry_date'] = 'Expiry date must be after effective date'
+        if self.expiry_date and self.effective_date and self.expiry_date < self.effective_date:
+            errors["expiry_date"] = "Expiry date must be after effective date"
 
         # Max quantity must be at least 1
         if self.max_quantity_per_claim < 1:
-            errors['max_quantity_per_claim'] = 'Maximum quantity must be at least 1'
+            errors["max_quantity_per_claim"] = "Maximum quantity must be at least 1"
 
         if errors:
             raise ValidationError(errors)
@@ -1371,10 +1254,7 @@ class SHATariff(models.Model):
             QuerySet of valid SHATariff instances
         """
         today = date.today()
-        qs = cls.objects.filter(
-            is_active=True,
-            effective_date__lte=today
-        ).filter(
+        qs = cls.objects.filter(is_active=True, effective_date__lte=today).filter(
             models.Q(expiry_date__isnull=True) | models.Q(expiry_date__gte=today)
         )
 
@@ -1402,18 +1282,22 @@ class SHATariff(models.Model):
             Matching SHATariff or None
         """
         # First try direct mapping
-        tariff = cls.get_active_tariffs(
-            facility_level=facility_level
-        ).filter(internal_service=service).first()
+        tariff = (
+            cls.get_active_tariffs(facility_level=facility_level)
+            .filter(internal_service=service)
+            .first()
+        )
 
         if tariff:
             return tariff
 
         # Try matching by SHA code on service
         if service.sha_code:
-            tariff = cls.get_active_tariffs(
-                facility_level=facility_level
-            ).filter(code=service.sha_code).first()
+            tariff = (
+                cls.get_active_tariffs(facility_level=facility_level)
+                .filter(code=service.sha_code)
+                .first()
+            )
 
         return tariff
 
@@ -1434,37 +1318,40 @@ class SHAClaim(models.Model):
 
     class ClaimStatus(models.TextChoices):
         """SHA claim lifecycle statuses."""
-        DRAFT = 'draft', 'Draft'
-        VALIDATED = 'validated', 'Validated'
-        PENDING_SUBMISSION = 'pending_submission', 'Pending Submission (Queued)'
-        SUBMITTED = 'submitted', 'Submitted'
-        ACKNOWLEDGED = 'acknowledged', 'Acknowledged by SHA'
-        UNDER_REVIEW = 'under_review', 'Under Review'
-        QUERY = 'query', 'Query Raised'
-        APPROVED = 'approved', 'Approved'
-        PARTIALLY_APPROVED = 'partial', 'Partially Approved'
-        REJECTED = 'rejected', 'Rejected'
-        APPEALED = 'appealed', 'Appealed'
-        PAID = 'paid', 'Paid'
-        WRITTEN_OFF = 'written_off', 'Written Off'
+
+        DRAFT = "draft", "Draft"
+        VALIDATED = "validated", "Validated"
+        PENDING_SUBMISSION = "pending_submission", "Pending Submission (Queued)"
+        SUBMITTED = "submitted", "Submitted"
+        ACKNOWLEDGED = "acknowledged", "Acknowledged by SHA"
+        UNDER_REVIEW = "under_review", "Under Review"
+        QUERY = "query", "Query Raised"
+        APPROVED = "approved", "Approved"
+        PARTIALLY_APPROVED = "partial", "Partially Approved"
+        REJECTED = "rejected", "Rejected"
+        APPEALED = "appealed", "Appealed"
+        PAID = "paid", "Paid"
+        WRITTEN_OFF = "written_off", "Written Off"
 
     class ClaimType(models.TextChoices):
         """Types of SHA claims."""
-        OUTPATIENT = 'outpatient', 'Outpatient'
-        INPATIENT = 'inpatient', 'Inpatient'
-        MATERNITY = 'maternity', 'Maternity'
-        SURGERY = 'surgery', 'Surgery'
-        CHRONIC = 'chronic', 'Chronic Disease Management'
-        EMERGENCY = 'emergency', 'Emergency'
-        DENTAL = 'dental', 'Dental'
-        OPTICAL = 'optical', 'Optical'
-        DIALYSIS = 'dialysis', 'Dialysis'
+
+        OUTPATIENT = "outpatient", "Outpatient"
+        INPATIENT = "inpatient", "Inpatient"
+        MATERNITY = "maternity", "Maternity"
+        SURGERY = "surgery", "Surgery"
+        CHRONIC = "chronic", "Chronic Disease Management"
+        EMERGENCY = "emergency", "Emergency"
+        DENTAL = "dental", "Dental"
+        OPTICAL = "optical", "Optical"
+        DIALYSIS = "dialysis", "Dialysis"
 
     class SubmissionMethod(models.TextChoices):
         """Methods for submitting claims to SHA."""
-        API = 'api', 'API Integration'
-        PORTAL = 'portal', 'SHA Portal'
-        MANUAL = 'manual', 'Manual Submission'
+
+        API = "api", "API Integration"
+        PORTAL = "portal", "SHA Portal"
+        MANUAL = "manual", "Manual Submission"
 
     id = models.BigAutoField(primary_key=True)
 
@@ -1473,115 +1360,79 @@ class SHAClaim(models.Model):
         max_length=30,
         unique=True,
         editable=False,
-        help_text="Internal claim reference (format: CLM-YYYYMMDD-XXXX)"
+        help_text="Internal claim reference (format: CLM-YYYYMMDD-XXXX)",
     )
     sha_claim_reference = models.CharField(
-        max_length=50,
-        blank=True,
-        db_index=True,
-        help_text="SHA-assigned claim reference number"
+        max_length=50, blank=True, db_index=True, help_text="SHA-assigned claim reference number"
     )
 
     # Patient and encounter linkage
     patient = models.ForeignKey(
-        'patients.Patient',
-        on_delete=models.PROTECT,
-        related_name='sha_claims'
+        "patients.Patient", on_delete=models.PROTECT, related_name="sha_claims"
     )
     sha_member = models.ForeignKey(
-        'billing.SHAMember',
+        "billing.SHAMember",
         on_delete=models.PROTECT,
-        related_name='claims',
+        related_name="claims",
         null=True,  # Allow null for validation error testing
     )
     encounter = models.ForeignKey(
-        'encounters.Encounter',
-        on_delete=models.PROTECT,
-        related_name='sha_claims'
+        "encounters.Encounter", on_delete=models.PROTECT, related_name="sha_claims"
     )
     invoice = models.ForeignKey(
-        'billing.Invoice',
+        "billing.Invoice",
         on_delete=models.PROTECT,
-        related_name='sha_claims',
+        related_name="sha_claims",
         null=True,
-        blank=True
+        blank=True,
     )
 
     # Claim details
-    claim_type = models.CharField(
-        max_length=20,
-        choices=ClaimType.choices
-    )
-    status = models.CharField(
-        max_length=20,
-        choices=ClaimStatus.choices,
-        default=ClaimStatus.DRAFT
-    )
+    claim_type = models.CharField(max_length=20, choices=ClaimType.choices)
+    status = models.CharField(max_length=20, choices=ClaimStatus.choices, default=ClaimStatus.DRAFT)
 
     # Service dates
-    service_date = models.DateField(
-        help_text="Date service was provided"
-    )
+    service_date = models.DateField(help_text="Date service was provided")
     admission_date = models.DateField(
-        null=True,
-        blank=True,
-        help_text="Admission date (for inpatient claims)"
+        null=True, blank=True, help_text="Admission date (for inpatient claims)"
     )
     discharge_date = models.DateField(
-        null=True,
-        blank=True,
-        help_text="Discharge date (for inpatient claims)"
+        null=True, blank=True, help_text="Discharge date (for inpatient claims)"
     )
 
     # Diagnosis (ICD-10)
     primary_diagnosis_code = models.CharField(
-        max_length=10,
-        help_text="Primary ICD-10 diagnosis code"
+        max_length=10, help_text="Primary ICD-10 diagnosis code"
     )
     primary_diagnosis_description = models.CharField(max_length=255)
     secondary_diagnosis_codes = models.JSONField(
-        default=list,
-        blank=True,
-        help_text="List of secondary ICD-10 diagnosis codes"
+        default=list, blank=True, help_text="List of secondary ICD-10 diagnosis codes"
     )
 
     # Amounts
     claimed_amount = models.DecimalField(
-        max_digits=12,
-        decimal_places=2,
-        default=Decimal('0.00'),
-        help_text="Total amount claimed"
+        max_digits=12, decimal_places=2, default=Decimal("0.00"), help_text="Total amount claimed"
     )
     approved_amount = models.DecimalField(
-        max_digits=12,
-        decimal_places=2,
-        default=Decimal('0.00'),
-        help_text="Amount approved by SHA"
+        max_digits=12, decimal_places=2, default=Decimal("0.00"), help_text="Amount approved by SHA"
     )
     paid_amount = models.DecimalField(
-        max_digits=12,
-        decimal_places=2,
-        default=Decimal('0.00'),
-        help_text="Amount actually paid"
+        max_digits=12, decimal_places=2, default=Decimal("0.00"), help_text="Amount actually paid"
     )
     patient_copay = models.DecimalField(
         max_digits=12,
         decimal_places=2,
-        default=Decimal('0.00'),
-        help_text="Amount to be paid by patient"
+        default=Decimal("0.00"),
+        help_text="Amount to be paid by patient",
     )
 
     # Submission details
     submission_method = models.CharField(
-        max_length=20,
-        choices=SubmissionMethod.choices,
-        default=SubmissionMethod.API
+        max_length=20, choices=SubmissionMethod.choices, default=SubmissionMethod.API
     )
     submitted_at = models.DateTimeField(null=True, blank=True)
     submission_response = models.JSONField(
-        default=dict,
-        blank=True,
-        help_text="Response from SHA on submission"
+        default=dict, blank=True, help_text="Response from SHA on submission"
     )
 
     # Adjudication
@@ -1596,65 +1447,55 @@ class SHAClaim(models.Model):
 
     # Pre-authorization (if required)
     preauth_number = models.CharField(
-        max_length=50,
-        blank=True,
-        help_text="Pre-authorization reference number"
+        max_length=50, blank=True, help_text="Pre-authorization reference number"
     )
     preauth_date = models.DateField(null=True, blank=True)
     preauth_valid_until = models.DateField(null=True, blank=True)
 
     # Facility details
-    facility_code = models.CharField(
-        max_length=20,
-        help_text="MFL (Master Facility List) code"
-    )
-    facility_level = models.CharField(
-        max_length=5,
-        choices=SHATariff.TariffLevel.choices
-    )
+    facility_code = models.CharField(max_length=20, help_text="MFL (Master Facility List) code")
+    facility_level = models.CharField(max_length=5, choices=SHATariff.TariffLevel.choices)
 
     # Audit
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
     created_by = models.ForeignKey(
-        settings.AUTH_USER_MODEL,
-        on_delete=models.PROTECT,
-        related_name='sha_claims_created'
+        settings.AUTH_USER_MODEL, on_delete=models.PROTECT, related_name="sha_claims_created"
     )
     submitted_by = models.ForeignKey(
         settings.AUTH_USER_MODEL,
         on_delete=models.PROTECT,
-        related_name='sha_claims_submitted',
+        related_name="sha_claims_submitted",
         null=True,
-        blank=True
+        blank=True,
     )
 
     # Version tracking for resubmissions
     version = models.IntegerField(default=1)
     parent_claim = models.ForeignKey(
-        'self',
+        "self",
         on_delete=models.SET_NULL,
         null=True,
         blank=True,
-        related_name='resubmissions',
-        help_text="Original claim if this is a resubmission"
+        related_name="resubmissions",
+        help_text="Original claim if this is a resubmission",
     )
 
     class Meta:
         verbose_name = "SHA Claim"
         verbose_name_plural = "SHA Claims"
-        ordering = ['-created_at']
+        ordering = ["-created_at"]
         indexes = [
-            models.Index(fields=['claim_number']),
-            models.Index(fields=['sha_claim_reference']),
-            models.Index(fields=['patient', 'status']),
-            models.Index(fields=['status', 'submitted_at']),
-            models.Index(fields=['service_date']),
+            models.Index(fields=["claim_number"]),
+            models.Index(fields=["sha_claim_reference"]),
+            models.Index(fields=["patient", "status"]),
+            models.Index(fields=["status", "submitted_at"]),
+            models.Index(fields=["service_date"]),
         ]
         permissions = [
-            ('submit_sha_claim', 'Can submit SHA claims'),
-            ('approve_sha_claim', 'Can approve SHA claims locally'),
-            ('appeal_sha_claim', 'Can submit SHA claim appeals'),
+            ("submit_sha_claim", "Can submit SHA claims"),
+            ("approve_sha_claim", "Can approve SHA claims locally"),
+            ("appeal_sha_claim", "Can submit SHA claim appeals"),
         ]
 
     def __str__(self):
@@ -1673,15 +1514,15 @@ class SHAClaim(models.Model):
 
         # Validate patient has SHA membership
         if self.sha_member is None:
-            errors['sha_member'] = 'Patient must have SHA membership for claims'
+            errors["sha_member"] = "Patient must have SHA membership for claims"
 
         # Validate service date not in future
         if self.service_date and self.service_date > date.today():
-            errors['service_date'] = 'Service date cannot be in the future'
+            errors["service_date"] = "Service date cannot be in the future"
 
         # Validate inpatient claims have admission date
         if self.claim_type == self.ClaimType.INPATIENT and not self.admission_date:
-            errors['admission_date'] = 'Inpatient claims require admission date'
+            errors["admission_date"] = "Inpatient claims require admission date"
 
         # Validate discharge after admission
         if (
@@ -1689,19 +1530,19 @@ class SHAClaim(models.Model):
             and self.discharge_date
             and self.discharge_date < self.admission_date
         ):
-            errors['discharge_date'] = 'Discharge date must be on or after admission date'
+            errors["discharge_date"] = "Discharge date must be on or after admission date"
 
         # Validate claimed amount is not negative
         if self.claimed_amount is not None and self.claimed_amount < 0:
-            errors['claimed_amount'] = 'Claimed amount cannot be negative'
+            errors["claimed_amount"] = "Claimed amount cannot be negative"
 
         # Validate status is a valid choice
         if self.status and self.status not in [c[0] for c in self.ClaimStatus.choices]:
-            errors['status'] = 'Invalid status'
+            errors["status"] = "Invalid status"
 
         # Validate claim_type is a valid choice
         if self.claim_type and self.claim_type not in [c[0] for c in self.ClaimType.choices]:
-            errors['claim_type'] = 'Invalid claim type'
+            errors["claim_type"] = "Invalid claim type"
 
         if errors:
             raise ValidationError(errors)
@@ -1710,15 +1551,17 @@ class SHAClaim(models.Model):
     def generate_claim_number() -> str:
         """Generate unique claim number in format CLM-YYYYMMDD-XXXX."""
         today = date.today()
-        date_str = today.strftime('%Y%m%d')
+        date_str = today.strftime("%Y%m%d")
         prefix = f"CLM-{date_str}-"
 
-        last_claim = SHAClaim.objects.filter(
-            claim_number__startswith=prefix
-        ).order_by('-claim_number').first()
+        last_claim = (
+            SHAClaim.objects.filter(claim_number__startswith=prefix)
+            .order_by("-claim_number")
+            .first()
+        )
 
         if last_claim:
-            last_seq = int(last_claim.claim_number.split('-')[-1])
+            last_seq = int(last_claim.claim_number.split("-")[-1])
             new_seq = last_seq + 1
         else:
             new_seq = 1
@@ -1730,11 +1573,11 @@ class SHAClaim(models.Model):
         # Avoid using the related manager cache when this claim was prefetched
         # (e.g., queryset.prefetch_related('items')), otherwise newly created
         # items in the same request may not be reflected.
-        items = SHAClaimItem.objects.filter(claim=self).only('claimed_amount')
-        self.claimed_amount = sum(
-            item.claimed_amount for item in items
-        ) if items.exists() else Decimal('0.00')
-        self.save(update_fields=['claimed_amount', 'updated_at'])
+        items = SHAClaimItem.objects.filter(claim=self).only("claimed_amount")
+        self.claimed_amount = (
+            sum(item.claimed_amount for item in items) if items.exists() else Decimal("0.00")
+        )
+        self.save(update_fields=["claimed_amount", "updated_at"])
 
     def validate_for_submission(self) -> tuple[bool, list[str]]:
         """
@@ -1770,16 +1613,14 @@ class SHAClaim(models.Model):
             errors.append(f"{count} item(s) missing SHA tariff code")
 
         # Check required attachments (clinical_notes and invoice are required)
-        required_types = ['clinical_notes', 'invoice']
-        existing_types = list(
-            self.attachments.values_list('attachment_type', flat=True)
-        )
+        required_types = ["clinical_notes", "invoice"]
+        existing_types = list(self.attachments.values_list("attachment_type", flat=True))
         for req_type in required_types:
             if req_type not in existing_types:
                 errors.append(f"Missing required attachment: {req_type}")
 
         # Check claimed amount is positive
-        if self.claimed_amount <= Decimal('0.00'):
+        if self.claimed_amount <= Decimal("0.00"):
             errors.append("Claimed amount must be greater than zero")
 
         return len(errors) == 0, errors
@@ -1799,12 +1640,12 @@ class SHAClaim(models.Model):
         """
         is_valid, errors = self.validate_for_submission()
         if not is_valid:
-            raise ValidationError({'__all__': errors})
+            raise ValidationError({"__all__": errors})
 
         self.status = self.ClaimStatus.SUBMITTED
         self.submitted_at = timezone.now()
         self.submitted_by = user
-        self.save(update_fields=['status', 'submitted_at', 'submitted_by', 'updated_at'])
+        self.save(update_fields=["status", "submitted_at", "submitted_by", "updated_at"])
         return True
 
     def get_age_days(self) -> int:
@@ -1831,7 +1672,7 @@ class SHAClaim(models.Model):
         ]
         return self.status in appealable_statuses
 
-    def create_appeal(self, reason: str, user) -> 'SHAClaim':
+    def create_appeal(self, reason: str, user) -> "SHAClaim":
         """
         Create an appeal (resubmission) of this claim.
 
@@ -1846,9 +1687,9 @@ class SHAClaim(models.Model):
             ValidationError if claim cannot be appealed
         """
         if not self.can_appeal():
-            raise ValidationError({
-                '__all__': [f"Claim with status '{self.get_status_display()}' cannot be appealed"]
-            })
+            raise ValidationError(
+                {"__all__": [f"Claim with status '{self.get_status_display()}' cannot be appealed"]}
+            )
 
         # Create new claim as appeal with reason stored in notes
         appeal = SHAClaim.objects.create(
@@ -1876,7 +1717,7 @@ class SHAClaim(models.Model):
 
         # Update original claim status
         self.status = self.ClaimStatus.APPEALED
-        self.save(update_fields=['status', 'updated_at'])
+        self.save(update_fields=["status", "updated_at"])
 
         # Copy items to appeal
         for item in self.items.all():
@@ -1903,58 +1744,54 @@ class SHAClaimItem(models.Model):
 
     class ItemStatus(models.TextChoices):
         """Status of the claim item during adjudication."""
-        PENDING = 'pending', 'Pending Review'
-        APPROVED = 'approved', 'Approved'
-        REJECTED = 'rejected', 'Rejected'
-        ADJUSTED = 'adjusted', 'Adjusted'
+
+        PENDING = "pending", "Pending Review"
+        APPROVED = "approved", "Approved"
+        REJECTED = "rejected", "Rejected"
+        ADJUSTED = "adjusted", "Adjusted"
 
     class CoverageType(models.TextChoices):
         """Which coverage pays for this item."""
-        SHA = 'sha', 'SHA Coverage'
-        PFMS = 'pfms', 'PFMS Coverage (Government Subsidy)'
-        BOTH = 'both', 'Split Between SHA and PFMS'
+
+        SHA = "sha", "SHA Coverage"
+        PFMS = "pfms", "PFMS Coverage (Government Subsidy)"
+        BOTH = "both", "Split Between SHA and PFMS"
 
     id = models.BigAutoField(primary_key=True)
 
     # Claim linkage
-    claim = models.ForeignKey(
-        SHAClaim,
-        on_delete=models.CASCADE,
-        related_name='items'
-    )
+    claim = models.ForeignKey(SHAClaim, on_delete=models.CASCADE, related_name="items")
 
     # Tariff mapping
     tariff = models.ForeignKey(
         SHATariff,
         on_delete=models.PROTECT,
-        related_name='claim_items',
+        related_name="claim_items",
         null=True,
         blank=True,
-        help_text="SHA tariff code for this item"
+        help_text="SHA tariff code for this item",
     )
 
     # Internal service (for reference)
     service = models.ForeignKey(
-        'billing.Service',
+        "billing.Service",
         on_delete=models.PROTECT,
-        related_name='sha_claim_items',
+        related_name="sha_claim_items",
         null=True,
-        blank=True
+        blank=True,
     )
     invoice_item = models.ForeignKey(
-        'billing.InvoiceItem',
+        "billing.InvoiceItem",
         on_delete=models.SET_NULL,
-        related_name='sha_claim_items',
+        related_name="sha_claim_items",
         null=True,
-        blank=True
+        blank=True,
     )
 
     # Item details
     description = models.CharField(max_length=255)
     service_date = models.DateField(
-        null=True,
-        blank=True,
-        help_text="Date this specific service was provided"
+        null=True, blank=True, help_text="Date this specific service was provided"
     )
 
     # Coverage type (for PFMS dual coverage - SHA Checklist item #13)
@@ -1962,44 +1799,22 @@ class SHAClaimItem(models.Model):
         max_length=10,
         choices=CoverageType.choices,
         default=CoverageType.SHA,
-        help_text="Which coverage pays for this item (SHA, PFMS, or both)"
+        help_text="Which coverage pays for this item (SHA, PFMS, or both)",
     )
 
     # Quantity and pricing
-    quantity = models.DecimalField(
-        max_digits=10,
-        decimal_places=2,
-        default=Decimal('1.00')
-    )
+    quantity = models.DecimalField(max_digits=10, decimal_places=2, default=Decimal("1.00"))
     unit_price = models.DecimalField(
-        max_digits=10,
-        decimal_places=2,
-        help_text="SHA tariff unit price"
+        max_digits=10, decimal_places=2, help_text="SHA tariff unit price"
     )
     claimed_amount = models.DecimalField(
-        max_digits=12,
-        decimal_places=2,
-        help_text="Total claimed (quantity × unit_price)"
+        max_digits=12, decimal_places=2, help_text="Total claimed (quantity × unit_price)"
     )
 
     # Adjudication results
-    status = models.CharField(
-        max_length=20,
-        choices=ItemStatus.choices,
-        default=ItemStatus.PENDING
-    )
-    approved_quantity = models.DecimalField(
-        max_digits=10,
-        decimal_places=2,
-        null=True,
-        blank=True
-    )
-    approved_amount = models.DecimalField(
-        max_digits=12,
-        decimal_places=2,
-        null=True,
-        blank=True
-    )
+    status = models.CharField(max_length=20, choices=ItemStatus.choices, default=ItemStatus.PENDING)
+    approved_quantity = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True)
+    approved_amount = models.DecimalField(max_digits=12, decimal_places=2, null=True, blank=True)
     rejection_reason = models.CharField(max_length=255, blank=True)
 
     # Audit
@@ -2009,7 +1824,7 @@ class SHAClaimItem(models.Model):
     class Meta:
         verbose_name = "SHA Claim Item"
         verbose_name_plural = "SHA Claim Items"
-        ordering = ['claim', 'created_at']
+        ordering = ["claim", "created_at"]
 
     def __str__(self):
         return f"{self.claim.claim_number} - {self.description}"
@@ -2018,9 +1833,7 @@ class SHAClaimItem(models.Model):
         """Override save to auto-calculate claimed amount and validate."""
         # Auto-calculate claimed amount (quantize to 2 decimal places)
         if self.quantity is not None and self.unit_price is not None:
-            self.claimed_amount = (self.quantity * self.unit_price).quantize(
-                Decimal('0.01')
-            )
+            self.claimed_amount = (self.quantity * self.unit_price).quantize(Decimal("0.01"))
 
         self.full_clean()
         super().save(*args, **kwargs)
@@ -2034,27 +1847,23 @@ class SHAClaimItem(models.Model):
 
         # Quantity must be positive
         if self.quantity is not None and self.quantity <= 0:
-            errors['quantity'] = 'Quantity must be greater than 0'
+            errors["quantity"] = "Quantity must be greater than 0"
 
         # Unit price cannot be negative
         if self.unit_price is not None and self.unit_price < 0:
-            errors['unit_price'] = 'Unit price cannot be negative'
+            errors["unit_price"] = "Unit price cannot be negative"
 
         # Validate against tariff max quantity
-        if (
-            self.tariff
-            and self.quantity
-            and self.quantity > self.tariff.max_quantity_per_claim
-        ):
-            errors['quantity'] = (
-                f'Exceeds maximum quantity ({self.tariff.max_quantity_per_claim}) '
-                f'for this tariff'
+        if self.tariff and self.quantity and self.quantity > self.tariff.max_quantity_per_claim:
+            errors["quantity"] = (
+                f"Exceeds maximum quantity ({self.tariff.max_quantity_per_claim}) "
+                f"for this tariff"
             )
 
         if errors:
             raise ValidationError(errors)
 
-    def apply_tariff(self, tariff: 'SHATariff'):
+    def apply_tariff(self, tariff: "SHATariff"):
         """
         Apply a tariff code to this item.
 
@@ -2066,18 +1875,13 @@ class SHAClaimItem(models.Model):
         """
         self.tariff = tariff
         self.unit_price = tariff.sha_amount
-        self.claimed_amount = (self.quantity * self.unit_price).quantize(
-            Decimal('0.01')
-        )
+        self.claimed_amount = (self.quantity * self.unit_price).quantize(Decimal("0.01"))
         self.save()
 
     @classmethod
     def create_from_invoice_item(
-        cls,
-        claim: 'SHAClaim',
-        invoice_item: 'InvoiceItem',
-        tariff: 'SHATariff' = None
-    ) -> 'SHAClaimItem':
+        cls, claim: "SHAClaim", invoice_item: "InvoiceItem", tariff: "SHATariff" = None
+    ) -> "SHAClaimItem":
         """
         Create claim item from an invoice item.
 
@@ -2093,10 +1897,7 @@ class SHAClaimItem(models.Model):
         """
         # Try to find matching tariff if not provided
         if not tariff and invoice_item.service:
-            tariff = SHATariff.find_tariff_for_service(
-                invoice_item.service,
-                claim.facility_level
-            )
+            tariff = SHATariff.find_tariff_for_service(invoice_item.service, claim.facility_level)
 
         unit_price = tariff.sha_amount if tariff else invoice_item.unit_price
 
@@ -2126,25 +1927,26 @@ class SHAClaimAttachment(models.Model):
 
     class AttachmentType(models.TextChoices):
         """Types of claim attachments."""
-        CLINICAL_NOTES = 'clinical_notes', 'Clinical Notes'
-        LAB_REPORT = 'lab_report', 'Laboratory Report'
-        RADIOLOGY_REPORT = 'radiology_report', 'Radiology Report'
-        PRESCRIPTION = 'prescription', 'Prescription'
-        INVOICE = 'invoice', 'Invoice'
-        DISCHARGE_SUMMARY = 'discharge_summary', 'Discharge Summary'
-        OPERATIVE_NOTES = 'operative_notes', 'Operative Notes'
-        REFERRAL_LETTER = 'referral_letter', 'Referral Letter'
-        PREAUTH_APPROVAL = 'preauth_approval', 'Pre-authorization Approval'
-        ID_COPY = 'id_copy', 'ID Copy'
-        SHA_CARD = 'sha_card', 'SHA Card Copy'
-        OTHER = 'other', 'Other Document'
+
+        CLINICAL_NOTES = "clinical_notes", "Clinical Notes"
+        LAB_REPORT = "lab_report", "Laboratory Report"
+        RADIOLOGY_REPORT = "radiology_report", "Radiology Report"
+        PRESCRIPTION = "prescription", "Prescription"
+        INVOICE = "invoice", "Invoice"
+        DISCHARGE_SUMMARY = "discharge_summary", "Discharge Summary"
+        OPERATIVE_NOTES = "operative_notes", "Operative Notes"
+        REFERRAL_LETTER = "referral_letter", "Referral Letter"
+        PREAUTH_APPROVAL = "preauth_approval", "Pre-authorization Approval"
+        ID_COPY = "id_copy", "ID Copy"
+        SHA_CARD = "sha_card", "SHA Card Copy"
+        OTHER = "other", "Other Document"
 
     # Allowed MIME types for attachments
     ALLOWED_MIME_TYPES = [
-        'application/pdf',
-        'image/jpeg',
-        'image/png',
-        'image/tiff',
+        "application/pdf",
+        "image/jpeg",
+        "image/png",
+        "image/tiff",
     ]
 
     # Maximum file size: 10MB
@@ -2153,57 +1955,35 @@ class SHAClaimAttachment(models.Model):
     id = models.BigAutoField(primary_key=True)
 
     # Claim linkage
-    claim = models.ForeignKey(
-        SHAClaim,
-        on_delete=models.CASCADE,
-        related_name='attachments'
-    )
+    claim = models.ForeignKey(SHAClaim, on_delete=models.CASCADE, related_name="attachments")
 
     # Attachment details
-    attachment_type = models.CharField(
-        max_length=30,
-        choices=AttachmentType.choices
-    )
+    attachment_type = models.CharField(max_length=30, choices=AttachmentType.choices)
     name = models.CharField(max_length=255)
     description = models.TextField(blank=True)
 
     # File storage
-    file = models.FileField(
-        upload_to='sha_claims/%Y/%m/',
-        max_length=500
-    )
-    file_size = models.IntegerField(
-        null=True,
-        blank=True,
-        help_text="File size in bytes"
-    )
+    file = models.FileField(upload_to="sha_claims/%Y/%m/", max_length=500)
+    file_size = models.IntegerField(null=True, blank=True, help_text="File size in bytes")
     mime_type = models.CharField(max_length=100, blank=True)
     checksum = models.CharField(
-        max_length=64,
-        blank=True,
-        help_text="SHA-256 checksum for integrity verification"
+        max_length=64, blank=True, help_text="SHA-256 checksum for integrity verification"
     )
 
     # Metadata
     original_filename = models.CharField(max_length=255, blank=True)
-    page_count = models.IntegerField(
-        null=True,
-        blank=True,
-        help_text="Number of pages (for PDFs)"
-    )
+    page_count = models.IntegerField(null=True, blank=True, help_text="Number of pages (for PDFs)")
 
     # Audit
     created_at = models.DateTimeField(auto_now_add=True)
     uploaded_by = models.ForeignKey(
-        settings.AUTH_USER_MODEL,
-        on_delete=models.PROTECT,
-        related_name='sha_attachments_uploaded'
+        settings.AUTH_USER_MODEL, on_delete=models.PROTECT, related_name="sha_attachments_uploaded"
     )
 
     class Meta:
         verbose_name = "SHA Claim Attachment"
         verbose_name_plural = "SHA Claim Attachments"
-        ordering = ['claim', 'attachment_type']
+        ordering = ["claim", "attachment_type"]
 
     def __str__(self):
         return f"{self.claim.claim_number} - {self.get_attachment_type_display()}"
@@ -2216,25 +1996,29 @@ class SHAClaimAttachment(models.Model):
         """Validate attachment."""
         # Max file size: 10MB
         if self.file_size and self.file_size > self.MAX_FILE_SIZE:
-            raise ValidationError({
-                'file_size': f'File size exceeds maximum allowed (10MB). Got {self.file_size} bytes.'
-            })
+            raise ValidationError(
+                {
+                    "file_size": f"File size exceeds maximum allowed (10MB). Got {self.file_size} bytes."
+                }
+            )
 
         # Allowed mime types
         if self.mime_type and self.mime_type not in self.ALLOWED_MIME_TYPES:
-            raise ValidationError({
-                'mime_type': f'File type not allowed. Allowed types: PDF, JPEG, PNG, TIFF. Got: {self.mime_type}'
-            })
+            raise ValidationError(
+                {
+                    "mime_type": f"File type not allowed. Allowed types: PDF, JPEG, PNG, TIFF. Got: {self.mime_type}"
+                }
+            )
 
     @classmethod
     def get_required_types(cls, claim_type: str) -> list[str]:
         """Get required attachment types for a claim type."""
-        base_required = ['clinical_notes', 'invoice']
+        base_required = ["clinical_notes", "invoice"]
 
         additional = {
-            'inpatient': ['discharge_summary'],
-            'surgery': ['discharge_summary', 'operative_notes'],
-            'maternity': ['discharge_summary'],
+            "inpatient": ["discharge_summary"],
+            "surgery": ["discharge_summary", "operative_notes"],
+            "maternity": ["discharge_summary"],
         }
 
         return base_required + additional.get(claim_type, [])
@@ -2248,46 +2032,31 @@ class SHAEligibilityCheck(models.Model):
     """
 
     class CheckResult(models.TextChoices):
-        ELIGIBLE = 'eligible', 'Eligible'
-        INELIGIBLE = 'ineligible', 'Ineligible'
-        PENDING = 'pending', 'Pending'
-        ERROR = 'error', 'Error'
-        TIMEOUT = 'timeout', 'Request Timeout'
+        ELIGIBLE = "eligible", "Eligible"
+        INELIGIBLE = "ineligible", "Ineligible"
+        PENDING = "pending", "Pending"
+        ERROR = "error", "Error"
+        TIMEOUT = "timeout", "Request Timeout"
 
     id = models.BigAutoField(primary_key=True)
 
     # Member being checked
     sha_member = models.ForeignKey(
-        SHAMember,
-        on_delete=models.CASCADE,
-        related_name='eligibility_checks'
+        SHAMember, on_delete=models.CASCADE, related_name="eligibility_checks"
     )
     patient = models.ForeignKey(
-        'patients.Patient',
-        on_delete=models.CASCADE,
-        related_name='sha_eligibility_checks'
+        "patients.Patient", on_delete=models.CASCADE, related_name="sha_eligibility_checks"
     )
 
     # Request details
     check_date = models.DateTimeField(auto_now_add=True)
-    request_data = models.JSONField(
-        default=dict,
-        help_text="Request payload sent to SHA"
-    )
+    request_data = models.JSONField(default=dict, help_text="Request payload sent to SHA")
 
     # Response
-    result = models.CharField(
-        max_length=20,
-        choices=CheckResult.choices
-    )
-    response_data = models.JSONField(
-        default=dict,
-        help_text="Response from SHA API"
-    )
+    result = models.CharField(max_length=20, choices=CheckResult.choices)
+    response_data = models.JSONField(default=dict, help_text="Response from SHA API")
     response_time_ms = models.IntegerField(
-        null=True,
-        blank=True,
-        help_text="API response time in milliseconds"
+        null=True, blank=True, help_text="API response time in milliseconds"
     )
 
     # Eligibility details (extracted from response)
@@ -2298,7 +2067,7 @@ class SHAEligibilityCheck(models.Model):
         decimal_places=2,
         null=True,
         blank=True,
-        help_text="Remaining benefit balance"
+        help_text="Remaining benefit balance",
     )
     ineligibility_reason = models.CharField(max_length=255, blank=True)
 
@@ -2308,18 +2077,16 @@ class SHAEligibilityCheck(models.Model):
 
     # Audit
     checked_by = models.ForeignKey(
-        settings.AUTH_USER_MODEL,
-        on_delete=models.PROTECT,
-        related_name='sha_eligibility_checks'
+        settings.AUTH_USER_MODEL, on_delete=models.PROTECT, related_name="sha_eligibility_checks"
     )
 
     class Meta:
         verbose_name = "SHA Eligibility Check"
         verbose_name_plural = "SHA Eligibility Checks"
-        ordering = ['-check_date']
+        ordering = ["-check_date"]
         indexes = [
-            models.Index(fields=['sha_member', 'check_date']),
-            models.Index(fields=['result']),
+            models.Index(fields=["sha_member", "check_date"]),
+            models.Index(fields=["result"]),
         ]
 
     def __str__(self):
@@ -2340,9 +2107,9 @@ class SHAEligibilityCheck(models.Model):
         else:
             # Determine status based on ineligibility reason
             reason_lower = self.ineligibility_reason.lower()
-            if 'expired' in reason_lower:
+            if "expired" in reason_lower:
                 member.status = SHAMember.MembershipStatus.EXPIRED
-            elif 'suspended' in reason_lower:
+            elif "suspended" in reason_lower:
                 member.status = SHAMember.MembershipStatus.SUSPENDED
             else:
                 member.status = SHAMember.MembershipStatus.INACTIVE

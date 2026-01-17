@@ -71,7 +71,7 @@ def generate_secure_pin(digits: int = 4) -> str:
     if digits < 1 or digits > 10:
         raise ValueError("PIN must be between 1 and 10 digits")
 
-    max_value = 10 ** digits
+    max_value = 10**digits
     pin_int = secrets.randbelow(max_value)
     return f"{pin_int:0{digits}d}"
 
@@ -134,24 +134,22 @@ def encrypt_pin(pin: str, public_key) -> dict:
     """
     # Encrypt using RSA-OAEP with SHA-1 (as specified by SHA API)
     ciphertext = public_key.encrypt(
-        pin.encode('utf-8'),
+        pin.encode("utf-8"),
         padding.OAEP(
-            mgf=padding.MGF1(algorithm=hashes.SHA1()),
-            algorithm=hashes.SHA1(),
-            label=None
-        )
+            mgf=padding.MGF1(algorithm=hashes.SHA1()), algorithm=hashes.SHA1(), label=None
+        ),
     )
 
     # Base64 encode for API transmission
-    base64_ciphertext = base64.b64encode(ciphertext).decode('utf-8')
+    base64_ciphertext = base64.b64encode(ciphertext).decode("utf-8")
 
     # Binary string representation (for debugging/verification)
-    binary_ciphertext = ''.join(format(byte, '08b') for byte in ciphertext)
+    binary_ciphertext = "".join(format(byte, "08b") for byte in ciphertext)
 
     return {
-        'base64_ciphertext': base64_ciphertext,
-        'binary_ciphertext': binary_ciphertext,
-        'raw_bytes': ciphertext,
+        "base64_ciphertext": base64_ciphertext,
+        "binary_ciphertext": binary_ciphertext,
+        "raw_bytes": ciphertext,
     }
 
 
@@ -185,7 +183,7 @@ def encrypt_pin_simple(pin: str, key_path: Path | str | None = None) -> str:
 
     public_key = load_public_key(key_path=key_path)
     result = encrypt_pin(pin, public_key)
-    return result['base64_ciphertext']
+    return result["base64_ciphertext"]
 
 
 def main():
@@ -202,39 +200,31 @@ Examples:
     %(prog)s 1234 -q                  # Output only encrypted PIN
     %(prog)s 1234 --verify            # Show additional verification info
     %(prog)s --generate -q            # Output: PIN,ENCRYPTED (for scripting)
-        """
+        """,
     )
+    parser.add_argument("pin", nargs="?", default=None, help="PIN to encrypt (or use --generate)")
     parser.add_argument(
-        "pin",
-        nargs="?",
-        default=None,
-        help="PIN to encrypt (or use --generate)"
-    )
-    parser.add_argument(
-        "-g", "--generate",
+        "-g",
+        "--generate",
         action="store_true",
-        help="Generate a cryptographically secure random PIN"
+        help="Generate a cryptographically secure random PIN",
     )
     parser.add_argument(
-        "-d", "--digits",
+        "-d",
+        "--digits",
         type=int,
         default=4,
-        help="Number of digits for generated PIN (default: 4)"
+        help="Number of digits for generated PIN (default: 4)",
     )
+    parser.add_argument("-k", "--key", type=Path, help="Path to RSA public key file (PEM format)")
     parser.add_argument(
-        "-k", "--key",
-        type=Path,
-        help="Path to RSA public key file (PEM format)"
-    )
-    parser.add_argument(
-        "-q", "--quiet",
+        "-q",
+        "--quiet",
         action="store_true",
-        help="Output only the encrypted PIN (or PIN,ENCRYPTED if --generate)"
+        help="Output only the encrypted PIN (or PIN,ENCRYPTED if --generate)",
     )
     parser.add_argument(
-        "-v", "--verify",
-        action="store_true",
-        help="Show additional verification information"
+        "-v", "--verify", action="store_true", help="Show additional verification information"
     )
 
     args = parser.parse_args()
@@ -274,7 +264,7 @@ Examples:
                 # Output both PIN and encrypted for scripting: PIN,ENCRYPTED
                 print(f"{pin},{result['base64_ciphertext']}")
             else:
-                print(result['base64_ciphertext'])
+                print(result["base64_ciphertext"])
         else:
             print("SHA PIN Encryption")
             print("=" * 50)

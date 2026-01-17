@@ -93,12 +93,25 @@ class Command(BaseCommand):
                             Drug.objects.bulk_update(
                                 drugs_to_update,
                                 fields=[
-                                    "generic_name", "brand_names", "category", "form",
-                                    "strength", "unit", "schedule", "requires_prescription",
-                                    "is_controlled", "is_narcotic", "keml_code", "is_essential",
-                                    "nhif_code", "default_reorder_level", "default_reorder_quantity",
-                                    "storage_requirements", "reference_price", "is_active",
-                                ]
+                                    "generic_name",
+                                    "brand_names",
+                                    "category",
+                                    "form",
+                                    "strength",
+                                    "unit",
+                                    "schedule",
+                                    "requires_prescription",
+                                    "is_controlled",
+                                    "is_narcotic",
+                                    "keml_code",
+                                    "is_essential",
+                                    "nhif_code",
+                                    "default_reorder_level",
+                                    "default_reorder_quantity",
+                                    "storage_requirements",
+                                    "reference_price",
+                                    "is_active",
+                                ],
                             )
                         updated_count += len(drugs_to_update)
                         drugs_to_update = []
@@ -121,12 +134,25 @@ class Command(BaseCommand):
                     Drug.objects.bulk_update(
                         drugs_to_update,
                         fields=[
-                            "generic_name", "brand_names", "category", "form",
-                            "strength", "unit", "schedule", "requires_prescription",
-                            "is_controlled", "is_narcotic", "keml_code", "is_essential",
-                            "nhif_code", "default_reorder_level", "default_reorder_quantity",
-                            "storage_requirements", "reference_price", "is_active",
-                        ]
+                            "generic_name",
+                            "brand_names",
+                            "category",
+                            "form",
+                            "strength",
+                            "unit",
+                            "schedule",
+                            "requires_prescription",
+                            "is_controlled",
+                            "is_narcotic",
+                            "keml_code",
+                            "is_essential",
+                            "nhif_code",
+                            "default_reorder_level",
+                            "default_reorder_quantity",
+                            "storage_requirements",
+                            "reference_price",
+                            "is_active",
+                        ],
                     )
                 updated_count += len(drugs_to_update)
 

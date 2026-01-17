@@ -259,6 +259,7 @@ class TestBypassTriageEndpoint:
         assert response.data["triage_bypassed_at"] is not None
         # Parse timestamp and verify it's within range
         from django.utils.dateparse import parse_datetime
+
         bypassed_at = parse_datetime(response.data["triage_bypassed_at"])
         assert before <= bypassed_at <= after
 
@@ -343,6 +344,7 @@ class TestCallPatientEndpoint:
 
         assert response.status_code == status.HTTP_200_OK
         from django.utils.dateparse import parse_datetime
+
         called_at = parse_datetime(response.data["called_at"])
         assert before <= called_at <= after
 
@@ -352,7 +354,10 @@ class TestCallPatientEndpoint:
         response = auth_client.post(f"/api/encounters/{mandatory_encounter.id}/call/")
 
         assert response.status_code == status.HTTP_400_BAD_REQUEST
-        assert "triage" in response.data["detail"].lower() or "consultation" in response.data["detail"].lower()
+        assert (
+            "triage" in response.data["detail"].lower()
+            or "consultation" in response.data["detail"].lower()
+        )
 
     def test_call_patient_works_for_bypassed(self, auth_client, bypassed_encounter):
         """Should allow calling patients with bypassed triage."""
@@ -420,6 +425,7 @@ class TestStartConsultationEndpoint:
 
         assert response.status_code == status.HTTP_200_OK
         from django.utils.dateparse import parse_datetime
+
         started_at = parse_datetime(response.data["consultation_started_at"])
         assert before <= started_at <= after
 
@@ -489,9 +495,7 @@ class TestConsultationQueueEndpoint:
         assert response.status_code == status.HTTP_200_OK
         assert "results" in response.data or isinstance(response.data, list)
 
-    def test_consultation_queue_includes_triaged_encounters(
-        self, auth_client, triaged_encounter
-    ):
+    def test_consultation_queue_includes_triaged_encounters(self, auth_client, triaged_encounter):
         """Should include encounters with COMPLETED triage."""
         response = auth_client.get("/api/encounters/consultation_queue/")
 
@@ -499,9 +503,7 @@ class TestConsultationQueueEndpoint:
         encounter_ids = [e["id"] for e in response.data.get("results", response.data)]
         assert triaged_encounter.id in encounter_ids
 
-    def test_consultation_queue_includes_bypassed_encounters(
-        self, auth_client, bypassed_encounter
-    ):
+    def test_consultation_queue_includes_bypassed_encounters(self, auth_client, bypassed_encounter):
         """Should include encounters with BYPASSED triage."""
         response = auth_client.get("/api/encounters/consultation_queue/")
 
@@ -519,9 +521,7 @@ class TestConsultationQueueEndpoint:
         encounter_ids = [e["id"] for e in response.data.get("results", response.data)]
         assert not_required_encounter.id in encounter_ids
 
-    def test_consultation_queue_excludes_pending_mandatory(
-        self, auth_client, mandatory_encounter
-    ):
+    def test_consultation_queue_excludes_pending_mandatory(self, auth_client, mandatory_encounter):
         """Should exclude MANDATORY encounters with PENDING triage."""
         response = auth_client.get("/api/encounters/consultation_queue/")
 
@@ -581,9 +581,7 @@ class TestConsultationQueueEndpoint:
         assert waiting.id in encounter_ids
         assert called.id in encounter_ids
 
-    def test_consultation_queue_includes_patient_info(
-        self, auth_client, triaged_encounter
-    ):
+    def test_consultation_queue_includes_patient_info(self, auth_client, triaged_encounter):
         """Should include patient information in queue items."""
         response = auth_client.get("/api/encounters/consultation_queue/")
 
@@ -594,9 +592,7 @@ class TestConsultationQueueEndpoint:
         assert "patient_name" in encounter_data or "patient" in encounter_data
         assert "patient_mrn" in encounter_data or "patient" in encounter_data
 
-    def test_consultation_queue_includes_wait_time(
-        self, auth_client, triaged_encounter
-    ):
+    def test_consultation_queue_includes_wait_time(self, auth_client, triaged_encounter):
         """Should include wait time information."""
         response = auth_client.get("/api/encounters/consultation_queue/")
 
@@ -623,6 +619,7 @@ class TestConsultationQueueEndpoint:
         )
         # Sleep briefly to ensure different timestamps
         import time
+
         time.sleep(0.01)
 
         red = Encounter.objects.create(
@@ -638,12 +635,8 @@ class TestConsultationQueueEndpoint:
         assert response.status_code == status.HTTP_200_OK
         results = response.data.get("results", response.data)
         # Emergency encounters should appear before non-emergency
-        emergency_idx = next(
-            (i for i, e in enumerate(results) if e["id"] == red.id), None
-        )
-        green_idx = next(
-            (i for i, e in enumerate(results) if e["id"] == green.id), None
-        )
+        emergency_idx = next((i for i, e in enumerate(results) if e["id"] == red.id), None)
+        green_idx = next((i for i, e in enumerate(results) if e["id"] == green.id), None)
 
         if emergency_idx is not None and green_idx is not None:
             assert emergency_idx < green_idx
@@ -662,9 +655,7 @@ class TestConsultationQueueEndpoint:
         assert triaged_encounter.id in encounter_ids
         assert bypassed_encounter.id not in encounter_ids
 
-    def test_consultation_queue_filter_by_consultation_status(
-        self, auth_client, sample_patient
-    ):
+    def test_consultation_queue_filter_by_consultation_status(self, auth_client, sample_patient):
         """Should support filtering by consultation_status."""
         waiting = Encounter.objects.create(
             patient=sample_patient,
@@ -721,9 +712,7 @@ class TestConsultationQueueWorkflow:
         assert response.data["consultation_status"] == "CALLED"
 
         # 4. Start consultation
-        response = auth_client.post(
-            f"/api/encounters/{optional_encounter.id}/start_consultation/"
-        )
+        response = auth_client.post(f"/api/encounters/{optional_encounter.id}/start_consultation/")
         assert response.status_code == status.HTTP_200_OK
         assert response.data["consultation_status"] == "IN_PROGRESS"
 
@@ -744,9 +733,7 @@ class TestConsultationQueueWorkflow:
         assert response.status_code == status.HTTP_200_OK
 
         # 3. Start consultation
-        response = auth_client.post(
-            f"/api/encounters/{triaged_encounter.id}/start_consultation/"
-        )
+        response = auth_client.post(f"/api/encounters/{triaged_encounter.id}/start_consultation/")
         assert response.status_code == status.HTTP_200_OK
 
         # 4. Verify removed from queue

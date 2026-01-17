@@ -25,7 +25,9 @@ class TestTriageAssessmentVitalsCapture:
         permission = Permission.objects.get(codename="perform_triage")
         test_user.user_permissions.add(permission)
 
-    def test_create_triage_assessment_accepts_vitals_fields(self, authenticated_client, test_user, sample_encounter):
+    def test_create_triage_assessment_accepts_vitals_fields(
+        self, authenticated_client, test_user, sample_encounter
+    ):
         """Should accept vitals in request body and return them in response."""
         self._grant_perform_triage(test_user)
 
@@ -58,7 +60,9 @@ class TestTriageAssessmentVitalsCapture:
         assert response.data["temperature"] == "37.2"
         assert response.data["respiratory_rate"] == 22
 
-    def test_create_copies_vitals_to_encounter_if_empty(self, authenticated_client, test_user, sample_encounter):
+    def test_create_copies_vitals_to_encounter_if_empty(
+        self, authenticated_client, test_user, sample_encounter
+    ):
         """On create, vitals should copy to Encounter if Encounter vitals are empty."""
         from hmis.apps.encounters.models import Encounter
 
@@ -104,7 +108,9 @@ class TestTriageAssessmentVitalsCapture:
         assert encounter.vitals_recorded_by_id == test_user.id
         assert encounter.vitals_recorded_at is not None
 
-    def test_create_does_not_overwrite_existing_encounter_vitals(self, authenticated_client, test_user, sample_encounter):
+    def test_create_does_not_overwrite_existing_encounter_vitals(
+        self, authenticated_client, test_user, sample_encounter
+    ):
         """Existing Encounter vitals must not be overwritten by triage vitals."""
         from hmis.apps.encounters.models import Encounter
 
@@ -168,7 +174,9 @@ class TestTriageVitalsValidation:
             ("respiratory_rate", -1),
         ],
     )
-    def test_create_rejects_out_of_range_vitals(self, authenticated_client, test_user, sample_encounter, field, value):
+    def test_create_rejects_out_of_range_vitals(
+        self, authenticated_client, test_user, sample_encounter, field, value
+    ):
         """Should return 400 with clear field error when vitals are out of range."""
         self._grant_perform_triage(test_user)
 

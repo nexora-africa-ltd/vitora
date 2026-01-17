@@ -103,29 +103,21 @@ class TestNotificationList:
         results = response.data.get("results", response.data)
         assert len(results) == 2  # Last 2 are read
 
-    def test_list_notifications_filter_by_type(
-        self, authenticated_client, multiple_notifications
-    ):
+    def test_list_notifications_filter_by_type(self, authenticated_client, multiple_notifications):
         """Should filter by notification_type parameter."""
-        response = authenticated_client.get(
-            "/api/notifications/?notification_type=lab_result"
-        )
+        response = authenticated_client.get("/api/notifications/?notification_type=lab_result")
 
         results = response.data.get("results", response.data)
         assert len(results) == 3  # Notifications 0, 2, 4 are lab_result
 
-    def test_list_includes_server_time(
-        self, authenticated_client, sample_notification
-    ):
+    def test_list_includes_server_time(self, authenticated_client, sample_notification):
         """Should include server_time for polling support."""
         response = authenticated_client.get("/api/notifications/")
 
         assert response.status_code == status.HTTP_200_OK
         assert "server_time" in response.data
 
-    def test_list_ordered_by_created_at_desc(
-        self, authenticated_client, multiple_notifications
-    ):
+    def test_list_ordered_by_created_at_desc(self, authenticated_client, multiple_notifications):
         """Should return newest notifications first."""
         response = authenticated_client.get("/api/notifications/")
 
@@ -143,18 +135,14 @@ class TestUnreadCount:
         response = api_client.get("/api/notifications/unread_count/")
         assert response.status_code == status.HTTP_401_UNAUTHORIZED
 
-    def test_unread_count_returns_correct_count(
-        self, authenticated_client, multiple_notifications
-    ):
+    def test_unread_count_returns_correct_count(self, authenticated_client, multiple_notifications):
         """Should return correct unread count."""
         response = authenticated_client.get("/api/notifications/unread_count/")
 
         assert response.status_code == status.HTTP_200_OK
         assert response.data["unread_count"] == 3  # First 3 are unread
 
-    def test_unread_count_zero_when_all_read(
-        self, authenticated_client, sample_notification
-    ):
+    def test_unread_count_zero_when_all_read(self, authenticated_client, sample_notification):
         """Should return 0 when all notifications are read."""
         sample_notification.is_read = True
         sample_notification.save()
@@ -177,14 +165,10 @@ class TestMarkRead:
 
     def test_mark_read_requires_auth(self, api_client, sample_notification):
         """Should reject unauthenticated requests."""
-        response = api_client.post(
-            f"/api/notifications/{sample_notification.id}/mark_read/"
-        )
+        response = api_client.post(f"/api/notifications/{sample_notification.id}/mark_read/")
         assert response.status_code == status.HTTP_401_UNAUTHORIZED
 
-    def test_mark_read_marks_notification(
-        self, authenticated_client, sample_notification
-    ):
+    def test_mark_read_marks_notification(self, authenticated_client, sample_notification):
         """Should mark notification as read."""
         assert sample_notification.is_read is False
 
@@ -197,9 +181,7 @@ class TestMarkRead:
         assert sample_notification.is_read is True
         assert sample_notification.read_at is not None
 
-    def test_mark_read_sets_read_at_timestamp(
-        self, authenticated_client, sample_notification
-    ):
+    def test_mark_read_sets_read_at_timestamp(self, authenticated_client, sample_notification):
         """Should set read_at timestamp."""
         before = timezone.now()
 
@@ -239,9 +221,7 @@ class TestMarkAllRead:
         response = api_client.post("/api/notifications/mark_all_read/")
         assert response.status_code == status.HTTP_401_UNAUTHORIZED
 
-    def test_mark_all_read_marks_all_unread(
-        self, authenticated_client, multiple_notifications
-    ):
+    def test_mark_all_read_marks_all_unread(self, authenticated_client, multiple_notifications):
         """Should mark all unread notifications as read."""
         response = authenticated_client.post("/api/notifications/mark_all_read/")
 
@@ -253,9 +233,7 @@ class TestMarkAllRead:
             notif.refresh_from_db()
             assert notif.is_read is True
 
-    def test_mark_all_read_returns_count(
-        self, authenticated_client, multiple_notifications
-    ):
+    def test_mark_all_read_returns_count(self, authenticated_client, multiple_notifications):
         """Should return count of marked notifications."""
         response = authenticated_client.post("/api/notifications/mark_all_read/")
 

@@ -16,6 +16,7 @@ import pytest  # type: ignore
 # Try to import models
 try:
     from hmis.apps.billing.services.sha_claims import SHAClaimsService
+
     HAS_SHA_CLAIMS_SERVICE = True
 except ImportError:
     HAS_SHA_CLAIMS_SERVICE = False
@@ -37,15 +38,13 @@ class TestPractitionerIdentifiers:
             - PUID (Practitioner Unique ID)
         """
         identifier_types = [
-            'National ID',
-            'Passport',
-            'Registration Number',
-            'PUID',
+            "National ID",
+            "Passport",
+            "Registration Number",
+            "PUID",
         ]
 
-        assert len(identifier_types) >= 4, (
-            "Support at least 4 practitioner identifier types"
-        )
+        assert len(identifier_types) >= 4, "Support at least 4 practitioner identifier types"
 
     def test_puid_format_understanding(self):
         """
@@ -54,11 +53,9 @@ class TestPractitionerIdentifiers:
         Reference: docs/sha-guides/claims-submission.md - Reference PreAuth JSON
         Example: 'PUID-0002532-1'
         """
-        example_puid = 'PUID-0002532-1'
+        example_puid = "PUID-0002532-1"
 
-        assert example_puid.startswith('PUID-'), (
-            "PUID format starts with 'PUID-'"
-        )
+        assert example_puid.startswith("PUID-"), "PUID format starts with 'PUID-'"
 
 
 class TestPractitionerSearchAPI:
@@ -72,7 +69,7 @@ class TestPractitionerSearchAPI:
 
         Endpoint: GET /v1/practitioner-search?identification_type={type}&identification_number={number}
         """
-        expected_endpoint = '/v1/practitioner-search'
+        expected_endpoint = "/v1/practitioner-search"
 
         # Document the endpoint
         assert True, (
@@ -91,8 +88,8 @@ class TestPractitionerSearchAPI:
             - identification_number (string): ID number
         """
         required_params = [
-            'identification_type',
-            'identification_number',
+            "identification_type",
+            "identification_number",
         ]
 
         assert len(required_params) == 2, "2 required parameters"
@@ -109,9 +106,9 @@ class TestPractitionerSearchAPI:
             - is_active (active status)
         """
         response_fields = [
-            'registration_number',
-            'found',
-            'is_active',
+            "registration_number",
+            "found",
+            "is_active",
         ]
 
         assert len(response_fields) >= 3, "Handle at least 3 response fields"
@@ -145,20 +142,18 @@ class TestPractitionerInFHIRBundle:
         service = SHAClaimsService()
         bundle = service.package_claim(sha_claim_with_items)
 
-        claim = self._get_resource_by_type(bundle, 'Claim')
+        claim = self._get_resource_by_type(bundle, "Claim")
         if claim is None:
             pytest.skip("Claim resource not found")
 
-        care_team = claim.get('careTeam', [])
+        care_team = claim.get("careTeam", [])
 
         # CareTeam is expected for claims
         if not care_team:
             pytest.skip("CareTeam not included - consider adding")
 
         for member in care_team:
-            assert 'provider' in member, (
-                "CareTeam member must have provider reference"
-            )
+            assert "provider" in member, "CareTeam member must have provider reference"
 
     def test_practitioner_resource_structure(self):
         """
@@ -174,20 +169,20 @@ class TestPractitionerInFHIRBundle:
             - active: Active status
         """
         required_fields = [
-            'resourceType',
-            'id',
-            'name',
-            'identifier',
-            'active',
+            "resourceType",
+            "id",
+            "name",
+            "identifier",
+            "active",
         ]
 
         assert len(required_fields) >= 5, "Practitioner needs 5+ fields"
 
     def _get_resource_by_type(self, bundle: dict, resource_type: str) -> dict | None:
         """Helper to extract a resource by type from bundle."""
-        for entry in bundle.get('entry', []):
-            if entry.get('resource', {}).get('resourceType') == resource_type:
-                return entry['resource']
+        for entry in bundle.get("entry", []):
+            if entry.get("resource", {}).get("resourceType") == resource_type:
+                return entry["resource"]
         return None
 
 
@@ -208,11 +203,11 @@ class TestHWRRoleAndFunctions:
             - Supporting Licensing and Credentialing
         """
         hwr_functions = [
-            'identity_management',
-            'workforce_planning',
-            'access_management',
-            'interoperability',
-            'licensing_credentialing',
+            "identity_management",
+            "workforce_planning",
+            "access_management",
+            "interoperability",
+            "licensing_credentialing",
         ]
 
         assert len(hwr_functions) >= 5, "HWR serves 5+ key functions"
@@ -231,11 +226,11 @@ class TestHWRRoleAndFunctions:
             - Licensing Information (Status, Expiry)
         """
         data_elements = [
-            'identifiers',
-            'demographics',
-            'employment',
-            'education',
-            'licensing',
+            "identifiers",
+            "demographics",
+            "employment",
+            "education",
+            "licensing",
         ]
 
         assert len(data_elements) == 5, "5 core data element categories"

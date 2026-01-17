@@ -50,9 +50,9 @@ def generate_prc_number(facility_code: str | None = None) -> str:
 
             # Try "Survivor Information" section
             if "Survivor Information" in encounter.clinical_template_data:
-                prc_number = encounter.clinical_template_data.get(
-                    "Survivor Information", {}
-                ).get("prc_number")
+                prc_number = encounter.clinical_template_data.get("Survivor Information", {}).get(
+                    "prc_number"
+                )
 
             # Try flat structure
             if not prc_number and "prc_number" in encounter.clinical_template_data:

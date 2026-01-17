@@ -60,10 +60,7 @@ from hmis.apps.core.models import AuditLog
 def claims_service_category(db):
     """Create a service category for claims tests."""
     return ServiceCategory.objects.create(
-        name='Consultation',
-        code='CONS',
-        description='Consultation services',
-        display_order=1
+        name="Consultation", code="CONS", description="Consultation services", display_order=1
     )
 
 
@@ -72,12 +69,12 @@ def claims_service(db, claims_service_category, test_user):
     """Create a service for claims tests."""
     return Service.objects.create(
         category=claims_service_category,
-        code='CONS-GEN',
-        name='General Consultation',
-        description='General doctor consultation',
-        unit_price=Decimal('500.00'),
-        sha_code='SHA-CONS-001',
-        created_by=test_user
+        code="CONS-GEN",
+        name="General Consultation",
+        description="General doctor consultation",
+        unit_price=Decimal("500.00"),
+        sha_code="SHA-CONS-001",
+        created_by=test_user,
     )
 
 
@@ -85,11 +82,11 @@ def claims_service(db, claims_service_category, test_user):
 def claims_tariff(db, claims_service):
     """Create a SHA tariff for claims tests."""
     return SHATariff.objects.create(
-        code='SHA-CONS-001',
-        name='General Consultation',
+        code="SHA-CONS-001",
+        name="General Consultation",
         category=SHATariff.TariffCategory.CONSULTATION,
         facility_level=SHATariff.TariffLevel.LEVEL_3,
-        sha_amount=Decimal('450.00'),
+        sha_amount=Decimal("450.00"),
         effective_date=date.today() - timedelta(days=365),
         is_active=True,
         internal_service=claims_service,  # Link to service for auto-discovery
@@ -100,6 +97,7 @@ def claims_tariff(db, claims_service):
 def claims_patient(db, sample_county, sample_sub_county):
     """Create a patient for claims tests."""
     from hmis.apps.patients.models import Patient
+
     return Patient.objects.create(
         first_name="Claims",
         last_name="Patient",
@@ -115,8 +113,8 @@ def claims_sha_member(db, claims_patient, test_user):
     """Create a SHA member for claims tests."""
     return SHAMember.objects.create(
         patient=claims_patient,
-        sha_number='SHA-CLAIMS-001',
-        national_id='11223344',
+        sha_number="SHA-CLAIMS-001",
+        national_id="11223344",
         membership_type=SHAMember.MembershipType.PRINCIPAL,
         status=SHAMember.MembershipStatus.ACTIVE,
         coverage_start_date=date.today() - timedelta(days=365),
@@ -130,6 +128,7 @@ def claims_sha_member(db, claims_patient, test_user):
 def claims_patient_no_sha(db, sample_county, sample_sub_county):
     """Create a patient without SHA membership for error tests."""
     from hmis.apps.patients.models import Patient
+
     return Patient.objects.create(
         first_name="NoSHA",
         last_name="Patient",
@@ -144,10 +143,11 @@ def claims_patient_no_sha(db, sample_county, sample_sub_county):
 def claims_icd10_code(db):
     """Create an ICD-10 code for claims tests."""
     from hmis.apps.encounters.models import ICD10Code
+
     return ICD10Code.objects.create(
-        code='J00',
-        description='Acute nasopharyngitis [common cold]',
-        category='Diseases of the respiratory system',
+        code="J00",
+        description="Acute nasopharyngitis [common cold]",
+        category="Diseases of the respiratory system",
         chapter=10,
     )
 
@@ -156,17 +156,18 @@ def claims_icd10_code(db):
 def claims_encounter_opd(db, claims_patient, claims_icd10_code, test_user):
     """Create an OPD encounter for claims tests with diagnosis."""
     from hmis.apps.encounters.models import Diagnosis, Encounter
+
     encounter = Encounter.objects.create(
         patient=claims_patient,
-        encounter_type='OPD',
+        encounter_type="OPD",
         encounter_date=date.today(),
-        chief_complaint='General checkup',
+        chief_complaint="General checkup",
     )
     # Add primary diagnosis
     Diagnosis.objects.create(
         encounter=encounter,
         icd10_code=claims_icd10_code,
-        diagnosis_type='PRIMARY',
+        diagnosis_type="PRIMARY",
         is_confirmed=True,
     )
     return encounter
@@ -176,11 +177,12 @@ def claims_encounter_opd(db, claims_patient, claims_icd10_code, test_user):
 def claims_encounter_ipd(db, claims_patient, claims_icd10_code, test_user):
     """Create an IPD encounter for claims tests with diagnosis."""
     from hmis.apps.encounters.models import Diagnosis, Encounter
+
     encounter = Encounter.objects.create(
         patient=claims_patient,
-        encounter_type='IPD',
+        encounter_type="IPD",
         encounter_date=date.today(),
-        chief_complaint='Admitted for observation',
+        chief_complaint="Admitted for observation",
     )
     # Set admission_date for IPD claims
     encounter.admission_date = date.today()
@@ -189,7 +191,7 @@ def claims_encounter_ipd(db, claims_patient, claims_icd10_code, test_user):
     Diagnosis.objects.create(
         encounter=encounter,
         icd10_code=claims_icd10_code,
-        diagnosis_type='PRIMARY',
+        diagnosis_type="PRIMARY",
         is_confirmed=True,
     )
     return encounter
@@ -199,17 +201,18 @@ def claims_encounter_ipd(db, claims_patient, claims_icd10_code, test_user):
 def claims_encounter_emergency(db, claims_patient, claims_icd10_code, test_user):
     """Create an EMERGENCY encounter for claims tests with diagnosis."""
     from hmis.apps.encounters.models import Diagnosis, Encounter
+
     encounter = Encounter.objects.create(
         patient=claims_patient,
-        encounter_type='EMERGENCY',
+        encounter_type="EMERGENCY",
         encounter_date=date.today(),
-        chief_complaint='Emergency care needed',
+        chief_complaint="Emergency care needed",
     )
     # Add primary diagnosis
     Diagnosis.objects.create(
         encounter=encounter,
         icd10_code=claims_icd10_code,
-        diagnosis_type='PRIMARY',
+        diagnosis_type="PRIMARY",
         is_confirmed=True,
     )
     return encounter
@@ -219,17 +222,18 @@ def claims_encounter_emergency(db, claims_patient, claims_icd10_code, test_user)
 def claims_encounter_no_sha(db, claims_patient_no_sha, claims_icd10_code, test_user):
     """Create an encounter for patient without SHA."""
     from hmis.apps.encounters.models import Diagnosis, Encounter
+
     encounter = Encounter.objects.create(
         patient=claims_patient_no_sha,
-        encounter_type='OPD',
+        encounter_type="OPD",
         encounter_date=date.today(),
-        chief_complaint='Regular visit',
+        chief_complaint="Regular visit",
     )
     # Add primary diagnosis
     Diagnosis.objects.create(
         encounter=encounter,
         icd10_code=claims_icd10_code,
-        diagnosis_type='PRIMARY',
+        diagnosis_type="PRIMARY",
         is_confirmed=True,
     )
     return encounter
@@ -256,14 +260,23 @@ def claims_invoice_item(db, claims_invoice, claims_service):
         invoice=claims_invoice,
         service=claims_service,
         description=claims_service.name,
-        quantity=Decimal('1'),
+        quantity=Decimal("1"),
         unit_price=claims_service.unit_price,
     )
 
 
 @pytest.fixture
-def valid_claim(db, claims_patient, claims_sha_member, claims_encounter_opd,
-                claims_invoice, claims_invoice_item, claims_tariff, claims_service, test_user):
+def valid_claim(
+    db,
+    claims_patient,
+    claims_sha_member,
+    claims_encounter_opd,
+    claims_invoice,
+    claims_invoice_item,
+    claims_tariff,
+    claims_service,
+    test_user,
+):
     """Create a valid claim with items and attachments for submission tests."""
     claim = SHAClaim.objects.create(
         patient=claims_patient,
@@ -272,9 +285,9 @@ def valid_claim(db, claims_patient, claims_sha_member, claims_encounter_opd,
         invoice=claims_invoice,
         claim_type=SHAClaim.ClaimType.OUTPATIENT,
         service_date=date.today(),
-        primary_diagnosis_code='J00',
-        primary_diagnosis_description='Common cold',
-        facility_code='TEST-001',
+        primary_diagnosis_code="J00",
+        primary_diagnosis_description="Common cold",
+        facility_code="TEST-001",
         facility_level=SHATariff.TariffLevel.LEVEL_3,
         created_by=test_user,
     )
@@ -284,28 +297,28 @@ def valid_claim(db, claims_patient, claims_sha_member, claims_encounter_opd,
         claim=claim,
         tariff=claims_tariff,
         service=claims_service,
-        description='General Consultation',
-        quantity=Decimal('1'),
-        unit_price=Decimal('450.00'),
+        description="General Consultation",
+        quantity=Decimal("1"),
+        unit_price=Decimal("450.00"),
     )
 
     # Add required attachments
     SHAClaimAttachment.objects.create(
         claim=claim,
         attachment_type=SHAClaimAttachment.AttachmentType.CLINICAL_NOTES,
-        name='Clinical Notes',
-        file='sha_claims/test/clinical_notes.pdf',
-        mime_type='application/pdf',
-        original_filename='clinical_notes.pdf',
+        name="Clinical Notes",
+        file="sha_claims/test/clinical_notes.pdf",
+        mime_type="application/pdf",
+        original_filename="clinical_notes.pdf",
         uploaded_by=test_user,
     )
     SHAClaimAttachment.objects.create(
         claim=claim,
         attachment_type=SHAClaimAttachment.AttachmentType.INVOICE,
-        name='Invoice',
-        file='sha_claims/test/invoice.pdf',
-        mime_type='application/pdf',
-        original_filename='invoice.pdf',
+        name="Invoice",
+        file="sha_claims/test/invoice.pdf",
+        mime_type="application/pdf",
+        original_filename="invoice.pdf",
         uploaded_by=test_user,
     )
 
@@ -316,11 +329,11 @@ def valid_claim(db, claims_patient, claims_sha_member, claims_encounter_opd,
 def mock_sha_submission_response():
     """Mock successful SHA API submission response."""
     return {
-        'success': True,
-        'claim_reference': 'SHA-REF-2026-001234',
-        'status': 'acknowledged',
-        'message': 'Claim received successfully',
-        'received_at': timezone.now().isoformat(),
+        "success": True,
+        "claim_reference": "SHA-REF-2026-001234",
+        "status": "acknowledged",
+        "message": "Claim received successfully",
+        "received_at": timezone.now().isoformat(),
     }
 
 
@@ -334,8 +347,13 @@ class TestSHAClaimsServiceCreateClaim:
     """Tests for SHAClaimsService.create_claim_from_encounter() method."""
 
     def test_create_claim_from_encounter_creates_claim_and_items(
-        self, claims_encounter_opd, claims_invoice, claims_invoice_item,
-        claims_sha_member, claims_tariff, test_user
+        self,
+        claims_encounter_opd,
+        claims_invoice,
+        claims_invoice_item,
+        claims_sha_member,
+        claims_tariff,
+        test_user,
     ):
         """
         Test that create_claim_from_encounter() creates claim and items.
@@ -471,7 +489,7 @@ class TestSHAClaimsServiceCreateClaim:
                 user=test_user,
             )
 
-        assert 'SHA membership' in str(exc_info.value)
+        assert "SHA membership" in str(exc_info.value)
 
 
 @pytest.mark.django_db
@@ -522,16 +540,16 @@ class TestSHAClaimsServicePackaging:
         bundle = service.package_claim(valid_claim)
 
         assert isinstance(bundle, dict)
-        assert bundle['resourceType'] == 'Bundle'
+        assert bundle["resourceType"] == "Bundle"
         # SHA requires 'message' bundle type (not 'collection')
-        assert bundle['type'] == 'message'
-        assert 'id' in bundle  # SHA requires bundle ID
-        assert 'meta' in bundle  # SHA requires meta.profile
-        assert 'timestamp' in bundle
-        assert 'entry' in bundle
-        assert isinstance(bundle['entry'], list)
+        assert bundle["type"] == "message"
+        assert "id" in bundle  # SHA requires bundle ID
+        assert "meta" in bundle  # SHA requires meta.profile
+        assert "timestamp" in bundle
+        assert "entry" in bundle
+        assert isinstance(bundle["entry"], list)
         # SHA bundle order: Organization, Coverage, Patient, Claim (4 entries)
-        assert len(bundle['entry']) >= 4
+        assert len(bundle["entry"]) >= 4
 
     def test_fhir_claim_resource_structure(self, valid_claim):
         """
@@ -552,39 +570,38 @@ class TestSHAClaimsServicePackaging:
 
         # Find Claim resource in bundle
         claim_entry = next(
-            (e for e in bundle['entry'] if e['resource'].get('resourceType') == 'Claim'),
-            None
+            (e for e in bundle["entry"] if e["resource"].get("resourceType") == "Claim"), None
         )
 
         assert claim_entry is not None
         # SHA requires fullUrl in entry
-        assert 'fullUrl' in claim_entry
+        assert "fullUrl" in claim_entry
 
-        claim_resource = claim_entry['resource']
+        claim_resource = claim_entry["resource"]
 
         # Verify required FHIR Claim fields (SHA-compliant)
-        assert claim_resource['resourceType'] == 'Claim'
-        assert 'id' in claim_resource  # SHA requires id
-        assert 'identifier' in claim_resource
+        assert claim_resource["resourceType"] == "Claim"
+        assert "id" in claim_resource  # SHA requires id
+        assert "identifier" in claim_resource
         # Identifier uses UUID format (bundle GUID)
-        assert claim_resource['identifier'][0]['value'] == claim_resource['id']
-        assert claim_resource['status'] == 'active'
-        assert 'type' in claim_resource
+        assert claim_resource["identifier"][0]["value"] == claim_resource["id"]
+        assert claim_resource["status"] == "active"
+        assert "type" in claim_resource
         # SHA requires claim type coding
-        assert claim_resource['type']['coding'][0]['code'] == 'institutional'
-        assert claim_resource['use'] == 'claim'
-        assert 'patient' in claim_resource
+        assert claim_resource["type"]["coding"][0]["code"] == "institutional"
+        assert claim_resource["use"] == "claim"
+        assert "patient" in claim_resource
         # SHA requires patient reference with identifier
-        assert 'identifier' in claim_resource['patient']
-        assert 'provider' in claim_resource
+        assert "identifier" in claim_resource["patient"]
+        assert "provider" in claim_resource
         # SHA requires billablePeriod
-        assert 'billablePeriod' in claim_resource
+        assert "billablePeriod" in claim_resource
         # SHA requires insurance reference
-        assert 'insurance' in claim_resource
-        assert 'diagnosis' in claim_resource
-        assert 'item' in claim_resource
-        assert 'total' in claim_resource
-        assert claim_resource['total']['currency'] == 'KES'
+        assert "insurance" in claim_resource
+        assert "diagnosis" in claim_resource
+        assert "item" in claim_resource
+        assert "total" in claim_resource
+        assert claim_resource["total"]["currency"] == "KES"
 
     def test_fhir_patient_resource_included(self, valid_claim):
         """
@@ -602,20 +619,19 @@ class TestSHAClaimsServicePackaging:
 
         # Find Patient resource in bundle
         patient_entry = next(
-            (e for e in bundle['entry'] if e['resource'].get('resourceType') == 'Patient'),
-            None
+            (e for e in bundle["entry"] if e["resource"].get("resourceType") == "Patient"), None
         )
 
         assert patient_entry is not None
         # SHA requires fullUrl
-        assert 'fullUrl' in patient_entry
-        patient_resource = patient_entry['resource']
-        assert patient_resource['resourceType'] == 'Patient'
+        assert "fullUrl" in patient_entry
+        patient_resource = patient_entry["resource"]
+        assert patient_resource["resourceType"] == "Patient"
         # SHA requires patient ID to be SHA CR Number
-        assert 'id' in patient_resource
+        assert "id" in patient_resource
         # SHA requires identifier with shanumber system
-        assert 'identifier' in patient_resource
-        assert patient_resource['identifier'][0]['system'].endswith('/identifier/shanumber')
+        assert "identifier" in patient_resource
+        assert patient_resource["identifier"][0]["system"].endswith("/identifier/shanumber")
 
     def test_fhir_coverage_resource_included(self, valid_claim):
         """
@@ -635,44 +651,49 @@ class TestSHAClaimsServicePackaging:
 
         # Find Coverage resource in bundle
         coverage_entry = next(
-            (e for e in bundle['entry'] if e['resource'].get('resourceType') == 'Coverage'),
-            None
+            (e for e in bundle["entry"] if e["resource"].get("resourceType") == "Coverage"), None
         )
 
         assert coverage_entry is not None
         # SHA requires fullUrl
-        assert 'fullUrl' in coverage_entry
-        coverage_resource = coverage_entry['resource']
-        assert coverage_resource['resourceType'] == 'Coverage'
+        assert "fullUrl" in coverage_entry
+        coverage_resource = coverage_entry["resource"]
+        assert coverage_resource["resourceType"] == "Coverage"
         # SHA requires scheme extensions (flat format per spec)
-        assert 'extension' in coverage_resource
+        assert "extension" in coverage_resource
 
         # Find schemeCategoryCode extension with CAT-SHA-001
         # Per SHA spec: flat extension with url ending in 'schemeCategoryCode'
         scheme_code_ext = next(
-            (ext for ext in coverage_resource['extension']
-             if 'schemeCategoryCode' in ext.get('url', '')),
-            None
+            (
+                ext
+                for ext in coverage_resource["extension"]
+                if "schemeCategoryCode" in ext.get("url", "")
+            ),
+            None,
         )
-        assert scheme_code_ext is not None, (
-            "Coverage must have schemeCategoryCode extension per SHA spec"
-        )
-        assert scheme_code_ext.get('valueString') == 'CAT-SHA-001', (
-            "schemeCategoryCode must be CAT-SHA-001"
-        )
+        assert (
+            scheme_code_ext is not None
+        ), "Coverage must have schemeCategoryCode extension per SHA spec"
+        assert (
+            scheme_code_ext.get("valueString") == "CAT-SHA-001"
+        ), "schemeCategoryCode must be CAT-SHA-001"
 
         # Find schemeCategoryName extension
         scheme_name_ext = next(
-            (ext for ext in coverage_resource['extension']
-             if 'schemeCategoryName' in ext.get('url', '')),
-            None
+            (
+                ext
+                for ext in coverage_resource["extension"]
+                if "schemeCategoryName" in ext.get("url", "")
+            ),
+            None,
         )
-        assert scheme_name_ext is not None, (
-            "Coverage must have schemeCategoryName extension per SHA spec"
-        )
-        assert scheme_name_ext.get('valueString') == 'SOCIAL HEALTH AUTHORITY', (
-            "schemeCategoryName must be 'SOCIAL HEALTH AUTHORITY'"
-        )
+        assert (
+            scheme_name_ext is not None
+        ), "Coverage must have schemeCategoryName extension per SHA spec"
+        assert (
+            scheme_name_ext.get("valueString") == "SOCIAL HEALTH AUTHORITY"
+        ), "schemeCategoryName must be 'SOCIAL HEALTH AUTHORITY'"
 
     def test_fhir_organization_resource_included(self, valid_claim):
         """
@@ -692,30 +713,28 @@ class TestSHAClaimsServicePackaging:
 
         # Find Organization resource in bundle
         org_entry = next(
-            (e for e in bundle['entry'] if e['resource'].get('resourceType') == 'Organization'),
-            None
+            (e for e in bundle["entry"] if e["resource"].get("resourceType") == "Organization"),
+            None,
         )
 
         assert org_entry is not None
         # SHA requires fullUrl
-        assert 'fullUrl' in org_entry
-        org_resource = org_entry['resource']
-        assert org_resource['resourceType'] == 'Organization'
+        assert "fullUrl" in org_entry
+        org_resource = org_entry["resource"]
+        assert org_resource["resourceType"] == "Organization"
         # SHA requires organization ID
-        assert 'id' in org_resource
+        assert "id" in org_resource
         # SHA requires facility name
-        assert 'name' in org_resource
+        assert "name" in org_resource
         # SHA requires identifier with facility code
-        assert 'identifier' in org_resource
+        assert "identifier" in org_resource
 
 
 @pytest.mark.django_db
 class TestSHAClaimsServiceSubmission:
     """Tests for SHAClaimsService.submit_claim() method (offline-first)."""
 
-    def test_submit_claim_success_flow(
-        self, valid_claim, test_user, mock_sha_submission_response
-    ):
+    def test_submit_claim_success_flow(self, valid_claim, test_user, mock_sha_submission_response):
         """
         Test successful claim submission flow (offline-first queuing).
 
@@ -730,10 +749,10 @@ class TestSHAClaimsServiceSubmission:
         response = service.submit_claim(valid_claim, test_user)
 
         # Offline-first implementation queues claims
-        assert response['status'] == 'queued'
-        assert response['message'] == 'Claim queued for submission when online'
-        assert 'queue_entry_id' in response
-        assert response['claim_number'] == valid_claim.claim_number
+        assert response["status"] == "queued"
+        assert response["message"] == "Claim queued for submission when online"
+        assert "queue_entry_id" in response
+        assert response["claim_number"] == valid_claim.claim_number
 
     def test_submit_claim_updates_claim_status(
         self, valid_claim, test_user, mock_sha_submission_response
@@ -756,9 +775,9 @@ class TestSHAClaimsServiceSubmission:
 
         # Offline-first: claim is queued, not submitted directly
         assert valid_claim.status == SHAClaim.ClaimStatus.PENDING_SUBMISSION
-        assert 'queued' in valid_claim.submission_response
-        assert valid_claim.submission_response['queued'] is True
-        assert 'queue_entry_id' in valid_claim.submission_response
+        assert "queued" in valid_claim.submission_response
+        assert valid_claim.submission_response["queued"] is True
+        assert "queue_entry_id" in valid_claim.submission_response
 
     def test_submit_claim_logs_audit_entry(
         self, valid_claim, test_user, mock_sha_submission_response
@@ -775,20 +794,20 @@ class TestSHAClaimsServiceSubmission:
         service = SHAClaimsService()
 
         # Check for queued action (offline-first implementation)
-        initial_audit_count = AuditLog.objects.filter(action='sha_claim_queued').count()
+        initial_audit_count = AuditLog.objects.filter(action="sha_claim_queued").count()
 
         service.submit_claim(valid_claim, test_user)
 
         # Check audit log was created for queuing
-        final_audit_count = AuditLog.objects.filter(action='sha_claim_queued').count()
+        final_audit_count = AuditLog.objects.filter(action="sha_claim_queued").count()
         assert final_audit_count == initial_audit_count + 1
 
         # Verify audit log content
-        audit_log = AuditLog.objects.filter(action='sha_claim_queued').latest('timestamp')
+        audit_log = AuditLog.objects.filter(action="sha_claim_queued").latest("timestamp")
         assert audit_log.user == test_user
-        assert audit_log.resource_type == 'SHAClaim'
+        assert audit_log.resource_type == "SHAClaim"
         assert audit_log.resource_id == valid_claim.id
-        assert 'queue_entry_id' in audit_log.details
+        assert "queue_entry_id" in audit_log.details
 
     def test_submit_claim_handles_validation_error(self, valid_claim, test_user):
         """
@@ -804,17 +823,14 @@ class TestSHAClaimsServiceSubmission:
 
         # Mock package_claim to raise validation error
         with patch.object(
-            service, 'package_claim',
-            side_effect=ValidationError("Invalid claim data")
+            service, "package_claim", side_effect=ValidationError("Invalid claim data")
         ):
             with pytest.raises(ValidationError) as exc_info:
                 service.submit_claim(valid_claim, test_user)
 
-        assert 'Invalid claim data' in str(exc_info.value)
+        assert "Invalid claim data" in str(exc_info.value)
 
-    def test_claim_queued_creates_sync_queue_entry(
-        self, valid_claim, test_user
-    ):
+    def test_claim_queued_creates_sync_queue_entry(self, valid_claim, test_user):
         """
         Test that submit_claim() creates sync queue entry for offline processing.
 
@@ -827,24 +843,18 @@ class TestSHAClaimsServiceSubmission:
 
         service = SHAClaimsService()
 
-        initial_queue_count = SyncQueue.objects.filter(
-            model_name='SHAClaimSubmission'
-        ).count()
+        initial_queue_count = SyncQueue.objects.filter(model_name="SHAClaimSubmission").count()
 
         service.submit_claim(valid_claim, test_user)
 
         # Verify queue entry was created
-        final_queue_count = SyncQueue.objects.filter(
-            model_name='SHAClaimSubmission'
-        ).count()
+        final_queue_count = SyncQueue.objects.filter(model_name="SHAClaimSubmission").count()
         assert final_queue_count == initial_queue_count + 1
 
         # Verify queue entry data
-        queue_entry = SyncQueue.objects.filter(
-            model_name='SHAClaimSubmission'
-        ).latest('created_at')
-        assert queue_entry.status == 'PENDING'
-        assert queue_entry.data.get('claim_id') == valid_claim.id
+        queue_entry = SyncQueue.objects.filter(model_name="SHAClaimSubmission").latest("created_at")
+        assert queue_entry.status == "PENDING"
+        assert queue_entry.data.get("claim_id") == valid_claim.id
 
 
 @pytest.mark.django_db
@@ -863,13 +873,13 @@ class TestSHAClaimsServiceConfiguration:
 
         service = SHAClaimsService()
 
-        assert hasattr(service, 'api_base_url')
-        assert hasattr(service, 'api_key')
-        assert hasattr(service, 'facility_code')
-        assert hasattr(service, 'facility_level')
-        assert hasattr(service, 'auth_service')
+        assert hasattr(service, "api_base_url")
+        assert hasattr(service, "api_key")
+        assert hasattr(service, "facility_code")
+        assert hasattr(service, "facility_level")
+        assert hasattr(service, "auth_service")
 
-        assert service.api_base_url == settings.SHA_API_BASE_URL.rstrip('/')
+        assert service.api_base_url == settings.SHA_API_BASE_URL.rstrip("/")
         assert service.api_key == settings.SHA_API_KEY
         assert service.facility_code == settings.FACILITY_MFL_CODE
         assert service.facility_level == settings.FACILITY_LEVEL

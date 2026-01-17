@@ -77,6 +77,7 @@ def sample_test(db):
 def sample_encounter(sample_patient, test_user):
     """Create a sample encounter."""
     from hmis.apps.encounters.models import Encounter
+
     return Encounter.objects.create(
         patient=sample_patient,
         encounter_type="OPD",
@@ -267,5 +268,5 @@ class TestLabResultExtended:
         sample_result.is_critical_result = True
         sample_result.save()
 
-        assert hasattr(sample_result, 'is_critical_result')
+        assert hasattr(sample_result, "is_critical_result")
         assert sample_result.is_critical_result is True

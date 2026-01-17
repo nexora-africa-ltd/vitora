@@ -39,18 +39,18 @@ class LabNotificationService:
         has_critical = self._has_critical_results(lab_order)
 
         # Determine priority
-        priority = 'critical' if has_critical else 'normal'
+        priority = "critical" if has_critical else "normal"
 
         # Create in-app notification
         notification = Notification.objects.create(
             user=clinician,
-            notification_type='lab_result',
+            notification_type="lab_result",
             priority=priority,
             title=self._get_notification_title(lab_order, has_critical),
             message=self._get_notification_message(lab_order, has_critical),
-            related_model='LabOrder',
+            related_model="LabOrder",
             related_id=lab_order.id,
-            action_url=f'/encounters/{lab_order.encounter.id}/lab/{lab_order.id}/'
+            action_url=f"/encounters/{lab_order.encounter.id}/lab/{lab_order.id}/",
         )
 
         # Send email for critical results
@@ -63,7 +63,7 @@ class LabNotificationService:
         """Check if order has any critical results."""
         # Check results through order items (result is OneToOne, not ManyToMany)
         for item in lab_order.items.all():
-            if hasattr(item, 'result') and item.result.is_critical_result:
+            if hasattr(item, "result") and item.result.is_critical_result:
                 return True
         return False
 
@@ -106,7 +106,7 @@ class LabNotificationService:
             # Get critical parameter names (from test catalog via order item)
             critical_params = []
             for item in lab_order.items.all():
-                if hasattr(item, 'result') and item.result.is_critical_result:
+                if hasattr(item, "result") and item.result.is_critical_result:
                     critical_params.append(item.test.name)
 
             if critical_params:
@@ -133,15 +133,17 @@ class LabNotificationService:
         # Get critical results
         critical_results = []
         for item in lab_order.items.all():
-            if hasattr(item, 'result') and item.result.is_critical_result:
+            if hasattr(item, "result") and item.result.is_critical_result:
                 result = item.result
-                critical_results.append({
-                    'parameter': item.test.name,
-                    'value': result.get_formatted_value(),
-                    'unit': item.test.result_unit or '',
-                    'flag': result.result_flag,
-                    'reference_range': result.reference_range_text or ''
-                })
+                critical_results.append(
+                    {
+                        "parameter": item.test.name,
+                        "value": result.get_formatted_value(),
+                        "unit": item.test.result_unit or "",
+                        "flag": result.result_flag,
+                        "reference_range": result.reference_range_text or "",
+                    }
+                )
 
         # Get first test name
         first_item = lab_order.items.first()
@@ -149,14 +151,14 @@ class LabNotificationService:
 
         # Prepare context
         context = {
-            'clinician_name': clinician_name,
-            'patient_name': patient_name,
-            'patient_mrn': patient.mrn,
-            'test_name': test_name,
-            'order_number': lab_order.order_number,
-            'critical_results': critical_results,
-            'action_url': f"{settings.FRONTEND_URL}/encounters/{lab_order.encounter.id}/lab/{lab_order.id}/",
-            'facility_name': getattr(settings, 'FACILITY_NAME', 'Vitora Health Facility'),
+            "clinician_name": clinician_name,
+            "patient_name": patient_name,
+            "patient_mrn": patient.mrn,
+            "test_name": test_name,
+            "order_number": lab_order.order_number,
+            "critical_results": critical_results,
+            "action_url": f"{settings.FRONTEND_URL}/encounters/{lab_order.encounter.id}/lab/{lab_order.id}/",
+            "facility_name": getattr(settings, "FACILITY_NAME", "Vitora Health Facility"),
         }
 
         # Render email from template (or use simple text)
@@ -164,8 +166,8 @@ class LabNotificationService:
 
         # Try to render from template, fallback to plain text
         try:
-            html_message = render_to_string('laboratory/email/critical_result.html', context)
-            plain_message = render_to_string('laboratory/email/critical_result.txt', context)
+            html_message = render_to_string("laboratory/email/critical_result.html", context)
+            plain_message = render_to_string("laboratory/email/critical_result.txt", context)
         except:
             # Fallback to plain text
             plain_message = f"""
@@ -197,5 +199,5 @@ View results: {context['action_url']}
             from_email=settings.DEFAULT_FROM_EMAIL,
             recipient_list=[clinician.email],
             html_message=html_message,
-            fail_silently=True
+            fail_silently=True,
         )

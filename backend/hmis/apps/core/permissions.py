@@ -304,9 +304,7 @@ class RoleBasedPermission(permissions.BasePermission):
         if hasattr(view, "get_serializer_class"):
             try:
                 serializer_class = view.get_serializer_class()
-                if hasattr(serializer_class, "Meta") and hasattr(
-                    serializer_class.Meta, "model"
-                ):
+                if hasattr(serializer_class, "Meta") and hasattr(serializer_class.Meta, "model"):
                     return serializer_class.Meta.model.__name__
             except Exception:
                 pass
@@ -369,26 +367,26 @@ class SHAPermission(permissions.BasePermission):
 
     # Map view actions to required permission codenames
     ACTION_PERMISSION_MAP = {
-        'list': 'view',
-        'retrieve': 'view',
-        'create': 'add',
-        'update': 'change',
-        'partial_update': 'change',
-        'destroy': 'delete',
+        "list": "view",
+        "retrieve": "view",
+        "create": "add",
+        "update": "change",
+        "partial_update": "change",
+        "destroy": "delete",
     }
 
     # Custom action permissions
     CUSTOM_ACTION_PERMISSIONS = {
-        'submit': 'submit_sha_claim',
-        'appeal': 'appeal_sha_claim',
-        'verify': 'verify_sha_eligibility',
-        'check_eligibility': 'verify_sha_eligibility',
-        'submit_claim': 'submit_sha_claim',
-        'appeal_claim': 'appeal_sha_claim',
-        'export': 'view_shaclaim',
-        'bulk_create': 'add_shaclaim',
-        'bulk_update': 'change_shaclaim',
-        'dashboard': 'view_shaclaim',
+        "submit": "submit_sha_claim",
+        "appeal": "appeal_sha_claim",
+        "verify": "verify_sha_eligibility",
+        "check_eligibility": "verify_sha_eligibility",
+        "submit_claim": "submit_sha_claim",
+        "appeal_claim": "appeal_sha_claim",
+        "export": "view_shaclaim",
+        "bulk_create": "add_shaclaim",
+        "bulk_update": "change_shaclaim",
+        "dashboard": "view_shaclaim",
     }
 
     def has_permission(self, request, view):
@@ -411,23 +409,23 @@ class SHAPermission(permissions.BasePermission):
             return True
 
         # Get the action
-        action = getattr(view, 'action', None)
+        action = getattr(view, "action", None)
 
         # Check for custom action permissions first
         if action in self.CUSTOM_ACTION_PERMISSIONS:
             perm_codename = self.CUSTOM_ACTION_PERMISSIONS[action]
-            return request.user.has_perm(f'billing.{perm_codename}')
+            return request.user.has_perm(f"billing.{perm_codename}")
 
         # Get standard permission for CRUD actions
-        perm_prefix = self.ACTION_PERMISSION_MAP.get(action, 'view')
+        perm_prefix = self.ACTION_PERMISSION_MAP.get(action, "view")
 
         # Get model name from view
         model_name = self._get_model_name(view)
         if not model_name:
             return False
 
-        perm_codename = f'{perm_prefix}_{model_name}'
-        return request.user.has_perm(f'billing.{perm_codename}')
+        perm_codename = f"{perm_prefix}_{model_name}"
+        return request.user.has_perm(f"billing.{perm_codename}")
 
     def _get_model_name(self, view):
         """
@@ -439,15 +437,15 @@ class SHAPermission(permissions.BasePermission):
         Returns:
             str: Lowercase model name or None
         """
-        if hasattr(view, 'get_queryset'):
+        if hasattr(view, "get_queryset"):
             try:
                 queryset = view.get_queryset()
-                if hasattr(queryset, 'model'):
+                if hasattr(queryset, "model"):
                     return queryset.model.__name__.lower()
             except Exception:
                 pass
 
-        if hasattr(view, 'queryset') and view.queryset is not None:
+        if hasattr(view, "queryset") and view.queryset is not None:
             return view.queryset.model.__name__.lower()
 
         return None
