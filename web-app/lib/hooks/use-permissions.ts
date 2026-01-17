@@ -126,7 +126,8 @@ export function usePermissions(): PermissionsResult {
 
     const userRole = user.role || '';
     const userPermissions = user.permissions || [];
-    const isSuperuser = user.is_staff === true; // Backend sets is_staff=true for superusers
+    // Check is_superuser first (explicit), then fall back to is_staff for older data
+    const isSuperuser = user.is_superuser === true || (user.is_staff === true && userRole === 'ADMIN');
     const isAdmin = isSuperuser || ADMIN_ROLES.includes(userRole);
     const isClinical = CLINICAL_ROLES.includes(userRole);
     const canEditIdentityByRole = IDENTITY_EDIT_ROLES.includes(userRole);
