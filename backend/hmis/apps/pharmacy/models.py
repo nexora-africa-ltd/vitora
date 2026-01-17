@@ -109,7 +109,7 @@ class Drug(models.Model):
     # Classification
     category = models.CharField(max_length=30, choices=DRUG_CATEGORIES)
     form = models.CharField(max_length=20, choices=DRUG_FORMS)
-    strength = models.CharField(max_length=50)
+    strength = models.CharField(max_length=150)  # Some strengths are long (e.g., combo packs)
     unit = models.CharField(max_length=20)
 
     # Scheduling
