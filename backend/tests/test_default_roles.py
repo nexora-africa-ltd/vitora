@@ -25,7 +25,7 @@ class TestDefaultRolesFixture:
         call_command("load_default_roles", stdout=out)
 
         # Check all roles created
-        assert Role.objects.count() == 11
+        assert Role.objects.count() == 12
 
         # Check specific roles exist
         role_codes = [
@@ -249,7 +249,7 @@ class TestLoadDefaultRolesCommand:
 
         # Should have same count (no duplicates)
         assert first_count == second_count
-        assert first_count == 11
+        assert first_count == 12
 
     def test_command_with_update_flag(self):
         """Should update existing roles with --update flag."""

@@ -331,5 +331,36 @@
       "created_at": "2026-01-01T00:00:00Z",
       "updated_at": "2026-01-01T00:00:00Z"
     }
+  },
+  {
+    "model": "auth.group",
+    "pk": 12,
+    "fields": {
+      "name": "Billing Clerk"
+    }
+  },
+  {
+    "model": "core.role",
+    "pk": 12,
+    "fields": {
+      "code": "BILLING_CLERK",
+      "name": "Billing Clerk",
+      "category": "ADMINISTRATIVE",
+      "description": "Billing, invoicing, and SHA claims processing",
+      "permissions_matrix": {
+        "Patient": {"create": false, "read": true, "update": false, "delete": false, "view_sensitive": false},
+        "Invoice": {"create": true, "read": true, "update": true, "delete": false},
+        "Payment": {"create": true, "read": true, "update": true, "delete": false},
+        "SHAClaim": {"create": true, "read": true, "update": true, "delete": false}
+      },
+      "hierarchy_level": 5,
+      "parent_role": null,
+      "django_group": 12,
+      "requires_license": false,
+      "license_body": "",
+      "is_active": true,
+      "created_at": "2026-01-01T00:00:00Z",
+      "updated_at": "2026-01-01T00:00:00Z"
+    }
   }
 ]
