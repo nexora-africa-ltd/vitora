@@ -240,7 +240,7 @@ export function createChartConfig(
 /**
  * Format number for display in charts
  */
-export function formatChartValue(value: number, type: "number" | "currency" | "percent" = "number"): string {
+export function formatChartValue(value: number, type: "number" | "currency" | "percent" | "compact" = "number"): string {
   switch (type) {
     case "currency":
       return new Intl.NumberFormat("en-KE", {
@@ -251,6 +251,11 @@ export function formatChartValue(value: number, type: "number" | "currency" | "p
       }).format(value);
     case "percent":
       return `${value.toFixed(1)}%`;
+    case "compact":
+      return new Intl.NumberFormat("en-KE", {
+        notation: "compact",
+        compactDisplay: "short",
+      }).format(value);
     default:
       return value.toLocaleString("en-KE");
   }

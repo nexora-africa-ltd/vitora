@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { RefreshCw, Download, Printer, Calendar } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -16,6 +16,7 @@ import { ChartCard } from './chart-card';
 import { PatientVolumeChart } from '@/components/widgets/patient-volume-chart';
 import { RevenueBreakdownChart } from '@/components/widgets/revenue-chart';
 import { RecentActivity } from '@/components/widgets/recent-activity';
+import { DonutChart, createChartConfig, formatChartValue } from '@/components/charts';
 import { useDashboardMetrics } from '@/lib/hooks/use-dashboard-metrics';
 import type { DateRangeFilter } from '@/lib/types/dashboard';
 
@@ -139,32 +140,13 @@ export function DashboardOverview() {
       {/* Recent Activity */}
       <div className="grid gap-6 lg:grid-cols-3">
         <div className="lg:col-span-2">
-          {/* Placeholder for additional charts or tables */}
+          {/* Encounter Types Chart */}
           <ChartCard
             title="Encounter Types"
             description="Distribution by type (OPD, IPD, Emergency)"
           >
             {metrics?.patientVolume && (
-              <div className="grid grid-cols-3 gap-4 py-8">
-                <div className="text-center">
-                  <p className="text-3xl font-bold text-blue-600">
-                    {metrics.patientVolume.reduce((sum, d) => sum + d.opd, 0)}
-                  </p>
-                  <p className="text-sm text-muted-foreground">OPD Visits</p>
-                </div>
-                <div className="text-center">
-                  <p className="text-3xl font-bold text-green-600">
-                    {metrics.patientVolume.reduce((sum, d) => sum + d.ipd, 0)}
-                  </p>
-                  <p className="text-sm text-muted-foreground">IPD Admissions</p>
-                </div>
-                <div className="text-center">
-                  <p className="text-3xl font-bold text-destructive">
-                    {metrics.patientVolume.reduce((sum, d) => sum + d.emergency, 0)}
-                  </p>
-                  <p className="text-sm text-muted-foreground">Emergency</p>
-                </div>
-              </div>
+              <EncounterTypesChart patientVolume={metrics.patientVolume} />
             )}
           </ChartCard>
         </div>
@@ -176,6 +158,65 @@ export function DashboardOverview() {
         </div>
       </div>
     </div>
+  );
+}
+
+// Encounter Types DonutChart component
+function EncounterTypesChart({ patientVolume }: { patientVolume: Array<{ opd: number; ipd: number; emergency: number }> }) {
+  const chartData = useMemo(() => {
+    const opd = patientVolume.reduce((sum, d) => sum + d.opd, 0);
+    const ipd = patientVolume.reduce((sum, d) => sum + d.ipd, 0);
+    const emergency = patientVolume.reduce((sum, d) => sum + d.emergency, 0);
+    
+    return [
+      { name: 'opd', value: opd },
+      { name: 'ipd', value: ipd },
+      { name: 'emergency', value: emergency },
+    ];
+  }, [patientVolume]);
+
+  const totalEncounters = useMemo(
+    () => chartData.reduce((sum, item) => sum + item.value, 0),
+    [chartData]
+  );
+
+  const chartConfig = useMemo(
+    () => createChartConfig(['opd', 'ipd', 'emergency'], {
+      labels: {
+        opd: 'OPD Visits',
+        ipd: 'IPD Admissions',
+        emergency: 'Emergency',
+      },
+      colors: {
+        opd: 'hsl(var(--chart-1))',
+        ipd: 'hsl(var(--chart-2))',
+        emergency: 'hsl(var(--critical))',
+      },
+    }),
+    []
+  );
+
+  if (totalEncounters === 0) {
+    return (
+      <div className="h-[200px] flex items-center justify-center text-muted-foreground">
+        No encounter data available
+      </div>
+    );
+  }
+
+  return (
+    <DonutChart
+      data={chartData}
+      config={chartConfig}
+      showLegend
+      legendPosition="right"
+      innerRadius={50}
+      outerRadius={90}
+      showCenterLabel
+      centerLabelTitle="Total"
+      centerLabelValue={formatChartValue(totalEncounters, 'compact')}
+      minHeight="200px"
+    />
   );
 }
 
