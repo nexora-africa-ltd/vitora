@@ -83,7 +83,11 @@
     "zod": "^3.22.4",
     "zustand": "^4.4.7",
     "autoprefixer": "^10.4.17",
-    "postcss": "^8.4.33"
+    "postcss": "^8.4.33",
+    "typescript": "^5.3.3",
+    "@types/node": "^20.11.0",
+    "@types/react": "^18.2.48",
+    "@types/react-dom": "^18.2.18"
   },
   "devDependencies": {
     "@cucumber/cucumber": "^12.5.0",
@@ -93,9 +97,6 @@
     "@testing-library/react": "^16.3.1",
     "@testing-library/user-event": "^14.5.2",
     "@types/jest": "^29.5.11",
-    "@types/node": "^20.11.0",
-    "@types/react": "^18.2.48",
-    "@types/react-dom": "^18.2.18",
     "@typescript-eslint/eslint-plugin": "^7.2.0",
     "@typescript-eslint/parser": "^7.2.0",
     "eslint": "^8.56.0",
@@ -110,7 +111,6 @@
     "prettier": "^3.2.4",
     "prettier-plugin-tailwindcss": "^0.5.11",
     "ts-node": "^10.9.2",
-    "typescript": "^5.3.3",
     "undici": "^7.16.0"
   }
 }
