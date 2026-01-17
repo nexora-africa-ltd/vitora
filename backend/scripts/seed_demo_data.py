@@ -32,13 +32,13 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 os.environ.setdefault("DJANGO_SETTINGS_MODULE", "hmis.settings.staging")
 django.setup()
 
-from django.contrib.auth import get_user_model
-from django.contrib.auth.models import Group, Permission
-from django.db import transaction
+from django.contrib.auth import get_user_model  # noqa: E402
+from django.contrib.auth.models import Group, Permission  # noqa: E402
+from django.db import transaction  # noqa: E402
 
-from hmis.apps.core.models import County, SubCounty, Ward
-from hmis.apps.encounters.models import Encounter
-from hmis.apps.patients.models import Patient
+from hmis.apps.core.models import County, SubCounty, Ward  # noqa: E402
+from hmis.apps.encounters.models import Encounter  # noqa: E402
+from hmis.apps.patients.models import Patient  # noqa: E402
 
 User = get_user_model()
 
@@ -408,7 +408,7 @@ def create_sample_patients(counties, count=20):
 
     patients_created = 0
 
-    for i in range(count):
+    for _ in range(count):
         gender = choice(["M", "F"])
 
         if gender == "M":
@@ -466,7 +466,7 @@ def create_sample_encounters(patients, count_per_patient=2):
     encounters_created = 0
 
     for patient in patients[:10]:  # Create encounters for first 10 patients
-        for i in range(randint(1, count_per_patient)):
+        for _ in range(randint(1, count_per_patient)):
             encounter_date = date.today() - timedelta(days=randint(0, 30))
 
             try:

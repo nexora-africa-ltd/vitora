@@ -1,7 +1,8 @@
 """Tests for ICD-11 Local API Service."""
 
-import pytest
 from unittest import mock
+
+import pytest
 
 from hmis.apps.billing.services.icd11_local import ICD11Code, ICD11LocalService
 
@@ -56,7 +57,7 @@ class TestICD11Code:
             is_leaf=True,
         )
         result = code.to_dict()
-        
+
         assert result == {
             "code": "1A00",
             "title": "Cholera",
@@ -74,7 +75,7 @@ class TestICD11Code:
             entity_id="123",
         )
         result = code.to_dict()
-        
+
         assert result["chapter"] is None
         assert result["browser_url"] is None
         assert result["is_leaf"] is False
@@ -106,7 +107,7 @@ class TestICD11LocalService:
         """Should return required headers for WHO ICD-11 API."""
         service = ICD11LocalService()
         headers = service._get_headers()
-        
+
         assert headers["API-Version"] == "v2"
         assert headers["Accept-Language"] == "en"
         assert headers["Accept"] == "application/json"
@@ -114,49 +115,49 @@ class TestICD11LocalService:
     def test_strip_html_removes_tags(self):
         """Should remove HTML tags from text."""
         service = ICD11LocalService()
-        
+
         result = service._strip_html("<em class='found'>Cholera</em>")
         assert result == "Cholera"
 
     def test_strip_html_handles_multiple_tags(self):
         """Should handle multiple HTML tags."""
         service = ICD11LocalService()
-        
+
         result = service._strip_html("<b>Bold</b> and <i>italic</i>")
         assert result == "Bold and italic"
 
     def test_strip_html_plain_text_unchanged(self):
         """Should leave plain text unchanged."""
         service = ICD11LocalService()
-        
+
         result = service._strip_html("Plain text without tags")
         assert result == "Plain text without tags"
 
     def test_strip_html_empty_string(self):
         """Should handle empty string."""
         service = ICD11LocalService()
-        
+
         result = service._strip_html("")
         assert result == ""
 
     def test_extract_code_from_url(self):
         """Should return None (extraction requires API call)."""
         service = ICD11LocalService()
-        
+
         result = service._extract_code_from_url("http://id.who.int/icd/entity/123")
         assert result is None
 
     def test_search_empty_query_returns_empty(self):
         """Should return empty list for empty query."""
         service = ICD11LocalService()
-        
+
         result = service.search("")
         assert result == []
 
     def test_search_short_query_returns_empty(self):
         """Should return empty list for query less than 2 chars."""
         service = ICD11LocalService()
-        
+
         result = service.search("a")
         assert result == []
 
@@ -164,11 +165,12 @@ class TestICD11LocalService:
     def test_search_api_error_returns_empty(self, mock_get):
         """Should return empty list on API error."""
         import requests
+
         mock_get.side_effect = requests.exceptions.ConnectionError("Connection refused")
-        
+
         service = ICD11LocalService()
         result = service.search("malaria")
-        
+
         assert result == []
 
     @mock.patch("hmis.apps.billing.services.icd11_local.requests.get")
@@ -189,10 +191,10 @@ class TestICD11LocalService:
             ]
         }
         mock_get.return_value = mock_response
-        
+
         service = ICD11LocalService()
         results = service.search("malaria", limit=10)
-        
+
         assert len(results) == 1
         assert results[0].code == "1F40"
         assert results[0].title == "Malaria"
@@ -203,21 +205,22 @@ class TestICD11LocalService:
         mock_response = mock.Mock()
         mock_response.status_code = 404
         mock_get.return_value = mock_response
-        
+
         service = ICD11LocalService()
         result = service.get_by_code("INVALID")
-        
+
         assert result is None
 
     @mock.patch("hmis.apps.billing.services.icd11_local.requests.get")
     def test_get_by_code_api_error(self, mock_get):
         """Should return None on API error."""
         import requests
+
         mock_get.side_effect = requests.exceptions.Timeout("Request timed out")
-        
+
         service = ICD11LocalService()
         result = service.get_by_code("1A00")
-        
+
         assert result is None
 
     @mock.patch("hmis.apps.billing.services.icd11_local.requests.get")
@@ -232,10 +235,10 @@ class TestICD11LocalService:
             "browserUrl": "https://icd.who.int/browse/1A00",
         }
         mock_get.return_value = mock_response
-        
+
         service = ICD11LocalService()
         result = service.get_by_code("1A00")
-        
+
         assert result is not None
         assert result.code == "1A00"
         assert result.title == "Cholera"
@@ -246,20 +249,20 @@ class TestICD11LocalService:
         mock_response = mock.Mock()
         mock_response.status_code = 200
         mock_get.return_value = mock_response
-        
+
         service = ICD11LocalService()
         result = service.is_available()
-        
+
         assert result is True
 
     @mock.patch("hmis.apps.billing.services.icd11_local.requests.get")
     def test_is_available_failure(self, mock_get):
         """Should return False when API is unavailable."""
         mock_get.side_effect = Exception("Connection refused")
-        
+
         service = ICD11LocalService()
         result = service.is_available()
-        
+
         assert result is False
 
     @mock.patch("hmis.apps.billing.services.icd11_local.requests.get")
@@ -268,8 +271,8 @@ class TestICD11LocalService:
         mock_response = mock.Mock()
         mock_response.status_code = 503
         mock_get.return_value = mock_response
-        
+
         service = ICD11LocalService()
         result = service.is_available()
-        
+
         assert result is False
