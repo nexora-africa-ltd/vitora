@@ -4,27 +4,22 @@
  */
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import {
-  Send,
   FileText,
   CheckCircle2,
   XCircle,
   Clock,
-  DollarSign,
   RefreshCw,
   Search,
   Filter,
   Download,
-  AlertCircle,
-  ArrowUpDown,
   ChevronRight,
   Loader2,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import {
   Select,
@@ -50,6 +45,7 @@ import {
 import { Skeleton } from '@/components/ui/skeleton';
 import { formatCurrency } from '@/lib/utils/format';
 import { useClaims } from '@/lib/hooks/use-sha';
+import { ClaimsStatusChart } from '@/components/widgets';
 import { ClaimStatusBadge } from '@/components/billing/sha/ClaimComponents';
 import type { ClaimStatus, Claim } from '@/lib/types/sha';
 import { format, parseISO } from 'date-fns';
@@ -300,6 +296,23 @@ export default function SHAClaimsPage() {
       .reduce((sum, c) => sum + parseFloat(c.approved_amount || '0'), 0),
   };
 
+  // Prepare data for claims status chart
+  const claimsStatusData = useMemo(() => {
+    const statusCounts = new Map<ClaimStatus, { count: number; amount: number }>();
+    claims.forEach((claim) => {
+      const existing = statusCounts.get(claim.status) || { count: 0, amount: 0 };
+      statusCounts.set(claim.status, {
+        count: existing.count + 1,
+        amount: existing.amount + parseFloat(claim.total_amount),
+      });
+    });
+    return Array.from(statusCounts.entries()).map(([status, data]) => ({
+      status,
+      count: data.count,
+      amount: data.amount,
+    }));
+  }, [claims]);
+
   // Filter claims by search query
   const filteredClaims = claims.filter(claim => {
     if (!searchQuery) return true;
@@ -393,6 +406,30 @@ export default function SHAClaimsPage() {
           className="border-red-200 dark:border-red-800"
         />
       </div>
+
+      {/* Claims Status Distribution Chart */}
+      {claims.length > 0 && (
+        <div className="grid gap-4 md:grid-cols-2">
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-lg">Claims by Status</CardTitle>
+              <CardDescription>Distribution of claims by current status</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <ClaimsStatusChart data={claimsStatusData} showLegend />
+            </CardContent>
+          </Card>
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-lg">Claims by Amount</CardTitle>
+              <CardDescription>Value distribution by status</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <ClaimsStatusChart data={claimsStatusData} showLegend showByAmount />
+            </CardContent>
+          </Card>
+        </div>
+      )}
 
       {/* Claims List */}
       <Card>
