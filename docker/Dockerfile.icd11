@@ -1,0 +1,43 @@
+# =============================================================================
+# WHO ICD-11 API Docker Image for Render Deployment
+# =============================================================================
+# This Dockerfile pulls the official WHO ICD-11 API image and configures it
+# for deployment on Render as a standalone service.
+#
+# The WHO ICD-11 API provides:
+# - ICD-11 disease classification lookup
+# - Full-text search capabilities
+# - Entity browsing and hierarchy navigation
+#
+# Source: https://hub.docker.com/r/whoicd/icd-api
+# Docs: https://icd.who.int/icdapi
+#
+# Note: Render requires services to listen on $PORT (10000 by default).
+# The WHO ICD-11 API listens on port 80, so we use socat as a port forwarder.
+# =============================================================================
+
+FROM whoicd/icd-api:latest
+
+# Install socat for port forwarding
+USER root
+RUN apt-get update && apt-get install -y socat && rm -rf /var/lib/apt/lists/*
+
+# Environment variables for WHO ICD-11 API
+ENV acceptLicense=true
+ENV saveAnalytics=false
+
+# Render's dynamic port (defaults to 10000)
+ENV PORT=10000
+
+# Copy startup script
+COPY docker/start-icd11.sh /start.sh
+RUN chmod +x /start.sh
+
+# Expose Render's dynamic port
+EXPOSE 10000
+
+# Health check - Render will use the healthCheckPath in render.yaml
+HEALTHCHECK --interval=30s --timeout=10s --start-period=90s --retries=3 \
+  CMD curl -f http://localhost:${PORT}/icd/entity || exit 1
+
+CMD ["/start.sh"]
