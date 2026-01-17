@@ -187,6 +187,7 @@ exclude = [
 "hmis/apps/encounters/models.py" = ["DJ012", "SIM102", "B904"]  # Model method ordering acceptable, nested if for readability
 "hmis/apps/core/models.py" = ["ARG002"]  # Model methods may have unused args for future use
 "hmis/apps/core/utils.py" = ["ARG001"]  # Function params may be unused for API consistency
+"hmis/apps/core/management/commands/seed_demo_data.py" = ["S311", "B007"]  # Demo data seeding uses random for non-security purposes
 "hmis/settings/development.py" = ["F405"]  # Star imports from base settings are intentional
 "scripts/*.py" = ["T201", "S311", "S104", "S303", "ARG001", "SIM102"]  # Scripts use print, mock servers use insecure random, bind to all interfaces
 "hmis/apps/core/fixtures/*.py" = ["T201", "E402", "SIM108", "S303"]  # Fixture scripts use print, late imports, may use insecure hashes for compatibility

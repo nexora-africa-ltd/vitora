@@ -9,7 +9,7 @@ import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { usePatients } from '@/lib/hooks/use-patients';
 
-const RECENT_PATIENTS_LIMIT = 10;
+const RECENT_PATIENTS_LIMIT = 8;
 
 export function RecentPatients() {
   const { data: patients, isLoading } = usePatients({ limit: RECENT_PATIENTS_LIMIT });

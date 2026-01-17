@@ -17,14 +17,13 @@ class Command(BaseCommand):
 
     def handle(self, *args, **options):
         from datetime import date, timedelta
-        from decimal import Decimal
         from random import choice, randint
 
         from django.contrib.auth import get_user_model
-        from django.contrib.auth.models import Group, Permission
+        from django.contrib.auth.models import Group
         from django.db import transaction
 
-        from hmis.apps.core.models import County, SubCounty
+        from hmis.apps.core.models import County
         from hmis.apps.patients.models import Patient
 
         User = get_user_model()
@@ -105,34 +104,98 @@ class Command(BaseCommand):
 
         # Kenyan names for sample patients
         KENYAN_FIRST_NAMES_MALE = [
-            "James", "John", "Peter", "Paul", "David", "Joseph", "Michael",
-            "Daniel", "Samuel", "Stephen", "Francis", "George", "Robert",
-            "Patrick", "William", "Charles", "Thomas", "Christopher", "Brian",
-            "Kevin", "Emmanuel", "Moses", "Isaac", "Abraham", "Joshua",
+            "James",
+            "John",
+            "Peter",
+            "Paul",
+            "David",
+            "Joseph",
+            "Michael",
+            "Daniel",
+            "Samuel",
+            "Stephen",
+            "Francis",
+            "George",
+            "Robert",
+            "Patrick",
+            "William",
+            "Charles",
+            "Thomas",
+            "Christopher",
+            "Brian",
+            "Kevin",
+            "Emmanuel",
+            "Moses",
+            "Isaac",
+            "Abraham",
+            "Joshua",
         ]
 
         KENYAN_FIRST_NAMES_FEMALE = [
-            "Mary", "Jane", "Grace", "Faith", "Hope", "Joy", "Mercy",
-            "Elizabeth", "Sarah", "Ruth", "Esther", "Rebecca", "Rachel",
-            "Naomi", "Hannah", "Deborah", "Lydia", "Miriam", "Priscilla",
-            "Lucy", "Ann", "Catherine", "Margaret", "Susan", "Agnes",
+            "Mary",
+            "Jane",
+            "Grace",
+            "Faith",
+            "Hope",
+            "Joy",
+            "Mercy",
+            "Elizabeth",
+            "Sarah",
+            "Ruth",
+            "Esther",
+            "Rebecca",
+            "Rachel",
+            "Naomi",
+            "Hannah",
+            "Deborah",
+            "Lydia",
+            "Miriam",
+            "Priscilla",
+            "Lucy",
+            "Ann",
+            "Catherine",
+            "Margaret",
+            "Susan",
+            "Agnes",
         ]
 
         KENYAN_SURNAMES = [
-            "Ochieng", "Wanjiku", "Mwangi", "Kamau", "Njoroge", "Kipchoge",
-            "Akinyi", "Otieno", "Njeri", "Wambui", "Mutua", "Kibet",
-            "Chebet", "Korir", "Sang", "Rono", "Kimutai", "Yego",
-            "Kiptoo", "Kipruto", "Chepkoech", "Jepchirchir", "Kiplagat",
-            "Kigen", "Rotich", "Kemboi", "Tanui", "Koros", "Chepkurui",
+            "Ochieng",
+            "Wanjiku",
+            "Mwangi",
+            "Kamau",
+            "Njoroge",
+            "Kipchoge",
+            "Akinyi",
+            "Otieno",
+            "Njeri",
+            "Wambui",
+            "Mutua",
+            "Kibet",
+            "Chebet",
+            "Korir",
+            "Sang",
+            "Rono",
+            "Kimutai",
+            "Yego",
+            "Kiptoo",
+            "Kipruto",
+            "Chepkoech",
+            "Jepchirchir",
+            "Kiplagat",
+            "Kigen",
+            "Rotich",
+            "Kemboi",
+            "Tanui",
+            "Koros",
+            "Chepkurui",
         ]
 
         # Check if demo users already exist
         existing_demo_user = User.objects.filter(username="demo_admin").first()
         if existing_demo_user and not options["force"]:
             self.stdout.write(
-                self.style.WARNING(
-                    "Demo users already exist. Use --force to recreate."
-                )
+                self.style.WARNING("Demo users already exist. Use --force to recreate.")
             )
             return
 
@@ -165,9 +228,7 @@ class Command(BaseCommand):
             counties = list(County.objects.all()[:5])
             if not counties:
                 self.stdout.write(
-                    self.style.WARNING(
-                        "No counties found. Run import_kenya_locations first."
-                    )
+                    self.style.WARNING("No counties found. Run import_kenya_locations first.")
                 )
             else:
                 registered_by = User.objects.get(username="demo_receptionist")
@@ -204,9 +265,7 @@ class Command(BaseCommand):
                     if created:
                         self.stdout.write(f"  Created patient: {patient.mrn}")
 
-        self.stdout.write(
-            self.style.SUCCESS("\n✅ Demo data seeding completed successfully!")
-        )
+        self.stdout.write(self.style.SUCCESS("\n✅ Demo data seeding completed successfully!"))
         self.stdout.write("\nDemo credentials:")
         self.stdout.write("-" * 50)
         for user_data in DEMO_USERS:

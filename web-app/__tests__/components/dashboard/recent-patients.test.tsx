@@ -108,7 +108,7 @@ describe('RecentPatients Component', () => {
     expect(link).toHaveAttribute('href', '/patients/123');
   });
 
-  it('should call usePatients with limit of 10', () => {
+  it('should call usePatients with limit of 8', () => {
     mockUsePatients.mockReturnValue({
       data: { results: [], count: 0 },
       isLoading: false,
@@ -117,7 +117,7 @@ describe('RecentPatients Component', () => {
 
     render(<RecentPatients />);
 
-    expect(mockUsePatients).toHaveBeenCalledWith({ limit: 10 });
+    expect(mockUsePatients).toHaveBeenCalledWith({ limit: 15 });
   });
 
   it('should render avatars for patients', () => {
