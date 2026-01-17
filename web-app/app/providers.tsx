@@ -6,6 +6,7 @@ import { useState, ReactNode, Suspense, lazy } from 'react';
 import { AuthProvider } from '@/lib/auth/context';
 import { Toaster } from '@/components/ui/toaster';
 import { NavigationProgress } from '@/components/layout/navigation-progress';
+import { DemoBanner, DemoWatermark } from '@/components/shared/demo-banner';
 
 // Lazy load devtools only in development
 const ReactQueryDevtools = lazy(() =>
@@ -53,11 +54,15 @@ export function Providers({ children }: ProvidersProps) {
         disableTransitionOnChange
       >
         <AuthProvider>
+          {/* Demo mode banner - shows in staging environment */}
+          <DemoBanner />
           <Suspense fallback={null}>
             <NavigationProgress />
           </Suspense>
           {children}
           <Toaster />
+          {/* Demo watermark - subtle indicator for screenshots */}
+          <DemoWatermark />
         </AuthProvider>
       </ThemeProvider>
       {process.env.NODE_ENV === 'development' && (
