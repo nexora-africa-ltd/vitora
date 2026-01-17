@@ -23,7 +23,7 @@ services:
       python manage.py migrate --noinput &&
       python manage.py import_kenya_locations data/kenya_locations.csv &&
       python manage.py import_icd10 data/icd10_kenya_common.csv &&
-      python manage.py import_drugs data/drug_catalog.csv &&
+      python manage.py import_drugs --file data/drug_catalog.csv &&
       python manage.py load_clinical_templates &&
       python manage.py load_lab_reference_ranges &&
       python manage.py load_default_roles &&
