@@ -315,7 +315,7 @@ DEFAULT_FROM_EMAIL = os.getenv("DEFAULT_FROM_EMAIL", "noreply@vitora.health")
 EMAIL_BACKEND = "django.core.mail.backends.console.EmailBackend"  # For development
 
 # Frontend URL for notification links
-FRONTEND_URL = os.getenv("FRONTEND_URL", "http://localhost:3000")
+FRONTEND_URL = os.getenv("FRONTEND_URL", "http://localhost:3009")
 
 # Facility information for documents
 FACILITY_NAME = os.getenv("FACILITY_NAME", "Vitora Health Facility")

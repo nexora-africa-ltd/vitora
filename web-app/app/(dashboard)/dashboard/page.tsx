@@ -1,3 +1,5 @@
+'use client';
+
 import Link from 'next/link';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -5,8 +7,11 @@ import { Users, Stethoscope, Pill, AlertTriangle, ArrowRight } from 'lucide-reac
 import { StatsCard } from '@/components/dashboard/stats-card';
 import { RecentPatients } from '@/components/dashboard/recent-patients';
 import { AlertsWidget } from '@/components/dashboard/alerts-widget';
+import { useDashboardStats, formatNumber } from '@/lib/hooks/use-dashboard-stats';
 
 export default function DashboardPage() {
+  const { data: stats, isLoading } = useDashboardStats();
+
   return (
     <div className="space-y-6">
       {/* Page header */}
@@ -21,32 +26,52 @@ export default function DashboardPage() {
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
         <StatsCard
           title="Total Patients"
-          value="1,234"
-          description="+12 from last week"
+          value={isLoading ? '—' : formatNumber(stats?.patients.total ?? 0)}
+          description={
+            isLoading
+              ? 'Loading...'
+              : `+${stats?.patients.today ?? 0} today`
+          }
           icon={Users}
           trend="up"
+          loading={isLoading}
         />
         <StatsCard
           title="Today's Encounters"
-          value="48"
-          description="8 in progress"
+          value={isLoading ? '—' : String(stats?.encounters.today ?? 0)}
+          description={
+            isLoading
+              ? 'Loading...'
+              : `${stats?.encounters.in_progress ?? 0} in progress`
+          }
           icon={Stethoscope}
           trend="up"
+          loading={isLoading}
         />
         <StatsCard
           title="Prescriptions"
-          value="156"
-          description="Today's dispensed"
+          value={isLoading ? '—' : String(stats?.pharmacy.prescriptions_today ?? 0)}
+          description={
+            isLoading
+              ? 'Loading...'
+              : `${stats?.pharmacy.pending_dispensing ?? 0} pending`
+          }
           icon={Pill}
           trend="neutral"
+          loading={isLoading}
         />
         <StatsCard
           title="Alerts"
-          value="3"
-          description="Require attention"
+          value={isLoading ? '—' : String(stats?.alerts.total_unresolved ?? 0)}
+          description={
+            isLoading
+              ? 'Loading...'
+              : `${stats?.alerts.critical ?? 0} critical`
+          }
           icon={AlertTriangle}
-          trend="down"
-          variant="warning"
+          trend={stats?.alerts.critical && stats.alerts.critical > 0 ? 'up' : 'down'}
+          variant={stats?.alerts.critical && stats.alerts.critical > 0 ? 'warning' : 'default'}
+          loading={isLoading}
         />
       </div>
 

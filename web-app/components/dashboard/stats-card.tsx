@@ -1,4 +1,5 @@
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Skeleton } from '@/components/ui/skeleton';
 import { cn } from '@/lib/utils/cn';
 import { TrendingUp, TrendingDown, Minus, LucideIcon } from 'lucide-react';
 
@@ -9,6 +10,7 @@ interface StatsCardProps {
   icon: LucideIcon;
   trend?: 'up' | 'down' | 'neutral';
   variant?: 'default' | 'warning' | 'success';
+  loading?: boolean;
 }
 
 export function StatsCard({
@@ -18,6 +20,7 @@ export function StatsCard({
   icon: Icon,
   trend = 'neutral',
   variant = 'default',
+  loading = false,
 }: StatsCardProps) {
   const TrendIcon = trend === 'up' ? TrendingUp : trend === 'down' ? TrendingDown : Minus;
   
@@ -35,18 +38,27 @@ export function StatsCard({
         />
       </CardHeader>
       <CardContent>
-        <div className="text-2xl font-bold">{value}</div>
-        {description && (
-          <p className="text-xs text-muted-foreground flex items-center gap-1 mt-1">
-            <TrendIcon
-              className={cn(
-                'h-3 w-3',
-                trend === 'up' && 'text-green-500',
-                trend === 'down' && 'text-red-500'
-              )}
-            />
-            {description}
-          </p>
+        {loading ? (
+          <>
+            <Skeleton className="h-8 w-20 mb-1" />
+            <Skeleton className="h-4 w-32" />
+          </>
+        ) : (
+          <>
+            <div className="text-2xl font-bold">{value}</div>
+            {description && (
+              <p className="text-xs text-muted-foreground flex items-center gap-1 mt-1">
+                <TrendIcon
+                  className={cn(
+                    'h-3 w-3',
+                    trend === 'up' && 'text-green-500',
+                    trend === 'down' && 'text-red-500'
+                  )}
+                />
+                {description}
+              </p>
+            )}
+          </>
         )}
       </CardContent>
     </Card>
