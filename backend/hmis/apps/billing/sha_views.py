@@ -929,26 +929,63 @@ class TerminologySearchView(APIView):
                         }
                     )
                 else:
-                    # Neither DHA nor local available
-                    return Response(
-                        {
-                            "error": "ICD-11 service unavailable. DHA API failed and local container is not running.",
-                            "dha_error": str(dha_error),
-                            "hint": "Start local container: cd backend && docker compose up -d",
-                        },
-                        status=status.HTTP_503_SERVICE_UNAVAILABLE,
-                    )
+                    # Fall back to local ICD-10 database
+                    logger.info("Local ICD-11 container unavailable, falling back to ICD-10")
+                    return self._search_icd10_fallback(search, limit, str(dha_error))
 
             except Exception as local_error:
                 logger.error(f"Local ICD-11 fallback also failed: {local_error}")
-                return Response(
-                    {
-                        "error": "ICD-11 service unavailable",
-                        "dha_error": str(dha_error),
-                        "local_error": str(local_error),
-                    },
-                    status=status.HTTP_503_SERVICE_UNAVAILABLE,
-                )
+                # Final fallback to ICD-10
+                return self._search_icd10_fallback(search, limit, str(dha_error))
+
+    def _search_icd10_fallback(self, search: str, limit: int, original_error: str = ""):
+        """
+        Fallback to local ICD-10 database when ICD-11 services are unavailable.
+        
+        ICD-10 codes are imported from CSV and stored in the local database,
+        so this always works even when external services are down.
+        """
+        from hmis.apps.encounters.models import ICD10Code
+        
+        try:
+            # Search ICD-10 codes in local database
+            codes = ICD10Code.objects.filter(
+                models.Q(code__icontains=search) | 
+                models.Q(description__icontains=search),
+                is_active=True
+            ).order_by('code')[:limit]
+            
+            data = [
+                {
+                    "code": code.code,
+                    "title": code.description,
+                    "chapter": code.chapter,
+                    "category": code.category,
+                    "source": "icd10",
+                }
+                for code in codes
+            ]
+            
+            return Response(
+                {
+                    "results": data,
+                    "count": len(data),
+                    "source": "local_icd10_fallback",
+                    "fallback": True,
+                    "fallback_reason": original_error or "ICD-11 services unavailable",
+                    "note": "Results are from ICD-10 (local database). ICD-11 services are currently unavailable.",
+                }
+            )
+        except Exception as e:
+            logger.error(f"ICD-10 fallback also failed: {e}")
+            return Response(
+                {
+                    "error": "All ICD services unavailable",
+                    "original_error": original_error,
+                    "icd10_error": str(e),
+                },
+                status=status.HTTP_503_SERVICE_UNAVAILABLE,
+            )
 
     def _search_icd11_local(self, search: str, limit: int):
         """
