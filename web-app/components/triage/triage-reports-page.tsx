@@ -41,7 +41,7 @@ import {
 } from '@/components/ui/table';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Progress } from '@/components/ui/progress';
-import { TrendIndicator, DonutChart, createChartConfig } from '@/components/charts';
+import { TrendIndicator, DonutChart, createChartConfig, ChartEmptyState } from '@/components/charts';
 import type {
   TriageReportSummary,
   TriageCategory,
@@ -250,9 +250,12 @@ function TriageCategoryChart({ data }: { data: Array<{ category: TriageCategory;
 
   if (total === 0) {
     return (
-      <div className="h-[200px] flex items-center justify-center text-muted-foreground">
-        No category data available
-      </div>
+      <ChartEmptyState
+        chartType="donut"
+        title="No category data"
+        description="Triage category distribution will appear here once assessments are recorded."
+        minHeight="200px"
+      />
     );
   }
 
@@ -448,12 +451,13 @@ export function TriageReportsPage({
 
       {isEmpty ? (
         <Card>
-          <CardContent className="p-8 text-center">
-            <BarChart3 className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
-            <h3 className="text-lg font-medium mb-2">No Data Available</h3>
-            <p className="text-muted-foreground">
-              No triage assessments found for the selected date range.
-            </p>
+          <CardContent className="p-8">
+            <ChartEmptyState
+              chartType="bar"
+              title="No Data Available"
+              description="No triage assessments found for the selected date range. Try selecting a different time period."
+              minHeight="200px"
+            />
           </CardContent>
         </Card>
       ) : (

@@ -16,24 +16,33 @@ import { ChartCard } from './chart-card';
 import { PatientVolumeChart } from '@/components/widgets/patient-volume-chart';
 import { RevenueBreakdownChart } from '@/components/widgets/revenue-chart';
 import { RecentActivity } from '@/components/widgets/recent-activity';
-import { DonutChart, createChartConfig, formatChartValue } from '@/components/charts';
+import { DonutChart, createChartConfig, formatChartValue, ChartEmptyState } from '@/components/charts';
 import { useDashboardMetrics } from '@/lib/hooks/use-dashboard-metrics';
 import type { DateRangeFilter } from '@/lib/types/dashboard';
 
 const datePresets: { value: DateRangeFilter['preset']; label: string }[] = [
   { value: 'today', label: 'Today' },
   { value: 'yesterday', label: 'Yesterday' },
-  { value: 'last7days', label: 'Last 7 Days' },
-  { value: 'last30days', label: 'Last 30 Days' },
-  { value: 'thisMonth', label: 'This Month' },
-  { value: 'lastMonth', label: 'Last Month' },
+  { value: 'last 7 days', label: 'Last 7 Days' },
+  { value: 'last 30 days', label: 'Last 30 Days' },
+  { value: 'this Month', label: 'This Month' },
+  { value: 'last Month', label: 'Last Month' },
 ];
+
+// const datePresets: { value: DateRangeFilter['preset']; label: string }[] = [
+//   { value: 'today', label: 'Today' },
+//   { value: 'yesterday', label: 'Yesterday' },
+//   { value: 'last7days', label: 'Last 7 Days' },
+//   { value: 'last30days', label: 'Last 30 Days' },
+//   { value: 'thisMonth', label: 'This Month' },
+//   { value: 'lastMonth', label: 'Last Month' },
+// ];
 
 export function DashboardOverview() {
   const [dateFilter, setDateFilter] = useState<DateRangeFilter>({
     start: '',
     end: '',
-    preset: 'last7days',
+    preset: 'last 7 days',
   });
 
   const { data: metrics, isLoading, refetch, isFetching } = useDashboardMetrics(dateFilter);
@@ -164,15 +173,17 @@ export function DashboardOverview() {
 // Encounter Types DonutChart component
 function EncounterTypesChart({ patientVolume }: { patientVolume: Array<{ opd: number; ipd: number; emergency: number }> }) {
   const chartData = useMemo(() => {
-    const opd = patientVolume.reduce((sum, d) => sum + d.opd, 0);
-    const ipd = patientVolume.reduce((sum, d) => sum + d.ipd, 0);
-    const emergency = patientVolume.reduce((sum, d) => sum + d.emergency, 0);
+    // Sum up all encounter types from the volume data
+    const opd = patientVolume.reduce((sum, d) => sum + (d.opd || 0), 0);
+    const ipd = patientVolume.reduce((sum, d) => sum + (d.ipd || 0), 0);
+    const emergency = patientVolume.reduce((sum, d) => sum + (d.emergency || 0), 0);
     
+    // Filter out zero values to avoid cluttering the chart
     return [
       { name: 'opd', value: opd },
       { name: 'ipd', value: ipd },
       { name: 'emergency', value: emergency },
-    ];
+    ].filter(item => item.value > 0);
   }, [patientVolume]);
 
   const totalEncounters = useMemo(
@@ -196,11 +207,15 @@ function EncounterTypesChart({ patientVolume }: { patientVolume: Array<{ opd: nu
     []
   );
 
-  if (totalEncounters === 0) {
+  // Show empty state when no data
+  if (!patientVolume || patientVolume.length === 0 || totalEncounters === 0) {
     return (
-      <div className="h-[200px] flex items-center justify-center text-muted-foreground">
-        No encounter data available
-      </div>
+      <ChartEmptyState
+        chartType="donut"
+        title="No encounter data"
+        description="Encounter data will appear here once patients have been seen."
+        minHeight="200px"
+      />
     );
   }
 

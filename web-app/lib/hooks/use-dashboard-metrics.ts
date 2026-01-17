@@ -22,7 +22,7 @@ function getDateRange(filter?: DateRangeFilter): { start: string; end: string } 
   const today = new Date();
   const formatStr = 'yyyy-MM-dd';
 
-  if (!filter || filter.preset === 'last7days') {
+  if (!filter || filter.preset === 'last 7 days') {
     return {
       start: format(subDays(today, 7), formatStr),
       end: format(today, formatStr),
@@ -41,17 +41,17 @@ function getDateRange(filter?: DateRangeFilter): { start: string; end: string } 
         start: format(yesterday, formatStr),
         end: format(yesterday, formatStr),
       };
-    case 'last30days':
+    case 'last 30 days':
       return {
         start: format(subDays(today, 30), formatStr),
         end: format(today, formatStr),
       };
-    case 'thisMonth':
+    case 'this Month':
       return {
         start: format(startOfMonth(today), formatStr),
         end: format(today, formatStr),
       };
-    case 'lastMonth':
+    case 'last Month':
       const lastMonth = subMonths(today, 1);
       return {
         start: format(startOfMonth(lastMonth), formatStr),

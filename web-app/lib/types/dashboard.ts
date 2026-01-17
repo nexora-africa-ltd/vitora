@@ -73,5 +73,5 @@ export interface DashboardMetrics {
 export interface DateRangeFilter {
   start: string;
   end: string;
-  preset?: 'today' | 'yesterday' | 'last7days' | 'last30days' | 'thisMonth' | 'lastMonth' | 'custom';
+  preset?: 'today' | 'yesterday' | 'last 7 days' | 'last 30 days' | 'this Month' | 'last Month' | 'custom';
 }
