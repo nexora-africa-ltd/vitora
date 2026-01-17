@@ -44,6 +44,15 @@
     "node_modules",
     "playwright-report",
     "coverage",
-    "features"
+    "features",
+    "jest.setup.ts",
+    "jest.config.js",
+    "jest-cucumber.config.js",
+    "**/*.test.ts",
+    "**/*.test.tsx",
+    "**/*.spec.ts",
+    "**/*.spec.tsx",
+    "__tests__",
+    "tests"
   ]
 }
