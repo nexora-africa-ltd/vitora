@@ -78,7 +78,7 @@ export default function DashboardPage() {
       {/* Content grid */}
       <div className="grid gap-6 lg:grid-cols-2">
         {/* Recent patients */}
-        <Card interactive={false}>
+        <Card >
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <div>
               <CardTitle>Recent Patients</CardTitle>
@@ -99,7 +99,7 @@ export default function DashboardPage() {
         </Card>
 
         {/* Alerts widget */}
-        <Card interactive={false}>
+        <Card>
           <CardHeader>
             <CardTitle>Active Alerts</CardTitle>
             <CardDescription>
