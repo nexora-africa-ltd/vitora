@@ -144,7 +144,7 @@ async function fetchDashboardMetrics(filter?: DateRangeFilter): Promise<Dashboar
       title: 'Low Stock Items',
       value: stats?.pharmacy.low_stock_items ?? 0,
       variant: (stats?.pharmacy.low_stock_items ?? 0) > 5 ? 'warning' : 'default',
-      href: '/pharmacy/inventory',
+      href: '/pharmacy',
       description: `${stats?.pharmacy.expiring_soon ?? 0} expiring soon`,
     },
     {
