@@ -9,6 +9,7 @@ import React, {
   memo,
 } from 'react';
 import Link from 'next/link';
+import Image from 'next/image';
 import { usePathname } from 'next/navigation';
 import {
   ChevronLeft,
@@ -285,7 +286,18 @@ export function Sidebar({
         )}
       >
         <div className="flex h-16 items-center justify-between px-4 border-b">
-          <span className="font-semibold">Vitora</span>
+          <Link href="/" className="flex items-center gap-2">
+            <Image
+              src="/logo.png"
+              alt="Vitora Logo"
+              width={32}
+              height={32}
+              className="rounded-md"
+            />
+            {!collapsed && (
+              <span className="font-semibold text-lg">Vitora</span>
+            )}
+          </Link>
           <Button
             variant="ghost"
             size="icon"
