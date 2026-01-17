@@ -135,6 +135,18 @@ class AuditedTokenObtainPairView(TokenObtainPairView):
                 user = User.objects.get(username=username)
                 user_logged_in.send(sender=self.__class__, request=request, user=user)
 
+                # Get user's role from StaffProfile or Django groups
+                role = None
+                if hasattr(user, "staff_profile") and user.staff_profile:
+                    role = user.staff_profile.primary_role.code if user.staff_profile.primary_role else None
+                elif user.groups.exists():
+                    # Fall back to first Django group as role
+                    role = user.groups.first().name.upper().replace(" ", "_")
+                
+                # Superusers get ADMIN role
+                if user.is_superuser:
+                    role = "ADMIN"
+
                 # Add user info to response
                 response.data["user"] = {
                     "id": user.id,
@@ -143,6 +155,8 @@ class AuditedTokenObtainPairView(TokenObtainPairView):
                     "first_name": user.first_name,
                     "last_name": user.last_name,
                     "is_staff": user.is_staff,
+                    "is_superuser": user.is_superuser,
+                    "role": role,
                     "permissions": list(user.get_all_permissions()),
                 }
             except User.DoesNotExist:
