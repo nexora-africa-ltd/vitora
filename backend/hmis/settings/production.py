@@ -12,10 +12,7 @@ from .base import *  # noqa: F401, F403
 
 DEBUG = False
 
-ALLOWED_HOSTS = [
-    host.strip() for host in os.getenv("ALLOWED_HOSTS", "").split(",")
-    if host.strip()
-]
+ALLOWED_HOSTS = [host.strip() for host in os.getenv("ALLOWED_HOSTS", "").split(",") if host.strip()]
 
 # Database - PostgreSQL for production
 # Render provides DATABASE_URL automatically
@@ -62,14 +59,12 @@ SECURE_HSTS_PRELOAD = True
 
 # CORS - restrict to specific origins in production
 CORS_ALLOWED_ORIGINS = [
-    origin.strip() for origin in os.getenv("CORS_ALLOWED_ORIGINS", "").split(",")
-    if origin.strip()
+    origin.strip() for origin in os.getenv("CORS_ALLOWED_ORIGINS", "").split(",") if origin.strip()
 ]
 
 # CSRF trusted origins (required for Django 4.0+)
 CSRF_TRUSTED_ORIGINS = [
-    origin.strip() for origin in os.getenv("CSRF_TRUSTED_ORIGINS", "").split(",")
-    if origin.strip()
+    origin.strip() for origin in os.getenv("CSRF_TRUSTED_ORIGINS", "").split(",") if origin.strip()
 ]
 
 # Email backend for production
@@ -98,4 +93,3 @@ else:
     # PaaS like Render - console only
     LOGGING["root"]["handlers"] = ["console"]  # noqa: F405
     LOGGING["loggers"]["django"]["handlers"] = ["console"]  # noqa: F405
-

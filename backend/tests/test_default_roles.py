@@ -28,9 +28,19 @@ class TestDefaultRolesFixture:
         assert Role.objects.count() == 11
 
         # Check specific roles exist
-        role_codes = ["ADMIN", "DOCTOR", "CONSULTANT", "NURSE", "NURSE_AIDE",
-                      "CLINICAL_OFFICER", "LAB_TECH", "PHARMACIST",
-                      "RECEPTIONIST", "RECORDS_CLERK", "CHW"]
+        role_codes = [
+            "ADMIN",
+            "DOCTOR",
+            "CONSULTANT",
+            "NURSE",
+            "NURSE_AIDE",
+            "CLINICAL_OFFICER",
+            "LAB_TECH",
+            "PHARMACIST",
+            "RECEPTIONIST",
+            "RECORDS_CLERK",
+            "CHW",
+        ]
 
         for code in role_codes:
             assert Role.objects.filter(code=code).exists(), f"Role {code} not found"

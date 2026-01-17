@@ -639,8 +639,7 @@ class Admission(TimeStampedModel):
         # Check for duplicate active admission
         if self.admission_status == "ACTIVE":
             existing = Admission.objects.filter(
-                patient=self.patient,
-                admission_status="ACTIVE"
+                patient=self.patient, admission_status="ACTIVE"
             ).exclude(pk=self.pk)
 
             if existing.exists():
@@ -661,9 +660,9 @@ class Admission(TimeStampedModel):
         prefix = f"ADM-{today}-"
 
         # Get the last admission number for today
-        last_admission = Admission.objects.filter(
-            admission_number__startswith=prefix
-        ).aggregate(Max("admission_number"))["admission_number__max"]
+        last_admission = Admission.objects.filter(admission_number__startswith=prefix).aggregate(
+            Max("admission_number")
+        )["admission_number__max"]
 
         if last_admission:
             # Extract sequence number and increment
@@ -878,7 +877,9 @@ class Discharge(TimeStampedModel):
 
         # For normal discharge, require all clearances
         if self.discharge_type == "NORMAL":
-            if not (self.pharmacy_cleared and self.billing_cleared and self.lab_results_acknowledged):
+            if not (
+                self.pharmacy_cleared and self.billing_cleared and self.lab_results_acknowledged
+            ):
                 raise ValidationError("All clearances required for normal discharge")
 
     @property
@@ -1044,27 +1045,19 @@ class WardRound(TimeStampedModel):
         ("CRITICAL", "Critical"),
     ]
 
-    admission = models.ForeignKey(
-        Admission, on_delete=models.CASCADE, related_name="ward_rounds"
-    )
+    admission = models.ForeignKey(Admission, on_delete=models.CASCADE, related_name="ward_rounds")
     round_date = models.DateField()
     round_time = models.TimeField()
     conducted_by = models.ForeignKey(User, on_delete=models.PROTECT)
 
     # SOAP notes
     subjective = models.TextField(help_text="Patient complaints, symptoms")
-    objective = models.TextField(
-        help_text="Examination findings, vitals, observations"
-    )
-    assessment = models.TextField(
-        help_text="Clinical assessment, diagnosis updates"
-    )
+    objective = models.TextField(help_text="Examination findings, vitals, observations")
+    assessment = models.TextField(help_text="Clinical assessment, diagnosis updates")
     plan = models.TextField(help_text="Treatment plan, orders, next steps")
 
     # Patient condition tracking
-    condition_status = models.CharField(
-        max_length=20, choices=CONDITION_STATUS_CHOICES
-    )
+    condition_status = models.CharField(max_length=20, choices=CONDITION_STATUS_CHOICES)
 
     # Consultant review flags
     requires_consultant_review = models.BooleanField(default=False)
@@ -1087,9 +1080,7 @@ class WardRound(TimeStampedModel):
         from datetime import date
 
         if self.round_date and self.round_date > date.today():
-            raise ValidationError(
-                {"round_date": "Round date cannot be in the future"}
-            )
+            raise ValidationError({"round_date": "Round date cannot be in the future"})
 
 
 class NursingKardex(models.Model):
@@ -1101,80 +1092,63 @@ class NursingKardex(models.Model):
     """
 
     RISK_CHOICES = [
-        ('LOW', 'Low'),
-        ('MODERATE', 'Moderate'),
-        ('HIGH', 'High'),
+        ("LOW", "Low"),
+        ("MODERATE", "Moderate"),
+        ("HIGH", "High"),
     ]
 
     admission = models.OneToOneField(
         Admission,
         on_delete=models.CASCADE,
-        related_name='kardex',
-        help_text="One Kardex per admission"
+        related_name="kardex",
+        help_text="One Kardex per admission",
     )
 
     # Basic care information
     mobility_status = models.CharField(
         max_length=100,
         blank=True,
-        help_text="Patient mobility status (e.g., Ambulatory, Wheelchair, Bedridden)"
+        help_text="Patient mobility status (e.g., Ambulatory, Wheelchair, Bedridden)",
     )
     dietary_requirements = models.CharField(
-        max_length=200,
-        blank=True,
-        help_text="Dietary requirements (e.g., Regular, Diabetic, NPO)"
+        max_length=200, blank=True, help_text="Dietary requirements (e.g., Regular, Diabetic, NPO)"
     )
-    allergies = models.TextField(
-        blank=True,
-        help_text="Known allergies"
-    )
+    allergies = models.TextField(blank=True, help_text="Known allergies")
     iv_access = models.CharField(
-        max_length=200,
-        blank=True,
-        help_text="IV access details (e.g., Right arm IV cannula)"
+        max_length=200, blank=True, help_text="IV access details (e.g., Right arm IV cannula)"
     )
 
     # Nursing care plan (editable sections)
     nursing_problems = models.TextField(
-        blank=True,
-        help_text="Identified nursing problems/diagnoses"
+        blank=True, help_text="Identified nursing problems/diagnoses"
     )
     interventions = models.TextField(
-        blank=True,
-        help_text="Nursing interventions and care activities"
+        blank=True, help_text="Nursing interventions and care activities"
     )
     monitoring_requirements = models.TextField(
-        blank=True,
-        help_text="What to monitor and how often"
+        blank=True, help_text="What to monitor and how often"
     )
     care_task_frequency = models.TextField(
-        blank=True,
-        help_text="Frequency of care tasks (e.g., 'Wound dressing BD')"
+        blank=True, help_text="Frequency of care tasks (e.g., 'Wound dressing BD')"
     )
 
     # Risk assessments (CharFields with choices)
     fall_risk = models.CharField(
-        max_length=20,
-        choices=RISK_CHOICES,
-        default='LOW',
-        help_text="Patient fall risk level"
+        max_length=20, choices=RISK_CHOICES, default="LOW", help_text="Patient fall risk level"
     )
     pressure_sore_risk = models.CharField(
         max_length=20,
         choices=RISK_CHOICES,
-        default='LOW',
-        help_text="Patient pressure sore risk level"
+        default="LOW",
+        help_text="Patient pressure sore risk level",
     )
 
     # Isolation requirements
     isolation_required = models.BooleanField(
-        default=False,
-        help_text="Whether patient requires isolation"
+        default=False, help_text="Whether patient requires isolation"
     )
     isolation_type = models.CharField(
-        max_length=100,
-        blank=True,
-        help_text="Type of isolation (e.g., Contact, Droplet, Airborne)"
+        max_length=100, blank=True, help_text="Type of isolation (e.g., Contact, Droplet, Airborne)"
     )
 
     created_at = models.DateTimeField(auto_now_add=True)
@@ -1182,7 +1156,7 @@ class NursingKardex(models.Model):
 
     class Meta:
         verbose_name_plural = "Nursing Kardexes"
-        ordering = ['-created_at']
+        ordering = ["-created_at"]
 
     def __str__(self):
         return f"Kardex for {self.admission.patient} - Admission {self.admission.admission_number}"
@@ -1198,39 +1172,34 @@ class KardexShiftNote(models.Model):
     """
 
     SHIFT_CHOICES = [
-        ('DAY', 'Day Shift'),
-        ('NIGHT', 'Night Shift'),
+        ("DAY", "Day Shift"),
+        ("NIGHT", "Night Shift"),
     ]
 
     kardex = models.ForeignKey(
         NursingKardex,
         on_delete=models.CASCADE,
-        related_name='shift_notes',
-        help_text="Kardex this note belongs to"
+        related_name="shift_notes",
+        help_text="Kardex this note belongs to",
     )
     shift = models.CharField(
-        max_length=10,
-        choices=SHIFT_CHOICES,
-        help_text="Which shift this note is from"
+        max_length=10, choices=SHIFT_CHOICES, help_text="Which shift this note is from"
     )
     nurse = models.ForeignKey(
-        User,
-        on_delete=models.PROTECT,
-        help_text="Nurse who created this note"
+        User, on_delete=models.PROTECT, help_text="Nurse who created this note"
     )
     content = models.TextField(
         help_text="Shift note content - observations, care provided, patient status"
     )
     timestamp = models.DateTimeField(
-        auto_now_add=True,
-        help_text="When this note was created (immutable)"
+        auto_now_add=True, help_text="When this note was created (immutable)"
     )
 
     class Meta:
-        ordering = ['-timestamp']
+        ordering = ["-timestamp"]
         indexes = [
-            models.Index(fields=['kardex', '-timestamp']),
-            models.Index(fields=['shift', '-timestamp']),
+            models.Index(fields=["kardex", "-timestamp"]),
+            models.Index(fields=["shift", "-timestamp"]),
         ]
 
     def __str__(self):
@@ -1248,43 +1217,35 @@ class KardexHandoverNote(models.Model):
     kardex = models.ForeignKey(
         NursingKardex,
         on_delete=models.CASCADE,
-        related_name='handover_notes',
-        help_text="Kardex this handover belongs to"
+        related_name="handover_notes",
+        help_text="Kardex this handover belongs to",
     )
     outgoing_nurse = models.ForeignKey(
         User,
         on_delete=models.PROTECT,
-        related_name='kardex_handovers_given',
-        help_text="Nurse ending their shift"
+        related_name="kardex_handovers_given",
+        help_text="Nurse ending their shift",
     )
     incoming_nurse = models.ForeignKey(
         User,
         on_delete=models.PROTECT,
-        related_name='kardex_handovers_received',
-        help_text="Nurse starting their shift"
+        related_name="kardex_handovers_received",
+        help_text="Nurse starting their shift",
     )
-    shift_ending = models.CharField(
-        max_length=10,
-        help_text="Which shift is ending (DAY/NIGHT)"
-    )
-    pending_tasks = models.TextField(
-        help_text="Tasks that need completion in next shift"
-    )
+    shift_ending = models.CharField(max_length=10, help_text="Which shift is ending (DAY/NIGHT)")
+    pending_tasks = models.TextField(help_text="Tasks that need completion in next shift")
     escalations = models.TextField(
-        blank=True,
-        help_text="Issues escalated to doctors or management"
+        blank=True, help_text="Issues escalated to doctors or management"
     )
     acknowledged_at = models.DateTimeField(
-        null=True,
-        blank=True,
-        help_text="When incoming nurse acknowledged the handover"
+        null=True, blank=True, help_text="When incoming nurse acknowledged the handover"
     )
     created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:
-        ordering = ['-created_at']
+        ordering = ["-created_at"]
         indexes = [
-            models.Index(fields=['kardex', '-created_at']),
+            models.Index(fields=["kardex", "-created_at"]),
         ]
 
     def __str__(self):
@@ -1323,61 +1284,49 @@ class ShiftHandover(TimeStampedModel):
         Ward,
         on_delete=models.CASCADE,
         related_name="shift_handovers",
-        help_text="Ward where handover occurs"
+        help_text="Ward where handover occurs",
     )
     shift_date = models.DateField(help_text="Date of the shift")
     shift_ending = models.CharField(
-        max_length=10,
-        choices=SHIFT_CHOICES,
-        help_text="Shift that is ending"
+        max_length=10, choices=SHIFT_CHOICES, help_text="Shift that is ending"
     )
     outgoing_nurse = models.ForeignKey(
         User,
         on_delete=models.PROTECT,
         related_name="handovers_given",
-        help_text="Nurse handing over shift"
+        help_text="Nurse handing over shift",
     )
     incoming_nurse = models.ForeignKey(
         User,
         on_delete=models.PROTECT,
         related_name="handovers_received",
-        help_text="Nurse receiving handover"
+        help_text="Nurse receiving handover",
     )
 
     # Patient counts
-    total_patients = models.PositiveIntegerField(
-        help_text="Total patient count in ward"
-    )
+    total_patients = models.PositiveIntegerField(help_text="Total patient count in ward")
     critical_patients = models.PositiveIntegerField(
-        default=0,
-        help_text="Number of critical/unstable patients"
+        default=0, help_text="Number of critical/unstable patients"
     )
     new_admissions = models.PositiveIntegerField(
-        default=0,
-        help_text="Number of new admissions during shift"
+        default=0, help_text="Number of new admissions during shift"
     )
     discharges_pending = models.PositiveIntegerField(
-        default=0,
-        help_text="Number of pending discharges"
+        default=0, help_text="Number of pending discharges"
     )
 
     # Notes
-    general_notes = models.TextField(
-        blank=True,
-        help_text="General shift notes and observations"
-    )
+    general_notes = models.TextField(blank=True, help_text="General shift notes and observations")
     acknowledged_at = models.DateTimeField(
-        null=True,
-        blank=True,
-        help_text="When incoming nurse acknowledged handover"
+        null=True, blank=True, help_text="When incoming nurse acknowledged handover"
     )
 
     class Meta(TimeStampedModel.Meta):
-        ordering = ['-shift_date', '-created_at']
-        unique_together = ['ward', 'shift_date', 'shift_ending']
+        ordering = ["-shift_date", "-created_at"]
+        unique_together = ["ward", "shift_date", "shift_ending"]
         indexes = [
-            models.Index(fields=['ward', '-shift_date']),
-            models.Index(fields=['shift_date', 'shift_ending']),
+            models.Index(fields=["ward", "-shift_date"]),
+            models.Index(fields=["shift_date", "shift_ending"]),
         ]
 
     def __str__(self) -> str:
@@ -1398,7 +1347,7 @@ class ShiftHandover(TimeStampedModel):
             user: User acknowledging the handover (should be incoming_nurse)
         """
         self.acknowledged_at = timezone.now()
-        self.save(update_fields=['acknowledged_at'])
+        self.save(update_fields=["acknowledged_at"])
 
     def auto_populate_counts(self) -> None:
         """
@@ -1412,23 +1361,18 @@ class ShiftHandover(TimeStampedModel):
         """
 
         # Get all active admissions in this ward
-        active_admissions = Admission.objects.filter(
-            ward=self.ward,
-            discharge__isnull=True
-        )
+        active_admissions = Admission.objects.filter(ward=self.ward, discharge__isnull=True)
 
         self.total_patients = active_admissions.count()
 
         # Count new admissions for this shift date
-        self.new_admissions = active_admissions.filter(
-            admission_date__date=self.shift_date
-        ).count()
+        self.new_admissions = active_admissions.filter(admission_date__date=self.shift_date).count()
 
         # Count critical patients (patients with DETERIORATING status in latest ward round)
         critical_count = 0
         for admission in active_admissions:
-            latest_round = admission.ward_rounds.order_by('-round_date').first()
-            if latest_round and latest_round.condition_status == 'DETERIORATING':
+            latest_round = admission.ward_rounds.order_by("-round_date").first()
+            if latest_round and latest_round.condition_status == "DETERIORATING":
                 critical_count += 1
         self.critical_patients = critical_count
 

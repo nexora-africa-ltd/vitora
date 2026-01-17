@@ -46,21 +46,21 @@ class TestSHATariffModel:
         from hmis.apps.billing.models import SHATariff
 
         tariff = SHATariff.objects.create(
-            code='SHA-CONS-001',
-            name='General Consultation',
-            description='Outpatient general consultation',
+            code="SHA-CONS-001",
+            name="General Consultation",
+            description="Outpatient general consultation",
             category=SHATariff.TariffCategory.CONSULTATION,
             facility_level=SHATariff.TariffLevel.LEVEL_3,
-            sha_amount=Decimal('500.00'),
+            sha_amount=Decimal("500.00"),
             effective_date=date.today() - timedelta(days=30),
             is_active=True,
         )
 
         assert tariff.id is not None
-        assert tariff.code == 'SHA-CONS-001'
-        assert tariff.name == 'General Consultation'
-        assert tariff.sha_amount == Decimal('500.00')
-        assert tariff.currency == 'KES'  # Default
+        assert tariff.code == "SHA-CONS-001"
+        assert tariff.name == "General Consultation"
+        assert tariff.sha_amount == Decimal("500.00")
+        assert tariff.currency == "KES"  # Default
         assert tariff.is_active is True
         assert tariff.requires_preauthorization is False  # Default
         assert tariff.max_quantity_per_claim == 1  # Default
@@ -75,22 +75,22 @@ class TestSHATariffModel:
 
         # Create first tariff
         SHATariff.objects.create(
-            code='SHA-LAB-001',
-            name='Complete Blood Count',
+            code="SHA-LAB-001",
+            name="Complete Blood Count",
             category=SHATariff.TariffCategory.LABORATORY,
             facility_level=SHATariff.TariffLevel.LEVEL_3,
-            sha_amount=Decimal('800.00'),
+            sha_amount=Decimal("800.00"),
             effective_date=date.today(),
         )
 
         # Try to create tariff with same code
         with pytest.raises((IntegrityError, ValidationError)):
             SHATariff.objects.create(
-                code='SHA-LAB-001',  # Duplicate code
-                name='Different Test',
+                code="SHA-LAB-001",  # Duplicate code
+                name="Different Test",
                 category=SHATariff.TariffCategory.LABORATORY,
                 facility_level=SHATariff.TariffLevel.LEVEL_4,
-                sha_amount=Decimal('1000.00'),
+                sha_amount=Decimal("1000.00"),
                 effective_date=date.today(),
             )
 
@@ -103,15 +103,15 @@ class TestSHATariffModel:
 
         with pytest.raises(ValidationError) as exc_info:
             SHATariff.objects.create(
-                code='SHA-CONS-002',
-                name='Free Consultation',
+                code="SHA-CONS-002",
+                name="Free Consultation",
                 category=SHATariff.TariffCategory.CONSULTATION,
                 facility_level=SHATariff.TariffLevel.LEVEL_2,
-                sha_amount=Decimal('0.00'),  # Invalid - must be positive
+                sha_amount=Decimal("0.00"),  # Invalid - must be positive
                 effective_date=date.today(),
             )
 
-        assert 'sha_amount' in str(exc_info.value)
+        assert "sha_amount" in str(exc_info.value)
 
     def test_sha_amount_negative_rejected(self):
         """Should reject negative SHA amounts."""
@@ -119,15 +119,15 @@ class TestSHATariffModel:
 
         with pytest.raises(ValidationError) as exc_info:
             SHATariff.objects.create(
-                code='SHA-CONS-003',
-                name='Negative Consultation',
+                code="SHA-CONS-003",
+                name="Negative Consultation",
                 category=SHATariff.TariffCategory.CONSULTATION,
                 facility_level=SHATariff.TariffLevel.LEVEL_2,
-                sha_amount=Decimal('-100.00'),  # Invalid - negative
+                sha_amount=Decimal("-100.00"),  # Invalid - negative
                 effective_date=date.today(),
             )
 
-        assert 'sha_amount' in str(exc_info.value)
+        assert "sha_amount" in str(exc_info.value)
 
     # =========================================================================
     # Test 4: Category choices validation
@@ -155,11 +155,11 @@ class TestSHATariffModel:
 
         for i, category in enumerate(valid_categories):
             tariff = SHATariff.objects.create(
-                code=f'SHA-CAT-{i:03d}',
-                name=f'Test {category}',
+                code=f"SHA-CAT-{i:03d}",
+                name=f"Test {category}",
                 category=category,
                 facility_level=SHATariff.TariffLevel.LEVEL_3,
-                sha_amount=Decimal('100.00'),
+                sha_amount=Decimal("100.00"),
                 effective_date=date.today(),
             )
             assert tariff.category == category
@@ -182,11 +182,11 @@ class TestSHATariffModel:
 
         for i, level in enumerate(valid_levels):
             tariff = SHATariff.objects.create(
-                code=f'SHA-LVL-{i:03d}',
-                name=f'Test Level {level}',
+                code=f"SHA-LVL-{i:03d}",
+                name=f"Test Level {level}",
                 category=SHATariff.TariffCategory.CONSULTATION,
                 facility_level=level,
-                sha_amount=Decimal('100.00'),
+                sha_amount=Decimal("100.00"),
                 effective_date=date.today(),
             )
             assert tariff.facility_level == level
@@ -200,27 +200,27 @@ class TestSHATariffModel:
 
         with pytest.raises(ValidationError) as exc_info:
             SHATariff.objects.create(
-                code='SHA-DATE-001',
-                name='Invalid Date Range',
+                code="SHA-DATE-001",
+                name="Invalid Date Range",
                 category=SHATariff.TariffCategory.CONSULTATION,
                 facility_level=SHATariff.TariffLevel.LEVEL_3,
-                sha_amount=Decimal('500.00'),
+                sha_amount=Decimal("500.00"),
                 effective_date=date.today(),
                 expiry_date=date.today() - timedelta(days=30),  # Before effective
             )
 
-        assert 'expiry_date' in str(exc_info.value)
+        assert "expiry_date" in str(exc_info.value)
 
     def test_valid_date_range_accepted(self):
         """Should accept valid effective/expiry date range."""
         from hmis.apps.billing.models import SHATariff
 
         tariff = SHATariff.objects.create(
-            code='SHA-DATE-002',
-            name='Valid Date Range',
+            code="SHA-DATE-002",
+            name="Valid Date Range",
             category=SHATariff.TariffCategory.CONSULTATION,
             facility_level=SHATariff.TariffLevel.LEVEL_3,
-            sha_amount=Decimal('500.00'),
+            sha_amount=Decimal("500.00"),
             effective_date=date.today() - timedelta(days=30),
             expiry_date=date.today() + timedelta(days=365),  # After effective
         )
@@ -236,16 +236,16 @@ class TestSHATariffModel:
 
         with pytest.raises(ValidationError) as exc_info:
             SHATariff.objects.create(
-                code='SHA-QTY-001',
-                name='Zero Quantity',
+                code="SHA-QTY-001",
+                name="Zero Quantity",
                 category=SHATariff.TariffCategory.PHARMACY,
                 facility_level=SHATariff.TariffLevel.LEVEL_3,
-                sha_amount=Decimal('100.00'),
+                sha_amount=Decimal("100.00"),
                 effective_date=date.today(),
                 max_quantity_per_claim=0,  # Invalid - must be >= 1
             )
 
-        assert 'max_quantity_per_claim' in str(exc_info.value)
+        assert "max_quantity_per_claim" in str(exc_info.value)
 
     def test_max_quantity_negative_rejected(self):
         """Should reject negative max_quantity_per_claim."""
@@ -253,16 +253,16 @@ class TestSHATariffModel:
 
         with pytest.raises(ValidationError) as exc_info:
             SHATariff.objects.create(
-                code='SHA-QTY-002',
-                name='Negative Quantity',
+                code="SHA-QTY-002",
+                name="Negative Quantity",
                 category=SHATariff.TariffCategory.PHARMACY,
                 facility_level=SHATariff.TariffLevel.LEVEL_3,
-                sha_amount=Decimal('100.00'),
+                sha_amount=Decimal("100.00"),
                 effective_date=date.today(),
                 max_quantity_per_claim=-5,  # Invalid - negative
             )
 
-        assert 'max_quantity_per_claim' in str(exc_info.value)
+        assert "max_quantity_per_claim" in str(exc_info.value)
 
 
 @pytest.mark.django_db
@@ -277,11 +277,11 @@ class TestSHATariffIsValidOnDate:
         from hmis.apps.billing.models import SHATariff
 
         tariff = SHATariff.objects.create(
-            code='SHA-VALID-001',
-            name='Active Tariff',
+            code="SHA-VALID-001",
+            name="Active Tariff",
             category=SHATariff.TariffCategory.CONSULTATION,
             facility_level=SHATariff.TariffLevel.LEVEL_3,
-            sha_amount=Decimal('500.00'),
+            sha_amount=Decimal("500.00"),
             effective_date=date.today() - timedelta(days=30),
             expiry_date=date.today() + timedelta(days=30),
             is_active=True,
@@ -295,11 +295,11 @@ class TestSHATariffIsValidOnDate:
         from hmis.apps.billing.models import SHATariff
 
         tariff = SHATariff.objects.create(
-            code='SHA-VALID-002',
-            name='No Expiry Tariff',
+            code="SHA-VALID-002",
+            name="No Expiry Tariff",
             category=SHATariff.TariffCategory.CONSULTATION,
             facility_level=SHATariff.TariffLevel.LEVEL_3,
-            sha_amount=Decimal('500.00'),
+            sha_amount=Decimal("500.00"),
             effective_date=date.today() - timedelta(days=30),
             expiry_date=None,  # No expiry
             is_active=True,
@@ -315,11 +315,11 @@ class TestSHATariffIsValidOnDate:
         from hmis.apps.billing.models import SHATariff
 
         tariff = SHATariff.objects.create(
-            code='SHA-FUTURE-001',
-            name='Future Tariff',
+            code="SHA-FUTURE-001",
+            name="Future Tariff",
             category=SHATariff.TariffCategory.CONSULTATION,
             facility_level=SHATariff.TariffLevel.LEVEL_3,
-            sha_amount=Decimal('500.00'),
+            sha_amount=Decimal("500.00"),
             effective_date=date.today() + timedelta(days=30),  # Future
             is_active=True,
         )
@@ -333,11 +333,11 @@ class TestSHATariffIsValidOnDate:
 
         effective = date.today()
         tariff = SHATariff.objects.create(
-            code='SHA-EXACT-001',
-            name='Effective Today',
+            code="SHA-EXACT-001",
+            name="Effective Today",
             category=SHATariff.TariffCategory.CONSULTATION,
             facility_level=SHATariff.TariffLevel.LEVEL_3,
-            sha_amount=Decimal('500.00'),
+            sha_amount=Decimal("500.00"),
             effective_date=effective,
             is_active=True,
         )
@@ -352,11 +352,11 @@ class TestSHATariffIsValidOnDate:
         from hmis.apps.billing.models import SHATariff
 
         tariff = SHATariff.objects.create(
-            code='SHA-EXPIRED-001',
-            name='Expired Tariff',
+            code="SHA-EXPIRED-001",
+            name="Expired Tariff",
             category=SHATariff.TariffCategory.CONSULTATION,
             facility_level=SHATariff.TariffLevel.LEVEL_3,
-            sha_amount=Decimal('500.00'),
+            sha_amount=Decimal("500.00"),
             effective_date=date.today() - timedelta(days=60),
             expiry_date=date.today() - timedelta(days=1),  # Expired yesterday
             is_active=True,
@@ -371,11 +371,11 @@ class TestSHATariffIsValidOnDate:
 
         expiry = date.today()
         tariff = SHATariff.objects.create(
-            code='SHA-EXPIRY-001',
-            name='Expires Today',
+            code="SHA-EXPIRY-001",
+            name="Expires Today",
             category=SHATariff.TariffCategory.CONSULTATION,
             facility_level=SHATariff.TariffLevel.LEVEL_3,
-            sha_amount=Decimal('500.00'),
+            sha_amount=Decimal("500.00"),
             effective_date=date.today() - timedelta(days=30),
             expiry_date=expiry,
             is_active=True,
@@ -392,11 +392,11 @@ class TestSHATariffIsValidOnDate:
         from hmis.apps.billing.models import SHATariff
 
         tariff = SHATariff.objects.create(
-            code='SHA-INACTIVE-001',
-            name='Inactive Tariff',
+            code="SHA-INACTIVE-001",
+            name="Inactive Tariff",
             category=SHATariff.TariffCategory.CONSULTATION,
             facility_level=SHATariff.TariffLevel.LEVEL_3,
-            sha_amount=Decimal('500.00'),
+            sha_amount=Decimal("500.00"),
             effective_date=date.today() - timedelta(days=30),
             expiry_date=date.today() + timedelta(days=30),
             is_active=False,  # Inactive
@@ -418,33 +418,33 @@ class TestSHATariffGetActiveTariffs:
 
         # Create active valid tariff
         valid_tariff = SHATariff.objects.create(
-            code='SHA-ACTIVE-001',
-            name='Valid Active',
+            code="SHA-ACTIVE-001",
+            name="Valid Active",
             category=SHATariff.TariffCategory.CONSULTATION,
             facility_level=SHATariff.TariffLevel.LEVEL_3,
-            sha_amount=Decimal('500.00'),
+            sha_amount=Decimal("500.00"),
             effective_date=date.today() - timedelta(days=30),
             is_active=True,
         )
 
         # Create inactive tariff
         SHATariff.objects.create(
-            code='SHA-INACTIVE-002',
-            name='Inactive',
+            code="SHA-INACTIVE-002",
+            name="Inactive",
             category=SHATariff.TariffCategory.CONSULTATION,
             facility_level=SHATariff.TariffLevel.LEVEL_3,
-            sha_amount=Decimal('500.00'),
+            sha_amount=Decimal("500.00"),
             effective_date=date.today() - timedelta(days=30),
             is_active=False,
         )
 
         # Create expired tariff
         SHATariff.objects.create(
-            code='SHA-EXPIRED-002',
-            name='Expired',
+            code="SHA-EXPIRED-002",
+            name="Expired",
             category=SHATariff.TariffCategory.CONSULTATION,
             facility_level=SHATariff.TariffLevel.LEVEL_3,
-            sha_amount=Decimal('500.00'),
+            sha_amount=Decimal("500.00"),
             effective_date=date.today() - timedelta(days=60),
             expiry_date=date.today() - timedelta(days=1),
             is_active=True,
@@ -452,11 +452,11 @@ class TestSHATariffGetActiveTariffs:
 
         # Create future tariff
         SHATariff.objects.create(
-            code='SHA-FUTURE-002',
-            name='Future',
+            code="SHA-FUTURE-002",
+            name="Future",
             category=SHATariff.TariffCategory.CONSULTATION,
             facility_level=SHATariff.TariffLevel.LEVEL_3,
-            sha_amount=Decimal('500.00'),
+            sha_amount=Decimal("500.00"),
             effective_date=date.today() + timedelta(days=30),
             is_active=True,
         )
@@ -476,22 +476,22 @@ class TestSHATariffGetActiveTariffs:
 
         # Create consultation tariff
         consultation = SHATariff.objects.create(
-            code='SHA-CONS-100',
-            name='Consultation',
+            code="SHA-CONS-100",
+            name="Consultation",
             category=SHATariff.TariffCategory.CONSULTATION,
             facility_level=SHATariff.TariffLevel.LEVEL_3,
-            sha_amount=Decimal('500.00'),
+            sha_amount=Decimal("500.00"),
             effective_date=date.today() - timedelta(days=30),
             is_active=True,
         )
 
         # Create laboratory tariff
         laboratory = SHATariff.objects.create(
-            code='SHA-LAB-100',
-            name='Laboratory',
+            code="SHA-LAB-100",
+            name="Laboratory",
             category=SHATariff.TariffCategory.LABORATORY,
             facility_level=SHATariff.TariffLevel.LEVEL_3,
-            sha_amount=Decimal('800.00'),
+            sha_amount=Decimal("800.00"),
             effective_date=date.today() - timedelta(days=30),
             is_active=True,
         )
@@ -504,9 +504,7 @@ class TestSHATariffGetActiveTariffs:
         assert laboratory not in consultation_tariffs
 
         # Filter by laboratory category
-        lab_tariffs = SHATariff.get_active_tariffs(
-            category=SHATariff.TariffCategory.LABORATORY
-        )
+        lab_tariffs = SHATariff.get_active_tariffs(category=SHATariff.TariffCategory.LABORATORY)
         assert laboratory in lab_tariffs
         assert consultation not in lab_tariffs
 
@@ -519,37 +517,33 @@ class TestSHATariffGetActiveTariffs:
 
         # Create Level 3 tariff
         level_3 = SHATariff.objects.create(
-            code='SHA-L3-001',
-            name='Level 3 Service',
+            code="SHA-L3-001",
+            name="Level 3 Service",
             category=SHATariff.TariffCategory.CONSULTATION,
             facility_level=SHATariff.TariffLevel.LEVEL_3,
-            sha_amount=Decimal('500.00'),
+            sha_amount=Decimal("500.00"),
             effective_date=date.today() - timedelta(days=30),
             is_active=True,
         )
 
         # Create Level 4 tariff
         level_4 = SHATariff.objects.create(
-            code='SHA-L4-001',
-            name='Level 4 Service',
+            code="SHA-L4-001",
+            name="Level 4 Service",
             category=SHATariff.TariffCategory.CONSULTATION,
             facility_level=SHATariff.TariffLevel.LEVEL_4,
-            sha_amount=Decimal('700.00'),
+            sha_amount=Decimal("700.00"),
             effective_date=date.today() - timedelta(days=30),
             is_active=True,
         )
 
         # Filter by Level 3
-        l3_tariffs = SHATariff.get_active_tariffs(
-            facility_level=SHATariff.TariffLevel.LEVEL_3
-        )
+        l3_tariffs = SHATariff.get_active_tariffs(facility_level=SHATariff.TariffLevel.LEVEL_3)
         assert level_3 in l3_tariffs
         assert level_4 not in l3_tariffs
 
         # Filter by Level 4
-        l4_tariffs = SHATariff.get_active_tariffs(
-            facility_level=SHATariff.TariffLevel.LEVEL_4
-        )
+        l4_tariffs = SHATariff.get_active_tariffs(facility_level=SHATariff.TariffLevel.LEVEL_4)
         assert level_4 in l4_tariffs
         assert level_3 not in l4_tariffs
 
@@ -564,9 +558,9 @@ class TestSHATariffFindTariffForService:
         from hmis.apps.billing.models import ServiceCategory
 
         return ServiceCategory.objects.create(
-            name='Test Category',
-            description='Test category for tariff tests',
-            code='TEST-CAT',
+            name="Test Category",
+            description="Test category for tariff tests",
+            code="TEST-CAT",
             is_active=True,
         )
 
@@ -576,12 +570,12 @@ class TestSHATariffFindTariffForService:
         from hmis.apps.billing.models import Service
 
         return Service.objects.create(
-            code='SVC-001',
-            name='Test Service',
-            description='Test service for tariff mapping',
+            code="SVC-001",
+            name="Test Service",
+            description="Test service for tariff mapping",
             category=service_category,
-            unit_price=Decimal('500.00'),
-            sha_code='SHA-MAPPED-001',  # SHA code for fallback
+            unit_price=Decimal("500.00"),
+            sha_code="SHA-MAPPED-001",  # SHA code for fallback
             is_active=True,
             created_by=test_user,
         )
@@ -589,110 +583,90 @@ class TestSHATariffFindTariffForService:
     # =========================================================================
     # Test 15: find_tariff_for_service() with direct mapping
     # =========================================================================
-    def test_find_tariff_for_service_with_direct_mapping(
-        self, test_service
-    ):
+    def test_find_tariff_for_service_with_direct_mapping(self, test_service):
         """Should find tariff when directly mapped to service."""
         from hmis.apps.billing.models import SHATariff
 
         # Create tariff with direct service mapping
         tariff = SHATariff.objects.create(
-            code='SHA-DIRECT-001',
-            name='Directly Mapped Tariff',
+            code="SHA-DIRECT-001",
+            name="Directly Mapped Tariff",
             category=SHATariff.TariffCategory.CONSULTATION,
             facility_level=SHATariff.TariffLevel.LEVEL_3,
-            sha_amount=Decimal('500.00'),
+            sha_amount=Decimal("500.00"),
             effective_date=date.today() - timedelta(days=30),
             is_active=True,
             internal_service=test_service,  # Direct mapping
         )
 
-        found = SHATariff.find_tariff_for_service(
-            test_service,
-            SHATariff.TariffLevel.LEVEL_3
-        )
+        found = SHATariff.find_tariff_for_service(test_service, SHATariff.TariffLevel.LEVEL_3)
 
         assert found == tariff
 
     # =========================================================================
     # Test 16: find_tariff_for_service() with SHA code fallback
     # =========================================================================
-    def test_find_tariff_for_service_with_sha_code_fallback(
-        self, test_service
-    ):
+    def test_find_tariff_for_service_with_sha_code_fallback(self, test_service):
         """Should find tariff by matching SHA code when no direct mapping."""
         from hmis.apps.billing.models import SHATariff
 
         # Create tariff with matching SHA code (no direct mapping)
         tariff = SHATariff.objects.create(
-            code='SHA-MAPPED-001',  # Matches service.sha_code
-            name='SHA Code Mapped Tariff',
+            code="SHA-MAPPED-001",  # Matches service.sha_code
+            name="SHA Code Mapped Tariff",
             category=SHATariff.TariffCategory.CONSULTATION,
             facility_level=SHATariff.TariffLevel.LEVEL_3,
-            sha_amount=Decimal('500.00'),
+            sha_amount=Decimal("500.00"),
             effective_date=date.today() - timedelta(days=30),
             is_active=True,
             internal_service=None,  # No direct mapping
         )
 
-        found = SHATariff.find_tariff_for_service(
-            test_service,
-            SHATariff.TariffLevel.LEVEL_3
-        )
+        found = SHATariff.find_tariff_for_service(test_service, SHATariff.TariffLevel.LEVEL_3)
 
         assert found == tariff
 
     # =========================================================================
     # Test 17: find_tariff_for_service() returns None when no match
     # =========================================================================
-    def test_find_tariff_for_service_returns_none_when_no_match(
-        self, test_service
-    ):
+    def test_find_tariff_for_service_returns_none_when_no_match(self, test_service):
         """Should return None when no matching tariff exists."""
         from hmis.apps.billing.models import SHATariff
 
         # Create tariff with different SHA code and no direct mapping
         SHATariff.objects.create(
-            code='SHA-OTHER-001',
-            name='Other Tariff',
+            code="SHA-OTHER-001",
+            name="Other Tariff",
             category=SHATariff.TariffCategory.CONSULTATION,
             facility_level=SHATariff.TariffLevel.LEVEL_3,
-            sha_amount=Decimal('500.00'),
+            sha_amount=Decimal("500.00"),
             effective_date=date.today() - timedelta(days=30),
             is_active=True,
             internal_service=None,
         )
 
-        found = SHATariff.find_tariff_for_service(
-            test_service,
-            SHATariff.TariffLevel.LEVEL_3
-        )
+        found = SHATariff.find_tariff_for_service(test_service, SHATariff.TariffLevel.LEVEL_3)
 
         assert found is None
 
-    def test_find_tariff_for_service_respects_facility_level(
-        self, test_service
-    ):
+    def test_find_tariff_for_service_respects_facility_level(self, test_service):
         """Should only find tariffs matching the facility level."""
         from hmis.apps.billing.models import SHATariff
 
         # Create tariff with direct mapping but different level
         SHATariff.objects.create(
-            code='SHA-LEVEL-001',
-            name='Level 4 Only',
+            code="SHA-LEVEL-001",
+            name="Level 4 Only",
             category=SHATariff.TariffCategory.CONSULTATION,
             facility_level=SHATariff.TariffLevel.LEVEL_4,  # Different level
-            sha_amount=Decimal('500.00'),
+            sha_amount=Decimal("500.00"),
             effective_date=date.today() - timedelta(days=30),
             is_active=True,
             internal_service=test_service,
         )
 
         # Search for Level 3 - should not find Level 4 tariff
-        found = SHATariff.find_tariff_for_service(
-            test_service,
-            SHATariff.TariffLevel.LEVEL_3
-        )
+        found = SHATariff.find_tariff_for_service(test_service, SHATariff.TariffLevel.LEVEL_3)
 
         assert found is None
 
@@ -708,14 +682,14 @@ class TestSHATariffICD10Codes:
         """Should store and retrieve ICD-10 codes as JSON list."""
         from hmis.apps.billing.models import SHATariff
 
-        icd_codes = ['A09', 'A09.0', 'A09.9', 'K52.9']
+        icd_codes = ["A09", "A09.0", "A09.9", "K52.9"]
 
         tariff = SHATariff.objects.create(
-            code='SHA-ICD-001',
-            name='Gastroenteritis Treatment',
+            code="SHA-ICD-001",
+            name="Gastroenteritis Treatment",
             category=SHATariff.TariffCategory.PROCEDURE,
             facility_level=SHATariff.TariffLevel.LEVEL_3,
-            sha_amount=Decimal('2000.00'),
+            sha_amount=Decimal("2000.00"),
             effective_date=date.today() - timedelta(days=30),
             is_active=True,
             applicable_icd10_codes=icd_codes,
@@ -725,7 +699,7 @@ class TestSHATariffICD10Codes:
         tariff.refresh_from_db()
 
         assert tariff.applicable_icd10_codes == icd_codes
-        assert 'A09' in tariff.applicable_icd10_codes
+        assert "A09" in tariff.applicable_icd10_codes
         assert len(tariff.applicable_icd10_codes) == 4
 
     def test_icd10_codes_defaults_to_empty_list(self):
@@ -733,11 +707,11 @@ class TestSHATariffICD10Codes:
         from hmis.apps.billing.models import SHATariff
 
         tariff = SHATariff.objects.create(
-            code='SHA-ICD-002',
-            name='No ICD Codes',
+            code="SHA-ICD-002",
+            name="No ICD Codes",
             category=SHATariff.TariffCategory.CONSULTATION,
             facility_level=SHATariff.TariffLevel.LEVEL_3,
-            sha_amount=Decimal('500.00'),
+            sha_amount=Decimal("500.00"),
             effective_date=date.today() - timedelta(days=30),
             is_active=True,
             # applicable_icd10_codes not specified
@@ -755,11 +729,11 @@ class TestSHATariffModelMeta:
         from hmis.apps.billing.models import SHATariff
 
         tariff = SHATariff.objects.create(
-            code='SHA-STR-001',
-            name='Test Tariff',
+            code="SHA-STR-001",
+            name="Test Tariff",
             category=SHATariff.TariffCategory.CONSULTATION,
             facility_level=SHATariff.TariffLevel.LEVEL_3,
-            sha_amount=Decimal('500.00'),
+            sha_amount=Decimal("500.00"),
             effective_date=date.today(),
         )
 
@@ -777,17 +751,15 @@ class TestSHATariffModelMeta:
         """Should order by category then code."""
         from hmis.apps.billing.models import SHATariff
 
-        assert SHATariff._meta.ordering == ['category', 'code']
+        assert SHATariff._meta.ordering == ["category", "code"]
 
     def test_sha_tariff_indexes_defined(self):
         """Should have database indexes defined."""
         from hmis.apps.billing.models import SHATariff
 
-        index_fields = [
-            idx.fields for idx in SHATariff._meta.indexes
-        ]
+        index_fields = [idx.fields for idx in SHATariff._meta.indexes]
 
         # Check expected indexes exist
-        assert ['code'] in index_fields
-        assert ['category', 'is_active'] in index_fields
-        assert ['facility_level'] in index_fields
+        assert ["code"] in index_fields
+        assert ["category", "is_active"] in index_fields
+        assert ["facility_level"] in index_fields

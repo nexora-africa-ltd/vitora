@@ -316,8 +316,15 @@ class LabOrder(models.Model):
     external_requisition_sent = models.BooleanField(default=False)
     external_requisition_date = models.DateTimeField(null=True, blank=True)
     external_accession_number = models.CharField(max_length=50, blank=True)
-    requisition_pdf = models.FileField(upload_to='lab_requisitions/%Y/%m/', blank=True, null=True, help_text="Generated PDF requisition form")
-    sample_type = models.CharField(max_length=100, blank=True, help_text="Type of sample required (e.g., Blood, Urine)")
+    requisition_pdf = models.FileField(
+        upload_to="lab_requisitions/%Y/%m/",
+        blank=True,
+        null=True,
+        help_text="Generated PDF requisition form",
+    )
+    sample_type = models.CharField(
+        max_length=100, blank=True, help_text="Type of sample required (e.g., Blood, Urine)"
+    )
 
     # Billing
     total_cost = models.DecimalField(max_digits=10, decimal_places=2, default=0)
@@ -326,7 +333,12 @@ class LabOrder(models.Model):
     # Cancellation tracking
     cancellation_reason = models.TextField(blank=True, help_text="Reason for cancellation")
     cancelled_by = models.ForeignKey(
-        User, null=True, blank=True, on_delete=models.SET_NULL, related_name="cancelled_lab_orders", help_text="User who cancelled the order"
+        User,
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name="cancelled_lab_orders",
+        help_text="User who cancelled the order",
     )
     cancelled_at = models.DateTimeField(null=True, blank=True, help_text="When order was cancelled")
 
@@ -415,7 +427,9 @@ class LabOrder(models.Model):
                 queue.queue_status = "COLLECTED"
                 queue.collected_at = timezone.now()
                 queue.collected_by = user
-                queue.save(update_fields=["queue_status", "collected_at", "collected_by", "updated_at"])
+                queue.save(
+                    update_fields=["queue_status", "collected_at", "collected_by", "updated_at"]
+                )
         except LabQueue.DoesNotExist:
             pass
 
@@ -568,17 +582,35 @@ class LabResult(models.Model):
     numeric_value = models.DecimalField(max_digits=15, decimal_places=4, null=True, blank=True)
     text_value = models.TextField(blank=True)
     option_value = models.CharField(max_length=100, blank=True, help_text="For predefined options")
-    result_unit = models.CharField(max_length=20, choices=RESULT_UNITS, blank=True, help_text="Unit of measurement")
+    result_unit = models.CharField(
+        max_length=20, choices=RESULT_UNITS, blank=True, help_text="Unit of measurement"
+    )
 
     # Reference range tracking (NEW - Phase 1.3)
-    reference_low = models.DecimalField(max_digits=12, decimal_places=4, null=True, blank=True, help_text="Lower bound of reference range")
-    reference_high = models.DecimalField(max_digits=12, decimal_places=4, null=True, blank=True, help_text="Upper bound of reference range")
-    reference_range_text = models.CharField(max_length=100, blank=True, help_text="Human-readable reference range")
+    reference_low = models.DecimalField(
+        max_digits=12,
+        decimal_places=4,
+        null=True,
+        blank=True,
+        help_text="Lower bound of reference range",
+    )
+    reference_high = models.DecimalField(
+        max_digits=12,
+        decimal_places=4,
+        null=True,
+        blank=True,
+        help_text="Upper bound of reference range",
+    )
+    reference_range_text = models.CharField(
+        max_length=100, blank=True, help_text="Human-readable reference range"
+    )
 
     # Interpretation
     result_flag = models.CharField(max_length=20, choices=RESULT_FLAGS, blank=True)
     interpretation = models.TextField(blank=True, help_text="Pathologist notes")
-    is_critical_result = models.BooleanField(default=False, help_text="Requires immediate attention")
+    is_critical_result = models.BooleanField(
+        default=False, help_text="Requires immediate attention"
+    )
 
     # Method/Equipment tracking (NEW - Phase 1.3)
     method = models.CharField(max_length=100, blank=True, help_text="Testing methodology used")
@@ -600,9 +632,16 @@ class LabResult(models.Model):
     # Amendment tracking (NEW - Phase 1.3)
     is_amended = models.BooleanField(default=False, help_text="Result has been amended")
     amendment_reason = models.TextField(blank=True, help_text="Reason for amendment")
-    original_value = models.CharField(max_length=100, blank=True, help_text="Original value before amendment")
+    original_value = models.CharField(
+        max_length=100, blank=True, help_text="Original value before amendment"
+    )
     amended_by = models.ForeignKey(
-        User, null=True, blank=True, on_delete=models.SET_NULL, related_name="amended_results", help_text="User who amended result"
+        User,
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name="amended_results",
+        help_text="User who amended result",
     )
     amended_at = models.DateTimeField(null=True, blank=True, help_text="When result was amended")
 
@@ -1023,64 +1062,44 @@ class LabResultAttachment(models.Model):
     """
 
     class AttachmentType(models.TextChoices):
-        SCANNED_RESULT = 'scanned', 'Scanned Result'
-        EXTERNAL_REPORT = 'external', 'External Lab Report'
-        GRAPH = 'graph', 'Result Graph'
-        IMAGE = 'image', 'Lab Image'
-        OTHER = 'other', 'Other'
+        SCANNED_RESULT = "scanned", "Scanned Result"
+        EXTERNAL_REPORT = "external", "External Lab Report"
+        GRAPH = "graph", "Result Graph"
+        IMAGE = "image", "Lab Image"
+        OTHER = "other", "Other"
 
     id = models.BigAutoField(primary_key=True)
 
     # Linkage
     lab_order = models.ForeignKey(
-        'LabOrder',
+        "LabOrder",
         on_delete=models.CASCADE,
-        related_name='attachments',
-        help_text="Lab order this attachment belongs to"
+        related_name="attachments",
+        help_text="Lab order this attachment belongs to",
     )
 
     # File
     file = models.FileField(
-        upload_to='lab_results/%Y/%m/',
-        help_text="Uploaded file (PDF, PNG, JPG, TIFF)"
+        upload_to="lab_results/%Y/%m/", help_text="Uploaded file (PDF, PNG, JPG, TIFF)"
     )
-    filename = models.CharField(
-        max_length=255,
-        help_text="Original filename"
-    )
-    file_type = models.CharField(
-        max_length=50,
-        help_text="MIME type of the file"
-    )
-    file_size = models.IntegerField(
-        help_text="File size in bytes"
-    )
+    filename = models.CharField(max_length=255, help_text="Original filename")
+    file_type = models.CharField(max_length=50, help_text="MIME type of the file")
+    file_size = models.IntegerField(help_text="File size in bytes")
 
     # Metadata
     attachment_type = models.CharField(
-        max_length=20,
-        choices=AttachmentType.choices,
-        help_text="Type of attachment"
+        max_length=20, choices=AttachmentType.choices, help_text="Type of attachment"
     )
-    description = models.CharField(
-        max_length=255,
-        blank=True,
-        help_text="Optional description"
-    )
+    description = models.CharField(max_length=255, blank=True, help_text="Optional description")
 
     # Audit
     uploaded_by = models.ForeignKey(
-        User,
-        on_delete=models.PROTECT,
-        help_text="User who uploaded the file"
+        User, on_delete=models.PROTECT, help_text="User who uploaded the file"
     )
-    uploaded_at = models.DateTimeField(
-        auto_now_add=True,
-        help_text="When file was uploaded"
-    )
+    uploaded_at = models.DateTimeField(auto_now_add=True, help_text="When file was uploaded")
 
     class Meta:
-        ordering = ['-uploaded_at']
+        ordering = ["-uploaded_at"]
         verbose_name = "Lab Result Attachment"
         verbose_name_plural = "Lab Result Attachments"
 
@@ -1100,8 +1119,9 @@ class LabResultAttachment(models.Model):
             str: MIME type (e.g., 'application/pdf', 'image/png')
         """
         import mimetypes
+
         mime_type, _ = mimetypes.guess_type(self.file.name)
-        return mime_type or 'application/octet-stream'
+        return mime_type or "application/octet-stream"
 
     def __str__(self):
         return f"{self.attachment_type}: {self.filename} for Order {self.lab_order.order_number}"

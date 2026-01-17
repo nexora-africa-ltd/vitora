@@ -19,14 +19,7 @@ from hmis.apps.billing.admin import (
     ServiceAdmin,
     ServiceCategoryAdmin,
 )
-from hmis.apps.billing.models import (
-    CreditNote,
-    Invoice,
-    Payment,
-    Receipt,
-    Service,
-    ServiceCategory,
-)
+from hmis.apps.billing.models import CreditNote, Invoice, Payment, Receipt, Service, ServiceCategory
 
 User = get_user_model()
 

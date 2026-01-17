@@ -136,14 +136,14 @@ class AuditedTokenObtainPairView(TokenObtainPairView):
                 user_logged_in.send(sender=self.__class__, request=request, user=user)
 
                 # Add user info to response
-                response.data['user'] = {
-                    'id': user.id,
-                    'username': user.username,
-                    'email': user.email,
-                    'first_name': user.first_name,
-                    'last_name': user.last_name,
-                    'is_staff': user.is_staff,
-                    'permissions': list(user.get_all_permissions()),
+                response.data["user"] = {
+                    "id": user.id,
+                    "username": user.username,
+                    "email": user.email,
+                    "first_name": user.first_name,
+                    "last_name": user.last_name,
+                    "is_staff": user.is_staff,
+                    "permissions": list(user.get_all_permissions()),
                 }
             except User.DoesNotExist:
                 pass
@@ -262,7 +262,7 @@ class StaffProfileViewSet(viewsets.ModelViewSet):
         """Return appropriate serializer class based on action."""
         from .serializers import StaffProfileCreateSerializer
 
-        if self.action == 'create':
+        if self.action == "create":
             return StaffProfileCreateSerializer
         return StaffProfileSerializer
 
@@ -312,9 +312,7 @@ class StaffProfileViewSet(viewsets.ModelViewSet):
             ]
             data = {k: v for k, v in request.data.items() if k in allowed_fields}
 
-            serializer = self.get_serializer(
-                staff_profile, data=data, partial=True
-            )
+            serializer = self.get_serializer(staff_profile, data=data, partial=True)
             serializer.is_valid(raise_exception=True)
             serializer.save()
             return Response(serializer.data)
@@ -339,15 +337,14 @@ class StaffProfileViewSet(viewsets.ModelViewSet):
 
         if not username:
             return Response(
-                {"error": "username parameter is required"},
-                status=status.HTTP_400_BAD_REQUEST
+                {"error": "username parameter is required"}, status=status.HTTP_400_BAD_REQUEST
             )
 
         # Validate username format
         if len(username) < 3:
             return Response(
                 {"error": "Username must be at least 3 characters"},
-                status=status.HTTP_400_BAD_REQUEST
+                status=status.HTTP_400_BAD_REQUEST,
             )
 
         # Check if username exists
@@ -397,13 +394,13 @@ class StaffProfileViewSet(viewsets.ModelViewSet):
         if not first_name or not last_name:
             return Response(
                 {"error": "first_name and last_name are required"},
-                status=status.HTTP_400_BAD_REQUEST
+                status=status.HTTP_400_BAD_REQUEST,
             )
 
         # Clean names - remove non-alphanumeric characters
-        first_name = re.sub(r'[^a-z0-9]', '', first_name)
-        last_name = re.sub(r'[^a-z0-9]', '', last_name)
-        middle_name = re.sub(r'[^a-z0-9]', '', middle_name)
+        first_name = re.sub(r"[^a-z0-9]", "", first_name)
+        last_name = re.sub(r"[^a-z0-9]", "", last_name)
+        middle_name = re.sub(r"[^a-z0-9]", "", middle_name)
 
         # Generate potential usernames
         candidates = []
@@ -623,4 +620,3 @@ def generate_case_number_view(request):
     case_number = generate_case_number(prefix, facility_code)
 
     return Response({"case_number": case_number})
-

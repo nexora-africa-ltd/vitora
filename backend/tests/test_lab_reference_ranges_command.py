@@ -120,9 +120,7 @@ class TestLoadLabReferenceRangesCommand:
         call_command("load_lab_reference_ranges", panel="CBC", stdout=out)
 
         # Should still have only one HGB entry (updated, not duplicated)
-        hgb_count = LabResultTemplate.objects.filter(
-            test_code="CBC", parameter_code="HGB"
-        ).count()
+        hgb_count = LabResultTemplate.objects.filter(test_code="CBC", parameter_code="HGB").count()
         assert hgb_count == 1
 
         # Parameter should be updated
@@ -160,9 +158,7 @@ class TestLoadLabReferenceRangesCommand:
         call_command("load_lab_reference_ranges", panel="CBC", stdout=StringIO())
 
         # Get CBC parameters ordered by display_order
-        params = list(
-            LabResultTemplate.objects.filter(test_code="CBC").order_by("display_order")
-        )
+        params = list(LabResultTemplate.objects.filter(test_code="CBC").order_by("display_order"))
 
         # Check order
         assert params[0].parameter_code == "WBC"  # display_order=1

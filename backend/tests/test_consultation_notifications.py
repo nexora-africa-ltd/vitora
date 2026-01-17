@@ -333,7 +333,9 @@ class TestNotificationAPIEndpoints:
 class TestPatientCalledNotification:
     """Tests for patient called notification events."""
 
-    def test_call_patient_creates_notification(self, authenticated_client, consultation_ready_encounter, test_user):
+    def test_call_patient_creates_notification(
+        self, authenticated_client, consultation_ready_encounter, test_user
+    ):
         """Should create notification when patient is called."""
         response = authenticated_client.post(
             f"/api/encounters/{consultation_ready_encounter.id}/call/"
@@ -349,7 +351,9 @@ class TestPatientCalledNotification:
         )
         assert notifications.exists()
 
-    def test_call_patient_notification_content(self, authenticated_client, consultation_ready_encounter, test_user, sample_patient):
+    def test_call_patient_notification_content(
+        self, authenticated_client, consultation_ready_encounter, test_user, sample_patient
+    ):
         """Should create notification with correct content."""
         response = authenticated_client.post(
             f"/api/encounters/{consultation_ready_encounter.id}/call/"
@@ -363,10 +367,15 @@ class TestPatientCalledNotification:
         ).first()
 
         assert notification is not None
-        assert sample_patient.first_name in notification.title or sample_patient.last_name in notification.title
+        assert (
+            sample_patient.first_name in notification.title
+            or sample_patient.last_name in notification.title
+        )
         assert "called" in notification.message.lower()
 
-    def test_call_patient_notification_priority(self, authenticated_client, consultation_ready_encounter):
+    def test_call_patient_notification_priority(
+        self, authenticated_client, consultation_ready_encounter
+    ):
         """Should create notification with high priority."""
         response = authenticated_client.post(
             f"/api/encounters/{consultation_ready_encounter.id}/call/"
@@ -382,7 +391,9 @@ class TestPatientCalledNotification:
         assert notification is not None
         assert notification.priority == "high"
 
-    def test_call_patient_notification_has_action_url(self, authenticated_client, consultation_ready_encounter):
+    def test_call_patient_notification_has_action_url(
+        self, authenticated_client, consultation_ready_encounter
+    ):
         """Should create notification with action URL to encounter."""
         response = authenticated_client.post(
             f"/api/encounters/{consultation_ready_encounter.id}/call/"
@@ -525,7 +536,9 @@ class TestNotificationPolling:
 class TestNotificationService:
     """Tests for notification service functions."""
 
-    def test_create_patient_called_notification(self, consultation_ready_encounter, clinician_user, sample_patient):
+    def test_create_patient_called_notification(
+        self, consultation_ready_encounter, clinician_user, sample_patient
+    ):
         """Should create patient called notification via service."""
         from hmis.apps.encounters.services import create_patient_called_notification
 
@@ -540,11 +553,14 @@ class TestNotificationService:
         assert notification.related_model == "Encounter"
         assert notification.related_id == consultation_ready_encounter.id
 
-    def test_notification_sent_to_waiting_room_users(self, consultation_ready_encounter, clinician_user):
+    def test_notification_sent_to_waiting_room_users(
+        self, consultation_ready_encounter, clinician_user
+    ):
         """Should create notifications for users with waiting room view permission."""
         # Create user with waiting room permission
 
         from hmis.apps.encounters.services import create_patient_called_notification
+
         waiting_room_user = User.objects.create_user(
             username="waiting_room",
             email="waiting@example.com",

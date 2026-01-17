@@ -256,7 +256,9 @@ class TestAdmissionRecommendationWorkflow:
 
         assert recommendation.is_expired() is False
 
-    def test_cannot_accept_already_accepted_recommendation(self, opd_encounter, test_user, second_user):
+    def test_cannot_accept_already_accepted_recommendation(
+        self, opd_encounter, test_user, second_user
+    ):
         """Should not allow accepting an already accepted recommendation."""
         recommendation = AdmissionRecommendation.objects.create(
             encounter=opd_encounter,
@@ -273,7 +275,9 @@ class TestAdmissionRecommendationWorkflow:
         with pytest.raises(ValueError, match="Recommendation already resolved"):
             recommendation.accept(second_user)
 
-    def test_cannot_decline_already_declined_recommendation(self, opd_encounter, test_user, second_user):
+    def test_cannot_decline_already_declined_recommendation(
+        self, opd_encounter, test_user, second_user
+    ):
         """Should not allow declining an already declined recommendation."""
         recommendation = AdmissionRecommendation.objects.create(
             encounter=opd_encounter,
@@ -295,7 +299,9 @@ class TestAdmissionRecommendationWorkflow:
 class TestAdmissionRecommendationQueries:
     """Tests for recommendation query operations."""
 
-    def test_filter_pending_recommendations(self, opd_encounter, test_user, second_user, sample_patient):
+    def test_filter_pending_recommendations(
+        self, opd_encounter, test_user, second_user, sample_patient
+    ):
         """Should filter recommendations by status."""
         # Create pending recommendation
         AdmissionRecommendation.objects.create(

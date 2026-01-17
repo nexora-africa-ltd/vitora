@@ -86,9 +86,11 @@ class WaitingQueue(models.Model):
     @classmethod
     def get_waiting_patients(cls):
         """Get patients waiting for triage."""
-        return cls.objects.filter(
-            status__in=["WAITING_TRIAGE", "IN_TRIAGE"]
-        ).select_related("patient", "encounter").order_by("check_in_time")
+        return (
+            cls.objects.filter(status__in=["WAITING_TRIAGE", "IN_TRIAGE"])
+            .select_related("patient", "encounter")
+            .order_by("check_in_time")
+        )
 
     def start_triage(self):
         """Mark patient as being triaged."""
@@ -340,7 +342,10 @@ class TriageAssessment(models.Model):
         max_length=20, choices=MOBILITY_CHOICES, help_text="Patient mobility status"
     )
     arrival_mode = models.CharField(
-        max_length=20, choices=ARRIVAL_MODE_CHOICES, default="WALK_IN", help_text="How patient arrived"
+        max_length=20,
+        choices=ARRIVAL_MODE_CHOICES,
+        default="WALK_IN",
+        help_text="How patient arrived",
     )
     allergies_noted = models.TextField(
         blank=True,
@@ -583,13 +588,17 @@ class TriageAssessment(models.Model):
                 try:
                     systolic = int(bp_parts[0])
                     if systolic < 90:
-                        alerts.append(f"CRITICAL: Severe hypotension (BP {self.encounter.blood_pressure})")
+                        alerts.append(
+                            f"CRITICAL: Severe hypotension (BP {self.encounter.blood_pressure})"
+                        )
                     elif systolic > 180:
                         alerts.append(
                             f"CRITICAL: Severe hypertension (BP {self.encounter.blood_pressure})"
                         )
                     elif systolic > 140:
-                        alerts.append(f"WARNING: Elevated blood pressure (BP {self.encounter.blood_pressure})")
+                        alerts.append(
+                            f"WARNING: Elevated blood pressure (BP {self.encounter.blood_pressure})"
+                        )
                 except ValueError:
                     pass
 
@@ -658,17 +667,18 @@ class TriageQueue(models.Model):
 
         Returns queryset sorted by triage priority (RED first) then arrival time (FIFO).
         """
-        queryset = cls.objects.exclude(status__in=["COMPLETED", "LEFT_WITHOUT_BEING_SEEN"]).select_related('triage_assessment')
+        queryset = cls.objects.exclude(
+            status__in=["COMPLETED", "LEFT_WITHOUT_BEING_SEEN"]
+        ).select_related("triage_assessment")
 
         if area:
             queryset = queryset.filter(triage_assessment__assigned_area=area)
 
         # Convert to list and sort by priority then arrival time
         queue_list = list(queryset)
-        queue_list.sort(key=lambda x: (
-            x.triage_assessment.category_priority,
-            x.triage_assessment.arrival_time
-        ))
+        queue_list.sort(
+            key=lambda x: (x.triage_assessment.category_priority, x.triage_assessment.arrival_time)
+        )
 
         return queue_list
 

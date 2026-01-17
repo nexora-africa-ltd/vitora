@@ -90,9 +90,7 @@ def sample_lab_order(sample_encounter, test_user):
 def pdf_file():
     """Create a fake PDF file."""
     return SimpleUploadedFile(
-        name="test_result.pdf",
-        content=b"%PDF-1.4 test content",
-        content_type="application/pdf"
+        name="test_result.pdf", content=b"%PDF-1.4 test content", content_type="application/pdf"
     )
 
 
@@ -102,7 +100,7 @@ def image_file():
     return SimpleUploadedFile(
         name="test_scan.png",
         content=b"\x89PNG\r\n\x1a\n test image content",
-        content_type="image/png"
+        content_type="image/png",
     )
 
 
@@ -111,9 +109,7 @@ def large_file():
     """Create a file larger than 10MB."""
     # 11MB file
     return SimpleUploadedFile(
-        name="large_result.pdf",
-        content=b"x" * (11 * 1024 * 1024),
-        content_type="application/pdf"
+        name="large_result.pdf", content=b"x" * (11 * 1024 * 1024), content_type="application/pdf"
     )
 
 
@@ -123,7 +119,7 @@ def invalid_file():
     return SimpleUploadedFile(
         name="malicious.exe",
         content=b"MZ executable content",
-        content_type="application/x-msdownload"
+        content_type="application/x-msdownload",
     )
 
 
@@ -200,9 +196,7 @@ class TestLabResultAttachment:
         from hmis.apps.laboratory.validators import validate_lab_attachment
 
         invalid_file = SimpleUploadedFile(
-            name="script.js",
-            content=b"console.log('test')",
-            content_type="application/javascript"
+            name="script.js", content=b"console.log('test')", content_type="application/javascript"
         )
 
         # Validator should raise ValidationError
@@ -219,7 +213,7 @@ class TestLabResultAttachment:
         large_file = SimpleUploadedFile(
             name="huge_result.pdf",
             content=b"x" * (11 * 1024 * 1024),  # 11MB
-            content_type="application/pdf"
+            content_type="application/pdf",
         )
 
         # Validator should raise ValidationError
@@ -240,7 +234,9 @@ class TestLabResultAttachment:
         assert attachment.uploaded_by == test_user
         assert attachment.uploaded_at is not None
 
-    def test_multiple_attachments_per_order(self, sample_lab_order, pdf_file, image_file, test_user, second_user):
+    def test_multiple_attachments_per_order(
+        self, sample_lab_order, pdf_file, image_file, test_user, second_user
+    ):
         """Should support multiple attachments for one order."""
         # Upload first attachment
         attachment1 = LabResultAttachment.objects.create(
@@ -268,7 +264,7 @@ class TestLabResultAttachment:
 
     def test_attachment_type_choices(self, sample_lab_order, pdf_file, test_user):
         """Should support different attachment types."""
-        types = ['scanned', 'external', 'graph', 'image', 'other']
+        types = ["scanned", "external", "graph", "image", "other"]
 
         for att_type in types:
             attachment = LabResultAttachment.objects.create(

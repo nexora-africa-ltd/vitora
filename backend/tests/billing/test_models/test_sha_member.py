@@ -44,16 +44,16 @@ class TestSHAMemberModel:
 
         member = SHAMember.objects.create(
             patient=sample_patient,
-            sha_number='SHA-1234567890',
-            national_id='12345678',
+            sha_number="SHA-1234567890",
+            national_id="12345678",
             membership_type=SHAMember.MembershipType.PRINCIPAL,
             created_by=test_user,
         )
 
         assert member.id is not None
         assert member.patient == sample_patient
-        assert member.sha_number == 'SHA-1234567890'
-        assert member.national_id == '12345678'
+        assert member.sha_number == "SHA-1234567890"
+        assert member.national_id == "12345678"
         assert member.membership_type == SHAMember.MembershipType.PRINCIPAL
         assert member.status == SHAMember.MembershipStatus.PENDING_VERIFICATION
         assert member.created_by == test_user
@@ -70,12 +70,12 @@ class TestSHAMemberModel:
         with pytest.raises(ValidationError) as exc_info:
             SHAMember.objects.create(
                 patient=sample_patient,
-                sha_number='INVALID123456',
-                national_id='12345678',
+                sha_number="INVALID123456",
+                national_id="12345678",
                 created_by=test_user,
             )
 
-        assert 'sha_number' in str(exc_info.value)
+        assert "sha_number" in str(exc_info.value)
 
     def test_sha_number_with_valid_prefix_accepted(self, sample_patient, test_user):
         """Should accept SHA numbers starting with SHA-."""
@@ -83,12 +83,12 @@ class TestSHAMemberModel:
 
         member = SHAMember.objects.create(
             patient=sample_patient,
-            sha_number='SHA-9876543210',
-            national_id='87654321',
+            sha_number="SHA-9876543210",
+            national_id="87654321",
             created_by=test_user,
         )
 
-        assert member.sha_number == 'SHA-9876543210'
+        assert member.sha_number == "SHA-9876543210"
 
     # =========================================================================
     # Test 3: Patient one-to-one relationship constraint
@@ -100,8 +100,8 @@ class TestSHAMemberModel:
         # Create first membership
         SHAMember.objects.create(
             patient=sample_patient,
-            sha_number='SHA-1111111111',
-            national_id='12345678',
+            sha_number="SHA-1111111111",
+            national_id="12345678",
             created_by=test_user,
         )
 
@@ -110,21 +110,19 @@ class TestSHAMemberModel:
         with pytest.raises((IntegrityError, ValidationError)):
             SHAMember.objects.create(
                 patient=sample_patient,
-                sha_number='SHA-2222222222',
-                national_id='87654321',
+                sha_number="SHA-2222222222",
+                national_id="87654321",
                 created_by=test_user,
             )
 
-    def test_patient_can_access_sha_member_via_related_name(
-        self, sample_patient, test_user
-    ):
+    def test_patient_can_access_sha_member_via_related_name(self, sample_patient, test_user):
         """Patient should be able to access SHA membership via related name."""
         from hmis.apps.billing.models import SHAMember
 
         member = SHAMember.objects.create(
             patient=sample_patient,
-            sha_number='SHA-1234567890',
-            national_id='12345678',
+            sha_number="SHA-1234567890",
+            national_id="12345678",
             created_by=test_user,
         )
 
@@ -144,17 +142,17 @@ class TestSHAMemberModel:
         # Create first membership
         SHAMember.objects.create(
             patient=sample_patient,
-            sha_number='SHA-1234567890',
-            national_id='12345678',
+            sha_number="SHA-1234567890",
+            national_id="12345678",
             created_by=test_user,
         )
 
         # Create second patient for second membership test
         patient2 = Patient.objects.create(
-            first_name='John',
-            last_name='Doe',
-            date_of_birth='1990-01-01',
-            gender='M',
+            first_name="John",
+            last_name="Doe",
+            date_of_birth="1990-01-01",
+            gender="M",
             county=sample_county,
             sub_county=sample_sub_county,
         )
@@ -164,8 +162,8 @@ class TestSHAMemberModel:
         with pytest.raises((IntegrityError, ValidationError)):
             SHAMember.objects.create(
                 patient=patient2,
-                sha_number='SHA-1234567890',  # Duplicate SHA number
-                national_id='99999999',
+                sha_number="SHA-1234567890",  # Duplicate SHA number
+                national_id="99999999",
                 created_by=test_user,
             )
 
@@ -189,18 +187,20 @@ class TestSHAMemberModel:
             from hmis.apps.patients.models import Patient
 
             patient = Patient.objects.create(
-                first_name=f'Test{i}',
-                last_name='User',
-                date_of_birth='1990-01-01',
-                gender='F',
+                first_name=f"Test{i}",
+                last_name="User",
+                date_of_birth="1990-01-01",
+                gender="F",
             )
 
-            principal_sha = 'SHA-0000000001' if membership_type != SHAMember.MembershipType.PRINCIPAL else ''
+            principal_sha = (
+                "SHA-0000000001" if membership_type != SHAMember.MembershipType.PRINCIPAL else ""
+            )
 
             member = SHAMember.objects.create(
                 patient=patient,
-                sha_number=f'SHA-{1234567890 + i}',
-                national_id=f'{12345678 + i}',
+                sha_number=f"SHA-{1234567890 + i}",
+                national_id=f"{12345678 + i}",
                 membership_type=membership_type,
                 principal_sha_number=principal_sha,
                 created_by=test_user,
@@ -218,32 +218,30 @@ class TestSHAMemberModel:
         with pytest.raises(ValidationError) as exc_info:
             SHAMember.objects.create(
                 patient=sample_patient,
-                sha_number='SHA-1234567890',
-                national_id='12345678',
+                sha_number="SHA-1234567890",
+                national_id="12345678",
                 membership_type=SHAMember.MembershipType.SPOUSE,  # Dependent
-                principal_sha_number='',  # Missing principal SHA
+                principal_sha_number="",  # Missing principal SHA
                 principal=None,  # No principal FK either
                 created_by=test_user,
             )
 
-        assert 'principal_sha_number' in str(exc_info.value)
+        assert "principal_sha_number" in str(exc_info.value)
 
-    def test_dependent_with_principal_sha_number_accepted(
-        self, sample_patient, test_user
-    ):
+    def test_dependent_with_principal_sha_number_accepted(self, sample_patient, test_user):
         """Dependent with principal SHA number should be accepted."""
         from hmis.apps.billing.models import SHAMember
 
         member = SHAMember.objects.create(
             patient=sample_patient,
-            sha_number='SHA-1234567890',
-            national_id='12345678',
+            sha_number="SHA-1234567890",
+            national_id="12345678",
             membership_type=SHAMember.MembershipType.CHILD,
-            principal_sha_number='SHA-0000000001',
+            principal_sha_number="SHA-0000000001",
             created_by=test_user,
         )
 
-        assert member.principal_sha_number == 'SHA-0000000001'
+        assert member.principal_sha_number == "SHA-0000000001"
 
     def test_principal_member_does_not_require_principal_sha_number(
         self, sample_patient, test_user
@@ -253,36 +251,34 @@ class TestSHAMemberModel:
 
         member = SHAMember.objects.create(
             patient=sample_patient,
-            sha_number='SHA-1234567890',
-            national_id='12345678',
+            sha_number="SHA-1234567890",
+            national_id="12345678",
             membership_type=SHAMember.MembershipType.PRINCIPAL,
-            principal_sha_number='',  # Empty is fine for principal
+            principal_sha_number="",  # Empty is fine for principal
             created_by=test_user,
         )
 
         assert member.membership_type == SHAMember.MembershipType.PRINCIPAL
-        assert member.principal_sha_number == ''
+        assert member.principal_sha_number == ""
 
     # =========================================================================
     # Test 7: Coverage date validation (end after start)
     # =========================================================================
-    def test_coverage_end_date_must_be_after_start_date(
-        self, sample_patient, test_user
-    ):
+    def test_coverage_end_date_must_be_after_start_date(self, sample_patient, test_user):
         """Coverage end date must be after start date."""
         from hmis.apps.billing.models import SHAMember
 
         with pytest.raises(ValidationError) as exc_info:
             SHAMember.objects.create(
                 patient=sample_patient,
-                sha_number='SHA-1234567890',
-                national_id='12345678',
+                sha_number="SHA-1234567890",
+                national_id="12345678",
                 coverage_start_date=date.today(),
                 coverage_end_date=date.today() - timedelta(days=1),  # Before start
                 created_by=test_user,
             )
 
-        assert 'coverage_end_date' in str(exc_info.value)
+        assert "coverage_end_date" in str(exc_info.value)
 
     def test_coverage_dates_valid_when_end_after_start(self, sample_patient, test_user):
         """Coverage dates should be valid when end is after start."""
@@ -290,8 +286,8 @@ class TestSHAMemberModel:
 
         member = SHAMember.objects.create(
             patient=sample_patient,
-            sha_number='SHA-1234567890',
-            national_id='12345678',
+            sha_number="SHA-1234567890",
+            national_id="12345678",
             coverage_start_date=date.today() - timedelta(days=365),
             coverage_end_date=date.today() + timedelta(days=365),
             created_by=test_user,
@@ -302,16 +298,14 @@ class TestSHAMemberModel:
     # =========================================================================
     # Test 8: is_eligible() with active status
     # =========================================================================
-    def test_is_eligible_returns_true_for_active_member(
-        self, sample_patient, test_user
-    ):
+    def test_is_eligible_returns_true_for_active_member(self, sample_patient, test_user):
         """is_eligible() should return True for active member with valid coverage."""
         from hmis.apps.billing.models import SHAMember
 
         member = SHAMember.objects.create(
             patient=sample_patient,
-            sha_number='SHA-1234567890',
-            national_id='12345678',
+            sha_number="SHA-1234567890",
+            national_id="12345678",
             status=SHAMember.MembershipStatus.ACTIVE,
             coverage_start_date=date.today() - timedelta(days=30),
             coverage_end_date=date.today() + timedelta(days=365),
@@ -324,16 +318,14 @@ class TestSHAMemberModel:
     # =========================================================================
     # Test 9: is_eligible() with expired coverage
     # =========================================================================
-    def test_is_eligible_returns_false_for_expired_coverage(
-        self, sample_patient, test_user
-    ):
+    def test_is_eligible_returns_false_for_expired_coverage(self, sample_patient, test_user):
         """is_eligible() should return False for expired coverage."""
         from hmis.apps.billing.models import SHAMember
 
         member = SHAMember.objects.create(
             patient=sample_patient,
-            sha_number='SHA-1234567890',
-            national_id='12345678',
+            sha_number="SHA-1234567890",
+            national_id="12345678",
             status=SHAMember.MembershipStatus.ACTIVE,
             coverage_start_date=date.today() - timedelta(days=365),
             coverage_end_date=date.today() - timedelta(days=1),  # Expired yesterday
@@ -342,16 +334,14 @@ class TestSHAMemberModel:
 
         assert member.is_eligible() is False
 
-    def test_is_eligible_returns_false_for_expired_eligibility(
-        self, sample_patient, test_user
-    ):
+    def test_is_eligible_returns_false_for_expired_eligibility(self, sample_patient, test_user):
         """is_eligible() should return False when eligibility_valid_until is past."""
         from hmis.apps.billing.models import SHAMember
 
         member = SHAMember.objects.create(
             patient=sample_patient,
-            sha_number='SHA-1234567890',
-            national_id='12345678',
+            sha_number="SHA-1234567890",
+            national_id="12345678",
             status=SHAMember.MembershipStatus.ACTIVE,
             coverage_end_date=date.today() + timedelta(days=365),
             eligibility_valid_until=date.today() - timedelta(days=1),  # Expired
@@ -363,16 +353,14 @@ class TestSHAMemberModel:
     # =========================================================================
     # Test 10: is_eligible() with suspended status
     # =========================================================================
-    def test_is_eligible_returns_false_for_suspended_status(
-        self, sample_patient, test_user
-    ):
+    def test_is_eligible_returns_false_for_suspended_status(self, sample_patient, test_user):
         """is_eligible() should return False for suspended member."""
         from hmis.apps.billing.models import SHAMember
 
         member = SHAMember.objects.create(
             patient=sample_patient,
-            sha_number='SHA-1234567890',
-            national_id='12345678',
+            sha_number="SHA-1234567890",
+            national_id="12345678",
             status=SHAMember.MembershipStatus.SUSPENDED,
             coverage_end_date=date.today() + timedelta(days=365),
             created_by=test_user,
@@ -380,32 +368,28 @@ class TestSHAMemberModel:
 
         assert member.is_eligible() is False
 
-    def test_is_eligible_returns_false_for_inactive_status(
-        self, sample_patient, test_user
-    ):
+    def test_is_eligible_returns_false_for_inactive_status(self, sample_patient, test_user):
         """is_eligible() should return False for inactive member."""
         from hmis.apps.billing.models import SHAMember
 
         member = SHAMember.objects.create(
             patient=sample_patient,
-            sha_number='SHA-1234567890',
-            national_id='12345678',
+            sha_number="SHA-1234567890",
+            national_id="12345678",
             status=SHAMember.MembershipStatus.INACTIVE,
             created_by=test_user,
         )
 
         assert member.is_eligible() is False
 
-    def test_is_eligible_returns_false_for_expired_status(
-        self, sample_patient, test_user
-    ):
+    def test_is_eligible_returns_false_for_expired_status(self, sample_patient, test_user):
         """is_eligible() should return False for expired membership status."""
         from hmis.apps.billing.models import SHAMember
 
         member = SHAMember.objects.create(
             patient=sample_patient,
-            sha_number='SHA-1234567890',
-            national_id='12345678',
+            sha_number="SHA-1234567890",
+            national_id="12345678",
             status=SHAMember.MembershipStatus.EXPIRED,
             created_by=test_user,
         )
@@ -423,8 +407,8 @@ class TestSHAMemberModel:
 
         member = SHAMember.objects.create(
             patient=sample_patient,
-            sha_number='SHA-1234567890',
-            national_id='12345678',
+            sha_number="SHA-1234567890",
+            national_id="12345678",
             last_eligibility_check=None,  # No previous check
             created_by=test_user,
         )
@@ -442,24 +426,22 @@ class TestSHAMemberModel:
 
         member = SHAMember.objects.create(
             patient=sample_patient,
-            sha_number='SHA-1234567890',
-            national_id='12345678',
+            sha_number="SHA-1234567890",
+            national_id="12345678",
             last_eligibility_check=timezone.now() - timedelta(hours=12),  # 12h ago
             created_by=test_user,
         )
 
         assert member.needs_eligibility_check() is False
 
-    def test_needs_eligibility_check_returns_false_just_checked(
-        self, sample_patient, test_user
-    ):
+    def test_needs_eligibility_check_returns_false_just_checked(self, sample_patient, test_user):
         """needs_eligibility_check() should return False if just checked."""
         from hmis.apps.billing.models import SHAMember
 
         member = SHAMember.objects.create(
             patient=sample_patient,
-            sha_number='SHA-1234567890',
-            national_id='12345678',
+            sha_number="SHA-1234567890",
+            national_id="12345678",
             last_eligibility_check=timezone.now(),  # Just now
             created_by=test_user,
         )
@@ -469,32 +451,28 @@ class TestSHAMemberModel:
     # =========================================================================
     # Test 13: needs_eligibility_check() with stale check (>24h)
     # =========================================================================
-    def test_needs_eligibility_check_returns_true_with_stale_check(
-        self, sample_patient, test_user
-    ):
+    def test_needs_eligibility_check_returns_true_with_stale_check(self, sample_patient, test_user):
         """needs_eligibility_check() should return True if check is >24h old."""
         from hmis.apps.billing.models import SHAMember
 
         member = SHAMember.objects.create(
             patient=sample_patient,
-            sha_number='SHA-1234567890',
-            national_id='12345678',
+            sha_number="SHA-1234567890",
+            national_id="12345678",
             last_eligibility_check=timezone.now() - timedelta(hours=25),  # 25h ago
             created_by=test_user,
         )
 
         assert member.needs_eligibility_check() is True
 
-    def test_needs_eligibility_check_returns_true_at_exactly_24h(
-        self, sample_patient, test_user
-    ):
+    def test_needs_eligibility_check_returns_true_at_exactly_24h(self, sample_patient, test_user):
         """needs_eligibility_check() should return True at exactly 24h threshold."""
         from hmis.apps.billing.models import SHAMember
 
         member = SHAMember.objects.create(
             patient=sample_patient,
-            sha_number='SHA-1234567890',
-            national_id='12345678',
+            sha_number="SHA-1234567890",
+            national_id="12345678",
             last_eligibility_check=timezone.now() - timedelta(hours=24, seconds=1),
             created_by=test_user,
         )
@@ -504,61 +482,55 @@ class TestSHAMemberModel:
     # =========================================================================
     # Test 14: get_eligibility_display() for eligible member
     # =========================================================================
-    def test_get_eligibility_display_for_eligible_member(
-        self, sample_patient, test_user
-    ):
+    def test_get_eligibility_display_for_eligible_member(self, sample_patient, test_user):
         """get_eligibility_display() should return 'Eligible' for eligible member."""
         from hmis.apps.billing.models import SHAMember
 
         member = SHAMember.objects.create(
             patient=sample_patient,
-            sha_number='SHA-1234567890',
-            national_id='12345678',
+            sha_number="SHA-1234567890",
+            national_id="12345678",
             status=SHAMember.MembershipStatus.ACTIVE,
             coverage_end_date=date.today() + timedelta(days=365),
             created_by=test_user,
         )
 
-        assert member.get_eligibility_display() == 'Eligible'
+        assert member.get_eligibility_display() == "Eligible"
 
     # =========================================================================
     # Test 15: get_eligibility_display() for ineligible member
     # =========================================================================
-    def test_get_eligibility_display_for_ineligible_member(
-        self, sample_patient, test_user
-    ):
+    def test_get_eligibility_display_for_ineligible_member(self, sample_patient, test_user):
         """get_eligibility_display() should show reason for ineligible member."""
         from hmis.apps.billing.models import SHAMember
 
         member = SHAMember.objects.create(
             patient=sample_patient,
-            sha_number='SHA-1234567890',
-            national_id='12345678',
+            sha_number="SHA-1234567890",
+            national_id="12345678",
             status=SHAMember.MembershipStatus.SUSPENDED,
             created_by=test_user,
         )
 
         display = member.get_eligibility_display()
-        assert 'Not Eligible' in display
-        assert 'Suspended' in display
+        assert "Not Eligible" in display
+        assert "Suspended" in display
 
-    def test_get_eligibility_display_for_expired_member(
-        self, sample_patient, test_user
-    ):
+    def test_get_eligibility_display_for_expired_member(self, sample_patient, test_user):
         """get_eligibility_display() should indicate expired status."""
         from hmis.apps.billing.models import SHAMember
 
         member = SHAMember.objects.create(
             patient=sample_patient,
-            sha_number='SHA-1234567890',
-            national_id='12345678',
+            sha_number="SHA-1234567890",
+            national_id="12345678",
             status=SHAMember.MembershipStatus.EXPIRED,
             created_by=test_user,
         )
 
         display = member.get_eligibility_display()
-        assert 'Not Eligible' in display
-        assert 'Expired' in display
+        assert "Not Eligible" in display
+        assert "Expired" in display
 
 
 @pytest.mark.django_db
@@ -571,40 +543,38 @@ class TestSHAMemberModelMeta:
 
         member = SHAMember.objects.create(
             patient=sample_patient,
-            sha_number='SHA-1234567890',
-            national_id='12345678',
+            sha_number="SHA-1234567890",
+            national_id="12345678",
             created_by=test_user,
         )
 
         str_repr = str(member)
-        assert 'SHA-1234567890' in str_repr
+        assert "SHA-1234567890" in str_repr
         assert str(sample_patient) in str_repr
 
     def test_sha_member_verbose_name(self):
         """Test verbose_name is set correctly."""
         from hmis.apps.billing.models import SHAMember
 
-        assert SHAMember._meta.verbose_name == 'SHA Member'
-        assert SHAMember._meta.verbose_name_plural == 'SHA Members'
+        assert SHAMember._meta.verbose_name == "SHA Member"
+        assert SHAMember._meta.verbose_name_plural == "SHA Members"
 
     def test_sha_member_ordering(self):
         """Test default ordering is by -created_at."""
         from hmis.apps.billing.models import SHAMember
 
-        assert SHAMember._meta.ordering == ['-created_at']
+        assert SHAMember._meta.ordering == ["-created_at"]
 
     def test_sha_member_indexes_defined(self):
         """Test that database indexes are defined."""
         from hmis.apps.billing.models import SHAMember
 
-        index_fields = [
-            str(idx.fields) for idx in SHAMember._meta.indexes
-        ]
+        index_fields = [str(idx.fields) for idx in SHAMember._meta.indexes]
 
         # Check expected indexes exist (as strings or tuples)
-        assert any('sha_number' in str(idx) for idx in index_fields)
-        assert any('national_id' in str(idx) for idx in index_fields)
-        assert any('status' in str(idx) for idx in index_fields)
+        assert any("sha_number" in str(idx) for idx in index_fields)
+        assert any("national_id" in str(idx) for idx in index_fields)
+        assert any("status" in str(idx) for idx in index_fields)
 
 
 @pytest.mark.django_db
@@ -616,35 +586,33 @@ class TestSHAMemberEligibilityResponse:
         from hmis.apps.billing.models import SHAMember
 
         response_data = {
-            'eligible': True,
-            'balance': 50000.00,
-            'valid_until': '2027-12-31',
-            'benefit_package': 'STANDARD',
+            "eligible": True,
+            "balance": 50000.00,
+            "valid_until": "2027-12-31",
+            "benefit_package": "STANDARD",
         }
 
         member = SHAMember.objects.create(
             patient=sample_patient,
-            sha_number='SHA-1234567890',
-            national_id='12345678',
+            sha_number="SHA-1234567890",
+            national_id="12345678",
             eligibility_response=response_data,
             created_by=test_user,
         )
 
         member.refresh_from_db()
         assert member.eligibility_response == response_data
-        assert member.eligibility_response['eligible'] is True
-        assert member.eligibility_response['balance'] == 50000.00
+        assert member.eligibility_response["eligible"] is True
+        assert member.eligibility_response["balance"] == 50000.00
 
-    def test_eligibility_response_defaults_to_empty_dict(
-        self, sample_patient, test_user
-    ):
+    def test_eligibility_response_defaults_to_empty_dict(self, sample_patient, test_user):
         """Test eligibility_response defaults to empty dict."""
         from hmis.apps.billing.models import SHAMember
 
         member = SHAMember.objects.create(
             patient=sample_patient,
-            sha_number='SHA-1234567890',
-            national_id='12345678',
+            sha_number="SHA-1234567890",
+            national_id="12345678",
             created_by=test_user,
         )
 
@@ -661,8 +629,8 @@ class TestSHAMemberAuditFields:
 
         member = SHAMember.objects.create(
             patient=sample_patient,
-            sha_number='SHA-1234567890',
-            national_id='12345678',
+            sha_number="SHA-1234567890",
+            national_id="12345678",
             created_by=test_user,
         )
 
@@ -685,13 +653,13 @@ class TestSHAMemberAuditFields:
 
         member = SHAMember.objects.create(
             patient=sample_patient,
-            sha_number='SHA-1234567890',
-            national_id='12345678',
-            benefit_package='STANDARD',
+            sha_number="SHA-1234567890",
+            national_id="12345678",
+            benefit_package="STANDARD",
             created_by=test_user,
         )
 
-        assert member.benefit_package == 'STANDARD'
+        assert member.benefit_package == "STANDARD"
 
 
 # =============================================================================
@@ -717,10 +685,10 @@ class TestSHAMemberPrincipalForeignKey:
 
         # Create principal patient
         principal_patient = Patient.objects.create(
-            first_name='Principal',
-            last_name='Member',
-            date_of_birth='1980-01-01',
-            gender='M',
+            first_name="Principal",
+            last_name="Member",
+            date_of_birth="1980-01-01",
+            gender="M",
             county=county,
             sub_county=sub_county,
             registered_by=test_user,
@@ -729,18 +697,18 @@ class TestSHAMemberPrincipalForeignKey:
         # Create principal member
         principal_member = SHAMember.objects.create(
             patient=principal_patient,
-            sha_number='SHA-0000000001',
-            national_id='12345678',
+            sha_number="SHA-0000000001",
+            national_id="12345678",
             membership_type=SHAMember.MembershipType.PRINCIPAL,
             created_by=test_user,
         )
 
         # Create dependent patient
         dependent_patient = Patient.objects.create(
-            first_name='Dependent',
-            last_name='Child',
-            date_of_birth='2010-05-15',
-            gender='F',
+            first_name="Dependent",
+            last_name="Child",
+            date_of_birth="2010-05-15",
+            gender="F",
             county=county,
             sub_county=sub_county,
             registered_by=test_user,
@@ -749,14 +717,14 @@ class TestSHAMemberPrincipalForeignKey:
         # Create dependent with principal FK (no principal_sha_number needed)
         dependent_member = SHAMember.objects.create(
             patient=dependent_patient,
-            sha_number='SHA-0000000002',
+            sha_number="SHA-0000000002",
             membership_type=SHAMember.MembershipType.CHILD,
             principal=principal_member,  # FK instead of string
             created_by=test_user,
         )
 
         assert dependent_member.principal == principal_member
-        assert dependent_member.principal_sha_number == ''
+        assert dependent_member.principal_sha_number == ""
 
     # =========================================================================
     # Test: Reverse relationship - get dependents from principal
@@ -772,36 +740,36 @@ class TestSHAMemberPrincipalForeignKey:
 
         # Create principal
         principal_patient = Patient.objects.create(
-            first_name='Parent',
-            last_name='Member',
-            date_of_birth='1975-03-20',
-            gender='M',
+            first_name="Parent",
+            last_name="Member",
+            date_of_birth="1975-03-20",
+            gender="M",
             county=county,
             sub_county=sub_county,
             registered_by=test_user,
         )
         principal = SHAMember.objects.create(
             patient=principal_patient,
-            sha_number='SHA-PRINCIPAL1',
-            national_id='11111111',
+            sha_number="SHA-PRINCIPAL1",
+            national_id="11111111",
             membership_type=SHAMember.MembershipType.PRINCIPAL,
             created_by=test_user,
         )
 
         # Create two dependents
-        for i, (name, mtype) in enumerate([('Spouse', 'spouse'), ('Child', 'child')]):
+        for i, (name, mtype) in enumerate([("Spouse", "spouse"), ("Child", "child")]):
             dep_patient = Patient.objects.create(
                 first_name=name,
-                last_name='Member',
-                date_of_birth=f'199{i}-01-01',
-                gender='F',
+                last_name="Member",
+                date_of_birth=f"199{i}-01-01",
+                gender="F",
                 county=county,
                 sub_county=sub_county,
                 registered_by=test_user,
             )
             SHAMember.objects.create(
                 patient=dep_patient,
-                sha_number=f'SHA-DEP{i}',
+                sha_number=f"SHA-DEP{i}",
                 membership_type=mtype,
                 principal=principal,
                 created_by=test_user,
@@ -809,7 +777,10 @@ class TestSHAMemberPrincipalForeignKey:
 
         # Access via reverse relation
         assert principal.dependents.count() == 2
-        assert set(principal.dependents.values_list('membership_type', flat=True)) == {'spouse', 'child'}
+        assert set(principal.dependents.values_list("membership_type", flat=True)) == {
+            "spouse",
+            "child",
+        }
 
     # =========================================================================
     # Test: Principal FK must point to a principal member
@@ -825,28 +796,28 @@ class TestSHAMemberPrincipalForeignKey:
 
         # Create a spouse member (not principal)
         spouse_patient = Patient.objects.create(
-            first_name='Spouse',
-            last_name='Member',
-            date_of_birth='1985-06-15',
-            gender='F',
+            first_name="Spouse",
+            last_name="Member",
+            date_of_birth="1985-06-15",
+            gender="F",
             county=county,
             sub_county=sub_county,
             registered_by=test_user,
         )
         spouse_member = SHAMember.objects.create(
             patient=spouse_patient,
-            sha_number='SHA-SPOUSE001',
+            sha_number="SHA-SPOUSE001",
             membership_type=SHAMember.MembershipType.SPOUSE,
-            principal_sha_number='SHA-SOMEPRINCIPAL',  # Legacy string
+            principal_sha_number="SHA-SOMEPRINCIPAL",  # Legacy string
             created_by=test_user,
         )
 
         # Try to create child with spouse as principal (should fail)
         child_patient = Patient.objects.create(
-            first_name='Child',
-            last_name='Member',
-            date_of_birth='2015-01-01',
-            gender='M',
+            first_name="Child",
+            last_name="Member",
+            date_of_birth="2015-01-01",
+            gender="M",
             county=county,
             sub_county=sub_county,
             registered_by=test_user,
@@ -855,10 +826,10 @@ class TestSHAMemberPrincipalForeignKey:
         with pytest.raises(ValidationError) as exc_info:
             SHAMember.objects.create(
                 patient=child_patient,
-                sha_number='SHA-CHILD001',
+                sha_number="SHA-CHILD001",
                 membership_type=SHAMember.MembershipType.CHILD,
                 principal=spouse_member,  # Invalid - spouse is not a principal
                 created_by=test_user,
             )
 
-        assert 'principal' in str(exc_info.value)
+        assert "principal" in str(exc_info.value)

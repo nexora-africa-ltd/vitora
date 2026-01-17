@@ -163,9 +163,7 @@ class LabOrderViewSet(viewsets.ModelViewSet):
         serializer = LabResultCreateSerializer(data=request.data, context={"request": request})
         if serializer.is_valid():
             result = serializer.save()
-            return Response(
-                LabResultSerializer(result).data, status=status.HTTP_201_CREATED
-            )
+            return Response(LabResultSerializer(result).data, status=status.HTTP_201_CREATED)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
     @action(detail=True, methods=["get"])
@@ -179,9 +177,9 @@ class LabOrderViewSet(viewsets.ModelViewSet):
         try:
             pdf_bytes = ExternalLabRequisition.generate_pdf(order)
             response = HttpResponse(pdf_bytes, content_type="application/pdf")
-            response["Content-Disposition"] = (
-                f'attachment; filename="lab_requisition_{order.order_number}.pdf"'
-            )
+            response[
+                "Content-Disposition"
+            ] = f'attachment; filename="lab_requisition_{order.order_number}.pdf"'
             return response
         except Exception:
             logger.exception("Error generating requisition PDF for order %s", order.pk)
@@ -306,6 +304,7 @@ class LabResultViewSet(viewsets.ModelViewSet):
             result.verification_status = "REJECTED"
             result.verified_by = request.user
             from django.utils import timezone
+
             result.verified_at = timezone.now()
             if comments:
                 result.interpretation = (
@@ -443,6 +442,7 @@ class LabQueueViewSet(viewsets.ModelViewSet):
 
     def get_queryset(self):
         from .models import LabQueue
+
         return LabQueue.objects.select_related(
             "lab_order__patient",
             "lab_order__ordered_by",
@@ -459,6 +459,7 @@ class LabQueueViewSet(viewsets.ModelViewSet):
             LabQueueRejectSerializer,
             LabQueueSerializer,
         )
+
         if self.action == "collect":
             return LabQueueCollectSerializer
         if self.action == "assign":

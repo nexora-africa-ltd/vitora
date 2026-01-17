@@ -27,9 +27,7 @@ class Command(BaseCommand):
         dry_run = options["dry_run"]
 
         # Find in-house orders without queue entries
-        orders_without_queue = LabOrder.objects.filter(
-            order_type="IN_HOUSE"
-        ).exclude(
+        orders_without_queue = LabOrder.objects.filter(order_type="IN_HOUSE").exclude(
             queue_entry__isnull=False
         )
 
@@ -65,9 +63,7 @@ class Command(BaseCommand):
                 except Exception as e:
                     errors += 1
                     self.stderr.write(
-                        self.style.ERROR(
-                            f"  Failed to create queue for {order.order_number}: {e}"
-                        )
+                        self.style.ERROR(f"  Failed to create queue for {order.order_number}: {e}")
                     )
 
         self.stdout.write(

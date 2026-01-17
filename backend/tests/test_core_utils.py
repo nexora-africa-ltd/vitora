@@ -4,11 +4,7 @@ Tests for core utility functions.
 
 import pytest  # type: ignore
 
-from hmis.apps.core.utils import (
-    generate_case_number,
-    generate_ob_number,
-    generate_prc_number,
-)
+from hmis.apps.core.utils import generate_case_number, generate_ob_number, generate_prc_number
 
 
 class TestGeneratePRCNumber:
@@ -119,9 +115,7 @@ class TestCaseNumberAPI:
 
     def test_generate_case_number_endpoint(self, authenticated_client):
         """Should return case number via API."""
-        response = authenticated_client.get(
-            "/api/core/generate/case-number/", {"prefix": "RTA"}
-        )
+        response = authenticated_client.get("/api/core/generate/case-number/", {"prefix": "RTA"})
 
         assert response.status_code == 200
         assert "case_number" in response.data

@@ -27,46 +27,47 @@ class BillingReportService:
             - Outstanding balances
         """
         # Get payments for the specified date
-        payments = Payment.objects.filter(
-            payment_date__date=date,
-            status=Payment.Status.COMPLETED
-        )
+        payments = Payment.objects.filter(payment_date__date=date, status=Payment.Status.COMPLETED)
 
         # Calculate total collections
-        total_collections = payments.aggregate(total=Sum('amount'))['total'] or Decimal('0')
+        total_collections = payments.aggregate(total=Sum("amount"))["total"] or Decimal("0")
 
         # Breakdown by payment method
         by_payment_method = {}
         for method_choice in Payment.Method.choices:
             method = method_choice[0]
-            method_total = payments.filter(method=method).aggregate(total=Sum('amount'))['total'] or Decimal('0')
+            method_total = payments.filter(method=method).aggregate(total=Sum("amount"))[
+                "total"
+            ] or Decimal("0")
             if method_total > 0:
                 by_payment_method[method] = method_total
 
         # Count invoices with payments on this date
-        invoice_ids = payments.values_list('invoice_id', flat=True).distinct()
+        invoice_ids = payments.values_list("invoice_id", flat=True).distinct()
         invoice_count = len(invoice_ids)
 
         # Top services billed (based on invoice items for invoices paid today)
-        top_services = InvoiceItem.objects.filter(
-            invoice_id__in=invoice_ids
-        ).values('service__name').annotate(
-            total_revenue=Sum('line_total'),
-            count=Count('id')
-        ).order_by('-total_revenue')[:5]
+        top_services = (
+            InvoiceItem.objects.filter(invoice_id__in=invoice_ids)
+            .values("service__name")
+            .annotate(total_revenue=Sum("line_total"), count=Count("id"))
+            .order_by("-total_revenue")[:5]
+        )
 
         # Outstanding balances (invoices not fully paid)
         outstanding = Invoice.objects.filter(
-            Q(status=Invoice.Status.PENDING) | Q(status=Invoice.Status.PARTIAL) | Q(status=Invoice.Status.OVERDUE)
-        ).aggregate(total=Sum('balance_due'))['total'] or Decimal('0')
+            Q(status=Invoice.Status.PENDING)
+            | Q(status=Invoice.Status.PARTIAL)
+            | Q(status=Invoice.Status.OVERDUE)
+        ).aggregate(total=Sum("balance_due"))["total"] or Decimal("0")
 
         return {
-            'date': date,
-            'total_collections': total_collections,
-            'by_payment_method': by_payment_method,
-            'invoice_count': invoice_count,
-            'top_services': list(top_services),
-            'outstanding_balance': outstanding
+            "date": date,
+            "total_collections": total_collections,
+            "by_payment_method": by_payment_method,
+            "invoice_count": invoice_count,
+            "top_services": list(top_services),
+            "outstanding_balance": outstanding,
         }
 
     def revenue_summary(self, start_date: date, end_date: date) -> dict[str, Any]:
@@ -83,40 +84,38 @@ class BillingReportService:
         payments = Payment.objects.filter(
             payment_date__date__gte=start_date,
             payment_date__date__lte=end_date,
-            status=Payment.Status.COMPLETED
+            status=Payment.Status.COMPLETED,
         )
 
         # Total revenue
-        total_revenue = payments.aggregate(total=Sum('amount'))['total'] or Decimal('0')
+        total_revenue = payments.aggregate(total=Sum("amount"))["total"] or Decimal("0")
 
         # Revenue by payment method
         by_payment_method = {}
         for method_choice in Payment.Method.choices:
             method = method_choice[0]
-            method_total = payments.filter(method=method).aggregate(total=Sum('amount'))['total'] or Decimal('0')
+            method_total = payments.filter(method=method).aggregate(total=Sum("amount"))[
+                "total"
+            ] or Decimal("0")
             if method_total > 0:
                 by_payment_method[method] = method_total
 
         # Revenue by service category
-        invoice_ids = payments.values_list('invoice_id', flat=True)
+        invoice_ids = payments.values_list("invoice_id", flat=True)
         by_category = {}
 
         # Get all invoice items for paid invoices in this period
         items = InvoiceItem.objects.filter(
-            invoice_id__in=invoice_ids,
-            service__isnull=False
-        ).select_related('service__category')
+            invoice_id__in=invoice_ids, service__isnull=False
+        ).select_related("service__category")
 
         for item in items:
             if item.service and item.service.category:
                 category_name = item.service.category.name
                 if category_name not in by_category:
-                    by_category[category_name] = {
-                        'revenue': Decimal('0'),
-                        'count': 0
-                    }
-                by_category[category_name]['revenue'] += item.line_total
-                by_category[category_name]['count'] += 1
+                    by_category[category_name] = {"revenue": Decimal("0"), "count": 0}
+                by_category[category_name]["revenue"] += item.line_total
+                by_category[category_name]["count"] += 1
 
         # Previous period comparison
         period_length = (end_date - start_date).days + 1
@@ -126,9 +125,9 @@ class BillingReportService:
         prev_payments = Payment.objects.filter(
             payment_date__date__gte=prev_start,
             payment_date__date__lte=prev_end,
-            status=Payment.Status.COMPLETED
+            status=Payment.Status.COMPLETED,
         )
-        prev_revenue = prev_payments.aggregate(total=Sum('amount'))['total'] or Decimal('0')
+        prev_revenue = prev_payments.aggregate(total=Sum("amount"))["total"] or Decimal("0")
 
         # Calculate percentage change
         if prev_revenue > 0:
@@ -137,17 +136,14 @@ class BillingReportService:
             change_percent = 100.0 if total_revenue > 0 else 0.0
 
         return {
-            'period': {
-                'start': start_date,
-                'end': end_date
+            "period": {"start": start_date, "end": end_date},
+            "total_revenue": total_revenue,
+            "by_payment_method": by_payment_method,
+            "by_category": by_category,
+            "previous_period": {
+                "revenue": prev_revenue,
+                "change_percent": round(change_percent, 2),
             },
-            'total_revenue': total_revenue,
-            'by_payment_method': by_payment_method,
-            'by_category': by_category,
-            'previous_period': {
-                'revenue': prev_revenue,
-                'change_percent': round(change_percent, 2)
-            }
         }
 
     def outstanding_balances(self) -> list[dict[str, Any]]:
@@ -161,11 +157,15 @@ class BillingReportService:
             - Total outstanding
         """
         # Get all invoices that are not fully paid or cancelled
-        outstanding_invoices = Invoice.objects.filter(
-            Q(status=Invoice.Status.PENDING) |
-            Q(status=Invoice.Status.PARTIAL) |
-            Q(status=Invoice.Status.OVERDUE)
-        ).filter(balance_due__gt=0).select_related('patient')
+        outstanding_invoices = (
+            Invoice.objects.filter(
+                Q(status=Invoice.Status.PENDING)
+                | Q(status=Invoice.Status.PARTIAL)
+                | Q(status=Invoice.Status.OVERDUE)
+            )
+            .filter(balance_due__gt=0)
+            .select_related("patient")
+        )
 
         result = []
         today = date.today()
@@ -177,21 +177,23 @@ class BillingReportService:
             else:
                 days_overdue = 0
 
-            result.append({
-                'invoice_number': invoice.invoice_number,
-                'patient_name': f"{invoice.patient.first_name} {invoice.patient.last_name}",
-                'patient_mrn': invoice.patient.mrn,
-                'invoice_date': invoice.invoice_date,
-                'due_date': invoice.due_date,
-                'total_amount': invoice.total_amount,
-                'paid_amount': invoice.amount_paid,
-                'balance': invoice.balance_due,
-                'days_overdue': days_overdue,
-                'status': invoice.status
-            })
+            result.append(
+                {
+                    "invoice_number": invoice.invoice_number,
+                    "patient_name": f"{invoice.patient.first_name} {invoice.patient.last_name}",
+                    "patient_mrn": invoice.patient.mrn,
+                    "invoice_date": invoice.invoice_date,
+                    "due_date": invoice.due_date,
+                    "total_amount": invoice.total_amount,
+                    "paid_amount": invoice.amount_paid,
+                    "balance": invoice.balance_due,
+                    "days_overdue": days_overdue,
+                    "status": invoice.status,
+                }
+            )
 
         # Sort by days overdue (most overdue first)
-        result.sort(key=lambda x: x['days_overdue'], reverse=True)
+        result.sort(key=lambda x: x["days_overdue"], reverse=True)
 
         return result
 
@@ -208,8 +210,8 @@ class BillingReportService:
         items = InvoiceItem.objects.filter(
             invoice__invoice_date__gte=start_date,
             invoice__invoice_date__lte=end_date,
-            service__isnull=False
-        ).select_related('service', 'invoice')
+            service__isnull=False,
+        ).select_related("service", "invoice")
 
         # Aggregate by service
         service_data = {}
@@ -218,33 +220,30 @@ class BillingReportService:
             service_name = item.service.name
             if service_name not in service_data:
                 service_data[service_name] = {
-                    'service_name': service_name,
-                    'service_code': item.service.code,
-                    'count': 0,
-                    'quantity': 0,
-                    'revenue': Decimal('0')
+                    "service_name": service_name,
+                    "service_code": item.service.code,
+                    "count": 0,
+                    "quantity": 0,
+                    "revenue": Decimal("0"),
                 }
 
-            service_data[service_name]['count'] += 1
-            service_data[service_name]['quantity'] += item.quantity
-            service_data[service_name]['revenue'] += item.line_total
+            service_data[service_name]["count"] += 1
+            service_data[service_name]["quantity"] += item.quantity
+            service_data[service_name]["revenue"] += item.line_total
 
         # Convert to list and sort by revenue
         services = list(service_data.values())
-        services.sort(key=lambda x: x['revenue'], reverse=True)
+        services.sort(key=lambda x: x["revenue"], reverse=True)
 
         # Calculate totals
         total_services = len(services)
-        total_revenue = sum(s['revenue'] for s in services)
+        total_revenue = sum(s["revenue"] for s in services)
 
         return {
-            'period': {
-                'start': start_date,
-                'end': end_date
-            },
-            'total_services': total_services,
-            'total_revenue': total_revenue,
-            'services': services
+            "period": {"start": start_date, "end": end_date},
+            "total_services": total_services,
+            "total_revenue": total_revenue,
+            "services": services,
         }
 
     def payment_method_analysis(self, start_date: date, end_date: date) -> dict[str, Any]:
@@ -258,8 +257,7 @@ class BillingReportService:
         """
         # Get all payments in date range (both completed and failed for M-Pesa analysis)
         all_payments = Payment.objects.filter(
-            payment_date__date__gte=start_date,
-            payment_date__date__lte=end_date
+            payment_date__date__gte=start_date, payment_date__date__lte=end_date
         )
 
         # Get completed payments only for revenue
@@ -270,20 +268,18 @@ class BillingReportService:
         for method_choice in Payment.Method.choices:
             method = method_choice[0]
             method_data = completed_payments.filter(method=method).aggregate(
-                total=Sum('amount'),
-                count=Count('id'),
-                avg=Avg('amount')
+                total=Sum("amount"), count=Count("id"), avg=Avg("amount")
             )
 
-            if method_data['total']:
+            if method_data["total"]:
                 by_method[method] = {
-                    'total': method_data['total'],
-                    'count': method_data['count'],
-                    'average': method_data['avg']
+                    "total": method_data["total"],
+                    "count": method_data["count"],
+                    "average": method_data["avg"],
                 }
 
         # Overall average transaction
-        avg_transaction = completed_payments.aggregate(avg=Avg('amount'))['avg'] or Decimal('0')
+        avg_transaction = completed_payments.aggregate(avg=Avg("amount"))["avg"] or Decimal("0")
 
         # M-Pesa specific metrics
         mpesa_payments = all_payments.filter(method=Payment.Method.MPESA)
@@ -297,18 +293,15 @@ class BillingReportService:
             mpesa_success_rate = 0.0
 
         mpesa_metrics = {
-            'total_transactions': mpesa_total,
-            'successful_transactions': mpesa_successful,
-            'failed_transactions': mpesa_failed,
-            'success_rate': mpesa_success_rate
+            "total_transactions": mpesa_total,
+            "successful_transactions": mpesa_successful,
+            "failed_transactions": mpesa_failed,
+            "success_rate": mpesa_success_rate,
         }
 
         return {
-            'period': {
-                'start': start_date,
-                'end': end_date
-            },
-            'by_method': by_method,
-            'average_transaction': avg_transaction,
-            'mpesa_metrics': mpesa_metrics
+            "period": {"start": start_date, "end": end_date},
+            "by_method": by_method,
+            "average_transaction": avg_transaction,
+            "mpesa_metrics": mpesa_metrics,
         }

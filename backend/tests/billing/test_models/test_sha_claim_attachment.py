@@ -36,8 +36,8 @@ def sha_member(db, sample_patient, test_user):
 
     return SHAMember.objects.create(
         patient=sample_patient,
-        sha_number='SHA-1234567890',
-        national_id='12345678',
+        sha_number="SHA-1234567890",
+        national_id="12345678",
         membership_type=SHAMember.MembershipType.PRINCIPAL,
         status=SHAMember.MembershipStatus.ACTIVE,
         coverage_start_date=date.today() - timedelta(days=365),
@@ -56,12 +56,12 @@ def sample_claim(db, sha_member, sample_encounter, test_user):
         patient=sha_member.patient,
         sha_member=sha_member,
         encounter=sample_encounter,
-        claim_type='outpatient',
+        claim_type="outpatient",
         service_date=date.today(),
-        primary_diagnosis_code='J06.9',
-        primary_diagnosis_description='Acute upper respiratory infection',
-        facility_code='MFL-12345',
-        facility_level='L3',
+        primary_diagnosis_code="J06.9",
+        primary_diagnosis_description="Acute upper respiratory infection",
+        facility_code="MFL-12345",
+        facility_level="L3",
         created_by=test_user,
     )
 
@@ -70,20 +70,20 @@ def sample_claim(db, sha_member, sample_encounter, test_user):
 def valid_attachment_data(sample_claim, test_user):
     """Valid attachment data for tests."""
     return {
-        'claim': sample_claim,
-        'attachment_type': 'clinical_notes',
-        'name': 'Clinical Notes - Visit 2026-01-07',
-        'description': 'Consultation notes for outpatient visit',
-        'file': SimpleUploadedFile(
-            name='clinical_notes.pdf',
-            content=b'%PDF-1.4 mock pdf content',
-            content_type='application/pdf',
+        "claim": sample_claim,
+        "attachment_type": "clinical_notes",
+        "name": "Clinical Notes - Visit 2026-01-07",
+        "description": "Consultation notes for outpatient visit",
+        "file": SimpleUploadedFile(
+            name="clinical_notes.pdf",
+            content=b"%PDF-1.4 mock pdf content",
+            content_type="application/pdf",
         ),
-        'file_size': 1024,  # 1KB
-        'mime_type': 'application/pdf',
-        'checksum': 'a' * 64,  # SHA-256 is 64 hex chars
-        'original_filename': 'clinical_notes.pdf',
-        'uploaded_by': test_user,
+        "file_size": 1024,  # 1KB
+        "mime_type": "application/pdf",
+        "checksum": "a" * 64,  # SHA-256 is 64 hex chars
+        "original_filename": "clinical_notes.pdf",
+        "uploaded_by": test_user,
     }
 
 
@@ -106,14 +106,14 @@ class TestSHAClaimAttachmentModel:
         attachment = SHAClaimAttachment.objects.create(**valid_attachment_data)
 
         assert attachment.id is not None
-        assert attachment.claim == valid_attachment_data['claim']
-        assert attachment.attachment_type == 'clinical_notes'
-        assert attachment.name == valid_attachment_data['name']
+        assert attachment.claim == valid_attachment_data["claim"]
+        assert attachment.attachment_type == "clinical_notes"
+        assert attachment.name == valid_attachment_data["name"]
         assert attachment.file_size == 1024
-        assert attachment.mime_type == 'application/pdf'
+        assert attachment.mime_type == "application/pdf"
         assert len(attachment.checksum) == 64
-        assert attachment.original_filename == 'clinical_notes.pdf'
-        assert attachment.uploaded_by == valid_attachment_data['uploaded_by']
+        assert attachment.original_filename == "clinical_notes.pdf"
+        assert attachment.uploaded_by == valid_attachment_data["uploaded_by"]
         assert attachment.created_at is not None
 
     def test_attachment_string_representation(self, valid_attachment_data):
@@ -123,8 +123,8 @@ class TestSHAClaimAttachmentModel:
         attachment = SHAClaimAttachment.objects.create(**valid_attachment_data)
 
         str_repr = str(attachment)
-        assert valid_attachment_data['claim'].claim_number in str_repr
-        assert 'Clinical Notes' in str_repr
+        assert valid_attachment_data["claim"].claim_number in str_repr
+        assert "Clinical Notes" in str_repr
 
     # =========================================================================
     # Test 2: File size validation (max 10MB)
@@ -133,7 +133,7 @@ class TestSHAClaimAttachmentModel:
         """Should accept files up to 10MB."""
         from hmis.apps.billing.models import SHAClaimAttachment
 
-        valid_attachment_data['file_size'] = 10 * 1024 * 1024  # Exactly 10MB
+        valid_attachment_data["file_size"] = 10 * 1024 * 1024  # Exactly 10MB
 
         attachment = SHAClaimAttachment.objects.create(**valid_attachment_data)
         assert attachment.file_size == 10 * 1024 * 1024
@@ -142,13 +142,13 @@ class TestSHAClaimAttachmentModel:
         """Should reject files larger than 10MB."""
         from hmis.apps.billing.models import SHAClaimAttachment
 
-        valid_attachment_data['file_size'] = 10 * 1024 * 1024 + 1  # 10MB + 1 byte
+        valid_attachment_data["file_size"] = 10 * 1024 * 1024 + 1  # 10MB + 1 byte
 
         with pytest.raises(ValidationError) as exc_info:
             SHAClaimAttachment.objects.create(**valid_attachment_data)
 
         error_str = str(exc_info.value).lower()
-        assert 'file' in error_str or 'size' in error_str or '10' in error_str
+        assert "file" in error_str or "size" in error_str or "10" in error_str
 
     # =========================================================================
     # Test 3: MIME type validation (PDF, JPEG, PNG, TIFF only)
@@ -157,57 +157,59 @@ class TestSHAClaimAttachmentModel:
         """Should accept application/pdf mime type."""
         from hmis.apps.billing.models import SHAClaimAttachment
 
-        valid_attachment_data['mime_type'] = 'application/pdf'
+        valid_attachment_data["mime_type"] = "application/pdf"
         attachment = SHAClaimAttachment.objects.create(**valid_attachment_data)
-        assert attachment.mime_type == 'application/pdf'
+        assert attachment.mime_type == "application/pdf"
 
     def test_mime_type_jpeg_allowed(self, valid_attachment_data):
         """Should accept image/jpeg mime type."""
         from hmis.apps.billing.models import SHAClaimAttachment
 
-        valid_attachment_data['mime_type'] = 'image/jpeg'
+        valid_attachment_data["mime_type"] = "image/jpeg"
         attachment = SHAClaimAttachment.objects.create(**valid_attachment_data)
-        assert attachment.mime_type == 'image/jpeg'
+        assert attachment.mime_type == "image/jpeg"
 
     def test_mime_type_png_allowed(self, valid_attachment_data):
         """Should accept image/png mime type."""
         from hmis.apps.billing.models import SHAClaimAttachment
 
-        valid_attachment_data['mime_type'] = 'image/png'
+        valid_attachment_data["mime_type"] = "image/png"
         attachment = SHAClaimAttachment.objects.create(**valid_attachment_data)
-        assert attachment.mime_type == 'image/png'
+        assert attachment.mime_type == "image/png"
 
     def test_mime_type_tiff_allowed(self, valid_attachment_data):
         """Should accept image/tiff mime type."""
         from hmis.apps.billing.models import SHAClaimAttachment
 
-        valid_attachment_data['mime_type'] = 'image/tiff'
+        valid_attachment_data["mime_type"] = "image/tiff"
         attachment = SHAClaimAttachment.objects.create(**valid_attachment_data)
-        assert attachment.mime_type == 'image/tiff'
+        assert attachment.mime_type == "image/tiff"
 
     def test_mime_type_invalid_rejected(self, valid_attachment_data):
         """Should reject invalid mime types like text/plain."""
         from hmis.apps.billing.models import SHAClaimAttachment
 
-        valid_attachment_data['mime_type'] = 'text/plain'
+        valid_attachment_data["mime_type"] = "text/plain"
 
         with pytest.raises(ValidationError) as exc_info:
             SHAClaimAttachment.objects.create(**valid_attachment_data)
 
         error_str = str(exc_info.value).lower()
-        assert 'mime' in error_str or 'type' in error_str or 'allowed' in error_str
+        assert "mime" in error_str or "type" in error_str or "allowed" in error_str
 
     def test_mime_type_docx_rejected(self, valid_attachment_data):
         """Should reject Word documents."""
         from hmis.apps.billing.models import SHAClaimAttachment
 
-        valid_attachment_data['mime_type'] = 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
+        valid_attachment_data[
+            "mime_type"
+        ] = "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
 
         with pytest.raises(ValidationError) as exc_info:
             SHAClaimAttachment.objects.create(**valid_attachment_data)
 
         error_str = str(exc_info.value).lower()
-        assert 'mime' in error_str or 'type' in error_str or 'allowed' in error_str
+        assert "mime" in error_str or "type" in error_str or "allowed" in error_str
 
     # =========================================================================
     # Test 4: Attachment type choices
@@ -216,41 +218,41 @@ class TestSHAClaimAttachmentModel:
         """Should accept clinical_notes attachment type."""
         from hmis.apps.billing.models import SHAClaimAttachment
 
-        valid_attachment_data['attachment_type'] = 'clinical_notes'
+        valid_attachment_data["attachment_type"] = "clinical_notes"
         attachment = SHAClaimAttachment.objects.create(**valid_attachment_data)
-        assert attachment.attachment_type == 'clinical_notes'
+        assert attachment.attachment_type == "clinical_notes"
 
     def test_attachment_type_lab_report(self, valid_attachment_data):
         """Should accept lab_report attachment type."""
         from hmis.apps.billing.models import SHAClaimAttachment
 
-        valid_attachment_data['attachment_type'] = 'lab_report'
+        valid_attachment_data["attachment_type"] = "lab_report"
         attachment = SHAClaimAttachment.objects.create(**valid_attachment_data)
-        assert attachment.attachment_type == 'lab_report'
+        assert attachment.attachment_type == "lab_report"
 
     def test_attachment_type_invoice(self, valid_attachment_data):
         """Should accept invoice attachment type."""
         from hmis.apps.billing.models import SHAClaimAttachment
 
-        valid_attachment_data['attachment_type'] = 'invoice'
+        valid_attachment_data["attachment_type"] = "invoice"
         attachment = SHAClaimAttachment.objects.create(**valid_attachment_data)
-        assert attachment.attachment_type == 'invoice'
+        assert attachment.attachment_type == "invoice"
 
     def test_attachment_type_discharge_summary(self, valid_attachment_data):
         """Should accept discharge_summary attachment type."""
         from hmis.apps.billing.models import SHAClaimAttachment
 
-        valid_attachment_data['attachment_type'] = 'discharge_summary'
+        valid_attachment_data["attachment_type"] = "discharge_summary"
         attachment = SHAClaimAttachment.objects.create(**valid_attachment_data)
-        assert attachment.attachment_type == 'discharge_summary'
+        assert attachment.attachment_type == "discharge_summary"
 
     def test_attachment_type_operative_notes(self, valid_attachment_data):
         """Should accept operative_notes attachment type."""
         from hmis.apps.billing.models import SHAClaimAttachment
 
-        valid_attachment_data['attachment_type'] = 'operative_notes'
+        valid_attachment_data["attachment_type"] = "operative_notes"
         attachment = SHAClaimAttachment.objects.create(**valid_attachment_data)
-        assert attachment.attachment_type == 'operative_notes'
+        assert attachment.attachment_type == "operative_notes"
 
     # =========================================================================
     # Test 5: Checksum storage
@@ -259,8 +261,8 @@ class TestSHAClaimAttachmentModel:
         """Should store SHA-256 checksum (64 hex characters)."""
         from hmis.apps.billing.models import SHAClaimAttachment
 
-        checksum = 'e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855'
-        valid_attachment_data['checksum'] = checksum
+        checksum = "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        valid_attachment_data["checksum"] = checksum
 
         attachment = SHAClaimAttachment.objects.create(**valid_attachment_data)
         assert attachment.checksum == checksum
@@ -270,8 +272,8 @@ class TestSHAClaimAttachmentModel:
         """Should retrieve stored checksum correctly."""
         from hmis.apps.billing.models import SHAClaimAttachment
 
-        checksum = 'abc123def456789' + '0' * 49  # 64 chars
-        valid_attachment_data['checksum'] = checksum
+        checksum = "abc123def456789" + "0" * 49  # 64 chars
+        valid_attachment_data["checksum"] = checksum
 
         attachment = SHAClaimAttachment.objects.create(**valid_attachment_data)
 
@@ -295,10 +297,10 @@ class TestSHAClaimAttachmentGetRequiredTypes:
         """Should return base requirements for outpatient claims."""
         from hmis.apps.billing.models import SHAClaimAttachment
 
-        required = SHAClaimAttachment.get_required_types('outpatient')
+        required = SHAClaimAttachment.get_required_types("outpatient")
 
-        assert 'clinical_notes' in required
-        assert 'invoice' in required
+        assert "clinical_notes" in required
+        assert "invoice" in required
         assert len(required) == 2  # Only base requirements
 
     # =========================================================================
@@ -308,11 +310,11 @@ class TestSHAClaimAttachmentGetRequiredTypes:
         """Should return base + discharge_summary for inpatient claims."""
         from hmis.apps.billing.models import SHAClaimAttachment
 
-        required = SHAClaimAttachment.get_required_types('inpatient')
+        required = SHAClaimAttachment.get_required_types("inpatient")
 
-        assert 'clinical_notes' in required
-        assert 'invoice' in required
-        assert 'discharge_summary' in required
+        assert "clinical_notes" in required
+        assert "invoice" in required
+        assert "discharge_summary" in required
         assert len(required) == 3
 
     # =========================================================================
@@ -322,33 +324,33 @@ class TestSHAClaimAttachmentGetRequiredTypes:
         """Should return base + discharge_summary + operative_notes for surgery claims."""
         from hmis.apps.billing.models import SHAClaimAttachment
 
-        required = SHAClaimAttachment.get_required_types('surgery')
+        required = SHAClaimAttachment.get_required_types("surgery")
 
-        assert 'clinical_notes' in required
-        assert 'invoice' in required
-        assert 'discharge_summary' in required
-        assert 'operative_notes' in required
+        assert "clinical_notes" in required
+        assert "invoice" in required
+        assert "discharge_summary" in required
+        assert "operative_notes" in required
         assert len(required) == 4
 
     def test_get_required_types_maternity(self):
         """Should return base + discharge_summary for maternity claims."""
         from hmis.apps.billing.models import SHAClaimAttachment
 
-        required = SHAClaimAttachment.get_required_types('maternity')
+        required = SHAClaimAttachment.get_required_types("maternity")
 
-        assert 'clinical_notes' in required
-        assert 'invoice' in required
-        assert 'discharge_summary' in required
+        assert "clinical_notes" in required
+        assert "invoice" in required
+        assert "discharge_summary" in required
         assert len(required) == 3
 
     def test_get_required_types_unknown_returns_base(self):
         """Should return base requirements for unknown claim types."""
         from hmis.apps.billing.models import SHAClaimAttachment
 
-        required = SHAClaimAttachment.get_required_types('unknown_type')
+        required = SHAClaimAttachment.get_required_types("unknown_type")
 
-        assert 'clinical_notes' in required
-        assert 'invoice' in required
+        assert "clinical_notes" in required
+        assert "invoice" in required
         assert len(required) == 2
 
 
@@ -370,7 +372,7 @@ class TestSHAClaimAttachmentRelationships:
 
         attachment = SHAClaimAttachment.objects.create(**valid_attachment_data)
         attachment_id = attachment.id
-        claim = valid_attachment_data['claim']
+        claim = valid_attachment_data["claim"]
 
         # Delete the parent claim
         claim.delete()
@@ -382,13 +384,13 @@ class TestSHAClaimAttachmentRelationships:
         """Should delete all attachments when parent claim is deleted."""
         from hmis.apps.billing.models import SHAClaimAttachment
 
-        claim = valid_attachment_data['claim']
+        claim = valid_attachment_data["claim"]
 
         # Create multiple attachments
         attachment1 = SHAClaimAttachment.objects.create(**valid_attachment_data)
 
-        valid_attachment_data['attachment_type'] = 'invoice'
-        valid_attachment_data['name'] = 'Invoice'
+        valid_attachment_data["attachment_type"] = "invoice"
+        valid_attachment_data["name"] = "Invoice"
         attachment2 = SHAClaimAttachment.objects.create(**valid_attachment_data)
 
         attachment_ids = [attachment1.id, attachment2.id]
@@ -421,13 +423,13 @@ class TestSHAClaimAttachmentFilePath:
 
         # The upload_to pattern is 'sha_claims/%Y/%m/'
         file_path = attachment.file.name
-        assert 'sha_claims' in file_path or file_path.startswith('sha_claims')
+        assert "sha_claims" in file_path or file_path.startswith("sha_claims")
 
     def test_page_count_optional_field(self, valid_attachment_data):
         """Should allow optional page_count for PDFs."""
         from hmis.apps.billing.models import SHAClaimAttachment
 
-        valid_attachment_data['page_count'] = 5
+        valid_attachment_data["page_count"] = 5
         attachment = SHAClaimAttachment.objects.create(**valid_attachment_data)
         assert attachment.page_count == 5
 
@@ -456,8 +458,8 @@ class TestSHAClaimAttachmentMeta:
         # Create attachments with different types
         att1 = SHAClaimAttachment.objects.create(**valid_attachment_data)
 
-        valid_attachment_data['attachment_type'] = 'invoice'
-        valid_attachment_data['name'] = 'Invoice'
+        valid_attachment_data["attachment_type"] = "invoice"
+        valid_attachment_data["name"] = "Invoice"
         att2 = SHAClaimAttachment.objects.create(**valid_attachment_data)
 
         attachments = list(SHAClaimAttachment.objects.all())
@@ -476,6 +478,6 @@ class TestSHAClaimAttachmentMeta:
         """Should allow empty description."""
         from hmis.apps.billing.models import SHAClaimAttachment
 
-        valid_attachment_data['description'] = ''
+        valid_attachment_data["description"] = ""
         attachment = SHAClaimAttachment.objects.create(**valid_attachment_data)
-        assert attachment.description == ''
+        assert attachment.description == ""

@@ -17,12 +17,14 @@ import pytest  # type: ignore
 # Try to import models
 try:
     from hmis.apps.patients.models import Patient
+
     HAS_PATIENT_MODEL = True
 except ImportError:
     HAS_PATIENT_MODEL = False
 
 try:
     from hmis.apps.billing.models import SHAMember
+
     HAS_SHA_MEMBER = True
 except ImportError:
     HAS_SHA_MEMBER = False
@@ -47,13 +49,13 @@ class TestPatientIdentifierCompliance:
             - Passport Number
         """
         required_identifier_types = [
-            'HIE Patient ID',  # CR number
-            'National ID',
-            'Mandate Number',
-            'Alien ID',
-            'KRA PIN',
-            'Temporary ID',
-            'Passport Number',
+            "HIE Patient ID",  # CR number
+            "National ID",
+            "Mandate Number",
+            "Alien ID",
+            "KRA PIN",
+            "Temporary ID",
+            "Passport Number",
         ]
 
         assert len(required_identifier_types) == 7, (
@@ -69,18 +71,16 @@ class TestPatientIdentifierCompliance:
         Reference: docs/sha-guides/patients.md
         Quote: 'CR ID (Client Registry unique identifier)'
         """
-        assert hasattr(SHAMember, 'sha_number'), (
-            "SHAMember must have sha_number field for CR identifier"
-        )
+        assert hasattr(
+            SHAMember, "sha_number"
+        ), "SHAMember must have sha_number field for CR identifier"
 
     @pytest.mark.skipif(not HAS_SHA_MEMBER, reason="SHAMember model not available")
     def test_sha_member_has_national_id_field(self):
         """
         SHA Requirement: Store national ID for SHA members.
         """
-        assert hasattr(SHAMember, 'national_id'), (
-            "SHAMember must have national_id field"
-        )
+        assert hasattr(SHAMember, "national_id"), "SHAMember must have national_id field"
 
     @pytest.mark.skipif(not HAS_SHA_MEMBER, reason="SHAMember model not available")
     def test_sha_number_format_validation(self, sha_member):
@@ -93,7 +93,7 @@ class TestPatientIdentifierCompliance:
         sha_number = sha_member.sha_number
 
         # Should start with expected prefix
-        valid_prefixes = ['SHA', 'CR']
+        valid_prefixes = ["SHA", "CR"]
         has_valid_prefix = any(sha_number.startswith(prefix) for prefix in valid_prefixes)
 
         # This is informational - format validation should exist
@@ -119,27 +119,25 @@ class TestPatientDemographicsAlignment:
             - Location details (County, Sub-County, Ward)
         """
         required_fields = [
-            'first_name',
-            'last_name',
-            'date_of_birth',
-            'gender',
-            'phone_number',
-            'national_id',
-            'county',
-            'sub_county',
-            'ward',
+            "first_name",
+            "last_name",
+            "date_of_birth",
+            "gender",
+            "phone_number",
+            "national_id",
+            "county",
+            "sub_county",
+            "ward",
         ]
 
-        assert len(required_fields) >= 9, (
-            "Must capture at least 9 demographic fields"
-        )
+        assert len(required_fields) >= 9, "Must capture at least 9 demographic fields"
 
     @pytest.mark.skipif(not HAS_PATIENT_MODEL, reason="Patient model not available")
     def test_patient_has_basic_demographics(self):
         """
         SHA Requirement: Patient model has basic demographic fields.
         """
-        required_fields = ['first_name', 'last_name', 'date_of_birth', 'gender']
+        required_fields = ["first_name", "last_name", "date_of_birth", "gender"]
 
         for field in required_fields:
             assert hasattr(Patient, field), (
@@ -155,7 +153,7 @@ class TestPatientDemographicsAlignment:
         Reference: docs/sha-guides/patients.md
         Quote: 'Location details (County, Sub-County, Ward)'
         """
-        location_fields = ['county', 'sub_county', 'ward']
+        location_fields = ["county", "sub_county", "ward"]
 
         for field in location_fields:
             assert hasattr(Patient, field), (
@@ -185,30 +183,30 @@ class TestClientRegistryPIIAlignment:
             - Phone number
         """
         pii_fields = [
-            'cr_id',
-            'title',
-            'middle_name',
-            'place_of_birth',
-            'disability_status',
-            'citizenship',
-            'identification_type',
-            'identification_number',
-            'phone_number',
+            "cr_id",
+            "title",
+            "middle_name",
+            "place_of_birth",
+            "disability_status",
+            "citizenship",
+            "identification_type",
+            "identification_number",
+            "phone_number",
         ]
 
         # These fields should be considered for alignment
-        assert len(pii_fields) >= 9, (
-            "Consider aligning with CR PII fields for better patient matching"
-        )
+        assert (
+            len(pii_fields) >= 9
+        ), "Consider aligning with CR PII fields for better patient matching"
 
     @pytest.mark.skipif(not HAS_PATIENT_MODEL, reason="Patient model not available")
     def test_patient_has_phone_field(self):
         """
         SHA Requirement: Phone number field for CR alignment.
         """
-        assert hasattr(Patient, 'phone_number'), (
-            "Patient must have phone_number field for CR alignment"
-        )
+        assert hasattr(
+            Patient, "phone_number"
+        ), "Patient must have phone_number field for CR alignment"
 
 
 class TestClientRegistryAPICompliance:
@@ -227,12 +225,10 @@ class TestClientRegistryAPICompliance:
             - identification_number
             - agent
         """
-        expected_endpoint = '/v3/client-registry/fetch-client'
+        expected_endpoint = "/v3/client-registry/fetch-client"
 
         # This is a documentation test
-        assert expected_endpoint.startswith('/v3'), (
-            "Use v3 Client Registry endpoint"
-        )
+        assert expected_endpoint.startswith("/v3"), "Use v3 Client Registry endpoint"
 
     def test_fetch_patient_parameters(self):
         """
@@ -241,9 +237,9 @@ class TestClientRegistryAPICompliance:
         Reference: docs/sha-guides/patients.md - Query Parameters
         """
         required_params = [
-            'identification_type',
-            'identification_number',
-            'agent',  # Organization identifier
+            "identification_type",
+            "identification_number",
+            "agent",  # Organization identifier
         ]
 
         assert len(required_params) == 3, "Three parameters required for fetch"
@@ -265,15 +261,13 @@ class TestClientRegistryRole:
             - Enhances patient identity resolution across facilities
         """
         cr_functions = [
-            'master_patient_index',
-            'record_linking',
-            'cross_facility_access',
-            'identity_resolution',
+            "master_patient_index",
+            "record_linking",
+            "cross_facility_access",
+            "identity_resolution",
         ]
 
-        assert len(cr_functions) >= 4, (
-            "Understand CR's 4 main functions"
-        )
+        assert len(cr_functions) >= 4, "Understand CR's 4 main functions"
 
     def test_cr_number_uniqueness(self):
         """
@@ -304,9 +298,9 @@ class TestPatientSearchCapabilities:
         """
         # Patient search should support partial matches
         search_capabilities = [
-            'partial_name_match',
-            'phonetic_matching',
-            'fuzzy_search',
+            "partial_name_match",
+            "phonetic_matching",
+            "fuzzy_search",
         ]
 
         assert True, (

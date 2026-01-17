@@ -70,7 +70,9 @@ class LabOrderItemSerializer(serializers.ModelSerializer):
         result = obj.result
         return {
             "id": result.id,
-            "numeric_value": str(result.numeric_value) if result.numeric_value is not None else None,
+            "numeric_value": str(result.numeric_value)
+            if result.numeric_value is not None
+            else None,
             "text_value": result.text_value,
             "option_value": result.option_value,
             "result_unit": result.result_unit,
@@ -155,9 +157,7 @@ class LabOrderCreateSerializer(serializers.ModelSerializer):
                 test = TestCatalog.objects.get(code=test_code)
             except TestCatalog.DoesNotExist as e:
                 raise serializers.ValidationError(
-                    {
-                        "items": f"Test with code '{test_code}' not found in catalog."
-                    }
+                    {"items": f"Test with code '{test_code}' not found in catalog."}
                 ) from e
 
             special_instructions = item_data.get("special_instructions", "")
@@ -327,8 +327,7 @@ class LabQueueSerializer(serializers.ModelSerializer):
 
     def get_tests(self, obj):
         return [
-            {"code": item.test.code, "name": item.test.name}
-            for item in obj.lab_order.items.all()
+            {"code": item.test.code, "name": item.test.name} for item in obj.lab_order.items.all()
         ]
 
     def get_assigned_technician_name(self, obj):
@@ -356,6 +355,7 @@ class LabQueueSerializer(serializers.ModelSerializer):
     def get_elapsed_hours(self, obj):
         """Calculate hours since queue entry was created."""
         from django.utils import timezone
+
         delta = timezone.now() - obj.created_at
         return round(delta.total_seconds() / 3600, 1)
 

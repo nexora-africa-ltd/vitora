@@ -6,7 +6,6 @@ Sprint 1.5-1.6 Track E: Triage Module MVP
 """
 
 
-
 class TestTriageCategoryCalculator:
     """Test suite for TriageCategoryCalculator service (20 tests as per spec)."""
 
@@ -94,7 +93,9 @@ class TestTriageCategoryCalculator:
         )
 
         assert category == "RED"
-        assert any("hypotension" in alert.lower() or "blood pressure" in alert.lower() for alert in alerts)
+        assert any(
+            "hypotension" in alert.lower() or "blood pressure" in alert.lower() for alert in alerts
+        )
 
     def test_red_for_severe_hypertension(self):
         """Should return RED for severe hypertension (systolic > 180)."""
@@ -110,7 +111,9 @@ class TestTriageCategoryCalculator:
         )
 
         assert category == "RED"
-        assert any("hypertension" in alert.lower() or "blood pressure" in alert.lower() for alert in alerts)
+        assert any(
+            "hypertension" in alert.lower() or "blood pressure" in alert.lower() for alert in alerts
+        )
 
     def test_red_for_severe_bradycardia(self):
         """Should return RED for severe bradycardia (HR < 40)."""
@@ -126,7 +129,9 @@ class TestTriageCategoryCalculator:
         )
 
         assert category == "RED"
-        assert any("bradycardia" in alert.lower() or "heart rate" in alert.lower() for alert in alerts)
+        assert any(
+            "bradycardia" in alert.lower() or "heart rate" in alert.lower() for alert in alerts
+        )
 
     def test_red_for_severe_tachycardia(self):
         """Should return RED for severe tachycardia (HR > 150)."""
@@ -142,7 +147,9 @@ class TestTriageCategoryCalculator:
         )
 
         assert category == "RED"
-        assert any("tachycardia" in alert.lower() or "heart rate" in alert.lower() for alert in alerts)
+        assert any(
+            "tachycardia" in alert.lower() or "heart rate" in alert.lower() for alert in alerts
+        )
 
     def test_red_for_altered_consciousness_chief_complaint(self):
         """Should return RED for altered consciousness chief complaint."""

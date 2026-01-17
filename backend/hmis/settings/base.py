@@ -12,8 +12,9 @@ from django.core.management.utils import get_random_secret_key
 # Load environment variables from .env file
 try:
     from dotenv import load_dotenv
+
     # Look for .env in project root (parent of backend/)
-    env_path = Path(__file__).resolve().parent.parent.parent.parent / '.env'
+    env_path = Path(__file__).resolve().parent.parent.parent.parent / ".env"
     if env_path.exists():
         load_dotenv(env_path)
 except ImportError:
@@ -262,24 +263,24 @@ RBAC_CACHE_TIMEOUT = 300  # Cache permission checks for 5 minutes
 # Kenya Professional License Bodies
 # These are the official regulatory bodies for healthcare professionals in Kenya
 KENYA_LICENSE_BODIES = {
-    'KMPDB': 'Kenya Medical Practitioners and Dentists Board',
-    'NCK': 'Nursing Council of Kenya',
-    'KMLTTB': 'Kenya Medical Laboratory Technicians and Technologists Board',
-    'PPB': 'Pharmacy and Poisons Board',
-    'COC': 'Clinical Officers Council',
+    "KMPDB": "Kenya Medical Practitioners and Dentists Board",
+    "NCK": "Nursing Council of Kenya",
+    "KMLTTB": "Kenya Medical Laboratory Technicians and Technologists Board",
+    "PPB": "Pharmacy and Poisons Board",
+    "COC": "Clinical Officers Council",
 }
 
 # RBAC Hierarchy Levels
 # Lower numbers = higher authority
 # Used for permission inheritance and organizational structure
 RBAC_HIERARCHY_LEVELS = {
-    'ADMIN': 0,
-    'MANAGEMENT': 1,
-    'CLINICAL_SENIOR': 2,
-    'CLINICAL': 3,
-    'TECHNICAL': 4,
-    'ADMINISTRATIVE': 5,
-    'COMMUNITY': 6,
+    "ADMIN": 0,
+    "MANAGEMENT": 1,
+    "CLINICAL_SENIOR": 2,
+    "CLINICAL": 3,
+    "TECHNICAL": 4,
+    "ADMINISTRATIVE": 5,
+    "COMMUNITY": 6,
 }
 
 # ============================================================================
@@ -310,19 +311,19 @@ LOINC_DATA_PATH = "data/loinc_common.csv"
 # ============================================================================
 
 # Email configuration
-DEFAULT_FROM_EMAIL = os.getenv('DEFAULT_FROM_EMAIL', 'noreply@vitora.health')
-EMAIL_BACKEND = 'django.core.mail.backends.console.EmailBackend'  # For development
+DEFAULT_FROM_EMAIL = os.getenv("DEFAULT_FROM_EMAIL", "noreply@vitora.health")
+EMAIL_BACKEND = "django.core.mail.backends.console.EmailBackend"  # For development
 
 # Frontend URL for notification links
-FRONTEND_URL = os.getenv('FRONTEND_URL', 'http://localhost:3000')
+FRONTEND_URL = os.getenv("FRONTEND_URL", "http://localhost:3000")
 
 # Facility information for documents
-FACILITY_NAME = os.getenv('FACILITY_NAME', 'Vitora Health Facility')
-FACILITY_ADDRESS = os.getenv('FACILITY_ADDRESS', '')
-FACILITY_PHONE = os.getenv('FACILITY_PHONE', '')
-FACILITY_EMAIL = os.getenv('FACILITY_EMAIL', '')
-FACILITY_LICENSE = os.getenv('FACILITY_LICENSE', '')
-FACILITY_KRA_PIN = os.getenv('FACILITY_KRA_PIN', 'P000000000X')
+FACILITY_NAME = os.getenv("FACILITY_NAME", "Vitora Health Facility")
+FACILITY_ADDRESS = os.getenv("FACILITY_ADDRESS", "")
+FACILITY_PHONE = os.getenv("FACILITY_PHONE", "")
+FACILITY_EMAIL = os.getenv("FACILITY_EMAIL", "")
+FACILITY_LICENSE = os.getenv("FACILITY_LICENSE", "")
+FACILITY_KRA_PIN = os.getenv("FACILITY_KRA_PIN", "P000000000X")
 
 # ============================================================================
 # Billing Configuration (Sprint 1.5-1.6 Track A)
@@ -347,7 +348,9 @@ MPESA_CALLBACK_URL = os.getenv("MPESA_CALLBACK_URL", "")
 # SHA Configuration (Social Health Authority - Kenya)
 # Reference: docs/sha-api-validation-report.md
 SHA_ENABLED = os.getenv("SHA_ENABLED", "false").lower() == "true"
-SHA_API_BASE_URL = os.getenv("SHA_API_BASE_URL", "https://uat.dha.go.ke") # production: https://api.dha.go.ke
+SHA_API_BASE_URL = os.getenv(
+    "SHA_API_BASE_URL", "https://uat.dha.go.ke"
+)  # production: https://api.dha.go.ke
 SHA_API_URL = os.getenv("SHA_API_URL", "")  # Deprecated, use SHA_API_BASE_URL
 SHA_API_KEY = os.getenv("SHA_API_KEY", "")  # Deprecated, use SHA_CONSUMER_KEY
 SHA_API_TIMEOUT = int(os.getenv("SHA_API_TIMEOUT", "30"))  # seconds
@@ -367,27 +370,27 @@ SHA_FHIR_BASE_URL = os.getenv("SHA_FHIR_BASE_URL", "https://qa-mis.apeiro-digita
 # SHA API Endpoints for Shared Health Record (SHR) Integration
 # Reference: docs/sha-guides/shr-integration.md
 SHA_API_ENDPOINTS = {
-    'patient_resource': '/v1/patient-resource',  # PUT - Patient registration/update
-    'shr_submission': '/v1/shr-submission',  # POST - MedicationRequest/MedicationDispense
-    'shr_summary': '/v1/shr/summary',  # GET - IPS/Patient summary retrieval
+    "patient_resource": "/v1/patient-resource",  # PUT - Patient registration/update
+    "shr_submission": "/v1/shr-submission",  # POST - MedicationRequest/MedicationDispense
+    "shr_summary": "/v1/shr/summary",  # GET - IPS/Patient summary retrieval
 }
 
 # SHA API Endpoints (Official Kenya Digital Superhighway)
 SHA_ENDPOINTS = {
-    'auth': '/v1/hie-auth',
-    'eligibility': '/v2/eligibility',
-    'client_registry': '/v3/client-registry/fetch-client',
-    'client_register': '/v3/uat-cr-registration',
-    'client_update': '/v3/update-client',
-    'claims_submit': '/v1/shr-med/bundle',
-    'claims_status': '/v1/shr-med/claim-status',
-    'facility_search': '/v1/facility-search',
-    'practitioner_search': '/v1/practitioner-search',
-    'terminology_icd11': '/terminology/v1/icd11',
-    'terminology_loinc': '/terminology/v1/loinc',
-    'terminology_ichi': '/terminology/v1/ichi',
-    'terminology_sha': '/terminology/v1/sha-intervention',
-    'terminology_product': '/terminology/v1/product',
+    "auth": "/v1/hie-auth",
+    "eligibility": "/v2/eligibility",
+    "client_registry": "/v3/client-registry/fetch-client",
+    "client_register": "/v3/uat-cr-registration",
+    "client_update": "/v3/update-client",
+    "claims_submit": "/v1/shr-med/bundle",
+    "claims_status": "/v1/shr-med/claim-status",
+    "facility_search": "/v1/facility-search",
+    "practitioner_search": "/v1/practitioner-search",
+    "terminology_icd11": "/terminology/v1/icd11",
+    "terminology_loinc": "/terminology/v1/loinc",
+    "terminology_ichi": "/terminology/v1/ichi",
+    "terminology_sha": "/terminology/v1/sha-intervention",
+    "terminology_product": "/terminology/v1/product",
 }
 
 # Local WHO ICD-11 API (Docker container: whoicd/icd-api)
@@ -402,7 +405,9 @@ ICD11_USE_LOCAL = os.getenv("ICD11_USE_LOCAL", "true").lower() == "true"
 # - Callback URL: https://your-domain/api/sha/webhook/ (or /api/sha/callback/)
 # - Validate URL: https://your-domain/api/sha/validate/
 # DHA Sandbox defaults: https://taifa-hmis.com/callback, https://taifa-hmis/validate
-SHA_WEBHOOK_SECRET = os.getenv("SHA_WEBHOOK_SECRET", "")  # Optional HMAC secret for webhook verification
+SHA_WEBHOOK_SECRET = os.getenv(
+    "SHA_WEBHOOK_SECRET", ""
+)  # Optional HMAC secret for webhook verification
 
 # Facility identification (for SHA claims)
 FACILITY_MFL_CODE = os.getenv("FACILITY_MFL_CODE", "TEST-001")  # Master Facility List code

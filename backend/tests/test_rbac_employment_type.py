@@ -43,15 +43,16 @@ class TestStaffProfileEmploymentType:
         """StaffProfile should have employment_type field."""
         from hmis.apps.core.models import StaffProfile
 
-        assert hasattr(StaffProfile, 'employment_type'), \
-            "StaffProfile should have employment_type field"
+        assert hasattr(
+            StaffProfile, "employment_type"
+        ), "StaffProfile should have employment_type field"
 
     def test_employment_type_choices(self):
         """Should have PERMANENT, CONTRACT, and LOCUM employment types."""
         from hmis.apps.core.models import StaffProfile
 
         # Get the choices from the field
-        field = StaffProfile._meta.get_field('employment_type')
+        field = StaffProfile._meta.get_field("employment_type")
         choice_values = [choice[0] for choice in field.choices]
 
         assert "PERMANENT" in choice_values, "Should have PERMANENT employment type"
@@ -71,8 +72,7 @@ class TestStaffProfileEmploymentType:
             date_joined=date.today(),
         )
 
-        assert staff.employment_type == "PERMANENT", \
-            "Default employment type should be PERMANENT"
+        assert staff.employment_type == "PERMANENT", "Default employment type should be PERMANENT"
 
     def test_can_create_locum_staff(self, sample_department, sample_role):
         """Should be able to create staff with LOCUM employment type."""
@@ -160,10 +160,8 @@ class TestStaffProfileEmploymentType:
             employment_type="LOCUM",
         )
 
-        assert permanent_staff.is_external is False, \
-            "Permanent staff should not be external"
-        assert locum_staff.is_external is True, \
-            "Locum staff should be considered external"
+        assert permanent_staff.is_external is False, "Permanent staff should not be external"
+        assert locum_staff.is_external is True, "Locum staff should be considered external"
 
     def test_employment_type_display(self, sample_department, sample_role):
         """Should have human-readable display for employment type."""

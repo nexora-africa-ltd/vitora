@@ -201,9 +201,7 @@ class TemplateDataSynchronizer:
                     continue
 
                 source, source_field = mapping
-                value = self._get_value_from_source(
-                    source, source_field, encounter, patient
-                )
+                value = self._get_value_from_source(source, source_field, encounter, patient)
 
                 if value is not None:
                     if structure_by_section:
@@ -279,11 +277,13 @@ class TemplateDataSynchronizer:
 
         # Save encounter if there were changes
         if changed_fields:
-            encounter.save(update_fields=[
-                self.mapper.get_source_field(f)[1]
-                for f in changed_fields
-                if self.mapper.get_source_field(f)
-            ])
+            encounter.save(
+                update_fields=[
+                    self.mapper.get_source_field(f)[1]
+                    for f in changed_fields
+                    if self.mapper.get_source_field(f)
+                ]
+            )
 
         if return_changes:
             return encounter, changed_fields
@@ -346,16 +346,12 @@ class TemplateSnapshotService:
 
         return snapshot
 
-    def get_snapshots_for_encounter(
-        self, encounter: Encounter
-    ) -> list["ClinicalTemplateSnapshot"]:
+    def get_snapshots_for_encounter(self, encounter: Encounter) -> list["ClinicalTemplateSnapshot"]:
         """Get all template snapshots for an encounter."""
         from hmis.apps.clinical_templates.models import ClinicalTemplateSnapshot
 
         return list(
-            ClinicalTemplateSnapshot.objects.filter(
-                encounter=encounter
-            ).order_by("-created_at")
+            ClinicalTemplateSnapshot.objects.filter(encounter=encounter).order_by("-created_at")
         )
 
     def generate_pdf(self, snapshot: "ClinicalTemplateSnapshot") -> bytes:

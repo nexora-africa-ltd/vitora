@@ -31,9 +31,7 @@ def inpatient_ward(db):
 class TestShiftHandoverCreation:
     """Tests for ShiftHandover creation and validation."""
 
-    def test_create_shift_handover_with_valid_data(
-        self, inpatient_ward, test_user, another_user
-    ):
+    def test_create_shift_handover_with_valid_data(self, inpatient_ward, test_user, another_user):
         """Should create shift handover with valid data."""
         handover = ShiftHandover.objects.create(
             ward=inpatient_ward,
@@ -45,7 +43,7 @@ class TestShiftHandoverCreation:
             critical_patients=2,
             new_admissions=3,
             discharges_pending=1,
-            general_notes="Busy shift, 3 new admissions in morning"
+            general_notes="Busy shift, 3 new admissions in morning",
         )
 
         assert handover.ward == inpatient_ward
@@ -54,9 +52,7 @@ class TestShiftHandoverCreation:
         assert handover.critical_patients == 2
         assert handover.acknowledged_at is None
 
-    def test_shift_handover_unique_constraint(
-        self, inpatient_ward, test_user, another_user
-    ):
+    def test_shift_handover_unique_constraint(self, inpatient_ward, test_user, another_user):
         """Should prevent duplicate handover for same ward, date, and shift."""
         shift_date = date.today()
 
@@ -67,7 +63,7 @@ class TestShiftHandoverCreation:
             shift_ending="DAY",
             outgoing_nurse=test_user,
             incoming_nurse=another_user,
-            total_patients=10
+            total_patients=10,
         )
 
         # Attempt to create duplicate
@@ -78,13 +74,11 @@ class TestShiftHandoverCreation:
                 shift_ending="DAY",
                 outgoing_nurse=another_user,
                 incoming_nurse=test_user,
-                total_patients=10
+                total_patients=10,
             )
             handover.full_clean()
 
-    def test_shift_ending_choices_validation(
-        self, inpatient_ward, test_user, another_user
-    ):
+    def test_shift_ending_choices_validation(self, inpatient_ward, test_user, another_user):
         """Should validate shift_ending is DAY or EVENING or NIGHT."""
         # Valid shift endings
         for shift in ["DAY", "EVENING", "NIGHT"]:
@@ -94,7 +88,7 @@ class TestShiftHandoverCreation:
                 shift_ending=shift,
                 outgoing_nurse=test_user,
                 incoming_nurse=another_user,
-                total_patients=10
+                total_patients=10,
             )
             handover.full_clean()  # Should not raise
 
@@ -106,7 +100,7 @@ class TestShiftHandoverCreation:
                 shift_ending="INVALID",
                 outgoing_nurse=test_user,
                 incoming_nurse=another_user,
-                total_patients=10
+                total_patients=10,
             )
             handover.full_clean()
 
@@ -123,7 +117,7 @@ class TestShiftHandoverAcknowledgment:
             shift_ending="DAY",
             outgoing_nurse=test_user,
             incoming_nurse=another_user,
-            total_patients=10
+            total_patients=10,
         )
 
         assert handover.acknowledged_at is None
@@ -135,9 +129,7 @@ class TestShiftHandoverAcknowledgment:
         assert handover.acknowledged_at is not None
         assert handover.is_acknowledged is True
 
-    def test_handover_is_acknowledged_property(
-        self, inpatient_ward, test_user, another_user
-    ):
+    def test_handover_is_acknowledged_property(self, inpatient_ward, test_user, another_user):
         """Should have is_acknowledged property."""
         handover = ShiftHandover.objects.create(
             ward=inpatient_ward,
@@ -145,7 +137,7 @@ class TestShiftHandoverAcknowledgment:
             shift_ending="NIGHT",
             outgoing_nurse=test_user,
             incoming_nurse=another_user,
-            total_patients=8
+            total_patients=8,
         )
 
         assert handover.is_acknowledged is False
@@ -160,9 +152,7 @@ class TestShiftHandoverAcknowledgment:
 class TestShiftHandoverPatientCounts:
     """Tests for patient count auto-population."""
 
-    def test_auto_populate_patient_counts_from_ward(
-        self, inpatient_ward, test_user, another_user
-    ):
+    def test_auto_populate_patient_counts_from_ward(self, inpatient_ward, test_user, another_user):
         """Should provide method to auto-populate counts from ward data."""
         handover = ShiftHandover.objects.create(
             ward=inpatient_ward,
@@ -170,7 +160,7 @@ class TestShiftHandoverPatientCounts:
             shift_ending="DAY",
             outgoing_nurse=test_user,
             incoming_nurse=another_user,
-            total_patients=0  # Will be populated
+            total_patients=0,  # Will be populated
         )
 
         # Call auto-populate method
@@ -196,16 +186,14 @@ class TestShiftHandoverQueries:
             shift_ending="DAY",
             outgoing_nurse=test_user,
             incoming_nurse=another_user,
-            total_patients=10
+            total_patients=10,
         )
 
         # Query handovers for this ward
         handovers = ShiftHandover.objects.filter(ward=inpatient_ward)
         assert handovers.count() == 1
 
-    def test_unacknowledged_handovers(
-        self, inpatient_ward, test_user, another_user
-    ):
+    def test_unacknowledged_handovers(self, inpatient_ward, test_user, another_user):
         """Should query unacknowledged handovers."""
         # Create unacknowledged handover
         ShiftHandover.objects.create(
@@ -214,7 +202,7 @@ class TestShiftHandoverQueries:
             shift_ending="DAY",
             outgoing_nurse=test_user,
             incoming_nurse=another_user,
-            total_patients=10
+            total_patients=10,
         )
 
         # Create acknowledged handover
@@ -225,7 +213,7 @@ class TestShiftHandoverQueries:
             outgoing_nurse=test_user,
             incoming_nurse=another_user,
             total_patients=8,
-            acknowledged_at=timezone.now()
+            acknowledged_at=timezone.now(),
         )
 
         # Query unacknowledged

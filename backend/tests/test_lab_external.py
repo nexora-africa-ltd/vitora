@@ -243,9 +243,7 @@ value1,value2"""
         )
 
         with pytest.raises(ValueError, match="CSV must contain columns"):
-            ExternalResultImporter.import_from_csv(
-                sample_order_for_import, csv_file, import_user
-            )
+            ExternalResultImporter.import_from_csv(sample_order_for_import, csv_file, import_user)
 
     def test_import_csv_invalid_test_code(self, sample_order_for_import, import_user):
         """Should raise error for test code not in order."""
@@ -257,9 +255,7 @@ INVALID_CODE,123"""
         )
 
         with pytest.raises(ValueError, match="Test code .* not found"):
-            ExternalResultImporter.import_from_csv(
-                sample_order_for_import, csv_file, import_user
-            )
+            ExternalResultImporter.import_from_csv(sample_order_for_import, csv_file, import_user)
 
     def test_import_csv_auto_flags_numeric(self, sample_order_for_import, import_user):
         """Should auto-flag numeric results."""

@@ -112,31 +112,30 @@ class ExternalLabRequisition:
         table_data = [["#", "Test Code", "Test Name", "Specimen Type"]]
         for idx, item in enumerate(order.items.all(), 1):
             test = item.test
-            table_data.append([
-                str(idx),
-                test.code,
-                test.name,
-                test.get_specimen_type_display()
-            ])
+            table_data.append([str(idx), test.code, test.name, test.get_specimen_type_display()])
 
         # Draw table
         table = Table(table_data, colWidths=[20, 60, 200, 100])
-        table.setStyle(TableStyle([
-            ('BACKGROUND', (0, 0), (-1, 0), colors.grey),
-            ('TEXTCOLOR', (0, 0), (-1, 0), colors.whitesmoke),
-            ('ALIGN', (0, 0), (-1, -1), 'LEFT'),
-            ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
-            ('FONTSIZE', (0, 0), (-1, 0), 9),
-            ('BOTTOMPADDING', (0, 0), (-1, 0), 8),
-            ('BACKGROUND', (0, 1), (-1, -1), colors.beige),
-            ('GRID', (0, 0), (-1, -1), 0.5, colors.black),
-            ('FONTSIZE', (0, 1), (-1, -1), 8),
-        ]))
+        table.setStyle(
+            TableStyle(
+                [
+                    ("BACKGROUND", (0, 0), (-1, 0), colors.grey),
+                    ("TEXTCOLOR", (0, 0), (-1, 0), colors.whitesmoke),
+                    ("ALIGN", (0, 0), (-1, -1), "LEFT"),
+                    ("FONTNAME", (0, 0), (-1, 0), "Helvetica-Bold"),
+                    ("FONTSIZE", (0, 0), (-1, 0), 9),
+                    ("BOTTOMPADDING", (0, 0), (-1, 0), 8),
+                    ("BACKGROUND", (0, 1), (-1, -1), colors.beige),
+                    ("GRID", (0, 0), (-1, -1), 0.5, colors.black),
+                    ("FONTSIZE", (0, 1), (-1, -1), 8),
+                ]
+            )
+        )
 
         table.wrapOn(pdf, width, height)
         table_height = table._height
         table.drawOn(pdf, 50, y_position - table_height - 10)
-        y_position -= (table_height + 20)
+        y_position -= table_height + 20
 
         # Clinical Notes
         if order.clinical_notes:
@@ -158,22 +157,22 @@ class ExternalLabRequisition:
             current_line = []
 
             for word in words:
-                test_line = ' '.join(current_line + [word])
+                test_line = " ".join(current_line + [word])
                 if pdf.stringWidth(test_line, "Helvetica", 9) <= max_width:
                     current_line.append(word)
                 else:
                     if current_line:
-                        lines.append(' '.join(current_line))
+                        lines.append(" ".join(current_line))
                     current_line = [word]
 
             if current_line:
-                lines.append(' '.join(current_line))
+                lines.append(" ".join(current_line))
 
             for line in lines[:5]:  # Limit to 5 lines
                 text_object.textLine(line)
 
             pdf.drawText(text_object)
-            y_position -= (len(lines[:5]) * 12 + 10)
+            y_position -= len(lines[:5]) * 12 + 10
 
         # Barcode (simple text representation)
         y_position -= 30
@@ -219,7 +218,9 @@ ORC|NW|{order.order_number}||||||{order.ordered_at.strftime('%Y%m%d%H%M%S')}
 
         for item in order.items.all():
             test = item.test
-            hl7_message += f"OBR|1|{order.order_number}|{order.order_number}|{test.code}^{test.name}\n"
+            hl7_message += (
+                f"OBR|1|{order.order_number}|{order.order_number}|{test.code}^{test.name}\n"
+            )
 
         return hl7_message
 
@@ -252,23 +253,23 @@ class ExternalResultImporter:
         if isinstance(csv_file, UploadedFile):
             content = csv_file.read()
             if isinstance(content, bytes):
-                content = content.decode('utf-8')
+                content = content.decode("utf-8")
         else:
             content = csv_file.read()
             if isinstance(content, bytes):
-                content = content.decode('utf-8')
+                content = content.decode("utf-8")
 
         csv_reader = csv.DictReader(io.StringIO(content))
 
         # Validate required columns
-        required_columns = {'test_code', 'result_value'}
+        required_columns = {"test_code", "result_value"}
         if not required_columns.issubset(csv_reader.fieldnames or []):
             raise ValueError(f"CSV must contain columns: {required_columns}")
 
         # Process each row
         for row in csv_reader:
-            test_code = row.get('test_code', '').strip()
-            result_value = row.get('result_value', '').strip()
+            test_code = row.get("test_code", "").strip()
+            result_value = row.get("result_value", "").strip()
 
             if not test_code or not result_value:
                 continue
@@ -284,36 +285,37 @@ class ExternalResultImporter:
                 raise ValueError(f"Test code '{test_code}' not found in order {order.order_number}")
 
             # Check if result already exists
-            if hasattr(order_item, 'result'):
+            if hasattr(order_item, "result"):
                 continue  # Skip if result already exists
 
             # Determine result type and create result
             result_data = {
-                'order_item': order_item,
-                'entered_by': user,
-                'is_external_result': True,
+                "order_item": order_item,
+                "entered_by": user,
+                "is_external_result": True,
             }
 
             # Try to parse as numeric
             try:
                 numeric_value = float(result_value)
-                result_data['numeric_value'] = numeric_value
+                result_data["numeric_value"] = numeric_value
             except (ValueError, TypeError):
                 # Not numeric, store as text
-                result_data['text_value'] = result_value
+                result_data["text_value"] = result_value
 
             # Add optional fields
-            if 'result_flag' in row and row['result_flag']:
-                result_data['result_flag'] = row['result_flag'].strip().upper()
+            if "result_flag" in row and row["result_flag"]:
+                result_data["result_flag"] = row["result_flag"].strip().upper()
 
-            if 'interpretation' in row and row['interpretation']:
-                result_data['interpretation'] = row['interpretation'].strip()
+            if "interpretation" in row and row["interpretation"]:
+                result_data["interpretation"] = row["interpretation"].strip()
 
-            if 'result_date' in row and row['result_date']:
+            if "result_date" in row and row["result_date"]:
                 try:
                     from datetime import datetime
-                    result_date = datetime.strptime(row['result_date'].strip(), '%Y-%m-%d').date()
-                    result_data['external_result_date'] = result_date
+
+                    result_date = datetime.strptime(row["result_date"].strip(), "%Y-%m-%d").date()
+                    result_data["external_result_date"] = result_date
                 except (ValueError, TypeError):
                     pass  # Skip invalid dates
 

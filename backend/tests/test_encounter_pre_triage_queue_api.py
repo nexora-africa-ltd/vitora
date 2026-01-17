@@ -149,9 +149,7 @@ class TestPreTriageQueueEndpoint:
         assert results[0]["triage_status"] == "PENDING"
         assert results[0]["triage_requirement"] == "OPTIONAL"
 
-    def test_pre_triage_queue_excludes_not_required_encounters(
-        self, auth_client, sample_patient
-    ):
+    def test_pre_triage_queue_excludes_not_required_encounters(self, auth_client, sample_patient):
         """Should exclude encounters with triage_requirement=NOT_REQUIRED."""
         # PROCEDURE = NOT_REQUIRED triage
         encounter = Encounter.objects.create(
@@ -167,9 +165,7 @@ class TestPreTriageQueueEndpoint:
         results = response.data.get("results", response.data)
         assert len(results) == 0
 
-    def test_pre_triage_queue_excludes_completed_triage(
-        self, auth_client, sample_patient
-    ):
+    def test_pre_triage_queue_excludes_completed_triage(self, auth_client, sample_patient):
         """Should exclude encounters with triage_status=COMPLETED."""
         encounter = Encounter.objects.create(
             patient=sample_patient,
@@ -210,9 +206,7 @@ class TestPreTriageQueueEndpoint:
         results = response.data.get("results", response.data)
         assert len(results) == 0
 
-    def test_pre_triage_queue_excludes_not_applicable_triage(
-        self, auth_client, sample_patient
-    ):
+    def test_pre_triage_queue_excludes_not_applicable_triage(self, auth_client, sample_patient):
         """Should exclude encounters with triage_status=NOT_APPLICABLE."""
         # NOT_REQUIRED encounters auto-set to NOT_APPLICABLE
         encounter = Encounter.objects.create(
@@ -264,9 +258,7 @@ class TestPreTriageQueueEndpoint:
         assert results[1]["id"] == encounter2.id
         assert results[2]["id"] == encounter3.id
 
-    def test_pre_triage_queue_includes_patient_info(
-        self, auth_client, sample_patient
-    ):
+    def test_pre_triage_queue_includes_patient_info(self, auth_client, sample_patient):
         """Should include patient name, MRN, age, gender in response."""
         encounter = Encounter.objects.create(
             patient=sample_patient,
@@ -287,9 +279,7 @@ class TestPreTriageQueueEndpoint:
         assert "patient_age" in item or "patient" in item
         assert "patient_gender" in item or "patient" in item
 
-    def test_pre_triage_queue_includes_encounter_info(
-        self, auth_client, sample_patient
-    ):
+    def test_pre_triage_queue_includes_encounter_info(self, auth_client, sample_patient):
         """Should include encounter type, chief complaint, created_at."""
         encounter = Encounter.objects.create(
             patient=sample_patient,
@@ -309,9 +299,7 @@ class TestPreTriageQueueEndpoint:
         assert item["chief_complaint"] == "Headache and fever"
         assert "created_at" in item
 
-    def test_pre_triage_queue_includes_wait_time(
-        self, auth_client, sample_patient
-    ):
+    def test_pre_triage_queue_includes_wait_time(self, auth_client, sample_patient):
         """Should include calculated wait time in minutes."""
         encounter = Encounter.objects.create(
             patient=sample_patient,
@@ -421,9 +409,7 @@ class TestPreTriageQueueEndpoint:
         assert len(results) == 1
         assert results[0]["id"] == encounter2.id
 
-    def test_pre_triage_queue_empty_when_no_pending(
-        self, auth_client, sample_patient
-    ):
+    def test_pre_triage_queue_empty_when_no_pending(self, auth_client, sample_patient):
         """Should return empty list when no encounters are pending triage."""
         # Create an encounter but complete its triage
         encounter = Encounter.objects.create(
@@ -441,9 +427,7 @@ class TestPreTriageQueueEndpoint:
         results = response.data.get("results", response.data)
         assert len(results) == 0
 
-    def test_pre_triage_queue_excludes_in_progress_triage(
-        self, auth_client, sample_patient
-    ):
+    def test_pre_triage_queue_excludes_in_progress_triage(self, auth_client, sample_patient):
         """Should exclude encounters with triage_status=IN_PROGRESS."""
         encounter = Encounter.objects.create(
             patient=sample_patient,

@@ -36,31 +36,33 @@ def get_age_group(age_years: float) -> str:
                          'young_child', 'infant', 'neonate'
     """
     if age_years >= 18:
-        return 'adult'
+        return "adult"
     if age_years >= 13:
-        return 'adolescent'
+        return "adolescent"
     if age_years >= 6:
-        return 'school_age'
+        return "school_age"
     if age_years >= 1:
-        return 'young_child'
-    if age_years >= 1/12:  # 1 month
-        return 'infant'
-    return 'neonate'
+        return "young_child"
+    if age_years >= 1 / 12:  # 1 month
+        return "infant"
+    return "neonate"
 
 
 # MAP thresholds by age group (mmHg)
 # Based on clinical guidelines for organ perfusion
 MAP_THRESHOLDS = {
-    'adult': {'normal_low': 70, 'normal_high': 100, 'critical_low': 65, 'elevated_high': 105},
-    'adolescent': {'normal_low': 65, 'normal_high': 95, 'critical_low': 60, 'elevated_high': 100},
-    'school_age': {'normal_low': 60, 'normal_high': 90, 'critical_low': 55, 'elevated_high': 95},
-    'young_child': {'normal_low': 55, 'normal_high': 85, 'critical_low': 50, 'elevated_high': 90},
-    'infant': {'normal_low': 45, 'normal_high': 70, 'critical_low': 40, 'elevated_high': 75},
-    'neonate': {'normal_low': 40, 'normal_high': 60, 'critical_low': 35, 'elevated_high': 65},
+    "adult": {"normal_low": 70, "normal_high": 100, "critical_low": 65, "elevated_high": 105},
+    "adolescent": {"normal_low": 65, "normal_high": 95, "critical_low": 60, "elevated_high": 100},
+    "school_age": {"normal_low": 60, "normal_high": 90, "critical_low": 55, "elevated_high": 95},
+    "young_child": {"normal_low": 55, "normal_high": 85, "critical_low": 50, "elevated_high": 90},
+    "infant": {"normal_low": 45, "normal_high": 70, "critical_low": 40, "elevated_high": 75},
+    "neonate": {"normal_low": 40, "normal_high": 60, "critical_low": 35, "elevated_high": 65},
 }
 
 
-def check_map_status(systolic: int, diastolic: int, age_years: float = 30) -> tuple[str, str | None]:
+def check_map_status(
+    systolic: int, diastolic: int, age_years: float = 30
+) -> tuple[str, str | None]:
     """
     Check MAP against age-appropriate thresholds.
 
@@ -79,22 +81,34 @@ def check_map_status(systolic: int, diastolic: int, age_years: float = 30) -> tu
     thresholds = MAP_THRESHOLDS[age_group]
 
     # Critical: MAP at or below minimum for adequate organ perfusion
-    if map_value <= thresholds['critical_low']:
-        return ('critical', f"CRITICAL: Hypotension - MAP {map_value} mmHg indicates inadequate blood pressure (≤{thresholds['critical_low']})")
+    if map_value <= thresholds["critical_low"]:
+        return (
+            "critical",
+            f"CRITICAL: Hypotension - MAP {map_value} mmHg indicates inadequate blood pressure (≤{thresholds['critical_low']})",
+        )
 
     # Critical: Severely elevated MAP (>120 for adults)
-    if map_value >= thresholds['elevated_high'] + 15:
-        return ('critical', f"CRITICAL: Hypertension - MAP {map_value} mmHg indicates severely elevated blood pressure")
+    if map_value >= thresholds["elevated_high"] + 15:
+        return (
+            "critical",
+            f"CRITICAL: Hypertension - MAP {map_value} mmHg indicates severely elevated blood pressure",
+        )
 
     # Warning: MAP below normal range
-    if map_value < thresholds['normal_low']:
-        return ('warning', f"Warning: Low blood pressure - MAP {map_value} mmHg below normal ({thresholds['normal_low']}-{thresholds['normal_high']})")
+    if map_value < thresholds["normal_low"]:
+        return (
+            "warning",
+            f"Warning: Low blood pressure - MAP {map_value} mmHg below normal ({thresholds['normal_low']}-{thresholds['normal_high']})",
+        )
 
     # Warning: MAP above normal
-    if map_value > thresholds['elevated_high']:
-        return ('warning', f"Warning: Elevated blood pressure - MAP {map_value} mmHg (>{thresholds['elevated_high']})")
+    if map_value > thresholds["elevated_high"]:
+        return (
+            "warning",
+            f"Warning: Elevated blood pressure - MAP {map_value} mmHg (>{thresholds['elevated_high']})",
+        )
 
-    return ('normal', None)
+    return ("normal", None)
 
 
 class TriageCategoryCalculator:
@@ -118,6 +132,7 @@ class TriageCategoryCalculator:
         """
         if thresholds is None:
             from hmis.apps.triage.models import TriageVitalThreshold
+
             self.thresholds = TriageVitalThreshold.get_defaults()
         else:
             self.thresholds = thresholds
@@ -157,7 +172,9 @@ class TriageCategoryCalculator:
             return "RED", alerts
 
         # Check ORANGE criteria (very urgent)
-        orange_alerts = self._check_orange_criteria(vitals, pain_score, chief_complaint_category, mobility)
+        orange_alerts = self._check_orange_criteria(
+            vitals, pain_score, chief_complaint_category, mobility
+        )
         if orange_alerts:
             alerts.extend(orange_alerts)
             # Add any vital warnings
@@ -181,11 +198,7 @@ class TriageCategoryCalculator:
         return "BLUE", alerts
 
     def _check_red_criteria(
-        self,
-        vitals: dict,
-        mental_status: str,
-        chief_complaint: str,
-        patient_age_years: float = 30
+        self, vitals: dict, mental_status: str, chief_complaint: str, patient_age_years: float = 30
     ) -> list[str]:
         """
         Check for RED (Emergency) criteria.
@@ -237,16 +250,20 @@ class TriageCategoryCalculator:
         if systolic is not None and diastolic is not None:
             # Full MAP evaluation when both values are present
             status, alert_msg = check_map_status(systolic, diastolic, patient_age_years)
-            if status == 'critical':
+            if status == "critical":
                 alerts.append(alert_msg)
                 has_red_criteria = True
         elif systolic is not None:
             # Fallback: systolic-only extreme value check when diastolic is missing
             if systolic < 90:
-                alerts.append(f"CRITICAL: Severe hypotension (systolic blood pressure {systolic} mmHg)")
+                alerts.append(
+                    f"CRITICAL: Severe hypotension (systolic blood pressure {systolic} mmHg)"
+                )
                 has_red_criteria = True
             elif systolic > 180:
-                alerts.append(f"CRITICAL: Severe hypertension (systolic blood pressure {systolic} mmHg)")
+                alerts.append(
+                    f"CRITICAL: Severe hypertension (systolic blood pressure {systolic} mmHg)"
+                )
                 has_red_criteria = True
 
         # Heart rate critical
@@ -267,11 +284,7 @@ class TriageCategoryCalculator:
         return alerts if has_red_criteria else []
 
     def _check_orange_criteria(
-        self,
-        vitals: dict,
-        pain_score: int | None,
-        chief_complaint: str,
-        mobility: str | None
+        self, vitals: dict, pain_score: int | None, chief_complaint: str, mobility: str | None
     ) -> list[str]:
         """
         Check for ORANGE (Very Urgent) criteria.
@@ -309,7 +322,9 @@ class TriageCategoryCalculator:
 
         # Severe pain
         if pain_score and pain_score >= 9:
-            alerts.append(f"ALERT: Severe pain (score {pain_score}/10) - immediate attention needed")
+            alerts.append(
+                f"ALERT: Severe pain (score {pain_score}/10) - immediate attention needed"
+            )
             return alerts
 
         # Trauma with immobile
@@ -320,10 +335,7 @@ class TriageCategoryCalculator:
         return []
 
     def _check_yellow_criteria(
-        self,
-        vitals: dict,
-        pain_score: int | None,
-        chief_complaint: str
+        self, vitals: dict, pain_score: int | None, chief_complaint: str
     ) -> list[str]:
         """
         Check for YELLOW (Urgent) criteria.

@@ -138,7 +138,9 @@ class TestTriageAssessmentCreateSerializer:
             "triage_start_time": timezone.now().isoformat(),
         }
 
-        serializer = TriageAssessmentCreateSerializer(data=data, context={"request": type("obj", (object,), {"user": test_user})()})
+        serializer = TriageAssessmentCreateSerializer(
+            data=data, context={"request": type("obj", (object,), {"user": test_user})()}
+        )
         assert serializer.is_valid(), serializer.errors
         assessment = serializer.save()
 
@@ -162,7 +164,9 @@ class TestTriageAssessmentCreateSerializer:
             "triage_start_time": timezone.now().isoformat(),
         }
 
-        serializer = TriageAssessmentCreateSerializer(data=data, context={"request": type("obj", (object,), {"user": test_user})()})
+        serializer = TriageAssessmentCreateSerializer(
+            data=data, context={"request": type("obj", (object,), {"user": test_user})()}
+        )
         assert serializer.is_valid()
         assessment = serializer.save()
 
@@ -192,10 +196,15 @@ class TestTriageAssessmentCreateSerializer:
             "triage_start_time": timezone.now().isoformat(),
         }
 
-        serializer = TriageAssessmentCreateSerializer(data=data, context={"request": type("obj", (object,), {"user": test_user})()})
+        serializer = TriageAssessmentCreateSerializer(
+            data=data, context={"request": type("obj", (object,), {"user": test_user})()}
+        )
         # Should fail validation - no override reason
         assert not serializer.is_valid()
-        assert "category_override_reason" in serializer.errors or "non_field_errors" in serializer.errors
+        assert (
+            "category_override_reason" in serializer.errors
+            or "non_field_errors" in serializer.errors
+        )
 
     def test_validate_accepts_frontend_auto_calculated_category(self, sample_encounter, test_user):
         """Should accept when user selects the frontend-suggested category without override reason."""
@@ -214,11 +223,15 @@ class TestTriageAssessmentCreateSerializer:
             "arrival_time": timezone.now().isoformat(),
         }
 
-        serializer = TriageAssessmentCreateSerializer(data=data, context={"request": type("obj", (object,), {"user": test_user})()})
+        serializer = TriageAssessmentCreateSerializer(
+            data=data, context={"request": type("obj", (object,), {"user": test_user})()}
+        )
         # Should pass validation - user selected what frontend suggested
         assert serializer.is_valid(), serializer.errors
 
-    def test_validate_override_reason_required_with_frontend_category(self, sample_encounter, test_user):
+    def test_validate_override_reason_required_with_frontend_category(
+        self, sample_encounter, test_user
+    ):
         """Should require override reason when user changes from frontend-suggested category."""
         from hmis.apps.triage.serializers import TriageAssessmentCreateSerializer
 
@@ -235,10 +248,13 @@ class TestTriageAssessmentCreateSerializer:
             "arrival_time": timezone.now().isoformat(),
         }
 
-        serializer = TriageAssessmentCreateSerializer(data=data, context={"request": type("obj", (object,), {"user": test_user})()})
+        serializer = TriageAssessmentCreateSerializer(
+            data=data, context={"request": type("obj", (object,), {"user": test_user})()}
+        )
         # Should fail validation - no override reason when changing from suggested
         assert not serializer.is_valid()
         assert "category_override_reason" in serializer.errors
+
 
 @pytest.mark.django_db
 class TestTriageQueueSerializer:

@@ -172,7 +172,7 @@ class PrescriptionViewSet(viewsets.ModelViewSet):
 
     def get_serializer_class(self):
         """Use different serializer for create action."""
-        if self.action == 'create':
+        if self.action == "create":
             return PrescriptionCreateSerializer
         return PrescriptionSerializer
 
@@ -628,17 +628,10 @@ class AlertSettingsView(APIView):
         from hmis.apps.pharmacy.serializers import AlertSettingsSerializer
 
         settings = AlertSettings.get_settings()
-        serializer = AlertSettingsSerializer(
-            settings,
-            data=request.data,
-            partial=partial
-        )
+        serializer = AlertSettingsSerializer(settings, data=request.data, partial=partial)
 
         if serializer.is_valid():
             serializer.save(updated_by=request.user)
             return Response(serializer.data)
 
-        return Response(
-            serializer.errors,
-            status=status.HTTP_400_BAD_REQUEST
-        )
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)

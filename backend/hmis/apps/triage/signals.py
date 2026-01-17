@@ -52,12 +52,19 @@ def update_encounter_triage_status(sender, instance, created, **kwargs):
         updated_fields.add("temperature")
         vitals_copied = True
 
-    if getattr(encounter, "respiratory_rate", None) is None and instance.respiratory_rate is not None:
+    if (
+        getattr(encounter, "respiratory_rate", None) is None
+        and instance.respiratory_rate is not None
+    ):
         encounter.respiratory_rate = instance.respiratory_rate
         updated_fields.add("respiratory_rate")
         vitals_copied = True
 
-    if (not getattr(encounter, "blood_pressure", "")) and instance.systolic_bp is not None and instance.diastolic_bp is not None:
+    if (
+        (not getattr(encounter, "blood_pressure", ""))
+        and instance.systolic_bp is not None
+        and instance.diastolic_bp is not None
+    ):
         encounter.blood_pressure = f"{instance.systolic_bp}/{instance.diastolic_bp}"
         updated_fields.add("blood_pressure")
         vitals_copied = True
@@ -71,7 +78,10 @@ def update_encounter_triage_status(sender, instance, created, **kwargs):
     # Copy chief complaint from triage to encounter if encounter's is empty/generic
     encounter_chief = getattr(encounter, "chief_complaint", "") or ""
     triage_chief = getattr(instance, "chief_complaint", "") or ""
-    if triage_chief and (not encounter_chief.strip() or encounter_chief.strip().lower() in ("check-in", "triage", "pending")):
+    if triage_chief and (
+        not encounter_chief.strip()
+        or encounter_chief.strip().lower() in ("check-in", "triage", "pending")
+    ):
         encounter.chief_complaint = triage_chief
         updated_fields.add("chief_complaint")
 
@@ -81,7 +91,10 @@ def update_encounter_triage_status(sender, instance, created, **kwargs):
             encounter.vitals_source = "TRIAGE"
             updated_fields.add("vitals_source")
 
-        if getattr(encounter, "vitals_recorded_by_id", None) is None and getattr(instance, "triaged_by_id", None) is not None:
+        if (
+            getattr(encounter, "vitals_recorded_by_id", None) is None
+            and getattr(instance, "triaged_by_id", None) is not None
+        ):
             encounter.vitals_recorded_by = instance.triaged_by
             updated_fields.add("vitals_recorded_by")
 

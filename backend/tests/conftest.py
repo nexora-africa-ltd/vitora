@@ -328,12 +328,12 @@ def sample_test_catalog(db):
     from hmis.apps.laboratory.models import TestCatalog
 
     return TestCatalog.objects.create(
-        code='CBC',
-        name='Complete Blood Count',
-        short_name='CBC',
-        category='HEMATOLOGY',
-        specimen_type='BLOOD',
-        result_type='PANEL',
+        code="CBC",
+        name="Complete Blood Count",
+        short_name="CBC",
+        category="HEMATOLOGY",
+        specimen_type="BLOOD",
+        result_type="PANEL",
         cost=500.00,
         available_in_house=True,
         is_active=True,
@@ -349,9 +349,9 @@ def sample_lab_order(db, sample_patient, sample_encounter, test_user, sample_tes
         patient=sample_patient,
         encounter=sample_encounter,
         ordered_by=test_user,
-        order_type='IN_HOUSE',
-        status='ORDERED',
-        priority='ROUTINE',
+        order_type="IN_HOUSE",
+        status="ORDERED",
+        priority="ROUTINE",
     )
 
     # Create order item (this will trigger signal to auto-create LabQueue entry)
@@ -378,17 +378,19 @@ def sample_lab_result(db, sample_lab_order, test_user):
     return LabResult.objects.create(
         order_item=order_item,
         numeric_value=7.5,
-        text_value='7.5',
-        reference_range_text='4.0-11.0',
+        text_value="7.5",
+        reference_range_text="4.0-11.0",
         reference_low=4.0,
         reference_high=11.0,
-        result_flag='NORMAL',
+        result_flag="NORMAL",
         entered_by=test_user,
     )
 
 
 @pytest.fixture
-def sample_admission(db, sample_patient, sample_encounter, test_user, sample_inpatient_ward, sample_bed):
+def sample_admission(
+    db, sample_patient, sample_encounter, test_user, sample_inpatient_ward, sample_bed
+):
     """Create a sample admission for testing."""
     from django.utils import timezone
 
@@ -488,20 +490,67 @@ def sample_template_with_vitals(db):
                     "name": "Vital Signs",
                     "order": 1,
                     "fields": [
-                        {"name": "temperature", "type": "number", "label": "Temperature (°C)", "required": True, "syncable": True},
-                        {"name": "pulse", "type": "number", "label": "Pulse (bpm)", "required": True, "syncable": True},
-                        {"name": "blood_pressure", "type": "text", "label": "Blood Pressure", "required": False, "syncable": True},
-                        {"name": "respiratory_rate", "type": "number", "label": "Respiratory Rate", "required": False, "syncable": True},
-                        {"name": "spo2", "type": "number", "label": "SpO2 (%)", "required": False, "syncable": True},
-                        {"name": "weight", "type": "number", "label": "Weight (kg)", "required": False, "syncable": True},
-                        {"name": "height", "type": "number", "label": "Height (cm)", "required": False, "syncable": True},
+                        {
+                            "name": "temperature",
+                            "type": "number",
+                            "label": "Temperature (°C)",
+                            "required": True,
+                            "syncable": True,
+                        },
+                        {
+                            "name": "pulse",
+                            "type": "number",
+                            "label": "Pulse (bpm)",
+                            "required": True,
+                            "syncable": True,
+                        },
+                        {
+                            "name": "blood_pressure",
+                            "type": "text",
+                            "label": "Blood Pressure",
+                            "required": False,
+                            "syncable": True,
+                        },
+                        {
+                            "name": "respiratory_rate",
+                            "type": "number",
+                            "label": "Respiratory Rate",
+                            "required": False,
+                            "syncable": True,
+                        },
+                        {
+                            "name": "spo2",
+                            "type": "number",
+                            "label": "SpO2 (%)",
+                            "required": False,
+                            "syncable": True,
+                        },
+                        {
+                            "name": "weight",
+                            "type": "number",
+                            "label": "Weight (kg)",
+                            "required": False,
+                            "syncable": True,
+                        },
+                        {
+                            "name": "height",
+                            "type": "number",
+                            "label": "Height (cm)",
+                            "required": False,
+                            "syncable": True,
+                        },
                     ],
                 },
                 {
                     "name": "Notes",
                     "order": 2,
                     "fields": [
-                        {"name": "notes", "type": "textarea", "label": "Clinical Notes", "required": False},
+                        {
+                            "name": "notes",
+                            "type": "textarea",
+                            "label": "Clinical Notes",
+                            "required": False,
+                        },
                     ],
                 },
             ],
@@ -529,11 +578,41 @@ def sample_template_with_history(db):
                     "name": "Medical History",
                     "order": 1,
                     "fields": [
-                        {"name": "allergies", "type": "textarea", "label": "Known Allergies", "required": False, "syncable": True},
-                        {"name": "chronic_conditions", "type": "textarea", "label": "Chronic Conditions", "required": False, "syncable": True},
-                        {"name": "current_medications", "type": "textarea", "label": "Current Medications", "required": False, "syncable": True},
-                        {"name": "past_surgeries", "type": "textarea", "label": "Past Surgeries", "required": False, "syncable": True},
-                        {"name": "family_history", "type": "textarea", "label": "Family History", "required": False, "syncable": True},
+                        {
+                            "name": "allergies",
+                            "type": "textarea",
+                            "label": "Known Allergies",
+                            "required": False,
+                            "syncable": True,
+                        },
+                        {
+                            "name": "chronic_conditions",
+                            "type": "textarea",
+                            "label": "Chronic Conditions",
+                            "required": False,
+                            "syncable": True,
+                        },
+                        {
+                            "name": "current_medications",
+                            "type": "textarea",
+                            "label": "Current Medications",
+                            "required": False,
+                            "syncable": True,
+                        },
+                        {
+                            "name": "past_surgeries",
+                            "type": "textarea",
+                            "label": "Past Surgeries",
+                            "required": False,
+                            "syncable": True,
+                        },
+                        {
+                            "name": "family_history",
+                            "type": "textarea",
+                            "label": "Family History",
+                            "required": False,
+                            "syncable": True,
+                        },
                     ],
                 },
             ],
@@ -561,24 +640,56 @@ def sample_template_with_sections(db):
                     "name": "Vital Signs",
                     "order": 1,
                     "fields": [
-                        {"name": "temperature", "type": "number", "label": "Temperature", "required": True, "syncable": True},
-                        {"name": "pulse", "type": "number", "label": "Pulse", "required": True, "syncable": True},
+                        {
+                            "name": "temperature",
+                            "type": "number",
+                            "label": "Temperature",
+                            "required": True,
+                            "syncable": True,
+                        },
+                        {
+                            "name": "pulse",
+                            "type": "number",
+                            "label": "Pulse",
+                            "required": True,
+                            "syncable": True,
+                        },
                     ],
                 },
                 {
                     "name": "Assessment",
                     "order": 2,
                     "fields": [
-                        {"name": "notes", "type": "textarea", "label": "Assessment Notes", "required": False},
-                        {"name": "diagnosis", "type": "text", "label": "Working Diagnosis", "required": False},
+                        {
+                            "name": "notes",
+                            "type": "textarea",
+                            "label": "Assessment Notes",
+                            "required": False,
+                        },
+                        {
+                            "name": "diagnosis",
+                            "type": "text",
+                            "label": "Working Diagnosis",
+                            "required": False,
+                        },
                     ],
                 },
                 {
                     "name": "Plan",
                     "order": 3,
                     "fields": [
-                        {"name": "treatment_plan", "type": "textarea", "label": "Treatment Plan", "required": False},
-                        {"name": "follow_up", "type": "date", "label": "Follow-up Date", "required": False},
+                        {
+                            "name": "treatment_plan",
+                            "type": "textarea",
+                            "label": "Treatment Plan",
+                            "required": False,
+                        },
+                        {
+                            "name": "follow_up",
+                            "type": "date",
+                            "label": "Follow-up Date",
+                            "required": False,
+                        },
                     ],
                 },
             ],

@@ -33,6 +33,7 @@ logger = logging.getLogger(__name__)
 # Data Classes
 # =============================================================================
 
+
 @dataclass
 class InterventionCode:
     """
@@ -63,31 +64,31 @@ class InterventionCode:
     raw_data: dict = field(default_factory=dict)
 
     @classmethod
-    def from_api_response(cls, data: dict) -> 'InterventionCode':
+    def from_api_response(cls, data: dict) -> "InterventionCode":
         """Create from API response."""
         # Parse price
-        price = data.get('price') or data.get('sha_price')
+        price = data.get("price") or data.get("sha_price")
         if price is not None:
             price = Decimal(str(price))
 
         # Parse facility level
-        level = data.get('facility_level') or data.get('min_facility_level')
+        level = data.get("facility_level") or data.get("min_facility_level")
         if isinstance(level, str):
-            level = int(level.replace('LEVEL ', '').strip())
+            level = int(level.replace("LEVEL ", "").strip())
 
         # Parse effective date
-        eff_date = data.get('effective_date')
+        eff_date = data.get("effective_date")
         if isinstance(eff_date, str):
-            eff_date = datetime.strptime(eff_date, '%Y-%m-%d').date()
+            eff_date = datetime.strptime(eff_date, "%Y-%m-%d").date()
 
         return cls(
-            code=data.get('code', ''),
-            name=data.get('name', ''),
-            description=data.get('description'),
-            category=data.get('category'),
+            code=data.get("code", ""),
+            name=data.get("name", ""),
+            description=data.get("description"),
+            category=data.get("category"),
             price=price,
             facility_level=level,
-            is_active=data.get('is_active', True),
+            is_active=data.get("is_active", True),
             effective_date=eff_date,
             raw_data=data,
         )
@@ -120,15 +121,15 @@ class ICD11Code:
     raw_data: dict = field(default_factory=dict)
 
     @classmethod
-    def from_api_response(cls, data: dict) -> 'ICD11Code':
+    def from_api_response(cls, data: dict) -> "ICD11Code":
         """Create from API response."""
         return cls(
-            code=data.get('code', ''),
-            title=data.get('title', '') or data.get('name', ''),
-            description=data.get('description'),
-            parent_code=data.get('parent_code'),
-            chapter=data.get('chapter'),
-            is_leaf=data.get('is_leaf', True),
+            code=data.get("code", ""),
+            title=data.get("title", "") or data.get("name", ""),
+            description=data.get("description"),
+            parent_code=data.get("parent_code"),
+            chapter=data.get("chapter"),
+            is_leaf=data.get("is_leaf", True),
             raw_data=data,
         )
 
@@ -165,23 +166,23 @@ class DrugProduct:
     raw_data: dict = field(default_factory=dict)
 
     @classmethod
-    def from_api_response(cls, data: dict) -> 'DrugProduct':
+    def from_api_response(cls, data: dict) -> "DrugProduct":
         """Create from API response."""
         # Parse active components
-        components = data.get('active_components', [])
+        components = data.get("active_components", [])
         if isinstance(components, str):
-            components = [c.strip() for c in components.split(',')]
+            components = [c.strip() for c in components.split(",")]
 
         return cls(
-            product_id=data.get('product_id', '') or data.get('id', ''),
-            brand_name=data.get('brand_name', '') or data.get('name', ''),
-            generic_name=data.get('generic_name'),
-            manufacturer=data.get('manufacturer'),
-            dosage_form=data.get('dosage_form'),
-            strength=data.get('strength'),
-            registration_number=data.get('registration_number'),
+            product_id=data.get("product_id", "") or data.get("id", ""),
+            brand_name=data.get("brand_name", "") or data.get("name", ""),
+            generic_name=data.get("generic_name"),
+            manufacturer=data.get("manufacturer"),
+            dosage_form=data.get("dosage_form"),
+            strength=data.get("strength"),
+            registration_number=data.get("registration_number"),
             active_components=components,
-            is_active=data.get('is_active', True),
+            is_active=data.get("is_active", True),
             raw_data=data,
         )
 
@@ -208,13 +209,13 @@ class ActiveComponent:
     raw_data: dict = field(default_factory=dict)
 
     @classmethod
-    def from_api_response(cls, data: dict) -> 'ActiveComponent':
+    def from_api_response(cls, data: dict) -> "ActiveComponent":
         """Create from API response."""
         return cls(
-            component_id=data.get('component_id', '') or data.get('id', ''),
-            name=data.get('name', ''),
-            atc_code=data.get('atc_code'),
-            description=data.get('description'),
+            component_id=data.get("component_id", "") or data.get("id", ""),
+            name=data.get("name", ""),
+            atc_code=data.get("atc_code"),
+            description=data.get("description"),
             raw_data=data,
         )
 
@@ -252,23 +253,23 @@ class RemoteLOINCCode:
     method_type: str | None = None
     long_common_name: str | None = None
     short_name: str | None = None
-    status: str = 'ACTIVE'
+    status: str = "ACTIVE"
     raw_data: dict = field(default_factory=dict)
 
     @classmethod
-    def from_api_response(cls, data: dict) -> 'RemoteLOINCCode':
+    def from_api_response(cls, data: dict) -> "RemoteLOINCCode":
         """Create from API response."""
         return cls(
-            loinc_num=data.get('loinc_num', '') or data.get('code', ''),
-            component=data.get('component', '') or data.get('name', ''),
-            property=data.get('property'),
-            time_aspect=data.get('time_aspect'),
-            system=data.get('system'),
-            scale_type=data.get('scale_type'),
-            method_type=data.get('method_type'),
-            long_common_name=data.get('long_common_name'),
-            short_name=data.get('short_name'),
-            status=data.get('status', 'ACTIVE'),
+            loinc_num=data.get("loinc_num", "") or data.get("code", ""),
+            component=data.get("component", "") or data.get("name", ""),
+            property=data.get("property"),
+            time_aspect=data.get("time_aspect"),
+            system=data.get("system"),
+            scale_type=data.get("scale_type"),
+            method_type=data.get("method_type"),
+            long_common_name=data.get("long_common_name"),
+            short_name=data.get("short_name"),
+            status=data.get("status", "ACTIVE"),
             raw_data=data,
         )
 
@@ -300,15 +301,15 @@ class ICHICode:
     raw_data: dict = field(default_factory=dict)
 
     @classmethod
-    def from_api_response(cls, data: dict) -> 'ICHICode':
+    def from_api_response(cls, data: dict) -> "ICHICode":
         """Create from API response."""
         return cls(
-            code=data.get('code', ''),
-            title=data.get('title', '') or data.get('name', ''),
-            definition=data.get('definition'),
-            target=data.get('target'),
-            action=data.get('action'),
-            means=data.get('means'),
+            code=data.get("code", ""),
+            title=data.get("title", "") or data.get("name", ""),
+            definition=data.get("definition"),
+            target=data.get("target"),
+            action=data.get("action"),
+            means=data.get("means"),
             raw_data=data,
         )
 
@@ -316,6 +317,7 @@ class ICHICode:
 # =============================================================================
 # Custom Exceptions
 # =============================================================================
+
 
 class TerminologyError(Exception):
     """
@@ -345,7 +347,7 @@ class TerminologyError(Exception):
         if self.status_code:
             parts.append(f"({self.status_code})")
         parts.append(f": {self.message}")
-        return ''.join(parts)
+        return "".join(parts)
 
 
 class CodeNotFoundError(TerminologyError):
@@ -363,6 +365,7 @@ class CodeNotFoundError(TerminologyError):
 # =============================================================================
 # Service Class
 # =============================================================================
+
 
 class TerminologyService:
     """
@@ -405,19 +408,23 @@ class TerminologyService:
         Args:
             use_local_fallback: If True, use local DB when API fails
         """
-        self.api_base_url = settings.SHA_API_BASE_URL.rstrip('/')
-        self.timeout = getattr(settings, 'SHA_API_TIMEOUT', 30)
+        self.api_base_url = settings.SHA_API_BASE_URL.rstrip("/")
+        self.timeout = getattr(settings, "SHA_API_TIMEOUT", 30)
         self.use_local_fallback = use_local_fallback
 
         # Get endpoint paths from settings (Official Kenya Digital Superhighway paths)
         # Reference: Kenya Digital Superhighway.postman_collection.json
-        endpoints = getattr(settings, 'SHA_ENDPOINTS', {})
-        self.interventions_endpoint = endpoints.get('sha_interventions', '/terminology/v1/sha-intervention')
-        self.icd11_endpoint = endpoints.get('icd11', '/terminology/v1/icd11')
-        self.products_endpoint = endpoints.get('drug_products', '/terminology/v1/product')
-        self.components_endpoint = endpoints.get('active_components', '/terminology/v1/active-component')
-        self.loinc_endpoint = endpoints.get('loinc', '/terminology/v1/loinc')
-        self.ichi_endpoint = endpoints.get('ichi', '/terminology/v1/ichi')
+        endpoints = getattr(settings, "SHA_ENDPOINTS", {})
+        self.interventions_endpoint = endpoints.get(
+            "sha_interventions", "/terminology/v1/sha-intervention"
+        )
+        self.icd11_endpoint = endpoints.get("icd11", "/terminology/v1/icd11")
+        self.products_endpoint = endpoints.get("drug_products", "/terminology/v1/product")
+        self.components_endpoint = endpoints.get(
+            "active_components", "/terminology/v1/active-component"
+        )
+        self.loinc_endpoint = endpoints.get("loinc", "/terminology/v1/loinc")
+        self.ichi_endpoint = endpoints.get("ichi", "/terminology/v1/ichi")
 
         # Initialize auth service
         self.auth_service = SHAAuthService()
@@ -457,13 +464,13 @@ class TerminologyService:
         logger.info(f"Searching SHA interventions: query='{query}'")
 
         params = {
-            'search': query,
-            'limit': limit,
+            "search": query,
+            "limit": limit,
         }
         if facility_level is not None:
-            params['facility_level'] = facility_level
+            params["facility_level"] = facility_level
         if category:
-            params['category'] = category
+            params["category"] = category
 
         try:
             headers = self.auth_service.get_terminology_headers()
@@ -487,7 +494,7 @@ class TerminologyService:
             data = response.json()
 
             # Handle response format
-            results = data.get('interventions') or data.get('results') or data.get('data') or []
+            results = data.get("interventions") or data.get("results") or data.get("data") or []
             if isinstance(results, dict):
                 results = [results]
 
@@ -541,7 +548,7 @@ class TerminologyService:
             response.raise_for_status()
 
             data = response.json()
-            intervention_data = data.get('intervention') or data
+            intervention_data = data.get("intervention") or data
 
             return InterventionCode.from_api_response(intervention_data)
 
@@ -565,7 +572,7 @@ class TerminologyService:
             List of InterventionCode available at that level
         """
         return self.search_interventions(
-            query='',
+            query="",
             facility_level=facility_level,
             limit=1000,
         )
@@ -597,11 +604,11 @@ class TerminologyService:
         logger.info(f"Searching ICD-11: query='{query}'")
 
         params = {
-            'search': query,
-            'limit': limit,
+            "search": query,
+            "limit": limit,
         }
         if chapter:
-            params['chapter'] = chapter
+            params["chapter"] = chapter
 
         try:
             headers = self.auth_service.get_terminology_headers()
@@ -623,7 +630,7 @@ class TerminologyService:
             response.raise_for_status()
 
             data = response.json()
-            results = data.get('codes') or data.get('results') or data.get('data') or []
+            results = data.get("codes") or data.get("results") or data.get("data") or []
 
             return [ICD11Code.from_api_response(r) for r in results]
 
@@ -669,7 +676,7 @@ class TerminologyService:
             response.raise_for_status()
 
             data = response.json()
-            code_data = data.get('code') or data
+            code_data = data.get("code") or data
 
             return ICD11Code.from_api_response(code_data)
 
@@ -701,8 +708,8 @@ class TerminologyService:
         logger.info(f"Searching drug products: query='{query}'")
 
         params = {
-            'search': query,
-            'limit': limit,
+            "search": query,
+            "limit": limit,
         }
 
         try:
@@ -718,7 +725,7 @@ class TerminologyService:
             response.raise_for_status()
 
             data = response.json()
-            results = data.get('products') or data.get('results') or data.get('data') or []
+            results = data.get("products") or data.get("results") or data.get("data") or []
 
             return [DrugProduct.from_api_response(r) for r in results]
 
@@ -758,7 +765,7 @@ class TerminologyService:
             response.raise_for_status()
 
             data = response.json()
-            product_data = data.get('product') or data
+            product_data = data.get("product") or data
 
             return DrugProduct.from_api_response(product_data)
 
@@ -790,8 +797,8 @@ class TerminologyService:
         logger.info(f"Searching active components: query='{query}'")
 
         params = {
-            'search': query,
-            'limit': limit,
+            "search": query,
+            "limit": limit,
         }
 
         try:
@@ -807,7 +814,7 @@ class TerminologyService:
             response.raise_for_status()
 
             data = response.json()
-            results = data.get('components') or data.get('results') or data.get('data') or []
+            results = data.get("components") or data.get("results") or data.get("data") or []
 
             return [ActiveComponent.from_api_response(r) for r in results]
 
@@ -856,8 +863,8 @@ class TerminologyService:
     ) -> list[RemoteLOINCCode]:
         """Search LOINC via remote API."""
         params = {
-            'search': query,
-            'limit': limit,
+            "search": query,
+            "limit": limit,
         }
 
         headers = self.auth_service.get_terminology_headers()
@@ -879,7 +886,7 @@ class TerminologyService:
         response.raise_for_status()
 
         data = response.json()
-        results = data.get('codes') or data.get('results') or data.get('data') or []
+        results = data.get("codes") or data.get("results") or data.get("data") or []
 
         return [RemoteLOINCCode.from_api_response(r) for r in results]
 
@@ -893,9 +900,9 @@ class TerminologyService:
             from hmis.apps.lab.models import LOINCCode
 
             local_codes = LOINCCode.objects.filter(
-                Q(loinc_num__icontains=query) |
-                Q(component__icontains=query) |
-                Q(long_common_name__icontains=query)
+                Q(loinc_num__icontains=query)
+                | Q(component__icontains=query)
+                | Q(long_common_name__icontains=query)
             )[:limit]
 
             return [
@@ -948,7 +955,7 @@ class TerminologyService:
             response.raise_for_status()
 
             data = response.json()
-            code_data = data.get('code') or data
+            code_data = data.get("code") or data
 
             return RemoteLOINCCode.from_api_response(code_data)
 
@@ -1007,8 +1014,8 @@ class TerminologyService:
         logger.info(f"Searching ICHI codes: query='{query}'")
 
         params = {
-            'search': query,
-            'limit': limit,
+            "search": query,
+            "limit": limit,
         }
 
         try:
@@ -1024,7 +1031,7 @@ class TerminologyService:
             response.raise_for_status()
 
             data = response.json()
-            results = data.get('codes') or data.get('results') or data.get('data') or []
+            results = data.get("codes") or data.get("results") or data.get("data") or []
 
             return [ICHICode.from_api_response(r) for r in results]
 
@@ -1064,7 +1071,7 @@ class TerminologyService:
             response.raise_for_status()
 
             data = response.json()
-            code_data = data.get('code') or data
+            code_data = data.get("code") or data
 
             return ICHICode.from_api_response(code_data)
 
@@ -1085,10 +1092,7 @@ class TerminologyService:
         Returns:
             True if service can be used
         """
-        return bool(
-            self.api_base_url and
-            self.auth_service.is_configured()
-        )
+        return bool(self.api_base_url and self.auth_service.is_configured())
 
     def validate_intervention_for_facility(
         self,

@@ -52,7 +52,8 @@ import requests
 # Load .env from project root
 try:
     from dotenv import load_dotenv
-    env_path = Path(__file__).parent.parent.parent / '.env'
+
+    env_path = Path(__file__).parent.parent.parent / ".env"
     if env_path.exists():
         load_dotenv(env_path)
         print(f"✅ Loaded credentials from {env_path}")
@@ -63,6 +64,7 @@ except ImportError:
 @dataclass
 class SHACredentials:
     """SHA API credentials container."""
+
     api_base_url: str
     consumer_key: str
     client_secret: str | None = None
@@ -71,14 +73,14 @@ class SHACredentials:
     access_token: str | None = None
 
     @classmethod
-    def from_env(cls) -> 'SHACredentials':
+    def from_env(cls) -> "SHACredentials":
         """Load credentials from environment variables (supports .env file)."""
         return cls(
-            api_base_url=os.getenv('SHA_API_BASE_URL', 'https://uat.dha.go.ke'),
-            consumer_key=os.getenv('SHA_CONSUMER_KEY', os.getenv('SHA_API_KEY', '')),
-            client_secret=os.getenv('SHA_CLIENT_SECRET'),
-            username=os.getenv('SHA_USERNAME'),
-            password=os.getenv('SHA_PASSWORD'),
+            api_base_url=os.getenv("SHA_API_BASE_URL", "https://uat.dha.go.ke"),
+            consumer_key=os.getenv("SHA_CONSUMER_KEY", os.getenv("SHA_API_KEY", "")),
+            client_secret=os.getenv("SHA_CLIENT_SECRET"),
+            username=os.getenv("SHA_USERNAME"),
+            password=os.getenv("SHA_PASSWORD"),
         )
 
     def is_valid(self) -> bool:
@@ -88,7 +90,7 @@ class SHACredentials:
     def get_basic_auth_header(self) -> str:
         """Create Basic Auth header value."""
         if not self.username or not self.password:
-            return ''
+            return ""
         credentials = f"{self.username}:{self.password}"
         return base64.b64encode(credentials.encode()).decode()
 
@@ -112,30 +114,32 @@ class SHAIntegrationTester:
         self.jwt_token: str | None = None
 
         # Configure session defaults
-        self.session.headers.update({
-            'Content-Type': 'application/json',
-            'Accept': 'application/json',
-        })
+        self.session.headers.update(
+            {
+                "Content-Type": "application/json",
+                "Accept": "application/json",
+            }
+        )
 
-    def _log(self, message: str, level: str = 'INFO'):
+    def _log(self, message: str, level: str = "INFO"):
         """Log a message with timestamp."""
-        timestamp = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+        timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
         print(f"[{timestamp}] [{level}] {message}")
 
     def _log_result(self, test_name: str, success: bool, details: dict):
         """Log and store test result."""
         result = {
-            'test': test_name,
-            'success': success,
-            'timestamp': datetime.now().isoformat(),
+            "test": test_name,
+            "success": success,
+            "timestamp": datetime.now().isoformat(),
             **details,
         }
         self.results.append(result)
 
-        status = '✅ PASS' if success else '❌ FAIL'
+        status = "✅ PASS" if success else "❌ FAIL"
         self._log(f"{status} - {test_name}")
         if not success:
-            self._log(f"  Details: {details.get('error', 'Unknown error')}", 'ERROR')
+            self._log(f"  Details: {details.get('error', 'Unknown error')}", "ERROR")
 
     def _make_request(
         self,
@@ -170,9 +174,9 @@ class SHAIntegrationTester:
         headers = dict(self.session.headers)
         if use_basic_auth:
             basic_auth = self.credentials.get_basic_auth_header()
-            headers['Authorization'] = f'Basic {basic_auth}'
+            headers["Authorization"] = f"Basic {basic_auth}"
         elif self.jwt_token:
-            headers['Authorization'] = f'Bearer {self.jwt_token}'
+            headers["Authorization"] = f"Bearer {self.jwt_token}"
 
         try:
             response = self.session.request(
@@ -194,7 +198,7 @@ class SHAIntegrationTester:
                 return response.status_code, None, response.text[:500]
 
         except requests.Timeout:
-            return 0, None, 'Request timeout'
+            return 0, None, "Request timeout"
         except requests.RequestException as e:
             return 0, None, str(e)
 
@@ -214,30 +218,38 @@ class SHAIntegrationTester:
         self._log("=" * 60)
 
         status_code, data, error = self._make_request(
-            'GET',
-            '/v1/hie-auth',
-            params={'key': self.credentials.consumer_key},
+            "GET",
+            "/v1/hie-auth",
+            params={"key": self.credentials.consumer_key},
             use_basic_auth=True,
         )
 
         if status_code == 200 and data:
             # Extract token from response
-            token = data.get('token')
-            if not token and data.get('Data'):
-                token = data['Data'].get('token')
+            token = data.get("token")
+            if not token and data.get("Data"):
+                token = data["Data"].get("token")
 
             if token:
                 self.jwt_token = token
-                self._log_result('test_authentication', True, {
-                    'message': 'Successfully obtained JWT token',
-                    'token_preview': f"{token[:20]}..." if len(token) > 20 else token,
-                })
+                self._log_result(
+                    "test_authentication",
+                    True,
+                    {
+                        "message": "Successfully obtained JWT token",
+                        "token_preview": f"{token[:20]}..." if len(token) > 20 else token,
+                    },
+                )
                 return True
 
-        self._log_result('test_authentication', False, {
-            'error': error or 'Failed to obtain JWT token',
-            'status_code': status_code,
-        })
+        self._log_result(
+            "test_authentication",
+            False,
+            {
+                "error": error or "Failed to obtain JWT token",
+                "status_code": status_code,
+            },
+        )
         return False
 
     def test_eligibility_check(
@@ -258,42 +270,54 @@ class SHAIntegrationTester:
         if not self.jwt_token:
             self._log("No JWT token - attempting authentication first")
             if not self.test_authentication():
-                self._log_result('test_eligibility_check', False, {
-                    'error': 'Authentication required before eligibility check',
-                })
+                self._log_result(
+                    "test_eligibility_check",
+                    False,
+                    {
+                        "error": "Authentication required before eligibility check",
+                    },
+                )
                 return False
 
         # Build request parameters per official spec
         if sha_number:
-            params = {'doc_type': 'sha_number', 'doc_value': sha_number}
+            params = {"doc_type": "sha_number", "doc_value": sha_number}
         elif national_id:
-            params = {'doc_type': 'national_id', 'doc_value': national_id}
+            params = {"doc_type": "national_id", "doc_value": national_id}
         else:
             # Use test data
-            params = {'doc_type': 'national_id', 'doc_value': '12345678'}
+            params = {"doc_type": "national_id", "doc_value": "12345678"}
 
         status_code, data, error = self._make_request(
-            'GET',
-            '/v2/eligibility',
+            "GET",
+            "/v2/eligibility",
             params=params,
         )
 
         if status_code == 200 and data:
             # Handle wrapped response format
-            result_data = data.get('Data', data)
+            result_data = data.get("Data", data)
 
-            self._log_result('test_eligibility_check', True, {
-                'params': params,
-                'eligible': result_data.get('eligible'),
-                'reason': result_data.get('reason'),
-                'coverage_end': result_data.get('coverageEndDate'),
-            })
+            self._log_result(
+                "test_eligibility_check",
+                True,
+                {
+                    "params": params,
+                    "eligible": result_data.get("eligible"),
+                    "reason": result_data.get("reason"),
+                    "coverage_end": result_data.get("coverageEndDate"),
+                },
+            )
             return True
 
-        self._log_result('test_eligibility_check', False, {
-            'error': error or f'API returned {status_code}',
-            'params': params,
-        })
+        self._log_result(
+            "test_eligibility_check",
+            False,
+            {
+                "error": error or f"API returned {status_code}",
+                "params": params,
+            },
+        )
         return False
 
     def test_terminology_lookup(self) -> bool:
@@ -308,30 +332,40 @@ class SHAIntegrationTester:
 
         if not self.jwt_token:
             if not self.test_authentication():
-                self._log_result('test_terminology_lookup', False, {
-                    'error': 'Authentication required',
-                })
+                self._log_result(
+                    "test_terminology_lookup",
+                    False,
+                    {
+                        "error": "Authentication required",
+                    },
+                )
                 return False
 
         # Test ICD-11 lookup
         endpoints = [
-            ('/terminology/v1/icd11', {'code': 'BA00'}),
-            ('/terminology/v1/sha-intervention', {'code': 'SHA'}),
-            ('/terminology/v1/loinc', {'code': '2339-0'}),
+            ("/terminology/v1/icd11", {"code": "BA00"}),
+            ("/terminology/v1/sha-intervention", {"code": "SHA"}),
+            ("/terminology/v1/loinc", {"code": "2339-0"}),
         ]
 
         any_success = False
         for endpoint, params in endpoints:
-            status_code, data, error = self._make_request('GET', endpoint, params=params)
+            status_code, data, error = self._make_request("GET", endpoint, params=params)
             if status_code == 200:
                 any_success = True
                 self._log(f"  ✅ {endpoint} - Success")
             else:
                 self._log(f"  ❌ {endpoint} - Failed ({status_code})")
 
-        self._log_result('test_terminology_lookup', any_success, {
-            'message': 'At least one terminology endpoint accessible' if any_success else 'No terminology endpoints accessible',
-        })
+        self._log_result(
+            "test_terminology_lookup",
+            any_success,
+            {
+                "message": "At least one terminology endpoint accessible"
+                if any_success
+                else "No terminology endpoints accessible",
+            },
+        )
         return any_success
 
     def test_claim_submission(self, sha_number: str) -> str | None:
@@ -347,97 +381,138 @@ class SHAIntegrationTester:
 
         if not self.jwt_token:
             if not self.test_authentication():
-                self._log_result('test_claim_submission', False, {
-                    'error': 'Authentication required',
-                })
+                self._log_result(
+                    "test_claim_submission",
+                    False,
+                    {
+                        "error": "Authentication required",
+                    },
+                )
                 return None
 
         # Build FHIR Bundle claim data (SHA-compliant message bundle)
         import uuid
+
         bundle_guid = str(uuid.uuid4())
-        fhir_base_url = 'https://qa-mis.apeiro-digital.com'
-        facility_code = os.getenv('FACILITY_MFL_CODE', 'TEST-001')
+        fhir_base_url = "https://qa-mis.apeiro-digital.com"
+        facility_code = os.getenv("FACILITY_MFL_CODE", "TEST-001")
 
         bundle = {
-            'id': bundle_guid,
-            'meta': {
-                'profile': [f'{fhir_base_url}/fhir/StructureDefinition/bundle|1.0.0']
-            },
-            'resourceType': 'Bundle',
-            'type': 'message',
-            'timestamp': datetime.now().isoformat(),
-            'entry': [
+            "id": bundle_guid,
+            "meta": {"profile": [f"{fhir_base_url}/fhir/StructureDefinition/bundle|1.0.0"]},
+            "resourceType": "Bundle",
+            "type": "message",
+            "timestamp": datetime.now().isoformat(),
+            "entry": [
                 {
-                    'fullUrl': f'{fhir_base_url}/fhir/Organization/{facility_code}',
-                    'resource': {
-                        'resourceType': 'Organization',
-                        'id': facility_code,
-                        'name': 'Test Facility',
-                        'active': 'True',
-                    }
+                    "fullUrl": f"{fhir_base_url}/fhir/Organization/{facility_code}",
+                    "resource": {
+                        "resourceType": "Organization",
+                        "id": facility_code,
+                        "name": "Test Facility",
+                        "active": "True",
+                    },
                 },
                 {
-                    'fullUrl': f'{fhir_base_url}/fhir/Patient/{sha_number}',
-                    'resource': {
-                        'resourceType': 'Patient',
-                        'id': sha_number,
-                        'identifier': [{
-                            'use': 'official',
-                            'system': f'{fhir_base_url}/fhir/identifier/shanumber',
-                            'value': sha_number
-                        }],
-                    }
-                },
-                {
-                    'fullUrl': f'{fhir_base_url}/fhir/Claim/{bundle_guid}',
-                    'resource': {
-                        'resourceType': 'Claim',
-                        'id': bundle_guid,
-                        'status': 'active',
-                        'type': {'coding': [{'system': 'http://terminology.hl7.org/CodeSystem/claim-type', 'code': 'institutional'}]},
-                        'use': 'claim',
-                        'patient': {
-                            'reference': f'{fhir_base_url}/fhir/Patient/{sha_number}',
-                            'identifier': {'value': sha_number, 'system': f'{fhir_base_url}/fhir/identifier/shanumber'}
-                        },
-                        'created': datetime.now().strftime('%Y-%m-%d'),
-                        'provider': {
-                            'reference': f'https://fr.kenya-hie.health/api/v4/Organization/{facility_code}',
-                            'identifier': {'value': facility_code}
-                        },
-                        'priority': {'coding': [{'system': 'http://terminology.hl7.org/CodeSystem/processpriority', 'code': 'normal'}]},
-                        'diagnosis': [{
-                            'sequence': 1,
-                            'diagnosisCodeableConcept': {
-                                'coding': [{'system': f'{fhir_base_url}/fhir/terminology/CodeSystem/icd-11', 'code': 'BA00'}]
+                    "fullUrl": f"{fhir_base_url}/fhir/Patient/{sha_number}",
+                    "resource": {
+                        "resourceType": "Patient",
+                        "id": sha_number,
+                        "identifier": [
+                            {
+                                "use": "official",
+                                "system": f"{fhir_base_url}/fhir/identifier/shanumber",
+                                "value": sha_number,
                             }
-                        }],
-                        'total': {'value': 500.00, 'currency': 'KES'},
-                    }
-                }
+                        ],
+                    },
+                },
+                {
+                    "fullUrl": f"{fhir_base_url}/fhir/Claim/{bundle_guid}",
+                    "resource": {
+                        "resourceType": "Claim",
+                        "id": bundle_guid,
+                        "status": "active",
+                        "type": {
+                            "coding": [
+                                {
+                                    "system": "http://terminology.hl7.org/CodeSystem/claim-type",
+                                    "code": "institutional",
+                                }
+                            ]
+                        },
+                        "use": "claim",
+                        "patient": {
+                            "reference": f"{fhir_base_url}/fhir/Patient/{sha_number}",
+                            "identifier": {
+                                "value": sha_number,
+                                "system": f"{fhir_base_url}/fhir/identifier/shanumber",
+                            },
+                        },
+                        "created": datetime.now().strftime("%Y-%m-%d"),
+                        "provider": {
+                            "reference": f"https://fr.kenya-hie.health/api/v4/Organization/{facility_code}",
+                            "identifier": {"value": facility_code},
+                        },
+                        "priority": {
+                            "coding": [
+                                {
+                                    "system": "http://terminology.hl7.org/CodeSystem/processpriority",
+                                    "code": "normal",
+                                }
+                            ]
+                        },
+                        "diagnosis": [
+                            {
+                                "sequence": 1,
+                                "diagnosisCodeableConcept": {
+                                    "coding": [
+                                        {
+                                            "system": f"{fhir_base_url}/fhir/terminology/CodeSystem/icd-11",
+                                            "code": "BA00",
+                                        }
+                                    ]
+                                },
+                            }
+                        ],
+                        "total": {"value": 500.00, "currency": "KES"},
+                    },
+                },
             ],
-            '_test': True,  # Mark as test claim
+            "_test": True,  # Mark as test claim
         }
 
         status_code, data, error = self._make_request(
-            'POST',
-            '/v1/shr-med/bundle',
+            "POST",
+            "/v1/shr-med/bundle",
             data=bundle,
         )
 
         if status_code in (200, 201, 202) and data:
-            result_data = data.get('Data', data)
-            claim_ref = result_data.get('claim_reference') or result_data.get('claimReference') or result_data.get('id')
+            result_data = data.get("Data", data)
+            claim_ref = (
+                result_data.get("claim_reference")
+                or result_data.get("claimReference")
+                or result_data.get("id")
+            )
 
-            self._log_result('test_claim_submission', True, {
-                'claim_reference': claim_ref,
-                'status': result_data.get('status'),
-            })
+            self._log_result(
+                "test_claim_submission",
+                True,
+                {
+                    "claim_reference": claim_ref,
+                    "status": result_data.get("status"),
+                },
+            )
             return claim_ref
 
-        self._log_result('test_claim_submission', False, {
-            'error': error or f'Submission failed with status {status_code}',
-        })
+        self._log_result(
+            "test_claim_submission",
+            False,
+            {
+                "error": error or f"Submission failed with status {status_code}",
+            },
+        )
         return None
 
     def test_claim_status(self, claim_ref: str) -> bool:
@@ -452,30 +527,42 @@ class SHAIntegrationTester:
 
         if not self.jwt_token:
             if not self.test_authentication():
-                self._log_result('test_claim_status', False, {
-                    'error': 'Authentication required',
-                })
+                self._log_result(
+                    "test_claim_status",
+                    False,
+                    {
+                        "error": "Authentication required",
+                    },
+                )
                 return False
 
         status_code, data, error = self._make_request(
-            'GET',
-            '/v1/shr-med/claim-status',
-            params={'claim_id': claim_ref},
+            "GET",
+            "/v1/shr-med/claim-status",
+            params={"claim_id": claim_ref},
         )
 
         if status_code == 200 and data:
-            result_data = data.get('Data', data)
+            result_data = data.get("Data", data)
 
-            self._log_result('test_claim_status', True, {
-                'claim_reference': claim_ref,
-                'claim_status': result_data.get('status'),
-            })
+            self._log_result(
+                "test_claim_status",
+                True,
+                {
+                    "claim_reference": claim_ref,
+                    "claim_status": result_data.get("status"),
+                },
+            )
             return True
 
-        self._log_result('test_claim_status', False, {
-            'error': error or f'Status check failed with {status_code}',
-            'claim_ref': claim_ref,
-        })
+        self._log_result(
+            "test_claim_status",
+            False,
+            {
+                "error": error or f"Status check failed with {status_code}",
+                "claim_ref": claim_ref,
+            },
+        )
         return False
 
     # =========================================================================
@@ -501,14 +588,16 @@ class SHAIntegrationTester:
         self._log("SHA Integration Test Suite (Official Endpoints)")
         self._log("=" * 60)
         self._log(f"API Base URL: {self.credentials.api_base_url}")
-        self._log(f"Consumer Key: {'*' * 10 + self.credentials.consumer_key[-4:] if len(self.credentials.consumer_key) > 4 else '(not set)'}")
+        self._log(
+            f"Consumer Key: {'*' * 10 + self.credentials.consumer_key[-4:] if len(self.credentials.consumer_key) > 4 else '(not set)'}"
+        )
         self._log(f"Username: {self.credentials.username or '(not set)'}")
         self._log("")
 
         # Test 1: Authentication (required first)
         auth_ok = self.test_authentication()
         if not auth_ok:
-            self._log("Cannot proceed without authentication", 'ERROR')
+            self._log("Cannot proceed without authentication", "ERROR")
             return self._generate_summary()
 
         # Test 2: Eligibility
@@ -539,15 +628,15 @@ class SHAIntegrationTester:
         self._log("Test Summary")
         self._log("=" * 60)
 
-        passed = sum(1 for r in self.results if r['success'])
+        passed = sum(1 for r in self.results if r["success"])
         failed = len(self.results) - passed
 
         summary = {
-            'total': len(self.results),
-            'passed': passed,
-            'failed': failed,
-            'pass_rate': f"{(passed / len(self.results) * 100):.1f}%" if self.results else "N/A",
-            'results': self.results,
+            "total": len(self.results),
+            "passed": passed,
+            "failed": failed,
+            "pass_rate": f"{(passed / len(self.results) * 100):.1f}%" if self.results else "N/A",
+            "results": self.results,
         }
 
         self._log(f"Total: {summary['total']}")
@@ -560,7 +649,7 @@ class SHAIntegrationTester:
 
 def main():
     parser = argparse.ArgumentParser(
-        description='Test SHA API integration with real credentials (Official Endpoints)',
+        description="Test SHA API integration with real credentials (Official Endpoints)",
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog="""
 Examples:
@@ -584,35 +673,20 @@ Environment Variables (required):
 
 Optional:
     SHA_CLIENT_SECRET - Client secret (if required)
-        """
+        """,
     )
 
+    parser.add_argument("--sha-number", help="SHA membership number for testing")
+    parser.add_argument("--national-id", help="National ID for eligibility testing")
     parser.add_argument(
-        '--sha-number',
-        help='SHA membership number for testing'
+        "--test",
+        choices=["auth", "eligibility", "terminology", "claims", "all"],
+        default="all",
+        help="Specific test to run",
     )
-    parser.add_argument(
-        '--national-id',
-        help='National ID for eligibility testing'
-    )
-    parser.add_argument(
-        '--test',
-        choices=['auth', 'eligibility', 'terminology', 'claims', 'all'],
-        default='all',
-        help='Specific test to run'
-    )
-    parser.add_argument(
-        '--api-url',
-        help='Override SHA API base URL'
-    )
-    parser.add_argument(
-        '--consumer-key',
-        help='Override SHA consumer key'
-    )
-    parser.add_argument(
-        '--output',
-        help='Save results to JSON file'
-    )
+    parser.add_argument("--api-url", help="Override SHA API base URL")
+    parser.add_argument("--consumer-key", help="Override SHA consumer key")
+    parser.add_argument("--output", help="Save results to JSON file")
 
     args = parser.parse_args()
 
@@ -644,24 +718,24 @@ Optional:
     tester = SHAIntegrationTester(credentials)
 
     # Run tests
-    if args.test == 'all':
+    if args.test == "all":
         summary = tester.run_all_tests(
             sha_number=args.sha_number,
             national_id=args.national_id,
         )
-    elif args.test == 'auth':
+    elif args.test == "auth":
         tester.test_authentication()
         summary = tester._generate_summary()
-    elif args.test == 'eligibility':
+    elif args.test == "eligibility":
         tester.test_eligibility_check(
             sha_number=args.sha_number,
             national_id=args.national_id,
         )
         summary = tester._generate_summary()
-    elif args.test == 'terminology':
+    elif args.test == "terminology":
         tester.test_terminology_lookup()
         summary = tester._generate_summary()
-    elif args.test == 'claims':
+    elif args.test == "claims":
         if not args.sha_number:
             print("❌ Error: --sha-number required for claims test")
             sys.exit(1)
@@ -672,13 +746,13 @@ Optional:
 
     # Save results if requested
     if args.output:
-        with open(args.output, 'w') as f:
+        with open(args.output, "w") as f:
             json.dump(summary, f, indent=2)
         print(f"\nResults saved to: {args.output}")
 
     # Exit with appropriate code
-    sys.exit(0 if summary['failed'] == 0 else 1)
+    sys.exit(0 if summary["failed"] == 0 else 1)
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     main()

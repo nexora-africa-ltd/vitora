@@ -22,6 +22,7 @@ import pytest  # type: ignore
 # Try to import the service - may fail if not fully implemented
 try:
     from hmis.apps.billing.services.sha_claims import SHAClaimsService
+
     HAS_SHA_CLAIMS_SERVICE = True
 except ImportError:
     HAS_SHA_CLAIMS_SERVICE = False
@@ -41,7 +42,7 @@ class TestFHIRBundleRootStructure:
         service = SHAClaimsService()
         bundle = service.package_claim(sha_claim_with_items)
 
-        assert bundle.get('type') == 'message', (
+        assert bundle.get("type") == "message", (
             "SHA requires bundle type to be 'message', not 'batch'. "
             "See docs/sha-guides/claims.md"
         )
@@ -56,9 +57,7 @@ class TestFHIRBundleRootStructure:
         service = SHAClaimsService()
         bundle = service.package_claim(sha_claim_with_items)
 
-        assert bundle.get('resourceType') == 'Bundle', (
-            "Bundle must have resourceType 'Bundle'"
-        )
+        assert bundle.get("resourceType") == "Bundle", "Bundle must have resourceType 'Bundle'"
 
     @pytest.mark.skipif(not HAS_SHA_CLAIMS_SERVICE, reason="SHAClaimsService not available")
     def test_bundle_has_unique_id(self, sha_claim_with_items):
@@ -71,11 +70,11 @@ class TestFHIRBundleRootStructure:
         service = SHAClaimsService()
         bundle = service.package_claim(sha_claim_with_items)
 
-        assert 'id' in bundle, "Bundle must have an 'id' field"
+        assert "id" in bundle, "Bundle must have an 'id' field"
 
         # Validate it's a valid UUID
         try:
-            uuid.UUID(bundle['id'])
+            uuid.UUID(bundle["id"])
         except ValueError:
             pytest.fail("Bundle id must be a valid GUID/UUID")
 
@@ -90,18 +89,18 @@ class TestFHIRBundleRootStructure:
         service = SHAClaimsService()
         bundle = service.package_claim(sha_claim_with_items)
 
-        assert 'meta' in bundle, "Bundle must have 'meta' section"
-        assert 'profile' in bundle['meta'], "Bundle.meta must have 'profile'"
+        assert "meta" in bundle, "Bundle must have 'meta' section"
+        assert "profile" in bundle["meta"], "Bundle.meta must have 'profile'"
 
-        profiles = bundle['meta']['profile']
+        profiles = bundle["meta"]["profile"]
         assert isinstance(profiles, list), "meta.profile must be a list"
         assert len(profiles) > 0, "meta.profile must not be empty"
 
         # Check profile matches SHA pattern
         profile = profiles[0]
-        assert 'StructureDefinition/bundle' in profile, (
-            "Profile must reference bundle StructureDefinition"
-        )
+        assert (
+            "StructureDefinition/bundle" in profile
+        ), "Profile must reference bundle StructureDefinition"
 
     @pytest.mark.skipif(not HAS_SHA_CLAIMS_SERVICE, reason="SHAClaimsService not available")
     def test_bundle_has_valid_timestamp(self, sha_claim_with_items):
@@ -114,13 +113,13 @@ class TestFHIRBundleRootStructure:
         service = SHAClaimsService()
         bundle = service.package_claim(sha_claim_with_items)
 
-        assert 'timestamp' in bundle, "Bundle must have 'timestamp' field"
+        assert "timestamp" in bundle, "Bundle must have 'timestamp' field"
 
         # Validate ISO format
-        timestamp = bundle['timestamp']
+        timestamp = bundle["timestamp"]
         try:
             # Should parse as ISO format
-            datetime.fromisoformat(timestamp.replace('Z', '+00:00'))
+            datetime.fromisoformat(timestamp.replace("Z", "+00:00"))
         except ValueError:
             pytest.fail(f"Timestamp '{timestamp}' is not valid ISO format")
 
@@ -135,11 +134,11 @@ class TestFHIRBundleRootStructure:
         service = SHAClaimsService()
         bundle = service.package_claim(sha_claim_with_items)
 
-        assert 'entry' in bundle, "Bundle must have 'entry' array"
-        assert isinstance(bundle['entry'], list), "entry must be a list"
-        assert len(bundle['entry']) >= 4, (
-            "Bundle must have at least 4 resources: Organization, Coverage, Patient, Claim"
-        )
+        assert "entry" in bundle, "Bundle must have 'entry' array"
+        assert isinstance(bundle["entry"], list), "entry must be a list"
+        assert (
+            len(bundle["entry"]) >= 4
+        ), "Bundle must have at least 4 resources: Organization, Coverage, Patient, Claim"
 
 
 class TestFHIRBundleRequiredResources:
@@ -157,11 +156,10 @@ class TestFHIRBundleRequiredResources:
         bundle = service.package_claim(sha_claim_with_items)
 
         resource_types = [
-            entry.get('resource', {}).get('resourceType')
-            for entry in bundle.get('entry', [])
+            entry.get("resource", {}).get("resourceType") for entry in bundle.get("entry", [])
         ]
 
-        assert 'Organization' in resource_types, (
+        assert "Organization" in resource_types, (
             "Bundle must contain an Organization resource. "
             "See docs/sha-guides/claims.md - Organization Resource section"
         )
@@ -178,11 +176,10 @@ class TestFHIRBundleRequiredResources:
         bundle = service.package_claim(sha_claim_with_items)
 
         resource_types = [
-            entry.get('resource', {}).get('resourceType')
-            for entry in bundle.get('entry', [])
+            entry.get("resource", {}).get("resourceType") for entry in bundle.get("entry", [])
         ]
 
-        assert 'Coverage' in resource_types, (
+        assert "Coverage" in resource_types, (
             "Bundle must contain a Coverage resource. "
             "See docs/sha-guides/claims.md - Coverage Resource section"
         )
@@ -199,11 +196,10 @@ class TestFHIRBundleRequiredResources:
         bundle = service.package_claim(sha_claim_with_items)
 
         resource_types = [
-            entry.get('resource', {}).get('resourceType')
-            for entry in bundle.get('entry', [])
+            entry.get("resource", {}).get("resourceType") for entry in bundle.get("entry", [])
         ]
 
-        assert 'Patient' in resource_types, (
+        assert "Patient" in resource_types, (
             "Bundle must contain a Patient resource. "
             "See docs/sha-guides/claims.md - Patient Resource section"
         )
@@ -220,11 +216,10 @@ class TestFHIRBundleRequiredResources:
         bundle = service.package_claim(sha_claim_with_items)
 
         resource_types = [
-            entry.get('resource', {}).get('resourceType')
-            for entry in bundle.get('entry', [])
+            entry.get("resource", {}).get("resourceType") for entry in bundle.get("entry", [])
         ]
 
-        assert 'Claim' in resource_types, (
+        assert "Claim" in resource_types, (
             "Bundle must contain a Claim resource. "
             "See docs/sha-guides/claims.md - Claim Resource section"
         )
@@ -244,8 +239,8 @@ class TestFHIREntryFullUrls:
         service = SHAClaimsService()
         bundle = service.package_claim(sha_claim_with_items)
 
-        for i, entry in enumerate(bundle.get('entry', [])):
-            assert 'fullUrl' in entry, (
+        for i, entry in enumerate(bundle.get("entry", [])):
+            assert "fullUrl" in entry, (
                 f"Entry {i} missing fullUrl. All entries must have fullUrl. "
                 "See docs/sha-guides/claims-submission.md - Integration Checklist #8"
             )
@@ -264,13 +259,13 @@ class TestFHIREntryFullUrls:
         bundle = service.package_claim(sha_claim_with_items)
 
         valid_bases = [
-            'https://qa-mis.apeiro-digital.com',  # UAT
-            'https://mis.apeiro-digital.com',      # Prod alternate
-            'https://fhir.sha.go.ke',              # Prod official
+            "https://qa-mis.apeiro-digital.com",  # UAT
+            "https://mis.apeiro-digital.com",  # Prod alternate
+            "https://fhir.sha.go.ke",  # Prod official
         ]
 
-        for entry in bundle.get('entry', []):
-            full_url = entry.get('fullUrl', '')
+        for entry in bundle.get("entry", []):
+            full_url = entry.get("fullUrl", "")
             assert any(full_url.startswith(base) for base in valid_bases), (
                 f"fullUrl '{full_url}' does not use a valid SHA base URL. "
                 f"Valid bases: {valid_bases}. "
@@ -291,23 +286,21 @@ class TestFHIREntryFullUrls:
 
         # Collect all fullUrls
         full_urls = {
-            entry.get('fullUrl')
-            for entry in bundle.get('entry', [])
-            if entry.get('fullUrl')
+            entry.get("fullUrl") for entry in bundle.get("entry", []) if entry.get("fullUrl")
         }
 
         # Check references (basic check - not exhaustive)
-        for entry in bundle.get('entry', []):
-            resource = entry.get('resource', {})
+        for entry in bundle.get("entry", []):
+            resource = entry.get("resource", {})
 
             # Check common reference fields
-            for ref_field in ['beneficiary', 'subject', 'patient', 'provider', 'insurer']:
+            for ref_field in ["beneficiary", "subject", "patient", "provider", "insurer"]:
                 if ref_field in resource:
                     ref = resource[ref_field]
-                    if isinstance(ref, dict) and 'reference' in ref:
-                        ref_url = ref['reference']
+                    if isinstance(ref, dict) and "reference" in ref:
+                        ref_url = ref["reference"]
                         # Full URLs should be in our set
-                        if ref_url.startswith('http'):
+                        if ref_url.startswith("http"):
                             assert ref_url in full_urls, (
                                 f"Reference '{ref_url}' not found in bundle fullUrls. "
                                 "See docs/sha-guides/claims-submission.md - Integration Checklist #11"
@@ -328,13 +321,13 @@ class TestFHIROrganizationResource:
         service = SHAClaimsService()
         bundle = service.package_claim(sha_claim_with_items)
 
-        org = self._get_resource_by_type(bundle, 'Organization')
+        org = self._get_resource_by_type(bundle, "Organization")
         assert org is not None, "Organization resource not found"
 
-        assert 'id' in org, "Organization must have 'id' field"
+        assert "id" in org, "Organization must have 'id' field"
         # FID format: FID-XX-XXXXXX-X
         # We just check it starts with FID if configured
-        org_id = org['id']
+        org_id = org["id"]
         assert org_id, "Organization id must not be empty"
 
     @pytest.mark.skipif(not HAS_SHA_CLAIMS_SERVICE, reason="SHAClaimsService not available")
@@ -348,11 +341,11 @@ class TestFHIROrganizationResource:
         service = SHAClaimsService()
         bundle = service.package_claim(sha_claim_with_items)
 
-        org = self._get_resource_by_type(bundle, 'Organization')
+        org = self._get_resource_by_type(bundle, "Organization")
         assert org is not None, "Organization resource not found"
 
-        assert 'name' in org, "Organization must have 'name' field"
-        assert org['name'], "Organization name must not be empty"
+        assert "name" in org, "Organization must have 'name' field"
+        assert org["name"], "Organization name must not be empty"
 
     @pytest.mark.skipif(not HAS_SHA_CLAIMS_SERVICE, reason="SHAClaimsService not available")
     def test_organization_has_facility_level_extension(self, sha_claim_with_items):
@@ -365,15 +358,15 @@ class TestFHIROrganizationResource:
         service = SHAClaimsService()
         bundle = service.package_claim(sha_claim_with_items)
 
-        org = self._get_resource_by_type(bundle, 'Organization')
+        org = self._get_resource_by_type(bundle, "Organization")
         assert org is not None, "Organization resource not found"
 
-        assert 'extension' in org, "Organization must have 'extension' array"
+        assert "extension" in org, "Organization must have 'extension' array"
 
         # Look for facility-level extension
         facility_level_ext = None
-        for ext in org.get('extension', []):
-            if 'facility-level' in ext.get('url', ''):
+        for ext in org.get("extension", []):
+            if "facility-level" in ext.get("url", ""):
                 facility_level_ext = ext
                 break
 
@@ -393,29 +386,28 @@ class TestFHIROrganizationResource:
         service = SHAClaimsService()
         bundle = service.package_claim(sha_claim_with_items)
 
-        org = self._get_resource_by_type(bundle, 'Organization')
+        org = self._get_resource_by_type(bundle, "Organization")
         assert org is not None, "Organization resource not found"
 
-        assert 'type' in org, "Organization must have 'type' field"
+        assert "type" in org, "Organization must have 'type' field"
 
         # Find the prov code
         found_prov = False
-        for type_item in org.get('type', []):
-            for coding in type_item.get('coding', []):
-                if coding.get('code') == 'prov':
+        for type_item in org.get("type", []):
+            for coding in type_item.get("coding", []):
+                if coding.get("code") == "prov":
                     found_prov = True
                     break
 
         assert found_prov, (
-            "Organization type must include code 'prov'. "
-            "See docs/sha-guides/claims.md"
+            "Organization type must include code 'prov'. " "See docs/sha-guides/claims.md"
         )
 
     def _get_resource_by_type(self, bundle: dict, resource_type: str) -> dict | None:
         """Helper to extract a resource by type from bundle."""
-        for entry in bundle.get('entry', []):
-            if entry.get('resource', {}).get('resourceType') == resource_type:
-                return entry['resource']
+        for entry in bundle.get("entry", []):
+            if entry.get("resource", {}).get("resourceType") == resource_type:
+                return entry["resource"]
         return None
 
 
@@ -433,34 +425,32 @@ class TestFHIRCoverageResource:
         service = SHAClaimsService()
         bundle = service.package_claim(sha_claim_with_items)
 
-        coverage = self._get_resource_by_type(bundle, 'Coverage')
+        coverage = self._get_resource_by_type(bundle, "Coverage")
         assert coverage is not None, "Coverage resource not found"
 
         # Find scheme category code extension
         scheme_code_ext = None
         scheme_name_ext = None
 
-        for ext in coverage.get('extension', []):
-            url = ext.get('url', '')
-            if 'schemeCategoryCode' in url:
+        for ext in coverage.get("extension", []):
+            url = ext.get("url", "")
+            if "schemeCategoryCode" in url:
                 scheme_code_ext = ext
-            elif 'schemeCategoryName' in url:
+            elif "schemeCategoryName" in url:
                 scheme_name_ext = ext
 
         assert scheme_code_ext is not None, (
             "Coverage must have schemeCategoryCode extension. "
             "See docs/sha-guides/claims.md - Coverage Resource section"
         )
-        assert scheme_code_ext.get('valueString') == 'CAT-SHA-001', (
-            "schemeCategoryCode must be 'CAT-SHA-001'"
-        )
+        assert (
+            scheme_code_ext.get("valueString") == "CAT-SHA-001"
+        ), "schemeCategoryCode must be 'CAT-SHA-001'"
 
-        assert scheme_name_ext is not None, (
-            "Coverage must have schemeCategoryName extension"
-        )
-        assert scheme_name_ext.get('valueString') == 'SOCIAL HEALTH AUTHORITY', (
-            "schemeCategoryName must be 'SOCIAL HEALTH AUTHORITY'"
-        )
+        assert scheme_name_ext is not None, "Coverage must have schemeCategoryName extension"
+        assert (
+            scheme_name_ext.get("valueString") == "SOCIAL HEALTH AUTHORITY"
+        ), "schemeCategoryName must be 'SOCIAL HEALTH AUTHORITY'"
 
     @pytest.mark.skipif(not HAS_SHA_CLAIMS_SERVICE, reason="SHAClaimsService not available")
     def test_coverage_has_beneficiary_reference(self, sha_claim_with_items):
@@ -473,15 +463,15 @@ class TestFHIRCoverageResource:
         service = SHAClaimsService()
         bundle = service.package_claim(sha_claim_with_items)
 
-        coverage = self._get_resource_by_type(bundle, 'Coverage')
+        coverage = self._get_resource_by_type(bundle, "Coverage")
         assert coverage is not None, "Coverage resource not found"
 
-        assert 'beneficiary' in coverage, "Coverage must have 'beneficiary' field"
+        assert "beneficiary" in coverage, "Coverage must have 'beneficiary' field"
 
-        beneficiary = coverage['beneficiary']
-        assert 'reference' in beneficiary or 'type' in beneficiary, (
-            "Coverage.beneficiary must have reference or type"
-        )
+        beneficiary = coverage["beneficiary"]
+        assert (
+            "reference" in beneficiary or "type" in beneficiary
+        ), "Coverage.beneficiary must have reference or type"
 
     @pytest.mark.skipif(not HAS_SHA_CLAIMS_SERVICE, reason="SHAClaimsService not available")
     def test_coverage_status_is_active(self, sha_claim_with_items):
@@ -494,12 +484,10 @@ class TestFHIRCoverageResource:
         service = SHAClaimsService()
         bundle = service.package_claim(sha_claim_with_items)
 
-        coverage = self._get_resource_by_type(bundle, 'Coverage')
+        coverage = self._get_resource_by_type(bundle, "Coverage")
         assert coverage is not None, "Coverage resource not found"
 
-        assert coverage.get('status') == 'active', (
-            "Coverage status must be 'active'"
-        )
+        assert coverage.get("status") == "active", "Coverage status must be 'active'"
 
     @pytest.mark.skipif(not HAS_SHA_CLAIMS_SERVICE, reason="SHAClaimsService not available")
     def test_coverage_identifier_includes_cr_number(self, sha_claim_with_items):
@@ -512,23 +500,22 @@ class TestFHIRCoverageResource:
         service = SHAClaimsService()
         bundle = service.package_claim(sha_claim_with_items)
 
-        coverage = self._get_resource_by_type(bundle, 'Coverage')
+        coverage = self._get_resource_by_type(bundle, "Coverage")
         assert coverage is not None, "Coverage resource not found"
 
-        assert 'identifier' in coverage, "Coverage must have 'identifier' array"
+        assert "identifier" in coverage, "Coverage must have 'identifier' array"
 
         # Check identifier contains sha-coverage suffix
-        identifiers = coverage.get('identifier', [])
+        identifiers = coverage.get("identifier", [])
         assert any(
-            'sha-coverage' in str(ident.get('value', ''))
-            for ident in identifiers
+            "sha-coverage" in str(ident.get("value", "")) for ident in identifiers
         ), "Coverage identifier should include '-sha-coverage' suffix"
 
     def _get_resource_by_type(self, bundle: dict, resource_type: str) -> dict | None:
         """Helper to extract a resource by type from bundle."""
-        for entry in bundle.get('entry', []):
-            if entry.get('resource', {}).get('resourceType') == resource_type:
-                return entry['resource']
+        for entry in bundle.get("entry", []):
+            if entry.get("resource", {}).get("resourceType") == resource_type:
+                return entry["resource"]
         return None
 
 
@@ -548,9 +535,9 @@ class TestFHIREncounterResource:
         expected_system = "http://terminology.hl7.org/CodeSystem/v3-ActCode"
 
         # Just verify the constant is known
-        assert expected_system.startswith("http://terminology.hl7.org"), (
-            "Encounter class system must use HL7 terminology"
-        )
+        assert expected_system.startswith(
+            "http://terminology.hl7.org"
+        ), "Encounter class system must use HL7 terminology"
 
     def test_outpatient_encounter_code(self):
         """
@@ -560,5 +547,5 @@ class TestFHIREncounterResource:
         Quote: 'code: "OP", display: "outpatient encounter"'
         """
         # Verify code constants
-        valid_codes = ['OP', 'IMP', 'EMER']  # Outpatient, Inpatient, Emergency
-        assert 'OP' in valid_codes, "OP (outpatient) must be a valid encounter code"
+        valid_codes = ["OP", "IMP", "EMER"]  # Outpatient, Inpatient, Emergency
+        assert "OP" in valid_codes, "OP (outpatient) must be a valid encounter code"

@@ -625,6 +625,7 @@ class Encounter(models.Model):
         if self.triage_status in ("COMPLETED", "BYPASSED", "NOT_APPLICABLE"):
             return True
         return False
+
     def has_critical_vitals(self) -> bool:
         """
         Check if any vital signs are in critical ranges.

@@ -140,7 +140,15 @@ class TestAdmissionCreation:
     """Tests for Admission creation."""
 
     def test_create_admission_with_all_details(
-        self, sample_patient, opd_encounter, ipd_encounter, sample_ward, available_bed, test_user, doctor_user, admission_recommendation
+        self,
+        sample_patient,
+        opd_encounter,
+        ipd_encounter,
+        sample_ward,
+        available_bed,
+        test_user,
+        doctor_user,
+        admission_recommendation,
     ):
         """Should create admission with all required details."""
         admission = Admission.objects.create(
@@ -174,7 +182,9 @@ class TestAdmissionCreation:
         assert admission.payer_type == "SHA"
         assert admission.insurance_details["policy_number"] == "SHA-12345"
 
-    def test_admission_number_auto_generation(self, sample_patient, ipd_encounter, sample_ward, available_bed, test_user):
+    def test_admission_number_auto_generation(
+        self, sample_patient, ipd_encounter, sample_ward, available_bed, test_user
+    ):
         """Should auto-generate admission number in format ADM-YYYYMMDD-XXXX."""
         admission = Admission.objects.create(
             patient=sample_patient,
@@ -247,7 +257,9 @@ class TestAdmissionCreation:
 
         assert admission1.admission_number != admission2.admission_number
 
-    def test_bed_status_update_on_admission(self, sample_patient, ipd_encounter, sample_ward, available_bed, test_user):
+    def test_bed_status_update_on_admission(
+        self, sample_patient, ipd_encounter, sample_ward, available_bed, test_user
+    ):
         """Should update bed status to OCCUPIED on admission."""
         assert available_bed.status == "AVAILABLE"
 
@@ -266,7 +278,9 @@ class TestAdmissionCreation:
         available_bed.refresh_from_db()
         assert available_bed.status == "OCCUPIED"
 
-    def test_opd_encounter_linkage_preserved(self, sample_patient, opd_encounter, ipd_encounter, sample_ward, available_bed, test_user):
+    def test_opd_encounter_linkage_preserved(
+        self, sample_patient, opd_encounter, ipd_encounter, sample_ward, available_bed, test_user
+    ):
         """Should preserve OPD encounter linkage."""
         admission = Admission.objects.create(
             patient=sample_patient,
@@ -284,7 +298,16 @@ class TestAdmissionCreation:
         assert admission.opd_encounter == opd_encounter
         assert opd_encounter.admission_from_opd.first() == admission
 
-    def test_recommendation_linkage(self, sample_patient, opd_encounter, ipd_encounter, sample_ward, available_bed, test_user, admission_recommendation):
+    def test_recommendation_linkage(
+        self,
+        sample_patient,
+        opd_encounter,
+        ipd_encounter,
+        sample_ward,
+        available_bed,
+        test_user,
+        admission_recommendation,
+    ):
         """Should link admission to recommendation."""
         admission = Admission.objects.create(
             patient=sample_patient,
@@ -303,7 +326,9 @@ class TestAdmissionCreation:
         assert admission.recommendation == admission_recommendation
         assert admission_recommendation.admission == admission
 
-    def test_admission_without_recommendation(self, sample_patient, ipd_encounter, sample_ward, available_bed, test_user):
+    def test_admission_without_recommendation(
+        self, sample_patient, ipd_encounter, sample_ward, available_bed, test_user
+    ):
         """Should allow admission without recommendation (emergency direct admission)."""
         admission = Admission.objects.create(
             patient=sample_patient,
@@ -320,7 +345,9 @@ class TestAdmissionCreation:
         assert admission.recommendation is None
         assert admission.opd_encounter is None
 
-    def test_default_status_active(self, sample_patient, ipd_encounter, sample_ward, available_bed, test_user):
+    def test_default_status_active(
+        self, sample_patient, ipd_encounter, sample_ward, available_bed, test_user
+    ):
         """Should default to ACTIVE status."""
         admission = Admission.objects.create(
             patient=sample_patient,
@@ -336,7 +363,9 @@ class TestAdmissionCreation:
 
         assert admission.status == "ACTIVE"
 
-    def test_optional_attending_doctor(self, sample_patient, ipd_encounter, sample_ward, available_bed, test_user):
+    def test_optional_attending_doctor(
+        self, sample_patient, ipd_encounter, sample_ward, available_bed, test_user
+    ):
         """Should allow admission without attending doctor initially."""
         admission = Admission.objects.create(
             patient=sample_patient,
@@ -352,7 +381,9 @@ class TestAdmissionCreation:
 
         assert admission.attending_doctor is None
 
-    def test_insurance_details_json_field(self, sample_patient, ipd_encounter, sample_ward, available_bed, test_user):
+    def test_insurance_details_json_field(
+        self, sample_patient, ipd_encounter, sample_ward, available_bed, test_user
+    ):
         """Should store insurance details as JSON."""
         insurance_data = {
             "provider": "SHA",
@@ -382,7 +413,9 @@ class TestAdmissionCreation:
 class TestAdmissionBusinessLogic:
     """Tests for Admission business logic and properties."""
 
-    def test_length_of_stay_calculation_active(self, sample_patient, ipd_encounter, sample_ward, available_bed, test_user):
+    def test_length_of_stay_calculation_active(
+        self, sample_patient, ipd_encounter, sample_ward, available_bed, test_user
+    ):
         """Should calculate length of stay for active admission."""
         admission_date = timezone.now() - timedelta(days=3)
 
@@ -402,7 +435,9 @@ class TestAdmissionBusinessLogic:
         assert admission.length_of_stay >= 3
         assert admission.length_of_stay <= 4
 
-    def test_length_of_stay_calculation_discharged(self, sample_patient, ipd_encounter, sample_ward, available_bed, test_user):
+    def test_length_of_stay_calculation_discharged(
+        self, sample_patient, ipd_encounter, sample_ward, available_bed, test_user
+    ):
         """Should calculate length of stay using discharge date for discharged patients."""
         admission_date = timezone.now() - timedelta(days=5)
         discharge_date = timezone.now() - timedelta(days=1)
@@ -424,7 +459,9 @@ class TestAdmissionBusinessLogic:
         # Should be 4 days (5 days admission - 1 day since discharge)
         assert admission.length_of_stay == 4
 
-    def test_prevent_duplicate_active_admission(self, sample_patient, sample_ward, available_bed, test_user):
+    def test_prevent_duplicate_active_admission(
+        self, sample_patient, sample_ward, available_bed, test_user
+    ):
         """Should prevent multiple active admissions for same patient."""
         # Create first active admission
         enc1 = Encounter.objects.create(
@@ -500,7 +537,7 @@ class TestAdmissionQueries:
             Admission.objects.create(
                 patient=sample_patient,
                 ipd_encounter=enc,
-                admission_date=timezone.now() - timedelta(days=i*10),
+                admission_date=timezone.now() - timedelta(days=i * 10),
                 admitting_diagnosis="K35.8",
                 admitting_diagnosis_text="Acute appendicitis",
                 admitting_officer=test_user,
@@ -544,7 +581,9 @@ class TestAdmissionQueries:
         active_admissions = Admission.objects.filter(admission_status="ACTIVE")
         assert active_admissions.count() == 2
 
-    def test_search_by_admission_number(self, sample_patient, ipd_encounter, sample_ward, available_bed, test_user):
+    def test_search_by_admission_number(
+        self, sample_patient, ipd_encounter, sample_ward, available_bed, test_user
+    ):
         """Should search admissions by admission number."""
         admission = Admission.objects.create(
             patient=sample_patient,
@@ -561,7 +600,9 @@ class TestAdmissionQueries:
         found = Admission.objects.filter(admission_number=admission.admission_number).first()
         assert found == admission
 
-    def test_search_by_patient(self, sample_patient, ipd_encounter, sample_ward, available_bed, test_user):
+    def test_search_by_patient(
+        self, sample_patient, ipd_encounter, sample_ward, available_bed, test_user
+    ):
         """Should search admissions by patient."""
         admission = Admission.objects.create(
             patient=sample_patient,
@@ -578,7 +619,9 @@ class TestAdmissionQueries:
         found = Admission.objects.filter(patient=sample_patient).first()
         assert found == admission
 
-    def test_admission_string_representation(self, sample_patient, ipd_encounter, sample_ward, available_bed, test_user):
+    def test_admission_string_representation(
+        self, sample_patient, ipd_encounter, sample_ward, available_bed, test_user
+    ):
         """Should return proper string representation."""
         admission = Admission.objects.create(
             patient=sample_patient,

@@ -18,6 +18,7 @@ from django.conf import settings
 # Try to import the service
 try:
     from hmis.apps.billing.services.sha_claims import SHAClaimsService
+
     HAS_SHA_CLAIMS_SERVICE = True
 except ImportError:
     HAS_SHA_CLAIMS_SERVICE = False
@@ -33,7 +34,7 @@ class TestFacilityConfiguration:
         Reference: docs/sha-guides/facilities.md - Facility Identifiers
         Quote: 'Facility Code: A unique code assigned to each healthcare facility'
         """
-        facility_code = getattr(settings, 'FACILITY_MFL_CODE', None)
+        facility_code = getattr(settings, "FACILITY_MFL_CODE", None)
 
         assert facility_code is not None, (
             "FACILITY_MFL_CODE must be configured in settings. "
@@ -49,7 +50,7 @@ class TestFacilityConfiguration:
 
         Valid levels: Level 1, Level 2, Level 3A, Level 3B, Level 4, Level 5, Level 6
         """
-        facility_level = getattr(settings, 'FACILITY_LEVEL', None)
+        facility_level = getattr(settings, "FACILITY_LEVEL", None)
 
         assert facility_level is not None, (
             "FACILITY_LEVEL must be configured in settings. "
@@ -64,15 +65,13 @@ class TestFacilityConfiguration:
         Reference: docs/sha-guides/claims.md - Organization Resource
         Quote: 'name: Name of the healthcare facility'
         """
-        facility_name = getattr(settings, 'FACILITY_NAME', None)
+        facility_name = getattr(settings, "FACILITY_NAME", None)
 
         # Should not be the default/placeholder
-        assert facility_name is not None, (
-            "FACILITY_NAME should be configured for FHIR bundles"
-        )
-        assert facility_name != 'Healthcare Facility', (
-            "FACILITY_NAME should be set to actual facility name, not placeholder"
-        )
+        assert facility_name is not None, "FACILITY_NAME should be configured for FHIR bundles"
+        assert (
+            facility_name != "Healthcare Facility"
+        ), "FACILITY_NAME should be set to actual facility name, not placeholder"
 
 
 class TestFacilityLevelCompliance:
@@ -85,18 +84,34 @@ class TestFacilityLevelCompliance:
         Reference: docs/sha-guides/facilities.md
         """
         valid_levels = [
-            'Level 1', 'Level 2', 'Level 3A', 'Level 3B',
-            'Level 4', 'Level 5', 'Level 6',
-            'L1', 'L2', 'L3A', 'L3B', 'L4', 'L5', 'L6',
-            'LEVEL 1', 'LEVEL 2', 'LEVEL 3A', 'LEVEL 3B',
-            'LEVEL 4', 'LEVEL 5', 'LEVEL 6',
+            "Level 1",
+            "Level 2",
+            "Level 3A",
+            "Level 3B",
+            "Level 4",
+            "Level 5",
+            "Level 6",
+            "L1",
+            "L2",
+            "L3A",
+            "L3B",
+            "L4",
+            "L5",
+            "L6",
+            "LEVEL 1",
+            "LEVEL 2",
+            "LEVEL 3A",
+            "LEVEL 3B",
+            "LEVEL 4",
+            "LEVEL 5",
+            "LEVEL 6",
         ]
 
-        facility_level = getattr(settings, 'FACILITY_LEVEL', 'L4')
+        facility_level = getattr(settings, "FACILITY_LEVEL", "L4")
 
         # Normalize for comparison
-        level_upper = facility_level.upper().replace(' ', '')
-        valid_normalized = [v.upper().replace(' ', '') for v in valid_levels]
+        level_upper = facility_level.upper().replace(" ", "")
+        valid_normalized = [v.upper().replace(" ", "") for v in valid_levels]
 
         # Just document valid levels
         assert True, (
@@ -116,7 +131,7 @@ class TestFacilitySearchAPICompliance:
 
         Endpoint: GET /v1/facility-search?facility_code={{facility_code}}
         """
-        expected_endpoint = '/v1/facility-search'
+        expected_endpoint = "/v1/facility-search"
 
         assert True, (
             f"Facility search endpoint: {expected_endpoint}. "
@@ -138,17 +153,15 @@ class TestFacilitySearchAPICompliance:
             - current_license_expiry_date
         """
         response_fields = [
-            'facility_code',
-            'found',
-            'approved',
-            'facility_level',
-            'operational_status',
-            'current_license_expiry_date',
+            "facility_code",
+            "found",
+            "approved",
+            "facility_level",
+            "operational_status",
+            "current_license_expiry_date",
         ]
 
-        assert len(response_fields) == 6, (
-            "Should handle 6 key facility response fields"
-        )
+        assert len(response_fields) == 6, "Should handle 6 key facility response fields"
 
 
 class TestOrganizationResourceCompliance:
@@ -164,15 +177,13 @@ class TestOrganizationResourceCompliance:
         service = SHAClaimsService()
         bundle = service.package_claim(sha_claim_with_items)
 
-        org = self._get_resource_by_type(bundle, 'Organization')
+        org = self._get_resource_by_type(bundle, "Organization")
         assert org is not None, "Organization resource not found"
 
         # Check required fields
-        required_fields = ['id', 'name', 'resourceType']
+        required_fields = ["id", "name", "resourceType"]
         for field in required_fields:
-            assert field in org, (
-                f"Organization missing required field: {field}"
-            )
+            assert field in org, f"Organization missing required field: {field}"
 
     @pytest.mark.skipif(not HAS_SHA_CLAIMS_SERVICE, reason="SHAClaimsService not available")
     def test_organization_has_meta_profile(self, sha_claim_with_items):
@@ -185,17 +196,17 @@ class TestOrganizationResourceCompliance:
         service = SHAClaimsService()
         bundle = service.package_claim(sha_claim_with_items)
 
-        org = self._get_resource_by_type(bundle, 'Organization')
+        org = self._get_resource_by_type(bundle, "Organization")
         if org is None:
             pytest.skip("Organization resource not found")
 
-        assert 'meta' in org, "Organization should have meta section"
+        assert "meta" in org, "Organization should have meta section"
 
-        if 'profile' in org.get('meta', {}):
-            profile = org['meta']['profile']
-            assert any('provider-organization' in str(p) for p in profile), (
-                "Organization profile should reference provider-organization StructureDefinition"
-            )
+        if "profile" in org.get("meta", {}):
+            profile = org["meta"]["profile"]
+            assert any(
+                "provider-organization" in str(p) for p in profile
+            ), "Organization profile should reference provider-organization StructureDefinition"
 
     @pytest.mark.skipif(not HAS_SHA_CLAIMS_SERVICE, reason="SHAClaimsService not available")
     def test_organization_active_status(self, sha_claim_with_items):
@@ -208,21 +219,19 @@ class TestOrganizationResourceCompliance:
         service = SHAClaimsService()
         bundle = service.package_claim(sha_claim_with_items)
 
-        org = self._get_resource_by_type(bundle, 'Organization')
+        org = self._get_resource_by_type(bundle, "Organization")
         if org is None:
             pytest.skip("Organization resource not found")
 
-        active = org.get('active')
+        active = org.get("active")
         # Accept True, "True", or "true"
-        assert active in [True, "True", "true"], (
-            f"Organization active should be True, got {active}"
-        )
+        assert active in [True, "True", "true"], f"Organization active should be True, got {active}"
 
     def _get_resource_by_type(self, bundle: dict, resource_type: str) -> dict | None:
         """Helper to extract a resource by type from bundle."""
-        for entry in bundle.get('entry', []):
-            if entry.get('resource', {}).get('resourceType') == resource_type:
-                return entry['resource']
+        for entry in bundle.get("entry", []):
+            if entry.get("resource", {}).get("resourceType") == resource_type:
+                return entry["resource"]
         return None
 
 
@@ -242,10 +251,10 @@ class TestFacilityDataElements:
             - Service Information (services, hours, contacts)
         """
         components = [
-            'organizational_info',
-            'location_details',
-            'identification',
-            'service_information',
+            "organizational_info",
+            "location_details",
+            "identification",
+            "service_information",
         ]
 
         assert len(components) == 4, "4 core facility data components"
@@ -259,16 +268,14 @@ class TestFacilityDataElements:
         Example: 'facility_category: Private Practice'
         """
         example_categories = [
-            'Private Practice',
-            'Public',
-            'Faith-based',
-            'NGO',
+            "Private Practice",
+            "Public",
+            "Faith-based",
+            "NGO",
         ]
 
         # Informational - know what categories exist
-        assert True, (
-            f"Common facility categories: {example_categories}"
-        )
+        assert True, f"Common facility categories: {example_categories}"
 
 
 class TestFacilityValidation:

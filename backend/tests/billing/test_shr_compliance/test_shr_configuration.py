@@ -23,10 +23,7 @@ class TestSHRAPIEndpointConfiguration:
 
         This may be shared with SHA_FHIR_BASE_URL or separate.
         """
-        has_shr_url = (
-            hasattr(settings, 'SHR_BASE_URL') or
-            hasattr(settings, 'SHA_FHIR_BASE_URL')
-        )
+        has_shr_url = hasattr(settings, "SHR_BASE_URL") or hasattr(settings, "SHA_FHIR_BASE_URL")
 
         assert has_shr_url, (
             "Settings must include SHR_BASE_URL or SHA_FHIR_BASE_URL. "
@@ -38,17 +35,15 @@ class TestSHRAPIEndpointConfiguration:
         SHR Requirement: API endpoints must match specification.
         """
         expected_endpoints = {
-            '/v1/patient-resource': 'Patient registration/update',
-            '/v1/shr-submission': 'MedicationRequest/MedicationDispense submission',
-            '/v1/shr/summary': 'IPS/Patient summary retrieval',
+            "/v1/patient-resource": "Patient registration/update",
+            "/v1/shr-submission": "MedicationRequest/MedicationDispense submission",
+            "/v1/shr/summary": "IPS/Patient summary retrieval",
         }
 
         for endpoint, description in expected_endpoints.items():
             assert any(
                 endpoint in v for v in shr_api_endpoints.values()
-            ), (
-                f"SHR API must include endpoint '{endpoint}' for {description}"
-            )
+            ), f"SHR API must include endpoint '{endpoint}' for {description}"
 
 
 class TestSHRAuthenticationConfiguration:
@@ -66,20 +61,17 @@ class TestSHRAuthenticationConfiguration:
         Quote: 'Authentication: Basic Authentication'
         """
         # Document the authentication requirement
-        expected_auth_method = 'Basic'
-        assert expected_auth_method == 'Basic', (
-            "SHR API requires Basic Authentication per documentation"
-        )
+        expected_auth_method = "Basic"
+        assert (
+            expected_auth_method == "Basic"
+        ), "SHR API requires Basic Authentication per documentation"
 
     def test_shr_credentials_configured(self):
         """
         SHR Requirement: SHR API credentials must be configured.
         """
         # Check if SHA credentials exist (SHR reuses SHA credentials)
-        has_sha_creds = (
-            hasattr(settings, 'SHA_USERNAME') and
-            hasattr(settings, 'SHA_PASSWORD')
-        )
+        has_sha_creds = hasattr(settings, "SHA_USERNAME") and hasattr(settings, "SHA_PASSWORD")
 
         assert has_sha_creds, (
             "SHA_USERNAME and SHA_PASSWORD must be configured in settings. "
@@ -98,8 +90,8 @@ class TestSHRAuthenticationConfiguration:
 
         # In test environment, settings will have empty strings as defaults
         # The important thing is that the setting EXISTS and CAN be overridden
-        assert hasattr(settings, 'SHA_USERNAME'), "SHA_USERNAME setting must exist"
-        assert hasattr(settings, 'SHA_PASSWORD'), "SHA_PASSWORD setting must exist"
+        assert hasattr(settings, "SHA_USERNAME"), "SHA_USERNAME setting must exist"
+        assert hasattr(settings, "SHA_PASSWORD"), "SHA_PASSWORD setting must exist"
 
         # Verify the settings module uses os.getenv for these values
         # (This is a documentation/compliance test - actual security is in settings.py)
@@ -117,19 +109,19 @@ class TestSHRSubmissionEndpointConfiguration:
         """
         SHR Requirement: Submission endpoint accepts MedicationRequest.
         """
-        valid_resources = ['MedicationRequest', 'MedicationDispense']
-        assert 'MedicationRequest' in valid_resources, (
-            "SHR submission must accept MedicationRequest resource type"
-        )
+        valid_resources = ["MedicationRequest", "MedicationDispense"]
+        assert (
+            "MedicationRequest" in valid_resources
+        ), "SHR submission must accept MedicationRequest resource type"
 
     def test_shr_submission_accepts_medication_dispense(self):
         """
         SHR Requirement: Submission endpoint accepts MedicationDispense.
         """
-        valid_resources = ['MedicationRequest', 'MedicationDispense']
-        assert 'MedicationDispense' in valid_resources, (
-            "SHR submission must accept MedicationDispense resource type"
-        )
+        valid_resources = ["MedicationRequest", "MedicationDispense"]
+        assert (
+            "MedicationDispense" in valid_resources
+        ), "SHR submission must accept MedicationDispense resource type"
 
     def test_shr_submission_uses_query_param(self):
         """
@@ -137,10 +129,10 @@ class TestSHRSubmissionEndpointConfiguration:
 
         Quote: '?resource=MedicationRequest'
         """
-        query_param_name = 'resource'
-        assert query_param_name == 'resource', (
-            "SHR submission uses 'resource' query parameter to specify type"
-        )
+        query_param_name = "resource"
+        assert (
+            query_param_name == "resource"
+        ), "SHR submission uses 'resource' query parameter to specify type"
 
 
 class TestPatientResourceEndpointConfiguration:
@@ -155,19 +147,17 @@ class TestPatientResourceEndpointConfiguration:
         """
         SHR Requirement: Patient resource uses PUT for upsert.
         """
-        http_method = 'PUT'
-        assert http_method == 'PUT', (
-            "Patient resource endpoint uses PUT for upsert behavior"
-        )
+        http_method = "PUT"
+        assert http_method == "PUT", "Patient resource endpoint uses PUT for upsert behavior"
 
     def test_patient_resource_requires_cr_id(self):
         """
         SHR Requirement: Patient resource requires cr_id query param.
         """
-        query_param_name = 'cr_id'
-        assert query_param_name == 'cr_id', (
-            "Patient resource endpoint requires 'cr_id' query parameter"
-        )
+        query_param_name = "cr_id"
+        assert (
+            query_param_name == "cr_id"
+        ), "Patient resource endpoint requires 'cr_id' query parameter"
 
 
 class TestIPSSummaryEndpointConfiguration:
@@ -182,19 +172,15 @@ class TestIPSSummaryEndpointConfiguration:
         """
         SHR Requirement: IPS summary uses GET method.
         """
-        http_method = 'GET'
-        assert http_method == 'GET', (
-            "IPS summary endpoint uses GET method"
-        )
+        http_method = "GET"
+        assert http_method == "GET", "IPS summary endpoint uses GET method"
 
     def test_ips_summary_requires_cr_id(self):
         """
         SHR Requirement: IPS summary requires cr_id query param.
         """
-        query_param_name = 'cr_id'
-        assert query_param_name == 'cr_id', (
-            "IPS summary endpoint requires 'cr_id' query parameter"
-        )
+        query_param_name = "cr_id"
+        assert query_param_name == "cr_id", "IPS summary endpoint requires 'cr_id' query parameter"
 
 
 class TestSHRSettingsStructure:
@@ -207,9 +193,9 @@ class TestSHRSettingsStructure:
         Requirement: SHA/SHR settings should be defined.
         """
         sha_settings = [
-            'SHA_API_BASE_URL',
-            'SHA_FHIR_BASE_URL',
-            'SHA_API_ENDPOINTS',
+            "SHA_API_BASE_URL",
+            "SHA_FHIR_BASE_URL",
+            "SHA_API_ENDPOINTS",
         ]
 
         missing = [s for s in sha_settings if not hasattr(settings, s)]
@@ -223,27 +209,24 @@ class TestSHRSettingsStructure:
         """
         Requirement: Pharmacy settings should be defined for SHR workflow.
         """
-        has_pharmacy_settings = hasattr(settings, 'PHARMACY_SETTINGS')
+        has_pharmacy_settings = hasattr(settings, "PHARMACY_SETTINGS")
 
         if not has_pharmacy_settings:
-            pytest.skip(
-                "PHARMACY_SETTINGS not configured. "
-                "Required for SHR pharmacy workflow"
-            )
+            pytest.skip("PHARMACY_SETTINGS not configured. " "Required for SHR pharmacy workflow")
 
     def test_pharmacy_settings_has_required_keys(self):
         """
         Requirement: Pharmacy settings should have SHR-related keys.
         """
-        if not hasattr(settings, 'PHARMACY_SETTINGS'):
+        if not hasattr(settings, "PHARMACY_SETTINGS"):
             pytest.skip("PHARMACY_SETTINGS not configured")
 
         pharmacy_settings = settings.PHARMACY_SETTINGS
 
         # These settings support SHR workflow
         relevant_keys = [
-            'EXPIRY_WARNING_DAYS',
-            'CRITICAL_EXPIRY_DAYS',
+            "EXPIRY_WARNING_DAYS",
+            "CRITICAL_EXPIRY_DAYS",
         ]
 
         for key in relevant_keys:
@@ -264,9 +247,9 @@ class TestSHRDataFlowConfiguration:
         """
         # This is a documentation/spec test
         cr_system_url = "https://cr.tiberbu.app/app/client-registry/"
-        assert "tiberbu.app" in cr_system_url, (
-            "Client Registry uses Tiberbu platform per SHR documentation"
-        )
+        assert (
+            "tiberbu.app" in cr_system_url
+        ), "Client Registry uses Tiberbu platform per SHR documentation"
 
     def test_shr_supports_medication_workflow(self):
         """
@@ -279,16 +262,14 @@ class TestSHRDataFlowConfiguration:
         5. Refill calculation
         """
         workflow_steps = [
-            'patient_registration',
-            'prescription_creation',
-            'ips_retrieval',
-            'dispense_recording',
-            'refill_calculation'
+            "patient_registration",
+            "prescription_creation",
+            "ips_retrieval",
+            "dispense_recording",
+            "refill_calculation",
         ]
 
-        assert len(workflow_steps) == 5, (
-            "SHR workflow has 5 main steps per documentation"
-        )
+        assert len(workflow_steps) == 5, "SHR workflow has 5 main steps per documentation"
 
 
 class TestSHRCodingSystemConfiguration:
@@ -303,9 +284,7 @@ class TestSHRCodingSystemConfiguration:
         Quote: '"system": "http://www.nlm.nih.gov/research/umls/rxnorm"'
         """
         rxnorm_url = "http://www.nlm.nih.gov/research/umls/rxnorm"
-        assert "rxnorm" in rxnorm_url.lower(), (
-            "RxNorm coding system URL must be configured"
-        )
+        assert "rxnorm" in rxnorm_url.lower(), "RxNorm coding system URL must be configured"
 
     def test_snomed_system_url(self):
         """
@@ -314,9 +293,7 @@ class TestSHRCodingSystemConfiguration:
         Quote: '"system": "http://snomed.info/sct"'
         """
         snomed_url = "http://snomed.info/sct"
-        assert "snomed" in snomed_url.lower(), (
-            "SNOMED-CT coding system URL must be configured"
-        )
+        assert "snomed" in snomed_url.lower(), "SNOMED-CT coding system URL must be configured"
 
     def test_icd10_system_url(self):
         """
@@ -325,9 +302,7 @@ class TestSHRCodingSystemConfiguration:
         Quote: '"system": "http://hl7.org/fhir/sid/icd-10"'
         """
         icd10_url = "http://hl7.org/fhir/sid/icd-10"
-        assert "icd-10" in icd10_url.lower(), (
-            "ICD-10 coding system URL must be configured"
-        )
+        assert "icd-10" in icd10_url.lower(), "ICD-10 coding system URL must be configured"
 
     def test_loinc_system_url(self):
         """
@@ -336,9 +311,9 @@ class TestSHRCodingSystemConfiguration:
         Quote: '"system": "http://loinc.org"'
         """
         loinc_url = "http://loinc.org"
-        assert "loinc" in loinc_url.lower(), (
-            "LOINC coding system URL must be configured for IPS sections"
-        )
+        assert (
+            "loinc" in loinc_url.lower()
+        ), "LOINC coding system URL must be configured for IPS sections"
 
     def test_units_of_measure_system_url(self):
         """
@@ -347,6 +322,6 @@ class TestSHRCodingSystemConfiguration:
         Quote: '"system": "http://unitsofmeasure.org"'
         """
         ucum_url = "http://unitsofmeasure.org"
-        assert "unitsofmeasure" in ucum_url.lower(), (
-            "UCUM (units of measure) system URL must be configured"
-        )
+        assert (
+            "unitsofmeasure" in ucum_url.lower()
+        ), "UCUM (units of measure) system URL must be configured"

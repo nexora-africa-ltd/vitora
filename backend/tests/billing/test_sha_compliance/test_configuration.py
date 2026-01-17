@@ -25,7 +25,7 @@ class TestSHAAPIConfiguration:
 
         This controls whether SHA integration features are active.
         """
-        has_setting = hasattr(settings, 'SHA_ENABLED')
+        has_setting = hasattr(settings, "SHA_ENABLED")
 
         assert has_setting, (
             "SHA_ENABLED setting should be defined in settings. "
@@ -41,16 +41,13 @@ class TestSHAAPIConfiguration:
             - Dev/UAT: https://uat.dha.go.ke
             - Prod: https://dha.go.ke
         """
-        base_url = getattr(settings, 'SHA_API_BASE_URL', None)
+        base_url = getattr(settings, "SHA_API_BASE_URL", None)
 
         assert base_url is not None, (
-            "SHA_API_BASE_URL must be configured. "
-            "UAT: https://uat.dha.go.ke"
+            "SHA_API_BASE_URL must be configured. " "UAT: https://uat.dha.go.ke"
         )
 
-        assert base_url.startswith('http'), (
-            f"SHA_API_BASE_URL must be a valid URL, got: {base_url}"
-        )
+        assert base_url.startswith("http"), f"SHA_API_BASE_URL must be a valid URL, got: {base_url}"
 
     def test_sha_fhir_base_url_configured(self):
         """
@@ -62,7 +59,7 @@ class TestSHAAPIConfiguration:
             - Dev/UAT: https://qa-mis.apeiro-digital.com
             - Prod: https://fhir.sha.go.ke
         """
-        fhir_url = getattr(settings, 'SHA_FHIR_BASE_URL', None)
+        fhir_url = getattr(settings, "SHA_FHIR_BASE_URL", None)
 
         assert fhir_url is not None, (
             "SHA_FHIR_BASE_URL must be configured. "
@@ -71,9 +68,9 @@ class TestSHAAPIConfiguration:
         )
 
         valid_fhir_urls = [
-            'https://qa-mis.apeiro-digital.com',
-            'https://mis.apeiro-digital.com',
-            'https://fhir.sha.go.ke',
+            "https://qa-mis.apeiro-digital.com",
+            "https://mis.apeiro-digital.com",
+            "https://fhir.sha.go.ke",
         ]
 
         # Just warn if not a known URL
@@ -94,39 +91,36 @@ class TestSHAAuthenticationConfiguration:
         Reference: docs/sha-guides/claims-submission.md - Integration Checklist #1
         Quote: 'Get Access key/Secret key to payer system APIs'
         """
-        consumer_key = getattr(settings, 'SHA_CONSUMER_KEY', None)
+        consumer_key = getattr(settings, "SHA_CONSUMER_KEY", None)
 
         # In test environment, it might be empty/placeholder
-        assert hasattr(settings, 'SHA_CONSUMER_KEY'), (
-            "SHA_CONSUMER_KEY setting must exist. "
-            "Obtain from SHA technical team."
+        assert hasattr(settings, "SHA_CONSUMER_KEY"), (
+            "SHA_CONSUMER_KEY setting must exist. " "Obtain from SHA technical team."
         )
 
     def test_sha_api_key_exists(self):
         """
         SHA Requirement: API key must be configured.
         """
-        api_key = getattr(settings, 'SHA_API_KEY', None)
+        api_key = getattr(settings, "SHA_API_KEY", None)
 
-        assert hasattr(settings, 'SHA_API_KEY'), (
-            "SHA_API_KEY setting must exist."
-        )
+        assert hasattr(settings, "SHA_API_KEY"), "SHA_API_KEY setting must exist."
 
     def test_sha_username_exists(self):
         """
         SHA Requirement: API username must be configured.
         """
-        assert hasattr(settings, 'SHA_USERNAME'), (
-            "SHA_USERNAME setting must exist for API authentication."
-        )
+        assert hasattr(
+            settings, "SHA_USERNAME"
+        ), "SHA_USERNAME setting must exist for API authentication."
 
     def test_sha_password_exists(self):
         """
         SHA Requirement: API password must be configured.
         """
-        assert hasattr(settings, 'SHA_PASSWORD'), (
-            "SHA_PASSWORD setting must exist for API authentication."
-        )
+        assert hasattr(
+            settings, "SHA_PASSWORD"
+        ), "SHA_PASSWORD setting must exist for API authentication."
 
 
 class TestSHAEndpointsConfiguration:
@@ -136,14 +130,10 @@ class TestSHAEndpointsConfiguration:
         """
         Configuration: SHA_ENDPOINTS dict should exist.
         """
-        endpoints = getattr(settings, 'SHA_ENDPOINTS', None)
+        endpoints = getattr(settings, "SHA_ENDPOINTS", None)
 
-        assert endpoints is not None, (
-            "SHA_ENDPOINTS dict must be configured with API endpoints."
-        )
-        assert isinstance(endpoints, dict), (
-            "SHA_ENDPOINTS must be a dictionary."
-        )
+        assert endpoints is not None, "SHA_ENDPOINTS dict must be configured with API endpoints."
+        assert isinstance(endpoints, dict), "SHA_ENDPOINTS must be a dictionary."
 
     def test_eligibility_endpoint_configured(self):
         """
@@ -152,18 +142,17 @@ class TestSHAEndpointsConfiguration:
         Reference: docs/sha-guides/eligibility.md
         Expected: /v2/eligibility
         """
-        endpoints = getattr(settings, 'SHA_ENDPOINTS', {})
+        endpoints = getattr(settings, "SHA_ENDPOINTS", {})
 
-        eligibility = endpoints.get('eligibility')
+        eligibility = endpoints.get("eligibility")
 
         assert eligibility is not None, (
-            "SHA_ENDPOINTS['eligibility'] must be configured. "
-            "Expected: /v2/eligibility"
+            "SHA_ENDPOINTS['eligibility'] must be configured. " "Expected: /v2/eligibility"
         )
 
-        assert '/v2/eligibility' in eligibility or eligibility == '/v2/eligibility', (
-            f"Eligibility endpoint should be /v2/eligibility, got: {eligibility}"
-        )
+        assert (
+            "/v2/eligibility" in eligibility or eligibility == "/v2/eligibility"
+        ), f"Eligibility endpoint should be /v2/eligibility, got: {eligibility}"
 
     def test_claims_submit_endpoint_configured(self):
         """
@@ -172,13 +161,12 @@ class TestSHAEndpointsConfiguration:
         Reference: docs/sha-guides/claims-submission.md
         Expected: /v1/shr-med/bundle
         """
-        endpoints = getattr(settings, 'SHA_ENDPOINTS', {})
+        endpoints = getattr(settings, "SHA_ENDPOINTS", {})
 
-        claims_submit = endpoints.get('claims_submit')
+        claims_submit = endpoints.get("claims_submit")
 
         assert claims_submit is not None, (
-            "SHA_ENDPOINTS['claims_submit'] must be configured. "
-            "Expected: /v1/shr-med/bundle"
+            "SHA_ENDPOINTS['claims_submit'] must be configured. " "Expected: /v1/shr-med/bundle"
         )
 
     def test_claims_status_endpoint_configured(self):
@@ -188,9 +176,9 @@ class TestSHAEndpointsConfiguration:
         Reference: docs/sha-guides/claims-submission.md
         Expected: /v1/shr-med/claim-status
         """
-        endpoints = getattr(settings, 'SHA_ENDPOINTS', {})
+        endpoints = getattr(settings, "SHA_ENDPOINTS", {})
 
-        claims_status = endpoints.get('claims_status')
+        claims_status = endpoints.get("claims_status")
 
         assert claims_status is not None, (
             "SHA_ENDPOINTS['claims_status'] must be configured. "
@@ -208,11 +196,10 @@ class TestFacilityConfiguration:
         Reference: docs/sha-guides/facilities.md
         This is the Master Facility List code from Kenya HFR.
         """
-        mfl_code = getattr(settings, 'FACILITY_MFL_CODE', None)
+        mfl_code = getattr(settings, "FACILITY_MFL_CODE", None)
 
         assert mfl_code is not None, (
-            "FACILITY_MFL_CODE must be configured. "
-            "Obtain from Kenya Health Facilities Registry."
+            "FACILITY_MFL_CODE must be configured. " "Obtain from Kenya Health Facilities Registry."
         )
 
     def test_facility_level_configured(self):
@@ -222,11 +209,10 @@ class TestFacilityConfiguration:
         Reference: docs/sha-guides/claims.md - Organization Resource
         Valid levels: Level 1-6, L1-L6, LEVEL 1-6
         """
-        level = getattr(settings, 'FACILITY_LEVEL', None)
+        level = getattr(settings, "FACILITY_LEVEL", None)
 
         assert level is not None, (
-            "FACILITY_LEVEL must be configured. "
-            "Valid values: L1, L2, L3A, L3B, L4, L5, L6"
+            "FACILITY_LEVEL must be configured. " "Valid values: L1, L2, L3A, L3B, L4, L5, L6"
         )
 
     def test_facility_name_configured(self):
@@ -235,13 +221,13 @@ class TestFacilityConfiguration:
 
         Reference: docs/sha-guides/claims.md
         """
-        name = getattr(settings, 'FACILITY_NAME', None)
+        name = getattr(settings, "FACILITY_NAME", None)
 
         # It's OK if not set, but should not be placeholder
         if name:
-            assert name != 'Healthcare Facility', (
-                "FACILITY_NAME should be actual name, not placeholder"
-            )
+            assert (
+                name != "Healthcare Facility"
+            ), "FACILITY_NAME should be actual name, not placeholder"
 
 
 class TestAPITimeoutConfiguration:
@@ -251,11 +237,10 @@ class TestAPITimeoutConfiguration:
         """
         Best Practice: API timeout should be configured.
         """
-        timeout = getattr(settings, 'SHA_API_TIMEOUT', None)
+        timeout = getattr(settings, "SHA_API_TIMEOUT", None)
 
         assert timeout is not None, (
-            "SHA_API_TIMEOUT should be configured. "
-            "Recommended: 30 seconds"
+            "SHA_API_TIMEOUT should be configured. " "Recommended: 30 seconds"
         )
 
         assert timeout > 0, "Timeout must be positive"
@@ -279,12 +264,12 @@ class TestEnvironmentURLAlignment:
             - API: TBD
             - FHIR: https://fhir.sha.go.ke
         """
-        api_url = getattr(settings, 'SHA_API_BASE_URL', '')
-        fhir_url = getattr(settings, 'SHA_FHIR_BASE_URL', '')
+        api_url = getattr(settings, "SHA_API_BASE_URL", "")
+        fhir_url = getattr(settings, "SHA_FHIR_BASE_URL", "")
 
         # Check for environment mismatch
-        uat_indicators = ['uat', 'qa-', 'test', 'sandbox']
-        prod_indicators = ['sha.go.ke', 'mis.apeiro']
+        uat_indicators = ["uat", "qa-", "test", "sandbox"]
+        prod_indicators = ["sha.go.ke", "mis.apeiro"]
 
         api_is_uat = any(ind in api_url.lower() for ind in uat_indicators)
         fhir_is_uat = any(ind in fhir_url.lower() for ind in uat_indicators)
@@ -308,7 +293,7 @@ class TestCallbackConfiguration:
         Quote: 'Share response callback url with Payer technical team to configure.
                Callback url must have a POST method and should be secured with basic auth'
         """
-        callback_url = getattr(settings, 'SHA_CALLBACK_URL', None)
+        callback_url = getattr(settings, "SHA_CALLBACK_URL", None)
 
         # This is often configured separately with SHA team
         assert True, (
@@ -347,6 +332,5 @@ class TestIntegrationChecklistSummary:
         checklist_items = 15
 
         assert checklist_items == 15, (
-            "Review all 15 integration checklist items. "
-            "See docs/sha-guides/claims-submission.md"
+            "Review all 15 integration checklist items. " "See docs/sha-guides/claims-submission.md"
         )

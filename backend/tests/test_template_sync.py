@@ -20,6 +20,7 @@ from hmis.apps.encounters.models import Encounter
 # Field Mapping Tests
 # =============================================================================
 
+
 class TestTemplateFieldMapper:
     """Tests for mapping template fields to encounter/patient fields."""
 
@@ -48,7 +49,10 @@ class TestTemplateFieldMapper:
         # Medical history is on encounter (per-visit)
         assert mapper.get_source_field("allergies") == ("encounter", "allergies")
         assert mapper.get_source_field("chronic_conditions") == ("encounter", "chronic_conditions")
-        assert mapper.get_source_field("current_medications") == ("encounter", "current_medications")
+        assert mapper.get_source_field("current_medications") == (
+            "encounter",
+            "current_medications",
+        )
 
     def test_get_field_mapping_returns_none_for_unknown(self):
         """Should return None for unmapped fields."""
@@ -79,6 +83,7 @@ class TestTemplateFieldMapper:
 # =============================================================================
 # Auto-Population Tests
 # =============================================================================
+
 
 @pytest.mark.django_db
 class TestTemplateAutoPopulation:
@@ -181,6 +186,7 @@ class TestTemplateAutoPopulation:
 # =============================================================================
 # Sync-Back Tests
 # =============================================================================
+
 
 @pytest.mark.django_db
 class TestTemplateSyncBack:
@@ -295,6 +301,7 @@ class TestTemplateSyncBack:
 # Template Snapshot Tests
 # =============================================================================
 
+
 @pytest.mark.django_db
 class TestTemplateSnapshot:
     """Tests for saving completed templates as snapshots/attachments."""
@@ -359,9 +366,7 @@ class TestTemplateSnapshot:
             template_data={"visit": 2},
         )
 
-        snapshots = service.get_snapshots_for_encounter(
-            sample_encounter_with_vitals
-        )
+        snapshots = service.get_snapshots_for_encounter(sample_encounter_with_vitals)
 
         assert len(snapshots) >= 2
 
@@ -378,11 +383,9 @@ class TestTemplateSnapshot:
         )
 
         # PDF generation is optional, check method exists
-        assert hasattr(service, 'generate_pdf')
+        assert hasattr(service, "generate_pdf")
 
-    def test_snapshot_is_immutable(
-        self, sample_encounter_with_vitals, sample_template_with_vitals
-    ):
+    def test_snapshot_is_immutable(self, sample_encounter_with_vitals, sample_template_with_vitals):
         """Snapshot data should not be modifiable after creation."""
         service = TemplateSnapshotService()
 
@@ -403,6 +406,7 @@ class TestTemplateSnapshot:
 # =============================================================================
 # API Integration Tests
 # =============================================================================
+
 
 @pytest.mark.django_db
 class TestTemplatePopulateAPI:
@@ -469,9 +473,7 @@ class TestTemplatePopulateAPI:
         assert response.status_code == 201
         assert "id" in response.data
 
-    def test_list_snapshots_endpoint(
-        self, authenticated_client, sample_encounter_with_vitals
-    ):
+    def test_list_snapshots_endpoint(self, authenticated_client, sample_encounter_with_vitals):
         """Should list template snapshots for encounter."""
         response = authenticated_client.get(
             f"/api/encounters/{sample_encounter_with_vitals.id}/template-snapshots/",

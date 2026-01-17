@@ -18,12 +18,14 @@ import pytest  # type: ignore
 # Try to import the service - may fail if not fully implemented
 try:
     from hmis.apps.billing.services.sha_eligibility import SHAEligibilityService
+
     HAS_ELIGIBILITY_SERVICE = True
 except ImportError:
     HAS_ELIGIBILITY_SERVICE = False
 
 try:
     from hmis.apps.billing.models import SHAEligibilityCheck, SHAMember
+
     HAS_SHA_MODELS = True
 except ImportError:
     HAS_SHA_MODELS = False
@@ -42,7 +44,7 @@ class TestEligibilityEndpointCompliance:
         """
         service = SHAEligibilityService()
 
-        expected_endpoint = '/v2/eligibility'
+        expected_endpoint = "/v2/eligibility"
         actual_endpoint = service.eligibility_endpoint
 
         assert expected_endpoint in actual_endpoint or actual_endpoint == expected_endpoint, (
@@ -61,7 +63,7 @@ class TestEligibilityEndpointCompliance:
         """
         service = SHAEligibilityService()
 
-        assert hasattr(service, 'auth_service'), (
+        assert hasattr(service, "auth_service"), (
             "SHAEligibilityService must have auth_service for Bearer token auth. "
             "See docs/sha-guides/eligibility.md - Authentication"
         )
@@ -84,17 +86,15 @@ class TestEligibilityRequestParameters:
             - Refugee ID
         """
         supported_types = [
-            'National ID',
-            'Alien ID',
-            'Mandate Number',
-            'Temporary ID',
-            'SHA Number',
-            'Refugee ID',
+            "National ID",
+            "Alien ID",
+            "Mandate Number",
+            "Temporary ID",
+            "SHA Number",
+            "Refugee ID",
         ]
 
-        assert len(supported_types) >= 6, (
-            "System should support at least 6 identification types"
-        )
+        assert len(supported_types) >= 6, "System should support at least 6 identification types"
 
     @pytest.mark.skipif(not HAS_ELIGIBILITY_SERVICE, reason="SHAEligibilityService not available")
     @pytest.mark.skipif(not HAS_SHA_MODELS, reason="SHA models not available")
@@ -105,15 +105,15 @@ class TestEligibilityRequestParameters:
         service = SHAEligibilityService()
 
         # Set SHA number on member
-        sha_member.sha_number = 'SHA-12345678901234-5'
+        sha_member.sha_number = "SHA-12345678901234-5"
         sha_member.save()
 
         request_params = service._build_request(sha_member)
 
         # Should use sha_number as identifier
-        assert 'doc_type' in request_params or 'identification_type' in request_params, (
-            "Request must have identification type parameter"
-        )
+        assert (
+            "doc_type" in request_params or "identification_type" in request_params
+        ), "Request must have identification type parameter"
 
     @pytest.mark.skipif(not HAS_ELIGIBILITY_SERVICE, reason="SHAEligibilityService not available")
     @pytest.mark.skipif(not HAS_SHA_MODELS, reason="SHA models not available")
@@ -126,10 +126,10 @@ class TestEligibilityRequestParameters:
         request_params = service._build_request(sha_member_no_sha_number)
 
         # Should fall back to national_id
-        doc_type = request_params.get('doc_type', request_params.get('identification_type', ''))
-        assert 'national_id' in doc_type.lower() or doc_type == 'national_id', (
-            "Should fall back to national_id when SHA number not available"
-        )
+        doc_type = request_params.get("doc_type", request_params.get("identification_type", ""))
+        assert (
+            "national_id" in doc_type.lower() or doc_type == "national_id"
+        ), "Should fall back to national_id when SHA number not available"
 
 
 class TestEligibilityResponseHandling:
@@ -151,18 +151,16 @@ class TestEligibilityResponseHandling:
             - message: Human-readable status message
         """
         required_response_fields = [
-            'id',
-            'eligible',
-            'reason',
-            'possible_solution',
-            'message',
-            'coverageEndDate',
+            "id",
+            "eligible",
+            "reason",
+            "possible_solution",
+            "message",
+            "coverageEndDate",
         ]
 
         # These are the fields we must be able to process
-        assert len(required_response_fields) >= 6, (
-            "Must handle at least 6 key response fields"
-        )
+        assert len(required_response_fields) >= 6, "Must handle at least 6 key response fields"
 
     def test_eligible_field_interpretation(self):
         """
@@ -195,11 +193,11 @@ class TestEligibilityResponseHandling:
         # Check if SHAEligibilityCheck has necessary fields
         # Based on actual model definition in billing/models.py
         required_fields = [
-            'is_eligible',        # Boolean eligibility result
-            'eligible_until',     # Date until eligibility is valid
-            'result',            # Check result (eligible/ineligible/error)
-            'response_data',     # Full API response stored as JSON
-            'ineligibility_reason',  # Reason for ineligibility if applicable
+            "is_eligible",  # Boolean eligibility result
+            "eligible_until",  # Date until eligibility is valid
+            "result",  # Check result (eligible/ineligible/error)
+            "response_data",  # Full API response stored as JSON
+            "ineligibility_reason",  # Reason for ineligibility if applicable
         ]
 
         missing_fields = []
@@ -229,11 +227,11 @@ class TestEligibilityErrorHandling:
             - 500: Internal server error
         """
         expected_codes = {
-            200: 'Successful eligibility check',
-            400: 'Bad request (invalid parameters)',
-            401: 'Unauthorized (invalid token)',
-            404: 'Individual not found in the system',
-            500: 'Internal server error',
+            200: "Successful eligibility check",
+            400: "Bad request (invalid parameters)",
+            401: "Unauthorized (invalid token)",
+            404: "Individual not found in the system",
+            500: "Internal server error",
         }
 
         assert 200 in expected_codes, "Must handle 200 success"
@@ -247,12 +245,8 @@ class TestEligibilityErrorHandling:
         """
         service = SHAEligibilityService()
 
-        assert hasattr(service, 'max_retries'), (
-            "Service should have max_retries for resilience"
-        )
-        assert service.max_retries >= 1, (
-            "Should retry at least once on failure"
-        )
+        assert hasattr(service, "max_retries"), "Service should have max_retries for resilience"
+        assert service.max_retries >= 1, "Should retry at least once on failure"
 
     @pytest.mark.skipif(not HAS_ELIGIBILITY_SERVICE, reason="SHAEligibilityService not available")
     def test_service_has_timeout(self):
@@ -261,9 +255,7 @@ class TestEligibilityErrorHandling:
         """
         service = SHAEligibilityService()
 
-        assert hasattr(service, 'timeout'), (
-            "Service should have timeout configuration"
-        )
+        assert hasattr(service, "timeout"), "Service should have timeout configuration"
         assert service.timeout > 0, "Timeout should be positive"
         assert service.timeout <= 60, "Timeout should be reasonable (<=60s)"
 
@@ -286,10 +278,10 @@ class TestEligibilityWorkflow:
                - eligible=0: Advise cash payment or resolve issues
         """
         workflow_steps = [
-            'Patient presents identification',
-            'Staff enters identification details',
-            'System calls Eligibility API',
-            'Route based on eligibility result',
+            "Patient presents identification",
+            "Staff enters identification details",
+            "System calls Eligibility API",
+            "Route based on eligibility result",
         ]
 
         assert len(workflow_steps) == 4, "Workflow has 4 main steps"
@@ -332,10 +324,10 @@ class TestEligibilityUseCases:
             - Emergency Services: Retroactive checking for emergency admissions
         """
         use_cases = [
-            'patient_registration',
-            'service_authorization',
-            'claims_submission',
-            'emergency_services',
+            "patient_registration",
+            "service_authorization",
+            "claims_submission",
+            "emergency_services",
         ]
 
         assert len(use_cases) == 4, "Should support 4 primary use cases"

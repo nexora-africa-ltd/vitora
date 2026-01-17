@@ -61,9 +61,7 @@ class Command(BaseCommand):
 
         if not file_path.exists():
             # If file doesn't exist, create a sample file with common lab test LOINC codes
-            self.stdout.write(
-                self.style.WARNING(f"LOINC file not found: {file_path}")
-            )
+            self.stdout.write(self.style.WARNING(f"LOINC file not found: {file_path}"))
             self.stdout.write("Creating sample LOINC codes from built-in data...")
             self._import_builtin_loinc_codes(options)
             return
@@ -74,9 +72,7 @@ class Command(BaseCommand):
         if options["clear"]:
             deleted_count = LOINCCode.objects.count()
             LOINCCode.objects.all().delete()
-            self.stdout.write(
-                self.style.WARNING(f"Cleared {deleted_count} existing LOINC codes")
-            )
+            self.stdout.write(self.style.WARNING(f"Cleared {deleted_count} existing LOINC codes"))
 
         # Read and validate CSV
         try:
@@ -112,9 +108,7 @@ class Command(BaseCommand):
         for row_num, row in enumerate(reader, start=2):
             code = row.get("code", "").strip()
             if not code:
-                self.stdout.write(
-                    self.style.WARNING(f"Row {row_num}: Missing code")
-                )
+                self.stdout.write(self.style.WARNING(f"Row {row_num}: Missing code"))
                 error_count += 1
                 continue
             valid_count += 1
@@ -172,9 +166,7 @@ class Command(BaseCommand):
         if options.get("clear"):
             deleted_count = LOINCCode.objects.count()
             LOINCCode.objects.all().delete()
-            self.stdout.write(
-                self.style.WARNING(f"Cleared {deleted_count} existing LOINC codes")
-            )
+            self.stdout.write(self.style.WARNING(f"Cleared {deleted_count} existing LOINC codes"))
 
         # Common LOINC codes for Kenya essential lab tests
         builtin_codes = [

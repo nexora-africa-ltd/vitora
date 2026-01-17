@@ -69,9 +69,7 @@ class TestTriageAssessmentViewSetActions:
 
         assert response.status_code == status.HTTP_400_BAD_REQUEST
 
-    def test_complete_triage_sets_end_time(
-        self, authenticated_client, triage_assessment
-    ):
+    def test_complete_triage_sets_end_time(self, authenticated_client, triage_assessment):
         """complete action should set triage_end_time."""
         assert triage_assessment.triage_end_time is None
 
@@ -83,9 +81,7 @@ class TestTriageAssessmentViewSetActions:
         triage_assessment.refresh_from_db()
         assert triage_assessment.triage_end_time is not None
 
-    def test_complete_triage_already_completed(
-        self, authenticated_client, triage_assessment
-    ):
+    def test_complete_triage_already_completed(self, authenticated_client, triage_assessment):
         """complete action on already completed triage should return 400."""
         # First completion
         triage_assessment.triage_end_time = timezone.now()
@@ -98,9 +94,7 @@ class TestTriageAssessmentViewSetActions:
         assert response.status_code == status.HTTP_400_BAD_REQUEST
         assert "already completed" in response.data["detail"]
 
-    def test_create_triage_assessment(
-        self, authenticated_client, sample_encounter, test_user
-    ):
+    def test_create_triage_assessment(self, authenticated_client, sample_encounter, test_user):
         """Creating triage assessment should work with valid data."""
         from hmis.apps.triage.models import TriageAssessment
 
@@ -129,7 +123,11 @@ class TestTriageAssessmentViewSetActions:
 
         # May get 201 or 400 depending on serializer validation
         # The important thing is that the endpoint is hit
-        assert response.status_code in [status.HTTP_201_CREATED, status.HTTP_400_BAD_REQUEST, status.HTTP_403_FORBIDDEN]
+        assert response.status_code in [
+            status.HTTP_201_CREATED,
+            status.HTTP_400_BAD_REQUEST,
+            status.HTTP_403_FORBIDDEN,
+        ]
 
     def test_update_triage_category_logs_override(
         self, authenticated_client, triage_assessment, test_user
@@ -138,7 +136,7 @@ class TestTriageAssessmentViewSetActions:
         from django.contrib.auth.models import Permission
 
         # Add perform_triage permission
-        permission = Permission.objects.filter(codename='perform_triage').first()
+        permission = Permission.objects.filter(codename="perform_triage").first()
         if permission:
             test_user.user_permissions.add(permission)
 
@@ -196,9 +194,7 @@ class TestWaitingQueueViewSetActions:
         assert waiting_queue_entry.status == "CANCELLED"
         assert "Patient left" in waiting_queue_entry.notes
 
-    def test_cancel_entry_without_reason(
-        self, authenticated_client, waiting_queue_entry
-    ):
+    def test_cancel_entry_without_reason(self, authenticated_client, waiting_queue_entry):
         """cancel action should work without reason."""
         response = authenticated_client.post(
             f"/api/triage/waiting/{waiting_queue_entry.id}/cancel/",
@@ -239,9 +235,7 @@ class TestWaitingQueueViewSetActions:
             checked_in_by=test_user,
         )
 
-        response = authenticated_client.get(
-            "/api/triage/waiting/", {"show_all": "true"}
-        )
+        response = authenticated_client.get("/api/triage/waiting/", {"show_all": "true"})
 
         assert response.status_code == status.HTTP_200_OK
 
@@ -274,7 +268,7 @@ class TestTriageQueueViewSet:
         from django.contrib.auth.models import Permission
 
         # Add the required permission
-        permission = Permission.objects.filter(codename='view_triage_queue').first()
+        permission = Permission.objects.filter(codename="view_triage_queue").first()
         if permission:
             test_user.user_permissions.add(permission)
 
@@ -314,7 +308,11 @@ class TestTriageVitalThresholdViewSet:
         )
 
         # May be read-only viewset (405), or succeed (201), or validation error (400)
-        assert response.status_code in [status.HTTP_201_CREATED, status.HTTP_400_BAD_REQUEST, status.HTTP_405_METHOD_NOT_ALLOWED]
+        assert response.status_code in [
+            status.HTTP_201_CREATED,
+            status.HTTP_400_BAD_REQUEST,
+            status.HTTP_405_METHOD_NOT_ALLOWED,
+        ]
 
 
 @pytest.mark.django_db

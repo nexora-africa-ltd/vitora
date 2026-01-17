@@ -25,7 +25,7 @@ class TestLabNotificationService:
 
         assert notification is not None
         assert notification.user == sample_lab_order.ordered_by
-        assert notification.notification_type == 'lab_result'
+        assert notification.notification_type == "lab_result"
 
     def test_critical_priority_for_critical_results(self, sample_lab_order, sample_lab_result):
         """Should set critical priority when results contain critical values."""
@@ -35,7 +35,7 @@ class TestLabNotificationService:
         service = LabNotificationService()
         notification = service.send_result_notification(sample_lab_order)
 
-        assert notification.priority == 'critical'
+        assert notification.priority == "critical"
 
     def test_normal_priority_for_normal_results(self, sample_lab_order, sample_lab_result):
         """Should set normal priority when no critical results."""
@@ -45,7 +45,7 @@ class TestLabNotificationService:
         service = LabNotificationService()
         notification = service.send_result_notification(sample_lab_order)
 
-        assert notification.priority == 'normal'
+        assert notification.priority == "normal"
 
     def test_notification_contains_patient_info(self, sample_lab_order):
         """Should include patient name and MRN in notification."""
@@ -77,14 +77,14 @@ class TestLabNotificationService:
         sample_lab_result.save()
 
         # Set clinician email (using ordered_by)
-        sample_lab_order.ordered_by.email = 'clinician@example.com'
+        sample_lab_order.ordered_by.email = "clinician@example.com"
         sample_lab_order.ordered_by.save()
 
         service = LabNotificationService()
         service.send_result_notification(sample_lab_order)
 
         assert len(mail.outbox) == 1
-        assert mail.outbox[0].to == ['clinician@example.com']
+        assert mail.outbox[0].to == ["clinician@example.com"]
 
     def test_no_email_for_normal_results(self, sample_lab_order, sample_lab_result):
         """Should not send email for normal results."""
@@ -96,13 +96,15 @@ class TestLabNotificationService:
 
         assert len(mail.outbox) == 0
 
-    def test_email_contains_critical_parameters(self, sample_lab_order, sample_lab_result, sample_test_catalog):
+    def test_email_contains_critical_parameters(
+        self, sample_lab_order, sample_lab_result, sample_test_catalog
+    ):
         """Should list critical parameters in email."""
         sample_lab_result.is_critical_result = True
         sample_lab_result.save()
 
         # Set clinician email (using ordered_by)
-        sample_lab_order.ordered_by.email = 'clinician@example.com'
+        sample_lab_order.ordered_by.email = "clinician@example.com"
         sample_lab_order.ordered_by.save()
 
         service = LabNotificationService()
@@ -124,4 +126,4 @@ class TestLabNotificationService:
 
         # Should mention critical values
         assert "Critical" in notification.message or "critical" in notification.message
-        assert notification.priority == 'critical'
+        assert notification.priority == "critical"
