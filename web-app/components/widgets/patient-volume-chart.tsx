@@ -33,8 +33,8 @@ export function PatientVolumeChart({ data, showLegend = true }: PatientVolumeCha
   }));
 
   return (
-    <div className="h-[250px] w-full">
-      <ResponsiveContainer width="100%" height="100%">
+    <div className="h-[250px] w-full min-h-[250px] min-w-0">
+      <ResponsiveContainer width="100%" height="100%" minHeight={250}>
         <AreaChart
           data={formattedData}
           margin={{ top: 10, right: 10, left: 0, bottom: 0 }}

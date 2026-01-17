@@ -37,8 +37,8 @@ export function RevenueBreakdownChart({ data, showLegend = true }: RevenueBreakd
   };
 
   return (
-    <div className="h-[250px] w-full">
-      <ResponsiveContainer width="100%" height="100%">
+    <div className="h-[250px] w-full min-h-[250px] min-w-0">
+      <ResponsiveContainer width="100%" height="100%" minHeight={250}>
         <PieChart>
           <Pie
             data={formattedData}
