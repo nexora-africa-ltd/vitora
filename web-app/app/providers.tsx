@@ -2,18 +2,22 @@
 
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { ThemeProvider } from 'next-themes';
-import { useState, ReactNode, Suspense, lazy } from 'react';
+import { useState, ReactNode, Suspense } from 'react';
+import dynamic from 'next/dynamic';
 import { AuthProvider } from '@/lib/auth/context';
 import { Toaster } from '@/components/ui/toaster';
 import { NavigationProgress } from '@/components/layout/navigation-progress';
 import { DemoBanner, DemoWatermark } from '@/components/shared/demo-banner';
 
-// Lazy load devtools only in development
-const ReactQueryDevtools = lazy(() =>
-  import('@tanstack/react-query-devtools').then((mod) => ({
-    default: mod.ReactQueryDevtools,
-  }))
+// Only load devtools in development - use dynamic import to avoid build errors
+const ReactQueryDevtools = dynamic(
+  () =>
+    import('@tanstack/react-query-devtools').then((mod) => mod.ReactQueryDevtools),
+  { ssr: false }
 );
+
+// Check if we're in development mode
+const isDev = process.env.NODE_ENV === 'development';
 
 interface ProvidersProps {
   children: ReactNode;
@@ -65,11 +69,7 @@ export function Providers({ children }: ProvidersProps) {
           <DemoWatermark />
         </AuthProvider>
       </ThemeProvider>
-      {process.env.NODE_ENV === 'development' && (
-        <Suspense fallback={null}>
-          <ReactQueryDevtools initialIsOpen={false} />
-        </Suspense>
-      )}
+      {isDev && <ReactQueryDevtools initialIsOpen={false} />}
     </QueryClientProvider>
   );
 }
