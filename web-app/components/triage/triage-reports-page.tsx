@@ -13,15 +13,12 @@
 import * as React from 'react';
 import {
   Download,
-  Calendar,
   Clock,
   Users,
-  AlertTriangle,
-  TrendingUp,
-  Filter,
   BarChart3,
   Target,
   LogOut,
+  CalendarIcon,
 } from 'lucide-react';
 import { cn } from '@/lib/utils/cn';
 import { Button } from '@/components/ui/button';
@@ -44,12 +41,9 @@ import {
 } from '@/components/ui/table';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Progress } from '@/components/ui/progress';
+import { TrendIndicator, DonutChart, createChartConfig } from '@/components/charts';
 import type {
   TriageReportSummary,
-  WaitTimeStats,
-  VolumeByCategory,
-  VolumeByArea,
-  LWBSStats,
   TriageCategory,
   AssignedArea,
 } from '@/lib/types/triage';
@@ -173,15 +167,14 @@ function SummaryCard({
           </div>
         </div>
         {trend && (
-          <div className="mt-3 flex items-center gap-1 text-sm">
-            <TrendingUp
-              className={cn('h-4 w-4', trend.positive ? 'text-green-600' : 'text-red-600')}
+          <div className="mt-3">
+            <TrendIndicator
+              value={trend.value}
+              previousValue={0}
+              direction={trend.positive ? 'up' : 'down'}
+              suffix="vs last period"
+              size="sm"
             />
-            <span className={trend.positive ? 'text-green-600' : 'text-red-600'}>
-              {trend.positive ? '+' : ''}
-              {trend.value}%
-            </span>
-            <span className="text-muted-foreground">vs last period</span>
           </div>
         )}
       </CardContent>
@@ -217,6 +210,65 @@ function CategoryVolumeBar({
       <span className="w-12 text-right font-medium">{count}</span>
       <span className="w-16 text-right text-muted-foreground">{percentage}%</span>
     </div>
+  );
+}
+
+// Triage Category DonutChart component
+const triageCategoryConfig = createChartConfig(
+  ['RED', 'ORANGE', 'YELLOW', 'GREEN', 'BLUE'],
+  {
+    labels: {
+      RED: 'Emergency',
+      ORANGE: 'Very Urgent',
+      YELLOW: 'Urgent',
+      GREEN: 'Standard',
+      BLUE: 'Non-Urgent',
+    },
+    colors: {
+      RED: 'hsl(0 84% 60%)',       // Red
+      ORANGE: 'hsl(25 95% 53%)',   // Orange
+      YELLOW: 'hsl(48 96% 53%)',   // Yellow
+      GREEN: 'hsl(142 71% 45%)',   // Green
+      BLUE: 'hsl(217 91% 60%)',    // Blue
+    },
+  }
+);
+
+function TriageCategoryChart({ data }: { data: Array<{ category: TriageCategory; count: number; percentage: number }> }) {
+  const chartData = React.useMemo(
+    () => data.map((item) => ({
+      name: item.category,
+      value: item.count,
+    })),
+    [data]
+  );
+
+  const total = React.useMemo(
+    () => data.reduce((sum, item) => sum + item.count, 0),
+    [data]
+  );
+
+  if (total === 0) {
+    return (
+      <div className="h-[200px] flex items-center justify-center text-muted-foreground">
+        No category data available
+      </div>
+    );
+  }
+
+  return (
+    <DonutChart
+      data={chartData}
+      config={triageCategoryConfig}
+      showLegend
+      legendPosition="right"
+      innerRadius={40}
+      outerRadius={80}
+      showCenterLabel
+      centerLabelTitle="Total"
+      centerLabelValue={String(total)}
+      minHeight="200px"
+    />
   );
 }
 
@@ -342,7 +394,7 @@ export function TriageReportsPage({
               <Label htmlFor="date-range">Date Range</Label>
               <Select value={selectedDateRange} onValueChange={handleDateRangeChange}>
                 <SelectTrigger id="date-range" aria-label="Date range">
-                  <Calendar className="h-4 w-4 mr-2" />
+                  <CalendarIcon className="h-4 w-4 mr-2" />
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
@@ -501,7 +553,7 @@ export function TriageReportsPage({
 
           {/* Volume Distribution */}
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            {/* Volume by Category */}
+            {/* Volume by Category - DonutChart */}
             <Card data-testid="volume-section">
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
@@ -511,17 +563,7 @@ export function TriageReportsPage({
                 <CardDescription>Distribution of triage assessments</CardDescription>
               </CardHeader>
               <CardContent>
-                <div className="space-y-3">
-                  {reportData.volume_by_category.map((vol) => (
-                    <CategoryVolumeBar
-                      key={vol.category}
-                      category={vol.category}
-                      count={vol.count}
-                      percentage={vol.percentage}
-                      maxCount={maxVolume}
-                    />
-                  ))}
-                </div>
+                <TriageCategoryChart data={reportData.volume_by_category} />
               </CardContent>
             </Card>
 
