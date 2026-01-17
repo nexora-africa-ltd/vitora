@@ -107,7 +107,7 @@ export default function LoginPage() {
 
       {/* Right side - Login form */}
       <div className="flex w-full lg:w-1/2 items-center justify-center p-8 bg-background">
-        <Card className="w-full max-w-md border-brand-burgundy-200 dark:border-0 shadow-none lg:shadow-lg lg:border-2 hover:shadow-2xl hover:animate-pulse hover:bg-red-400/10 hover:text-white">
+        <Card className="w-full max-w-md border-brand-burgundy-200 dark:border-0 shadow-none lg:shadow-lg lg:border-2 hover:shadow-2xl  hover:bg-red-400/10 hover:text-white">
           <CardHeader className="text-center space-y-4">
             {/* Mobile logo */}
             <div className="lg:hidden mx-auto h-14 w-14 rounded-xl bg-gradient-to-br from-brand-burgundy-900 to-brand-teal-600 flex items-center justify-center">
