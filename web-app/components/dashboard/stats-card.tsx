@@ -1,7 +1,8 @@
 import { Card, CardContent } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
+import { TrendIndicator } from '@/components/charts';
 import { cn } from '@/lib/utils/cn';
-import { TrendingUp, TrendingDown, Minus, LucideIcon } from 'lucide-react';
+import { LucideIcon } from 'lucide-react';
 
 interface StatsCardProps {
   title: string;
@@ -22,22 +23,14 @@ export function StatsCard({
   variant = 'default',
   loading = false,
 }: StatsCardProps) {
-  const TrendIcon = trend === 'up' ? TrendingUp : trend === 'down' ? TrendingDown : Minus;
-
   const iconBgColors = {
     default: 'bg-primary/10 text-primary',
-    warning: 'bg-amber-500/10 text-amber-600 dark:text-amber-400',
-    success: 'bg-green-500/10 text-green-600 dark:text-green-400',
-  };
-
-  const trendColors = {
-    up: 'text-green-600 dark:text-green-400',
-    down: 'text-red-600 dark:text-red-400',
-    neutral: 'text-muted-foreground',
+    warning: 'bg-warning/10 text-warning',
+    success: 'bg-success/10 text-success',
   };
 
   return (
-    <Card className="overflow-hidden transition-all duration-200 hover:shadow-md">
+    <Card variant="elevated" className="overflow-hidden">
       <CardContent className="p-6">
         {loading ? (
           <div className="space-y-3">
@@ -59,10 +52,15 @@ export function StatsCard({
             <div className="space-y-1">
               <p className="text-3xl font-bold tracking-tight">{value}</p>
               {description && (
-                <p className={cn('text-sm flex items-center gap-1.5', trendColors[trend])}>
-                  <TrendIcon className="h-4 w-4" />
+                <div className="flex items-center gap-1.5 text-sm text-muted-foreground">
+                  <TrendIndicator
+                    value={0}
+                    direction={trend}
+                    showPercentage={false}
+                    size="sm"
+                  />
                   <span>{description}</span>
-                </p>
+                </div>
               )}
             </div>
           </>

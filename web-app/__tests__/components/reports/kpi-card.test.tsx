@@ -10,6 +10,15 @@ jest.mock('next/link', () => {
   return MockLink;
 });
 
+// Mock TrendIndicator component
+jest.mock('@/components/charts', () => ({
+  TrendIndicator: ({ direction, percentageChange }: { direction?: string; percentageChange?: number }) => (
+    <span data-testid="trend-indicator" data-direction={direction} data-change={percentageChange}>
+      {percentageChange !== undefined && `${Math.abs(percentageChange)}%`}
+    </span>
+  ),
+}));
+
 describe('KPICard', () => {
   const defaultProps = {
     id: 'test-kpi',
@@ -31,7 +40,7 @@ describe('KPICard', () => {
     expect(screen.getByText('%')).toBeInTheDocument();
   });
 
-  it('renders positive trend with up arrow', () => {
+  it('renders positive trend with TrendIndicator', () => {
     render(
       <KPICard
         {...defaultProps}
@@ -41,20 +50,23 @@ describe('KPICard', () => {
       />
     );
     
+    const indicator = screen.getByTestId('trend-indicator');
+    expect(indicator).toHaveAttribute('data-direction', 'up');
     expect(screen.getByText('12.5%')).toBeInTheDocument();
   });
 
-  it('renders negative trend with down arrow', () => {
+  it('renders negative trend with TrendIndicator', () => {
     render(
       <KPICard
         {...defaultProps}
-        change={-5.2}
+        change={5.2}
         changeType="decrease"
         trend="down"
       />
     );
     
-    expect(screen.getByText('5.2%')).toBeInTheDocument();
+    const indicator = screen.getByTestId('trend-indicator');
+    expect(indicator).toHaveAttribute('data-direction', 'down');
   });
 
   it('renders description when provided', () => {
@@ -73,19 +85,20 @@ describe('KPICard', () => {
   it('applies success variant styling', () => {
     const { container } = render(<KPICard {...defaultProps} variant="success" />);
     
-    expect(container.querySelector('.border-green-200')).toBeInTheDocument();
+    // Check for success border class (using regex for partial match)
+    expect(container.querySelector('[class*="border-success"]')).toBeInTheDocument();
   });
 
   it('applies warning variant styling', () => {
     const { container } = render(<KPICard {...defaultProps} variant="warning" />);
     
-    expect(container.querySelector('.border-amber-200')).toBeInTheDocument();
+    expect(container.querySelector('[class*="border-warning"]')).toBeInTheDocument();
   });
 
   it('applies destructive variant styling', () => {
     const { container } = render(<KPICard {...defaultProps} variant="destructive" />);
     
-    expect(container.querySelector('.border-destructive')).toBeInTheDocument();
+    expect(container.querySelector('[class*="border-destructive"]')).toBeInTheDocument();
   });
 
   it('renders string values correctly', () => {

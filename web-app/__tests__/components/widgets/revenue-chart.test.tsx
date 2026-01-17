@@ -2,20 +2,24 @@ import { render, screen } from '@testing-library/react';
 import { RevenueBreakdownChart } from '@/components/widgets/revenue-chart';
 import type { RevenueData } from '@/lib/types/dashboard';
 
-// Mock recharts
-jest.mock('recharts', () => ({
-  ResponsiveContainer: ({ children }: { children: React.ReactNode }) => (
-    <div data-testid="responsive-container">{children}</div>
+// Mock the charts library components
+jest.mock('@/components/charts', () => ({
+  DonutChart: ({ data, showLegend, centerLabelTitle, centerLabelValue }: {
+    data: Array<{ name: string; value: number }>;
+    showLegend?: boolean;
+    centerLabelTitle?: string;
+    centerLabelValue?: string;
+  }) => (
+    <div data-testid="donut-chart">
+      <div data-testid="chart-data">{JSON.stringify(data)}</div>
+      {showLegend && <div data-testid="legend" />}
+      {centerLabelTitle && <div data-testid="center-label-title">{centerLabelTitle}</div>}
+      {centerLabelValue && <div data-testid="center-label-value">{centerLabelValue}</div>}
+    </div>
   ),
-  PieChart: ({ children }: { children: React.ReactNode }) => (
-    <div data-testid="pie-chart">{children}</div>
-  ),
-  Pie: ({ children }: { children: React.ReactNode }) => (
-    <div data-testid="pie">{children}</div>
-  ),
-  Cell: () => <div data-testid="cell" />,
-  Legend: () => <div data-testid="legend" />,
-  Tooltip: () => <div data-testid="tooltip" />,
+  createChartConfig: jest.fn(() => ({})),
+  formatChartValue: (value: number, type: string) => 
+    type === 'currency' ? `KES ${value.toLocaleString()}` : value.toString(),
 }));
 
 describe('RevenueBreakdownChart', () => {
@@ -26,16 +30,10 @@ describe('RevenueBreakdownChart', () => {
     { department: 'Procedures', amount: 23200, percentage: 16, color: '#FF8042' },
   ];
 
-  it('renders chart container', () => {
+  it('renders donut chart', () => {
     render(<RevenueBreakdownChart data={mockData} />);
     
-    expect(screen.getByTestId('responsive-container')).toBeInTheDocument();
-  });
-
-  it('renders pie chart', () => {
-    render(<RevenueBreakdownChart data={mockData} />);
-    
-    expect(screen.getByTestId('pie-chart')).toBeInTheDocument();
+    expect(screen.getByTestId('donut-chart')).toBeInTheDocument();
   });
 
   it('shows empty message when no data', () => {
@@ -63,10 +61,21 @@ describe('RevenueBreakdownChart', () => {
     expect(screen.getByText('No revenue data available')).toBeInTheDocument();
   });
 
-  it('renders cells for each data point', () => {
+  it('transforms data correctly for DonutChart', () => {
     render(<RevenueBreakdownChart data={mockData} />);
     
-    const cells = screen.getAllByTestId('cell');
-    expect(cells.length).toBe(mockData.length);
+    const chartData = screen.getByTestId('chart-data');
+    const parsed = JSON.parse(chartData.textContent || '[]');
+    
+    expect(parsed).toHaveLength(4);
+    expect(parsed[0]).toEqual({ name: 'consultation', value: 45000 });
+  });
+
+  it('displays total revenue in center label', () => {
+    render(<RevenueBreakdownChart data={mockData} />);
+    
+    expect(screen.getByTestId('center-label-title')).toHaveTextContent('Total');
+    // Total: 45000 + 35000 + 42000 + 23200 = 145200
+    expect(screen.getByTestId('center-label-value')).toHaveTextContent('KES 145,200');
   });
 });

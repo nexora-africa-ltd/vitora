@@ -6,6 +6,15 @@ import { render, screen } from '@testing-library/react';
 import { Users } from 'lucide-react';
 import { StatsCard } from '@/components/dashboard/stats-card';
 
+// Mock TrendIndicator component
+jest.mock('@/components/charts', () => ({
+  TrendIndicator: ({ direction }: { direction?: string }) => (
+    <span data-testid="trend-indicator" data-direction={direction}>
+      <svg data-testid="trend-icon" />
+    </span>
+  ),
+}));
+
 describe('StatsCard Component', () => {
   it('should render title', () => {
     render(
@@ -68,8 +77,8 @@ describe('StatsCard Component', () => {
     expect(container.querySelector('svg')).toBeInTheDocument();
   });
 
-  it('should render up trend icon', () => {
-    const { container } = render(
+  it('should render up trend with TrendIndicator', () => {
+    render(
       <StatsCard
         title="Total"
         value={100}
@@ -79,12 +88,12 @@ describe('StatsCard Component', () => {
       />
     );
 
-    // Should have at least one icon
-    expect(container.querySelectorAll('svg').length).toBeGreaterThanOrEqual(1);
+    const indicator = screen.getByTestId('trend-indicator');
+    expect(indicator).toHaveAttribute('data-direction', 'up');
   });
 
-  it('should render down trend icon', () => {
-    const { container } = render(
+  it('should render down trend with TrendIndicator', () => {
+    render(
       <StatsCard
         title="Total"
         value={100}
@@ -94,11 +103,12 @@ describe('StatsCard Component', () => {
       />
     );
 
-    expect(container.querySelectorAll('svg').length).toBeGreaterThanOrEqual(1);
+    const indicator = screen.getByTestId('trend-indicator');
+    expect(indicator).toHaveAttribute('data-direction', 'down');
   });
 
-  it('should render neutral trend icon', () => {
-    const { container } = render(
+  it('should render neutral trend with TrendIndicator', () => {
+    render(
       <StatsCard
         title="Total"
         value={100}
@@ -108,7 +118,8 @@ describe('StatsCard Component', () => {
       />
     );
 
-    expect(container.querySelectorAll('svg').length).toBeGreaterThanOrEqual(1);
+    const indicator = screen.getByTestId('trend-indicator');
+    expect(indicator).toHaveAttribute('data-direction', 'neutral');
   });
 
   it('should apply warning variant to icon', () => {
@@ -121,7 +132,7 @@ describe('StatsCard Component', () => {
       />
     );
 
-    expect(container.querySelector('[class*="text-amber"]')).toBeInTheDocument();
+    expect(container.querySelector('[class*="text-warning"]')).toBeInTheDocument();
   });
 
   it('should apply success variant to icon', () => {
@@ -134,7 +145,7 @@ describe('StatsCard Component', () => {
       />
     );
 
-    expect(container.querySelector('[class*="text-green"]')).toBeInTheDocument();
+    expect(container.querySelector('[class*="text-success"]')).toBeInTheDocument();
   });
 
   it('should default to neutral trend', () => {
