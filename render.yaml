@@ -92,7 +92,7 @@ services:
   - type: web
     name: vitora
     runtime: python
-    region: frankfurt  # or oregon, singapore, ohio
+    # region: omitted to preserve existing service region
     plan: free  # free, starter, standard, pro
     rootDir: backend
     buildCommand: |
@@ -135,7 +135,7 @@ services:
   - type: web
     name: vitora-hmis
     runtime: node
-    region: frankfurt
+    # region: omitted to preserve existing service region
     plan: free
     rootDir: web-app
     buildCommand: npm install && npm run build
