@@ -30,6 +30,9 @@ export type { PieChartProps, PieChartDataItem } from "./pie-chart";
 export { AreaChart, StackedAreaChart } from "./area-chart";
 export type { AreaChartProps } from "./area-chart";
 
+export { TrendIndicator, TrendBadge, calculateTrend } from "./trend-indicator";
+export type { TrendIndicatorProps, TrendBadgeProps, TrendDirection } from "./trend-indicator";
+
 // Chart Configurations
 export {
   // Color utilities
