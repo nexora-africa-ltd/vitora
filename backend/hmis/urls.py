@@ -71,6 +71,7 @@ location_router.register(r"wards", WardViewSet, basename="ward")
 
 urlpatterns = [
     path("", health_check, name="health_check"),
+    path("api/health/", health_check, name="api_health_check"),
     path("admin/", admin.site.urls),
     path("api/", include(router.urls)),
     path("api/locations/", include(location_router.urls)),
