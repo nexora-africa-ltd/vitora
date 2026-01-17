@@ -20,10 +20,10 @@ class TestStagingSettings:
     def test_staging_demo_mode_enabled(self):
         """Staging should have DEMO_MODE enabled by default."""
         with mock.patch.dict(os.environ, {"DEMO_MODE": "true"}):
-            from hmis.settings import staging
-
             # Force reimport to pick up env var
             import importlib
+
+            from hmis.settings import staging
 
             importlib.reload(staging)
             assert staging.DEMO_MODE is True
@@ -80,12 +80,12 @@ class TestStagingSettings:
     def test_staging_allowed_hosts_from_env(self):
         """Staging should read ALLOWED_HOSTS from environment."""
         with mock.patch.dict(os.environ, {"ALLOWED_HOSTS": "example.com,localhost"}):
-            from hmis.settings import staging
-
             import importlib
 
+            from hmis.settings import staging
+
             importlib.reload(staging)
-            assert "example.com" in staging.ALLOWED_HOSTS or staging.ALLOWED_HOSTS == []
+            assert "example.com" in staging.ALLOWED_HOSTS or len(staging.ALLOWED_HOSTS) == 0
 
     def test_staging_cors_origins(self):
         """Staging should have CORS origins configured."""

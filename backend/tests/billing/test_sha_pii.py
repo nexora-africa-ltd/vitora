@@ -1,7 +1,8 @@
 """Tests for SHA PII decryption helpers."""
 
-import pytest
 from unittest import mock
+
+import pytest
 
 from hmis.apps.billing.services.sha_pii import (
     SHADecryptionError,
@@ -56,7 +57,7 @@ class TestSplitPii:
         """Should split valid PII string into parts."""
         pii = "aes_key_encrypted:iv_encrypted:json_data_encrypted"
         parts = _split_pii(pii)
-        
+
         assert parts.encrypted_aes_key == "aes_key_encrypted"
         assert parts.encrypted_iv == "iv_encrypted"
         assert parts.encrypted_json_data == "json_data_encrypted"
