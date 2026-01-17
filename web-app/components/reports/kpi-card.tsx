@@ -1,8 +1,8 @@
 'use client';
 
 import Link from 'next/link';
-import { TrendingUp, TrendingDown, Minus } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
+import { TrendIndicator } from '@/components/charts';
 import { cn } from '@/lib/utils/cn';
 import type { KPIMetric } from '@/lib/types/dashboard';
 
@@ -24,18 +24,13 @@ export function KPICard({
 }: KPICardProps) {
   const variantStyles = {
     default: '',
-    success: 'border-green-200 dark:border-green-900',
-    warning: 'border-amber-200 dark:border-amber-900',
-    destructive: 'border-destructive',
+    success: 'border-success/30 dark:border-success/20',
+    warning: 'border-warning/30 dark:border-warning/20',
+    destructive: 'border-destructive/30',
   };
 
-  const trendStyles = {
-    up: changeType === 'increase' ? 'text-green-600' : 'text-destructive',
-    down: changeType === 'decrease' ? 'text-green-600' : 'text-destructive',
-    stable: 'text-muted-foreground',
-  };
-
-  const TrendIcon = trend === 'up' ? TrendingUp : trend === 'down' ? TrendingDown : Minus;
+  // Determine if colors should be inverted (e.g., for costs where decrease is good)
+  const invertColors = changeType === 'decrease';
 
   const cardContent = (
     <CardContent className="p-4">
@@ -49,10 +44,13 @@ export function KPICard({
         </div>
 
         {trend && change !== undefined && (
-          <div className={cn('flex items-center gap-1 text-sm', trendStyles[trend])}>
-            <TrendIcon className="h-4 w-4" />
-            <span>{Math.abs(change)}%</span>
-          </div>
+          <TrendIndicator
+            value={0}
+            percentageChange={trend === 'up' ? change : trend === 'down' ? -change : 0}
+            direction={trend === 'stable' ? 'neutral' : trend}
+            invertColors={invertColors}
+            size="md"
+          />
         )}
       </div>
 
@@ -66,11 +64,8 @@ export function KPICard({
     return (
       <Link href={href}>
         <Card
-          className={cn(
-            'transition-colors cursor-pointer hover:bg-accent/50',
-            variantStyles[variant],
-            className
-          )}
+          variant="interactive"
+          className={cn(variantStyles[variant], className)}
         >
           {cardContent}
         </Card>

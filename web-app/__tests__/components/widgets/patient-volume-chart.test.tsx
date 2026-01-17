@@ -2,20 +2,33 @@ import { render, screen } from '@testing-library/react';
 import { PatientVolumeChart } from '@/components/widgets/patient-volume-chart';
 import type { PatientVolumeData } from '@/lib/types/dashboard';
 
-// Mock recharts to avoid rendering issues in tests
-jest.mock('recharts', () => ({
-  ResponsiveContainer: ({ children }: { children: React.ReactNode }) => (
-    <div data-testid="responsive-container">{children}</div>
+// Mock the charts library components
+jest.mock('@/components/charts', () => ({
+  AreaChart: ({ 
+    data, 
+    showLegend, 
+    showGrid, 
+    showXAxis, 
+    showYAxis,
+    dataKeys,
+  }: {
+    data: Array<Record<string, unknown>>;
+    showLegend?: boolean;
+    showGrid?: boolean;
+    showXAxis?: boolean;
+    showYAxis?: boolean;
+    dataKeys?: string[];
+  }) => (
+    <div data-testid="area-chart">
+      <div data-testid="chart-data">{JSON.stringify(data)}</div>
+      <div data-testid="data-keys">{JSON.stringify(dataKeys)}</div>
+      {showLegend && <div data-testid="legend" />}
+      {showGrid && <div data-testid="grid" />}
+      {showXAxis && <div data-testid="x-axis" />}
+      {showYAxis && <div data-testid="y-axis" />}
+    </div>
   ),
-  AreaChart: ({ children }: { children: React.ReactNode }) => (
-    <div data-testid="area-chart">{children}</div>
-  ),
-  Area: () => <div data-testid="area" />,
-  XAxis: () => <div data-testid="x-axis" />,
-  YAxis: () => <div data-testid="y-axis" />,
-  CartesianGrid: () => <div data-testid="grid" />,
-  Tooltip: () => <div data-testid="tooltip" />,
-  Legend: () => <div data-testid="legend" />,
+  createChartConfig: jest.fn(() => ({})),
 }));
 
 describe('PatientVolumeChart', () => {
@@ -37,12 +50,6 @@ describe('PatientVolumeChart', () => {
       emergency: 3,
     },
   ];
-
-  it('renders chart container', () => {
-    render(<PatientVolumeChart data={mockData} />);
-    
-    expect(screen.getByTestId('responsive-container')).toBeInTheDocument();
-  });
 
   it('renders area chart', () => {
     render(<PatientVolumeChart data={mockData} />);
@@ -86,5 +93,23 @@ describe('PatientVolumeChart', () => {
     render(<PatientVolumeChart data={null} />);
     
     expect(screen.getByText('No data available')).toBeInTheDocument();
+  });
+
+  it('passes correct data keys for registrations and encounters', () => {
+    render(<PatientVolumeChart data={mockData} />);
+    
+    const dataKeys = screen.getByTestId('data-keys');
+    expect(JSON.parse(dataKeys.textContent || '[]')).toEqual(['registrations', 'encounters']);
+  });
+
+  it('formats dates correctly', () => {
+    render(<PatientVolumeChart data={mockData} />);
+    
+    const chartData = screen.getByTestId('chart-data');
+    const parsed = JSON.parse(chartData.textContent || '[]');
+    
+    // Check formatted dates
+    expect(parsed[0].formattedDate).toBe('Jan 1');
+    expect(parsed[1].formattedDate).toBe('Jan 2');
   });
 });

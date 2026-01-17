@@ -1,16 +1,8 @@
 'use client';
 
-import {
-  AreaChart,
-  Area,
-  XAxis,
-  YAxis,
-  CartesianGrid,
-  Tooltip,
-  ResponsiveContainer,
-  Legend,
-} from 'recharts';
+import { useMemo } from 'react';
 import { format, parseISO } from 'date-fns';
+import { AreaChart, createChartConfig } from '@/components/charts';
 import type { PatientVolumeData } from '@/lib/types/dashboard';
 
 interface PatientVolumeChartProps {
@@ -18,7 +10,24 @@ interface PatientVolumeChartProps {
   showLegend?: boolean;
 }
 
+// Chart configuration for patient volume metrics
+const patientVolumeConfig = createChartConfig(['registrations', 'encounters'], {
+  labels: {
+    registrations: 'Registrations',
+    encounters: 'Encounters',
+  },
+});
+
 export function PatientVolumeChart({ data, showLegend = true }: PatientVolumeChartProps) {
+  // Format dates for display - must be before early return
+  const formattedData = useMemo(
+    () => (data ?? []).map((item) => ({
+      ...item,
+      formattedDate: format(parseISO(item.date), 'MMM d'),
+    })),
+    [data]
+  );
+
   if (!data || data.length === 0) {
     return (
       <div className="h-[250px] flex items-center justify-center text-muted-foreground">
@@ -27,75 +36,22 @@ export function PatientVolumeChart({ data, showLegend = true }: PatientVolumeCha
     );
   }
 
-  const formattedData = data.map(item => ({
-    ...item,
-    formattedDate: format(parseISO(item.date), 'MMM d'),
-  }));
-
   return (
     <div className="h-[250px] w-full min-h-[250px] min-w-0">
-      <ResponsiveContainer width="100%" height="100%" minHeight={250}>
-        <AreaChart
-          data={formattedData}
-          margin={{ top: 10, right: 10, left: 0, bottom: 0 }}
-        >
-          <defs>
-            <linearGradient id="colorRegistrations" x1="0" y1="0" x2="0" y2="1">
-              <stop offset="5%" stopColor="#8884d8" stopOpacity={0.8} />
-              <stop offset="95%" stopColor="#8884d8" stopOpacity={0} />
-            </linearGradient>
-            <linearGradient id="colorEncounters" x1="0" y1="0" x2="0" y2="1">
-              <stop offset="5%" stopColor="#82ca9d" stopOpacity={0.8} />
-              <stop offset="95%" stopColor="#82ca9d" stopOpacity={0} />
-            </linearGradient>
-          </defs>
-          <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
-          <XAxis
-            dataKey="formattedDate"
-            tick={{ fontSize: 12 }}
-            tickLine={false}
-            axisLine={false}
-            className="text-muted-foreground"
-          />
-          <YAxis
-            tick={{ fontSize: 12 }}
-            tickLine={false}
-            axisLine={false}
-            className="text-muted-foreground"
-          />
-          <Tooltip
-            contentStyle={{
-              backgroundColor: 'hsl(var(--popover))',
-              border: '1px solid hsl(var(--border))',
-              borderRadius: '8px',
-            }}
-            labelStyle={{ color: 'hsl(var(--foreground))' }}
-          />
-          {showLegend && (
-            <Legend
-              wrapperStyle={{ fontSize: '12px' }}
-              iconType="circle"
-              iconSize={8}
-            />
-          )}
-          <Area
-            type="monotone"
-            dataKey="registrations"
-            name="Registrations"
-            stroke="#8884d8"
-            fillOpacity={1}
-            fill="url(#colorRegistrations)"
-          />
-          <Area
-            type="monotone"
-            dataKey="encounters"
-            name="Encounters"
-            stroke="#82ca9d"
-            fillOpacity={1}
-            fill="url(#colorEncounters)"
-          />
-        </AreaChart>
-      </ResponsiveContainer>
+      <AreaChart
+        data={formattedData}
+        config={patientVolumeConfig}
+        dataKeys={['registrations', 'encounters']}
+        xAxisKey="formattedDate"
+        showGrid
+        showXAxis
+        showYAxis
+        showTooltip
+        showLegend={showLegend}
+        showGradient
+        areaType="monotone"
+        minHeight="250px"
+      />
     </div>
   );
 }
