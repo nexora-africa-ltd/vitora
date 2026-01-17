@@ -1,6 +1,6 @@
 'use client';
 
-import { useAuth } from './context';
+import { usePermissions } from '@/lib/hooks/use-permissions';
 
 interface PermissionGuardProps {
   children: React.ReactNode;
@@ -13,16 +13,21 @@ interface PermissionGuardProps {
  * 
  * Note: Authentication is handled by middleware.ts (server-side redirect).
  * This component only handles permission-based access control.
+ * 
+ * Uses usePermissions hook which properly handles:
+ * - Superusers (bypass all permission checks)
+ * - Admin roles (bypass all permission checks)
+ * - Permission mapping (simple names to Django format)
  */
 export function PermissionGuard({ 
   children, 
   requiredPermission,
   fallback 
 }: PermissionGuardProps) {
-  const { user } = useAuth();
+  const { hasPermission, isAuthenticated } = usePermissions();
 
-  // Check required permission
-  if (!user?.permissions?.includes(requiredPermission)) {
+  // Check required permission (superusers/admins automatically pass)
+  if (!isAuthenticated || !hasPermission(requiredPermission)) {
     return fallback ?? <AccessDenied />;
   }
 

@@ -25,16 +25,16 @@ import {
   useExportThresholds,
   useImportThresholds,
 } from '@/lib/hooks/use-triage';
-import { useAuth } from '@/lib/auth/index';
+import { usePermissions } from '@/lib/hooks/use-permissions';
 import { toast } from '@/lib/hooks/use-toast';
 import type { TriageVitalThreshold } from '@/lib/types/triage';
 
 export default function TriageSettingsPage() {
   const router = useRouter();
-  const { user } = useAuth();
+  const { hasPermission } = usePermissions();
 
-  // Check permission - user.permissions is an array of strings
-  const canEdit = user?.permissions?.includes('triage.change_triageVitalthreshold') ?? false;
+  // Check permission - usePermissions handles superusers/admins automatically
+  const canEdit = hasPermission('triage.change_triageVitalthreshold');
 
   // Fetch thresholds
   const {
