@@ -2,6 +2,8 @@
  * Dashboard and reporting types
  */
 
+import type { ReactNode } from 'react';
+
 export interface KPIMetric {
   id: string;
   title: string;
@@ -12,7 +14,7 @@ export interface KPIMetric {
   trend?: 'up' | 'down' | 'stable';
   variant?: 'default' | 'success' | 'warning' | 'destructive';
   href?: string;
-  description?: string;
+  description?: ReactNode;
 }
 
 export interface ChartDataPoint {

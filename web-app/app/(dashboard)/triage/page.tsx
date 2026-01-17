@@ -8,7 +8,7 @@
  */
 'use client';
 
-import { useCallback } from 'react';
+import { useCallback, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import { Plus, RefreshCw, Clock, UserPlus, ExternalLink } from 'lucide-react';
 import Link from 'next/link';
@@ -20,6 +20,7 @@ import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { KPICard } from '@/components/reports/kpi-card';
+import { TrendIndicator } from '@/components/charts';
 import { 
   useTriageWaitTimeStats,
   useWaitingQueue,
@@ -42,6 +43,16 @@ export default function TriageQueuePage() {
   const { data: waitTimeStats } = useTriageWaitTimeStats({
     dateRange: 'today',
   });
+
+  // Calculate trend for target met percentage (comparing to 85% KETA target)
+  const targetMetTrend = useMemo(() => {
+    const current = waitTimeStats?.target_met_percentage ?? 0;
+    const target = 85; // KETA target
+    return {
+      direction: current >= target ? 'up' : 'down',
+      change: current - target,
+    } as const;
+  }, [waitTimeStats?.target_met_percentage]);
 
   // Waiting queue actions
   const { mutateAsync: startTriage } = useStartTriage();
@@ -146,15 +157,41 @@ export default function TriageQueuePage() {
           title="Avg Wait Time"
           value={waitTimeStats?.avg_wait_minutes ?? 0}
           unit="min"
-          description="Average triage wait time today"
+          description={
+            <span className="flex items-center gap-2">
+              Average triage wait time today
+              {waitTimeStats && waitTimeStats.avg_wait_minutes > 15 && (
+                <TrendIndicator
+                  value={waitTimeStats.avg_wait_minutes}
+                  previousValue={15}
+                  invertColors
+                  showPercentage={false}
+                  size="sm"
+                />
+              )}
+            </span>
+          }
         />
         <KPICard
           id="target-met"
           title="Target Met"
           value={waitTimeStats?.target_met_percentage ?? 0}
           unit="%"
+          trend={targetMetTrend.direction}
+          change={Math.abs(targetMetTrend.change)}
+          changeType={targetMetTrend.direction === 'up' ? 'increase' : 'decrease'}
           variant={(waitTimeStats?.target_met_percentage ?? 0) >= 85 ? 'success' : 'warning'}
-          description="Within KETA targets"
+          description={
+            <span className="flex items-center gap-2">
+              Within KETA targets
+              <TrendIndicator
+                value={waitTimeStats?.target_met_percentage ?? 0}
+                previousValue={85}
+                size="sm"
+                suffix="vs target"
+              />
+            </span>
+          }
         />
       </div>
 

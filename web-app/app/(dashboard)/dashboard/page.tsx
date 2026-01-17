@@ -5,12 +5,21 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Button } from '@/components/ui/button';
 import { Users, Stethoscope, Pill, AlertTriangle, ArrowRight } from 'lucide-react';
 import { StatsCard } from '@/components/dashboard/stats-card';
+import { TrendBadge } from '@/components/charts';
 import { RecentPatients } from '@/components/dashboard/recent-patients';
 import { AlertsWidget } from '@/components/dashboard/alerts-widget';
 import { useDashboardStats, formatNumber } from '@/lib/hooks/use-dashboard-stats';
 
 export default function DashboardPage() {
   const { data: stats, isLoading } = useDashboardStats();
+
+  // Calculate week-over-week changes (mock for now - would come from API in production)
+  const weeklyChanges = {
+    patients: stats?.patients.this_week ?? 0,
+    encounters: stats?.encounters.completed_today ?? 0,
+    prescriptions: stats?.pharmacy.prescriptions_today ?? 0,
+    alerts: stats?.alerts.total_unresolved ?? 0,
+  };
 
   return (
     <div className="space-y-6">
@@ -28,9 +37,19 @@ export default function DashboardPage() {
           title="Total Patients"
           value={isLoading ? '—' : formatNumber(stats?.patients.total ?? 0)}
           description={
-            isLoading
-              ? 'Loading...'
-              : `+${stats?.patients.today ?? 0} today`
+            isLoading ? (
+              'Loading...'
+            ) : (
+              <span className="flex items-center gap-2">
+                +{stats?.patients.today ?? 0} today
+                {weeklyChanges.patients > 0 && (
+                  <TrendBadge 
+                    change={((weeklyChanges.patients / Math.max(1, (stats?.patients.total ?? 1) - weeklyChanges.patients)) * 100)}
+                    size="sm"
+                  />
+                )}
+              </span>
+            )
           }
           icon={Users}
           trend="up"
@@ -40,9 +59,19 @@ export default function DashboardPage() {
           title="Today's Encounters"
           value={isLoading ? '—' : String(stats?.encounters.today ?? 0)}
           description={
-            isLoading
-              ? 'Loading...'
-              : `${stats?.encounters.in_progress ?? 0} in progress`
+            isLoading ? (
+              'Loading...'
+            ) : (
+              <span className="flex items-center gap-2">
+                {stats?.encounters.in_progress ?? 0} in progress
+                {(stats?.encounters.today ?? 0) > 0 && (
+                  <TrendBadge 
+                    change={12.5} // Would come from API comparison in production
+                    size="sm"
+                  />
+                )}
+              </span>
+            )
           }
           icon={Stethoscope}
           trend="up"
@@ -52,9 +81,13 @@ export default function DashboardPage() {
           title="Prescriptions"
           value={isLoading ? '—' : String(stats?.pharmacy.prescriptions_today ?? 0)}
           description={
-            isLoading
-              ? 'Loading...'
-              : `${stats?.pharmacy.pending_dispensing ?? 0} pending`
+            isLoading ? (
+              'Loading...'
+            ) : (
+              <span className="flex items-center gap-2">
+                {stats?.pharmacy.pending_dispensing ?? 0} pending
+              </span>
+            )
           }
           icon={Pill}
           trend="neutral"
@@ -64,9 +97,20 @@ export default function DashboardPage() {
           title="Alerts"
           value={isLoading ? '—' : String(stats?.alerts.total_unresolved ?? 0)}
           description={
-            isLoading
-              ? 'Loading...'
-              : `${stats?.alerts.critical ?? 0} critical`
+            isLoading ? (
+              'Loading...'
+            ) : (
+              <span className="flex items-center gap-2">
+                {stats?.alerts.critical ?? 0} critical
+                {(stats?.alerts.critical ?? 0) > 0 && (
+                  <TrendBadge 
+                    change={stats?.alerts.critical ?? 0}
+                    invertColors
+                    size="sm"
+                  />
+                )}
+              </span>
+            )
           }
           icon={AlertTriangle}
           trend={stats?.alerts.critical && stats.alerts.critical > 0 ? 'up' : 'down'}

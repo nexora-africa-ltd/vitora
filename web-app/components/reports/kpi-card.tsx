@@ -55,7 +55,9 @@ export function KPICard({
       </div>
 
       {description && (
-        <p className="mt-2 text-xs text-muted-foreground">{description}</p>
+        <div className="mt-2 text-xs text-muted-foreground">
+          {typeof description === 'string' ? <p>{description}</p> : description}
+        </div>
       )}
     </CardContent>
   );

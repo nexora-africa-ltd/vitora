@@ -1,3 +1,4 @@
+import type { ReactNode } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
 import { TrendIndicator } from '@/components/charts';
@@ -7,7 +8,7 @@ import { LucideIcon } from 'lucide-react';
 interface StatsCardProps {
   title: string;
   value: string | number;
-  description?: string;
+  description?: ReactNode;
   icon: LucideIcon;
   trend?: 'up' | 'down' | 'neutral';
   variant?: 'default' | 'warning' | 'success';
@@ -59,7 +60,7 @@ export function StatsCard({
                     showPercentage={false}
                     size="sm"
                   />
-                  <span>{description}</span>
+                  {typeof description === 'string' ? <span>{description}</span> : description}
                 </div>
               )}
             </div>
