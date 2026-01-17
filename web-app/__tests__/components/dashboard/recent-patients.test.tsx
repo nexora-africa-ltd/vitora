@@ -117,7 +117,7 @@ describe('RecentPatients Component', () => {
 
     render(<RecentPatients />);
 
-    expect(mockUsePatients).toHaveBeenCalledWith({ limit: 15 });
+    expect(mockUsePatients).toHaveBeenCalledWith({ limit: 8 });
   });
 
   it('should render avatars for patients', () => {

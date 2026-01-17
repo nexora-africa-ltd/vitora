@@ -20,7 +20,8 @@ export function usePatients(params: UsePatientsParams = {}) {
     queryKey: ['patients', { limit, page, search }],
     queryFn: async () => {
       const searchParams = new URLSearchParams();
-      searchParams.set('limit', String(limit));
+      // Django REST Framework uses page_size for pagination
+      searchParams.set('page_size', String(limit));
       searchParams.set('page', String(page));
       if (search) {
         searchParams.set('search', search);
@@ -31,6 +32,7 @@ export function usePatients(params: UsePatientsParams = {}) {
       );
       return response.data;
     },
+    staleTime: 30000, // 30 seconds
   });
 }
 

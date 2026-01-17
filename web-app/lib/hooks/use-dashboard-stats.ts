@@ -23,6 +23,19 @@ interface UseDashboardStatsOptions {
   enabled?: boolean;
 }
 
+// Default stats to show while loading or on error
+const DEFAULT_STATS: DashboardStats = {
+  timestamp: new Date().toISOString(),
+  cache_ttl: 300,
+  patients: { total: 0, today: 0, this_week: 0, this_month: 0 },
+  encounters: { total: 0, today: 0, in_progress: 0, completed_today: 0 },
+  pharmacy: { prescriptions_today: 0, pending_dispensing: 0, low_stock_items: 0, expiring_soon: 0 },
+  laboratory: { pending_tests: 0, completed_today: 0, critical_results: 0 },
+  triage: { waiting: 0, avg_wait_time_minutes: 0, emergency_count: 0 },
+  billing: { revenue_today: 0, pending_payments: 0, sha_claims_pending: 0 },
+  alerts: { critical: 0, high: 0, medium: 0, total_unresolved: 0 },
+};
+
 /**
  * Fetch dashboard statistics from the API.
  */
@@ -55,6 +68,9 @@ export function useDashboardStats(options: UseDashboardStatsOptions = {}) {
     staleTime: STALE_TIME,
     refetchInterval: REFETCH_INTERVAL,
     enabled,
+    retry: 2, // Retry failed requests twice
+    retryDelay: (attemptIndex) => Math.min(1000 * 2 ** attemptIndex, 10000),
+    placeholderData: DEFAULT_STATS, // Show zeros while loading
   });
 }
 
