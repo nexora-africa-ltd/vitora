@@ -263,7 +263,7 @@ export default function NewEncounterPage() {
         variant: 'destructive',
       });
     }
-  }, [formData, validateForm, createEncounter, toast, router]);
+  }, [formData, validateForm, createEncounter, toast, router, draft]);
   
   // Check if encounter type requires immediate attention (skip triage prompt)
   const isUrgentEncounterType = formData.encounter_type === 'EMERGENCY' || formData.encounter_type === 'IPD';
@@ -308,7 +308,7 @@ export default function NewEncounterPage() {
         variant: 'destructive',
       });
     }
-  }, [formData, validateForm, createEncounter, toast, isUrgentEncounterType, router]);
+  }, [formData, validateForm, createEncounter, toast, isUrgentEncounterType, router, draft]);
   
   // Handle triage modal response
   const handleGoToTriage = useCallback(() => {
