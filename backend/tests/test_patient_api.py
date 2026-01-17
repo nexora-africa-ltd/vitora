@@ -217,8 +217,8 @@ class TestPatientAPIEndpoints:
         """Test GET /api/patients/?page=1&page_size=10 - Pagination works."""
         from hmis.apps.patients.models import Patient
 
-        # Create 55 patients (more than default page size of 50)
-        for i in range(55):
+        # Create 25 patients (more than default page size of 20)
+        for i in range(25):
             Patient.objects.create(
                 first_name=f"Patient{i}",
                 last_name="Test",
@@ -231,8 +231,49 @@ class TestPatientAPIEndpoints:
         assert response.status_code == status.HTTP_200_OK
         assert "results" in response.data
         assert "count" in response.data
-        assert response.data["count"] == 55
-        assert len(response.data["results"]) == 50  # Default page size
+        assert response.data["count"] == 25
+        assert len(response.data["results"]) == 20  # Default page size
+
+    def test_pagination_out_of_range_returns_last_page(self, auth_client):
+        """Test that requesting a page beyond available data returns last page, not 404."""
+        from hmis.apps.patients.models import Patient
+
+        # Create 5 patients (less than one page)
+        for i in range(5):
+            Patient.objects.create(
+                first_name=f"Patient{i}",
+                last_name="Test",
+                date_of_birth=date(1990, 1, 1),
+                gender="M",
+            )
+
+        # Request page 10 which doesn't exist
+        response = auth_client.get("/api/patients/?page=10")
+
+        # Should return 200 with last page results, not 404
+        assert response.status_code == status.HTTP_200_OK
+        assert len(response.data["results"]) == 5  # Returns all items (last page)
+        assert response.data["count"] == 5
+
+    def test_pagination_custom_page_size(self, auth_client):
+        """Test pagination with custom page_size parameter."""
+        from hmis.apps.patients.models import Patient
+
+        # Create 15 patients
+        for i in range(15):
+            Patient.objects.create(
+                first_name=f"Patient{i}",
+                last_name="Test",
+                date_of_birth=date(1990, 1, 1),
+                gender="M",
+            )
+
+        # Request with page_size=5
+        response = auth_client.get("/api/patients/?page_size=5")
+
+        assert response.status_code == status.HTTP_200_OK
+        assert len(response.data["results"]) == 5
+        assert response.data["count"] == 15
 
     def test_mrn_is_readonly(self, auth_client, sample_patient_data):
         """Test that MRN cannot be set manually via API."""
