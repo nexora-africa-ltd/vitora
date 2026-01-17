@@ -17,6 +17,12 @@ jest.mock('@/components/charts', () => ({
       {centerLabelValue && <div data-testid="center-label-value">{centerLabelValue}</div>}
     </div>
   ),
+  ChartEmptyState: ({ title, description }: { title?: string; description?: string }) => (
+    <div data-testid="chart-empty-state">
+      <div data-testid="empty-title">{title}</div>
+      <div data-testid="empty-description">{description}</div>
+    </div>
+  ),
   createChartConfig: jest.fn(() => ({})),
   formatChartValue: (value: number, type: string) => 
     type === 'currency' ? `KES ${value.toLocaleString()}` : value.toString(),
@@ -36,10 +42,11 @@ describe('RevenueBreakdownChart', () => {
     expect(screen.getByTestId('donut-chart')).toBeInTheDocument();
   });
 
-  it('shows empty message when no data', () => {
+  it('shows empty state when no data', () => {
     render(<RevenueBreakdownChart data={[]} />);
     
-    expect(screen.getByText('No revenue data available')).toBeInTheDocument();
+    expect(screen.getByTestId('chart-empty-state')).toBeInTheDocument();
+    expect(screen.getByTestId('empty-title')).toHaveTextContent('No revenue data');
   });
 
   it('renders legend by default', () => {
@@ -58,7 +65,7 @@ describe('RevenueBreakdownChart', () => {
     // @ts-expect-error Testing null handling
     render(<RevenueBreakdownChart data={null} />);
     
-    expect(screen.getByText('No revenue data available')).toBeInTheDocument();
+    expect(screen.getByTestId('chart-empty-state')).toBeInTheDocument();
   });
 
   it('transforms data correctly for DonutChart', () => {

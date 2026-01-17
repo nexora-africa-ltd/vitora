@@ -1,0 +1,44 @@
+{
+    "$schema": "https://unpkg.com/knip/schema.json",
+    "entry": [
+        "next.config.{js,cjs,mjs,ts}",
+        "middleware.{js,ts}",
+        "src/middleware.{js,ts}",
+        "src/pages/**/*.{js,jsx,ts,tsx}",
+        "src/app/**/{page,layout,loading,error,not-found,template,default}.{js,jsx,ts,tsx}",
+        "src/app/**/route.{js,ts}",
+        "src/server/**/*.{js,ts}",
+        "src/scripts/**/*.{js,ts}"
+    ],
+    "project": [
+        "src/**/*.{js,jsx,ts,tsx}",
+        "scripts/**/*.{js,ts}",
+        "types/**/*.{ts,d.ts}",
+        "*.{js,cjs,mjs,ts}",
+        "*.config.{js,cjs,mjs,ts}"
+    ],
+    "ignore": [
+        ".next/**",
+        "out/**",
+        "dist/**",
+        "build/**",
+        "coverage/**",
+        "**/__generated__/**",
+        "**/*.d.ts",
+        "**/*.test.{js,jsx,ts,tsx}",
+        "**/*.spec.{js,jsx,ts,tsx}",
+        "**/__tests__/**",
+        "**/*.stories.{js,jsx,ts,tsx}"
+    ],
+    "ignoreDependencies": [
+        "@types/*",
+        "eslint",
+        "eslint-*",
+        "prettier",
+        "husky",
+        "lint-staged",
+        "postcss",
+        "tailwindcss",
+        "autoprefixer"
+    ]
+}

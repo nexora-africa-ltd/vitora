@@ -2,7 +2,7 @@
 
 import { useMemo } from 'react';
 import { format, parseISO } from 'date-fns';
-import { AreaChart, createChartConfig } from '@/components/charts';
+import { AreaChart, createChartConfig, ChartEmptyState } from '@/components/charts';
 import type { PatientVolumeData } from '@/lib/types/dashboard';
 
 interface PatientVolumeChartProps {
@@ -30,9 +30,12 @@ export function PatientVolumeChart({ data, showLegend = true }: PatientVolumeCha
 
   if (!data || data.length === 0) {
     return (
-      <div className="h-[250px] flex items-center justify-center text-muted-foreground">
-        No data available
-      </div>
+      <ChartEmptyState
+        chartType="area"
+        title="No volume data"
+        description="Patient volume data will appear here once registrations and encounters are recorded."
+        minHeight="250px"
+      />
     );
   }
 

@@ -33,6 +33,10 @@ export type { AreaChartProps } from "./area-chart";
 export { TrendIndicator, TrendBadge, calculateTrend } from "./trend-indicator";
 export type { TrendIndicatorProps, TrendBadgeProps, TrendDirection } from "./trend-indicator";
 
+// Empty State Component
+export { ChartEmptyState, withChartEmptyState } from "./chart-empty-state";
+export type { ChartEmptyStateProps, ChartType } from "./chart-empty-state";
+
 // Chart Configurations
 export {
   // Color utilities

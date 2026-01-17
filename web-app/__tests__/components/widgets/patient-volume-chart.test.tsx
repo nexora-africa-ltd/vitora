@@ -28,6 +28,12 @@ jest.mock('@/components/charts', () => ({
       {showYAxis && <div data-testid="y-axis" />}
     </div>
   ),
+  ChartEmptyState: ({ title, description }: { title?: string; description?: string }) => (
+    <div data-testid="chart-empty-state">
+      <div data-testid="empty-title">{title}</div>
+      <div data-testid="empty-description">{description}</div>
+    </div>
+  ),
   createChartConfig: jest.fn(() => ({})),
 }));
 
@@ -57,10 +63,11 @@ describe('PatientVolumeChart', () => {
     expect(screen.getByTestId('area-chart')).toBeInTheDocument();
   });
 
-  it('shows empty message when no data', () => {
+  it('shows empty state when no data', () => {
     render(<PatientVolumeChart data={[]} />);
     
-    expect(screen.getByText('No data available')).toBeInTheDocument();
+    expect(screen.getByTestId('chart-empty-state')).toBeInTheDocument();
+    expect(screen.getByTestId('empty-title')).toHaveTextContent('No volume data');
   });
 
   it('renders legend by default', () => {
@@ -92,7 +99,7 @@ describe('PatientVolumeChart', () => {
     // @ts-expect-error Testing null handling
     render(<PatientVolumeChart data={null} />);
     
-    expect(screen.getByText('No data available')).toBeInTheDocument();
+    expect(screen.getByTestId('chart-empty-state')).toBeInTheDocument();
   });
 
   it('passes correct data keys for registrations and encounters', () => {

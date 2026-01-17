@@ -1,7 +1,7 @@
 'use client';
 
 import { useMemo } from 'react';
-import { DonutChart, createChartConfig, formatChartValue } from '@/components/charts';
+import { DonutChart, createChartConfig, formatChartValue, ChartEmptyState } from '@/components/charts';
 import type { RevenueData } from '@/lib/types/dashboard';
 
 interface RevenueBreakdownChartProps {
@@ -40,9 +40,12 @@ export function RevenueBreakdownChart({ data, showLegend = true }: RevenueBreakd
 
   if (!data || data.length === 0) {
     return (
-      <div className="h-[250px] flex items-center justify-center text-muted-foreground">
-        No revenue data available
-      </div>
+      <ChartEmptyState
+        chartType="donut"
+        title="No revenue data"
+        description="Revenue breakdown will appear here once transactions are recorded."
+        minHeight="250px"
+      />
     );
   }
 
