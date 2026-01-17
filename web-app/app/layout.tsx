@@ -16,6 +16,11 @@ export const metadata: Metadata = {
   },
   description: 'Offline-first Hospital Management Information System for Kenya',
   applicationName: APP_NAME,
+  icons: {
+    icon: '/favicon.png',
+    shortcut: '/favicon.png',
+    apple: '/favicon.png',
+  },
 };
 
 export const viewport: Viewport = {
