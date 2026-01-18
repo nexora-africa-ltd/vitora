@@ -5,6 +5,7 @@ Serializers for Pharmacy app.
 from django.contrib.auth import get_user_model
 from rest_framework import serializers
 
+from hmis.apps.encounters.models import Encounter
 from hmis.apps.pharmacy.models import (
     AlertSettings,
     Dispensing,
@@ -304,6 +305,14 @@ class PrescriptionCreateSerializer(serializers.ModelSerializer):
     items = PrescriptionItemWriteSerializer(
         many=True, write_only=True, required=False, default=list
     )
+    # Make encounter optional (for walk-in pharmacy cases)
+    encounter = serializers.PrimaryKeyRelatedField(
+        queryset=Encounter.objects.all(),
+        required=False,
+        allow_null=True,
+    )
+    # Default valid_until to 30 days from now
+    valid_until = serializers.DateField(required=False)
 
     class Meta:
         model = Prescription
@@ -315,6 +324,13 @@ class PrescriptionCreateSerializer(serializers.ModelSerializer):
             "clinical_notes",
             "items",
         ]
+
+    def validate(self, data):
+        """Set default valid_until if not provided."""
+        if "valid_until" not in data or data["valid_until"] is None:
+            from datetime import date, timedelta
+            data["valid_until"] = date.today() + timedelta(days=30)
+        return data
 
     def create(self, validated_data):
         """Create prescription with nested items."""
