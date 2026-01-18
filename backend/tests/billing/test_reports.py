@@ -3,6 +3,7 @@ Tests for Billing Reports Service.
 
 Following TDD approach - tests written first based on deliverables spec § 10 (lines 930-1014).
 """
+
 from datetime import date, timedelta
 from decimal import Decimal
 

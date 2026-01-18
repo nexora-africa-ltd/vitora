@@ -1,6 +1,6 @@
 /**
  * Triage Category Badge Step Definitions
- * 
+ *
  * Steps for triage category badge display and behavior.
  */
 
@@ -235,7 +235,7 @@ Given(
   'color-blind mode is enabled',
   async function (this: VitoraWorld) {
     this.store('colorBlindMode', true);
-    
+
     if (this.page) {
       await this.page.evaluate(() => {
         localStorage.setItem('colorBlindMode', 'true');
@@ -418,7 +418,7 @@ Given(
   'dark mode is enabled',
   async function (this: VitoraWorld) {
     this.store('darkMode', true);
-    
+
     if (this.page) {
       await this.page.evaluate(() => {
         document.documentElement.classList.add('dark');

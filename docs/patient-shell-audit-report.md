@@ -1,8 +1,8 @@
 # 🔍 Vitora HMIS Scaffold Audit Report
 
-**Date:** January 15, 2026  
-**Auditor:** AI Architect Review  
-**Branch:** `feature/patient-shell-pattern`  
+**Date:** January 15, 2026
+**Auditor:** AI Architect Review
+**Branch:** `feature/patient-shell-pattern`
 **Status:** ✅ IMPLEMENTED
 
 ---
@@ -292,10 +292,10 @@ import { usePatientContext } from '@/lib/context/patient-context';
 
 function PatientDetails() {
   const { patient, isLoading, error, isVerified, hasSHA } = usePatientContext();
-  
+
   if (isLoading) return <Skeleton />;
   if (error) return <ErrorAlert message={error.message} />;
-  
+
   return (
     <div>
       <h1>{patient.first_name} {patient.last_name}</h1>
@@ -314,11 +314,11 @@ import { useEncounterContext } from '@/lib/context/encounter-context';
 
 function LabOrderButton() {
   const { encounter, canPlaceOrders } = useEncounterContext();
-  
+
   if (!canPlaceOrders) {
     return <Button disabled>Encounter {encounter.status}</Button>;
   }
-  
+
   return <Button>Order Lab Test</Button>;
 }
 ```

@@ -1,9 +1,9 @@
 /**
  * Auth API Tests
- * 
+ *
  * Tests for authentication API client methods.
  * Following TDD RED-GREEN-REFACTOR approach.
- * 
+ *
  * Requirements:
  * - Login with username/password
  * - Refresh access token
@@ -63,7 +63,7 @@ describe('Auth API Tests', () => {
 
     test('should throw error on invalid credentials', async () => {
       const errorResponse = new Error('Request failed with status code 401');
-      
+
       mockedAxios.post.mockRejectedValue(errorResponse);
 
       await expect(login('wronguser', 'wrongpass')).rejects.toThrow();

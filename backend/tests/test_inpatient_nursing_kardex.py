@@ -5,7 +5,6 @@ Following TDD approach - tests written before implementation.
 Tests cover Kardex auto-creation, shift notes (append-only), handover notes, risk assessments.
 """
 
-
 import pytest  # type: ignore
 from django.core.exceptions import ValidationError
 from django.db import IntegrityError

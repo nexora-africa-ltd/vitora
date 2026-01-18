@@ -37,27 +37,27 @@ const tens = ['', '', 'Twenty', 'Thirty', 'Forty', 'Fifty', 'Sixty', 'Seventy', 
 
 function numberToWords(num: number): string {
   if (num === 0) return 'Zero';
-  
+
   if (num < 0) return 'Negative ' + numberToWords(-num);
   if (num < 20) return ones[num] || '';
   if (num < 100) return tens[Math.floor(num / 10)] + (num % 10 ? ' ' + (ones[num % 10] || '') : '');
   if (num < 1000) return (ones[Math.floor(num / 100)] || '') + ' Hundred' + (num % 100 ? ' ' + numberToWords(num % 100) : '');
   if (num < 1000000) return numberToWords(Math.floor(num / 1000)) + ' Thousand' + (num % 1000 ? ' ' + numberToWords(num % 1000) : '');
   if (num < 1000000000) return numberToWords(Math.floor(num / 1000000)) + ' Million' + (num % 1000000 ? ' ' + numberToWords(num % 1000000) : '');
-  
+
   return numberToWords(Math.floor(num / 1000000000)) + ' Billion' + (num % 1000000000 ? ' ' + numberToWords(num % 1000000000) : '');
 }
 
 export function amountToWords(amount: number, currency: string = 'KES'): string {
   const wholeAmount = Math.floor(amount);
   const cents = Math.round((amount - wholeAmount) * 100);
-  
+
   let result = numberToWords(wholeAmount) + ' ' + (currency === 'KES' ? 'Kenya Shillings' : currency);
-  
+
   if (cents > 0) {
     result += ' and ' + numberToWords(cents) + ' Cents';
   }
-  
+
   return result + ' Only';
 }
 
@@ -161,23 +161,23 @@ export function ReceiptView({
             <div className="font-medium text-right" data-testid="receipt-number">
               {receipt.receipt_number}
             </div>
-            
+
             <div className="text-muted-foreground">Date:</div>
             <div className="text-right">{formatDateTime(receipt.receipt_date)}</div>
-            
+
             <div className="text-muted-foreground">Invoice:</div>
             <div className="text-right">{receipt.payment_reference}</div>
-            
+
             <div className="text-muted-foreground">Patient:</div>
             <div className="text-right">{receipt.patient_name}</div>
-            
+
             {receipt.patient_mrn && (
               <>
                 <div className="text-muted-foreground">MRN:</div>
                 <div className="text-right">{receipt.patient_mrn}</div>
               </>
             )}
-            
+
             <div className="text-muted-foreground">Payment Method:</div>
             <div className="text-right capitalize">
               {receipt.payment_method.replace('_', ' ')}

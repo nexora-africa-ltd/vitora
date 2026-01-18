@@ -1,10 +1,10 @@
 /**
  * SHA Principal Confirmation Dialog
- * 
+ *
  * When SHA eligibility check returns member details but no CR record exists,
  * this dialog asks the user to confirm whether the SHA principal (main member)
  * is the same person as the patient being registered.
- * 
+ *
  * This is important because:
  * 1. SHA might return the principal's information even when checking a dependent
  * 2. The user should verify the identity before auto-populating the form

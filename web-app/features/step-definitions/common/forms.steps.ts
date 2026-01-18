@@ -1,6 +1,6 @@
 /**
  * Common Step Definitions - Forms
- * 
+ *
  * Shared steps for form interactions.
  */
 
@@ -16,11 +16,11 @@ When(
   'I fill in the registration form:',
   async function (this: VitoraWorld, dataTable: DataTable) {
     const data = dataTable.rowsHash();
-    
+
     for (const [field, value] of Object.entries(data)) {
       await fillField(this, field, value);
     }
-    
+
     // Store form data for later assertions
     this.store('formData', data);
   }
@@ -71,13 +71,13 @@ When(
   'I enter vitals:',
   async function (this: VitoraWorld, dataTable: DataTable) {
     const vitals = dataTable.rowsHash();
-    
+
     for (const [vital, value] of Object.entries(vitals)) {
       await fillField(this, vital, value);
     }
-    
+
     this.store('vitals', vitals);
-    
+
     // Update encounter context
     if (this.encounter) {
       this.encounter.vitals = vitals as Record<string, number | string>;
@@ -189,19 +189,19 @@ When(
   'I add an emergency contact:',
   async function (this: VitoraWorld, dataTable: DataTable) {
     const data = dataTable.rowsHash();
-    
+
     if (this.page) {
       // Click add button if not already in add mode
       const addButton = this.page.locator('button:has-text("Add Emergency Contact")');
       if (await addButton.isVisible()) {
         await addButton.click();
       }
-      
+
       for (const [field, value] of Object.entries(data)) {
         await fillField(this, `emergency-${field.toLowerCase()}`, value);
       }
     }
-    
+
     this.store('emergencyContact', data);
   }
 );
@@ -286,7 +286,7 @@ Then(
   'I should see validation errors for:',
   async function (this: VitoraWorld, dataTable: DataTable) {
     const fields = dataTable.raw().flat();
-    
+
     if (this.page) {
       for (const field of fields) {
         const errorSelector = `[data-field="${field.toLowerCase().replace(/\s+/g, '-')}"] .error, ` +
@@ -372,13 +372,13 @@ Then(
  */
 async function fillField(world: VitoraWorld, field: string, value: string): Promise<void> {
   if (!world.page) return;
-  
+
   const selector = getFieldSelector(field);
   const element = world.page.locator(selector).first();
-  
+
   // Check if it's a select/dropdown
   const tagName = await element.evaluate(el => el.tagName.toLowerCase());
-  
+
   if (tagName === 'select' || await element.getAttribute('role') === 'combobox') {
     await element.click();
     await world.page.click(`[role="option"]:has-text("${value}")`);

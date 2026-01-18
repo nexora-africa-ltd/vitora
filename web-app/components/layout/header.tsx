@@ -100,8 +100,8 @@ export function Header({ onMenuClick, sidebarCollapsed }: HeaderProps) {
                     {isSyncing ? 'Syncing...' : isOnline ? 'Online' : 'Offline'}
                   </span>
                   {pendingChanges > 0 && (
-                    <Badge 
-                      variant="secondary" 
+                    <Badge
+                      variant="secondary"
                       className="h-4 px-1 text-[10px] bg-yellow-200 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200"
                     >
                       {pendingChanges}
@@ -109,8 +109,8 @@ export function Header({ onMenuClick, sidebarCollapsed }: HeaderProps) {
                   )}
                 </button>
               </TooltipTrigger>
-              <TooltipContent 
-                side="bottom" 
+              <TooltipContent
+                side="bottom"
                 className="max-w-xs bg-popover text-popover-foreground border shadow-md"
               >
                 <div className="space-y-1.5">

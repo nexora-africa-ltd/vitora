@@ -1,8 +1,8 @@
 /**
  * TDD Tests for Patient Shell Route Layout
- * 
+ *
  * RED PHASE: These tests should FAIL initially because the implementation doesn't exist.
- * 
+ *
  * Patient Shell Layout Requirements:
  * 1. Wrap all /patients/[id]/* routes with PatientProvider
  * 2. Display PatientShellHeader on all patient routes
@@ -74,7 +74,7 @@ describe('Patient Shell Layout', () => {
   describe('Layout Structure', () => {
     it('should render PatientShellHeader', async () => {
       mockPatientsApi.getPatient.mockResolvedValueOnce(mockPatient);
-      
+
       const Wrapper = createWrapper();
       render(
         <Wrapper>
@@ -92,7 +92,7 @@ describe('Patient Shell Layout', () => {
 
     it('should render children content', async () => {
       mockPatientsApi.getPatient.mockResolvedValueOnce(mockPatient);
-      
+
       const Wrapper = createWrapper();
       render(
         <Wrapper>
@@ -110,7 +110,7 @@ describe('Patient Shell Layout', () => {
     it('should extract patientId from route params', async () => {
       mockPatientsApi.getPatient.mockResolvedValueOnce(mockPatient);
       mockUseParams.mockReturnValue({ id: '42' });
-      
+
       const Wrapper = createWrapper();
       render(
         <Wrapper>
@@ -132,7 +132,7 @@ describe('Patient Shell Layout', () => {
   describe('Provider Wrapping', () => {
     it('should wrap children with PatientProvider', async () => {
       mockPatientsApi.getPatient.mockResolvedValueOnce(mockPatient);
-      
+
       // Child component that uses patient context
       function ChildUsingContext() {
         // This import would fail if not wrapped in PatientProvider
@@ -140,7 +140,7 @@ describe('Patient Shell Layout', () => {
         const { patient } = usePatientContext();
         return <div data-testid="context-mrn">{patient?.mrn}</div>;
       }
-      
+
       const Wrapper = createWrapper();
       render(
         <Wrapper>
@@ -157,13 +157,13 @@ describe('Patient Shell Layout', () => {
 
     it('should provide same patient data to header and children', async () => {
       mockPatientsApi.getPatient.mockResolvedValueOnce(mockPatient);
-      
+
       function ChildComponent() {
         const { usePatientContext } = require('@/lib/context/patient-context');
         const { patient } = usePatientContext();
         return <div data-testid="child-name">{patient?.first_name}</div>;
       }
-      
+
       const Wrapper = createWrapper();
       render(
         <Wrapper>
@@ -190,7 +190,7 @@ describe('Patient Shell Layout', () => {
   describe('Error Handling', () => {
     it('should handle invalid patientId gracefully', async () => {
       mockUseParams.mockReturnValue({ id: 'invalid' });
-      
+
       const Wrapper = createWrapper();
       render(
         <Wrapper>
@@ -209,7 +209,7 @@ describe('Patient Shell Layout', () => {
 
     it('should handle missing patientId in params', async () => {
       mockUseParams.mockReturnValue({});
-      
+
       const Wrapper = createWrapper();
       render(
         <Wrapper>
@@ -228,7 +228,7 @@ describe('Patient Shell Layout', () => {
 
     it('should handle patient not found error', async () => {
       mockPatientsApi.getPatient.mockRejectedValueOnce(new Error('Patient not found'));
-      
+
       const Wrapper = createWrapper();
       render(
         <Wrapper>
@@ -251,7 +251,7 @@ describe('Patient Shell Layout', () => {
   describe('Context Persistence', () => {
     it('should maintain patient context across child rerenders', async () => {
       mockPatientsApi.getPatient.mockResolvedValue(mockPatient);
-      
+
       let renderCount = 0;
       function ChildWithCounter() {
         renderCount++;
@@ -259,7 +259,7 @@ describe('Patient Shell Layout', () => {
         const { patient } = usePatientContext();
         return <div data-testid="render-count">{renderCount}</div>;
       }
-      
+
       const Wrapper = createWrapper();
       const { rerender } = render(
         <Wrapper>

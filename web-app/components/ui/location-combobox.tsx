@@ -37,7 +37,7 @@ interface LocationComboboxProps {
 
 /**
  * LocationCombobox - A searchable dropdown for location fields.
- * 
+ *
  * Uses Command + Popover pattern for better UX with large lists
  * like Kenya's 47 counties, 289 sub-counties, and 1,448 wards.
  */
@@ -53,7 +53,7 @@ export function LocationCombobox({
   className,
 }: LocationComboboxProps) {
   const [open, setOpen] = React.useState(false);
-  
+
   const selectedOption = React.useMemo(
     () => options.find(opt => opt.value === value),
     [options, value]

@@ -1,18 +1,18 @@
 /**
  * Eligibility Banner Component
  * Displays SHA eligibility status for a patient
- * 
+ *
  * @see docs/sha-frontend-integration-guide.md - Flow 2
  */
 'use client';
 
 import React, { useEffect, useState, useCallback } from 'react';
-import { 
-  CheckCircle2, 
-  XCircle, 
-  AlertCircle, 
-  Clock, 
-  Loader2, 
+import {
+  CheckCircle2,
+  XCircle,
+  AlertCircle,
+  Clock,
+  Loader2,
   RefreshCw,
   ShieldCheck,
   ShieldOff,
@@ -24,8 +24,8 @@ import { Card } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
 import { cn } from '@/lib/utils';
 import { shaApi } from '@/lib/api/sha';
-import type { 
-  EligibilityState, 
+import type {
+  EligibilityState,
   EligibilityStatus,
   SchemeCategory,
 } from '@/lib/types/sha';
@@ -107,15 +107,15 @@ function EligibilityBannerSkeleton({ compact }: { compact?: boolean }) {
 // Status Icon Component
 // ============================================================================
 
-function StatusIcon({ 
-  status, 
-  className 
-}: { 
-  status: EligibilityStatus; 
+function StatusIcon({
+  status,
+  className
+}: {
+  status: EligibilityStatus;
   className?: string;
 }) {
   const iconClass = cn('h-5 w-5', className);
-  
+
   switch (status) {
     case 'eligible':
       return <ShieldCheck className={cn(iconClass, 'text-success')} />;
@@ -152,7 +152,7 @@ function CompactEligibilityBanner({
   return (
     <div className="flex items-center gap-2">
       <StatusIcon status={status} />
-      
+
       <span className={cn(
         'text-sm font-medium',
         status === 'eligible' && 'text-success',
@@ -306,7 +306,7 @@ function FullEligibilityBanner({
 
           {status === 'expired' && coverageEndDate && (
             <p className="text-sm text-warning-foreground">
-              Coverage expired on {formatCoverageDate(coverageEndDate)}. 
+              Coverage expired on {formatCoverageDate(coverageEndDate)}.
               Cash payment required or coverage renewal needed.
             </p>
           )}
@@ -343,7 +343,7 @@ function FullEligibilityBanner({
         {/* Copay Badge & Refresh */}
         <div className="flex flex-col items-end gap-2">
           {status === 'eligible' && (
-            <Badge 
+            <Badge
               variant={copayPercentage === 0 ? 'default' : 'secondary'}
               className={cn(
                 'text-sm px-3 py-1',
@@ -353,7 +353,7 @@ function FullEligibilityBanner({
               {copayPercentage === 0 ? 'Full Coverage' : `${copayPercentage}% Copay`}
             </Badge>
           )}
-          
+
           <Button
             type="button"
             variant="ghost"
@@ -389,7 +389,7 @@ export function EligibilityBanner({
 
   const checkEligibility = useCallback(async () => {
     setIsRefreshing(true);
-    
+
     const newState: EligibilityState = { status: 'checking' };
     setEligibility(newState);
 

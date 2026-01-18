@@ -187,11 +187,11 @@ interface EncounterPrescriptionsContentProps {
  * Content-only version of the Prescriptions component (no Card wrapper)
  * Used in accordion-based layouts
  */
-export function EncounterPrescriptionsContent({ 
-  encounterId, 
-  patientId, 
-  disabled = false, 
-  onBeforeNavigate 
+export function EncounterPrescriptionsContent({
+  encounterId,
+  patientId,
+  disabled = false,
+  onBeforeNavigate
 }: EncounterPrescriptionsContentProps) {
   const router = useRouter();
   const { data: prescriptions, isLoading, error } = useEncounterPrescriptions(encounterId);
@@ -226,7 +226,7 @@ export function EncounterPrescriptionsContent({
       <p className="text-sm text-muted-foreground">
         Medications and pharmacy orders
       </p>
-      
+
       {/* Action button */}
       {!disabled && (
         <div className="flex items-center gap-2">

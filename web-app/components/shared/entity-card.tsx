@@ -123,7 +123,7 @@ export function EntityCard({
   className,
 }: EntityCardProps) {
   const isClickable = href || onClick;
-  
+
   const cardContent = (
     <Card
       className={cn(

@@ -9,13 +9,13 @@ import * as React from 'react';
 import { useEffect } from 'react';
 import { useForm, FormProvider } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { 
-  Thermometer, 
-  Heart, 
-  Wind, 
-  Droplets, 
-  Scale, 
-  Ruler, 
+import {
+  Thermometer,
+  Heart,
+  Wind,
+  Droplets,
+  Scale,
+  Ruler,
   Activity,
   Info,
   ChevronRight,
@@ -59,14 +59,14 @@ interface VitalsFormProps {
   vitalsSource?: string;
 }
 
-export function VitalsForm({ 
-  data, 
-  onChange, 
-  disabled = false, 
-  errors = {}, 
-  patient, 
-  onNext, 
-  fromTriage = false, 
+export function VitalsForm({
+  data,
+  onChange,
+  disabled = false,
+  errors = {},
+  patient,
+  onNext,
+  fromTriage = false,
   vitalsSource,
 }: VitalsFormProps) {
   // Edit mode toggle - starts locked when from triage
@@ -93,7 +93,7 @@ export function VitalsForm({
 
   // Watch all values for alerts
   const watchedValues = form.watch();
-  
+
   // Get alerts using shared threshold hook
   const alerts: VitalAlert[] = React.useMemo(
     () => getAlerts(watchedValues),
@@ -189,12 +189,12 @@ export function VitalsForm({
               </Badge>
             )}
           </div>
-          
+
           {/* Edit mode toggle switch */}
           {fromTriage && !disabled && (
             <div className="flex items-center gap-2">
-              <Label 
-                htmlFor="vitals-edit-mode" 
+              <Label
+                htmlFor="vitals-edit-mode"
                 className="text-sm text-muted-foreground flex items-center gap-1.5 cursor-pointer"
               >
                 {isEditMode ? (
@@ -221,9 +221,9 @@ export function VitalsForm({
 
         {/* Read-only Card View (from triage, not in edit mode) */}
         {showReadOnlyView ? (
-          <VitalsDisplay 
-            values={watchedValues} 
-            alerts={alerts} 
+          <VitalsDisplay
+            values={watchedValues}
+            alerts={alerts}
             patient={patient}
           />
         ) : (
@@ -302,7 +302,7 @@ export function VitalsForm({
                     BMI
                   </Label>
                   <div className="flex items-center gap-2 h-10">
-                    <Badge 
+                    <Badge
                       variant="outline"
                       className={cn(
                         'text-base font-semibold px-3 py-1.5',

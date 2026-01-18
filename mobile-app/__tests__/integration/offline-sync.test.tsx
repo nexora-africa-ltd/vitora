@@ -103,7 +103,7 @@ const createTestWrapper = () => {
       mutations: { retry: false },
     },
   });
-  
+
   return ({ children }: { children: React.ReactNode }) => (
     <QueryClientProvider client={queryClient}>
       {children}
@@ -121,7 +121,7 @@ describe('Offline Sync Integration', () => {
     test('should queue CREATE operation when patient is created', async () => {
       mockCreate.mockResolvedValue({ id: 'patient-1' });
       mockFetch.mockResolvedValue([]);
-      
+
       // Simulate patient creation
       await syncQueueManager.add('CREATE', 'Patient', 'patient-1', {
         first_name: 'John',
@@ -133,7 +133,7 @@ describe('Offline Sync Integration', () => {
 
     test('should queue UPDATE operation when patient is updated', async () => {
       mockCreate.mockResolvedValue({ id: 'queue-1' });
-      
+
       await syncQueueManager.add('UPDATE', 'Patient', 'patient-1', {
         first_name: 'Jane',
       });
@@ -143,7 +143,7 @@ describe('Offline Sync Integration', () => {
 
     test('should queue DELETE operation when patient is deleted', async () => {
       mockCreate.mockResolvedValue({ id: 'queue-1' });
-      
+
       await syncQueueManager.add('DELETE', 'Patient', 'patient-1', {});
 
       expect(mockCreate).toHaveBeenCalled();
@@ -151,9 +151,9 @@ describe('Offline Sync Integration', () => {
 
     test('should return pending count accurately', async () => {
       mockFetchCount.mockResolvedValue(5);
-      
+
       const count = await syncQueueManager.getPendingCount();
-      
+
       expect(count).toBe(5);
     });
   });
@@ -170,7 +170,7 @@ describe('Offline Sync Integration', () => {
       };
 
       const { queryByText } = render(<TestComponent />);
-      
+
       await waitFor(() => {
         expect(queryByText(/offline/i)).toBeNull();
       });
@@ -178,14 +178,14 @@ describe('Offline Sync Integration', () => {
 
     test('should detect offline status', async () => {
       simulateNetworkChange(false);
-      
+
       const TestComponent = () => {
         const { isOffline } = useOfflineStatus();
         return <OfflineBanner isOffline={isOffline} />;
       };
 
       const { findByText } = render(<TestComponent />);
-      
+
       await waitFor(() => {
         // Component should show offline indicator
         expect(findByText).toBeDefined();
@@ -194,7 +194,7 @@ describe('Offline Sync Integration', () => {
 
     test('should update when network status changes', async () => {
       let capturedStatus = { isOffline: false };
-      
+
       const TestComponent = () => {
         const status = useOfflineStatus();
         capturedStatus = status;
@@ -221,9 +221,9 @@ describe('Offline Sync Integration', () => {
   describe('Sync Status Hook', () => {
     test('should return pending count', async () => {
       mockFetchCount.mockResolvedValue(3);
-      
+
       let capturedStatus: { pendingCount: number; hasPending: boolean } | null = null;
-      
+
       const TestComponent = () => {
         const status = useSyncStatus();
         capturedStatus = status;
@@ -240,9 +240,9 @@ describe('Offline Sync Integration', () => {
 
     test('should indicate no pending when queue is empty', async () => {
       mockFetchCount.mockResolvedValue(0);
-      
+
       let capturedStatus: { pendingCount: number; hasPending: boolean } | null = null;
-      
+
       const TestComponent = () => {
         const status = useSyncStatus();
         capturedStatus = status;
@@ -285,15 +285,15 @@ describe('Offline Sync Integration', () => {
       mockFind.mockResolvedValue(mockEntry);
 
       const result = await syncProcessor.processQueue();
-      
+
       expect(result).toBeDefined();
     });
 
     test('should skip processing when offline', async () => {
       simulateNetworkChange(false);
-      
+
       const result = await syncProcessor.processQueue({ checkNetwork: true });
-      
+
       expect(result.processed).toBe(0);
       expect(result.skipped).toBeGreaterThanOrEqual(0);
     });
@@ -303,14 +303,14 @@ describe('Offline Sync Integration', () => {
     test('should trigger sync on refresh', async () => {
       mockFetch.mockResolvedValue([]);
       mockFetchCount.mockResolvedValue(0);
-      
+
       let onRefreshCalled = false;
-      
+
       const mockOnRefresh = jest.fn(() => {
         onRefreshCalled = true;
         return Promise.resolve();
       });
-      
+
       const { getByTestId } = render(
         <PatientList
           patients={[]}
@@ -375,12 +375,12 @@ describe('Offline Sync Integration', () => {
   describe('Offline to Online Transition', () => {
     test('should attempt sync when coming online', async () => {
       mockFetch.mockResolvedValue([]);
-      
+
       // Start offline
       simulateNetworkChange(false);
-      
+
       let capturedStatus = { isOffline: true };
-      
+
       const TestComponent = () => {
         const status = useOfflineStatus();
         capturedStatus = status;
@@ -413,7 +413,7 @@ describe('Loading States', () => {
 
   test('should show loading state during sync', async () => {
     let capturedIsLoading: boolean | undefined;
-    
+
     const TestComponent = () => {
       const status = useSyncStatus();
       capturedIsLoading = status.isLoading;

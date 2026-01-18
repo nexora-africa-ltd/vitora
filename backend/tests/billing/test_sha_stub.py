@@ -3,6 +3,7 @@ Tests for SHA Claims Service Stub.
 
 Following TDD approach for Phase 4.3 SHA Claims Stub implementation.
 """
+
 from decimal import Decimal
 
 import pytest  # type: ignore

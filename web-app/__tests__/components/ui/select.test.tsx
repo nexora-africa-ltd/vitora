@@ -182,41 +182,41 @@ describe('Select Component', () => {
     // These tests verify error handling when components are used outside context
     it('should throw when SelectTrigger is used outside Select', () => {
       const consoleSpy = jest.spyOn(console, 'error').mockImplementation(() => {});
-      
+
       expect(() => {
         render(<SelectTrigger><span>Test</span></SelectTrigger>);
       }).toThrow('SelectTrigger must be used within Select');
-      
+
       consoleSpy.mockRestore();
     });
 
     it('should throw when SelectValue is used outside Select', () => {
       const consoleSpy = jest.spyOn(console, 'error').mockImplementation(() => {});
-      
+
       expect(() => {
         render(<SelectValue placeholder="Test" />);
       }).toThrow('SelectValue must be used within Select');
-      
+
       consoleSpy.mockRestore();
     });
 
     it('should throw when SelectContent is used outside Select', () => {
       const consoleSpy = jest.spyOn(console, 'error').mockImplementation(() => {});
-      
+
       expect(() => {
         render(<SelectContent><div>Content</div></SelectContent>);
       }).toThrow('SelectContent must be used within Select');
-      
+
       consoleSpy.mockRestore();
     });
 
     it('should throw when SelectItem is used outside Select', () => {
       const consoleSpy = jest.spyOn(console, 'error').mockImplementation(() => {});
-      
+
       expect(() => {
         render(<SelectItem value="test">Test</SelectItem>);
       }).toThrow('SelectItem must be used within Select');
-      
+
       consoleSpy.mockRestore();
     });
   });

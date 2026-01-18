@@ -1,6 +1,6 @@
 /**
  * Comprehensive tests for main process (index.js)
- * 
+ *
  * These tests cover all exported functions and IPC handlers
  * to meet the 70% coverage threshold.
  */
@@ -17,7 +17,7 @@ const mockBrowserWindow = {
   on: jest.fn(),
   once: jest.fn(),
   show: jest.fn(),
-  webContents: { 
+  webContents: {
     on: jest.fn(),
     openDevTools: jest.fn()
   }
@@ -147,7 +147,7 @@ describe('Main Process - index.js', () => {
     it('should handle stdout output', async () => {
       const { spawn } = require('child_process');
       const consoleSpy = jest.spyOn(console, 'log').mockImplementation();
-      
+
       const mockProcess = {
         stdout: { on: jest.fn() },
         stderr: { on: jest.fn() },
@@ -163,7 +163,7 @@ describe('Main Process - index.js', () => {
         if (stdoutCallback) {
           stdoutCallback(Buffer.from('Running migrations'));
         }
-        
+
         const closeCallback = mockProcess.on.mock.calls.find(
           call => call[0] === 'close'
         )?.[1];
@@ -181,7 +181,7 @@ describe('Main Process - index.js', () => {
     it('should handle stderr output', async () => {
       const { spawn } = require('child_process');
       const consoleSpy = jest.spyOn(console, 'log').mockImplementation();
-      
+
       const mockProcess = {
         stdout: { on: jest.fn() },
         stderr: { on: jest.fn() },
@@ -196,7 +196,7 @@ describe('Main Process - index.js', () => {
         if (stderrCallback) {
           stderrCallback(Buffer.from('Warning message'));
         }
-        
+
         const closeCallback = mockProcess.on.mock.calls.find(
           call => call[0] === 'close'
         )?.[1];
@@ -222,7 +222,7 @@ describe('Main Process - index.js', () => {
 
       const promise = runMigrations();
       jest.advanceTimersByTime(31000);
-      
+
       await expect(promise).resolves.toBeUndefined();
       jest.useRealTimers();
     });
@@ -259,7 +259,7 @@ describe('Main Process - index.js', () => {
     it('should handle stdout data', async () => {
       const { spawn } = require('child_process');
       const consoleSpy = jest.spyOn(console, 'log').mockImplementation();
-      
+
       const mockProcess = {
         stdout: { on: jest.fn() },
         stderr: { on: jest.fn() },
@@ -274,7 +274,7 @@ describe('Main Process - index.js', () => {
         if (stdoutCallback) {
           stdoutCallback(Buffer.from('Importing locations...'));
         }
-        
+
         const closeCallback = mockProcess.on.mock.calls.find(
           call => call[0] === 'close'
         )?.[1];
@@ -290,7 +290,7 @@ describe('Main Process - index.js', () => {
     it('should handle stderr data', async () => {
       const { spawn } = require('child_process');
       const consoleSpy = jest.spyOn(console, 'log').mockImplementation();
-      
+
       const mockProcess = {
         stdout: { on: jest.fn() },
         stderr: { on: jest.fn() },
@@ -305,7 +305,7 @@ describe('Main Process - index.js', () => {
         if (stderrCallback) {
           stderrCallback(Buffer.from('Import warning'));
         }
-        
+
         const closeCallback = mockProcess.on.mock.calls.find(
           call => call[0] === 'close'
         )?.[1];
@@ -330,7 +330,7 @@ describe('Main Process - index.js', () => {
 
       const promise = importKenyaLocations();
       jest.advanceTimersByTime(61000);
-      
+
       await expect(promise).resolves.toBeUndefined();
       jest.useRealTimers();
     });
@@ -367,7 +367,7 @@ describe('Main Process - index.js', () => {
     it('should handle stdout data', async () => {
       const { spawn } = require('child_process');
       const consoleSpy = jest.spyOn(console, 'log').mockImplementation();
-      
+
       const mockProcess = {
         stdout: { on: jest.fn() },
         stderr: { on: jest.fn() },
@@ -382,7 +382,7 @@ describe('Main Process - index.js', () => {
         if (stdoutCallback) {
           stdoutCallback(Buffer.from('Superuser created'));
         }
-        
+
         const closeCallback = mockProcess.on.mock.calls.find(
           call => call[0] === 'close'
         )?.[1];
@@ -398,7 +398,7 @@ describe('Main Process - index.js', () => {
     it('should handle stderr data', async () => {
       const { spawn } = require('child_process');
       const consoleSpy = jest.spyOn(console, 'log').mockImplementation();
-      
+
       const mockProcess = {
         stdout: { on: jest.fn() },
         stderr: { on: jest.fn() },
@@ -413,7 +413,7 @@ describe('Main Process - index.js', () => {
         if (stderrCallback) {
           stderrCallback(Buffer.from('stderr info'));
         }
-        
+
         const closeCallback = mockProcess.on.mock.calls.find(
           call => call[0] === 'close'
         )?.[1];
@@ -438,7 +438,7 @@ describe('Main Process - index.js', () => {
 
       const promise = createSuperuser();
       jest.advanceTimersByTime(11000);
-      
+
       await expect(promise).resolves.toBeUndefined();
       jest.useRealTimers();
     });
@@ -475,7 +475,7 @@ describe('Main Process - index.js', () => {
     it('should handle stdout data', async () => {
       const { spawn } = require('child_process');
       const consoleSpy = jest.spyOn(console, 'log').mockImplementation();
-      
+
       const mockProcess = {
         stdout: { on: jest.fn() },
         stderr: { on: jest.fn() },
@@ -490,7 +490,7 @@ describe('Main Process - index.js', () => {
         if (stdoutCallback) {
           stdoutCallback(Buffer.from('Test user created'));
         }
-        
+
         const closeCallback = mockProcess.on.mock.calls.find(
           call => call[0] === 'close'
         )?.[1];
@@ -506,7 +506,7 @@ describe('Main Process - index.js', () => {
     it('should handle stderr data', async () => {
       const { spawn } = require('child_process');
       const consoleSpy = jest.spyOn(console, 'log').mockImplementation();
-      
+
       const mockProcess = {
         stdout: { on: jest.fn() },
         stderr: { on: jest.fn() },
@@ -521,7 +521,7 @@ describe('Main Process - index.js', () => {
         if (stderrCallback) {
           stderrCallback(Buffer.from('stderr info from test user'));
         }
-        
+
         const closeCallback = mockProcess.on.mock.calls.find(
           call => call[0] === 'close'
         )?.[1];
@@ -546,7 +546,7 @@ describe('Main Process - index.js', () => {
 
       const promise = createTestUser();
       jest.advanceTimersByTime(11000);
-      
+
       await expect(promise).resolves.toBeUndefined();
       jest.useRealTimers();
     });
@@ -585,7 +585,7 @@ describe('Main Process - index.js', () => {
     it('should handle stderr messages', async () => {
       const { spawn } = require('child_process');
       const consoleSpy = jest.spyOn(console, 'error').mockImplementation();
-      
+
       const mockProcess = {
         stdout: { on: jest.fn() },
         stderr: { on: jest.fn() },
@@ -602,7 +602,7 @@ describe('Main Process - index.js', () => {
         if (stderrCallback) {
           stderrCallback(Buffer.from('Some error message'));
         }
-        
+
         const stdoutCallback = mockProcess.stdout.on.mock.calls.find(
           call => call[0] === 'data'
         )?.[1];
@@ -618,7 +618,7 @@ describe('Main Process - index.js', () => {
     it('should filter out file watching messages from stderr', async () => {
       const { spawn } = require('child_process');
       const consoleSpy = jest.spyOn(console, 'error').mockImplementation();
-      
+
       const mockProcess = {
         stdout: { on: jest.fn() },
         stderr: { on: jest.fn() },
@@ -635,7 +635,7 @@ describe('Main Process - index.js', () => {
         if (stderrCallback) {
           stderrCallback(Buffer.from('Watching for file changes'));
         }
-        
+
         const stdoutCallback = mockProcess.stdout.on.mock.calls.find(
           call => call[0] === 'data'
         )?.[1];
@@ -645,7 +645,7 @@ describe('Main Process - index.js', () => {
       }, 50);
 
       await startBackend();
-      
+
       // The file watching message should not trigger console.error
       const errorCalls = consoleSpy.mock.calls.filter(
         call => call[0].includes('Watching for file changes')
@@ -657,7 +657,7 @@ describe('Main Process - index.js', () => {
     it('should handle process error event', async () => {
       const { spawn } = require('child_process');
       const consoleSpy = jest.spyOn(console, 'error').mockImplementation();
-      
+
       const mockProcess = {
         stdout: { on: jest.fn() },
         stderr: { on: jest.fn() },
@@ -683,7 +683,7 @@ describe('Main Process - index.js', () => {
     it('should handle process exit event', async () => {
       const { spawn } = require('child_process');
       const consoleSpy = jest.spyOn(console, 'log').mockImplementation();
-      
+
       const mockProcess = {
         stdout: { on: jest.fn() },
         stderr: { on: jest.fn() },
@@ -700,7 +700,7 @@ describe('Main Process - index.js', () => {
         if (exitCallback) {
           exitCallback(0);
         }
-        
+
         // Also trigger stdout to resolve
         const stdoutCallback = mockProcess.stdout.on.mock.calls.find(
           call => call[0] === 'data'
@@ -718,7 +718,7 @@ describe('Main Process - index.js', () => {
       jest.useFakeTimers();
       const { spawn } = require('child_process');
       const consoleSpy = jest.spyOn(console, 'log').mockImplementation();
-      
+
       const mockProcess = {
         stdout: { on: jest.fn() },
         stderr: { on: jest.fn() },
@@ -730,7 +730,7 @@ describe('Main Process - index.js', () => {
 
       const promise = startBackend();
       jest.advanceTimersByTime(11000);
-      
+
       await expect(promise).resolves.toBeUndefined();
       jest.useRealTimers();
       consoleSpy.mockRestore();
@@ -759,7 +759,7 @@ describe('Main Process - index.js', () => {
         kill: jest.fn(),
         pid: 12345
       };
-      
+
       _setBackendProcessForTesting(mockProcess);
 
       // Simulate the exit event being called
@@ -773,9 +773,9 @@ describe('Main Process - index.js', () => {
       }, 50);
 
       await stopBackend();
-      
+
       expect(mockProcess.kill).toHaveBeenCalledWith('SIGTERM');
-      
+
       Object.defineProperty(process, 'platform', {
         value: originalPlatform,
         configurable: true
@@ -796,7 +796,7 @@ describe('Main Process - index.js', () => {
         kill: jest.fn(),
         pid: 12345
       };
-      
+
       _setBackendProcessForTesting(mockProcess);
 
       // Simulate the exit event being called
@@ -810,9 +810,9 @@ describe('Main Process - index.js', () => {
       }, 50);
 
       await stopBackend();
-      
+
       expect(spawn).toHaveBeenCalledWith('taskkill', ['/pid', 12345, '/f', '/t']);
-      
+
       Object.defineProperty(process, 'platform', {
         value: originalPlatform,
         configurable: true
@@ -823,25 +823,25 @@ describe('Main Process - index.js', () => {
     it('should force kill after timeout if process does not exit', async () => {
       jest.useFakeTimers();
       const consoleSpy = jest.spyOn(console, 'log').mockImplementation();
-      
+
       const mockProcess = {
         on: jest.fn(),
         kill: jest.fn(),
         pid: 12345
       };
-      
+
       _setBackendProcessForTesting(mockProcess);
 
       const stopPromise = stopBackend();
-      
+
       // Advance timers to trigger the force kill timeout
       jest.advanceTimersByTime(6000);
-      
+
       await stopPromise;
-      
+
       // Should have called kill with SIGKILL for force termination
       expect(mockProcess.kill).toHaveBeenCalledWith('SIGTERM');
-      
+
       jest.useRealTimers();
       consoleSpy.mockRestore();
       _setBackendProcessForTesting(null);
@@ -900,7 +900,7 @@ describe('Main Process - index.js', () => {
       });
 
       await checkBackendHealth();
-      
+
       expect(axios.get).toHaveBeenCalledWith(
         expect.stringContaining('127.0.0.1'),
         expect.objectContaining({ timeout: 5000 })
@@ -911,9 +911,9 @@ describe('Main Process - index.js', () => {
   describe('createWindow', () => {
     it('should create a BrowserWindow instance', () => {
       const { BrowserWindow } = require('electron');
-      
+
       createWindow();
-      
+
       expect(BrowserWindow).toHaveBeenCalledWith(
         expect.objectContaining({
           width: 1200,
@@ -925,9 +925,9 @@ describe('Main Process - index.js', () => {
 
     it('should configure webPreferences correctly', () => {
       const { BrowserWindow } = require('electron');
-      
+
       createWindow();
-      
+
       expect(BrowserWindow).toHaveBeenCalledWith(
         expect.objectContaining({
           webPreferences: expect.objectContaining({
@@ -941,7 +941,7 @@ describe('Main Process - index.js', () => {
 
     it('should load index.html file', () => {
       createWindow();
-      
+
       expect(mockBrowserWindow.loadFile).toHaveBeenCalledWith(
         expect.stringContaining('index.html')
       );
@@ -949,7 +949,7 @@ describe('Main Process - index.js', () => {
 
     it('should register ready-to-show handler', () => {
       createWindow();
-      
+
       expect(mockBrowserWindow.once).toHaveBeenCalledWith(
         'ready-to-show',
         expect.any(Function)
@@ -958,7 +958,7 @@ describe('Main Process - index.js', () => {
 
     it('should register closed handler', () => {
       createWindow();
-      
+
       expect(mockBrowserWindow.on).toHaveBeenCalledWith(
         'closed',
         expect.any(Function)
@@ -998,7 +998,7 @@ describe('IPC Handler Functionality', () => {
   describe('api-request handler', () => {
     it('should make HTTP request to backend', async () => {
       const axios = require('axios');
-      
+
       axios.mockResolvedValue({
         data: { patients: [] }
       });
@@ -1018,7 +1018,7 @@ describe('IPC Handler Functionality', () => {
 
     it('should include auth header for non-token endpoints', async () => {
       const axios = require('axios');
-      
+
       mockStore.get.mockReturnValue('test-token');
       axios.mockResolvedValue({ data: {} });
 
@@ -1042,7 +1042,7 @@ describe('IPC Handler Functionality', () => {
 
     it('should not include auth header for token endpoints', async () => {
       const axios = require('axios');
-      
+
       mockStore.get.mockReturnValue('test-token');
       axios.mockResolvedValue({ data: {} });
 
@@ -1063,7 +1063,7 @@ describe('IPC Handler Functionality', () => {
     it('should return error on request failure', async () => {
       const axios = require('axios');
       const consoleSpy = jest.spyOn(console, 'error').mockImplementation();
-      
+
       axios.mockRejectedValue({
         message: 'Network Error',
         response: { data: { detail: 'Not found' } }
@@ -1131,7 +1131,7 @@ describe('IPC Handler Functionality', () => {
 
     it('should handle store error', async () => {
       const consoleSpy = jest.spyOn(console, 'error').mockImplementation();
-      
+
       mockStore.set.mockImplementation(() => {
         throw new Error('Storage error');
       });
@@ -1167,7 +1167,7 @@ describe('IPC Handler Functionality', () => {
 
     it('should return null on error', async () => {
       const consoleSpy = jest.spyOn(console, 'error').mockImplementation();
-      
+
       mockStore.get.mockImplementation(() => {
         throw new Error('Read error');
       });
@@ -1203,7 +1203,7 @@ describe('IPC Handler Functionality', () => {
 
     it('should handle delete error', async () => {
       const consoleSpy = jest.spyOn(console, 'error').mockImplementation();
-      
+
       mockStore.delete.mockImplementation(() => {
         throw new Error('Delete error');
       });
@@ -1247,15 +1247,15 @@ describe('stopBackend detailed tests', () => {
   it('should handle Windows process termination', async () => {
     const { spawn } = require('child_process');
     const originalPlatform = process.platform;
-    
+
     Object.defineProperty(process, 'platform', {
       value: 'win32',
       configurable: true
     });
-    
+
     // This test verifies Windows-specific behavior exists in the code
     expect(typeof stopBackend).toBe('function');
-    
+
     Object.defineProperty(process, 'platform', {
       value: originalPlatform,
       configurable: true
@@ -1265,14 +1265,14 @@ describe('stopBackend detailed tests', () => {
   it('should handle Unix process termination', async () => {
     const { spawn } = require('child_process');
     const originalPlatform = process.platform;
-    
+
     Object.defineProperty(process, 'platform', {
       value: 'linux',
       configurable: true
     });
-    
+
     expect(typeof stopBackend).toBe('function');
-    
+
     Object.defineProperty(process, 'platform', {
       value: originalPlatform,
       configurable: true
@@ -1284,37 +1284,37 @@ describe('createWindow with --dev flag', () => {
   it('should open DevTools when --dev flag is present', () => {
     const originalArgv = process.argv;
     process.argv = [...originalArgv, '--dev'];
-    
+
     createWindow();
-    
+
     expect(mockBrowserWindow.webContents.openDevTools).toHaveBeenCalled();
-    
+
     process.argv = originalArgv;
   });
 
   it('should not open DevTools without --dev flag', () => {
     const originalArgv = process.argv;
     process.argv = originalArgv.filter(arg => arg !== '--dev');
-    
+
     mockBrowserWindow.webContents.openDevTools.mockClear();
     createWindow();
-    
+
     // Without --dev flag, openDevTools should not be called
     expect(mockBrowserWindow.webContents.openDevTools).not.toHaveBeenCalled();
-    
+
     process.argv = originalArgv;
   });
 
   it('should trigger ready-to-show callback', () => {
     createWindow();
-    
+
     // Find the ready-to-show callback
     const readyCallback = mockBrowserWindow.once.mock.calls.find(
       call => call[0] === 'ready-to-show'
     );
-    
+
     expect(readyCallback).toBeDefined();
-    
+
     // Execute the callback
     if (readyCallback) {
       const callback = readyCallback[1];
@@ -1325,14 +1325,14 @@ describe('createWindow with --dev flag', () => {
 
   it('should trigger closed callback', () => {
     createWindow();
-    
+
     // Find the closed callback
     const closedCallback = mockBrowserWindow.on.mock.calls.find(
       call => call[0] === 'closed'
     );
-    
+
     expect(closedCallback).toBeDefined();
-    
+
     // Execute the callback (sets mainWindow to null)
     if (closedCallback) {
       const callback = closedCallback[1];
@@ -1344,19 +1344,19 @@ describe('createWindow with --dev flag', () => {
 describe('activate handler', () => {
   it('should create window when mainWindow is null', () => {
     const { app, BrowserWindow } = require('electron');
-    
+
     // Set mainWindow to null
     _setMainWindowForTesting(null);
-    
+
     const handlerCall = app.on.mock.calls.find(
       call => call[0] === 'activate'
     );
-    
+
     if (handlerCall) {
       BrowserWindow.mockClear();
       const handler = handlerCall[1];
       handler();
-      
+
       // Window should be created when mainWindow is null
       expect(BrowserWindow).toHaveBeenCalled();
     }
@@ -1364,23 +1364,23 @@ describe('activate handler', () => {
 
   it('should not create window when mainWindow exists', () => {
     const { app, BrowserWindow } = require('electron');
-    
+
     // Set mainWindow to a mock window
     _setMainWindowForTesting(mockBrowserWindow);
-    
+
     const handlerCall = app.on.mock.calls.find(
       call => call[0] === 'activate'
     );
-    
+
     if (handlerCall) {
       BrowserWindow.mockClear();
       const handler = handlerCall[1];
       handler();
-      
+
       // Window should NOT be created when mainWindow exists
       expect(BrowserWindow).not.toHaveBeenCalled();
     }
-    
+
     // Reset
     _setMainWindowForTesting(null);
   });
@@ -1406,7 +1406,7 @@ describe('Branch Coverage - Additional Tests', () => {
   describe('api-request with no token', () => {
     it('should make request without auth header when no token', async () => {
       const axios = require('axios');
-      
+
       mockStore.get.mockReturnValue(undefined);
       axios.mockResolvedValue({ data: {} });
 
@@ -1425,7 +1425,7 @@ describe('Branch Coverage - Additional Tests', () => {
 
     it('should make request without auth header when token is null', async () => {
       const axios = require('axios');
-      
+
       mockStore.get.mockReturnValue(null);
       axios.mockResolvedValue({ data: {} });
 
@@ -1444,7 +1444,7 @@ describe('Branch Coverage - Additional Tests', () => {
 
     it('should make request without auth header when token is empty string', async () => {
       const axios = require('axios');
-      
+
       mockStore.get.mockReturnValue('');
       axios.mockResolvedValue({ data: {} });
 
@@ -1466,7 +1466,7 @@ describe('Branch Coverage - Additional Tests', () => {
     it('should return error message when no response data', async () => {
       const axios = require('axios');
       const consoleSpy = jest.spyOn(console, 'error').mockImplementation();
-      
+
       // Error without response object
       axios.mockRejectedValue({
         message: 'Network Error'
@@ -1489,7 +1489,7 @@ describe('Branch Coverage - Additional Tests', () => {
     it('should return response data on error when available', async () => {
       const axios = require('axios');
       const consoleSpy = jest.spyOn(console, 'error').mockImplementation();
-      
+
       axios.mockRejectedValue({
         message: 'Request failed',
         response: { data: { detail: 'Permission denied' } }

@@ -632,7 +632,7 @@ test.describe('External Lab & Requisitions', () => {
 
   test('should view attached result document', async ({ page }) => {
     await login(page, TEST_USER.username, TEST_USER.password);
-    
+
     // Mock result with attachment
     await page.route('**/api/laboratory/results/1/**', async (route) => {
       await route.fulfill({

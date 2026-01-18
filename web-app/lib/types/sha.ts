@@ -1,7 +1,7 @@
 /**
  * SHA (Social Health Authority) Type Definitions for Vitora HMIS
  * Based on DHA API integration and FHIR R4 standards
- * 
+ *
  * @see docs/sha-frontend-integration-guide.md
  * @see docs/dha-api-usage-analysis.md
  */
@@ -82,15 +82,15 @@ export type CRLookupStatus = 'idle' | 'searching' | 'found' | 'not_found' | 'err
 // Eligibility Types
 // ============================================================================
 
-export type EligibilityStatus = 
+export type EligibilityStatus =
   | 'checking'
-  | 'eligible' 
-  | 'ineligible' 
-  | 'expired' 
+  | 'eligible'
+  | 'ineligible'
+  | 'expired'
   | 'pending'
   | 'error';
 
-export type SchemeCategory = 
+export type SchemeCategory =
   | 'SHIF_EMPLOYED'
   | 'SHIF_SELF_EMPLOYED'
   | 'SHIF_INDIGENT'
@@ -323,13 +323,13 @@ export interface DrugSearchParams extends TerminologySearchParams {
 // Claim Types
 // ============================================================================
 
-export type ClaimStatus = 
-  | 'draft' 
-  | 'pending' 
-  | 'submitted' 
-  | 'processing' 
-  | 'approved' 
-  | 'rejected' 
+export type ClaimStatus =
+  | 'draft'
+  | 'pending'
+  | 'submitted'
+  | 'processing'
+  | 'approved'
+  | 'rejected'
   | 'paid'
   | 'partial_approved';
 
@@ -342,29 +342,29 @@ export interface Claim {
   patient_id?: number;
   patient_name?: string;
   patient_mrn?: string;
-  
+
   status: ClaimStatus;
   sha_reference?: string;
-  
+
   // Amounts
   total_amount: string;
   approved_amount?: string;
   rejected_amount?: string;
   copay_amount?: string;
-  
+
   // Dates
   submitted_at?: string;
   processed_at?: string;
   created_at: string;
   updated_at: string;
-  
+
   // Rejection details
   rejection_reason?: string;
   rejection_codes?: string[];
-  
+
   // FHIR bundle reference
   fhir_bundle_id?: string;
-  
+
   // Metadata
   created_by?: number;
   submitted_by?: number;
@@ -458,7 +458,7 @@ export interface FacilityValidationResponse {
   warnings?: string[];
 }
 
-export type FacilityValidationStatus = 
+export type FacilityValidationStatus =
   | 'idle'
   | 'validating'
   | 'valid'

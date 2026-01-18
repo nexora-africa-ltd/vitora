@@ -14,9 +14,9 @@
 import { renderHook, waitFor, act } from '@testing-library/react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import React from 'react';
-import { 
-  useConsultationQueue, 
-  useCallPatient, 
+import {
+  useConsultationQueue,
+  useCallPatient,
   useStartConsultation,
   useBypassTriage,
 } from '@/lib/hooks/use-consultation-queue';
@@ -169,7 +169,7 @@ describe('useConsultationQueue', () => {
       });
 
       expect(mockedApi.callPatient).toHaveBeenCalledWith(1);
-      
+
       await waitFor(() => {
         expect(result.current.isSuccess).toBe(true);
       });
@@ -256,7 +256,7 @@ describe('useConsultationQueue', () => {
       });
 
       expect(mockedApi.startConsultation).toHaveBeenCalledWith(1);
-      
+
       await waitFor(() => {
         expect(result.current.isSuccess).toBe(true);
       });
@@ -303,14 +303,14 @@ describe('useConsultationQueue', () => {
       });
 
       await act(async () => {
-        await result.current.mutateAsync({ 
-          encounterId: 1, 
-          reason: 'STABLE_FOLLOW_UP' 
+        await result.current.mutateAsync({
+          encounterId: 1,
+          reason: 'STABLE_FOLLOW_UP'
         });
       });
 
       expect(mockedApi.bypassTriage).toHaveBeenCalledWith(1, 'STABLE_FOLLOW_UP', undefined);
-      
+
       await waitFor(() => {
         expect(result.current.isSuccess).toBe(true);
       });
@@ -329,16 +329,16 @@ describe('useConsultationQueue', () => {
       });
 
       await act(async () => {
-        await result.current.mutateAsync({ 
-          encounterId: 1, 
+        await result.current.mutateAsync({
+          encounterId: 1,
           reason: 'OTHER',
           notes: 'Patient requested direct consultation'
         });
       });
 
       expect(mockedApi.bypassTriage).toHaveBeenCalledWith(
-        1, 
-        'OTHER', 
+        1,
+        'OTHER',
         'Patient requested direct consultation'
       );
     });
@@ -354,9 +354,9 @@ describe('useConsultationQueue', () => {
 
       await act(async () => {
         try {
-          await result.current.mutateAsync({ 
-            encounterId: 1, 
-            reason: 'STABLE_FOLLOW_UP' 
+          await result.current.mutateAsync({
+            encounterId: 1,
+            reason: 'STABLE_FOLLOW_UP'
           });
         } catch {
           // Expected error
@@ -377,7 +377,7 @@ describe('useConsultationQueue', () => {
 describe('consultationQueueApi', () => {
   // These tests verify the API client functions exist and have correct signatures
   // Actual HTTP calls would be mocked in integration tests
-  
+
   it('should have getQueue function', () => {
     expect(typeof consultationQueueApi.getQueue).toBe('function');
   });

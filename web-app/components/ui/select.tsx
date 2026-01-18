@@ -85,7 +85,7 @@ const SelectValue: React.FC<SelectValueProps> = ({ placeholder, children }) => {
   // If children provided (render prop pattern), use that
   // Otherwise use displayText if available, then fall back to value
   const displayContent = children || context.displayText || (context.value ? context.value : placeholder)
-  
+
   return (
     <span className={!context.value && !context.displayText ? 'text-muted-foreground' : ''}>
       {context.value ? displayContent : placeholder}

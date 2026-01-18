@@ -9,7 +9,7 @@ import { useDebounce } from './use-debounce';
 import { useNetworkStatus } from './use-network-status';
 import { useSyncStatus } from '@/lib/context/sync-context';
 
-export type AutoSaveStatus = 
+export type AutoSaveStatus =
   | 'idle'
   | 'pending'
   | 'saving'
@@ -75,11 +75,11 @@ export function useAutoSave<T>({
   const [error, setError] = useState<string | null>(null);
   const [isDirty, setIsDirty] = useState(false);
   const [pendingCount, setPendingCount] = useState(0);
-  
+
   const lastSavedData = useRef<T | null>(null);
   const saveInProgress = useRef(false);
   const offlineQueue = useRef<T[]>([]);
-  
+
   // Debounced data for comparison
   const debouncedData = useDebounce(data, debounceMs);
 
@@ -99,7 +99,7 @@ export function useAutoSave<T>({
   // Auto-save when debounced data changes
   useEffect(() => {
     if (!enabled || !isDirty || saveInProgress.current) return;
-    
+
     // Don't save if offline - queue instead
     if (!isOnline) {
       if (hasChanged(lastSavedData.current, debouncedData)) {
@@ -120,7 +120,7 @@ export function useAutoSave<T>({
       setStatus('saving');
       setError(null);
       syncStatus.reportSyncStart();
-      
+
       try {
         await onSave(debouncedData);
         lastSavedData.current = debouncedData;
@@ -130,7 +130,7 @@ export function useAutoSave<T>({
         syncStatus.reportSync();
         syncStatus.decrementPending();
         onSuccess?.();
-        
+
         // Reset to idle after a short delay
         setTimeout(() => {
           setStatus((s) => (s === 'saved' ? 'idle' : s));
@@ -157,7 +157,7 @@ export function useAutoSave<T>({
       saveInProgress.current = true;
       setStatus('saving');
       syncStatus.reportSyncStart();
-      
+
       try {
         // Process the last queued item (most recent data)
         const latestData = offlineQueue.current[offlineQueue.current.length - 1];
@@ -175,7 +175,7 @@ export function useAutoSave<T>({
         syncStatus.reportSync();
         syncStatus.setPendingCount(0);
         onSuccess?.();
-        
+
         setTimeout(() => {
           setStatus((s) => (s === 'saved' ? 'idle' : s));
         }, 2000);
@@ -196,7 +196,7 @@ export function useAutoSave<T>({
   // Manual save function
   const saveNow = useCallback(async () => {
     if (saveInProgress.current) return;
-    
+
     if (!isOnline) {
       offlineQueue.current = [data];
       setPendingCount(1);
@@ -209,7 +209,7 @@ export function useAutoSave<T>({
     setStatus('saving');
     setError(null);
     syncStatus.reportSyncStart();
-    
+
     try {
       await onSave(data);
       lastSavedData.current = data;
@@ -218,7 +218,7 @@ export function useAutoSave<T>({
       setIsDirty(false);
       syncStatus.reportSync();
       onSuccess?.();
-      
+
       setTimeout(() => {
         setStatus((s) => (s === 'saved' ? 'idle' : s));
       }, 2000);

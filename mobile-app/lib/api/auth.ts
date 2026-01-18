@@ -1,11 +1,11 @@
 /**
  * Authentication API Client
- * 
+ *
  * Provides methods for authentication with the Django backend:
  * - Login with username/password
  * - Refresh access token
  * - Verify token validity
- * 
+ *
  * Backend Endpoints (from Phase 0):
  * - POST /api/token/ - Login (returns access + refresh tokens)
  * - POST /api/token/refresh/ - Refresh access token

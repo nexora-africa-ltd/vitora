@@ -1,7 +1,7 @@
 # Vitora HMIS Architecture Analysis
 
-**Date**: December 30, 2025  
-**Analyst**: AI Assistant  
+**Date**: December 30, 2025
+**Analyst**: AI Assistant
 **Scope**: Encounter Status, Status Badges, Web Frontend Timing, Investigations/Lab, RBAC
 
 ---
@@ -65,8 +65,8 @@ class Encounter(models.Model):
         ('CANCELLED', 'Cancelled'),    # Voided encounter
     ]
     status = models.CharField(
-        max_length=20, 
-        choices=STATUS_CHOICES, 
+        max_length=20,
+        choices=STATUS_CHOICES,
         default='DRAFT'
     )
 ```
@@ -156,7 +156,7 @@ Adding a third track (Web Frontend) requires:
 - Shared API development time
 - More QA effort
 
-**Mitigation**: 
+**Mitigation**:
 - Start with read-only dashboard (simpler scope)
 - Use shared component library between desktop and web
 - Consider hiring/contracting additional frontend resource
@@ -271,7 +271,7 @@ class LabOrder(models.Model):
     ])
     ordered_by = models.ForeignKey(User, on_delete=models.SET_NULL, null=True)
     ordered_at = models.DateTimeField(auto_now_add=True)
-    
+
     # External lab details
     external_lab_name = models.CharField(max_length=200, blank=True)
     requisition_pdf = models.FileField(upload_to='lab_requisitions/', blank=True)
@@ -360,7 +360,7 @@ class Department(models.Model):
     """Hospital department for role scoping"""
     name = models.CharField(max_length=100)
     code = models.CharField(max_length=20, unique=True)
-    
+
 class Role(models.Model):
     """System roles with granular permissions"""
     ROLE_CHOICES = [
@@ -404,18 +404,18 @@ class RoleBasedPermission(permissions.BasePermission):
         'LAB_TECH': {'patients': ['view'], 'encounters': ['view'], 'lab_results': ['*']},
         'RECEPTIONIST': {'patients': ['create', 'view', 'edit'], 'encounters': ['view']},
     }
-    
+
     def has_permission(self, request, view):
         if not request.user.is_authenticated:
             return False
-        
+
         role = getattr(request.user, 'staff_profile', None)
         if not role:
             return False
-            
+
         resource = getattr(view, 'resource_name', None)
         action = self._get_action(request.method)
-        
+
         return self._check_permission(role.role.name, resource, action)
 ```
 

@@ -52,9 +52,7 @@ CSRF_TRUSTED_ORIGINS = [
 
 # Disable CSRF for API endpoints in development
 # This is safe because we use JWT authentication, not session cookies
-MIDDLEWARE = [
-    m for m in MIDDLEWARE if m != "django.middleware.csrf.CsrfViewMiddleware"
-]  # noqa: F405
+MIDDLEWARE = [m for m in MIDDLEWARE if m != "django.middleware.csrf.CsrfViewMiddleware"]  # noqa: F405
 
 # Encryption key for sensitive data (generate a new one for production!)
 # To generate: python -c "from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())"

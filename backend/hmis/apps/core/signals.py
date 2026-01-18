@@ -5,6 +5,7 @@ These signals handle automatic audit logging when certain events occur.
 """
 
 from django.contrib.auth.signals import user_logged_in, user_logged_out, user_login_failed
+from django.db.models.signals import post_save
 from django.dispatch import receiver
 
 
@@ -62,8 +63,6 @@ def log_user_login_failed(sender, credentials, request, **kwargs):
 # =============================================================================
 # ActivityFeed Signals - Populate dashboard activity feed
 # =============================================================================
-
-from django.db.models.signals import post_save
 
 
 @receiver(post_save, sender="patients.Patient")

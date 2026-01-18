@@ -565,8 +565,8 @@ export function LabQueueView({ defaultStatus = '' }: LabQueueViewProps) {
                           <TATDisplay item={item} />
                         </TableCell>
                         <TableCell className="text-right" onClick={(e) => e.stopPropagation()}>
-                          <DropdownMenu 
-                            open={isDropdownOpen} 
+                          <DropdownMenu
+                            open={isDropdownOpen}
                             onOpenChange={(open) => setOpenDropdownId(open ? item.queue_number : null)}
                           >
                             <DropdownMenuTrigger asChild>
@@ -696,7 +696,7 @@ export function LabQueueView({ defaultStatus = '' }: LabQueueViewProps) {
                     {STATUS_CONFIG[selectedQueueEntry.queue_status]?.label || selectedQueueEntry.queue_status}
                   </Badge>
                 </div>
-                
+
                 {/* Priority */}
                 <div className="flex items-center justify-between text-sm">
                   <span className="text-muted-foreground">Priority:</span>

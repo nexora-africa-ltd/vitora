@@ -1,6 +1,6 @@
 /**
  * BDD Test Support - Cucumber Hooks
- * 
+ *
  * Before/After hooks for scenario setup and teardown.
  */
 
@@ -18,7 +18,7 @@ BeforeAll(async function () {
   browser = await chromium.launch({
     headless: process.env.CI === 'true',
   });
-  
+
   console.log('🚀 BDD Test Suite Started');
 });
 
@@ -30,7 +30,7 @@ AfterAll(async function () {
   if (browser) {
     await browser.close();
   }
-  
+
   console.log('✅ BDD Test Suite Completed');
 });
 
@@ -40,14 +40,14 @@ AfterAll(async function () {
 Before(async function (this: VitoraWorld) {
   // Reset world state
   this.reset();
-  
+
   // Create new browser context for isolation
   this.browser = browser;
   this.context = await browser.newContext({
     baseURL: process.env.BASE_URL || 'http://localhost:3009',
     viewport: { width: 1280, height: 720 },
   });
-  
+
   // Create new page
   this.page = await this.context.newPage();
 });
@@ -62,7 +62,7 @@ After(async function (this: VitoraWorld, scenario) {
     await this.page.screenshot({ path: screenshotPath, fullPage: true });
     this.attach(await this.page.screenshot(), 'image/png');
   }
-  
+
   // Close page and context
   if (this.page) {
     await this.page.close();

@@ -1,13 +1,13 @@
 /**
  * Terminology Components - Public Exports
- * 
+ *
  * Reusable select components for Kenya DHA/SHA terminologies.
  * These components provide searchable dropdowns with debounced search,
  * loading states, and consistent styling.
- * 
+ *
  * @example
  * import { ICD11Select, LOINCSelect, DrugProductSelect } from '@/components/terminology';
- * 
+ *
  * <ICD11Select onSelect={handleDiagnosis} />
  * <LOINCSelect onSelect={handleLabTest} />
  * <DrugProductSelect onSelect={handleDrug} showPrice />
@@ -17,7 +17,7 @@
 export { ICD11Select } from './ICD11Select';
 export type { ICD11SelectProps } from './ICD11Select';
 
-// LOINC Lab Test Codes  
+// LOINC Lab Test Codes
 export { LOINCSelect } from './LOINCSelect';
 export type { LOINCSelectProps } from './LOINCSelect';
 

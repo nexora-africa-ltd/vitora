@@ -1,10 +1,10 @@
 /**
  * SHA Verification Modal
- * 
+ *
  * A modal dialog with two separate functions:
  * 1. Client Registry (CR) Lookup - Find patient demographics from national CR
  * 2. SHA Eligibility Check - Verify if someone has active SHA coverage
- * 
+ *
  * These are independent operations:
  * - CR lookup finds the person in Kenya's national database
  * - Eligibility check verifies SHA insurance coverage status
@@ -162,7 +162,7 @@ function CRLookupTab({ defaultNationalId, onClientFound }: CRLookupTabProps) {
           <Info className="h-4 w-4 text-warning-foreground" />
           <AlertTitle>Not Found in Client Registry</AlertTitle>
           <AlertDescription>
-            This National ID was not found in Kenya&apos;s Client Registry. 
+            This National ID was not found in Kenya&apos;s Client Registry.
             You can still register the patient manually.
           </AlertDescription>
         </Alert>
@@ -279,7 +279,7 @@ function EligibilityCheckTab({ defaultNationalId, onEligibilityVerified }: Eligi
       });
 
       setEligibility(response);
-      
+
       if (response.error) {
         setStatus('error');
         setErrorMessage(response.error);
@@ -541,7 +541,7 @@ export function SHAVerificationModal({
 }: SHAVerificationModalProps) {
   const [internalOpen, setInternalOpen] = useState(false);
   const [isExpanded, setIsExpanded] = useState(false);
-  
+
   const isControlled = open !== undefined;
   const isOpen = isControlled ? open : internalOpen;
   const setIsOpen = isControlled ? onOpenChange! : setInternalOpen;
@@ -552,11 +552,11 @@ export function SHAVerificationModal({
       setIsOpen(open);
     }}>
       {trigger && <DialogTrigger asChild>{trigger}</DialogTrigger>}
-      
+
       <DialogContent className={cn(
         "transition-all duration-200 overflow-hidden",
-        isExpanded 
-          ? "!max-w-[95vw] !w-[95vw] !h-[95vh] !max-h-[95vh]" 
+        isExpanded
+          ? "!max-w-[95vw] !w-[95vw] !h-[95vh] !max-h-[95vh]"
           : "max-w-md w-auto"
       )}>
         <Button
@@ -601,7 +601,7 @@ export function SHAVerificationModal({
             <TabsContent value="cr" className="mt-4">
               <div className="mb-4 p-3 bg-muted rounded-lg text-sm">
                 <p className="text-muted-foreground">
-                  <strong>Client Registry</strong> lookup retrieves patient demographic information 
+                  <strong>Client Registry</strong> lookup retrieves patient demographic information
                   from Kenya&apos;s national database to auto-fill registration details.
                 </p>
               </div>
@@ -616,7 +616,7 @@ export function SHAVerificationModal({
             <TabsContent value="eligibility" className="mt-4">
               <div className="mb-4 p-3 bg-muted rounded-lg text-sm">
                 <p className="text-muted-foreground">
-                  <strong>SHA Eligibility</strong> verifies if a person has active Social Health Authority 
+                  <strong>SHA Eligibility</strong> verifies if a person has active Social Health Authority
                   insurance coverage and determines their copay percentage.
                 </p>
               </div>

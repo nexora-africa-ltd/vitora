@@ -31,9 +31,9 @@ import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { AlertTriangle, Loader2, User } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { 
-  type TriageBypassReason, 
-  TRIAGE_BYPASS_REASON_DISPLAY 
+import {
+  type TriageBypassReason,
+  TRIAGE_BYPASS_REASON_DISPLAY
 } from '@/lib/types/encounter';
 
 // =============================================================================
@@ -133,7 +133,7 @@ export function BypassTriageDialog({
             <div className="space-y-4">
               {/* Warning message */}
               <p className="text-sm text-muted-foreground">
-                You are about to bypass triage assessment for this patient. 
+                You are about to bypass triage assessment for this patient.
                 Please confirm and select a reason for bypassing triage.
               </p>
 

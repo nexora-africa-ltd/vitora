@@ -7,9 +7,13 @@ This module contains custom permission classes for:
 - Audit logging integration
 """
 
+import logging
+
 from rest_framework import permissions
 
 from .models import AuditLog
+
+logger = logging.getLogger(__name__)
 
 
 def get_client_ip(request):
@@ -93,10 +97,7 @@ class SensitiveAccessPermission(permissions.BasePermission):
         # Log the access attempt
         self._log_sensitive_access(request, obj, granted=has_permission)
 
-        if not has_permission:
-            return False
-
-        return True
+        return has_permission
 
     def _log_sensitive_access(self, request, obj, granted: bool):
         """
@@ -297,8 +298,8 @@ class RoleBasedPermission(permissions.BasePermission):
                 queryset = view.get_queryset()
                 if hasattr(queryset, "model"):
                     return queryset.model.__name__
-            except Exception:
-                pass
+            except Exception as exc:
+                logger.debug("Unable to infer model from queryset: %s", exc)
 
         # Try to get from serializer
         if hasattr(view, "get_serializer_class"):
@@ -306,8 +307,8 @@ class RoleBasedPermission(permissions.BasePermission):
                 serializer_class = view.get_serializer_class()
                 if hasattr(serializer_class, "Meta") and hasattr(serializer_class.Meta, "model"):
                     return serializer_class.Meta.model.__name__
-            except Exception:
-                pass
+            except Exception as exc:
+                logger.debug("Unable to infer model from serializer: %s", exc)
 
         # Fallback to view basename
         if hasattr(view, "basename"):
@@ -442,8 +443,8 @@ class SHAPermission(permissions.BasePermission):
                 queryset = view.get_queryset()
                 if hasattr(queryset, "model"):
                     return queryset.model.__name__.lower()
-            except Exception:
-                pass
+            except Exception as exc:
+                logger.debug("Unable to infer lowercase model name from queryset: %s", exc)
 
         if hasattr(view, "queryset") and view.queryset is not None:
             return view.queryset.model.__name__.lower()

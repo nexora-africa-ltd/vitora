@@ -276,5 +276,5 @@ When you encounter and resolve a stubborn issue:
 
 ---
 
-**Last Updated:** January 15, 2026  
+**Last Updated:** January 15, 2026
 **Maintainers:** Engineering Team

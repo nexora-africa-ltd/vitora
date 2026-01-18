@@ -45,28 +45,28 @@
 ```python
 class ModelName(TimeStampedModel):
     """Model docstring."""
-    
+
     # Constants/Choices
     STATUS_CHOICES = [
         ('OPTION1', 'Option 1'),
         ('OPTION2', 'Option 2'),
     ]
-    
+
     # Required fields
     field_name = models.CharField(max_length=100)
-    
+
     # Optional fields
     optional_field = models.TextField(blank=True)
-    
+
     # Relationships
     related_model = models.ForeignKey('app.Model', on_delete=models.CASCADE)
-    
+
     # Computed properties
     @property
     def computed_value(self) -> str:
         """Description of computed property."""
         pass
-    
+
     # Methods
     def action_method(self):
         """Description of method."""
@@ -201,37 +201,37 @@ from rest_framework import status
 
 class Test[Feature]:
     """Tests for [feature]."""
-    
+
     def test_[action]_with_valid_data(self, authenticated_client, sample_data):
         """Should [expected behavior] when [condition]."""
         # Given: [Setup description]
         data = {'field': 'value'}
-        
+
         # When: [Action description]
         response = authenticated_client.post('/api/endpoint/', data)
-        
+
         # Then: [Assertion description]
         assert response.status_code == status.HTTP_201_CREATED
         assert response.data['field'] == 'value'
-    
+
     def test_[action]_without_permission_fails(self, api_client, sample_data):
         """Should reject [action] without proper permissions."""
         # Given: Unauthenticated client
-        
+
         # When: Attempting action
         response = api_client.post('/api/endpoint/', {})
-        
+
         # Then: Should be unauthorized
         assert response.status_code == status.HTTP_401_UNAUTHORIZED
-    
+
     def test_[action]_with_invalid_data_fails(self, authenticated_client):
         """Should reject [action] with validation errors."""
         # Given: Invalid data
         data = {'field': 'invalid'}
-        
+
         # When: Attempting action
         response = authenticated_client.post('/api/endpoint/', data)
-        
+
         # Then: Should return validation error
         assert response.status_code == status.HTTP_400_BAD_REQUEST
         assert 'field' in response.data

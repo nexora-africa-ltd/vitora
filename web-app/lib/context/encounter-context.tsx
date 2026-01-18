@@ -1,16 +1,16 @@
 /**
  * Encounter Context Provider
- * 
+ *
  * Provides a single, authoritative source of encounter data.
  * Must be used within a PatientProvider to validate patient-encounter relationship.
- * 
+ *
  * Key Features:
  * - Patient validation: Ensures encounter belongs to current patient
  * - Order permissions: Exposes canPlaceOrders based on encounter status
  * - Triage/Consultation tracking: Provides status for workflow decisions
  * - Single fetch guarantee: Encounter data fetched ONCE and shared
  * - Patient Journey Sync: Syncs encounter data to zustand store for journey tracking
- * 
+ *
  * Usage:
  * ```tsx
  * <PatientProvider patientId={1}>
@@ -77,7 +77,7 @@ export interface EncounterProviderProps {
 export function EncounterProvider({ encounterId, children }: EncounterProviderProps) {
   // Get patient context (optional - may be used standalone for encounter-first flows)
   const patientContext = useOptionalPatientContext();
-  
+
   // Access patient journey store for syncing
   const {
     setEncounter,
@@ -85,7 +85,7 @@ export function EncounterProvider({ encounterId, children }: EncounterProviderPr
     checkInPatient,
     activePatients,
   } = usePatientJourneyStore();
-  
+
   // Track validation error separately
   const [validationError, setValidationError] = useState<Error | null>(null);
 
@@ -121,14 +121,14 @@ export function EncounterProvider({ encounterId, children }: EncounterProviderPr
   useEffect(() => {
     if (encounter && !validationError) {
       const patientId = encounter.patient;
-      
+
       // Check if patient is already in journey store
       const journeyPatient = activePatients[patientId];
-      
+
       if (journeyPatient) {
         // Set encounter on existing journey patient
         setEncounter(patientId, encounter.id, encounter.encounter_type);
-        
+
         // Sync triage and consultation status from encounter
         // Use type assertion for fields that may exist on backend but not in TS types yet
         const encounterAny = encounter as unknown as Record<string, unknown>;
@@ -136,7 +136,7 @@ export function EncounterProvider({ encounterId, children }: EncounterProviderPr
         const consultationStatus = (encounterAny.consultation_status as string || 'WAITING') as ConsultationStatus;
         const triageBypassReason = encounterAny.triage_bypass_reason as TriageBypassReason | undefined;
         const triageCategory = encounterAny.triage_category as 'RED' | 'ORANGE' | 'YELLOW' | 'GREEN' | 'BLUE' | undefined;
-        
+
         syncFromEncounter(patientId, {
           triage_status: triageStatus,
           consultation_status: consultationStatus,
@@ -150,12 +150,12 @@ export function EncounterProvider({ encounterId, children }: EncounterProviderPr
           encounter_type: encounter.encounter_type,
           chief_complaint: encounter.chief_complaint,
         });
-        
+
         // Then sync status
         const encounterAny = encounter as unknown as Record<string, unknown>;
         const triageStatus = (encounter.triage_status || 'PENDING') as TriageStatus;
         const consultationStatus = (encounterAny.consultation_status as string || 'WAITING') as ConsultationStatus;
-        
+
         syncFromEncounter(patientId, {
           triage_status: triageStatus,
           consultation_status: consultationStatus,
@@ -224,16 +224,16 @@ export function EncounterProvider({ encounterId, children }: EncounterProviderPr
 /**
  * Hook to access encounter context.
  * Must be used within an EncounterProvider.
- * 
+ *
  * @throws Error if used outside of EncounterProvider
  */
 export function useEncounterContext(): EncounterContextValue {
   const context = useContext(EncounterContext);
-  
+
   if (context === undefined) {
     throw new Error('useEncounterContext must be used within an EncounterProvider');
   }
-  
+
   return context;
 }
 

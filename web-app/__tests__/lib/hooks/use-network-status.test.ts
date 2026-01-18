@@ -9,11 +9,11 @@ describe('useNetworkStatus', () => {
 
   it('should update when going offline', () => {
     const { result } = renderHook(() => useNetworkStatus());
-    
+
     act(() => {
       window.dispatchEvent(new Event('offline'));
     });
-    
+
     expect(result.current.isOnline).toBe(false);
   });
 });

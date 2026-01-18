@@ -1,6 +1,6 @@
 /**
  * Triage Assessment Step Definitions
- * 
+ *
  * Steps for triage assessment scenarios including vitals,
  * KETA categories, and clinical assessment.
  */
@@ -88,7 +88,7 @@ Given(
   async function (this: VitoraWorld, mrn: string) {
     this.patient = createPatient({ mrn });
     this.currentPage = 'triage assessment';
-    
+
     if (this.page) {
       await this.page.goto(`/triage/assess/${mrn}`);
       await this.page.waitForLoadState('networkidle');
@@ -187,7 +187,7 @@ Given(
       type: 'OPD',
       status: 'active',
     });
-    
+
     if (this.page) {
       await this.page.goto(`/triage/assessment/${this.patient.mrn}`);
       await this.page.waitForLoadState('networkidle');
@@ -203,7 +203,7 @@ When(
   'I select arrival mode {string}',
   async function (this: VitoraWorld, mode: string) {
     this.store('arrivalMode', mode);
-    
+
     if (this.page) {
       await this.page.selectOption('[data-testid="arrival-mode"]', mode);
     }
@@ -214,7 +214,7 @@ When(
   'I enter arrival time as {string}',
   async function (this: VitoraWorld, time: string) {
     this.store('arrivalTime', time);
-    
+
     if (this.page) {
       await this.page.fill('[data-testid="arrival-time"]', time);
     }
@@ -253,7 +253,7 @@ When(
   'I select chief complaint category {string}',
   async function (this: VitoraWorld, category: string) {
     this.store('chiefComplaintCategory', category);
-    
+
     if (this.page) {
       await this.page.selectOption('[data-testid="chief-complaint-category"]', category);
     }
@@ -264,7 +264,7 @@ When(
   'I enter chief complaint details {string}',
   async function (this: VitoraWorld, details: string) {
     this.store('chiefComplaintDetails', details);
-    
+
     if (this.page) {
       await this.page.fill('[data-testid="chief-complaint-details"]', details);
     }
@@ -331,7 +331,7 @@ When(
   'I click on pain level {int} on the pain scale',
   async function (this: VitoraWorld, level: number) {
     this.store('painScore', level);
-    
+
     if (this.page) {
       await this.page.click(`[data-testid="pain-scale-${level}"]`);
     }
@@ -342,7 +342,7 @@ When(
   'I set the pain score to {int}',
   async function (this: VitoraWorld, score: number) {
     this.store('painScore', score);
-    
+
     if (this.page) {
       await this.page.fill('[data-testid="pain-score"]', String(score));
     }
@@ -353,7 +353,7 @@ When(
   'I leave the pain score empty',
   async function (this: VitoraWorld) {
     this.store('painScore', null);
-    
+
     if (this.page) {
       await this.page.fill('[data-testid="pain-score"]', '');
     }
@@ -417,7 +417,7 @@ When(
   'I select mental status {string}',
   async function (this: VitoraWorld, status: string) {
     this.store('mentalStatus', status);
-    
+
     if (this.page) {
       await this.page.click(`[data-testid="avpu-${status.toLowerCase()}"]`);
     }
@@ -533,7 +533,7 @@ Then(
   async function (this: VitoraWorld) {
     const submitted = this.retrieve('triageSubmitted');
     expect(submitted).toBe(true);
-    
+
     if (this.page) {
       await expect(this.page.locator('[data-testid="success-message"]')).toBeVisible();
     }

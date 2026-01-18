@@ -10,19 +10,19 @@ interface PermissionGuardProps {
 
 /**
  * PermissionGuard checks if the user has the required permission.
- * 
+ *
  * Note: Authentication is handled by middleware.ts (server-side redirect).
  * This component only handles permission-based access control.
- * 
+ *
  * Uses usePermissions hook which properly handles:
  * - Superusers (bypass all permission checks)
  * - Admin roles (bypass all permission checks)
  * - Permission mapping (simple names to Django format)
  */
-export function PermissionGuard({ 
-  children, 
+export function PermissionGuard({
+  children,
   requiredPermission,
-  fallback 
+  fallback
 }: PermissionGuardProps) {
   const { hasPermission, isAuthenticated } = usePermissions();
 

@@ -65,7 +65,7 @@ export const ENCOUNTER_TYPE_GROUPS = {
 } as const;
 
 // Helper to get encounter types by group
-export const getEncounterTypesByGroup = (group: keyof typeof ENCOUNTER_TYPE_GROUPS) => 
+export const getEncounterTypesByGroup = (group: keyof typeof ENCOUNTER_TYPE_GROUPS) =>
   ENCOUNTER_TYPES.filter(t => t.group === group);
 
 // Triage requirement mapping

@@ -1,6 +1,6 @@
 /**
  * Triage Assessment Specific Steps
- * 
+ *
  * Additional steps for triage assessment forms and vital alerts
  */
 

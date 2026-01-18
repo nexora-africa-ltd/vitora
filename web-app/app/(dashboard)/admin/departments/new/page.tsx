@@ -50,7 +50,7 @@ export default function NewDepartmentPage() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
+
     try {
       await createDepartment.mutateAsync(formData);
       toast({

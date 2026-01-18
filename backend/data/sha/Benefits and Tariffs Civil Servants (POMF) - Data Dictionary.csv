@@ -13,7 +13,7 @@ Tariffs (KES),"Tariff applicable per unit of episode of care, encounter, visit, 
 Provider Payment Machanism,The method of which providers and facilities will be reimbursed
 Gender,The persons eligible for an intervention
 Limits per Individual or Household,"Unit of setting limits, either as household or individual"
-Period of Intervention Limits,The duration in which the limits are valid 
+Period of Intervention Limits,The duration in which the limits are valid
 Intervention quantity per period,"No of interventions allowed per period e.g 2 scans per year, 2 dialysis session per week"
 Costs allocated to PHC Fund,% of the inteventions allocated to a fund
 Costs allocated to SHIF,% of the inteventions allocated to a fund

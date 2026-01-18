@@ -98,9 +98,9 @@ export function DatePicker({
     const firstDay = new Date(year, month, 1).getDay();
     const daysInMonth = new Date(year, month + 1, 0).getDate();
     const daysInPrevMonth = new Date(year, month, 0).getDate();
-    
+
     const days: CalendarDay[] = [];
-    
+
     // Previous month days
     for (let i = firstDay - 1; i >= 0; i--) {
       const date = daysInPrevMonth - i;
@@ -116,7 +116,7 @@ export function DatePicker({
         isDisabled: true,
       });
     }
-    
+
     // Current month days
     for (let date = 1; date <= daysInMonth; date++) {
       const dateStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(date).padStart(2, '0')}`;
@@ -130,7 +130,7 @@ export function DatePicker({
         isDisabled: isDateDisabled(year, month, date),
       });
     }
-    
+
     // Next month days (fill to 42 cells for 6 rows)
     const remaining = 42 - days.length;
     for (let date = 1; date <= remaining; date++) {
@@ -144,7 +144,7 @@ export function DatePicker({
         isDisabled: true,
       });
     }
-    
+
     return days;
   }
 
@@ -182,7 +182,7 @@ export function DatePicker({
   return (
     <View style={styles.container} testID={testID}>
       {label && <Text style={styles.label}>{label}</Text>}
-      
+
       <View style={styles.inputRow}>
         <TextInput
           style={[styles.input, error && styles.inputError]}
@@ -201,7 +201,7 @@ export function DatePicker({
           <Text style={styles.calendarIcon}>📅</Text>
         </TouchableOpacity>
       </View>
-      
+
       {error && <Text style={styles.errorText}>{error}</Text>}
 
       <Modal visible={modalVisible} animationType="slide" transparent>

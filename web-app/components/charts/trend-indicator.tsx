@@ -193,7 +193,7 @@ export function TrendBadge({
   className,
 }: TrendBadgeProps) {
   const direction: TrendDirection = change > 0 ? "up" : change < 0 ? "down" : "neutral";
-  
+
   const isPositive = invertColors ? direction === "down" : direction === "up";
   const isNegative = invertColors ? direction === "up" : direction === "down";
 

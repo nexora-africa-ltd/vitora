@@ -1,9 +1,9 @@
 /**
  * Billing Encounter Requirement Tests - RED Phase
- * 
- * Tests for enforcing that billing actions (invoices, claims) 
+ *
+ * Tests for enforcing that billing actions (invoices, claims)
  * require an active encounter.
- * 
+ *
  * Acceptance Criteria:
  * - Invoice creation requires encounter_id
  * - SHA claims require encounter_id
@@ -49,9 +49,9 @@ jest.mock('@/lib/api/billing', () => ({
 
 // Mock auth context
 jest.mock('@/lib/auth/context', () => ({
-  useAuth: jest.fn(() => ({ 
+  useAuth: jest.fn(() => ({
     user: { id: 1, username: 'billing1', role: 'BILLING_CLERK', permissions: ['create_invoice'] },
-    isAuthenticated: true 
+    isAuthenticated: true
   })),
 }));
 
@@ -137,7 +137,7 @@ describe('Billing Encounter Requirement', () => {
     it('should show error when submitting invoice form without encounter', async () => {
       // This test assumes InvoiceForm component exists
       const InvoiceForm = (await import('@/components/billing/InvoiceForm')).default;
-      
+
       const Wrapper = createWrapper();
       render(
         <Wrapper>
@@ -166,7 +166,7 @@ describe('Billing Encounter Requirement', () => {
 
     it('should disable submit button when no encounter is selected', async () => {
       const InvoiceForm = (await import('@/components/billing/InvoiceForm')).default;
-      
+
       const Wrapper = createWrapper();
       render(
         <Wrapper>
@@ -183,7 +183,7 @@ describe('Billing Encounter Requirement', () => {
 
     it('should enable submit button when encounter is provided', async () => {
       const InvoiceForm = (await import('@/components/billing/InvoiceForm')).default;
-      
+
       const Wrapper = createWrapper();
       render(
         <Wrapper>
@@ -207,7 +207,7 @@ describe('Billing Encounter Requirement', () => {
       const { PatientProvider } = await import('@/lib/context/patient-context');
       const { EncounterProvider } = await import('@/lib/context/encounter-context');
       const InvoiceForm = (await import('@/components/billing/InvoiceForm')).default;
-      
+
       const Wrapper = createWrapper();
       render(
         <Wrapper>
@@ -230,7 +230,7 @@ describe('Billing Encounter Requirement', () => {
     it('should show warning banner when creating invoice without encounter context', async () => {
       const { PatientProvider } = await import('@/lib/context/patient-context');
       const InvoiceForm = (await import('@/components/billing/InvoiceForm')).default;
-      
+
       const Wrapper = createWrapper();
       render(
         <Wrapper>
@@ -274,7 +274,7 @@ describe('Billing Encounter Requirement', () => {
 
     it('should show SHA compliance warning when encounter is missing', async () => {
       const { PatientProvider } = await import('@/lib/context/patient-context');
-      
+
       // Assuming there's a SHA claims component
       let SHAClaimForm;
       try {
@@ -283,7 +283,7 @@ describe('Billing Encounter Requirement', () => {
         // Component may not exist yet - skip test
         return;
       }
-      
+
       const Wrapper = createWrapper();
       render(
         <Wrapper>
@@ -334,7 +334,7 @@ describe('Billing Encounter Requirement', () => {
       }));
 
       const BillingNewPage = (await import('@/app/(dashboard)/billing/invoices/new/page')).default;
-      
+
       const Wrapper = createWrapper();
       render(
         <Wrapper>
@@ -356,7 +356,7 @@ describe('Billing Encounter Requirement', () => {
       );
 
       const BillingNewPage = (await import('@/app/(dashboard)/billing/invoices/new/page')).default;
-      
+
       const Wrapper = createWrapper();
       render(
         <Wrapper>

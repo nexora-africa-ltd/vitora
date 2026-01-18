@@ -1,15 +1,15 @@
 /**
  * TDD Tests for Billing API Client - RED PHASE
- * 
+ *
  * These tests define the expected behavior of the billing API client
  * before implementation. All tests should FAIL initially.
- * 
+ *
  * User Stories Covered:
  * - KE-CSH-001: Payment Processing
  * - KE-CSH-002: Invoice Generation
  * - KE-BIL-001: Billing Reconciliation
  * - KE-CLM-003: Financial Performance Reports
- * 
+ *
  * @see docs/user-stories.md
  * @see backend/BILLING_IMPLEMENTATION_STATUS.md
  */

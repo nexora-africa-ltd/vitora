@@ -1,8 +1,8 @@
 # Inventory E2E Test Report
 
-**Date:** January 9, 2026  
-**Test File:** `web-app/e2e/pharmacy/inventory.spec.ts`  
-**Browser:** Chromium  
+**Date:** January 9, 2026
+**Test File:** `web-app/e2e/pharmacy/inventory.spec.ts`
+**Browser:** Chromium
 **Duration:** ~2.9 minutes
 
 ---
@@ -238,7 +238,7 @@ export function ReceiveStockForm() {
 
 ```tsx
 // 1. Add click handler to batch rows:
-<TableRow 
+<TableRow
   onClick={() => setSelectedBatch(batch)}
   className="cursor-pointer"
 >
@@ -249,7 +249,7 @@ export function ReceiveStockForm() {
     <DialogHeader>
       <DialogTitle>Batch Details: {selectedBatch?.batch_number}</DialogTitle>
     </DialogHeader>
-    
+
     <div className="grid gap-4">
       {/* Quantities */}
       <div>
@@ -341,7 +341,7 @@ const isExpiringSoon = (expiryDate: string) => {
   return days <= 30 && days > 0;
 };
 
-<TableRow 
+<TableRow
   className={cn(
     "border-b transition-colors",
     isExpiringSoon(batch.expiry_date) && "warning bg-yellow-50",
@@ -350,7 +350,7 @@ const isExpiringSoon = (expiryDate: string) => {
 >
 
 // 2. Add expiring soon filter:
-<Button 
+<Button
   variant={showExpiringSoon ? "default" : "outline"}
   onClick={() => setShowExpiringSoon(!showExpiringSoon)}
   data-testid="expiring-filter"

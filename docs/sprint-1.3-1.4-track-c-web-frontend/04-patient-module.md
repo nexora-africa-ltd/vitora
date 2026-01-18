@@ -27,7 +27,7 @@ export interface Patient {
   phone_number: string | null;
   national_id: string | null;
   email: string | null;
-  
+
   // Address
   county: number | null;
   county_name?: string;
@@ -36,23 +36,23 @@ export interface Patient {
   ward: number | null;
   ward_name?: string;
   village: string;
-  
+
   // Emergency contact
   emergency_contact_name: string;
   emergency_contact_phone: string;
   emergency_contact_relationship: string;
-  
+
   // Referral
   referral_source: 'self' | 'clinic' | 'other_facility';
   referred_from_facility: string;
-  
+
   // Consent
   consent_given: boolean;
   consent_date: string | null;
-  
+
   // Sensitive
   is_sensitive: boolean;
-  
+
   // Metadata
   registered_by: number | null;
   created_at: string;
@@ -1260,7 +1260,7 @@ describe('PatientTable', () => {
 
   it('should render patient data', () => {
     render(<PatientTable {...defaultProps} />);
-    
+
     expect(screen.getByText('MRN-001')).toBeInTheDocument();
     expect(screen.getByText('John Doe')).toBeInTheDocument();
     expect(screen.getByText('Nairobi')).toBeInTheDocument();
@@ -1268,47 +1268,47 @@ describe('PatientTable', () => {
 
   it('should show loading skeleton', () => {
     render(<PatientTable {...defaultProps} isLoading={true} />);
-    
+
     // Skeleton rows should be present
     expect(screen.queryByText('MRN-001')).not.toBeInTheDocument();
   });
 
   it('should show error state', () => {
     render(<PatientTable {...defaultProps} error={new Error('Failed to load')} />);
-    
+
     expect(screen.getByText(/error loading patients/i)).toBeInTheDocument();
   });
 
   it('should show empty state', () => {
     render(<PatientTable {...defaultProps} patients={[]} />);
-    
+
     expect(screen.getByText(/no patients found/i)).toBeInTheDocument();
   });
 
   it('should display sensitive badge', () => {
     const sensitivePatient = { ...mockPatients[0], is_sensitive: true };
     render(<PatientTable {...defaultProps} patients={[sensitivePatient]} />);
-    
+
     expect(screen.getByText('Sensitive')).toBeInTheDocument();
   });
 
   it('should show pagination when multiple pages', () => {
     render(<PatientTable {...defaultProps} totalPages={3} />);
-    
+
     expect(screen.getByText('Page 1 of 3')).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /next/i })).toBeInTheDocument();
   });
 
   it('should call onPageChange when pagination clicked', () => {
     render(<PatientTable {...defaultProps} totalPages={3} />);
-    
+
     fireEvent.click(screen.getByRole('button', { name: /next/i }));
     expect(defaultProps.onPageChange).toHaveBeenCalledWith(2);
   });
 
   it('should disable previous on first page', () => {
     render(<PatientTable {...defaultProps} totalPages={3} page={1} />);
-    
+
     expect(screen.getByRole('button', { name: /previous/i })).toBeDisabled();
   });
 });

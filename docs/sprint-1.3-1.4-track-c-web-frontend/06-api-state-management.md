@@ -55,7 +55,7 @@ const processQueue = (error: Error | null, token: string | null = null) => {
 apiClient.interceptors.request.use(
   async (config: InternalAxiosRequestConfig) => {
     const token = tokenStorage.getAccessToken();
-    
+
     if (token) {
       // Check if token needs refresh
       if (isTokenExpired(token, 60)) {
@@ -68,7 +68,7 @@ apiClient.interceptors.request.use(
         config.headers.Authorization = `Bearer ${token}`;
       }
     }
-    
+
     return config;
   },
   (error) => Promise.reject(error)
@@ -81,7 +81,7 @@ apiClient.interceptors.response.use(
   (response) => response,
   async (error: AxiosError) => {
     const originalRequest = error.config as InternalAxiosRequestConfig & { _retry?: boolean };
-    
+
     // Handle 401 Unauthorized
     if (error.response?.status === 401 && !originalRequest._retry) {
       if (isRefreshing) {
@@ -135,7 +135,7 @@ async function refreshTokenIfNeeded(): Promise<string | null> {
     const response = await axios.post(`${API_BASE_URL}/api/token/refresh/`, {
       refresh: refreshToken,
     });
-    
+
     const newAccessToken = response.data.access;
     tokenStorage.setTokens(newAccessToken, refreshToken);
     return newAccessToken;
@@ -179,7 +179,7 @@ export function transformAxiosError(error: AxiosError): ApiError {
       details: data?.errors || data,
     };
   }
-  
+
   if (error.request) {
     return {
       message: 'Network error. Please check your connection.',
@@ -187,7 +187,7 @@ export function transformAxiosError(error: AxiosError): ApiError {
       code: 'NETWORK_ERROR',
     };
   }
-  
+
   return {
     message: error.message || 'An unexpected error occurred',
     status: 0,
@@ -269,10 +269,10 @@ const defaultOptions: DefaultOptions = {
   queries: {
     // Stale time: 1 minute
     staleTime: 60 * 1000,
-    
+
     // Cache time: 5 minutes
     gcTime: 5 * 60 * 1000,
-    
+
     // Retry failed requests once
     retry: (failureCount, error) => {
       // Don't retry on 4xx errors
@@ -283,17 +283,17 @@ const defaultOptions: DefaultOptions = {
       }
       return failureCount < 1;
     },
-    
+
     // Don't refetch on window focus in development
     refetchOnWindowFocus: process.env.NODE_ENV === 'production',
-    
+
     // Network mode
     networkMode: 'offlineFirst',
   },
   mutations: {
     // Retry mutations once
     retry: 1,
-    
+
     // Network mode
     networkMode: 'offlineFirst',
   },
@@ -319,7 +319,7 @@ export const queryKeys = {
     emergencyContacts: (id: number) => [...queryKeys.patients.detail(id), 'emergency-contacts'] as const,
     encounters: (id: number) => [...queryKeys.patients.detail(id), 'encounters'] as const,
   },
-  
+
   // Encounters
   encounters: {
     all: ['encounters'] as const,
@@ -330,7 +330,7 @@ export const queryKeys = {
     diagnoses: (id: number) => [...queryKeys.encounters.detail(id), 'diagnoses'] as const,
     treatmentPlan: (id: number) => [...queryKeys.encounters.detail(id), 'treatment-plan'] as const,
   },
-  
+
   // Locations
   locations: {
     all: ['locations'] as const,
@@ -338,7 +338,7 @@ export const queryKeys = {
     subCounties: (countyId: number) => [...queryKeys.locations.all, 'sub-counties', countyId] as const,
     wards: (subCountyId: number) => [...queryKeys.locations.all, 'wards', subCountyId] as const,
   },
-  
+
   // ICD-10 codes
   icd10: {
     all: ['icd10'] as const,
@@ -424,16 +424,16 @@ interface UIState {
   // Sidebar state
   sidebarCollapsed: boolean;
   mobileSidebarOpen: boolean;
-  
+
   // Theme
   theme: 'light' | 'dark' | 'system';
-  
+
   // Notifications
   unreadNotifications: number;
-  
+
   // Global loading
   isGlobalLoading: boolean;
-  
+
   // Actions
   toggleSidebar: () => void;
   setSidebarCollapsed: (collapsed: boolean) => void;
@@ -452,7 +452,7 @@ export const useUIStore = create<UIState>()(
       theme: 'system',
       unreadNotifications: 0,
       isGlobalLoading: false,
-      
+
       // Actions
       toggleSidebar: () => set((state) => ({ sidebarCollapsed: !state.sidebarCollapsed })),
       setSidebarCollapsed: (collapsed) => set({ sidebarCollapsed: collapsed }),
@@ -490,7 +490,7 @@ interface FormDraft {
 interface FormState {
   // Draft storage
   drafts: Record<string, FormDraft>;
-  
+
   // Actions
   saveDraft: (formId: string, data: Record<string, any>) => void;
   getDraft: (formId: string) => FormDraft | null;
@@ -500,7 +500,7 @@ interface FormState {
 
 export const useFormStore = create<FormState>()((set, get) => ({
   drafts: {},
-  
+
   saveDraft: (formId, data) => {
     set((state) => ({
       drafts: {
@@ -513,18 +513,18 @@ export const useFormStore = create<FormState>()((set, get) => ({
       },
     }));
   },
-  
+
   getDraft: (formId) => {
     return get().drafts[formId] || null;
   },
-  
+
   clearDraft: (formId) => {
     set((state) => {
       const { [formId]: _, ...rest } = state.drafts;
       return { drafts: rest };
     });
   },
-  
+
   clearAllDrafts: () => {
     set({ drafts: {} });
   },
@@ -551,21 +551,21 @@ export function useToastNotification() {
         variant: 'default',
       });
     },
-    
+
     error: (error: ApiError | Error | string, title = 'Error') => {
-      const message = typeof error === 'string' 
-        ? error 
-        : 'message' in error 
-          ? error.message 
+      const message = typeof error === 'string'
+        ? error
+        : 'message' in error
+          ? error.message
           : 'An error occurred';
-      
+
       toast({
         title,
         description: message,
         variant: 'destructive',
       });
     },
-    
+
     warning: (title: string, description?: string) => {
       toast({
         title,
@@ -574,7 +574,7 @@ export function useToastNotification() {
         className: 'bg-amber-50 border-amber-200 text-amber-900',
       });
     },
-    
+
     info: (title: string, description?: string) => {
       toast({
         title,
@@ -781,21 +781,21 @@ describe('API Client', () => {
 
   it('should add auth header when token exists', async () => {
     (tokenStorage.getAccessToken as jest.Mock).mockReturnValue('test-token');
-    
+
     const config = await apiClient.interceptors.request.handlers[0].fulfilled({
       headers: {},
     });
-    
+
     expect(config.headers.Authorization).toBe('Bearer test-token');
   });
 
   it('should not add auth header when no token', async () => {
     (tokenStorage.getAccessToken as jest.Mock).mockReturnValue(null);
-    
+
     const config = await apiClient.interceptors.request.handlers[0].fulfilled({
       headers: {},
     });
-    
+
     expect(config.headers.Authorization).toBeUndefined();
   });
 
@@ -816,9 +816,9 @@ describe('transformAxiosError', () => {
         data: { detail: 'Bad request' },
       },
     } as AxiosError;
-    
+
     const result = transformAxiosError(error);
-    
+
     expect(result.message).toBe('Bad request');
     expect(result.status).toBe(400);
   });
@@ -827,9 +827,9 @@ describe('transformAxiosError', () => {
     const error = {
       request: {},
     } as AxiosError;
-    
+
     const result = transformAxiosError(error);
-    
+
     expect(result.code).toBe('NETWORK_ERROR');
     expect(result.status).toBe(0);
   });
@@ -949,9 +949,9 @@ describe('UI Store', () => {
 
   it('should toggle sidebar', () => {
     expect(useUIStore.getState().sidebarCollapsed).toBe(false);
-    
+
     useUIStore.getState().toggleSidebar();
-    
+
     expect(useUIStore.getState().sidebarCollapsed).toBe(true);
   });
 
@@ -987,11 +987,11 @@ describe('useNetworkStatus', () => {
 
   it('should update when going offline', () => {
     const { result } = renderHook(() => useNetworkStatus());
-    
+
     act(() => {
       window.dispatchEvent(new Event('offline'));
     });
-    
+
     expect(result.current.isOnline).toBe(false);
   });
 });

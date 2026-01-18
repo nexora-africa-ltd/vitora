@@ -38,7 +38,8 @@ class TestServiceCategory:
 
         with pytest.raises(IntegrityError):
             ServiceCategory.objects.create(
-                name="Consultation Services", code="CONS"  # Duplicate code
+                name="Consultation Services",
+                code="CONS",  # Duplicate code
             )
 
 

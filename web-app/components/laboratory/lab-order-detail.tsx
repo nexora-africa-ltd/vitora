@@ -51,8 +51,8 @@ interface LabOrderDetailProps {
   orderNumber: string;
 }
 
-const STATUS_CONFIG: Record<LabOrderStatus, { 
-  label: string; 
+const STATUS_CONFIG: Record<LabOrderStatus, {
+  label: string;
   variant: 'default' | 'secondary' | 'destructive' | 'outline';
   icon: React.ComponentType<{ className?: string }>;
 }> = {
@@ -111,7 +111,7 @@ export function LabOrderDetail({ orderNumber }: LabOrderDetailProps) {
   const canEnterResults = order.status === 'SPECIMEN_COLLECTED' || order.status === 'IN_PROGRESS';
   const canCancel = ['DRAFT', 'ORDERED'].includes(order.status);
   const hasCriticalResults = order.items.some(item => item.result?.is_critical_result);
-  
+
   // Check if all tests have results entered
   const allResultsEntered = order.items.length > 0 && order.items.every(item => item.has_result);
   const pendingResults = order.items.filter(item => !item.has_result).length;
@@ -223,7 +223,7 @@ export function LabOrderDetail({ orderNumber }: LabOrderDetailProps) {
               Requisition PDF
             </Button>
           )}
-          
+
           {canSubmit && (
             <Button onClick={handleSubmit} disabled={submitOrder.isPending}>
               {submitOrder.isPending ? 'Submitting...' : 'Submit Order'}
@@ -443,7 +443,7 @@ export function LabOrderDetail({ orderNumber }: LabOrderDetailProps) {
                   </div>
                   <div className="text-right">
                     <p className="text-sm font-medium">{formatCurrency(item.unit_cost)}</p>
-                    <LabResultsBadge 
+                    <LabResultsBadge
                       hasResult={item.has_result}
                       result={item.result}
                     />
@@ -469,7 +469,7 @@ export function LabOrderDetail({ orderNumber }: LabOrderDetailProps) {
                       {item.result.result_flag && (
                         <div>
                           <p className="text-muted-foreground">Flag</p>
-                          <Badge 
+                          <Badge
                             variant={
                               item.result.result_flag.includes('CRITICAL') ? 'destructive' :
                               ['LOW', 'HIGH', 'ABNORMAL'].includes(item.result.result_flag) ? 'secondary' :

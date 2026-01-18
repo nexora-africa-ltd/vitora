@@ -67,7 +67,7 @@ export default function NewTriagePage() {
   const handleSelectPatient = useCallback(async (patientToSelect: Patient) => {
     setSelectedPatientId(patientToSelect.id);
     setSearchQuery('');
-    
+
     // Create a new encounter for this patient
     setIsCreatingEncounter(true);
     try {
@@ -78,7 +78,7 @@ export default function NewTriagePage() {
         chief_complaint: 'Triage assessment',
       });
       setSelectedEncounterId(newEncounter.id);
-      
+
       // Update URL params
       router.replace(`/triage/new?patientId=${patientToSelect.id}&encounterId=${newEncounter.id}`);
     } catch (error) {
@@ -116,7 +116,7 @@ export default function NewTriagePage() {
   const handleSubmit = useCallback(
     async (data: TriageAssessmentCreateData) => {
       if (!selectedEncounterId) return;
-      
+
       try {
         const assessment = await createAssessment({
           ...data,
@@ -133,11 +133,11 @@ export default function NewTriagePage() {
       } catch (error: unknown) {
         // Extract error message from API response
         let errorMessage = 'Failed to create triage assessment. Please try again.';
-        
+
         if (error && typeof error === 'object' && 'response' in error) {
           const axiosError = error as { response?: { data?: Record<string, string[]> } };
           const errorData = axiosError.response?.data;
-          
+
           if (errorData) {
             // Get first error message from response
             const firstKey = Object.keys(errorData)[0];
@@ -148,7 +148,7 @@ export default function NewTriagePage() {
             }
           }
         }
-        
+
         toast({
           title: 'Error',
           description: errorMessage,
@@ -396,7 +396,7 @@ export default function NewTriagePage() {
           <AlertCircle className="h-4 w-4" />
           <AlertTitle>Not Found</AlertTitle>
           <AlertDescription>
-            {!patient ? 'Patient not found.' : 'Encounter not found.'} 
+            {!patient ? 'Patient not found.' : 'Encounter not found.'}
             Please verify the patient and encounter exist.
           </AlertDescription>
         </Alert>

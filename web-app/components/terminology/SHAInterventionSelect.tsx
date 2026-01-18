@@ -1,9 +1,9 @@
 /**
  * SHA Intervention Select Component
- * 
- * Searchable dropdown for selecting SHA (Social Health Authority) 
+ *
+ * Searchable dropdown for selecting SHA (Social Health Authority)
  * intervention/procedure codes with pricing information.
- * 
+ *
  * @example
  * <SHAInterventionSelect
  *   onSelect={(intervention) => console.log(intervention)}

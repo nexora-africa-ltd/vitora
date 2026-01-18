@@ -1,7 +1,7 @@
 /**
  * SHA Dependents View Component
  * Displays dependents linked to a principal SHA member
- * 
+ *
  * Features:
  * - Lists all dependents under a principal member
  * - Shows eligibility status for each dependent
@@ -81,9 +81,9 @@ function MembershipTypeBadge({ type }: { type: string }) {
     PARENT: { label: 'Parent', className: 'bg-amber-100 text-amber-800' },
     OTHER: defaultItem,
   };
-  
+
   const item = config[type] ?? defaultItem;
-  
+
   return (
     <Badge variant="secondary" className={item.className}>
       {item.label}
@@ -96,36 +96,36 @@ function MembershipTypeBadge({ type }: { type: string }) {
 // ============================================================================
 
 function StatusBadge({ status }: { status: string }) {
-  const defaultItem = { 
-    label: 'Inactive', 
+  const defaultItem = {
+    label: 'Inactive',
     icon: <XCircle className="h-3 w-3" />,
     className: 'bg-red-100 text-red-800',
   };
-  const config: Record<string, { 
-    label: string; 
+  const config: Record<string, {
+    label: string;
     icon: React.ReactNode;
     className: string;
   }> = {
-    ACTIVE: { 
-      label: 'Active', 
+    ACTIVE: {
+      label: 'Active',
       icon: <CheckCircle2 className="h-3 w-3" />,
       className: 'bg-green-100 text-green-800',
     },
     INACTIVE: defaultItem,
-    PENDING_VERIFICATION: { 
-      label: 'Pending', 
+    PENDING_VERIFICATION: {
+      label: 'Pending',
       icon: <Clock className="h-3 w-3" />,
       className: 'bg-yellow-100 text-yellow-800',
     },
-    SUSPENDED: { 
-      label: 'Suspended', 
+    SUSPENDED: {
+      label: 'Suspended',
       icon: <XCircle className="h-3 w-3" />,
       className: 'bg-orange-100 text-orange-800',
     },
   };
-  
+
   const item = config[status] ?? defaultItem;
-  
+
   return (
     <Badge variant="secondary" className={cn('flex items-center gap-1', item.className)}>
       {item.icon}
@@ -197,7 +197,7 @@ export function DependentsView({
   className,
 }: DependentsViewProps) {
   const [isRefreshing, setIsRefreshing] = useState(false);
-  
+
   // Fetch dependents
   const {
     data: dependentsData,
@@ -210,13 +210,13 @@ export function DependentsView({
     enabled: principalMember.membership_type === 'PRINCIPAL',
     staleTime: 5 * 60 * 1000, // 5 minutes
   });
-  
+
   const handleRefresh = async () => {
     setIsRefreshing(true);
     await refetch();
     setIsRefreshing(false);
   };
-  
+
   // If not a principal member, show info message
   if (principalMember.membership_type !== 'PRINCIPAL') {
     return (
@@ -230,11 +230,11 @@ export function DependentsView({
       </Alert>
     );
   }
-  
+
   if (isLoading) {
     return <DependentsViewSkeleton />;
   }
-  
+
   if (error) {
     return (
       <Alert variant="destructive" className={className}>
@@ -249,9 +249,9 @@ export function DependentsView({
       </Alert>
     );
   }
-  
+
   const dependents = dependentsData?.results || [];
-  
+
   return (
     <Card className={className}>
       <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-4">
@@ -357,7 +357,7 @@ export function DependentsView({
             </TableBody>
           </Table>
         )}
-        
+
         {/* Principal Member Info */}
         <div className="mt-4 pt-4 border-t">
           <div className="flex items-center gap-2 text-sm text-muted-foreground">

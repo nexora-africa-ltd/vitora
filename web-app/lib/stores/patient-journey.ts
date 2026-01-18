@@ -2,16 +2,16 @@
  * Patient Journey Zustand Store
  *
  * Manages patient state throughout their complete healthcare journey:
- * 
+ *
  * OUTPATIENT FLOW:
  * Registration → Check-in → Triage → Consultation → [Lab/Imaging/Pharmacy] → Discharge
- * 
+ *
  * INPATIENT FLOW:
- * Registration → Check-in → Triage → Consultation → Admission Recommendation → 
+ * Registration → Check-in → Triage → Consultation → Admission Recommendation →
  * Awaiting Bed → Admitted → [Lab/Imaging/Pharmacy] → Discharge Planning → Discharged
  *
  * EMERGENCY FLOW:
- * Arrival → Emergency Triage → Resuscitation/Stabilization → 
+ * Arrival → Emergency Triage → Resuscitation/Stabilization →
  * [Admit/Discharge/Transfer]
  *
  * Key timestamps tracked for reporting:
@@ -107,7 +107,7 @@ export type TriageBypassReason =
 /**
  * Order/Request status for ancillary services
  */
-export type OrderStatus = 
+export type OrderStatus =
   | 'PENDING'
   | 'IN_PROGRESS'
   | 'COMPLETED'
@@ -192,7 +192,7 @@ export interface PatientJourneyTimestamps {
   arrival_time: string | null;
   /** When patient was added to waiting queue */
   queued_at: string | null;
-  
+
   // Triage
   /** When triage assessment started */
   triage_start_time: string | null;
@@ -200,7 +200,7 @@ export interface PatientJourneyTimestamps {
   triage_end_time: string | null;
   /** When triage was bypassed */
   triage_bypassed_at: string | null;
-  
+
   // Consultation
   /** When clinician called the patient */
   called_at: string | null;
@@ -208,7 +208,7 @@ export interface PatientJourneyTimestamps {
   consultation_start_time: string | null;
   /** When consultation ended */
   consultation_end_time: string | null;
-  
+
   // Lab
   /** When lab was ordered */
   lab_ordered_at: string | null;
@@ -216,7 +216,7 @@ export interface PatientJourneyTimestamps {
   lab_collected_at: string | null;
   /** When lab results were ready */
   lab_completed_at: string | null;
-  
+
   // Imaging
   /** When imaging was ordered */
   imaging_ordered_at: string | null;
@@ -224,7 +224,7 @@ export interface PatientJourneyTimestamps {
   imaging_performed_at: string | null;
   /** When imaging report was ready */
   imaging_completed_at: string | null;
-  
+
   // Pharmacy
   /** When prescription was sent to pharmacy */
   pharmacy_ordered_at: string | null;
@@ -232,13 +232,13 @@ export interface PatientJourneyTimestamps {
   pharmacy_ready_at: string | null;
   /** When medications were dispensed */
   pharmacy_dispensed_at: string | null;
-  
+
   // Billing
   /** When billing was initiated */
   billing_started_at: string | null;
   /** When billing was completed */
   billing_completed_at: string | null;
-  
+
   // Admission
   /** When admission was recommended */
   admission_recommended_at: string | null;
@@ -246,7 +246,7 @@ export interface PatientJourneyTimestamps {
   bed_assigned_at: string | null;
   /** When patient was admitted */
   admitted_at: string | null;
-  
+
   // Discharge
   /** When discharge planning started */
   discharge_planning_at: string | null;
@@ -271,7 +271,7 @@ export interface ActivePatient {
   gender: 'M' | 'F' | 'O' | null;
   /** Phone number for contact */
   phone: string | null;
-  
+
   // ========== Current Encounter ==========
   /** Current encounter ID */
   encounter_id: number | null;
@@ -281,10 +281,10 @@ export interface ActivePatient {
   stage: PatientStage;
   /** Previous stage (for navigation) */
   previous_stage: PatientStage | null;
-  
+
   // ========== All Timestamps ==========
   timestamps: PatientJourneyTimestamps;
-  
+
   // ========== Triage Information ==========
   /** Triage assessment ID (if triaged) */
   triage_assessment_id: number | null;
@@ -300,7 +300,7 @@ export interface ActivePatient {
   chief_complaint: string | null;
   /** Priority hint for queue ordering */
   priority_hint: 'NORMAL' | 'URGENT' | 'CRITICAL' | null;
-  
+
   // ========== Consultation Information ==========
   /** Current consultation status (matches Encounter.consultation_status) */
   consultation_status: ConsultationStatus;
@@ -312,29 +312,29 @@ export interface ActivePatient {
   consultation_summary: string | null;
   /** Primary diagnosis (ICD-10) */
   primary_diagnosis: string | null;
-  
+
   // ========== Ancillary Services ==========
   /** Lab orders */
   lab_orders: LabOrder[];
   /** Has pending lab orders */
   has_pending_lab: boolean;
-  
+
   /** Imaging orders */
   imaging_orders: ImagingOrder[];
   /** Has pending imaging orders */
   has_pending_imaging: boolean;
-  
+
   /** Pharmacy orders */
   pharmacy_orders: PharmacyOrder[];
   /** Has pending pharmacy orders */
   has_pending_pharmacy: boolean;
-  
+
   // ========== Billing ==========
   billing: BillingInfo | null;
-  
+
   // ========== Admission (Inpatient) ==========
   admission: AdmissionInfo | null;
-  
+
   // ========== Metadata ==========
   /** Notes/comments */
   notes: string | null;
@@ -734,7 +734,7 @@ interface PatientJourneyState {
 
 /**
  * Derive patient stage from triage_status and consultation_status.
- * 
+ *
  * Stage Mapping Rules:
  * - triage_status=PENDING → AWAITING_TRIAGE
  * - triage_status=IN_PROGRESS → IN_TRIAGE
@@ -742,7 +742,7 @@ interface PatientJourneyState {
  * - consultation_status=CALLED → AWAITING_CONSULTATION (sub-state)
  * - consultation_status=IN_PROGRESS → IN_CONSULTATION
  * - consultation_status=COMPLETED → null (stage depends on next action: lab, pharmacy, discharge)
- * 
+ *
  * @returns PatientStage or null if stage cannot be determined from these statuses alone
  */
 export function deriveStageFromStatuses(
@@ -753,17 +753,17 @@ export function deriveStageFromStatuses(
   if (consultationStatus === 'IN_PROGRESS') {
     return 'IN_CONSULTATION';
   }
-  
+
   // Post-consultation: stage depends on next steps (lab, pharmacy, discharge)
   if (consultationStatus === 'COMPLETED') {
     return null;
   }
-  
+
   // CALLED is a sub-state of AWAITING_CONSULTATION
   if (consultationStatus === 'CALLED') {
     return 'AWAITING_CONSULTATION';
   }
-  
+
   // Triage status mapping (when consultation_status is WAITING)
   switch (triageStatus) {
     case 'PENDING':
@@ -1213,7 +1213,7 @@ export const usePatientJourneyStore = create<PatientJourneyState>()(
         set((state) => {
           const patient = state.activePatients[patientId];
           if (!patient) return state;
-          
+
           const newOrder: LabOrder = {
             ...order,
             ordered_at: now,
@@ -1221,7 +1221,7 @@ export const usePatientJourneyStore = create<PatientJourneyState>()(
             completed_at: null,
             result_available: false,
           };
-          
+
           return {
             activePatients: {
               ...state.activePatients,
@@ -1244,12 +1244,12 @@ export const usePatientJourneyStore = create<PatientJourneyState>()(
         set((state) => {
           const patient = state.activePatients[patientId];
           if (!patient) return state;
-          
+
           const updatedOrders = patient.lab_orders.map(o =>
             o.id === orderId ? { ...o, status, result_available: resultAvailable ?? o.result_available } : o
           );
           const hasPending = updatedOrders.some(o => o.status === 'PENDING' || o.status === 'IN_PROGRESS');
-          
+
           return {
             activePatients: {
               ...state.activePatients,
@@ -1269,11 +1269,11 @@ export const usePatientJourneyStore = create<PatientJourneyState>()(
         set((state) => {
           const patient = state.activePatients[patientId];
           if (!patient) return state;
-          
+
           const updatedOrders = patient.lab_orders.map(o =>
             o.id === orderId ? { ...o, status: 'IN_PROGRESS' as OrderStatus, collected_at: now } : o
           );
-          
+
           return {
             activePatients: {
               ...state.activePatients,
@@ -1296,12 +1296,12 @@ export const usePatientJourneyStore = create<PatientJourneyState>()(
         set((state) => {
           const patient = state.activePatients[patientId];
           if (!patient) return state;
-          
+
           const updatedOrders = patient.lab_orders.map(o =>
             o.id === orderId ? { ...o, status: 'COMPLETED' as OrderStatus, completed_at: now, result_available: true } : o
           );
           const hasPending = updatedOrders.some(o => o.status === 'PENDING' || o.status === 'IN_PROGRESS');
-          
+
           return {
             activePatients: {
               ...state.activePatients,
@@ -1329,14 +1329,14 @@ export const usePatientJourneyStore = create<PatientJourneyState>()(
         set((state) => {
           const patient = state.activePatients[patientId];
           if (!patient) return state;
-          
+
           const newOrder: ImagingOrder = {
             ...order,
             ordered_at: now,
             performed_at: null,
             reported_at: null,
           };
-          
+
           return {
             activePatients: {
               ...state.activePatients,
@@ -1359,12 +1359,12 @@ export const usePatientJourneyStore = create<PatientJourneyState>()(
         set((state) => {
           const patient = state.activePatients[patientId];
           if (!patient) return state;
-          
+
           const updatedOrders = patient.imaging_orders.map(o =>
             o.id === orderId ? { ...o, status } : o
           );
           const hasPending = updatedOrders.some(o => o.status === 'PENDING' || o.status === 'IN_PROGRESS');
-          
+
           return {
             activePatients: {
               ...state.activePatients,
@@ -1384,11 +1384,11 @@ export const usePatientJourneyStore = create<PatientJourneyState>()(
         set((state) => {
           const patient = state.activePatients[patientId];
           if (!patient) return state;
-          
+
           const updatedOrders = patient.imaging_orders.map(o =>
             o.id === orderId ? { ...o, status: 'IN_PROGRESS' as OrderStatus, performed_at: now } : o
           );
-          
+
           return {
             activePatients: {
               ...state.activePatients,
@@ -1411,12 +1411,12 @@ export const usePatientJourneyStore = create<PatientJourneyState>()(
         set((state) => {
           const patient = state.activePatients[patientId];
           if (!patient) return state;
-          
+
           const updatedOrders = patient.imaging_orders.map(o =>
             o.id === orderId ? { ...o, status: 'COMPLETED' as OrderStatus, reported_at: now } : o
           );
           const hasPending = updatedOrders.some(o => o.status === 'PENDING' || o.status === 'IN_PROGRESS');
-          
+
           return {
             activePatients: {
               ...state.activePatients,
@@ -1444,14 +1444,14 @@ export const usePatientJourneyStore = create<PatientJourneyState>()(
         set((state) => {
           const patient = state.activePatients[patientId];
           if (!patient) return state;
-          
+
           const newOrder: PharmacyOrder = {
             ...order,
             ordered_at: now,
             ready_at: null,
             dispensed_at: null,
           };
-          
+
           return {
             activePatients: {
               ...state.activePatients,
@@ -1474,14 +1474,14 @@ export const usePatientJourneyStore = create<PatientJourneyState>()(
         set((state) => {
           const patient = state.activePatients[patientId];
           if (!patient) return state;
-          
+
           const updatedOrders = patient.pharmacy_orders.map(o =>
             o.id === orderId ? { ...o, status } : o
           );
-          const hasPending = updatedOrders.some(o => 
+          const hasPending = updatedOrders.some(o =>
             o.status === 'PENDING' || o.status === 'PREPARING' || o.status === 'READY'
           );
-          
+
           return {
             activePatients: {
               ...state.activePatients,
@@ -1501,11 +1501,11 @@ export const usePatientJourneyStore = create<PatientJourneyState>()(
         set((state) => {
           const patient = state.activePatients[patientId];
           if (!patient) return state;
-          
+
           const updatedOrders = patient.pharmacy_orders.map(o =>
             o.id === orderId ? { ...o, status: 'READY' as PharmacyOrder['status'], ready_at: now } : o
           );
-          
+
           return {
             activePatients: {
               ...state.activePatients,
@@ -1528,14 +1528,14 @@ export const usePatientJourneyStore = create<PatientJourneyState>()(
         set((state) => {
           const patient = state.activePatients[patientId];
           if (!patient) return state;
-          
+
           const updatedOrders = patient.pharmacy_orders.map(o =>
             o.id === orderId ? { ...o, status: 'DISPENSED' as PharmacyOrder['status'], dispensed_at: now } : o
           );
-          const hasPending = updatedOrders.some(o => 
+          const hasPending = updatedOrders.some(o =>
             o.status === 'PENDING' || o.status === 'PREPARING' || o.status === 'READY'
           );
-          
+
           return {
             activePatients: {
               ...state.activePatients,
@@ -1563,7 +1563,7 @@ export const usePatientJourneyStore = create<PatientJourneyState>()(
         set((state) => {
           const patient = state.activePatients[patientId];
           if (!patient) return state;
-          
+
           return {
             activePatients: {
               ...state.activePatients,
@@ -1586,9 +1586,9 @@ export const usePatientJourneyStore = create<PatientJourneyState>()(
         set((state) => {
           const patient = state.activePatients[patientId];
           if (!patient || !patient.billing) return state;
-          
+
           const isCompleted = status === 'PAID' || status === 'WAIVED';
-          
+
           return {
             activePatients: {
               ...state.activePatients,
@@ -1620,7 +1620,7 @@ export const usePatientJourneyStore = create<PatientJourneyState>()(
         set((state) => {
           const patient = state.activePatients[patientId];
           if (!patient) return state;
-          
+
           return {
             activePatients: {
               ...state.activePatients,
@@ -1650,7 +1650,7 @@ export const usePatientJourneyStore = create<PatientJourneyState>()(
         set((state) => {
           const patient = state.activePatients[patientId];
           if (!patient || !patient.admission) return state;
-          
+
           return {
             activePatients: {
               ...state.activePatients,
@@ -1674,7 +1674,7 @@ export const usePatientJourneyStore = create<PatientJourneyState>()(
         set((state) => {
           const patient = state.activePatients[patientId];
           if (!patient || !patient.admission) return state;
-          
+
           return {
             activePatients: {
               ...state.activePatients,
@@ -1702,7 +1702,7 @@ export const usePatientJourneyStore = create<PatientJourneyState>()(
         set((state) => {
           const patient = state.activePatients[patientId];
           if (!patient) return state;
-          
+
           return {
             activePatients: {
               ...state.activePatients,
@@ -1719,7 +1719,7 @@ export const usePatientJourneyStore = create<PatientJourneyState>()(
         set((state) => {
           const patient = state.activePatients[patientId];
           if (!patient) return state;
-          
+
           return {
             activePatients: {
               ...state.activePatients,
@@ -1736,7 +1736,7 @@ export const usePatientJourneyStore = create<PatientJourneyState>()(
         set((state) => {
           const patient = state.activePatients[patientId];
           if (!patient) return state;
-          
+
           return {
             activePatients: {
               ...state.activePatients,
@@ -1756,7 +1756,7 @@ export const usePatientJourneyStore = create<PatientJourneyState>()(
         set((state) => {
           const patient = state.activePatients[patientId];
           if (!patient) return state;
-          
+
           return {
             activePatients: {
               ...state.activePatients,
@@ -1771,7 +1771,7 @@ export const usePatientJourneyStore = create<PatientJourneyState>()(
         set((state) => {
           const patient = state.activePatients[patientId];
           if (!patient) return state;
-          
+
           return {
             activePatients: {
               ...state.activePatients,
@@ -1788,7 +1788,7 @@ export const usePatientJourneyStore = create<PatientJourneyState>()(
         set((state) => {
           const patient = state.activePatients[patientId];
           if (!patient) return state;
-          
+
           return {
             activePatients: {
               ...state.activePatients,
@@ -1805,7 +1805,7 @@ export const usePatientJourneyStore = create<PatientJourneyState>()(
         set((state) => {
           const patient = state.activePatients[patientId];
           if (!patient) return state;
-          
+
           return {
             activePatients: {
               ...state.activePatients,
@@ -1822,7 +1822,7 @@ export const usePatientJourneyStore = create<PatientJourneyState>()(
         set((state) => {
           const patient = state.activePatients[patientId];
           if (!patient) return state;
-          
+
           return {
             activePatients: {
               ...state.activePatients,

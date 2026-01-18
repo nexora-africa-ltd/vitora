@@ -23,11 +23,11 @@ import { GENDER_OPTIONS } from '@/lib/utils/constants';
 export default function PatientsPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  
+
   // Check if we're in select mode (coming from another page that needs a patient)
   const selectMode = searchParams.get('select') === 'true';
   const returnTo = searchParams.get('returnTo');
-  
+
   const [search, setSearch] = useState('');
   const [gender, setGender] = useState<string>('');
   const [page, setPage] = useState(1);
@@ -75,8 +75,8 @@ export default function PatientsPage() {
 
       <PageHeader
         title={selectMode ? "Select Patient" : "Patients"}
-        description={selectMode 
-          ? "Choose a patient for the admission" 
+        description={selectMode
+          ? "Choose a patient for the admission"
           : `${data?.count ?? 0} patients registered`
         }
         actions={

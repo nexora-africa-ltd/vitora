@@ -168,7 +168,7 @@ The request body must be in JSON format and should contain the updated patient d
 
 ```
 ## Example cURL
-```sh 
+```sh
 curl -X PUT "{{base_url}}/v1/hie-auth" \
 -H "Content-Type: application/json" \
 -H "Authorization: Bearer {{jwt_token}}" \
@@ -201,7 +201,7 @@ curl -X PUT "{{base_url}}/v1/hie-auth" \
 
 ## Example Response
 ###Success (200)✅
- 
+
 ```json
 {
     message:"CR client is updated successfully"
@@ -251,7 +251,7 @@ This endpoint makes a GET request to fetch client information from the client re
 | `identification_number`| The client's identification number.                        | `12345678`                       |
 | `agent`                | The agent through which the client information is being fetched.                  | `SAFARICOM-CONSORTIUM-SANDBOX`  |
 
-## Request 
+## Request
 ### Query parameters
 
 | Parameter       | Type   | Required | Description |
@@ -280,7 +280,7 @@ curl -X GET " https://uat.dha.go.ke/v3/client-registry/fetch-client?identificati
 
 ### Response
 
-The response for this request includes information about the client fetched from the client registry. The response is encrypted and can be decrypted using your private key. 
+The response for this request includes information about the client fetched from the client registry. The response is encrypted and can be decrypted using your private key.
 
 ## Note
 if your are using production access use the  private key that corresponds with your public key on your afyalink dashboard.
@@ -405,9 +405,9 @@ The request must include an authentication token obtained from the **Generate JW
 ```sh
 curl -X GET "https://uat.dha.go.ke/v1/facility-search?facility_code=24979" \
      -H "Authorization: Bearer <jwt-token>" \
-     -H "Content-Type: application/json" 
+     -H "Content-Type: application/json"
     ```
-     
+
 ## Example Response
 ### Success (200) ✅
 ```json
@@ -424,9 +424,9 @@ curl -X GET "https://uat.dha.go.ke/v1/facility-search?facility_code=24979" \
 
 ```
 
-     
-     
-     
+
+
+
 
 ### Params
 
@@ -745,4 +745,3 @@ curl -X POST "https://api-uat.tiberbu.health/v1/shr-med/post-bundle" \
 ### Responses Data Schema
 
 # Data Schema
-

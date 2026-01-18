@@ -18,7 +18,6 @@ Business Rules:
 6. All status changes must be logged in audit trail
 """
 
-
 import pytest  # type: ignore
 from django.contrib.auth import get_user_model
 from django.core.exceptions import ValidationError

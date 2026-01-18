@@ -5,7 +5,6 @@ This module contains business logic services including:
 - FEFODispenser: First Expiry First Out dispensing logic
 """
 
-
 from django.contrib.auth import get_user_model
 from django.utils import timezone
 

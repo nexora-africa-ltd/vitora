@@ -1,7 +1,7 @@
 /**
  * Drug Form Component
  * Sprint 1.3-1.4 Track A: Pharmacy Module
- * 
+ *
  * Form for creating and editing drugs in the catalog.
  */
 
@@ -242,7 +242,7 @@ export function DrugForm({ drug, onSuccess, onCancel }: DrugFormProps) {
         {/* Basic Information */}
         <div className="space-y-4">
           <h3 className="text-lg font-semibold">Basic Information</h3>
-          
+
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <FormField
               control={form.control}
@@ -394,7 +394,7 @@ export function DrugForm({ drug, onSuccess, onCancel }: DrugFormProps) {
         {/* Regulatory Information */}
         <div className="space-y-4">
           <h3 className="text-lg font-semibold">Regulatory Information</h3>
-          
+
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <FormField
               control={form.control}
@@ -503,7 +503,7 @@ export function DrugForm({ drug, onSuccess, onCancel }: DrugFormProps) {
         {/* Inventory Settings */}
         <div className="space-y-4">
           <h3 className="text-lg font-semibold">Inventory Settings</h3>
-          
+
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <FormField
               control={form.control}
@@ -512,9 +512,9 @@ export function DrugForm({ drug, onSuccess, onCancel }: DrugFormProps) {
                 <FormItem>
                   <FormLabel>Reorder Level</FormLabel>
                   <FormControl>
-                    <Input 
-                      type="number" 
-                      placeholder="100" 
+                    <Input
+                      type="number"
+                      placeholder="100"
                       {...field}
                       onChange={(e) => field.onChange(parseInt(e.target.value) || 0)}
                     />
@@ -534,9 +534,9 @@ export function DrugForm({ drug, onSuccess, onCancel }: DrugFormProps) {
                 <FormItem>
                   <FormLabel>Reorder Quantity</FormLabel>
                   <FormControl>
-                    <Input 
-                      type="number" 
-                      placeholder="500" 
+                    <Input
+                      type="number"
+                      placeholder="500"
                       {...field}
                       onChange={(e) => field.onChange(parseInt(e.target.value) || 0)}
                     />
@@ -556,9 +556,9 @@ export function DrugForm({ drug, onSuccess, onCancel }: DrugFormProps) {
                 <FormItem>
                   <FormLabel>Shelf Life (Months)</FormLabel>
                   <FormControl>
-                    <Input 
-                      type="number" 
-                      placeholder="24" 
+                    <Input
+                      type="number"
+                      placeholder="24"
                       {...field}
                       onChange={(e) => field.onChange(parseInt(e.target.value) || undefined)}
                     />
@@ -575,10 +575,10 @@ export function DrugForm({ drug, onSuccess, onCancel }: DrugFormProps) {
                 <FormItem>
                   <FormLabel>Reference Price (KES)</FormLabel>
                   <FormControl>
-                    <Input 
-                      type="number" 
+                    <Input
+                      type="number"
                       step="0.01"
-                      placeholder="50.00" 
+                      placeholder="50.00"
                       {...field}
                       onChange={(e) => field.onChange(parseFloat(e.target.value) || undefined)}
                     />

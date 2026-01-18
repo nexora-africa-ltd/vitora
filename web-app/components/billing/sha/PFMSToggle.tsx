@@ -1,11 +1,11 @@
 /**
  * PFMS Eligibility Toggle Component
  * Allows setting PFMS (Public Finance Management System) eligibility for SHA members
- * 
+ *
  * SHA Integration Checklist Item #13:
- * "If the patient is eligible for PFMS coverage then both SHA and PFMS coverage 
+ * "If the patient is eligible for PFMS coverage then both SHA and PFMS coverage
  * must be mentioned in insurance section."
- * 
+ *
  * PFMS covers vulnerable populations: indigent, elderly, disabled, orphans
  */
 'use client';
@@ -96,8 +96,8 @@ export function PFMSToggle({
               </TooltipTrigger>
               <TooltipContent className="max-w-xs">
                 <p className="text-sm">
-                  <strong>PFMS (Public Finance Management System)</strong> provides 
-                  government-subsidized healthcare coverage for vulnerable populations 
+                  <strong>PFMS (Public Finance Management System)</strong> provides
+                  government-subsidized healthcare coverage for vulnerable populations
                   including: elderly, persons with disabilities, orphans, and the indigent.
                 </p>
               </TooltipContent>
@@ -144,8 +144,8 @@ export function PFMSToggle({
       {/* PFMS Status Badge */}
       {isPFMSEligible && pfmsCategory && (
         <div className="pt-2">
-          <Badge 
-            variant="secondary" 
+          <Badge
+            variant="secondary"
             className="bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-100"
           >
             <Building2 className="h-3 w-3 mr-1" />

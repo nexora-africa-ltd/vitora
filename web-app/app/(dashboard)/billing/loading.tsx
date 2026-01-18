@@ -27,7 +27,7 @@ export default function BillingLoading() {
 
       {/* Tabs skeleton */}
       <Skeleton className="h-10 w-80" />
-      
+
       {/* Table skeleton */}
       <div className="space-y-3">
         {[...Array(5)].map((_, i) => (

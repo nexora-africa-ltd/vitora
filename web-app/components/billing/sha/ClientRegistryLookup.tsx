@@ -2,7 +2,7 @@
  * Client Registry Lookup Component
  * Searches SHA Client Registry by National ID, Huduma Number, or Passport
  * Also verifies SHA eligibility for found clients
- * 
+ *
  * @see docs/sha-frontend-integration-guide.md - Flow 1
  */
 'use client';
@@ -20,8 +20,8 @@ import {
 } from '@/components/ui/alert';
 import { cn } from '@/lib/utils';
 import { shaApi } from '@/lib/api/sha';
-import type { 
-  ClientRegistryClient, 
+import type {
+  ClientRegistryClient,
   CRLookupStatus,
   ClientRegistryFetchRequest,
   DirectEligibilityCheckResponse,
@@ -66,7 +66,7 @@ function StatusDisplay({ status, client, errorMessage }: StatusDisplayProps) {
   switch (status) {
     case 'idle':
       return null;
-      
+
     case 'searching':
       return (
         <div className="flex items-center gap-2 text-muted-foreground text-sm mt-2">
@@ -74,7 +74,7 @@ function StatusDisplay({ status, client, errorMessage }: StatusDisplayProps) {
           <span>Searching Client Registry...</span>
         </div>
       );
-      
+
     case 'found':
       return (
         <div className="flex items-center gap-2 text-green-600 text-sm mt-2">
@@ -87,7 +87,7 @@ function StatusDisplay({ status, client, errorMessage }: StatusDisplayProps) {
           )}
         </div>
       );
-      
+
     case 'not_found':
       return (
         <Alert variant="default" className="mt-2 border-yellow-500 bg-yellow-50 dark:bg-yellow-950">
@@ -98,7 +98,7 @@ function StatusDisplay({ status, client, errorMessage }: StatusDisplayProps) {
           </AlertDescription>
         </Alert>
       );
-      
+
     case 'error':
       return (
         <Alert variant="destructive" className="mt-2">
@@ -109,7 +109,7 @@ function StatusDisplay({ status, client, errorMessage }: StatusDisplayProps) {
           </AlertDescription>
         </Alert>
       );
-      
+
     default:
       return null;
   }
@@ -126,11 +126,11 @@ interface ClientDetailsCardProps {
 
 function ClientDetailsCard({ client, eligibility }: ClientDetailsCardProps) {
   const isEligible = eligibility?.is_eligible ?? false;
-  
+
   return (
     <div className={cn(
       "mt-4 p-4 border rounded-lg",
-      isEligible 
+      isEligible
         ? "bg-green-50 dark:bg-green-950 border-green-200 dark:border-green-800"
         : "bg-yellow-50 dark:bg-yellow-950 border-yellow-200 dark:border-yellow-800"
     )}>
@@ -143,7 +143,7 @@ function ClientDetailsCard({ client, eligibility }: ClientDetailsCardProps) {
           {client.client_number}
         </Badge>
       </div>
-      
+
       {/* SHA Eligibility Status */}
       {eligibility && (
         <div className={cn(
@@ -180,7 +180,7 @@ function ClientDetailsCard({ client, eligibility }: ClientDetailsCardProps) {
           )}
         </div>
       )}
-      
+
       <div className="grid grid-cols-2 md:grid-cols-3 gap-4 text-sm">
         <div>
           <Label className="text-muted-foreground text-xs">Name</Label>
@@ -188,33 +188,33 @@ function ClientDetailsCard({ client, eligibility }: ClientDetailsCardProps) {
             {client.first_name} {client.middle_name && `${client.middle_name} `}{client.last_name}
           </p>
         </div>
-        
+
         <div>
           <Label className="text-muted-foreground text-xs">Date of Birth</Label>
           <p className="font-medium">{client.date_of_birth}</p>
         </div>
-        
+
         <div>
           <Label className="text-muted-foreground text-xs">Gender</Label>
           <p className="font-medium">
             {client.gender === 'M' ? 'Male' : client.gender === 'F' ? 'Female' : 'Other'}
           </p>
         </div>
-        
+
         {client.national_id && (
           <div>
             <Label className="text-muted-foreground text-xs">National ID</Label>
             <p className="font-medium">{client.national_id}</p>
           </div>
         )}
-        
+
         {client.phone_number && (
           <div>
             <Label className="text-muted-foreground text-xs">Phone</Label>
             <p className="font-medium">{client.phone_number}</p>
           </div>
         )}
-        
+
         {client.county && (
           <div>
             <Label className="text-muted-foreground text-xs">Location</Label>
@@ -286,7 +286,7 @@ export function ClientRegistryLookup({
 
       if (response.found && response.client) {
         setClient(response.client);
-        
+
         // Also check SHA eligibility if enabled
         let eligibilityResult: DirectEligibilityCheckResponse | null = null;
         if (shouldCheckEligibility && identifierType === 'national_id') {
@@ -300,7 +300,7 @@ export function ClientRegistryLookup({
             // Don't fail the whole lookup if eligibility check fails
           }
         }
-        
+
         updateStatus('found');
         onClientFound?.(response.client, eligibilityResult ?? undefined);
       } else {
@@ -366,10 +366,10 @@ export function ClientRegistryLookup({
         </Button>
       </div>
 
-      <StatusDisplay 
-        status={status} 
-        client={client} 
-        errorMessage={errorMessage} 
+      <StatusDisplay
+        status={status}
+        client={client}
+        errorMessage={errorMessage}
       />
 
       {showDetails && status === 'found' && client && (

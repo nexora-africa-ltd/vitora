@@ -6,6 +6,7 @@ Provides ViewSets for SHA Members, Tariffs, Claims, and related operations.
 
 import csv
 import hashlib
+import logging
 from datetime import date
 from decimal import Decimal, InvalidOperation
 from io import BytesIO
@@ -48,6 +49,8 @@ from hmis.apps.billing.sha_serializers import (
     SHATariffSerializer,
 )
 from hmis.apps.core.permissions import SHAPermission
+
+logger = logging.getLogger(__name__)
 
 
 class SHAPagination(PageNumberPagination):
@@ -661,9 +664,11 @@ class SHAClaimViewSet(viewsets.ModelViewSet):
             writer.writerow(
                 [
                     claim.claim_number,
-                    f"{claim.patient.first_name} {claim.patient.last_name}"
-                    if claim.patient
-                    else "",
+                    (
+                        f"{claim.patient.first_name} {claim.patient.last_name}"
+                        if claim.patient
+                        else ""
+                    ),
                     claim.sha_member.sha_number if claim.sha_member else "",
                     claim.claim_type,
                     claim.status,
@@ -715,9 +720,11 @@ class SHAClaimViewSet(viewsets.ModelViewSet):
                 ws.cell(
                     row=row,
                     column=2,
-                    value=f"{claim.patient.first_name} {claim.patient.last_name}"
-                    if claim.patient
-                    else "",
+                    value=(
+                        f"{claim.patient.first_name} {claim.patient.last_name}"
+                        if claim.patient
+                        else ""
+                    ),
                 )
                 ws.cell(
                     row=row, column=3, value=claim.sha_member.sha_number if claim.sha_member else ""
@@ -748,9 +755,9 @@ class SHAClaimViewSet(viewsets.ModelViewSet):
                 output.read(),
                 content_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
             )
-            response[
-                "Content-Disposition"
-            ] = f'attachment; filename="sha_claims_{date.today()}.xlsx"'
+            response["Content-Disposition"] = (
+                f'attachment; filename="sha_claims_{date.today()}.xlsx"'
+            )
             return response
 
         except ImportError:
@@ -941,7 +948,7 @@ class TerminologySearchView(APIView):
     def _search_icd10_fallback(self, search: str, limit: int, original_error: str = ""):
         """
         Fallback to local ICD-10 database when ICD-11 services are unavailable.
-        
+
         ICD-10 codes are imported from CSV and stored in the local database,
         so this always works even when external services are down.
         """
@@ -950,10 +957,9 @@ class TerminologySearchView(APIView):
         try:
             # Search ICD-10 codes in local database
             codes = ICD10Code.objects.filter(
-                models.Q(code__icontains=search) |
-                models.Q(description__icontains=search),
-                is_active=True
-            ).order_by('code')[:limit]
+                models.Q(code__icontains=search) | models.Q(description__icontains=search),
+                is_active=True,
+            ).order_by("code")[:limit]
 
             data = [
                 {
@@ -1097,9 +1103,9 @@ class ClientRegistryView(APIView):
                             "first_name": client.first_name,
                             "last_name": client.last_name,
                             "middle_name": client.middle_name,
-                            "date_of_birth": str(client.date_of_birth)
-                            if client.date_of_birth
-                            else None,
+                            "date_of_birth": (
+                                str(client.date_of_birth) if client.date_of_birth else None
+                            ),
                             "gender": client.gender,
                             "national_id": client.national_id,
                             "huduma_number": client.huduma_number,
@@ -1338,9 +1344,9 @@ class FacilitySearchView(APIView):
                             "ownership": facility.ownership,
                             "facility_type": facility.facility_type,
                             "operational_status": facility.operational_status,
-                            "license_expiry": str(facility.license_expiry)
-                            if facility.license_expiry
-                            else None,
+                            "license_expiry": (
+                                str(facility.license_expiry) if facility.license_expiry else None
+                            ),
                             "is_sha_contracted": facility.approved,
                         },
                     }
@@ -1539,12 +1545,16 @@ class EligibilityCheckView(APIView):
                 {
                     "is_eligible": getattr(check, "is_eligible", False),
                     "result": getattr(check, "result", ""),
-                    "eligible_until": str(check.eligible_until)
-                    if getattr(check, "eligible_until", None)
-                    else None,
-                    "benefit_balance": float(check.benefit_balance)
-                    if getattr(check, "benefit_balance", None)
-                    else None,
+                    "eligible_until": (
+                        str(check.eligible_until)
+                        if getattr(check, "eligible_until", None)
+                        else None
+                    ),
+                    "benefit_balance": (
+                        float(check.benefit_balance)
+                        if getattr(check, "benefit_balance", None)
+                        else None
+                    ),
                     "ineligibility_reason": getattr(check, "ineligibility_reason", ""),
                     "sha_number": member.sha_number,
                     "membership_type": member.membership_type,

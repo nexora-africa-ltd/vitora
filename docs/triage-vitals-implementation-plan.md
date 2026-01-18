@@ -1,10 +1,10 @@
 # Triage Vitals Capture Implementation Plan
 
-> **Status**: Planned  
-> **Created**: January 5, 2026  
-> **Priority**: High (Clinical Accuracy)  
-> **Epic**: Triage Module Enhancement  
-> **Estimated Duration**: 4-5 days  
+> **Status**: Planned
+> **Created**: January 5, 2026
+> **Priority**: High (Clinical Accuracy)
+> **Epic**: Triage Module Enhancement
+> **Estimated Duration**: 4-5 days
 > **Rationale**: Cannot accurately assign KETA triage categories without vital signs
 
 ---
@@ -111,7 +111,7 @@ Add vital signs input fields to the triage assessment form, use them for KETA ca
 
 #### 1.1 Add Vitals Fields to TriageAssessment Model
 - [x] Add `spo2` field (DecimalField, nullable)
-- [x] Add `heart_rate` field (IntegerField, nullable) 
+- [x] Add `heart_rate` field (IntegerField, nullable)
 - [x] Add `systolic_bp` field (IntegerField, nullable)
 - [x] Add `diastolic_bp` field (IntegerField, nullable)
 - [x] Add `temperature` field (DecimalField, nullable)
@@ -488,5 +488,5 @@ Add vital signs input fields to the triage assessment form, use them for KETA ca
 
 ---
 
-**Last Updated**: January 5, 2026  
+**Last Updated**: January 5, 2026
 **Author**: Engineering Team

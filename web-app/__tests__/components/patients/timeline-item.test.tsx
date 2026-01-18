@@ -33,31 +33,31 @@ describe('TimelineItem', () => {
 
   it('renders event title', () => {
     render(<TimelineItem event={baseEvent} />);
-    
+
     expect(screen.getByText('OPD Visit')).toBeInTheDocument();
   });
 
   it('renders event description', () => {
     render(<TimelineItem event={baseEvent} />);
-    
+
     expect(screen.getByText('Routine checkup')).toBeInTheDocument();
   });
 
   it('renders relative timestamp', () => {
     render(<TimelineItem event={baseEvent} />);
-    
+
     expect(screen.getByText('2 hours ago')).toBeInTheDocument();
   });
 
   it('renders event type badge', () => {
     render(<TimelineItem event={baseEvent} />);
-    
+
     expect(screen.getByText('Visit')).toBeInTheDocument();
   });
 
   it('renders encounter type badge for encounters', () => {
     render(<TimelineItem event={baseEvent} />);
-    
+
     expect(screen.getByText('OPD')).toBeInTheDocument();
   });
 
@@ -69,9 +69,9 @@ describe('TimelineItem', () => {
         encounterType: 'EMERGENCY',
       },
     };
-    
+
     render(<TimelineItem event={emergencyEvent} />);
-    
+
     expect(screen.getByText('EMERGENCY')).toBeInTheDocument();
   });
 
@@ -83,15 +83,15 @@ describe('TimelineItem', () => {
         severity: 'critical',
       },
     };
-    
+
     render(<TimelineItem event={criticalEvent} />);
-    
+
     expect(screen.getByText('Critical')).toBeInTheDocument();
   });
 
   it('renders as link for encounter events', () => {
     render(<TimelineItem event={baseEvent} />);
-    
+
     const link = screen.getByRole('link');
     expect(link).toHaveAttribute('href', '/encounters/1');
   });
@@ -103,9 +103,9 @@ describe('TimelineItem', () => {
       title: 'CBC Results',
       timestamp: '2026-01-02T10:00:00Z',
     };
-    
+
     render(<TimelineItem event={labEvent} />);
-    
+
     expect(screen.getByText('CBC Results')).toBeInTheDocument();
     expect(screen.getByText('Lab Result')).toBeInTheDocument();
   });
@@ -117,9 +117,9 @@ describe('TimelineItem', () => {
       title: 'Medication Dispensed',
       timestamp: '2026-01-02T10:00:00Z',
     };
-    
+
     render(<TimelineItem event={rxEvent} />);
-    
+
     expect(screen.getByText('Medication Dispensed')).toBeInTheDocument();
     expect(screen.getByText('Prescription')).toBeInTheDocument();
   });
@@ -132,9 +132,9 @@ describe('TimelineItem', () => {
         provider: 'Dr. Smith',
       },
     };
-    
+
     render(<TimelineItem event={eventWithProvider} />);
-    
+
     expect(screen.getByText('Provider: Dr. Smith')).toBeInTheDocument();
   });
 
@@ -146,15 +146,15 @@ describe('TimelineItem', () => {
         icd10Code: 'J06.9',
       },
     };
-    
+
     render(<TimelineItem event={eventWithICD} />);
-    
+
     expect(screen.getByText('ICD-10: J06.9')).toBeInTheDocument();
   });
 
   it('renders status badge when provided', () => {
     render(<TimelineItem event={baseEvent} />);
-    
+
     expect(screen.getByText('COMPLETED')).toBeInTheDocument();
   });
 
@@ -163,9 +163,9 @@ describe('TimelineItem', () => {
       ...baseEvent,
       description: undefined,
     };
-    
+
     render(<TimelineItem event={eventNoDesc} />);
-    
+
     expect(screen.queryByText('Routine checkup')).not.toBeInTheDocument();
   });
 });

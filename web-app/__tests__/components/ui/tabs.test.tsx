@@ -235,21 +235,21 @@ describe('Tabs Component', () => {
   describe('Context Error Handling', () => {
     it('should throw when TabsTrigger is used outside Tabs', () => {
       const consoleSpy = jest.spyOn(console, 'error').mockImplementation(() => {});
-      
+
       expect(() => {
         render(<TabsTrigger value="test">Test</TabsTrigger>);
       }).toThrow('TabsTrigger must be used within Tabs');
-      
+
       consoleSpy.mockRestore();
     });
 
     it('should throw when TabsContent is used outside Tabs', () => {
       const consoleSpy = jest.spyOn(console, 'error').mockImplementation(() => {});
-      
+
       expect(() => {
         render(<TabsContent value="test">Content</TabsContent>);
       }).toThrow('TabsContent must be used within Tabs');
-      
+
       consoleSpy.mockRestore();
     });
   });

@@ -101,9 +101,9 @@ const mockQueueData = {
   results: [
     createQueueItem({ id: 1, patient_name: 'John Kamau', triage_category: 'RED', wait_time_minutes: 45 }),
     createQueueItem({ id: 2, patient_name: 'Mary Wanjiku', triage_category: 'YELLOW', wait_time_minutes: 30 }),
-    createQueueItem({ 
-      id: 3, 
-      patient_name: 'Peter Ochieng', 
+    createQueueItem({
+      id: 3,
+      patient_name: 'Peter Ochieng',
       consultation_status: 'CALLED',
       called_at: new Date().toISOString(),
     }),
@@ -333,7 +333,7 @@ describe('ConsultationQueueContainer Integration', () => {
         // Peter is CALLED so has "Called" badge and Start Consultation button
         expect(screen.getByText('Peter Ochieng')).toBeInTheDocument();
       });
-      
+
       // Peter has Start Consultation button (only shown for CALLED patients)
       const peterRow = getClosestElement('Peter Ochieng', '[data-testid="queue-item"]');
       expect(within(peterRow).getByRole('button', { name: /Start Consultation/i })).toBeInTheDocument();

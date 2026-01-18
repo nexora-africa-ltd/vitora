@@ -163,7 +163,7 @@ describe('usePreTriageQueue', () => {
     expect(
       result.current.data?.results?.every(r => r.triage_requirement === 'MANDATORY')
     ).toBe(true);
-    
+
     // Verify API was called with filter
     expect(mockedApi.getPreTriageQueue).toHaveBeenCalledWith(
       expect.objectContaining({ triage_requirement: 'MANDATORY' })

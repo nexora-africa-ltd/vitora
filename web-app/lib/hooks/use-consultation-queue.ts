@@ -20,7 +20,7 @@ import type { ConsultationQueueFilters } from '@/lib/types/encounter';
 
 export const consultationQueueKeys = {
   all: ['consultation-queue'] as const,
-  list: (filters?: ConsultationQueueFilters) => 
+  list: (filters?: ConsultationQueueFilters) =>
     [...consultationQueueKeys.all, 'list', filters] as const,
 };
 
@@ -105,13 +105,13 @@ export function useBypassTriage() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: ({ 
-      encounterId, 
-      reason, 
-      notes 
-    }: { 
-      encounterId: number; 
-      reason: string; 
+    mutationFn: ({
+      encounterId,
+      reason,
+      notes
+    }: {
+      encounterId: number;
+      reason: string;
       notes?: string;
     }) => consultationQueueApi.bypassTriage(encounterId, reason, notes),
     onSuccess: () => {

@@ -1,6 +1,6 @@
 /**
  * SubCounty Model
- * 
+ *
  * WatermelonDB model for Kenya sub-counties (289 total).
  */
 

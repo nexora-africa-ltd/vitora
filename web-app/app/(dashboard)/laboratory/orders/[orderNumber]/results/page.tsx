@@ -64,9 +64,9 @@ export default function ResultsEntryPage({ params }: ResultsEntryPageProps) {
             </p>
           </div>
         </div>
-        <Button 
-          variant="outline" 
-          size="sm" 
+        <Button
+          variant="outline"
+          size="sm"
           onClick={() => refetch()}
           disabled={isFetching}
         >

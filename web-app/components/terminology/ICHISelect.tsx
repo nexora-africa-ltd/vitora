@@ -1,9 +1,9 @@
 /**
  * ICHI Select Component
- * 
+ *
  * Searchable dropdown for selecting ICHI (International Classification
  * of Health Interventions) codes for procedures.
- * 
+ *
  * @example
  * <ICHISelect
  *   onSelect={(code) => console.log(code.code, code.title)}
@@ -87,9 +87,9 @@ export function ICHISelect({
     debounceRef.current = setTimeout(async () => {
       setIsLoading(true);
       try {
-        const response = await terminologyApi.searchICHI({ 
-          search: searchQuery, 
-          page_size: 20 
+        const response = await terminologyApi.searchICHI({
+          search: searchQuery,
+          page_size: 20
         });
         setResults(response.results);
       } catch (error) {

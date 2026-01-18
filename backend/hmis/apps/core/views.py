@@ -138,7 +138,11 @@ class AuditedTokenObtainPairView(TokenObtainPairView):
                 # Get user's role from StaffProfile or Django groups
                 role = None
                 if hasattr(user, "staff_profile") and user.staff_profile:
-                    role = user.staff_profile.primary_role.code if user.staff_profile.primary_role else None
+                    role = (
+                        user.staff_profile.primary_role.code
+                        if user.staff_profile.primary_role
+                        else None
+                    )
                 elif user.groups.exists():
                     # Fall back to first Django group as role
                     role = user.groups.first().name.upper().replace(" ", "_")

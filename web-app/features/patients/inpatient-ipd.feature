@@ -250,8 +250,8 @@ Feature: Inpatient (IPD) Admission and Ward Management
   Scenario: Add shift nursing notes
     When I add shift note:
       """
-      Patient rested well overnight. Temperature 37.2°C, 
-      down from 38.5°C yesterday. IV site clean, no signs 
+      Patient rested well overnight. Temperature 37.2°C,
+      down from 38.5°C yesterday. IV site clean, no signs
       of infection. Patient took oral fluids well.
       """
     And I select shift "Night"

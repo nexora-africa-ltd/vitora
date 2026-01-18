@@ -495,7 +495,7 @@ class LabOrder(TimeStampedModel):
         ('COMPLETED', 'Completed'),
         ('CANCELLED', 'Cancelled'),
     ]
-    
+
     encounter = models.ForeignKey(Encounter, on_delete=models.CASCADE, related_name='lab_orders')
     test_name = models.CharField(max_length=200)
     loinc_code = models.CharField(max_length=20, blank=True)  # LOINC standardization
@@ -504,11 +504,11 @@ class LabOrder(TimeStampedModel):
     priority = models.CharField(max_length=20, default='routine')  # routine, urgent, stat
     ordered_by = models.ForeignKey('auth.User', on_delete=models.SET_NULL, null=True, related_name='lab_orders')
     ordered_at = models.DateTimeField(auto_now_add=True)
-    
+
     # External lab details
     external_lab_name = models.CharField(max_length=200, blank=True)
     requisition_pdf = models.FileField(upload_to='lab_requisitions/', blank=True)
-    
+
     # Clinical details
     clinical_notes = models.TextField(blank=True)
     specimen_type = models.CharField(max_length=100, blank=True)  # blood, urine, stool, etc.

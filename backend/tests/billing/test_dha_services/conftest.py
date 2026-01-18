@@ -120,13 +120,12 @@ def mock_requests_get():
     all HTTP GET calls are intercepted. Returns a SharedMock
     that syncs return_value across all patches.
     """
-    with patch("hmis.apps.billing.services.dha_search.requests.get") as mock_dha, patch(
-        "hmis.apps.billing.services.client_registry.requests.get"
-    ) as mock_client, patch(
-        "hmis.apps.billing.services.terminology.requests.get"
-    ) as mock_term, patch(
-        "hmis.apps.billing.services.sha_auth.requests.post"
-    ) as mock_auth:
+    with (
+        patch("hmis.apps.billing.services.dha_search.requests.get") as mock_dha,
+        patch("hmis.apps.billing.services.client_registry.requests.get") as mock_client,
+        patch("hmis.apps.billing.services.terminology.requests.get") as mock_term,
+        patch("hmis.apps.billing.services.sha_auth.requests.post") as mock_auth,
+    ):
         # Configure auth mock to return valid token
         mock_auth.return_value = Mock(status_code=200, json=lambda: {"access_token": "test-token"})
         # Use SharedMock to sync return_value across all mocks
@@ -143,9 +142,11 @@ def mock_requests_post():
     all HTTP POST calls are intercepted.
     Note: sha_auth.requests.post is handled separately to always return valid token.
     """
-    with patch("hmis.apps.billing.services.dha_search.requests.post") as mock_dha, patch(
-        "hmis.apps.billing.services.client_registry.requests.post"
-    ) as mock_client, patch("hmis.apps.billing.services.terminology.requests.post") as mock_term:
+    with (
+        patch("hmis.apps.billing.services.dha_search.requests.post") as mock_dha,
+        patch("hmis.apps.billing.services.client_registry.requests.post") as mock_client,
+        patch("hmis.apps.billing.services.terminology.requests.post") as mock_term,
+    ):
         # Use SharedMock for service mocks only (not auth)
         shared = SharedMock(mock_dha, mock_client, mock_term)
         yield shared
@@ -159,8 +160,10 @@ def mock_requests_put():
     Patches at all service module locations to ensure
     all HTTP PUT calls are intercepted.
     """
-    with patch("hmis.apps.billing.services.dha_search.requests.put") as mock_dha, patch(
-        "hmis.apps.billing.services.client_registry.requests.put"
-    ) as mock_client, patch("hmis.apps.billing.services.terminology.requests.put") as mock_term:
+    with (
+        patch("hmis.apps.billing.services.dha_search.requests.put") as mock_dha,
+        patch("hmis.apps.billing.services.client_registry.requests.put") as mock_client,
+        patch("hmis.apps.billing.services.terminology.requests.put") as mock_term,
+    ):
         shared = SharedMock(mock_dha, mock_client, mock_term)
         yield shared

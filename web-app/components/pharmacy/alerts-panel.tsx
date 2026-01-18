@@ -85,9 +85,9 @@ const ALERT_TYPE_TEST_IDS: Record<AlertType, string> = {
   RECALLED: 'alert-icon-recalled',
 };
 
-export function AlertsPanel({ 
-  alerts, 
-  isLoading, 
+export function AlertsPanel({
+  alerts,
+  isLoading,
   error,
   onRefresh,
   autoRefreshInterval = 0, // Default: no auto-refresh
@@ -425,8 +425,8 @@ export function AlertsPanel({
               const testId = ALERT_TYPE_TEST_IDS[alert.alert_type];
 
               return (
-                <Card 
-                  key={alert.id} 
+                <Card
+                  key={alert.id}
                   data-testid="alert-item"
                   className={`${
                     alert.severity === 'CRITICAL' ? 'border-red-500 bg-red-50/50' :
@@ -468,7 +468,7 @@ export function AlertsPanel({
                         <div className="flex items-center justify-between">
                           <div className="flex items-center gap-2">
                             {alert.drug ? (
-                              <Link 
+                              <Link
                                 href={`/pharmacy/drugs/${alert.drug}`}
                                 className="font-medium text-primary hover:underline"
                               >

@@ -34,7 +34,7 @@ export function LoadingLink({
     }
 
     setIsLoading(true);
-    
+
     // Reset loading state after navigation (backup in case route doesn't change)
     setTimeout(() => setIsLoading(false), 3000);
   };

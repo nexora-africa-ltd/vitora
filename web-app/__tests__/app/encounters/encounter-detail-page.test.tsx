@@ -1,9 +1,9 @@
 /**
  * Encounter Detail Page Tests - RED Phase (Batch 3)
- * 
+ *
  * Tests for migrating encounter detail page to consume EncounterContext
  * instead of fetching independently.
- * 
+ *
  * Acceptance Criteria:
  * - Page uses useEncounterContext() instead of independent fetch
  * - Patient data comes from context (via EncounterContext)
@@ -102,7 +102,7 @@ describe('Encounter Detail Page - Context Integration', () => {
     it('should consume encounter data from EncounterContext', async () => {
       const EncounterDetailPage = (await import('@/app/(dashboard)/encounters/[id]/page')).default;
       const { EncounterProvider } = await import('@/lib/context/encounter-context');
-      
+
       const Wrapper = createWrapper();
       render(
         <Wrapper>
@@ -115,7 +115,7 @@ describe('Encounter Detail Page - Context Integration', () => {
       // Wait for data to load
       await waitFor(() => {
         // Should display encounter type or chief complaint
-        const encounterInfo = screen.queryByText(/OPD/i) || 
+        const encounterInfo = screen.queryByText(/OPD/i) ||
                              screen.queryByText(mockEncounter.chief_complaint);
         expect(encounterInfo).toBeTruthy();
       });
@@ -127,7 +127,7 @@ describe('Encounter Detail Page - Context Integration', () => {
     it('should access patient data via encounter context', async () => {
       const EncounterDetailPage = (await import('@/app/(dashboard)/encounters/[id]/page')).default;
       const { EncounterProvider } = await import('@/lib/context/encounter-context');
-      
+
       const Wrapper = createWrapper();
       render(
         <Wrapper>
@@ -149,9 +149,9 @@ describe('Encounter Detail Page - Context Integration', () => {
     it('should NOT call useEncounter hook directly in page component', async () => {
       const EncounterDetailPage = (await import('@/app/(dashboard)/encounters/[id]/page')).default;
       const { EncounterProvider } = await import('@/lib/context/encounter-context');
-      
+
       const Wrapper = createWrapper();
-      
+
       const { rerender } = render(
         <Wrapper>
           <EncounterProvider encounterId={1}>
@@ -190,7 +190,7 @@ describe('Encounter Detail Page - Context Integration', () => {
 
       const EncounterDetailPage = (await import('@/app/(dashboard)/encounters/[id]/page')).default;
       const { EncounterProvider } = await import('@/lib/context/encounter-context');
-      
+
       const Wrapper = createWrapper();
       render(
         <Wrapper>
@@ -216,7 +216,7 @@ describe('Encounter Detail Page - Context Integration', () => {
 
       const EncounterDetailPage = (await import('@/app/(dashboard)/encounters/[id]/page')).default;
       const { EncounterProvider } = await import('@/lib/context/encounter-context');
-      
+
       const Wrapper = createWrapper();
       render(
         <Wrapper>
@@ -246,7 +246,7 @@ describe('Encounter Detail Page - Context Integration', () => {
 
       const EncounterDetailPage = (await import('@/app/(dashboard)/encounters/[id]/page')).default;
       const { EncounterProvider } = await import('@/lib/context/encounter-context');
-      
+
       const Wrapper = createWrapper();
       render(
         <Wrapper>
@@ -268,7 +268,7 @@ describe('Encounter Detail Page - Context Integration', () => {
 
       const EncounterDetailPage = (await import('@/app/(dashboard)/encounters/[id]/page')).default;
       const { EncounterProvider } = await import('@/lib/context/encounter-context');
-      
+
       const Wrapper = createWrapper();
       render(
         <Wrapper>
@@ -279,7 +279,7 @@ describe('Encounter Detail Page - Context Integration', () => {
       );
 
       await waitFor(() => {
-        const errorElement = screen.queryByRole('alert') || 
+        const errorElement = screen.queryByRole('alert') ||
                screen.queryByText(/error/i) ||
                screen.queryByText(/not found/i);
         expect(errorElement).toBeTruthy();

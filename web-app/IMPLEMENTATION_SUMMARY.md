@@ -98,7 +98,7 @@ Snapshots:   0 total
 Time:        2.368 s
 
 ✅ Sidebar: 8/8 tests passing
-✅ Header: 6/6 tests passing  
+✅ Header: 6/6 tests passing
 ✅ Breadcrumb: 4/4 tests passing
 ✅ Dashboard: 4/4 tests passing
 ```

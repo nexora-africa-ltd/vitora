@@ -1,6 +1,6 @@
 /**
  * County Model
- * 
+ *
  * WatermelonDB model for Kenya counties (47 total).
  */
 

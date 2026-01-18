@@ -1,6 +1,6 @@
 /**
  * Consent Confirmation Dialog
- * 
+ *
  * Handles patient consent confirmation for data processing
  * as required by Kenya Data Protection Act 2019
  */
@@ -112,7 +112,7 @@ export function ConsentConfirmationDialog({
                 <p className="mb-3">
                   Under the Kenya Data Protection Act 2019, patient consent is required before collecting and processing personal health information.
                 </p>
-                
+
                 <p className="font-medium text-foreground mb-2">
                   Please confirm that you have obtained verbal consent from the patient for:
                 </p>
@@ -158,7 +158,7 @@ export function ConsentConfirmationDialog({
 
         <AlertDialogFooter className="flex-col sm:flex-row gap-2">
           <AlertDialogCancel onClick={handleCancel}>Cancel</AlertDialogCancel>
-          
+
           <Button
             variant="outline"
             onClick={handleDefer}
@@ -167,7 +167,7 @@ export function ConsentConfirmationDialog({
             <AlertTriangle className="h-4 w-4 mr-2" />
             Defer Consent
           </Button>
-          
+
           <AlertDialogAction
             onClick={handleGrant}
             disabled={!canGrant}

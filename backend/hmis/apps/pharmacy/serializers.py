@@ -329,6 +329,7 @@ class PrescriptionCreateSerializer(serializers.ModelSerializer):
         """Set default valid_until if not provided."""
         if "valid_until" not in data or data["valid_until"] is None:
             from datetime import date, timedelta
+
             data["valid_until"] = date.today() + timedelta(days=30)
         return data
 

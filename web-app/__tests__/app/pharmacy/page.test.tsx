@@ -1,7 +1,7 @@
 /**
  * Tests for Pharmacy Page
  * Sprint 1.3-1.4 Track A: Pharmacy Module
- * 
+ *
  * TDD: These tests are written BEFORE the implementation.
  */
 
@@ -136,19 +136,19 @@ describe('PharmacyPage', () => {
   describe('Page rendering', () => {
     it('should render the pharmacy page title', () => {
       renderWithProviders(<PharmacyPage />);
-      
+
       expect(screen.getByRole('heading', { name: /pharmacy/i })).toBeInTheDocument();
     });
 
     it('should render pharmacy description', () => {
       renderWithProviders(<PharmacyPage />);
-      
+
       expect(screen.getByText(/manage drugs, inventory, prescriptions, and dispensing/i)).toBeInTheDocument();
     });
 
     it('should render navigation tabs', () => {
       renderWithProviders(<PharmacyPage />);
-      
+
       expect(screen.getByText('Drugs')).toBeInTheDocument();
       expect(screen.getByText('Inventory')).toBeInTheDocument();
       expect(screen.getByText('Prescriptions')).toBeInTheDocument();
@@ -159,7 +159,7 @@ describe('PharmacyPage', () => {
   describe('Drugs tab', () => {
     it('should display drug catalog table', async () => {
       renderWithProviders(<PharmacyPage />);
-      
+
       await waitFor(() => {
         expect(screen.getByText('Paracetamol')).toBeInTheDocument();
         expect(screen.getByText('Amoxicillin')).toBeInTheDocument();
@@ -169,7 +169,7 @@ describe('PharmacyPage', () => {
 
     it('should display drug details in table', async () => {
       renderWithProviders(<PharmacyPage />);
-      
+
       await waitFor(() => {
         expect(screen.getByText('PARA500')).toBeInTheDocument();
         expect(screen.getAllByText('500mg').length).toBeGreaterThan(0);
@@ -178,7 +178,7 @@ describe('PharmacyPage', () => {
 
     it('should show stock levels for drugs', async () => {
       renderWithProviders(<PharmacyPage />);
-      
+
       await waitFor(() => {
         // Paracetamol has 450 in stock
         expect(screen.getByText('450')).toBeInTheDocument();
@@ -187,13 +187,13 @@ describe('PharmacyPage', () => {
 
     it('should show add drug button', () => {
       renderWithProviders(<PharmacyPage />);
-      
+
       expect(screen.getByRole('button', { name: /add drug/i })).toBeInTheDocument();
     });
 
     it('should have search input for drugs', () => {
       renderWithProviders(<PharmacyPage />);
-      
+
       expect(screen.getByPlaceholderText(/search drugs/i)).toBeInTheDocument();
     });
   });
@@ -202,9 +202,9 @@ describe('PharmacyPage', () => {
     it('should switch to inventory tab when clicked', async () => {
       const user = userEvent.setup();
       renderWithProviders(<PharmacyPage />);
-      
+
       await user.click(screen.getByText('Inventory'));
-      
+
       await waitFor(() => {
         expect(screen.getByRole('button', { name: /receive stock/i })).toBeInTheDocument();
       });
@@ -213,9 +213,9 @@ describe('PharmacyPage', () => {
     it('should display stock batches', async () => {
       const user = userEvent.setup();
       renderWithProviders(<PharmacyPage />);
-      
+
       await user.click(screen.getByText('Inventory'));
-      
+
       await waitFor(() => {
         expect(screen.getByText('BATCH001')).toBeInTheDocument();
         expect(screen.getByText('BATCH002')).toBeInTheDocument();
@@ -225,9 +225,9 @@ describe('PharmacyPage', () => {
     it('should show batch status badges', async () => {
       const user = userEvent.setup();
       renderWithProviders(<PharmacyPage />);
-      
+
       await user.click(screen.getByText('Inventory'));
-      
+
       await waitFor(() => {
         expect(screen.getByText('AVAILABLE')).toBeInTheDocument();
         expect(screen.getByText('LOW')).toBeInTheDocument();
@@ -240,9 +240,9 @@ describe('PharmacyPage', () => {
     it('should switch to prescriptions tab when clicked', async () => {
       const user = userEvent.setup();
       renderWithProviders(<PharmacyPage />);
-      
+
       await user.click(screen.getByText('Prescriptions'));
-      
+
       await waitFor(() => {
         expect(screen.getByPlaceholderText(/search prescriptions/i)).toBeInTheDocument();
       });
@@ -251,9 +251,9 @@ describe('PharmacyPage', () => {
     it('should display prescription list', async () => {
       const user = userEvent.setup();
       renderWithProviders(<PharmacyPage />);
-      
+
       await user.click(screen.getByText('Prescriptions'));
-      
+
       await waitFor(() => {
         expect(screen.getByText('RX-20260101-0001')).toBeInTheDocument();
         expect(screen.getByText('John Doe')).toBeInTheDocument();
@@ -263,9 +263,9 @@ describe('PharmacyPage', () => {
     it('should show prescription status', async () => {
       const user = userEvent.setup();
       renderWithProviders(<PharmacyPage />);
-      
+
       await user.click(screen.getByText('Prescriptions'));
-      
+
       await waitFor(() => {
         expect(screen.getByText('PENDING')).toBeInTheDocument();
         expect(screen.getByText('DISPENSED')).toBeInTheDocument();
@@ -277,9 +277,9 @@ describe('PharmacyPage', () => {
     it('should switch to alerts tab when clicked', async () => {
       const user = userEvent.setup();
       renderWithProviders(<PharmacyPage />);
-      
+
       await user.click(screen.getByText('Alerts'));
-      
+
       // Should show filter tabs in alerts panel
       await waitFor(() => {
         expect(screen.getByText('All')).toBeInTheDocument();
@@ -289,9 +289,9 @@ describe('PharmacyPage', () => {
     it('should display stock alerts', async () => {
       const user = userEvent.setup();
       renderWithProviders(<PharmacyPage />);
-      
+
       await user.click(screen.getByText('Alerts'));
-      
+
       await waitFor(() => {
         // Use getAllByText for text that may appear multiple times (in widget and main panel)
         expect(screen.getAllByText(/amoxicillin 500mg stock is below reorder level/i).length).toBeGreaterThan(0);
@@ -309,7 +309,7 @@ describe('PharmacyPage', () => {
       });
 
       renderWithProviders(<PharmacyPage />);
-      
+
       expect(screen.getByTestId('loading-spinner')).toBeInTheDocument();
     });
   });
@@ -323,7 +323,7 @@ describe('PharmacyPage', () => {
       });
 
       renderWithProviders(<PharmacyPage />);
-      
+
       expect(screen.getByText(/failed to fetch drugs/i)).toBeInTheDocument();
     });
   });
@@ -337,7 +337,7 @@ describe('PharmacyPage', () => {
       });
 
       renderWithProviders(<PharmacyPage />);
-      
+
       expect(screen.getByText(/no drugs found/i)).toBeInTheDocument();
     });
   });

@@ -187,7 +187,7 @@ Sprint 1.1-1.2 Track B establishes the React Native mobile application foundatio
 - [ ] Create demo video showing offline capability *(separate deliverable)*
 - [x] ✅ **Checkpoint**: Build configuration complete, documentation ready
 
-> **Note**: EAS build requires Expo account setup and project linking. Run `eas build:configure` 
+> **Note**: EAS build requires Expo account setup and project linking. Run `eas build:configure`
 > and `eas build --platform android --profile preview` after account setup.
 
 ---
@@ -215,7 +215,7 @@ Sprint 1.1-1.2 Track B establishes the React Native mobile application foundatio
 - [x] App startup < 3 seconds *(pending APK testing)*
 - [x] Patient list loads < 500ms (100 patients)
 - [x] Search response < 200ms
-- [x] APK size < 30MB *(pending build)* 
+- [x] APK size < 30MB *(pending build)*
 - - APK size (64MB) - This is expected for an offline-first app:
 
 - - - WatermelonDB native code: ~15MB
@@ -622,10 +622,10 @@ export const patientRepository = {
   async delete(id: string): Promise<void> {
     return database.write(async () => {
       const patient = await database.get<Patient>('patients').find(id);
-      
+
       // Queue for sync before delete
       await syncQueue.add('DELETE', 'Patient', patient.id, { id: patient.serverId });
-      
+
       await patient.markAsDeleted();
     });
   },
@@ -1254,7 +1254,7 @@ export default function PatientListScreen() {
   return (
     <View style={styles.container}>
       {!isOnline && <OfflineBanner />}
-      
+
       <TextInput
         style={styles.searchInput}
         placeholder="Search patients..."
@@ -1419,7 +1419,7 @@ export const syncQueue = {
         .get<SyncQueueEntry>('sync_queue')
         .query(Q.where('status', 'SYNCED'))
         .fetch();
-      
+
       await Promise.all(synced.map((entry) => entry.destroyPermanently()));
     });
   },

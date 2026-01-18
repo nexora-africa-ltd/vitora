@@ -1,16 +1,16 @@
 /**
  * Facility Validation Component
  * Validates facility MFL code with DHA
- * 
+ *
  * @see docs/sha-frontend-integration-guide.md - Flow 5
  */
 'use client';
 
 import React, { useState, useCallback } from 'react';
-import { 
-  CheckCircle2, 
-  AlertCircle, 
-  Loader2, 
+import {
+  CheckCircle2,
+  AlertCircle,
+  Loader2,
   Building2,
   Shield,
   Calendar,
@@ -29,8 +29,8 @@ import {
 } from '@/components/ui/alert';
 import { cn } from '@/lib/utils';
 import { shaApi } from '@/lib/api/sha';
-import type { 
-  FacilityInfo, 
+import type {
+  FacilityInfo,
   FacilityValidationStatus,
   PractitionerInfo,
 } from '@/lib/types/sha';
@@ -80,7 +80,7 @@ interface FacilityDetailsProps {
 }
 
 function FacilityDetails({ facility, warnings }: FacilityDetailsProps) {
-  const isLicenseExpired = facility.license_expiry 
+  const isLicenseExpired = facility.license_expiry
     ? isPast(parseISO(facility.license_expiry))
     : false;
 
@@ -127,7 +127,7 @@ function FacilityDetails({ facility, warnings }: FacilityDetailsProps) {
 
           <div>
             <Label className="text-muted-foreground text-xs">Status</Label>
-            <Badge 
+            <Badge
               variant={facility.operational_status === 'Operational' ? 'default' : 'secondary'}
               className="mt-1"
             >
@@ -289,9 +289,9 @@ export function FacilityValidation({
             type="button"
             onClick={handleValidate}
             disabled={
-              readOnly || 
-              status === 'validating' || 
-              !facilityCode || 
+              readOnly ||
+              status === 'validating' ||
+              !facilityCode ||
               facilityCode.trim().length < 3
             }
             variant={status === 'valid' ? 'outline' : 'secondary'}
@@ -353,7 +353,7 @@ interface PractitionerDetailsProps {
 }
 
 function PractitionerDetails({ practitioner }: PractitionerDetailsProps) {
-  const isLicenseExpired = practitioner.license_expiry 
+  const isLicenseExpired = practitioner.license_expiry
     ? isPast(parseISO(practitioner.license_expiry))
     : false;
 
@@ -391,7 +391,7 @@ function PractitionerDetails({ practitioner }: PractitionerDetailsProps) {
 
           <div>
             <Label className="text-muted-foreground text-xs">License Status</Label>
-            <Badge 
+            <Badge
               variant={practitioner.license_status === 'Active' ? 'default' : 'secondary'}
               className={cn(
                 'mt-1',
@@ -511,9 +511,9 @@ export function PractitionerValidation({
             type="button"
             onClick={handleValidate}
             disabled={
-              readOnly || 
-              status === 'validating' || 
-              !hwrNumber || 
+              readOnly ||
+              status === 'validating' ||
+              !hwrNumber ||
               hwrNumber.trim().length < 3
             }
             variant={status === 'valid' ? 'outline' : 'secondary'}

@@ -28,10 +28,10 @@ export default function PatientDetail(): React.JSX.Element {
   const { id } = useLocalSearchParams<{ id: string }>();
   const router = useRouter();
   const { themeColors } = useTheme();
-  
+
   // Parse ID to number
   const patientId = id ? parseInt(id, 10) : null;
-  
+
   // Fetch patient data
   const { data: patient, isLoading, error, refetch } = usePatient(patientId);
 
@@ -74,8 +74,8 @@ export default function PatientDetail(): React.JSX.Element {
         <TouchableOpacity style={styles.retryButton} onPress={() => refetch()}>
           <Text style={styles.retryButtonText}>Retry</Text>
         </TouchableOpacity>
-        <TouchableOpacity 
-          style={[styles.backButton, { marginTop: 12 }]} 
+        <TouchableOpacity
+          style={[styles.backButton, { marginTop: 12 }]}
           onPress={() => router.back()}
         >
           <Text style={[styles.backButtonText, { color: themeColors.text.primary }]}>

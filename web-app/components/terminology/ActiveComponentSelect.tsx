@@ -1,8 +1,8 @@
 /**
  * Active Component Select
- * 
+ *
  * Searchable dropdown for selecting drug active components/ingredients.
- * 
+ *
  * @example
  * <ActiveComponentSelect
  *   onSelect={(component) => console.log(component)}
@@ -86,9 +86,9 @@ export function ActiveComponentSelect({
     debounceRef.current = setTimeout(async () => {
       setIsLoading(true);
       try {
-        const response = await terminologyApi.searchActiveComponents({ 
-          search: searchQuery, 
-          page_size: 20 
+        const response = await terminologyApi.searchActiveComponents({
+          search: searchQuery,
+          page_size: 20
         });
         setResults(response.results);
       } catch (error) {

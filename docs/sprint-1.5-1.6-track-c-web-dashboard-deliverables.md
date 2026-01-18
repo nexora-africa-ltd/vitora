@@ -45,7 +45,7 @@ Before implementation begins, the following inputs are needed:
 | **Pharmacy Stock Alerts** | Low stock, expiring items | ✅ Included |
 | **Custom KPIs** | Facility-specific metrics | ⏳ Provide if needed |
 
-**Action Required**: 
+**Action Required**:
 - Review default KPIs and confirm if suitable
 - Provide any facility-specific metrics you want tracked
 
@@ -115,7 +115,7 @@ web-app/
 
 ### 1. Encounter Details View
 
-**Files**: 
+**Files**:
 - `app/(dashboard)/encounters/[id]/page.tsx`
 - `components/encounters/encounter-detail.tsx`
 - `components/encounters/vitals-card.tsx`
@@ -157,50 +157,50 @@ interface EncounterDetailProps {
 
 export function EncounterDetail({ encounterId }: EncounterDetailProps) {
   const { data: encounter, isLoading, error } = useEncounter(encounterId);
-  
+
   if (isLoading) return <EncounterSkeleton />;
   if (error) return <ErrorState error={error} />;
   if (!encounter) return <NotFound />;
-  
+
   return (
     <div className="space-y-6">
       {/* Header with patient info */}
       <EncounterHeader encounter={encounter} />
-      
+
       {/* Encounter metadata */}
       <EncounterMeta encounter={encounter} />
-      
+
       {/* Vitals section */}
       <VitalsCard vitals={encounter.vitals} />
-      
+
       {/* Chief complaint & History */}
-      <ChiefComplaintCard 
+      <ChiefComplaintCard
         chiefComplaint={encounter.chief_complaint}
         historyOfPresentIllness={encounter.history_of_present_illness}
       />
-      
+
       {/* Physical examination */}
       <PhysicalExamCard exam={encounter.physical_exam} />
-      
+
       {/* Diagnosis */}
       <DiagnosisCard diagnoses={encounter.diagnoses} />
-      
+
       {/* Treatment plan */}
       <TreatmentCard treatment={encounter.treatment_plan} />
-      
+
       {/* Lab results (if any) */}
       {encounter.lab_orders?.length > 0 && (
         <LabResultsCard labOrders={encounter.lab_orders} />
       )}
-      
+
       {/* Prescriptions (if any) */}
       {encounter.prescriptions?.length > 0 && (
         <PrescriptionsCard prescriptions={encounter.prescriptions} />
       )}
-      
+
       {/* Clinical notes */}
       <ClinicalNotesCard notes={encounter.clinical_notes} />
-      
+
       {/* Follow-up */}
       <FollowUpCard followUp={encounter.follow_up} />
     </div>
@@ -225,7 +225,7 @@ interface VitalsCardProps {
 
 export function VitalsCard({ vitals }: VitalsCardProps) {
   const alerts = getVitalAlerts(vitals);
-  
+
   return (
     <Card>
       <CardHeader>
@@ -239,52 +239,52 @@ export function VitalsCard({ vitals }: VitalsCardProps) {
       </CardHeader>
       <CardContent>
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-          <VitalItem 
-            label="Temperature" 
-            value={vitals.temperature} 
+          <VitalItem
+            label="Temperature"
+            value={vitals.temperature}
             unit="°C"
             alert={isAbnormalTemp(vitals.temperature)}
           />
-          <VitalItem 
-            label="Pulse" 
-            value={vitals.pulse} 
+          <VitalItem
+            label="Pulse"
+            value={vitals.pulse}
             unit="bpm"
             alert={isAbnormalPulse(vitals.pulse)}
           />
-          <VitalItem 
-            label="Blood Pressure" 
-            value={vitals.blood_pressure} 
+          <VitalItem
+            label="Blood Pressure"
+            value={vitals.blood_pressure}
             unit="mmHg"
           />
-          <VitalItem 
-            label="SpO2" 
-            value={vitals.spo2} 
+          <VitalItem
+            label="SpO2"
+            value={vitals.spo2}
             unit="%"
             alert={vitals.spo2 && vitals.spo2 < 95}
             critical={vitals.spo2 && vitals.spo2 < 90}
           />
-          <VitalItem 
-            label="Respiratory Rate" 
-            value={vitals.respiratory_rate} 
+          <VitalItem
+            label="Respiratory Rate"
+            value={vitals.respiratory_rate}
             unit="/min"
           />
-          <VitalItem 
-            label="Weight" 
-            value={vitals.weight} 
+          <VitalItem
+            label="Weight"
+            value={vitals.weight}
             unit="kg"
           />
-          <VitalItem 
-            label="Height" 
-            value={vitals.height} 
+          <VitalItem
+            label="Height"
+            value={vitals.height}
             unit="cm"
           />
-          <VitalItem 
-            label="BMI" 
-            value={calculateBMI(vitals.weight, vitals.height)} 
+          <VitalItem
+            label="BMI"
+            value={calculateBMI(vitals.weight, vitals.height)}
             unit="kg/m²"
           />
         </div>
-        
+
         {/* Alert messages */}
         {alerts.length > 0 && (
           <div className="mt-4 space-y-2">
@@ -348,43 +348,43 @@ export function PatientTimeline({ patientId }: PatientTimelineProps) {
     dateRange: 'all',
     eventTypes: ['encounter', 'lab', 'pharmacy', 'vitals'],
   });
-  
-  const { 
-    data: history, 
-    isLoading, 
-    hasMore, 
-    loadMore 
+
+  const {
+    data: history,
+    isLoading,
+    hasMore,
+    loadMore
   } = usePatientHistory(patientId, filters);
-  
+
   if (isLoading) return <TimelineSkeleton />;
-  
+
   return (
     <div className="space-y-6">
       {/* Filters */}
-      <TimelineFilters 
-        filters={filters} 
+      <TimelineFilters
+        filters={filters}
         onChange={setFilters}
       />
-      
+
       {/* Summary stats */}
       <TimelineSummary history={history} />
-      
+
       {/* Timeline */}
       <div className="relative">
         {/* Timeline line */}
         <div className="absolute left-4 top-0 bottom-0 w-0.5 bg-border" />
-        
+
         {/* Timeline items */}
         <div className="space-y-4">
           {history.events.map((event) => (
             <TimelineItem key={event.id} event={event} />
           ))}
         </div>
-        
+
         {/* Load more */}
         {hasMore && (
-          <Button 
-            variant="outline" 
+          <Button
+            variant="outline"
             className="w-full mt-4"
             onClick={loadMore}
           >
@@ -413,7 +413,7 @@ interface TimelineEvent {
 export function TimelineItem({ event }: { event: TimelineEvent }) {
   const Icon = getEventIcon(event.type);
   const color = getEventColor(event.type);
-  
+
   return (
     <div className="relative pl-10">
       {/* Icon */}
@@ -423,7 +423,7 @@ export function TimelineItem({ event }: { event: TimelineEvent }) {
       )}>
         <Icon className="h-4 w-4 text-white" />
       </div>
-      
+
       {/* Content */}
       <Card>
         <CardHeader className="pb-2">
@@ -439,7 +439,7 @@ export function TimelineItem({ event }: { event: TimelineEvent }) {
         </CardHeader>
         <CardContent>
           <p className="text-sm">{event.description}</p>
-          
+
           {/* Type-specific details */}
           {event.type === 'encounter' && (
             <EncounterSummary data={event.metadata} />
@@ -450,10 +450,10 @@ export function TimelineItem({ event }: { event: TimelineEvent }) {
           {event.type === 'pharmacy' && (
             <PharmacySummary data={event.metadata} />
           )}
-          
+
           {/* Link to full details */}
-          <Link 
-            href={getEventDetailUrl(event)} 
+          <Link
+            href={getEventDetailUrl(event)}
             className="text-sm text-primary hover:underline mt-2 inline-block"
           >
             View Details →
@@ -515,7 +515,7 @@ export default function ReportsPage() {
         </div>
         <DateRangePicker />
       </div>
-      
+
       <DashboardOverview />
     </div>
   );
@@ -531,9 +531,9 @@ import { ReportSection } from './report-section';
 
 export function DashboardOverview() {
   const { data: metrics, isLoading } = useDashboardMetrics();
-  
+
   if (isLoading) return <DashboardSkeleton />;
-  
+
   return (
     <div className="space-y-6">
       {/* KPI Row */}
@@ -565,7 +565,7 @@ export function DashboardOverview() {
           variant={metrics.stockAlerts > 0 ? 'destructive' : 'default'}
         />
       </div>
-      
+
       {/* Charts Row */}
       <div className="grid gap-4 md:grid-cols-2">
         <ChartCard
@@ -574,7 +574,7 @@ export function DashboardOverview() {
         >
           <PatientVolumeChart data={metrics.patientVolumeWeek} />
         </ChartCard>
-        
+
         <ChartCard
           title="Revenue Breakdown"
           description="By department"
@@ -582,7 +582,7 @@ export function DashboardOverview() {
           <RevenueBreakdownChart data={metrics.revenueByDepartment} />
         </ChartCard>
       </div>
-      
+
       {/* Detailed Sections */}
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
         <ReportSection
@@ -594,7 +594,7 @@ export function DashboardOverview() {
             { label: 'Follow-up Rate', value: `${metrics.followUpRate}%` },
           ]}
         />
-        
+
         <ReportSection
           title="Laboratory"
           href="/reports/laboratory"
@@ -604,7 +604,7 @@ export function DashboardOverview() {
             { label: 'Pending Results', value: metrics.pendingLabResults },
           ]}
         />
-        
+
         <ReportSection
           title="Pharmacy"
           href="/reports/pharmacy"
@@ -615,7 +615,7 @@ export function DashboardOverview() {
           ]}
         />
       </div>
-      
+
       {/* Recent Activity */}
       <RecentActivityFeed activities={metrics.recentActivity} />
     </div>
@@ -646,7 +646,7 @@ export function KPICard({
   href,
 }: KPICardProps) {
   const Wrapper = href ? Link : 'div';
-  
+
   return (
     <Wrapper href={href || ''}>
       <Card className={cn(
@@ -752,12 +752,12 @@ export function PatientVolumeChart({ data }: PatientVolumeChartProps) {
     <ResponsiveContainer width="100%" height={300}>
       <AreaChart data={data}>
         <CartesianGrid strokeDasharray="3 3" />
-        <XAxis 
-          dataKey="date" 
+        <XAxis
+          dataKey="date"
           tickFormatter={(value) => formatShortDate(value)}
         />
         <YAxis />
-        <Tooltip 
+        <Tooltip
           labelFormatter={(value) => formatFullDate(value)}
           formatter={(value: number, name: string) => [
             value,
@@ -894,7 +894,7 @@ import { Menu } from 'lucide-react';
 
 export function MobileNav() {
   const [open, setOpen] = useState(false);
-  
+
   return (
     <Sheet open={open} onOpenChange={setOpen}>
       <SheetTrigger asChild className="lg:hidden">
@@ -922,10 +922,10 @@ interface ResponsiveTableProps<T> {
   mobileCard?: (item: T) => React.ReactNode;
 }
 
-export function ResponsiveTable<T>({ 
-  data, 
-  columns, 
-  mobileCard 
+export function ResponsiveTable<T>({
+  data,
+  columns,
+  mobileCard
 }: ResponsiveTableProps<T>) {
   return (
     <>
@@ -952,7 +952,7 @@ export function ResponsiveTable<T>({
           </TableBody>
         </Table>
       </div>
-      
+
       {/* Mobile cards */}
       <div className="md:hidden space-y-4">
         {data.map((item, i) => (
@@ -1012,23 +1012,23 @@ export const DASHBOARD_PERMISSIONS = {
   // Clinical data
   'view:encounters': ['admin', 'clinician', 'nurse', 'department_head'],
   'view:patient_history': ['admin', 'clinician', 'nurse', 'department_head'],
-  
+
   // Reports
   'view:clinical_reports': ['admin', 'clinician', 'department_head'],
   'view:financial_reports': ['admin', 'finance_officer', 'department_head'],
   'view:lab_reports': ['admin', 'lab_technician', 'department_head'],
   'view:pharmacy_reports': ['admin', 'pharmacist', 'department_head'],
-  
+
   // Dashboard sections
   'view:full_dashboard': ['admin', 'department_head'],
   'view:summary_dashboard': ['stakeholder', 'external'],
-  
+
   // Export
   'export:reports': ['admin', 'department_head', 'finance_officer'],
 } as const;
 
 export function hasPermission(
-  userRole: string, 
+  userRole: string,
   permission: keyof typeof DASHBOARD_PERMISSIONS
 ): boolean {
   const allowedRoles = DASHBOARD_PERMISSIONS[permission];
@@ -1042,17 +1042,17 @@ interface PermissionGateProps {
   children: React.ReactNode;
 }
 
-export function PermissionGate({ 
-  permission, 
-  fallback = null, 
-  children 
+export function PermissionGate({
+  permission,
+  fallback = null,
+  children
 }: PermissionGateProps) {
   const { user } = useAuth();
-  
+
   if (!user || !hasPermission(user.role, permission)) {
     return fallback;
   }
-  
+
   return <>{children}</>;
 }
 ```
@@ -1093,18 +1093,18 @@ export async function exportToPDF(
   options: PDFExportOptions = {}
 ): Promise<Blob> {
   const doc = new jsPDF();
-  
+
   // Add header
   doc.setFontSize(18);
   doc.text(title, 14, 22);
-  
+
   // Add date
   doc.setFontSize(10);
   doc.text(`Generated: ${new Date().toLocaleString()}`, 14, 30);
-  
+
   // Add content based on data type
   // ... implementation
-  
+
   return doc.output('blob');
 }
 
@@ -1114,15 +1114,15 @@ export function exportToCSV(
 ): void {
   const parser = new Parser();
   const csv = parser.parse(data);
-  
+
   const blob = new Blob([csv], { type: 'text/csv' });
   const url = URL.createObjectURL(blob);
-  
+
   const link = document.createElement('a');
   link.href = url;
   link.download = `${filename}_${formatDate(new Date())}.csv`;
   link.click();
-  
+
   URL.revokeObjectURL(url);
 }
 
@@ -1135,7 +1135,7 @@ interface ExportButtonProps {
 
 export function ExportButton({ data, filename, title }: ExportButtonProps) {
   const [exporting, setExporting] = useState(false);
-  
+
   const handleExportPDF = async () => {
     setExporting(true);
     try {
@@ -1146,11 +1146,11 @@ export function ExportButton({ data, filename, title }: ExportButtonProps) {
       setExporting(false);
     }
   };
-  
+
   const handleExportCSV = () => {
     exportToCSV(data, filename);
   };
-  
+
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
@@ -1213,20 +1213,20 @@ test.describe('Encounter Detail View', () => {
     await loginAsClinicianUser(page);
     await page.goto('/encounters/1');
   });
-  
+
   test('should display encounter details', async ({ page }) => {
     await expect(page.getByRole('heading', { name: /encounter/i })).toBeVisible();
     await expect(page.getByText(/vital signs/i)).toBeVisible();
     await expect(page.getByText(/diagnosis/i)).toBeVisible();
   });
-  
+
   test('should show vital alerts for abnormal values', async ({ page }) => {
     // Navigate to encounter with low SpO2
     await page.goto('/encounters/critical-vitals');
     await expect(page.getByRole('alert')).toBeVisible();
     await expect(page.getByText(/SpO2.*below normal/i)).toBeVisible();
   });
-  
+
   test('should display lab results if present', async ({ page }) => {
     await expect(page.getByText(/lab results/i)).toBeVisible();
     await expect(page.getByText(/CBC/i)).toBeVisible();
@@ -1238,35 +1238,35 @@ test.describe('Reports Dashboard', () => {
   test('should display KPI cards', async ({ page }) => {
     await loginAsAdminUser(page);
     await page.goto('/reports');
-    
+
     await expect(page.getByText(/patients today/i)).toBeVisible();
     await expect(page.getByText(/revenue/i)).toBeVisible();
     await expect(page.getByText(/pending lab/i)).toBeVisible();
   });
-  
+
   test('should filter by date range', async ({ page }) => {
     await loginAsAdminUser(page);
     await page.goto('/reports');
-    
+
     // Open date picker
     await page.getByRole('button', { name: /date range/i }).click();
-    
+
     // Select last 7 days
     await page.getByText(/last 7 days/i).click();
-    
+
     // Verify data updates
     await expect(page.getByText(/loading/i)).not.toBeVisible();
   });
-  
+
   test('should export report to CSV', async ({ page }) => {
     await loginAsAdminUser(page);
     await page.goto('/reports');
-    
+
     // Click export
     const downloadPromise = page.waitForEvent('download');
     await page.getByRole('button', { name: /export/i }).click();
     await page.getByText(/csv/i).click();
-    
+
     const download = await downloadPromise;
     expect(download.suggestedFilename()).toMatch(/\.csv$/);
   });
@@ -1277,22 +1277,22 @@ test.describe('Responsive Design', () => {
   test('should show mobile navigation on small screens', async ({ page }) => {
     await page.setViewportSize({ width: 375, height: 667 });
     await loginAsClinicianUser(page);
-    
+
     // Sidebar should be hidden
     await expect(page.locator('[data-testid="sidebar"]')).not.toBeVisible();
-    
+
     // Mobile menu button should be visible
     await expect(page.getByRole('button', { name: /toggle menu/i })).toBeVisible();
   });
-  
+
   test('should display cards instead of table on mobile', async ({ page }) => {
     await page.setViewportSize({ width: 375, height: 667 });
     await loginAsClinicianUser(page);
     await page.goto('/patients');
-    
+
     // Table should be hidden
     await expect(page.locator('table')).not.toBeVisible();
-    
+
     // Cards should be visible
     await expect(page.locator('[data-testid="patient-card"]').first()).toBeVisible();
   });

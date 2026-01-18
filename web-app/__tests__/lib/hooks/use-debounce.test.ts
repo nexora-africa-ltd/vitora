@@ -146,7 +146,7 @@ describe('useDebounce', () => {
 
   it('should cleanup timeout on unmount', () => {
     const clearTimeoutSpy = jest.spyOn(global, 'clearTimeout');
-    
+
     const { unmount, rerender } = renderHook(
       ({ value }) => useDebounce(value, 500),
       { initialProps: { value: 'initial' } }

@@ -1,7 +1,7 @@
 /**
  * Return Dialog Component
  * Sprint 1.3-1.4 Track A: Pharmacy Module
- * 
+ *
  * Dialog for processing stock returns from dispensed items.
  * Validates return quantity and requires reason.
  */
@@ -213,8 +213,8 @@ export function ReturnDialog({
             >
               Cancel
             </Button>
-            <Button 
-              type="submit" 
+            <Button
+              type="submit"
               disabled={returnStock.isPending || quantity > maxReturn}
             >
               {returnStock.isPending ? (

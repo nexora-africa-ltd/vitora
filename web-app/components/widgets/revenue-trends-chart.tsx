@@ -62,7 +62,7 @@ export function RevenueChart({ data, showLegend = true, showByMethod = false }: 
   }
 
   // Determine which data keys to show
-  const dataKeys = showByMethod 
+  const dataKeys = showByMethod
     ? ['cash', 'mpesa', 'insurance', 'card'] as const
     : ['total'] as const;
 

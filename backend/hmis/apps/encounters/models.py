@@ -622,9 +622,7 @@ class Encounter(models.Model):
         Returns:
             bool: True if can enter consultation, False otherwise
         """
-        if self.triage_status in ("COMPLETED", "BYPASSED", "NOT_APPLICABLE"):
-            return True
-        return False
+        return self.triage_status in ("COMPLETED", "BYPASSED", "NOT_APPLICABLE")
 
     def has_critical_vitals(self) -> bool:
         """

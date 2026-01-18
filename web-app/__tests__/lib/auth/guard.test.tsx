@@ -1,7 +1,7 @@
 /**
  * TDD Tests for PermissionGuard Component
  * Tests permission-based access control for protected routes
- * 
+ *
  * Note: Authentication is now handled by middleware.ts (server-side redirect).
  * These tests focus only on permission checking.
  */
@@ -86,7 +86,7 @@ describe('PermissionGuard', () => {
     );
 
     render(
-      <PermissionGuard 
+      <PermissionGuard
         requiredPermission="admin:dashboard"
         fallback={<div>Custom Denied Message</div>}
       >

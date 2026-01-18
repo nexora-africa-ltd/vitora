@@ -312,7 +312,7 @@ export default config;
     --input: 0 4% 86%;
     --ring: 349 100% 12%;  /* primary */
     --radius: 0.5rem;
-    
+
     /* Semantic colors */
     --success: 145 46% 34%;  /* #2E7D4A */
     --warning: 38 79% 52%;  /* #E6A023 */
@@ -340,7 +340,7 @@ export default config;
     --border: 350 7% 20%;
     --input: 350 7% 20%;
     --ring: 349 85% 30%;
-    
+
     /* Semantic colors (dark) */
     --success: 145 50% 40%;
     --warning: 38 85% 55%;

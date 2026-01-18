@@ -1,6 +1,6 @@
 /**
  * Jest-Cucumber Configuration
- * 
+ *
  * Separate Jest config for BDD integration tests using Gherkin feature files.
  * Run with: npm run test:bdd:integration
  */

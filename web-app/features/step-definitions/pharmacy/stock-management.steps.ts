@@ -1,6 +1,6 @@
 /**
  * Pharmacy Stock Alert Step Definitions
- * 
+ *
  * Steps for stock alerts, expiry alerts, recall handling
  */
 

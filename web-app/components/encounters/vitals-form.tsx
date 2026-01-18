@@ -5,8 +5,8 @@
 'use client';
 
 // Re-export everything from the new modular location
-export { 
-  VitalsForm, 
+export {
+  VitalsForm,
   default,
   VitalInput,
   BloodPressureInput,

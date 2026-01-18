@@ -1,8 +1,8 @@
 # Sprint 1.5-1.6 Track B: Lab Workflow Implementation Plan
 
-**Sprint Duration**: Weeks 9-12 (Phase 1)  
-**Status**: 🚧 IN PROGRESS  
-**Target Date**: Q1 2026  
+**Sprint Duration**: Weeks 9-12 (Phase 1)
+**Status**: 🚧 IN PROGRESS
+**Target Date**: Q1 2026
 **Dependencies**: Sprint 1.3-1.4 Track B (LabOrder, LabResult foundation models) ✅
 
 ---
@@ -41,8 +41,8 @@ This document tracks the implementation of Sprint 1.5-1.6 Track B Lab Workflow c
 
 ### 1.1 LabQueue Model ✅ COMPLETE
 
-**Status**: ✅ All tests passing  
-**Tests**: 14/14 passing  
+**Status**: ✅ All tests passing
+**Tests**: 14/14 passing
 **Files**:
 - Model: `backend/hmis/apps/laboratory/models.py`
 - Tests: `backend/tests/test_lab_queue.py`
@@ -52,14 +52,14 @@ This document tracks the implementation of Sprint 1.5-1.6 Track B Lab Workflow c
 ```python
 class LabQueue(models.Model):
     """Lab queue entry for in-house processing."""
-    
+
     # Auto-generated queue number: LAB-YYYYMMDD-XXXX
     queue_number = models.CharField(max_length=20, unique=True, editable=False)
-    
+
     # Priority-based ordering (STAT=1, URGENT=2, ROUTINE=3)
     priority = models.CharField(max_length=20, choices=Priority.choices)
     priority_order = models.IntegerField(default=3, editable=False)
-    
+
     # Workflow states
     queue_status = models.CharField(
         choices=QueueStatus.choices,
@@ -89,9 +89,9 @@ class LabQueue(models.Model):
 
 ### 1.2 LabResultTemplate Model ✅ COMPLETE
 
-**Target**: 8 tests  
-**Status**: ✅ All tests passing  
-**Tests**: 8/8 passing  
+**Target**: 8 tests
+**Status**: ✅ All tests passing
+**Tests**: 8/8 passing
 **Files**:
 - Model: `backend/hmis/apps/laboratory/models.py`
 - Tests: `backend/tests/test_lab_result_template.py`
@@ -104,16 +104,16 @@ The implementation follows the code snippet provided in `docs/sprint-1.5-1.6-tra
 ```python
 class LabResultTemplate(models.Model):
     """Template for lab test parameters with reference ranges."""
-    
+
     # Test identification
     test_code = models.CharField(max_length=20)  # LOINC code
     test_name = models.CharField(max_length=200)
-    
+
     # Parameter details
     parameter_code = models.CharField(max_length=20)
     parameter_name = models.CharField(max_length=100)
     unit = models.CharField(max_length=50)
-    
+
     # Reference ranges by demographic (stored as JSON)
     reference_ranges = models.JSONField(default=dict)
     # Example: {
@@ -121,7 +121,7 @@ class LabResultTemplate(models.Model):
     #   "adult_female": {"low": 4.0, "high": 5.0},
     #   "pediatric": {"low": 3.5, "high": 5.0}
     # }
-    
+
     # Critical values
     critical_low = models.DecimalField(null=True, blank=True)
     critical_high = models.DecimalField(null=True, blank=True)
@@ -159,9 +159,9 @@ class LabResultTemplate(models.Model):
 
 ### 1.3 Extended LabResult Model ✅ COMPLETE
 
-**Target**: 15 tests  
-**Status**: ✅ All tests passing  
-**Tests**: 15/15 passing  
+**Target**: 15 tests
+**Status**: ✅ All tests passing
+**Tests**: 15/15 passing
 **Files**:
 - Model: `backend/hmis/apps/laboratory/models.py` (extended existing LabResult)
 - Tests: `backend/tests/test_lab_result_extended.py`
@@ -176,19 +176,19 @@ The implementation follows the code snippet provided in `docs/sprint-1.5-1.6-tra
 ```python
 class LabResult(models.Model):
     # Existing fields preserved...
-    
+
     # NEW: Reference range tracking (3 fields)
     reference_low = models.DecimalField(max_digits=12, decimal_places=4, null=True, blank=True)
     reference_high = models.DecimalField(max_digits=12, decimal_places=4, null=True, blank=True)
     reference_range_text = models.CharField(max_length=100, blank=True)
-    
+
     # NEW: Critical value flag
     is_critical_result = models.BooleanField(default=False)
-    
+
     # NEW: Method/Equipment tracking (2 fields)
     method = models.CharField(max_length=100, blank=True)
     equipment = models.CharField(max_length=100, blank=True)
-    
+
     # NEW: Amendment tracking (5 fields)
     is_amended = models.BooleanField(default=False)
     amendment_reason = models.TextField(blank=True)
@@ -227,9 +227,9 @@ class LabResult(models.Model):
 
 ### 1.4 LabResultAttachment Model ✅ COMPLETE
 
-**Target**: 11 tests  
-**Status**: ✅ All tests passing  
-**Tests**: 11/11 passing  
+**Target**: 11 tests
+**Status**: ✅ All tests passing
+**Tests**: 11/11 passing
 **Files**:
 - Model: `backend/hmis/apps/laboratory/models.py` (LabResultAttachment)
 - Validators: `backend/hmis/apps/laboratory/validators.py` (new file)
@@ -245,31 +245,31 @@ The implementation follows the code snippet provided in `docs/sprint-1.5-1.6-tra
 ```python
 class LabResultAttachment(models.Model):
     """Scanned or uploaded lab result document."""
-    
+
     class AttachmentType(models.TextChoices):
         SCANNED_RESULT = 'scanned', 'Scanned Result'
         EXTERNAL_REPORT = 'external', 'External Lab Report'
         GRAPH = 'graph', 'Result Graph'
         IMAGE = 'image', 'Lab Image'
         OTHER = 'other', 'Other'
-    
+
     # Linkage
     lab_order = models.ForeignKey(LabOrder, related_name='attachments')
-    
+
     # File (auto-populated on save)
     file = models.FileField(upload_to='lab_results/%Y/%m/')
     filename = models.CharField(max_length=255)  # Auto from file.name
     file_type = models.CharField(max_length=50)  # MIME type (auto)
     file_size = models.IntegerField()  # Bytes (auto)
-    
+
     # Metadata
     attachment_type = models.CharField(choices=AttachmentType.choices)
     description = models.CharField(max_length=255, blank=True)
-    
+
     # Audit
     uploaded_by = models.ForeignKey(User, on_delete=models.PROTECT)
     uploaded_at = models.DateTimeField(auto_now_add=True)
-    
+
     class Meta:
         ordering = ['-uploaded_at']  # Newest first
 ```
@@ -307,8 +307,8 @@ class LabResultAttachment(models.Model):
 
 ### 1.5 Notification Model (Core App) ✅ COMPLETE
 
-**Status**: ✅ All tests implemented  
-**Tests**: 9/9 implemented  
+**Status**: ✅ All tests implemented
+**Tests**: 9/9 implemented
 **Files**:
 - Model: `backend/hmis/apps/core/models.py`
 - Tests: `backend/tests/test_notification_model.py`
@@ -323,35 +323,35 @@ The implementation follows the code snippet provided in `docs/sprint-1.5-1.6-tra
 ```python
 class Notification(models.Model):
     """In-app notification for users."""
-    
+
     class Priority(models.TextChoices):
         LOW = 'low', 'Low'
         NORMAL = 'normal', 'Normal'
         HIGH = 'high', 'High'
         CRITICAL = 'critical', 'Critical'
-    
+
     id = models.BigAutoField(primary_key=True)
-    
+
     # Core fields
     user = models.ForeignKey(User, related_name='notifications')
     notification_type = models.CharField(max_length=50)  # 'lab_result', etc.
     priority = models.CharField(choices=Priority.choices, default='normal')
     title = models.CharField(max_length=200)
     message = models.TextField()
-    
+
     # Link to related object
     related_model = models.CharField(max_length=50, blank=True)
     related_id = models.BigIntegerField(null=True, blank=True)
     action_url = models.CharField(max_length=500, blank=True)
-    
+
     # Status
     is_read = models.BooleanField(default=False)
     read_at = models.DateTimeField(null=True, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
-    
+
     class Meta:
         ordering = ['-created_at']
-    
+
     def mark_as_read(self):
         """Mark notification as read with timestamp."""
         if not self.is_read:
@@ -397,7 +397,7 @@ class Notification(models.Model):
 
 ### 2.1 LabOrderWorkflow Service 🔄 TODO
 
-**Target**: 12 tests  
+**Target**: 12 tests
 **Status**: ⏳ Not Started
 
 **Purpose**: Manage lab order state transitions with validation
@@ -407,14 +407,14 @@ class Notification(models.Model):
 class LabOrderWorkflow:
     """
     Manages lab order state transitions.
-    
+
     In-House Flow:
     ordered → collected → in_progress → completed
-    
+
     External Flow:
     ordered → collected → completed
     """
-    
+
     VALID_TRANSITIONS = {
         'ordered': ['collected', 'cancelled'],
         'collected': ['in_progress', 'cancelled'],
@@ -422,11 +422,11 @@ class LabOrderWorkflow:
         'completed': [],
         'cancelled': []
     }
-    
+
     def can_transition_to(self, new_status: str) -> bool:
         """Check if transition is valid."""
         pass
-    
+
     def transition_to(self, new_status: str, user: User, **kwargs) -> LabOrder:
         """Perform transition with validation."""
         pass
@@ -450,7 +450,7 @@ class LabOrderWorkflow:
 
 ### 2.2 ExternalLabRequisition PDF Generator 🔄 TODO
 
-**Target**: 10 tests  
+**Target**: 10 tests
 **Status**: ⏳ Not Started
 
 **Dependencies**: WeasyPrint library (already in pyproject.toml)
@@ -479,7 +479,7 @@ class LabOrderWorkflow:
 
 ### 2.3 LabNotificationService 🔄 TODO
 
-**Target**: 10 tests  
+**Target**: 10 tests
 **Status**: ⏳ Not Started
 
 **Test Plan**:
@@ -733,7 +733,7 @@ make test     # run all tests with coverage
 
 ---
 
-**Document Version**: 1.0  
-**Last Updated**: 2026-01-02  
-**Maintained By**: Engineering Team  
+**Document Version**: 1.0
+**Last Updated**: 2026-01-02
+**Maintained By**: Engineering Team
 **Review Frequency**: After each phase completion

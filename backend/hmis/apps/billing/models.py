@@ -1005,9 +1005,9 @@ class SHAMember(models.Model):
             and not self.principal_sha_number
             and not self.principal
         ):
-            errors[
-                "principal_sha_number"
-            ] = "Dependents must have a principal SHA number or principal member reference"
+            errors["principal_sha_number"] = (
+                "Dependents must have a principal SHA number or principal member reference"
+            )
         # Validate principal FK points to a principal member
         if (
             self.membership_type != self.MembershipType.PRINCIPAL
@@ -1050,10 +1050,7 @@ class SHAMember(models.Model):
             return False
 
         # Check eligibility validity
-        if self.eligibility_valid_until and self.eligibility_valid_until < today:
-            return False
-
-        return True
+        return not (self.eligibility_valid_until and self.eligibility_valid_until < today)
 
     def needs_eligibility_check(self) -> bool:
         """
@@ -1236,10 +1233,7 @@ class SHATariff(models.Model):
             return False
 
         # Must not be expired (expiry is inclusive)
-        if self.expiry_date and self.expiry_date < check_date:
-            return False
-
-        return True
+        return not (self.expiry_date and self.expiry_date < check_date)
 
     @classmethod
     def get_active_tariffs(cls, category: str = None, facility_level: str = None):

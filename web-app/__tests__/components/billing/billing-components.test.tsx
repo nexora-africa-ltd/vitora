@@ -1,9 +1,9 @@
 /**
  * TDD Tests for Billing Components - RED PHASE
- * 
+ *
  * Tests for billing UI components before implementation.
  * All tests should FAIL initially.
- * 
+ *
  * User Stories:
  * - KE-CSH-001: Payment Processing
  * - KE-CSH-002: Invoice Generation
@@ -249,7 +249,7 @@ describe('InvoiceList', () => {
     // Find and click status filter - Radix Select uses button role
     const statusFilter = screen.getByRole('button', { name: /status/i });
     await userEvent.click(statusFilter);
-    
+
     // Radix Select items have data-radix-collection-item attribute
     // Use findByText to wait for dropdown content
     const paidOption = await screen.findByText('Paid');
@@ -1005,12 +1005,12 @@ describe('CreditNoteForm', () => {
 
     await userEvent.clear(screen.getByRole('spinbutton'));
     await userEvent.type(screen.getByRole('spinbutton'), '100');
-    
+
     // Select reason via Radix Select
     const reasonTrigger = screen.getByRole('combobox');
     await userEvent.click(reasonTrigger);
     await userEvent.click(screen.getByText(/pricing error/i));
-    
+
     // Submit without description
     await userEvent.click(screen.getByRole('button', { name: /submit/i }));
 
@@ -1050,15 +1050,15 @@ describe('CreditNoteForm', () => {
     const amountInput = screen.getByRole('spinbutton');
     await userEvent.clear(amountInput);
     await userEvent.type(amountInput, '100');
-    
+
     // Select reason via Radix Select
     const reasonTrigger = screen.getByRole('combobox');
     await userEvent.click(reasonTrigger);
     await userEvent.click(screen.getByText(/pricing error/i));
-    
+
     // Fill description
     await userEvent.type(screen.getByRole('textbox'), 'Incorrect fee applied on consultation');
-    
+
     // Submit form
     await userEvent.click(screen.getByRole('button', { name: /submit/i }));
 
@@ -1170,10 +1170,10 @@ describe('BillingDashboard', () => {
     // The date picker is a button that opens a calendar popover
     const dateButton = screen.getByRole('button', { name: /january/i });
     expect(dateButton).toBeInTheDocument();
-    
+
     // Click to open the calendar popover
     await userEvent.click(dateButton);
-    
+
     // Click a different date (2nd of the month)
     const day2 = screen.getByRole('gridcell', { name: '2' });
     await userEvent.click(day2);

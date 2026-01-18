@@ -4,6 +4,7 @@ Tests for billing reports API endpoints.
 Phase 4.2: Report API Endpoints
 Following TDD approach - tests written first.
 """
+
 from datetime import date, timedelta
 
 import pytest  # type: ignore

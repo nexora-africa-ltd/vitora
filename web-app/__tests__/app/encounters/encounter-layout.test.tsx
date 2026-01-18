@@ -1,8 +1,8 @@
 /**
  * TDD Tests for Encounter Shell Route Layout
- * 
+ *
  * RED PHASE: These tests should FAIL initially because the implementation doesn't exist.
- * 
+ *
  * Encounter Shell Layout Requirements:
  * 1. Wrap all /encounters/[id]/* routes with PatientProvider AND EncounterProvider
  * 2. Display PatientShellHeader with encounter info
@@ -151,7 +151,7 @@ describe('Encounter Shell Layout', () => {
           </div>
         );
       }
-      
+
       const Wrapper = createWrapper();
       render(
         <Wrapper>
@@ -197,7 +197,7 @@ describe('Encounter Shell Layout', () => {
         const { canPlaceOrders } = useEncounterContext();
         return <div data-testid="can-order">{canPlaceOrders?.toString()}</div>;
       }
-      
+
       const Wrapper = createWrapper();
       render(
         <Wrapper>
@@ -215,13 +215,13 @@ describe('Encounter Shell Layout', () => {
     it('should provide canPlaceOrders = false for COMPLETED encounters', async () => {
       const completedEncounter = { ...mockEncounter, status: 'COMPLETED' as const };
       mockEncountersApi.get.mockResolvedValueOnce(completedEncounter);
-      
+
       function ChildCheckingPermissions() {
         const { useEncounterContext } = require('@/lib/context/encounter-context');
         const { canPlaceOrders } = useEncounterContext();
         return <div data-testid="can-order">{canPlaceOrders?.toString()}</div>;
       }
-      
+
       const Wrapper = createWrapper();
       render(
         <Wrapper>
@@ -243,7 +243,7 @@ describe('Encounter Shell Layout', () => {
   describe('Error Handling', () => {
     it('should handle invalid encounterId gracefully', async () => {
       mockUseParams.mockReturnValue({ id: 'invalid' });
-      
+
       const Wrapper = createWrapper();
       render(
         <Wrapper>
@@ -261,7 +261,7 @@ describe('Encounter Shell Layout', () => {
 
     it('should handle encounter not found error', async () => {
       mockEncountersApi.get.mockRejectedValueOnce(new Error('Encounter not found'));
-      
+
       const Wrapper = createWrapper();
       render(
         <Wrapper>
@@ -279,7 +279,7 @@ describe('Encounter Shell Layout', () => {
 
     it('should handle patient fetch error after encounter loads', async () => {
       mockPatientsApi.getPatient.mockRejectedValueOnce(new Error('Patient not found'));
-      
+
       const Wrapper = createWrapper();
       render(
         <Wrapper>
@@ -312,7 +312,7 @@ describe('Encounter Shell Layout', () => {
           </>
         );
       }
-      
+
       const Wrapper = createWrapper();
       render(
         <Wrapper>

@@ -221,7 +221,7 @@ function getAlertMessage(
 /**
  * Calculate Mean Arterial Pressure (MAP)
  * MAP = (SBP + 2 × DBP) / 3
- * 
+ *
  * Normal adult MAP: 70-100 mmHg
  * Critical low: <65 mmHg (inadequate organ perfusion)
  * Critical high: >105 mmHg (hypertensive)
@@ -235,7 +235,7 @@ export function calculateMAP(systolic: number | null | undefined, diastolic: num
  * Get MAP status and alert
  */
 function getMAPAlert(
-  systolic: number | null | undefined, 
+  systolic: number | null | undefined,
   diastolic: number | null | undefined
 ): VitalAlert | null {
   const map = calculateMAP(systolic, diastolic);
@@ -257,7 +257,7 @@ function getMAPAlert(
       clinical_note: 'Inadequate organ perfusion - immediate intervention required',
     };
   }
-  
+
   if (map < WARNING_LOW) {
     return {
       field: 'blood_pressure',
@@ -319,13 +319,13 @@ export function evaluateVitals(
   for (const { field, vitalType, getValue } of fieldMapping) {
     const value = getValue();
     const threshold = thresholds[vitalType];
-    
+
     if (value === null || value === undefined || !threshold?.is_active) {
       continue;
     }
 
     const status = checkValue(value, threshold);
-    
+
     if (status !== 'normal') {
       const { message, clinical_note } = getAlertMessage(vitalType, value, status, threshold);
       alerts.push({
@@ -364,7 +364,7 @@ export function getFieldStatus(
   };
 
   const fieldsToCheck = fieldAliases[field] ?? [field];
-  
+
   const alert = alerts.find((a) => fieldsToCheck.includes(a.field));
   if (alert?.severity === 'CRITICAL') return 'critical';
   if (alert?.severity === 'WARNING') return 'warning';
@@ -424,7 +424,7 @@ export function useVitalThresholds(options: UseVitalThresholdsOptions = {}) {
   // Convert array response to record, falling back to defaults
   const thresholds: Record<VitalType, TriageVitalThreshold> = React.useMemo(() => {
     const result = { ...DEFAULT_THRESHOLDS } as Record<VitalType, TriageVitalThreshold>;
-    
+
     // Safely handle the response data
     const dataArray = query.data;
     if (dataArray && Array.isArray(dataArray)) {
@@ -434,7 +434,7 @@ export function useVitalThresholds(options: UseVitalThresholdsOptions = {}) {
         }
       }
     }
-    
+
     return result;
   }, [query.data]);
 

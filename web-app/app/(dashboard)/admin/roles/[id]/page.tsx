@@ -1,7 +1,7 @@
 /**
  * Role Edit Page
  * Sprint 1.1-1.2 Track C: RBAC Foundation
- * 
+ *
  * Edit role details and manage permissions.
  */
 'use client';
@@ -131,7 +131,7 @@ export default function RoleEditPage() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
+
     try {
       await updateRole.mutateAsync({
         id: roleId,
@@ -197,13 +197,13 @@ export default function RoleEditPage() {
     );
   }
 
-  const groupedPermissions = allPermissions 
+  const groupedPermissions = allPermissions
     ? groupPermissions(allPermissions)
     : {};
 
   // Calculate assigned/unassigned counts per group
   const getGroupStats = (perms: Permission[]) => {
-    const assigned = perms.filter(p => 
+    const assigned = perms.filter(p =>
       selectedPermissions.includes(`${p.app_label}.${p.codename}`)
     ).length;
     return { assigned, total: perms.length, unassigned: perms.length - assigned };
@@ -326,8 +326,8 @@ export default function RoleEditPage() {
                 No permissions available
               </p>
             ) : (
-              <Accordion 
-                type="multiple" 
+              <Accordion
+                type="multiple"
                 defaultValue={groupsWithAssigned}
                 className="w-full"
               >
@@ -360,8 +360,8 @@ export default function RoleEditPage() {
                             const permCode = `${perm.app_label}.${perm.codename}`;
                             const isChecked = selectedPermissions.includes(permCode);
                             return (
-                              <div 
-                                key={permCode} 
+                              <div
+                                key={permCode}
                                 className={`flex items-center space-x-2 p-2 rounded-md transition-colors ${
                                   isChecked ? 'bg-primary/5' : 'hover:bg-muted/50'
                                 }`}
@@ -371,8 +371,8 @@ export default function RoleEditPage() {
                                   checked={isChecked}
                                   onCheckedChange={() => handlePermissionToggle(permCode)}
                                 />
-                                <Label 
-                                  htmlFor={permCode} 
+                                <Label
+                                  htmlFor={permCode}
                                   className="text-sm font-normal cursor-pointer flex-1"
                                 >
                                   {perm.name}
@@ -394,9 +394,9 @@ export default function RoleEditPage() {
         <div className="flex justify-between">
           <AlertDialog>
             <AlertDialogTrigger asChild>
-              <Button 
-                type="button" 
-                variant="destructive" 
+              <Button
+                type="button"
+                variant="destructive"
                 disabled={deleteRole.isPending}
               >
                 <Trash2 className="h-4 w-4 mr-2" />

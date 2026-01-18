@@ -1,6 +1,6 @@
 /**
  * Patient Registration Step Definitions
- * 
+ *
  * Steps for patient registration feature scenarios.
  * @see features/patients/patient-registration.feature
  */
@@ -81,21 +81,21 @@ When(
   async function (this: VitoraWorld) {
     const patientData = createPatientData();
     this.store('newPatientData', patientData);
-    
+
     // Fill form with generated data
     await this.page?.fill('[name="first_name"]', patientData['first_name'] ?? patientData['First Name'] ?? '');
     await this.page?.fill('[name="last_name"]', patientData['last_name'] ?? patientData['Last Name'] ?? '');
     await this.page?.fill('[name="date_of_birth"]', patientData['date_of_birth'] ?? patientData['Date of Birth'] ?? '');
     await this.page?.click('[name="gender"]');
     await this.page?.click(`[data-value="${patientData['gender'] ?? patientData['Gender'] ?? 'F'}"]`);
-    
+
     // Select location
     await this.page?.click('[name="county"]');
     await this.page?.click('[role="option"]:first-child');
     await this.page?.waitForResponse(/sub-counties/);
     await this.page?.click('[name="sub_county"]');
     await this.page?.click('[role="option"]:first-child');
-    
+
     // Submit
     await this.page?.click('button[type="submit"]');
     await this.page?.waitForLoadState('networkidle');
@@ -112,7 +112,7 @@ Then(
     // Check for success indicator
     const successMessage = await this.page?.locator('.toast-success, [role="alert"]').first();
     expect(successMessage).toBeTruthy();
-    
+
     // Or check URL changed to patient detail
     const url = this.page?.url();
     expect(url).toMatch(/patients\/\d+|patients\/MRN-/);
@@ -125,7 +125,7 @@ Then(
     // Wait for MRN to appear
     const mrnElement = await this.page?.locator('[data-testid="patient-mrn"], .mrn').first();
     const mrn = await mrnElement?.textContent();
-    
+
     // Validate format: MRN-YYYYMMDD-XXXX
     expect(mrn).toMatch(/^MRN-\d{8}-\d{4}$/);
     this.store('generatedMrn', mrn);
@@ -177,11 +177,11 @@ Then(
   'sub-county dropdown should show only {word} sub-counties',
   async function (this: VitoraWorld, county: string) {
     await this.page?.click('[name="sub_county"]');
-    
+
     // Verify options are loaded and belong to the county
     const options = await this.page?.locator('[role="option"]').allTextContents();
     expect(options!.length).toBeGreaterThan(0);
-    
+
     // Store for later verification
     this.store('subCountyOptions', options);
   }
@@ -191,7 +191,7 @@ Then(
   'ward dropdown should show only {word} wards',
   async function (this: VitoraWorld, subCounty: string) {
     await this.page?.click('[name="ward"]');
-    
+
     const options = await this.page?.locator('[role="option"]').allTextContents();
     expect(options!.length).toBeGreaterThan(0);
   }
@@ -201,7 +201,7 @@ Then(
   'I should be able to select ward {string}',
   async function (this: VitoraWorld, wardName: string) {
     await this.page?.click(`[role="option"]:has-text("${wardName}")`);
-    
+
     // Verify selection
     const selectedValue = await this.page?.locator('[name="ward"]').inputValue();
     expect(selectedValue).toBeTruthy();
@@ -219,7 +219,7 @@ Then(
         throw new Error('Patient not found');
       }
       const patientId = firstPatient.id;
-      
+
       const contacts = await this.apiRequest('GET', `/patients/${patientId}/emergency-contacts/`) as Array<unknown>;
       expect(contacts.length).toBeGreaterThan(0);
     }
@@ -253,7 +253,7 @@ Then(
       }
       const consentDate = new Date(firstPatient.consent_date);
       const now = new Date();
-      
+
       // Should be within last minute
       const diffMs = now.getTime() - consentDate.getTime();
       expect(diffMs).toBeLessThan(60000);

@@ -1,6 +1,6 @@
 /**
  * ConsultationQueueItem Component
- * 
+ *
  * Displays a single patient in the consultation queue with:
  * - Patient info (name, MRN, age, gender)
  * - Triage status badge
@@ -20,11 +20,11 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from '@/components/ui/tooltip';
-import { 
-  Phone, 
-  Play, 
-  RefreshCw, 
-  Clock, 
+import {
+  Phone,
+  Play,
+  RefreshCw,
+  Clock,
   AlertTriangle,
   User,
   FileText,
@@ -97,12 +97,12 @@ const formatWaitTime = (minutes: number): string => {
 
 const getTimeSinceCalled = (calledAt: string | null): string => {
   if (!calledAt) return '';
-  
+
   const calledTime = new Date(calledAt);
   const now = new Date();
   const diffMs = now.getTime() - calledTime.getTime();
   const diffMin = Math.floor(diffMs / 60000);
-  
+
   if (diffMin < 1) return 'Called just now';
   if (diffMin === 1) return 'Called 1 min ago';
   return `Called ${diffMin} min ago`;
@@ -117,7 +117,7 @@ const isUrgentWaitTime = (minutes: number, category: string | null): boolean => 
     GREEN: 120,
     BLUE: 180,
   };
-  
+
   if (!category) return minutes > 60;
   return minutes > (thresholds[category] || 60);
 };
@@ -155,7 +155,7 @@ export function ConsultationQueueItem({
             <h3 className="font-semibold text-lg truncate">
               {item.patient_name}
             </h3>
-            
+
             {/* Urgent indicator */}
             {isUrgent && (
               <div data-testid="urgent-indicator">
@@ -163,7 +163,7 @@ export function ConsultationQueueItem({
               </div>
             )}
           </div>
-          
+
           {/* MRN and Demographics */}
           <div className="flex items-center gap-3 text-sm text-muted-foreground mb-2">
             <span className="font-mono">{item.patient_mrn}</span>
@@ -172,19 +172,19 @@ export function ConsultationQueueItem({
               {item.patient_age} {item.patient_gender}
             </span>
           </div>
-          
+
           {/* Chief Complaint */}
           <p className="text-sm text-muted-foreground mb-2 line-clamp-2">
             <FileText className="h-3 w-3 inline mr-1" />
             {item.chief_complaint}
           </p>
-          
+
           {/* Encounter Type */}
           <div className="text-xs text-muted-foreground">
             {item.encounter_type_display}
           </div>
         </div>
-        
+
         {/* Middle: Badges & Wait Time */}
         <div className="flex flex-col items-end gap-2">
           {/* Triage Badge */}
@@ -201,14 +201,14 @@ export function ConsultationQueueItem({
               {item.triage_category}
             </Badge>
           ) : null}
-          
+
           {/* Called Status Badge */}
           {isCalled && (
             <Badge variant="outline" className="border-blue-500 text-blue-600">
               📣 Called
             </Badge>
           )}
-          
+
           {/* Wait Time */}
           <div className={cn(
             'flex items-center gap-1 text-sm',
@@ -217,7 +217,7 @@ export function ConsultationQueueItem({
             <Clock className="h-3 w-3" />
             {formatWaitTime(item.wait_time_minutes)}
           </div>
-          
+
           {/* Time since called */}
           {isCalled && item.called_at && (
             <div className="text-xs text-blue-600">
@@ -225,7 +225,7 @@ export function ConsultationQueueItem({
             </div>
           )}
         </div>
-        
+
         {/* Right: Actions */}
         <div className="flex flex-col gap-2">
           <TooltipProvider delayDuration={200}>
@@ -257,7 +257,7 @@ export function ConsultationQueueItem({
                 </TooltipContent>
               </Tooltip>
             )}
-            
+
             {isCalled && (
               <>
                 <Tooltip>

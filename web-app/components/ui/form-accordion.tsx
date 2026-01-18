@@ -2,7 +2,7 @@
  * Form Accordion Component
  * A reusable accordion component for multi-section forms with completion tracking.
  * Ideal for clinical encounters, patient registration, and other multi-step forms.
- * 
+ *
  * Features:
  * - Section completion indicators (checkmark)
  * - Error indicators

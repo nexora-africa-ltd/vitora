@@ -32,11 +32,11 @@ export function NavigationProgress({
 }: NavigationProgressProps) {
   const pathname = usePathname();
   const searchParams = useSearchParams();
-  
+
   const [isLoading, setIsLoading] = useState(false);
   const [progress, setProgress] = useState(0);
   const [isVisible, setIsVisible] = useState(false);
-  
+
   const previousPathRef = useRef<string>('');
   const incrementIntervalRef = useRef<NodeJS.Timeout | null>(null);
   const delayTimeoutRef = useRef<NodeJS.Timeout | null>(null);
@@ -61,10 +61,10 @@ export function NavigationProgress({
   // Complete loading
   const complete = useCallback(() => {
     clearTimers();
-    
+
     if (isVisible) {
       setProgress(1);
-      
+
       // Hide after completion animation
       completionTimeoutRef.current = setTimeout(() => {
         setIsLoading(false);
@@ -77,13 +77,13 @@ export function NavigationProgress({
   // Start loading
   const start = useCallback(() => {
     clearTimers();
-    
+
     // Delay before showing
     delayTimeoutRef.current = setTimeout(() => {
       setIsLoading(true);
       setIsVisible(true);
       setProgress(startPosition);
-      
+
       // Increment progress gradually
       incrementIntervalRef.current = setInterval(() => {
         setProgress((prev) => {
@@ -100,14 +100,14 @@ export function NavigationProgress({
   // Track route changes
   useEffect(() => {
     const currentPath = `${pathname}?${searchParams?.toString() || ''}`;
-    
+
     if (previousPathRef.current && previousPathRef.current !== currentPath) {
       // Route changed - complete the loading
       complete();
     }
-    
+
     previousPathRef.current = currentPath;
-    
+
     return () => clearTimers();
   }, [pathname, searchParams, complete, clearTimers]);
 
@@ -116,23 +116,23 @@ export function NavigationProgress({
     const handleClick = (e: MouseEvent) => {
       const target = e.target as HTMLElement;
       const anchor = target.closest('a');
-      
+
       if (!anchor) return;
-      
+
       const href = anchor.getAttribute('href');
       if (!href) return;
-      
+
       // Check if it's an internal navigation
       const isInternal = href.startsWith('/') || href.startsWith(window.location.origin);
       const isSamePageAnchor = href.startsWith('#');
       const isNewTab = anchor.target === '_blank';
       const isDownload = anchor.hasAttribute('download');
-      
+
       if (isInternal && !isSamePageAnchor && !isNewTab && !isDownload) {
         const currentPath = `${pathname}?${searchParams?.toString() || ''}`;
         const targetUrl = new URL(href, window.location.origin);
         const targetPath = `${targetUrl.pathname}?${targetUrl.searchParams.toString()}`;
-        
+
         // Only start loading if navigating to a different page
         if (currentPath !== targetPath) {
           start();

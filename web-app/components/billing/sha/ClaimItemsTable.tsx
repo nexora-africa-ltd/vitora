@@ -1,7 +1,7 @@
 /**
  * Claim Items Table Component
  * Displays claim items with coverage type indicators (PFMS support)
- * 
+ *
  * SHA Integration Checklist Item #13:
  * Shows which coverage (SHA/PFMS) applies to each item
  */

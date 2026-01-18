@@ -1,7 +1,7 @@
 /**
  * Label Dialog Component
  * Sprint 1.3-1.4 Track A: Pharmacy Module
- * 
+ *
  * Dialog for printing dispensing labels with patient info,
  * drug details, dosage instructions, and expiry warning.
  */
@@ -122,10 +122,10 @@ export function LabelDialog({ isOpen, onClose, dispensing }: LabelDialogProps) {
   const dispensedDate = format(new Date(dispensing.dispensed_at), 'MMM d, yyyy');
   // batch_expiry comes from extended dispensing object if available
   const expiryDate = (dispensing as Dispensing & { batch_expiry?: string }).batch_expiry || 'N/A';
-  
+
   // Get dosage instructions from prescription if available
-  const instructions = (dispensing as Dispensing & { dosage?: string; instructions?: string }).dosage 
-    || (dispensing as Dispensing & { dosage?: string; instructions?: string }).instructions 
+  const instructions = (dispensing as Dispensing & { dosage?: string; instructions?: string }).dosage
+    || (dispensing as Dispensing & { dosage?: string; instructions?: string }).instructions
     || '2 tablets three times daily';
 
   return (

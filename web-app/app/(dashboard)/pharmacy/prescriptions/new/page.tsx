@@ -5,7 +5,7 @@
  * Allows clinicians to create prescriptions for patients during encounters.
  * Features smart dosage suggestions based on selected drug properties.
  * Accessed from the encounter edit page's prescription tab.
- * 
+ *
  * Supports both:
  * - URL params (encounter=X&patient=Y)
  * - Context providers (PatientContext, EncounterContext)
@@ -133,13 +133,13 @@ export default function NewPrescriptionPage() {
   const encounter = encounterContext?.encounter || fetchedEncounter;
   const patientId = resolvedPatientId;
   const encounterId = resolvedEncounterId;
-  
+
   // Check if orders can be placed (from encounter context)
   const canPlaceOrders = encounterContext?.canPlaceOrders ?? true;
 
   // Get prescriber name
-  const prescriberName = user 
-    ? `${user.first_name || ''} ${user.last_name || ''}`.trim() || user.username 
+  const prescriberName = user
+    ? `${user.first_name || ''} ${user.last_name || ''}`.trim() || user.username
     : 'Unknown';
 
   // Drug source selection (local inventory vs DHIS2 formulary)
@@ -304,88 +304,88 @@ Prescribed by: ${prescriberName}
         <title>Prescription - ${patient?.mrn}</title>
         <style>
           * { margin: 0; padding: 0; box-sizing: border-box; }
-          body { 
-            font-family: 'Segoe UI', Arial, sans-serif; 
-            padding: 20mm; 
+          body {
+            font-family: 'Segoe UI', Arial, sans-serif;
+            padding: 20mm;
             max-width: 210mm;
             font-size: 11pt;
             line-height: 1.4;
           }
-          .header { 
-            text-align: center; 
-            border-bottom: 2px solid #333; 
-            padding-bottom: 15px; 
+          .header {
+            text-align: center;
+            border-bottom: 2px solid #333;
+            padding-bottom: 15px;
             margin-bottom: 20px;
           }
           .header h1 { font-size: 18pt; margin-bottom: 5px; }
           .header p { color: #666; font-size: 10pt; }
           .section { margin-bottom: 20px; }
-          .section-title { 
-            font-weight: bold; 
-            font-size: 11pt; 
-            border-bottom: 1px solid #ccc; 
-            padding-bottom: 5px; 
+          .section-title {
+            font-weight: bold;
+            font-size: 11pt;
+            border-bottom: 1px solid #ccc;
+            padding-bottom: 5px;
             margin-bottom: 10px;
             text-transform: uppercase;
             letter-spacing: 0.5px;
           }
-          .patient-info { 
-            display: grid; 
-            grid-template-columns: 1fr 1fr; 
+          .patient-info {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
             gap: 10px;
           }
           .patient-info p { margin: 3px 0; }
-          .medication { 
-            border: 1px solid #ddd; 
-            padding: 12px; 
-            margin-bottom: 10px; 
+          .medication {
+            border: 1px solid #ddd;
+            padding: 12px;
+            margin-bottom: 10px;
             border-radius: 5px;
             background: #fafafa;
           }
-          .medication-name { 
-            font-weight: bold; 
-            font-size: 12pt; 
+          .medication-name {
+            font-weight: bold;
+            font-size: 12pt;
             color: #1a1a1a;
             margin-bottom: 8px;
           }
-          .medication-details { 
-            display: grid; 
-            grid-template-columns: repeat(2, 1fr); 
-            gap: 5px; 
+          .medication-details {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 5px;
             font-size: 10pt;
           }
           .medication-details span { color: #666; }
-          .medication-instructions { 
-            margin-top: 8px; 
-            padding-top: 8px; 
+          .medication-instructions {
+            margin-top: 8px;
+            padding-top: 8px;
             border-top: 1px dashed #ddd;
             font-style: italic;
           }
-          .badge { 
-            display: inline-block; 
-            background: #e0f2fe; 
-            color: #0369a1; 
-            padding: 2px 8px; 
-            border-radius: 10px; 
+          .badge {
+            display: inline-block;
+            background: #e0f2fe;
+            color: #0369a1;
+            padding: 2px 8px;
+            border-radius: 10px;
             font-size: 9pt;
             margin-top: 5px;
           }
-          .notes { 
-            background: #fffbeb; 
-            padding: 12px; 
+          .notes {
+            background: #fffbeb;
+            padding: 12px;
             border-radius: 5px;
             border-left: 3px solid #f59e0b;
           }
-          .footer { 
-            margin-top: 30px; 
-            padding-top: 20px; 
+          .footer {
+            margin-top: 30px;
+            padding-top: 20px;
             border-top: 2px solid #333;
             display: flex;
             justify-content: space-between;
           }
-          .signature-line { 
-            border-top: 1px solid #333; 
-            width: 200px; 
+          .signature-line {
+            border-top: 1px solid #333;
+            width: 200px;
             padding-top: 5px;
             margin-top: 40px;
             font-size: 10pt;
@@ -401,14 +401,14 @@ Prescribed by: ${prescriberName}
           <h1>℞ PRESCRIPTION</h1>
           <p>Date: ${today}</p>
         </div>
-        
+
         <div class="section">
           <div class="section-title">Prescriber Information</div>
           <div class="patient-info">
             <p><strong>Prescriber:</strong> ${prescriberName}</p>
           </div>
         </div>
-        
+
         <div class="section">
           <div class="section-title">Patient Information</div>
           <div class="patient-info">
@@ -417,7 +417,7 @@ Prescribed by: ${prescriberName}
             ${encounter ? `<p><strong>Encounter:</strong> #${encounterId}</p>` : ''}
           </div>
         </div>
-        
+
         <div class="section">
           <div class="section-title">Medications (${items.length})</div>
           ${items.map((item, index) => `
@@ -435,14 +435,14 @@ Prescribed by: ${prescriberName}
             </div>
           `).join('')}
         </div>
-        
+
         ${clinicalNotes ? `
         <div class="section">
           <div class="section-title">Clinical Notes</div>
           <div class="notes">${clinicalNotes}</div>
         </div>
         ` : ''}
-        
+
         <div class="footer">
           <div>
             <p style="margin-bottom: 5px;"><strong>Prescribed by:</strong> ${prescriberName}</p>
@@ -569,7 +569,7 @@ Prescribed by: ${prescriberName}
     };
     setSelectedSHADrug(shaDrug);
     setSelectedDrug(null); // Clear local drug if SHA selected
-    
+
     setCurrentItem((prev) => ({
       ...prev,
       drug: undefined, // SHA drugs may not have local ID
@@ -719,7 +719,7 @@ Prescribed by: ${prescriberName}
               <Label>
                 Drug <span className="text-destructive">*</span>
               </Label>
-              
+
               {/* Show selected drug if any */}
               {(selectedDrug || selectedSHADrug) ? (
                 <div className="p-3 rounded-lg bg-muted/50 border">
@@ -727,7 +727,7 @@ Prescribed by: ${prescriberName}
                     <div>
                       <div className="flex items-center gap-2">
                         <span className="font-medium text-sm">
-                          {selectedDrug 
+                          {selectedDrug
                             ? (selectedDrug.brand_names?.[0] || selectedDrug.generic_name)
                             : selectedSHADrug?.name
                           }
@@ -744,7 +744,7 @@ Prescribed by: ${prescriberName}
                         )}
                       </div>
                       <div className="text-xs text-muted-foreground mt-0.5">
-                        {selectedDrug 
+                        {selectedDrug
                           ? `${selectedDrug.generic_name} • ${selectedDrug.form} • ${selectedDrug.strength}`
                           : `${selectedSHADrug?.form || ''} • ${selectedSHADrug?.strength || ''}`
                         }
@@ -794,7 +794,7 @@ Prescribed by: ${prescriberName}
                     />
                     <span className={`text-sm ${useSHADrug ? 'font-medium' : ''}`}>DHIS2 Formulary</span>
                   </div>
-                  
+
                   {/* Local Drug Search */}
                   {!useSHADrug && (
                     <div className="relative">
@@ -848,7 +848,7 @@ Prescribed by: ${prescriberName}
                       )}
                     </div>
                   )}
-                  
+
                   {/* SHA Drug Search */}
                   {useSHADrug && (
                     <DrugSelect
@@ -879,7 +879,7 @@ Prescribed by: ${prescriberName}
                     </button>
                   )}
                 </div>
-                
+
                 {showCustomDosage ? (
                   // Custom dosage input
                   <Input

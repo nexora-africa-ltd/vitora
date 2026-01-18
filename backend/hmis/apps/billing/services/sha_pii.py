@@ -77,9 +77,9 @@ def decrypt_pii_value(pii: str) -> dict[str, Any]:
 
     # Import Crypto lazily so normal code paths (no _pii) don't pay import cost.
     try:
-        from Crypto.Cipher import AES, PKCS1_OAEP  # type: ignore
-        from Crypto.PublicKey import RSA  # type: ignore
-        from Crypto.Util.Padding import unpad  # type: ignore
+        from Crypto.Cipher import AES, PKCS1_OAEP  # type: ignore  # nosec B413
+        from Crypto.PublicKey import RSA  # type: ignore  # nosec B413
+        from Crypto.Util.Padding import unpad  # type: ignore  # nosec B413
     except Exception as exc:  # pragma: no cover
         raise SHADecryptionError(
             "Crypto backend not available. Ensure pycryptodome is installed."

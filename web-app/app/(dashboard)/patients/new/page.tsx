@@ -62,7 +62,7 @@ export default function NewPatientPage() {
           const crResponse = await registerInCR.mutateAsync({
             patient_id: patient.id,
           });
-          
+
           if (crResponse.success && crResponse.client_number) {
             toast({
               title: 'Client Registry Registration Successful',
@@ -90,7 +90,7 @@ export default function NewPatientPage() {
 
   const handleCheckInToQueue = async () => {
     if (!registeredPatient) return;
-    
+
     setIsCheckingIn(true);
     try {
       await checkInPatient.mutateAsync({
@@ -256,9 +256,9 @@ export default function NewPatientPage() {
                 </Button>
               </Link>
 
-              <Button 
-                variant="outline" 
-                className="w-full" 
+              <Button
+                variant="outline"
+                className="w-full"
                 size="lg"
                 onClick={() => {
                   setRegisteredPatient(null);
@@ -345,8 +345,8 @@ export default function NewPatientPage() {
             <div className="mt-4 pt-4 border-t space-y-3">
               {eligibility && (
                 <div className={`p-3 rounded-md ${
-                  eligibility.is_eligible 
-                    ? 'bg-success/10 border border-success/30' 
+                  eligibility.is_eligible
+                    ? 'bg-success/10 border border-success/30'
                     : 'bg-warning/10 border border-warning/30'
                 }`}>
                   <div className={`flex items-center gap-2 text-sm ${
@@ -369,7 +369,7 @@ export default function NewPatientPage() {
                       </>
                     )}
                   </div>
-                  
+
                   {/* Additional details for ineligible patients */}
                   {!eligibility.is_eligible && (
                     <div className="mt-2 text-sm space-y-1">
@@ -411,7 +411,7 @@ export default function NewPatientPage() {
         <CardHeader>
           <CardTitle>Patient Information</CardTitle>
           <CardDescription>
-            {crClient 
+            {crClient
               ? 'Form pre-populated from SHA Client Registry. Review and update if needed.'
               : 'Fields marked with * are required. Patient data is encrypted and stored securely.'
             }

@@ -99,47 +99,47 @@ The following items are documented in ROADMAP.md under Phase 2:
 ```python
 class ServiceCategory(models.Model):
     """Category for billable services."""
-    
+
     id = models.BigAutoField(primary_key=True)
     name = models.CharField(max_length=100, unique=True)
     description = models.TextField(blank=True)
     code = models.CharField(max_length=20, unique=True)  # e.g., "CONS", "LAB", "PHARM"
     is_active = models.BooleanField(default=True)
     display_order = models.IntegerField(default=0)
-    
+
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
 
 class Service(models.Model):
     """Billable service with pricing."""
-    
+
     id = models.BigAutoField(primary_key=True)
     category = models.ForeignKey(ServiceCategory, on_delete=models.PROTECT, related_name='services')
-    
+
     # Service identification
     code = models.CharField(max_length=20, unique=True)  # e.g., "CONS-001", "LAB-CBC"
     name = models.CharField(max_length=200)
     description = models.TextField(blank=True)
-    
+
     # Pricing
     unit_price = models.DecimalField(max_digits=10, decimal_places=2)
     currency = models.CharField(max_length=3, default='KES')
-    
+
     # SHA/Insurance coding
     sha_code = models.CharField(max_length=20, blank=True)  # SHA service code
     icd10_code = models.CharField(max_length=10, blank=True)  # For procedure billing
-    
+
     # Flags
     is_active = models.BooleanField(default=True)
     requires_quantity = models.BooleanField(default=False)  # True for consumables
     is_taxable = models.BooleanField(default=False)  # Medical services typically exempt
-    
+
     # Audit
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
     created_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.PROTECT)
-    
+
     class Meta:
         ordering = ['category', 'name']
         indexes = [
@@ -180,7 +180,7 @@ class Service(models.Model):
 ```python
 class Invoice(models.Model):
     """Patient invoice for services rendered."""
-    
+
     class Status(models.TextChoices):
         DRAFT = 'draft', 'Draft'
         PENDING = 'pending', 'Pending Payment'
@@ -189,32 +189,32 @@ class Invoice(models.Model):
         OVERDUE = 'overdue', 'Overdue'
         CANCELLED = 'cancelled', 'Cancelled'
         WRITTEN_OFF = 'written_off', 'Written Off'
-    
+
     class PaymentType(models.TextChoices):
         CASH = 'cash', 'Cash'
         MPESA = 'mpesa', 'M-Pesa'
         INSURANCE = 'insurance', 'Insurance'
         CORPORATE = 'corporate', 'Corporate Account'
         MIXED = 'mixed', 'Mixed Payment'
-    
+
     id = models.BigAutoField(primary_key=True)
-    
+
     # Invoice identification
     invoice_number = models.CharField(max_length=50, unique=True, editable=False)
-    
+
     # Patient and encounter linkage
     patient = models.ForeignKey('patients.Patient', on_delete=models.PROTECT, related_name='invoices')
-    encounter = models.ForeignKey('encounters.Encounter', on_delete=models.PROTECT, 
+    encounter = models.ForeignKey('encounters.Encounter', on_delete=models.PROTECT,
                                    related_name='invoices', null=True, blank=True)
-    
+
     # Status
     status = models.CharField(max_length=20, choices=Status.choices, default=Status.DRAFT)
     payment_type = models.CharField(max_length=20, choices=PaymentType.choices, default=PaymentType.CASH)
-    
+
     # Dates
     invoice_date = models.DateField(default=date.today)
     due_date = models.DateField()
-    
+
     # Amounts (calculated from items)
     subtotal = models.DecimalField(max_digits=12, decimal_places=2, default=Decimal('0.00'))
     tax_amount = models.DecimalField(max_digits=12, decimal_places=2, default=Decimal('0.00'))
@@ -223,27 +223,27 @@ class Invoice(models.Model):
     total_amount = models.DecimalField(max_digits=12, decimal_places=2, default=Decimal('0.00'))
     amount_paid = models.DecimalField(max_digits=12, decimal_places=2, default=Decimal('0.00'))
     balance_due = models.DecimalField(max_digits=12, decimal_places=2, default=Decimal('0.00'))
-    
+
     # Insurance/SHA details (if applicable)
     insurance_provider = models.CharField(max_length=100, blank=True)
     insurance_member_no = models.CharField(max_length=50, blank=True)
     sha_claim_number = models.CharField(max_length=50, blank=True)
     insurance_amount = models.DecimalField(max_digits=12, decimal_places=2, default=Decimal('0.00'))
-    
+
     # Notes
     notes = models.TextField(blank=True)
     internal_notes = models.TextField(blank=True)  # Staff-only notes
-    
+
     # Audit
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
-    created_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.PROTECT, 
+    created_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.PROTECT,
                                     related_name='invoices_created')
     cancelled_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.PROTECT,
                                       related_name='invoices_cancelled', null=True, blank=True)
     cancelled_at = models.DateTimeField(null=True, blank=True)
     cancellation_reason = models.TextField(blank=True)
-    
+
     class Meta:
         ordering = ['-invoice_date', '-created_at']
         indexes = [
@@ -304,53 +304,53 @@ class Invoice(models.Model):
 ```python
 class InvoiceItem(models.Model):
     """Line item on an invoice."""
-    
+
     class ItemType(models.TextChoices):
         SERVICE = 'service', 'Service'
         PHARMACY = 'pharmacy', 'Pharmacy Item'
         LAB = 'lab', 'Lab Test'
         CONSUMABLE = 'consumable', 'Consumable'
         OTHER = 'other', 'Other'
-    
+
     id = models.BigAutoField(primary_key=True)
     invoice = models.ForeignKey(Invoice, on_delete=models.CASCADE, related_name='items')
-    
+
     # Item identification
     item_type = models.CharField(max_length=20, choices=ItemType.choices, default=ItemType.SERVICE)
-    service = models.ForeignKey('billing.Service', on_delete=models.PROTECT, 
+    service = models.ForeignKey('billing.Service', on_delete=models.PROTECT,
                                  null=True, blank=True, related_name='invoice_items')
-    
+
     # For pharmacy items
     drug = models.ForeignKey('pharmacy.Drug', on_delete=models.PROTECT,
                               null=True, blank=True, related_name='invoice_items')
     dispensing = models.ForeignKey('pharmacy.Dispensing', on_delete=models.PROTECT,
                                     null=True, blank=True, related_name='invoice_items')
-    
+
     # For lab items
     lab_order = models.ForeignKey('laboratory.LabOrder', on_delete=models.PROTECT,
                                    null=True, blank=True, related_name='invoice_items')
-    
+
     # Item details
     description = models.CharField(max_length=300)
     quantity = models.DecimalField(max_digits=10, decimal_places=2, default=Decimal('1.00'))
     unit_price = models.DecimalField(max_digits=10, decimal_places=2)
-    
+
     # Calculated
     line_total = models.DecimalField(max_digits=12, decimal_places=2)
-    
+
     # Discount at item level (optional)
     discount_amount = models.DecimalField(max_digits=10, decimal_places=2, default=Decimal('0.00'))
     discount_reason = models.CharField(max_length=200, blank=True)
-    
+
     # For insurance claims
     sha_code = models.CharField(max_length=20, blank=True)
     is_covered_by_insurance = models.BooleanField(default=False)
-    insurance_approved_amount = models.DecimalField(max_digits=10, decimal_places=2, 
+    insurance_approved_amount = models.DecimalField(max_digits=10, decimal_places=2,
                                                       default=Decimal('0.00'))
-    
+
     # Audit
     created_at = models.DateTimeField(auto_now_add=True)
-    
+
     class Meta:
         ordering = ['created_at']
 ```
@@ -388,7 +388,7 @@ class InvoiceItem(models.Model):
 ```python
 class Payment(models.Model):
     """Payment record against an invoice."""
-    
+
     class Method(models.TextChoices):
         CASH = 'cash', 'Cash'
         MPESA = 'mpesa', 'M-Pesa'
@@ -397,55 +397,55 @@ class Payment(models.Model):
         INSURANCE = 'insurance', 'Insurance Claim'
         CORPORATE = 'corporate', 'Corporate Account'
         CHEQUE = 'cheque', 'Cheque'
-    
+
     class Status(models.TextChoices):
         PENDING = 'pending', 'Pending'
         COMPLETED = 'completed', 'Completed'
         FAILED = 'failed', 'Failed'
         REVERSED = 'reversed', 'Reversed'
         REFUNDED = 'refunded', 'Refunded'
-    
+
     id = models.BigAutoField(primary_key=True)
-    
+
     # Payment identification
     payment_reference = models.CharField(max_length=100, unique=True)
-    
+
     # Linkage
     invoice = models.ForeignKey(Invoice, on_delete=models.PROTECT, related_name='payments')
-    
+
     # Payment details
     method = models.CharField(max_length=20, choices=Method.choices)
     amount = models.DecimalField(max_digits=12, decimal_places=2)
     currency = models.CharField(max_length=3, default='KES')
-    
+
     # Status
     status = models.CharField(max_length=20, choices=Status.choices, default=Status.PENDING)
-    
+
     # Method-specific details (stored as JSON for flexibility)
     payment_details = models.JSONField(default=dict, blank=True)
     # For M-Pesa: {'mpesa_receipt': 'XXX', 'phone': '254...', 'transaction_id': '...'}
     # For Card: {'last_four': '1234', 'card_type': 'visa', 'auth_code': '...'}
     # For Insurance: {'claim_number': '...', 'provider': '...', 'policy_number': '...'}
-    
+
     # M-Pesa specific (for quick access)
     mpesa_receipt_number = models.CharField(max_length=50, blank=True)
     mpesa_transaction_id = models.CharField(max_length=50, blank=True)
     mpesa_phone = models.CharField(max_length=15, blank=True)
-    
+
     # Timestamps
     payment_date = models.DateTimeField(default=timezone.now)
     processed_at = models.DateTimeField(null=True, blank=True)
-    
+
     # Notes
     notes = models.TextField(blank=True)
     failure_reason = models.TextField(blank=True)
-    
+
     # Audit
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
     received_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.PROTECT,
                                      related_name='payments_received')
-    
+
     class Meta:
         ordering = ['-payment_date']
         indexes = [
@@ -504,7 +504,7 @@ from typing import Optional, Dict, Any
 
 class MpesaService:
     """M-Pesa Daraja API integration."""
-    
+
     def __init__(self):
         self.consumer_key = settings.MPESA_CONSUMER_KEY
         self.consumer_secret = settings.MPESA_CONSUMER_SECRET
@@ -512,25 +512,25 @@ class MpesaService:
         self.passkey = settings.MPESA_PASSKEY
         self.callback_url = settings.MPESA_CALLBACK_URL
         self.environment = settings.MPESA_ENVIRONMENT  # 'sandbox' or 'production'
-        
+
         self.base_url = (
             'https://sandbox.safaricom.co.ke' if self.environment == 'sandbox'
             else 'https://api.safaricom.co.ke'
         )
-    
+
     def get_access_token(self) -> str:
         """Get OAuth access token from Daraja API."""
         url = f"{self.base_url}/oauth/v1/generate?grant_type=client_credentials"
         credentials = base64.b64encode(
             f"{self.consumer_key}:{self.consumer_secret}".encode()
         ).decode()
-        
+
         response = requests.get(url, headers={
             'Authorization': f'Basic {credentials}'
         })
         response.raise_for_status()
         return response.json()['access_token']
-    
+
     def initiate_stk_push(
         self,
         phone_number: str,
@@ -540,13 +540,13 @@ class MpesaService:
     ) -> Dict[str, Any]:
         """
         Initiate M-Pesa STK Push request.
-        
+
         Args:
             phone_number: Customer phone (254XXXXXXXXX format)
             amount: Amount in KES (integer, no decimals)
             account_reference: Invoice number or reference
             transaction_desc: Description shown to customer
-            
+
         Returns:
             Dict with CheckoutRequestID and response details
         """
@@ -555,7 +555,7 @@ class MpesaService:
         password = base64.b64encode(
             f"{self.shortcode}{self.passkey}{timestamp}".encode()
         ).decode()
-        
+
         url = f"{self.base_url}/mpesa/stkpush/v1/processrequest"
         payload = {
             "BusinessShortCode": self.shortcode,
@@ -570,14 +570,14 @@ class MpesaService:
             "AccountReference": account_reference,
             "TransactionDesc": transaction_desc,
         }
-        
+
         response = requests.post(url, json=payload, headers={
             'Authorization': f'Bearer {access_token}',
             'Content-Type': 'application/json'
         })
         response.raise_for_status()
         return response.json()
-    
+
     def query_stk_status(self, checkout_request_id: str) -> Dict[str, Any]:
         """Query the status of an STK Push request."""
         access_token = self.get_access_token()
@@ -585,7 +585,7 @@ class MpesaService:
         password = base64.b64encode(
             f"{self.shortcode}{self.passkey}{timestamp}".encode()
         ).decode()
-        
+
         url = f"{self.base_url}/mpesa/stkpushquery/v1/query"
         payload = {
             "BusinessShortCode": self.shortcode,
@@ -593,24 +593,24 @@ class MpesaService:
             "Timestamp": timestamp,
             "CheckoutRequestID": checkout_request_id,
         }
-        
+
         response = requests.post(url, json=payload, headers={
             'Authorization': f'Bearer {access_token}',
             'Content-Type': 'application/json'
         })
         response.raise_for_status()
         return response.json()
-    
+
     def process_callback(self, callback_data: Dict[str, Any]) -> Dict[str, Any]:
         """
         Process M-Pesa callback data.
-        
+
         Returns:
             Parsed callback with success status and transaction details
         """
         result = callback_data.get('Body', {}).get('stkCallback', {})
         result_code = result.get('ResultCode')
-        
+
         if result_code == 0:
             # Successful payment
             metadata = result.get('CallbackMetadata', {}).get('Item', [])
@@ -621,7 +621,7 @@ class MpesaService:
                 'checkout_request_id': result.get('CheckoutRequestID'),
                 'merchant_request_id': result.get('MerchantRequestID'),
             }
-            
+
             # Extract metadata items
             for item in metadata:
                 name = item.get('Name')
@@ -634,7 +634,7 @@ class MpesaService:
                     parsed['phone'] = value
                 elif name == 'TransactionDate':
                     parsed['transaction_date'] = value
-            
+
             return parsed
         else:
             return {
@@ -643,25 +643,25 @@ class MpesaService:
                 'result_desc': result.get('ResultDesc'),
                 'checkout_request_id': result.get('CheckoutRequestID'),
             }
-    
+
     @staticmethod
     def format_phone_number(phone: str) -> str:
         """
         Format phone number to 254XXXXXXXXX format.
-        
+
         Accepts: 0712345678, +254712345678, 254712345678, 712345678
         Returns: 254712345678
         """
         phone = phone.strip().replace(' ', '').replace('-', '')
-        
+
         if phone.startswith('+'):
             phone = phone[1:]
-        
+
         if phone.startswith('0'):
             phone = '254' + phone[1:]
         elif phone.startswith('7') or phone.startswith('1'):
             phone = '254' + phone
-        
+
         return phone
 ```
 
@@ -707,47 +707,47 @@ MPESA_CALLBACK_URL=https://your-domain.com/api/billing/mpesa/callback/
 ```python
 class Receipt(models.Model):
     """Official receipt for payment."""
-    
+
     id = models.BigAutoField(primary_key=True)
-    
+
     # Receipt identification
     receipt_number = models.CharField(max_length=50, unique=True, editable=False)
-    
+
     # Linkage
     payment = models.OneToOneField(Payment, on_delete=models.PROTECT, related_name='receipt')
     invoice = models.ForeignKey(Invoice, on_delete=models.PROTECT, related_name='receipts')
     patient = models.ForeignKey('patients.Patient', on_delete=models.PROTECT, related_name='receipts')
-    
+
     # Receipt details
     receipt_date = models.DateTimeField(default=timezone.now)
     amount = models.DecimalField(max_digits=12, decimal_places=2)
     amount_in_words = models.CharField(max_length=300)
     payment_method = models.CharField(max_length=20)
-    
+
     # Facility details (denormalized for receipt printing)
     facility_name = models.CharField(max_length=200)
     facility_address = models.TextField()
     facility_phone = models.CharField(max_length=20)
     facility_kra_pin = models.CharField(max_length=20, blank=True)
-    
+
     # Patient details (denormalized)
     patient_name = models.CharField(max_length=200)
     patient_mrn = models.CharField(max_length=50)
-    
+
     # Notes
     notes = models.TextField(blank=True)
-    
+
     # Audit
     created_at = models.DateTimeField(auto_now_add=True)
     issued_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.PROTECT)
-    
+
     # Void support
     is_voided = models.BooleanField(default=False)
     voided_at = models.DateTimeField(null=True, blank=True)
     voided_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.PROTECT,
                                    related_name='receipts_voided', null=True, blank=True)
     void_reason = models.TextField(blank=True)
-    
+
     class Meta:
         ordering = ['-receipt_date']
         indexes = [
@@ -790,7 +790,7 @@ class Receipt(models.Model):
 ```python
 class CreditNote(models.Model):
     """Credit note for refunds or adjustments."""
-    
+
     class Reason(models.TextChoices):
         SERVICE_NOT_RENDERED = 'service_not_rendered', 'Service Not Rendered'
         OVERCHARGE = 'overcharge', 'Overcharge Correction'
@@ -798,48 +798,48 @@ class CreditNote(models.Model):
         INSURANCE_ADJUSTMENT = 'insurance', 'Insurance Adjustment'
         GOODWILL = 'goodwill', 'Goodwill Gesture'
         OTHER = 'other', 'Other'
-    
+
     class Status(models.TextChoices):
         DRAFT = 'draft', 'Draft'
         APPROVED = 'approved', 'Approved'
         REFUNDED = 'refunded', 'Refunded'
         REJECTED = 'rejected', 'Rejected'
-    
+
     id = models.BigAutoField(primary_key=True)
-    
+
     # Credit note identification
     credit_note_number = models.CharField(max_length=50, unique=True, editable=False)
-    
+
     # Linkage
     invoice = models.ForeignKey(Invoice, on_delete=models.PROTECT, related_name='credit_notes')
     patient = models.ForeignKey('patients.Patient', on_delete=models.PROTECT, related_name='credit_notes')
-    original_payment = models.ForeignKey(Payment, on_delete=models.PROTECT, 
+    original_payment = models.ForeignKey(Payment, on_delete=models.PROTECT,
                                           related_name='credit_notes', null=True, blank=True)
-    
+
     # Credit details
     amount = models.DecimalField(max_digits=12, decimal_places=2)
     reason = models.CharField(max_length=30, choices=Reason.choices)
     reason_detail = models.TextField()
-    
+
     # Status
     status = models.CharField(max_length=20, choices=Status.choices, default=Status.DRAFT)
-    
+
     # Refund details
     refund_method = models.CharField(max_length=20, blank=True)  # cash, mpesa, etc.
     refund_reference = models.CharField(max_length=100, blank=True)
     refunded_at = models.DateTimeField(null=True, blank=True)
-    
+
     # Approval workflow
     requested_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.PROTECT,
                                       related_name='credit_notes_requested')
     approved_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.PROTECT,
                                      related_name='credit_notes_approved', null=True, blank=True)
     approved_at = models.DateTimeField(null=True, blank=True)
-    
+
     # Audit
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
-    
+
     class Meta:
         ordering = ['-created_at']
 ```
@@ -951,11 +951,11 @@ class CreditNote(models.Model):
 ```python
 class BillingReportService:
     """Generate billing and financial reports."""
-    
+
     def daily_collection_report(self, date: date) -> Dict[str, Any]:
         """
         Daily cash collection report.
-        
+
         Returns:
             - Total collections by payment method
             - Invoice count
@@ -963,11 +963,11 @@ class BillingReportService:
             - Outstanding balances
         """
         pass
-    
+
     def revenue_summary(self, start_date: date, end_date: date) -> Dict[str, Any]:
         """
         Revenue summary for date range.
-        
+
         Returns:
             - Total revenue
             - Revenue by category
@@ -975,11 +975,11 @@ class BillingReportService:
             - Comparison to previous period
         """
         pass
-    
+
     def outstanding_balances(self) -> List[Dict[str, Any]]:
         """
         List of invoices with outstanding balances.
-        
+
         Returns:
             - Invoice details
             - Patient info
@@ -987,22 +987,22 @@ class BillingReportService:
             - Total outstanding
         """
         pass
-    
+
     def service_utilization(self, start_date: date, end_date: date) -> Dict[str, Any]:
         """
         Service utilization report.
-        
+
         Returns:
             - Service count
             - Revenue per service
             - Trend analysis
         """
         pass
-    
+
     def payment_method_analysis(self, start_date: date, end_date: date) -> Dict[str, Any]:
         """
         Payment method breakdown.
-        
+
         Returns:
             - Collections by method
             - M-Pesa success rate
@@ -1039,18 +1039,18 @@ class BillingReportService:
 class SHAClaimsService:
     """
     SHA (Social Health Authority) claims integration stub.
-    
+
     Note: This is a stub for Phase 1. Full integration planned for Phase 2
     when SHA API becomes available.
     """
-    
+
     def __init__(self):
         self.is_stub = True
-        
+
     def submit_claim(self, invoice: Invoice) -> Dict[str, Any]:
         """
         Submit claim to SHA (stub).
-        
+
         Returns mock response for testing.
         """
         if self.is_stub:
@@ -1063,7 +1063,7 @@ class SHAClaimsService:
             }
         # Real implementation in Phase 2
         raise NotImplementedError("SHA integration not yet implemented")
-    
+
     def query_claim_status(self, claim_number: str) -> Dict[str, Any]:
         """Query claim status (stub)."""
         if self.is_stub:
@@ -1074,7 +1074,7 @@ class SHAClaimsService:
                 'message': 'Stub: Claim approved',
             }
         raise NotImplementedError("SHA integration not yet implemented")
-    
+
     def get_preauthorization(self, patient_id: str, service_codes: List[str]) -> Dict[str, Any]:
         """Get preauthorization for services (stub)."""
         if self.is_stub:
@@ -1117,20 +1117,20 @@ class SHAClaimsService:
 def create_sample_services(apps, schema_editor):
     ServiceCategory = apps.get_model('billing', 'ServiceCategory')
     Service = apps.get_model('billing', 'Service')
-    
+
     # Create categories
     consultation = ServiceCategory.objects.create(
         name='Consultation',
         code='CONS',
         description='Doctor consultation services'
     )
-    
+
     lab = ServiceCategory.objects.create(
         name='Laboratory',
         code='LAB',
         description='Laboratory tests'
     )
-    
+
     # Create sample services
     Service.objects.create(
         category=consultation,
@@ -1139,7 +1139,7 @@ def create_sample_services(apps, schema_editor):
         unit_price=Decimal('500.00'),
         sha_code='SHA-CONS-001',
     )
-    
+
     Service.objects.create(
         category=consultation,
         code='CONS-SPEC',
@@ -1147,7 +1147,7 @@ def create_sample_services(apps, schema_editor):
         unit_price=Decimal('1500.00'),
         sha_code='SHA-CONS-002',
     )
-    
+
     Service.objects.create(
         category=lab,
         code='LAB-CBC',

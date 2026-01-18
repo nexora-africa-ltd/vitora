@@ -1,8 +1,8 @@
 # Dashboard Real Endpoints Implementation Plan
 
-> **Status**: ✅ COMPLETED  
-> **Priority**: Medium  
-> **Completed**: January 18, 2026  
+> **Status**: ✅ COMPLETED
+> **Priority**: Medium
+> **Completed**: January 18, 2026
 
 ## Implementation Summary
 
@@ -76,7 +76,7 @@
 def patient_volume_history(request):
     """
     Get patient volume history for charts.
-    
+
     Query params:
         start_date: Start date (YYYY-MM-DD)
         end_date: End date (YYYY-MM-DD)
@@ -86,21 +86,21 @@ def patient_volume_history(request):
     from hmis.apps.encounters.models import Encounter
     from django.db.models import Count
     from django.db.models.functions import TruncDate, TruncWeek, TruncMonth
-    
+
     start_date = request.query_params.get('start_date')
     end_date = request.query_params.get('end_date')
     granularity = request.query_params.get('granularity', 'day')
-    
+
     # Validation
     if not start_date or not end_date:
         return Response({"error": "start_date and end_date required"}, status=400)
-    
+
     trunc_func = {
         'day': TruncDate,
         'week': TruncWeek,
         'month': TruncMonth,
     }.get(granularity, TruncDate)
-    
+
     # Patient registrations by date
     registrations = (
         Patient.objects
@@ -109,7 +109,7 @@ def patient_volume_history(request):
         .values('date')
         .annotate(count=Count('id'))
     )
-    
+
     # Encounters by date and type
     encounters = (
         Encounter.objects
@@ -118,7 +118,7 @@ def patient_volume_history(request):
         .values('date', 'encounter_type')
         .annotate(count=Count('id'))
     )
-    
+
     # Aggregate into response format
     # ... (build date-keyed dict, fill gaps, return)
 ```
@@ -131,7 +131,7 @@ def patient_volume_history(request):
 // New dedicated hook
 export function usePatientVolumeHistory(filter?: DateRangeFilter) {
   const dateRange = getDateRange(filter);
-  
+
   return useQuery({
     queryKey: ['patient-volume-history', dateRange],
     queryFn: async () => {
@@ -202,11 +202,11 @@ def revenue_breakdown(request):
     """
     from hmis.apps.billing.models import Payment, InvoiceLineItem
     from django.db.models import Sum, Count
-    
+
     start_date = request.query_params.get('start_date')
     end_date = request.query_params.get('end_date')
     group_by = request.query_params.get('group_by', 'department')
-    
+
     # Aggregate payments by department
     breakdown = (
         Payment.objects
@@ -221,9 +221,9 @@ def revenue_breakdown(request):
         )
         .order_by('-amount')
     )
-    
+
     total = sum(item['amount'] for item in breakdown)
-    
+
     return Response({
         "date_range": {"start": start_date, "end": end_date},
         "total_revenue": total,
@@ -297,19 +297,19 @@ def activity_feed(request):
     Get recent activity feed from audit logs.
     """
     from hmis.apps.core.models import AuditLog
-    
+
     limit = min(int(request.query_params.get('limit', 20)), 100)
     offset = int(request.query_params.get('offset', 0))
     types = request.query_params.get('types', '').split(',') if request.query_params.get('types') else None
-    
+
     queryset = AuditLog.objects.select_related('user').order_by('-timestamp')
-    
+
     if types:
         queryset = queryset.filter(resource_type__in=types)
-    
+
     total = queryset.count()
     activities = queryset[offset:offset + limit]
-    
+
     return Response({
         "count": total,
         "next": f"...?limit={limit}&offset={offset + limit}" if offset + limit < total else None,
@@ -338,7 +338,7 @@ def activity_feed(request):
 # hmis/apps/core/models.py
 class ActivityFeed(models.Model):
     """Real-time activity feed for dashboard."""
-    
+
     ACTIVITY_TYPES = [
         ('patient', 'Patient'),
         ('encounter', 'Encounter'),
@@ -347,7 +347,7 @@ class ActivityFeed(models.Model):
         ('billing', 'Billing'),
         ('triage', 'Triage'),
     ]
-    
+
     type = models.CharField(max_length=20, choices=ACTIVITY_TYPES)
     action = models.CharField(max_length=50)  # registered, completed, dispensed, etc.
     title = models.CharField(max_length=200)
@@ -357,7 +357,7 @@ class ActivityFeed(models.Model):
     resource_type = models.CharField(max_length=50)
     resource_id = models.PositiveIntegerField()
     metadata = models.JSONField(default=dict, blank=True)
-    
+
     class Meta:
         ordering = ['-timestamp']
         indexes = [
@@ -424,7 +424,7 @@ export interface RecentActivity {
 
 async function fetchDashboardMetrics(filter?: DateRangeFilter): Promise<DashboardMetrics> {
   const dateRange = getDateRange(filter);
-  
+
   // Fetch all in parallel
   const [stats, volumeRes, revenueRes, activityRes] = await Promise.all([
     apiClient.get<DashboardStats>('/api/core/dashboard/stats/'),
@@ -438,7 +438,7 @@ async function fetchDashboardMetrics(filter?: DateRangeFilter): Promise<Dashboar
       params: { limit: 10 }
     }),
   ]);
-  
+
   return {
     kpis: buildKPIsFromStats(stats.data),
     patientVolume: volumeRes.data.data,
@@ -473,7 +473,7 @@ from . import dashboard_views
 urlpatterns = [
     # Existing
     path('dashboard/stats/', dashboard_views.dashboard_stats, name='dashboard-stats'),
-    
+
     # New endpoints
     path('dashboard/patient-volume/', dashboard_views.patient_volume_history, name='dashboard-patient-volume'),
     path('dashboard/revenue-breakdown/', dashboard_views.revenue_breakdown, name='dashboard-revenue-breakdown'),

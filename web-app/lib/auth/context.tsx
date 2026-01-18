@@ -111,7 +111,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
       const data = await tokenResponse.json();
       const tokens: AuthTokens = { access: data.access, refresh: data.refresh };
-      
+
       // User info is now included in the token response
       const user: User = data.user || {
         id: 0,
@@ -127,7 +127,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       localStorage.setItem(ACCESS_TOKEN_KEY, tokens.access);
       localStorage.setItem(REFRESH_TOKEN_KEY, tokens.refresh);
       localStorage.setItem(USER_KEY, JSON.stringify(user));
-      
+
       // Set auth cookie for middleware (httpOnly: false so JS can read, but middleware needs it)
       document.cookie = `${AUTH_COOKIE_NAME}=true; path=/; max-age=${60 * 60 * 24 * 7}; SameSite=Lax`;
 
@@ -148,7 +148,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     localStorage.removeItem(ACCESS_TOKEN_KEY);
     localStorage.removeItem(REFRESH_TOKEN_KEY);
     localStorage.removeItem(USER_KEY);
-    
+
     // Clear auth cookie
     document.cookie = `${AUTH_COOKIE_NAME}=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT`;
 

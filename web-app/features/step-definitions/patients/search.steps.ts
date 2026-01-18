@@ -1,6 +1,6 @@
 /**
  * Patient Search Step Definitions
- * 
+ *
  * Steps for patient search and lookup feature scenarios.
  * @see features/patients/patient-search.feature
  */
@@ -27,17 +27,17 @@ Given(
   async function (this: VitoraWorld, dataTable: DataTable) {
     const patients = safeHashes(dataTable.hashes());
     const createdPatients = [];
-    
+
     for (const patientRow of patients) {
       const patientData = createPatientData({
         first_name: patientRow['first_name'] || patientRow['First Name'] || 'Unknown',
         last_name: patientRow['last_name'] || patientRow['Last Name'] || 'Patient',
       });
-      
+
       const response = await this.apiRequest('POST', '/patients/', patientData);
       createdPatients.push(response);
     }
-    
+
     this.store('createdPatients', createdPatients);
   }
 );
@@ -51,13 +51,13 @@ Given(
       createPatientData({ first_name: 'John', last_name: 'Kamau' }),
       createPatientData({ first_name: 'Mary', last_name: 'Atieno' }),
     ];
-    
+
     const createdPatients = [];
     for (const patient of patients) {
       const response = await this.apiRequest('POST', '/patients/', patient);
       createdPatients.push(response);
     }
-    
+
     this.store('createdPatients', createdPatients);
   }
 );
@@ -188,7 +188,7 @@ Then(
   async function (this: VitoraWorld, dataTable: DataTable) {
     const fields = dataTable.raw().flat();
     const firstResult = this.page?.locator('[data-testid="patient-row"]:first-child, .patient-card:first-child');
-    
+
     for (const field of fields) {
       const fieldElement = firstResult?.locator(`[data-field="${field.toLowerCase().replace(/\s+/g, '-')}"]`);
       await expect(fieldElement!).toBeVisible();
@@ -200,7 +200,7 @@ Then(
   'I should see the patient profile with:',
   async function (this: VitoraWorld, dataTable: DataTable) {
     const sections = safeHashes(dataTable.hashes());
-    
+
     for (const section of sections) {
       const sectionName = section['section'] || section['Section'] || '';
       const sectionElement = this.page?.locator(`[data-section="${sectionName.toLowerCase().replace(/\s+/g, '-')}"]`);
@@ -221,7 +221,7 @@ Then(
   'encounters should be ordered by date \\(newest first\\)',
   async function (this: VitoraWorld) {
     const dates = await this.page?.locator('[data-testid="encounter-date"]').allTextContents();
-    
+
     // Verify descending order
     if (dates && dates.length > 1) {
       for (let i = 1; i < dates.length; i++) {
@@ -266,7 +266,7 @@ Then(
   'I should see quick action buttons:',
   async function (this: VitoraWorld, dataTable: DataTable) {
     const actions = safeHashes(dataTable.hashes());
-    
+
     for (const action of actions) {
       const actionName = action['action'] || action['Action'] || '';
       const button = this.page?.locator(`button:has-text("${actionName}"), [data-action="${actionName.toLowerCase().replace(/\s+/g, '-')}"]`);

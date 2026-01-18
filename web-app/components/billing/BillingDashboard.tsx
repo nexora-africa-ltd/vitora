@@ -224,7 +224,7 @@ export function BillingDashboard({
             {(Object.keys(methodConfig) as PaymentMethod[]).map((method) => {
               const config = methodConfig[method];
               const amount = parseFloat(byMethod[method] || '0');
-              
+
               return (
                 <div
                   key={method}

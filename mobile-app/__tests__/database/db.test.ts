@@ -1,9 +1,9 @@
 /**
  * WatermelonDB Database Tests
- * 
+ *
  * Test suite for database initialization, schema validation, and model operations.
  * Following TDD methodology - these tests are written BEFORE implementation.
- * 
+ *
  * Test Coverage:
  * - Schema validation (3 tests)
  * - Database initialization (2 tests)
@@ -117,7 +117,7 @@ describe('WatermelonDB Database Tests', () => {
   describe('CRUD Operations', () => {
     test('should create a patient record', async () => {
       const patientsCollection = database.collections.get<Patient>('patients');
-      
+
       const patient = await database.write(async () => {
         return await patientsCollection.create((record) => {
           record.mrn = 'MRN-20251230-0001';
@@ -138,7 +138,7 @@ describe('WatermelonDB Database Tests', () => {
 
     test('should read a patient record by ID', async () => {
       const patientsCollection = database.collections.get<Patient>('patients');
-      
+
       // Create patient
       const createdPatient = await database.write(async () => {
         return await patientsCollection.create((record) => {
@@ -160,7 +160,7 @@ describe('WatermelonDB Database Tests', () => {
 
     test('should update a patient record', async () => {
       const patientsCollection = database.collections.get<Patient>('patients');
-      
+
       // Create patient
       const patient = await database.write(async () => {
         return await patientsCollection.create((record) => {
@@ -187,7 +187,7 @@ describe('WatermelonDB Database Tests', () => {
 
     test('should delete a patient record', async () => {
       const patientsCollection = database.collections.get<Patient>('patients');
-      
+
       // Create patient
       const patient = await database.write(async () => {
         return await patientsCollection.create((record) => {
@@ -215,7 +215,7 @@ describe('WatermelonDB Database Tests', () => {
 
     test('should create a sync queue entry', async () => {
       const syncQueueCollection = database.collections.get<SyncQueue>('sync_queue');
-      
+
       const syncEntry = await database.write(async () => {
         return await syncQueueCollection.create((record) => {
           record.operation = 'CREATE';
@@ -241,7 +241,7 @@ describe('WatermelonDB Database Tests', () => {
   describe('Data Persistence', () => {
     test('should persist patient data after database restart', async () => {
       const patientsCollection = database.collections.get<Patient>('patients');
-      
+
       // Create patient
       await database.write(async () => {
         return await patientsCollection.create((record) => {
@@ -258,10 +258,10 @@ describe('WatermelonDB Database Tests', () => {
       // Simulate restart by creating new database instance
       const newDatabase = await initDatabase();
       const newPatientsCollection = newDatabase.collections.get<Patient>('patients');
-      
+
       const allPatients = await newPatientsCollection.query().fetch();
       expect(allPatients.length).toBeGreaterThan(0);
-      
+
       const charlie = allPatients.find(p => p.mrn === 'MRN-20251230-0005');
       expect(charlie).toBeDefined();
       expect(charlie?.firstName).toBe('Charlie');
@@ -269,7 +269,7 @@ describe('WatermelonDB Database Tests', () => {
 
     test('should maintain data integrity across transactions', async () => {
       const patientsCollection = database.collections.get<Patient>('patients');
-      
+
       // Create multiple patients in single transaction
       await database.write(async () => {
         await patientsCollection.create((record) => {
@@ -299,7 +299,7 @@ describe('WatermelonDB Database Tests', () => {
 
     test('should handle concurrent write operations', async () => {
       const patientsCollection = database.collections.get<Patient>('patients');
-      
+
       // Create multiple patients concurrently
       const promises = [
         database.write(() =>
@@ -345,7 +345,7 @@ describe('WatermelonDB Database Tests', () => {
 
     test('should allow creating records with minimal data (validation is at app level)', async () => {
       const patientsCollection = database.collections.get<Patient>('patients');
-      
+
       // WatermelonDB doesn't enforce required fields - that's done at app/API level
       // This test ensures we can create records (validation happens elsewhere)
       const patient = await database.write(async () => {

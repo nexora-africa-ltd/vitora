@@ -55,7 +55,7 @@
 ```
 1. POST /api/billing/client-registry/fetch/
    Body: { "national_id": "12345678" }
-   
+
 2a. If found → Pre-fill form with CR data
 2b. If not found → Allow manual entry, offer to register in CR
 ```
@@ -80,8 +80,8 @@ const [crClient, setCrClient] = useState<ClientRegistryClient | null>(null);
 async function handleIdVerify(nationalId: string) {
   setCrStatus('searching');
   try {
-    const response = await api.post('/billing/client-registry/fetch/', { 
-      national_id: nationalId 
+    const response = await api.post('/billing/client-registry/fetch/', {
+      national_id: nationalId
     });
     if (response.data.client) {
       setCrClient(response.data.client);
@@ -180,12 +180,12 @@ function EligibilityBanner({ patientId }: { patientId: number }) {
         setEligibility({ status: 'ineligible' }); // Not enrolled
         return;
       }
-      
+
       // Step 2: Check eligibility with SHA
       const eligRes = await api.post('/billing/eligibility/check/', {
         sha_member_id: memberRes.data.results[0].id
       });
-      
+
       setEligibility({
         status: eligRes.data.is_eligible ? 'eligible' : 'ineligible',
         coverageEndDate: eligRes.data.coverage_end_date,
@@ -270,10 +270,10 @@ interface Intervention {
   facility_level: number;
 }
 
-function SHAInterventionSelect({ 
-  onSelect, 
-  facilityLevel = 3 
-}: { 
+function SHAInterventionSelect({
+  onSelect,
+  facilityLevel = 3
+}: {
   onSelect: (intervention: Intervention) => void;
   facilityLevel?: number;
 }) {
@@ -284,7 +284,7 @@ function SHAInterventionSelect({
   // Debounced search
   useEffect(() => {
     if (query.length < 2) return;
-    
+
     const timer = setTimeout(async () => {
       setLoading(true);
       const res = await api.get('/billing/terminology/interventions/', {
@@ -299,7 +299,7 @@ function SHAInterventionSelect({
 
   return (
     <Combobox onChange={onSelect}>
-      <Combobox.Input 
+      <Combobox.Input
         onChange={(e) => setQuery(e.target.value)}
         placeholder="Search SHA interventions..."
       />
@@ -391,11 +391,11 @@ function ClaimSubmissionButton({ invoiceId, encounterId }: Props) {
         invoice_id: invoiceId,
         encounter_id: encounterId,
       });
-      
+
       // Step 2: Submit to SHA
       const submitRes = await api.post(`/billing/claims/${createRes.data.id}/submit/`);
       setClaim(submitRes.data);
-      
+
       // Step 3: Start polling for status
       pollClaimStatus(submitRes.data.id);
     } catch (error) {
@@ -409,7 +409,7 @@ function ClaimSubmissionButton({ invoiceId, encounterId }: Props) {
     const poll = setInterval(async () => {
       const res = await api.get(`/billing/claims/${claimId}/`);
       setClaim(res.data);
-      
+
       if (['approved', 'rejected', 'paid'].includes(res.data.status)) {
         clearInterval(poll);
       }
@@ -424,9 +424,9 @@ function ClaimSubmissionButton({ invoiceId, encounterId }: Props) {
           Submit to SHA
         </Button>
       )}
-      
+
       {claim && (
-        <ClaimStatusBadge 
+        <ClaimStatusBadge
           status={claim.status}
           trackingNumber={claim.sha_reference}
           rejectionReason={claim.rejection_reason}
@@ -667,6 +667,6 @@ interface FacilityInfo {
 
 ---
 
-**Document Status**: ✅ Complete  
-**Last Updated**: January 9, 2026  
+**Document Status**: ✅ Complete
+**Last Updated**: January 9, 2026
 **Author**: Vitora HMIS Development Team

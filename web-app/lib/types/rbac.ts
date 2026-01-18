@@ -191,7 +191,7 @@ export interface UserPermissions {
 // Audit Log Types
 // =============================================================================
 
-export type AuditAction = 
+export type AuditAction =
   | 'role_created'
   | 'role_updated'
   | 'role_deleted'

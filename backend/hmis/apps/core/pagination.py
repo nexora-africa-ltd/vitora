@@ -29,6 +29,7 @@ class StandardPagination(PageNumberPagination):
         """
         Override to return empty list for out-of-range pages instead of 404.
         """
+        _ = view
         # Get page size from query params or default
         page_size = self.get_page_size(request)
         if not page_size:

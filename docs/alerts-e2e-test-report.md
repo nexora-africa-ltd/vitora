@@ -1,8 +1,8 @@
 # Stock Alerts E2E Test Report
 
-**Date:** January 10, 2026  
-**Test File:** `web-app/e2e/pharmacy/alerts.spec.ts`  
-**Browser:** Chromium  
+**Date:** January 10, 2026
+**Test File:** `web-app/e2e/pharmacy/alerts.spec.ts`
+**Browser:** Chromium
 **Duration:** ~2.0 minutes
 
 ---
@@ -53,7 +53,7 @@
 ```tsx
 // In AlertsPanel or alert-item component:
 
-<div 
+<div
   data-testid="alert-item"
   className={cn(
     "p-4 rounded-lg border",
@@ -66,25 +66,25 @@
   {/* Alert Type */}
   <Badge>{formatAlertType(alert.alert_type)}</Badge>
   {/* LOW_STOCK -> "Low Stock", OUT_OF_STOCK -> "Out of Stock", etc. */}
-  
+
   {/* Severity */}
   <Badge variant={getSeverityVariant(alert.severity)}>
     {alert.severity}
   </Badge>
-  
+
   {/* Drug Name */}
   <p className="font-medium">{alert.drug_name}</p>
-  
+
   {/* Message */}
   <p>{alert.message}</p>
-  
+
   {/* Batch Number (if applicable) */}
   {alert.batch_number && (
     <p className="text-sm text-muted-foreground">
       Batch: {alert.batch_number}
     </p>
   )}
-  
+
   {/* Creation Timestamp */}
   <p className="text-xs text-muted-foreground">
     Created: {format(new Date(alert.created_at), 'MMM d, yyyy HH:mm')}
@@ -120,8 +120,8 @@ const [showResolved, setShowResolved] = useState(false);
   {/* Alert Type Filter */}
   <div>
     <Label htmlFor="alert-type">Type</Label>
-    <Select 
-      value={alertType} 
+    <Select
+      value={alertType}
       onValueChange={setAlertType}
       data-testid="alert-type-filter"
     >
@@ -139,12 +139,12 @@ const [showResolved, setShowResolved] = useState(false);
       </SelectContent>
     </Select>
   </div>
-  
+
   {/* Severity Filter */}
   <div>
     <Label htmlFor="severity">Severity</Label>
-    <Select 
-      value={severity} 
+    <Select
+      value={severity}
       onValueChange={setSeverity}
       data-testid="severity-filter"
     >
@@ -160,10 +160,10 @@ const [showResolved, setShowResolved] = useState(false);
       </SelectContent>
     </Select>
   </div>
-  
+
   {/* Resolved Toggle */}
   <div className="flex items-center gap-2">
-    <Switch 
+    <Switch
       id="show-resolved"
       checked={showResolved}
       onCheckedChange={setShowResolved}
@@ -172,9 +172,9 @@ const [showResolved, setShowResolved] = useState(false);
     />
     <Label htmlFor="show-resolved">Show Resolved</Label>
   </div>
-  
+
   {/* Quick Filters */}
-  <Button 
+  <Button
     variant={alertType === 'LOW_STOCK' ? 'default' : 'outline'}
     size="sm"
     onClick={() => setAlertType('LOW_STOCK')}
@@ -182,8 +182,8 @@ const [showResolved, setShowResolved] = useState(false);
   >
     Low Stock
   </Button>
-  
-  <Button 
+
+  <Button
     variant={alertType.includes('EXPIRING') ? 'default' : 'outline'}
     size="sm"
     onClick={() => setAlertType('EXPIRING_SOON')}
@@ -220,8 +220,8 @@ const [showResolved, setShowResolved] = useState(false);
     <p>Acknowledged at: {format(new Date(alert.acknowledged_at), 'MMM d, yyyy HH:mm')}</p>
   </div>
 ) : (
-  <Button 
-    variant="outline" 
+  <Button
+    variant="outline"
     size="sm"
     onClick={() => handleAcknowledge(alert.id)}
     data-testid="acknowledge-button"
@@ -255,8 +255,8 @@ await expect(acknowledgeButton).not.toBeVisible();
 
 ```tsx
 // 1. Add resolve button to alert items:
-<Button 
-  variant="outline" 
+<Button
+  variant="outline"
   size="sm"
   onClick={() => setResolveAlert(alert)}
   data-testid="resolve-button"
@@ -267,20 +267,20 @@ await expect(acknowledgeButton).not.toBeVisible();
 // 2. Create ResolveAlertDialog:
 export function ResolveAlertDialog({ alert, open, onOpenChange, onResolve }) {
   const [notes, setNotes] = useState('');
-  
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent>
         <DialogHeader>
           <DialogTitle>Resolve Alert</DialogTitle>
         </DialogHeader>
-        
+
         <div>
           <p className="mb-4">{alert?.message}</p>
-          
+
           <div>
             <Label htmlFor="resolution-notes">Resolution Notes</Label>
-            <Textarea 
+            <Textarea
               id="resolution-notes"
               aria-label="Resolution Notes"
               value={notes}
@@ -289,7 +289,7 @@ export function ResolveAlertDialog({ alert, open, onOpenChange, onResolve }) {
             />
           </div>
         </div>
-        
+
         <DialogFooter>
           <Button variant="outline" onClick={() => onOpenChange(false)}>
             Cancel
@@ -330,8 +330,8 @@ const filteredAlerts = alerts.filter(a => showResolved || !a.resolved);
 
 // Make batch number clickable:
 {alert.batch_number && (
-  <Link 
-    href={`/pharmacy/stock/${alert.stock_batch}`} 
+  <Link
+    href={`/pharmacy/stock/${alert.stock_batch}`}
     className="text-sm hover:underline"
   >
     Batch: {alert.batch_number}
@@ -340,8 +340,8 @@ const filteredAlerts = alerts.filter(a => showResolved || !a.resolved);
 
 // Quick actions based on alert type:
 {(alert.alert_type === 'LOW_STOCK' || alert.alert_type === 'OUT_OF_STOCK') && (
-  <Button 
-    variant="outline" 
+  <Button
+    variant="outline"
     size="sm"
     onClick={() => router.push(`/pharmacy/stock/receive?drug=${alert.drug}`)}
     data-testid="reorder-button"
@@ -352,8 +352,8 @@ const filteredAlerts = alerts.filter(a => showResolved || !a.resolved);
 )}
 
 {alert.alert_type.includes('EXPIRING') && (
-  <Button 
-    variant="outline" 
+  <Button
+    variant="outline"
     size="sm"
     onClick={() => router.push(`/pharmacy/stock/${alert.stock_batch}`)}
     data-testid="view-batch-button"
@@ -383,7 +383,7 @@ const filteredAlerts = alerts.filter(a => showResolved || !a.resolved);
 export function AlertsSummaryWidget({ alerts }: Props) {
   const criticalCount = alerts.filter(a => a.severity === 'CRITICAL' && !a.resolved).length;
   const highCount = alerts.filter(a => a.severity === 'HIGH' && !a.resolved).length;
-  
+
   return (
     <div data-testid="alerts-widget" className="alerts-summary p-4 rounded-lg border">
       <div className="flex justify-between items-center mb-4">
@@ -394,7 +394,7 @@ export function AlertsSummaryWidget({ alerts }: Props) {
           </Button>
         </Link>
       </div>
-      
+
       <div className="space-y-2">
         {criticalCount > 0 && (
           <div className="flex justify-between items-center">
@@ -402,7 +402,7 @@ export function AlertsSummaryWidget({ alerts }: Props) {
             <span>{criticalCount}</span>
           </div>
         )}
-        
+
         {highCount > 0 && (
           <div className="flex justify-between items-center">
             <Badge className="bg-orange-500">High</Badge>
@@ -410,7 +410,7 @@ export function AlertsSummaryWidget({ alerts }: Props) {
           </div>
         )}
       </div>
-      
+
       {/* Recent critical alerts */}
       {alerts.filter(a => a.severity === 'CRITICAL').slice(0, 3).map(alert => (
         <div key={alert.id} className="text-sm mt-2 p-2 bg-red-50 rounded">
@@ -446,9 +446,9 @@ export function AlertsSummaryWidget({ alerts }: Props) {
       Last updated: {format(lastRefresh, 'MMM d, yyyy HH:mm')}
     </p>
   </div>
-  
-  <Button 
-    variant="outline" 
+
+  <Button
+    variant="outline"
     size="sm"
     onClick={handleRefreshAlerts}
     data-testid="refresh-alerts-button"
@@ -482,8 +482,8 @@ export function AlertsSummaryWidget({ alerts }: Props) {
 
 ```tsx
 // 1. Add settings button to AlertsPanel:
-<Button 
-  variant="outline" 
+<Button
+  variant="outline"
   size="sm"
   onClick={() => setShowSettings(true)}
   data-testid="alert-settings-button"
@@ -496,19 +496,19 @@ export function AlertsSummaryWidget({ alerts }: Props) {
 export function AlertSettingsDialog({ open, onOpenChange, settings, onSave }) {
   const [expiryDays, setExpiryDays] = useState(settings.expiryWarningDays || 90);
   const [stockThreshold, setStockThreshold] = useState(settings.lowStockThreshold || 10);
-  
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent>
         <DialogHeader>
           <DialogTitle>Alert Settings</DialogTitle>
         </DialogHeader>
-        
+
         <div className="space-y-4">
           {/* Expiry Warning Days */}
           <div>
             <Label htmlFor="expiry-days">Expiry Warning Days</Label>
-            <Input 
+            <Input
               id="expiry-days"
               type="number"
               aria-label="Expiry Warning Days"
@@ -519,11 +519,11 @@ export function AlertSettingsDialog({ open, onOpenChange, settings, onSave }) {
               Alert when stock expires within this many days
             </p>
           </div>
-          
+
           {/* Low Stock Threshold */}
           <div>
             <Label htmlFor="stock-threshold">Low Stock Threshold</Label>
-            <Input 
+            <Input
               id="stock-threshold"
               type="number"
               aria-label="Stock Threshold"
@@ -535,7 +535,7 @@ export function AlertSettingsDialog({ open, onOpenChange, settings, onSave }) {
             </p>
           </div>
         </div>
-        
+
         <DialogFooter>
           <Button variant="outline" onClick={() => onOpenChange(false)}>
             Cancel
@@ -628,10 +628,10 @@ export function AlertSettingsDialog({ open, onOpenChange, settings, onSave }) {
 
 ---
 
-## Test Code Bugs to Fix 
+## Test Code Bugs to Fix
 ✅ Completed
 
-**File:** `e2e/pharmacy/alerts.spec.ts`  
+**File:** `e2e/pharmacy/alerts.spec.ts`
 **Line:** 234
 
 ```typescript
@@ -639,7 +639,7 @@ export function AlertSettingsDialog({ open, onOpenChange, settings, onSave }) {
 await expect(acknowledgeButton).toBeDisabled().or(acknowledgeButton.not.toBeVisible());
 
 // ✅ Should be:
-await expect(acknowledgeButton).not.toBeVisible(); 
+await expect(acknowledgeButton).not.toBeVisible();
 ```
 
 ---

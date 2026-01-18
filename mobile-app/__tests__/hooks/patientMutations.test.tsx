@@ -32,7 +32,7 @@ const createWrapper = () => {
       mutations: { retry: false },
     },
   });
-  
+
   return ({ children }: { children: React.ReactNode }) => (
     <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
   );
@@ -67,7 +67,7 @@ describe('Patient Mutation Hooks', () => {
 
     test('should create patient successfully', async () => {
       mockPatientsApi.create.mockResolvedValue(mockPatient);
-      
+
       const { result } = renderHook(() => useCreatePatient(), {
         wrapper: createWrapper(),
       });

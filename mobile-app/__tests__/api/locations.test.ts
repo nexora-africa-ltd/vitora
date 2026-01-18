@@ -1,6 +1,6 @@
 /**
  * Locations API Tests
- * 
+ *
  * Tests for Kenya locations API (counties, sub-counties, wards).
  * Following TDD RED-GREEN-REFACTOR approach.
  */

@@ -1,6 +1,6 @@
 /**
  * Pharmacy Dispensing Step Definitions
- * 
+ *
  * Steps for prescription dispensing workflow.
  */
 
@@ -18,7 +18,7 @@ Given(
   'I am on the pharmacy dispensing page',
   async function (this: VitoraWorld) {
     this.currentPage = 'dispensing';
-    
+
     if (this.page) {
       await this.page.goto('/pharmacy/dispensing');
       await this.page.waitForLoadState('networkidle');
@@ -30,7 +30,7 @@ Given(
   'I am on the prescription queue',
   async function (this: VitoraWorld) {
     this.currentPage = 'prescription queue';
-    
+
     if (this.page) {
       await this.page.goto('/pharmacy/prescriptions');
       await this.page.waitForLoadState('networkidle');
@@ -82,7 +82,7 @@ When(
   'I select the prescription for {string}',
   async function (this: VitoraWorld, patientName: string) {
     this.store('selectedPrescription', patientName);
-    
+
     if (this.page) {
       await this.page.click(`[data-testid="prescription-row"]:has-text("${patientName}")`);
     }
@@ -93,11 +93,11 @@ Then(
   'I should see the prescription details:',
   async function (this: VitoraWorld, dataTable: DataTable) {
     const expectedItems = safeHashes(dataTable.hashes());
-    
+
     if (this.page) {
       const detailsPanel = this.page.locator('[data-testid="prescription-details"]');
       await expect(detailsPanel).toBeVisible();
-      
+
       for (const item of expectedItems) {
         const drugName = item.drug || item.Drug;
         const itemRow = detailsPanel.locator(`[data-testid="prescription-item"]:has-text("${drugName}")`);
@@ -115,7 +115,7 @@ When(
   'I select batch {string} for {string}',
   async function (this: VitoraWorld, batchNumber: string, drugName: string) {
     this.store('selectedBatch', { batchNumber, drugName });
-    
+
     if (this.page) {
       const drugRow = this.page.locator(`[data-testid="dispense-item"]:has-text("${drugName}")`);
       await drugRow.locator(`[data-testid="batch-select"]`).selectOption(batchNumber);
@@ -142,7 +142,7 @@ When(
   'I dispense {int} units of {string}',
   async function (this: VitoraWorld, quantity: number, drugName: string) {
     this.store('dispensedDrug', { drugName, quantity });
-    
+
     if (this.page) {
       const drugRow = this.page.locator(`[data-testid="dispense-item"]:has-text("${drugName}")`);
       await drugRow.locator('[data-testid="dispense-quantity"]').fill(String(quantity));
@@ -155,7 +155,7 @@ When(
   async function (this: VitoraWorld) {
     if (this.page) {
       await this.page.click('[data-testid="confirm-dispense"]');
-      await this.page.waitForResponse(resp => 
+      await this.page.waitForResponse(resp =>
         resp.url().includes('/api/pharmacy/dispense') && resp.status() === 201
       );
     }
@@ -203,7 +203,7 @@ When(
   'I dispense the available {int} units',
   async function (this: VitoraWorld, quantity: number) {
     this.store('partialDispenseQuantity', quantity);
-    
+
     if (this.page) {
       await this.page.fill('[data-testid="dispense-quantity"]', String(quantity));
       await this.page.click('[data-testid="partial-dispense"]');
@@ -247,7 +247,7 @@ When(
   'I try to dispense a drug containing {string}',
   async function (this: VitoraWorld, ingredient: string) {
     this.store('attemptedIngredient', ingredient);
-    
+
     if (this.page) {
       // Trigger dispensing which should show warning
       await this.page.click('[data-testid="confirm-dispense"]');
@@ -292,11 +292,11 @@ Then(
   'a receipt should be generated with:',
   async function (this: VitoraWorld, dataTable: DataTable) {
     const expectedFields = safeHashes(dataTable.hashes());
-    
+
     if (this.page) {
       const receipt = this.page.locator('[data-testid="receipt-preview"]');
       await expect(receipt).toBeVisible();
-      
+
       for (const field of expectedFields) {
         const fieldName = field.field || field.Field;
         await expect(receipt).toContainText(fieldName);
@@ -313,7 +313,7 @@ When(
   'I view dispensing history for {string}',
   async function (this: VitoraWorld, patientName: string) {
     this.store('historyPatient', patientName);
-    
+
     if (this.page) {
       await this.page.goto(`/pharmacy/history?patient=${encodeURIComponent(patientName)}`);
     }
@@ -335,7 +335,7 @@ Then(
   async function (this: VitoraWorld) {
     if (this.page) {
       const historyRows = await this.page.locator('[data-testid="history-row"]').all();
-      
+
       for (const row of historyRows) {
         await expect(row.locator('[data-testid="history-date"]')).toBeVisible();
         await expect(row.locator('[data-testid="history-drug"]')).toBeVisible();

@@ -1,6 +1,6 @@
 /**
  * IPD/Inpatient Step Definitions
- * 
+ *
  * Steps for inpatient admission, ward management, bed management
  */
 

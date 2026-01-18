@@ -78,19 +78,19 @@ describe('StartConsultationDialog', () => {
   describe('Dialog Rendering', () => {
     it('should render the dialog when open is true', () => {
       render(<StartConsultationDialog {...defaultProps} />);
-      
+
       expect(screen.getByRole('alertdialog')).toBeInTheDocument();
     });
 
     it('should not render when open is false', () => {
       render(<StartConsultationDialog {...defaultProps} open={false} />);
-      
+
       expect(screen.queryByRole('alertdialog')).not.toBeInTheDocument();
     });
 
     it('should display dialog title', () => {
       render(<StartConsultationDialog {...defaultProps} />);
-      
+
       // Title appears multiple times (header + button), so check for multiple
       const titles = screen.getAllByText(/Start Consultation/i);
       expect(titles.length).toBeGreaterThanOrEqual(1);
@@ -98,7 +98,7 @@ describe('StartConsultationDialog', () => {
 
     it('should display confirmation message', () => {
       render(<StartConsultationDialog {...defaultProps} />);
-      
+
       expect(screen.getByText(/begin.*consultation/i)).toBeInTheDocument();
     });
   });
@@ -109,37 +109,37 @@ describe('StartConsultationDialog', () => {
   describe('Patient Information Display', () => {
     it('should display patient name', () => {
       render(<StartConsultationDialog {...defaultProps} />);
-      
+
       expect(screen.getByText('John Kamau')).toBeInTheDocument();
     });
 
     it('should display patient MRN', () => {
       render(<StartConsultationDialog {...defaultProps} />);
-      
+
       expect(screen.getByText('MRN-20260104-0001')).toBeInTheDocument();
     });
 
     it('should display chief complaint', () => {
       render(<StartConsultationDialog {...defaultProps} />);
-      
+
       expect(screen.getByText(/Headache and fever/i)).toBeInTheDocument();
     });
 
     it('should display triage category badge', () => {
       render(<StartConsultationDialog {...defaultProps} />);
-      
+
       expect(screen.getByText('YELLOW')).toBeInTheDocument();
     });
 
     it('should display wait time', () => {
       render(<StartConsultationDialog {...defaultProps} />);
-      
+
       expect(screen.getByText(/30.*min/i)).toBeInTheDocument();
     });
 
     it('should display encounter type', () => {
       render(<StartConsultationDialog {...defaultProps} />);
-      
+
       expect(screen.getByText(/Outpatient Department/i)).toBeInTheDocument();
     });
   });
@@ -150,33 +150,33 @@ describe('StartConsultationDialog', () => {
   describe('Confirmation Actions', () => {
     it('should render Cancel button', () => {
       render(<StartConsultationDialog {...defaultProps} />);
-      
+
       expect(screen.getByRole('button', { name: /Cancel/i })).toBeInTheDocument();
     });
 
     it('should render Start Consultation button', () => {
       render(<StartConsultationDialog {...defaultProps} />);
-      
+
       expect(screen.getByRole('button', { name: /Start Consultation/i })).toBeInTheDocument();
     });
 
     it('should call onOpenChange with false when Cancel is clicked', async () => {
       const user = userEvent.setup();
       render(<StartConsultationDialog {...defaultProps} />);
-      
+
       const cancelButton = screen.getByRole('button', { name: /Cancel/i });
       await user.click(cancelButton);
-      
+
       expect(defaultProps.onOpenChange).toHaveBeenCalledWith(false);
     });
 
     it('should call onStartConsultation when Start is clicked', async () => {
       const user = userEvent.setup();
       render(<StartConsultationDialog {...defaultProps} />);
-      
+
       const startButton = screen.getByRole('button', { name: /Start Consultation/i });
       await user.click(startButton);
-      
+
       expect(defaultProps.onStartConsultation).toHaveBeenCalledWith(1);
     });
   });
@@ -187,20 +187,20 @@ describe('StartConsultationDialog', () => {
   describe('Loading State', () => {
     it('should disable Start button while loading', () => {
       render(<StartConsultationDialog {...defaultProps} isLoading={true} />);
-      
+
       const startButton = screen.getByRole('button', { name: /Starting/i });
       expect(startButton).toBeDisabled();
     });
 
     it('should show loading indicator on Start button', () => {
       render(<StartConsultationDialog {...defaultProps} isLoading={true} />);
-      
+
       expect(screen.getByText(/Starting/i)).toBeInTheDocument();
     });
 
     it('should disable Cancel button while loading', () => {
       render(<StartConsultationDialog {...defaultProps} isLoading={true} />);
-      
+
       const cancelButton = screen.getByRole('button', { name: /Cancel/i });
       expect(cancelButton).toBeDisabled();
     });
@@ -212,13 +212,13 @@ describe('StartConsultationDialog', () => {
   describe('Error Handling', () => {
     it('should display error message when provided', () => {
       render(<StartConsultationDialog {...defaultProps} error="Failed to start consultation" />);
-      
+
       expect(screen.getByText(/Failed to start consultation/i)).toBeInTheDocument();
     });
 
     it('should show error styling', () => {
       render(<StartConsultationDialog {...defaultProps} error="Failed to start consultation" />);
-      
+
       const errorElement = screen.getByText(/Failed to start consultation/i);
       expect(errorElement).toHaveClass('text-destructive');
     });
@@ -231,18 +231,18 @@ describe('StartConsultationDialog', () => {
     it('should navigate to encounter edit page on success', async () => {
       const user = userEvent.setup();
       const onStartConsultation = jest.fn().mockResolvedValue({ id: 1 });
-      
+
       render(
-        <StartConsultationDialog 
-          {...defaultProps} 
+        <StartConsultationDialog
+          {...defaultProps}
           onStartConsultation={onStartConsultation}
           navigateOnSuccess={true}
         />
       );
-      
+
       const startButton = screen.getByRole('button', { name: /Start Consultation/i });
       await user.click(startButton);
-      
+
       await waitFor(() => {
         expect(mockPush).toHaveBeenCalledWith('/encounters/1/edit');
       });
@@ -251,22 +251,22 @@ describe('StartConsultationDialog', () => {
     it('should not navigate when navigateOnSuccess is false', async () => {
       const user = userEvent.setup();
       const onStartConsultation = jest.fn().mockResolvedValue({ id: 1 });
-      
+
       render(
-        <StartConsultationDialog 
-          {...defaultProps} 
+        <StartConsultationDialog
+          {...defaultProps}
           onStartConsultation={onStartConsultation}
           navigateOnSuccess={false}
         />
       );
-      
+
       const startButton = screen.getByRole('button', { name: /Start Consultation/i });
       await user.click(startButton);
-      
+
       await waitFor(() => {
         expect(onStartConsultation).toHaveBeenCalled();
       });
-      
+
       expect(mockPush).not.toHaveBeenCalled();
     });
   });
@@ -282,9 +282,9 @@ describe('StartConsultationDialog', () => {
         triage_category: null,
         triage_bypass_reason: 'STABLE_FOLLOW_UP' as const,
       };
-      
+
       render(<StartConsultationDialog {...defaultProps} queueItem={bypassedItem} />);
-      
+
       expect(screen.getByText(/Bypassed/i)).toBeInTheDocument();
     });
   });
@@ -299,9 +299,9 @@ describe('StartConsultationDialog', () => {
         triage_status: 'NOT_APPLICABLE' as const,
         triage_category: null,
       };
-      
+
       render(<StartConsultationDialog {...defaultProps} queueItem={directItem} />);
-      
+
       expect(screen.getByText(/Direct/i)).toBeInTheDocument();
     });
   });

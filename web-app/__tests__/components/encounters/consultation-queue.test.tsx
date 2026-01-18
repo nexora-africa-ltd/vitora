@@ -151,20 +151,20 @@ describe('ConsultationQueue', () => {
   describe('Queue Display', () => {
     it('should render the consultation queue header', () => {
       render(<ConsultationQueue {...defaultProps} />);
-      
+
       expect(screen.getByText(/Consultation Queue/i)).toBeInTheDocument();
     });
 
     it('should display queue count', () => {
       render(<ConsultationQueue {...defaultProps} />);
-      
+
       // Should show count of patients waiting
       expect(screen.getByText(/6 patients/i)).toBeInTheDocument();
     });
 
     it('should render all queue items', () => {
       render(<ConsultationQueue {...defaultProps} />);
-      
+
       expect(screen.getByText('Jane Wanjiku')).toBeInTheDocument();
       expect(screen.getByText('Peter Odhiambo')).toBeInTheDocument();
       expect(screen.getByText('Mary Otieno')).toBeInTheDocument();
@@ -175,26 +175,26 @@ describe('ConsultationQueue', () => {
 
     it('should display patient MRN', () => {
       render(<ConsultationQueue {...defaultProps} />);
-      
+
       expect(screen.getByText('MRN-20260104-0001')).toBeInTheDocument();
     });
 
     it('should display chief complaint', () => {
       render(<ConsultationQueue {...defaultProps} />);
-      
+
       expect(screen.getByText('Chest pain and shortness of breath')).toBeInTheDocument();
     });
 
     it('should display wait time', () => {
       render(<ConsultationQueue {...defaultProps} />);
-      
+
       // Should show wait times - use getAllByText since multiple items may have same wait time
       expect(screen.getAllByText(/min/i).length).toBeGreaterThan(0);
     });
 
     it('should display encounter type', () => {
       render(<ConsultationQueue {...defaultProps} />);
-      
+
       expect(screen.getByText('Scheduled Procedure')).toBeInTheDocument();
     });
   });
@@ -205,7 +205,7 @@ describe('ConsultationQueue', () => {
   describe('Triage Status Badges', () => {
     it('should display RED triage badge for emergency patients', () => {
       render(<ConsultationQueue {...defaultProps} />);
-      
+
       const janeRow = getClosestElement('Jane Wanjiku', '[data-testid="queue-item"]');
       expect(janeRow).toBeInTheDocument();
       expect(within(janeRow).getByText('RED')).toBeInTheDocument();
@@ -213,28 +213,28 @@ describe('ConsultationQueue', () => {
 
     it('should display ORANGE triage badge', () => {
       render(<ConsultationQueue {...defaultProps} />);
-      
+
       const peterRow = getClosestElement('Peter Odhiambo', '[data-testid="queue-item"]');
       expect(within(peterRow).getByText('ORANGE')).toBeInTheDocument();
     });
 
     it('should display YELLOW triage badge', () => {
       render(<ConsultationQueue {...defaultProps} />);
-      
+
       const maryRow = getClosestElement('Mary Otieno', '[data-testid="queue-item"]');
       expect(within(maryRow).getByText('YELLOW')).toBeInTheDocument();
     });
 
     it('should display GREEN triage badge', () => {
       render(<ConsultationQueue {...defaultProps} />);
-      
+
       const aliceRow = getClosestElement('Alice Njeri', '[data-testid="queue-item"]');
       expect(within(aliceRow).getByText('GREEN')).toBeInTheDocument();
     });
 
     it('should display "Bypassed" badge with reason for bypassed patients', () => {
       render(<ConsultationQueue {...defaultProps} />);
-      
+
       const graceRow = getClosestElement('Grace Mwangi', '[data-testid="queue-item"]');
       // Badge contains both "Bypassed" and "Stable follow-up" in the same element
       expect(within(graceRow).getByText(/Bypassed.*Stable follow-up/i)).toBeInTheDocument();
@@ -242,14 +242,14 @@ describe('ConsultationQueue', () => {
 
     it('should display "Direct" badge for NOT_APPLICABLE triage status', () => {
       render(<ConsultationQueue {...defaultProps} />);
-      
+
       const jamesRow = getClosestElement('James Kiprotich', '[data-testid="queue-item"]');
       expect(within(jamesRow).getByText(/Direct/i)).toBeInTheDocument();
     });
 
     it('should display "CALLED" status badge for called patients', () => {
       render(<ConsultationQueue {...defaultProps} />);
-      
+
       const aliceRow = getClosestElement('Alice Njeri', '[data-testid="queue-item"]');
       // Look for the Called badge (not the "Called X min ago" text)
       const calledBadge = within(aliceRow).getByText('📣 Called');
@@ -263,7 +263,7 @@ describe('ConsultationQueue', () => {
   describe('Queue Actions', () => {
     it('should render "Call Patient" button for waiting patients', () => {
       render(<ConsultationQueue {...defaultProps} />);
-      
+
       const callButtons = screen.getAllByRole('button', { name: /Call Patient/i });
       expect(callButtons.length).toBeGreaterThan(0);
     });
@@ -271,12 +271,12 @@ describe('ConsultationQueue', () => {
     it('should call onCallPatient when "Call Patient" is clicked', async () => {
       const user = userEvent.setup();
       render(<ConsultationQueue {...defaultProps} />);
-      
+
       const janeRow = getClosestElement('Jane Wanjiku', '[data-testid="queue-item"]');
       const callButton = within(janeRow).getByRole('button', { name: /Call Patient/i });
-      
+
       await user.click(callButton);
-      
+
       expect(defaultProps.onCallPatient).toHaveBeenCalledWith(1);
     });
 
@@ -294,7 +294,7 @@ describe('ConsultationQueue', () => {
 
     it('should render "Start Consultation" button for called patients', () => {
       render(<ConsultationQueue {...defaultProps} />);
-      
+
       const aliceRow = getClosestElement('Alice Njeri', '[data-testid="queue-item"]');
       expect(within(aliceRow).getByRole('button', { name: /Start Consultation/i })).toBeInTheDocument();
     });
@@ -302,18 +302,18 @@ describe('ConsultationQueue', () => {
     it('should call onStartConsultation when "Start Consultation" is clicked', async () => {
       const user = userEvent.setup();
       render(<ConsultationQueue {...defaultProps} />);
-      
+
       const aliceRow = getClosestElement('Alice Njeri', '[data-testid="queue-item"]');
       const startButton = within(aliceRow).getByRole('button', { name: /Start Consultation/i });
-      
+
       await user.click(startButton);
-      
+
       expect(defaultProps.onStartConsultation).toHaveBeenCalledWith(6);
     });
 
     it('should render "Re-call" button for already called patients', () => {
       render(<ConsultationQueue {...defaultProps} />);
-      
+
       const aliceRow = getClosestElement('Alice Njeri', '[data-testid="queue-item"]');
       expect(within(aliceRow).getByRole('button', { name: /Re-call/i })).toBeInTheDocument();
     });
@@ -321,15 +321,15 @@ describe('ConsultationQueue', () => {
     it('should disable Call button while action is loading', async () => {
       const user = userEvent.setup();
       const slowCallPatient = jest.fn().mockImplementation(() => new Promise(resolve => setTimeout(resolve, 1000)));
-      
+
       render(<ConsultationQueue {...defaultProps} onCallPatient={slowCallPatient} />);
-      
+
       const janeRow = getClosestElement('Jane Wanjiku', '[data-testid="queue-item"]');
       const callButton = within(janeRow).getByRole('button', { name: /Call Patient/i });
-      
+
       // Click and check it shows loading state
       fireEvent.click(callButton);
-      
+
       // Button should now show "Calling..." and be disabled
       await waitFor(() => {
         expect(within(janeRow).getByRole('button', { name: /Calling/i })).toBeDisabled();
@@ -343,20 +343,20 @@ describe('ConsultationQueue', () => {
   describe('Loading & Empty States', () => {
     it('should display loading skeleton when isLoading is true', () => {
       render(<ConsultationQueue {...defaultProps} queueItems={[]} isLoading={true} />);
-      
+
       expect(screen.getByTestId('queue-loading')).toBeInTheDocument();
     });
 
     it('should display empty state when queue is empty', () => {
       render(<ConsultationQueue {...defaultProps} queueItems={[]} isLoading={false} />);
-      
+
       expect(screen.getByTestId('empty-queue')).toBeInTheDocument();
       expect(screen.getByText(/No patients waiting/i)).toBeInTheDocument();
     });
 
     it('should display error message when error occurs', () => {
       render(<ConsultationQueue {...defaultProps} error="Failed to load queue" />);
-      
+
       expect(screen.getByTestId('error-state')).toBeInTheDocument();
       // Error message appears multiple times in the error state
       expect(screen.getAllByText('Failed to load queue').length).toBeGreaterThan(0);
@@ -369,7 +369,7 @@ describe('ConsultationQueue', () => {
   describe('Filtering & Sorting', () => {
     it('should sort queue by priority (RED first)', () => {
       render(<ConsultationQueue {...defaultProps} />);
-      
+
       const queueItems = screen.getAllByTestId('queue-item');
       // Called patients come first, then RED. Alice is called, Jane is RED.
       // So Alice (CALLED) should be first, then Jane (RED)
@@ -379,7 +379,7 @@ describe('ConsultationQueue', () => {
 
     it('should render filter by triage status', async () => {
       render(<ConsultationQueue {...defaultProps} />);
-      
+
       // Check for filter by status select (button trigger)
       const filterSelect = screen.getByRole('button', { name: /Filter by status/i });
       expect(filterSelect).toBeInTheDocument();
@@ -388,16 +388,16 @@ describe('ConsultationQueue', () => {
     it('should filter queue when status filter is applied', async () => {
       const user = userEvent.setup();
       render(<ConsultationQueue {...defaultProps} />);
-      
+
       const filterSelect = screen.getByRole('button', { name: /Filter by status/i });
       await user.click(filterSelect);
-      
+
       // Wait for dropdown and select "Called"
       await waitFor(() => {
         expect(screen.getByText('Called')).toBeInTheDocument();
       });
       await user.click(screen.getByText('Called'));
-      
+
       // Should only show called patients (Alice)
       await waitFor(() => {
         expect(screen.queryByText('Jane Wanjiku')).not.toBeInTheDocument();
@@ -407,17 +407,17 @@ describe('ConsultationQueue', () => {
 
     it('should render search input', () => {
       render(<ConsultationQueue {...defaultProps} />);
-      
+
       expect(screen.getByPlaceholderText(/Search patient/i)).toBeInTheDocument();
     });
 
     it('should filter queue by search term', async () => {
       const user = userEvent.setup();
       render(<ConsultationQueue {...defaultProps} />);
-      
+
       const searchInput = screen.getByPlaceholderText(/Search patient/i);
       await user.type(searchInput, 'Jane');
-      
+
       await waitFor(() => {
         expect(screen.getByText('Jane Wanjiku')).toBeInTheDocument();
         expect(screen.queryByText('Peter Odhiambo')).not.toBeInTheDocument();
@@ -431,13 +431,13 @@ describe('ConsultationQueue', () => {
   describe('Queue Statistics', () => {
     it('should display queue statistics summary', () => {
       render(<ConsultationQueue {...defaultProps} />);
-      
+
       expect(screen.getByTestId('queue-stats')).toBeInTheDocument();
     });
 
     it('should show count by triage category', () => {
       render(<ConsultationQueue {...defaultProps} />);
-      
+
       const stats = screen.getByTestId('queue-stats');
       // 1 RED, 1 ORANGE, 1 YELLOW, 1 GREEN - check for badge text format "CATEGORY: count"
       expect(within(stats).getByText(/RED: 1/)).toBeInTheDocument();
@@ -446,7 +446,7 @@ describe('ConsultationQueue', () => {
 
     it('should show called count', () => {
       render(<ConsultationQueue {...defaultProps} />);
-      
+
       const stats = screen.getByTestId('queue-stats');
       expect(within(stats).getByText(/Called: 1/)).toBeInTheDocument();
     });
@@ -458,7 +458,7 @@ describe('ConsultationQueue', () => {
   describe('Visual Indicators', () => {
     it('should highlight called patients differently', () => {
       render(<ConsultationQueue {...defaultProps} />);
-      
+
       const aliceRow = getClosestElement('Alice Njeri', '[data-testid="queue-item"]');
       expect(aliceRow).toHaveClass('called');
     });
@@ -470,15 +470,15 @@ describe('ConsultationQueue', () => {
         triage_category: 'YELLOW',
         wait_time_minutes: 120, // 2 hours
       });
-      
+
       render(<ConsultationQueue {...defaultProps} queueItems={[longWaitItem]} />);
-      
+
       expect(screen.getByTestId('urgent-indicator')).toBeInTheDocument();
     });
 
     it('should display time since called for called patients', () => {
       render(<ConsultationQueue {...defaultProps} />);
-      
+
       const aliceRow = getClosestElement('Alice Njeri', '[data-testid="queue-item"]');
       expect(within(aliceRow).getByText(/Called 2 min ago/i)).toBeInTheDocument();
     });
@@ -491,7 +491,7 @@ describe('ConsultationQueue', () => {
 
 describe('ConsultationQueueItem', () => {
   const { ConsultationQueueItem } = require('@/components/encounters/consultation-queue-item');
-  
+
   const mockItem = createQueueItem({
     id: 1,
     patient_name: 'Test Patient',
@@ -510,21 +510,21 @@ describe('ConsultationQueueItem', () => {
 
   it('should render patient information', () => {
     render(<ConsultationQueueItem {...defaultItemProps} />);
-    
+
     expect(screen.getByText('Test Patient')).toBeInTheDocument();
     expect(screen.getByText('MRN-TEST-001')).toBeInTheDocument();
   });
 
   it('should render correct triage badge color', () => {
     render(<ConsultationQueueItem {...defaultItemProps} />);
-    
+
     const badge = screen.getByText('YELLOW');
     expect(badge).toHaveClass('bg-yellow-500');
   });
 
   it('should show age and gender', () => {
     render(<ConsultationQueueItem {...defaultItemProps} />);
-    
+
     expect(screen.getByText(/45.*M/)).toBeInTheDocument();
   });
 });

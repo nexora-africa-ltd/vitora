@@ -24,7 +24,7 @@
     --input: 0 0% 89.8%;
     --ring: 0 0% 3.9%;  /* primary */
     --radius: 0.5rem;
-    
+
     /* Semantic colors */
     --success: 145 46% 34%;  /* #2E7D4A */
     --success-foreground: 0 0% 100%;
@@ -54,7 +54,7 @@
     --border: 0 0% 14.9%;
     --input: 0 0% 14.9%;
     --ring: 0 0% 83.1%;
-    
+
     /* Semantic colors - dark mode */
     --success: 145 46% 40%;
     --success-foreground: 145 46% 90%;
@@ -131,15 +131,15 @@
   body {
     @apply bg-white text-black;
   }
-  
+
   .no-print {
     display: none !important;
   }
-  
+
   .print-break-before {
     page-break-before: always;
   }
-  
+
   .print-break-after {
     page-break-after: always;
   }

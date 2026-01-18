@@ -1,6 +1,6 @@
 /**
  * Patient API Tests
- * 
+ *
  * Tests for patient CRUD API methods.
  * Following TDD RED-GREEN-REFACTOR approach.
  */

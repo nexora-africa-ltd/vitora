@@ -5,7 +5,6 @@ This module tests the lab order state transition workflow service,
 ensuring proper validation and audit logging.
 """
 
-
 import pytest  # type: ignore
 from django.contrib.auth import get_user_model
 

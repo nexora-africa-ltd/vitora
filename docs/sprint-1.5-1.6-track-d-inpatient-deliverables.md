@@ -50,7 +50,7 @@ Sprint 1.5-1.6 Track D implements the foundational Inpatient Department (IPD) mo
 ```python
 class Ward(TimeStampedModel):
     """Hospital ward for inpatient care."""
-    
+
     WARD_TYPE_CHOICES = [
         ('MEDICAL', 'Medical Ward'),
         ('SURGICAL', 'Surgical Ward'),
@@ -59,7 +59,7 @@ class Ward(TimeStampedModel):
         ('ICU', 'Intensive Care Unit'),
         ('ISOLATION', 'Isolation Ward'),
     ]
-    
+
     name = models.CharField(max_length=100, unique=True)
     code = models.CharField(max_length=20, unique=True)  # e.g., "MED-01"
     ward_type = models.CharField(max_length=20, choices=WARD_TYPE_CHOICES)
@@ -68,12 +68,12 @@ class Ward(TimeStampedModel):
     description = models.TextField(blank=True)
     is_active = models.BooleanField(default=True)
     daily_rate = models.DecimalField(max_digits=10, decimal_places=2)  # Bed charge per day
-    
+
     # Computed properties
     @property
     def available_beds(self) -> int:
         """Count of beds with status AVAILABLE."""
-        
+
     @property
     def occupancy_rate(self) -> float:
         """Current occupancy percentage."""
@@ -103,36 +103,36 @@ class Ward(TimeStampedModel):
 ```python
 class Bed(TimeStampedModel):
     """Individual bed within a ward."""
-    
+
     BED_STATUS_CHOICES = [
         ('AVAILABLE', 'Available'),
         ('OCCUPIED', 'Occupied'),
         ('MAINTENANCE', 'Under Maintenance'),
         ('RESERVED', 'Reserved'),
     ]
-    
+
     ward = models.ForeignKey(Ward, on_delete=models.CASCADE, related_name='beds')
     bed_number = models.CharField(max_length=20)  # e.g., "B-101"
     status = models.CharField(max_length=20, choices=BED_STATUS_CHOICES, default='AVAILABLE')
     bed_type = models.CharField(max_length=50, blank=True)  # e.g., "Standard", "ICU", "Isolation"
     notes = models.TextField(blank=True)  # Maintenance notes, etc.
-    
+
     # Status change tracking
     status_changed_at = models.DateTimeField(auto_now=True)
     status_changed_by = models.ForeignKey(User, null=True, on_delete=models.SET_NULL)
-    
+
     class Meta:
         unique_together = ['ward', 'bed_number']
-        
+
     def mark_occupied(self, user):
         """Transition to OCCUPIED status."""
-        
+
     def mark_available(self, user):
         """Transition to AVAILABLE status."""
-        
+
     def mark_maintenance(self, user, reason):
         """Transition to MAINTENANCE status with reason."""
-        
+
     def mark_reserved(self, user, duration_hours=24):
         """Transition to RESERVED status with expiry."""
 ```
@@ -164,16 +164,16 @@ class Bed(TimeStampedModel):
 ```python
 class AdmissionRecommendation(TimeStampedModel):
     """Clinician recommendation for patient admission from OPD."""
-    
+
     STATUS_CHOICES = [
         ('PENDING', 'Pending'),
         ('ACCEPTED', 'Accepted'),
         ('DECLINED', 'Declined'),
         ('EXPIRED', 'Expired'),
     ]
-    
+
     encounter = models.OneToOneField(
-        'encounters.Encounter', 
+        'encounters.Encounter',
         on_delete=models.CASCADE,
         related_name='admission_recommendation'
     )
@@ -189,18 +189,18 @@ class AdmissionRecommendation(TimeStampedModel):
     preferred_ward_type = models.CharField(max_length=20, blank=True)
     status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='PENDING')
     expires_at = models.DateTimeField()  # Default: 24 hours from creation
-    
+
     # Resolution
     resolved_at = models.DateTimeField(null=True, blank=True)
     resolved_by = models.ForeignKey(User, null=True, on_delete=models.SET_NULL, related_name='+')
     decline_reason = models.TextField(blank=True)
-    
+
     def accept(self, user):
         """Mark recommendation as accepted."""
-        
+
     def decline(self, user, reason):
         """Mark recommendation as declined with reason."""
-        
+
     def is_expired(self) -> bool:
         """Check if recommendation has expired."""
 ```
@@ -227,7 +227,7 @@ class AdmissionRecommendation(TimeStampedModel):
 ```python
 class Admission(TimeStampedModel):
     """Inpatient admission record."""
-    
+
     STATUS_CHOICES = [
         ('ACTIVE', 'Active'),
         ('DISCHARGED', 'Discharged'),
@@ -235,13 +235,13 @@ class Admission(TimeStampedModel):
         ('DECEASED', 'Deceased'),
         ('ABSCONDED', 'Absconded'),
     ]
-    
+
     # Patient and encounter linkage
     patient = models.ForeignKey('patients.Patient', on_delete=models.PROTECT, related_name='admissions')
     opd_encounter = models.ForeignKey(
-        'encounters.Encounter', 
-        on_delete=models.SET_NULL, 
-        null=True, 
+        'encounters.Encounter',
+        on_delete=models.SET_NULL,
+        null=True,
         related_name='admission_from_opd'
     )
     ipd_encounter = models.OneToOneField(
@@ -255,7 +255,7 @@ class Admission(TimeStampedModel):
         null=True,
         related_name='admission'
     )
-    
+
     # Admission details
     admission_number = models.CharField(max_length=50, unique=True)  # ADM-YYYYMMDD-XXXX
     admission_date = models.DateTimeField()
@@ -263,14 +263,14 @@ class Admission(TimeStampedModel):
     admitting_diagnosis_text = models.CharField(max_length=255)
     admitting_officer = models.ForeignKey(User, on_delete=models.PROTECT, related_name='admissions_processed')
     attending_doctor = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, related_name='patients_attending')
-    
+
     # Location
     ward = models.ForeignKey(Ward, on_delete=models.PROTECT)
     bed = models.ForeignKey(Bed, on_delete=models.PROTECT)
-    
+
     # Status
     status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='ACTIVE')
-    
+
     # Insurance/payment
     payer_type = models.CharField(max_length=20, choices=[
         ('CASH', 'Cash'),
@@ -278,14 +278,14 @@ class Admission(TimeStampedModel):
         ('CORPORATE', 'Corporate'),
     ])
     insurance_details = models.JSONField(default=dict, blank=True)
-    
+
     # Timestamps
     discharge_date = models.DateTimeField(null=True, blank=True)
-    
+
     @property
     def length_of_stay(self) -> int:
         """Calculate LOS in days."""
-        
+
     def generate_admission_number(self):
         """Auto-generate admission number: ADM-YYYYMMDD-XXXX."""
 ```
@@ -320,18 +320,18 @@ class Admission(TimeStampedModel):
 ```python
 class WardRound(TimeStampedModel):
     """Daily ward round documentation."""
-    
+
     admission = models.ForeignKey(Admission, on_delete=models.CASCADE, related_name='ward_rounds')
     round_date = models.DateField()
     round_time = models.TimeField()
     conducted_by = models.ForeignKey(User, on_delete=models.PROTECT)
-    
+
     # Clinical findings
     subjective = models.TextField(help_text="Patient complaints, symptoms")
     objective = models.TextField(help_text="Examination findings, vitals")
     assessment = models.TextField(help_text="Clinical assessment, diagnosis updates")
     plan = models.TextField(help_text="Treatment plan, orders")
-    
+
     # Patient condition
     condition_status = models.CharField(max_length=20, choices=[
         ('STABLE', 'Stable'),
@@ -339,11 +339,11 @@ class WardRound(TimeStampedModel):
         ('DETERIORATING', 'Deteriorating'),
         ('CRITICAL', 'Critical'),
     ])
-    
+
     # Flags
     requires_consultant_review = models.BooleanField(default=False)
     consultant_specialty = models.CharField(max_length=100, blank=True)
-    
+
     class Meta:
         unique_together = ['admission', 'round_date', 'conducted_by']
         ordering = ['-round_date', '-round_time']
@@ -373,15 +373,15 @@ class WardRound(TimeStampedModel):
 ```python
 class NursingKardex(TimeStampedModel):
     """Nursing Kardex for inpatient care coordination."""
-    
+
     admission = models.OneToOneField(Admission, on_delete=models.CASCADE, related_name='kardex')
-    
+
     # Nursing care plan (editable sections)
     nursing_problems = models.TextField(blank=True)
     interventions = models.TextField(blank=True)
     monitoring_requirements = models.TextField(blank=True)
     care_task_frequency = models.TextField(blank=True)
-    
+
     # Risk assessments
     fall_risk = models.CharField(max_length=20, choices=[
         ('LOW', 'Low'),
@@ -393,14 +393,14 @@ class NursingKardex(TimeStampedModel):
         ('MODERATE', 'Moderate'),
         ('HIGH', 'High'),
     ], default='LOW')
-    
+
     class Meta:
         verbose_name_plural = "Nursing Kardexes"
 
 
 class KardexShiftNote(TimeStampedModel):
     """Individual shift note entry in Kardex (append-only)."""
-    
+
     kardex = models.ForeignKey(NursingKardex, on_delete=models.CASCADE, related_name='shift_notes')
     shift = models.CharField(max_length=10, choices=[
         ('DAY', 'Day Shift'),
@@ -409,14 +409,14 @@ class KardexShiftNote(TimeStampedModel):
     nurse = models.ForeignKey(User, on_delete=models.PROTECT)
     content = models.TextField()
     timestamp = models.DateTimeField(auto_now_add=True)
-    
+
     class Meta:
         ordering = ['-timestamp']
 
 
 class KardexHandoverNote(TimeStampedModel):
     """Handover notes for shift transitions."""
-    
+
     kardex = models.ForeignKey(NursingKardex, on_delete=models.CASCADE, related_name='handover_notes')
     outgoing_nurse = models.ForeignKey(User, on_delete=models.PROTECT, related_name='+')
     incoming_nurse = models.ForeignKey(User, on_delete=models.PROTECT, related_name='+')
@@ -458,7 +458,7 @@ class KardexHandoverNote(TimeStampedModel):
 ```python
 class ShiftHandover(TimeStampedModel):
     """Formal shift handover record."""
-    
+
     ward = models.ForeignKey(Ward, on_delete=models.CASCADE)
     shift_date = models.DateField()
     shift_ending = models.CharField(max_length=10, choices=[
@@ -467,17 +467,17 @@ class ShiftHandover(TimeStampedModel):
     ])
     outgoing_nurse = models.ForeignKey(User, on_delete=models.PROTECT, related_name='handovers_given')
     incoming_nurse = models.ForeignKey(User, on_delete=models.PROTECT, related_name='handovers_received')
-    
+
     # Summary
     total_patients = models.PositiveIntegerField()
     critical_patients = models.PositiveIntegerField(default=0)
     new_admissions = models.PositiveIntegerField(default=0)
     discharges_pending = models.PositiveIntegerField(default=0)
-    
+
     # Notes
     general_notes = models.TextField(blank=True)
     acknowledged_at = models.DateTimeField(null=True, blank=True)
-    
+
     class Meta:
         unique_together = ['ward', 'shift_date', 'shift_ending']
 ```
@@ -502,7 +502,7 @@ class ShiftHandover(TimeStampedModel):
 ```python
 class Transfer(TimeStampedModel):
     """Patient transfer between wards."""
-    
+
     TRANSFER_REASON_CHOICES = [
         ('STEP_UP', 'Step Up Care (e.g., to ICU)'),
         ('STEP_DOWN', 'Step Down Care'),
@@ -511,23 +511,23 @@ class Transfer(TimeStampedModel):
         ('PATIENT_REQUEST', 'Patient Request'),
         ('OTHER', 'Other'),
     ]
-    
+
     admission = models.ForeignKey(Admission, on_delete=models.CASCADE, related_name='transfers')
-    
+
     # Source
     source_ward = models.ForeignKey(Ward, on_delete=models.PROTECT, related_name='transfers_out')
     source_bed = models.ForeignKey(Bed, on_delete=models.PROTECT, related_name='transfers_out')
-    
+
     # Destination
     destination_ward = models.ForeignKey(Ward, on_delete=models.PROTECT, related_name='transfers_in')
     destination_bed = models.ForeignKey(Bed, on_delete=models.PROTECT, related_name='transfers_in')
-    
+
     # Details
     reason = models.CharField(max_length=20, choices=TRANSFER_REASON_CHOICES)
     reason_details = models.TextField(blank=True)
     transferred_by = models.ForeignKey(User, on_delete=models.PROTECT)
     transfer_date = models.DateTimeField()
-    
+
     # Handover
     clinical_handover_notes = models.TextField()
 ```
@@ -554,7 +554,7 @@ class Transfer(TimeStampedModel):
 ```python
 class Discharge(TimeStampedModel):
     """Patient discharge record."""
-    
+
     DISCHARGE_TYPE_CHOICES = [
         ('NORMAL', 'Normal Discharge'),
         ('AGAINST_ADVICE', 'Discharge Against Medical Advice'),
@@ -562,40 +562,40 @@ class Discharge(TimeStampedModel):
         ('DECEASED', 'Deceased'),
         ('ABSCONDED', 'Absconded'),
     ]
-    
+
     admission = models.OneToOneField(Admission, on_delete=models.CASCADE, related_name='discharge')
-    
+
     # Discharge details
     discharge_type = models.CharField(max_length=20, choices=DISCHARGE_TYPE_CHOICES)
     discharge_date = models.DateTimeField()
     discharged_by = models.ForeignKey(User, on_delete=models.PROTECT)
-    
+
     # Clinical summary
     admission_diagnosis = models.CharField(max_length=10)  # ICD-10
     final_diagnosis = models.CharField(max_length=10)  # ICD-10
     final_diagnosis_text = models.CharField(max_length=255)
     procedures_performed = models.TextField(blank=True)
     treatment_summary = models.TextField()
-    
+
     # Discharge medications
     discharge_medications = models.JSONField(default=list)  # Links to pharmacy
-    
+
     # Follow-up
     follow_up_date = models.DateField(null=True, blank=True)
     follow_up_instructions = models.TextField(blank=True)
-    
+
     # Referrals
     referral_facility = models.CharField(max_length=255, blank=True)
     referral_reason = models.TextField(blank=True)
-    
+
     # Patient instructions
     patient_instructions = models.TextField()
-    
+
     # Clearances
     pharmacy_cleared = models.BooleanField(default=False)
     billing_cleared = models.BooleanField(default=False)
     lab_results_acknowledged = models.BooleanField(default=False)
-    
+
     # Computed
     @property
     def length_of_stay(self) -> int:

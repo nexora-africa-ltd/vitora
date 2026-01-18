@@ -52,7 +52,7 @@ class TriageAssessment(TimeStampedModel):
     Triage assessment linked to an encounter.
     Captures initial patient assessment and KETA priority categorization.
     """
-    
+
     # Chief Complaint Categories
     CHIEF_COMPLAINT_CHOICES = [
         ('CHEST_PAIN', 'Chest Pain'),
@@ -68,7 +68,7 @@ class TriageAssessment(TimeStampedModel):
         ('PEDIATRIC', 'Pediatric Emergency'),
         ('OTHER', 'Other'),
     ]
-    
+
     # AVPU Mental Status Scale
     MENTAL_STATUS_CHOICES = [
         ('A', 'Alert'),
@@ -76,7 +76,7 @@ class TriageAssessment(TimeStampedModel):
         ('P', 'Responds to Pain'),
         ('U', 'Unresponsive'),
     ]
-    
+
     # Mobility Status
     MOBILITY_CHOICES = [
         ('AMBULATORY', 'Ambulatory'),
@@ -84,7 +84,7 @@ class TriageAssessment(TimeStampedModel):
         ('STRETCHER', 'Stretcher'),
         ('IMMOBILE', 'Immobile/Carried'),
     ]
-    
+
     # Arrival Mode
     ARRIVAL_MODE_CHOICES = [
         ('WALK_IN', 'Walk-in'),
@@ -93,7 +93,7 @@ class TriageAssessment(TimeStampedModel):
         ('REFERRAL', 'Referral from another facility'),
         ('OTHER', 'Other'),
     ]
-    
+
     # KETA Triage Categories (Kenya Emergency Triage Assessment)
     TRIAGE_CATEGORY_CHOICES = [
         ('RED', 'Emergency - Immediate'),
@@ -102,7 +102,7 @@ class TriageAssessment(TimeStampedModel):
         ('GREEN', 'Standard - <240 min'),
         ('BLUE', 'Non-Urgent/Referral'),
     ]
-    
+
     # Care Area Assignment
     ASSIGNED_AREA_CHOICES = [
         ('ER_RESUS', 'ER - Resuscitation'),
@@ -115,14 +115,14 @@ class TriageAssessment(TimeStampedModel):
         ('MATERNITY', 'Maternity/Labor'),
         ('SPECIALTY', 'Specialty Clinic'),
     ]
-    
+
     # Core Relationship
     encounter = models.OneToOneField(
         'encounters.Encounter',
         on_delete=models.CASCADE,
         related_name='triage_assessment'
     )
-    
+
     # Clinical Assessment
     chief_complaint = models.TextField(help_text="Primary reason for visit")
     chief_complaint_category = models.CharField(
@@ -150,7 +150,7 @@ class TriageAssessment(TimeStampedModel):
         blank=True,
         help_text="Allergies noted at triage (snapshot from patient record)"
     )
-    
+
     # Triage Decision
     triage_category = models.CharField(max_length=10, choices=TRIAGE_CATEGORY_CHOICES)
     auto_calculated_category = models.CharField(
@@ -162,7 +162,7 @@ class TriageAssessment(TimeStampedModel):
         blank=True,
         help_text="Required if nurse overrides system suggestion"
     )
-    
+
     # Routing
     assigned_area = models.CharField(max_length=30, choices=ASSIGNED_AREA_CHOICES)
     assigned_clinician = models.ForeignKey(
@@ -172,23 +172,23 @@ class TriageAssessment(TimeStampedModel):
         blank=True,
         related_name='triage_assignments'
     )
-    
+
     # Critical Timestamps
     arrival_time = models.DateTimeField(help_text="When patient arrived at facility")
     triage_start_time = models.DateTimeField(help_text="When triage assessment began")
     triage_end_time = models.DateTimeField(null=True, blank=True)
     seen_by_clinician_time = models.DateTimeField(null=True, blank=True)
-    
+
     # Alerts
     alerts = models.JSONField(default=list, help_text="List of critical alerts generated")
-    
+
     # Audit
     triaged_by = models.ForeignKey(
         'auth.User',
         on_delete=models.PROTECT,
         related_name='triage_assessments_performed'
     )
-    
+
     class Meta:
         ordering = ['-arrival_time']
         permissions = [
@@ -196,7 +196,7 @@ class TriageAssessment(TimeStampedModel):
             ('view_triage_queue', 'Can view triage queue'),
             ('override_triage_category', 'Can override triage category'),
         ]
-    
+
     # Target wait times by category (in minutes)
     TARGET_WAIT_TIMES = {
         'RED': 0,      # Immediate
@@ -205,22 +205,22 @@ class TriageAssessment(TimeStampedModel):
         'GREEN': 240,  # Standard
         'BLUE': 480,   # Non-Urgent
     }
-    
+
     def calculate_triage_category(self) -> str:
         """
         Calculate triage category based on vitals and symptoms.
         Returns suggested KETA category (RED/ORANGE/YELLOW/GREEN/BLUE).
         """
         pass
-    
+
     def get_wait_time_minutes(self) -> int:
         """Calculate time in minutes since arrival."""
         pass
-    
+
     def is_wait_time_exceeded(self) -> bool:
         """Check if patient has exceeded target wait time for their category."""
         pass
-    
+
     def generate_alerts(self) -> list[str]:
         """Generate alerts based on vitals and symptoms."""
         pass
@@ -268,7 +268,7 @@ class TriageVitalThreshold(TimeStampedModel):
     Configurable thresholds for vital sign alerts.
     Can be customized per facility or use system defaults.
     """
-    
+
     VITAL_TYPE_CHOICES = [
         ('SPO2', 'Oxygen Saturation (%)'),
         ('SYSTOLIC_BP', 'Systolic Blood Pressure (mmHg)'),
@@ -277,7 +277,7 @@ class TriageVitalThreshold(TimeStampedModel):
         ('TEMPERATURE', 'Temperature (°C)'),
         ('RESPIRATORY_RATE', 'Respiratory Rate (breaths/min)'),
     ]
-    
+
     vital_type = models.CharField(
         max_length=30,
         choices=VITAL_TYPE_CHOICES,
@@ -312,11 +312,11 @@ class TriageVitalThreshold(TimeStampedModel):
         help_text="Value above this triggers critical alert"
     )
     is_active = models.BooleanField(default=True)
-    
+
     class Meta:
         verbose_name = "Triage Vital Threshold"
         verbose_name_plural = "Triage Vital Thresholds"
-    
+
     @classmethod
     def get_defaults(cls) -> dict:
         """Return default threshold values."""
@@ -340,7 +340,7 @@ class TriageVitalThreshold(TimeStampedModel):
                 'warning_high': 24, 'warning_low': 10
             },
         }
-    
+
     def check_value(self, value: Decimal) -> str:
         """
         Check a vital value against thresholds.
@@ -381,7 +381,7 @@ class TriageQueue(TimeStampedModel):
     Active triage queue entry for a patient awaiting care.
     Removed when patient is seen by clinician or leaves.
     """
-    
+
     STATUS_CHOICES = [
         ('WAITING', 'Waiting'),
         ('CALLED', 'Called'),
@@ -389,7 +389,7 @@ class TriageQueue(TimeStampedModel):
         ('COMPLETED', 'Completed'),
         ('LEFT_WITHOUT_BEING_SEEN', 'Left Without Being Seen (LWBS)'),
     ]
-    
+
     triage_assessment = models.OneToOneField(
         TriageAssessment,
         on_delete=models.CASCADE,
@@ -412,34 +412,34 @@ class TriageQueue(TimeStampedModel):
         related_name='queue_calls'
     )
     notes = models.TextField(blank=True)
-    
+
     class Meta:
         ordering = ['triage_assessment__triage_category', 'triage_assessment__arrival_time']
         verbose_name = "Triage Queue Entry"
         verbose_name_plural = "Triage Queue Entries"
-    
+
     @classmethod
     def get_active_queue(cls, area: str = None) -> QuerySet:
         """Get active queue entries, optionally filtered by area."""
         pass
-    
+
     @classmethod
     def recalculate_positions(cls):
         """Recalculate all queue positions based on priority ordering."""
         pass
-    
+
     def mark_called(self, called_by: User):
         """Mark patient as called."""
         pass
-    
+
     def mark_with_clinician(self):
         """Mark patient as with clinician, update triage timestamps."""
         pass
-    
+
     def mark_completed(self):
         """Mark queue entry as completed."""
         pass
-    
+
     def mark_lwbs(self, reason: str = ''):
         """Mark patient as Left Without Being Seen."""
         pass
@@ -480,7 +480,7 @@ class TriageQueue(TimeStampedModel):
 class TriageCategoryCalculator:
     """
     Calculates triage category using KETA (Kenya Emergency Triage Assessment) rules.
-    
+
     Priority Order:
     1. RED - Life-threatening emergencies (immediate)
     2. ORANGE - Very urgent (<10 minutes)
@@ -488,11 +488,11 @@ class TriageCategoryCalculator:
     4. GREEN - Standard (<240 minutes)
     5. BLUE - Non-urgent/Referral
     """
-    
+
     def __init__(self, thresholds: dict = None):
         """Initialize with custom or default thresholds."""
         self.thresholds = thresholds or TriageVitalThreshold.get_defaults()
-    
+
     def calculate(
         self,
         vitals: dict,
@@ -503,32 +503,32 @@ class TriageCategoryCalculator:
     ) -> tuple[str, list[str]]:
         """
         Calculate triage category and generate alerts.
-        
+
         Args:
-            vitals: Dict with spo2, systolic_bp, diastolic_bp, heart_rate, 
+            vitals: Dict with spo2, systolic_bp, diastolic_bp, heart_rate,
                    temperature, respiratory_rate
             mental_status: AVPU scale value (A/V/P/U)
             chief_complaint_category: From CHIEF_COMPLAINT_CHOICES
             pain_score: 0-10 pain scale (optional)
             mobility: Mobility status (optional)
-        
+
         Returns:
             Tuple of (category, alerts_list)
         """
         pass
-    
+
     def _check_red_criteria(self, vitals, mental_status, chief_complaint) -> list[str]:
         """Check for RED (Emergency) criteria."""
         pass
-    
+
     def _check_orange_criteria(self, vitals, pain_score, chief_complaint) -> list[str]:
         """Check for ORANGE (Very Urgent) criteria."""
         pass
-    
+
     def _check_yellow_criteria(self, vitals, pain_score) -> list[str]:
         """Check for YELLOW (Urgent) criteria."""
         pass
-    
+
     def _check_vital_alerts(self, vitals) -> list[str]:
         """Generate alerts for abnormal vitals."""
         pass
@@ -622,7 +622,7 @@ class TriageCategoryCalculator:
 ```python
 class TriageAssessmentSerializer(serializers.ModelSerializer):
     """Serializer for TriageAssessment model."""
-    
+
     patient_name = serializers.CharField(source='encounter.patient.full_name', read_only=True)
     patient_mrn = serializers.CharField(source='encounter.patient.mrn', read_only=True)
     patient_age = serializers.IntegerField(source='encounter.patient.age', read_only=True)
@@ -630,7 +630,7 @@ class TriageAssessmentSerializer(serializers.ModelSerializer):
     wait_time_minutes = serializers.SerializerMethodField()
     is_wait_time_exceeded = serializers.SerializerMethodField()
     triaged_by_name = serializers.CharField(source='triaged_by.get_full_name', read_only=True)
-    
+
     class Meta:
         model = TriageAssessment
         fields = [
@@ -648,11 +648,11 @@ class TriageAssessmentSerializer(serializers.ModelSerializer):
 
 class TriageAssessmentCreateSerializer(serializers.ModelSerializer):
     """Serializer for creating triage assessments."""
-    
+
     def validate(self, data):
         """Ensure override reason provided if category differs from auto-calculated."""
         pass
-    
+
     def create(self, validated_data):
         """Auto-calculate category, generate alerts, add to queue."""
         pass
@@ -660,9 +660,9 @@ class TriageAssessmentCreateSerializer(serializers.ModelSerializer):
 
 class TriageQueueSerializer(serializers.ModelSerializer):
     """Serializer for triage queue entries."""
-    
+
     assessment = TriageAssessmentSerializer(source='triage_assessment', read_only=True)
-    
+
     class Meta:
         model = TriageQueue
         fields = ['id', 'assessment', 'position', 'status', 'called_at', 'notes']
@@ -670,7 +670,7 @@ class TriageQueueSerializer(serializers.ModelSerializer):
 
 class TriageVitalThresholdSerializer(serializers.ModelSerializer):
     """Serializer for vital thresholds."""
-    
+
     class Meta:
         model = TriageVitalThreshold
         fields = '__all__'
@@ -678,7 +678,7 @@ class TriageVitalThresholdSerializer(serializers.ModelSerializer):
 
 class TriageCategoryCalculationSerializer(serializers.Serializer):
     """Serializer for category calculation request."""
-    
+
     spo2 = serializers.DecimalField(max_digits=5, decimal_places=2, required=False)
     systolic_bp = serializers.IntegerField(required=False)
     diastolic_bp = serializers.IntegerField(required=False)
@@ -758,16 +758,16 @@ class TriageCategoryCalculationSerializer(serializers.Serializer):
 TRIAGE_SETTINGS = {
     # Auto-add to queue on triage creation
     'AUTO_ADD_TO_QUEUE': True,
-    
+
     # Queue refresh interval for frontend (seconds)
     'QUEUE_REFRESH_INTERVAL': 30,
-    
+
     # Enable wait time exceeded alerts
     'WAIT_TIME_ALERTS_ENABLED': True,
-    
+
     # Default triage scale (for future multi-scale support)
     'DEFAULT_TRIAGE_SCALE': 'KETA',
-    
+
     # Require override reason when changing from auto-calculated category
     'REQUIRE_OVERRIDE_REASON': True,
 }
@@ -836,7 +836,7 @@ from hmis.apps.triage.services import TriageCategoryCalculator
 
 class TestTriageAssessment:
     """Tests for TriageAssessment model."""
-    
+
     def test_create_triage_assessment_with_valid_data(self, db, sample_encounter, test_user):
         """Should create triage assessment with all required fields."""
         # Given: Valid triage data
@@ -855,12 +855,12 @@ class TestTriageAssessment:
             triage_start_time=timezone.now(),
             triaged_by=test_user,
         )
-        
+
         # Then: Assessment is created
         assert assessment.id is not None
         assert assessment.triage_category == "ORANGE"
         assert assessment.encounter == sample_encounter
-    
+
     def test_category_override_requires_reason(self, db, sample_encounter, test_user):
         """Should require reason when nurse overrides auto-calculated category."""
         # Given: Auto-calculated YELLOW, nurse wants ORANGE
@@ -878,12 +878,12 @@ class TestTriageAssessment:
             triage_start_time=timezone.now(),
             triaged_by=test_user,
         )
-        
+
         # Then: Validation error
         with pytest.raises(ValidationError) as exc_info:
             assessment.full_clean()
         assert 'category_override_reason' in str(exc_info.value)
-    
+
     def test_wait_time_exceeded_for_yellow_category(self, db, sample_encounter, test_user):
         """Should flag wait time exceeded for YELLOW patient waiting >60 min."""
         # Given: YELLOW patient arrived 75 minutes ago
@@ -900,7 +900,7 @@ class TestTriageAssessment:
             triage_start_time=timezone.now() - timedelta(minutes=70),
             triaged_by=test_user,
         )
-        
+
         # Then: Wait time exceeded
         assert assessment.is_wait_time_exceeded() == True
         assert assessment.get_wait_time_minutes() >= 75
@@ -908,61 +908,61 @@ class TestTriageAssessment:
 
 class TestTriageCategoryCalculator:
     """Tests for triage category calculation logic."""
-    
+
     def test_red_category_for_unresponsive_patient(self):
         """Should return RED for unresponsive (AVPU=U) patient."""
         # Given: Calculator and unresponsive patient
         calculator = TriageCategoryCalculator()
         vitals = {'spo2': 98, 'heart_rate': 80}
-        
+
         # When: Calculate category
         category, alerts = calculator.calculate(
             vitals=vitals,
             mental_status='U',
             chief_complaint_category='OTHER',
         )
-        
+
         # Then: RED category with alert
         assert category == 'RED'
         assert 'Unresponsive patient' in alerts
-    
+
     def test_red_category_for_critical_spo2(self):
         """Should return RED for SpO2 < 90%."""
         # Given: Critically low oxygen
         calculator = TriageCategoryCalculator()
         vitals = {'spo2': 85}
-        
+
         # When: Calculate category
         category, alerts = calculator.calculate(
             vitals=vitals,
             mental_status='A',
             chief_complaint_category='DIFFICULTY_BREATHING',
         )
-        
+
         # Then: RED with hypoxemia alert
         assert category == 'RED'
         assert any('hypoxemia' in alert.lower() for alert in alerts)
-    
+
     def test_orange_category_for_chest_pain_with_abnormal_vitals(self):
         """Should return ORANGE for chest pain with warning vitals."""
         # Given: Chest pain with elevated BP
         calculator = TriageCategoryCalculator()
         vitals = {'systolic_bp': 160, 'heart_rate': 95, 'spo2': 96}
-        
+
         # When: Calculate category
         category, alerts = calculator.calculate(
             vitals=vitals,
             mental_status='A',
             chief_complaint_category='CHEST_PAIN',
         )
-        
+
         # Then: ORANGE (chest pain + abnormal vitals)
         assert category == 'ORANGE'
 
 
 class TestTriageQueueOrdering:
     """Tests for triage queue priority sorting."""
-    
+
     def test_queue_sorted_by_category_then_arrival(self, db, create_triage_assessment):
         """Should sort queue by category (RED first) then arrival time (FIFO)."""
         # Given: Patients with different categories and times
@@ -978,10 +978,10 @@ class TestTriageQueueOrdering:
             category='RED',
             arrival_time=timezone.now() - timedelta(minutes=30)
         )
-        
+
         # When: Get queue
         queue = TriageQueue.objects.all()
-        
+
         # Then: RED patients first (by arrival), then YELLOW
         assert queue[0].triage_assessment == red_early  # RED, earlier
         assert queue[1].triage_assessment == red_late   # RED, later
@@ -990,20 +990,20 @@ class TestTriageQueueOrdering:
 
 class TestTriageAPI:
     """Tests for triage API endpoints."""
-    
+
     def test_create_triage_requires_perform_triage_permission(
         self, api_client, test_user, triage_data
     ):
         """Should reject triage creation without perform_triage permission."""
         # Given: Authenticated user without triage permission
         api_client.force_authenticate(user=test_user)
-        
+
         # When: Attempt to create triage
         response = api_client.post('/api/triage/', triage_data)
-        
+
         # Then: 403 Forbidden
         assert response.status_code == status.HTTP_403_FORBIDDEN
-    
+
     def test_create_triage_auto_calculates_category(
         self, authenticated_client_with_triage_permission, triage_data
     ):
@@ -1011,24 +1011,24 @@ class TestTriageAPI:
         # Given: Triage data without category
         triage_data.pop('triage_category', None)
         triage_data.pop('auto_calculated_category', None)
-        
+
         # When: Create triage
         response = authenticated_client_with_triage_permission.post(
             '/api/triage/', triage_data
         )
-        
+
         # Then: Category auto-calculated
         assert response.status_code == status.HTTP_201_CREATED
         assert 'auto_calculated_category' in response.data
         assert response.data['auto_calculated_category'] in ['RED', 'ORANGE', 'YELLOW', 'GREEN', 'BLUE']
-    
+
     def test_get_queue_returns_sorted_entries(
         self, authenticated_client_with_queue_permission
     ):
         """Should return queue sorted by priority."""
         # When: Get queue
         response = authenticated_client_with_queue_permission.get('/api/triage/queue/')
-        
+
         # Then: Success with sorted results
         assert response.status_code == status.HTTP_200_OK
         assert isinstance(response.data, list)
@@ -1233,7 +1233,7 @@ def create_triage_assessment(db, sample_patient, test_user):
     """Factory fixture for creating triage assessments."""
     from hmis.apps.encounters.models import Encounter
     from hmis.apps.triage.models import TriageAssessment, TriageQueue
-    
+
     def _create(category='GREEN', arrival_time=None):
         encounter = Encounter.objects.create(
             patient=sample_patient,
@@ -1258,7 +1258,7 @@ def create_triage_assessment(db, sample_patient, test_user):
             position=0,
         )
         return assessment
-    
+
     return _create
 ```
 

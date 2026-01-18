@@ -113,7 +113,7 @@ export function LabResultsEntry({ orderNumber, items, onComplete, onResultAdded 
   const [activeItemId, setActiveItemId] = useState<number | null>(
     items.find(item => !item.has_result)?.id || items[0]?.id || null
   );
-  
+
   const addResult = useAddLabResult();
   const verifyResult = useVerifyLabResult();
 
@@ -193,7 +193,7 @@ export function LabResultsEntry({ orderNumber, items, onComplete, onResultAdded 
 
       // Check if there are more pending items (using updated items from parent)
       const currentPendingCount = items.filter(item => !item.has_result && item.id !== activeItem.id).length;
-      
+
       if (currentPendingCount === 0) {
         toast({
           title: 'All results entered',
@@ -486,8 +486,8 @@ export function LabResultsEntry({ orderNumber, items, onComplete, onResultAdded 
                   <div>
                     <p className="text-muted-foreground text-xs mb-1">Value</p>
                     <p className="font-semibold text-foreground">
-                      {activeItem.result?.numeric_value ?? 
-                       activeItem.result?.text_value ?? 
+                      {activeItem.result?.numeric_value ??
+                       activeItem.result?.text_value ??
                        activeItem.result?.option_value ?? '-'}
                       {activeItem.result?.result_unit && (
                         <span className="text-muted-foreground ml-1">{activeItem.result.result_unit}</span>
@@ -502,7 +502,7 @@ export function LabResultsEntry({ orderNumber, items, onComplete, onResultAdded 
                   )}
                   <div>
                     <p className="text-muted-foreground text-xs mb-1">Flag</p>
-                    <Badge 
+                    <Badge
                       variant={
                         activeItem.result?.result_flag?.includes('CRITICAL') ? 'destructive' :
                         ['LOW', 'HIGH', 'ABNORMAL'].includes(activeItem.result?.result_flag || '') ? 'secondary' :

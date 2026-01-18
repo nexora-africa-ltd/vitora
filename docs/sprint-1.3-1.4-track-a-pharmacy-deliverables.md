@@ -41,7 +41,7 @@ Track A of Sprint 1.3-1.4 implements a comprehensive Pharmacy Module for Vitora 
 ```python
 class Drug(models.Model):
     """Drug master catalog entry."""
-    
+
     DRUG_FORMS = [
         ('TABLET', 'Tablet'),
         ('CAPSULE', 'Capsule'),
@@ -59,7 +59,7 @@ class Drug(models.Model):
         ('PATCH', 'Patch'),
         ('SPRAY', 'Spray'),
     ]
-    
+
     DRUG_CATEGORIES = [
         ('ANALGESIC', 'Analgesics & Antipyretics'),
         ('ANTIBIOTIC', 'Antibiotics'),
@@ -75,50 +75,50 @@ class Drug(models.Model):
         ('CONTROLLED', 'Controlled Substances'),
         ('OTHER', 'Other'),
     ]
-    
+
     SCHEDULE_CHOICES = [
         ('OTC', 'Over The Counter'),
         ('POM', 'Prescription Only Medicine'),
         ('P', 'Pharmacy Only'),
         ('CD', 'Controlled Drug'),
     ]
-    
+
     # Identity
     code = models.CharField(max_length=50, unique=True)  # Internal code
     generic_name = models.CharField(max_length=200)
     brand_names = models.JSONField(default=list)  # Multiple brands
-    
+
     # Classification
     category = models.CharField(max_length=30, choices=DRUG_CATEGORIES)
     form = models.CharField(max_length=20, choices=DRUG_FORMS)
     strength = models.CharField(max_length=50)  # e.g., "500mg", "250mg/5ml"
     unit = models.CharField(max_length=20)  # e.g., "tablet", "ml", "vial"
-    
+
     # Scheduling
     schedule = models.CharField(max_length=10, choices=SCHEDULE_CHOICES, default='POM')
     requires_prescription = models.BooleanField(default=True)
     is_controlled = models.BooleanField(default=False)
     is_narcotic = models.BooleanField(default=False)
-    
+
     # Kenya-specific
     keml_code = models.CharField(max_length=20, blank=True)  # Kenya Essential Medicines List
     is_essential = models.BooleanField(default=False)  # On KEML
     nhif_code = models.CharField(max_length=20, blank=True)  # For NHIF/SHA claims
-    
+
     # Inventory hints
     default_reorder_level = models.PositiveIntegerField(default=50)
     default_reorder_quantity = models.PositiveIntegerField(default=100)
     shelf_life_months = models.PositiveIntegerField(null=True, blank=True)
     storage_requirements = models.TextField(blank=True)  # Cold chain, etc.
-    
+
     # Pricing (reference only - actual price per batch)
     reference_price = models.DecimalField(max_digits=10, decimal_places=2, null=True)
-    
+
     # Status
     is_active = models.BooleanField(default=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
-    
+
     class Meta:
         ordering = ['generic_name', 'strength']
         indexes = [
@@ -159,7 +159,7 @@ class Drug(models.Model):
 ```python
 class StockBatch(models.Model):
     """Individual batch of drug stock."""
-    
+
     STOCK_STATUS = [
         ('AVAILABLE', 'Available'),
         ('LOW', 'Low Stock'),
@@ -168,29 +168,29 @@ class StockBatch(models.Model):
         ('QUARANTINE', 'Quarantine'),
         ('RECALLED', 'Recalled'),
     ]
-    
+
     drug = models.ForeignKey(Drug, on_delete=models.PROTECT, related_name='batches')
-    
+
     # Batch identification
     batch_number = models.CharField(max_length=50)
     barcode = models.CharField(max_length=100, blank=True)
-    
+
     # Quantities
     quantity_received = models.PositiveIntegerField()
     quantity_available = models.PositiveIntegerField()
     quantity_dispensed = models.PositiveIntegerField(default=0)
     quantity_damaged = models.PositiveIntegerField(default=0)
     quantity_expired = models.PositiveIntegerField(default=0)
-    
+
     # Dates
     manufacture_date = models.DateField(null=True, blank=True)
     expiry_date = models.DateField()
     received_date = models.DateField()
-    
+
     # Pricing
     cost_price = models.DecimalField(max_digits=10, decimal_places=2)  # Per unit
     selling_price = models.DecimalField(max_digits=10, decimal_places=2)  # Per unit
-    
+
     # Source
     supplier = models.CharField(max_length=200, blank=True)
     purchase_order = models.CharField(max_length=50, blank=True)
@@ -200,15 +200,15 @@ class StockBatch(models.Model):
         null=True,
         related_name='received_batches'
     )
-    
+
     # Status
     status = models.CharField(max_length=20, choices=STOCK_STATUS, default='AVAILABLE')
     location = models.CharField(max_length=100, blank=True)  # Shelf/bin location
-    
+
     # Tracking
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
-    
+
     class Meta:
         ordering = ['expiry_date', 'received_date']  # FEFO ordering
         unique_together = ['drug', 'batch_number']
@@ -260,7 +260,7 @@ class StockBatch(models.Model):
 ```python
 class StockAlert(models.Model):
     """Stock-related alerts and notifications."""
-    
+
     ALERT_TYPES = [
         ('LOW_STOCK', 'Low Stock'),
         ('OUT_OF_STOCK', 'Out of Stock'),
@@ -268,21 +268,21 @@ class StockAlert(models.Model):
         ('EXPIRED', 'Expired'),
         ('RECALLED', 'Product Recalled'),
     ]
-    
+
     ALERT_SEVERITY = [
         ('LOW', 'Low'),
         ('MEDIUM', 'Medium'),
         ('HIGH', 'High'),
         ('CRITICAL', 'Critical'),
     ]
-    
+
     drug = models.ForeignKey(Drug, on_delete=models.CASCADE, related_name='alerts')
     batch = models.ForeignKey(StockBatch, on_delete=models.CASCADE, null=True, blank=True)
-    
+
     alert_type = models.CharField(max_length=20, choices=ALERT_TYPES)
     severity = models.CharField(max_length=10, choices=ALERT_SEVERITY)
     message = models.TextField()
-    
+
     # Resolution
     is_acknowledged = models.BooleanField(default=False)
     acknowledged_by = models.ForeignKey(
@@ -293,7 +293,7 @@ class StockAlert(models.Model):
         related_name='acknowledged_alerts'
     )
     acknowledged_at = models.DateTimeField(null=True, blank=True)
-    
+
     is_resolved = models.BooleanField(default=False)
     resolved_by = models.ForeignKey(
         settings.AUTH_USER_MODEL,
@@ -304,9 +304,9 @@ class StockAlert(models.Model):
     )
     resolved_at = models.DateTimeField(null=True, blank=True)
     resolution_notes = models.TextField(blank=True)
-    
+
     created_at = models.DateTimeField(auto_now_add=True)
-    
+
     class Meta:
         ordering = ['-severity', '-created_at']
 ```
@@ -343,7 +343,7 @@ class StockAlert(models.Model):
 ```python
 class Prescription(models.Model):
     """Prescription for a patient encounter."""
-    
+
     PRESCRIPTION_STATUS = [
         ('PENDING', 'Pending'),
         ('PARTIAL', 'Partially Dispensed'),
@@ -351,7 +351,7 @@ class Prescription(models.Model):
         ('CANCELLED', 'Cancelled'),
         ('EXPIRED', 'Expired'),
     ]
-    
+
     # Links
     encounter = models.ForeignKey(
         'encounters.Encounter',
@@ -363,7 +363,7 @@ class Prescription(models.Model):
         on_delete=models.PROTECT,
         related_name='prescriptions'
     )
-    
+
     # Prescriber
     prescribed_by = models.ForeignKey(
         settings.AUTH_USER_MODEL,
@@ -371,34 +371,34 @@ class Prescription(models.Model):
         related_name='prescriptions_written'
     )
     prescribed_at = models.DateTimeField(auto_now_add=True)
-    
+
     # Validity
     valid_until = models.DateField()  # Typically 30 days from prescription
-    
+
     # Status
     status = models.CharField(max_length=20, choices=PRESCRIPTION_STATUS, default='PENDING')
-    
+
     # Notes
     clinical_notes = models.TextField(blank=True)  # For pharmacist
-    
+
     # Tracking
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
-    
+
     class Meta:
         ordering = ['-prescribed_at']
 
 
 class PrescriptionItem(models.Model):
     """Individual drug item in a prescription."""
-    
+
     prescription = models.ForeignKey(
         Prescription,
         on_delete=models.CASCADE,
         related_name='items'
     )
     drug = models.ForeignKey(Drug, on_delete=models.PROTECT)
-    
+
     # Dosage instructions
     quantity = models.PositiveIntegerField()  # Total quantity to dispense
     dosage = models.CharField(max_length=100)  # e.g., "1 tablet"
@@ -406,11 +406,11 @@ class PrescriptionItem(models.Model):
     duration = models.CharField(max_length=50)  # e.g., "7 days"
     route = models.CharField(max_length=50, blank=True)  # e.g., "Oral", "IV"
     instructions = models.TextField(blank=True)  # e.g., "Take after meals"
-    
+
     # Dispensing tracking
     quantity_dispensed = models.PositiveIntegerField(default=0)
     is_substitutable = models.BooleanField(default=True)  # Allow generic substitution
-    
+
     # Status
     is_cancelled = models.BooleanField(default=False)
     cancellation_reason = models.TextField(blank=True)
@@ -452,7 +452,7 @@ class PrescriptionItem(models.Model):
 ```python
 class Dispensing(models.Model):
     """Drug dispensing record."""
-    
+
     prescription_item = models.ForeignKey(
         PrescriptionItem,
         on_delete=models.PROTECT,
@@ -460,7 +460,7 @@ class Dispensing(models.Model):
         null=True,
         blank=True
     )
-    
+
     # Direct dispense (OTC, emergency)
     patient = models.ForeignKey(
         'patients.Patient',
@@ -468,27 +468,27 @@ class Dispensing(models.Model):
         related_name='dispensings'
     )
     drug = models.ForeignKey(Drug, on_delete=models.PROTECT)
-    
+
     # Batch tracking (FEFO)
     batch = models.ForeignKey(
         StockBatch,
         on_delete=models.PROTECT,
         related_name='dispensings'
     )
-    
+
     # Quantities
     quantity_dispensed = models.PositiveIntegerField()
     quantity_returned = models.PositiveIntegerField(default=0)
-    
+
     # Pricing
     unit_price = models.DecimalField(max_digits=10, decimal_places=2)
     total_price = models.DecimalField(max_digits=12, decimal_places=2)
     discount = models.DecimalField(max_digits=10, decimal_places=2, default=0)
-    
+
     # Instructions given
     instructions_given = models.TextField(blank=True)
     patient_counseled = models.BooleanField(default=False)
-    
+
     # Dispensed by
     dispensed_by = models.ForeignKey(
         settings.AUTH_USER_MODEL,
@@ -496,7 +496,7 @@ class Dispensing(models.Model):
         related_name='dispensings'
     )
     dispensed_at = models.DateTimeField(auto_now_add=True)
-    
+
     # Verification (for controlled substances)
     verified_by = models.ForeignKey(
         settings.AUTH_USER_MODEL,
@@ -506,10 +506,10 @@ class Dispensing(models.Model):
         related_name='verified_dispensings'
     )
     verified_at = models.DateTimeField(null=True, blank=True)
-    
+
     # Notes
     notes = models.TextField(blank=True)
-    
+
     class Meta:
         ordering = ['-dispensed_at']
 ```
@@ -550,19 +550,19 @@ class Dispensing(models.Model):
 ```python
 class FEFODispenser:
     """First Expiry First Out dispensing logic."""
-    
+
     @staticmethod
     def get_batches_for_dispensing(drug: Drug, quantity: int) -> list[tuple[StockBatch, int]]:
         """
         Get batches to dispense from, prioritizing earliest expiry.
-        
+
         Args:
             drug: Drug to dispense
             quantity: Total quantity needed
-            
+
         Returns:
             List of (batch, quantity) tuples
-            
+
         Raises:
             InsufficientStockError: If not enough stock available
         """
@@ -572,26 +572,26 @@ class FEFODispenser:
             expiry_date__gt=timezone.now().date(),
             quantity_available__gt=0
         ).order_by('expiry_date', 'received_date')
-        
+
         result = []
         remaining = quantity
-        
+
         for batch in available_batches:
             if remaining <= 0:
                 break
-            
+
             take = min(batch.quantity_available, remaining)
             result.append((batch, take))
             remaining -= take
-        
+
         if remaining > 0:
             raise InsufficientStockError(
                 f"Insufficient stock for {drug.generic_name}. "
                 f"Requested: {quantity}, Available: {quantity - remaining}"
             )
-        
+
         return result
-    
+
     @staticmethod
     def dispense(drug: Drug, quantity: int, dispensed_by: User, **kwargs) -> list[Dispensing]:
         """
@@ -600,7 +600,7 @@ class FEFODispenser:
         """
         batches = FEFODispenser.get_batches_for_dispensing(drug, quantity)
         dispensings = []
-        
+
         for batch, qty in batches:
             dispensing = Dispensing.objects.create(
                 drug=drug,
@@ -613,7 +613,7 @@ class FEFODispenser:
             )
             batch.dispense(qty)
             dispensings.append(dispensing)
-        
+
         return dispensings
 ```
 
@@ -641,7 +641,7 @@ class FEFODispenser:
 ```python
 class StockAdjustment(models.Model):
     """Record of stock adjustment (non-dispensing)."""
-    
+
     ADJUSTMENT_TYPES = [
         ('DAMAGE', 'Damaged Stock'),
         ('LOSS', 'Stock Loss/Theft'),
@@ -652,23 +652,23 @@ class StockAdjustment(models.Model):
         ('COUNT_CORRECTION', 'Physical Count Correction'),
         ('SAMPLE', 'Sample/Demo'),
     ]
-    
+
     batch = models.ForeignKey(StockBatch, on_delete=models.PROTECT, related_name='adjustments')
     adjustment_type = models.CharField(max_length=20, choices=ADJUSTMENT_TYPES)
-    
+
     quantity = models.IntegerField()  # Positive = increase, Negative = decrease
     reason = models.TextField()
-    
+
     # Documentation
     reference_number = models.CharField(max_length=50, blank=True)  # e.g., return note number
-    
+
     adjusted_by = models.ForeignKey(
         settings.AUTH_USER_MODEL,
         on_delete=models.PROTECT,
         related_name='stock_adjustments'
     )
     adjusted_at = models.DateTimeField(auto_now_add=True)
-    
+
     # Approval (for significant adjustments)
     requires_approval = models.BooleanField(default=False)
     approved_by = models.ForeignKey(
@@ -772,7 +772,7 @@ operations = [
     migrations.CreateModel(name='PrescriptionItem', ...),
     migrations.CreateModel(name='Dispensing', ...),
     migrations.CreateModel(name='StockAdjustment', ...),
-    
+
     # Indexes
     migrations.AddIndex(
         model_name='drug',

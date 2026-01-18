@@ -311,19 +311,19 @@ async function loginAndNavigate(page: Page, path: string) {
   await page.getByLabel(/username/i).fill(TEST_USER.username);
   await page.getByLabel(/password/i).fill(TEST_USER.password);
   await page.getByRole('button', { name: /sign in|login/i }).click();
-  
+
   // Wait for login to complete - the app redirects / -> /dashboard
   // Use a more flexible wait that handles the redirect chain
   await page.waitForURL((url) => {
     const pathname = url.pathname;
     return pathname === '/dashboard' || pathname === '/' || pathname.startsWith('/dashboard');
   }, { timeout: 15000 });
-  
+
   // If we landed on /, wait for redirect to /dashboard
   if (page.url().endsWith('/')) {
     await page.waitForURL(/.*dashboard.*/, { timeout: 10000 });
   }
-  
+
   await page.goto(path);
 }
 
@@ -344,7 +344,7 @@ test.describe('Triage Queue Dashboard', () => {
     // The queue shows patients sorted by category and wait time
     await expect(page.getByRole('heading', { name: 'Jane Wanjiku', level: 3 })).toBeVisible();
     await expect(page.getByRole('heading', { name: 'Mary Otieno', level: 3 })).toBeVisible();
-    
+
     // RED category patients should be visible
     await expect(page.getByText('RED').first()).toBeVisible();
   });
@@ -417,7 +417,7 @@ test.describe('Triage Queue Dashboard', () => {
 
     // Open category filter using the specific filter button
     await page.getByRole('button', { name: 'Filter by category' }).click();
-    
+
     // Wait for dropdown options to appear and click RED
     await page.getByText('RED', { exact: true }).first().click();
 
@@ -563,13 +563,13 @@ test.describe('Triage Navigation', () => {
     await page.getByLabel(/username/i).fill(TEST_USER.username);
     await page.getByLabel(/password/i).fill(TEST_USER.password);
     await page.getByRole('button', { name: /sign in|login/i }).click();
-    
+
     // Wait for login to complete - handle redirect chain / -> /dashboard
     await page.waitForURL((url) => {
       const pathname = url.pathname;
       return pathname === '/dashboard' || pathname === '/' || pathname.startsWith('/dashboard');
     }, { timeout: 15000 });
-    
+
     if (page.url().endsWith('/')) {
       await page.waitForURL(/.*dashboard.*/, { timeout: 10000 });
     };
@@ -599,7 +599,7 @@ test.describe('Triage Navigation', () => {
 test.describe('Triage Accessibility', () => {
   test('queue page has proper heading structure', async ({ page }) => {
     await loginAndNavigate(page, '/triage');
-    
+
     const h1 = page.getByRole('heading', { level: 1 }).first();
     await expect(h1).toBeVisible();
     await expect(h1).toContainText(/triage/i);
@@ -607,7 +607,7 @@ test.describe('Triage Accessibility', () => {
 
   test('reports page has proper heading structure', async ({ page }) => {
     await loginAndNavigate(page, '/triage/reports');
-    
+
     const h1 = page.getByRole('heading', { level: 1 }).first();
     await expect(h1).toBeVisible();
     await expect(h1).toContainText(/triage reports/i);
@@ -615,7 +615,7 @@ test.describe('Triage Accessibility', () => {
 
   test('settings page has proper heading structure', async ({ page }) => {
     await loginAndNavigate(page, '/triage/settings');
-    
+
     const h1 = page.getByRole('heading', { level: 1 }).first();
     await expect(h1).toBeVisible();
     await expect(h1).toContainText(/triage settings/i);
@@ -623,11 +623,11 @@ test.describe('Triage Accessibility', () => {
 
   test('queue cards are keyboard navigable', async ({ page }) => {
     await loginAndNavigate(page, '/triage');
-    
+
     // Tab to first card action button
     await page.keyboard.press('Tab');
     await page.keyboard.press('Tab');
-    
+
     // Should be able to activate with Enter
     const focusedElement = page.locator(':focus');
     await expect(focusedElement).toBeVisible();

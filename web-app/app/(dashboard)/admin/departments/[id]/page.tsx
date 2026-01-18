@@ -48,7 +48,7 @@ export default function EditDepartmentPage() {
   const params = useParams();
   const departmentId = parseInt(params.id as string);
   const { toast } = useToast();
-  
+
   const { data: department, isLoading, error } = useDepartment(departmentId);
   const updateDepartment = useUpdateDepartment();
   const deleteDepartment = useDeleteDepartment();
@@ -74,7 +74,7 @@ export default function EditDepartmentPage() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
+
     try {
       await updateDepartment.mutateAsync({ id: departmentId, data: formData });
       toast({

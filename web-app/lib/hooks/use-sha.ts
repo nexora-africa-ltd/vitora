@@ -19,21 +19,21 @@ import type {
 
 export const shaQueryKeys = {
   all: ['sha'] as const,
-  
+
   // SHA Members
   members: () => [...shaQueryKeys.all, 'members'] as const,
   membersByPatient: (patientId: number) => [...shaQueryKeys.members(), 'patient', patientId] as const,
   member: (id: number) => [...shaQueryKeys.members(), id] as const,
-  
+
   // Eligibility
   eligibility: () => [...shaQueryKeys.all, 'eligibility'] as const,
   patientEligibility: (patientId: number) => [...shaQueryKeys.eligibility(), 'patient', patientId] as const,
-  
+
   // Claims
   claims: () => [...shaQueryKeys.all, 'claims'] as const,
   claimsList: (params?: ClaimListParams) => [...shaQueryKeys.claims(), 'list', params] as const,
   claim: (id: number) => [...shaQueryKeys.claims(), id] as const,
-  
+
   // Terminology
   terminology: () => [...shaQueryKeys.all, 'terminology'] as const,
   icd11: (params?: TerminologySearchParams) => [...shaQueryKeys.terminology(), 'icd11', params] as const,
@@ -287,7 +287,7 @@ export function useFetchFromCR() {
  */
 export function useRegisterInCR() {
   const queryClient = useQueryClient();
-  
+
   return useMutation({
     mutationFn: shaApi.registerInClientRegistry,
     onSuccess: (_, variables) => {

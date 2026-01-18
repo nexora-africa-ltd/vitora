@@ -1,7 +1,7 @@
 /**
  * Direct Dispense Dialog Component
  * Sprint 1.3-1.4 Track A: Pharmacy Module
- * 
+ *
  * Dialog for direct OTC/emergency dispensing without prescription.
  * Only allows OTC drugs to be dispensed without a prescription.
  */
@@ -212,8 +212,8 @@ export function DirectDispenseDialog({
               </PopoverTrigger>
               <PopoverContent className="w-full p-0">
                 <Command shouldFilter={false}>
-                  <CommandInput 
-                    placeholder="Search patients by name or MRN..." 
+                  <CommandInput
+                    placeholder="Search patients by name or MRN..."
                     value={patientSearch}
                     onValueChange={setPatientSearch}
                   />

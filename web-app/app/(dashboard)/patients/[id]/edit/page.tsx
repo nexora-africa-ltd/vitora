@@ -63,7 +63,7 @@ export default function EditPatientPage() {
           const crResponse = await registerInCR.mutateAsync({
             patient_id: patientId,
           });
-          
+
           if (crResponse.success && crResponse.client_number) {
             toast({
               title: 'Client Registry Registration Successful',

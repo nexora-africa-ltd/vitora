@@ -1,6 +1,6 @@
 /**
  * SyncQueue Model Tests
- * 
+ *
  * Tests for SyncQueue model methods.
  */
 

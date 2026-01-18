@@ -138,4 +138,3 @@ The API may return the following HTTP status codes:
 | 401 | Unauthorized (invalid token) |
 | 404 | Individual not found in the system |
 | 500 | Internal server error |
-

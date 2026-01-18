@@ -116,11 +116,11 @@ import { EligibilityBanner, CompactEligibilityBanner } from '@/components/billin
 Select medical codes from SHA-approved terminologies.
 
 ```tsx
-import { 
-  ICD11Select, 
-  LOINCSelect, 
+import {
+  ICD11Select,
+  LOINCSelect,
   DrugSelect,
-  SHAInterventionSelect 
+  SHAInterventionSelect
 } from '@/components/billing/sha';
 
 // Diagnosis selection (ICD-11)
@@ -155,7 +155,7 @@ import {
 Display and manage SHA claims.
 
 ```tsx
-import { 
+import {
   ClaimStatusBadge,
   ClaimStatusCard,
   ClaimSubmissionButton,
@@ -224,9 +224,9 @@ const { data: members } = useSHAMembersByPatient(patientId);
 const { data: eligibility, isLoading } = usePatientEligibility(patientId);
 
 // Get claims with filtering
-const { data: claims } = useClaims({ 
+const { data: claims } = useClaims({
   status: 'pending',
-  patient: patientId 
+  patient: patientId
 });
 
 // Search terminologies (debounced)
@@ -267,8 +267,8 @@ Direct API access is available through `shaApi`:
 import { shaApi } from '@/lib/api/sha';
 
 // Client Registry lookup
-const client = await shaApi.fetchFromClientRegistry({ 
-  id_number: '12345678' 
+const client = await shaApi.fetchFromClientRegistry({
+  id_number: '12345678'
 });
 
 // Check eligibility
@@ -294,28 +294,28 @@ import type {
   // Client Registry
   ClientRegistryClient,
   ClientRegistryLookupParams,
-  
+
   // Eligibility
   EligibilityState,
   EligibilityCheckRequest,
-  
+
   // Claims
   Claim,
   ClaimStatus,
   ClaimCreateRequest,
   ClaimListParams,
   ClaimSubmitResponse,
-  
+
   // Terminologies
   ICD11Code,
   LOINCCode,
   DrugProduct,
   SHAIntervention,
-  
+
   // Facility
   FacilityInfo,
   PractitionerInfo,
-  
+
   // SHA Member
   SHAMember,
 } from '@/lib/types/sha';

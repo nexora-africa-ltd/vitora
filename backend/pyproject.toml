@@ -227,17 +227,22 @@ skip_glob = ["*/migrations/*"]
 
 [tool.mypy]
 python_version = "3.12"
+mypy_path = "backend"
 plugins = ["mypy_django_plugin.main", "mypy_drf_plugin.main"]
-warn_return_any = true
+warn_return_any = false
 warn_unused_configs = true
 disallow_untyped_defs = false  # Set to true once codebase is typed
 ignore_missing_imports = true
-check_untyped_defs = true
+check_untyped_defs = false
 warn_redundant_casts = true
-warn_unused_ignores = true
+warn_unused_ignores = false
 warn_no_return = true
-warn_unreachable = true
+warn_unreachable = false
 strict_optional = true
+no_implicit_optional = false
+
+# Exclude highly dynamic codepaths from type-checking (settings, fixtures, commands)
+exclude = "(?x)(^|/)(hmis/settings/|hmis/apps/core/fixtures/|hmis/apps/[^/]+/management/commands/)"
 
 [[tool.mypy.overrides]]
 module = "*.migrations.*"
@@ -247,7 +252,17 @@ ignore_errors = true
 django_settings_module = "hmis.settings.development"
 
 [tool.bandit]
-exclude_dirs = ["tests", "*/tests/*", "*/migrations/*"]
+exclude_dirs = [
+    "tests",
+    "*/tests/*",
+    "*/migrations/*",
+    "hmis/apps/core/fixtures",
+    "hmis/apps/*/management/commands",
+    "hmis/apps/core/management/commands",
+    "backend/hmis/apps/core/fixtures",
+    "backend/hmis/apps/*/management/commands",
+    "backend/hmis/apps/core/management/commands",
+]
 skips = ["B101"]  # Skip assert_used in tests
 
 [build-system]

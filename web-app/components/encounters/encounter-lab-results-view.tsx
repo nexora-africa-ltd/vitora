@@ -62,7 +62,7 @@ function ResultValue({ item }: { item: LabOrderItem }) {
 
 function LabOrderResults({ order }: { order: LabOrder }) {
   const [isOpen, setIsOpen] = useState(true);
-  
+
   const completedItems = order.items?.filter(i => i.has_result) || [];
   const pendingItems = order.items?.filter(i => !i.has_result) || [];
   const hasCritical = order.items?.some(i => i.result?.is_critical_result);
@@ -118,7 +118,7 @@ function LabOrderResults({ order }: { order: LabOrder }) {
             </div>
           </button>
         </CollapsibleTrigger>
-        
+
         <CollapsibleContent>
           <div className="border-t p-3 space-y-2 bg-muted/30">
             {/* Completed Results */}
@@ -145,7 +145,7 @@ function LabOrderResults({ order }: { order: LabOrder }) {
                 ))}
               </div>
             )}
-            
+
             {/* Pending Items */}
             {pendingItems.length > 0 && (
               <div className="pt-2 border-t space-y-1">
@@ -226,7 +226,7 @@ export function EncounterLabResultsView({ orders, isLoading }: EncounterLabResul
           </div>
         </div>
       )}
-      
+
       {ordersWithResults.map((order) => (
         <LabOrderResults key={order.order_number} order={order} />
       ))}

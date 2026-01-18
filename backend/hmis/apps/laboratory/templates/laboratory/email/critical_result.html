@@ -61,30 +61,30 @@
         </div>
         <div class="content">
             <p>Dear Dr. {{ clinician_name }},</p>
-            
+
             <p><strong>CRITICAL</strong> lab results are now available for:</p>
-            
+
             <div class="critical-box">
                 <strong>Patient:</strong> {{ patient_name }} ({{ patient_mrn }})<br>
                 <strong>Test:</strong> {{ test_name }}<br>
                 <strong>Order:</strong> {{ order_number }}
             </div>
-            
+
             <h3>Critical Values Detected:</h3>
             {% for result in critical_results %}
             <div class="result-item">
-                <strong>{{ result.parameter }}:</strong> {{ result.value }} {{ result.unit }} 
+                <strong>{{ result.parameter }}:</strong> {{ result.value }} {{ result.unit }}
                 <span style="color: #d32f2f; font-weight: bold;">({{ result.flag }})</span>
                 {% if result.reference_range %}
                 <br><small>Reference: {{ result.reference_range }}</small>
                 {% endif %}
             </div>
             {% endfor %}
-            
+
             <p style="margin-top: 20px;">
                 <strong>Please review these results immediately.</strong>
             </p>
-            
+
             <a href="{{ action_url }}" class="button">View Results</a>
         </div>
         <div class="footer">

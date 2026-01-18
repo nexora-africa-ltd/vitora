@@ -70,7 +70,7 @@ Track B of Sprint 1.3-1.4 implements the Laboratory and Investigations Foundatio
 ```python
 class TestCatalog(models.Model):
     """Laboratory test master catalog."""
-    
+
     TEST_CATEGORIES = [
         ('HEMATOLOGY', 'Hematology'),
         ('CHEMISTRY', 'Clinical Chemistry'),
@@ -84,7 +84,7 @@ class TestCatalog(models.Model):
         ('MOLECULAR', 'Molecular Diagnostics'),
         ('OTHER', 'Other'),
     ]
-    
+
     SPECIMEN_TYPES = [
         ('BLOOD', 'Whole Blood'),
         ('SERUM', 'Serum'),
@@ -98,30 +98,30 @@ class TestCatalog(models.Model):
         ('ASPIRATE', 'Aspirate'),
         ('OTHER', 'Other'),
     ]
-    
+
     # Identity
     code = models.CharField(max_length=50, unique=True)  # Internal code
     name = models.CharField(max_length=200)  # Test name
     short_name = models.CharField(max_length=50)  # Abbreviation
     loinc_code = models.CharField(max_length=20, null=True, blank=True)  # LOINC mapping
-    
+
     # Classification
     category = models.CharField(max_length=30, choices=TEST_CATEGORIES)
     specimen_type = models.CharField(max_length=20, choices=SPECIMEN_TYPES)
-    
+
     # Requirements
     requires_fasting = models.BooleanField(default=False)
     special_instructions = models.TextField(blank=True)
     turnaround_hours = models.IntegerField(default=24)  # Expected TAT
-    
+
     # Availability
     available_in_house = models.BooleanField(default=True)
     external_lab_partner = models.CharField(max_length=100, blank=True)
-    
+
     # Pricing
     cost = models.DecimalField(max_digits=10, decimal_places=2, default=0)
     sha_claimable = models.BooleanField(default=True)  # Kenya SHA coverage
-    
+
     # Result configuration
     result_type = models.CharField(max_length=20, choices=[
         ('NUMERIC', 'Numeric Value'),
@@ -134,11 +134,11 @@ class TestCatalog(models.Model):
     normal_range_female = models.CharField(max_length=50, blank=True)
     normal_range_child = models.CharField(max_length=50, blank=True)
     result_options = models.JSONField(default=list)  # For OPTIONS type
-    
+
     # Panel components (for PANEL type)
     is_panel = models.BooleanField(default=False)
     panel_components = models.ManyToManyField('self', symmetrical=False, blank=True)
-    
+
     # Status
     is_active = models.BooleanField(default=True)
     created_at = models.DateTimeField(auto_now_add=True)
@@ -159,7 +159,7 @@ ESSENTIAL_TESTS = [
     ("ESR", "Erythrocyte Sedimentation Rate", "HEMATOLOGY", "BLOOD", True),
     ("BG", "Blood Grouping & Rh", "HEMATOLOGY", "BLOOD", True),
     ("PT_INR", "Prothrombin Time/INR", "HEMATOLOGY", "BLOOD", True),
-    
+
     # Chemistry
     ("RBS", "Random Blood Sugar", "CHEMISTRY", "BLOOD", True),
     ("FBS", "Fasting Blood Sugar", "CHEMISTRY", "BLOOD", True),
@@ -167,22 +167,22 @@ ESSENTIAL_TESTS = [
     ("LFT", "Liver Function Tests", "CHEMISTRY", "SERUM", True),
     ("RFT", "Renal Function Tests", "CHEMISTRY", "SERUM", True),
     ("ELEC", "Electrolytes", "CHEMISTRY", "SERUM", True),
-    
+
     # Serology
     ("HIV", "HIV 1&2 Antibody", "SEROLOGY", "BLOOD", True),
     ("HBSAG", "Hepatitis B Surface Antigen", "SEROLOGY", "SERUM", True),
     ("WIDAL", "Widal Test", "SEROLOGY", "SERUM", True),
     ("VDRL", "VDRL/RPR", "SEROLOGY", "SERUM", True),
-    
+
     # Parasitology
     ("MPS", "Malaria Parasites (Microscopy)", "PARASITOLOGY", "BLOOD", True),
     ("MRDT", "Malaria RDT", "PARASITOLOGY", "BLOOD", True),
     ("STOOL", "Stool Examination", "PARASITOLOGY", "STOOL", True),
-    
+
     # Urinalysis
     ("UA", "Urinalysis", "URINALYSIS", "URINE", True),
     ("UC", "Urine Culture", "MICROBIOLOGY", "URINE", True),
-    
+
     # Immunology
     ("CD4", "CD4 Count", "IMMUNOLOGY", "BLOOD", False),  # Often external
     ("VL", "Viral Load", "MOLECULAR", "BLOOD", False),  # Often external
@@ -213,12 +213,12 @@ ESSENTIAL_TESTS = [
 ```python
 class LabOrder(models.Model):
     """Laboratory test order from clinical encounter."""
-    
+
     ORDER_TYPES = [
         ('IN_HOUSE', 'In-House Processing'),
         ('EXTERNAL', 'External Lab Referral'),
     ]
-    
+
     ORDER_STATUS = [
         ('DRAFT', 'Draft'),
         ('ORDERED', 'Ordered'),
@@ -228,35 +228,35 @@ class LabOrder(models.Model):
         ('CANCELLED', 'Cancelled'),
         ('REJECTED', 'Rejected'),
     ]
-    
+
     PRIORITY_LEVELS = [
         ('ROUTINE', 'Routine'),
         ('URGENT', 'Urgent'),
         ('STAT', 'STAT (Immediate)'),
     ]
-    
+
     # Identity
     order_number = models.CharField(max_length=30, unique=True, editable=False)
-    
+
     # Relationships
     patient = models.ForeignKey('patients.Patient', on_delete=models.PROTECT)
     encounter = models.ForeignKey('encounters.Encounter', on_delete=models.PROTECT)
     ordered_by = models.ForeignKey(User, on_delete=models.PROTECT, related_name='lab_orders')
-    
+
     # Order details
     order_type = models.CharField(max_length=20, choices=ORDER_TYPES, default='IN_HOUSE')
     external_lab = models.CharField(max_length=100, blank=True)  # If external
     priority = models.CharField(max_length=20, choices=PRIORITY_LEVELS, default='ROUTINE')
     clinical_notes = models.TextField(blank=True)  # Clinical context for lab
-    
+
     # Status tracking
     status = models.CharField(max_length=30, choices=ORDER_STATUS, default='DRAFT')
     status_changed_at = models.DateTimeField(auto_now=True)
     status_changed_by = models.ForeignKey(
-        User, null=True, on_delete=models.SET_NULL, 
+        User, null=True, on_delete=models.SET_NULL,
         related_name='lab_status_changes'
     )
-    
+
     # Specimen tracking
     specimen_collected = models.BooleanField(default=False)
     specimen_collected_at = models.DateTimeField(null=True, blank=True)
@@ -264,20 +264,20 @@ class LabOrder(models.Model):
         User, null=True, blank=True, on_delete=models.SET_NULL,
         related_name='specimens_collected'
     )
-    
+
     # External lab details
     external_requisition_sent = models.BooleanField(default=False)
     external_requisition_date = models.DateTimeField(null=True, blank=True)
     external_accession_number = models.CharField(max_length=50, blank=True)
-    
+
     # Billing
     total_cost = models.DecimalField(max_digits=10, decimal_places=2, default=0)
     is_paid = models.BooleanField(default=False)
-    
+
     # Timestamps
     ordered_at = models.DateTimeField(auto_now_add=True)
     completed_at = models.DateTimeField(null=True, blank=True)
-    
+
     # Audit
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
@@ -332,26 +332,26 @@ DRAFT → ORDERED → SPECIMEN_COLLECTED → IN_PROGRESS → COMPLETED
 ```python
 class LabOrderItem(models.Model):
     """Individual test within a lab order."""
-    
+
     ITEM_STATUS = [
         ('PENDING', 'Pending'),
         ('IN_PROGRESS', 'In Progress'),
         ('COMPLETED', 'Completed'),
         ('CANCELLED', 'Cancelled'),
     ]
-    
+
     lab_order = models.ForeignKey(LabOrder, on_delete=models.CASCADE, related_name='items')
     test = models.ForeignKey(TestCatalog, on_delete=models.PROTECT)
-    
+
     # Status
     status = models.CharField(max_length=20, choices=ITEM_STATUS, default='PENDING')
-    
+
     # Pricing at time of order (snapshot)
     unit_cost = models.DecimalField(max_digits=10, decimal_places=2)
-    
+
     # Special instructions for this specific test
     special_instructions = models.TextField(blank=True)
-    
+
     # Timestamps
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
@@ -387,7 +387,7 @@ class LabOrderItem(models.Model):
 ```python
 class LabResult(models.Model):
     """Laboratory test result."""
-    
+
     RESULT_FLAGS = [
         ('NORMAL', 'Normal'),
         ('LOW', 'Low'),
@@ -398,25 +398,25 @@ class LabResult(models.Model):
         ('POSITIVE', 'Positive'),
         ('NEGATIVE', 'Negative'),
     ]
-    
+
     VERIFICATION_STATUS = [
         ('UNVERIFIED', 'Unverified'),
         ('VERIFIED', 'Verified'),
         ('REJECTED', 'Rejected'),
     ]
-    
+
     # Relationships
     order_item = models.OneToOneField(LabOrderItem, on_delete=models.CASCADE, related_name='result')
-    
+
     # Result data
     numeric_value = models.DecimalField(max_digits=15, decimal_places=4, null=True, blank=True)
     text_value = models.TextField(blank=True)
     option_value = models.CharField(max_length=100, blank=True)  # For predefined options
-    
+
     # Interpretation
     result_flag = models.CharField(max_length=20, choices=RESULT_FLAGS, blank=True)
     interpretation = models.TextField(blank=True)  # Pathologist notes
-    
+
     # Verification
     verification_status = models.CharField(
         max_length=20, choices=VERIFICATION_STATUS, default='UNVERIFIED'
@@ -426,18 +426,18 @@ class LabResult(models.Model):
         related_name='verified_results'
     )
     verified_at = models.DateTimeField(null=True, blank=True)
-    
+
     # Result entry
     entered_by = models.ForeignKey(User, on_delete=models.PROTECT, related_name='entered_results')
     entered_at = models.DateTimeField(auto_now_add=True)
-    
+
     # External results
     is_external_result = models.BooleanField(default=False)
     external_result_attachment = models.FileField(
         upload_to='lab_results/', null=True, blank=True
     )
     external_result_date = models.DateField(null=True, blank=True)
-    
+
     # Audit
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
@@ -479,7 +479,7 @@ class LabResult(models.Model):
 ```python
 class LOINCCode(models.Model):
     """LOINC code reference for lab test interoperability."""
-    
+
     code = models.CharField(max_length=20, unique=True, primary_key=True)
     component = models.CharField(max_length=200)  # What is measured
     property = models.CharField(max_length=50)  # Characteristic (mass, volume, etc.)
@@ -489,7 +489,7 @@ class LOINCCode(models.Model):
     method_type = models.CharField(max_length=100, blank=True)
     long_common_name = models.CharField(max_length=300)
     short_name = models.CharField(max_length=100)
-    
+
     class Meta:
         verbose_name = "LOINC Code"
         verbose_name_plural = "LOINC Codes"
@@ -545,20 +545,20 @@ GET    /api/encounters/{id}/lab-orders/    # Orders for encounter
 ```python
 class TestCatalogSerializer(serializers.ModelSerializer):
     """Serializer for test catalog listing."""
-    
+
 class TestCatalogDetailSerializer(serializers.ModelSerializer):
     """Serializer with normal ranges and panel info."""
-    
+
 class LabOrderCreateSerializer(serializers.ModelSerializer):
     """Create order with items."""
     items = LabOrderItemSerializer(many=True)
-    
+
 class LabOrderSerializer(serializers.ModelSerializer):
     """Order with status and items."""
     items = LabOrderItemSerializer(many=True, read_only=True)
     patient_name = serializers.CharField(source='patient.full_name', read_only=True)
     ordered_by_name = serializers.CharField(source='ordered_by.get_full_name', read_only=True)
-    
+
 class LabOrderItemSerializer(serializers.ModelSerializer):
     """Order item with test details."""
     test_name = serializers.CharField(source='test.name', read_only=True)
@@ -609,14 +609,14 @@ POST   /api/lab/results/{id}/attachment/                # Upload external result
 class LabResultCreateSerializer(serializers.ModelSerializer):
     """Create/update result."""
     order_item_id = serializers.IntegerField()
-    
+
 class LabResultSerializer(serializers.ModelSerializer):
     """Result with test info and flags."""
     test_name = serializers.CharField(source='order_item.test.name', read_only=True)
     test_code = serializers.CharField(source='order_item.test.code', read_only=True)
     normal_range = serializers.SerializerMethodField()
     formatted_value = serializers.SerializerMethodField()
-    
+
 class LabResultVerifySerializer(serializers.Serializer):
     """Verify result action."""
     approved = serializers.BooleanField()
@@ -651,27 +651,27 @@ class LabResultVerifySerializer(serializers.Serializer):
 ```python
 class LabWorkflowService:
     """Service for managing lab order workflow."""
-    
+
     @staticmethod
     def submit_order(order: LabOrder, user: User) -> LabOrder:
         """Submit order for processing."""
-        
+
     @staticmethod
     def collect_specimen(order: LabOrder, user: User) -> LabOrder:
         """Record specimen collection."""
-        
+
     @staticmethod
     def start_processing(order: LabOrder, user: User) -> LabOrder:
         """Mark order as in progress."""
-        
+
     @staticmethod
     def complete_order(order: LabOrder, user: User) -> LabOrder:
         """Mark order as completed (all results in)."""
-        
+
     @staticmethod
     def cancel_order(order: LabOrder, user: User, reason: str) -> LabOrder:
         """Cancel order with reason."""
-        
+
     @staticmethod
     def reject_specimen(order: LabOrder, user: User, reason: str) -> LabOrder:
         """Reject specimen (hemolyzed, wrong container, etc.)."""
@@ -679,15 +679,15 @@ class LabWorkflowService:
 
 class LabAlertService:
     """Service for lab-related alerts."""
-    
+
     @staticmethod
     def check_critical_results(order: LabOrder) -> list[str]:
         """Check for critical results requiring immediate attention."""
-        
+
     @staticmethod
     def notify_ordering_clinician(order: LabOrder) -> None:
         """Notify clinician when results are ready."""
-        
+
     @staticmethod
     def get_overdue_orders(hours: int = 24) -> QuerySet:
         """Get orders exceeding expected TAT."""
@@ -719,11 +719,11 @@ class LabAlertService:
 ```python
 class ExternalLabRequisition:
     """Generate requisition documents for external labs."""
-    
+
     @staticmethod
     def generate_pdf(order: LabOrder) -> bytes:
         """Generate PDF requisition form."""
-        
+
     @staticmethod
     def generate_hl7_message(order: LabOrder) -> str:
         """Generate HL7 ORM message (future integration)."""
@@ -731,11 +731,11 @@ class ExternalLabRequisition:
 
 class ExternalResultImporter:
     """Import results from external lab systems."""
-    
+
     @staticmethod
     def import_from_csv(order: LabOrder, csv_file: File) -> list[LabResult]:
         """Import results from CSV format."""
-        
+
     @staticmethod
     def import_from_hl7(hl7_message: str) -> list[LabResult]:
         """Parse HL7 ORU message (future integration)."""
@@ -933,15 +933,15 @@ class TestLabOrderModel:
         )
         assert order.order_number.startswith('LAB-')
         assert len(order.order_number) == 17  # LAB-YYYYMMDD-XXXX
-        
+
     def test_status_workflow_valid_transition(self, sample_lab_order, lab_tech_user):
         """Valid status transitions should succeed."""
         sample_lab_order.update_status('ORDERED', lab_tech_user)
         assert sample_lab_order.status == 'ORDERED'
-        
+
         sample_lab_order.update_status('SPECIMEN_COLLECTED', lab_tech_user)
         assert sample_lab_order.status == 'SPECIMEN_COLLECTED'
-        
+
     def test_status_workflow_invalid_transition(self, sample_lab_order, lab_tech_user):
         """Invalid status transitions should raise error."""
         with pytest.raises(ValidationError):
@@ -960,7 +960,7 @@ class TestLabResultModel:
         )
         result.auto_flag_result()
         assert result.result_flag == 'NORMAL'
-        
+
     def test_auto_flag_critical_high(self, sample_order_item, lab_tech_user):
         """Critical high results should be flagged."""
         result = LabResult.objects.create(

@@ -118,7 +118,7 @@ export function StockAdjustmentDialog({
 
       form.reset();
       onOpenChange(false);
-      
+
       if (onSuccess) {
         onSuccess();
       }

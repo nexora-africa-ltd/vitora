@@ -1,6 +1,6 @@
 /**
  * Floating Notification Center
- * 
+ *
  * A floating expandable notification panel that:
  * - Shows a bell icon with unread count badge
  * - Expands into a full-screen notification center
@@ -169,7 +169,7 @@ function NotificationItem({
           </div>
         </div>
         <div className="flex items-center gap-2 mt-2">
-          <Badge 
+          <Badge
             variant={getPriorityBadgeVariant(notification.priority)}
             className="text-[10px]"
           >
@@ -231,9 +231,9 @@ export function FloatingNotificationCenter() {
   const totalUnread = unreadCount?.unread_count ?? 0;
 
   return (
-    <ExpandableScreen 
-      layoutId="notification-center" 
-      triggerRadius="24px" 
+    <ExpandableScreen
+      layoutId="notification-center"
+      triggerRadius="24px"
       contentRadius="24px"
       animationDuration={0.4}
     >
@@ -262,7 +262,7 @@ export function FloatingNotificationCenter() {
       </ExpandableScreenTrigger>
 
       {/* Expanded Full-Screen Notification Center */}
-      <ExpandableScreenContent 
+      <ExpandableScreenContent
         className="bg-gradient-to-br from-cyan-600 via-cyan-700 to-cyan-800 dark:from-cyan-800 dark:via-cyan-900 dark:to-slate-900"
         showCloseButton
         closeButtonClassName="text-white/70 hover:text-white hover:bg-white/10"

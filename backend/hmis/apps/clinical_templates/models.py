@@ -160,9 +160,9 @@ class ClinicalTemplate(models.Model):
                 name=section.name,
                 order=section.order,
                 is_required=section.is_required,
-                fields=section.fields.copy()
-                if isinstance(section.fields, list)
-                else section.fields,
+                fields=(
+                    section.fields.copy() if isinstance(section.fields, list) else section.fields
+                ),
             )
 
         return cloned

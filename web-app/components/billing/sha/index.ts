@@ -4,8 +4,8 @@
  */
 
 // Client Registry
-export { 
-  ClientRegistryLookup, 
+export {
+  ClientRegistryLookup,
   useClientRegistryLookup,
 } from './ClientRegistryLookup';
 
@@ -13,8 +13,8 @@ export {
 export { SHAVerificationModal } from './SHAVerificationModal';
 
 // Eligibility
-export { 
-  EligibilityBanner, 
+export {
+  EligibilityBanner,
   useEligibilityCheck,
 } from './EligibilityBanner';
 

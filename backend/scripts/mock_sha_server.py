@@ -589,9 +589,11 @@ def request_preauth():
                 "preauth_reference": preauth_ref,
                 "decision": decision,
                 "approved_amount": approved_amount,
-                "valid_until": (datetime.now() + timedelta(days=30)).strftime("%Y-%m-%d")
-                if decision == "approved"
-                else None,
+                "valid_until": (
+                    (datetime.now() + timedelta(days=30)).strftime("%Y-%m-%d")
+                    if decision == "approved"
+                    else None
+                ),
                 "message": message,
                 "created_at": datetime.utcnow().isoformat() + "Z",
             }

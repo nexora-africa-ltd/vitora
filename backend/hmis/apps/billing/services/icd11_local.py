@@ -155,8 +155,8 @@ class ICD11LocalService:
                             mms_data = mms_response.json()
                             code = mms_data.get("code", code)
                             browser_url = mms_data.get("browserUrl")
-                    except Exception:
-                        pass  # Use what we have
+                    except Exception as exc:
+                        logger.debug(f"ICD-11 MMS lookup failed, using fallback data: {exc}")
 
                 if not code:
                     # Skip entries without codes

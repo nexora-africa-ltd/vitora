@@ -10,13 +10,13 @@ export interface Encounter {
   patient_mrn?: string;
   patient_gender?: 'M' | 'F' | 'O';
   patient_date_of_birth?: string;
-  
+
   // Encounter details
   encounter_type: EncounterType;
   encounter_date: string;
   chief_complaint: string;
   status: 'DRAFT' | 'IN_PROGRESS' | 'COMPLETED' | 'CANCELLED';
-  
+
   // Vitals
   temperature: number | null;
   pulse: number | null;
@@ -25,7 +25,7 @@ export interface Encounter {
   spo2: number | null;
   weight: number | null;
   height: number | null;
-  
+
   // Computed vitals
   bmi?: number | null;
   bmi_classification?: string | null;
@@ -34,12 +34,12 @@ export interface Encounter {
   has_critical_vitals?: boolean;
   alerts?: string;
   vitals_summary?: string;
-  
+
   // Vitals source tracking
   vitals_source?: 'TRIAGE' | 'CONSULTATION' | 'DIRECT' | null;
   vitals_recorded_by?: number | null;
   vitals_recorded_at?: string | null;
-  
+
   // Clinical template
   clinical_template?: number | null;
   clinical_template_data?: Record<string, Record<string, unknown>> | null;
@@ -51,23 +51,23 @@ export interface Encounter {
   past_surgeries: string;
   family_history: string;
   social_history: string;
-  
+
   // Clinical notes
   notes: string;
   history_of_present_illness?: string;
   physical_examination?: string;
   assessment?: string;
   plan?: string;  // SOAP 'P' (Plan) - can also use TreatmentPlan.clinical_notes
-  
+
   // Status workflow
   finalized_by?: number | null;
   finalized_by_username?: string | null;
   finalized_at?: string | null;
   cancellation_reason?: string;
-  
+
   // Triage fields
   triage_status?: 'PENDING' | 'IN_PROGRESS' | 'COMPLETED' | 'BYPASSED' | 'NOT_APPLICABLE';
-  
+
   // Chief complaint edit tracking
   chief_complaint_original?: string;
   chief_complaint_edited?: boolean;
@@ -76,7 +76,7 @@ export interface Encounter {
   chief_complaint_edited_by?: number | null;
   chief_complaint_edited_by_username?: string | null;
   chief_complaint_edited_at?: string | null;
-  
+
   // Metadata
   created_by?: number | null;
   created_by_name?: string;
@@ -326,4 +326,3 @@ export interface ConsultationQueueStats {
     direct: number;
   };
 }
-

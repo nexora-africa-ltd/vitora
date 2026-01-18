@@ -177,7 +177,7 @@ export function decodeToken(token: string): DecodedToken | null {
 export function isTokenExpired(token: string, bufferSeconds = 60): boolean {
   const decoded = decodeToken(token);
   if (!decoded) return true;
-  
+
   const currentTime = Math.floor(Date.now() / 1000);
   return decoded.exp < currentTime + bufferSeconds;
 }
@@ -188,7 +188,7 @@ export function isTokenExpired(token: string, bufferSeconds = 60): boolean {
 export function getTokenExpiryTime(token: string): number {
   const decoded = decodeToken(token);
   if (!decoded) return 0;
-  
+
   const currentTime = Math.floor(Date.now() / 1000);
   return Math.max(0, decoded.exp - currentTime);
 }
@@ -302,7 +302,7 @@ export const useAuthStore = create<AuthStore>()(
         try {
           const response = await authApi.login(credentials);
           tokenStorage.setTokens(response.access, response.refresh);
-          
+
           // For now, create a basic user from the token
           // In production, fetch full user profile
           const user: User = {
@@ -314,7 +314,7 @@ export const useAuthStore = create<AuthStore>()(
             is_staff: false,
             is_superuser: false,
           };
-          
+
           tokenStorage.setUser(user);
           set({ user, isAuthenticated: true, isLoading: false, error: null });
         } catch (error: any) {
@@ -348,7 +348,7 @@ export const useAuthStore = create<AuthStore>()(
       // Restore session on app load
       restoreSession: async () => {
         set({ isLoading: true });
-        
+
         const accessToken = tokenStorage.getAccessToken();
         const refreshToken = tokenStorage.getRefreshToken();
         const user = tokenStorage.getUser();
@@ -497,7 +497,7 @@ interface AuthGuardProps {
 
 /**
  * Auth guard component that protects routes.
- * 
+ *
  * @param requireAuth - If true, redirect unauthenticated users to login
  * @param redirectTo - Custom redirect path
  */
@@ -613,7 +613,7 @@ export default function LoginPage() {
   const onSubmit = async (data: LoginFormData) => {
     setIsSubmitting(true);
     clearError();
-    
+
     try {
       await login(data);
       router.push(decodeURIComponent(returnUrl));
@@ -637,7 +637,7 @@ export default function LoginPage() {
           Enter your credentials to access the HMIS
         </CardDescription>
       </CardHeader>
-      
+
       <form onSubmit={handleSubmit(onSubmit)}>
         <CardContent className="space-y-4">
           {error && (
@@ -646,7 +646,7 @@ export default function LoginPage() {
               <AlertDescription>{error}</AlertDescription>
             </Alert>
           )}
-          
+
           <div className="space-y-2">
             <Label htmlFor="username">Username</Label>
             <Input
@@ -661,7 +661,7 @@ export default function LoginPage() {
               <p className="text-sm text-destructive">{errors.username.message}</p>
             )}
           </div>
-          
+
           <div className="space-y-2">
             <Label htmlFor="password">Password</Label>
             <Input
@@ -677,7 +677,7 @@ export default function LoginPage() {
             )}
           </div>
         </CardContent>
-        
+
         <CardFooter>
           <Button type="submit" className="w-full" disabled={isSubmitting}>
             {isSubmitting ? (
@@ -862,7 +862,7 @@ describe('Auth Store', () => {
     });
 
     await useAuthStore.getState().login({ username: 'test', password: 'pass' });
-    
+
     const state = useAuthStore.getState();
     expect(state.isAuthenticated).toBe(true);
     expect(state.error).toBeNull();
@@ -876,7 +876,7 @@ describe('Auth Store', () => {
     await expect(
       useAuthStore.getState().login({ username: 'test', password: 'wrong' })
     ).rejects.toBeDefined();
-    
+
     const state = useAuthStore.getState();
     expect(state.isAuthenticated).toBe(false);
     expect(state.error).toBe('Invalid credentials');
@@ -885,7 +885,7 @@ describe('Auth Store', () => {
   it('should logout and clear state', () => {
     useAuthStore.setState({ isAuthenticated: true, user: { id: 1 } as any });
     useAuthStore.getState().logout();
-    
+
     const state = useAuthStore.getState();
     expect(state.isAuthenticated).toBe(false);
     expect(state.user).toBeNull();
@@ -913,7 +913,7 @@ describe('Auth Store', () => {
   it('should set and clear errors', () => {
     useAuthStore.getState().setError('Test error');
     expect(useAuthStore.getState().error).toBe('Test error');
-    
+
     useAuthStore.getState().clearError();
     expect(useAuthStore.getState().error).toBeNull();
   });
@@ -925,7 +925,7 @@ describe('Auth Store', () => {
     localStorage.setItem('vitora_user', JSON.stringify({ id: 1, username: 'test' }));
 
     await useAuthStore.getState().restoreSession();
-    
+
     const state = useAuthStore.getState();
     expect(state.isAuthenticated).toBe(true);
     expect(state.user?.username).toBe('test');
@@ -971,9 +971,9 @@ describe('Login Page', () => {
   it('should show validation errors for empty fields', async () => {
     renderLoginPage();
     const submitButton = screen.getByRole('button', { name: /sign in/i });
-    
+
     await userEvent.click(submitButton);
-    
+
     await waitFor(() => {
       expect(screen.getByText(/username is required/i)).toBeInTheDocument();
       expect(screen.getByText(/password is required/i)).toBeInTheDocument();
@@ -984,10 +984,10 @@ describe('Login Page', () => {
     renderLoginPage();
     const usernameInput = screen.getByLabelText(/username/i);
     const passwordInput = screen.getByLabelText(/password/i);
-    
+
     await userEvent.type(usernameInput, 'testuser');
     await userEvent.type(passwordInput, 'password123');
-    
+
     const submitButton = screen.getByRole('button', { name: /sign in/i });
     expect(submitButton).not.toBeDisabled();
   });
@@ -997,11 +997,11 @@ describe('Login Page', () => {
     const usernameInput = screen.getByLabelText(/username/i);
     const passwordInput = screen.getByLabelText(/password/i);
     const submitButton = screen.getByRole('button', { name: /sign in/i });
-    
+
     await userEvent.type(usernameInput, 'testuser');
     await userEvent.type(passwordInput, 'password123');
     await userEvent.click(submitButton);
-    
+
     // Loading state shown briefly
     expect(screen.queryByText(/signing in/i)).toBeInTheDocument();
   });
@@ -1016,7 +1016,7 @@ describe('Login Page', () => {
     renderLoginPage();
     const usernameInput = screen.getByLabelText(/username/i);
     const passwordInput = screen.getByLabelText(/password/i);
-    
+
     expect(usernameInput).toHaveAttribute('type', 'text');
     expect(passwordInput).toHaveAttribute('type', 'password');
   });
@@ -1048,49 +1048,49 @@ describe('Auth Guard', () => {
 
   it('should show loading spinner while checking auth', () => {
     useAuthStore.setState({ isLoading: true });
-    
+
     render(
       <AuthGuard>
         <div>Protected Content</div>
       </AuthGuard>
     );
-    
+
     expect(screen.queryByText('Protected Content')).not.toBeInTheDocument();
   });
 
   it('should render children when authenticated', () => {
     useAuthStore.setState({ isAuthenticated: true, isLoading: false });
-    
+
     render(
       <AuthGuard>
         <div>Protected Content</div>
       </AuthGuard>
     );
-    
+
     expect(screen.getByText('Protected Content')).toBeInTheDocument();
   });
 
   it('should not render children when not authenticated', () => {
     useAuthStore.setState({ isAuthenticated: false, isLoading: false });
-    
+
     render(
       <AuthGuard>
         <div>Protected Content</div>
       </AuthGuard>
     );
-    
+
     expect(screen.queryByText('Protected Content')).not.toBeInTheDocument();
   });
 
   it('should allow unauthenticated access when requireAuth is false', () => {
     useAuthStore.setState({ isAuthenticated: false, isLoading: false });
-    
+
     render(
       <AuthGuard requireAuth={false}>
         <div>Public Content</div>
       </AuthGuard>
     );
-    
+
     expect(screen.getByText('Public Content')).toBeInTheDocument();
   });
 });

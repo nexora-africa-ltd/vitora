@@ -72,7 +72,7 @@ describe('Toast Reducer (lib)', () => {
 
   it('should respect TOAST_LIMIT', () => {
     let state: any = initialState;
-    
+
     // Add multiple toasts - only TOAST_LIMIT should remain
     for (let i = 0; i < 5; i++) {
       state = reducer(state, {

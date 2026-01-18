@@ -1,8 +1,8 @@
 /**
  * TDD Tests for EncounterContext and useEncounterContext hook
- * 
+ *
  * RED PHASE: These tests should FAIL initially because the implementation doesn't exist.
- * 
+ *
  * Encounter Context Requirements:
  * 1. Single authoritative encounter context provider
  * 2. Encounter data fetched ONCE and shared across all children
@@ -63,7 +63,7 @@ function createWrapper() {
 // Test component that consumes EncounterContext
 function TestEncounterConsumer() {
   const context = useEncounterContext();
-  
+
   return (
     <div>
       <span data-testid="loading">{context.isLoading.toString()}</span>
@@ -96,11 +96,11 @@ describe('EncounterContext', () => {
   describe('Provider Initialization', () => {
     it('should throw error when useEncounterContext is used outside provider', () => {
       const consoleSpy = jest.spyOn(console, 'error').mockImplementation(() => {});
-      
+
       expect(() => {
         render(<TestEncounterConsumer />);
       }).toThrow('useEncounterContext must be used within an EncounterProvider');
-      
+
       consoleSpy.mockRestore();
     });
 
@@ -108,7 +108,7 @@ describe('EncounterContext', () => {
       // EncounterProvider can be used standalone for encounter-first navigation
       // (e.g., /encounters/123 route where patient is derived from encounter)
       mockEncountersApi.get.mockResolvedValueOnce(mockEncounter);
-      
+
       const Wrapper = createWrapper();
       render(
         <Wrapper>
@@ -125,7 +125,7 @@ describe('EncounterContext', () => {
 
     it('should initialize with loading state when encounterId is provided', async () => {
       mockEncountersApi.get.mockResolvedValueOnce(mockEncounter);
-      
+
       const Wrapper = createWrapper();
       render(
         <Wrapper>
@@ -163,7 +163,7 @@ describe('EncounterContext', () => {
   describe('Encounter Data Fetching', () => {
     it('should fetch encounter data when encounterId is provided', async () => {
       mockEncountersApi.get.mockResolvedValueOnce(mockEncounter);
-      
+
       const Wrapper = createWrapper();
       render(
         <Wrapper>
@@ -185,7 +185,7 @@ describe('EncounterContext', () => {
 
     it('should provide encounter data to consumers', async () => {
       mockEncountersApi.get.mockResolvedValueOnce(mockEncounter);
-      
+
       const Wrapper = createWrapper();
       render(
         <Wrapper>
@@ -209,7 +209,7 @@ describe('EncounterContext', () => {
 
     it('should handle fetch errors gracefully', async () => {
       mockEncountersApi.get.mockRejectedValueOnce(new Error('Encounter not found'));
-      
+
       const Wrapper = createWrapper();
       render(
         <Wrapper>
@@ -235,7 +235,7 @@ describe('EncounterContext', () => {
       // Encounter belongs to patient 2, but we're in patient 1 context
       const mismatchedEncounter = { ...mockEncounter, patient: 2 };
       mockEncountersApi.get.mockResolvedValueOnce(mismatchedEncounter);
-      
+
       const Wrapper = createWrapper();
       render(
         <Wrapper>
@@ -254,7 +254,7 @@ describe('EncounterContext', () => {
 
     it('should allow encounter when patient matches', async () => {
       mockEncountersApi.get.mockResolvedValueOnce(mockEncounter);
-      
+
       const Wrapper = createWrapper();
       render(
         <Wrapper>
@@ -280,7 +280,7 @@ describe('EncounterContext', () => {
   describe('Clinical Order Permissions', () => {
     it('should allow orders when encounter is IN_PROGRESS', async () => {
       mockEncountersApi.get.mockResolvedValueOnce(mockEncounter);
-      
+
       const Wrapper = createWrapper();
       render(
         <Wrapper>
@@ -300,7 +300,7 @@ describe('EncounterContext', () => {
     it('should NOT allow orders when encounter is COMPLETED', async () => {
       const completedEncounter = { ...mockEncounter, status: 'COMPLETED' as const };
       mockEncountersApi.get.mockResolvedValueOnce(completedEncounter);
-      
+
       const Wrapper = createWrapper();
       render(
         <Wrapper>
@@ -320,7 +320,7 @@ describe('EncounterContext', () => {
     it('should NOT allow orders when encounter is CANCELLED', async () => {
       const cancelledEncounter = { ...mockEncounter, status: 'CANCELLED' as const };
       mockEncountersApi.get.mockResolvedValueOnce(cancelledEncounter);
-      
+
       const Wrapper = createWrapper();
       render(
         <Wrapper>
@@ -339,7 +339,7 @@ describe('EncounterContext', () => {
 
     it('should indicate active encounter based on status', async () => {
       mockEncountersApi.get.mockResolvedValueOnce(mockEncounter);
-      
+
       const Wrapper = createWrapper();
       render(
         <Wrapper>
@@ -363,7 +363,7 @@ describe('EncounterContext', () => {
   describe('Triage and Consultation Status', () => {
     it('should provide triage status from encounter', async () => {
       mockEncountersApi.get.mockResolvedValueOnce(mockEncounter);
-      
+
       const Wrapper = createWrapper();
       render(
         <Wrapper>
@@ -382,12 +382,12 @@ describe('EncounterContext', () => {
 
     it('should provide consultation status from context', async () => {
       mockEncountersApi.get.mockResolvedValueOnce(mockEncounter);
-      
+
       function ConsultationStatusConsumer() {
         const { consultationStatus } = useEncounterContext();
         return <div data-testid="context-consultation-status">{consultationStatus ?? 'null'}</div>;
       }
-      
+
       const Wrapper = createWrapper();
       render(
         <Wrapper>
@@ -413,7 +413,7 @@ describe('EncounterContext', () => {
   describe('Single Fetch Guarantee', () => {
     it('should only fetch encounter data once regardless of number of consumers', async () => {
       mockEncountersApi.get.mockResolvedValueOnce(mockEncounter);
-      
+
       function MultipleConsumers() {
         return (
           <>
@@ -423,7 +423,7 @@ describe('EncounterContext', () => {
           </>
         );
       }
-      
+
       const Wrapper = createWrapper();
       render(
         <Wrapper>

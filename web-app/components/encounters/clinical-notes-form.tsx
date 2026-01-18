@@ -40,7 +40,7 @@ export function ClinicalNotesFormContent({ data, onChange, disabled = false }: C
             className="resize-none"
           />
         </div>
-        
+
         {/* Physical Examination */}
         <div className="space-y-2 md:col-span-2">
           <Label htmlFor="physical_examination" className="flex items-center gap-2">
@@ -57,7 +57,7 @@ export function ClinicalNotesFormContent({ data, onChange, disabled = false }: C
             className="resize-none"
           />
         </div>
-        
+
         {/* Assessment */}
         <div className="space-y-2 md:col-span-2">
           <Label htmlFor="assessment" className="flex items-center gap-2">
@@ -74,7 +74,7 @@ export function ClinicalNotesFormContent({ data, onChange, disabled = false }: C
             className="resize-none"
           />
         </div>
-        
+
         {/* Additional Notes */}
         <div className="space-y-2 md:col-span-2">
           <Label htmlFor="notes" className="flex items-center gap-2">
@@ -108,12 +108,12 @@ interface ClinicalNotesFormProps {
  * Card-wrapped version of the Clinical Notes form
  * Used in tab-based layouts (legacy)
  */
-export function ClinicalNotesForm({ 
-  data, 
-  onChange, 
-  disabled = false, 
-  onNext, 
-  onPrevious 
+export function ClinicalNotesForm({
+  data,
+  onChange,
+  disabled = false,
+  onNext,
+  onPrevious
 }: ClinicalNotesFormProps) {
   return (
     <Card>
@@ -129,7 +129,7 @@ export function ClinicalNotesForm({
       <CardContent>
         <ClinicalNotesFormContent data={data} onChange={onChange} disabled={disabled} />
       </CardContent>
-      
+
       {/* Navigation Footer */}
       {(onNext || onPrevious) && (
         <CardFooter className="border-t pt-4">

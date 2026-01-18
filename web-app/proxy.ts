@@ -30,7 +30,7 @@ const SKIP_PATTERNS = [
 
 /**
  * Proxy for server-side authentication routing.
- * 
+ *
  * - Unauthenticated users are redirected to /login
  * - Authenticated users on /login are redirected to /dashboard
  * - Root path (/) redirects based on auth status

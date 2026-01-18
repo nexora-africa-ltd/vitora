@@ -1,7 +1,7 @@
 /**
  * Stock Summary Report Component
  * Sprint 1.3-1.4 Track A: Pharmacy Module
- * 
+ *
  * Shows current inventory levels by drug with batch breakdown
  */
 
@@ -246,8 +246,8 @@ export function StockSummaryReport() {
                 </TableRow>
               ) : (
                 filteredData.map((item: StockSummaryItem) => (
-                  <Collapsible 
-                    key={item.drug_id} 
+                  <Collapsible
+                    key={item.drug_id}
                     open={expandedDrugs.has(item.drug_id)}
                     onOpenChange={() => toggleDrugExpanded(item.drug_id)}
                     asChild

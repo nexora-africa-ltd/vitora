@@ -1,6 +1,6 @@
 /**
  * Playwright-BDD Configuration
- * 
+ *
  * Separate config for BDD E2E tests using Gherkin feature files.
  * Run with: npx playwright test --config playwright-bdd.config.ts
  */
@@ -23,37 +23,37 @@ const testDir = defineBddConfig({
 
 export default defineConfig({
   testDir,
-  
+
   /* Run tests in files in parallel */
   fullyParallel: true,
-  
+
   /* Fail the build on CI if you accidentally left test.only in the source code */
   forbidOnly: !!process.env.CI,
-  
+
   /* Retry on CI only */
   retries: process.env.CI ? 2 : 0,
-  
+
   /* Workers - reduce for BDD to avoid race conditions */
   workers: process.env.CI ? 1 : 2,
-  
+
   /* Reporter to use */
   reporter: [
     cucumberReporter('html', { outputFile: 'reports/cucumber/cucumber-report.html' }),
     cucumberReporter('json', { outputFile: 'reports/cucumber/cucumber-report.json' }),
     ['list'],
   ],
-  
+
   /* Shared settings for all the projects below */
   use: {
     /* Base URL for navigation actions */
     baseURL: 'http://localhost:3009',
-    
+
     /* Collect trace when retrying the failed test */
     trace: 'on-first-retry',
-    
+
     /* Capture screenshot on failure */
     screenshot: 'only-on-failure',
-    
+
     /* Record video on failure */
     video: 'on-first-retry',
   },

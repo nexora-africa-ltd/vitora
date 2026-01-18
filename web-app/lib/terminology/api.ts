@@ -1,15 +1,15 @@
 /**
  * Terminology API Client
- * 
+ *
  * Pure API functions for Kenya DHA/SHA terminology lookups.
  * These functions are framework-agnostic and can be used with any
  * state management solution (React Query, SWR, Redux, etc.)
- * 
+ *
  * Backend endpoints are proxied through our Django backend to:
  * - Handle DHA authentication (JWT tokens)
  * - Provide caching and rate limiting
  * - Support offline fallback with local database
- * 
+ *
  * @see backend/hmis/apps/billing/services/terminology_service.py
  */
 
@@ -35,13 +35,13 @@ import type {
  */
 function buildQueryString<T extends object>(params: T): string {
   const searchParams = new URLSearchParams();
-  
+
   Object.entries(params).forEach(([key, value]) => {
     if (value !== undefined && value !== null && value !== '') {
       searchParams.append(key, String(value));
     }
   });
-  
+
   return searchParams.toString();
 }
 
@@ -60,7 +60,7 @@ function buildUrl(baseUrl: string, params?: object): string {
 
 /**
  * Search ICD-11 diagnosis codes
- * 
+ *
  * @example
  * const results = await searchICD11({ search: 'malaria', page_size: 20 });
  */
@@ -78,12 +78,12 @@ export async function searchICD11(
 
 /**
  * Search SHA interventions/procedures
- * 
+ *
  * @example
- * const results = await searchInterventions({ 
+ * const results = await searchInterventions({
  *   search: 'consultation',
  *   facility_level: 4,
- *   page_size: 20 
+ *   page_size: 20
  * });
  */
 export async function searchInterventions(
@@ -100,7 +100,7 @@ export async function searchInterventions(
 
 /**
  * Search ICHI (International Classification of Health Interventions) codes
- * 
+ *
  * @example
  * const results = await searchICHI({ search: 'appendectomy' });
  */
@@ -118,7 +118,7 @@ export async function searchICHI(
 
 /**
  * Search LOINC laboratory test codes
- * 
+ *
  * @example
  * const results = await searchLOINC({ search: 'hemoglobin' });
  */
@@ -136,9 +136,9 @@ export async function searchLOINC(
 
 /**
  * Search Kenya drug registry products
- * 
+ *
  * @example
- * const results = await searchDrugs({ 
+ * const results = await searchDrugs({
  *   search: 'paracetamol',
  *   dosage_form: 'Tablet'
  * });
@@ -157,7 +157,7 @@ export async function searchDrugs(
 
 /**
  * Search drug active components/ingredients
- * 
+ *
  * @example
  * const results = await searchActiveComponents({ search: 'acetaminophen' });
  */

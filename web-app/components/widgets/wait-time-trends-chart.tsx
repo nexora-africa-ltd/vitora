@@ -33,9 +33,9 @@ const waitTimeConfig = createChartConfig(['avg_wait_minutes', 'median_wait_minut
   },
 });
 
-export function WaitTimeTrendsChart({ 
-  data, 
-  showLegend = true, 
+export function WaitTimeTrendsChart({
+  data,
+  showLegend = true,
   showTarget = true,
   targetMinutes = 15,
 }: WaitTimeTrendsChartProps) {
@@ -65,7 +65,7 @@ export function WaitTimeTrendsChart({
   }
 
   // Determine which data keys to show
-  const dataKeys = showTarget 
+  const dataKeys = showTarget
     ? ['avg_wait_minutes', 'target_minutes'] as const
     : ['avg_wait_minutes'] as const;
 

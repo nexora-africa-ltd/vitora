@@ -67,7 +67,7 @@ export function RecentPatients() {
           </Badge>
         </Link>
       ))}
-      
+
       {/* View All Patients Link */}
       {hasMorePatients && (
         <div className="pt-2 border-t">

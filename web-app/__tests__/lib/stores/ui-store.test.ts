@@ -13,9 +13,9 @@ describe('UI Store', () => {
 
   it('should toggle sidebar', () => {
     expect(useUIStore.getState().sidebarCollapsed).toBe(false);
-    
+
     useUIStore.getState().toggleSidebar();
-    
+
     expect(useUIStore.getState().sidebarCollapsed).toBe(true);
   });
 

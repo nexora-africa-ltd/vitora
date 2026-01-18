@@ -1,7 +1,7 @@
 /**
  * Pharmacy Reports Page
  * Sprint 1.3-1.4 Track A: Pharmacy Module
- * 
+ *
  * Main reports page with tabs for different report types:
  * - Stock Summary
  * - Expiry Report

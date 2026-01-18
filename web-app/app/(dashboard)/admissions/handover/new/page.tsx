@@ -256,8 +256,8 @@ export default function NewHandoverPage() {
         <Button variant="outline" onClick={() => router.back()}>
           Cancel
         </Button>
-        <Button 
-          onClick={handleSubmit} 
+        <Button
+          onClick={handleSubmit}
           disabled={createHandover.isPending || !isFormValid}
         >
           <Save className="h-4 w-4 mr-2" />

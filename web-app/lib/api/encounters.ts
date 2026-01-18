@@ -103,11 +103,11 @@ export const encountersApi = {
 
   /**
    * Get pre-triage queue (encounters awaiting triage).
-   * 
+   *
    * Returns encounters with:
    * - triage_status = PENDING (or IN_PROGRESS if include_in_progress=true)
    * - triage_requirement in (MANDATORY, OPTIONAL)
-   * 
+   *
    * Sorted by arrival time (created_at) ascending.
    */
   async getPreTriageQueue(params?: PreTriageQueueParams): Promise<PaginatedResponse<PreTriageQueueItem>> {
@@ -120,7 +120,7 @@ export const encountersApi = {
 
   /**
    * Edit chief complaint with audit trail.
-   * 
+   *
    * Only allowed for triaged encounters. Requires a reason for the edit.
    */
   async editChiefComplaint(

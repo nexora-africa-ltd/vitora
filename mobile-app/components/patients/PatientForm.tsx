@@ -123,7 +123,7 @@ export function PatientForm({
     // Name validation: minimum 2 characters, no punctuation except hyphen/apostrophe
     const nameRegex = /^[a-zA-Z][a-zA-Z'-]{1,}$/;
     const forbiddenChars = /[0-9!@#$%^&*()_+=\[\]{}|\\:;"<>,.?\/~`]/;
-    
+
     if (!formData.first_name.trim()) {
       newErrors.first_name = 'First name is required';
     } else if (formData.first_name.trim().length < 2) {
@@ -156,7 +156,7 @@ export function PatientForm({
         const dob = new Date(formData.date_of_birth);
         const today = new Date();
         today.setHours(0, 0, 0, 0);
-        
+
         if (isNaN(dob.getTime())) {
           newErrors.date_of_birth = 'Invalid date';
         } else if (dob > today) {
@@ -168,7 +168,7 @@ export function PatientForm({
           if (dob < minDate) {
             newErrors.date_of_birth = 'Please enter a valid date of birth';
           }
-          
+
           // Check month and day are valid
           const [year, month, day] = formData.date_of_birth.split('-').map(Number);
           const testDate = new Date(year, month - 1, day);

@@ -44,33 +44,33 @@ import type {
 
 export const billingKeys = {
   all: ['billing'] as const,
-  
+
   // Invoices
   invoices: () => [...billingKeys.all, 'invoices'] as const,
   invoicesList: (params?: InvoiceListParams) => [...billingKeys.invoices(), 'list', params] as const,
   invoiceDetail: (id: number) => [...billingKeys.invoices(), 'detail', id] as const,
   invoicesOverdue: () => [...billingKeys.invoices(), 'overdue'] as const,
-  
+
   // Payments
   payments: () => [...billingKeys.all, 'payments'] as const,
   paymentsList: (params?: PaymentListParams) => [...billingKeys.payments(), 'list', params] as const,
   paymentDetail: (id: number) => [...billingKeys.payments(), 'detail', id] as const,
   paymentReceipt: (id: number) => [...billingKeys.payments(), 'receipt', id] as const,
-  
+
   // Services
   services: () => [...billingKeys.all, 'services'] as const,
   servicesList: (params?: ServiceListParams) => [...billingKeys.services(), 'list', params] as const,
   serviceDetail: (id: number) => [...billingKeys.services(), 'detail', id] as const,
-  
+
   // Categories
   categories: () => [...billingKeys.all, 'categories'] as const,
   categoriesList: () => [...billingKeys.categories(), 'list'] as const,
-  
+
   // Credit Notes
   creditNotes: () => [...billingKeys.all, 'credit-notes'] as const,
   creditNotesList: (params?: CreditNoteListParams) => [...billingKeys.creditNotes(), 'list', params] as const,
   creditNoteDetail: (id: number) => [...billingKeys.creditNotes(), 'detail', id] as const,
-  
+
   // Reports
   reports: () => [...billingKeys.all, 'reports'] as const,
   dailyCollection: (date: string) => [...billingKeys.reports(), 'daily-collection', date] as const,
@@ -78,7 +78,7 @@ export const billingKeys = {
   outstandingBalances: () => [...billingKeys.reports(), 'outstanding-balances'] as const,
   serviceUtilization: (startDate: string, endDate: string) => [...billingKeys.reports(), 'service-utilization', startDate, endDate] as const,
   paymentAnalysis: (startDate: string, endDate: string) => [...billingKeys.reports(), 'payment-analysis', startDate, endDate] as const,
-  
+
   // M-Pesa
   mpesa: () => [...billingKeys.all, 'mpesa'] as const,
   mpesaQuery: (checkoutRequestId: string) => [...billingKeys.mpesa(), 'query', checkoutRequestId] as const,
@@ -124,7 +124,7 @@ export function useOverdueInvoices() {
  */
 export function useCreateInvoice() {
   const queryClient = useQueryClient();
-  
+
   return useMutation({
     mutationFn: (data: InvoiceCreateData) => billingApi.createInvoice(data),
     onSuccess: () => {
@@ -138,7 +138,7 @@ export function useCreateInvoice() {
  */
 export function useUpdateInvoice() {
   const queryClient = useQueryClient();
-  
+
   return useMutation({
     mutationFn: ({ id, data }: { id: number; data: InvoiceUpdateData }) =>
       billingApi.updateInvoice(id, data),
@@ -154,7 +154,7 @@ export function useUpdateInvoice() {
  */
 export function useFinalizeInvoice() {
   const queryClient = useQueryClient();
-  
+
   return useMutation({
     mutationFn: (id: number) => billingApi.finalizeInvoice(id),
     onSuccess: (_, id) => {
@@ -169,7 +169,7 @@ export function useFinalizeInvoice() {
  */
 export function useCancelInvoice() {
   const queryClient = useQueryClient();
-  
+
   return useMutation({
     mutationFn: ({ invoiceId, reason }: { invoiceId: number; reason: string }) =>
       billingApi.cancelInvoice(invoiceId, reason),
@@ -185,7 +185,7 @@ export function useCancelInvoice() {
  */
 export function useAddInvoiceItem() {
   const queryClient = useQueryClient();
-  
+
   return useMutation({
     mutationFn: ({ invoiceId, item }: { invoiceId: number; item: InvoiceItemCreateData }) =>
       billingApi.addInvoiceItem(invoiceId, item),
@@ -200,7 +200,7 @@ export function useAddInvoiceItem() {
  */
 export function useRemoveInvoiceItem() {
   const queryClient = useQueryClient();
-  
+
   return useMutation({
     mutationFn: ({ invoiceId, itemId }: { invoiceId: number; itemId: number }) =>
       billingApi.removeInvoiceItem(invoiceId, itemId),
@@ -215,7 +215,7 @@ export function useRemoveInvoiceItem() {
  */
 export function useApplyDiscount() {
   const queryClient = useQueryClient();
-  
+
   return useMutation({
     mutationFn: ({ invoiceId, discount }: { invoiceId: number; discount: ApplyDiscountData }) =>
       billingApi.applyDiscount(invoiceId, discount),
@@ -256,7 +256,7 @@ export function usePayment(id: number | undefined) {
  */
 export function useCreatePayment() {
   const queryClient = useQueryClient();
-  
+
   return useMutation({
     mutationFn: (data: PaymentCreateData) => billingApi.createPayment(data),
     onSuccess: (payment) => {
@@ -372,7 +372,7 @@ export function useCreditNote(id: number | undefined) {
  */
 export function useCreateCreditNote() {
   const queryClient = useQueryClient();
-  
+
   return useMutation({
     mutationFn: (data: CreditNoteCreateData) => billingApi.createCreditNote(data),
     onSuccess: () => {
@@ -386,7 +386,7 @@ export function useCreateCreditNote() {
  */
 export function useApproveCreditNote() {
   const queryClient = useQueryClient();
-  
+
   return useMutation({
     mutationFn: (id: number) => billingApi.approveCreditNote(id),
     onSuccess: (_, id) => {
@@ -401,7 +401,7 @@ export function useApproveCreditNote() {
  */
 export function useRejectCreditNote() {
   const queryClient = useQueryClient();
-  
+
   return useMutation({
     mutationFn: ({ id, reason }: { id: number; reason: string }) =>
       billingApi.rejectCreditNote(id, reason),
@@ -417,7 +417,7 @@ export function useRejectCreditNote() {
  */
 export function useProcessRefund() {
   const queryClient = useQueryClient();
-  
+
   return useMutation({
     mutationFn: ({ id, data }: { id: number; data: CreditNoteRefundData }) =>
       billingApi.processRefund(id, data),

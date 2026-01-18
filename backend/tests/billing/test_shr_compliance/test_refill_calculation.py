@@ -383,7 +383,7 @@ class TestRefillCalculationErrors:
             "id": str(uuid.uuid4()),
             "status": "completed",
             "authorizingPrescription": [{"reference": f"MedicationRequest/{rx_id}"}],
-            "whenHandedOver": datetime.now().isoformat() + "Z"
+            "whenHandedOver": datetime.now().isoformat() + "Z",
             # No daysSupply field
         }
 

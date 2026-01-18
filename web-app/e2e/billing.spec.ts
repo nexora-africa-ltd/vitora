@@ -1,15 +1,15 @@
 /**
  * Billing E2E Tests - RED PHASE
- * 
+ *
  * End-to-end tests for billing workflows based on user stories.
  * All tests should FAIL initially.
- * 
+ *
  * User Stories Covered:
  * - KE-CSH-001: Payment Processing (Cashier)
  * - KE-CSH-002: Invoice Generation (Cashier)
  * - KE-BIL-001: Billing Reconciliation (Billing Clerk)
  * - KE-CLM-003: Financial Performance Reports
- * 
+ *
  * @see docs/user-stories.md
  */
 import { test, expect, Page } from '@playwright/test';
@@ -236,7 +236,7 @@ test.describe('KE-CSH-001: Payment Processing', () => {
   test('should navigate to billing section', async ({ page }) => {
     // Navigate to billing
     await page.goto('/billing');
-    
+
     // Should show billing dashboard
     await expect(page.getByRole('heading', { name: /billing/i })).toBeVisible();
     await expect(page.getByText(/today's collection/i)).toBeVisible();
@@ -244,7 +244,7 @@ test.describe('KE-CSH-001: Payment Processing', () => {
 
   test('should display invoice list', async ({ page }) => {
     await page.goto('/billing/invoices');
-    
+
     // Should show invoice list
     await expect(page.getByText('INV-20260103-0001')).toBeVisible();
     await expect(page.getByText('Jane Doe')).toBeVisible();
@@ -254,22 +254,22 @@ test.describe('KE-CSH-001: Payment Processing', () => {
 
   test('should view invoice details', async ({ page }) => {
     await page.goto('/billing/invoices');
-    
+
     // Click on invoice
     await page.click('text=INV-20260103-0001');
-    
+
     // Should navigate to invoice detail
     await expect(page).toHaveURL(/\/billing\/invoices\/\d+/);
-    
+
     // Should show invoice header
     await expect(page.getByText('INV-20260103-0001')).toBeVisible();
     await expect(page.getByText('Jane Doe')).toBeVisible();
     await expect(page.getByText('MRN-20260101-0001')).toBeVisible();
-    
+
     // Should show line items
     await expect(page.getByText('General Consultation')).toBeVisible();
     await expect(page.getByText('Complete Blood Count')).toBeVisible();
-    
+
     // Should show totals
     await expect(page.getByText(/subtotal/i)).toBeVisible();
     await expect(page.getByText(/total.*1,500/i)).toBeVisible();
@@ -277,26 +277,26 @@ test.describe('KE-CSH-001: Payment Processing', () => {
 
   test('should process cash payment', async ({ page }) => {
     await page.goto('/billing/invoices/1');
-    
+
     // Click pay button
     await page.click('button:has-text("Pay")');
-    
+
     // Should open payment dialog/form
     await expect(page.getByRole('dialog')).toBeVisible();
-    
+
     // Select cash payment
     await page.click('label:has-text("Cash")');
-    
+
     // Amount should be pre-filled with balance
     const amountInput = page.getByLabel(/amount/i);
     await expect(amountInput).toHaveValue('1500');
-    
+
     // Submit payment
     await page.click('button:has-text("Submit Payment")');
-    
+
     // Should show success message
     await expect(page.getByText(/payment successful/i)).toBeVisible();
-    
+
     // Should show receipt option
     await expect(page.getByRole('button', { name: /view receipt/i })).toBeVisible();
   });
@@ -334,23 +334,23 @@ test.describe('KE-CSH-001: Payment Processing', () => {
     });
 
     await page.goto('/billing/invoices/1');
-    
+
     // Click pay button
     await page.click('button:has-text("Pay")');
-    
+
     // Select M-Pesa
     await page.click('label:has-text("M-Pesa")');
-    
+
     // Enter phone number
     await page.fill('input[name="phone_number"]', '0712345678');
-    
+
     // Submit
     await page.click('button:has-text("Initiate M-Pesa")');
-    
+
     // Should show waiting for PIN message
     await expect(page.getByText(/enter your M-Pesa PIN/i)).toBeVisible();
     await expect(page.getByText(/0712345678/)).toBeVisible();
-    
+
     // Wait for success
     await expect(page.getByText(/payment successful/i)).toBeVisible({ timeout: 10000 });
     await expect(page.getByText('QJH3XXXXXX')).toBeVisible();
@@ -358,14 +358,14 @@ test.describe('KE-CSH-001: Payment Processing', () => {
 
   test('should validate Kenyan phone number format', async ({ page }) => {
     await page.goto('/billing/invoices/1');
-    
+
     await page.click('button:has-text("Pay")');
     await page.click('label:has-text("M-Pesa")');
-    
+
     // Enter invalid phone
     await page.fill('input[name="phone_number"]', '123456');
     await page.click('button:has-text("Initiate M-Pesa")');
-    
+
     // Should show validation error
     await expect(page.getByText(/valid Kenyan phone number/i)).toBeVisible();
   });
@@ -393,15 +393,15 @@ test.describe('KE-CSH-001: Payment Processing', () => {
     });
 
     await page.goto('/billing/invoices/1');
-    
+
     // Process payment first
     await page.click('button:has-text("Pay")');
     await page.click('label:has-text("Cash")');
     await page.click('button:has-text("Submit Payment")');
-    
+
     // Click view receipt
     await page.click('button:has-text("View Receipt")');
-    
+
     // Should display receipt
     await expect(page.getByText('RCP-20260103-0001')).toBeVisible();
     await expect(page.getByText('One Thousand Five Hundred Kenya Shillings Only')).toBeVisible();
@@ -410,11 +410,11 @@ test.describe('KE-CSH-001: Payment Processing', () => {
 
   test('should allow printing receipt', async ({ page }) => {
     await page.goto('/billing/payments/1/receipt');
-    
+
     // Check print button exists
     await expect(page.getByRole('button', { name: /print/i })).toBeVisible();
-    
-    // Note: We can't fully test print functionality in E2E, 
+
+    // Note: We can't fully test print functionality in E2E,
     // but we verify the button is present and clickable
   });
 
@@ -434,13 +434,13 @@ test.describe('KE-CSH-001: Payment Processing', () => {
     });
 
     await page.goto('/billing/invoices/1');
-    
+
     // Should show partial status
     await expect(page.getByText('PARTIAL')).toBeVisible();
-    
+
     // Should show amount paid
     await expect(page.getByText(/paid.*500/i)).toBeVisible();
-    
+
     // Should show balance due
     await expect(page.getByText(/balance.*1,000/i)).toBeVisible();
   });
@@ -458,23 +458,23 @@ test.describe('KE-CSH-002: Invoice Generation', () => {
 
   test('should create new invoice for patient', async ({ page }) => {
     await page.goto('/billing/invoices/new');
-    
+
     // Should show patient search/select
     await expect(page.getByLabel(/patient/i)).toBeVisible();
-    
+
     // Search and select patient
     await page.fill('input[placeholder*="patient"]', 'Jane');
     await page.click('text=Jane Doe');
-    
+
     // Should show patient info
     await expect(page.getByText('MRN-20260101-0001')).toBeVisible();
-    
+
     // Set due date
     await page.fill('input[name="due_date"]', '2026-02-02');
-    
+
     // Create invoice
     await page.click('button:has-text("Create Invoice")');
-    
+
     // Should redirect to invoice detail
     await expect(page).toHaveURL(/\/billing\/invoices\/\d+/);
     await expect(page.getByText('DRAFT')).toBeVisible();
@@ -482,17 +482,17 @@ test.describe('KE-CSH-002: Invoice Generation', () => {
 
   test('should add line items to invoice', async ({ page }) => {
     await page.goto('/billing/invoices/1');
-    
+
     // Click add item
     await page.click('button:has-text("Add Item")');
-    
+
     // Should show service selector
     await expect(page.getByRole('dialog')).toBeVisible();
-    
+
     // Search and select service
     await page.fill('input[placeholder*="search"]', 'Consultation');
     await page.click('text=General Consultation');
-    
+
     // Should add item to invoice
     await expect(page.getByText('General Consultation')).toBeVisible();
     await expect(page.getByText('KES 500.00')).toBeVisible();
@@ -504,14 +504,14 @@ test.describe('KE-CSH-002: Invoice Generation', () => {
     });
 
     await page.goto('/billing/invoices/1');
-    
+
     // Find and click remove button for item
     const itemRow = page.locator('tr:has-text("General Consultation")');
     await itemRow.getByRole('button', { name: /remove|delete/i }).click();
-    
+
     // Confirm deletion
     await page.click('button:has-text("Confirm")');
-    
+
     // Item should be removed
     await expect(page.getByText('General Consultation')).not.toBeVisible();
   });
@@ -534,19 +534,19 @@ test.describe('KE-CSH-002: Invoice Generation', () => {
     });
 
     await page.goto('/billing/invoices/1');
-    
+
     // Click apply discount
     await page.click('button:has-text("Apply Discount")');
-    
+
     // Select percentage discount
     await page.click('label:has-text("Percentage")');
-    
+
     // Enter 10%
     await page.fill('input[name="discount_value"]', '10');
-    
+
     // Apply
     await page.click('button:has-text("Apply")');
-    
+
     // Should show discount
     await expect(page.getByText('10%')).toBeVisible();
     await expect(page.getByText('-KES 150.00')).toBeVisible();
@@ -576,13 +576,13 @@ test.describe('KE-CSH-002: Invoice Generation', () => {
     });
 
     await page.goto('/billing/invoices/1');
-    
+
     // Click finalize
     await page.click('button:has-text("Finalize")');
-    
+
     // Confirm
     await page.click('button:has-text("Confirm")');
-    
+
     // Status should change to PENDING
     await expect(page.getByText('PENDING')).toBeVisible();
   });
@@ -601,16 +601,16 @@ test.describe('KE-CSH-002: Invoice Generation', () => {
     });
 
     await page.goto('/billing/invoices/1');
-    
+
     // Click cancel
     await page.click('button:has-text("Cancel Invoice")');
-    
+
     // Enter reason
     await page.fill('textarea[name="reason"]', 'Patient request');
-    
+
     // Confirm cancellation
     await page.click('button:has-text("Confirm Cancel")');
-    
+
     // Status should change to CANCELLED
     await expect(page.getByText('CANCELLED')).toBeVisible();
   });
@@ -629,7 +629,7 @@ test.describe('KE-CSH-002: Invoice Generation', () => {
     });
 
     await page.goto('/billing/invoices/1');
-    
+
     // Should show insurance coverage
     await expect(page.getByText(/insurance/i)).toBeVisible();
     await expect(page.getByText('KES 500.00')).toBeVisible();
@@ -648,10 +648,10 @@ test.describe('KE-BIL-001: Billing Reconciliation', () => {
 
   test('should show unbilled services dashboard', async ({ page }) => {
     await page.goto('/billing/reconciliation');
-    
+
     // Should show reconciliation dashboard
     await expect(page.getByRole('heading', { name: /reconciliation/i })).toBeVisible();
-    
+
     // Should show unbilled services by department
     await expect(page.getByText(/unbilled services/i)).toBeVisible();
   });
@@ -675,7 +675,7 @@ test.describe('KE-BIL-001: Billing Reconciliation', () => {
     });
 
     await page.goto('/billing/reconciliation/discrepancies');
-    
+
     // Should show discrepancy
     await expect(page.getByText('Jane Doe')).toBeVisible();
     await expect(page.getByText('Lab Test')).toBeVisible();
@@ -701,7 +701,7 @@ test.describe('KE-BIL-001: Billing Reconciliation', () => {
     });
 
     await page.goto('/billing/reports/daily-closure');
-    
+
     // Should show closure report
     await expect(page.getByText(/daily closure/i)).toBeVisible();
     await expect(page.getByText('KES 25,000.00')).toBeVisible();
@@ -721,12 +721,12 @@ test.describe('KE-CLM-003: Financial Performance Reports', () => {
 
   test('should display daily collection dashboard', async ({ page }) => {
     await page.goto('/billing');
-    
+
     // Should show today's collection
     await expect(page.getByText(/today's collection/i)).toBeVisible();
     await expect(page.getByText('KES 15,000.00')).toBeVisible();
     await expect(page.getByText('10 invoices')).toBeVisible();
-    
+
     // Should show breakdown by payment method
     await expect(page.getByText(/cash.*8,000/i)).toBeVisible();
     await expect(page.getByText(/m-pesa.*5,000/i)).toBeVisible();
@@ -756,7 +756,7 @@ test.describe('KE-CLM-003: Financial Performance Reports', () => {
     });
 
     await page.goto('/billing/reports/outstanding');
-    
+
     // Should show outstanding balances
     await expect(page.getByText('INV-20260101-0001')).toBeVisible();
     await expect(page.getByText('Jane Doe')).toBeVisible();
@@ -766,23 +766,23 @@ test.describe('KE-CLM-003: Financial Performance Reports', () => {
 
   test('should filter reports by date range', async ({ page }) => {
     await page.goto('/billing/reports/revenue');
-    
+
     // Should show date filters
     await expect(page.getByLabel(/start date/i)).toBeVisible();
     await expect(page.getByLabel(/end date/i)).toBeVisible();
-    
+
     // Set date range
     await page.fill('input[name="start_date"]', '2026-01-01');
     await page.fill('input[name="end_date"]', '2026-01-31');
     await page.click('button:has-text("Apply")');
-    
+
     // Report should update
     await expect(page.getByText(/january 2026/i)).toBeVisible();
   });
 
   test('should export report to CSV', async ({ page }) => {
     await page.goto('/billing/reports/revenue');
-    
+
     // Should have export button
     await expect(page.getByRole('button', { name: /export|download/i })).toBeVisible();
   });
@@ -813,7 +813,7 @@ test.describe('KE-CLM-003: Financial Performance Reports', () => {
     });
 
     await page.goto('/billing/reports/revenue');
-    
+
     // Should show revenue by department
     await expect(page.getByText('Consultation')).toBeVisible();
     await expect(page.getByText('KES 150,000.00')).toBeVisible();
@@ -838,7 +838,7 @@ test.describe('KE-CLM-003: Financial Performance Reports', () => {
     });
 
     await page.goto('/billing/claims');
-    
+
     // Should show claims by status
     await expect(page.getByText('SHA-001')).toBeVisible();
     await expect(page.getByText('SUBMITTED')).toBeVisible();
@@ -857,7 +857,7 @@ test.describe('Billing Accessibility', () => {
 
   test('should have accessible invoice list', async ({ page }) => {
     await page.goto('/billing/invoices');
-    
+
     // Table should be accessible
     await expect(page.getByRole('table')).toBeVisible();
     await expect(page.getByRole('columnheader', { name: /invoice/i })).toBeVisible();
@@ -868,11 +868,11 @@ test.describe('Billing Accessibility', () => {
 
   test('should be keyboard navigable', async ({ page }) => {
     await page.goto('/billing/invoices');
-    
+
     // Tab through elements
     await page.keyboard.press('Tab');
     await page.keyboard.press('Tab');
-    
+
     // Should have focus indicators
     const focusedElement = page.locator(':focus');
     await expect(focusedElement).toBeVisible();
@@ -881,7 +881,7 @@ test.describe('Billing Accessibility', () => {
   test('should have proper form labels', async ({ page }) => {
     await page.goto('/billing/invoices/1');
     await page.click('button:has-text("Pay")');
-    
+
     // All form inputs should have labels
     const amountInput = page.getByLabel(/amount/i);
     await expect(amountInput).toBeVisible();
@@ -896,20 +896,20 @@ test.describe('Billing Offline Support', () => {
   test('should queue payment when offline', async ({ page }) => {
     await setupBillingMocks(page);
     await login(page, TEST_USER.username, TEST_USER.password);
-    
+
     await page.goto('/billing/invoices/1');
-    
+
     // Go offline
     await page.context().setOffline(true);
-    
+
     // Try to make payment
     await page.click('button:has-text("Pay")');
     await page.click('label:has-text("Cash")');
     await page.click('button:has-text("Submit Payment")');
-    
+
     // Should show offline queue message
     await expect(page.getByText(/offline|queued|sync/i)).toBeVisible();
-    
+
     // Go back online
     await page.context().setOffline(false);
   });
@@ -917,12 +917,12 @@ test.describe('Billing Offline Support', () => {
   test('should show offline indicator in billing dashboard', async ({ page }) => {
     await setupBillingMocks(page);
     await login(page, TEST_USER.username, TEST_USER.password);
-    
+
     await page.goto('/billing');
-    
+
     // Go offline
     await page.context().setOffline(true);
-    
+
     // Should show offline indicator
     await expect(page.getByText(/offline/i)).toBeVisible();
   });
@@ -937,7 +937,7 @@ test.describe('Billing Audit Logging', () => {
     let auditLogCalled = false;
 
     await setupBillingMocks(page);
-    
+
     // Intercept audit log creation
     await page.route('**/api/auditlogs/**', async (route) => {
       if (route.request().method() === 'POST') {
@@ -948,12 +948,12 @@ test.describe('Billing Audit Logging', () => {
 
     await login(page, TEST_USER.username, TEST_USER.password);
     await page.goto('/billing/invoices/1');
-    
+
     // Process payment
     await page.click('button:has-text("Pay")');
     await page.click('label:has-text("Cash")');
     await page.click('button:has-text("Submit Payment")');
-    
+
     // Verify action was logged (audit logging happens on backend)
     // We just verify the payment was processed successfully
     await expect(page.getByText(/payment successful/i)).toBeVisible();

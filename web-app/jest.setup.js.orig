@@ -85,4 +85,3 @@ global.ResizeObserver = MockResizeObserver;
 // Suppress console warnings in tests (optional - comment out for debugging)
 // global.console.warn = jest.fn();
 // global.console.error = jest.fn();
-

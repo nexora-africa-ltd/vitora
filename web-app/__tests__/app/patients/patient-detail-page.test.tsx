@@ -1,9 +1,9 @@
 /**
  * Patient Detail Page Tests - RED Phase
- * 
+ *
  * Tests for migrating /patients/[id]/page.tsx to consume PatientContext
  * instead of independently fetching patient data.
- * 
+ *
  * Acceptance Criteria:
  * - Page consumes usePatientContext() instead of usePatient(id)
  * - No duplicate patient data fetching
@@ -111,11 +111,11 @@ describe('Patient Detail Page - Context Integration', () => {
     it('should consume patient data from PatientContext, not fetch independently', async () => {
       // Import the page component dynamically to test context consumption
       const PatientDetailPage = (await import('@/app/(dashboard)/patients/[id]/page')).default;
-      
+
       // The page is rendered within PatientProvider (via layout)
       // So we need to test that it uses usePatientContext
       const { PatientProvider } = await import('@/lib/context/patient-context');
-      
+
       const Wrapper = createWrapper();
       render(
         <Wrapper>
@@ -139,9 +139,9 @@ describe('Patient Detail Page - Context Integration', () => {
       // This test verifies the page doesn't have its own usePatient call
       const PatientDetailPage = (await import('@/app/(dashboard)/patients/[id]/page')).default;
       const { PatientProvider } = await import('@/lib/context/patient-context');
-      
+
       const Wrapper = createWrapper();
-      
+
       // Render twice to simulate re-render
       const { rerender } = render(
         <Wrapper>
@@ -171,7 +171,7 @@ describe('Patient Detail Page - Context Integration', () => {
     it('should display patient data from context', async () => {
       const PatientDetailPage = (await import('@/app/(dashboard)/patients/[id]/page')).default;
       const { PatientProvider } = await import('@/lib/context/patient-context');
-      
+
       const Wrapper = createWrapper();
       render(
         <Wrapper>
@@ -194,14 +194,14 @@ describe('Patient Detail Page - Context Integration', () => {
   // ===========================================================================
   describe('Role-Based Edit Access', () => {
     it('should HIDE edit button for users without edit_patient permission', async () => {
-      mockUseAuth.mockReturnValue({ 
-        user: { ...mockUser, permissions: ['view_patient'] }, 
-        isAuthenticated: true 
+      mockUseAuth.mockReturnValue({
+        user: { ...mockUser, permissions: ['view_patient'] },
+        isAuthenticated: true
       } as any);
 
       const PatientDetailPage = (await import('@/app/(dashboard)/patients/[id]/page')).default;
       const { PatientProvider } = await import('@/lib/context/patient-context');
-      
+
       const Wrapper = createWrapper();
       render(
         <Wrapper>
@@ -221,14 +221,14 @@ describe('Patient Detail Page - Context Integration', () => {
     });
 
     it('should SHOW edit button for users with edit_patient permission', async () => {
-      mockUseAuth.mockReturnValue({ 
-        user: { ...mockUser, permissions: ['view_patient', 'edit_patient'] }, 
-        isAuthenticated: true 
+      mockUseAuth.mockReturnValue({
+        user: { ...mockUser, permissions: ['view_patient', 'edit_patient'] },
+        isAuthenticated: true
       } as any);
 
       const PatientDetailPage = (await import('@/app/(dashboard)/patients/[id]/page')).default;
       const { PatientProvider } = await import('@/lib/context/patient-context');
-      
+
       const Wrapper = createWrapper();
       render(
         <Wrapper>
@@ -243,20 +243,20 @@ describe('Patient Detail Page - Context Integration', () => {
       });
 
       // Edit button SHOULD be visible
-      const editButton = screen.getByRole('link', { name: /edit/i }) || 
+      const editButton = screen.getByRole('link', { name: /edit/i }) ||
                          screen.getByRole('button', { name: /edit/i });
       expect(editButton).toBeInTheDocument();
     });
 
     it('should SHOW edit button for ADMIN role regardless of permissions', async () => {
-      mockUseAuth.mockReturnValue({ 
-        user: mockAdminUser, 
-        isAuthenticated: true 
+      mockUseAuth.mockReturnValue({
+        user: mockAdminUser,
+        isAuthenticated: true
       } as any);
 
       const PatientDetailPage = (await import('@/app/(dashboard)/patients/[id]/page')).default;
       const { PatientProvider } = await import('@/lib/context/patient-context');
-      
+
       const Wrapper = createWrapper();
       render(
         <Wrapper>
@@ -271,20 +271,20 @@ describe('Patient Detail Page - Context Integration', () => {
       });
 
       // Admin should always see edit button
-      const editButton = screen.getByRole('link', { name: /edit/i }) || 
+      const editButton = screen.getByRole('link', { name: /edit/i }) ||
                          screen.getByRole('button', { name: /edit/i });
       expect(editButton).toBeInTheDocument();
     });
 
     it('should HIDE edit button for clinical roles (NURSE, DOCTOR) by default', async () => {
-      mockUseAuth.mockReturnValue({ 
-        user: { ...mockUser, role: 'DOCTOR', permissions: ['view_patient', 'create_encounter'] }, 
-        isAuthenticated: true 
+      mockUseAuth.mockReturnValue({
+        user: { ...mockUser, role: 'DOCTOR', permissions: ['view_patient', 'create_encounter'] },
+        isAuthenticated: true
       } as any);
 
       const PatientDetailPage = (await import('@/app/(dashboard)/patients/[id]/page')).default;
       const { PatientProvider } = await import('@/lib/context/patient-context');
-      
+
       const Wrapper = createWrapper();
       render(
         <Wrapper>
@@ -314,7 +314,7 @@ describe('Patient Detail Page - Context Integration', () => {
 
       const PatientDetailPage = (await import('@/app/(dashboard)/patients/[id]/page')).default;
       const { PatientProvider } = await import('@/lib/context/patient-context');
-      
+
       const Wrapper = createWrapper();
       render(
         <Wrapper>
@@ -326,7 +326,7 @@ describe('Patient Detail Page - Context Integration', () => {
 
       // Should show loading indicator (from context, not page's own loading)
       // Check for any loading indicator - skeleton, status, or text
-      const loadingIndicator = screen.queryByTestId('patient-shell-loading') || 
+      const loadingIndicator = screen.queryByTestId('patient-shell-loading') ||
              screen.queryByRole('status') ||
              screen.queryByText(/loading/i) ||
              screen.queryByTestId('patient-detail-skeleton') ||
@@ -340,7 +340,7 @@ describe('Patient Detail Page - Context Integration', () => {
 
       const PatientDetailPage = (await import('@/app/(dashboard)/patients/[id]/page')).default;
       const { PatientProvider } = await import('@/lib/context/patient-context');
-      
+
       const Wrapper = createWrapper();
       render(
         <Wrapper>
@@ -352,7 +352,7 @@ describe('Patient Detail Page - Context Integration', () => {
 
       await waitFor(() => {
         // Check for any error indication
-        const errorElement = screen.queryByRole('alert') || 
+        const errorElement = screen.queryByRole('alert') ||
                screen.queryByText(/error/i) ||
                screen.queryByText(/not found/i);
         expect(errorElement).toBeTruthy();

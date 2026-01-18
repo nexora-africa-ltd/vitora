@@ -1,7 +1,7 @@
 /**
  * Prescription Detail Page
  * Sprint 1.3-1.4 Track A: Pharmacy Module
- * 
+ *
  * Displays full prescription information including:
  * - Patient details
  * - Prescriber information
@@ -14,12 +14,12 @@
 
 import { useParams, useRouter } from 'next/navigation';
 import { format } from 'date-fns';
-import { 
-  ArrowLeft, 
-  Calendar, 
-  User, 
-  FileText, 
-  Pill, 
+import {
+  ArrowLeft,
+  Calendar,
+  User,
+  FileText,
+  Pill,
   AlertCircle,
   CheckCircle,
   Clock,
@@ -100,12 +100,12 @@ export default function PrescriptionDetailPage() {
         id: prescriptionId,
         reason: cancelReason,
       });
-      
+
       toast({
         title: 'Success',
         description: 'Prescription cancelled successfully',
       });
-      
+
       setShowCancelDialog(false);
       setCancelReason('');
     } catch (error) {

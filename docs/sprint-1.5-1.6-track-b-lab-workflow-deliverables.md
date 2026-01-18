@@ -46,7 +46,7 @@ Before implementation begins, the following inputs are needed:
 | **Facility Email** | Contact email | "lab@facility.example" |
 | **License Number** | Medical facility license | "MF-00000" |
 
-**Action Required**: 
+**Action Required**:
 - Provide facility logo file (PNG, min 300x100px)
 - Confirm facility details for official documents
 
@@ -82,18 +82,18 @@ The following models should already exist from the previous sprint:
 ```python
 class LabOrder(models.Model):
     """Lab order from an encounter."""
-    
+
     class OrderType(models.TextChoices):
         IN_HOUSE = 'in_house', 'In-House'
         EXTERNAL = 'external', 'External Lab'
-    
+
     class Status(models.TextChoices):
         ORDERED = 'ordered', 'Ordered'
         COLLECTED = 'collected', 'Sample Collected'
         IN_PROGRESS = 'in_progress', 'In Progress'
         COMPLETED = 'completed', 'Completed'
         CANCELLED = 'cancelled', 'Cancelled'
-    
+
     patient = models.ForeignKey('patients.Patient', on_delete=models.PROTECT)
     encounter = models.ForeignKey('encounters.Encounter', on_delete=models.PROTECT)
     test_code = models.CharField(max_length=20)  # LOINC code
@@ -107,7 +107,7 @@ class LabOrder(models.Model):
 ```python
 class LabResult(models.Model):
     """Result for a lab order."""
-    
+
     lab_order = models.ForeignKey(LabOrder, on_delete=models.PROTECT, related_name='results')
     parameter_name = models.CharField(max_length=100)
     value = models.CharField(max_length=100)
@@ -131,37 +131,37 @@ class LabResult(models.Model):
 ```python
 class LabQueue(models.Model):
     """Lab queue entry for in-house processing."""
-    
+
     class Priority(models.TextChoices):
         ROUTINE = 'routine', 'Routine'
         URGENT = 'urgent', 'Urgent'
         STAT = 'stat', 'STAT (Emergency)'
-    
+
     class QueueStatus(models.TextChoices):
         PENDING = 'pending', 'Pending Collection'
         COLLECTED = 'collected', 'Sample Collected'
         PROCESSING = 'processing', 'Processing'
         REVIEW = 'review', 'Pending Review'
         RELEASED = 'released', 'Results Released'
-    
+
     id = models.BigAutoField(primary_key=True)
-    
+
     # Linkage
     lab_order = models.OneToOneField(LabOrder, on_delete=models.CASCADE, related_name='queue_entry')
-    
+
     # Queue management
     queue_number = models.CharField(max_length=20, unique=True)  # LAB-YYYYMMDD-XXXX
     priority = models.CharField(max_length=20, choices=Priority.choices, default=Priority.ROUTINE)
     queue_status = models.CharField(max_length=20, choices=QueueStatus.choices, default=QueueStatus.PENDING)
-    
+
     # Assignment
     assigned_technician = models.ForeignKey(
-        settings.AUTH_USER_MODEL, 
-        on_delete=models.SET_NULL, 
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
         null=True, blank=True,
         related_name='assigned_lab_orders'
     )
-    
+
     # Sample tracking
     sample_type = models.CharField(max_length=50)  # blood, urine, stool, swab, etc.
     sample_id = models.CharField(max_length=50, blank=True)  # Barcode/tube ID
@@ -172,11 +172,11 @@ class LabQueue(models.Model):
         null=True, blank=True,
         related_name='samples_collected'
     )
-    
+
     # Processing
     processing_started_at = models.DateTimeField(null=True, blank=True)
     processing_completed_at = models.DateTimeField(null=True, blank=True)
-    
+
     # Review/Release
     reviewed_by = models.ForeignKey(
         settings.AUTH_USER_MODEL,
@@ -186,15 +186,15 @@ class LabQueue(models.Model):
     )
     reviewed_at = models.DateTimeField(null=True, blank=True)
     released_at = models.DateTimeField(null=True, blank=True)
-    
+
     # Notes
     technician_notes = models.TextField(blank=True)
     rejection_reason = models.TextField(blank=True)  # If sample rejected
-    
+
     # Audit
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
-    
+
     class Meta:
         ordering = ['-priority', 'created_at']
         indexes = [
@@ -248,14 +248,14 @@ class LabQueue(models.Model):
 class LabOrderWorkflow:
     """
     Manages lab order state transitions.
-    
+
     In-House Flow:
     ordered → collected → in_progress → completed
-    
+
     External Flow:
     ordered → collected (sample sent) → completed (results received)
     """
-    
+
     VALID_TRANSITIONS = {
         'ordered': ['collected', 'cancelled'],
         'collected': ['in_progress', 'cancelled'],  # in_progress only for in-house
@@ -263,27 +263,27 @@ class LabOrderWorkflow:
         'completed': [],  # Terminal state
         'cancelled': [],  # Terminal state
     }
-    
+
     def __init__(self, lab_order: LabOrder):
         self.lab_order = lab_order
-    
+
     def can_transition_to(self, new_status: str) -> bool:
         """Check if transition is valid."""
         current = self.lab_order.status
         return new_status in self.VALID_TRANSITIONS.get(current, [])
-    
+
     def transition_to(self, new_status: str, user: User, **kwargs) -> LabOrder:
         """
         Transition order to new status with validation.
-        
+
         Args:
             new_status: Target status
             user: User performing the action
             **kwargs: Additional data (e.g., sample_id, rejection_reason)
-            
+
         Returns:
             Updated LabOrder
-            
+
         Raises:
             InvalidTransitionError: If transition is not allowed
         """
@@ -291,7 +291,7 @@ class LabOrderWorkflow:
             raise InvalidTransitionError(
                 f"Cannot transition from {self.lab_order.status} to {new_status}"
             )
-        
+
         # Perform transition with appropriate actions
         if new_status == 'collected':
             self._handle_collection(user, kwargs)
@@ -301,10 +301,10 @@ class LabOrderWorkflow:
             self._handle_completion(user, kwargs)
         elif new_status == 'cancelled':
             self._handle_cancellation(user, kwargs)
-        
+
         self.lab_order.status = new_status
         self.lab_order.save()
-        
+
         # Create audit log
         AuditLog.log(
             action=f'lab_order_{new_status}',
@@ -313,9 +313,9 @@ class LabOrderWorkflow:
             resource_id=self.lab_order.id,
             details={'previous_status': self.lab_order.status, 'new_status': new_status}
         )
-        
+
         return self.lab_order
-    
+
     def _handle_collection(self, user: User, kwargs: dict):
         """Handle sample collection."""
         queue = self.lab_order.queue_entry
@@ -323,7 +323,7 @@ class LabOrderWorkflow:
             collector=user,
             sample_id=kwargs.get('sample_id', '')
         )
-    
+
     def _handle_processing_start(self, user: User):
         """Handle processing start (in-house only)."""
         if self.lab_order.order_type != 'in_house':
@@ -332,19 +332,19 @@ class LabOrderWorkflow:
         queue.start_processing()
         queue.assigned_technician = user
         queue.save()
-    
+
     def _handle_completion(self, user: User, kwargs: dict):
         """Handle order completion."""
         # Verify results exist
         if not self.lab_order.results.exists():
             raise InvalidTransitionError("Cannot complete order without results")
-        
+
         queue = self.lab_order.queue_entry
         queue.release_results(user)
-        
+
         # Trigger notification
         self._notify_clinician()
-    
+
     def _handle_cancellation(self, user: User, kwargs: dict):
         """Handle order cancellation."""
         reason = kwargs.get('cancellation_reason', '')
@@ -353,7 +353,7 @@ class LabOrderWorkflow:
         self.lab_order.cancellation_reason = reason
         self.lab_order.cancelled_by = user
         self.lab_order.cancelled_at = timezone.now()
-    
+
     def _notify_clinician(self):
         """Send notification when results are ready."""
         from hmis.apps.laboratory.notifications import send_result_notification
@@ -393,30 +393,30 @@ from io import BytesIO
 
 class ExternalLabRequisition:
     """Generate PDF requisition for external lab orders."""
-    
+
     def __init__(self, lab_order: LabOrder):
         if lab_order.order_type != 'external':
             raise ValueError("Requisition only for external orders")
         self.lab_order = lab_order
         self.patient = lab_order.patient
         self.encounter = lab_order.encounter
-    
+
     def generate_pdf(self) -> BytesIO:
         """
         Generate PDF requisition form.
-        
+
         Returns:
             BytesIO buffer containing PDF
         """
         context = self._build_context()
         html_content = render_to_string('laboratory/requisition.html', context)
-        
+
         pdf_buffer = BytesIO()
         HTML(string=html_content).write_pdf(pdf_buffer)
         pdf_buffer.seek(0)
-        
+
         return pdf_buffer
-    
+
     def _build_context(self) -> dict:
         """Build template context."""
         return {
@@ -427,12 +427,12 @@ class ExternalLabRequisition:
             'facility_email': settings.FACILITY_EMAIL,
             'facility_license': settings.FACILITY_LICENSE,
             'facility_logo_url': settings.FACILITY_LOGO_URL,
-            
+
             # Requisition info
             'requisition_number': self.lab_order.order_number,
             'requisition_date': self.lab_order.created_at,
             'priority': self.lab_order.queue_entry.priority if hasattr(self.lab_order, 'queue_entry') else 'routine',
-            
+
             # Patient info
             'patient_name': self.patient.get_full_name(),
             'patient_mrn': self.patient.mrn,
@@ -440,29 +440,29 @@ class ExternalLabRequisition:
             'patient_age': self.patient.get_age(),
             'patient_gender': self.patient.get_gender_display(),
             'patient_phone': self.patient.phone_number,
-            
+
             # Clinical info
             'ordering_clinician': self.encounter.clinician.get_full_name() if self.encounter.clinician else '',
             'clinical_indication': self.lab_order.clinical_indication,
             'icd10_code': self.lab_order.icd10_code,
             'diagnosis': self.lab_order.provisional_diagnosis,
-            
+
             # Test info
             'test_code': self.lab_order.test_code,
             'test_name': self.lab_order.test_name,
             'sample_type': self.lab_order.sample_type,
             'special_instructions': self.lab_order.special_instructions,
-            
+
             # External lab info (if specified)
             'external_lab_name': self.lab_order.external_lab_name,
             'external_lab_address': self.lab_order.external_lab_address,
         }
-    
+
     def save_to_order(self) -> str:
         """Generate PDF and save to lab order."""
         pdf_buffer = self.generate_pdf()
         filename = f"requisition_{self.lab_order.order_number}.pdf"
-        
+
         self.lab_order.requisition_pdf.save(filename, ContentFile(pdf_buffer.read()))
         return self.lab_order.requisition_pdf.url
 ```
@@ -522,7 +522,7 @@ class ExternalLabRequisition:
 ```python
 class LabResult(models.Model):
     """Result for a lab order - extended for result entry workflow."""
-    
+
     class Flag(models.TextChoices):
         NORMAL = 'N', 'Normal'
         LOW = 'L', 'Low'
@@ -530,38 +530,38 @@ class LabResult(models.Model):
         CRITICAL_LOW = 'LL', 'Critical Low'
         CRITICAL_HIGH = 'HH', 'Critical High'
         ABNORMAL = 'A', 'Abnormal'
-    
+
     id = models.BigAutoField(primary_key=True)
-    
+
     # Linkage
     lab_order = models.ForeignKey(LabOrder, on_delete=models.CASCADE, related_name='results')
-    
+
     # Result identification
     parameter_code = models.CharField(max_length=20)  # LOINC component code
     parameter_name = models.CharField(max_length=100)
-    
+
     # Result value
     value = models.CharField(max_length=100)
     value_numeric = models.DecimalField(max_digits=12, decimal_places=4, null=True, blank=True)
     unit = models.CharField(max_length=50, blank=True)
-    
+
     # Reference range
     reference_range_text = models.CharField(max_length=100, blank=True)  # "3.5-5.0"
     reference_low = models.DecimalField(max_digits=12, decimal_places=4, null=True, blank=True)
     reference_high = models.DecimalField(max_digits=12, decimal_places=4, null=True, blank=True)
-    
+
     # Flags
     flag = models.CharField(max_length=2, choices=Flag.choices, default=Flag.NORMAL)
     is_critical = models.BooleanField(default=False)  # Requires immediate attention
-    
+
     # Comments
     result_comment = models.TextField(blank=True)
     internal_note = models.TextField(blank=True)  # Lab staff only
-    
+
     # Method/Equipment
     method = models.CharField(max_length=100, blank=True)  # Testing methodology
     equipment = models.CharField(max_length=100, blank=True)  # Analyzer used
-    
+
     # Entry tracking
     entered_by = models.ForeignKey(
         settings.AUTH_USER_MODEL,
@@ -569,7 +569,7 @@ class LabResult(models.Model):
         related_name='lab_results_entered'
     )
     entered_at = models.DateTimeField(auto_now_add=True)
-    
+
     # Verification (for critical results)
     verified_by = models.ForeignKey(
         settings.AUTH_USER_MODEL,
@@ -578,7 +578,7 @@ class LabResult(models.Model):
         related_name='lab_results_verified'
     )
     verified_at = models.DateTimeField(null=True, blank=True)
-    
+
     # Amendment tracking
     is_amended = models.BooleanField(default=False)
     amendment_reason = models.TextField(blank=True)
@@ -590,7 +590,7 @@ class LabResult(models.Model):
         related_name='lab_results_amended'
     )
     amended_at = models.DateTimeField(null=True, blank=True)
-    
+
     class Meta:
         ordering = ['parameter_name']
         unique_together = ['lab_order', 'parameter_code']
@@ -598,18 +598,18 @@ class LabResult(models.Model):
 
 class LabResultTemplate(models.Model):
     """Template for lab test parameters with reference ranges."""
-    
+
     id = models.BigAutoField(primary_key=True)
-    
+
     # Test identification
     test_code = models.CharField(max_length=20)  # LOINC code
     test_name = models.CharField(max_length=200)
-    
+
     # Parameter details
     parameter_code = models.CharField(max_length=20)
     parameter_name = models.CharField(max_length=100)
     unit = models.CharField(max_length=50)
-    
+
     # Reference ranges by demographic
     # Stored as JSON for flexibility
     reference_ranges = models.JSONField(default=dict)
@@ -619,26 +619,26 @@ class LabResultTemplate(models.Model):
     #   "pediatric": {"low": 3.5, "high": 5.0},
     #   "default": {"low": 4.0, "high": 5.5}
     # }
-    
+
     # Critical values
     critical_low = models.DecimalField(max_digits=12, decimal_places=4, null=True, blank=True)
     critical_high = models.DecimalField(max_digits=12, decimal_places=4, null=True, blank=True)
-    
+
     # Display
     display_order = models.IntegerField(default=0)
     is_active = models.BooleanField(default=True)
-    
+
     class Meta:
         ordering = ['test_code', 'display_order']
         unique_together = ['test_code', 'parameter_code']
-    
+
     def get_reference_range(self, patient: 'Patient') -> tuple:
         """Get appropriate reference range for patient demographics."""
         age = patient.get_age()
         gender = patient.gender
-        
+
         ranges = self.reference_ranges
-        
+
         # Determine category
         if age < 18:
             category = 'pediatric'
@@ -646,7 +646,7 @@ class LabResultTemplate(models.Model):
             category = 'adult_male'
         else:
             category = 'adult_female'
-        
+
         range_data = ranges.get(category, ranges.get('default', {}))
         return (range_data.get('low'), range_data.get('high'))
 ```
@@ -694,7 +694,7 @@ class LabResultTemplate(models.Model):
 def populate_cbc_ranges(apps, schema_editor):
     """Populate Complete Blood Count reference ranges."""
     LabResultTemplate = apps.get_model('laboratory', 'LabResultTemplate')
-    
+
     cbc_parameters = [
         {
             'test_code': 'CBC',
@@ -740,7 +740,7 @@ def populate_cbc_ranges(apps, schema_editor):
         },
         # ... more parameters
     ]
-    
+
     for param in cbc_parameters:
         LabResultTemplate.objects.create(**param)
 ```
@@ -788,22 +788,22 @@ from hmis.apps.core.models import Notification
 
 class LabNotificationService:
     """Handle lab result notifications."""
-    
+
     def send_result_notification(self, lab_order: LabOrder):
         """
         Send notification when results are ready.
-        
+
         Creates in-app notification and optionally sends email.
         """
         clinician = lab_order.encounter.clinician
         patient = lab_order.patient
-        
+
         # Check for critical results
         has_critical = lab_order.results.filter(is_critical=True).exists()
-        
+
         # Determine priority
         priority = 'critical' if has_critical else 'normal'
-        
+
         # Create in-app notification
         notification = Notification.objects.create(
             user=clinician,
@@ -815,32 +815,32 @@ class LabNotificationService:
             related_id=lab_order.id,
             action_url=f'/encounters/{lab_order.encounter.id}/lab/{lab_order.id}/'
         )
-        
+
         # Send email for critical results
         if has_critical and clinician.email:
             self._send_critical_email(clinician, lab_order)
-        
+
         return notification
-    
+
     def _get_notification_title(self, lab_order: LabOrder, has_critical: bool) -> str:
         """Generate notification title."""
         if has_critical:
             return f"🚨 CRITICAL: Lab Results Ready - {lab_order.test_name}"
         return f"Lab Results Ready - {lab_order.test_name}"
-    
+
     def _get_notification_message(self, lab_order: LabOrder) -> str:
         """Generate notification message."""
         patient = lab_order.patient
         critical_results = lab_order.results.filter(is_critical=True)
-        
+
         message = f"Results for {patient.get_full_name()} ({patient.mrn}) are now available."
-        
+
         if critical_results.exists():
             critical_params = ", ".join([r.parameter_name for r in critical_results])
             message += f"\n\n⚠️ Critical values detected: {critical_params}"
-        
+
         return message
-    
+
     def _send_critical_email(self, clinician: User, lab_order: LabOrder):
         """Send email for critical lab results."""
         context = {
@@ -851,10 +851,10 @@ class LabNotificationService:
             'critical_results': lab_order.results.filter(is_critical=True),
             'result_url': f"{settings.FRONTEND_URL}/encounters/{lab_order.encounter.id}/lab/{lab_order.id}/",
         }
-        
+
         html_message = render_to_string('laboratory/email/critical_result.html', context)
         plain_message = render_to_string('laboratory/email/critical_result.txt', context)
-        
+
         send_mail(
             subject=f"🚨 CRITICAL Lab Result - {lab_order.patient.get_full_name()}",
             message=plain_message,
@@ -863,12 +863,12 @@ class LabNotificationService:
             html_message=html_message,
             fail_silently=False,
         )
-    
+
     def send_pending_collection_reminder(self, lab_order: LabOrder):
         """Remind about uncollected samples."""
         # Implementation for overdue sample collection
         pass
-    
+
     def send_external_result_received(self, lab_order: LabOrder):
         """Notify when external lab results are received."""
         # Implementation for external results
@@ -879,30 +879,30 @@ class LabNotificationService:
 ```python
 class Notification(models.Model):
     """In-app notification for users."""
-    
+
     class Priority(models.TextChoices):
         LOW = 'low', 'Low'
         NORMAL = 'normal', 'Normal'
         HIGH = 'high', 'High'
         CRITICAL = 'critical', 'Critical'
-    
+
     user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='notifications')
     notification_type = models.CharField(max_length=50)
     priority = models.CharField(max_length=20, choices=Priority.choices, default=Priority.NORMAL)
     title = models.CharField(max_length=200)
     message = models.TextField()
-    
+
     # Link to related object
     related_model = models.CharField(max_length=50, blank=True)
     related_id = models.BigIntegerField(null=True, blank=True)
     action_url = models.CharField(max_length=500, blank=True)
-    
+
     # Status
     is_read = models.BooleanField(default=False)
     read_at = models.DateTimeField(null=True, blank=True)
-    
+
     created_at = models.DateTimeField(auto_now_add=True)
-    
+
     class Meta:
         ordering = ['-created_at']
 ```
@@ -934,43 +934,43 @@ class Notification(models.Model):
 ```python
 class LabResultAttachment(models.Model):
     """Scanned or uploaded lab result document."""
-    
+
     class AttachmentType(models.TextChoices):
         SCANNED_RESULT = 'scanned', 'Scanned Result'
         EXTERNAL_REPORT = 'external', 'External Lab Report'
         GRAPH = 'graph', 'Result Graph'
         IMAGE = 'image', 'Lab Image'
         OTHER = 'other', 'Other'
-    
+
     id = models.BigAutoField(primary_key=True)
-    
+
     # Linkage
     lab_order = models.ForeignKey(LabOrder, on_delete=models.CASCADE, related_name='attachments')
-    
+
     # File
     file = models.FileField(upload_to='lab_results/%Y/%m/')
     filename = models.CharField(max_length=255)
     file_type = models.CharField(max_length=50)  # MIME type
     file_size = models.IntegerField()  # Bytes
-    
+
     # Metadata
     attachment_type = models.CharField(max_length=20, choices=AttachmentType.choices)
     description = models.CharField(max_length=255, blank=True)
-    
+
     # Audit
     uploaded_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.PROTECT)
     uploaded_at = models.DateTimeField(auto_now_add=True)
-    
+
     class Meta:
         ordering = ['-uploaded_at']
-    
+
     def save(self, *args, **kwargs):
         if self.file:
             self.filename = self.file.name
             self.file_type = self._get_mime_type()
             self.file_size = self.file.size
         super().save(*args, **kwargs)
-    
+
     def _get_mime_type(self) -> str:
         """Determine MIME type from file."""
         import mimetypes
@@ -992,11 +992,11 @@ def validate_lab_attachment(file):
     ext = file.name.split('.')[-1].lower()
     if ext not in ALLOWED_EXTENSIONS:
         raise ValidationError(f"File type not allowed. Allowed: {', '.join(ALLOWED_EXTENSIONS)}")
-    
+
     # Check size
     if file.size > MAX_FILE_SIZE:
         raise ValidationError(f"File too large. Maximum size: {MAX_FILE_SIZE / 1024 / 1024}MB")
-    
+
     # Check for malicious content (basic)
     if file.content_type not in ['application/pdf', 'image/png', 'image/jpeg', 'image/tiff']:
         raise ValidationError("Invalid file content type")
@@ -1106,43 +1106,43 @@ def validate_lab_attachment(file):
 ```python
 class LabReportService:
     """Generate lab analytics and reports."""
-    
+
     def turnaround_time_report(self, start_date: date, end_date: date) -> Dict[str, Any]:
         """
         Lab turnaround time analysis.
-        
+
         Returns:
             - Average TAT by test type
             - TAT by priority
             - Outliers
         """
         pass
-    
+
     def workload_report(self, start_date: date, end_date: date) -> Dict[str, Any]:
         """
         Lab workload statistics.
-        
+
         Returns:
             - Tests per day
             - Tests by type
             - Tests by technician
         """
         pass
-    
+
     def critical_values_report(self, start_date: date, end_date: date) -> Dict[str, Any]:
         """
         Critical value statistics.
-        
+
         Returns:
             - Count by parameter
             - Notification response time
         """
         pass
-    
+
     def sample_rejection_report(self, start_date: date, end_date: date) -> Dict[str, Any]:
         """
         Sample rejection analysis.
-        
+
         Returns:
             - Rejection rate
             - Reasons breakdown

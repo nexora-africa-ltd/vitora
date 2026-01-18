@@ -1,7 +1,7 @@
 /**
  * New Staff Profile Page
  * Sprint 1.1-1.2 Track C: RBAC Foundation
- * 
+ *
  * Create a new staff profile with user account, role, and department.
  * Professional details section moved first to support DHA registry auto-population.
  */
@@ -61,11 +61,11 @@ export default function NewStaffPage() {
   });
 
   const [errors, setErrors] = useState<Record<string, string>>({});
-  
+
   // Username validation state
   const [usernameStatus, setUsernameStatus] = useState<'idle' | 'checking' | 'available' | 'taken'>('idle');
   const [usernameSuggestions, setUsernameSuggestions] = useState<string[]>([]);
-  
+
   // Track if professional details were auto-populated
   const [isProfessionalDataPopulated, setIsProfessionalDataPopulated] = useState(false);
 
@@ -147,7 +147,7 @@ export default function NewStaffPage() {
   // Handle practitioner selection from DHA search
   const handlePractitionerSelect = (practitioner: DHAPractitioner) => {
     // Get the current/latest license
-    const currentLicense = practitioner.licenses?.find(l => 
+    const currentLicense = practitioner.licenses?.find(l =>
       l.license_end && l.license_end !== 'None' && new Date(l.license_end) >= new Date()
     ) || practitioner.licenses?.[0];
 
@@ -155,9 +155,9 @@ export default function NewStaffPage() {
     const licenseExpiryDate = practitioner.membership.license_expires_in_days > 0
       ? new Date(Date.now() + practitioner.membership.license_expires_in_days * 24 * 60 * 60 * 1000)
       : undefined;
-    
+
     const licenseExpiry = currentLicense?.license_end && currentLicense.license_end !== 'None'
-      ? new Date(currentLicense.license_end) 
+      ? new Date(currentLicense.license_end)
       : licenseExpiryDate;
 
     // Count how many fields will be populated
@@ -165,7 +165,7 @@ export default function NewStaffPage() {
 
     setFormData(prev => {
       const newData = { ...prev };
-      
+
       // Names
       if (!prev.first_name && practitioner.membership.first_name) {
         newData.first_name = practitioner.membership.first_name;
@@ -179,7 +179,7 @@ export default function NewStaffPage() {
         newData.last_name = practitioner.membership.last_name;
         fieldsPopulated++;
       }
-      
+
       // Contact
       if (!prev.email && practitioner.contacts.email) {
         newData.email = practitioner.contacts.email.toLowerCase();
@@ -189,34 +189,34 @@ export default function NewStaffPage() {
         newData.phone_number = practitioner.contacts.phone;
         fieldsPopulated++;
       }
-      
+
       // Professional details - these always get set from registry
       // HWR ID is the registration_id
       newData.hwr_id = practitioner.membership.registration_id || practitioner.membership.id;
       fieldsPopulated++;
-      
+
       // License number is from licenses[].id
       if (currentLicense?.id) {
         newData.license_number = currentLicense.id;
         fieldsPopulated++;
       }
-      
+
       // Licensing body
       if (practitioner.membership.licensing_body) {
         newData.licensing_body = practitioner.membership.licensing_body;
         fieldsPopulated++;
       }
-      
+
       // License expiry (readonly from registry)
       if (licenseExpiry) {
         newData.license_expiry = licenseExpiry;
         fieldsPopulated++;
       }
-      
+
       // Specialization
       if (!prev.specialization) {
-        const specialty = practitioner.professional_details.specialty || 
-          practitioner.membership.specialty || 
+        const specialty = practitioner.professional_details.specialty ||
+          practitioner.membership.specialty ||
           practitioner.professional_details.professional_cadre;
         if (specialty) {
           newData.specialization = specialty;
@@ -347,7 +347,7 @@ export default function NewStaffPage() {
           <CardContent className="space-y-4">
             {/* DHA Practitioner Search */}
             <DHAPractitionerSearch onSelect={handlePractitionerSelect} />
-            
+
             <div className="grid gap-4 sm:grid-cols-2">
               <div className="space-y-2">
                 <Label htmlFor="hwr_id">HWR ID (Registry Number)</Label>

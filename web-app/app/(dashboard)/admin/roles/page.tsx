@@ -1,7 +1,7 @@
 /**
  * Roles List Page
  * Sprint 1.1-1.2 Track C: RBAC Foundation
- * 
+ *
  * Lists all roles with permissions, type badges, and staff counts.
  */
 'use client';

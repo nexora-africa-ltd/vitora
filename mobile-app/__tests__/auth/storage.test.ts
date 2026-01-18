@@ -1,9 +1,9 @@
 /**
  * Secure Storage Tests
- * 
+ *
  * Tests for token and user data storage using expo-secure-store.
  * Following TDD RED-GREEN-REFACTOR approach.
- * 
+ *
  * Requirements:
  * - Store access and refresh tokens securely
  * - Store user profile data

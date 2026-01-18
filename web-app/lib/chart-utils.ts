@@ -194,20 +194,20 @@ export function fillMissingDates<T extends Record<string, unknown>>(
   defaultValues: Partial<T>
 ): T[] {
   const dateMap = new Map<string, T>();
-  
+
   data.forEach((item) => {
     const dateStr = format(new Date(item[dateKey] as string | number | Date), "yyyy-MM-dd");
     dateMap.set(dateStr, item);
   });
 
   const allDates = eachDayOfInterval({ start: startDate, end: endDate });
-  
+
   return allDates.map((date) => {
     const dateStr = format(date, "yyyy-MM-dd");
     const existing = dateMap.get(dateStr);
-    
+
     if (existing) return existing;
-    
+
     return {
       ...defaultValues,
       [dateKey]: dateStr,

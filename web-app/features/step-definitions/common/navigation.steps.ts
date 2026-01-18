@@ -1,6 +1,6 @@
 /**
  * Common Step Definitions - Navigation
- * 
+ *
  * Shared steps for page navigation.
  */
 
@@ -17,17 +17,17 @@ const PAGE_URLS: Record<string, string> = {
   'patient search': '/patients/search',
   'patient list': '/patients',
   'patient detail': '/patients/:id',
-  
+
   // OPD
   'outpatient department': '/opd',
   'opd queue': '/opd/queue',
   'encounter form': '/encounters/new',
-  
+
   // IPD
   'inpatient department': '/ipd',
   'ward dashboard': '/ipd/wards',
   'admission form': '/ipd/admissions/new',
-  
+
   // Pharmacy
   'pharmacy': '/pharmacy',
   'drug catalog': '/pharmacy/drugs',
@@ -35,21 +35,21 @@ const PAGE_URLS: Record<string, string> = {
   'dispensing': '/pharmacy/dispensing',
   'prescription queue': '/pharmacy/prescriptions',
   'pharmacy alerts dashboard': '/pharmacy/alerts',
-  
+
   // Triage
   'triage': '/triage',
   'triage queue': '/triage/queue',
   'triage assessment': '/triage/assess',
-  
+
   // Queue
   'queue management': '/queue',
   'queue dashboard': '/queue/dashboard',
-  
+
   // Reports
   'reports': '/reports',
   'pharmacy reports': '/reports/pharmacy',
   'triage reports dashboard': '/reports/triage',
-  
+
   // Dashboard
   'dashboard': '/dashboard',
   'home': '/',
@@ -65,13 +65,13 @@ Given(
   async function (this: VitoraWorld, pageName: string) {
     const normalizedPage = pageName.toLowerCase();
     const url = PAGE_URLS[normalizedPage];
-    
+
     if (!url) {
       throw new Error(`Unknown page: ${pageName}. Valid pages: ${Object.keys(PAGE_URLS).join(', ')}`);
     }
-    
+
     this.currentPage = normalizedPage;
-    
+
     if (this.page) {
       await this.page.goto(url);
       await this.page.waitForLoadState('networkidle');
@@ -176,13 +176,13 @@ When(
   async function (this: VitoraWorld, pageName: string) {
     const normalizedPage = pageName.toLowerCase();
     const url = PAGE_URLS[normalizedPage];
-    
+
     if (!url) {
       throw new Error(`Unknown page: ${pageName}`);
     }
-    
+
     this.currentPage = normalizedPage;
-    
+
     if (this.page) {
       await this.page.goto(url);
       await this.page.waitForLoadState('networkidle');
@@ -227,13 +227,13 @@ Then(
   async function (this: VitoraWorld, pageName: string) {
     const normalizedPage = pageName.toLowerCase();
     const expectedUrl = PAGE_URLS[normalizedPage];
-    
+
     if (this.page && expectedUrl) {
       // Handle URLs with parameters
       const urlPattern = expectedUrl.replace(/:id/g, '\\d+');
       await expect(this.page).toHaveURL(new RegExp(urlPattern));
     }
-    
+
     this.currentPage = normalizedPage;
   }
 );

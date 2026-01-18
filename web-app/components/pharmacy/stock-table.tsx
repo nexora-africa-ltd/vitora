@@ -316,7 +316,7 @@ export function StockTable({
               <TableHead>Batch #</TableHead>
               <TableHead>Drug</TableHead>
               <TableHead>Available</TableHead>
-              <TableHead 
+              <TableHead
                 className="cursor-pointer hover:bg-muted"
                 onClick={handleExpirySort}
                 role="columnheader"

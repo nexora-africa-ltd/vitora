@@ -199,7 +199,7 @@ describe('AuthProvider', () => {
       await waitFor(() => {
         expect(screen.getByTestId('error')).toBeInTheDocument();
       }, { timeout: 3000 });
-      
+
       expect(screen.getByTestId('error')).toHaveTextContent('Invalid credentials');
     });
   });

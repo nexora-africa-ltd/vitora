@@ -24,7 +24,7 @@ jest.mock('@/components/charts', () => ({
     </div>
   ),
   createChartConfig: jest.fn(() => ({})),
-  formatChartValue: (value: number, type: string) => 
+  formatChartValue: (value: number, type: string) =>
     type === 'currency' ? `KES ${value.toLocaleString()}` : value.toString(),
 }));
 
@@ -38,49 +38,49 @@ describe('RevenueBreakdownChart', () => {
 
   it('renders donut chart', () => {
     render(<RevenueBreakdownChart data={mockData} />);
-    
+
     expect(screen.getByTestId('donut-chart')).toBeInTheDocument();
   });
 
   it('shows empty state when no data', () => {
     render(<RevenueBreakdownChart data={[]} />);
-    
+
     expect(screen.getByTestId('chart-empty-state')).toBeInTheDocument();
     expect(screen.getByTestId('empty-title')).toHaveTextContent('No revenue data');
   });
 
   it('renders legend by default', () => {
     render(<RevenueBreakdownChart data={mockData} />);
-    
+
     expect(screen.getByTestId('legend')).toBeInTheDocument();
   });
 
   it('hides legend when showLegend is false', () => {
     render(<RevenueBreakdownChart data={mockData} showLegend={false} />);
-    
+
     expect(screen.queryByTestId('legend')).not.toBeInTheDocument();
   });
 
   it('handles null data gracefully', () => {
     // @ts-expect-error Testing null handling
     render(<RevenueBreakdownChart data={null} />);
-    
+
     expect(screen.getByTestId('chart-empty-state')).toBeInTheDocument();
   });
 
   it('transforms data correctly for DonutChart', () => {
     render(<RevenueBreakdownChart data={mockData} />);
-    
+
     const chartData = screen.getByTestId('chart-data');
     const parsed = JSON.parse(chartData.textContent || '[]');
-    
+
     expect(parsed).toHaveLength(4);
     expect(parsed[0]).toEqual({ name: 'consultation', value: 45000 });
   });
 
   it('displays total revenue in center label', () => {
     render(<RevenueBreakdownChart data={mockData} />);
-    
+
     expect(screen.getByTestId('center-label-title')).toHaveTextContent('Total');
     // Total: 45000 + 35000 + 42000 + 23200 = 145200
     expect(screen.getByTestId('center-label-value')).toHaveTextContent('KES 145,200');

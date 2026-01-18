@@ -537,7 +537,6 @@ def _generate_periods(start_date, end_date, granularity: str) -> list:
             periods.append(current)
             current += timedelta(weeks=1)
     elif granularity == "month":
-
         # Start from first of month
         current = current.replace(day=1)
         while current <= end_date:
@@ -597,7 +596,6 @@ def revenue_breakdown(request):
     """
     from datetime import datetime
 
-
     # Get query parameters
     start_date_str = request.query_params.get("start_date")
     end_date_str = request.query_params.get("end_date")
@@ -645,7 +643,9 @@ def revenue_breakdown(request):
     # Validate group_by
     if group_by not in VALID_GROUP_BY_OPTIONS:
         return Response(
-            {"error": f"Invalid group_by value. Must be one of: {', '.join(VALID_GROUP_BY_OPTIONS)}"},
+            {
+                "error": f"Invalid group_by value. Must be one of: {', '.join(VALID_GROUP_BY_OPTIONS)}"
+            },
             status=400,
         )
 
@@ -707,11 +707,13 @@ def _compute_revenue_breakdown(start_date, end_date, group_by: str) -> dict:
         breakdown = []
         for item in breakdown_data:
             name = item["service__category__name"] or "Uncategorized"
-            breakdown.append({
-                "name": name,
-                "amount": float(item["amount"] or 0),
-                "transaction_count": item["transaction_count"],
-            })
+            breakdown.append(
+                {
+                    "name": name,
+                    "amount": float(item["amount"] or 0),
+                    "transaction_count": item["transaction_count"],
+                }
+            )
 
     elif group_by == "item_type":
         # Group by invoice item type (service, pharmacy, lab, etc.)
@@ -731,17 +733,18 @@ def _compute_revenue_breakdown(start_date, end_date, group_by: str) -> dict:
         breakdown = []
         for item in breakdown_data:
             name = item["item_type"] or "Unknown"
-            breakdown.append({
-                "name": name,
-                "amount": float(item["amount"] or 0),
-                "transaction_count": item["transaction_count"],
-            })
+            breakdown.append(
+                {
+                    "name": name,
+                    "amount": float(item["amount"] or 0),
+                    "transaction_count": item["transaction_count"],
+                }
+            )
 
     elif group_by == "payment_method":
         # Group by payment method
         breakdown_data = (
-            payments
-            .values("method")
+            payments.values("method")
             .annotate(
                 amount=Sum("amount"),
                 transaction_count=Count("id"),
@@ -752,11 +755,13 @@ def _compute_revenue_breakdown(start_date, end_date, group_by: str) -> dict:
         breakdown = []
         for item in breakdown_data:
             name = item["method"] or "Unknown"
-            breakdown.append({
-                "name": name,
-                "amount": float(item["amount"] or 0),
-                "transaction_count": item["transaction_count"],
-            })
+            breakdown.append(
+                {
+                    "name": name,
+                    "amount": float(item["amount"] or 0),
+                    "transaction_count": item["transaction_count"],
+                }
+            )
     else:
         breakdown = []
 
@@ -818,7 +823,9 @@ def activity_feed(request):
     types_filter = [t.strip() for t in types_param.split(",") if t.strip()] if types_param else None
 
     actions_param = request.query_params.get("actions", "")
-    actions_filter = [a.strip() for a in actions_param.split(",") if a.strip()] if actions_param else None
+    actions_filter = (
+        [a.strip() for a in actions_param.split(",") if a.strip()] if actions_param else None
+    )
 
     bypass_cache = request.query_params.get("refresh", "").lower() == "true"
 
@@ -839,7 +846,9 @@ def activity_feed(request):
     return Response(result)
 
 
-def _get_activity_feed(limit: int, offset: int, types_filter: list, actions_filter: list, request) -> dict:
+def _get_activity_feed(
+    limit: int, offset: int, types_filter: list, actions_filter: list, _request
+) -> dict:
     """
     Fetch activity feed data from the database.
 
@@ -868,7 +877,7 @@ def _get_activity_feed(limit: int, offset: int, types_filter: list, actions_filt
     total_count = queryset.count()
 
     # Paginate
-    activities = queryset[offset:offset + limit]
+    activities = queryset[offset : offset + limit]
 
     # Build next link
     next_offset = offset + limit
@@ -961,4 +970,3 @@ def _get_resource_href(resource_type: str, resource_id: int) -> str:
     }
 
     return href_mappings.get(resource_type_lower, f"/{resource_type_lower}s/{resource_id}")
-

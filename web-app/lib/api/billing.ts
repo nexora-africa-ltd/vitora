@@ -1,13 +1,13 @@
 /**
  * Billing API Client for Vitora HMIS
- * 
+ *
  * Implements all billing-related API operations including:
  * - Service categories and services
  * - Invoices and invoice items
  * - Payments (Cash, M-Pesa, Card, Insurance)
  * - Credit notes
  * - Financial reports
- * 
+ *
  * @see backend/hmis/apps/billing/
  */
 import { apiClient } from './client';
@@ -63,13 +63,13 @@ import type {
  */
 function buildQueryString<T extends object>(params: T): string {
   const searchParams = new URLSearchParams();
-  
+
   Object.entries(params).forEach(([key, value]) => {
     if (value !== undefined && value !== null && value !== '') {
       searchParams.append(key, String(value));
     }
   });
-  
+
   return searchParams.toString();
 }
 
@@ -362,14 +362,14 @@ export const billingApi = {
   // Service Categories
   getServiceCategories,
   getServiceCategory,
-  
+
   // Services
   getServices,
   getService,
   createService,
   updateService,
   deleteService,
-  
+
   // Invoices
   getInvoices,
   getInvoice,
@@ -381,17 +381,17 @@ export const billingApi = {
   removeInvoiceItem,
   applyDiscount,
   getOverdueInvoices,
-  
+
   // Payments
   getPayments,
   getPayment,
   createPayment,
   getPaymentReceipt,
-  
+
   // M-Pesa
   initiateMpesaSTKPush,
   queryMpesaTransaction,
-  
+
   // Credit Notes
   getCreditNotes,
   getCreditNote,
@@ -399,7 +399,7 @@ export const billingApi = {
   approveCreditNote,
   rejectCreditNote,
   processRefund,
-  
+
   // Reports
   getDailyCollectionReport,
   getRevenueSummary,

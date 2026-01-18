@@ -1,18 +1,18 @@
 /**
  * SHA Claim Components
  * Claim submission, status badges, and tracking
- * 
+ *
  * @see docs/sha-frontend-integration-guide.md - Flow 4
  */
 'use client';
 
 import React, { useState, useCallback, useEffect, useRef } from 'react';
-import { 
-  Upload, 
-  CheckCircle2, 
-  XCircle, 
-  Clock, 
-  Loader2, 
+import {
+  Upload,
+  CheckCircle2,
+  XCircle,
+  Clock,
+  Loader2,
   RefreshCw,
   FileText,
   AlertCircle,
@@ -84,8 +84,8 @@ interface ClaimTrackingProps {
 // ============================================================================
 
 export function ClaimStatusBadge({ status, className }: ClaimStatusBadgeProps) {
-  const config: Record<ClaimStatus, { 
-    label: string; 
+  const config: Record<ClaimStatus, {
+    label: string;
     variant: 'default' | 'secondary' | 'destructive' | 'outline';
     icon: React.ReactNode;
     className: string;
@@ -143,8 +143,8 @@ export function ClaimStatusBadge({ status, className }: ClaimStatusBadgeProps) {
   const { label, icon, className: statusClassName } = config[status];
 
   return (
-    <Badge 
-      variant="outline" 
+    <Badge
+      variant="outline"
       className={cn('flex items-center gap-1', statusClassName, className)}
     >
       {icon}
@@ -589,7 +589,7 @@ export function ClaimListItem({ claim, onClick }: ClaimListItemProps) {
           {formatCurrency(parseFloat(claim.total_amount))}
         </p>
         <p className="text-xs text-muted-foreground">
-          {claim.submitted_at 
+          {claim.submitted_at
             ? format(parseISO(claim.submitted_at), 'MMM d, yyyy')
             : format(parseISO(claim.created_at), 'MMM d, yyyy')
           }

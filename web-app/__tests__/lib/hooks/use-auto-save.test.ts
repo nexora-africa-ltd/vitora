@@ -29,7 +29,7 @@ describe('useAutoSave', () => {
 
   it('should start with idle status', () => {
     const onSave = jest.fn().mockResolvedValue(undefined);
-    
+
     const { result } = renderHook(() =>
       useAutoSave({
         data: { name: 'test' },
@@ -47,7 +47,7 @@ describe('useAutoSave', () => {
   it('should call saveNow immediately and update status', async () => {
     const onSave = jest.fn().mockResolvedValue(undefined);
     const onSuccess = jest.fn();
-    
+
     const { result } = renderHook(() =>
       useAutoSave({
         data: { name: 'test' },
@@ -73,7 +73,7 @@ describe('useAutoSave', () => {
   it('should handle save errors and set error status', async () => {
     const onSave = jest.fn().mockRejectedValue(new Error('Network error'));
     const onError = jest.fn();
-    
+
     const { result } = renderHook(() =>
       useAutoSave({
         data: { name: 'test' },
@@ -95,7 +95,7 @@ describe('useAutoSave', () => {
 
   it('should reset state when reset is called', async () => {
     const onSave = jest.fn().mockRejectedValue(new Error('Failed'));
-    
+
     const { result } = renderHook(() =>
       useAutoSave({
         data: { name: 'test' },
@@ -126,7 +126,7 @@ describe('useAutoSave', () => {
   it('should queue save when offline and set offline status', async () => {
     mockIsOnline = false;
     const onSave = jest.fn().mockResolvedValue(undefined);
-    
+
     const { result } = renderHook(() =>
       useAutoSave({
         data: { name: 'test' },
@@ -165,7 +165,7 @@ describe('useAutoSave', () => {
   it('should provide pendingCount for offline queue', async () => {
     mockIsOnline = false;
     const onSave = jest.fn().mockResolvedValue(undefined);
-    
+
     const { result } = renderHook(() =>
       useAutoSave({
         data: { name: 'queued' },
@@ -185,7 +185,7 @@ describe('useAutoSave', () => {
   it('should expose lastSaved timestamp after successful save', async () => {
     mockIsOnline = true;
     const onSave = jest.fn().mockResolvedValue(undefined);
-    
+
     const { result } = renderHook(() =>
       useAutoSave({
         data: { name: 'test' },
@@ -205,4 +205,3 @@ describe('useAutoSave', () => {
     expect(result.current.lastSaved!.getTime()).toBeLessThanOrEqual(Date.now());
   });
 });
-

@@ -1,7 +1,7 @@
 /**
  * Billing Type Definitions for Vitora HMIS
  * Based on backend billing module implementation
- * 
+ *
  * @see backend/hmis/apps/billing/models.py
  * @see backend/BILLING_IMPLEMENTATION_STATUS.md
  */
@@ -59,12 +59,12 @@ export interface ServiceUpdateData extends Partial<ServiceCreateData> {}
 // Invoice Types
 // ============================================================================
 
-export type InvoiceStatus = 
-  | 'DRAFT' 
-  | 'PENDING' 
-  | 'PARTIAL' 
-  | 'PAID' 
-  | 'CANCELLED' 
+export type InvoiceStatus =
+  | 'DRAFT'
+  | 'PENDING'
+  | 'PARTIAL'
+  | 'PAID'
+  | 'CANCELLED'
   | 'OVERDUE';
 
 export interface Invoice {
@@ -77,7 +77,7 @@ export interface Invoice {
   status: InvoiceStatus;
   invoice_date: string;
   due_date: string;
-  
+
   // Totals
   subtotal: string;
   discount_type: 'PERCENTAGE' | 'FIXED' | null;
@@ -87,14 +87,14 @@ export interface Invoice {
   total_amount: string;
   amount_paid: string;
   balance_due: string;
-  
+
   // Insurance/SHA
   sha_claim_number?: string;
   insurance_coverage: string;
-  
+
   // Notes
   notes: string;
-  
+
   // Metadata
   created_at: string;
   updated_at: string;
@@ -104,7 +104,7 @@ export interface Invoice {
   cancelled_at?: string;
   cancelled_by?: number;
   cancellation_reason?: string;
-  
+
   // Nested items (when expanded)
   items?: InvoiceItem[];
 }
@@ -117,7 +117,7 @@ export interface InvoiceItem {
   unit_price: string;
   discount_percentage: string;
   line_total: string;
-  
+
   // Linked entities (optional)
   service?: number;
   service_name?: string;
@@ -125,11 +125,11 @@ export interface InvoiceItem {
   drug_name?: string;
   lab_order?: number;
   lab_order_name?: string;
-  
+
   // Insurance
   is_covered_by_insurance: boolean;
   sha_code?: string;
-  
+
   created_at: string;
   updated_at: string;
 }
@@ -167,18 +167,18 @@ export interface ApplyDiscountData {
 // Payment Types
 // ============================================================================
 
-export type PaymentMethod = 
-  | 'CASH' 
-  | 'MPESA' 
-  | 'CARD' 
-  | 'INSURANCE' 
+export type PaymentMethod =
+  | 'CASH'
+  | 'MPESA'
+  | 'CARD'
+  | 'INSURANCE'
   | 'BANK_TRANSFER';
 
-export type PaymentStatus = 
-  | 'PENDING' 
-  | 'COMPLETED' 
-  | 'FAILED' 
-  | 'REFUNDED' 
+export type PaymentStatus =
+  | 'PENDING'
+  | 'COMPLETED'
+  | 'FAILED'
+  | 'REFUNDED'
   | 'REVERSED';
 
 export interface Payment {
@@ -187,37 +187,37 @@ export interface Payment {
   invoice: number;
   invoice_number?: string;
   patient_name?: string;
-  
+
   amount: string;
   method: PaymentMethod;
   status: PaymentStatus;
-  
+
   // M-Pesa specific
   mpesa_receipt_number?: string;
   mpesa_phone_number?: string;
   mpesa_checkout_request_id?: string;
-  
+
   // Card specific
   card_last_four?: string;
   card_type?: string;
   card_authorization_code?: string;
-  
+
   // Insurance specific
   insurance_claim_number?: string;
   insurance_approval_code?: string;
-  
+
   // Processing
   processed_at?: string;
   processed_by?: number;
   failure_reason?: string;
-  
+
   // Reversal/Refund
   reversed_at?: string;
   reversed_by?: number;
   reversal_reason?: string;
   refunded_at?: string;
   refund_reference?: string;
-  
+
   notes: string;
   created_at: string;
   updated_at: string;
@@ -291,25 +291,25 @@ export interface Receipt {
   receipt_number: string;
   payment: number;
   payment_reference?: string;
-  
+
   // Denormalized for printing
   patient_name: string;
   patient_mrn?: string;
   facility_name: string;
   facility_address?: string;
   facility_phone?: string;
-  
+
   amount: string;
   amount_in_words: string;
   payment_method: PaymentMethod;
   receipt_date: string;
-  
+
   // Void info
   is_voided: boolean;
   voided_at?: string;
   voided_by?: number;
   void_reason?: string;
-  
+
   created_at: string;
   created_by: number;
 }
@@ -318,17 +318,17 @@ export interface Receipt {
 // Credit Note Types
 // ============================================================================
 
-export type CreditNoteReason = 
-  | 'OVERCHARGE' 
-  | 'SERVICE_NOT_RENDERED' 
-  | 'DUPLICATE_BILLING' 
+export type CreditNoteReason =
+  | 'OVERCHARGE'
+  | 'SERVICE_NOT_RENDERED'
+  | 'DUPLICATE_BILLING'
   | 'PRICING_ERROR'
   | 'OTHER';
 
-export type CreditNoteStatus = 
-  | 'PENDING' 
-  | 'APPROVED' 
-  | 'REJECTED' 
+export type CreditNoteStatus =
+  | 'PENDING'
+  | 'APPROVED'
+  | 'REJECTED'
   | 'REFUNDED';
 
 export interface CreditNote {
@@ -337,25 +337,25 @@ export interface CreditNote {
   invoice: number;
   invoice_number?: string;
   patient_name?: string;
-  
+
   amount: string;
   reason: CreditNoteReason;
   reason_detail: string;
   status: CreditNoteStatus;
-  
+
   // Workflow
   requested_by: number;
   requested_by_name?: string;
   created_at: string;
-  
+
   approved_by?: number;
   approved_by_name?: string;
   approved_at?: string;
-  
+
   rejected_by?: number;
   rejection_reason?: string;
   rejected_at?: string;
-  
+
   refunded_at?: string;
   refund_reference?: string;
   refund_method?: PaymentMethod;

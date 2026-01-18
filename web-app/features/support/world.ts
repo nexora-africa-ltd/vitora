@@ -1,6 +1,6 @@
 /**
  * BDD Test Support - Custom World
- * 
+ *
  * The World is a shared context object available to all step definitions.
  * It holds state between steps within a scenario.
  */
@@ -63,49 +63,49 @@ export class VitoraWorld extends World {
   browser?: Browser;
   context?: BrowserContext;
   page?: Page;
-  
+
   // Authentication state
   currentUser?: UserContext;
   authToken?: string;
-  
+
   // Domain contexts
   patient?: PatientContext;
   encounter?: EncounterContext;
   pharmacy?: PharmacyContext;
-  
+
   // API responses
   lastResponse?: {
     status: number;
     data: unknown;
     headers: Record<string, string>;
   };
-  
+
   // UI state
   currentPage?: string;
   alerts: string[] = [];
   errors: string[] = [];
-  
+
   // Test data storage
   testData: Map<string, unknown> = new Map();
-  
+
   constructor(options: IWorldOptions) {
     super(options);
   }
-  
+
   /**
    * Store data for later retrieval in steps
    */
   store(key: string, value: unknown): void {
     this.testData.set(key, value);
   }
-  
+
   /**
    * Retrieve stored data
    */
   retrieve<T>(key: string): T | undefined {
     return this.testData.get(key) as T | undefined;
   }
-  
+
   /**
    * Clear all stored data (called between scenarios)
    */
@@ -121,7 +121,7 @@ export class VitoraWorld extends World {
     this.errors = [];
     this.testData.clear();
   }
-  
+
   /**
    * Set authenticated user
    */
@@ -129,21 +129,21 @@ export class VitoraWorld extends World {
     this.currentUser = user;
     this.authToken = user.token;
   }
-  
+
   /**
    * Check if current user has permission
    */
   hasPermission(permission: string): boolean {
     return this.currentUser?.permissions.includes(permission) ?? false;
   }
-  
+
   /**
    * Add an alert message
    */
   addAlert(message: string): void {
     this.alerts.push(message);
   }
-  
+
   /**
    * Add an error message
    */
@@ -161,27 +161,27 @@ export class VitoraWorld extends World {
   ): Promise<unknown> {
     const baseUrl = process.env.API_URL || 'http://localhost:9088/api';
     const url = `${baseUrl}${endpoint}`;
-    
+
     const headers: Record<string, string> = {
       'Content-Type': 'application/json',
     };
-    
+
     if (this.authToken) {
       headers['Authorization'] = `Bearer ${this.authToken}`;
     }
-    
+
     const response = await fetch(url, {
       method,
       headers,
       body: data ? JSON.stringify(data) : undefined,
     });
-    
+
     this.lastResponse = {
       status: response.status,
       data: await response.json(),
       headers: Object.fromEntries(response.headers.entries()),
     };
-    
+
     return this.lastResponse.data;
   }
 }
