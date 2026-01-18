@@ -142,7 +142,7 @@ export default function NewPrescriptionPage() {
     ? `${user.first_name || ''} ${user.last_name || ''}`.trim() || user.username 
     : 'Unknown';
 
-  // Drug source selection (local inventory vs SHA formulary)
+  // Drug source selection (local inventory vs DHIS2 formulary)
   const [useSHADrug, setUseSHADrug] = useState(false);
   const [selectedSHADrug, setSelectedSHADrug] = useState<SHADrugSelection | null>(null);
 
@@ -792,7 +792,7 @@ Prescribed by: ${prescriberName}
                       checked={useSHADrug}
                       onCheckedChange={setUseSHADrug}
                     />
-                    <span className={`text-sm ${useSHADrug ? 'font-medium' : ''}`}>SHA Formulary</span>
+                    <span className={`text-sm ${useSHADrug ? 'font-medium' : ''}`}>DHIS2 Formulary</span>
                   </div>
                   
                   {/* Local Drug Search */}
