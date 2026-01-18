@@ -115,25 +115,38 @@ def encounter_activity_signal(sender, instance, created, **kwargs):
 
 @receiver(post_save, sender="triage.TriageAssessment")
 def triage_activity_signal(sender, instance, created, **kwargs):
-    """Create activity feed entry when triage assessment is created."""
-    if created:
+    """Create activity feed entry when triage assessment is completed."""
+    # Only log when triage is completed (not on creation)
+    if getattr(instance, "status", None) == "COMPLETED":
         from .models import ActivityFeed
+
+        # Check if we already logged this completion (avoid duplicates)
+        existing = ActivityFeed.objects.filter(
+            resource_type="TriageAssessment",
+            resource_id=instance.id,
+            action="completed",
+        ).exists()
+        
+        if existing:
+            return
 
         patient_name = "Unknown"
         if hasattr(instance, "encounter") and instance.encounter and instance.encounter.patient:
             patient = instance.encounter.patient
             patient_name = f"{patient.first_name} {patient.last_name}"
 
+        category = getattr(instance, "category", None) or "Unclassified"
         ActivityFeed.log_activity(
             activity_type="triage",
-            action="assessed",
-            title=f"Triage assessment: {getattr(instance, 'category', 'N/A')}",
+            action="completed",
+            title=f"Triage completed: {category}",
             description=f"Patient: {patient_name}",
             user=getattr(instance, "assessed_by", None),
             resource_type="TriageAssessment",
             resource_id=instance.id,
             metadata={
-                "category": getattr(instance, "category", None),
+                "category": category,
+                "status": "COMPLETED",
             },
         )
 
