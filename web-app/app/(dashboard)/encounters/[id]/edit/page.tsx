@@ -834,8 +834,8 @@ export default function EditEncounterPage() {
           onChange={(field, value) => handleFieldChange(field, value)}
           disabled={!isEditable}
           errors={errors}
-          fromTriage={wasTriaged && encounter?.vitals_source === 'TRIAGE'}
-          vitalsSource={encounter?.vitals_source || undefined}
+          fromTriage={wasTriaged}
+          vitalsSource={encounter?.vitals_source || (wasTriaged ? 'TRIAGE' : undefined)}
         />
 
         {/* Chief Complaint Edit Dialog */}
