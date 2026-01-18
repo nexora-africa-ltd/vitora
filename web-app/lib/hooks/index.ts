@@ -28,6 +28,16 @@ export {
 export { useToast, toast } from './use-toast';
 export { useToastNotification } from './use-toast-notification';
 
+// Vital thresholds (shared by encounter and triage)
+export {
+  useVitalThresholds,
+  evaluateVitals,
+  getFieldStatus as getVitalFieldStatus,
+  DEFAULT_THRESHOLDS,
+  type VitalAlert,
+  type VitalValues,
+} from './use-vital-thresholds';
+
 // Inpatient (Admissions/IPD) hooks
 export {
   useInpatientWards,
