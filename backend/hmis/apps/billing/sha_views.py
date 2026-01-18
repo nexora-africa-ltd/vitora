@@ -946,15 +946,15 @@ class TerminologySearchView(APIView):
         so this always works even when external services are down.
         """
         from hmis.apps.encounters.models import ICD10Code
-        
+
         try:
             # Search ICD-10 codes in local database
             codes = ICD10Code.objects.filter(
-                models.Q(code__icontains=search) | 
+                models.Q(code__icontains=search) |
                 models.Q(description__icontains=search),
                 is_active=True
             ).order_by('code')[:limit]
-            
+
             data = [
                 {
                     "code": code.code,
@@ -965,7 +965,7 @@ class TerminologySearchView(APIView):
                 }
                 for code in codes
             ]
-            
+
             return Response(
                 {
                     "results": data,

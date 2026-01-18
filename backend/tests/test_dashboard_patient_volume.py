@@ -12,8 +12,9 @@ Provides historical patient registration and encounter data for dashboard charts
 Data retention: 90 days maximum.
 """
 
-import pytest  # type: ignore
 from datetime import date, timedelta
+
+import pytest  # type: ignore
 from django.utils import timezone
 from rest_framework import status
 
@@ -104,7 +105,7 @@ class TestPatientVolumeValidation:
         """Should accept day, week, month as granularity values."""
         today = date.today()
         week_ago = today - timedelta(days=7)
-        
+
         for granularity in ["day", "week", "month"]:
             response = authenticated_client.get(
                 PATIENT_VOLUME_URL,
@@ -182,10 +183,10 @@ class TestPatientVolumeResponseStructure:
             PATIENT_VOLUME_URL,
             {"start_date": str(week_ago), "end_date": str(today)},
         )
-        
+
         # Should have entries for the date range
         assert len(response.data["data"]) > 0
-        
+
         # Check structure of first item
         item = response.data["data"][0]
         assert "date" in item
@@ -201,7 +202,7 @@ class TestPatientVolumeResponseStructure:
             PATIENT_VOLUME_URL,
             {"start_date": str(week_ago), "end_date": str(today)},
         )
-        
+
         if response.data["data"]:
             by_type = response.data["data"][0]["by_type"]
             # Core encounter types that must be present
@@ -222,9 +223,9 @@ class TestPatientVolumeDataAccuracy:
     def test_counts_patient_registrations(self, authenticated_client, sample_county, sample_sub_county):
         """Should accurately count patient registrations per day."""
         from hmis.apps.patients.models import Patient
-        
+
         today = date.today()
-        
+
         # Create patients for today
         for i in range(3):
             Patient.objects.create(
@@ -235,12 +236,12 @@ class TestPatientVolumeDataAccuracy:
                 county=sample_county,
                 sub_county=sample_sub_county,
             )
-        
+
         response = authenticated_client.get(
             PATIENT_VOLUME_URL,
             {"start_date": str(today), "end_date": str(today)},
         )
-        
+
         assert response.status_code == status.HTTP_200_OK
         # Find today's entry
         today_data = next(
@@ -252,14 +253,14 @@ class TestPatientVolumeDataAccuracy:
     def test_counts_encounters_by_type(self, authenticated_client, sample_patient):
         """Should accurately count encounters by type."""
         from django.core.cache import cache
-        
+
         from hmis.apps.encounters.models import Encounter
-        
+
         # Clear cache to ensure fresh data
         cache.clear()
-        
+
         today = date.today()
-        
+
         # Create encounters of different types
         Encounter.objects.create(
             patient=sample_patient,
@@ -273,12 +274,12 @@ class TestPatientVolumeDataAccuracy:
             encounter_date=today,
             chief_complaint="Emergency complaint",
         )
-        
+
         response = authenticated_client.get(
             PATIENT_VOLUME_URL,
             {"start_date": str(today), "end_date": str(today)},
         )
-        
+
         today_data = next(
             (d for d in response.data["data"] if d["date"] == str(today)), None
         )
@@ -291,15 +292,15 @@ class TestPatientVolumeDataAccuracy:
         """Should include all dates in range, even with no data."""
         today = date.today()
         week_ago = today - timedelta(days=7)
-        
+
         response = authenticated_client.get(
             PATIENT_VOLUME_URL,
             {"start_date": str(week_ago), "end_date": str(today)},
         )
-        
+
         # Should have 8 entries (7 days + today)
         assert len(response.data["data"]) == 8
-        
+
         # Each entry should have all required fields even if zero
         for item in response.data["data"]:
             assert item["registrations"] >= 0
@@ -319,7 +320,7 @@ class TestPatientVolumeGranularity:
         """Daily granularity should return one entry per day."""
         today = date.today()
         week_ago = today - timedelta(days=6)  # 7 days total
-        
+
         response = authenticated_client.get(
             PATIENT_VOLUME_URL,
             {
@@ -328,14 +329,14 @@ class TestPatientVolumeGranularity:
                 "granularity": "day",
             },
         )
-        
+
         assert len(response.data["data"]) == 7
 
     def test_weekly_granularity(self, authenticated_client):
         """Weekly granularity should aggregate by week."""
         today = date.today()
         month_ago = today - timedelta(days=28)
-        
+
         response = authenticated_client.get(
             PATIENT_VOLUME_URL,
             {
@@ -344,7 +345,7 @@ class TestPatientVolumeGranularity:
                 "granularity": "week",
             },
         )
-        
+
         # Should have fewer entries than days
         assert len(response.data["data"]) <= 5  # ~4 weeks
         assert response.data["granularity"] == "week"
@@ -353,7 +354,7 @@ class TestPatientVolumeGranularity:
         """Monthly granularity should aggregate by month."""
         today = date.today()
         three_months_ago = today - timedelta(days=60)
-        
+
         response = authenticated_client.get(
             PATIENT_VOLUME_URL,
             {
@@ -362,7 +363,7 @@ class TestPatientVolumeGranularity:
                 "granularity": "month",
             },
         )
-        
+
         # Should have 2-3 month entries
         assert len(response.data["data"]) <= 3
         assert response.data["granularity"] == "month"
@@ -380,15 +381,15 @@ class TestPatientVolumeCaching:
     def test_response_is_cached(self, authenticated_client):
         """Subsequent requests should be served from cache."""
         from django.core.cache import cache
-        
+
         today = date.today()
         week_ago = today - timedelta(days=7)
         params = {"start_date": str(week_ago), "end_date": str(today)}
-        
+
         # First request
         response1 = authenticated_client.get(PATIENT_VOLUME_URL, params)
         assert response1.status_code == status.HTTP_200_OK
-        
+
         # Second request should return same data (from cache)
         response2 = authenticated_client.get(PATIENT_VOLUME_URL, params)
         assert response2.data == response1.data
@@ -396,15 +397,15 @@ class TestPatientVolumeCaching:
     def test_cache_bypass_with_refresh_param(self, authenticated_client, sample_patient):
         """refresh=true should bypass cache."""
         from hmis.apps.encounters.models import Encounter
-        
+
         today = date.today()
         week_ago = today - timedelta(days=7)
         params = {"start_date": str(week_ago), "end_date": str(today)}
-        
+
         # First request (populates cache)
         response1 = authenticated_client.get(PATIENT_VOLUME_URL, params)
         initial_count = sum(d["encounters"] for d in response1.data["data"])
-        
+
         # Create new encounter
         Encounter.objects.create(
             patient=sample_patient,
@@ -412,10 +413,10 @@ class TestPatientVolumeCaching:
             encounter_date=today,
             chief_complaint="New complaint",
         )
-        
+
         # Request with refresh=true should get new data
         params["refresh"] = "true"
         response2 = authenticated_client.get(PATIENT_VOLUME_URL, params)
         new_count = sum(d["encounters"] for d in response2.data["data"])
-        
+
         assert new_count > initial_count

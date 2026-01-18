@@ -11,8 +11,9 @@ Tests for GET /api/core/dashboard/activity-feed/
 Provides real-time activity feed for dashboard using dedicated ActivityFeed model.
 """
 
-import pytest  # type: ignore
 from datetime import timedelta
+
+import pytest  # type: ignore
 from django.utils import timezone
 from rest_framework import status
 
@@ -36,7 +37,7 @@ def activity_feed_model(db):
 def create_activity(db, test_user):
     """Factory fixture to create activity feed entries."""
     from hmis.apps.core.models import ActivityFeed
-    
+
     def _create_activity(
         activity_type="patient",
         action="registered",
@@ -59,7 +60,7 @@ def create_activity(db, test_user):
             timestamp=timestamp or timezone.now(),
             metadata=metadata or {},
         )
-    
+
     return _create_activity
 
 
@@ -79,7 +80,7 @@ class TestActivityFeedModel:
     def test_activity_types_include_all_modules(self, activity_feed_model):
         """Activity types should include all HMIS modules."""
         type_choices = dict(activity_feed_model.ACTIVITY_TYPES)
-        
+
         # All modules should be represented
         expected_types = [
             'patient',
@@ -93,7 +94,7 @@ class TestActivityFeedModel:
             'appointment',
             'system',
         ]
-        
+
         for activity_type in expected_types:
             assert activity_type in type_choices, f"Missing activity type: {activity_type}"
 
@@ -108,7 +109,7 @@ class TestActivityFeedModel:
             resource_type="Patient",
             resource_id=123,
         )
-        
+
         assert activity.id is not None
         assert activity.activity_type == "patient"
         assert activity.action == "registered"
@@ -117,7 +118,7 @@ class TestActivityFeedModel:
     def test_activity_feed_ordering(self, create_activity):
         """Activities should be ordered by timestamp descending."""
         from hmis.apps.core.models import ActivityFeed
-        
+
         # Create activities with different timestamps
         old = create_activity(
             title="Old activity",
@@ -127,7 +128,7 @@ class TestActivityFeedModel:
             title="New activity",
             timestamp=timezone.now()
         )
-        
+
         activities = list(ActivityFeed.objects.all())
         assert activities[0].id == new.id
         assert activities[1].id == old.id
@@ -137,7 +138,7 @@ class TestActivityFeedModel:
         activity = create_activity(
             metadata={"mrn": "MRN-20260118-0001", "patient_name": "John Doe"}
         )
-        
+
         assert activity.metadata["mrn"] == "MRN-20260118-0001"
         assert activity.metadata["patient_name"] == "John Doe"
 
@@ -175,9 +176,9 @@ class TestActivityFeedResponseStructure:
         """Response should include total count."""
         create_activity()
         create_activity()
-        
+
         response = authenticated_client.get(f"{ACTIVITY_FEED_URL}?refresh=true")
-        
+
         assert response.status_code == status.HTTP_200_OK
         assert "count" in response.data
         assert response.data["count"] >= 2
@@ -187,17 +188,17 @@ class TestActivityFeedResponseStructure:
         # Create more than default limit
         for i in range(25):
             create_activity(title=f"Activity {i}")
-        
+
         response = authenticated_client.get(f"{ACTIVITY_FEED_URL}?refresh=true")
-        
+
         assert "next" in response.data
 
     def test_response_contains_results_array(self, authenticated_client, create_activity):
         """Response should include results array."""
         create_activity()
-        
+
         response = authenticated_client.get(f"{ACTIVITY_FEED_URL}?refresh=true")
-        
+
         assert "results" in response.data
         assert isinstance(response.data["results"], list)
 
@@ -212,12 +213,12 @@ class TestActivityFeedResponseStructure:
             resource_type="Patient",
             resource_id=123,
         )
-        
+
         response = authenticated_client.get(f"{ACTIVITY_FEED_URL}?refresh=true")
-        
+
         assert len(response.data["results"]) > 0
         item = response.data["results"][0]
-        
+
         # Required fields
         assert "id" in item
         assert "type" in item
@@ -225,7 +226,7 @@ class TestActivityFeedResponseStructure:
         assert "title" in item
         assert "description" in item
         assert "timestamp" in item
-        
+
         # Optional fields
         assert "user" in item
         assert "resource" in item
@@ -233,10 +234,10 @@ class TestActivityFeedResponseStructure:
     def test_user_field_structure(self, authenticated_client, create_activity, test_user):
         """User field should have id and name."""
         create_activity(user=test_user)
-        
+
         response = authenticated_client.get(f"{ACTIVITY_FEED_URL}?refresh=true")
         item = response.data["results"][0]
-        
+
         assert item["user"] is not None
         assert "id" in item["user"]
         assert "name" in item["user"]
@@ -247,10 +248,10 @@ class TestActivityFeedResponseStructure:
             resource_type="Patient",
             resource_id=123,
         )
-        
+
         response = authenticated_client.get(f"{ACTIVITY_FEED_URL}?refresh=true")
         item = response.data["results"][0]
-        
+
         assert item["resource"] is not None
         assert "type" in item["resource"]
         assert "id" in item["resource"]
@@ -270,27 +271,27 @@ class TestActivityFeedPagination:
         """Default limit should be 20 items."""
         for i in range(30):
             create_activity(title=f"Activity {i}")
-        
+
         response = authenticated_client.get(f"{ACTIVITY_FEED_URL}?refresh=true")
-        
+
         assert len(response.data["results"]) == 20
 
     def test_custom_limit(self, authenticated_client, create_activity):
         """Should respect custom limit parameter."""
         for i in range(15):
             create_activity(title=f"Activity {i}")
-        
+
         response = authenticated_client.get(f"{ACTIVITY_FEED_URL}?limit=5&refresh=true")
-        
+
         assert len(response.data["results"]) == 5
 
     def test_limit_max_100(self, authenticated_client, create_activity):
         """Limit should not exceed 100."""
         for i in range(110):
             create_activity(title=f"Activity {i}")
-        
+
         response = authenticated_client.get(f"{ACTIVITY_FEED_URL}?limit=150&refresh=true")
-        
+
         assert len(response.data["results"]) <= 100
 
     def test_offset_pagination(self, authenticated_client, create_activity):
@@ -302,25 +303,25 @@ class TestActivityFeedPagination:
                 title=f"Activity {i}",
                 timestamp=timezone.now() - timedelta(minutes=i)
             ))
-        
+
         # Get first page
         response1 = authenticated_client.get(f"{ACTIVITY_FEED_URL}?limit=5&offset=0&refresh=true")
         # Get second page
         response2 = authenticated_client.get(f"{ACTIVITY_FEED_URL}?limit=5&offset=5&refresh=true")
-        
+
         # Results should be different
         ids1 = [r["id"] for r in response1.data["results"]]
         ids2 = [r["id"] for r in response2.data["results"]]
-        
+
         assert len(set(ids1) & set(ids2)) == 0  # No overlap
 
     def test_next_link_format(self, authenticated_client, create_activity):
         """Next link should be properly formatted."""
         for i in range(25):
             create_activity(title=f"Activity {i}")
-        
+
         response = authenticated_client.get(f"{ACTIVITY_FEED_URL}?limit=10&refresh=true")
-        
+
         assert response.data["next"] is not None
         assert "offset=10" in response.data["next"]
         assert "limit=10" in response.data["next"]
@@ -329,9 +330,9 @@ class TestActivityFeedPagination:
         """Next should be None when on last page."""
         for i in range(5):
             create_activity(title=f"Activity {i}")
-        
+
         response = authenticated_client.get(f"{ACTIVITY_FEED_URL}?limit=10&refresh=true")
-        
+
         assert response.data["next"] is None
 
 
@@ -349,9 +350,9 @@ class TestActivityFeedFiltering:
         create_activity(activity_type="patient", title="Patient activity")
         create_activity(activity_type="encounter", title="Encounter activity")
         create_activity(activity_type="laboratory", title="Lab activity")
-        
+
         response = authenticated_client.get(f"{ACTIVITY_FEED_URL}?types=patient&refresh=true")
-        
+
         assert response.data["count"] == 1
         assert response.data["results"][0]["type"] == "patient"
 
@@ -361,9 +362,9 @@ class TestActivityFeedFiltering:
         create_activity(activity_type="encounter", title="Encounter activity")
         create_activity(activity_type="laboratory", title="Lab activity")
         create_activity(activity_type="pharmacy", title="Pharmacy activity")
-        
+
         response = authenticated_client.get(f"{ACTIVITY_FEED_URL}?types=patient,encounter&refresh=true")
-        
+
         assert response.data["count"] == 2
         types = [r["type"] for r in response.data["results"]]
         assert "patient" in types
@@ -375,9 +376,9 @@ class TestActivityFeedFiltering:
         create_activity(action="registered", title="Registration")
         create_activity(action="completed", title="Completion")
         create_activity(action="registered", title="Another registration")
-        
+
         response = authenticated_client.get(f"{ACTIVITY_FEED_URL}?actions=registered&refresh=true")
-        
+
         assert response.data["count"] == 2
 
     def test_no_filter_returns_all(self, authenticated_client, create_activity):
@@ -385,9 +386,9 @@ class TestActivityFeedFiltering:
         create_activity(activity_type="patient")
         create_activity(activity_type="encounter")
         create_activity(activity_type="laboratory")
-        
+
         response = authenticated_client.get(f"{ACTIVITY_FEED_URL}?refresh=true")
-        
+
         assert response.data["count"] == 3
 
 
@@ -410,9 +411,9 @@ class TestActivityFeedOrdering:
             title="New activity",
             timestamp=timezone.now()
         )
-        
+
         response = authenticated_client.get(f"{ACTIVITY_FEED_URL}?refresh=true")
-        
+
         results = response.data["results"]
         assert results[0]["title"] == "New activity"
         assert results[1]["title"] == "Old activity"
@@ -430,10 +431,10 @@ class TestActivityFeedResourceHref:
     def test_patient_href(self, authenticated_client, create_activity):
         """Patient resources should have correct href."""
         create_activity(resource_type="Patient", resource_id=123)
-        
+
         response = authenticated_client.get(f"{ACTIVITY_FEED_URL}?refresh=true")
         item = response.data["results"][0]
-        
+
         assert item["resource"]["href"] == "/patients/123"
 
     def test_encounter_href(self, authenticated_client, create_activity):
@@ -443,10 +444,10 @@ class TestActivityFeedResourceHref:
             resource_type="Encounter",
             resource_id=456
         )
-        
+
         response = authenticated_client.get(f"{ACTIVITY_FEED_URL}?refresh=true")
         item = response.data["results"][0]
-        
+
         assert item["resource"]["href"] == "/encounters/456"
 
     def test_lab_order_href(self, authenticated_client, create_activity):
@@ -456,10 +457,10 @@ class TestActivityFeedResourceHref:
             resource_type="LabOrder",
             resource_id=789
         )
-        
+
         response = authenticated_client.get(f"{ACTIVITY_FEED_URL}?refresh=true")
         item = response.data["results"][0]
-        
+
         assert item["resource"]["href"] == "/laboratory/orders/789"
 
     def test_prescription_href(self, authenticated_client, create_activity):
@@ -469,10 +470,10 @@ class TestActivityFeedResourceHref:
             resource_type="Prescription",
             resource_id=101
         )
-        
+
         response = authenticated_client.get(f"{ACTIVITY_FEED_URL}?refresh=true")
         item = response.data["results"][0]
-        
+
         assert item["resource"]["href"] == "/pharmacy/prescriptions/101"
 
     def test_invoice_href(self, authenticated_client, create_activity):
@@ -482,10 +483,10 @@ class TestActivityFeedResourceHref:
             resource_type="Invoice",
             resource_id=202
         )
-        
+
         response = authenticated_client.get(f"{ACTIVITY_FEED_URL}?refresh=true")
         item = response.data["results"][0]
-        
+
         assert item["resource"]["href"] == "/billing/invoices/202"
 
 
@@ -503,12 +504,12 @@ class TestActivityFeedUserInfo:
         test_user.first_name = "Jane"
         test_user.last_name = "Nurse"
         test_user.save()
-        
+
         create_activity(user=test_user)
-        
+
         response = authenticated_client.get(f"{ACTIVITY_FEED_URL}?refresh=true")
         item = response.data["results"][0]
-        
+
         assert item["user"]["id"] == test_user.id
         assert "Jane" in item["user"]["name"] or "Nurse" in item["user"]["name"]
 
@@ -523,10 +524,10 @@ class TestActivityFeedUserInfo:
             resource_type="System",
             resource_id=0,
         )
-        
+
         response = authenticated_client.get(f"{ACTIVITY_FEED_URL}?refresh=true")
         item = response.data["results"][0]
-        
+
         assert item["user"] is None
 
     def test_uses_username_when_no_full_name(self, authenticated_client, create_activity, test_user):
@@ -534,12 +535,12 @@ class TestActivityFeedUserInfo:
         test_user.first_name = ""
         test_user.last_name = ""
         test_user.save()
-        
+
         create_activity(user=test_user)
-        
+
         response = authenticated_client.get(f"{ACTIVITY_FEED_URL}?refresh=true")
         item = response.data["results"][0]
-        
+
         assert item["user"]["name"] == test_user.username
 
 
@@ -555,7 +556,7 @@ class TestActivityFeedEdgeCases:
     def test_empty_feed(self, authenticated_client):
         """Should handle empty activity feed gracefully."""
         response = authenticated_client.get(f"{ACTIVITY_FEED_URL}?refresh=true")
-        
+
         assert response.status_code == status.HTTP_200_OK
         assert response.data["count"] == 0
         assert response.data["results"] == []
@@ -565,25 +566,25 @@ class TestActivityFeedEdgeCases:
         """Invalid limit should default to 20."""
         for i in range(25):
             create_activity(title=f"Activity {i}")
-        
+
         response = authenticated_client.get(f"{ACTIVITY_FEED_URL}?limit=invalid&refresh=true")
-        
+
         assert len(response.data["results"]) == 20
 
     def test_negative_offset_treated_as_zero(self, authenticated_client, create_activity):
         """Negative offset should be treated as 0."""
         create_activity()
-        
+
         response = authenticated_client.get(f"{ACTIVITY_FEED_URL}?offset=-5&refresh=true")
-        
+
         assert response.status_code == status.HTTP_200_OK
 
     def test_large_offset_returns_empty(self, authenticated_client, create_activity):
         """Large offset beyond data should return empty results."""
         create_activity()
-        
+
         response = authenticated_client.get(f"{ACTIVITY_FEED_URL}?offset=1000&refresh=true")
-        
+
         assert response.status_code == status.HTTP_200_OK
         assert response.data["results"] == []
 
@@ -600,16 +601,16 @@ class TestActivityFeedCaching:
     def test_cache_bypass_with_refresh(self, authenticated_client, create_activity):
         """Should bypass cache when refresh=true."""
         create_activity(title="Initial activity")
-        
+
         # First request (may be cached)
         response1 = authenticated_client.get(ACTIVITY_FEED_URL)
         count1 = response1.data["count"]
-        
+
         # Add another activity
         create_activity(title="New activity")
-        
+
         # Request with refresh
         response2 = authenticated_client.get(f"{ACTIVITY_FEED_URL}?refresh=true")
         count2 = response2.data["count"]
-        
+
         assert count2 == count1 + 1

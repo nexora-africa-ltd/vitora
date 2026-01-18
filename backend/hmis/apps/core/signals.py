@@ -126,7 +126,7 @@ def triage_activity_signal(sender, instance, created, **kwargs):
             resource_id=instance.id,
             action="completed",
         ).exists()
-        
+
         if existing:
             return
 
