@@ -23,26 +23,17 @@ import type { DateRangeFilter } from '@/lib/types/dashboard';
 const datePresets: { value: DateRangeFilter['preset']; label: string }[] = [
   { value: 'today', label: 'Today' },
   { value: 'yesterday', label: 'Yesterday' },
-  { value: 'last 7 days', label: 'Last 7 Days' },
-  { value: 'last 30 days', label: 'Last 30 Days' },
-  { value: 'this Month', label: 'This Month' },
-  { value: 'last Month', label: 'Last Month' },
+  { value: 'last7days', label: 'Last 7 Days' },
+  { value: 'last30days', label: 'Last 30 Days' },
+  { value: 'thisMonth', label: 'This Month' },
+  { value: 'lastMonth', label: 'Last Month' },
 ];
-
-// const datePresets: { value: DateRangeFilter['preset']; label: string }[] = [
-//   { value: 'today', label: 'Today' },
-//   { value: 'yesterday', label: 'Yesterday' },
-//   { value: 'last7days', label: 'Last 7 Days' },
-//   { value: 'last30days', label: 'Last 30 Days' },
-//   { value: 'thisMonth', label: 'This Month' },
-//   { value: 'lastMonth', label: 'Last Month' },
-// ];
 
 export function DashboardOverview() {
   const [dateFilter, setDateFilter] = useState<DateRangeFilter>({
     start: '',
     end: '',
-    preset: 'last 7 days',
+    preset: 'last7days',
   });
 
   const { data: metrics, isLoading, refetch, isFetching } = useDashboardMetrics(dateFilter);
