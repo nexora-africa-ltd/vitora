@@ -1047,6 +1047,13 @@ def test_wait_time_exceeded_flag():
 - [ ] Client Registry UI integration
 - [ ] Facility validation in registration flow
 
+**Billing Module Enhancements** (from Phase 1 backlog):
+- [ ] **Invoice PDF Generation** - WeasyPrint templates for invoice/receipt PDFs
+- [ ] **SHA Full API Integration** - Replace stub with real SHA claims API (pending SHA credentials)
+- [ ] **Insurance Module** - Private insurance providers, claims, pre-auth
+- [ ] **Payment Reconciliation** - Bank statement import, M-Pesa reconciliation
+- [ ] **KRA eTIMS Integration** - Electronic Tax Invoice Management (legal requirement for VAT)
+
 **Deliverables (Updated)**:
 - ~~SHA eligibility verification~~ ✅ DONE
 - ~~Claims packaging and submission~~ ✅ DONE
