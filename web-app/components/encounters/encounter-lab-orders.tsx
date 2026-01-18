@@ -207,6 +207,123 @@ export function EncounterLabOrders({ encounterId, patientId, disabled = false, o
   );
 }
 
+interface EncounterLabOrdersContentProps {
+  encounterId: number;
+  patientId: number;
+  disabled?: boolean;
+  onBeforeNavigate?: () => Promise<void>;
+}
+
+/**
+ * Content-only version of the Lab Orders component (no Card wrapper)
+ * Used in accordion-based layouts
+ */
+export function EncounterLabOrdersContent({ 
+  encounterId, 
+  patientId, 
+  disabled = false, 
+  onBeforeNavigate 
+}: EncounterLabOrdersContentProps) {
+  const router = useRouter();
+  const { data: orders, isLoading, error } = useEncounterLabOrders(encounterId);
+  const [activeView, setActiveView] = useState<'orders' | 'results'>('orders');
+
+  const handleNewLabOrder = useCallback(async () => {
+    if (onBeforeNavigate) {
+      await onBeforeNavigate();
+    }
+    router.push(`/laboratory/orders/new?encounter=${encounterId}&patient=${patientId}`);
+  }, [onBeforeNavigate, router, encounterId, patientId]);
+
+  if (isLoading) {
+    return (
+      <div className="space-y-3">
+        <Skeleton className="h-16 w-full" />
+        <Skeleton className="h-16 w-full" />
+      </div>
+    );
+  }
+
+  if (error) {
+    return <p className="text-sm text-muted-foreground">Failed to load lab orders.</p>;
+  }
+
+  const ordersList = Array.isArray(orders) ? orders : [];
+  const pendingOrders = ordersList.filter(o => o.status !== 'COMPLETED' && o.status !== 'CANCELLED');
+  const completedOrders = ordersList.filter(o => o.status === 'COMPLETED');
+  const hasResults = ordersList.some(o => o.items?.some(i => i.has_result));
+  const resultsCount = ordersList.reduce((acc, o) => acc + (o.items?.filter(i => i.has_result).length || 0), 0);
+
+  return (
+    <div className="space-y-4">
+      <p className="text-sm text-muted-foreground">
+        Order lab tests and view results
+      </p>
+      
+      {/* Action buttons */}
+      <div className="flex items-center gap-2">
+        {hasResults && (
+          <Button
+            variant={activeView === 'results' ? 'secondary' : 'ghost'}
+            size="sm"
+            onClick={() => setActiveView(activeView === 'results' ? 'orders' : 'results')}
+          >
+            {activeView === 'results' ? (
+              <>
+                <EyeOff className="h-4 w-4 mr-1" />
+                Hide Results
+              </>
+            ) : (
+              <>
+                <Eye className="h-4 w-4 mr-1" />
+                View Results ({resultsCount})
+              </>
+            )}
+          </Button>
+        )}
+        {!disabled && (
+          <Button size="sm" onClick={handleNewLabOrder}>
+            <Plus className="h-4 w-4 mr-1" />
+            Order Lab Test
+          </Button>
+        )}
+      </div>
+
+      {ordersList.length === 0 ? (
+        <div className="text-center py-4 text-muted-foreground">
+          <Beaker className="h-8 w-8 mx-auto mb-2 opacity-50" />
+          <p className="text-sm">No lab orders for this encounter</p>
+        </div>
+      ) : activeView === 'results' ? (
+        <EncounterLabResultsView orders={ordersList} />
+      ) : (
+        <div className="space-y-4">
+          {pendingOrders.length > 0 && (
+            <div className="space-y-2">
+              <h4 className="text-sm font-medium text-muted-foreground">Pending ({pendingOrders.length})</h4>
+              <div className="space-y-2">
+                {pendingOrders.map((order) => (
+                  <LabOrderCard key={order.order_number} order={order} />
+                ))}
+              </div>
+            </div>
+          )}
+          {completedOrders.length > 0 && (
+            <div className="space-y-2">
+              <h4 className="text-sm font-medium text-muted-foreground">Completed ({completedOrders.length})</h4>
+              <div className="space-y-2">
+                {completedOrders.map((order) => (
+                  <LabOrderCard key={order.order_number} order={order} showResults />
+                ))}
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
 function LabOrderCard({ order, showResults = false }: { order: LabOrder; showResults?: boolean }) {
   const statusConfig = STATUS_CONFIG[order.status];
   const priorityConfig = PRIORITY_CONFIG[order.priority];
