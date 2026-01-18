@@ -398,6 +398,7 @@ export interface StockBatchCreateData {
 export interface PrescriptionCreateData {
   patient: number;
   encounter?: number;
+  valid_until?: string;  // ISO date string, defaults to 30 days from now
   clinical_notes?: string;
   items: PrescriptionItemCreateData[];
 }

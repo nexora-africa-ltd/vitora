@@ -492,7 +492,12 @@ class Prescription(models.Model):
 
     # Links
     encounter = models.ForeignKey(
-        "encounters.Encounter", on_delete=models.PROTECT, related_name="prescriptions"
+        "encounters.Encounter",
+        on_delete=models.PROTECT,
+        related_name="prescriptions",
+        null=True,
+        blank=True,
+        help_text="Optional - can be null for walk-in pharmacy prescriptions",
     )
     patient = models.ForeignKey(
         "patients.Patient", on_delete=models.PROTECT, related_name="prescriptions"
