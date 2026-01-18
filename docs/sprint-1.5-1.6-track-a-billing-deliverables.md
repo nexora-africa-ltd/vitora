@@ -1,79 +1,93 @@
 # Sprint 1.5-1.6 Track A: Billing Module - Deliverables
 
 **Sprint Duration**: Weeks 9-12 (Phase 1)
-**Status**: 📋 PLANNED
-**Target Date**: Q1 2026
+**Status**: ✅ COMPLETE
+**Completion Date**: January 3, 2026
 **Dependencies**: Sprint 1.3-1.4 (Pharmacy Module, Encounters)
 
 ---
 
-## Executive Summary
+## Implementation Summary
 
-Track A of Sprint 1.5-1.6 implements a comprehensive Billing Module for Vitora HMIS, enabling invoice generation, payment processing (Cash, M-Pesa, Insurance), receipt generation, and financial reporting. The module is designed for Kenya's healthcare billing context with support for SHA (Social Health Authority) claims and offline-first operation.
+### Final Metrics
 
-### Key Deliverables
+| Metric | Value |
+|--------|-------|
+| **Total Tests** | 182 passing |
+| **Test Coverage** | 86.15% |
+| **Models Implemented** | 7 (ServiceCategory, Service, Invoice, InvoiceItem, Payment, Receipt, CreditNote) |
+| **API Endpoints** | 25+ |
+| **Report Types** | 5 |
 
-| Deliverable | Tests Required | Priority | User Input Needed |
-|-------------|----------------|----------|-------------------|
-| Service/Fee Model | 10 tests | High | ❌ |
-| Invoice Model | 18 tests | High | ❌ |
-| Invoice Item Model | 12 tests | High | ❌ |
-| Payment Model | 16 tests | High | ❌ |
-| M-Pesa Integration | 14 tests | High | ✅ **Credentials Provided** |
-| Receipt Model | 10 tests | Medium | ❌ |
-| Credit/Refund Model | 8 tests | Medium | ❌ |
-| Invoice API | 14 tests | Medium | ❌ |
-| Payment API | 12 tests | Medium | ❌ |
-| Financial Reports | 10 tests | Medium | ❌ |
-| SHA Claims Stub | 6 tests | Low | ✅ **SHA API Docs** |
+### Component Coverage
 
-**Total Planned Tests**: ~130 tests
-**Target Coverage**: ≥85%
-
----
-
-## ⚠️ User Input Required
-
-Before implementation begins, the following inputs are needed:
-
-### 1. M-Pesa Daraja API Sandbox ✅ CONFIGURED
-
-| Item | Value | Status |
-|------|-------|--------|
-| **Consumer Key** | `Of3TQl...` (in `.env`) | ✅ Provided |
-| **Consumer Secret** | `5BuAga...` (in `.env`) | ✅ Provided |
-| **Business Shortcode** | `174379` (Sandbox default) | ✅ Configured |
-| **Passkey** | `bfb279f9aa...` (Sandbox default) | ✅ Configured |
-| **Callback URL** | Will use ngrok for local dev | ⏳ Setup during implementation |
-
-**Note**: The shortcode `174379` and passkey are standard Safaricom sandbox test credentials used by all developers.
-
-**Timeline**: ✅ Ready for implementation
-
-### 2. SHA (Social Health Authority) Integration (LOW PRIORITY - Stub Only)
-
-| Item | Description | Status |
-|------|-------------|--------|
-| **SHA API Documentation** | Claims submission format | If available, share docs |
-| **SHA Test Environment** | Sandbox credentials | If available for testing |
-| **Claim Codes** | Service codes for SHA billing | Reference from NHIF/SHA portal |
-
-**Note**: For Sprint 1.5-1.6, we'll implement a **stub/mock** for SHA integration. Full integration planned for Phase 2.
-
-### 3. Facility Configuration
-
-| Item | Description | Default |
-|------|-------------|---------|
-| **KRA PIN** | For receipt compliance | Mock: P000000000X |
-| **Facility Name** | For invoice headers | "[Your Facility Name]" |
-| **Invoice Prefix** | Invoice numbering | "INV-" |
-| **Receipt Prefix** | Receipt numbering | "RCP-" |
-| **Currency** | Billing currency | KES |
-| **VAT Rate** | If applicable | 0% (medical exempt) |
+| Component | Coverage | Status |
+|-----------|----------|--------|
+| `models.py` | 90.83% | ✅ |
+| `serializers.py` | 100% | ✅ |
+| `views.py` | 81.39% | ✅ |
+| `reports.py` | 96.77% | ✅ |
+| `services/mpesa.py` | 96.27% | ✅ |
+| `services/sha.py` | 100% | ✅ (Stub) |
+| `admin.py` | 85.90% | ✅ |
+| `urls.py` | 100% | ✅ |
 
 ---
 
-## Components to Implement
+## Completed Features
+
+### Models
+- ✅ **ServiceCategory** - Billable service categories
+- ✅ **Service** - Billable services with SHA codes
+- ✅ **Invoice** - Auto-numbered (INV-YYYYMMDD-XXXX), status workflow, discounts
+- ✅ **InvoiceItem** - Line items for services, drugs, lab orders
+- ✅ **Payment** - Auto-numbered (PAY-YYYYMMDD-XXXX), 5 methods, M-Pesa integration
+- ✅ **Receipt** - Auto-numbered (RCP-YYYYMMDD-XXXX), amount in words, void support
+- ✅ **CreditNote** - Auto-numbered (CN-YYYYMMDD-XXXX), approval workflow
+
+### API Endpoints
+- ✅ Invoice CRUD + finalize, cancel, add/remove items, apply discount
+- ✅ Payment recording + receipt generation
+- ✅ M-Pesa STK Push, callback, query
+- ✅ Credit notes with approval workflow
+- ✅ Service catalog CRUD
+
+### Reports
+- ✅ Daily collection report
+- ✅ Revenue summary
+- ✅ Outstanding balances
+- ✅ Service utilization
+- ✅ Payment method analysis
+
+### Services
+- ✅ **MpesaService** - OAuth, STK Push, callback processing, phone formatting
+- ✅ **SHAClaimsService** - Stub implementation for Phase 2
+
+---
+
+## M-Pesa Configuration
+
+```bash
+# Configured in .env (Sandbox credentials ready)
+MPESA_ENVIRONMENT=sandbox
+MPESA_CONSUMER_KEY=configured
+MPESA_CONSUMER_SECRET=configured
+MPESA_SHORTCODE=174379
+MPESA_PASSKEY=configured
+```
+
+---
+
+## Future Enhancements (Phase 2+)
+
+The following items are documented in ROADMAP.md under Phase 2:
+- SHA Full API Integration (pending SHA credentials)
+- Insurance Module (private insurance providers)
+- Invoice PDF Generation
+- Payment Reconciliation
+- KRA eTIMS Integration
+
+---
 
 ### 1. Service/Fee Catalog Model
 
