@@ -297,6 +297,13 @@ export default function EditEncounterPage() {
     },
   });
   
+  // Callback to save before navigating away (e.g., to create prescription)
+  const handleBeforeNavigate = useCallback(async () => {
+    if (autoSave.isDirty) {
+      await autoSave.saveNow();
+    }
+  }, [autoSave]);
+  
   // Handle field changes
   const handleFieldChange = useCallback((field: keyof EncounterFormData, value: unknown) => {
     setFormData(prev => ({ ...prev, [field]: value }));
@@ -1175,6 +1182,7 @@ export default function EditEncounterPage() {
               patientId={encounter?.patient || 0}
               disabled={!isEditable}
               onNext={() => setActiveTab('pharmacy')}
+              onBeforeNavigate={handleBeforeNavigate}
             />
           </TabsContent>
           
@@ -1184,6 +1192,7 @@ export default function EditEncounterPage() {
               patientId={encounter?.patient || 0}
               disabled={!isEditable}
               onPrevious={() => setActiveTab('lab')}
+              onBeforeNavigate={handleBeforeNavigate}
             />
           </TabsContent>
           
