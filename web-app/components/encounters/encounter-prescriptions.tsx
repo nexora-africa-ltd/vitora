@@ -5,7 +5,9 @@
  */
 'use client';
 
+import { useCallback } from 'react';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import { Plus, Pill, ExternalLink, Clock, CheckCircle2, AlertCircle, Package } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '@/components/ui/card';
@@ -20,6 +22,8 @@ interface EncounterPrescriptionsProps {
   patientId: number;
   disabled?: boolean;
   onPrevious?: () => void;
+  /** Called before navigating to create prescription - use to save pending changes */
+  onBeforeNavigate?: () => Promise<void>;
 }
 
 const STATUS_CONFIG: Record<PrescriptionStatus, { label: string; color: string; icon: React.ElementType }> = {
@@ -30,8 +34,17 @@ const STATUS_CONFIG: Record<PrescriptionStatus, { label: string; color: string; 
   EXPIRED: { label: 'Expired', color: 'bg-red-100 text-red-800 dark:bg-red-900/50 dark:text-red-300', icon: AlertCircle },
 };
 
-export function EncounterPrescriptions({ encounterId, patientId, disabled = false, onPrevious }: EncounterPrescriptionsProps) {
+export function EncounterPrescriptions({ encounterId, patientId, disabled = false, onPrevious, onBeforeNavigate }: EncounterPrescriptionsProps) {
+  const router = useRouter();
   const { data: prescriptions, isLoading, error } = useEncounterPrescriptions(encounterId);
+
+  // Handle navigation to new prescription - saves pending changes first
+  const handleNewPrescription = useCallback(async () => {
+    if (onBeforeNavigate) {
+      await onBeforeNavigate();
+    }
+    router.push(`/pharmacy/prescriptions/new?encounter=${encounterId}&patient=${patientId}`);
+  }, [onBeforeNavigate, router, encounterId, patientId]);
 
   if (isLoading) {
     return (
@@ -86,11 +99,9 @@ export function EncounterPrescriptions({ encounterId, patientId, disabled = fals
             )}
           </CardTitle>
           {!disabled && (
-            <Button size="sm" asChild>
-              <Link href={`/pharmacy/prescriptions/new?encounter=${encounterId}&patient=${patientId}`}>
-                <Plus className="h-4 w-4 mr-1" />
-                New Prescription
-              </Link>
+            <Button size="sm" onClick={handleNewPrescription}>
+              <Plus className="h-4 w-4 mr-1" />
+              New Prescription
             </Button>
           )}
         </div>
@@ -141,11 +152,9 @@ export function EncounterPrescriptions({ encounterId, patientId, disabled = fals
 
       {prescriptions && prescriptions.length === 0 && !disabled && (
         <CardFooter className="pt-0 flex-col gap-3">
-          <Button variant="outline" className="w-full" asChild>
-            <Link href={`/pharmacy/prescriptions/new?encounter=${encounterId}&patient=${patientId}`}>
-              <Plus className="h-4 w-4 mr-2" />
-              Create First Prescription
-            </Link>
+          <Button variant="outline" className="w-full" onClick={handleNewPrescription}>
+            <Plus className="h-4 w-4 mr-2" />
+            Create First Prescription
           </Button>
           {onPrevious && (
             <Button variant="secondary" className="w-full" onClick={onPrevious}>

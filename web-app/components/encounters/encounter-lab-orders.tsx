@@ -8,8 +8,9 @@
  */
 'use client';
 
-import { useState } from 'react';
+import { useState, useCallback } from 'react';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import { Plus, Beaker, ExternalLink, Clock, CheckCircle2, AlertCircle, FileText, Eye, EyeOff } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '@/components/ui/card';
@@ -26,6 +27,8 @@ interface EncounterLabOrdersProps {
   patientId: number;
   disabled?: boolean;
   onNext?: () => void;
+  /** Called before navigating to create lab order - use to save pending changes */
+  onBeforeNavigate?: () => Promise<void>;
 }
 
 const STATUS_CONFIG: Record<LabOrderStatus, { label: string; color: string; icon: React.ElementType }> = {
@@ -44,9 +47,18 @@ const PRIORITY_CONFIG: Record<LabPriority, { label: string; color: string }> = {
   STAT: { label: 'STAT', color: 'bg-red-100 text-red-800 dark:bg-red-900/50 dark:text-red-300' },
 };
 
-export function EncounterLabOrders({ encounterId, patientId, disabled = false, onNext }: EncounterLabOrdersProps) {
+export function EncounterLabOrders({ encounterId, patientId, disabled = false, onNext, onBeforeNavigate }: EncounterLabOrdersProps) {
+  const router = useRouter();
   const { data: orders, isLoading, error } = useEncounterLabOrders(encounterId);
   const [activeView, setActiveView] = useState<'orders' | 'results'>('orders');
+
+  // Handle navigation to new lab order - saves pending changes first
+  const handleNewLabOrder = useCallback(async () => {
+    if (onBeforeNavigate) {
+      await onBeforeNavigate();
+    }
+    router.push(`/laboratory/orders/new?encounter=${encounterId}&patient=${patientId}`);
+  }, [onBeforeNavigate, router, encounterId, patientId]);
 
   if (isLoading) {
     return (
@@ -122,11 +134,9 @@ export function EncounterLabOrders({ encounterId, patientId, disabled = false, o
               </Button>
             )}
             {!disabled && (
-              <Button size="sm" asChild>
-                <Link href={`/laboratory/orders/new?encounter=${encounterId}&patient=${patientId}`}>
-                  <Plus className="h-4 w-4 mr-1" />
-                  Order Lab Test
-                </Link>
+              <Button size="sm" onClick={handleNewLabOrder}>
+                <Plus className="h-4 w-4 mr-1" />
+                Order Lab Test
               </Button>
             )}
           </div>
@@ -173,11 +183,9 @@ export function EncounterLabOrders({ encounterId, patientId, disabled = false, o
 
       {orders && orders.length === 0 && !disabled && (
         <CardFooter className="pt-0 flex-col gap-3">
-          <Button variant="outline" className="w-full" asChild>
-            <Link href={`/laboratory/orders/new?encounter=${encounterId}&patient=${patientId}`}>
-              <Plus className="h-4 w-4 mr-2" />
-              Order First Lab Test
-            </Link>
+          <Button variant="outline" className="w-full" onClick={handleNewLabOrder}>
+            <Plus className="h-4 w-4 mr-2" />
+            Order First Lab Test
           </Button>
           {onNext && (
             <Button variant="secondary" className="w-full" onClick={onNext}>
