@@ -135,11 +135,11 @@ export function usePatientVolumeHistory(filter?: DateRangeFilter) {
 ```
 
 ### TDD Tests Required
-- [ ] `test_patient_volume_requires_authentication`
-- [ ] `test_patient_volume_requires_date_params`
-- [ ] `test_patient_volume_returns_daily_breakdown`
-- [ ] `test_patient_volume_groups_by_encounter_type`
-- [ ] `test_patient_volume_respects_granularity`
+- [x] `test_patient_volume_requires_authentication`
+- [x] `test_patient_volume_requires_date_params`
+- [x] `test_patient_volume_returns_daily_breakdown`
+- [x] `test_patient_volume_groups_by_encounter_type`
+- [x] `test_patient_volume_respects_granularity`
 
 ---
 
