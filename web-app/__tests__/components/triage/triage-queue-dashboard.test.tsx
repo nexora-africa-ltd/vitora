@@ -367,7 +367,9 @@ describe('TriageQueueDashboard - Queue Actions', () => {
         />
       );
 
-      const withClinicianButton = screen.getByRole('button', { name: /with (clinician|doctor)/i });
+      // Use within to scope to the specific queue item card
+      const queueCard = screen.getByTestId('queue-item-99');
+      const withClinicianButton = within(queueCard).getByRole('button', { name: /with (clinician|doctor)/i });
       await user.click(withClinicianButton);
 
       expect(handleWithClinician).toHaveBeenCalledWith(99);
@@ -387,7 +389,9 @@ describe('TriageQueueDashboard - Queue Actions', () => {
         />
       );
 
-      const completeButton = screen.getByRole('button', { name: /complete/i });
+      // Use within to scope to the specific queue item card
+      const queueCard = screen.getByTestId('queue-item-99');
+      const completeButton = within(queueCard).getByRole('button', { name: /complete/i });
       await user.click(completeButton);
 
       expect(handleComplete).toHaveBeenCalledWith(99);
