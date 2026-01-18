@@ -263,3 +263,292 @@ def _get_alert_stats() -> dict:
             "medium": 0,
             "total_unresolved": 0,
         }
+
+
+# =============================================================================
+# Patient Volume History API
+# =============================================================================
+
+# Cache configuration for patient volume
+PATIENT_VOLUME_CACHE_PREFIX = "patient_volume"
+PATIENT_VOLUME_CACHE_TTL = 300  # 5 minutes
+MAX_DATE_RANGE_DAYS = 90  # Data retention limit
+
+# All encounter types from the system
+ENCOUNTER_TYPES = [
+    "OPD",
+    "IPD",
+    "EMERGENCY",
+    "ANC",
+    "PAEDIATRIC",
+    "DIALYSIS",
+    "ONCOLOGY",
+    "SCHEDULED_OPD",
+    "FOLLOW_UP",
+    "CONSULTANT_REVIEW",
+    "CHRONIC_STABLE",
+    "SPECIALIST_CLINIC",
+    "PROCEDURE",
+    "DAY_CASE",
+    "WARD_ROUND",
+    "DISCHARGE_REVIEW",
+]
+
+
+@api_view(["GET"])
+@permission_classes([IsAuthenticated])
+def patient_volume_history(request):
+    """
+    Get patient volume history for dashboard charts.
+
+    Returns historical patient registration and encounter data aggregated
+    by date with configurable granularity.
+
+    Query Parameters:
+        start_date (required): Start date in YYYY-MM-DD format
+        end_date (required): End date in YYYY-MM-DD format
+        granularity (optional): 'day' (default), 'week', or 'month'
+        refresh (optional): Set to 'true' to bypass cache
+
+    Data Retention: Maximum 90 days range.
+
+    Response:
+        {
+            "date_range": {"start": "2026-01-01", "end": "2026-01-07"},
+            "granularity": "day",
+            "data": [
+                {
+                    "date": "2026-01-01",
+                    "registrations": 12,
+                    "encounters": 45,
+                    "by_type": {"OPD": 32, "IPD": 8, "EMERGENCY": 5, ...}
+                },
+                ...
+            ]
+        }
+    """
+    from datetime import datetime
+
+    # Extract and validate parameters
+    start_date_str = request.query_params.get("start_date")
+    end_date_str = request.query_params.get("end_date")
+    granularity = request.query_params.get("granularity", "day")
+    bypass_cache = request.query_params.get("refresh", "").lower() == "true"
+
+    # Validate required parameters
+    if not start_date_str:
+        return Response(
+            {"error": "start_date parameter is required"},
+            status=400,
+        )
+    if not end_date_str:
+        return Response(
+            {"error": "end_date parameter is required"},
+            status=400,
+        )
+
+    # Validate date format
+    try:
+        start_date = datetime.strptime(start_date_str, "%Y-%m-%d").date()
+        end_date = datetime.strptime(end_date_str, "%Y-%m-%d").date()
+    except ValueError:
+        return Response(
+            {"error": "Invalid date format. Use YYYY-MM-DD"},
+            status=400,
+        )
+
+    # Validate date range
+    if start_date > end_date:
+        return Response(
+            {"error": "start_date must be before or equal to end_date"},
+            status=400,
+        )
+
+    # Validate date range doesn't exceed retention limit
+    date_range_days = (end_date - start_date).days
+    if date_range_days > MAX_DATE_RANGE_DAYS:
+        return Response(
+            {"error": f"Date range cannot exceed {MAX_DATE_RANGE_DAYS} days"},
+            status=400,
+        )
+
+    # Validate granularity
+    valid_granularities = ["day", "week", "month"]
+    if granularity not in valid_granularities:
+        return Response(
+            {"error": f"Invalid granularity. Must be one of: {', '.join(valid_granularities)}"},
+            status=400,
+        )
+
+    # Check cache
+    cache_key = f"{PATIENT_VOLUME_CACHE_PREFIX}:{start_date_str}:{end_date_str}:{granularity}"
+    if not bypass_cache:
+        cached_data = cache.get(cache_key)
+        if cached_data:
+            return Response(cached_data)
+
+    # Compute volume data
+    data = _compute_patient_volume(start_date, end_date, granularity)
+
+    response_data = {
+        "date_range": {"start": start_date_str, "end": end_date_str},
+        "granularity": granularity,
+        "data": data,
+    }
+
+    # Cache the result
+    cache.set(cache_key, response_data, PATIENT_VOLUME_CACHE_TTL)
+
+    return Response(response_data)
+
+
+def _compute_patient_volume(start_date, end_date, granularity: str) -> list:
+    """
+    Compute patient volume data for the given date range.
+
+    Args:
+        start_date: Start date
+        end_date: End date
+        granularity: 'day', 'week', or 'month'
+
+    Returns:
+        List of dicts with date, registrations, encounters, and by_type breakdown
+    """
+    from collections import defaultdict
+    from datetime import timedelta
+
+    from django.db.models import Count
+    from django.db.models.functions import TruncDate, TruncMonth, TruncWeek
+
+    from hmis.apps.encounters.models import Encounter
+    from hmis.apps.patients.models import Patient
+
+    # For patient registrations (DateTimeField created_at), use truncation functions
+    trunc_func_datetime = {
+        "day": TruncDate,
+        "week": TruncWeek,
+        "month": TruncMonth,
+    }[granularity]
+
+    # Get patient registrations by date (created_at is DateTimeField)
+    registrations_qs = (
+        Patient.objects.filter(created_at__date__gte=start_date, created_at__date__lte=end_date)
+        .annotate(period=trunc_func_datetime("created_at"))
+        .values("period")
+        .annotate(count=Count("id"))
+    )
+    registrations_by_period = {str(r["period"]): r["count"] for r in registrations_qs}
+
+    # For encounters (encounter_date is DateField, not DateTimeField)
+    # We need different grouping strategy
+    if granularity == "day":
+        # Direct grouping by encounter_date field
+        encounters_qs = (
+            Encounter.objects.filter(encounter_date__gte=start_date, encounter_date__lte=end_date)
+            .values("encounter_date")
+            .annotate(count=Count("id"))
+        )
+        encounters_by_period = {str(e["encounter_date"]): e["count"] for e in encounters_qs}
+
+        # Encounters by type and date
+        encounters_by_type_qs = (
+            Encounter.objects.filter(encounter_date__gte=start_date, encounter_date__lte=end_date)
+            .values("encounter_date", "encounter_type")
+            .annotate(count=Count("id"))
+        )
+        type_breakdown: dict = defaultdict(lambda: defaultdict(int))
+        for item in encounters_by_type_qs:
+            period_str = str(item["encounter_date"])
+            type_breakdown[period_str][item["encounter_type"]] = item["count"]
+    else:
+        # For week/month granularity, we need to aggregate in Python
+        # since encounter_date is DateField and TruncWeek/TruncMonth expect DateTimeField
+        encounters_raw = Encounter.objects.filter(
+            encounter_date__gte=start_date, encounter_date__lte=end_date
+        ).values("encounter_date", "encounter_type")
+
+        encounters_by_period: dict = defaultdict(int)
+        type_breakdown: dict = defaultdict(lambda: defaultdict(int))
+
+        for enc in encounters_raw:
+            period = _get_period_for_date(enc["encounter_date"], granularity)
+            period_str = str(period)
+            encounters_by_period[period_str] += 1
+            type_breakdown[period_str][enc["encounter_type"]] += 1
+
+    # Generate all periods in range (fill gaps with zeros)
+    periods = _generate_periods(start_date, end_date, granularity)
+
+    # Build result
+    result = []
+    for period_date in periods:
+        period_str = str(period_date)
+
+        # Build by_type with all encounter types (zeros for missing)
+        by_type = {et: type_breakdown[period_str].get(et, 0) for et in ENCOUNTER_TYPES}
+
+        result.append(
+            {
+                "date": period_str,
+                "registrations": registrations_by_period.get(period_str, 0),
+                "encounters": encounters_by_period.get(period_str, 0),
+                "by_type": by_type,
+            }
+        )
+
+    return result
+
+
+def _get_period_for_date(d, granularity: str):
+    """Get the period start date for a given date based on granularity."""
+    from datetime import timedelta
+
+    if granularity == "day":
+        return d
+    elif granularity == "week":
+        # Return Monday of the week
+        days_since_monday = d.weekday()
+        return d - timedelta(days=days_since_monday)
+    elif granularity == "month":
+        # Return first of month
+        return d.replace(day=1)
+    return d
+
+
+def _generate_periods(start_date, end_date, granularity: str) -> list:
+    """Generate all period dates between start and end based on granularity."""
+    from datetime import timedelta
+
+    periods = []
+    current = start_date
+
+    if granularity == "day":
+        while current <= end_date:
+            periods.append(current)
+            current += timedelta(days=1)
+    elif granularity == "week":
+        # Align to week start (Monday)
+        from datetime import date
+
+        # Move to Monday of the start week
+        days_since_monday = current.weekday()
+        week_start = current - timedelta(days=days_since_monday)
+        current = week_start
+
+        while current <= end_date:
+            periods.append(current)
+            current += timedelta(weeks=1)
+    elif granularity == "month":
+        from datetime import date
+
+        # Start from first of month
+        current = current.replace(day=1)
+        while current <= end_date:
+            periods.append(current)
+            # Move to next month
+            if current.month == 12:
+                current = current.replace(year=current.year + 1, month=1)
+            else:
+                current = current.replace(month=current.month + 1)
+
+    return periods
