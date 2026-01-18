@@ -349,7 +349,7 @@ function getMAPThresholdStatus(
   diastolic: number | null | undefined,
   patientAgeYears: number
 ): VitalThresholdStatus | null {
-  if (systolic === null || systolic === undefined || 
+  if (systolic === null || systolic === undefined ||
       diastolic === null || diastolic === undefined) {
     return null;
   }
@@ -685,7 +685,7 @@ export function TriageAssessmentForm({
   const calculateCategoryMutation = useCalculateTriageCategory();
 
   // Use initialData's category if provided, otherwise calculate locally as fallback
-  const initialSuggested = initialData?.auto_calculated_category || 
+  const initialSuggested = initialData?.auto_calculated_category ||
     initialData?.triage_category ||
     calculateSuggestedCategory(initialData || {}, encounter);
 
@@ -701,7 +701,7 @@ export function TriageAssessmentForm({
     defaultValues: {
       arrival_mode: initialData?.arrival_mode || 'WALK_IN',
       // Use encounter creation time as arrival time (when patient was registered)
-      arrival_time: initialData?.arrival_time || 
+      arrival_time: initialData?.arrival_time ||
         (encounter.created_at ? new Date(encounter.created_at).toISOString().slice(0, 16) : new Date().toISOString().slice(0, 16)),
       chief_complaint_category: initialData?.chief_complaint_category,
       chief_complaint: initialData?.chief_complaint || '',
@@ -753,11 +753,11 @@ export function TriageAssessmentForm({
   const heartRateStatus = getVitalThresholdStatus('heart_rate', heartRate);
   const temperatureStatus = getVitalThresholdStatus('temperature', temperature);
   const respiratoryRateStatus = getVitalThresholdStatus('respiratory_rate', respiratoryRate);
-  
+
   // MAP-based blood pressure evaluation (age-adjusted)
   const mapStatus = getMAPThresholdStatus(systolicBp, diastolicBp, patientAge);
-  const mapValue = (systolicBp != null && diastolicBp != null) 
-    ? calculateMAP(systolicBp, diastolicBp) 
+  const mapValue = (systolicBp != null && diastolicBp != null)
+    ? calculateMAP(systolicBp, diastolicBp)
     : null;
 
   // Critical flags for input border styling
@@ -766,7 +766,7 @@ export function TriageAssessmentForm({
   const bpCritical = mapStatus?.severity === 'critical';
   const temperatureCritical = temperatureStatus?.severity === 'critical';
   const respiratoryRateCritical = respiratoryRateStatus?.severity === 'critical';
-  
+
   // Warning flags for amber border
   const spo2Warning = spo2Status?.severity === 'warning';
   const heartRateWarning = heartRateStatus?.severity === 'warning';
@@ -778,11 +778,11 @@ export function TriageAssessmentForm({
   // Skip recalculation if the category was provided via initialData (backend is source of truth)
   const hasInitialCategory = Boolean(initialData?.auto_calculated_category || initialData?.triage_category);
   const [hasUserInteracted, setHasUserInteracted] = React.useState(false);
-  
+
   // Track when user actually interacts with category-relevant fields
   const prevChiefComplaintCategory = React.useRef(chiefComplaintCategory);
   const prevMentalStatus = React.useRef(mentalStatus);
-  
+
   React.useEffect(() => {
     // Detect user interaction (field value changed from initial)
     if (
@@ -794,7 +794,7 @@ export function TriageAssessmentForm({
     prevChiefComplaintCategory.current = chiefComplaintCategory;
     prevMentalStatus.current = mentalStatus;
   }, [chiefComplaintCategory, mentalStatus]);
-  
+
   React.useEffect(() => {
     // If category was provided in initialData and user hasn't interacted, respect initial value
     if (hasInitialCategory && !hasUserInteracted) {

@@ -57,7 +57,7 @@ describe('LoadingSpinner Component', () => {
 
   it('should have accessible role and label', () => {
     render(<LoadingSpinner />);
-    
+
     expect(screen.getByRole('status')).toBeInTheDocument();
     expect(screen.getByLabelText('Loading')).toBeInTheDocument();
   });

@@ -50,7 +50,7 @@ describe('Calendar Component', () => {
 
   it('should call onSelect when date is selected', () => {
     const onSelect = jest.fn();
-    
+
     render(
       <Calendar
         mode="single"
@@ -63,7 +63,7 @@ describe('Calendar Component', () => {
     const clickableDay = dayButtons.find(
       (btn) => btn.textContent && !btn.classList.contains('day-outside')
     );
-    
+
     if (clickableDay) {
       fireEvent.click(clickableDay);
       // onSelect may or may not be called depending on day-picker behavior
@@ -91,14 +91,14 @@ describe('Calendar Component', () => {
 
     // Find navigation buttons
     const navButtons = screen.getAllByRole('button');
-    
+
     // Calendar should have nav buttons
     expect(navButtons.length).toBeGreaterThan(0);
   });
 
   it('should support disabled dates', () => {
     const today = new Date();
-    
+
     render(
       <Calendar
         disabled={[today]}
@@ -141,7 +141,7 @@ describe('Calendar Component', () => {
     // The grid should contain today's date
     const today = new Date().getDate().toString();
     const dayButtons = screen.getAllByRole('gridcell');
-    
+
     const todayButton = dayButtons.find(
       (btn) => btn.textContent === today && !btn.classList.contains('day-outside')
     );

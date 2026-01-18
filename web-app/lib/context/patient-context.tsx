@@ -1,16 +1,16 @@
 /**
  * Patient Context Provider
- * 
+ *
  * Provides a single, authoritative source of patient data across all child components.
  * This eliminates duplicate fetches and ensures patient identity consistency.
- * 
+ *
  * Key Features:
  * - Single fetch guarantee: Patient data fetched ONCE and shared
  * - Verification status: Tracks CR and SHA verification
  * - Read-only by design: No mutation methods exposed
  * - Error handling: Graceful error state management
  * - Patient Journey Sync: Syncs patient data to zustand store for journey tracking
- * 
+ *
  * Usage:
  * ```tsx
  * <PatientProvider patientId={1}>
@@ -71,8 +71,8 @@ export interface PatientProviderProps {
 
 export function PatientProvider({ patientId, children }: PatientProviderProps) {
   // Access patient journey store
-  const { 
-    registerPatient, 
+  const {
+    registerPatient,
     getPatient: getJourneyPatient,
     selectPatient,
     activePatients,
@@ -160,16 +160,16 @@ export function PatientProvider({ patientId, children }: PatientProviderProps) {
 /**
  * Hook to access patient context.
  * Must be used within a PatientProvider.
- * 
+ *
  * @throws Error if used outside of PatientProvider
  */
 export function usePatientContext(): PatientContextValue {
   const context = useContext(PatientContext);
-  
+
   if (context === undefined) {
     throw new Error('usePatientContext must be used within a PatientProvider');
   }
-  
+
   return context;
 }
 

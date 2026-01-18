@@ -111,4 +111,3 @@ describe('useDraftSave', () => {
     expect(mockLocalStorage.setItem).not.toHaveBeenCalled();
   });
 });
-

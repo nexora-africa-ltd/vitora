@@ -27,9 +27,9 @@ interface VitalsAlertsProps {
 
 export function VitalsAlerts({ alerts, compact = false, className }: VitalsAlertsProps) {
   // Normalize severity to lowercase for comparison
-  const isCritical = (a: VitalsAlert) => 
+  const isCritical = (a: VitalsAlert) =>
     a.severity === 'critical' || a.severity === 'CRITICAL';
-  const isWarning = (a: VitalsAlert) => 
+  const isWarning = (a: VitalsAlert) =>
     a.severity === 'warning' || a.severity === 'WARNING';
 
   const criticalAlerts = alerts.filter(isCritical);

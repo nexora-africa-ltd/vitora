@@ -91,7 +91,7 @@ export function TestSelector({
 
   const isSearching = debouncedSearch.length >= 2;
   const isLoading = isSearching ? searchResults.isLoading : catalogResults.isLoading;
-  
+
   const tests = isSearching
     ? (searchResults.data || [])
     : (catalogResults.data?.results || []);
@@ -212,7 +212,7 @@ export function TestSelector({
               onSelect={handleLOINCSelect}
               placeholder="Search LOINC codes (e.g., glucose, hemoglobin, CBC)..."
             />
-            
+
             <div className="rounded-lg border bg-muted/50 p-4">
               <h4 className="text-sm font-medium mb-2">About LOINC Codes</h4>
               <ul className="text-xs text-muted-foreground space-y-1">

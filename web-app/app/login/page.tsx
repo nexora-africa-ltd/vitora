@@ -25,7 +25,7 @@ export default function LoginPage() {
     e.preventDefault();
     setError(null);
     setValidationErrors({});
-    
+
     // Client-side validation
     const errors: {username?: string; password?: string} = {};
     if (!username.trim()) {
@@ -34,12 +34,12 @@ export default function LoginPage() {
     if (!password) {
       errors.password = 'Password is required';
     }
-    
+
     if (Object.keys(errors).length > 0) {
       setValidationErrors(errors);
       return;
     }
-    
+
     setIsLoading(true);
     try {
       await login(username, password);
@@ -75,7 +75,7 @@ export default function LoginPage() {
             <span className="text-2xl font-bold text-white">{APP_NAME}</span>
           </div>
         </div>
-        
+
         <div className="space-y-6">
           <h1 className="text-4xl font-bold text-white leading-tight">
             Healthcare Management<br />
@@ -128,7 +128,7 @@ export default function LoginPage() {
                   <span>{error}</span>
                 </div>
               )}
-              
+
               <div className="space-y-2">
                 <label htmlFor="username" className="text-sm font-medium">
                   Username
@@ -153,7 +153,7 @@ export default function LoginPage() {
                   <p className="text-sm text-destructive">{validationErrors.username}</p>
                 )}
               </div>
-              
+
               <div className="space-y-2">
                 <label htmlFor="password" className="text-sm font-medium">
                   Password

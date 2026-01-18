@@ -1,6 +1,6 @@
 # Vitora HMIS Mobile App - Known Limitations
 
-**Version**: 0.1.0 (Sprint 1.1-1.2)  
+**Version**: 0.1.0 (Sprint 1.1-1.2)
 **Last Updated**: December 31, 2025
 
 ---
@@ -19,7 +19,7 @@ This document outlines the known limitations, constraints, and planned improveme
 
 **Impact**: iOS users cannot use the application.
 
-**Reason**: 
+**Reason**:
 - Focus on Android due to higher market share in Kenya (~85%)
 - WatermelonDB requires additional iOS configuration
 - Resource constraints in Phase 1
@@ -36,12 +36,12 @@ This document outlines the known limitations, constraints, and planned improveme
 
 **Impact**: New users in offline areas cannot start using the app immediately.
 
-**Reason**: 
+**Reason**:
 - JWT authentication requires server verification
 - Initial county/sub-county/ward data must be downloaded
 - Security requirement to validate user credentials
 
-**Workaround**: 
+**Workaround**:
 - Login once with internet before going to field
 - Pre-authenticate on clinic WiFi before rural visits
 
@@ -60,7 +60,7 @@ This document outlines the known limitations, constraints, and planned improveme
 - Network cost considerations for users
 - Simpler initial architecture
 
-**Workaround**: 
+**Workaround**:
 - Sync indicator shows pending changes
 - Pull-to-refresh triggers sync attempt
 
@@ -76,7 +76,7 @@ This document outlines the known limitations, constraints, and planned improveme
 
 **Impact**: Earlier offline edits may be lost during sync.
 
-**Reason**: 
+**Reason**:
 - Simpler initial implementation
 - Field-level merge requires significant complexity
 - Most real-world usage is single-CHW per patient
@@ -143,7 +143,7 @@ This document outlines the known limitations, constraints, and planned improveme
 
 **Impact**: New administrative units won't appear until app update.
 
-**Reason**: 
+**Reason**:
 - Kenya administrative boundaries rarely change
 - Reduces sync complexity
 - Smaller app footprint

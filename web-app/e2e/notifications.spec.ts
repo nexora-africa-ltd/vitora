@@ -1,7 +1,7 @@
 /**
  * Notifications E2E Tests
  * Tests for notification popover and expanded notification center
- * 
+ *
  * Structure:
  * - Bell icon in header with unread badge
  * - Clicking bell opens popover with recent notifications
@@ -193,20 +193,20 @@ test.describe.skip('Notification Popover (deprecated; use notifications-center.s
 
   test('should open popover when clicking bell icon', async ({ page }) => {
     await loginToDashboard(page);
-    
+
     const bellButton = page.getByRole('button', { name: /notifications/i });
     await bellButton.click();
-    
+
     // Popover should appear with notifications header
     await expect(page.getByRole('heading', { name: /notifications/i })).toBeVisible();
   });
 
   test('should display notification items in popover', async ({ page }) => {
     await loginToDashboard(page);
-    
+
     await page.getByRole('button', { name: /notifications/i }).click();
     await page.waitForTimeout(300);
-    
+
     // Should show notification items
     await expect(page.getByText('Critical Vital Alert')).toBeVisible();
     await expect(page.getByText('Lab Results Ready')).toBeVisible();
@@ -214,20 +214,20 @@ test.describe.skip('Notification Popover (deprecated; use notifications-center.s
 
   test('should show "Mark all read" button when there are unread notifications', async ({ page }) => {
     await loginToDashboard(page);
-    
+
     await page.getByRole('button', { name: /notifications/i }).click();
     await page.waitForTimeout(500);
-    
+
     const markAllButton = page.getByRole('button', { name: /mark all/i });
     await expect(markAllButton).toBeVisible({ timeout: 10000 });
   });
 
   test('should show "View all notifications" button', async ({ page }) => {
     await loginToDashboard(page);
-    
+
     await page.getByRole('button', { name: /notifications/i }).click();
     await page.waitForTimeout(300);
-    
+
     const viewAllButton = page.getByRole('button', { name: /view all notifications/i });
     await expect(viewAllButton).toBeVisible();
   });
@@ -237,10 +237,10 @@ test.describe.skip('Notification Popover (deprecated; use notifications-center.s
       notifications: { count: 0, next: null, previous: null, results: [], server_time: new Date().toISOString() },
       unreadCount: { unread_count: 0 },
     });
-    
+
     await loginToDashboard(page);
     await page.getByRole('button', { name: /notifications/i }).click();
-    
+
     await expect(page.getByText('All caught up!')).toBeVisible();
   });
 });
@@ -252,72 +252,72 @@ test.describe.skip('Expanded Notification Center (deprecated; use notifications-
 
   test('should open expanded view when clicking "View all"', async ({ page }) => {
     await loginToDashboard(page);
-    
+
     // Open popover
     await page.getByRole('button', { name: /notifications/i }).click();
     await page.waitForTimeout(300);
-    
+
     // Click "View all notifications"
     await page.getByRole('button', { name: /view all notifications/i }).click();
     await page.waitForTimeout(500);
-    
+
     // Expanded panel should appear with full title
     await expect(page.locator('h2').filter({ hasText: 'Notifications' })).toBeVisible();
   });
 
   test('should show unread section in expanded view', async ({ page }) => {
     await loginToDashboard(page);
-    
+
     await page.getByRole('button', { name: /notifications/i }).click();
     await page.waitForTimeout(300);
     await page.getByRole('button', { name: /view all notifications/i }).click();
     await page.waitForTimeout(500);
-    
+
     // Should show "Unread" section header
     await expect(page.getByText(/unread \(\d+\)/i)).toBeVisible();
   });
 
   test('should show "Earlier" section for read notifications', async ({ page }) => {
     await loginToDashboard(page);
-    
+
     await page.getByRole('button', { name: /notifications/i }).click();
     await page.waitForTimeout(300);
     await page.getByRole('button', { name: /view all notifications/i }).click();
     await page.waitForTimeout(500);
-    
+
     // Should show "Earlier" section
     await expect(page.getByText('Earlier')).toBeVisible();
   });
 
   test('should close expanded view when clicking X button', async ({ page }) => {
     await loginToDashboard(page);
-    
+
     await page.getByRole('button', { name: /notifications/i }).click();
     await page.waitForTimeout(300);
     await page.getByRole('button', { name: /view all notifications/i }).click();
     await page.waitForTimeout(500);
-    
+
     // Click close button using force since it might be at edge of viewport
     const closeButton = page.locator('button').filter({ has: page.locator('svg.lucide-x') }).last();
     await closeButton.click({ force: true });
     await page.waitForTimeout(300);
-    
+
     // Expanded panel should be gone
     await expect(page.locator('h2').filter({ hasText: 'Notifications' })).not.toBeVisible();
   });
 
   test('should close expanded view when clicking backdrop', async ({ page }) => {
     await loginToDashboard(page);
-    
+
     await page.getByRole('button', { name: /notifications/i }).click();
     await page.waitForTimeout(300);
     await page.getByRole('button', { name: /view all notifications/i }).click();
     await page.waitForTimeout(500);
-    
+
     // Click backdrop (outside the panel)
     await page.locator('.bg-black\\/50').click({ position: { x: 10, y: 10 } });
     await page.waitForTimeout(300);
-    
+
     // Expanded panel should be gone
     await expect(page.locator('h2').filter({ hasText: 'Notifications' })).not.toBeVisible();
   });
@@ -338,12 +338,12 @@ test.describe.skip('Notification Actions (deprecated; use notifications-center.s
     await loginToDashboard(page);
     await page.getByRole('button', { name: /notifications/i }).click();
     await page.waitForTimeout(500);
-    
+
     // Click the notification item container (not just the title text)
     const notificationItem = page.getByTestId('notification-item').first();
     await notificationItem.click();
     await page.waitForTimeout(500);
-    
+
     expect(markReadCalled).toBe(true);
   });
 
@@ -357,7 +357,7 @@ test.describe.skip('Notification Actions (deprecated; use notifications-center.s
     await loginToDashboard(page);
     await page.getByRole('button', { name: /notifications/i }).click();
     await page.waitForTimeout(500);
-    
+
     // The button should be visible if there are unread notifications
     const markAllButton = page.getByRole('button', { name: /mark all/i });
     if (await markAllButton.isVisible()) {
@@ -377,9 +377,9 @@ test.describe.skip('Empty and Loading States (deprecated; use notifications-cent
       notifications: mockNotifications,
       unreadCount: { unread_count: 0 },
     });
-    
+
     await loginToDashboard(page);
-    
+
     const badge = page.getByTestId('unread-badge');
     await expect(badge).not.toBeVisible();
   });
@@ -393,19 +393,19 @@ test.describe.skip('Empty and Loading States (deprecated; use notifications-cent
         body: JSON.stringify({ access: 'mock', refresh: 'mock', user: { id: 1, username: 'test' } }),
       });
     });
-    
+
     await page.route(/.*\/api\/notifications\/unread-count\/?$/, async (route) => {
       await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ unread_count: 1 }) });
     });
-    
+
     await page.route(/.*\/api\/notifications\/?(\?.*)?$/, async (route) => {
       await new Promise(resolve => setTimeout(resolve, 2000));
       await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(mockNotifications) });
     });
-    
+
     await loginToDashboard(page);
     await page.getByRole('button', { name: /notifications/i }).click();
-    
+
     // Should show loading spinner
     const loading = page.getByTestId('notification-loading');
     await expect(loading).toBeVisible();

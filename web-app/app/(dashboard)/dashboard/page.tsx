@@ -43,7 +43,7 @@ export default function DashboardPage() {
               <span className="flex items-center gap-2">
                 +{stats?.patients.today ?? 0} today
                 {weeklyChanges.patients > 0 && (
-                  <TrendBadge 
+                  <TrendBadge
                     change={((weeklyChanges.patients / Math.max(1, (stats?.patients.total ?? 1) - weeklyChanges.patients)) * 100)}
                     size="sm"
                   />
@@ -65,7 +65,7 @@ export default function DashboardPage() {
               <span className="flex items-center gap-2">
                 {stats?.encounters.in_progress ?? 0} in progress
                 {(stats?.encounters.today ?? 0) > 0 && (
-                  <TrendBadge 
+                  <TrendBadge
                     change={12.5} // Would come from API comparison in production
                     size="sm"
                   />
@@ -103,7 +103,7 @@ export default function DashboardPage() {
               <span className="flex items-center gap-2">
                 {stats?.alerts.critical ?? 0} critical
                 {(stats?.alerts.critical ?? 0) > 0 && (
-                  <TrendBadge 
+                  <TrendBadge
                     change={stats?.alerts.critical ?? 0}
                     invertColors
                     size="sm"

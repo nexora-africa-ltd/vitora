@@ -121,7 +121,9 @@ def sample_invoice(db, sample_patient, test_user):
     return invoice
 
 
-def create_invoice_with_payment(patient, user, service, quantity, payment_date, payment_status="completed"):
+def create_invoice_with_payment(
+    patient, user, service, quantity, payment_date, payment_status="completed"
+):
     """Helper to create invoice with items and payment."""
     from hmis.apps.billing.models import Invoice, InvoiceItem, Payment
 
@@ -129,8 +131,9 @@ def create_invoice_with_payment(patient, user, service, quantity, payment_date, 
     invoice = Invoice.objects.create(
         patient=patient,
         status=Invoice.Status.PENDING,
-        invoice_date=payment_date.date() if hasattr(payment_date, 'date') else payment_date,
-        due_date=(payment_date.date() if hasattr(payment_date, 'date') else payment_date) + timedelta(days=30),
+        invoice_date=payment_date.date() if hasattr(payment_date, "date") else payment_date,
+        due_date=(payment_date.date() if hasattr(payment_date, "date") else payment_date)
+        + timedelta(days=30),
         created_by=user,
     )
 
@@ -158,8 +161,12 @@ def create_invoice_with_payment(patient, user, service, quantity, payment_date, 
         method=Payment.Method.CASH,
         amount=line_total,
         status=payment_status,
-        payment_date=payment_date if hasattr(payment_date, 'hour') else timezone.make_aware(
-            timezone.datetime.combine(payment_date, timezone.datetime.min.time())
+        payment_date=(
+            payment_date
+            if hasattr(payment_date, "hour")
+            else timezone.make_aware(
+                timezone.datetime.combine(payment_date, timezone.datetime.min.time())
+            )
         ),
         received_by=user,
     )
@@ -384,8 +391,7 @@ class TestRevenueBreakdownDataAccuracy:
     """Test data accuracy for revenue breakdown endpoint."""
 
     def test_aggregates_revenue_by_category(
-        self, authenticated_client, sample_patient, test_user,
-        consultation_service, lab_service
+        self, authenticated_client, sample_patient, test_user, consultation_service, lab_service
     ):
         """Should correctly aggregate revenue by service category."""
         today = date.today()
@@ -426,8 +432,7 @@ class TestRevenueBreakdownDataAccuracy:
         assert breakdown["Laboratory"]["amount"] == 800.0
 
     def test_calculates_percentages_correctly(
-        self, authenticated_client, sample_patient, test_user,
-        consultation_service, lab_service
+        self, authenticated_client, sample_patient, test_user, consultation_service, lab_service
     ):
         """Should calculate percentages correctly."""
         today = date.today()
@@ -443,6 +448,7 @@ class TestRevenueBreakdownDataAccuracy:
 
         # Create another lab service with price 1000
         from hmis.apps.billing.models import Service
+
         lab_service_2 = Service.objects.create(
             category=lab_service.category,
             code="LAB-002",
@@ -669,7 +675,15 @@ class TestRevenueBreakdownGroupBy:
         assert response.status_code == status.HTTP_200_OK
         item = response.data["breakdown"][0]
         # Should be grouped by payment method
-        assert item["name"].lower() in ["cash", "mpesa", "card", "bank_transfer", "insurance", "corporate", "cheque"]
+        assert item["name"].lower() in [
+            "cash",
+            "mpesa",
+            "card",
+            "bank_transfer",
+            "insurance",
+            "corporate",
+            "cheque",
+        ]
 
 
 # =============================================================================

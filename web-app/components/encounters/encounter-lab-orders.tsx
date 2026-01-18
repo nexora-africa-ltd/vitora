@@ -2,7 +2,7 @@
  * Encounter Lab Orders Component
  * Shows lab orders for a specific encounter with ability to create new orders
  * Sprint 1.5-1.6 Track B: Lab Workflow Integration
- * 
+ *
  * Note: Lab orders can be created at any time during the encounter.
  * Clinicians may need to order labs to inform diagnosis and treatment decisions.
  */
@@ -218,11 +218,11 @@ interface EncounterLabOrdersContentProps {
  * Content-only version of the Lab Orders component (no Card wrapper)
  * Used in accordion-based layouts
  */
-export function EncounterLabOrdersContent({ 
-  encounterId, 
-  patientId, 
-  disabled = false, 
-  onBeforeNavigate 
+export function EncounterLabOrdersContent({
+  encounterId,
+  patientId,
+  disabled = false,
+  onBeforeNavigate
 }: EncounterLabOrdersContentProps) {
   const router = useRouter();
   const { data: orders, isLoading, error } = useEncounterLabOrders(encounterId);
@@ -259,7 +259,7 @@ export function EncounterLabOrdersContent({
       <p className="text-sm text-muted-foreground">
         Order lab tests and view results
       </p>
-      
+
       {/* Action buttons */}
       <div className="flex items-center gap-2">
         {hasResults && (

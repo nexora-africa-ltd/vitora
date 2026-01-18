@@ -21,7 +21,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { KPICard } from '@/components/reports/kpi-card';
 import { TrendIndicator } from '@/components/charts';
-import { 
+import {
   useTriageWaitTimeStats,
   useWaitingQueue,
   useStartTriage,
@@ -220,8 +220,8 @@ export default function TriageQueuePage() {
               <p className="text-sm mt-1">
                 Patients will appear here after registration/check-in
               </p>
-              <Button 
-                variant="outline" 
+              <Button
+                variant="outline"
                 className="mt-4"
                 onClick={() => router.push('/patients/new')}
               >
@@ -241,9 +241,9 @@ export default function TriageQueuePage() {
                       <Badge variant="outline" className="text-xs">
                         {entry.patient_mrn}
                       </Badge>
-                      <PatientStageBadge 
-                        stage={entry.status === 'IN_TRIAGE' ? 'IN_TRIAGE' : 'AWAITING_TRIAGE'} 
-                        size="sm" 
+                      <PatientStageBadge
+                        stage={entry.status === 'IN_TRIAGE' ? 'IN_TRIAGE' : 'AWAITING_TRIAGE'}
+                        size="sm"
                       />
                       {entry.priority_hint && entry.priority_hint !== 'NORMAL' && (
                         <Badge variant={entry.priority_hint === 'EMERGENCY' ? 'destructive' : 'secondary'}>

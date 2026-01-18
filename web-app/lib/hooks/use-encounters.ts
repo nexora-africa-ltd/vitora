@@ -106,11 +106,11 @@ export function useEditChiefComplaint() {
 
 /**
  * Hook for fetching pre-triage queue (encounters awaiting triage).
- * 
+ *
  * Returns encounters with:
  * - triage_status = PENDING (or IN_PROGRESS if include_in_progress=true)
  * - triage_requirement in (MANDATORY, OPTIONAL)
- * 
+ *
  * Auto-refreshes every 15 seconds.
  */
 export function usePreTriageQueue(params?: PreTriageQueueParams) {

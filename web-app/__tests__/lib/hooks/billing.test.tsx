@@ -1,9 +1,9 @@
 /**
  * TDD Tests for Billing React Query Hooks - RED PHASE
- * 
+ *
  * These tests define the expected behavior of billing hooks
  * before implementation. All tests should FAIL initially.
- * 
+ *
  * @see docs/user-stories.md
  */
 import { renderHook, waitFor } from '@testing-library/react';

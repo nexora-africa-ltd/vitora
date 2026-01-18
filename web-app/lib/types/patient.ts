@@ -3,7 +3,7 @@
  */
 
 // Supported identification types (aligned with SHA/CR)
-export type IdentificationType = 
+export type IdentificationType =
   | 'national_id'
   | 'cr_number'
   | 'mandate_number'

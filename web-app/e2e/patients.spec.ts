@@ -58,16 +58,16 @@ test.describe('Patient Management', () => {
     await page.route(/.*\/api\/patients\/(\?.*)?$/, async (route) => {
       const url = new URL(route.request().url());
       const search = url.searchParams.get('search');
-      
+
       let results = [...mockPatients.results];
       if (search) {
-        results = results.filter(p => 
+        results = results.filter(p =>
           p.first_name.toLowerCase().includes(search.toLowerCase()) ||
           p.last_name.toLowerCase().includes(search.toLowerCase()) ||
           p.mrn.toLowerCase().includes(search.toLowerCase())
         );
       }
-      
+
       await route.fulfill({
         status: 200,
         contentType: 'application/json',
@@ -128,7 +128,7 @@ test.describe('Patient Management', () => {
     // Navigate using click from dashboard to ensure auth state is maintained
     const viewport = page.viewportSize();
     const isMobile = viewport && viewport.width < 1024;
-    
+
     if (isMobile) {
       const menuButton = page.getByRole('button', { name: 'Toggle menu' });
       if (await menuButton.isVisible()) {
@@ -136,15 +136,15 @@ test.describe('Patient Management', () => {
         await page.waitForTimeout(500);
       }
     }
-    
+
     // Get sidebar patients link and click using evaluate for reliable clicking
     const patientsLink = page.locator('[data-testid="sidebar"]').getByRole('link', { name: /patients/i });
     await patientsLink.evaluate((el: HTMLElement) => el.click());
     await expect(page).toHaveURL(/.*patients.*/);
-    
+
     // Wait for the page to settle and API to respond
     await page.waitForLoadState('networkidle');
-    
+
     // Should show patient table with mocked data
     await expect(page.getByText('Jane Doe')).toBeVisible({ timeout: 10000 });
     await expect(page.getByText('John Smith')).toBeVisible();
@@ -155,7 +155,7 @@ test.describe('Patient Management', () => {
     // Navigate using click from dashboard
     const viewport = page.viewportSize();
     const isMobile = viewport && viewport.width < 1024;
-    
+
     if (isMobile) {
       const menuButton = page.getByRole('button', { name: 'Toggle menu' });
       if (await menuButton.isVisible()) {
@@ -163,17 +163,17 @@ test.describe('Patient Management', () => {
         await page.waitForTimeout(500);
       }
     }
-    
+
     // Get sidebar patients link and click using evaluate
     const patientsLink = page.locator('[data-testid="sidebar"]').getByRole('link', { name: /patients/i });
     await patientsLink.evaluate((el: HTMLElement) => el.click());
     await expect(page).toHaveURL(/.*patients.*/);
     await page.waitForLoadState('networkidle');
-    
+
     // Enter search query
     await page.getByPlaceholder(/search/i).fill('Jane');
     await page.waitForTimeout(500); // Debounce wait
-    
+
     // Should filter results
     await expect(page.getByText('Jane Doe')).toBeVisible({ timeout: 10000 });
   });
@@ -182,7 +182,7 @@ test.describe('Patient Management', () => {
     // Navigate using click from dashboard
     const viewport = page.viewportSize();
     const isMobile = viewport && viewport.width < 1024;
-    
+
     if (isMobile) {
       const menuButton = page.getByRole('button', { name: 'Toggle menu' });
       if (await menuButton.isVisible()) {
@@ -190,20 +190,20 @@ test.describe('Patient Management', () => {
         await page.waitForTimeout(500);
       }
     }
-    
+
     // Get sidebar patients link and click using evaluate
     const patientsLink = page.locator('[data-testid="sidebar"]').getByRole('link', { name: /patients/i });
     await patientsLink.evaluate((el: HTMLElement) => el.click());
     await expect(page).toHaveURL(/.*patients.*/);
     await page.waitForLoadState('networkidle');
-    
+
     // Wait for patient data to load
     await expect(page.getByText('Jane Doe')).toBeVisible({ timeout: 10000 });
-    
+
     // Click on the table row containing Jane Doe - use the row itself for better click targeting
     const patientRow = page.locator('tr').filter({ hasText: 'Jane Doe' });
     await patientRow.click();
-    
+
     // Should navigate to detail page
     await expect(page).toHaveURL(/.*patients\/1.*/, { timeout: 10000 });
   });
@@ -212,7 +212,7 @@ test.describe('Patient Management', () => {
     // Navigate using click from dashboard
     const viewport = page.viewportSize();
     const isMobile = viewport && viewport.width < 1024;
-    
+
     if (isMobile) {
       const menuButton = page.getByRole('button', { name: 'Toggle menu' });
       if (await menuButton.isVisible()) {
@@ -220,19 +220,19 @@ test.describe('Patient Management', () => {
         await page.waitForTimeout(500);
       }
     }
-    
+
     // Get sidebar patients link and click using evaluate
     const patientsLink = page.locator('[data-testid="sidebar"]').getByRole('link', { name: /patients/i });
     await patientsLink.evaluate((el: HTMLElement) => el.click());
     await expect(page).toHaveURL(/.*patients.*/);
     await page.waitForLoadState('networkidle');
-    
+
     // Click new patient button and wait for navigation
     await Promise.all([
       page.waitForURL(/.*patients\/new.*/, { timeout: 10000 }),
       page.getByRole('button', { name: /new patient|add patient|register/i }).click(),
     ]);
-    
+
     // Should show form
     await expect(page.getByLabel(/first name/i)).toBeVisible({ timeout: 10000 });
     await expect(page.getByLabel(/last name/i)).toBeVisible();
@@ -243,7 +243,7 @@ test.describe('Patient Management', () => {
     // Navigate using click from dashboard
     const viewport = page.viewportSize();
     const isMobile = viewport && viewport.width < 1024;
-    
+
     if (isMobile) {
       const menuButton = page.getByRole('button', { name: 'Toggle menu' });
       if (await menuButton.isVisible()) {
@@ -251,25 +251,25 @@ test.describe('Patient Management', () => {
         await page.waitForTimeout(500);
       }
     }
-    
+
     // Get sidebar patients link and click using evaluate
     const patientsLink = page.locator('[data-testid="sidebar"]').getByRole('link', { name: /patients/i });
     await patientsLink.evaluate((el: HTMLElement) => el.click());
     await expect(page).toHaveURL(/.*patients.*/);
     await page.waitForLoadState('networkidle');
-    
+
     // Click new patient button and wait for navigation
     await Promise.all([
       page.waitForURL(/.*patients\/new.*/, { timeout: 10000 }),
       page.getByRole('button', { name: /new patient|add patient|register/i }).click(),
     ]);
-    
+
     // Wait for form to be visible
     await expect(page.getByLabel(/first name/i)).toBeVisible({ timeout: 10000 });
-    
+
     // Try to submit empty form - click the Register Patient button in the form
     await page.getByRole('button', { name: /register patient/i }).click();
-    
+
     // Should show validation errors
     await expect(page.getByText(/required/i).first()).toBeVisible();
   });

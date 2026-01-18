@@ -6,6 +6,7 @@ Full integration planned for Phase 2 when SHA API becomes available.
 
 Reference: Deliverables spec § 11 "SHA Claims Stub (Future Integration)"
 """
+
 from datetime import timedelta
 from decimal import Decimal
 from typing import Any

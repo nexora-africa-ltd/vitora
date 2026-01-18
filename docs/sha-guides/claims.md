@@ -285,7 +285,7 @@ The core resource containing claim details, diagnosis, and service information.
                   }
                }
             ],
-            
+
     "subType": {
       "coding": [
         {
@@ -416,7 +416,7 @@ The core resource containing claim details, diagnosis, and service information.
 Core Components of a FHIR Claim Resource
 
 1. Identification & Metadata
-   
+
 ```json
 {
   "id": "a0016666-8137-47c1-b90c-c8e7c3094a28",
@@ -438,7 +438,7 @@ status: Current processing status (typically "active" for new claims)
 resourceType: Always "Claim" for this resource type
 
 1. Claim Type Information
-   
+
 ```json
 { "type": {
     "coding": [
@@ -473,7 +473,7 @@ use: Purpose of the claim (typically "claim" for initial submissions)
 priority: Processing priority (typically "normal")
 
 1. Patient Information
-   
+
 ```json
 { "patient": {
     "reference": "https://qa-mis.apeiro-digital.com/fhir/Patient/CR0000000000001-1",
@@ -491,7 +491,7 @@ identifier: Patient's unique identifier
 type: Always "Patient" for this reference
 
 1. Service Period & Timing
-   
+
 ```json
 {
   "billablePeriod": {
@@ -550,7 +550,7 @@ insurance: Array of coverage information - sequence: Order of consideration (usu
 focal: Whether this is the primary coverage ("True")
 coverage: Reference to the coverage resource
 1. Diagnosis Information
-   
+
 ```json
 {
   "diagnosis": [

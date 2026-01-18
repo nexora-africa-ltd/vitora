@@ -1,8 +1,8 @@
 # Prescriptions E2E Test Report
 
-**Date:** January 9, 2026  
-**Test File:** `web-app/e2e/pharmacy/prescriptions.spec.ts`  
-**Browser:** Chromium  
+**Date:** January 9, 2026
+**Test File:** `web-app/e2e/pharmacy/prescriptions.spec.ts`
+**Browser:** Chromium
 **Duration:** ~3.9 minutes
 
 ---
@@ -72,7 +72,7 @@
   </TableHeader>
   <TableBody>
     {prescriptions.map((rx) => (
-      <TableRow 
+      <TableRow
         key={rx.id}
         className={cn(
           isExpired(rx.valid_until) && "expired bg-red-50"
@@ -86,7 +86,7 @@
         <TableCell>{formatDate(rx.valid_until)}</TableCell>
         <TableCell>{rx.items?.length || 0} item(s)</TableCell>
         <TableCell>
-          <Badge 
+          <Badge
             data-testid="status-badge"
             className={cn(
               rx.status === 'PENDING' && "pending bg-yellow-100 text-yellow-800",
@@ -133,7 +133,7 @@ const filteredPrescriptions = prescriptions.filter(rx => {
   if (statusFilter !== 'all' && rx.status.toLowerCase() !== statusFilter) {
     return false;
   }
-  
+
   // Search filter
   if (searchQuery) {
     const query = searchQuery.toLowerCase();
@@ -141,11 +141,11 @@ const filteredPrescriptions = prescriptions.filter(rx => {
     const matchesMRN = rx.patient_mrn?.toLowerCase().includes(query);
     if (!matchesPatient && !matchesMRN) return false;
   }
-  
+
   // Date range filter
   if (dateFrom && new Date(rx.prescription_date) < dateFrom) return false;
   if (dateTo && new Date(rx.prescription_date) > dateTo) return false;
-  
+
   return true;
 });
 
@@ -156,29 +156,29 @@ const filteredPrescriptions = prescriptions.filter(rx => {
     value={searchQuery}
     onChange={(e) => setSearchQuery(e.target.value)}
   />
-  
+
   <div>
     <Label htmlFor="date-from">From</Label>
-    <Input 
-      id="date-from" 
-      type="date" 
+    <Input
+      id="date-from"
+      type="date"
       data-testid="date-from"
       onChange={(e) => setDateFrom(new Date(e.target.value))}
     />
   </div>
-  
+
   <div>
     <Label htmlFor="date-to">To</Label>
-    <Input 
-      id="date-to" 
-      type="date" 
+    <Input
+      id="date-to"
+      type="date"
       data-testid="date-to"
       onChange={(e) => setDateTo(new Date(e.target.value))}
     />
   </div>
-  
-  <Button 
-    variant="outline" 
+
+  <Button
+    variant="outline"
     data-testid="today-filter"
     onClick={() => {
       const today = new Date();
@@ -214,43 +214,43 @@ const filteredPrescriptions = prescriptions.filter(rx => {
 ```tsx
 // Create PrescriptionDetailDialog component:
 
-export function PrescriptionDetailDialog({ 
-  prescription, 
-  open, 
-  onOpenChange 
+export function PrescriptionDetailDialog({
+  prescription,
+  open,
+  onOpenChange
 }: Props) {
   if (!prescription) return null;
-  
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent data-testid="prescription-detail">
         <DialogHeader>
           <DialogTitle>Prescription: {prescription.prescription_number}</DialogTitle>
         </DialogHeader>
-        
+
         {/* Patient Information */}
         <div className="space-y-2">
           <h4 className="font-semibold">Patient</h4>
           <p>{prescription.patient_name}</p>
           <p>{prescription.patient_mrn}</p>
         </div>
-        
+
         {/* Validity Status */}
         <div>
           <Badge className={isValid(prescription) ? "bg-green-100" : "bg-red-100"}>
-            {isValid(prescription) 
-              ? `Valid until ${prescription.valid_until}` 
+            {isValid(prescription)
+              ? `Valid until ${prescription.valid_until}`
               : `Expires: ${prescription.valid_until}`
             }
           </Badge>
         </div>
-        
+
         {/* Clinical Notes */}
         <div>
           <h4 className="font-semibold">Clinical Notes</h4>
           <p>{prescription.clinical_notes || 'Headache and fever'}</p>
         </div>
-        
+
         {/* Prescription Items */}
         <div>
           <h4 className="font-semibold">Items</h4>
@@ -262,14 +262,14 @@ export function PrescriptionDetailDialog({
               <p>{item.duration || '5 days'}</p>
               <p>{item.route || 'Oral'}</p>
               <p>{item.instructions || 'After meals'}</p>
-              
+
               {/* Quantities */}
               <div className="mt-2 text-sm">
                 <p>Prescribed: {item.quantity_prescribed || 30}</p>
                 <p>Dispensed: {item.quantity_dispensed || 0}</p>
                 <p>Remaining: {(item.quantity_prescribed || 30) - (item.quantity_dispensed || 0)}</p>
               </div>
-              
+
               {/* Substitutable */}
               {item.substitutable && (
                 <Badge variant="outline">Substitution Allowed</Badge>
@@ -283,7 +283,7 @@ export function PrescriptionDetailDialog({
 }
 
 // Add click handler to table rows:
-<TableRow 
+<TableRow
   className="cursor-pointer"
   onClick={() => setSelectedPrescription(rx)}
 >
@@ -321,7 +321,7 @@ export function PrescriptionDetailDialog({
 
 ```tsx
 // 1. Add Create button to prescriptions page:
-<Button 
+<Button
   data-testid="create-prescription-button"
   onClick={() => setShowCreateForm(true)}
 >
@@ -334,7 +334,7 @@ export function PrescriptionForm({ onSubmit, onCancel }: Props) {
   const [patient, setPatient] = useState<Patient | null>(null);
   const [clinicalNotes, setClinicalNotes] = useState('');
   const [items, setItems] = useState<PrescriptionItem[]>([]);
-  
+
   const addItem = () => {
     setItems([...items, {
       drug: null,
@@ -347,55 +347,55 @@ export function PrescriptionForm({ onSubmit, onCancel }: Props) {
       substitutable: true,
     }]);
   };
-  
+
   const removeItem = (index: number) => {
     setItems(items.filter((_, i) => i !== index));
   };
-  
+
   return (
     <form onSubmit={handleSubmit}>
       {/* Patient Selection */}
       <div>
         <Label htmlFor="patient">Patient</Label>
-        <PatientSearch 
+        <PatientSearch
           id="patient"
           aria-label="Patient"
           onSelect={setPatient}
         />
       </div>
-      
+
       {/* Clinical Notes */}
       <div>
         <Label htmlFor="clinical-notes">Clinical Notes</Label>
-        <Textarea 
+        <Textarea
           id="clinical-notes"
           aria-label="Clinical Notes"
           value={clinicalNotes}
           onChange={(e) => setClinicalNotes(e.target.value)}
         />
       </div>
-      
+
       {/* Items Section */}
       <div>
         <h3>Items/Medications</h3>
-        
+
         {items.map((item, index) => (
           <div key={index} className="border p-4 rounded mb-4">
             {/* Drug Selection */}
             <div>
               <Label htmlFor={`drug-${index}`}>Drug</Label>
-              <DrugSelect 
+              <DrugSelect
                 id={`drug-${index}`}
                 aria-label="Drug"
                 value={item.drug}
                 onChange={(drug) => updateItem(index, { drug })}
               />
             </div>
-            
+
             {/* Quantity */}
             <div>
               <Label htmlFor={`quantity-${index}`}>Quantity</Label>
-              <Input 
+              <Input
                 id={`quantity-${index}`}
                 type="number"
                 aria-label="Quantity"
@@ -403,18 +403,18 @@ export function PrescriptionForm({ onSubmit, onCancel }: Props) {
                 onChange={(e) => updateItem(index, { quantity: +e.target.value })}
               />
             </div>
-            
+
             {/* Dosage */}
             <div>
               <Label htmlFor={`dosage-${index}`}>Dosage</Label>
-              <Input 
+              <Input
                 id={`dosage-${index}`}
                 aria-label="Dosage"
                 value={item.dosage}
                 onChange={(e) => updateItem(index, { dosage: e.target.value })}
               />
             </div>
-            
+
             {/* Frequency */}
             <div>
               <Label htmlFor={`frequency-${index}`}>Frequency</Label>
@@ -431,11 +431,11 @@ export function PrescriptionForm({ onSubmit, onCancel }: Props) {
                 </SelectContent>
               </Select>
             </div>
-            
+
             {/* Duration */}
             <div>
               <Label htmlFor={`duration-${index}`}>Duration</Label>
-              <Input 
+              <Input
                 id={`duration-${index}`}
                 aria-label="Duration"
                 placeholder="e.g., 5 days"
@@ -443,7 +443,7 @@ export function PrescriptionForm({ onSubmit, onCancel }: Props) {
                 onChange={(e) => updateItem(index, { duration: e.target.value })}
               />
             </div>
-            
+
             {/* Route */}
             <div>
               <Label htmlFor={`route-${index}`}>Route</Label>
@@ -460,11 +460,11 @@ export function PrescriptionForm({ onSubmit, onCancel }: Props) {
                 </SelectContent>
               </Select>
             </div>
-            
+
             {/* Instructions */}
             <div>
               <Label htmlFor={`instructions-${index}`}>Instructions</Label>
-              <Input 
+              <Input
                 id={`instructions-${index}`}
                 aria-label="Instructions"
                 placeholder="e.g., After meals"
@@ -472,10 +472,10 @@ export function PrescriptionForm({ onSubmit, onCancel }: Props) {
                 onChange={(e) => updateItem(index, { instructions: e.target.value })}
               />
             </div>
-            
+
             {/* Substitutable */}
             <div className="flex items-center gap-2">
-              <Checkbox 
+              <Checkbox
                 id={`substitutable-${index}`}
                 aria-label="Substitutable"
                 checked={item.substitutable}
@@ -483,11 +483,11 @@ export function PrescriptionForm({ onSubmit, onCancel }: Props) {
               />
               <Label htmlFor={`substitutable-${index}`}>Allow Substitution</Label>
             </div>
-            
+
             {/* Remove Button */}
-            <Button 
-              type="button" 
-              variant="destructive" 
+            <Button
+              type="button"
+              variant="destructive"
               size="sm"
               onClick={() => removeItem(index)}
             >
@@ -495,12 +495,12 @@ export function PrescriptionForm({ onSubmit, onCancel }: Props) {
             </Button>
           </div>
         ))}
-        
+
         <Button type="button" variant="outline" onClick={addItem}>
           Add Item
         </Button>
       </div>
-      
+
       {/* Submit */}
       <Button type="submit">Create Prescription</Button>
     </form>
@@ -528,8 +528,8 @@ export function PrescriptionForm({ onSubmit, onCancel }: Props) {
 ```tsx
 // 1. Add cancel button to pending prescription rows:
 {rx.status === 'PENDING' && (
-  <Button 
-    variant="destructive" 
+  <Button
+    variant="destructive"
     size="sm"
     data-testid="cancel-prescription"
     onClick={() => setCancelPrescription(rx)}
@@ -544,10 +544,10 @@ export function PrescriptionForm({ onSubmit, onCancel }: Props) {
     <DialogHeader>
       <DialogTitle>Cancel Prescription</DialogTitle>
     </DialogHeader>
-    
+
     <div>
       <Label htmlFor="cancel-reason">Reason</Label>
-      <Textarea 
+      <Textarea
         id="cancel-reason"
         aria-label="Reason"
         value={cancelReason}
@@ -555,12 +555,12 @@ export function PrescriptionForm({ onSubmit, onCancel }: Props) {
         placeholder="Enter cancellation reason..."
       />
     </div>
-    
+
     <DialogFooter>
       <Button variant="outline" onClick={() => setCancelPrescription(null)}>
         Back
       </Button>
-      <Button 
+      <Button
         variant="destructive"
         onClick={handleCancel}
       >
@@ -595,7 +595,7 @@ await expect(cancelButton).toBeDisabled();
 ```tsx
 // Add dispense actions to table rows:
 {rx.status === 'PENDING' && (
-  <Button 
+  <Button
     variant="default"
     size="sm"
     onClick={() => navigateToDispense(rx)}
@@ -605,7 +605,7 @@ await expect(cancelButton).toBeDisabled();
 )}
 
 {rx.status === 'PARTIAL' && (
-  <Button 
+  <Button
     variant="default"
     size="sm"
     onClick={() => navigateToDispense(rx)}
@@ -636,7 +636,7 @@ const navigateToDispense = (rx: Prescription) => {
 ```tsx
 // Add print buttons to prescription detail dialog:
 <DialogFooter>
-  <Button 
+  <Button
     variant="outline"
     data-testid="print-prescription"
     onClick={() => handlePrint('prescription')}
@@ -644,8 +644,8 @@ const navigateToDispense = (rx: Prescription) => {
     <Printer className="h-4 w-4 mr-2" />
     Print
   </Button>
-  
-  <Button 
+
+  <Button
     variant="outline"
     data-testid="print-label"
     onClick={() => handlePrint('label')}

@@ -47,7 +47,7 @@ export function SyncProvider({ children }: { children: React.ReactNode }) {
     pendingChanges: 0,
     lastError: null,
   });
-  
+
   // Store the trigger sync function (can be set by components that handle syncing)
   const triggerSyncRef = React.useRef<() => Promise<void>>(async () => {
     // Default implementation - just simulates a sync
@@ -61,7 +61,7 @@ export function SyncProvider({ children }: { children: React.ReactNode }) {
     if (status.isSyncing) return; // Don't trigger if already syncing
     await triggerSyncRef.current();
   }, [status.isSyncing]);
-  
+
   const setTriggerSync = useCallback((fn: () => Promise<void>) => {
     triggerSyncRef.current = fn;
   }, []);
@@ -158,19 +158,19 @@ export function useSyncStatus(): SyncContextValue {
  */
 export function formatLastSync(date: Date | null): string {
   if (!date) return 'Never synced';
-  
+
   const now = new Date();
   const diff = now.getTime() - date.getTime();
   const seconds = Math.floor(diff / 1000);
   const minutes = Math.floor(seconds / 60);
   const hours = Math.floor(minutes / 60);
-  
+
   if (seconds < 5) return 'Just now';
   if (seconds < 60) return `${seconds} seconds ago`;
   if (minutes === 1) return '1 minute ago';
   if (minutes < 60) return `${minutes} minutes ago`;
   if (hours === 1) return '1 hour ago';
   if (hours < 24) return `${hours} hours ago`;
-  
+
   return date.toLocaleString();
 }

@@ -64,12 +64,12 @@ export interface DepartmentStats {
 }
 
 // Activity types matching backend ActivityFeed model
-export type ActivityType = 
-  | 'patient' 
-  | 'encounter' 
-  | 'lab' 
-  | 'pharmacy' 
-  | 'billing' 
+export type ActivityType =
+  | 'patient'
+  | 'encounter'
+  | 'lab'
+  | 'pharmacy'
+  | 'billing'
   | 'triage'
   | 'appointment'
   | 'inventory'

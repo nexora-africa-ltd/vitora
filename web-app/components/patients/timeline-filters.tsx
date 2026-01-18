@@ -33,7 +33,7 @@ export function TimelineFilters({ filters, onChange }: TimelineFiltersProps) {
   const [isFilterOpen, setIsFilterOpen] = useState(false);
   const [localSearch, setLocalSearch] = useState(filters.searchQuery || '');
 
-  const activeFilterCount = 
+  const activeFilterCount =
     (filters.eventTypes.length < eventTypeOptions.length ? 1 : 0) +
     (filters.startDate ? 1 : 0) +
     (filters.endDate ? 1 : 0);

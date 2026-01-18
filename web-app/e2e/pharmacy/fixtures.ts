@@ -1,9 +1,9 @@
 /**
  * Pharmacy E2E Test Fixtures
- * 
+ *
  * Shared mock data and helper functions for pharmacy module E2E tests.
  * Based on backend models at hmis/apps/pharmacy/models.py
- * 
+ *
  * Sprint 1.3-1.4 Track A: Pharmacy Module
  */
 import { Page } from '@playwright/test';

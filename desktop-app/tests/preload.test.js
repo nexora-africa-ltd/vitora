@@ -1,6 +1,6 @@
 /**
  * Tests for preload script
- * 
+ *
  * These tests verify the contextBridge API exposed to the renderer process.
  */
 
@@ -22,7 +22,7 @@ describe('Preload Script - preload.js', () => {
   beforeAll(() => {
     // Clear module cache to ensure fresh require
     jest.resetModules();
-    
+
     // Re-mock after reset
     jest.mock('electron', () => ({
       contextBridge: {
@@ -46,7 +46,7 @@ describe('Preload Script - preload.js', () => {
   describe('contextBridge.exposeInMainWorld', () => {
     it('should expose electronAPI to the renderer', () => {
       const { contextBridge } = require('electron');
-      
+
       expect(contextBridge.exposeInMainWorld).toHaveBeenCalledWith(
         'electronAPI',
         expect.any(Object)
@@ -78,9 +78,9 @@ describe('Preload Script - preload.js', () => {
   describe('apiRequest', () => {
     it('should invoke api-request with correct parameters', async () => {
       mockInvoke.mockResolvedValue({ success: true, data: {} });
-      
+
       await exposedAPI.apiRequest('GET', '/api/patients/', null);
-      
+
       expect(mockInvoke).toHaveBeenCalledWith('api-request', {
         method: 'GET',
         endpoint: '/api/patients/',
@@ -91,9 +91,9 @@ describe('Preload Script - preload.js', () => {
     it('should pass POST data correctly', async () => {
       mockInvoke.mockResolvedValue({ success: true, data: {} });
       const postData = { first_name: 'John', last_name: 'Doe' };
-      
+
       await exposedAPI.apiRequest('POST', '/api/patients/', postData);
-      
+
       expect(mockInvoke).toHaveBeenCalledWith('api-request', {
         method: 'POST',
         endpoint: '/api/patients/',
@@ -104,18 +104,18 @@ describe('Preload Script - preload.js', () => {
     it('should return the IPC response', async () => {
       const mockResponse = { success: true, data: { id: 1 } };
       mockInvoke.mockResolvedValue(mockResponse);
-      
+
       const result = await exposedAPI.apiRequest('GET', '/api/patients/1/', null);
-      
+
       expect(result).toEqual(mockResponse);
     });
 
     it('should handle PUT requests', async () => {
       mockInvoke.mockResolvedValue({ success: true });
       const updateData = { first_name: 'Jane' };
-      
+
       await exposedAPI.apiRequest('PUT', '/api/patients/1/', updateData);
-      
+
       expect(mockInvoke).toHaveBeenCalledWith('api-request', {
         method: 'PUT',
         endpoint: '/api/patients/1/',
@@ -125,9 +125,9 @@ describe('Preload Script - preload.js', () => {
 
     it('should handle DELETE requests', async () => {
       mockInvoke.mockResolvedValue({ success: true });
-      
+
       await exposedAPI.apiRequest('DELETE', '/api/patients/1/', null);
-      
+
       expect(mockInvoke).toHaveBeenCalledWith('api-request', {
         method: 'DELETE',
         endpoint: '/api/patients/1/',
@@ -138,9 +138,9 @@ describe('Preload Script - preload.js', () => {
     it('should handle PATCH requests', async () => {
       mockInvoke.mockResolvedValue({ success: true });
       const patchData = { status: 'active' };
-      
+
       await exposedAPI.apiRequest('PATCH', '/api/patients/1/', patchData);
-      
+
       expect(mockInvoke).toHaveBeenCalledWith('api-request', {
         method: 'PATCH',
         endpoint: '/api/patients/1/',
@@ -152,17 +152,17 @@ describe('Preload Script - preload.js', () => {
   describe('getBackendUrl', () => {
     it('should invoke get-backend-url', async () => {
       mockInvoke.mockResolvedValue('http://127.0.0.1:9088');
-      
+
       await exposedAPI.getBackendUrl();
-      
+
       expect(mockInvoke).toHaveBeenCalledWith('get-backend-url');
     });
 
     it('should return the backend URL', async () => {
       mockInvoke.mockResolvedValue('http://127.0.0.1:9088');
-      
+
       const url = await exposedAPI.getBackendUrl();
-      
+
       expect(url).toBe('http://127.0.0.1:9088');
     });
   });
@@ -175,17 +175,17 @@ describe('Preload Script - preload.js', () => {
         refreshToken: 'refresh-456',
         user: { id: 1, username: 'testuser' }
       };
-      
+
       await exposedAPI.storeTokens(tokens);
-      
+
       expect(mockInvoke).toHaveBeenCalledWith('store-tokens', tokens);
     });
 
     it('should store only access token', async () => {
       mockInvoke.mockResolvedValue({ success: true });
-      
+
       await exposedAPI.storeTokens({ accessToken: 'access-123' });
-      
+
       expect(mockInvoke).toHaveBeenCalledWith('store-tokens', {
         accessToken: 'access-123'
       });
@@ -193,9 +193,9 @@ describe('Preload Script - preload.js', () => {
 
     it('should store only refresh token', async () => {
       mockInvoke.mockResolvedValue({ success: true });
-      
+
       await exposedAPI.storeTokens({ refreshToken: 'refresh-456' });
-      
+
       expect(mockInvoke).toHaveBeenCalledWith('store-tokens', {
         refreshToken: 'refresh-456'
       });
@@ -203,9 +203,9 @@ describe('Preload Script - preload.js', () => {
 
     it('should return the result', async () => {
       mockInvoke.mockResolvedValue({ success: true });
-      
+
       const result = await exposedAPI.storeTokens({ accessToken: 'test' });
-      
+
       expect(result).toEqual({ success: true });
     });
   });
@@ -217,9 +217,9 @@ describe('Preload Script - preload.js', () => {
         refreshToken: 'refresh-456',
         user: { id: 1 }
       });
-      
+
       await exposedAPI.getStoredTokens();
-      
+
       expect(mockInvoke).toHaveBeenCalledWith('get-stored-tokens');
     });
 
@@ -230,17 +230,17 @@ describe('Preload Script - preload.js', () => {
         user: { id: 1, username: 'testuser' }
       };
       mockInvoke.mockResolvedValue(storedTokens);
-      
+
       const result = await exposedAPI.getStoredTokens();
-      
+
       expect(result).toEqual(storedTokens);
     });
 
     it('should return null when no tokens stored', async () => {
       mockInvoke.mockResolvedValue(null);
-      
+
       const result = await exposedAPI.getStoredTokens();
-      
+
       expect(result).toBeNull();
     });
   });
@@ -248,17 +248,17 @@ describe('Preload Script - preload.js', () => {
   describe('clearTokens', () => {
     it('should invoke clear-tokens', async () => {
       mockInvoke.mockResolvedValue({ success: true });
-      
+
       await exposedAPI.clearTokens();
-      
+
       expect(mockInvoke).toHaveBeenCalledWith('clear-tokens');
     });
 
     it('should return the result', async () => {
       mockInvoke.mockResolvedValue({ success: true });
-      
+
       const result = await exposedAPI.clearTokens();
-      
+
       expect(result).toEqual({ success: true });
     });
   });
@@ -297,31 +297,31 @@ describe('Preload API Integration Scenarios', () => {
           refresh: 'new-refresh-token'
         }
       });
-      
+
       const loginResponse = await exposedAPI.apiRequest('POST', '/api/token/', {
         username: 'testuser',
         password: 'password123'
       });
-      
+
       expect(loginResponse.success).toBe(true);
-      
+
       // 2. Store tokens
       mockInvoke.mockResolvedValueOnce({ success: true });
-      
+
       await exposedAPI.storeTokens({
         accessToken: loginResponse.data.access,
         refreshToken: loginResponse.data.refresh,
         user: { username: 'testuser' }
       });
-      
+
       expect(mockInvoke).toHaveBeenCalledWith('store-tokens', expect.any(Object));
     });
 
     it('should support logout flow', async () => {
       mockInvoke.mockResolvedValue({ success: true });
-      
+
       await exposedAPI.clearTokens();
-      
+
       expect(mockInvoke).toHaveBeenCalledWith('clear-tokens');
     });
 
@@ -331,28 +331,28 @@ describe('Preload API Integration Scenarios', () => {
         accessToken: null, // expired
         refreshToken: 'valid-refresh-token'
       });
-      
+
       const stored = await exposedAPI.getStoredTokens();
-      
+
       // Refresh request
       mockInvoke.mockResolvedValueOnce({
         success: true,
         data: { access: 'new-access-token' }
       });
-      
+
       const refreshResponse = await exposedAPI.apiRequest('POST', '/api/token/refresh/', {
         refresh: stored.refreshToken
       });
-      
+
       expect(refreshResponse.success).toBe(true);
-      
+
       // Store new access token
       mockInvoke.mockResolvedValueOnce({ success: true });
-      
+
       await exposedAPI.storeTokens({
         accessToken: refreshResponse.data.access
       });
-      
+
       expect(mockInvoke).toHaveBeenLastCalledWith('store-tokens', {
         accessToken: 'new-access-token'
       });
@@ -371,9 +371,9 @@ describe('Preload API Integration Scenarios', () => {
           count: 2
         }
       });
-      
+
       const response = await exposedAPI.apiRequest('GET', '/api/patients/', null);
-      
+
       expect(response.success).toBe(true);
       expect(response.data.results.length).toBe(2);
     });
@@ -388,7 +388,7 @@ describe('Preload API Integration Scenarios', () => {
           last_name: 'Patient'
         }
       });
-      
+
       const response = await exposedAPI.apiRequest('POST', '/api/patients/', {
         first_name: 'New',
         last_name: 'Patient',
@@ -397,7 +397,7 @@ describe('Preload API Integration Scenarios', () => {
         county: 1,
         sub_county: 1
       });
-      
+
       expect(response.success).toBe(true);
       expect(response.data.mrn).toBeDefined();
     });
@@ -407,11 +407,11 @@ describe('Preload API Integration Scenarios', () => {
         success: true,
         data: { id: 1, phone_number: '0712345678' }
       });
-      
+
       const response = await exposedAPI.apiRequest('PATCH', '/api/patients/1/', {
         phone_number: '0712345678'
       });
-      
+
       expect(response.success).toBe(true);
     });
   });
@@ -422,9 +422,9 @@ describe('Preload API Integration Scenarios', () => {
         success: false,
         error: 'Network Error'
       });
-      
+
       const response = await exposedAPI.apiRequest('GET', '/api/patients/', null);
-      
+
       expect(response.success).toBe(false);
       expect(response.error).toBe('Network Error');
     });
@@ -434,9 +434,9 @@ describe('Preload API Integration Scenarios', () => {
         success: false,
         error: { detail: 'Authentication credentials were not provided.' }
       });
-      
+
       const response = await exposedAPI.apiRequest('GET', '/api/patients/', null);
-      
+
       expect(response.success).toBe(false);
     });
 
@@ -445,9 +445,9 @@ describe('Preload API Integration Scenarios', () => {
         success: false,
         error: { detail: 'Not found.' }
       });
-      
+
       const response = await exposedAPI.apiRequest('GET', '/api/patients/9999/', null);
-      
+
       expect(response.success).toBe(false);
     });
 
@@ -459,9 +459,9 @@ describe('Preload API Integration Scenarios', () => {
           last_name: ['This field is required.']
         }
       });
-      
+
       const response = await exposedAPI.apiRequest('POST', '/api/patients/', {});
-      
+
       expect(response.success).toBe(false);
       expect(response.error.first_name).toBeDefined();
     });

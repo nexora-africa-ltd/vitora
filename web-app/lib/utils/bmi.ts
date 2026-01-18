@@ -1,6 +1,6 @@
 /**
  * BMI Calculator with Age-Aware Classifications
- * 
+ *
  * - Under 2 years: BMI not calculated (use weight-for-length charts)
  * - 2-19 years: Use CDC BMI-for-age percentiles
  * - 20+ years: Use standard adult BMI cutoffs
@@ -58,14 +58,14 @@ const BMI_REFERENCE_BY_AGE: Record<number, { male: { p5: number; p50: number; p8
 export function calculateAgeInYears(dateOfBirth: string | Date): number {
   const dob = typeof dateOfBirth === 'string' ? new Date(dateOfBirth) : dateOfBirth;
   const today = new Date();
-  
+
   let age = today.getFullYear() - dob.getFullYear();
   const monthDiff = today.getMonth() - dob.getMonth();
-  
+
   if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < dob.getDate())) {
     age--;
   }
-  
+
   return age;
 }
 
@@ -75,10 +75,10 @@ export function calculateAgeInYears(dateOfBirth: string | Date): number {
 export function calculateAgeInMonths(dateOfBirth: string | Date): number {
   const dob = typeof dateOfBirth === 'string' ? new Date(dateOfBirth) : dateOfBirth;
   const today = new Date();
-  
-  const months = (today.getFullYear() - dob.getFullYear()) * 12 + 
+
+  const months = (today.getFullYear() - dob.getFullYear()) * 12 +
                  (today.getMonth() - dob.getMonth());
-  
+
   return months;
 }
 
@@ -89,13 +89,13 @@ export function calculateAgeInMonths(dateOfBirth: string | Date): number {
 function estimateBMIPercentile(bmi: number, age: number, gender: 'M' | 'F' | 'O'): number {
   // Default to male for 'Other' gender
   const genderKey = gender === 'F' ? 'female' : 'male';
-  
+
   // Clamp age to available range
   const clampedAge = Math.max(2, Math.min(19, Math.floor(age)));
-  
+
   const reference = BMI_REFERENCE_BY_AGE[clampedAge]?.[genderKey];
   if (!reference) return 50; // Default to 50th percentile if no data
-  
+
   // Simple linear interpolation between percentile points
   if (bmi < reference.p5) {
     // Below 5th percentile
@@ -144,32 +144,32 @@ function getAdultBMIClassification(bmi: number): string {
 
 /**
  * Main BMI calculation function with age-aware logic
- * 
+ *
  * @param weight - Weight in kg
  * @param height - Height in cm
  * @param dateOfBirth - Patient's date of birth
  * @param gender - Patient's gender ('M', 'F', or 'O')
  */
 export function calculateBMI(
-  weight: number | null, 
+  weight: number | null,
   height: number | null,
   dateOfBirth?: string | Date | null,
   gender?: 'M' | 'F' | 'O'
 ): BMIResult {
   // Check for valid weight and height
   if (!weight || !height || height <= 0 || weight <= 0) {
-    return { 
-      bmi: null, 
-      classification: '', 
-      isAgeAppropriate: true 
+    return {
+      bmi: null,
+      classification: '',
+      isAgeAppropriate: true
     };
   }
-  
+
   // Calculate BMI
   const heightM = height / 100;
   const bmi = weight / (heightM * heightM);
   const roundedBMI = Math.round(bmi * 10) / 10;
-  
+
   // If no date of birth provided, use adult classification
   if (!dateOfBirth) {
     return {
@@ -178,10 +178,10 @@ export function calculateBMI(
       isAgeAppropriate: true,
     };
   }
-  
+
   const ageInYears = calculateAgeInYears(dateOfBirth);
   const ageInMonths = calculateAgeInMonths(dateOfBirth);
-  
+
   // Under 2 years: BMI not appropriate
   if (ageInYears < 2 || ageInMonths < 24) {
     return {
@@ -191,12 +191,12 @@ export function calculateBMI(
       message: 'BMI is not calculated for children under 2 years. Use weight-for-length charts instead.',
     };
   }
-  
+
   // 2-19 years: Use BMI-for-age percentiles
   if (ageInYears >= 2 && ageInYears < 20) {
     const percentile = estimateBMIPercentile(bmi, ageInYears, gender || 'M');
     const classification = getChildBMIClassification(percentile);
-    
+
     return {
       bmi: roundedBMI,
       classification,
@@ -205,7 +205,7 @@ export function calculateBMI(
       message: `${Math.round(percentile)}th percentile for age`,
     };
   }
-  
+
   // 20+ years: Use adult BMI classification
   return {
     bmi: roundedBMI,

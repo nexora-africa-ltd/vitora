@@ -1,7 +1,7 @@
 /**
  * Stock Movement Report Component
  * Sprint 1.3-1.4 Track A: Pharmacy Module
- * 
+ *
  * Shows all stock movements (received, dispensed, adjusted)
  */
 
@@ -89,7 +89,7 @@ export function StockMovementReport() {
   });
 
   // Sort by date descending (most recent first)
-  const sortedMovements = [...filteredMovements].sort((a: StockMovement, b: StockMovement) => 
+  const sortedMovements = [...filteredMovements].sort((a: StockMovement, b: StockMovement) =>
     new Date(b.date).getTime() - new Date(a.date).getTime()
   );
 

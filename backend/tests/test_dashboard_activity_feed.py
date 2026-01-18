@@ -30,6 +30,7 @@ ACTIVITY_FEED_URL = "/api/core/dashboard/activity-feed/"
 def activity_feed_model(db):
     """Get the ActivityFeed model."""
     from hmis.apps.core.models import ActivityFeed
+
     return ActivityFeed
 
 
@@ -83,16 +84,16 @@ class TestActivityFeedModel:
 
         # All modules should be represented
         expected_types = [
-            'patient',
-            'encounter',
-            'laboratory',
-            'pharmacy',
-            'billing',
-            'triage',
-            'inpatient',
-            'prescription',
-            'appointment',
-            'system',
+            "patient",
+            "encounter",
+            "laboratory",
+            "pharmacy",
+            "billing",
+            "triage",
+            "inpatient",
+            "prescription",
+            "appointment",
+            "system",
         ]
 
         for activity_type in expected_types:
@@ -120,14 +121,8 @@ class TestActivityFeedModel:
         from hmis.apps.core.models import ActivityFeed
 
         # Create activities with different timestamps
-        old = create_activity(
-            title="Old activity",
-            timestamp=timezone.now() - timedelta(hours=2)
-        )
-        new = create_activity(
-            title="New activity",
-            timestamp=timezone.now()
-        )
+        old = create_activity(title="Old activity", timestamp=timezone.now() - timedelta(hours=2))
+        new = create_activity(title="New activity", timestamp=timezone.now())
 
         activities = list(ActivityFeed.objects.all())
         assert activities[0].id == new.id
@@ -299,10 +294,11 @@ class TestActivityFeedPagination:
         # Create activities with known order
         activities = []
         for i in range(10):
-            activities.append(create_activity(
-                title=f"Activity {i}",
-                timestamp=timezone.now() - timedelta(minutes=i)
-            ))
+            activities.append(
+                create_activity(
+                    title=f"Activity {i}", timestamp=timezone.now() - timedelta(minutes=i)
+                )
+            )
 
         # Get first page
         response1 = authenticated_client.get(f"{ACTIVITY_FEED_URL}?limit=5&offset=0&refresh=true")
@@ -363,7 +359,9 @@ class TestActivityFeedFiltering:
         create_activity(activity_type="laboratory", title="Lab activity")
         create_activity(activity_type="pharmacy", title="Pharmacy activity")
 
-        response = authenticated_client.get(f"{ACTIVITY_FEED_URL}?types=patient,encounter&refresh=true")
+        response = authenticated_client.get(
+            f"{ACTIVITY_FEED_URL}?types=patient,encounter&refresh=true"
+        )
 
         assert response.data["count"] == 2
         types = [r["type"] for r in response.data["results"]]
@@ -403,14 +401,8 @@ class TestActivityFeedOrdering:
 
     def test_returns_recent_first(self, authenticated_client, create_activity):
         """Activities should be ordered by timestamp descending (recent first)."""
-        old = create_activity(
-            title="Old activity",
-            timestamp=timezone.now() - timedelta(hours=2)
-        )
-        new = create_activity(
-            title="New activity",
-            timestamp=timezone.now()
-        )
+        old = create_activity(title="Old activity", timestamp=timezone.now() - timedelta(hours=2))
+        new = create_activity(title="New activity", timestamp=timezone.now())
 
         response = authenticated_client.get(f"{ACTIVITY_FEED_URL}?refresh=true")
 
@@ -439,11 +431,7 @@ class TestActivityFeedResourceHref:
 
     def test_encounter_href(self, authenticated_client, create_activity):
         """Encounter resources should have correct href."""
-        create_activity(
-            activity_type="encounter",
-            resource_type="Encounter",
-            resource_id=456
-        )
+        create_activity(activity_type="encounter", resource_type="Encounter", resource_id=456)
 
         response = authenticated_client.get(f"{ACTIVITY_FEED_URL}?refresh=true")
         item = response.data["results"][0]
@@ -452,11 +440,7 @@ class TestActivityFeedResourceHref:
 
     def test_lab_order_href(self, authenticated_client, create_activity):
         """Lab order resources should have correct href."""
-        create_activity(
-            activity_type="laboratory",
-            resource_type="LabOrder",
-            resource_id=789
-        )
+        create_activity(activity_type="laboratory", resource_type="LabOrder", resource_id=789)
 
         response = authenticated_client.get(f"{ACTIVITY_FEED_URL}?refresh=true")
         item = response.data["results"][0]
@@ -465,11 +449,7 @@ class TestActivityFeedResourceHref:
 
     def test_prescription_href(self, authenticated_client, create_activity):
         """Prescription resources should have correct href."""
-        create_activity(
-            activity_type="prescription",
-            resource_type="Prescription",
-            resource_id=101
-        )
+        create_activity(activity_type="prescription", resource_type="Prescription", resource_id=101)
 
         response = authenticated_client.get(f"{ACTIVITY_FEED_URL}?refresh=true")
         item = response.data["results"][0]
@@ -478,11 +458,7 @@ class TestActivityFeedResourceHref:
 
     def test_invoice_href(self, authenticated_client, create_activity):
         """Invoice resources should have correct href."""
-        create_activity(
-            activity_type="billing",
-            resource_type="Invoice",
-            resource_id=202
-        )
+        create_activity(activity_type="billing", resource_type="Invoice", resource_id=202)
 
         response = authenticated_client.get(f"{ACTIVITY_FEED_URL}?refresh=true")
         item = response.data["results"][0]
@@ -530,7 +506,9 @@ class TestActivityFeedUserInfo:
 
         assert item["user"] is None
 
-    def test_uses_username_when_no_full_name(self, authenticated_client, create_activity, test_user):
+    def test_uses_username_when_no_full_name(
+        self, authenticated_client, create_activity, test_user
+    ):
         """Should use username when full name is not set."""
         test_user.first_name = ""
         test_user.last_name = ""

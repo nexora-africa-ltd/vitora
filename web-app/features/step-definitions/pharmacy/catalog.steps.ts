@@ -1,6 +1,6 @@
 /**
  * Pharmacy Drug Catalog Step Definitions
- * 
+ *
  * Steps for drug catalog management, search, and information display.
  */
 
@@ -56,7 +56,7 @@ Given(
   'I am on the drug catalog page',
   async function (this: VitoraWorld) {
     this.currentPage = 'drug catalog';
-    
+
     if (this.page) {
       await this.page.goto('/pharmacy/drugs');
       await this.page.waitForLoadState('networkidle');
@@ -136,7 +136,7 @@ When(
   'I search for drug {string}',
   async function (this: VitoraWorld, searchTerm: string) {
     this.store('drugSearchTerm', searchTerm);
-    
+
     if (this.page) {
       await this.page.fill('[data-testid="drug-search"]', searchTerm);
       await this.page.waitForTimeout(500);
@@ -161,7 +161,7 @@ Then(
   'the search results should include:',
   async function (this: VitoraWorld, dataTable: DataTable) {
     const expectedDrugs = safeHashes(dataTable.hashes());
-    
+
     if (this.page) {
       for (const drug of expectedDrugs) {
         const drugName = drug.name || drug.drug_name;
@@ -180,7 +180,7 @@ When(
   'I filter by category {string}',
   async function (this: VitoraWorld, category: string) {
     this.store('drugCategoryFilter', category);
-    
+
     if (this.page) {
       await this.page.selectOption('[data-testid="category-filter"]', category);
       await this.page.waitForTimeout(300);
@@ -192,7 +192,7 @@ When(
   'I filter by form {string}',
   async function (this: VitoraWorld, form: string) {
     this.store('drugFormFilter', form);
-    
+
     if (this.page) {
       await this.page.selectOption('[data-testid="form-filter"]', form);
       await this.page.waitForTimeout(300);
@@ -339,7 +339,7 @@ When(
   'I click on drug {string}',
   async function (this: VitoraWorld, drugName: string) {
     this.store('selectedDrug', drugName);
-    
+
     if (this.page) {
       await this.page.click(`[data-testid="drug-item"]:has-text("${drugName}")`);
     }
@@ -350,11 +350,11 @@ Then(
   'I should see the drug details:',
   async function (this: VitoraWorld, dataTable: DataTable) {
     const expectedDetails = dataTable.rowsHash() as Record<string, string>;
-    
+
     if (this.page) {
       const detailsPanel = this.page.locator('[data-testid="drug-details"]');
       await expect(detailsPanel).toBeVisible();
-      
+
       for (const [field, value] of Object.entries(expectedDetails)) {
         const fieldElement = detailsPanel.locator(`[data-testid="drug-${field.toLowerCase().replace(/\s+/g, '-')}"]`);
         await expect(fieldElement).toContainText(value);

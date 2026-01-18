@@ -22,7 +22,7 @@ export function LabResultsBadge({ hasResult, result, showValue = false }: LabRes
   }
 
   const isCritical = result.is_critical_result;
-  const isAbnormal = result.result_flag && 
+  const isAbnormal = result.result_flag &&
     !['NORMAL', 'NEGATIVE'].includes(result.result_flag);
   const isVerified = result.verification_status === 'VERIFIED';
 
@@ -38,8 +38,8 @@ export function LabResultsBadge({ hasResult, result, showValue = false }: LabRes
 
   if (isAbnormal) {
     return (
-      <Badge 
-        variant="secondary" 
+      <Badge
+        variant="secondary"
         className={cn(
           'text-xs',
           result.result_flag?.includes('HIGH') && 'bg-orange-100 text-orange-700',
@@ -55,8 +55,8 @@ export function LabResultsBadge({ hasResult, result, showValue = false }: LabRes
   }
 
   return (
-    <Badge 
-      variant={isVerified ? 'default' : 'outline'} 
+    <Badge
+      variant={isVerified ? 'default' : 'outline'}
       className={cn('text-xs', isVerified && 'bg-green-100 text-green-700')}
     >
       <CheckCircle2 className="h-3 w-3 mr-1" />

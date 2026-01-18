@@ -545,7 +545,7 @@ test.describe('Staff Profile Management', () => {
     await page.locator('#first_name').fill('Sarah');
     await page.locator('#last_name').fill('Otieno');
     await page.locator('#email').fill('sarah.otieno@vitora.health');
-    
+
     const phoneField = page.locator('#phone_number, #phone');
     if (await phoneField.count() > 0) {
       await phoneField.fill('+254712345679');
@@ -683,7 +683,7 @@ test.describe('Role-Based Permission Enforcement', () => {
     const linkButton = page.getByRole('link', { name: /add.*patient|new.*patient/i });
     const buttonCount = await addButton.count();
     const linkCount = await linkButton.count();
-    
+
     // Either no button at all, or button is disabled
     if (buttonCount > 0) {
       await expect(addButton).toBeDisabled();
@@ -703,7 +703,7 @@ test.describe('Role-Based Permission Enforcement', () => {
     // Should redirect or show access denied message, or page should still load (soft enforcement)
     const accessDenied = page.getByText(/access.*denied|unauthorized|forbidden/i);
     const isDenied = await accessDenied.count() > 0;
-    
+
     if (!isDenied) {
       // Check if redirected away from admin
       const currentUrl = page.url();
@@ -738,11 +738,11 @@ test.describe('Role-Based Permission Enforcement', () => {
     const addButton = page.getByRole('button', { name: /add.*patient|new.*patient|register/i });
     const addLink = page.getByRole('link', { name: /new.*patient|add.*patient|register/i });
     const registerLink = page.locator('a[href*="patients/new"], a[href*="register"]');
-    
+
     const hasButton = await addButton.count() > 0;
     const hasLink = await addLink.count() > 0;
     const hasRegisterLink = await registerLink.count() > 0;
-    
+
     // Test passes if ANY way to add patient exists
     expect(hasButton || hasLink || hasRegisterLink).toBe(true);
   });

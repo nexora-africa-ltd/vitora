@@ -26,13 +26,13 @@ import type { Invoice, Payment } from '@/lib/types/billing';
 export default function BillingPage() {
   const router = useRouter();
   const { activeTab, setActiveTab } = useBillingStore();
-  
+
   // Fetch data
   const { data: invoicesData, isLoading: invoicesLoading } = useInvoices();
   const { data: paymentsData, isLoading: paymentsLoading } = usePayments();
   const today = new Date().toISOString().split('T')[0] as string;
   const { data: dailyReport, isLoading: reportLoading } = useDailyCollectionReport(today);
-  
+
   // Fetch SHA claims data
   const { data: claimsData, isLoading: claimsLoading } = useClaims({});
 
@@ -58,7 +58,7 @@ export default function BillingPage() {
   const pendingCount = invoicesData?.results?.filter(
     (inv) => inv.status === 'PENDING'
   ).length || 0;
-  
+
   const overdueCount = invoicesData?.results?.filter(
     (inv) => inv.status === 'OVERDUE'
   ).length || 0;

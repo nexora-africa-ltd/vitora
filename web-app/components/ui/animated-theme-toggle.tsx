@@ -1,11 +1,11 @@
 "use client";
- 
+
 import { cn } from "@/lib/utils";
 import { motion, useMotionValue, useTransform } from "motion/react";
 import { useTheme } from "next-themes";
 import { useEffect, useState } from "react";
 import { Button } from "./button";
- 
+
 export const AnimatedThemeToggle = ({
   className,
 }: {
@@ -13,18 +13,18 @@ export const AnimatedThemeToggle = ({
 }) => {
   const { theme, setTheme, resolvedTheme } = useTheme();
   const [mounted, setMounted] = useState(false);
- 
+
   // Avoid hydration mismatch
   useEffect(() => {
     setMounted(true);
   }, []);
- 
+
   const isDark = mounted ? resolvedTheme === "dark" : false;
- 
+
   const toggleTheme = () => {
     setTheme(isDark ? "light" : "dark");
   };
- 
+
   // Show a placeholder during SSR to avoid hydration mismatch
   if (!mounted) {
     return (
@@ -33,7 +33,7 @@ export const AnimatedThemeToggle = ({
       </Button>
     );
   }
- 
+
   return (
     <Button
       onClick={toggleTheme}
@@ -45,10 +45,10 @@ export const AnimatedThemeToggle = ({
     </Button>
   );
 };
- 
+
 const SolarSwitch = ({ isDark }: { isDark: boolean }) => {
   const duration = 0.7;
- 
+
   const moonVariants = {
     checked: {
       scale: 1,
@@ -57,7 +57,7 @@ const SolarSwitch = ({ isDark }: { isDark: boolean }) => {
       scale: 0,
     },
   };
- 
+
   const sunVariants = {
     checked: {
       scale: 0,
@@ -70,7 +70,7 @@ const SolarSwitch = ({ isDark }: { isDark: boolean }) => {
   const scaleSun = useMotionValue(isDark ? 0 : 1);
   const pathLengthMoon = useTransform(scaleMoon, [0.6, 1], [0, 1]);
   const pathLengthSun = useTransform(scaleSun, [0.6, 1], [0, 1]);
- 
+
   return (
     <motion.div animate={isDark ? "checked" : "unchecked"}>
       <motion.svg

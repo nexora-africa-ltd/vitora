@@ -80,9 +80,9 @@ export default function WardRoundHistoryPage() {
       </div>
 
       <div className="flex items-center justify-between">
-        <PageHeader 
-          title="Ward Rounds" 
-          description={`Ward round history for ${admission.patient_name}`} 
+        <PageHeader
+          title="Ward Rounds"
+          description={`Ward round history for ${admission.patient_name}`}
         />
         {admission.admission_status === 'ACTIVE' && (
           <Button asChild>
@@ -155,7 +155,7 @@ export default function WardRoundHistoryPage() {
             {wardRounds.map((wardRound) => {
               const vitals = getVitalSigns(wardRound);
               const conductedByName = wardRound.conducted_by_name || wardRound.conducted_by_username || 'Unknown';
-              
+
               return (
                 <Card key={wardRound.id} data-testid="ward-round-card">
                   <CardHeader>

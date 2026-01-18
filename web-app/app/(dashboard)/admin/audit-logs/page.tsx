@@ -1,7 +1,7 @@
 /**
  * Audit Logs Page
  * Sprint 1.1-1.2 Track C: RBAC Foundation
- * 
+ *
  * Displays audit trail of role and permission changes for compliance.
  */
 'use client';
@@ -183,8 +183,8 @@ export default function AuditLogsPage() {
                     </TableCell>
                     <TableCell className="max-w-xs">
                       <span className="text-sm text-muted-foreground truncate block">
-                        {typeof log.details === 'object' 
-                          ? JSON.stringify(log.details) 
+                        {typeof log.details === 'object'
+                          ? JSON.stringify(log.details)
                           : log.details || '-'}
                       </span>
                     </TableCell>

@@ -1,9 +1,9 @@
 /**
  * ICD-11 Select Component
- * 
+ *
  * Searchable dropdown for selecting ICD-11 diagnosis codes.
  * Uses Kenya DHA API via our backend proxy with debounced search.
- * 
+ *
  * @example
  * <ICD11Select
  *   onSelect={(code) => console.log(code.code, code.title)}
@@ -88,9 +88,9 @@ export function ICD11Select({
     debounceRef.current = setTimeout(async () => {
       setIsLoading(true);
       try {
-        const response = await terminologyApi.searchICD11({ 
-          search: searchQuery, 
-          page_size: 20 
+        const response = await terminologyApi.searchICD11({
+          search: searchQuery,
+          page_size: 20
         });
         setResults(response.results);
       } catch (error) {

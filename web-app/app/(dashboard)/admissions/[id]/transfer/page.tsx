@@ -18,10 +18,10 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { 
-  useAdmission, 
-  useBeds, 
-  useCreateTransfer, 
+import {
+  useAdmission,
+  useBeds,
+  useCreateTransfer,
   useInpatientWards,
   useTransfers
 } from '@/lib/hooks/use-inpatient';
@@ -146,9 +146,9 @@ export default function TransferPage() {
         </Link>
       </div>
 
-      <PageHeader 
-        title="Transfer Patient" 
-        description={`Transfer ${admission.patient_name} to a different ward/bed`} 
+      <PageHeader
+        title="Transfer Patient"
+        description={`Transfer ${admission.patient_name} to a different ward/bed`}
       />
 
       {/* Current Location */}
@@ -191,8 +191,8 @@ export default function TransferPage() {
           <div className="grid gap-4 md:grid-cols-2">
             <div className="space-y-2">
               <Label>Target Ward *</Label>
-              <Select 
-                value={targetWardId} 
+              <Select
+                value={targetWardId}
                 onValueChange={(v) => {
                   setTargetWardId(v);
                   setTargetBedId('');
@@ -213,9 +213,9 @@ export default function TransferPage() {
 
             <div className="space-y-2">
               <Label>Target Bed *</Label>
-              <Select 
-                value={targetBedId} 
-                onValueChange={setTargetBedId} 
+              <Select
+                value={targetBedId}
+                onValueChange={setTargetBedId}
                 disabled={!targetWardId}
               >
                 <SelectTrigger>
@@ -315,8 +315,8 @@ export default function TransferPage() {
         <Button variant="outline" onClick={() => router.back()}>
           Cancel
         </Button>
-        <Button 
-          onClick={handleSubmit} 
+        <Button
+          onClick={handleSubmit}
           disabled={createTransfer.isPending || !targetWardId || !targetBedId || !clinicalJustification}
         >
           <MoveRight className="h-4 w-4 mr-2" />

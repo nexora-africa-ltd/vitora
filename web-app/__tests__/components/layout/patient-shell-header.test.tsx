@@ -1,8 +1,8 @@
 /**
  * TDD Tests for PatientShellHeader component
- * 
+ *
  * RED PHASE: These tests should FAIL initially because the implementation doesn't exist.
- * 
+ *
  * PatientShellHeader Requirements:
  * 1. Display patient identity (MRN, name, DOB, gender, age)
  * 2. Display verification badges (CR verified, SHA member)
@@ -78,7 +78,7 @@ describe('PatientShellHeader', () => {
   describe('Patient Identity Display', () => {
     it('should display patient MRN', async () => {
       mockPatientsApi.getPatient.mockResolvedValueOnce(mockPatient);
-      
+
       const Wrapper = createWrapper();
       render(
         <Wrapper>
@@ -95,7 +95,7 @@ describe('PatientShellHeader', () => {
 
     it('should display patient full name', async () => {
       mockPatientsApi.getPatient.mockResolvedValueOnce(mockPatient);
-      
+
       const Wrapper = createWrapper();
       render(
         <Wrapper>
@@ -112,7 +112,7 @@ describe('PatientShellHeader', () => {
 
     it('should display patient date of birth', async () => {
       mockPatientsApi.getPatient.mockResolvedValueOnce(mockPatient);
-      
+
       const Wrapper = createWrapper();
       render(
         <Wrapper>
@@ -130,7 +130,7 @@ describe('PatientShellHeader', () => {
 
     it('should display patient gender', async () => {
       mockPatientsApi.getPatient.mockResolvedValueOnce(mockPatient);
-      
+
       const Wrapper = createWrapper();
       render(
         <Wrapper>
@@ -148,7 +148,7 @@ describe('PatientShellHeader', () => {
 
     it('should display calculated age', async () => {
       mockPatientsApi.getPatient.mockResolvedValueOnce(mockPatient);
-      
+
       const Wrapper = createWrapper();
       render(
         <Wrapper>
@@ -171,7 +171,7 @@ describe('PatientShellHeader', () => {
   describe('Verification Badges', () => {
     it('should display CR verified badge when cr_number is present', async () => {
       mockPatientsApi.getPatient.mockResolvedValueOnce(mockPatient);
-      
+
       const Wrapper = createWrapper();
       render(
         <Wrapper>
@@ -188,7 +188,7 @@ describe('PatientShellHeader', () => {
 
     it('should display SHA member badge when sha_number is present', async () => {
       mockPatientsApi.getPatient.mockResolvedValueOnce(mockPatient);
-      
+
       const Wrapper = createWrapper();
       render(
         <Wrapper>
@@ -205,7 +205,7 @@ describe('PatientShellHeader', () => {
 
     it('should NOT display verification badges when cr_number is missing', async () => {
       mockPatientsApi.getPatient.mockResolvedValueOnce(mockUnverifiedPatient);
-      
+
       const Wrapper = createWrapper();
       render(
         <Wrapper>
@@ -230,7 +230,7 @@ describe('PatientShellHeader', () => {
   describe('Sensitive Patient Indicator', () => {
     it('should display sensitive indicator for sensitive patients', async () => {
       mockPatientsApi.getPatient.mockResolvedValueOnce(mockSensitivePatient);
-      
+
       const Wrapper = createWrapper();
       render(
         <Wrapper>
@@ -247,7 +247,7 @@ describe('PatientShellHeader', () => {
 
     it('should NOT display sensitive indicator for non-sensitive patients', async () => {
       mockPatientsApi.getPatient.mockResolvedValueOnce(mockPatient);
-      
+
       const Wrapper = createWrapper();
       render(
         <Wrapper>
@@ -272,7 +272,7 @@ describe('PatientShellHeader', () => {
     it('should display encounter type when in encounter context', async () => {
       mockPatientsApi.getPatient.mockResolvedValueOnce(mockPatient);
       mockEncountersApi.get.mockResolvedValueOnce(mockEncounter);
-      
+
       const Wrapper = createWrapper();
       render(
         <Wrapper>
@@ -292,7 +292,7 @@ describe('PatientShellHeader', () => {
     it('should display encounter status when in encounter context', async () => {
       mockPatientsApi.getPatient.mockResolvedValueOnce(mockPatient);
       mockEncountersApi.get.mockResolvedValueOnce(mockEncounter);
-      
+
       const Wrapper = createWrapper();
       render(
         <Wrapper>
@@ -312,7 +312,7 @@ describe('PatientShellHeader', () => {
     it('should display chief complaint when in encounter context', async () => {
       mockPatientsApi.getPatient.mockResolvedValueOnce(mockPatient);
       mockEncountersApi.get.mockResolvedValueOnce(mockEncounter);
-      
+
       const Wrapper = createWrapper();
       render(
         <Wrapper>
@@ -331,7 +331,7 @@ describe('PatientShellHeader', () => {
 
     it('should NOT display encounter info when not in encounter context', async () => {
       mockPatientsApi.getPatient.mockResolvedValueOnce(mockPatient);
-      
+
       const Wrapper = createWrapper();
       render(
         <Wrapper>
@@ -356,7 +356,7 @@ describe('PatientShellHeader', () => {
   describe('Read-Only Enforcement', () => {
     it('should NOT have an Edit button in the header', async () => {
       mockPatientsApi.getPatient.mockResolvedValueOnce(mockPatient);
-      
+
       const Wrapper = createWrapper();
       render(
         <Wrapper>
@@ -377,7 +377,7 @@ describe('PatientShellHeader', () => {
 
     it('should NOT have inline editable fields', async () => {
       mockPatientsApi.getPatient.mockResolvedValueOnce(mockPatient);
-      
+
       const Wrapper = createWrapper();
       render(
         <Wrapper>
@@ -398,7 +398,7 @@ describe('PatientShellHeader', () => {
 
     it('should display patient info as text, not editable elements', async () => {
       mockPatientsApi.getPatient.mockResolvedValueOnce(mockPatient);
-      
+
       const Wrapper = createWrapper();
       render(
         <Wrapper>
@@ -426,7 +426,7 @@ describe('PatientShellHeader', () => {
       mockPatientsApi.getPatient.mockImplementation(
         () => new Promise((resolve) => setTimeout(() => resolve(mockPatient), 100))
       );
-      
+
       const Wrapper = createWrapper();
       render(
         <Wrapper>
@@ -451,7 +451,7 @@ describe('PatientShellHeader', () => {
   describe('Accessibility', () => {
     it('should have proper ARIA labels for patient identity', async () => {
       mockPatientsApi.getPatient.mockResolvedValueOnce(mockPatient);
-      
+
       const Wrapper = createWrapper();
       render(
         <Wrapper>
@@ -471,7 +471,7 @@ describe('PatientShellHeader', () => {
 
     it('should announce sensitive status to screen readers', async () => {
       mockPatientsApi.getPatient.mockResolvedValueOnce(mockSensitivePatient);
-      
+
       const Wrapper = createWrapper();
       render(
         <Wrapper>
@@ -484,7 +484,7 @@ describe('PatientShellHeader', () => {
       await waitFor(() => {
         const sensitiveIndicator = screen.getByText(/Sensitive|Confidential|Protected/i);
         // Should have accessible labeling - check either the element or a parent
-        const hasAriaLabel = sensitiveIndicator.hasAttribute('aria-label') || 
+        const hasAriaLabel = sensitiveIndicator.hasAttribute('aria-label') ||
           sensitiveIndicator.closest('[aria-label]') !== null;
         expect(hasAriaLabel).toBe(true);
       });

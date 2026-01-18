@@ -1,9 +1,9 @@
 /**
  * Permission Hook Tests - RED Phase
- * 
+ *
  * Tests for usePermissions hook that provides role-based access control
  * for patient identity editing and other sensitive operations.
- * 
+ *
  * Acceptance Criteria:
  * - canEditPatient() checks for edit_patient permission
  * - canEditIdentity() checks for manage_patient_identity (more restricted)
@@ -158,10 +158,10 @@ describe('usePermissions Hook', () => {
 
     it('should allow identity editing to REGISTRATION_CLERK role', async () => {
       mockUseAuth.mockReturnValue({
-        user: { 
-          ...mockUser, 
-          role: 'REGISTRATION_CLERK', 
-          permissions: ['view_patient', 'edit_patient', 'manage_patient_identity'] 
+        user: {
+          ...mockUser,
+          role: 'REGISTRATION_CLERK',
+          permissions: ['view_patient', 'edit_patient', 'manage_patient_identity']
         },
         isAuthenticated: true,
       } as any);

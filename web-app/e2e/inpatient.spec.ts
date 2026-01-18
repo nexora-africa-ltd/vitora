@@ -295,7 +295,7 @@ async function setupInpatientMocks(page: Page) {
   await page.route('**/api/inpatient/wards/**', async (route) => {
     if (route.request().method() === 'GET') {
       const url = route.request().url();
-      
+
       // Handle ward beds endpoint: /api/inpatient/wards/{id}/beds/
       if (url.includes('/beds')) {
         await route.fulfill({
@@ -312,7 +312,7 @@ async function setupInpatientMocks(page: Page) {
         });
         return;
       }
-      
+
       // Handle single ward endpoint: /api/inpatient/wards/1/
       if (url.match(/\/wards\/\d+\/?$/)) {
         await route.fulfill({
@@ -322,7 +322,7 @@ async function setupInpatientMocks(page: Page) {
         });
         return;
       }
-      
+
       // Handle ward list endpoint: /api/inpatient/wards/
       await route.fulfill({
         status: 200,
@@ -623,7 +623,7 @@ async function setupInpatientMocks(page: Page) {
   // Patients list (for patient selection flow)
   await page.route('**/api/patients/**', async (route) => {
     const url = route.request().url();
-    
+
     // Single patient detail
     if (url.match(/\/api\/patients\/\d+\/?$/)) {
       await route.fulfill({
@@ -644,7 +644,7 @@ async function setupInpatientMocks(page: Page) {
       });
       return;
     }
-    
+
     // Patients list
     await route.fulfill({
       status: 200,
@@ -768,7 +768,7 @@ test.describe('Bed Management', () => {
 
     // Verify Bed Layout tab displays (default selected)
     await expect(page.getByRole('tab', { name: /bed layout/i })).toBeVisible();
-    
+
     // Verify bed status legend is visible
     await expect(page.getByText(/available/i).first()).toBeVisible();
     await expect(page.getByText(/occupied/i).first()).toBeVisible();
@@ -789,10 +789,10 @@ test.describe('Bed Management', () => {
     // Open the status select dropdown
     const statusTrigger = page.getByRole('dialog').getByRole('button', { name: /status/i });
     await statusTrigger.click();
-    
-    // Wait for dropdown to open 
+
+    // Wait for dropdown to open
     await page.waitForTimeout(300);
-    
+
     // Click on Maintenance option in the dropdown (within the dialog)
     await page.getByRole('dialog').getByText('Maintenance', { exact: true }).click();
 
@@ -856,7 +856,7 @@ test.describe('Admission Workflow', () => {
 
     // Verify admissions list heading
     await expect(page.getByRole('heading', { name: /active admissions/i })).toBeVisible();
-    
+
     // Verify admission details
     await expect(page.getByText('ADM-20260103-0001')).toBeVisible();
     await expect(page.getByText('Jane Doe').first()).toBeVisible();
@@ -897,13 +897,13 @@ test.describe('Admission Workflow', () => {
 
   test('should create new admission from form', async ({ page }) => {
     await login(page, TEST_USER.username, TEST_USER.password);
-    
+
     // Navigate to new admission page with patient pre-selected
     await page.goto('/admissions/new?patient=1');
 
     // Verify page loaded
     await expect(page.getByRole('heading', { name: /new admission/i })).toBeVisible();
-    
+
     // Patient should be displayed (name and MRN visible)
     await expect(page.getByText('Jane Doe')).toBeVisible();
     await expect(page.getByText(/MRN.*MRN-20260101-0001/i)).toBeVisible();
@@ -969,7 +969,7 @@ test.describe('Admission Workflow', () => {
         }),
       });
     });
-    
+
     // Navigate with both patient and encounter params
     await page.goto('/admissions/new?patient=1&encounter=1');
 
@@ -989,7 +989,7 @@ test.describe('Admission Workflow', () => {
 
   test('should show patient selection dialog when no patient selected', async ({ page }) => {
     await login(page, TEST_USER.username, TEST_USER.password);
-    
+
     // Navigate to new admission without patient param
     await page.goto('/admissions/new');
 
@@ -1035,7 +1035,7 @@ test.describe('Admission Workflow', () => {
 
   test('should complete patient selection flow and return to admission form', async ({ page }) => {
     await login(page, TEST_USER.username, TEST_USER.password);
-    
+
     // Start at patients page in select mode
     await page.goto('/patients?select=true&returnTo=/admissions/new');
 
@@ -1047,7 +1047,7 @@ test.describe('Admission Workflow', () => {
 
     // Should return to admission form with patient ID
     await expect(page).toHaveURL(/\/admissions\/new\?patient=1/);
-    
+
     // Wait for page to load
     await expect(page.getByRole('heading', { name: /new admission/i })).toBeVisible();
 
@@ -1059,7 +1059,7 @@ test.describe('Admission Workflow', () => {
 
   test('should allow changing patient from admission form', async ({ page }) => {
     await login(page, TEST_USER.username, TEST_USER.password);
-    
+
     // Start with patient already selected
     await page.goto('/admissions/new?patient=1');
 
@@ -1080,7 +1080,7 @@ test.describe('Admission Workflow', () => {
 
     // Should navigate to patients page in select mode
     await expect(page).toHaveURL(/\/patients\?select=true&returnTo=/);
-    
+
     // Select a different patient
     await page.getByTestId('patient-row-2').click();
 
@@ -1349,7 +1349,7 @@ test.describe('Bed Occupancy Dashboard', () => {
     // ICU ward card should be visible with occupancy info
     const icuCard = page.getByRole('heading', { name: /icu/i });
     await expect(icuCard).toBeVisible();
-    
+
     // Verify occupancy percentage is shown
     await expect(page.getByText(/occupancy/i).first()).toBeVisible();
   });
@@ -1360,11 +1360,11 @@ test.describe('Bed Occupancy Dashboard', () => {
 
     // Verify page initially loads with ward data
     await expect(page.getByRole('heading', { name: /ward dashboard/i })).toBeVisible();
-    
+
     // Navigate away and back to refresh (simulates refresh)
     await page.goto('/admissions');
     await page.goto('/wards');
-    
+
     // Verify data is still displayed after navigation
     await expect(page.getByText(/total beds/i)).toBeVisible();
   });

@@ -50,8 +50,8 @@ export const mainNavItems: NavItemType[] = [
   { label: 'Patients', href: '/patients', icon: Users },
   { label: 'Triage', href: '/triage', icon: AlertTriangle },
   { label: 'Encounters', href: '/encounters', icon: Stethoscope },
-  { 
-    label: 'Inpatient', 
+  {
+    label: 'Inpatient',
     icon: BedDouble,
     children: [
       { label: 'Wards', href: '/wards', icon: Building2 },
@@ -59,8 +59,8 @@ export const mainNavItems: NavItemType[] = [
     ],
   },
   { label: 'Pharmacy', href: '/pharmacy', icon: Pill },
-  { 
-    label: 'Diagnostics', 
+  {
+    label: 'Diagnostics',
     icon: FlaskConical,
     children: [
       { label: 'Laboratory', href: '/laboratory', icon: Microscope },
@@ -69,8 +69,8 @@ export const mainNavItems: NavItemType[] = [
   },
   { label: 'Billing & Insurance', href: '/billing', icon: CreditCard },
   { label: 'Reports', href: '/reports', icon: FileText },
-  { 
-    label: 'Admin', 
+  {
+    label: 'Admin',
     icon: ShieldUser,
     children: [
       { label: 'Departments', href: '/admin/departments', icon: Building2 },

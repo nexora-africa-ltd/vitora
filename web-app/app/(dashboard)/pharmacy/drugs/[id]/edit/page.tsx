@@ -85,8 +85,8 @@ export default function EditDrugPage({ params }: { params: Promise<{ id: string 
 
       {/* Form */}
       <div className="max-w-4xl">
-        <DrugForm 
-          drug={drug} 
+        <DrugForm
+          drug={drug}
           onSuccess={handleSuccess}
           onCancel={() => router.back()}
         />

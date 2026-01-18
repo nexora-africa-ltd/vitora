@@ -12,7 +12,6 @@ Phase 7a: Ward & Bed Management API (8 tests)
 - Audit logging
 """
 
-
 import pytest  # type: ignore
 from rest_framework import status
 

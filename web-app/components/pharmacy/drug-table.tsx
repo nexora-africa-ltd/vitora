@@ -312,7 +312,7 @@ export function DrugTable({
             />
           </div>
         </div>
-        
+
         <div className="flex flex-col items-center justify-center py-12 text-center">
           <p className="text-muted-foreground">No drugs found</p>
         </div>
@@ -336,7 +336,7 @@ export function DrugTable({
             aria-label="Search drugs"
           />
         </div>
-        
+
         {onFiltersChange && (
           <div className="flex flex-wrap gap-4">
             <div className="w-48">
@@ -352,7 +352,7 @@ export function DrugTable({
                 </SelectContent>
               </Select>
             </div>
-            
+
             <div className="w-48">
               <Select value={formFilter} onValueChange={handleFormChange}>
                 <SelectTrigger data-testid="form-filter">
@@ -366,7 +366,7 @@ export function DrugTable({
                 </SelectContent>
               </Select>
             </div>
-            
+
             <div className="w-48">
               <Select value={scheduleFilter} onValueChange={handleScheduleChange}>
                 <SelectTrigger data-testid="schedule-filter">
@@ -381,9 +381,9 @@ export function DrugTable({
                 </SelectContent>
               </Select>
             </div>
-            
+
             <div className="flex items-center space-x-2">
-              <Checkbox 
+              <Checkbox
                 id="essential-filter"
                 data-testid="essential-filter"
                 checked={essentialOnly}
@@ -393,9 +393,9 @@ export function DrugTable({
                 Essential Medicines Only (KEML)
               </Label>
             </div>
-            
+
             <div className="flex items-center space-x-2">
-              <Checkbox 
+              <Checkbox
                 id="active-filter"
                 data-testid="active-filter"
                 checked={activeOnly}
@@ -434,7 +434,7 @@ export function DrugTable({
                   <TableCell className="font-mono text-sm">{drug.code}</TableCell>
                   <TableCell>
                     <div className="flex flex-col gap-1">
-                      <button 
+                      <button
                         type="button"
                         className="font-medium text-left hover:underline cursor-pointer"
                         onClick={() => router.push(`/pharmacy/drugs/${drug.id}`)}
@@ -448,8 +448,8 @@ export function DrugTable({
                       )}
                       <div className="flex gap-1 mt-1">
                         {drug.is_essential && (
-                          <Badge 
-                            variant="outline" 
+                          <Badge
+                            variant="outline"
                             className="bg-primary/10 text-primary border-primary/20 text-xs"
                             title="Kenya Essential Medicines List"
                           >
@@ -458,8 +458,8 @@ export function DrugTable({
                           </Badge>
                         )}
                         {drug.is_controlled && (
-                          <Badge 
-                            variant="outline" 
+                          <Badge
+                            variant="outline"
                             className="bg-destructive/10 text-destructive border-destructive/20 text-xs"
                             title="Controlled Drug"
                           >
@@ -500,8 +500,8 @@ export function DrugTable({
                   </TableCell>
                   <TableCell>
                     <div className="flex items-center gap-1">
-                      <Button 
-                        variant="ghost" 
+                      <Button
+                        variant="ghost"
                         size="sm"
                         onClick={() => router.push(`/pharmacy/drugs/${drug.id}/edit`)}
                         data-testid="edit-drug"
@@ -509,8 +509,8 @@ export function DrugTable({
                         <Edit className="h-4 w-4" />
                         <span className="sr-only">Modify drug</span>
                       </Button>
-                      <Button 
-                        variant="ghost" 
+                      <Button
+                        variant="ghost"
                         size="sm"
                         onClick={() => handleDeleteClick(drug)}
                         data-testid="delete-drug"

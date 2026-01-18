@@ -872,12 +872,16 @@ class SHAClaimsService:
                 "type": "Patient",
             },
             "period": {
-                "start": sha_member.coverage_start_date.isoformat()
-                if sha_member.coverage_start_date
-                else None,
-                "end": sha_member.coverage_end_date.isoformat()
-                if sha_member.coverage_end_date
-                else None,
+                "start": (
+                    sha_member.coverage_start_date.isoformat()
+                    if sha_member.coverage_start_date
+                    else None
+                ),
+                "end": (
+                    sha_member.coverage_end_date.isoformat()
+                    if sha_member.coverage_end_date
+                    else None
+                ),
             },
             "payor": [{"type": "Organization", "display": "Social Health Authority (SHA)"}],
         }
@@ -986,12 +990,16 @@ class SHAClaimsService:
                 "type": "Patient",
             },
             "period": {
-                "start": sha_member.coverage_start_date.isoformat()
-                if sha_member.coverage_start_date
-                else None,
-                "end": sha_member.coverage_end_date.isoformat()
-                if sha_member.coverage_end_date
-                else None,
+                "start": (
+                    sha_member.coverage_start_date.isoformat()
+                    if sha_member.coverage_start_date
+                    else None
+                ),
+                "end": (
+                    sha_member.coverage_end_date.isoformat()
+                    if sha_member.coverage_end_date
+                    else None
+                ),
             },
             "payor": [{"type": "Organization", "display": "Government of Kenya - PFMS"}],
         }

@@ -481,7 +481,7 @@ export function useExportTriageReport() {
       const response = await apiClient.get(`/api/triage/reports/export/?${params.toString()}`, {
         responseType: 'blob',
       });
-      
+
       // Create download link
       const blob = response.data as Blob;
       const url = window.URL.createObjectURL(blob);
@@ -492,7 +492,7 @@ export function useExportTriageReport() {
       a.click();
       document.body.removeChild(a);
       window.URL.revokeObjectURL(url);
-      
+
       return response.data;
     },
   });

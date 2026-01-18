@@ -177,8 +177,8 @@ export function LabOrderTable({
           )}
 
           {onRefresh && (
-            <Button 
-              variant="outline" 
+            <Button
+              variant="outline"
               size="icon"
               onClick={handleRefresh}
               disabled={isRefreshing}

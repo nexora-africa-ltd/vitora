@@ -177,9 +177,9 @@ class LabOrderViewSet(viewsets.ModelViewSet):
         try:
             pdf_bytes = ExternalLabRequisition.generate_pdf(order)
             response = HttpResponse(pdf_bytes, content_type="application/pdf")
-            response[
-                "Content-Disposition"
-            ] = f'attachment; filename="lab_requisition_{order.order_number}.pdf"'
+            response["Content-Disposition"] = (
+                f'attachment; filename="lab_requisition_{order.order_number}.pdf"'
+            )
             return response
         except Exception:
             logger.exception("Error generating requisition PDF for order %s", order.pk)

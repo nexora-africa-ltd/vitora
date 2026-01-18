@@ -6,6 +6,7 @@ This module exports all billing-related services including:
 - M-Pesa payment integration
 - DHA API integrations (Client Registry, Terminology, Search)
 """
+
 # DHA API Services
 from .client_registry import (
     ClientNotFoundError,

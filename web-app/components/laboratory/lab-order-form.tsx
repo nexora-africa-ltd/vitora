@@ -97,21 +97,21 @@ export function LabOrderForm({
   const { user } = useAuth();
   const createOrder = useCreateLabOrder();
   const [showTestSelector, setShowTestSelector] = useState(false);
-  
+
   // Try to get data from context (optional - may not be in context)
   const patientContext = useOptionalPatientContext();
   const encounterContext = useOptionalEncounterContext();
-  
+
   // Use context data if available, otherwise fall back to props
   const contextPatient = patientContext?.patient;
   const contextEncounter = encounterContext?.encounter;
   const canPlaceOrders = encounterContext?.canPlaceOrders ?? true;
-  
+
   // Resolved values: context takes precedence over props
   const patientId = contextPatient?.id ?? propPatientId;
   const encounterId = contextEncounter?.id ?? propEncounterId;
-  const patientName = contextPatient 
-    ? `${contextPatient.first_name} ${contextPatient.last_name}` 
+  const patientName = contextPatient
+    ? `${contextPatient.first_name} ${contextPatient.last_name}`
     : propPatientName;
   const patientMrn = contextPatient?.mrn ?? propPatientMrn;
   const patientGender = contextPatient?.gender ?? propPatientGender;
@@ -119,19 +119,19 @@ export function LabOrderForm({
   const encounterType = contextEncounter?.encounter_type ?? propEncounterType;
   const encounterDate = contextEncounter?.encounter_date ?? propEncounterDate;
   const chiefComplaint = contextEncounter?.chief_complaint ?? propChiefComplaint;
-  
+
   // Validation: both patient and encounter are required
   const hasPatient = !!patientId;
   const hasEncounter = !!encounterId;
   const isValid = hasPatient && hasEncounter && canPlaceOrders;
-  
+
   // Current date/time for "Requested At"
   const requestedAt = new Date();
 
   // Get current user's display name
-  const requestedByName = user 
-    ? (user.first_name && user.last_name 
-        ? `${user.first_name} ${user.last_name}` 
+  const requestedByName = user
+    ? (user.first_name && user.last_name
+        ? `${user.first_name} ${user.last_name}`
         : user.username)
     : 'Unknown';
 
@@ -184,10 +184,10 @@ export function LabOrderForm({
       cost: isNaN(cost) ? 0 : cost,
       special_instructions: '',
     });
-    
+
     // Trigger validation for items field to clear any previous errors
     form.trigger('items');
-    
+
     setShowTestSelector(false);
   }, [form, append, toast]);
 
@@ -213,12 +213,12 @@ export function LabOrderForm({
       cost: 0, // Cost to be determined
       special_instructions: '',
     });
-    
+
     // Trigger validation for items field to clear any previous errors
     form.trigger('items');
-    
+
     setShowTestSelector(false);
-    
+
     toast({
       title: 'LOINC Test Added',
       description: `${loinc.title} (${loinc.code}) added. Cost will be determined by lab.`,
@@ -278,7 +278,7 @@ export function LabOrderForm({
         <AlertTriangle className="h-4 w-4" />
         <AlertTitle>Encounter Not Active</AlertTitle>
         <AlertDescription>
-          Lab orders can only be created for active encounters. This encounter has been 
+          Lab orders can only be created for active encounters. This encounter has been
           completed or cancelled. Please create a new encounter to place orders.
         </AlertDescription>
       </Alert>
@@ -302,7 +302,7 @@ export function LabOrderForm({
                   <p className="font-medium">{patientName}</p>
                 </div>
               )}
-              
+
               {/* Patient MRN */}
               {patientMrn && (
                 <div>
@@ -310,7 +310,7 @@ export function LabOrderForm({
                   <p className="font-medium font-mono text-sm">{patientMrn}</p>
                 </div>
               )}
-              
+
               {/* Patient Gender & Date of Birth */}
               {(patientGender || patientDateOfBirth) && (
                 <div>
@@ -321,7 +321,7 @@ export function LabOrderForm({
                   </p>
                 </div>
               )}
-              
+
               {/* Encounter Type */}
               {encounterType && (
                 <div>
@@ -329,7 +329,7 @@ export function LabOrderForm({
                   <p className="font-medium text-sm">{encounterType}</p>
                 </div>
               )}
-              
+
               {/* Encounter Date */}
               {encounterDate && (
                 <div>
@@ -337,7 +337,7 @@ export function LabOrderForm({
                   <p className="font-medium text-sm">{new Date(encounterDate).toLocaleDateString()}</p>
                 </div>
               )}
-              
+
               {/* Requested By */}
               <div>
                 <Label className="text-xs text-muted-foreground flex items-center gap-1">
@@ -346,7 +346,7 @@ export function LabOrderForm({
                 </Label>
                 <p className="font-medium text-sm">{requestedByName}</p>
               </div>
-              
+
               {/* Requested At */}
               <div>
                 <Label className="text-xs text-muted-foreground">Requested At</Label>
@@ -355,7 +355,7 @@ export function LabOrderForm({
                 </p>
               </div>
             </div>
-            
+
             {/* Chief Complaint if provided */}
             {chiefComplaint && (
               <div className="mt-4 pt-4 border-t">
@@ -562,7 +562,7 @@ export function LabOrderForm({
               <ul className="list-disc list-inside">
                 {Object.entries(form.formState.errors).map(([field, error]) => (
                   <li key={field}>
-                    {field === 'items' 
+                    {field === 'items'
                       ? (error as { message?: string })?.message || 'At least one test is required'
                       : field === 'patient'
                       ? 'Patient is required'

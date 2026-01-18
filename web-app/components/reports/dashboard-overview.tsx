@@ -168,7 +168,7 @@ function EncounterTypesChart({ patientVolume }: { patientVolume: Array<{ opd: nu
     const opd = patientVolume.reduce((sum, d) => sum + (d.opd || 0), 0);
     const ipd = patientVolume.reduce((sum, d) => sum + (d.ipd || 0), 0);
     const emergency = patientVolume.reduce((sum, d) => sum + (d.emergency || 0), 0);
-    
+
     // Filter out zero values to avoid cluttering the chart
     return [
       { name: 'opd', value: opd },

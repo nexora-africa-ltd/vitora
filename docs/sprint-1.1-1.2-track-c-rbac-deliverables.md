@@ -39,7 +39,7 @@ Track C of Sprint 1.1-1.2 implements the Role-Based Access Control (RBAC) founda
 ```python
 class Department(models.Model):
     """Hospital department for staff organization."""
-    
+
     DEPARTMENT_TYPES = [
         ('CLINICAL', 'Clinical'),
         ('ADMINISTRATIVE', 'Administrative'),
@@ -49,7 +49,7 @@ class Department(models.Model):
         ('RADIOLOGY', 'Radiology'),
         ('RECORDS', 'Medical Records'),
     ]
-    
+
     code = models.CharField(max_length=20, unique=True)  # e.g., "OPD", "IPD", "LAB"
     name = models.CharField(max_length=100)  # e.g., "Outpatient Department"
     department_type = models.CharField(max_length=20, choices=DEPARTMENT_TYPES)
@@ -87,38 +87,38 @@ class Department(models.Model):
 ```python
 class Role(models.Model):
     """Hospital role with hierarchical permissions."""
-    
+
     ROLE_CATEGORIES = [
         ('CLINICAL', 'Clinical Staff'),
         ('ADMINISTRATIVE', 'Administrative Staff'),
         ('TECHNICAL', 'Technical Staff'),
         ('MANAGEMENT', 'Management'),
     ]
-    
+
     code = models.CharField(max_length=30, unique=True)  # e.g., "DOCTOR", "NURSE"
     name = models.CharField(max_length=100)  # e.g., "Medical Doctor"
     category = models.CharField(max_length=20, choices=ROLE_CATEGORIES)
     description = models.TextField(blank=True)
-    
+
     # Permission matrix (JSON for flexibility)
     permissions_matrix = models.JSONField(default=dict)
-    
+
     # Hierarchy
     hierarchy_level = models.PositiveIntegerField(default=0)  # 0=highest
     parent_role = models.ForeignKey('self', null=True, blank=True, on_delete=models.SET_NULL)
-    
+
     # Linked Django Group (for standard permissions)
     django_group = models.OneToOneField(
-        'auth.Group', 
+        'auth.Group',
         on_delete=models.CASCADE,
-        null=True, 
+        null=True,
         blank=True
     )
-    
+
     # Kenya-specific
     requires_license = models.BooleanField(default=False)  # Medical license required
     license_body = models.CharField(max_length=100, blank=True)  # e.g., "KMPDB", "NCK"
-    
+
     is_active = models.BooleanField(default=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
@@ -180,55 +180,55 @@ class Role(models.Model):
 ```python
 class StaffProfile(models.Model):
     """Extended profile for hospital staff members."""
-    
+
     EMPLOYMENT_STATUS = [
         ('ACTIVE', 'Active'),
         ('ON_LEAVE', 'On Leave'),
         ('SUSPENDED', 'Suspended'),
         ('TERMINATED', 'Terminated'),
     ]
-    
+
     user = models.OneToOneField(
         settings.AUTH_USER_MODEL,
         on_delete=models.CASCADE,
         related_name='staff_profile'
     )
-    
+
     # Identity
     employee_id = models.CharField(max_length=50, unique=True)  # e.g., "VH-2026-001"
     title = models.CharField(max_length=20, blank=True)  # e.g., "Dr.", "Nurse"
-    
+
     # Role and Department
     primary_role = models.ForeignKey(Role, on_delete=models.PROTECT, related_name='primary_staff')
     secondary_roles = models.ManyToManyField(Role, blank=True, related_name='secondary_staff')
     primary_department = models.ForeignKey(Department, on_delete=models.PROTECT, related_name='primary_staff')
     secondary_departments = models.ManyToManyField(Department, blank=True, related_name='secondary_staff')
-    
+
     # Professional details (Kenya-specific)
     license_number = models.CharField(max_length=50, blank=True)  # e.g., KMPDB number
     license_expiry = models.DateField(null=True, blank=True)
     license_verified = models.BooleanField(default=False)
     specialization = models.CharField(max_length=100, blank=True)
-    
+
     # Contact
     phone_number = models.CharField(max_length=20, blank=True)  # Encrypted
     emergency_contact_name = models.CharField(max_length=100, blank=True)
     emergency_contact_phone = models.CharField(max_length=20, blank=True)
-    
+
     # Employment
     employment_status = models.CharField(max_length=20, choices=EMPLOYMENT_STATUS, default='ACTIVE')
     date_joined = models.DateField()
     date_left = models.DateField(null=True, blank=True)
-    
+
     # Supervisor
     supervisor = models.ForeignKey(
-        'self', 
-        null=True, 
-        blank=True, 
+        'self',
+        null=True,
+        blank=True,
         on_delete=models.SET_NULL,
         related_name='supervisees'
     )
-    
+
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 ```
@@ -271,11 +271,11 @@ class StaffProfile(models.Model):
 class RoleBasedPermission(permissions.BasePermission):
     """
     Permission class that checks role-based access.
-    
+
     Uses the permission matrix from user's StaffProfile roles.
     Falls back to Django permissions if no StaffProfile exists.
     """
-    
+
     # Map HTTP methods to actions
     ACTION_MAP = {
         'GET': 'read',
@@ -286,20 +286,20 @@ class RoleBasedPermission(permissions.BasePermission):
         'PATCH': 'update',
         'DELETE': 'delete',
     }
-    
+
     def has_permission(self, request, view):
         """Check if user has permission for this action on this resource."""
         if not request.user or not request.user.is_authenticated:
             return False
-        
+
         # Superusers always have permission
         if request.user.is_superuser:
             return True
-        
+
         # Get resource name from view
         resource = self._get_resource_name(view)
         action = self.ACTION_MAP.get(request.method, 'read')
-        
+
         # Check StaffProfile permissions
         try:
             profile = request.user.staff_profile
@@ -307,7 +307,7 @@ class RoleBasedPermission(permissions.BasePermission):
         except StaffProfile.DoesNotExist:
             # Fallback to Django permissions
             return self._check_django_permission(request.user, action, resource)
-    
+
     def has_object_permission(self, request, view, obj):
         """Check object-level permissions (e.g., department-based)."""
         # Additional checks for sensitive data, department access, etc.
@@ -673,117 +673,117 @@ User = get_user_model()
 
 class TestDepartmentModel:
     """Tests for Department model."""
-    
+
     def test_department_creation_with_required_fields(self, db):
         """Should create department with code, name, and type."""
-        
+
     def test_department_code_uniqueness(self, db):
         """Should reject duplicate department codes."""
-        
+
     def test_department_parent_relationship(self, db):
         """Should support hierarchical department structure."""
-        
+
     def test_department_head_assignment(self, db):
         """Should link to StaffProfile as department head."""
-        
+
     def test_department_staff_count(self, db):
         """Should count active staff in department."""
-        
+
     def test_department_hierarchy_traversal(self, db):
         """Should return full parent chain."""
-        
+
     def test_department_subdepartments(self, db):
         """Should return child departments."""
-        
+
     def test_department_active_filtering(self, db):
         """Should filter by active status."""
 
 
 class TestRoleModel:
     """Tests for Role model."""
-    
+
     def test_role_creation_with_required_fields(self, db):
         """Should create role with code, name, and category."""
-        
+
     def test_role_code_uniqueness(self, db):
         """Should reject duplicate role codes."""
-        
+
     def test_role_permissions_matrix_validation(self, db):
         """Should validate JSON permission matrix structure."""
-        
+
     def test_role_hierarchy_level(self, db):
         """Should enforce hierarchy level ordering."""
-        
+
     def test_role_parent_inheritance(self, db):
         """Should inherit permissions from parent role."""
-        
+
     def test_role_django_group_linking(self, db):
         """Should link to Django Group for standard permissions."""
-        
+
     def test_role_license_requirement(self, db):
         """Should require license_body when requires_license=True."""
-        
+
     def test_role_has_permission_method(self, db):
         """Should check permission matrix correctly."""
-        
+
     def test_role_get_all_permissions(self, db):
         """Should aggregate inherited and direct permissions."""
-        
+
     def test_role_category_filtering(self, db):
         """Should filter roles by category."""
-        
+
     def test_role_active_filtering(self, db):
         """Should filter by active status."""
-        
+
     def test_role_department_access_check(self, db):
         """Should check department-based access."""
 
 
 class TestStaffProfileModel:
     """Tests for StaffProfile model."""
-    
+
     def test_staffprofile_creation_with_user(self, db):
         """Should create profile linked to User."""
-        
+
     def test_staffprofile_employee_id_uniqueness(self, db):
         """Should reject duplicate employee IDs."""
-        
+
     def test_staffprofile_employee_id_format(self, db):
         """Should generate employee ID in correct format."""
-        
+
     def test_staffprofile_primary_role_required(self, db):
         """Should require primary role assignment."""
-        
+
     def test_staffprofile_secondary_roles(self, db):
         """Should support multiple secondary roles."""
-        
+
     def test_staffprofile_primary_department_required(self, db):
         """Should require primary department assignment."""
-        
+
     def test_staffprofile_secondary_departments(self, db):
         """Should support multiple secondary departments."""
-        
+
     def test_staffprofile_license_validation(self, db):
         """Should validate license number for licensed roles."""
-        
+
     def test_staffprofile_license_expiry_check(self, db):
         """Should check license expiry date."""
-        
+
     def test_staffprofile_employment_status_transitions(self, db):
         """Should handle status transitions correctly."""
-        
+
     def test_staffprofile_supervisor_relationship(self, db):
         """Should link to supervisor StaffProfile."""
-        
+
     def test_staffprofile_full_name_with_title(self, db):
         """Should return formatted full name with title."""
-        
+
     def test_staffprofile_all_roles_aggregation(self, db):
         """Should return primary + secondary roles."""
-        
+
     def test_staffprofile_permission_aggregation(self, db):
         """Should aggregate permissions from all roles."""
-        
+
     def test_staffprofile_cascading_delete_prevention(self, db):
         """Should prevent deletion of referenced Role/Department."""
 ```
@@ -803,58 +803,58 @@ from hmis.apps.core.permissions import RoleBasedPermission
 
 class TestRoleBasedPermission:
     """Tests for RoleBasedPermission DRF permission class."""
-    
+
     def test_permission_denied_for_unauthenticated(self):
         """Should deny access to unauthenticated users."""
-        
+
     def test_permission_allowed_for_superuser(self):
         """Should allow superusers all access."""
-        
+
     def test_get_maps_to_read_action(self):
         """Should map GET requests to 'read' action."""
-        
+
     def test_post_maps_to_create_action(self):
         """Should map POST requests to 'create' action."""
-        
+
     def test_put_patch_maps_to_update_action(self):
         """Should map PUT/PATCH requests to 'update' action."""
-        
+
     def test_delete_maps_to_delete_action(self):
         """Should map DELETE requests to 'delete' action."""
-        
+
     def test_permission_from_primary_role(self):
         """Should check permission from primary role."""
-        
+
     def test_permission_from_secondary_role(self):
         """Should check permission from secondary roles."""
-        
+
     def test_permission_inheritance_from_parent(self):
         """Should inherit permissions from parent role."""
-        
+
     def test_permission_denied_missing_action(self):
         """Should deny if action not in permission matrix."""
-        
+
     def test_permission_denied_missing_resource(self):
         """Should deny if resource not in permission matrix."""
-        
+
     def test_fallback_to_django_permissions(self):
         """Should fallback to Django perms if no StaffProfile."""
-        
+
     def test_object_level_department_check(self):
         """Should check department access at object level."""
-        
+
     def test_sensitive_patient_access(self):
         """Should check view_sensitive permission for patients."""
-        
+
     def test_licensed_role_clinical_access(self):
         """Should allow licensed roles to access clinical resources."""
-        
+
     def test_unlicensed_role_denied_clinical(self):
         """Should deny unlicensed roles from clinical resources."""
-        
+
     def test_expired_license_denied(self):
         """Should deny access if staff license is expired."""
-        
+
     def test_permission_check_audit_logging(self):
         """Should log permission check results."""
 ```
@@ -874,54 +874,54 @@ from rest_framework.test import APIClient
 
 class TestDepartmentAPI:
     """Tests for Department API endpoints."""
-    
+
     def test_list_departments_authenticated(self):
         """Should list departments for authenticated users."""
-        
+
     def test_create_department_admin_only(self):
         """Should only allow admins to create departments."""
-        
+
     def test_department_staff_listing(self):
         """Should list staff in a department."""
 
 
 class TestRoleAPI:
     """Tests for Role API endpoints."""
-    
+
     def test_list_roles_authenticated(self):
         """Should list roles for authenticated users."""
-        
+
     def test_create_role_admin_only(self):
         """Should only allow admins to create roles."""
-        
+
     def test_role_permissions_endpoint(self):
         """Should return role's permission matrix."""
 
 
 class TestStaffProfileAPI:
     """Tests for StaffProfile API endpoints."""
-    
+
     def test_list_staff_authenticated(self):
         """Should list staff for authenticated users."""
-        
+
     def test_create_staff_admin_only(self):
         """Should only allow admins to create staff."""
-        
+
     def test_get_current_user_profile(self):
         """Should return current user's staff profile."""
-        
+
     def test_update_own_profile_limited(self):
         """Should only allow updating certain fields on own profile."""
-        
+
     def test_staff_pagination(self):
         """Should paginate staff list."""
-        
+
     def test_staff_filtering_by_department(self):
         """Should filter staff by department."""
-        
+
     def test_staff_search(self):
         """Should search staff by name, employee_id."""
-        
+
     def test_staff_changes_audit_logged(self):
         """Should log all staff profile changes."""
 ```
@@ -940,28 +940,28 @@ from hmis.apps.core.admin import DepartmentAdmin, RoleAdmin, StaffProfileAdmin
 
 class TestRBACAdmin:
     """Tests for RBAC admin interfaces."""
-    
+
     def test_department_admin_list_view(self):
         """Should display departments in admin."""
-        
+
     def test_department_admin_create(self):
         """Should create department via admin."""
-        
+
     def test_role_admin_list_view(self):
         """Should display roles in admin."""
-        
+
     def test_role_admin_permission_matrix_edit(self):
         """Should edit permission matrix in admin."""
-        
+
     def test_staffprofile_admin_list_view(self):
         """Should display staff profiles in admin."""
-        
+
     def test_staffprofile_admin_bulk_deactivate(self):
         """Should bulk deactivate staff."""
-        
+
     def test_staffprofile_admin_filters(self):
         """Should filter by department, role, status."""
-        
+
     def test_staffprofile_admin_search(self):
         """Should search by name, employee_id, license."""
 ```

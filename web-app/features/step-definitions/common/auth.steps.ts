@@ -1,6 +1,6 @@
 /**
  * Common Step Definitions - Authentication
- * 
+ *
  * Shared steps for authentication and authorization scenarios.
  * These steps are reused across all feature files.
  */
@@ -20,14 +20,14 @@ Given(
     // Find a role that has this permission
     const roleWithPermission = (Object.entries(PERMISSIONS) as [keyof typeof PERMISSIONS, readonly string[]][])
       .find(([, perms]) => perms.includes(permission));
-    
+
     if (!roleWithPermission) {
       throw new Error(`No role found with permission: ${permission}`);
     }
-    
+
     const user = createUser(roleWithPermission[0]);
     this.setUser(user);
-    
+
     // In E2E tests, actually log in
     if (this.page) {
       await this.page.goto('/login');
@@ -43,14 +43,14 @@ Given(
   'I am logged in as a {word}',
   async function (this: VitoraWorld, role: string) {
     const normalizedRole = role.toLowerCase().replace(/\s+/g, '') as keyof typeof PERMISSIONS;
-    
+
     if (!(normalizedRole in PERMISSIONS)) {
       throw new Error(`Unknown role: ${role}. Valid roles: ${Object.keys(PERMISSIONS).join(', ')}`);
     }
-    
+
     const user = createUser(normalizedRole);
     this.setUser(user);
-    
+
     // In E2E tests, actually log in
     if (this.page) {
       await this.page.goto('/login');
@@ -71,7 +71,7 @@ Given(
       email: 'co@vitora.health',
     });
     this.setUser(user);
-    
+
     if (this.page) {
       await this.page.goto('/login');
       await this.page.fill('[name="username"]', user.username);
@@ -205,7 +205,7 @@ Given(
   async function (this: VitoraWorld) {
     this.currentUser = undefined;
     this.authToken = undefined;
-    
+
     // Clear any stored auth in browser
     if (this.context) {
       await this.context.clearCookies();
@@ -234,7 +234,7 @@ When(
   async function (this: VitoraWorld) {
     this.currentUser = undefined;
     this.authToken = undefined;
-    
+
     if (this.page) {
       await this.page.click('[data-testid="user-menu"]');
       await this.page.click('[data-testid="logout-button"]');
@@ -250,7 +250,7 @@ Then(
   'I should be logged in as {string}',
   async function (this: VitoraWorld, username: string) {
     expect(this.currentUser?.username).toBe(username);
-    
+
     if (this.page) {
       const userDisplay = await this.page.textContent('[data-testid="user-display"]');
       expect(userDisplay).toContain(username);

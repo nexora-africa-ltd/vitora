@@ -8,7 +8,7 @@ describe('ChartCard', () => {
         <div>Chart content</div>
       </ChartCard>
     );
-    
+
     expect(screen.getByText('Test Chart')).toBeInTheDocument();
   });
 
@@ -18,7 +18,7 @@ describe('ChartCard', () => {
         <div>Chart content</div>
       </ChartCard>
     );
-    
+
     expect(screen.getByText('Chart description')).toBeInTheDocument();
   });
 
@@ -28,7 +28,7 @@ describe('ChartCard', () => {
         <div data-testid="chart-content">Chart content</div>
       </ChartCard>
     );
-    
+
     expect(screen.getByTestId('chart-content')).toBeInTheDocument();
   });
 
@@ -38,7 +38,7 @@ describe('ChartCard', () => {
         <div>Chart content</div>
       </ChartCard>
     );
-    
+
     // Should not show children when loading
     expect(screen.queryByText('Chart content')).not.toBeInTheDocument();
     // Should show skeleton
@@ -54,7 +54,7 @@ describe('ChartCard', () => {
         <div>Chart content</div>
       </ChartCard>
     );
-    
+
     expect(screen.getByRole('button', { name: 'Refresh' })).toBeInTheDocument();
   });
 
@@ -64,7 +64,7 @@ describe('ChartCard', () => {
         <div>Chart content</div>
       </ChartCard>
     );
-    
+
     expect(container.querySelector('.custom-class')).toBeInTheDocument();
   });
 });

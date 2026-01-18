@@ -65,8 +65,8 @@ export function VitalInput({
             <Icon className="h-4 w-4" />
             {label}
           </Label>
-          <InputGroup 
-            data-disabled={disabled} 
+          <InputGroup
+            data-disabled={disabled}
             className={cn(inputStatusClassName, fieldState.error && 'border-destructive')}
           >
             <InputGroupInput
@@ -129,8 +129,8 @@ export function BloodPressureInput({
       <Label className="flex items-center gap-2">
         Blood Pressure
       </Label>
-      <InputGroup 
-        data-disabled={disabled} 
+      <InputGroup
+        data-disabled={disabled}
         className={cn(inputStatusClassName, hasError && 'border-destructive')}
       >
         <Controller

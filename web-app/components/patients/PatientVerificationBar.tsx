@@ -1,10 +1,10 @@
 /**
  * Patient Verification Bar
- * 
+ *
  * A minimal, compact component for verifying patient information:
  * - Client Registry (CR) lookup - fetch demographics
  * - SHA Eligibility check - verify insurance coverage
- * 
+ *
  * Both functions are presented equally without bias.
  */
 'use client';
@@ -92,7 +92,7 @@ interface EligibilityResultProps {
 
 function EligibilityResult({ eligibility, onClear }: EligibilityResultProps) {
   const isEligible = eligibility.is_eligible;
-  
+
   return (
     <div className={cn(
       "flex flex-col gap-2 p-3 rounded-md text-sm",
@@ -133,7 +133,7 @@ function EligibilityResult({ eligibility, onClear }: EligibilityResultProps) {
           <X className="h-3 w-3" />
         </Button>
       </div>
-      
+
       {/* Additional details for ineligible patients */}
       {!isEligible && (eligibility.reason || eligibility.possible_solution) && (
         <div className="pl-7 space-y-1 text-xs">
@@ -165,7 +165,7 @@ export function PatientVerificationBar({
   const [activeAction, setActiveAction] = useState<ActionType>('idle');
   const [status, setStatus] = useState<Status>('idle');
   const [error, setError] = useState<string>();
-  
+
   // Results
   const [crClient, setCrClient] = useState<ClientRegistryClient | null>(null);
   const [eligibility, setEligibility] = useState<DirectEligibilityCheckResponse | null>(null);
@@ -290,7 +290,7 @@ export function PatientVerificationBar({
             </button>
           )}
         </div>
-        
+
         <Button
           variant="outline"
           size="sm"
@@ -305,7 +305,7 @@ export function PatientVerificationBar({
           )}
           Lookup CR
         </Button>
-        
+
         <Button
           variant="outline"
           size="sm"
@@ -332,17 +332,17 @@ export function PatientVerificationBar({
 
       {/* Results */}
       {crClient && (
-        <CRResult 
-          client={crClient} 
-          onUse={handleUseCRClient} 
-          onClear={clearCRResult} 
+        <CRResult
+          client={crClient}
+          onUse={handleUseCRClient}
+          onClear={clearCRResult}
         />
       )}
-      
+
       {eligibility && (
-        <EligibilityResult 
-          eligibility={eligibility} 
-          onClear={clearEligibilityResult} 
+        <EligibilityResult
+          eligibility={eligibility}
+          onClear={clearEligibilityResult}
         />
       )}
     </div>

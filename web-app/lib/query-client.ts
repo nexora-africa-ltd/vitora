@@ -6,10 +6,10 @@ const defaultOptions: DefaultOptions = {
   queries: {
     // Stale time: 1 minute
     staleTime: 60 * 1000,
-    
+
     // Cache time: 5 minutes
     gcTime: 5 * 60 * 1000,
-    
+
     // Retry failed requests once
     retry: (failureCount, error) => {
       // Don't retry on 4xx errors
@@ -20,17 +20,17 @@ const defaultOptions: DefaultOptions = {
       }
       return failureCount < 1;
     },
-    
+
     // Don't refetch on window focus in development
     refetchOnWindowFocus: process.env.NODE_ENV === 'production',
-    
+
     // Network mode
     networkMode: 'offlineFirst',
   },
   mutations: {
     // Retry mutations once
     retry: 1,
-    
+
     // Network mode
     networkMode: 'offlineFirst',
   },
@@ -56,7 +56,7 @@ export const queryKeys = {
     emergencyContacts: (id: number) => [...queryKeys.patients.detail(id), 'emergency-contacts'] as const,
     encounters: (id: number) => [...queryKeys.patients.detail(id), 'encounters'] as const,
   },
-  
+
   // Encounters
   encounters: {
     all: ['encounters'] as const,
@@ -67,7 +67,7 @@ export const queryKeys = {
     diagnoses: (id: number) => [...queryKeys.encounters.detail(id), 'diagnoses'] as const,
     treatmentPlan: (id: number) => [...queryKeys.encounters.detail(id), 'treatment-plan'] as const,
   },
-  
+
   // Locations
   locations: {
     all: ['locations'] as const,
@@ -75,7 +75,7 @@ export const queryKeys = {
     subCounties: (countyId: number) => [...queryKeys.locations.all, 'sub-counties', countyId] as const,
     wards: (subCountyId: number) => [...queryKeys.locations.all, 'wards', subCountyId] as const,
   },
-  
+
   // ICD-10 codes
   icd10: {
     all: ['icd10'] as const,

@@ -394,38 +394,38 @@ class Patient(TimeStampedModel):
     """Patient master record with Kenya-specific considerations."""
     # Auto-generated (NEVER set manually)
     mrn = models.CharField(unique=True, editable=False)  # Format: MRN-YYYYMMDD-XXXX
-    
+
     # Required fields
     first_name = models.CharField(max_length=100)
     last_name = models.CharField(max_length=100)
     date_of_birth = models.DateField()  # MUST NOT be in the future
     gender = models.CharField(choices=[('M', 'Male'), ('F', 'Female'), ('O', 'Other')])
-    
+
     # Kenya location hierarchy (FKs)
     county = models.ForeignKey('core.County', on_delete=models.SET_NULL, null=True)
     sub_county = models.ForeignKey('core.SubCounty', on_delete=models.SET_NULL, null=True)
     ward = models.ForeignKey('core.Ward', on_delete=models.SET_NULL, null=True, blank=True)
-    
+
     # Privacy (ENCRYPTED with Fernet)
     national_id = models.CharField(null=True)           # Encrypted at rest
     phone_number = models.CharField(null=True)          # Encrypted at rest
-    
+
     # Sensitive access control
     is_sensitive = models.BooleanField(default=False)   # HIV/GBV/Mental Health
-    
+
     # Consent (Kenya DPA compliance)
     consent_given = models.BooleanField(default=False)
     consent_date = models.DateTimeField(null=True)
-    
+
     # Tracking
     registered_by = models.ForeignKey(User, on_delete=models.SET_NULL, null=True)
     referral_source = models.CharField(choices=['self', 'clinic', 'other_facility'])
-    
+
     # Emergency contact (quick access)
     emergency_contact_name = models.CharField(max_length=200, blank=True)
     emergency_contact_phone = models.CharField(max_length=20, blank=True)
     emergency_contact_relationship = models.CharField(max_length=50, blank=True)
-    
+
     # Sync metadata
     sync_status = models.CharField(max_length=20, default='synced')
     last_synced_at = models.DateTimeField(null=True, blank=True)
@@ -439,7 +439,7 @@ class Encounter(TimeStampedModel):
     encounter_type = models.CharField(choices=[('OPD', 'Outpatient'), ('IPD', 'Inpatient'), ('EMERGENCY', 'Emergency')])
     encounter_date = models.DateField(default=date.today)
     chief_complaint = models.TextField()
-    
+
     # Status workflow: DRAFT → IN_PROGRESS → COMPLETED
     STATUS_CHOICES = [
         ('DRAFT', 'Draft'),
@@ -448,7 +448,7 @@ class Encounter(TimeStampedModel):
         ('CANCELLED', 'Cancelled'),
     ]
     status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='DRAFT')
-    
+
     # Vital signs
     temperature = models.DecimalField(null=True)        # °C (36.1-37.2 normal)
     pulse = models.IntegerField(null=True)              # BPM (60-100 normal adult)
@@ -457,7 +457,7 @@ class Encounter(TimeStampedModel):
     spo2 = models.DecimalField(null=True)               # % (95-100 normal)
     weight = models.DecimalField(null=True)             # kg
     height = models.DecimalField(null=True)             # cm
-    
+
     # Medical history (captured per encounter)
     allergies = models.TextField(blank=True)
     chronic_conditions = models.TextField(blank=True)
@@ -465,10 +465,10 @@ class Encounter(TimeStampedModel):
     past_surgeries = models.TextField(blank=True)
     family_history = models.TextField(blank=True)
     social_history = models.TextField(blank=True)       # Smoking, alcohol, occupation
-    
+
     def has_critical_vitals(self) -> bool:
         """Returns True if any vital is critical (e.g., SpO2 < 95%)."""
-        
+
     def get_alerts(self) -> list[str]:
         """Returns list of critical vital alerts."""
 \`\`\`
@@ -488,7 +488,7 @@ class LabOrder(TimeStampedModel):
         ('COMPLETED', 'Completed'),
         ('CANCELLED', 'Cancelled'),
     ]
-    
+
     encounter = models.ForeignKey(Encounter, on_delete=models.CASCADE)
     test_name = models.CharField(max_length=200)
     loinc_code = models.CharField(max_length=20, blank=True)
@@ -496,7 +496,7 @@ class LabOrder(TimeStampedModel):
     status = models.CharField(choices=STATUS_CHOICES, default='ORDERED')
     priority = models.CharField(choices=['routine', 'urgent', 'stat'], default='routine')
     ordered_by = models.ForeignKey(User, on_delete=models.SET_NULL, null=True)
-    
+
     # External lab details
     external_lab_name = models.CharField(max_length=200, blank=True)
     requisition_pdf = models.FileField(upload_to='lab_requisitions/', blank=True)
@@ -534,7 +534,7 @@ class InventoryItem(TimeStampedModel):
     unit_cost = models.DecimalField(max_digits=10, decimal_places=2)
     expiry_date = models.DateField()
     reorder_level = models.IntegerField(default=10)
-    
+
     @property
     def needs_reorder(self):
         return self.quantity <= self.reorder_level
@@ -563,14 +563,14 @@ class Invoice(TimeStampedModel):
         ('PAID', 'Fully Paid'),
         ('CANCELLED', 'Cancelled'),
     ]
-    
+
     patient = models.ForeignKey(Patient, on_delete=models.CASCADE)
     encounter = models.ForeignKey(Encounter, on_delete=models.CASCADE, null=True)
     invoice_number = models.CharField(max_length=50, unique=True)
     status = models.CharField(choices=STATUS_CHOICES, default='DRAFT')
     total_amount = models.DecimalField(max_digits=12, decimal_places=2)
     paid_amount = models.DecimalField(max_digits=12, decimal_places=2, default=0)
-    
+
     # SHA claims
     sha_claim_id = models.CharField(max_length=100, blank=True)
     sha_claim_status = models.CharField(max_length=50, blank=True)
@@ -585,7 +585,7 @@ class Payment(TimeStampedModel):
         ('INSURANCE', 'Insurance'),
         ('SHA', 'SHA'),
     ]
-    
+
     invoice = models.ForeignKey(Invoice, on_delete=models.CASCADE)
     amount = models.DecimalField(max_digits=12, decimal_places=2)
     payment_method = models.CharField(choices=PAYMENT_METHOD_CHOICES)
@@ -605,7 +605,7 @@ class Ward(TimeStampedModel):
         ('ICU', 'Intensive Care Unit'),
         ('ISOLATION', 'Isolation'),
     ]
-    
+
     name = models.CharField(max_length=100)
     ward_type = models.CharField(choices=WARD_TYPE_CHOICES)
     capacity = models.IntegerField()
@@ -620,7 +620,7 @@ class Bed(TimeStampedModel):
         ('MAINTENANCE', 'Under Maintenance'),
         ('RESERVED', 'Reserved'),
     ]
-    
+
     ward = models.ForeignKey(Ward, on_delete=models.CASCADE)
     bed_number = models.CharField(max_length=20)
     status = models.CharField(choices=STATUS_CHOICES, default='AVAILABLE')
@@ -654,20 +654,20 @@ class TriageAssessment(TimeStampedModel):
         ('P', 'Pain Responsive'),
         ('U', 'Unresponsive'),
     ]
-    
+
     encounter = models.OneToOneField(Encounter, on_delete=models.CASCADE)
     chief_complaint = models.TextField()
-    
+
     # Clinical assessment
     pain_score = models.IntegerField(null=True)         # 0-10 scale
     avpu = models.CharField(choices=AVPU_CHOICES, default='A')
     mobility = models.CharField(max_length=50)
-    
+
     # Triage category
     auto_calculated_category = models.CharField(choices=CATEGORY_CHOICES)
     triage_category = models.CharField(choices=CATEGORY_CHOICES)
     category_override_reason = models.TextField(blank=True)
-    
+
     triaged_by = models.ForeignKey(User, on_delete=models.SET_NULL, null=True)
 \`\`\`
 
@@ -692,7 +692,7 @@ class Role(models.Model):
         ('BILLING_CLERK', 'Billing Clerk'),
         ('TRIAGE_NURSE', 'Triage Nurse'),
     ]
-    
+
     name = models.CharField(choices=ROLE_CHOICES, unique=True)
     permissions = models.ManyToManyField('auth.Permission', blank=True)
     can_access_sensitive = models.BooleanField(default=False)

@@ -6,7 +6,7 @@ import { useEffect } from 'react';
  * Global Error Boundary
  * Catches errors in root layout (app/layout.tsx) and providers.
  * Must include own <html> and <body> tags since it replaces root layout.
- * 
+ *
  * For regular page errors, see app/error.tsx
  */
 export default function GlobalError({

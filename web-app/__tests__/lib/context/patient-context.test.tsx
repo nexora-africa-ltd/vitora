@@ -1,8 +1,8 @@
 /**
  * TDD Tests for PatientContext and usePatient hook
- * 
+ *
  * RED PHASE: These tests should FAIL initially because the implementation doesn't exist.
- * 
+ *
  * Patient Context Requirements:
  * 1. Single authoritative patient context provider
  * 2. Patient identity fetched ONCE and shared across all children
@@ -52,7 +52,7 @@ function createWrapper() {
 // Test component that consumes PatientContext
 function TestPatientConsumer() {
   const context = usePatientContext();
-  
+
   return (
     <div>
       <span data-testid="loading">{context.isLoading.toString()}</span>
@@ -86,17 +86,17 @@ describe('PatientContext', () => {
     it('should throw error when usePatientContext is used outside provider', () => {
       // Suppress console.error for this test
       const consoleSpy = jest.spyOn(console, 'error').mockImplementation(() => {});
-      
+
       expect(() => {
         render(<TestPatientConsumer />);
       }).toThrow('usePatientContext must be used within a PatientProvider');
-      
+
       consoleSpy.mockRestore();
     });
 
     it('should initialize with loading state when patientId is provided', async () => {
       mockPatientsApi.getPatient.mockResolvedValueOnce(mockPatient);
-      
+
       const Wrapper = createWrapper();
       render(
         <Wrapper>
@@ -131,7 +131,7 @@ describe('PatientContext', () => {
   describe('Patient Data Fetching', () => {
     it('should fetch patient data when patientId is provided', async () => {
       mockPatientsApi.getPatient.mockResolvedValueOnce(mockPatient);
-      
+
       const Wrapper = createWrapper();
       render(
         <Wrapper>
@@ -151,7 +151,7 @@ describe('PatientContext', () => {
 
     it('should provide patient identity data to consumers', async () => {
       mockPatientsApi.getPatient.mockResolvedValueOnce(mockPatient);
-      
+
       const Wrapper = createWrapper();
       render(
         <Wrapper>
@@ -172,7 +172,7 @@ describe('PatientContext', () => {
 
     it('should handle fetch errors gracefully', async () => {
       mockPatientsApi.getPatient.mockRejectedValueOnce(new Error('Patient not found'));
-      
+
       const Wrapper = createWrapper();
       render(
         <Wrapper>
@@ -194,7 +194,7 @@ describe('PatientContext', () => {
   describe('Verification Status', () => {
     it('should indicate SHA verification when sha_number is present', async () => {
       mockPatientsApi.getPatient.mockResolvedValueOnce(mockPatient);
-      
+
       const Wrapper = createWrapper();
       render(
         <Wrapper>
@@ -211,7 +211,7 @@ describe('PatientContext', () => {
 
     it('should indicate CR verification when cr_number is present', async () => {
       mockPatientsApi.getPatient.mockResolvedValueOnce(mockPatient);
-      
+
       const Wrapper = createWrapper();
       render(
         <Wrapper>
@@ -229,7 +229,7 @@ describe('PatientContext', () => {
     it('should indicate not verified when cr_number is missing', async () => {
       const unverifiedPatient = { ...mockPatient, cr_number: undefined, sha_number: undefined };
       mockPatientsApi.getPatient.mockResolvedValueOnce(unverifiedPatient);
-      
+
       const Wrapper = createWrapper();
       render(
         <Wrapper>
@@ -252,7 +252,7 @@ describe('PatientContext', () => {
   describe('Single Fetch Guarantee', () => {
     it('should only fetch patient data once regardless of number of consumers', async () => {
       mockPatientsApi.getPatient.mockResolvedValueOnce(mockPatient);
-      
+
       function MultipleConsumers() {
         return (
           <>
@@ -262,7 +262,7 @@ describe('PatientContext', () => {
           </>
         );
       }
-      
+
       const Wrapper = createWrapper();
       render(
         <Wrapper>
@@ -283,12 +283,12 @@ describe('PatientContext', () => {
 
     it('should share patient data across deeply nested consumers', async () => {
       mockPatientsApi.getPatient.mockResolvedValueOnce(mockPatient);
-      
+
       function DeepChild() {
         const { patient } = usePatientContext();
         return <span data-testid="deep-mrn">{patient?.mrn}</span>;
       }
-      
+
       function MiddleComponent() {
         return (
           <div>
@@ -296,7 +296,7 @@ describe('PatientContext', () => {
           </div>
         );
       }
-      
+
       const Wrapper = createWrapper();
       render(
         <Wrapper>
@@ -322,14 +322,14 @@ describe('PatientContext', () => {
   describe('Read-Only Patient Data', () => {
     it('should not expose mutation methods on patient object', async () => {
       mockPatientsApi.getPatient.mockResolvedValueOnce(mockPatient);
-      
+
       let capturedContext: ReturnType<typeof usePatientContext> | null = null;
-      
+
       function ContextCapture() {
         capturedContext = usePatientContext();
         return null;
       }
-      
+
       const Wrapper = createWrapper();
       render(
         <Wrapper>
@@ -350,12 +350,12 @@ describe('PatientContext', () => {
 
     it('should provide patient data as readonly', async () => {
       mockPatientsApi.getPatient.mockResolvedValueOnce(mockPatient);
-      
+
       function ContextCapture() {
         const { patient } = usePatientContext();
         return <span data-testid="captured-mrn">{patient?.mrn || 'loading'}</span>;
       }
-      
+
       const Wrapper = createWrapper();
       render(
         <Wrapper>
@@ -384,7 +384,7 @@ describe('PatientContext', () => {
       mockPatientsApi.getPatient
         .mockResolvedValueOnce(mockPatient)
         .mockResolvedValueOnce(patient2);
-      
+
       const Wrapper = createWrapper();
       const { rerender } = render(
         <Wrapper>

@@ -1,6 +1,6 @@
 /**
  * Triage Alerts Step Definitions
- * 
+ *
  * Steps for vital signs alerts including critical and warning thresholds.
  */
 
@@ -54,7 +54,7 @@ Given(
   'the patient has SpO2 of {int}%',
   async function (this: VitoraWorld, value: number) {
     this.store('spo2', value);
-    
+
     if (this.page) {
       await this.page.fill('[data-testid="vital-spo2"]', String(value));
     }
@@ -65,7 +65,7 @@ Given(
   'the patient has systolic blood pressure of {int} mmHg',
   async function (this: VitoraWorld, value: number) {
     this.store('systolicBp', value);
-    
+
     if (this.page) {
       await this.page.fill('[data-testid="vital-systolic"]', String(value));
     }
@@ -76,7 +76,7 @@ Given(
   'diastolic blood pressure of {int} mmHg',
   async function (this: VitoraWorld, value: number) {
     this.store('diastolicBp', value);
-    
+
     if (this.page) {
       await this.page.fill('[data-testid="vital-diastolic"]', String(value));
     }
@@ -87,7 +87,7 @@ Given(
   'the patient has heart rate of {int} bpm',
   async function (this: VitoraWorld, value: number) {
     this.store('heartRate', value);
-    
+
     if (this.page) {
       await this.page.fill('[data-testid="vital-heart-rate"]', String(value));
     }
@@ -98,7 +98,7 @@ Given(
   'the patient has temperature of {float}°C',
   async function (this: VitoraWorld, value: number) {
     this.store('temperature', value);
-    
+
     if (this.page) {
       await this.page.fill('[data-testid="vital-temperature"]', String(value));
     }
@@ -109,7 +109,7 @@ Given(
   'the patient has respiratory rate of {int} breaths\\/min',
   async function (this: VitoraWorld, value: number) {
     this.store('respiratoryRate', value);
-    
+
     if (this.page) {
       await this.page.fill('[data-testid="vital-respiratory-rate"]', String(value));
     }
@@ -120,11 +120,11 @@ Given(
   'the patient has the following vitals:',
   async function (this: VitoraWorld, dataTable: DataTable) {
     const vitals = dataTable.rowsHash() as Record<string, string>;
-    
+
     for (const [vital, value] of Object.entries(vitals)) {
       const normalizedVital = vital.toLowerCase().replace(/_/g, '');
       this.store(normalizedVital, Number(value));
-      
+
       if (this.page) {
         const testIdMap: Record<string, string> = {
           spo2: 'vital-spo2',
@@ -147,7 +147,7 @@ Given(
   'the patient has:',
   async function (this: VitoraWorld, dataTable: DataTable) {
     const vitals = dataTable.rowsHash() as Record<string, string>;
-    
+
     for (const [vital, value] of Object.entries(vitals)) {
       const normalizedVital = vital.toLowerCase().replace(/_/g, '');
       this.store(normalizedVital, Number(value));
@@ -175,7 +175,7 @@ Then(
   'a CRITICAL alert should be displayed:',
   async function (this: VitoraWorld, docString: string) {
     this.store('expectedCriticalAlert', docString.trim());
-    
+
     if (this.page) {
       const alertText = await this.page.locator('[data-testid="critical-alert"]').textContent();
       expect(alertText).toContain('CRITICAL');
@@ -187,7 +187,7 @@ Then(
   'a CRITICAL alert should be displayed containing {string}',
   async function (this: VitoraWorld, expectedText: string) {
     this.store('expectedCriticalAlertText', expectedText);
-    
+
     if (this.page) {
       const alertText = await this.page.locator('[data-testid="critical-alert"]').textContent();
       expect(alertText).toContain(expectedText);
@@ -199,7 +199,7 @@ Then(
   'a WARNING alert should be displayed:',
   async function (this: VitoraWorld, docString: string) {
     this.store('expectedWarningAlert', docString.trim());
-    
+
     if (this.page) {
       const alertText = await this.page.locator('[data-testid="warning-alert"]').textContent();
       expect(alertText).toContain('WARNING');
@@ -211,7 +211,7 @@ Then(
   'a WARNING alert should be displayed containing {string}',
   async function (this: VitoraWorld, expectedText: string) {
     this.store('expectedWarningAlertText', expectedText);
-    
+
     if (this.page) {
       const alertText = await this.page.locator('[data-testid="warning-alert"]').textContent();
       expect(alertText).toContain(expectedText);
@@ -253,7 +253,7 @@ Then(
   'the alerts panel should show {int} alerts:',
   async function (this: VitoraWorld, count: number, dataTable: DataTable) {
     this.store('expectedAlertCount', count);
-    
+
     if (this.page) {
       const alertCount = await this.page.locator('[data-testid="alert-item"]').count();
       expect(alertCount).toBe(count);
@@ -266,7 +266,7 @@ Then(
   async function (this: VitoraWorld, dataTable: DataTable) {
     const expectedOrder = dataTable.hashes();
     this.store('expectedAlertOrder', expectedOrder);
-    
+
     if (this.page) {
       const alerts = await this.page.locator('[data-testid="alert-item"]').all();
       for (let i = 0; i < expectedOrder.length; i++) {
@@ -339,7 +339,7 @@ Given(
   'audio alerts are enabled in settings',
   async function (this: VitoraWorld) {
     this.store('audioAlertsEnabled', true);
-    
+
     if (this.page) {
       await this.page.evaluate(() => {
         localStorage.setItem('audioAlertsEnabled', 'true');
@@ -352,7 +352,7 @@ Given(
   'audio alerts are disabled in settings',
   async function (this: VitoraWorld) {
     this.store('audioAlertsEnabled', false);
-    
+
     if (this.page) {
       await this.page.evaluate(() => {
         localStorage.setItem('audioAlertsEnabled', 'false');

@@ -1,10 +1,10 @@
 /**
  * Patient Shell Layout
- * 
+ *
  * Wraps all /patients/[id]/* routes with PatientProvider and PatientShellHeader.
  * This ensures patient context is available to all child routes and the
  * patient identity header persists across navigation.
- * 
+ *
  * Usage:
  * - Automatically applied to all routes under /patients/[id]/
  * - Children have access to usePatientContext()

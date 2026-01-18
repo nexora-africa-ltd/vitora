@@ -67,7 +67,7 @@ describe('ErrorBoundary', () => {
   it('should reset error state on Try Again click', () => {
     // This component controls whether to throw an error via a ref
     let shouldThrow = true;
-    
+
     const ControlledThrow = () => {
       if (shouldThrow) {
         throw new Error('Test error');

@@ -48,9 +48,9 @@ export default function PatientHistoryPage() {
       {/* Header */}
       <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between print:block">
         <div className="flex items-center gap-4">
-          <Button 
-            variant="ghost" 
-            size="icon" 
+          <Button
+            variant="ghost"
+            size="icon"
             onClick={() => router.back()}
             className="print:hidden"
           >
@@ -59,7 +59,7 @@ export default function PatientHistoryPage() {
           <div>
             <h1 className="text-2xl font-bold">Patient History</h1>
             <div className="flex items-center gap-2 text-sm text-muted-foreground">
-              <Link 
+              <Link
                 href={`/patients/${patient.id}`}
                 className="flex items-center gap-1 hover:text-primary"
               >

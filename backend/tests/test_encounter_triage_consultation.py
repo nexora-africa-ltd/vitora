@@ -14,7 +14,6 @@ They define the expected behavior for:
 - Signal to auto-set triage_status when TriageAssessment created
 """
 
-
 import pytest  # type: ignore
 from django.core.exceptions import ValidationError
 from django.utils import timezone

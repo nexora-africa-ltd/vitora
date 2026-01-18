@@ -22,9 +22,9 @@ interface TimelineItemProps {
   isLast?: boolean;
 }
 
-const eventConfig: Record<TimelineEventType, { 
-  icon: LucideIcon; 
-  color: string; 
+const eventConfig: Record<TimelineEventType, {
+  icon: LucideIcon;
+  color: string;
   bgColor: string;
   label: string;
 }> = {
@@ -122,8 +122,8 @@ export function TimelineItem({ event, isLast = false }: TimelineItemProps) {
               {config.label}
             </Badge>
             {event.metadata?.encounterType && (
-              <Badge 
-                variant="outline" 
+              <Badge
+                variant="outline"
                 className={cn(
                   'text-xs',
                   event.metadata.encounterType === 'EMERGENCY' && 'border-destructive text-destructive'

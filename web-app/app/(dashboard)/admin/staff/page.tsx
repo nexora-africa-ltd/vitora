@@ -1,7 +1,7 @@
 /**
  * Staff Profiles List Page
  * Sprint 1.1-1.2 Track C: RBAC Foundation
- * 
+ *
  * Lists all staff profiles with roles, departments, and status.
  * Supports list and grid view modes.
  */
@@ -44,7 +44,7 @@ export default function StaffListPage() {
 
   const { data: departments } = useDepartments({ is_active: true });
   const { data: roles } = useRoles();
-  
+
   const { data, isLoading, error } = useStaffList({
     search: search || undefined,
     department: departmentFilter ? parseInt(departmentFilter) : undefined,

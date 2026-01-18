@@ -1,6 +1,6 @@
 /**
  * Database Initialization
- * 
+ *
  * Initializes WatermelonDB with SQLite adapter for offline-first storage.
  * Singleton pattern ensures only one database instance exists.
  */

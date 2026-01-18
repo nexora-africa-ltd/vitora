@@ -361,9 +361,11 @@ class SHAIntegrationTester:
             "test_terminology_lookup",
             any_success,
             {
-                "message": "At least one terminology endpoint accessible"
-                if any_success
-                else "No terminology endpoints accessible",
+                "message": (
+                    "At least one terminology endpoint accessible"
+                    if any_success
+                    else "No terminology endpoints accessible"
+                ),
             },
         )
         return any_success

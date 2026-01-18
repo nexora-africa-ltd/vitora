@@ -1,6 +1,5 @@
 """Django admin configuration for pharmacy models."""
 
-
 from django.contrib import admin
 
 from .models import (

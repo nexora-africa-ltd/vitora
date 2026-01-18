@@ -83,8 +83,8 @@ export function ThemeProvider({ children }: ThemeProviderProps): React.JSX.Eleme
   }, []);
 
   // Resolve actual theme based on mode
-  const isDark = themeMode === 'system' 
-    ? systemColorScheme === 'dark' 
+  const isDark = themeMode === 'system'
+    ? systemColorScheme === 'dark'
     : themeMode === 'dark';
 
   // Generate theme-aware colors

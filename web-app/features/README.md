@@ -154,11 +154,11 @@ defineFeature(feature, (test) => {
     given('I am logged in as a user with "patients.add_patient" permission', () => {
       // Mock authentication
     });
-    
+
     when(/^I fill in the registration form:$/, (table) => {
       // Fill form fields from data table
     });
-    
+
     then('a new patient record should be created', () => {
       // Assert patient creation
     });
@@ -318,15 +318,15 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: '20'
-      
+
       - name: Install dependencies
         run: npm ci
         working-directory: web-app
-      
+
       - name: Run smoke tests
         run: npm run test:bdd:smoke
         working-directory: web-app
-      
+
       - name: Upload report
         uses: actions/upload-artifact@v4
         with:

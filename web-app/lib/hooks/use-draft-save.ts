@@ -73,10 +73,10 @@ export function useDraftSave<T>({
   const [recoveredDraft, setRecoveredDraft] = useState<T | null>(null);
   const [isDirty, setIsDirty] = useState(false);
   const [lastSaved, setLastSaved] = useState<Date | null>(null);
-  
+
   const initialDataRef = useRef<T | null>(null);
   const hasInitializedRef = useRef(false);
-  
+
   const debouncedData = useDebounce(data, debounceMs);
   const storageKey = getStorageKey(draftKey);
 
@@ -84,18 +84,18 @@ export function useDraftSave<T>({
   useEffect(() => {
     if (hasInitializedRef.current || !enabled) return;
     hasInitializedRef.current = true;
-    
+
     try {
       const stored = localStorage.getItem(storageKey);
       if (stored) {
         const draft: StoredDraft<T> = JSON.parse(stored);
-        
+
         // Check if draft is expired
         if (isExpired(draft.timestamp)) {
           localStorage.removeItem(storageKey);
           return;
         }
-        
+
         // Check if draft is different from current data
         if (hasDataChanged(data, draft.data)) {
           setHasDraft(true);
@@ -108,7 +108,7 @@ export function useDraftSave<T>({
     } catch (error) {
       console.error('Failed to load draft:', error);
     }
-    
+
     // Store initial data for comparison
     initialDataRef.current = data;
   // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -129,7 +129,7 @@ export function useDraftSave<T>({
   // Auto-save draft when debounced data changes
   useEffect(() => {
     if (!enabled || !isDirty || hasDraft) return;
-    
+
     try {
       const draft: StoredDraft<T> = {
         data: debouncedData,
@@ -177,7 +177,7 @@ export function useDraftSave<T>({
   // Force save draft immediately
   const saveDraft = useCallback(() => {
     if (!enabled) return;
-    
+
     try {
       const draft: StoredDraft<T> = {
         data,

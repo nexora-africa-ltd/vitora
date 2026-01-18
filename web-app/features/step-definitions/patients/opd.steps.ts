@@ -1,6 +1,6 @@
 /**
  * Outpatient (OPD) Step Definitions
- * 
+ *
  * Steps for outpatient encounter feature scenarios.
  * @see features/patients/outpatient-opd.feature
  */
@@ -25,7 +25,7 @@ Given(
       last_name: lastName,
       mrn: `MRN-${mrn}`,
     });
-    
+
     const response = await this.apiRequest('POST', '/patients/', patientData);
     this.store('currentPatient', response);
   }
@@ -35,7 +35,7 @@ Given(
   'patient {string} is in the OPD queue',
   async function (this: VitoraWorld, name: string) {
     const patient = this.retrieve<{ id: number }>('currentPatient');
-    
+
     // Add to queue via API
     await this.apiRequest('POST', '/queue/', {
       patient: patient?.id,
@@ -49,7 +49,7 @@ Given(
   'I am documenting an encounter',
   async function (this: VitoraWorld) {
     const patient = this.retrieve<{ id: number }>('currentPatient');
-    
+
     // Create or navigate to encounter
     await this.page?.goto(`/encounters/new?patient=${patient?.id}`);
     await this.page?.waitForSelector('form');
@@ -60,7 +60,7 @@ Given(
   'patient has previous encounter with allergies {string}',
   async function (this: VitoraWorld, allergies: string) {
     const patient = this.retrieve<{ id: number }>('currentPatient');
-    
+
     await this.apiRequest('POST', '/encounters/', {
       patient: patient?.id,
       encounter_type: 'OPD',
@@ -74,12 +74,12 @@ Given(
   'patient has allergy to {string}',
   async function (this: VitoraWorld, allergy: string) {
     const patient = this.retrieve<{ id: number }>('currentPatient');
-    
+
     // Update patient allergies
     await this.apiRequest('PATCH', `/patients/${patient?.id}/`, {
       allergies: allergy,
     });
-    
+
     this.store('patientAllergy', allergy);
   }
 );
@@ -88,7 +88,7 @@ Given(
   'patient has recorded allergies',
   async function (this: VitoraWorld) {
     const patient = this.retrieve<{ id: number }>('currentPatient');
-    
+
     await this.apiRequest('PATCH', `/patients/${patient?.id}/`, {
       allergies: 'Penicillin, Sulfa drugs',
     });
@@ -100,7 +100,7 @@ Given(
   async function (this: VitoraWorld, dataTable: DataTable) {
     // Verify that the components have been filled
     const components = safeHashes(dataTable.hashes());
-    
+
     for (const component of components) {
       const componentName = component['component'] || component['Component'] || '';
       this.store(`documented_${componentName.toLowerCase().replace(/\s+/g, '_')}`, true);
@@ -147,7 +147,7 @@ When(
   'I add allergies:',
   async function (this: VitoraWorld, dataTable: DataTable) {
     const allergies = safeHashes(dataTable.hashes());
-    
+
     for (const allergy of allergies) {
       await this.page?.click('[data-testid="add-allergy"]');
       await this.page?.fill('[name="allergy_name"]', allergy['allergy'] || allergy['Allergy'] || '');
@@ -161,7 +161,7 @@ When(
   'I add chronic conditions:',
   async function (this: VitoraWorld, dataTable: DataTable) {
     const conditions = safeHashes(dataTable.hashes());
-    
+
     for (const condition of conditions) {
       await this.page?.click('[data-testid="add-condition"]');
       await this.page?.fill('[name="condition_name"]', condition['condition'] || condition['Condition'] || '');
@@ -197,17 +197,17 @@ When(
   'I add diagnoses:',
   async function (this: VitoraWorld, dataTable: DataTable) {
     const diagnoses = safeHashes(dataTable.hashes());
-    
+
     for (const diagnosis of diagnoses) {
       const code = diagnosis['code'] || diagnosis['Code'] || '';
       await this.page?.fill('[name="diagnosis_search"]', code);
       await this.page?.waitForResponse(/icd10/);
       await this.page?.click(`[role="option"]:has-text("${code}")`);
-      
+
       if ((diagnosis['primary'] || diagnosis['Primary'] || '') === 'Yes') {
         await this.page?.check('[name="is_primary"]');
       }
-      
+
       await this.page?.click('[data-testid="add-diagnosis"]');
     }
   }
@@ -226,7 +226,7 @@ When(
   'I add medication to treatment plan:',
   async function (this: VitoraWorld, dataTable: DataTable) {
     const medications = safeHashes(dataTable.hashes());
-    
+
     for (const med of medications) {
       await this.page?.click('[data-testid="add-medication"]');
       await this.page?.fill('[name="drug_name"]', med['drug'] || med['Drug'] || '');
@@ -242,7 +242,7 @@ When(
   'I order lab tests:',
   async function (this: VitoraWorld, dataTable: DataTable) {
     const tests = safeHashes(dataTable.hashes());
-    
+
     for (const test of tests) {
       const testName = test['test'] || test['Test'] || '';
       const urgency = test['urgency'] || test['Urgency'] || 'routine';
@@ -267,7 +267,7 @@ When(
   'I schedule follow-up:',
   async function (this: VitoraWorld, dataTable: DataTable) {
     const followUp = safeRowsHash(dataTable.rowsHash());
-    
+
     await this.page?.click('[data-testid="schedule-followup"]');
     await this.page?.fill('[name="followup_date"]', followUp['Date'] || '');
     await this.page?.fill('[name="followup_reason"]', followUp['Reason'] || '');
@@ -297,7 +297,7 @@ When(
   'I enter:',
   async function (this: VitoraWorld, dataTable: DataTable) {
     const data = dataTable.rowsHash();
-    
+
     for (const [field, value] of Object.entries(data)) {
       const fieldName = field.toLowerCase().replace(/\s+/g, '_');
       await this.page?.fill(`[name="${fieldName}"]`, value);
@@ -396,7 +396,7 @@ Then(
   'a critical alert should display:',
   async function (this: VitoraWorld, dataTable: DataTable) {
     const alerts = safeHashes(dataTable.hashes());
-    
+
     for (const alert of alerts) {
       const alertType = alert['alert_type'] || alert['Alert Type'] || 'critical';
       const message = alert['message'] || alert['Message'] || '';
@@ -421,7 +421,7 @@ Then(
   async function (this: VitoraWorld) {
     const alert = this.page?.locator('[data-alert-type="critical"]');
     await expect(alert!).toBeVisible();
-    
+
     // Try navigating and check it's still there
     await this.page?.reload();
     await expect(alert!).toBeVisible();
@@ -432,7 +432,7 @@ Then(
   'I should see ICD-10 options:',
   async function (this: VitoraWorld, dataTable: DataTable) {
     const options = dataTable.hashes();
-    
+
     for (const option of options) {
       const optionElement = this.page?.locator(`[role="option"]:has-text("${option.code}")`);
       await expect(optionElement!).toBeVisible();
@@ -453,7 +453,7 @@ Then(
   'treatment plan should pre-populate with:',
   async function (this: VitoraWorld, dataTable: DataTable) {
     const expectedContent = dataTable.hashes();
-    
+
     for (const item of expectedContent) {
       const content = this.page?.locator(`text=${item.content}`);
       await expect(content!).toBeVisible();
@@ -492,7 +492,7 @@ Then(
   'I should see allergy alert:',
   async function (this: VitoraWorld, dataTable: DataTable) {
     const alerts = safeHashes(dataTable.hashes());
-    
+
     for (const alert of alerts) {
       const severity = alert['severity'] || alert['Severity'] || 'warning';
       const message = alert['message'] || alert['Message'] || '';
@@ -508,7 +508,7 @@ Then(
   async function (this: VitoraWorld) {
     const saveButton = this.page?.locator('button:has-text("Save Prescription")');
     await expect(saveButton!).toBeDisabled();
-    
+
     const acknowledgeButton = this.page?.locator('button:has-text("Acknowledge")');
     await expect(acknowledgeButton!).toBeVisible();
   }

@@ -32,9 +32,9 @@ const severityColors = {
 
 export function AlertsWidget() {
   const { data: alertsData, isLoading } = useStockAlerts({ resolved: false });
-  
+
   const unresolvedAlerts = alertsData?.results?.filter((a) => !a.resolved) || [];
-  
+
   // Group by severity
   const criticalCount = unresolvedAlerts.filter((a) => a.severity === 'CRITICAL').length;
   const highCount = unresolvedAlerts.filter((a) => a.severity === 'HIGH').length;

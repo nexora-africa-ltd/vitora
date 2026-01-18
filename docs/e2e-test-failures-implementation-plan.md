@@ -1,7 +1,7 @@
 # E2E Test Failures - Implementation Plan
 
-> **Generated**: January 14, 2026  
-> **Test File**: `web-app/e2e/inpatient.spec.ts`  
+> **Generated**: January 14, 2026
+> **Test File**: `web-app/e2e/inpatient.spec.ts`
 > **Current Status**: 19 passed, 18 failed (37 total)
 
 ---

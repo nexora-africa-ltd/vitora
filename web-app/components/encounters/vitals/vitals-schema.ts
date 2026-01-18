@@ -113,4 +113,3 @@ export type VitalsFormValues = z.infer<typeof vitalsSchema>;
 
 // Re-export alert severity type for compatibility
 export type VitalAlertSeverity = 'critical' | 'warning' | 'info';
-

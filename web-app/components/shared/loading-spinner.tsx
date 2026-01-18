@@ -6,7 +6,7 @@ import { cn } from "@/lib/utils";
 // Size mappings for the spinner
 const sizeClasses = {
   sm: "size-4",
-  md: "size-6", 
+  md: "size-6",
   lg: "size-8",
 } as const;
 
@@ -18,10 +18,10 @@ interface LoadingSpinnerProps extends React.ComponentProps<"svg"> {
  * Simple loading spinner component using Lucide LoaderIcon.
  * Use for inline loading states.
  */
-export function LoadingSpinner({ 
-  className, 
+export function LoadingSpinner({
+  className,
   size = "md",
-  ...props 
+  ...props
 }: LoadingSpinnerProps) {
   return (
     <LoaderIcon
@@ -42,9 +42,9 @@ interface PageLoadingProps {
  * Full page loading component with message.
  * Used by Next.js loading.tsx for route transitions.
  */
-export function PageLoading({ 
-  message = "Loading...", 
-  fullScreen = false 
+export function PageLoading({
+  message = "Loading...",
+  fullScreen = false
 }: PageLoadingProps) {
   return (
     <div className={cn(

@@ -327,24 +327,93 @@ class Command(BaseCommand):
 
         # Kenyan names for sample patients
         KENYAN_FIRST_NAMES_MALE = [
-            "James", "John", "Peter", "Paul", "David", "Joseph", "Michael",
-            "Daniel", "Samuel", "Stephen", "Francis", "George", "Robert", "Patrick",
-            "Brian", "Kevin", "Dennis", "Martin", "Charles", "Eric", "Simon",
-            "Kelvin", "Victor", "Felix", "Caleb", "Emmanuel", "Isaac", "Moses",
+            "James",
+            "John",
+            "Peter",
+            "Paul",
+            "David",
+            "Joseph",
+            "Michael",
+            "Daniel",
+            "Samuel",
+            "Stephen",
+            "Francis",
+            "George",
+            "Robert",
+            "Patrick",
+            "Brian",
+            "Kevin",
+            "Dennis",
+            "Martin",
+            "Charles",
+            "Eric",
+            "Simon",
+            "Kelvin",
+            "Victor",
+            "Felix",
+            "Caleb",
+            "Emmanuel",
+            "Isaac",
+            "Moses",
         ]
 
         KENYAN_FIRST_NAMES_FEMALE = [
-            "Mary", "Grace", "Faith", "Joy", "Mercy", "Esther", "Ruth",
-            "Elizabeth", "Sarah", "Rebecca", "Lucy", "Ann", "Jane", "Margaret",
-            "Rose", "Beatrice", "Agnes", "Catherine", "Dorothy", "Florence",
-            "Gladys", "Hannah", "Irene", "Janet", "Joyce", "Lydia", "Naomi",
+            "Mary",
+            "Grace",
+            "Faith",
+            "Joy",
+            "Mercy",
+            "Esther",
+            "Ruth",
+            "Elizabeth",
+            "Sarah",
+            "Rebecca",
+            "Lucy",
+            "Ann",
+            "Jane",
+            "Margaret",
+            "Rose",
+            "Beatrice",
+            "Agnes",
+            "Catherine",
+            "Dorothy",
+            "Florence",
+            "Gladys",
+            "Hannah",
+            "Irene",
+            "Janet",
+            "Joyce",
+            "Lydia",
+            "Naomi",
         ]
 
         KENYAN_SURNAMES = [
-            "Ochieng", "Wanjiku", "Kamau", "Mwangi", "Njeri", "Akinyi", "Otieno",
-            "Wambui", "Kimani", "Nyambura", "Omondi", "Adhiambo", "Kipchoge",
-            "Chebet", "Kosgei", "Rotich", "Kipruto", "Jepchirchir", "Tanui",
-            "Mutua", "Musyoka", "Ndungu", "Gitau", "Mburu", "Ngugi", "Karanja",
+            "Ochieng",
+            "Wanjiku",
+            "Kamau",
+            "Mwangi",
+            "Njeri",
+            "Akinyi",
+            "Otieno",
+            "Wambui",
+            "Kimani",
+            "Nyambura",
+            "Omondi",
+            "Adhiambo",
+            "Kipchoge",
+            "Chebet",
+            "Kosgei",
+            "Rotich",
+            "Kipruto",
+            "Jepchirchir",
+            "Tanui",
+            "Mutua",
+            "Musyoka",
+            "Ndungu",
+            "Gitau",
+            "Mburu",
+            "Ngugi",
+            "Karanja",
         ]
 
         # Check if demo users already exist
@@ -419,7 +488,9 @@ class Command(BaseCommand):
             # =============================================================
             # Step 3: Create Demo Users with StaffProfiles
             # =============================================================
-            self.stdout.write(self.style.MIGRATE_HEADING("\n3. Creating Demo Users with Staff Profiles..."))
+            self.stdout.write(
+                self.style.MIGRATE_HEADING("\n3. Creating Demo Users with Staff Profiles...")
+            )
 
             for user_data in DEMO_USERS:
                 # Extract staff profile data (use .get() to avoid modifying original dict)

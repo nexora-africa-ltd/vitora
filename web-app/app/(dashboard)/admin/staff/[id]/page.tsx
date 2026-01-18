@@ -1,7 +1,7 @@
 /**
  * Edit Staff Profile Page
  * Sprint 1.1-1.2 Track C: RBAC Foundation
- * 
+ *
  * Edit an existing staff profile with role and department assignment.
  */
 'use client';
@@ -43,7 +43,7 @@ export default function EditStaffPage() {
   const params = useParams();
   const staffId = parseInt(params.id as string);
   const { toast } = useToast();
-  
+
   const { data: staff, isLoading, error } = useStaffProfile(staffId);
   const updateStaff = useUpdateStaffProfile();
   const deactivateStaff = useDeactivateStaffProfile();
@@ -246,7 +246,7 @@ export default function EditStaffPage() {
             </p>
           </div>
         </div>
-        
+
         {staff.employment_status === 'ACTIVE' && (
           <AlertDialog>
             <AlertDialogTrigger asChild>
@@ -256,7 +256,7 @@ export default function EditStaffPage() {
               <AlertDialogHeader>
                 <AlertDialogTitle>Deactivate Staff Member?</AlertDialogTitle>
                 <AlertDialogDescription>
-                  This will revoke {staff.user_first_name}&apos;s access to the system. 
+                  This will revoke {staff.user_first_name}&apos;s access to the system.
                   They will no longer be able to log in. This action can be reversed.
                 </AlertDialogDescription>
               </AlertDialogHeader>

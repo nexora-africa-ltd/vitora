@@ -6,11 +6,11 @@
 'use client';
 
 import { useState } from 'react';
-import { 
-  Shield, 
-  Building2, 
-  User, 
-  CheckCircle2, 
+import {
+  Shield,
+  Building2,
+  User,
+  CheckCircle2,
   AlertCircle,
   RefreshCw,
   ExternalLink,
@@ -74,7 +74,7 @@ export function SHASettingsTab() {
                 <p className="text-xs text-muted-foreground">Connected</p>
               </div>
             </div>
-            
+
             <div className="flex items-center gap-3 p-3 rounded-lg border bg-muted/50">
               <div className="h-10 w-10 rounded-full bg-green-100 dark:bg-green-900/30 flex items-center justify-center">
                 <CheckCircle2 className="h-5 w-5 text-green-600" />
@@ -84,7 +84,7 @@ export function SHASettingsTab() {
                 <p className="text-xs text-muted-foreground">Active</p>
               </div>
             </div>
-            
+
             <div className="flex items-center gap-3 p-3 rounded-lg border bg-muted/50">
               <div className="h-10 w-10 rounded-full bg-green-100 dark:bg-green-900/30 flex items-center justify-center">
                 <CheckCircle2 className="h-5 w-5 text-green-600" />
@@ -100,7 +100,7 @@ export function SHASettingsTab() {
             <Info className="h-4 w-4" />
             <AlertTitle>SHA Integration Active</AlertTitle>
             <AlertDescription>
-              Your facility is connected to SHA systems. You can verify patient eligibility, 
+              Your facility is connected to SHA systems. You can verify patient eligibility,
               submit claims, and use standardized terminologies (ICD-11, LOINC).
             </AlertDescription>
           </Alert>
@@ -241,7 +241,7 @@ export function SHASettingsTab() {
                 Diagnoses & Conditions
               </p>
             </div>
-            
+
             <div className="p-3 rounded-lg border">
               <div className="flex items-center gap-2 mb-1">
                 <Badge variant="outline" className="font-mono">LOINC</Badge>
@@ -251,7 +251,7 @@ export function SHASettingsTab() {
                 Laboratory Tests
               </p>
             </div>
-            
+
             <div className="p-3 rounded-lg border">
               <div className="flex items-center gap-2 mb-1">
                 <Badge variant="outline" className="font-mono">SHA Drugs</Badge>
@@ -261,7 +261,7 @@ export function SHASettingsTab() {
                 Pharmaceutical Products
               </p>
             </div>
-            
+
             <div className="p-3 rounded-lg border">
               <div className="flex items-center gap-2 mb-1">
                 <Badge variant="outline" className="font-mono">ICHI</Badge>

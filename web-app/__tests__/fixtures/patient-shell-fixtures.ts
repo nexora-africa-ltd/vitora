@@ -1,6 +1,6 @@
 /**
  * Shared test fixtures for Patient Shell pattern tests
- * 
+ *
  * These fixtures are type-complete to satisfy TypeScript strict mode.
  */
 import type { Patient } from '@/lib/types/patient';

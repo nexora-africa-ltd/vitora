@@ -22,13 +22,13 @@ export default function NewInvoicePage() {
   const searchParams = useSearchParams();
   const { toast } = useToast();
   const createInvoice = useCreateInvoice();
-  
+
   // Get patient from URL if provided
   const patientIdFromUrl = searchParams.get('patient');
   const [selectedPatientId, setSelectedPatientId] = useState<number | null>(
     patientIdFromUrl ? parseInt(patientIdFromUrl) : null
   );
-  
+
   // Fetch patients and services for the form
   const { data: patientsData, isLoading: patientsLoading } = usePatients();
   const { data: servicesData, isLoading: servicesLoading } = useServices();

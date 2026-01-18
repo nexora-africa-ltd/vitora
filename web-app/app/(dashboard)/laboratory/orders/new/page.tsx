@@ -13,7 +13,7 @@ import { useEncounterContext } from '@/lib/context/encounter-context';
 export default function NewLabOrderPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  
+
   const encounterId = searchParams.get('encounter');
   const patientId = searchParams.get('patient');
 
@@ -21,14 +21,14 @@ export default function NewLabOrderPage() {
   let contextPatient: { id?: number; first_name?: string; last_name?: string; mrn?: string; gender?: string; date_of_birth?: string } | null = null;
   let contextEncounter: { id?: number; encounter_type?: string; encounter_date?: string; chief_complaint?: string } | null = null;
   let canPlaceOrders = true;
-  
+
   try {
     const patientCtx = usePatientContext();
     contextPatient = patientCtx.patient;
   } catch {
     // Not in patient context
   }
-  
+
   try {
     const encounterCtx = useEncounterContext();
     contextEncounter = encounterCtx.encounter;
@@ -45,7 +45,7 @@ export default function NewLabOrderPage() {
   // Use context data if available, otherwise fall back to fetched/URL data
   const effectiveEncounter = contextEncounter || encounter;
   const effectivePatient = contextPatient;
-  
+
   // Determine patient info - encounter from API has patient, context encounter doesn't
   const resolvedPatientId = effectivePatient?.id || encounter?.patient || (patientId ? parseInt(patientId) : null);
   const resolvedEncounterId = contextEncounter?.id || (encounterId ? parseInt(encounterId) : null);

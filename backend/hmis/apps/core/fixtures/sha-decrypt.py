@@ -14,6 +14,7 @@ Usage:
     # From file
     cat response.json | poetry run python hmis/apps/core/fixtures/sha-decrypt.py
 """
+
 import base64
 import json
 import os

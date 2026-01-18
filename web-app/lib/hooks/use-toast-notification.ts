@@ -13,21 +13,21 @@ export function useToastNotification() {
         variant: 'default',
       });
     },
-    
+
     error: (error: ApiError | Error | string, title = 'Error') => {
-      const message = typeof error === 'string' 
-        ? error 
-        : 'message' in error 
-          ? error.message 
+      const message = typeof error === 'string'
+        ? error
+        : 'message' in error
+          ? error.message
           : 'An error occurred';
-      
+
       toast({
         title,
         description: message,
         variant: 'destructive',
       });
     },
-    
+
     warning: (title: string, description?: string) => {
       toast({
         title,
@@ -36,7 +36,7 @@ export function useToastNotification() {
         className: 'bg-amber-50 border-amber-200 text-amber-900',
       });
     },
-    
+
     info: (title: string, description?: string) => {
       toast({
         title,

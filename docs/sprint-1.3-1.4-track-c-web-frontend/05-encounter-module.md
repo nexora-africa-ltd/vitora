@@ -22,13 +22,13 @@ export interface Encounter {
   patient: number;
   patient_name?: string;
   patient_mrn?: string;
-  
+
   // Encounter details
   encounter_type: 'OPD' | 'IPD' | 'EMERGENCY';
   encounter_date: string;
   chief_complaint: string;
   status: 'DRAFT' | 'IN_PROGRESS' | 'COMPLETED' | 'CANCELLED';
-  
+
   // Vitals
   temperature: number | null;
   pulse: number | null;
@@ -37,7 +37,7 @@ export interface Encounter {
   spo2: number | null;
   weight: number | null;
   height: number | null;
-  
+
   // Medical history
   allergies: string;
   chronic_conditions: string;
@@ -45,13 +45,13 @@ export interface Encounter {
   past_surgeries: string;
   family_history: string;
   social_history: string;
-  
+
   // Clinical notes
   history_of_present_illness: string;
   physical_examination: string;
   assessment: string;
   plan: string;
-  
+
   // Metadata
   created_by: number | null;
   created_by_name?: string;
@@ -894,7 +894,7 @@ export function VitalsDisplay({ encounter }: VitalsDisplayProps) {
         <div className="grid gap-4 grid-cols-2 md:grid-cols-4 lg:grid-cols-7">
           {vitals.map((vital) => {
             const Icon = icons[vital.name] || Activity;
-            
+
             return (
               <div
                 key={vital.name}
@@ -1232,7 +1232,7 @@ describe('VitalsDisplay', () => {
 
   it('should display all vital signs', () => {
     render(<VitalsDisplay encounter={mockEncounter as Encounter} />);
-    
+
     expect(screen.getByText('37.5')).toBeInTheDocument();
     expect(screen.getByText('80')).toBeInTheDocument();
     expect(screen.getByText('120/80')).toBeInTheDocument();
@@ -1241,19 +1241,19 @@ describe('VitalsDisplay', () => {
 
   it('should show critical badge for SpO2 < 95', () => {
     render(<VitalsDisplay encounter={{ ...mockEncounter, spo2: 92 } as Encounter} />);
-    
+
     expect(screen.getByText('Critical Values')).toBeInTheDocument();
   });
 
   it('should show — for missing vitals', () => {
     render(<VitalsDisplay encounter={{ ...mockEncounter, temperature: null } as Encounter} />);
-    
+
     expect(screen.getByText('—')).toBeInTheDocument();
   });
 
   it('should highlight abnormal values', () => {
     render(<VitalsDisplay encounter={{ ...mockEncounter, pulse: 110 } as Encounter} />);
-    
+
     // Abnormal pulse should have warning styling
     const pulseValue = screen.getByText('110');
     expect(pulseValue).toHaveClass('text-amber-600');

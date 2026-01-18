@@ -26,7 +26,7 @@ describe('Form Store', () => {
 
     it('should overwrite existing draft with same formId', () => {
       const formId = 'patient-form';
-      
+
       useFormStore.getState().saveDraft(formId, { first_name: 'John' });
       useFormStore.getState().saveDraft(formId, { first_name: 'Jane' });
 
@@ -39,7 +39,7 @@ describe('Form Store', () => {
     it('should return draft if exists', () => {
       const formId = 'encounter-form';
       const data = { chief_complaint: 'Headache' };
-      
+
       useFormStore.getState().saveDraft(formId, data);
       const draft = useFormStore.getState().getDraft(formId);
 

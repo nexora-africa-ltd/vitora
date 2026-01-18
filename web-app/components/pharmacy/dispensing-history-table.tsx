@@ -1,7 +1,7 @@
 /**
  * Dispensing History Table Component
  * Sprint 1.3-1.4 Track A: Pharmacy Module - Phase 2
- * 
+ *
  * Displays dispensing records with filtering capabilities.
  * Shows drug name, patient, quantity, batch, dispensed by, date, and cost.
  */
@@ -364,16 +364,16 @@ export function DispensingHistoryTable({
                 </TableCell>
                 <TableCell>
                   <div className="flex gap-1">
-                    <Button 
-                      variant="ghost" 
+                    <Button
+                      variant="ghost"
                       size="sm"
                       onClick={() => setReturnDialog({ isOpen: true, dispensing })}
                     >
                       <RotateCcw className="h-3 w-3 mr-1" />
                       Return
                     </Button>
-                    <Button 
-                      variant="ghost" 
+                    <Button
+                      variant="ghost"
                       size="sm"
                       onClick={() => setLabelDialog({ isOpen: true, dispensing })}
                     >

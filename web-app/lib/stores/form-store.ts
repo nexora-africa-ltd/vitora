@@ -9,7 +9,7 @@ interface FormDraft {
 interface FormState {
   // Draft storage
   drafts: Record<string, FormDraft>;
-  
+
   // Actions
   saveDraft: (formId: string, data: Record<string, any>) => void;
   getDraft: (formId: string) => FormDraft | null;
@@ -19,7 +19,7 @@ interface FormState {
 
 export const useFormStore = create<FormState>()((set, get) => ({
   drafts: {},
-  
+
   saveDraft: (formId, data) => {
     set((state) => ({
       drafts: {
@@ -32,18 +32,18 @@ export const useFormStore = create<FormState>()((set, get) => ({
       },
     }));
   },
-  
+
   getDraft: (formId) => {
     return get().drafts[formId] || null;
   },
-  
+
   clearDraft: (formId) => {
     set((state) => {
       const { [formId]: _, ...rest } = state.drafts;
       return { drafts: rest };
     });
   },
-  
+
   clearAllDrafts: () => {
     set({ drafts: {} });
   },

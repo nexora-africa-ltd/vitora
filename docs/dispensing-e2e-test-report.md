@@ -1,14 +1,14 @@
 # Dispensing E2E Test Report
 
-**Date**: January 9, 2026  
-**Status**: Implementation Required  
-**Sprint**: 1.3-1.4 Track A - Pharmacy Module  
+**Date**: January 9, 2026
+**Status**: Implementation Required
+**Sprint**: 1.3-1.4 Track A - Pharmacy Module
 
 ## Executive Summary
 
 End-to-end tests for the dispensing workflow have been created and are currently **failing** as expected. This document provides a comprehensive analysis of the test results and outlines the implementation requirements needed to make the tests pass.
 
-**Current State**: 0/55 tests passing (100% failure rate)  
+**Current State**: 0/55 tests passing (100% failure rate)
 **Root Cause**: Missing UI components and functionality for dispensing workflow
 
 ## Test Categories & Status
@@ -22,7 +22,7 @@ End-to-end tests for the dispensing workflow have been created and are currently
    - **Missing**: "Dispense" button on prescription items in PrescriptionsTable component
    - **Location**: `web-app/components/pharmacy/prescriptions-table.tsx`
 
-2. **Dispensing Dialog/Form Component** ✘  
+2. **Dispensing Dialog/Form Component** ✘
    - Tests: Multiple tests expecting dispensing interface
    - **Missing**: Entire dispensing dialog component
    - **Expected**: Dialog/modal or dedicated form view for dispensing
@@ -31,9 +31,9 @@ End-to-end tests for the dispensing workflow have been created and are currently
 3. **Batch Selection with FEFO** ✘
    - Tests: `should show available batches for drug (FEFO order)`, `should auto-select batch with earliest expiry`
    - **Missing**: Batch selector dropdown showing available batches
-   - **Required Logic**: 
+   - **Required Logic**:
      - Query batches for specific drug
-     - Filter out expired/quarantined batches  
+     - Filter out expired/quarantined batches
      - Sort by expiry date (FEFO - First Expiry First Out)
      - Auto-select earliest expiring batch
      - Display: batch number, expiry date, available quantity
@@ -41,7 +41,7 @@ End-to-end tests for the dispensing workflow have been created and are currently
 4. **Quantity Input with Validation** ✘
    - Tests: `should have quantity to dispense input`, `should pre-fill quantity from prescription`
    - **Missing**: Quantity input field
-   - **Required**: 
+   - **Required**:
      - Pre-fill with remaining quantity from prescription item
      - Validate: cannot exceed available stock
      - Validate: warning if exceeds prescribed quantity
@@ -87,7 +87,7 @@ End-to-end tests for the dispensing workflow have been created and are currently
 
 2. **Verification Workflow** ✘
    - Tests: `should show pending verification indicator`, `should have verify action for second pharmacist`
-   - **Missing**: 
+   - **Missing**:
      - Post-dispensing verification UI
      - "Verify" action button for controlled drug dispensings
      - Verification status indicator
@@ -185,7 +185,7 @@ End-to-end tests for the dispensing workflow have been created and are currently
 3. **Return Processing** ✘
    - Tests: `should process return successfully`
    - **Missing**: POST to `/api/pharmacy/dispensings/{id}/return_stock/`
-   - **Expected**: 
+   - **Expected**:
      - Restore stock to batch
      - Update dispensing record
      - Update prescription status if applicable
@@ -528,6 +528,6 @@ Response: {
 
 ---
 
-**Report Generated**: January 9, 2026  
-**Author**: Test Analysis Tool  
+**Report Generated**: January 9, 2026
+**Author**: Test Analysis Tool
 **Version**: 1.0

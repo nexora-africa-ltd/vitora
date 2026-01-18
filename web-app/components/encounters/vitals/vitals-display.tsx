@@ -5,13 +5,13 @@
 'use client';
 
 import * as React from 'react';
-import { 
-  Thermometer, 
-  Heart, 
-  Wind, 
-  Droplets, 
-  Scale, 
-  Ruler, 
+import {
+  Thermometer,
+  Heart,
+  Wind,
+  Droplets,
+  Scale,
+  Ruler,
   Activity,
   Info,
 } from 'lucide-react';
@@ -49,13 +49,13 @@ interface VitalItemProps {
   status?: 'normal' | 'warning' | 'critical';
 }
 
-function VitalItem({ 
-  icon: Icon, 
-  label, 
-  value, 
-  unit, 
+function VitalItem({
+  icon: Icon,
+  label,
+  value,
+  unit,
   normalRange,
-  status = 'normal' 
+  status = 'normal'
 }: VitalItemProps) {
   return (
     <Item
@@ -104,7 +104,7 @@ export function VitalsDisplay({ values, alerts, patient, className }: VitalsDisp
   );
 
   // Format blood pressure
-  const bloodPressureValue = 
+  const bloodPressureValue =
     values.blood_pressure_systolic && values.blood_pressure_diastolic
       ? `${values.blood_pressure_systolic}/${values.blood_pressure_diastolic}`
       : null;
@@ -119,7 +119,7 @@ export function VitalsDisplay({ values, alerts, patient, className }: VitalsDisp
         normalRange={`${VITAL_RANGES.temperature.normalMin}-${VITAL_RANGES.temperature.normalMax}°C`}
         status={getFieldStatus('temperature', alerts)}
       />
-      
+
       <VitalItem
         icon={Heart}
         label="Pulse"
@@ -128,7 +128,7 @@ export function VitalsDisplay({ values, alerts, patient, className }: VitalsDisp
         normalRange={`${VITAL_RANGES.pulse.normalMin}-${VITAL_RANGES.pulse.normalMax} bpm`}
         status={getFieldStatus('pulse', alerts)}
       />
-      
+
       <VitalItem
         icon={Activity}
         label="Blood Pressure"
@@ -137,7 +137,7 @@ export function VitalsDisplay({ values, alerts, patient, className }: VitalsDisp
         normalRange="90/60 - 120/80"
         status={getFieldStatus('blood_pressure', alerts)}
       />
-      
+
       <VitalItem
         icon={Wind}
         label="Resp. Rate"
@@ -146,7 +146,7 @@ export function VitalsDisplay({ values, alerts, patient, className }: VitalsDisp
         normalRange={`${VITAL_RANGES.respiratory_rate.normalMin}-${VITAL_RANGES.respiratory_rate.normalMax}/min`}
         status={getFieldStatus('respiratory_rate', alerts)}
       />
-      
+
       <VitalItem
         icon={Droplets}
         label="SpO₂"
@@ -155,21 +155,21 @@ export function VitalsDisplay({ values, alerts, patient, className }: VitalsDisp
         normalRange={`${VITAL_RANGES.spo2.normalMin}-${VITAL_RANGES.spo2.normalMax}%`}
         status={getFieldStatus('spo2', alerts)}
       />
-      
+
       <VitalItem
         icon={Scale}
         label="Weight"
         value={values.weight}
         unit="kg"
       />
-      
+
       <VitalItem
         icon={Ruler}
         label="Height"
         value={values.height}
         unit="cm"
       />
-      
+
       {/* BMI Display */}
       <Item
         variant="outline"
@@ -192,7 +192,7 @@ export function VitalsDisplay({ values, alerts, patient, className }: VitalsDisp
           ) : bmiResult.bmi !== null ? (
             <>
               <span className="text-xl font-semibold tabular-nums">{bmiResult.bmi}</span>
-              <Badge 
+              <Badge
                 variant="outline"
                 className={cn('text-xs', getBMIColorClass(bmiResult.classification))}
               >

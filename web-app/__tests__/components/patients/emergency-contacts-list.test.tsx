@@ -59,10 +59,10 @@ describe('EmergencyContactsList', () => {
   });
 
   it('should render multiple contacts', () => {
-    const secondContact: EmergencyContact = { 
-      ...mockContact, 
-      id: 2, 
-      full_name: 'John Smith', 
+    const secondContact: EmergencyContact = {
+      ...mockContact,
+      id: 2,
+      full_name: 'John Smith',
       relationship: 'Parent',
     };
     render(<EmergencyContactsList contacts={[mockContact, secondContact]} />);

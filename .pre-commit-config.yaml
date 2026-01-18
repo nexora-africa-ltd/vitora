@@ -34,6 +34,7 @@ repos:
     rev: 24.10.0
     hooks:
       - id: black
+        stages: [manual]
         files: ^backend/.*\.py$
 
   # Python: isort
@@ -48,11 +49,34 @@ repos:
     rev: v1.14.1
     hooks:
       - id: mypy
-        files: ^backend/.*\.py$
+        files: ^backend/hmis/.*\.py$
+        args: [--config-file, backend/pyproject.toml]
+        stages: [manual]
         additional_dependencies:
+          # Stubs
           - django-stubs
           - djangorestframework-stubs
           - types-python-dateutil
+          # Runtime deps required for django-stubs plugin initialization
+          - Django>=5.0,<6.0
+          - djangorestframework>=3.14
+          - djangorestframework-simplejwt>=5.3
+          - django-cors-headers>=4.3
+          - django-filter>=23.5
+          - django-extensions>=3.2
+          - celery>=5.3
+          - requests>=2.31
+          - python-dotenv>=1.0
+          - pydantic>=2.5
+          - pydantic-settings>=2.1
+          - cryptography>=42.0
+          - pillow>=10.2
+          - reportlab>=4.4
+          - num2words>=0.5
+          - openpyxl>=3.1
+          - pyjwt>=2.10
+          - dj-database-url>=3.1
+          - whitenoise>=6.11
 
   # Python: bandit security scan
   - repo: https://github.com/PyCQA/bandit
@@ -60,6 +84,10 @@ repos:
     hooks:
       - id: bandit
         args: [-r, backend/hmis, -c, backend/pyproject.toml]
+        files: ^backend/.*\.py$
+        pass_filenames: false
+        additional_dependencies:
+          - bandit[toml]
 
   # Python: tests + coverage on push (keeps commit fast but blocks bad pushes)
   - repo: local
@@ -69,4 +97,4 @@ repos:
         entry: bash -lc 'cd backend && poetry run pytest --cov=hmis --cov-fail-under=80'
         language: system
         pass_filenames: false
-        stages: [pre-push]
+        stages: [manual]

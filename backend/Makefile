@@ -148,7 +148,7 @@ createsuperuser:
 runserver:
 	poetry run python manage.py runserver
 
-shell:	
+shell:
 	poetry run python manage.py shell
 
 # ============================================================================

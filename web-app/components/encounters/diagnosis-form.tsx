@@ -29,7 +29,7 @@ export function DiagnosisEntry({ onAdd, existingDiagnoses, disabled = false }: D
   const [selectedCode, setSelectedCode] = useState<ICD10SearchResult | null>(null);
   const [useICD11, setUseICD11] = useState(true); // Default to ICD-11
   const [icd11Value, setIcd11Value] = useState<{ code: string; title: string } | null>(null);
-  
+
   const [formData, setFormData] = useState<DiagnosisFormData>({
     icd10_code: null,
     diagnosis_type: existingDiagnoses.some(d => d.diagnosis_type === 'PRIMARY') ? 'SECONDARY' : 'PRIMARY',
@@ -38,9 +38,9 @@ export function DiagnosisEntry({ onAdd, existingDiagnoses, disabled = false }: D
     is_confirmed: false,
     certainty: 'SUSPECTED',
   });
-  
+
   const { data: searchResults, isLoading: isSearching } = useICD10Search(searchQuery);
-  
+
   const handleSelectCode = useCallback((code: ICD10SearchResult) => {
     setSelectedCode(code);
     setIcd11Value(null);
@@ -66,7 +66,7 @@ export function DiagnosisEntry({ onAdd, existingDiagnoses, disabled = false }: D
       icd11_display: `${code.code} - ${code.title}`,
     }));
   }, []);
-  
+
   const handleClearCode = useCallback(() => {
     setSelectedCode(null);
     setIcd11Value(null);
@@ -78,22 +78,22 @@ export function DiagnosisEntry({ onAdd, existingDiagnoses, disabled = false }: D
       icd11_display: undefined,
     }));
   }, []);
-  
+
   const handleAdd = useCallback(() => {
     if (!selectedCode && !icd11Value && !formData.free_text_diagnosis.trim()) {
       return; // Need either ICD code or free text
     }
-    
+
     onAdd({
       ...formData,
-      icd10_display: selectedCode 
+      icd10_display: selectedCode
         ? `${selectedCode.code} - ${selectedCode.short_description || selectedCode.description}`
         : undefined,
       icd11_display: icd11Value
         ? `${icd11Value.code} - ${icd11Value.title}`
         : undefined,
     });
-    
+
     // Reset form for next entry
     setSelectedCode(null);
     setIcd11Value(null);
@@ -108,7 +108,7 @@ export function DiagnosisEntry({ onAdd, existingDiagnoses, disabled = false }: D
   }, [formData, selectedCode, icd11Value, onAdd]);
 
   const hasSelectedCode = selectedCode || icd11Value;
-  
+
   return (
     <div className="space-y-4 border-b pb-4 last:border-0 last:pb-0">
       {/* ICD Code Search with ICD-10/ICD-11 Tabs */}
@@ -156,7 +156,7 @@ export function DiagnosisEntry({ onAdd, existingDiagnoses, disabled = false }: D
                 <span className={cn("text-sm", useICD11 && "font-medium")}>ICD-11</span>
               </div>
             </div>
-            
+
             {/* ICD-10 Search */}
             {!useICD11 && (
               <div className="relative">
@@ -173,7 +173,7 @@ export function DiagnosisEntry({ onAdd, existingDiagnoses, disabled = false }: D
                   className="pl-9"
                   disabled={disabled}
                 />
-                
+
                 {/* Search Results Dropdown */}
                 {isSearchOpen && searchQuery.length >= 2 && (
                   <Card className="absolute z-50 mt-1 w-full shadow-lg max-h-64 overflow-y-auto">
@@ -216,7 +216,7 @@ export function DiagnosisEntry({ onAdd, existingDiagnoses, disabled = false }: D
                 )}
               </div>
             )}
-            
+
             {/* ICD-11 Search */}
             {useICD11 && (
               <ICD11Select
@@ -229,7 +229,7 @@ export function DiagnosisEntry({ onAdd, existingDiagnoses, disabled = false }: D
           </div>
         )}
       </div>
-      
+
       {/* Free Text Diagnosis (alternative) */}
       <div className="space-y-2">
         <Label htmlFor="free_text_diagnosis">
@@ -243,16 +243,16 @@ export function DiagnosisEntry({ onAdd, existingDiagnoses, disabled = false }: D
           disabled={disabled}
         />
       </div>
-      
+
       {/* Diagnosis Type & Certainty */}
       <div className="grid gap-4 sm:grid-cols-2">
         <div className="space-y-3">
           <Label>Type</Label>
           <RadioGroup
             value={formData.diagnosis_type}
-            onValueChange={(value) => setFormData(prev => ({ 
-              ...prev, 
-              diagnosis_type: value as 'PRIMARY' | 'SECONDARY' | 'DIFFERENTIAL' 
+            onValueChange={(value) => setFormData(prev => ({
+              ...prev,
+              diagnosis_type: value as 'PRIMARY' | 'SECONDARY' | 'DIFFERENTIAL'
             }))}
             disabled={disabled}
             className="flex flex-wrap gap-3"
@@ -271,14 +271,14 @@ export function DiagnosisEntry({ onAdd, existingDiagnoses, disabled = false }: D
             </div>
           </RadioGroup>
         </div>
-        
+
         <div className="space-y-3">
           <Label>Certainty</Label>
           <RadioGroup
             value={formData.certainty}
-            onValueChange={(value) => setFormData(prev => ({ 
-              ...prev, 
-              certainty: value as 'SUSPECTED' | 'PROBABLE' | 'CONFIRMED' 
+            onValueChange={(value) => setFormData(prev => ({
+              ...prev,
+              certainty: value as 'SUSPECTED' | 'PROBABLE' | 'CONFIRMED'
             }))}
             disabled={disabled}
             className="flex flex-wrap gap-3"
@@ -298,13 +298,13 @@ export function DiagnosisEntry({ onAdd, existingDiagnoses, disabled = false }: D
           </RadioGroup>
         </div>
       </div>
-      
+
       <div className="flex items-center space-x-2">
         <Checkbox
           id="is_confirmed"
           checked={formData.is_confirmed}
-          onCheckedChange={(checked) => setFormData(prev => ({ 
-            ...prev, 
+          onCheckedChange={(checked) => setFormData(prev => ({
+            ...prev,
             is_confirmed: checked === true,
             certainty: checked === true ? 'CONFIRMED' : prev.certainty,
           }))}
@@ -314,7 +314,7 @@ export function DiagnosisEntry({ onAdd, existingDiagnoses, disabled = false }: D
           Diagnostics Confirmed
         </label>
       </div>
-      
+
       {/* Notes */}
       <div className="space-y-2">
         <Label htmlFor="diagnosis_notes">Clinical Notes</Label>
@@ -328,7 +328,7 @@ export function DiagnosisEntry({ onAdd, existingDiagnoses, disabled = false }: D
           className="resize-none"
         />
       </div>
-      
+
       {/* Add Button */}
       <Button
         type="button"
@@ -339,7 +339,7 @@ export function DiagnosisEntry({ onAdd, existingDiagnoses, disabled = false }: D
         <Plus className="h-4 w-4 mr-2" />
         Add Diagnosis
       </Button>
-      
+
       {/* Click outside to close search */}
       {isSearchOpen && (
         <div
@@ -359,19 +359,19 @@ interface DiagnosisListDisplayProps {
 
 export function DiagnosisListDisplay({ diagnoses, onRemove, disabled = false }: DiagnosisListDisplayProps) {
   if (diagnoses.length === 0) return null;
-  
+
   const typeColors = {
     PRIMARY: 'bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400',
     SECONDARY: 'bg-gray-100 text-gray-800 dark:bg-gray-800 dark:text-gray-300',
     DIFFERENTIAL: 'bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-400',
   };
-  
+
   const certaintyColors = {
     SUSPECTED: 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-400',
     PROBABLE: 'bg-orange-100 text-orange-800 dark:bg-orange-900/30 dark:text-orange-400',
     CONFIRMED: 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400',
   };
-  
+
   return (
     <div className="space-y-3">
       <h4 className="font-medium text-sm">Added Diagnoses ({diagnoses.length})</h4>
@@ -437,14 +437,14 @@ export function DiagnosisFormContent({ diagnoses, onAdd, onRemove, disabled = fa
       <p className="text-sm text-muted-foreground">
         Add one or more diagnoses using ICD-10/ICD-11 codes. You can add comorbidities as secondary diagnoses.
       </p>
-      
+
       {/* List of added diagnoses */}
       <DiagnosisListDisplay
         diagnoses={diagnoses}
         onRemove={onRemove}
         disabled={disabled}
       />
-      
+
       {/* Diagnosis entry form - Always visible for adding more */}
       <div className="pt-2">
         {diagnoses.length > 0 && (
@@ -496,7 +496,7 @@ export function DiagnosisForm({ diagnoses, onAdd, onRemove, disabled = false, on
           disabled={disabled}
         />
       </CardContent>
-      
+
       {/* Navigation Footer */}
       {(onPrevious || onNext) && (
         <CardFooter className="border-t pt-4">

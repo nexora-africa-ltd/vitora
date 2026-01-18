@@ -1,7 +1,7 @@
 /**
  * Tests for Drug Table Component
  * Sprint 1.3-1.4 Track A: Pharmacy Module
- * 
+ *
  * TDD: These tests are written BEFORE the implementation.
  */
 

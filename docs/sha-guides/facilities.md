@@ -206,4 +206,3 @@ Before approving a new facility for a healthcare program, use this API to verify
 ✅ **Handle Missing Data Gracefully**: Not all facilities may have complete metadata (e.g., approval status or license expiry date may be null).
 
 ✅ **Verify Facility Status Before Transactions**: Ensure the facility is operational and licensed before proceeding with medical transactions or referrals.
-

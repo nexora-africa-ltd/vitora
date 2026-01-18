@@ -1,7 +1,7 @@
 # Dashboard Real-Time Stats Implementation Plan
 
-> **Branch**: `feature/dashboard-real-stats`  
-> **Estimated Effort**: 6-8 hours  
+> **Branch**: `feature/dashboard-real-stats`
+> **Estimated Effort**: 6-8 hours
 > **Priority**: High (stakeholder demo visibility)
 
 ---
@@ -62,46 +62,46 @@ Replace hardcoded/mock dashboard statistics with real-time data from the backend
 {
     "timestamp": "2026-01-17T08:30:00Z",
     "cache_ttl": 300,
-    
+
     "patients": {
         "total": 1247,
         "today": 12,
         "this_week": 45,
         "this_month": 156
     },
-    
+
     "encounters": {
         "total": 3456,
         "today": 48,
         "in_progress": 8,
         "completed_today": 40
     },
-    
+
     "pharmacy": {
         "prescriptions_today": 156,
         "pending_dispensing": 12,
         "low_stock_items": 7,
         "expiring_soon": 15
     },
-    
+
     "laboratory": {
         "pending_tests": 18,
         "completed_today": 34,
         "critical_results": 2
     },
-    
+
     "triage": {
         "waiting": 5,
         "avg_wait_time_minutes": 24,
         "emergency_count": 2
     },
-    
+
     "billing": {
         "revenue_today": 145200,
         "pending_payments": 23500,
         "sha_claims_pending": 12
     },
-    
+
     "alerts": {
         "critical": 1,
         "high": 3,
@@ -127,10 +127,10 @@ def dashboard_stats(request):
     cached = cache.get(DASHBOARD_STATS_CACHE_KEY)
     if cached:
         return Response(cached)
-    
+
     # Compute stats
     stats = compute_dashboard_stats()
-    
+
     # Cache and return
     cache.set(DASHBOARD_STATS_CACHE_KEY, stats, DASHBOARD_STATS_TTL)
     return Response(stats)
@@ -302,12 +302,12 @@ Encounter.objects.filter(encounter_date=today, status='IN_PROGRESS').count()
 ### Pharmacy Stats
 ```python
 Prescription.objects.filter(
-    created_at__date=today, 
+    created_at__date=today,
     status='DISPENSED'
 ).count()
 
 StockAlert.objects.filter(
-    resolved=False, 
+    resolved=False,
     alert_type='LOW_STOCK'
 ).count()
 ```
@@ -358,11 +358,11 @@ def test_dashboard_stats_caching(authenticated_client):
     # First call computes
     response1 = authenticated_client.get('/api/dashboard/stats/')
     timestamp1 = response1.data['timestamp']
-    
+
     # Second call should be cached (same timestamp)
     response2 = authenticated_client.get('/api/dashboard/stats/')
     timestamp2 = response2.data['timestamp']
-    
+
     assert timestamp1 == timestamp2
 ```
 
@@ -375,7 +375,7 @@ describe('useDashboardStats', () => {
     // Mock API response
     // Verify hook returns data correctly
   });
-  
+
   it('handles loading state', () => {
     // Verify loading skeleton displays
   });
@@ -444,6 +444,6 @@ describe('useDashboardStats', () => {
 
 ---
 
-*Document Version: 1.0*  
-*Created: January 17, 2026*  
+*Document Version: 1.0*
+*Created: January 17, 2026*
 *Author: Engineering Team*

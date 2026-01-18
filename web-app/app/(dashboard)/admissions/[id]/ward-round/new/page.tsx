@@ -41,16 +41,16 @@ export default function NewWardRoundPage() {
   const createWardRound = useCreateWardRound();
 
   const [conditionStatus, setConditionStatus] = useState<ConditionStatus>('STABLE');
-  
+
   // Clinical Notes (for E2E test compatibility)
   const [clinicalNotes, setClinicalNotes] = useState('');
-  
+
   // SOAP Notes
   const [subjective, setSubjective] = useState('');
   const [objective, setObjective] = useState('');
   const [assessment, setAssessment] = useState('');
   const [plan, setPlan] = useState('');
-  
+
   // Vitals
   const [temperature, setTemperature] = useState('');
   const [pulse, setPulse] = useState('');
@@ -62,7 +62,7 @@ export default function NewWardRoundPage() {
   const hasSOAPNotes = subjective.trim() && objective.trim() && assessment.trim() && plan.trim();
   const hasClinicalNotes = clinicalNotes.trim();
   const isFormValid = Boolean(
-    admission && 
+    admission &&
     (hasSOAPNotes || hasClinicalNotes) &&
     user?.id != null
   );
@@ -80,7 +80,7 @@ export default function NewWardRoundPage() {
     const now = new Date();
     const roundDate = now.toISOString().split('T')[0] || '';
     const roundTime = now.toTimeString().slice(0, 5);
-    
+
     try {
       await createWardRound.mutateAsync({
         admission: admissionId,
@@ -158,9 +158,9 @@ export default function NewWardRoundPage() {
         </Link>
       </div>
 
-      <PageHeader 
-        title="New Ward Round" 
-        description={`Document ward round for ${admission.patient_name}`} 
+      <PageHeader
+        title="New Ward Round"
+        description={`Document ward round for ${admission.patient_name}`}
       />
 
       {/* Patient Info */}
@@ -284,7 +284,7 @@ export default function NewWardRoundPage() {
               rows={4}
             />
           </div>
-          
+
           {/* Condition Status */}
           <div className="space-y-2">
             <Label htmlFor="condition-status">Patient Condition</Label>
@@ -374,8 +374,8 @@ export default function NewWardRoundPage() {
         <Button variant="outline" onClick={() => router.back()}>
           Cancel
         </Button>
-        <Button 
-          onClick={handleSubmit} 
+        <Button
+          onClick={handleSubmit}
           disabled={createWardRound.isPending || !isFormValid}
         >
           <Stethoscope className="h-4 w-4 mr-2" />

@@ -52,7 +52,7 @@ export default function DischargePage() {
   const [patientInstructions, setPatientInstructions] = useState('');
   const [followUpDate, setFollowUpDate] = useState('');
   const [medications, setMedications] = useState<DischargeMedication[]>([]);
-  
+
   // Clearance states
   const [billingClearance, setBillingClearance] = useState(false);
   const [pharmacyClearance, setPharmacyClearance] = useState(false);
@@ -72,12 +72,12 @@ export default function DischargePage() {
   const allClearancesComplete = billingClearance && pharmacyClearance && nursingClearance;
 
   const addMedication = () => {
-    const newMed: DischargeMedication = { 
-      drug_name: '', 
-      dosage: '', 
-      frequency: '', 
-      duration: '', 
-      instructions: '' 
+    const newMed: DischargeMedication = {
+      drug_name: '',
+      dosage: '',
+      frequency: '',
+      duration: '',
+      instructions: ''
     };
     setMedications([...medications, newMed]);
   };
@@ -192,9 +192,9 @@ export default function DischargePage() {
         </Link>
       </div>
 
-      <PageHeader 
-        title="Discharge Patient" 
-        description={`Discharging ${admission.patient_name} from ${admission.ward_name}`} 
+      <PageHeader
+        title="Discharge Patient"
+        description={`Discharging ${admission.patient_name} from ${admission.ward_name}`}
       />
 
       {/* Patient Summary with LOS */}
@@ -245,8 +245,8 @@ export default function DischargePage() {
         <CardContent>
           <div className="grid gap-4 md:grid-cols-3">
             <div className="flex items-center space-x-2">
-              <Checkbox 
-                id="billing-clearance" 
+              <Checkbox
+                id="billing-clearance"
                 checked={billingClearance}
                 onCheckedChange={(checked) => setBillingClearance(checked === true)}
               />
@@ -255,8 +255,8 @@ export default function DischargePage() {
               </Label>
             </div>
             <div className="flex items-center space-x-2">
-              <Checkbox 
-                id="pharmacy-clearance" 
+              <Checkbox
+                id="pharmacy-clearance"
                 checked={pharmacyClearance}
                 onCheckedChange={(checked) => setPharmacyClearance(checked === true)}
               />
@@ -265,8 +265,8 @@ export default function DischargePage() {
               </Label>
             </div>
             <div className="flex items-center space-x-2">
-              <Checkbox 
-                id="nursing-clearance" 
+              <Checkbox
+                id="nursing-clearance"
                 checked={nursingClearance}
                 onCheckedChange={(checked) => setNursingClearance(checked === true)}
               />
@@ -483,8 +483,8 @@ export default function DischargePage() {
         <Button variant="outline" onClick={() => router.back()}>
           Cancel
         </Button>
-        <Button 
-          onClick={handleSubmit} 
+        <Button
+          onClick={handleSubmit}
           disabled={createDischarge.isPending || !dischargeSummary || !patientInstructions || !allClearancesComplete}
         >
           <Save className="h-4 w-4 mr-2" />

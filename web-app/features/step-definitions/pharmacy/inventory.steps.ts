@@ -1,6 +1,6 @@
 /**
  * Pharmacy Stock Inventory Step Definitions
- * 
+ *
  * Steps for stock management, inventory levels, and stock alerts.
  */
 
@@ -24,7 +24,7 @@ Given(
   'I am on the stock inventory page',
   async function (this: VitoraWorld) {
     this.currentPage = 'stock inventory';
-    
+
     if (this.page) {
       await this.page.goto('/pharmacy/stock');
       await this.page.waitForLoadState('networkidle');
@@ -36,7 +36,7 @@ Given(
   'I am on the pharmacy stock management page',
   async function (this: VitoraWorld) {
     this.currentPage = 'stock inventory';
-    
+
     if (this.page) {
       await this.page.goto('/pharmacy/stock');
       await this.page.waitForLoadState('networkidle');
@@ -49,7 +49,7 @@ Given(
   async function (this: VitoraWorld, dataTable: DataTable) {
     const stockItems = safeHashes(dataTable.hashes());
     this.store('stockItems', stockItems);
-    
+
     if (this.page) {
       await this.page.route('**/api/pharmacy/stock**', async route => {
         await route.fulfill({
@@ -90,13 +90,13 @@ Then(
   'I should see the current stock quantities:',
   async function (this: VitoraWorld, dataTable: DataTable) {
     const expectedStock = safeHashes(dataTable.hashes());
-    
+
     if (this.page) {
       for (const item of expectedStock) {
         const drugName = item.drug || item.drug_name;
         const stockRow = this.page.locator(`[data-testid="stock-row"]:has-text("${drugName}")`);
         await expect(stockRow).toBeVisible();
-        
+
         const quantity = await stockRow.locator('[data-testid="stock-quantity"]').textContent();
         expect(quantity).toBe(item.quantity);
       }
@@ -129,7 +129,7 @@ Then(
   'the stock row should be highlighted in warning color',
   async function (this: VitoraWorld) {
     const drugName = this.retrieve('lowStockDrug') as string;
-    
+
     if (this.page) {
       const stockRow = this.page.locator(`[data-testid="stock-row"]:has-text("${drugName}")`);
       const rowClass = await stockRow.getAttribute('class');
@@ -196,7 +196,7 @@ When(
   async function (this: VitoraWorld, action: string, drugName: string) {
     this.store('selectedDrug', drugName);
     this.store('stockAction', action);
-    
+
     if (this.page) {
       const drugRow = this.page.locator(`[data-testid="stock-row"]:has-text("${drugName}")`);
       await drugRow.locator(`button:has-text("${action}")`).click();
@@ -208,7 +208,7 @@ When(
   'I enter adjustment quantity {int}',
   async function (this: VitoraWorld, quantity: number) {
     this.store('adjustmentQuantity', quantity);
-    
+
     if (this.page) {
       await this.page.fill('[data-testid="adjustment-quantity"]', String(quantity));
     }
@@ -384,10 +384,10 @@ When(
   async function (this: VitoraWorld, dataTable: DataTable) {
     const batchDetails = dataTable.rowsHash() as Record<string, string>;
     this.store('newBatch', batchDetails);
-    
+
     if (this.page) {
       await this.page.click('[data-testid="add-batch"]');
-      
+
       for (const [field, value] of Object.entries(batchDetails)) {
         const fieldId = field.toLowerCase().replace(/\s+/g, '-');
         await this.page.fill(`[data-testid="batch-${fieldId}"]`, value);
@@ -400,7 +400,7 @@ Then(
   'the new batch should appear in the batch list',
   async function (this: VitoraWorld) {
     const newBatch = this.retrieve('newBatch') as Record<string, string>;
-    
+
     if (this.page) {
       const batchNumber = newBatch['Batch Number'] || newBatch.batch_number;
       const batchRow = this.page.locator(`[data-testid="batch-row"]:has-text("${batchNumber}")`);

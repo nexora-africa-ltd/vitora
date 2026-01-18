@@ -1,11 +1,11 @@
 /**
  * Drug Catalog E2E Tests
- * 
+ *
  * End-to-end tests for drug catalog management.
  * Tests should identify missing UI implementations.
- * 
+ *
  * Sprint 1.3-1.4 Track A: Pharmacy Module
- * 
+ *
  * Backend API Endpoints Tested:
  * - GET /api/pharmacy/drugs/ - List drugs with search and filtering
  * - GET /api/pharmacy/drugs/{id}/ - Get drug details
@@ -40,7 +40,7 @@ test.describe('Drug Catalog - List View', () => {
   test('should display drug list with essential columns', async ({ page }) => {
     // Click drugs tab if not already active
     await page.getByRole('tab', { name: /drugs/i }).click();
-    
+
     // Wait for drug table to load
     await page.waitForSelector('[data-testid="drug-table"], table', { timeout: 10000 });
 
@@ -54,7 +54,7 @@ test.describe('Drug Catalog - List View', () => {
 
   test('should display drug categories', async ({ page }) => {
     await page.getByRole('tab', { name: /drugs/i }).click();
-    
+
     // Should show drug categories
     await expect(page.getByText(/analgesic/i)).toBeVisible();
     await expect(page.getByText(/antibiotic/i)).toBeVisible();
@@ -62,7 +62,7 @@ test.describe('Drug Catalog - List View', () => {
 
   test('should display drug schedules (OTC, POM, P, CD)', async ({ page }) => {
     await page.getByRole('tab', { name: /drugs/i }).click();
-    
+
     // Should show schedule badges/labels
     // OTC = Over The Counter, POM = Prescription Only Medicine, CD = Controlled Drug
     await expect(page.getByText('OTC').or(page.getByText(/over.the.counter/i))).toBeVisible();
@@ -70,7 +70,7 @@ test.describe('Drug Catalog - List View', () => {
 
   test('should display current stock levels', async ({ page }) => {
     await page.getByRole('tab', { name: /drugs/i }).click();
-    
+
     // Stock column should show current quantities
     // Will FAIL if stock level display not implemented
     await expect(page.getByText('450').or(page.getByText(/in.stock/i))).toBeVisible();
@@ -78,7 +78,7 @@ test.describe('Drug Catalog - List View', () => {
 
   test('should indicate out-of-stock drugs', async ({ page }) => {
     await page.getByRole('tab', { name: /drugs/i }).click();
-    
+
     // Metformin has 0 stock - should show out of stock indicator
     await expect(
       page.getByTestId('out-of-stock-indicator').or(page.getByText(/out.of.stock/i)).first()
@@ -87,14 +87,14 @@ test.describe('Drug Catalog - List View', () => {
 
   test('should indicate essential medicines (KEML)', async ({ page }) => {
     await page.getByRole('tab', { name: /drugs/i }).click();
-    
+
     // Essential medicines should have indicator (KEML = Kenya Essential Medicines List)
     await expect(page.getByText(/essential|keml/i).first()).toBeVisible();
   });
 
   test('should indicate controlled drugs', async ({ page }) => {
     await page.getByRole('tab', { name: /drugs/i }).click();
-    
+
     // Morphine is controlled - should have special indicator
     await expect(page.getByText(/morphine/i).first()).toBeVisible();
     // Should show controlled drug indicator (CD badge)
@@ -125,30 +125,30 @@ test.describe('Drug Catalog - Search & Filter', () => {
     const searchInput = page.getByPlaceholder(/search|find/i).or(
       page.getByRole('searchbox')
     ).first();
-    
+
     await searchInput.fill('Paracetamol');
     await page.waitForTimeout(500); // Debounce
-    
+
     // Should filter to show only matching drugs
     await expect(page.getByText('Paracetamol')).toBeVisible();
   });
 
   test('should search drugs by brand name', async ({ page }) => {
     const searchInput = page.getByPlaceholder(/search|find/i).first();
-    
+
     await searchInput.fill('Panadol');
     await page.waitForTimeout(500);
-    
+
     // Panadol is a brand name for Paracetamol
     await expect(page.getByText('Paracetamol')).toBeVisible();
   });
 
   test('should search drugs by code', async ({ page }) => {
     const searchInput = page.getByPlaceholder(/search|find/i).first();
-    
+
     await searchInput.fill('DRG-002');
     await page.waitForTimeout(500);
-    
+
     // Should find Amoxicillin
     await expect(page.getByText('Amoxicillin')).toBeVisible();
   });
@@ -160,7 +160,7 @@ test.describe('Drug Catalog - Search & Filter', () => {
     ).or(
       page.getByTestId('category-filter')
     );
-    
+
     await expect(categoryFilter).toBeVisible();
   });
 
@@ -171,7 +171,7 @@ test.describe('Drug Catalog - Search & Filter', () => {
     ).or(
       page.getByTestId('form-filter')
     );
-    
+
     await expect(formFilter).toBeVisible();
   });
 
@@ -182,7 +182,7 @@ test.describe('Drug Catalog - Search & Filter', () => {
     ).or(
       page.getByTestId('schedule-filter')
     );
-    
+
     await expect(scheduleFilter).toBeVisible();
   });
 
@@ -193,7 +193,7 @@ test.describe('Drug Catalog - Search & Filter', () => {
     ).or(
       page.getByTestId('essential-filter')
     );
-    
+
     await expect(essentialFilter).toBeVisible();
   });
 
@@ -204,7 +204,7 @@ test.describe('Drug Catalog - Search & Filter', () => {
     ).or(
       page.getByTestId('active-filter')
     );
-    
+
     await expect(activeFilter).toBeVisible();
   });
 });
@@ -227,7 +227,7 @@ test.describe('Drug Catalog - Pagination', () => {
     ).or(
       page.locator('[class*="pagination"]')
     );
-    
+
     await expect(pagination).toBeVisible();
   });
 
@@ -254,14 +254,14 @@ test.describe('Drug Catalog - Create Drug', () => {
     const addButton = page.getByRole('button', { name: /add.drug|new.drug|create/i }).or(
       page.getByTestId('add-drug-button')
     );
-    
+
     await expect(addButton).toBeVisible();
   });
 
   test('should open drug creation form/dialog', async ({ page }) => {
     const addButton = page.getByRole('button', { name: /add.drug|new.drug|create/i }).first();
     await addButton.click();
-    
+
     // Should open form/modal
     await expect(
       page.getByRole('dialog').or(
@@ -275,7 +275,7 @@ test.describe('Drug Catalog - Create Drug', () => {
   test('should have required fields in drug form', async ({ page }) => {
     const addButton = page.getByRole('button', { name: /add.drug|new.drug|create/i }).first();
     await addButton.click();
-    
+
     // Required fields
     await expect(page.getByLabel(/generic.name/i)).toBeVisible();
     await expect(page.getByLabel(/code/i)).toBeVisible();
@@ -288,7 +288,7 @@ test.describe('Drug Catalog - Create Drug', () => {
   test('should have drug schedule selection', async ({ page }) => {
     const addButton = page.getByRole('button', { name: /add.drug|new.drug|create/i }).first();
     await addButton.click();
-    
+
     // Schedule field (OTC, POM, P, CD)
     await expect(page.getByLabel(/schedule/i)).toBeVisible();
   });
@@ -296,10 +296,10 @@ test.describe('Drug Catalog - Create Drug', () => {
   test('should have KEML fields for Kenya compliance', async ({ page }) => {
     const addButton = page.getByRole('button', { name: /add.drug|new.drug|create/i }).first();
     await addButton.click();
-    
+
     // Kenya Essential Medicines List code
     await expect(page.getByLabel(/keml/i).or(page.getByLabel(/essential.*code/i))).toBeVisible();
-    
+
     // Is essential checkbox
     await expect(page.getByRole('checkbox', { name: /essential/i })).toBeVisible();
   });
@@ -307,7 +307,7 @@ test.describe('Drug Catalog - Create Drug', () => {
   test('should have NHIF code field', async ({ page }) => {
     const addButton = page.getByRole('button', { name: /add.drug|new.drug|create/i }).first();
     await addButton.click();
-    
+
     // NHIF (now SHA) code for insurance claims
     await expect(page.getByLabel(/nhif/i).or(page.getByLabel(/sha/i))).toBeVisible();
   });
@@ -315,10 +315,10 @@ test.describe('Drug Catalog - Create Drug', () => {
   test('should have inventory settings fields', async ({ page }) => {
     const addButton = page.getByRole('button', { name: /add.drug|new.drug|create/i }).first();
     await addButton.click();
-    
+
     // Reorder level
     await expect(page.getByLabel(/reorder.level/i)).toBeVisible();
-    
+
     // Reorder quantity
     await expect(page.getByLabel(/reorder.quantity/i)).toBeVisible();
   });
@@ -326,7 +326,7 @@ test.describe('Drug Catalog - Create Drug', () => {
   test('should have brand names input (multiple)', async ({ page }) => {
     const addButton = page.getByRole('button', { name: /add.drug|new.drug|create/i }).first();
     await addButton.click();
-    
+
     // Brand names (should support multiple)
     await expect(page.getByLabel(/brand/i)).toBeVisible();
   });
@@ -334,7 +334,7 @@ test.describe('Drug Catalog - Create Drug', () => {
   test('should have controlled drug checkbox', async ({ page }) => {
     const addButton = page.getByRole('button', { name: /add.drug|new.drug|create/i }).first();
     await addButton.click();
-    
+
     // Controlled substance checkbox
     await expect(page.getByRole('checkbox', { name: /controlled/i })).toBeVisible();
   });
@@ -342,15 +342,15 @@ test.describe('Drug Catalog - Create Drug', () => {
   test('should create drug with valid data', async ({ page }) => {
     const addButton = page.getByRole('button', { name: /add.drug|new.drug|create/i }).first();
     await addButton.click();
-    
+
     // Wait for form to appear
     await page.waitForSelector('form', { timeout: 5000 });
-    
+
     // Fill form - use first() for each field to avoid strict mode
     await page.getByLabel(/generic.name/i).first().fill('Test Drug');
     await page.getByLabel(/drug.*code/i).first().fill('DRG-TEST');
     await page.getByLabel(/strength/i).first().fill('100mg');
-    
+
     // The form submission is mocked, just verify we can interact
     const submitButton = page.getByRole('button', { name: /save|create|submit/i }).first();
     await expect(submitButton).toBeVisible();
@@ -359,10 +359,10 @@ test.describe('Drug Catalog - Create Drug', () => {
   test('should validate required fields', async ({ page }) => {
     const addButton = page.getByRole('button', { name: /add.drug|new.drug|create/i }).first();
     await addButton.click();
-    
+
     // Wait for form
     await page.waitForSelector('form', { timeout: 5000 });
-    
+
     // Check that required fields are marked (asterisk or required attribute)
     await expect(page.getByText(/generic.name.*\*/i).or(page.locator('[required]').first())).toBeVisible();
   });
@@ -382,7 +382,7 @@ test.describe('Drug Catalog - View Drug Details', () => {
   test('should be able to click on drug to view details', async ({ page }) => {
     // Click on drug row
     await page.getByText('Paracetamol').click();
-    
+
     // Should navigate to detail view or open modal
     await expect(
       page.getByRole('dialog').or(
@@ -395,10 +395,10 @@ test.describe('Drug Catalog - View Drug Details', () => {
 
   test('should display drug detail information', async ({ page }) => {
     await page.getByText('Paracetamol').first().click();
-    
+
     // Wait for detail page to load
     await page.waitForSelector('[data-testid="drug-detail"]', { timeout: 10000 });
-    
+
     // Should show full drug details
     await expect(page.getByText('DRG-001').first()).toBeVisible();
     await expect(page.getByText(/panadol/i).first()).toBeVisible(); // Brand name
@@ -406,37 +406,37 @@ test.describe('Drug Catalog - View Drug Details', () => {
 
   test('should show current stock in detail view', async ({ page }) => {
     await page.getByText('Paracetamol').first().click();
-    
+
     // Wait for detail page
     await page.waitForSelector('[data-testid="drug-detail"]', { timeout: 10000 });
-    
+
     // Should show stock level
     await expect(page.getByText(/stock|quantity|available|inventory/i).first()).toBeVisible();
   });
 
   test('should show storage requirements', async ({ page }) => {
     await page.getByText('Paracetamol').first().click();
-    
+
     // Wait for detail page
     await page.waitForSelector('[data-testid="drug-detail"]', { timeout: 10000 });
-    
+
     // Should show storage info
     await expect(page.getByText(/storage/i).first()).toBeVisible();
   });
 
   test('should have edit button in detail view', async ({ page }) => {
     await page.getByText('Paracetamol').first().click();
-    
+
     // Wait for detail page
     await page.waitForSelector('[data-testid="drug-detail"]', { timeout: 10000 });
-    
+
     const editButton = page.getByRole('button', { name: /edit/i });
     await expect(editButton).toBeVisible();
   });
 
   test('should have link to view stock batches', async ({ page }) => {
     await page.getByText('Paracetamol').click();
-    
+
     // Should be able to see related batches
     await expect(
       page.getByRole('link', { name: /batch|inventory/i }).or(
@@ -464,7 +464,7 @@ test.describe('Drug Catalog - Edit Drug', () => {
     const editButton = page.locator('tr').filter({ hasText: 'Paracetamol' }).getByRole('button', { name: /edit/i }).or(
       page.locator('tr').filter({ hasText: 'Paracetamol' }).getByTestId('edit-drug')
     );
-    
+
     await expect(editButton).toBeVisible();
   });
 
@@ -472,7 +472,7 @@ test.describe('Drug Catalog - Edit Drug', () => {
     // Click edit
     await page.getByText('Paracetamol').click();
     await page.getByRole('button', { name: /edit/i }).click();
-    
+
     // Form should be pre-filled
     await expect(page.getByLabel(/generic.name/i)).toHaveValue('Paracetamol');
     await expect(page.getByLabel(/strength/i)).toHaveValue('500mg');
@@ -480,15 +480,15 @@ test.describe('Drug Catalog - Edit Drug', () => {
 
   test('should save edited drug', async ({ page }) => {
     await page.getByText('Paracetamol').first().click();
-    
+
     // Wait for detail page
     await page.waitForSelector('[data-testid="drug-detail"]', { timeout: 10000 });
-    
+
     await page.getByRole('button', { name: /edit/i }).click();
-    
+
     // Wait for edit form/page
     await page.waitForSelector('form', { timeout: 5000 });
-    
+
     // Check we're on edit page
     await expect(page.getByRole('button', { name: /save|update/i }).first()).toBeVisible();
   });
@@ -510,7 +510,7 @@ test.describe('Drug Catalog - Delete Drug', () => {
     const deleteButton = page.locator('tr').filter({ hasText: 'Paracetamol' }).getByRole('button', { name: /delete|remove/i }).or(
       page.locator('tr').filter({ hasText: 'Paracetamol' }).getByTestId('delete-drug')
     );
-    
+
     // Note: Delete might be in a dropdown menu
     await expect(deleteButton.or(page.getByRole('menuitem', { name: /delete/i }))).toBeVisible();
   });
@@ -519,7 +519,7 @@ test.describe('Drug Catalog - Delete Drug', () => {
     // Find and click delete button in row
     const row = page.locator('tr').filter({ hasText: 'Paracetamol' });
     await row.getByTestId('delete-drug').click();
-    
+
     // Should show confirmation dialog
     await expect(page.getByRole('alertdialog').or(page.getByRole('dialog'))).toBeVisible();
     await expect(page.getByText(/confirm|sure|delete/i).first()).toBeVisible();
@@ -529,14 +529,14 @@ test.describe('Drug Catalog - Delete Drug', () => {
     // Try to delete drug with stock
     const row = page.locator('tr').filter({ hasText: 'Paracetamol' });
     await row.getByTestId('delete-drug').click();
-    
+
     // Wait for dialog
     await page.waitForSelector('[role="alertdialog"], [role="dialog"]', { timeout: 5000 });
-    
+
     // The delete button should be disabled because drug has stock
     const deleteButton = page.getByRole('button', { name: /delete/i }).last();
     await expect(deleteButton).toBeDisabled();
-    
+
     // Should show warning about stock
     await expect(page.getByText(/stock|cannot/i).first()).toBeVisible();
   });

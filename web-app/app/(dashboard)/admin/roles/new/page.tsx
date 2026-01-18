@@ -1,7 +1,7 @@
 /**
  * New Role Page
  * Sprint 1.1-1.2 Track C: RBAC Foundation
- * 
+ *
  * Form for creating new roles with permission assignment.
  */
 'use client';

@@ -35,7 +35,7 @@ export default function AdmissionsPage() {
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('ACTIVE');
   const [viewMode, setViewMode] = useState<ViewMode>('grid');
-  
+
   const debouncedSearch = useDebounce(search, 300);
 
   const {
@@ -48,8 +48,8 @@ export default function AdmissionsPage() {
     data: admissions,
     isLoading: admissionsLoading,
     error: admissionsError,
-  } = useAdmissions({ 
-    admission_status: statusFilter || undefined, 
+  } = useAdmissions({
+    admission_status: statusFilter || undefined,
     ordering: '-admission_date',
     search: debouncedSearch || undefined,
   });
@@ -271,9 +271,9 @@ function AdmissionsGridView({ admissions }: { admissions: Admission[] }) {
             label: adm.admission_status_display || adm.admission_status,
             variant: getStatusVariant(adm.admission_status),
           }}
-          badges={adm.payer_type ? [{ 
-            label: adm.payer_type_display || adm.payer_type, 
-            variant: 'outline' 
+          badges={adm.payer_type ? [{
+            label: adm.payer_type_display || adm.payer_type,
+            variant: 'outline'
           }] : []}
           metadata={[
             {

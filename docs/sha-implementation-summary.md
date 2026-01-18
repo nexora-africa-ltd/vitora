@@ -1,7 +1,7 @@
 # SHA (Social Health Authority) Implementation Summary
 
-**Last Updated**: January 9, 2026  
-**Status**: ✅ Phase 2.1-2.2 Complete  
+**Last Updated**: January 9, 2026
+**Status**: ✅ Phase 2.1-2.2 Complete
 **Branch**: `feature/sha-integration`
 
 ---
@@ -118,19 +118,19 @@ class SHAClaim(models.Model):
     sha_member = models.ForeignKey(SHAMember)
     encounter = models.ForeignKey(Encounter, null=True)
     invoice = models.ForeignKey(Invoice, null=True)
-    
+
     claim_type = models.CharField()                   # outpatient/inpatient/...
     status = models.CharField()                       # draft/validated/submitted/...
     service_date = models.DateField()
-    
+
     # Amounts
     claimed_amount = models.DecimalField()
     approved_amount = models.DecimalField(null=True)
-    
+
     # SHA Response
     sha_claim_reference = models.CharField(null=True)
     submission_response = models.JSONField()
-    
+
     # Timestamps
     submitted_at = models.DateTimeField(null=True)
     adjudicated_at = models.DateTimeField(null=True)
@@ -163,7 +163,7 @@ class SHAClaimItem(models.Model):
     quantity = models.IntegerField()
     unit_price = models.DecimalField()
     claimed_amount = models.DecimalField()            # Auto-calculated
-    
+
     # Adjudication results
     status = models.CharField()                       # pending/approved/rejected
     approved_quantity = models.IntegerField(null=True)

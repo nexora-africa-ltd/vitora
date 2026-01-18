@@ -1,13 +1,13 @@
 /**
  * SHA (Social Health Authority) API Client for Vitora HMIS
- * 
+ *
  * Implements all SHA-related API operations including:
  * - Client Registry lookup and registration
  * - Eligibility verification
  * - Terminology lookups (ICD-11, ICHI, LOINC, Drugs)
  * - Claims management
  * - Facility and Practitioner validation
- * 
+ *
  * @see docs/sha-frontend-integration-guide.md
  * @see backend/hmis/apps/billing/
  */
@@ -64,13 +64,13 @@ import type {
  */
 function buildQueryString<T extends object>(params: T): string {
   const searchParams = new URLSearchParams();
-  
+
   Object.entries(params).forEach(([key, value]) => {
     if (value !== undefined && value !== null && value !== '') {
       searchParams.append(key, String(value));
     }
   });
-  
+
   return searchParams.toString();
 }
 
@@ -159,7 +159,7 @@ async function checkEligibility(
 /**
  * Get eligibility for a patient by patient ID
  * Combines member lookup + eligibility check
- * 
+ *
  * If no SHA member record exists in the local database, falls back to
  * direct eligibility check using the patient's identification number.
  */
@@ -168,17 +168,17 @@ async function checkPatientEligibility(
 ): Promise<EligibilityCheckResponse & { member?: SHAMember }> {
   // First get the SHA member record
   const membersResponse = await getSHAMembers({ patient: patientId });
-  
+
   if (!membersResponse.results.length) {
     // No SHA member record - try direct eligibility check
     // First fetch the patient to get their identification info
     try {
       const patientResponse = await apiClient.get(`/api/patients/${patientId}/`);
       const patient = patientResponse.data;
-      
+
       // Build eligibility check params based on available ID
       const params: DirectEligibilityCheckRequest = {};
-      
+
       if (patient.identification_type === 'national_id' && patient.identification_number) {
         params.national_id = patient.identification_number;
       } else if (patient.national_id) {
@@ -193,7 +193,7 @@ async function checkPatientEligibility(
         params.identification_type = patient.identification_type;
         params.identification_number = patient.identification_number;
       }
-      
+
       // If we have identification info, do direct check
       if (Object.keys(params).length > 0) {
         const directResponse = await checkDirectEligibility(params);
@@ -203,15 +203,15 @@ async function checkPatientEligibility(
           checked_at: new Date().toISOString(),
           verified_name: directResponse.full_name || undefined,
           coverage_end_date: directResponse.coverage_end_date || undefined,
-          message: directResponse.is_eligible 
-            ? 'SHA coverage verified via direct lookup' 
+          message: directResponse.is_eligible
+            ? 'SHA coverage verified via direct lookup'
             : directResponse.reason || 'Patient is not eligible for SHA coverage',
         };
       }
     } catch (error) {
       console.error('Direct eligibility check failed:', error);
     }
-    
+
     // Fallback: no SHA member record and direct check failed
     return {
       is_eligible: false,
@@ -220,12 +220,12 @@ async function checkPatientEligibility(
       message: 'Patient is not enrolled in SHA',
     };
   }
-  
+
   const member = membersResponse.results[0];
-  
+
   // Then check eligibility
   const eligibilityResponse = await checkEligibility({ sha_member_id: member!.id });
-  
+
   return {
     ...eligibilityResponse,
     member,
@@ -424,14 +424,14 @@ async function validateFacility(
 
 /**
  * Search DHA Health Worker Registry by National ID or Passport
- * 
+ *
  * This searches the Kenya Digital Health Authority registry for registered
  * healthcare practitioners and returns comprehensive information including:
  * - Membership status and registration details
  * - License history with start/end dates
  * - Professional qualifications and cadre
  * - Contact information
- * 
+ *
  * @param params - Search parameters (ID type and number)
  * @returns Practitioner data from DHA registry
  */
@@ -463,33 +463,33 @@ export const shaApi = {
   fetchFromClientRegistry,
   registerInClientRegistry,
   updateClientRegistry,
-  
+
   // SHA Members
   getSHAMembers,
   getSHAMember,
   getSHAMemberDependents,
-  
+
   // Eligibility
   checkEligibility,
   checkPatientEligibility,
   checkDirectEligibility,
-  
+
   // Terminology - ICD-11
   searchICD11,
-  
+
   // Terminology - Interventions
   searchInterventions,
-  
+
   // Terminology - ICHI
   searchICHI,
-  
+
   // Terminology - LOINC
   searchLOINC,
-  
+
   // Terminology - Drugs
   searchDrugs,
   searchActiveComponents,
-  
+
   // Claims
   getClaims,
   getClaim,
@@ -498,13 +498,13 @@ export const shaApi = {
   resubmitClaim,
   cancelClaim,
   getClaimBundle,
-  
+
   // Facility Validation
   validateFacility,
-  
+
   // DHA Health Worker Registry
   searchPractitioner,
-  
+
   // Legacy Practitioner Validation (deprecated)
   validatePractitioner,
 };

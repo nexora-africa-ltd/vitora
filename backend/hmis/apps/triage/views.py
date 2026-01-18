@@ -200,10 +200,10 @@ class TriageAssessmentViewSet(viewsets.ModelViewSet):
             details={
                 "category": instance.triage_category,
                 "duration_seconds": (
-                    instance.triage_end_time - instance.triage_start_time
-                ).total_seconds()
-                if instance.triage_start_time
-                else None,
+                    (instance.triage_end_time - instance.triage_start_time).total_seconds()
+                    if instance.triage_start_time
+                    else None
+                ),
             },
         )
 

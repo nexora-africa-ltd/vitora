@@ -420,9 +420,11 @@ class StockSummaryReportView(APIView):
                     "drug_name": drug.get_display_name(),
                     "total_quantity": total_quantity,
                     "reorder_level": drug.default_reorder_level,
-                    "is_below_reorder": total_quantity < drug.default_reorder_level
-                    if drug.default_reorder_level
-                    else False,
+                    "is_below_reorder": (
+                        total_quantity < drug.default_reorder_level
+                        if drug.default_reorder_level
+                        else False
+                    ),
                     "batches": batch_details,
                 }
             )
@@ -543,9 +545,11 @@ class StockMovementReportView(APIView):
                     "quantity": batch.quantity_received,
                     "date": batch.received_date,
                     "reference": f"Batch {batch.batch_number}",
-                    "user": batch.received_by.get_full_name() or batch.received_by.username
-                    if batch.received_by
-                    else None,
+                    "user": (
+                        batch.received_by.get_full_name() or batch.received_by.username
+                        if batch.received_by
+                        else None
+                    ),
                 }
             )
 

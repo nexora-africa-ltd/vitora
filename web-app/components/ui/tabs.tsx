@@ -22,7 +22,7 @@ interface TabsProps {
 
 const Tabs: React.FC<TabsProps> = ({ defaultValue, value, onValueChange, className, children }) => {
   const [internalValue, setInternalValue] = React.useState(defaultValue || value || '')
-  
+
   const handleValueChange = React.useCallback((newValue: string) => {
     setInternalValue(newValue)
     onValueChange?.(newValue)

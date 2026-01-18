@@ -1,9 +1,9 @@
 /**
  * API Client Tests
- * 
+ *
  * Tests for the API client with interceptors.
  * Following TDD RED-GREEN-REFACTOR approach.
- * 
+ *
  * Requirements:
  * - Configure base URL from environment
  * - Inject auth header on requests
@@ -268,7 +268,7 @@ describe('API Client Tests', () => {
 
       // Mock retry call on the axios instance (when used as a function)
       const mockRetryFn = jest.fn().mockResolvedValue({ data: 'success' });
-      
+
       // We need to test that multiple 401 errors only trigger one refresh
       // The second 401 should wait for the first refresh to complete
       const error1 = {

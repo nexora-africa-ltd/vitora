@@ -418,21 +418,21 @@ export function SimpleInvoiceForm({ patientId, encounterId }: SimpleInvoiceFormP
   // Try to get from context first
   let contextPatientId: number | undefined;
   let contextEncounterId: number | undefined;
-  
+
   try {
     const patientContext = usePatientContext();
     contextPatientId = patientContext.patient?.id;
   } catch {
     // Not in patient context
   }
-  
+
   try {
     const encounterContext = useEncounterContext();
     contextEncounterId = encounterContext.encounter?.id;
   } catch {
     // Not in encounter context
   }
-  
+
   const effectivePatientId = patientId ?? contextPatientId;
   const effectiveEncounterId = encounterId ?? contextEncounterId;
   const hasEncounter = !!effectiveEncounterId;
@@ -448,7 +448,7 @@ export function SimpleInvoiceForm({ patientId, encounterId }: SimpleInvoiceFormP
           </AlertDescription>
         </Alert>
       )}
-      
+
       {effectiveEncounterId && (
         <input
           type="hidden"
@@ -458,14 +458,14 @@ export function SimpleInvoiceForm({ patientId, encounterId }: SimpleInvoiceFormP
           readOnly
         />
       )}
-      
+
       <div className="text-sm text-muted-foreground">
         Patient ID: {effectivePatientId || 'Not selected'}
       </div>
-      
+
       {/* Simplified form fields would go here */}
-      <Button 
-        type="submit" 
+      <Button
+        type="submit"
         disabled={!hasEncounter}
         aria-label="Create Invoice"
       >

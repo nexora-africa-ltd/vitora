@@ -29,25 +29,25 @@ export function PatientSelector({
 }: PatientSelectorProps) {
   const [searchQuery, setSearchQuery] = useState('');
   const [isOpen, setIsOpen] = useState(false);
-  
+
   const { data: searchResults, isLoading: isSearching } = usePatientSearch(searchQuery);
   const { data: recentPatients, isLoading: isLoadingRecent } = useRecentPatients();
-  
+
   // Use search results if searching, otherwise show recent patients
   const patients = searchQuery.length >= 2 ? searchResults : recentPatients;
   const isLoading = searchQuery.length >= 2 ? isSearching : isLoadingRecent;
-  
+
   const handleSelect = useCallback((patient: Patient) => {
     onChange(patient.id, patient);
     setSearchQuery('');
     setIsOpen(false);
   }, [onChange]);
-  
+
   const handleClear = useCallback(() => {
     onChange(null, null);
     setSearchQuery('');
   }, [onChange]);
-  
+
   if (selectedPatient) {
     return (
       <Card className={cn('border-primary/50', error && 'border-destructive')}>
@@ -92,7 +92,7 @@ export function PatientSelector({
       </Card>
     );
   }
-  
+
   return (
     <div className="relative">
       <div className="relative">
@@ -120,11 +120,11 @@ export function PatientSelector({
           <ChevronDown className={cn('h-4 w-4 transition-transform', isOpen && 'rotate-180')} />
         </Button>
       </div>
-      
+
       {error && (
         <p className="text-sm text-destructive mt-1">{error}</p>
       )}
-      
+
       {/* Dropdown results */}
       {isOpen && (
         <Card className="absolute z-50 mt-1 w-full shadow-lg">
@@ -136,7 +136,7 @@ export function PatientSelector({
                 <span>Recent Patients</span>
               </div>
             )}
-            
+
             {isLoading ? (
               <div className="space-y-2">
                 {[1, 2, 3].map((i) => (
@@ -188,7 +188,7 @@ export function PatientSelector({
           </CardContent>
         </Card>
       )}
-      
+
       {/* Click outside to close */}
       {isOpen && (
         <div

@@ -1,11 +1,11 @@
 /**
  * Pharmacy Reports E2E Tests
- * 
+ *
  * End-to-end tests for pharmacy reporting functionality.
  * Tests should identify missing UI implementations.
- * 
+ *
  * Sprint 1.3-1.4 Track A: Pharmacy Module
- * 
+ *
  * Backend API Endpoints Tested:
  * - GET /api/pharmacy/reports/stock-summary/ - Current inventory levels by drug
  * - GET /api/pharmacy/reports/expiry-report/?days=90 - Batches expiring soon
@@ -35,20 +35,20 @@ test.describe('Pharmacy Reports - Navigation', () => {
   test('should have reports section in pharmacy', async ({ page }) => {
     // Reports link in pharmacy module header
     const reportsLink = page.getByTestId('pharmacy-reports');
-    
+
     await expect(reportsLink).toBeVisible();
   });
 
   test('should navigate to pharmacy reports page', async ({ page }) => {
     await page.getByTestId('pharmacy-reports').click();
-    
+
     // Should be on reports page - look for the heading
     await expect(page.getByRole('heading', { name: /pharmacy reports/i })).toBeVisible();
   });
 
   test('should show available report types', async ({ page }) => {
     await page.goto('/pharmacy/reports');
-    
+
     // Report type tabs
     await expect(page.getByRole('tab', { name: /stock summary/i })).toBeVisible();
     await expect(page.getByRole('tab', { name: /expiry/i })).toBeVisible();
@@ -101,7 +101,7 @@ test.describe('Pharmacy Reports - Stock Summary', () => {
     // Stock summary is the default tab
     // Click to expand batch details
     await page.getByText(/paracetamol/i).first().click();
-    
+
     await expect(page.getByText('BATCH-2026-001')).toBeVisible();
     await expect(page.getByText('BATCH-2025-010')).toBeVisible();
   });
@@ -109,14 +109,14 @@ test.describe('Pharmacy Reports - Stock Summary', () => {
   test('should show batch expiry dates in summary', async ({ page }) => {
     // Click to expand paracetamol batches
     await page.getByText(/paracetamol/i).first().click();
-    
+
     await expect(page.getByText(/2028-06-01/)).toBeVisible();
     await expect(page.getByText(/2026-02-15/)).toBeVisible();
   });
 
   test('should show days to expiry for batches', async ({ page }) => {
     await page.getByText(/paracetamol/i).first().click();
-    
+
     await expect(page.getByText(/\d+\s*days/i).first()).toBeVisible();
   });
 
@@ -159,13 +159,13 @@ test.describe('Pharmacy Reports - Expiry Report', () => {
 
   test('should access expiry report', async ({ page }) => {
     await page.getByRole('tab', { name: /expiry/i }).click();
-    
+
     await expect(page.getByRole('heading', { name: /expiry report/i })).toBeVisible();
   });
 
   test('should have days threshold selector', async ({ page }) => {
     await page.getByRole('tab', { name: /expiry/i }).click();
-    
+
     // Select days (30, 60, 90, etc.)
     const daysSelector = page.getByLabel(/days threshold/i);
     await expect(daysSelector).toBeVisible();
@@ -173,45 +173,45 @@ test.describe('Pharmacy Reports - Expiry Report', () => {
 
   test('should default to 90 days', async ({ page }) => {
     await page.getByRole('tab', { name: /expiry/i }).click();
-    
+
     // 90 days should be default shown in select trigger or description
     await expect(page.getByText(/90 days/i).first()).toBeVisible();
   });
 
   test('should display expiring batches', async ({ page }) => {
     await page.getByRole('tab', { name: /expiry/i }).click();
-    
+
     // Batches expiring within threshold
     await expect(page.getByText('BATCH-2025-010')).toBeVisible();
   });
 
   test('should show drug name for expiring batch', async ({ page }) => {
     await page.getByRole('tab', { name: /expiry/i }).click();
-    
+
     await expect(page.getByText(/paracetamol/i).first()).toBeVisible();
   });
 
   test('should show expiry date', async ({ page }) => {
     await page.getByRole('tab', { name: /expiry/i }).click();
-    
+
     await expect(page.getByText('2026-02-15')).toBeVisible();
   });
 
   test('should show days to expiry', async ({ page }) => {
     await page.getByRole('tab', { name: /expiry/i }).click();
-    
+
     await expect(page.getByText(/37.*days|days.*37|\d+ days/i).first()).toBeVisible();
   });
 
   test('should show quantity available in expiring batch', async ({ page }) => {
     await page.getByRole('tab', { name: /expiry/i }).click();
-    
+
     await expect(page.getByText('50').first()).toBeVisible();
   });
 
   test('should color-code by urgency', async ({ page }) => {
     await page.getByRole('tab', { name: /expiry/i }).click();
-    
+
     // Critical/Warning batches should have urgency badges
     const urgencyBadge = page.getByText(/critical|warning/i).first();
     await expect(urgencyBadge).toBeVisible();
@@ -219,21 +219,21 @@ test.describe('Pharmacy Reports - Expiry Report', () => {
 
   test('should have action to mark batch for disposal', async ({ page }) => {
     await page.getByRole('tab', { name: /expiry/i }).click();
-    
+
     const disposeButton = page.getByRole('button', { name: /dispose/i }).first();
     await expect(disposeButton).toBeVisible();
   });
 
   test('should have action to transfer/return to supplier', async ({ page }) => {
     await page.getByRole('tab', { name: /expiry/i }).click();
-    
+
     const returnButton = page.getByRole('button', { name: /return/i }).first();
     await expect(returnButton).toBeVisible();
   });
 
   test('should export expiry report', async ({ page }) => {
     await page.getByRole('tab', { name: /expiry/i }).click();
-    
+
     const exportButton = page.getByRole('button', { name: /export csv/i });
     await expect(exportButton).toBeVisible();
   });
@@ -256,20 +256,20 @@ test.describe('Pharmacy Reports - Dispensing Report', () => {
 
   test('should access dispensing report', async ({ page }) => {
     await page.getByRole('tab', { name: /dispensing/i }).click();
-    
+
     await expect(page.getByRole('heading', { name: /dispensing report/i })).toBeVisible();
   });
 
   test('should have date range selector', async ({ page }) => {
     await page.getByRole('tab', { name: /dispensing/i }).click();
-    
+
     await expect(page.getByRole('textbox', { name: /from/i })).toBeVisible();
     await expect(page.getByRole('textbox', { name: /to/i })).toBeVisible();
   });
 
   test('should have quick date presets', async ({ page }) => {
     await page.getByRole('tab', { name: /dispensing/i }).click();
-    
+
     // Today, This Week, This Month, etc.
     await expect(page.getByRole('button', { name: /today/i })).toBeVisible();
     await expect(page.getByRole('button', { name: /this week/i })).toBeVisible();
@@ -278,74 +278,74 @@ test.describe('Pharmacy Reports - Dispensing Report', () => {
 
   test('should display dispensing records', async ({ page }) => {
     await page.getByRole('tab', { name: /dispensing/i }).click();
-    
+
     await expect(page.getByText(/paracetamol/i).first()).toBeVisible();
     await expect(page.getByText('Jane Doe')).toBeVisible();
   });
 
   test('should show quantity dispensed', async ({ page }) => {
     await page.getByRole('tab', { name: /dispensing/i }).click();
-    
+
     await expect(page.getByText('30').first()).toBeVisible();
   });
 
   test('should show dispensing date', async ({ page }) => {
     await page.getByRole('tab', { name: /dispensing/i }).click();
-    
+
     // Mock data has 2026-01-09
     await expect(page.getByText('2026-01-09').first()).toBeVisible();
   });
 
   test('should show dispensed by user', async ({ page }) => {
     await page.getByRole('tab', { name: /dispensing/i }).click();
-    
+
     // Mock data has 'Pharmacist User'
     await expect(page.getByText('Pharmacist User').first()).toBeVisible();
   });
 
   test('should show batch number', async ({ page }) => {
     await page.getByRole('tab', { name: /dispensing/i }).click();
-    
+
     await expect(page.getByText('BATCH-2026-001')).toBeVisible();
   });
 
   test('should show total cost', async ({ page }) => {
     await page.getByRole('tab', { name: /dispensing/i }).click();
-    
+
     await expect(page.getByText(/150\.00/).first()).toBeVisible();
   });
 
   test('should show summary totals', async ({ page }) => {
     await page.getByRole('tab', { name: /dispensing/i }).click();
-    
+
     // Summary section
     await expect(page.getByText(/total dispensed|total value/i).first()).toBeVisible();
   });
 
   test('should filter by drug', async ({ page }) => {
     await page.getByRole('tab', { name: /dispensing/i }).click();
-    
+
     const drugFilter = page.getByTestId('drug-filter');
     await expect(drugFilter).toBeVisible();
   });
 
   test('should filter by patient', async ({ page }) => {
     await page.getByRole('tab', { name: /dispensing/i }).click();
-    
+
     const patientFilter = page.getByTestId('patient-filter');
     await expect(patientFilter).toBeVisible();
   });
 
   test('should export dispensing report', async ({ page }) => {
     await page.getByRole('tab', { name: /dispensing/i }).click();
-    
+
     const exportButton = page.getByRole('button', { name: /export csv/i });
     await expect(exportButton).toBeVisible();
   });
 
   test('should group by drug option', async ({ page }) => {
     await page.getByRole('tab', { name: /dispensing/i }).click();
-    
+
     // Checkbox for group by drug
     const groupByDrug = page.getByLabel(/group by drug/i);
     await expect(groupByDrug).toBeVisible();
@@ -369,85 +369,85 @@ test.describe('Pharmacy Reports - Stock Movement Report', () => {
 
   test('should access stock movement report', async ({ page }) => {
     await page.getByRole('tab', { name: /movement/i }).click();
-    
+
     await expect(page.getByRole('heading', { name: /stock movement report/i })).toBeVisible();
   });
 
   test('should have date range selector', async ({ page }) => {
     await page.getByRole('tab', { name: /movement/i }).click();
-    
+
     await expect(page.getByRole('textbox', { name: /from/i })).toBeVisible();
     await expect(page.getByRole('textbox', { name: /to/i })).toBeVisible();
   });
 
   test('should display received stock entries', async ({ page }) => {
     await page.getByRole('tab', { name: /movement/i }).click();
-    
+
     await expect(page.getByText(/received/i).first()).toBeVisible();
     await expect(page.getByText(/\+500/).first()).toBeVisible();
   });
 
   test('should display dispensed entries', async ({ page }) => {
     await page.getByRole('tab', { name: /movement/i }).click();
-    
+
     await expect(page.getByText(/dispensed/i).first()).toBeVisible();
     await expect(page.getByText(/-30/).first()).toBeVisible();
   });
 
   test('should display adjustment entries', async ({ page }) => {
     await page.getByRole('tab', { name: /movement/i }).click();
-    
+
     await expect(page.getByText(/adjusted/i).first()).toBeVisible();
     await expect(page.getByText(/-100/).first()).toBeVisible();
   });
 
   test('should show movement type', async ({ page }) => {
     await page.getByRole('tab', { name: /movement/i }).click();
-    
+
     await expect(page.getByText(/received|dispensed|adjusted/i).first()).toBeVisible();
   });
 
   test('should show drug name', async ({ page }) => {
     await page.getByRole('tab', { name: /movement/i }).click();
-    
+
     await expect(page.getByText(/paracetamol/i).first()).toBeVisible();
   });
 
   test('should show movement date', async ({ page }) => {
     await page.getByRole('tab', { name: /movement/i }).click();
-    
+
     await expect(page.getByText(/2026-01-0/i).first()).toBeVisible();
   });
 
   test('should show reference information', async ({ page }) => {
     await page.getByRole('tab', { name: /movement/i }).click();
-    
+
     await expect(page.getByText(/batch|dispensing|expired/i).first()).toBeVisible();
   });
 
   test('should show user who made movement', async ({ page }) => {
     await page.getByRole('tab', { name: /movement/i }).click();
-    
+
     await expect(page.getByText(/admin user|pharmacist user/i).first()).toBeVisible();
   });
 
   test('should filter by movement type', async ({ page }) => {
     await page.getByRole('tab', { name: /movement/i }).click();
-    
+
     const typeFilter = page.getByTestId('movement-type-filter');
     await expect(typeFilter).toBeVisible();
   });
 
   test('should filter by drug', async ({ page }) => {
     await page.getByRole('tab', { name: /movement/i }).click();
-    
+
     const drugFilter = page.getByTestId('drug-filter');
     await expect(drugFilter).toBeVisible();
   });
 
   test('should show net movement summary', async ({ page }) => {
     await page.getByRole('tab', { name: /movement/i }).click();
-    
+
     // Summary of in vs out
     await expect(page.getByText(/total in|received/i).first()).toBeVisible();
     await expect(page.getByText(/total out|dispensed/i).first()).toBeVisible();
@@ -456,18 +456,18 @@ test.describe('Pharmacy Reports - Stock Movement Report', () => {
 
   test('should export stock movement report', async ({ page }) => {
     await page.getByRole('tab', { name: /movement/i }).click();
-    
+
     const exportButton = page.getByRole('button', { name: /export csv/i });
     await expect(exportButton).toBeVisible();
   });
 
   test('should sort by date descending by default', async ({ page }) => {
     await page.getByRole('tab', { name: /movement/i }).click();
-    
+
     // Most recent first - just verify table rows are visible
     const rows = page.locator('tbody tr');
     const firstRow = rows.first();
-    
+
     await expect(firstRow).toBeVisible();
   });
 });

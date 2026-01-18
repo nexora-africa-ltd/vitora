@@ -1,7 +1,7 @@
 /**
  * Dispense Dialog Component
  * Sprint 1.3-1.4 Track A: Pharmacy Module
- * 
+ *
  * Dialog for dispensing drugs from prescriptions using FEFO logic.
  * Handles batch selection, quantity validation, and counseling notes.
  */

@@ -2,15 +2,15 @@
 
 import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { 
-  ArrowLeft, 
-  Edit, 
-  Trash2, 
-  Phone, 
-  Mail, 
-  MapPin, 
-  User, 
-  Calendar, 
+import {
+  ArrowLeft,
+  Edit,
+  Trash2,
+  Phone,
+  Mail,
+  MapPin,
+  User,
+  Calendar,
   AlertTriangle,
   FileText,
   TestTube2,
@@ -47,14 +47,14 @@ export default function PatientDetailPage() {
   const { patient, isLoading, error } = usePatientContext();
   const { canEditPatient } = usePermissions();
   const { data: emergencyContacts } = usePatientEmergencyContacts(patientId);
-  
+
   // Fetch SHA member for this patient to check if they're a principal
   const { data: shaMembersData } = useQuery({
     queryKey: ['sha-members', patientId],
     queryFn: () => shaApi.getSHAMembers({ patient: patientId }),
     enabled: !!patientId,
   });
-  
+
   const shaMember = shaMembersData?.results?.[0];
   const isPrincipalMember = shaMember?.membership_type === 'PRINCIPAL';
 
@@ -159,10 +159,10 @@ export default function PatientDetailPage() {
                 />
               </div>
             </div>
-            
+
             {showDependents && (
               <div className="mt-4 pt-4 border-t">
-                <DependentsView 
+                <DependentsView
                   principalMember={shaMember}
                   onDependentClick={(dependent) => {
                     if (dependent.patient) {
@@ -187,10 +187,10 @@ export default function PatientDetailPage() {
           <CardContent className="space-y-3">
             <InfoRow icon={FileText} label="CR Number" value={patient.cr_number || '—'} />
             <InfoRow icon={Shield} label="SHA Number" value={patient.sha_number || '—'} />
-            <InfoRow 
-              icon={FileText} 
-              label={patient.identification_type === 'national_id' ? 'National ID' : (patient.identification_type || 'ID')} 
-              value={patient.identification_number || patient.national_id || '—'} 
+            <InfoRow
+              icon={FileText}
+              label={patient.identification_type === 'national_id' ? 'National ID' : (patient.identification_type || 'ID')}
+              value={patient.identification_number || patient.national_id || '—'}
             />
           </CardContent>
         </Card>
@@ -255,8 +255,8 @@ export default function PatientDetailPage() {
               <div>
                 <p className="font-medium">Consent Status</p>
                 <p className="text-sm text-muted-foreground">
-                  {patient.consent_given 
-                    ? `Consent given on ${formatDate(patient.consent_date || '')}` 
+                  {patient.consent_given
+                    ? `Consent given on ${formatDate(patient.consent_date || '')}`
                     : 'Consent not yet recorded'}
                 </p>
               </div>

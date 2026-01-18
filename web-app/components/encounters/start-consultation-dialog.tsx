@@ -21,11 +21,11 @@ import {
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
 import { Badge } from '@/components/ui/badge';
-import { 
-  User, 
-  Clock, 
-  FileText, 
-  Stethoscope, 
+import {
+  User,
+  Clock,
+  FileText,
+  Stethoscope,
   Loader2,
   Play,
 } from 'lucide-react';
@@ -104,7 +104,7 @@ export function StartConsultationDialog({
   const handleStartConsultation = async () => {
     try {
       await onStartConsultation(queueItem.id);
-      
+
       if (navigateOnSuccess) {
         // Navigate to encounter edit page to document the consultation
         router.push(`/encounters/${queueItem.id}/edit`);
@@ -150,7 +150,7 @@ export function StartConsultationDialog({
                       </span>
                     </div>
                   </div>
-                  
+
                   {/* Triage Badge */}
                   {isBypassed ? (
                     <Badge variant="secondary" className="bg-gray-200 text-gray-700">

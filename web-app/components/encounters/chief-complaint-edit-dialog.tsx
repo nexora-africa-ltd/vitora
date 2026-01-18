@@ -1,6 +1,6 @@
 /**
  * Chief Complaint Edit Dialog
- * 
+ *
  * Shows a modal dialog that requires a reason before allowing
  * the clinician to edit a chief complaint that was set during triage.
  */

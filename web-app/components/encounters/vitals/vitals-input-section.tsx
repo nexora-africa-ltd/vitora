@@ -7,13 +7,13 @@
 
 import * as React from 'react';
 import { useFormContext, Controller } from 'react-hook-form';
-import { 
-  Thermometer, 
-  Heart, 
-  Wind, 
-  Droplets, 
-  Scale, 
-  Ruler, 
+import {
+  Thermometer,
+  Heart,
+  Wind,
+  Droplets,
+  Scale,
+  Ruler,
 } from 'lucide-react';
 import { cn } from '@/lib/utils/cn';
 import { Label } from '@/components/ui/label';
@@ -70,8 +70,8 @@ export function VitalsInputSection({
               <Thermometer className="h-4 w-4" />
               Temperature
             </Label>
-            <InputGroup 
-              data-disabled={disabled} 
+            <InputGroup
+              data-disabled={disabled}
               className={cn(getInputClassName('temperature'), fieldState.error && 'border-destructive')}
             >
               <InputGroupInput
@@ -106,8 +106,8 @@ export function VitalsInputSection({
               <Heart className="h-4 w-4" />
               Heart Rate
             </Label>
-            <InputGroup 
-              data-disabled={disabled} 
+            <InputGroup
+              data-disabled={disabled}
               className={cn(getInputClassName('pulse'), fieldState.error && 'border-destructive')}
             >
               <InputGroupInput
@@ -136,8 +136,8 @@ export function VitalsInputSection({
         <Label className="flex items-center gap-2">
           Blood Pressure
         </Label>
-        <InputGroup 
-          data-disabled={disabled} 
+        <InputGroup
+          data-disabled={disabled}
           className={cn(
             getInputClassName('blood_pressure'),
             (formState.errors.systolic_bp || formState.errors.diastolic_bp) && 'border-destructive'
@@ -197,8 +197,8 @@ export function VitalsInputSection({
               <Wind className="h-4 w-4" />
               Respiratory Rate
             </Label>
-            <InputGroup 
-              data-disabled={disabled} 
+            <InputGroup
+              data-disabled={disabled}
               className={cn(getInputClassName('respiratory_rate'), fieldState.error && 'border-destructive')}
             >
               <InputGroupInput
@@ -232,8 +232,8 @@ export function VitalsInputSection({
               <Droplets className="h-4 w-4" />
               SpO₂
             </Label>
-            <InputGroup 
-              data-disabled={disabled} 
+            <InputGroup
+              data-disabled={disabled}
               className={cn(getInputClassName('spo2'), fieldState.error && 'border-destructive')}
             >
               <InputGroupInput

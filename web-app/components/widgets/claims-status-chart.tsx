@@ -39,10 +39,10 @@ const statusLabels: Record<ClaimStatus, string> = {
   partial_approved: 'Partial Approved',
 };
 
-export function ClaimsStatusChart({ 
-  data, 
-  showLegend = true, 
-  showByAmount = false 
+export function ClaimsStatusChart({
+  data,
+  showLegend = true,
+  showByAmount = false
 }: ClaimsStatusChartProps) {
   // Transform data for DonutChart format
   const chartData = useMemo(

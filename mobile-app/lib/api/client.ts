@@ -57,7 +57,7 @@ export const configureApiClient = (
   timeout: number = 30000
 ): AxiosInstance => {
   console.log('[API Client] Configuring with baseURL:', baseURL);
-  
+
   apiClient = axios.create({
     baseURL,
     timeout,

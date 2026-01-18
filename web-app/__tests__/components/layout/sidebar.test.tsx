@@ -59,7 +59,7 @@ describe('Sidebar', () => {
 
   it('should render all main navigation items', () => {
     render(<Sidebar {...defaultProps} />);
-    
+
     expect(screen.getByText('Dashboard')).toBeInTheDocument();
     expect(screen.getByText('Patients')).toBeInTheDocument();
     expect(screen.getByText('Triage')).toBeInTheDocument();
@@ -82,17 +82,17 @@ describe('Sidebar', () => {
     // It's the last button in the sidebar that triggers collapse
     const buttons = screen.getAllByRole('button');
     // Find the button that's likely the collapse toggle (has w-full class and is near the end)
-    const collapseButton = buttons.find(btn => 
+    const collapseButton = buttons.find(btn =>
       btn.classList.contains('w-full') && btn.closest('.mt-4')
     ) || buttons[buttons.length - 1];
-    
+
     fireEvent.click(collapseButton);
     expect(defaultProps.onCollapse).toHaveBeenCalled();
   });
 
   it('should hide labels when collapsed', () => {
     render(<Sidebar {...defaultProps} collapsed={true} />);
-    // In collapsed state, text labels are not rendered 
+    // In collapsed state, text labels are not rendered
     // but icons and structure should still be there
     expect(screen.queryByText('Dashboard')).not.toBeInTheDocument();
     expect(screen.queryByText('Patients')).not.toBeInTheDocument();
@@ -124,14 +124,14 @@ describe('Sidebar', () => {
 
   it('should have Inpatient menu with Wards and Admissions children', () => {
     render(<Sidebar {...defaultProps} />);
-    
+
     // Inpatient parent should be visible
     expect(screen.getByText('Inpatient')).toBeInTheDocument();
-    
+
     // Children should be visible (rendered via CollapsibleContent mock)
     expect(screen.getByText('Wards')).toBeInTheDocument();
     expect(screen.getByText('Admissions')).toBeInTheDocument();
-    
+
     // Children should be links with correct hrefs
     expect(screen.getByRole('link', { name: /wards/i })).toHaveAttribute('href', '/wards');
     expect(screen.getByRole('link', { name: /admissions/i })).toHaveAttribute('href', '/admissions');
@@ -139,14 +139,14 @@ describe('Sidebar', () => {
 
   it('should have Diagnostics menu with Laboratory and Imaging children', () => {
     render(<Sidebar {...defaultProps} />);
-    
+
     // Diagnostics parent should be visible
     expect(screen.getByText('Diagnostics')).toBeInTheDocument();
-    
+
     // Children should be visible
     expect(screen.getByText('Laboratory')).toBeInTheDocument();
     expect(screen.getByText('Imaging')).toBeInTheDocument();
-    
+
     // Children should be links with correct hrefs
     expect(screen.getByRole('link', { name: /laboratory/i })).toHaveAttribute('href', '/laboratory');
     expect(screen.getByRole('link', { name: /imaging/i })).toHaveAttribute('href', '/imaging');

@@ -1,16 +1,16 @@
 /**
  * Patient Shell Header Component
- * 
+ *
  * Displays a read-only patient identity banner that persists across routes.
  * Shows patient demographics, verification status, and encounter info when available.
- * 
+ *
  * Key Features:
  * - READ-ONLY: No edit functionality in this component
  * - Patient identity: MRN, name, DOB, gender, age
  * - Verification badges: CR verified, SHA member
  * - Sensitive indicator: For protected patient records
  * - Encounter info: Shows type, status, chief complaint when in encounter context
- * 
+ *
  * Usage:
  * ```tsx
  * <PatientProvider patientId={1}>
@@ -26,11 +26,11 @@ import { usePatientContext } from '@/lib/context/patient-context';
 import { useOptionalEncounterContext } from '@/lib/context/encounter-context';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
-import { 
-  User, 
-  Calendar, 
-  Shield, 
-  ShieldCheck, 
+import {
+  User,
+  Calendar,
+  Shield,
+  ShieldCheck,
   AlertTriangle,
   Stethoscope,
   FileText,
@@ -143,7 +143,7 @@ export function PatientShellHeader({ className, compact = false }: PatientShellH
               )}>
                 {patient.first_name} {patient.last_name}
               </h2>
-              
+
               {/* Verification Badges */}
               {isVerified && (
                 <Badge variant="outline" className="text-xs bg-green-50 text-green-700 border-green-200">
@@ -158,8 +158,8 @@ export function PatientShellHeader({ className, compact = false }: PatientShellH
                 </Badge>
               )}
               {isSensitive && (
-                <Badge 
-                  variant="destructive" 
+                <Badge
+                  variant="destructive"
                   className="text-xs"
                   aria-label="Sensitive patient record - restricted access"
                 >
@@ -202,7 +202,7 @@ export function PatientShellHeader({ className, compact = false }: PatientShellH
                      encounterContext.encounter.encounter_type === 'EMERGENCY' ? 'Emergency' :
                      encounterContext.encounter.encounter_type}
                   </span>
-                  <Badge 
+                  <Badge
                     variant={encounterContext.isActiveEncounter ? 'default' : 'secondary'}
                     className="text-xs"
                   >

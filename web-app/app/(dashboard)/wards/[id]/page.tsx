@@ -3,11 +3,11 @@
 import { useMemo, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { 
-  ArrowLeft, 
-  Bed, 
-  Building2, 
-  Plus, 
+import {
+  ArrowLeft,
+  Bed,
+  Building2,
+  Plus,
   User,
   Settings,
   AlertCircle
@@ -37,7 +37,7 @@ import {
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { useToast } from '@/lib/hooks/use-toast';
-import { 
+import {
   useInpatientWard,
   useWardBeds,
   useAdmissions
@@ -68,10 +68,10 @@ export default function WardDetailPage() {
 
   const { data: ward, isLoading: wardLoading } = useInpatientWard(wardId);
   const { data: beds, isLoading: bedsLoading, refetch: refetchBeds } = useWardBeds(wardId);
-  const { data: admissions, isLoading: admissionsLoading } = useAdmissions({ 
+  const { data: admissions, isLoading: admissionsLoading } = useAdmissions({
     ward: wardId,
     admission_status: 'ACTIVE',
-    page_size: 100 
+    page_size: 100
   });
 
   const isLoading = wardLoading || bedsLoading || admissionsLoading;
@@ -102,10 +102,10 @@ export default function WardDetailPage() {
     try {
       // In a real app, this would call an API
       // await updateBedStatus(bedId, { status, notes });
-      
+
       // Refresh beds data
       refetchBeds();
-      
+
       toast({
         title: 'Bed Status Updated',
         description: `Bed status has been changed to ${status.toLowerCase()}.`,
@@ -341,9 +341,9 @@ export default function WardDetailPage() {
 
 function BedCard({ bed, onStatusChange }: { bed: any; onStatusChange?: (bed: any) => void }) {
   const statusClass = BED_STATUS_COLORS[bed.status] || BED_STATUS_COLORS.AVAILABLE;
-  
+
   return (
-    <Card 
+    <Card
       className={`${statusClass} border cursor-pointer hover:shadow-md transition-shadow`}
       data-testid="bed-card"
       onClick={() => onStatusChange?.(bed)}
@@ -362,14 +362,14 @@ function BedCard({ bed, onStatusChange }: { bed: any; onStatusChange?: (bed: any
   );
 }
 
-function BedStatusDialog({ 
-  bed, 
-  open, 
-  onOpenChange, 
-  onSave 
-}: { 
-  bed: any; 
-  open: boolean; 
+function BedStatusDialog({
+  bed,
+  open,
+  onOpenChange,
+  onSave
+}: {
+  bed: any;
+  open: boolean;
   onOpenChange: (open: boolean) => void;
   onSave: (bedId: number, status: string, notes: string) => void;
 }) {

@@ -1,6 +1,6 @@
 /**
  * SyncQueue Model
- * 
+ *
  * WatermelonDB model for offline sync queue.
  * Tracks CREATE/UPDATE/DELETE operations that need to be synced to backend.
  */

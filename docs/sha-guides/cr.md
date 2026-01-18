@@ -87,4 +87,3 @@ Healthcare organizations can leverage a Client Registry for various use cases, i
 - **📈 Research and Analytics** – Generating anonymized datasets while preserving data integrity.
 
 By adopting a Client Registry, healthcare systems can enhance patient identification, reduce duplicate records, and improve overall healthcare service delivery.
-

@@ -1,6 +1,6 @@
 /**
  * Additional Hooks Tests
- * 
+ *
  * Tests for usePatient and usePatients hooks to improve branch coverage.
  */
 

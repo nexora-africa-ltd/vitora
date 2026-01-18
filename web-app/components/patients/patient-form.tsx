@@ -1,6 +1,6 @@
 /**
  * Enhanced Patient Registration Form
- * 
+ *
  * Features:
  * - Flexible ID type selection (clickable label)
  * - Auto CR (Client Registry) lookup on ID input
@@ -103,9 +103,9 @@ import { useToast } from '@/lib/hooks/use-toast';
 import { shaApi } from '@/lib/api/sha';
 import { GENDER_OPTIONS, REFERRAL_SOURCE_OPTIONS, RELATIONSHIP_OPTIONS } from '@/lib/utils/constants';
 import { NATIONALITIES, NATIONALITY_OPTIONS } from '@/lib/utils/nationalities';
-import { 
-  type PatientCreateData, 
-  type IdentificationType, 
+import {
+  type PatientCreateData,
+  type IdentificationType,
   type PatientTitle,
   type PaymentMode,
   IDENTIFICATION_TYPE_OPTIONS,
@@ -142,7 +142,7 @@ const patientFormSchema = z.object({
     .optional(),
   cr_number: z.string().optional(), // Read-only, populated from CR lookup
   sha_number: z.string().optional(), // Read-only, populated from SHA lookup
-  
+
   // Personal Information
   title: z.enum(['Mr', 'Mrs', 'Miss', 'Ms', 'Dr', 'Prof', 'Hon', 'Rev', '']).optional(),
   first_name: z.string().min(1, 'First name is required').max(100),
@@ -159,12 +159,12 @@ const patientFormSchema = z.object({
   }),
   nationality: z.string().default('Kenyan'),
   is_person_with_disability: z.boolean().default(false),
-  
+
   // Contact Information
   phone_number: z.string().optional(),
   email: z.string().email('Invalid email address').optional().or(z.literal('')),
   address: z.string().optional(),
-  
+
   // Location
   county: z.number({
     required_error: 'County is required',
@@ -174,20 +174,20 @@ const patientFormSchema = z.object({
   }),
   ward: z.number().optional(),
   village: z.string().optional(),
-  
+
   // Payment
   payment_mode: z.enum(['cash', 'sha', 'insurance_private', 'insurance_corporate']).default('cash'),
   insurance_provider: z.string().optional(),
   insurance_member_number: z.string().optional(),
-  
+
   // Emergency Contact
   emergency_contact_name: z.string().optional(),
   emergency_contact_phone: z.string().optional(),
   emergency_contact_relationship: z.string().optional(),
-  
+
   // Referral
   referral_source: z.enum(['self', 'clinic', 'other_facility']).optional(),
-  
+
   // Consent
   consent_given: z.boolean().default(false),
   consent_deferred: z.boolean().default(false),
@@ -213,30 +213,30 @@ const PAYMENT_MODE_ICONS: Record<PaymentMode, React.ReactNode> = {
   insurance_corporate: <Building2 className="h-4 w-4 text-warning-foreground" />,
 };
 
-export function PatientForm({ 
-  onSubmit, 
-  onCancel, 
-  isLoading, 
+export function PatientForm({
+  onSubmit,
+  onCancel,
+  isLoading,
   defaultValues,
   prePopulatedClient,
-  isEditing = false 
+  isEditing = false
 }: PatientFormProps) {
   const { toast } = useToast();
-  
+
   // Prevent double submission
   const [isSubmitting, setIsSubmitting] = useState(false);
   const submitLockRef = useRef(false);
-  
+
   // CR Lookup state
   const [isSearchingCR, setIsSearchingCR] = useState(false);
   const [crClient, setCrClient] = useState<ClientRegistryClient | null>(prePopulatedClient || null);
   const [crSearched, setCrSearched] = useState(false);
   const [formLocked, setFormLocked] = useState(false);
-  
+
   // Consent dialog state
   const [showConsentDialog, setShowConsentDialog] = useState(false);
   const [pendingFormData, setPendingFormData] = useState<PatientFormValues | null>(null);
-  
+
   // SHA Eligibility state - tracks if patient is eligible for SHA coverage
   const [shaEligibility, setShaEligibility] = useState<{
     checked: boolean;
@@ -245,17 +245,17 @@ export function PatientForm({
     details?: DirectEligibilityCheckResponse;
   }>({ checked: false, isEligible: true });
   const [isCheckingEligibility, setIsCheckingEligibility] = useState(false);
-  
+
   // SHA Details dialog state
   const [showShaDetailsDialog, setShowShaDetailsDialog] = useState(false);
-  
+
   // SHA Principal Confirmation dialog state
   const [showShaPrincipalDialog, setShowShaPrincipalDialog] = useState(false);
   const [pendingShaDetails, setPendingShaDetails] = useState<DirectEligibilityCheckResponse | null>(null);
-  
+
   // Nationality combobox state
   const [nationalityOpen, setNationalityOpen] = useState(false);
-  
+
   // UI state
   const [dobPopoverOpen, setDobPopoverOpen] = useState(false);
   const [showCustomRelationship, setShowCustomRelationship] = useState(false);
@@ -299,7 +299,7 @@ export function PatientForm({
   const identificationType = form.watch('identification_type');
   const identificationNumber = form.watch('identification_number');
   const paymentMode = form.watch('payment_mode');
-  
+
   // Debounced identification number for auto-search
   const debouncedIdNumber = useDebounce(identificationNumber, 800);
 
@@ -337,7 +337,7 @@ export function PatientForm({
     if (details.sha_number) {
       form.setValue('sha_number', details.sha_number);
     }
-    
+
     // Parse name - could be from principal or dependent
     const fullName = dependentName || details.full_name;
     if (fullName) {
@@ -354,7 +354,7 @@ export function PatientForm({
         form.setValue('last_name', nameParts[1]);
       }
     }
-    
+
     // If SHA is eligible, auto-select SHA payment mode
     if (details.is_eligible) {
       form.setValue('payment_mode', 'sha');
@@ -364,7 +364,7 @@ export function PatientForm({
   // Handle SHA principal confirmation decision
   const handleShaPrincipalDecision = useCallback((decision: SHAPrincipalDecision, selectedDependent?: { name: string; sha_number?: string; date_of_birth?: string }) => {
     setShowShaPrincipalDialog(false);
-    
+
     if (decision === 'cancelled') {
       // User wants to enter manually, just set SHA number if available
       if (pendingShaDetails?.sha_number) {
@@ -373,7 +373,7 @@ export function PatientForm({
       setPendingShaDetails(null);
       return;
     }
-    
+
     if (pendingShaDetails) {
       if (decision === 'confirmed') {
         // Principal is the patient - populate from SHA details
@@ -417,7 +417,7 @@ export function PatientForm({
         });
       }
     }
-    
+
     setPendingShaDetails(null);
   }, [form, pendingShaDetails, populateFromShaDetails, toast]);
 
@@ -425,14 +425,14 @@ export function PatientForm({
   // Returns { found: boolean, idType, idNumber } to allow caller to check eligibility
   const performCRLookup = useCallback(async (idType: IdentificationType, idNumber: string): Promise<{ found: boolean; idType: IdentificationType; idNumber: string } | null> => {
     if (!idNumber || idNumber.length < 5) return null;
-    
+
     setIsSearchingCR(true);
     setFormLocked(true);
-    
+
     try {
       // Build the request based on ID type - always use identification_type/identification_number
       const request: Record<string, string> = {};
-      
+
       // Map our internal ID types to DHA API identification_type values
       const idTypeMap: Record<IdentificationType, string> = {
         national_id: 'National ID',
@@ -443,24 +443,24 @@ export function PatientForm({
         mandate_number: 'Mandate Number',
         temporary_id: 'Temporary ID',
       };
-      
+
       request.identification_type = idTypeMap[idType] || idType;
       request.identification_number = idNumber;
-      
+
       const response = await shaApi.fetchFromClientRegistry(request);
-      
+
       setCrSearched(true);
-      
+
       if (response.found && response.client) {
         setCrClient(response.client);
-        
+
         toast({
           title: 'Client Registry Record Found',
           description: `Found record for ${response.client.first_name} ${response.client.last_name}. Fields will be auto-populated.`,
         });
-        
+
         populateFromCRClient(response.client);
-        
+
         return { found: true, idType, idNumber };
       } else {
         toast({
@@ -489,7 +489,7 @@ export function PatientForm({
   // When crFound is false and SHA details are found, show confirmation dialog
   const checkShaEligibility = useCallback(async (idType: IdentificationType, idNumber: string, crFound: boolean = false) => {
     if (!idNumber) return;
-    
+
     setIsCheckingEligibility(true);
     try {
       // Build eligibility check request based on ID type
@@ -502,23 +502,23 @@ export function PatientForm({
         params.identification_type = idType;
         params.identification_number = idNumber;
       }
-      
+
       const response = await shaApi.checkDirectEligibility(params);
-      
+
       setShaEligibility({
         checked: true,
         isEligible: response.is_eligible,
-        reason: response.is_eligible 
-          ? undefined 
+        reason: response.is_eligible
+          ? undefined
           : response.reason || 'Patient is not eligible for SHA coverage',
         details: response,
       });
-      
+
       // Always set SHA number if available
       if (response.sha_number) {
         form.setValue('sha_number', response.sha_number);
       }
-      
+
       // If CR record was NOT found but SHA details are available, prompt user to confirm identity
       if (!crFound && response.is_eligible && (response.full_name || response.sha_number)) {
         setPendingShaDetails(response);
@@ -531,7 +531,7 @@ export function PatientForm({
           description: `Patient ${response.full_name || ''} has active SHA coverage.`,
         });
       }
-      
+
       // If ineligible and SHA was selected, switch to cash
       if (!response.is_eligible) {
         const currentPaymentMode = form.getValues('payment_mode');
@@ -561,9 +561,9 @@ export function PatientForm({
   // Auto-search CR when ID number changes (debounced)
   useEffect(() => {
     if (
-      debouncedIdNumber && 
-      debouncedIdNumber.length >= 8 && 
-      !crClient && 
+      debouncedIdNumber &&
+      debouncedIdNumber.length >= 8 &&
+      !crClient &&
       !crSearched &&
       !isEditing
     ) {
@@ -588,7 +588,7 @@ export function PatientForm({
   const handleManualCRSearch = () => {
     const idNumber = form.getValues('identification_number');
     const idType = form.getValues('identification_type');
-    
+
     if (idNumber && idNumber.length >= 5) {
       setCrSearched(false);
       setCrClient(null);
@@ -612,42 +612,42 @@ export function PatientForm({
     if (submitLockRef.current || isSubmitting) {
       return;
     }
-    
+
     // If no consent given and not deferred, show consent dialog
     if (!values.consent_given && !values.consent_deferred) {
       setPendingFormData(values);
       setShowConsentDialog(true);
       return;
     }
-    
+
     await submitForm(values);
   };
 
   const handleConsentDecision = async (decision: ConsentDecision) => {
     setShowConsentDialog(false);
-    
+
     if (decision === 'cancelled') {
       setPendingFormData(null);
       return;
     }
-    
+
     if (pendingFormData) {
       const updatedData = { ...pendingFormData };
-      
+
       if (decision === 'granted') {
         updatedData.consent_given = true;
         updatedData.consent_deferred = false;
       } else if (decision === 'deferred') {
         updatedData.consent_given = false;
         updatedData.consent_deferred = true;
-        
+
         toast({
           title: 'Consent Deferred',
           description: 'Patient consent must be obtained before discharge, claim submission, or encounter completion.',
           variant: 'default',
         });
       }
-      
+
       await submitForm(updatedData);
     }
   };
@@ -655,7 +655,7 @@ export function PatientForm({
   const submitForm = async (values: PatientFormValues) => {
     submitLockRef.current = true;
     setIsSubmitting(true);
-    
+
     try {
       const data: PatientCreateData = {
         ...values,
@@ -666,7 +666,7 @@ export function PatientForm({
         // Include SHA number if found
         sha_number: values.sha_number || shaEligibility.details?.sha_number || undefined,
       };
-      
+
       await onSubmit(data);
     } finally {
       setTimeout(() => {
@@ -689,7 +689,7 @@ export function PatientForm({
   const handleFormErrors = useCallback(() => {
     const errors = form.formState.errors;
     const errorFields: string[] = [];
-    
+
     // Collect human-readable field names for required fields
     if (errors.first_name) errorFields.push('First Name');
     if (errors.last_name) errorFields.push('Last Name');
@@ -697,7 +697,7 @@ export function PatientForm({
     if (errors.gender) errorFields.push('Gender');
     if (errors.county) errorFields.push('County');
     if (errors.sub_county) errorFields.push('Sub-County');
-    
+
     if (errorFields.length > 0) {
       toast({
         title: 'Missing Required Fields',
@@ -711,7 +711,7 @@ export function PatientForm({
     <>
       <Form {...form}>
         <form onSubmit={form.handleSubmit(handleFormSubmit, handleFormErrors)} className="space-y-8">
-          
+
           {/* ================================================================== */}
           {/* SECTION 1: Identification & CR Status (Top Priority) */}
           {/* ================================================================== */}
@@ -725,7 +725,7 @@ export function PatientForm({
                 </Badge>
               )}
             </div>
-            
+
             {/* CR Status Banner */}
             {crClient && (
               <Alert className="border-success bg-success/10">
@@ -733,7 +733,7 @@ export function PatientForm({
                 <AlertTitle className="text-success">Client Registry Record Found</AlertTitle>
                 <AlertDescription className="flex items-center justify-between">
                   <span>
-                    <strong>{crClient.first_name} {crClient.last_name}</strong> 
+                    <strong>{crClient.first_name} {crClient.last_name}</strong>
                     {crClient.client_number && ` • CR: ${crClient.client_number}`}
                   </span>
                   <Button
@@ -747,7 +747,7 @@ export function PatientForm({
                 </AlertDescription>
               </Alert>
             )}
-            
+
             {crSearched && !crClient && (
               <Alert className="border-warning bg-warning/10">
                 <Info className="h-4 w-4 text-warning-foreground" />
@@ -757,7 +757,7 @@ export function PatientForm({
                 </AlertDescription>
               </Alert>
             )}
-            
+
             {/* SHA Eligibility Status Banner */}
             {isCheckingEligibility && (
               <Alert className="border-primary/30 bg-primary/5">
@@ -768,7 +768,7 @@ export function PatientForm({
                 </AlertDescription>
               </Alert>
             )}
-            
+
             {shaEligibility.checked && !isCheckingEligibility && shaEligibility.isEligible && shaEligibility.details && (
               <Alert className="border-success/30 bg-success/5">
                 <BadgeCheck className="h-4 w-4 text-success" />
@@ -803,7 +803,7 @@ export function PatientForm({
                 </AlertDescription>
               </Alert>
             )}
-            
+
             {shaEligibility.checked && !isCheckingEligibility && !shaEligibility.isEligible && (
               <Alert className="border-warning/30 bg-warning/5">
                 <XCircle className="h-4 w-4 text-warning-foreground" />
@@ -839,7 +839,7 @@ export function PatientForm({
                 </AlertDescription>
               </Alert>
             )}
-            
+
             <div className="flex flex-wrap gap-6">
               {/* ID Type + Number with clickable label */}
               <div className="space-y-2">
@@ -882,7 +882,7 @@ export function PatientForm({
                   )}
                 />
               </div>
-              
+
               {/* CR Number (Read-only) */}
               <FormField
                 control={form.control}
@@ -894,9 +894,9 @@ export function PatientForm({
                       CR Number
                     </FormLabel>
                     <FormControl>
-                      <Input 
-                        {...field} 
-                        readOnly 
+                      <Input
+                        {...field}
+                        readOnly
                         disabled
                         placeholder="Auto-populated"
                         className="bg-muted font-mono text-sm"
@@ -908,7 +908,7 @@ export function PatientForm({
                   </FormItem>
                 )}
               />
-              
+
               {/* SHA Number (Read-only) */}
               <FormField
                 control={form.control}
@@ -920,9 +920,9 @@ export function PatientForm({
                       SHA Number
                     </FormLabel>
                     <FormControl>
-                      <Input 
-                        {...field} 
-                        readOnly 
+                      <Input
+                        {...field}
+                        readOnly
                         disabled
                         placeholder="Auto-populated"
                         className="bg-secondary/5 border-secondary/20 font-mono text-sm text-teal-400"
@@ -943,7 +943,7 @@ export function PatientForm({
                 render={({ field }) => {
                   const selectedOption = PAYMENT_MODE_OPTIONS.find(o => o.value === field.value);
                   const isShaDisabled = shaEligibility.checked && !shaEligibility.isEligible;
-                  
+
                   return (
                     <FormItem className="min-w-[120px] -mt-1">
                       <FormLabel>Payment Method *</FormLabel>
@@ -999,7 +999,7 @@ export function PatientForm({
           {/* ================================================================== */}
           <div className="space-y-4">
             <h3 className="text-lg font-medium">Personal Information</h3>
-            
+
             <div className="flex flex-wrap gap-4 items-start">
               <FormField
                 control={form.control}
@@ -1038,7 +1038,7 @@ export function PatientForm({
                   </FormItem>
                 )}
               />
-              
+
               <FormField
                 control={form.control}
                 name="first_name"
@@ -1046,9 +1046,9 @@ export function PatientForm({
                   <FormItem className="min-w-[200px] flex-1">
                     <FormLabel>First Name *</FormLabel>
                     <FormControl>
-                      <Input 
-                        placeholder="Enter first name" 
-                        {...field} 
+                      <Input
+                        placeholder="Enter first name"
+                        {...field}
                         disabled={formLocked || isFormLoading}
                       />
                     </FormControl>
@@ -1064,9 +1064,9 @@ export function PatientForm({
                   <FormItem className="min-w-[200px] flex-1">
                     <FormLabel>Middle Name</FormLabel>
                     <FormControl>
-                      <Input 
-                        placeholder="Enter middle name" 
-                        {...field} 
+                      <Input
+                        placeholder="Enter middle name"
+                        {...field}
                         disabled={formLocked || isFormLoading}
                       />
                     </FormControl>
@@ -1081,9 +1081,9 @@ export function PatientForm({
                   <FormItem className="min-w-[200px] flex-1">
                     <FormLabel>Last Name *</FormLabel>
                     <FormControl>
-                      <Input 
-                        placeholder="Enter last name" 
-                        {...field} 
+                      <Input
+                        placeholder="Enter last name"
+                        {...field}
                         disabled={formLocked || isFormLoading}
                       />
                     </FormControl>
@@ -1103,26 +1103,26 @@ export function PatientForm({
                     <FormControl>
                       <DropdownMenu>
                         <DropdownMenuTrigger asChild>
-                          <Button 
-                            variant="outline" 
+                          <Button
+                            variant="outline"
                             className="w-full justify-between"
                             disabled={formLocked || isFormLoading}
                           >
-                            {field.value 
-                              ? GENDER_OPTIONS.find(opt => opt.value === field.value)?.label 
+                            {field.value
+                              ? GENDER_OPTIONS.find(opt => opt.value === field.value)?.label
                               : 'Select gender'
                             }
                             <ChevronDown className="h-4 w-4 opacity-50" />
                           </Button>
                         </DropdownMenuTrigger>
                         <DropdownMenuContent className="w-[140px]">
-                          <DropdownMenuRadioGroup 
-                            value={field.value} 
+                          <DropdownMenuRadioGroup
+                            value={field.value}
                             onValueChange={field.onChange}
                           >
                             {GENDER_OPTIONS.map((option) => (
-                              <DropdownMenuRadioItem 
-                                key={option.value} 
+                              <DropdownMenuRadioItem
+                                key={option.value}
                                 value={option.value}
                               >
                                 {option.label}
@@ -1160,9 +1160,9 @@ export function PatientForm({
                   <FormItem className="min-w-[160px] flex-1">
                     <FormLabel>Place of Birth</FormLabel>
                     <FormControl>
-                      <Input 
-                        placeholder="County or City" 
-                        {...field} 
+                      <Input
+                        placeholder="County or City"
+                        {...field}
                         disabled={formLocked || isFormLoading}
                       />
                     </FormControl>
@@ -1268,7 +1268,7 @@ export function PatientForm({
           {/* ================================================================== */}
           <div className="space-y-4">
             <h3 className="text-lg font-medium">Contact Information</h3>
-            
+
             <div className="flex flex-wrap gap-4 items-start">
               <FormField
                 control={form.control}
@@ -1277,9 +1277,9 @@ export function PatientForm({
                   <FormItem className="w-[200px]">
                     <FormLabel>Phone Number</FormLabel>
                     <FormControl>
-                      <Input 
-                        placeholder="+254..." 
-                        {...field} 
+                      <Input
+                        placeholder="+254..."
+                        {...field}
                         disabled={formLocked || isFormLoading}
                       />
                     </FormControl>
@@ -1296,10 +1296,10 @@ export function PatientForm({
                   <FormItem className="w-[140px]">
                     <FormLabel>Email (Optional)</FormLabel>
                     <FormControl>
-                      <Input 
-                        type="email" 
-                        placeholder="email@example.com" 
-                        {...field} 
+                      <Input
+                        type="email"
+                        placeholder="email@example.com"
+                        {...field}
                         disabled={formLocked || isFormLoading}
                       />
                     </FormControl>
@@ -1307,7 +1307,7 @@ export function PatientForm({
                   </FormItem>
                 )}
               />
-              
+
               <FormField
                 control={form.control}
                 name="address"
@@ -1315,9 +1315,9 @@ export function PatientForm({
                   <FormItem className="flex-grow min-w-[200px] resize-auto">
                     <FormLabel>Physical Address (Optional)</FormLabel>
                     <FormControl>
-                      <Textarea 
-                        placeholder="P.O BOX, Street, Nearest Landmark, School, etc." 
-                        {...field} 
+                      <Textarea
+                        placeholder="P.O BOX, Street, Nearest Landmark, School, etc."
+                        {...field}
                         disabled={formLocked || isFormLoading}
                         rows={1}
                         className="min-h-[40px] resize-auto"
@@ -1336,7 +1336,7 @@ export function PatientForm({
           {/* ================================================================== */}
           <div className="space-y-4">
             <h3 className="text-lg font-medium">Location</h3>
-            
+
             <div className="flex flex-wrap gap-4">
               <FormField
                 control={form.control}
@@ -1421,9 +1421,9 @@ export function PatientForm({
                 <FormItem>
                   <FormLabel>Village/Estate (Optional)</FormLabel>
                   <FormControl>
-                    <Input 
-                      placeholder="Enter village or estate" 
-                      {...field} 
+                    <Input
+                      placeholder="Enter village or estate"
+                      {...field}
                       disabled={formLocked || isFormLoading}
                     />
                   </FormControl>
@@ -1448,9 +1448,9 @@ export function PatientForm({
                     <FormItem>
                       <FormLabel>Insurance Provider *</FormLabel>
                       <FormControl>
-                        <Input 
-                          placeholder="e.g., Jubilee, AAR, Britam" 
-                          {...field} 
+                        <Input
+                          placeholder="e.g., Jubilee, AAR, Britam"
+                          {...field}
                           disabled={formLocked || isFormLoading}
                         />
                       </FormControl>
@@ -1465,9 +1465,9 @@ export function PatientForm({
                     <FormItem className="max-w-[240px]">
                       <FormLabel>Member/Policy Number</FormLabel>
                       <FormControl>
-                        <Input 
-                          placeholder="Enter member number" 
-                          {...field} 
+                        <Input
+                          placeholder="Enter member number"
+                          {...field}
                           disabled={formLocked || isFormLoading}
                         />
                       </FormControl>
@@ -1485,7 +1485,7 @@ export function PatientForm({
           {/* ================================================================== */}
           <div className="space-y-4">
             <h3 className="text-lg font-medium">Emergency Contact</h3>
-            
+
             <div className="flex flex-wrap gap-6">
               <FormField
                 control={form.control}
@@ -1494,9 +1494,9 @@ export function PatientForm({
                   <FormItem className="min-w-[240px] flex-1">
                     <FormLabel>Contact Name</FormLabel>
                     <FormControl>
-                      <Input 
-                        placeholder="Full name" 
-                        {...field} 
+                      <Input
+                        placeholder="Full name"
+                        {...field}
                         disabled={formLocked || isFormLoading}
                       />
                     </FormControl>
@@ -1511,9 +1511,9 @@ export function PatientForm({
                   <FormItem className="min-w-[240px]">
                     <FormLabel>Contact Phone</FormLabel>
                     <FormControl>
-                      <Input 
-                        placeholder="+254..." 
-                        {...field} 
+                      <Input
+                        placeholder="+254..."
+                        {...field}
                         disabled={formLocked || isFormLoading}
                       />
                     </FormControl>
@@ -1528,7 +1528,7 @@ export function PatientForm({
                   <FormItem className="min-w-[200px]">
                     <FormLabel>Relationship</FormLabel>
                     {!showCustomRelationship ? (
-                      <Select 
+                      <Select
                         onValueChange={(value) => {
                           if (value === 'other') {
                             setShowCustomRelationship(true);
@@ -1536,7 +1536,7 @@ export function PatientForm({
                           } else {
                             field.onChange(value);
                           }
-                        }} 
+                        }}
                         value={field.value || ''}
                         disabled={formLocked || isFormLoading}
                       >
@@ -1556,8 +1556,8 @@ export function PatientForm({
                     ) : (
                       <div className="flex gap-2">
                         <FormControl>
-                          <Input 
-                            placeholder="Specify relationship" 
+                          <Input
+                            placeholder="Specify relationship"
                             value={customRelationship}
                             onChange={(e) => {
                               setCustomRelationship(e.target.value);
@@ -1626,7 +1626,7 @@ export function PatientForm({
           {/* ================================================================== */}
           <div className="space-y-4">
             <h3 className="text-lg font-medium">Data Protection</h3>
-            
+
             <Alert>
               <Info className="h-4 w-4" />
               <AlertTitle>Kenya Data Protection Act 2019</AlertTitle>
@@ -1634,7 +1634,7 @@ export function PatientForm({
                 Patient consent will be requested upon form submission. Data will be encrypted and stored securely in compliance with the law.
               </AlertDescription>
             </Alert>
-            
+
             <div className="grid gap-4 md:grid-cols-2">
               <FormField
                 control={form.control}
@@ -1662,7 +1662,7 @@ export function PatientForm({
                   </FormItem>
                 )}
               />
-              
+
               <FormField
                 control={form.control}
                 name="consent_deferred"
@@ -1713,8 +1713,8 @@ export function PatientForm({
         onOpenChange={setShowConsentDialog}
         onDecision={handleConsentDecision}
         patientName={
-          pendingFormData 
-            ? `${pendingFormData.first_name} ${pendingFormData.last_name}`.trim() 
+          pendingFormData
+            ? `${pendingFormData.first_name} ${pendingFormData.last_name}`.trim()
             : undefined
         }
         crRecordFound={!!crClient}
@@ -1741,7 +1741,7 @@ export function PatientForm({
               Social Health Authority membership information
             </DialogDescription>
           </DialogHeader>
-          
+
           {shaEligibility.details && (
             <div className="space-y-4">
               {/* Eligibility Status */}
@@ -1764,7 +1764,7 @@ export function PatientForm({
                   </div>
                 </div>
               )}
-              
+
               {/* Member Details */}
               <div className="grid gap-3">
                 {shaEligibility.details.full_name && (
@@ -1773,40 +1773,40 @@ export function PatientForm({
                     <span className="font-medium">{shaEligibility.details.full_name}</span>
                   </div>
                 )}
-                
+
                 {shaEligibility.details.sha_number && (
                   <div className="flex justify-between py-2 border-b">
                     <span className="text-muted-foreground">SHA Number</span>
                     <span className="font-mono font-medium">{shaEligibility.details.sha_number}</span>
                   </div>
                 )}
-                
+
                 {shaEligibility.details.coverage_end_date && (
                   <div className="flex justify-between py-2 border-b">
                     <span className="text-muted-foreground">Coverage Valid Until</span>
                     <span className="font-medium">{shaEligibility.details.coverage_end_date}</span>
                   </div>
                 )}
-                
+
                 <div className="flex justify-between py-2 border-b">
                   <span className="text-muted-foreground">Co-pay Percentage</span>
                   <span className="font-medium">{shaEligibility.details.copay_percentage || 0}%</span>
                 </div>
-                
+
                 {shaEligibility.details.employment_type && (
                   <div className="flex justify-between py-2 border-b">
                     <span className="text-muted-foreground">Employment Type</span>
                     <span className="font-medium capitalize">{shaEligibility.details.employment_type}</span>
                   </div>
                 )}
-                
+
                 {shaEligibility.details.employer_name && (
                   <div className="flex justify-between py-2 border-b">
                     <span className="text-muted-foreground">Employer</span>
                     <span className="font-medium">{shaEligibility.details.employer_name}</span>
                   </div>
                 )}
-                
+
                 {shaEligibility.details.nhif_transition_status && (
                   <div className="flex justify-between py-2 border-b">
                     <span className="text-muted-foreground">NHIF Transition</span>
@@ -1816,7 +1816,7 @@ export function PatientForm({
                   </div>
                 )}
               </div>
-              
+
               {/* Means Testing Info (if available) */}
               {shaEligibility.details.means_testing && (
                 <div className="p-3 rounded-lg bg-muted/50 space-y-2">
@@ -1840,7 +1840,7 @@ export function PatientForm({
                   </div>
                 </div>
               )}
-              
+
               {/* Dependents Accordion - Always show */}
               <Accordion type="single" collapsible className="w-full">
                 <AccordionItem value="dependents" className="border rounded-lg px-3">
@@ -1895,7 +1895,7 @@ export function PatientForm({
               </Accordion>
             </div>
           )}
-          
+
           <div className="flex justify-end pt-2">
             <Button variant="outline" onClick={() => setShowShaDetailsDialog(false)}>
               Close

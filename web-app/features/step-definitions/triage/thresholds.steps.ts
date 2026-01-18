@@ -1,6 +1,6 @@
 /**
  * Triage Thresholds Step Definitions
- * 
+ *
  * Steps for vital threshold configuration and management.
  */
 
@@ -17,7 +17,7 @@ Given(
   'I am on the triage settings page',
   async function (this: VitoraWorld) {
     this.currentPage = 'triage settings';
-    
+
     if (this.page) {
       await this.page.goto('/settings/triage');
       await this.page.waitForLoadState('networkidle');
@@ -35,7 +35,7 @@ Given(
       permissions: ['admin', 'triage.manage_thresholds', 'triage.view_thresholds'],
     };
     this.setUser(user);
-    
+
     if (this.page) {
       await this.page.goto('/login');
       await this.page.fill('[name="username"]', user.username);
@@ -56,7 +56,7 @@ Given(
       permissions: ['admin', 'triage.manage_thresholds'],
     };
     this.setUser(user);
-    
+
     if (this.page) {
       await this.page.goto('/login');
       await this.page.fill('[name="username"]', user.username);
@@ -90,9 +90,9 @@ When(
     const pathMap: Record<string, string> = {
       'Settings > Triage > Vital Thresholds': '/settings/triage/thresholds',
     };
-    
+
     const url = pathMap[path] || `/${path.toLowerCase().replace(/\s+>\s+/g, '/').replace(/\s+/g, '-')}`;
-    
+
     if (this.page) {
       await this.page.goto(url);
       await this.page.waitForLoadState('networkidle');
@@ -105,11 +105,11 @@ Then(
   async function (this: VitoraWorld, dataTable: DataTable) {
     const expectedThresholds = safeHashes(dataTable.hashes());
     this.store('expectedThresholds', expectedThresholds);
-    
+
     if (this.page) {
       const table = this.page.locator('[data-testid="thresholds-table"]');
       await expect(table).toBeVisible();
-      
+
       for (const threshold of expectedThresholds) {
         const vitalType = threshold['Vital Type'] || threshold.vital_type;
         const row = table.locator(`tr:has-text("${vitalType}")`);
@@ -124,7 +124,7 @@ Then(
   async function (this: VitoraWorld, dataTable: DataTable) {
     const expectedValues = safeHashes(dataTable.hashes());
     this.store('expectedThresholdValues', expectedValues);
-    
+
     if (this.page) {
       for (const row of expectedValues) {
         const vitalType = row.vital_type || row['vital_type'];
@@ -160,7 +160,7 @@ When(
   'I change warning_low to {int}',
   async function (this: VitoraWorld, value: number) {
     this.store('newWarningLow', value);
-    
+
     if (this.page) {
       await this.page.fill('[data-testid="threshold-warning-low"]', String(value));
     }
@@ -230,7 +230,7 @@ Given(
   'I am editing Heart Rate thresholds',
   async function (this: VitoraWorld) {
     this.store('editingVital', 'Heart Rate');
-    
+
     if (this.page) {
       await this.page.click('[data-testid="threshold-row-heart-rate"] button:has-text("Edit")');
     }
@@ -241,7 +241,7 @@ Given(
   'I am editing {string} thresholds',
   async function (this: VitoraWorld, vitalName: string) {
     this.store('editingVital', vitalName);
-    
+
     if (this.page) {
       const testId = vitalName.toLowerCase().replace(/\s+/g, '-');
       await this.page.click(`[data-testid="threshold-row-${testId}"] button:has-text("Edit")`);
@@ -253,7 +253,7 @@ Given(
   'I am editing Temperature thresholds',
   async function (this: VitoraWorld) {
     this.store('editingVital', 'Temperature');
-    
+
     if (this.page) {
       await this.page.click('[data-testid="threshold-row-temperature"] button:has-text("Edit")');
     }
@@ -265,7 +265,7 @@ Given(
   async function (this: VitoraWorld) {
     this.store('editingVital', 'Heart Rate');
     this.store('editingField', 'critical_low');
-    
+
     if (this.page) {
       await this.page.click('[data-testid="threshold-row-heart-rate"] button:has-text("Edit")');
     }
@@ -285,7 +285,7 @@ When(
   async function (this: VitoraWorld, dataTable: DataTable) {
     const values = dataTable.rowsHash() as Record<string, string>;
     this.store('thresholdValues', values);
-    
+
     if (this.page) {
       for (const [field, value] of Object.entries(values)) {
         await this.page.fill(`[data-testid="threshold-${field}"]`, value);
@@ -298,7 +298,7 @@ When(
   'I enter {string} for {string}',
   async function (this: VitoraWorld, value: string, field: string) {
     this.store(`threshold_${field}`, value);
-    
+
     if (this.page) {
       await this.page.fill(`[data-testid="threshold-${field}"]`, value);
     }
@@ -310,7 +310,7 @@ When(
   async function (this: VitoraWorld, dataTable: DataTable) {
     const row = dataTable.hashes()[0];
     this.store('thresholdValues', row);
-    
+
     if (this.page) {
       for (const [field, value] of Object.entries(row)) {
         if (value) {
@@ -325,7 +325,7 @@ When(
   'I set critical_low higher than warning_low',
   async function (this: VitoraWorld) {
     this.store('invalidThresholdOrder', true);
-    
+
     if (this.page) {
       await this.page.fill('[data-testid="threshold-critical_low"]', '60');
       await this.page.fill('[data-testid="threshold-warning_low"]', '50');
@@ -337,7 +337,7 @@ When(
   'I try to set it to {int} bpm',
   async function (this: VitoraWorld, value: number) {
     this.store('attemptedValue', value);
-    
+
     if (this.page) {
       await this.page.fill('[data-testid="threshold-critical_low"]', String(value));
       await this.page.click('button:has-text("Save")');
@@ -442,7 +442,7 @@ Then(
   'I should see threshold sets for:',
   async function (this: VitoraWorld, dataTable: DataTable) {
     const expectedSets = safeHashes(dataTable.hashes());
-    
+
     if (this.page) {
       for (const set of expectedSets) {
         const ageGroup = set.age_group || set['age_group'];

@@ -95,10 +95,10 @@ from hmis.apps.pharmacy.models import AlertSettings, StockAlert
 def send_alert_notification_email(alert_id: int) -> bool:
     """
     Send email notification for a stock alert.
-    
+
     Args:
         alert_id: ID of the StockAlert to send notification for
-        
+
     Returns:
         bool: True if email sent successfully, False otherwise
     """
@@ -106,23 +106,23 @@ def send_alert_notification_email(alert_id: int) -> bool:
         alert = StockAlert.objects.select_related(
             'drug', 'batch'
         ).get(id=alert_id)
-        
+
         settings_obj = AlertSettings.get_settings()
-        
+
         # Check if email notifications are enabled
         if not settings_obj.enable_email_notifications:
             return False
-        
+
         # Get recipient list
         recipients = [
-            email.strip() 
+            email.strip()
             for email in settings_obj.notification_email_recipients.split(',')
             if email.strip()
         ]
-        
+
         if not recipients:
             return False
-        
+
         # Prepare email context
         context = {
             'alert': alert,
@@ -134,7 +134,7 @@ def send_alert_notification_email(alert_id: int) -> bool:
             'created_at': alert.created_at,
             'dashboard_url': f"{settings.SITE_URL}/pharmacy?tab=alerts",
         }
-        
+
         # Render email template
         subject = f"[CRITICAL] Stock Alert: {context['drug_name']}"
         html_message = render_to_string(
@@ -145,7 +145,7 @@ def send_alert_notification_email(alert_id: int) -> bool:
             'pharmacy/emails/stock_alert_notification.txt',
             context
         )
-        
+
         # Send email
         send_mail(
             subject=subject,
@@ -155,9 +155,9 @@ def send_alert_notification_email(alert_id: int) -> bool:
             html_message=html_message,
             fail_silently=False,
         )
-        
+
         return True
-        
+
     except Exception as e:
         # Log error
         print(f"Failed to send alert notification: {e}")
@@ -168,39 +168,39 @@ def send_alert_notification_email(alert_id: int) -> bool:
 def send_daily_alert_digest() -> bool:
     """
     Send daily digest email with summary of unresolved alerts.
-    
+
     Returns:
         bool: True if email sent successfully
     """
     try:
         settings_obj = AlertSettings.get_settings()
-        
+
         if not settings_obj.enable_email_notifications:
             return False
-        
+
         # Get unresolved alerts
         unresolved_alerts = StockAlert.objects.filter(
             is_resolved=False
         ).select_related('drug', 'batch')
-        
+
         if not unresolved_alerts.exists():
             return True  # No alerts, nothing to send
-        
+
         # Group by severity
         critical = unresolved_alerts.filter(severity='CRITICAL')
         high = unresolved_alerts.filter(severity='HIGH')
         medium = unresolved_alerts.filter(severity='MEDIUM')
         low = unresolved_alerts.filter(severity='LOW')
-        
+
         recipients = [
             email.strip()
             for email in settings_obj.notification_email_recipients.split(',')
             if email.strip()
         ]
-        
+
         if not recipients:
             return False
-        
+
         context = {
             'critical_alerts': critical,
             'high_alerts': high,
@@ -209,7 +209,7 @@ def send_daily_alert_digest() -> bool:
             'total_count': unresolved_alerts.count(),
             'dashboard_url': f"{settings.SITE_URL}/pharmacy?tab=alerts",
         }
-        
+
         subject = f"Daily Stock Alerts Digest - {unresolved_alerts.count()} Unresolved"
         html_message = render_to_string(
             'pharmacy/emails/alert_digest.html',
@@ -219,7 +219,7 @@ def send_daily_alert_digest() -> bool:
             'pharmacy/emails/alert_digest.txt',
             context
         )
-        
+
         send_mail(
             subject=subject,
             message=text_message,
@@ -228,9 +228,9 @@ def send_daily_alert_digest() -> bool:
             html_message=html_message,
             fail_silently=False,
         )
-        
+
         return True
-        
+
     except Exception as e:
         print(f"Failed to send alert digest: {e}")
         return False
@@ -289,7 +289,7 @@ backend/hmis/apps/pharmacy/templates/pharmacy/emails/
         </div>
         <div class="content">
             <p><strong>{{ severity }}</strong> alert has been generated for your pharmacy inventory:</p>
-            
+
             <div class="alert-details">
                 <h3>{{ drug_name }}</h3>
                 <p><strong>Alert Type:</strong> {{ alert_type }}</p>
@@ -299,9 +299,9 @@ backend/hmis/apps/pharmacy/templates/pharmacy/emails/
                 {% endif %}
                 <p><strong>Time:</strong> {{ created_at|date:"F d, Y H:i" }}</p>
             </div>
-            
+
             <p>Please take immediate action to resolve this alert.</p>
-            
+
             <a href="{{ dashboard_url }}" class="button">View in Dashboard</a>
         </div>
         <div class="footer">
@@ -349,7 +349,7 @@ def save(self, *args, **kwargs):
     """Override save to trigger email notification for critical alerts."""
     is_new = self.pk is None
     super().save(*args, **kwargs)
-    
+
     # Send email notification for new critical alerts
     if is_new and self.severity == 'CRITICAL':
         from hmis.apps.pharmacy.tasks import send_alert_notification_email
@@ -374,7 +374,7 @@ from hmis.apps.pharmacy.tasks import send_alert_notification_email
 
 @pytest.mark.django_db
 class TestAlertNotifications:
-    
+
     def test_send_email_when_enabled(self, sample_drug, sample_batch):
         """Test email is sent when notifications are enabled."""
         # Setup
@@ -382,7 +382,7 @@ class TestAlertNotifications:
         settings.enable_email_notifications = True
         settings.notification_email_recipients = 'admin@test.com'
         settings.save()
-        
+
         alert = StockAlert.objects.create(
             drug=sample_drug,
             batch=sample_batch,
@@ -390,30 +390,30 @@ class TestAlertNotifications:
             severity='CRITICAL',
             message='Test alert'
         )
-        
+
         # Execute
         result = send_alert_notification_email(alert.id)
-        
+
         # Assert
         assert result is True
         assert len(mail.outbox) == 1
         assert 'CRITICAL' in mail.outbox[0].subject
-    
+
     def test_no_email_when_disabled(self, sample_drug, sample_batch):
         """Test no email is sent when notifications are disabled."""
         settings = AlertSettings.get_settings()
         settings.enable_email_notifications = False
         settings.save()
-        
+
         alert = StockAlert.objects.create(
             drug=sample_drug,
             alert_type='OUT_OF_STOCK',
             severity='CRITICAL',
             message='Test alert'
         )
-        
+
         result = send_alert_notification_email(alert.id)
-        
+
         assert result is False
         assert len(mail.outbox) == 0
 ```
@@ -469,6 +469,6 @@ class TestAlertNotifications:
 
 ---
 
-*Document Version: 1.0*  
-*Created: 2026-01-09*  
+*Document Version: 1.0*
+*Created: 2026-01-09*
 *Author: Copilot (GitHub)*

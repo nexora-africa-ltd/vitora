@@ -1,16 +1,16 @@
 /**
  * Authentication Context
- * 
+ *
  * Provides authentication state and methods to the entire app via React Context.
  * Handles session restoration, login, logout, and token refresh.
- * 
+ *
  * Features:
  * - Automatic session restoration on app start
  * - Login with username/password
  * - Logout with secure data cleanup
  * - Token refresh for expired access tokens
  * - Loading states during authentication operations
- * 
+ *
  * Usage:
  * ```tsx
  * function App() {
@@ -20,7 +20,7 @@
  *     </AuthProvider>
  *   );
  * }
- * 
+ *
  * function LoginScreen() {
  *   const { login, isLoading } = useAuth();
  *   // ...
@@ -59,7 +59,7 @@ interface AuthProviderProps {
 
 /**
  * Authentication Provider Component
- * 
+ *
  * Wraps the app and provides authentication state and methods.
  * Automatically restores session on mount.
  */
@@ -76,7 +76,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
     try {
       setIsLoading(true);
       const authenticated = await storage.isAuthenticated();
-      
+
       if (authenticated) {
         const userData = await storage.getUser();
         setUser(userData);
@@ -110,16 +110,16 @@ export function AuthProvider({ children }: AuthProviderProps) {
       setIsLoading(true);
       console.log('[Auth] Attempting login for:', username);
       const response = await authApi.login(username, password);
-      
+
       console.log('[Auth] Login successful, storing tokens...');
       // Store tokens and user data
       await storage.setTokens(response.access, response.refresh);
       await storage.setUser(response.user);
-      
+
       // Verify tokens were stored
       const storedToken = await storage.getAccessToken();
       console.log('[Auth] Token stored successfully:', !!storedToken);
-      
+
       // Update state
       setUser(response.user);
       setIsAuthenticated(true);
@@ -158,13 +158,13 @@ export function AuthProvider({ children }: AuthProviderProps) {
   const refreshSession = useCallback(async () => {
     try {
       const refreshToken = await storage.getRefreshToken();
-      
+
       if (!refreshToken) {
         // No refresh token, logout
         await logout();
         return;
       }
-      
+
       const response = await authApi.refresh(refreshToken);
       await storage.setTokens(response.access, response.refresh);
     } catch (error) {
@@ -188,18 +188,18 @@ export function AuthProvider({ children }: AuthProviderProps) {
 
 /**
  * useAuth Hook
- * 
+ *
  * Access authentication state and methods from any component.
  * Must be used within an AuthProvider.
- * 
+ *
  * @throws Error if used outside AuthProvider
  */
 export function useAuth(): AuthContextState {
   const context = useContext(AuthContext);
-  
+
   if (context === undefined) {
     throw new Error('useAuth must be used within an AuthProvider');
   }
-  
+
   return context;
 }

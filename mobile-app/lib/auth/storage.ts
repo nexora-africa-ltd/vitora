@@ -1,14 +1,14 @@
 /**
  * Secure Storage Module
- * 
+ *
  * Provides secure storage for JWT tokens and user profile data using expo-secure-store.
  * Data is encrypted and persists across app restarts.
- * 
+ *
  * Security Features:
  * - AES-256 encryption via iOS Keychain / Android Keystore
  * - Tokens are never stored in AsyncStorage or plain text
  * - Automatic cleanup on logout
- * 
+ *
  * Storage Keys:
  * - access_token: JWT access token (short-lived)
  * - refresh_token: JWT refresh token (long-lived)

@@ -1,9 +1,9 @@
 /**
  * LOINC Select Component
- * 
+ *
  * Searchable dropdown for selecting LOINC laboratory test codes.
  * Uses Kenya DHA API via our backend proxy with debounced search.
- * 
+ *
  * @example
  * <LOINCSelect
  *   onSelect={(code) => console.log(code.code, code.name)}
@@ -88,9 +88,9 @@ export function LOINCSelect({
     debounceRef.current = setTimeout(async () => {
       setIsLoading(true);
       try {
-        const response = await terminologyApi.searchLOINC({ 
-          search: searchQuery, 
-          page_size: 20 
+        const response = await terminologyApi.searchLOINC({
+          search: searchQuery,
+          page_size: 20
         });
         setResults(response.results);
       } catch (error) {

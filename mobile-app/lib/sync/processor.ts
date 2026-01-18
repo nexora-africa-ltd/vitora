@@ -71,7 +71,7 @@ export const syncProcessor = {
    */
   async processSingle(entry: SyncQueue): Promise<ProcessResult> {
     const endpoint = API_ENDPOINTS[entry.modelName];
-    
+
     if (!endpoint) {
       return {
         id: entry.id,
@@ -83,7 +83,7 @@ export const syncProcessor = {
     try {
       // Mark as syncing
       await syncQueueManager.markSyncing(entry.id);
-      
+
       const data = JSON.parse(entry.data);
       const client = getApiClient();
 
@@ -108,7 +108,7 @@ export const syncProcessor = {
       };
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-      
+
       // Check if it's a conflict (409)
       if (errorMessage.includes('409') || errorMessage.includes('conflict')) {
         await syncQueueManager.markConflict(entry.id, errorMessage);
@@ -146,7 +146,7 @@ export const syncProcessor = {
 
     // Get pending entries
     let pending = await syncQueueManager.getPending();
-    
+
     // Apply limit if specified
     if (limit && limit > 0) {
       pending = pending.slice(0, limit);
@@ -159,7 +159,7 @@ export const syncProcessor = {
     for (const entry of pending) {
       const result = await this.processSingle(entry);
       results.push(result);
-      
+
       if (result.success) {
         succeeded++;
       } else {
@@ -199,7 +199,7 @@ export const syncProcessor = {
     }
 
     let retryable = await syncQueueManager.getRetryable();
-    
+
     if (limit && limit > 0) {
       retryable = retryable.slice(0, limit);
     }
@@ -211,10 +211,10 @@ export const syncProcessor = {
     for (const entry of retryable) {
       // Reset to pending first
       await syncQueueManager.resetToPending(entry.id);
-      
+
       const result = await this.processSingle(entry);
       results.push(result);
-      
+
       if (result.success) {
         succeeded++;
       } else {

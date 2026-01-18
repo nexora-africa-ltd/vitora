@@ -2,11 +2,11 @@
 
 import { useState, useMemo } from 'react';
 import Link from 'next/link';
-import { 
-  Building2, 
-  Bed, 
-  Users, 
-  AlertCircle, 
+import {
+  Building2,
+  Bed,
+  Users,
+  AlertCircle,
   Plus,
   Search,
   Filter
@@ -25,8 +25,8 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { 
-  useInpatientWards, 
+import {
+  useInpatientWards,
   useAdmissions,
   useWardBeds
 } from '@/lib/hooks/use-inpatient';
@@ -34,11 +34,11 @@ import {
 export default function WardsPage() {
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedWard, setSelectedWard] = useState<string>('all');
-  
+
   const { data: wards, isLoading: wardsLoading } = useInpatientWards();
-  const { data: admissions, isLoading: admissionsLoading } = useAdmissions({ 
+  const { data: admissions, isLoading: admissionsLoading } = useAdmissions({
     admission_status: 'ACTIVE',
-    page_size: 100 
+    page_size: 100
   });
 
   const wardsList = useMemo(() => {
@@ -47,9 +47,9 @@ export default function WardsPage() {
 
   const filteredWards = useMemo(() => {
     if (!searchQuery && selectedWard === 'all') return wardsList;
-    
+
     return wardsList.filter((ward: any) => {
-      const matchesSearch = !searchQuery || 
+      const matchesSearch = !searchQuery ||
         ward.name.toLowerCase().includes(searchQuery.toLowerCase());
       const matchesFilter = selectedWard === 'all' || ward.id === Number(selectedWard);
       return matchesSearch && matchesFilter;
@@ -207,16 +207,16 @@ export default function WardsPage() {
 
 function WardCard({ ward }: { ward: any }) {
   const { data: beds, isLoading } = useWardBeds(ward.id);
-  
+
   const totalBeds = ward.total_beds || 0;
   const occupiedBeds = ward.occupied_beds || 0;
   const availableBeds = totalBeds - occupiedBeds;
   const occupancyRate = totalBeds > 0 ? Math.round((occupiedBeds / totalBeds) * 100) : 0;
 
-  const occupancyColor = occupancyRate >= 90 
-    ? 'text-red-600' 
-    : occupancyRate >= 70 
-    ? 'text-yellow-600' 
+  const occupancyColor = occupancyRate >= 90
+    ? 'text-red-600'
+    : occupancyRate >= 70
+    ? 'text-yellow-600'
     : 'text-green-600';
 
   const bedStatusCounts = useMemo(() => {
@@ -234,7 +234,7 @@ function WardCard({ ward }: { ward: any }) {
       <CardHeader>
         <div className="flex items-center justify-between">
           <CardTitle className="text-lg">{ward.name}</CardTitle>
-          <Badge 
+          <Badge
             variant={ward.ward_type === 'ICU' ? 'destructive' : 'outline'}
           >
             {ward.ward_type_display || ward.ward_type}

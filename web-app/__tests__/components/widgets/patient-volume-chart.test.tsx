@@ -4,11 +4,11 @@ import type { PatientVolumeData } from '@/lib/types/dashboard';
 
 // Mock the charts library components
 jest.mock('@/components/charts', () => ({
-  AreaChart: ({ 
-    data, 
-    showLegend, 
-    showGrid, 
-    showXAxis, 
+  AreaChart: ({
+    data,
+    showLegend,
+    showGrid,
+    showXAxis,
     showYAxis,
     dataKeys,
   }: {
@@ -59,62 +59,62 @@ describe('PatientVolumeChart', () => {
 
   it('renders area chart', () => {
     render(<PatientVolumeChart data={mockData} />);
-    
+
     expect(screen.getByTestId('area-chart')).toBeInTheDocument();
   });
 
   it('shows empty state when no data', () => {
     render(<PatientVolumeChart data={[]} />);
-    
+
     expect(screen.getByTestId('chart-empty-state')).toBeInTheDocument();
     expect(screen.getByTestId('empty-title')).toHaveTextContent('No volume data');
   });
 
   it('renders legend by default', () => {
     render(<PatientVolumeChart data={mockData} />);
-    
+
     expect(screen.getByTestId('legend')).toBeInTheDocument();
   });
 
   it('hides legend when showLegend is false', () => {
     render(<PatientVolumeChart data={mockData} showLegend={false} />);
-    
+
     expect(screen.queryByTestId('legend')).not.toBeInTheDocument();
   });
 
   it('renders chart axes', () => {
     render(<PatientVolumeChart data={mockData} />);
-    
+
     expect(screen.getByTestId('x-axis')).toBeInTheDocument();
     expect(screen.getByTestId('y-axis')).toBeInTheDocument();
   });
 
   it('renders grid lines', () => {
     render(<PatientVolumeChart data={mockData} />);
-    
+
     expect(screen.getByTestId('grid')).toBeInTheDocument();
   });
 
   it('handles null data gracefully', () => {
     // @ts-expect-error Testing null handling
     render(<PatientVolumeChart data={null} />);
-    
+
     expect(screen.getByTestId('chart-empty-state')).toBeInTheDocument();
   });
 
   it('passes correct data keys for registrations and encounters', () => {
     render(<PatientVolumeChart data={mockData} />);
-    
+
     const dataKeys = screen.getByTestId('data-keys');
     expect(JSON.parse(dataKeys.textContent || '[]')).toEqual(['registrations', 'encounters']);
   });
 
   it('formats dates correctly', () => {
     render(<PatientVolumeChart data={mockData} />);
-    
+
     const chartData = screen.getByTestId('chart-data');
     const parsed = JSON.parse(chartData.textContent || '[]');
-    
+
     // Check formatted dates
     expect(parsed[0].formattedDate).toBe('Jan 1');
     expect(parsed[1].formattedDate).toBe('Jan 2');

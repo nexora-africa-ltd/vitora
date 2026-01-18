@@ -1,9 +1,9 @@
 /**
  * Drug Product Select Component
- * 
+ *
  * Searchable dropdown for selecting drugs from Kenya drug registry.
  * Uses Kenya DHA API via our backend proxy with debounced search.
- * 
+ *
  * @example
  * <DrugProductSelect
  *   onSelect={(drug) => console.log(drug.code, drug.name)}
@@ -98,8 +98,8 @@ export function DrugProductSelect({
     debounceRef.current = setTimeout(async () => {
       setIsLoading(true);
       try {
-        const params: DrugSearchParams = { 
-          search: searchQuery, 
+        const params: DrugSearchParams = {
+          search: searchQuery,
           page_size: 20,
           dosage_form: dosageForm,
           is_controlled: isControlled,
@@ -122,8 +122,8 @@ export function DrugProductSelect({
   }, [searchQuery, dosageForm, isControlled, minSearchLength, debounceMs]);
 
   const handleSelect = (drug: DrugProduct) => {
-    onSelect({ 
-      code: drug.code, 
+    onSelect({
+      code: drug.code,
       name: drug.name,
       price: drug.price,
     });

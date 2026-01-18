@@ -1,6 +1,6 @@
 /**
  * Database Context Provider
- * 
+ *
  * React Context for providing WatermelonDB database instance throughout the app.
  * Handles initialization and provides database access via hooks.
  */
@@ -27,7 +27,7 @@ interface DatabaseProviderProps {
 
 /**
  * DatabaseProvider Component
- * 
+ *
  * Wraps app to provide database access.
  * Initializes database on mount and provides loading/error states.
  */
@@ -42,14 +42,14 @@ export function DatabaseProvider({ children }: DatabaseProviderProps) {
     async function init() {
       try {
         const db = await initDatabase();
-        
+
         if (isMounted) {
           setDatabase(db);
           setIsInitialized(true);
         }
       } catch (err) {
         console.error('Failed to initialize database:', err);
-        
+
         if (isMounted) {
           setError(err instanceof Error ? err : new Error('Database initialization failed'));
         }
@@ -83,7 +83,7 @@ export function DatabaseProvider({ children }: DatabaseProviderProps) {
 
 /**
  * useDatabase Hook
- * 
+ *
  * Access database instance from any component.
  * Throws error if used outside DatabaseProvider.
  */
@@ -101,7 +101,7 @@ export function useDatabase(): Database {
 
 /**
  * useDatabaseContext Hook
- * 
+ *
  * Access full database context including loading/error states.
  */
 export function useDatabaseContext(): DatabaseContextValue {

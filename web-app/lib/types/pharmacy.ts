@@ -1,7 +1,7 @@
 /**
  * Pharmacy module type definitions.
  * Sprint 1.3-1.4 Track A: Pharmacy Module
- * 
+ *
  * Based on backend models at hmis/apps/pharmacy/models.py
  */
 

@@ -21,13 +21,13 @@ export async function login(page: Page, username: string, password: string) {
   await page.getByLabel(/username/i).fill(username);
   await page.getByLabel(/password/i).fill(password);
   await page.getByRole('button', { name: /sign in|login/i }).click();
-  
+
   // Wait for login to complete - handle redirect chain / -> /dashboard
   await page.waitForURL((url) => {
     const pathname = url.pathname;
     return pathname === '/dashboard' || pathname === '/' || pathname.startsWith('/dashboard');
   }, { timeout: 15000 });
-  
+
   // If we landed on /, wait for redirect to /dashboard
   if (page.url().endsWith('/')) {
     await page.waitForURL(/.*dashboard.*/, { timeout: 10000 });
@@ -35,7 +35,7 @@ export async function login(page: Page, username: string, password: string) {
 }
 
 /**
- * Logout helper function  
+ * Logout helper function
  */
 export async function logout(page: Page) {
   await page.getByRole('button', { name: /logout|sign out/i }).click();
@@ -67,7 +67,7 @@ export const test = base.extend<{ authenticatedPage: Page }>({
   authenticatedPage: async ({ page }, use) => {
     // Set up auth state
     await page.goto('/login');
-    
+
     // Mock the login API
     await page.route(`${API_BASE}/api/token/`, async (route) => {
       await route.fulfill({

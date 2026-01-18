@@ -109,7 +109,7 @@ export function VitalsDisplay({ encounter }: VitalsDisplayProps) {
         <div className="grid gap-4 grid-cols-2 md:grid-cols-4 lg:grid-cols-7">
           {vitals.map((vital) => {
             const Icon = icons[vital.name] || Activity;
-            
+
             return (
               <div
                 key={vital.name}

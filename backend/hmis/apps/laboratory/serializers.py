@@ -70,9 +70,9 @@ class LabOrderItemSerializer(serializers.ModelSerializer):
         result = obj.result
         return {
             "id": result.id,
-            "numeric_value": str(result.numeric_value)
-            if result.numeric_value is not None
-            else None,
+            "numeric_value": (
+                str(result.numeric_value) if result.numeric_value is not None else None
+            ),
             "text_value": result.text_value,
             "option_value": result.option_value,
             "result_unit": result.result_unit,

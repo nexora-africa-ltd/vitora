@@ -2,7 +2,7 @@
  * Timeline event types for patient history view
  */
 
-export type TimelineEventType = 
+export type TimelineEventType =
   | 'encounter'
   | 'lab_result'
   | 'prescription'

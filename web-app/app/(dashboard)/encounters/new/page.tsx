@@ -50,16 +50,16 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useToast } from '@/lib/hooks/use-toast';
 import { useDraftSave } from '@/lib/hooks/use-draft-save';
 import { usePatient } from '@/lib/hooks/use-patients';
-import { 
-  useCreateEncounterWithValidation, 
+import {
+  useCreateEncounterWithValidation,
 } from '@/lib/hooks/use-encounter-form';
 import { PatientSelector } from '@/components/encounters/patient-selector';
 import { MedicalHistoryForm } from '@/components/encounters/medical-history-form';
 import { ClinicalNotesForm } from '@/components/encounters/clinical-notes-form';
 import { DiagnosisForm } from '@/components/encounters/diagnosis-form';
 import { ENCOUNTER_TYPES, ENCOUNTER_TYPE_GROUPS, getEncounterTypesByGroup } from '@/lib/utils/constants';
-import type { 
-  EncounterFormData, 
+import type {
+  EncounterFormData,
   DiagnosisFormData,
 } from '@/lib/types/encounter-form';
 import type { Patient } from '@/lib/types/patient';
@@ -91,7 +91,7 @@ const initialFormData: EncounterFormData = {
   encounter_type: 'OPD',
   encounter_date: new Date().toISOString().split('T')[0] || '',
   chief_complaint: '',
-  
+
   temperature: null,
   pulse: null,
   blood_pressure_systolic: null,
@@ -100,19 +100,19 @@ const initialFormData: EncounterFormData = {
   spo2: null,
   weight: null,
   height: null,
-  
+
   allergies: '',
   chronic_conditions: '',
   current_medications: '',
   past_surgeries: '',
   family_history: '',
   social_history: '',
-  
+
   notes: '',
   history_of_present_illness: '',
   physical_examination: '',
   assessment: '',
-  
+
   status: 'DRAFT',
 };
 
@@ -127,10 +127,10 @@ export default function NewEncounterPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const { toast } = useToast();
-  
+
   // Check if patient ID is provided in URL
   const patientIdParam = searchParams.get('patient');
-  
+
   // Form state
   const [formData, setFormData] = useState<EncounterFormData>(initialFormData);
   const [selectedPatient, setSelectedPatient] = useState<Patient | null>(null);
@@ -139,14 +139,14 @@ export default function NewEncounterPage() {
   const [activeTab, setActiveTab] = useState('history');
   const [showTriageModal, setShowTriageModal] = useState(false);
   const [createdEncounterId, setCreatedEncounterId] = useState<number | null>(null);
-  
+
   // Draft data for auto-save
   const draftData = useMemo<EncounterDraftData>(() => ({
     formData,
     diagnoses,
     patientId: formData.patient,
   }), [formData, diagnoses]);
-  
+
   // Auto-save draft to localStorage
   const draft = useDraftSave<EncounterDraftData>({
     draftKey: 'new-encounter',
@@ -162,13 +162,13 @@ export default function NewEncounterPage() {
       });
     },
   });
-  
+
   // Fetch patient if ID provided
   const { data: prefetchedPatient } = usePatient(patientIdParam || '');
-  
+
   // Create mutation
   const createEncounter = useCreateEncounterWithValidation();
-  
+
   // Set prefetched patient
   useEffect(() => {
     if (prefetchedPatient && !selectedPatient) {
@@ -176,7 +176,7 @@ export default function NewEncounterPage() {
       setFormData(prev => ({ ...prev, patient: prefetchedPatient.id }));
     }
   }, [prefetchedPatient, selectedPatient]);
-  
+
   // Field change handler
   const handleFieldChange = useCallback(<K extends keyof EncounterFormData>(
     field: K,
@@ -192,43 +192,43 @@ export default function NewEncounterPage() {
       });
     }
   }, [errors]);
-  
+
   // Patient selection handler
   const handlePatientChange = useCallback((patientId: number | null, patient: Patient | null) => {
     setSelectedPatient(patient);
     handleFieldChange('patient', patientId);
-    
+
     // Pre-fill medical history from patient's last encounter if available
     // This would require fetching patient's previous encounters
   }, [handleFieldChange]);
-  
+
   // Diagnosis handlers
   const handleAddDiagnosis = useCallback((diagnosis: DiagnosisFormData) => {
     setDiagnoses(prev => [...prev, diagnosis]);
   }, []);
-  
+
   const handleRemoveDiagnosis = useCallback((index: number) => {
     setDiagnoses(prev => prev.filter((_, i) => i !== index));
   }, []);
-  
+
   // Validation
   const validateForm = useCallback((): boolean => {
     const newErrors: Record<string, string> = {};
-    
+
     if (!formData.patient) {
       newErrors.patient = 'Please select a patient';
     }
-    
+
     if (!formData.chief_complaint.trim()) {
       newErrors.chief_complaint = 'Chief complaint is required';
     }
-    
+
     // encounter_date is auto-set and non-editable, no validation needed
-    
+
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   }, [formData]);
-  
+
   // Save as draft
   const handleSaveDraft = useCallback(async () => {
     if (!validateForm()) {
@@ -239,21 +239,21 @@ export default function NewEncounterPage() {
       });
       return;
     }
-    
+
     try {
       const result = await createEncounter.mutateAsync({
         ...formData,
         status: 'DRAFT',
       });
-      
+
       toast({
         title: 'Draft Saved',
         description: 'Encounter has been saved as draft',
       });
-      
+
       // Clear local draft after saving to API
       draft.clearDraft();
-      
+
       // Redirect to encounters list
       router.push('/encounters');
     } catch (error) {
@@ -264,10 +264,10 @@ export default function NewEncounterPage() {
       });
     }
   }, [formData, validateForm, createEncounter, toast, router, draft]);
-  
+
   // Check if encounter type requires immediate attention (skip triage prompt)
   const isUrgentEncounterType = formData.encounter_type === 'EMERGENCY' || formData.encounter_type === 'IPD';
-  
+
   // Submit encounter - creates encounter and shows triage prompt (unless urgent)
   const handleSubmit = useCallback(async () => {
     if (!validateForm()) {
@@ -278,13 +278,13 @@ export default function NewEncounterPage() {
       });
       return;
     }
-    
+
     try {
       const result = await createEncounter.mutateAsync({
         ...formData,
         status: 'IN_PROGRESS',
       });
-      
+
       // For EMERGENCY or IPD encounters, skip triage modal and go directly to encounter
       if (isUrgentEncounterType) {
         toast({
@@ -295,7 +295,7 @@ export default function NewEncounterPage() {
         router.push(`/encounters/${result.id}`);
         return;
       }
-      
+
       // For OPD encounters, show triage modal
       setCreatedEncounterId(result.id);
       setShowTriageModal(true);
@@ -309,14 +309,14 @@ export default function NewEncounterPage() {
       });
     }
   }, [formData, validateForm, createEncounter, toast, isUrgentEncounterType, router, draft]);
-  
+
   // Handle triage modal response
   const handleGoToTriage = useCallback(() => {
     if (createdEncounterId && selectedPatient) {
       router.push(`/triage/new?patientId=${selectedPatient.id}&encounterId=${createdEncounterId}`);
     }
   }, [createdEncounterId, selectedPatient, router]);
-  
+
   const handleSkipTriage = useCallback(() => {
     setShowTriageModal(false);
     toast({
@@ -325,7 +325,7 @@ export default function NewEncounterPage() {
     });
     router.push('/encounters');
   }, [toast, router]);
-  
+
   // Unsaved changes warning
   useEffect(() => {
     const handleBeforeUnload = (e: BeforeUnloadEvent) => {
@@ -334,11 +334,11 @@ export default function NewEncounterPage() {
         e.returnValue = '';
       }
     };
-    
+
     window.addEventListener('beforeunload', handleBeforeUnload);
     return () => window.removeEventListener('beforeunload', handleBeforeUnload);
   }, [draft.isDirty]);
-  
+
   return (
     <div className="container mx-auto py-6 max-w-5xl">
       {/* Triage Redirect Modal */}
@@ -390,7 +390,7 @@ export default function NewEncounterPage() {
             <p className="text-muted-foreground">Create a new patient encounter</p>
           </div>
         </div>
-        
+
         {draft.isDirty && (
           <Badge variant="secondary" className="gap-1">
             <Clock className="h-3 w-3" />
@@ -398,7 +398,7 @@ export default function NewEncounterPage() {
           </Badge>
         )}
       </div>
-      
+
       {/* Draft Recovery Banner */}
       {draft.hasDraft && (
         <Alert className="mb-4 border-blue-200 bg-blue-50 dark:border-blue-900 dark:bg-blue-950">
@@ -419,7 +419,7 @@ export default function NewEncounterPage() {
           </AlertDescription>
         </Alert>
       )}
-      
+
       {/* Vitals Info Banner */}
       <Alert className="mb-6">
         <Activity className="h-4 w-4" />
@@ -429,7 +429,7 @@ export default function NewEncounterPage() {
           After creating this encounter, you&apos;ll be prompted to record vitals.
         </AlertDescription>
       </Alert>
-      
+
       {/* Main Form */}
       <div className="space-y-6">
         {/* Patient Selection */}
@@ -449,7 +449,7 @@ export default function NewEncounterPage() {
             />
           </CardContent>
         </Card>
-        
+
         {/* Encounter Details */}
         <Card>
           <CardHeader className="pb-3">
@@ -503,7 +503,7 @@ export default function NewEncounterPage() {
                   </SelectContent>
                 </Select>
               </div>
-              
+
               {/* Encounter Date */}
               <div className="space-y-2">
                 <Label htmlFor="encounter_date">
@@ -518,7 +518,7 @@ export default function NewEncounterPage() {
                   className="bg-muted cursor-not-allowed"
                 />
               </div>
-              
+
               {/* Status Badge */}
               <div className="space-y-2">
                 <Label>Status</Label>
@@ -527,7 +527,7 @@ export default function NewEncounterPage() {
                 </div>
               </div>
             </div>
-            
+
             {/* Chief Complaint */}
             <div className="space-y-2">
               <Label htmlFor="chief_complaint">
@@ -545,7 +545,7 @@ export default function NewEncounterPage() {
                 <p className="text-sm text-destructive">{errors.chief_complaint}</p>
               )}
             </div>
-            
+
             {/* Urgent Encounter Info - show when Emergency or IPD is selected */}
             {isUrgentEncounterType && (
               <Alert className="bg-amber-50 dark:bg-amber-950/20 border-amber-200 dark:border-amber-800">
@@ -554,14 +554,14 @@ export default function NewEncounterPage() {
                   {formData.encounter_type === 'EMERGENCY' ? 'Emergency Encounter' : 'Inpatient Encounter'}
                 </AlertTitle>
                 <AlertDescription className="text-amber-700 dark:text-amber-300">
-                  Triage will be skipped for this encounter type. Vital signs can be recorded later 
+                  Triage will be skipped for this encounter type. Vital signs can be recorded later
                   once the patient is stabilized. The patient will proceed directly to consultation.
                 </AlertDescription>
               </Alert>
             )}
           </CardContent>
         </Card>
-        
+
         {/* Tabbed Sections - Clinical workflow (no vitals - handled in triage) */}
         <Tabs value={activeTab} onValueChange={setActiveTab}>
           <TabsList className="grid w-full grid-cols-3">
@@ -586,7 +586,7 @@ export default function NewEncounterPage() {
               )}
             </TabsTrigger>
           </TabsList>
-          
+
           <TabsContent value="history" className="mt-4">
             <MedicalHistoryForm
               data={formData}
@@ -594,7 +594,7 @@ export default function NewEncounterPage() {
               onNext={() => setActiveTab('notes')}
             />
           </TabsContent>
-          
+
           <TabsContent value="notes" className="mt-4">
             <ClinicalNotesForm
               data={formData}
@@ -603,7 +603,7 @@ export default function NewEncounterPage() {
               onNext={() => setActiveTab('diagnosis')}
             />
           </TabsContent>
-          
+
           <TabsContent value="diagnosis" className="mt-4">
             <DiagnosisForm
               diagnoses={diagnoses}
@@ -614,7 +614,7 @@ export default function NewEncounterPage() {
           </TabsContent>
         </Tabs>
       </div>
-      
+
       {/* Bottom Action Bar */}
       <div className="sticky bottom-0 mt-6 -mx-4 px-4 py-4 bg-background/95 backdrop-blur border-t">
         <div className="flex gap-3 justify-end">

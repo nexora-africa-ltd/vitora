@@ -55,7 +55,7 @@ export function ClinicalTemplateForm({
   disabled = false,
 }: ClinicalTemplateFormProps) {
   const sections = template?.content?.sections || [];
-  
+
   const [expandedSections, setExpandedSections] = useState<Set<string>>(
     new Set(sections.map((s) => s.name))
   );
@@ -208,11 +208,11 @@ function TemplateFieldRenderer({
 
   const handleAutoGenerate = async () => {
     if (!field.auto_generate) return;
-    
+
     setIsGenerating(true);
     try {
       let generatedValue: string;
-      
+
       switch (field.auto_generate) {
         case 'prc':
           generatedValue = await coreApi.generatePRCNumber();
@@ -223,7 +223,7 @@ function TemplateFieldRenderer({
         default:
           return;
       }
-      
+
       onChange(generatedValue);
     } catch (error) {
       console.error('Failed to generate value:', error);

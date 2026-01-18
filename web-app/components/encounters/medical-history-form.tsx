@@ -40,7 +40,7 @@ export function MedicalHistoryFormContent({ data, onChange, disabled = false }: 
             className="resize-none"
           />
         </div>
-        
+
         {/* Chronic Conditions */}
         <div className="space-y-2">
           <Label htmlFor="chronic_conditions" className="flex items-center gap-2">
@@ -57,7 +57,7 @@ export function MedicalHistoryFormContent({ data, onChange, disabled = false }: 
             className="resize-none"
           />
         </div>
-        
+
         {/* Current Medications */}
         <div className="space-y-2">
           <Label htmlFor="current_medications" className="flex items-center gap-2">
@@ -74,7 +74,7 @@ export function MedicalHistoryFormContent({ data, onChange, disabled = false }: 
             className="resize-none"
           />
         </div>
-        
+
         {/* Past Surgeries */}
         <div className="space-y-2">
           <Label htmlFor="past_surgeries" className="flex items-center gap-2">
@@ -91,7 +91,7 @@ export function MedicalHistoryFormContent({ data, onChange, disabled = false }: 
             className="resize-none"
           />
         </div>
-        
+
         {/* Family History */}
         <div className="space-y-2">
           <Label htmlFor="family_history" className="flex items-center gap-2">
@@ -108,7 +108,7 @@ export function MedicalHistoryFormContent({ data, onChange, disabled = false }: 
             className="resize-none"
           />
         </div>
-        
+
         {/* Social History */}
         <div className="space-y-2">
           <Label htmlFor="social_history" className="flex items-center gap-2">
@@ -157,7 +157,7 @@ export function MedicalHistoryForm({ data, onChange, disabled = false, onNext, o
       <CardContent>
         <MedicalHistoryFormContent data={data} onChange={onChange} disabled={disabled} />
       </CardContent>
-      
+
       {/* Navigation Footer */}
       {onNext && (
         <CardFooter className="border-t pt-4">

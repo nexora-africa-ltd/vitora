@@ -10,4 +10,3 @@ export const server = setupServer(...handlers);
 
 // Export type for extending handlers in tests
 export type { SetupServer } from 'msw/node';
-

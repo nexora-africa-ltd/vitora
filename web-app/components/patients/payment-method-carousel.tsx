@@ -1,6 +1,6 @@
 /**
  * Payment Method Carousel Component
- * 
+ *
  * A carousel-based payment method selector for patient registration.
  * Displays payment options in a swipeable carousel format.
  */
@@ -105,7 +105,7 @@ export function PaymentMethodCarousel({
   }, []);
 
   return (
-    <div 
+    <div
       ref={containerRef}
       className={cn('w-full outline-none', className)}
       tabIndex={0}
@@ -113,8 +113,8 @@ export function PaymentMethodCarousel({
       role="group"
       aria-label="Payment method options"
     >
-      <Carousel 
-        className="w-full max-w-xs mx-auto overflow-hidden" 
+      <Carousel
+        className="w-full max-w-xs mx-auto overflow-hidden"
         opts={{ align: 'start', loop: true }}
         setApi={setApi}
       >
@@ -202,9 +202,9 @@ export function PaymentMethodCarousel({
               type="button"
               className={cn(
                 'w-2.5 h-2.5 rounded-full transition-all',
-                currentSlide === index 
-                  ? isSelected 
-                    ? 'bg-secondary scale-125' 
+                currentSlide === index
+                  ? isSelected
+                    ? 'bg-secondary scale-125'
                     : 'bg-muted-foreground scale-125'
                   : 'bg-muted-foreground/30 hover:bg-muted-foreground/50'
               )}

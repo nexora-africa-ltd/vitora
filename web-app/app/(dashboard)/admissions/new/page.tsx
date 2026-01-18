@@ -68,7 +68,7 @@ export default function NewAdmissionPage() {
   const [wardId, setWardId] = useState<string>('');
   const [bedId, setBedId] = useState<string>('');
   const [payerType, setPayerType] = useState<'CASH' | 'SHA' | 'CORPORATE'>('CASH');
-  
+
   // Diagnosis state
   const [useICD11, setUseICD11] = useState(true); // Default to ICD-11 (SHA standard)
   const [icd10Code, setIcd10Code] = useState('');
@@ -95,9 +95,9 @@ export default function NewAdmissionPage() {
   useEffect(() => {
     if (encounterDiagnoses && !diagnosisPrefilled) {
       // Find primary diagnosis or use first one
-      const primaryDiagnosis = encounterDiagnoses.find((d: any) => d.diagnosis_type === 'PRIMARY') 
+      const primaryDiagnosis = encounterDiagnoses.find((d: any) => d.diagnosis_type === 'PRIMARY')
         || encounterDiagnoses[0];
-      
+
       if (primaryDiagnosis) {
         // Check if it has ICD-11 code
         if (primaryDiagnosis.icd11_code) {
@@ -106,7 +106,7 @@ export default function NewAdmissionPage() {
             code: primaryDiagnosis.icd11_code,
             title: primaryDiagnosis.icd11_display || primaryDiagnosis.free_text_diagnosis || '',
           });
-        } 
+        }
         // Check if it has ICD-10 code
         else if (primaryDiagnosis.icd10_code || primaryDiagnosis.icd10_display) {
           setUseICD11(false);
@@ -139,16 +139,16 @@ export default function NewAdmissionPage() {
   };
 
   // Computed values
-  const hasDiagnosis = useICD11 
-    ? !!icd11Value 
+  const hasDiagnosis = useICD11
+    ? !!icd11Value
     : (!!icd10Code || !!icd10Text);
-  
+
   const canSubmit = !!patientId && !!wardId && !!bedId && hasDiagnosis;
 
-  const admittingDiagnosis = useICD11 
+  const admittingDiagnosis = useICD11
     ? icd11Value?.code || ''
     : icd10Code;
-  
+
   const admittingDiagnosisText = useICD11
     ? icd11Value?.title || ''
     : icd10Text;
@@ -171,7 +171,7 @@ export default function NewAdmissionPage() {
         <Alert>
           <AlertCircle className="h-4 w-4" />
           <AlertDescription>
-            Creating admission from OPD Encounter #{encounterId}. 
+            Creating admission from OPD Encounter #{encounterId}.
             {encounter.chief_complaint && ` Chief complaint: ${encounter.chief_complaint}`}
           </AlertDescription>
         </Alert>
@@ -346,7 +346,7 @@ export default function NewAdmissionPage() {
                         onFocus={() => setIsIcd10SearchOpen(true)}
                         className="pl-9"
                       />
-                      
+
                       {/* Search Results Dropdown */}
                       {isIcd10SearchOpen && icd10SearchQuery.length >= 2 && (
                         <Card className="absolute z-50 mt-1 w-full shadow-lg max-h-64 overflow-y-auto">

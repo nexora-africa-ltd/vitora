@@ -1,16 +1,16 @@
 /**
  * Terminology Types for Kenya DHA/SHA APIs
- * 
+ *
  * These types represent the standardized health terminologies used across
  * the Vitora HMIS system for interoperability with Kenya's Digital Health Authority.
- * 
+ *
  * Supported terminologies:
  * - ICD-11: International Classification of Diseases
  * - ICHI: International Classification of Health Interventions
  * - LOINC: Logical Observation Identifiers Names and Codes (Lab)
  * - SHA Interventions: Kenya SHA procedure/intervention codes
  * - Drug Products: Kenya drug registry with KNHTS codes
- * 
+ *
  * @see docs/dha-api-usage-analysis.md
  */
 

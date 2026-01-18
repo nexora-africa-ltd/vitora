@@ -45,9 +45,7 @@ class Migration(migrations.Migration):
                 ),
                 (
                     "title",
-                    models.CharField(
-                        help_text="Short notification title", max_length=200
-                    ),
+                    models.CharField(help_text="Short notification title", max_length=200),
                 ),
                 (
                     "message",

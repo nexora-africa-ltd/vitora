@@ -8,14 +8,14 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { format } from 'date-fns';
-import { 
-  Search, 
-  Eye, 
-  ChevronLeft, 
-  ChevronRight, 
-  Pill, 
-  Clock, 
-  CheckCircle, 
+import {
+  Search,
+  Eye,
+  ChevronLeft,
+  ChevronRight,
+  Pill,
+  Clock,
+  CheckCircle,
   XCircle,
   ChevronDown,
   ChevronUp,
@@ -237,7 +237,7 @@ export function PrescriptionsTable({
               return (
                 <>
                   {/* Main Row */}
-                  <TableRow 
+                  <TableRow
                     key={rx.id}
                     className={canDispense ? 'cursor-pointer hover:bg-muted/50' : ''}
                     onClick={canDispense ? () => {

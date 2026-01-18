@@ -4,10 +4,10 @@
 
 /**
  * Auth Context Tests
- * 
+ *
  * Tests for authentication context and login flow.
  * Following TDD RED-GREEN-REFACTOR approach.
- * 
+ *
  * Requirements:
  * - Restore session on app start
  * - Login with username/password

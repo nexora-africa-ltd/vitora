@@ -1,9 +1,9 @@
 # Pharmacy Module E2E Test Report
 
-**Date**: January 9, 2026  
-**Sprint**: 1.3-1.4 Track A  
-**Test File**: `e2e/pharmacy/drugs.spec.ts`  
-**Browser**: Chromium  
+**Date**: January 9, 2026
+**Sprint**: 1.3-1.4 Track A
+**Test File**: `e2e/pharmacy/drugs.spec.ts`
+**Browser**: Chromium
 **Duration**: 2.2 minutes
 
 ---
@@ -57,8 +57,8 @@ These tests confirm the foundational pharmacy UI is working:
 ```tsx
 // Add to pharmacy/drugs page
 <div className="flex gap-4 mb-4">
-  <Input 
-    placeholder="Search drugs..." 
+  <Input
+    placeholder="Search drugs..."
     data-testid="drug-search"
   />
   <Select data-testid="category-filter">
@@ -205,41 +205,41 @@ export default function NewDrugPage() {
       <Input label="Drug Code" name="code" required />
       <Input label="Strength" name="strength" required />
       <Input label="Unit" name="unit" required />
-      
+
       <Select name="form" label="Form">
         <SelectItem value="tablet">Tablet</SelectItem>
         <SelectItem value="capsule">Capsule</SelectItem>
         <SelectItem value="syrup">Syrup</SelectItem>
         {/* ... */}
       </Select>
-      
+
       <Select name="category" label="Category">
         <SelectItem value="analgesics">Analgesics</SelectItem>
         <SelectItem value="antibiotics">Antibiotics</SelectItem>
         {/* ... */}
       </Select>
-      
+
       <Select name="schedule" label="Schedule">
         <SelectItem value="OTC">OTC - Over The Counter</SelectItem>
         <SelectItem value="POM">POM - Prescription Only</SelectItem>
         <SelectItem value="P">P - Pharmacy Only</SelectItem>
         <SelectItem value="CD">CD - Controlled Drug</SelectItem>
       </Select>
-      
+
       {/* Kenya Compliance */}
       <Input label="KEML Code" name="keml_code" />
       <Checkbox name="is_essential" label="Essential Medicine (KEML)" />
       <Input label="NHIF/SHA Code" name="nhif_code" />
-      
+
       {/* Inventory Settings */}
       <Input label="Reorder Level" name="reorder_level" type="number" />
       <Input label="Reorder Quantity" name="reorder_quantity" type="number" />
-      
+
       {/* Additional */}
       <MultiInput label="Brand Names" name="brand_names" />
       <Checkbox name="is_controlled" label="Controlled Substance" />
       <Textarea label="Storage Requirements" name="storage_requirements" />
-      
+
       <Button type="submit">Create Drug</Button>
     </form>
   );
@@ -276,7 +276,7 @@ export function DrugDetailDialog({ drug, open, onClose }) {
         <DialogHeader>
           <DialogTitle>Drug Details</DialogTitle>
         </DialogHeader>
-        
+
         <div className="grid gap-4">
           <div>
             <Label>Generic Name</Label>
@@ -303,7 +303,7 @@ export function DrugDetailDialog({ drug, open, onClose }) {
             <p>{drug.storage_requirements || 'Standard storage'}</p>
           </div>
         </div>
-        
+
         <DialogFooter>
           <Button variant="outline" asChild>
             <Link href={`/pharmacy/inventory?drug=${drug.id}`}>
@@ -357,7 +357,7 @@ export function DrugDetailDialog({ drug, open, onClose }) {
         <Pencil className="mr-2 h-4 w-4" />
         Edit
       </DropdownMenuItem>
-      <DropdownMenuItem 
+      <DropdownMenuItem
         onClick={() => onDelete(drug)}
         className="text-destructive"
         data-testid="delete-drug"
@@ -375,14 +375,14 @@ export function DrugDetailDialog({ drug, open, onClose }) {
     <AlertDialogHeader>
       <AlertDialogTitle>Delete Drug?</AlertDialogTitle>
       <AlertDialogDescription>
-        {drugToDelete?.stock_quantity > 0 
+        {drugToDelete?.stock_quantity > 0
           ? "Cannot delete drug with existing stock. Please adjust inventory first."
           : "This action cannot be undone."}
       </AlertDialogDescription>
     </AlertDialogHeader>
     <AlertDialogFooter>
       <AlertDialogCancel>Cancel</AlertDialogCancel>
-      <AlertDialogAction 
+      <AlertDialogAction
         disabled={drugToDelete?.stock_quantity > 0}
         onClick={confirmDelete}
       >

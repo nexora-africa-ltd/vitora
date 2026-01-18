@@ -1,6 +1,6 @@
 /**
  * SHA/DHA Components Index
- * 
+ *
  * Reusable components for SHA (Social Health Authority) and
  * DHA (Digital Health Authority) integration.
  */

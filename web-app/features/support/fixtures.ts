@@ -1,6 +1,6 @@
 /**
  * BDD Test Support - Test Fixtures
- * 
+ *
  * Factory functions for creating test data.
  * Mirrors backend conftest.py fixtures for consistency.
  */
@@ -136,7 +136,7 @@ export function createPatient(overrides: Partial<PatientContext> = {}): PatientC
   const dateParts = today.toISOString().split('T')[0];
   const dateStr = dateParts ? dateParts.replace(/-/g, '') : '20260107';
   const seq = Math.floor(Math.random() * 9999).toString().padStart(4, '0');
-  
+
   return {
     mrn: `MRN-${dateStr}-${seq}`,
     firstName: 'Jane',

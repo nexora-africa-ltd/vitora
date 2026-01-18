@@ -1,7 +1,7 @@
 /**
  * Patient Form with SHA Client Registry Integration
  * Enhances patient registration with CR lookup and auto-fill
- * 
+ *
  * @see docs/sha-frontend-integration-guide.md - Flow 1
  */
 'use client';
@@ -30,8 +30,8 @@ import {
 } from '@/components/ui/tabs';
 import { cn } from '@/lib/utils';
 import { shaApi } from '@/lib/api/sha';
-import type { 
-  ClientRegistryClient, 
+import type {
+  ClientRegistryClient,
   CRLookupStatus,
 } from '@/lib/types/sha';
 
@@ -119,8 +119,8 @@ export function CRLookupSection({
       </CardHeader>
       <CardContent className="space-y-4">
         {/* Identifier Type Tabs */}
-        <Tabs 
-          value={identifierType} 
+        <Tabs
+          value={identifierType}
           onValueChange={(v) => setIdentifierType(v as typeof identifierType)}
         >
           <TabsList className="grid w-full grid-cols-3">
@@ -336,8 +336,8 @@ interface CRVerifiedBadgeProps {
 
 export function CRVerifiedBadge({ crNumber, className }: CRVerifiedBadgeProps) {
   return (
-    <Badge 
-      variant="outline" 
+    <Badge
+      variant="outline"
       className={cn(
         'bg-green-50 text-green-700 border-green-300 dark:bg-green-950 dark:text-green-300 dark:border-green-700',
         className

@@ -1,7 +1,7 @@
 /**
  * SHA Intervention Select Component
  * Searchable dropdown for selecting SHA interventions/procedures
- * 
+ *
  * @see docs/sha-frontend-integration-guide.md - Flow 3
  */
 'use client';
@@ -606,10 +606,10 @@ export function DrugSelect({
 }: DrugSelectProps) {
   const [open, setOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
-  const [results, setResults] = useState<Array<{ 
-    id: number; 
-    code: string; 
-    name: string; 
+  const [results, setResults] = useState<Array<{
+    id: number;
+    code: string;
+    name: string;
     generic_name?: string;
     dosage_form?: string;
     strength?: string;
@@ -712,8 +712,8 @@ export function DrugSelect({
                       key={drug.id}
                       value={`${drug.code}-${drug.name}`}
                       onSelect={() => {
-                        onSelect({ 
-                          code: drug.code, 
+                        onSelect({
+                          code: drug.code,
                           name: drug.name,
                           price: drug.price,
                         });

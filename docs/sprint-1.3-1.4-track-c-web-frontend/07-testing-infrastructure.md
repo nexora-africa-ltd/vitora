@@ -28,28 +28,28 @@ const createJestConfig = nextJest({
 const customJestConfig = {
   // Add setup file
   setupFilesAfterEnv: ['<rootDir>/jest.setup.js'],
-  
+
   // Test environment
   testEnvironment: 'jsdom',
-  
+
   // Module path aliases matching tsconfig
   moduleNameMapper: {
     '^@/(.*)$': '<rootDir>/$1',
   },
-  
+
   // Test patterns
   testMatch: [
     '**/__tests__/**/*.test.[jt]s?(x)',
     '**/?(*.)+(spec|test).[jt]s?(x)',
   ],
-  
+
   // Ignore patterns
   testPathIgnorePatterns: [
     '<rootDir>/node_modules/',
     '<rootDir>/.next/',
     '<rootDir>/e2e/',
   ],
-  
+
   // Coverage configuration
   collectCoverageFrom: [
     'app/**/*.{js,jsx,ts,tsx}',
@@ -59,7 +59,7 @@ const customJestConfig = {
     '!**/node_modules/**',
     '!**/.next/**',
   ],
-  
+
   // Coverage thresholds
   coverageThreshold: {
     global: {
@@ -69,15 +69,15 @@ const customJestConfig = {
       statements: 70,
     },
   },
-  
+
   // Transform ESM modules
   transformIgnorePatterns: [
     '/node_modules/(?!(axios|@tanstack/react-query)/)',
   ],
-  
+
   // Module file extensions
   moduleFileExtensions: ['ts', 'tsx', 'js', 'jsx', 'json'],
-  
+
   // Reporters
   reporters: [
     'default',
@@ -86,7 +86,7 @@ const customJestConfig = {
       outputName: 'junit.xml',
     }],
   ],
-  
+
   // Max workers for CI
   maxWorkers: process.env.CI ? 2 : '50%',
 };
@@ -228,14 +228,14 @@ export const handlers = [
   // Auth endpoints
   http.post(`${API_BASE}/api/token/`, async ({ request }) => {
     const body = await request.json() as { username: string; password: string };
-    
+
     if (body.username === 'testuser' && body.password === 'password123') {
       return HttpResponse.json({
         access: 'mock-access-token',
         refresh: 'mock-refresh-token',
       });
     }
-    
+
     return HttpResponse.json(
       { detail: 'Invalid credentials' },
       { status: 401 }
@@ -244,13 +244,13 @@ export const handlers = [
 
   http.post(`${API_BASE}/api/token/refresh/`, async ({ request }) => {
     const body = await request.json() as { refresh: string };
-    
+
     if (body.refresh === 'mock-refresh-token') {
       return HttpResponse.json({
         access: 'new-mock-access-token',
       });
     }
-    
+
     return HttpResponse.json(
       { detail: 'Invalid token' },
       { status: 401 }
@@ -259,11 +259,11 @@ export const handlers = [
 
   http.post(`${API_BASE}/api/token/verify/`, async ({ request }) => {
     const body = await request.json() as { token: string };
-    
+
     if (body.token.includes('mock')) {
       return new HttpResponse(null, { status: 200 });
     }
-    
+
     return HttpResponse.json(
       { detail: 'Invalid token' },
       { status: 401 }
@@ -276,9 +276,9 @@ export const handlers = [
     const search = url.searchParams.get('search') || '';
     const page = parseInt(url.searchParams.get('page') || '1');
     const pageSize = parseInt(url.searchParams.get('page_size') || '10');
-    
+
     let filtered = mockPatients;
-    
+
     if (search) {
       filtered = mockPatients.filter(
         (p) =>
@@ -287,10 +287,10 @@ export const handlers = [
           p.mrn.toLowerCase().includes(search.toLowerCase())
       );
     }
-    
+
     const start = (page - 1) * pageSize;
     const results = filtered.slice(start, start + pageSize);
-    
+
     return HttpResponse.json({
       count: filtered.length,
       next: start + pageSize < filtered.length ? 'next-url' : null,
@@ -301,20 +301,20 @@ export const handlers = [
 
   http.get(`${API_BASE}/api/patients/:id/`, ({ params }) => {
     const patient = mockPatients.find((p) => p.id === Number(params.id));
-    
+
     if (!patient) {
       return HttpResponse.json(
         { detail: 'Not found' },
         { status: 404 }
       );
     }
-    
+
     return HttpResponse.json(patient);
   }),
 
   http.post(`${API_BASE}/api/patients/`, async ({ request }) => {
     const body = await request.json() as Record<string, any>;
-    
+
     const newPatient = {
       id: mockPatients.length + 1,
       mrn: `MRN-${Date.now()}-0001`,
@@ -322,34 +322,34 @@ export const handlers = [
       created_at: new Date().toISOString(),
       updated_at: new Date().toISOString(),
     };
-    
+
     return HttpResponse.json(newPatient, { status: 201 });
   }),
 
   http.patch(`${API_BASE}/api/patients/:id/`, async ({ params, request }) => {
     const patient = mockPatients.find((p) => p.id === Number(params.id));
     const body = await request.json() as Record<string, any>;
-    
+
     if (!patient) {
       return HttpResponse.json(
         { detail: 'Not found' },
         { status: 404 }
       );
     }
-    
+
     return HttpResponse.json({ ...patient, ...body });
   }),
 
   http.delete(`${API_BASE}/api/patients/:id/`, ({ params }) => {
     const patient = mockPatients.find((p) => p.id === Number(params.id));
-    
+
     if (!patient) {
       return HttpResponse.json(
         { detail: 'Not found' },
         { status: 404 }
       );
     }
-    
+
     return new HttpResponse(null, { status: 204 });
   }),
 
@@ -357,13 +357,13 @@ export const handlers = [
   http.get(`${API_BASE}/api/encounters/`, ({ request }) => {
     const url = new URL(request.url);
     const patientId = url.searchParams.get('patient');
-    
+
     let filtered = mockEncounters;
-    
+
     if (patientId) {
       filtered = mockEncounters.filter((e) => e.patient === Number(patientId));
     }
-    
+
     return HttpResponse.json({
       count: filtered.length,
       next: null,
@@ -374,14 +374,14 @@ export const handlers = [
 
   http.get(`${API_BASE}/api/encounters/:id/`, ({ params }) => {
     const encounter = mockEncounters.find((e) => e.id === Number(params.id));
-    
+
     if (!encounter) {
       return HttpResponse.json(
         { detail: 'Not found' },
         { status: 404 }
       );
     }
-    
+
     return HttpResponse.json(encounter);
   }),
 
@@ -393,7 +393,7 @@ export const handlers = [
   http.get(`${API_BASE}/api/locations/sub-counties/`, ({ request }) => {
     const url = new URL(request.url);
     const countyId = url.searchParams.get('county');
-    
+
     return HttpResponse.json([
       { id: 1, county: Number(countyId), name: 'Mvita' },
       { id: 2, county: Number(countyId), name: 'Kisauni' },
@@ -403,7 +403,7 @@ export const handlers = [
   http.get(`${API_BASE}/api/locations/wards/`, ({ request }) => {
     const url = new URL(request.url);
     const subCountyId = url.searchParams.get('sub_county');
-    
+
     return HttpResponse.json([
       { id: 1, sub_county: Number(subCountyId), name: 'Tudor' },
       { id: 2, sub_county: Number(subCountyId), name: 'Tononoka' },
@@ -712,36 +712,36 @@ import { defineConfig, devices } from '@playwright/test';
 
 export default defineConfig({
   testDir: './e2e',
-  
+
   // Run tests in files in parallel
   fullyParallel: true,
-  
+
   // Fail the build on CI if you accidentally left test.only in the source code
   forbidOnly: !!process.env.CI,
-  
+
   // Retry on CI only
   retries: process.env.CI ? 2 : 0,
-  
+
   // Opt out of parallel tests on CI
   workers: process.env.CI ? 1 : undefined,
-  
+
   // Reporter configuration
   reporter: [
     ['html', { outputFolder: 'playwright-report' }],
     ['junit', { outputFile: 'playwright-report/junit.xml' }],
   ],
-  
+
   // Shared settings for all projects
   use: {
     // Base URL for actions like `await page.goto('/')`
     baseURL: 'http://localhost:3009',
-    
+
     // Collect trace when retrying the failed test
     trace: 'on-first-retry',
-    
+
     // Screenshot on failure
     screenshot: 'only-on-failure',
-    
+
     // Video on failure
     video: 'on-first-retry',
   },
@@ -753,7 +753,7 @@ export default defineConfig({
       name: 'setup',
       testMatch: /.*\.setup\.ts/,
     },
-    
+
     {
       name: 'chromium',
       use: {
@@ -815,20 +815,20 @@ const authFile = 'playwright/.auth/user.json';
 setup('authenticate', async ({ page }) => {
   // Go to login page
   await page.goto('/login');
-  
+
   // Fill in login form
   await page.getByLabel(/username/i).fill('testuser');
   await page.getByLabel(/password/i).fill('password123');
-  
+
   // Submit
   await page.getByRole('button', { name: /sign in/i }).click();
-  
+
   // Wait for redirect to dashboard
   await page.waitForURL('/');
-  
+
   // Ensure we're logged in
   await expect(page.getByText(/dashboard/i)).toBeVisible();
-  
+
   // Save auth state
   await page.context().storageState({ path: authFile });
 });
@@ -845,45 +845,45 @@ import { test, expect } from '@playwright/test';
 test.describe('Patients Page', () => {
   test('should display patients list', async ({ page }) => {
     await page.goto('/patients');
-    
+
     // Check page title
     await expect(page.getByRole('heading', { name: /patients/i })).toBeVisible();
-    
+
     // Check that table or list is visible
     await expect(page.getByRole('table')).toBeVisible();
   });
 
   test('should search patients', async ({ page }) => {
     await page.goto('/patients');
-    
+
     // Enter search query
     const searchInput = page.getByPlaceholder(/search/i);
     await searchInput.fill('John');
-    
+
     // Wait for results to update
     await page.waitForTimeout(500);
-    
+
     // Results should be filtered
     // (specific assertions depend on test data)
   });
 
   test('should navigate to patient detail', async ({ page }) => {
     await page.goto('/patients');
-    
+
     // Click on first patient row
     const firstRow = page.locator('table tbody tr').first();
     await firstRow.click();
-    
+
     // Should navigate to detail page
     await expect(page).toHaveURL(/\/patients\/\d+/);
   });
 
   test('should navigate to register new patient', async ({ page }) => {
     await page.goto('/patients');
-    
+
     // Click register button
     await page.getByRole('button', { name: /register patient/i }).click();
-    
+
     // Should navigate to new patient form
     await expect(page).toHaveURL('/patients/new');
   });
@@ -892,7 +892,7 @@ test.describe('Patients Page', () => {
 test.describe('Patient Detail Page', () => {
   test('should display patient information', async ({ page }) => {
     await page.goto('/patients/1');
-    
+
     // Check patient info sections
     await expect(page.getByText(/basic information/i)).toBeVisible();
     await expect(page.getByText(/address/i)).toBeVisible();
@@ -901,10 +901,10 @@ test.describe('Patient Detail Page', () => {
 
   test('should show encounters tab', async ({ page }) => {
     await page.goto('/patients/1');
-    
+
     // Click encounters tab
     await page.getByRole('tab', { name: /encounters/i }).click();
-    
+
     // Encounters content should be visible
     await expect(page.getByText(/encounters/i)).toBeVisible();
   });
@@ -918,27 +918,27 @@ import { test, expect } from '@playwright/test';
 test.describe('Encounters Page', () => {
   test('should display encounters list', async ({ page }) => {
     await page.goto('/encounters');
-    
+
     await expect(page.getByRole('heading', { name: /encounters/i })).toBeVisible();
     await expect(page.getByRole('table')).toBeVisible();
   });
 
   test('should filter by status', async ({ page }) => {
     await page.goto('/encounters');
-    
+
     // Open status filter
     await page.getByRole('combobox', { name: /status/i }).click();
-    
+
     // Select a status
     await page.getByRole('option', { name: /completed/i }).click();
-    
+
     // Results should be filtered
     await page.waitForTimeout(500);
   });
 
   test('should highlight critical vitals', async ({ page }) => {
     await page.goto('/encounters');
-    
+
     // Look for critical vital indicator
     // (depends on test data having critical vitals)
     const criticalBadge = page.getByText(/SpO2.*9[0-4]%/);
@@ -951,15 +951,15 @@ test.describe('Encounters Page', () => {
 test.describe('Encounter Detail Page', () => {
   test('should display vitals', async ({ page }) => {
     await page.goto('/encounters/1');
-    
+
     await expect(page.getByText(/vital signs/i)).toBeVisible();
   });
 
   test('should display diagnoses tab', async ({ page }) => {
     await page.goto('/encounters/1');
-    
+
     await page.getByRole('tab', { name: /diagnoses/i }).click();
-    
+
     // Diagnoses content should be visible
   });
 });

@@ -30,7 +30,7 @@ export function Breadcrumb() {
     // Check if segment is an ID (numeric or UUID-like)
     const isId = /^[0-9]+$/.test(segment) || /^[a-f0-9-]{36}$/.test(segment);
     const label = isId ? `#${segment}` : routeLabels[segment] || segment;
-    
+
     return { label, href };
   });
 
@@ -53,7 +53,7 @@ export function Breadcrumb() {
         <Home className="h-4 w-4" />
         <span className="sr-only">Dashboard</span>
       </Link>
-      
+
       {items.map((item, index) => (
         <div key={item.href} className="flex items-center">
           <ChevronRight className="h-4 w-4 mx-2 text-muted-foreground" />

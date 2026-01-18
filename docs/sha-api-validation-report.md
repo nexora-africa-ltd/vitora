@@ -123,15 +123,15 @@ function generateJWT(user, agent, secret) {
         agent: agent,
         exp: Math.floor(Date.now() / 1000) + 3600  // 1 hour expiry
     });
-    
+
     var encoded_header = base64url(CryptoJS.enc.Utf8.parse(header));
     var encoded_payload = base64url(CryptoJS.enc.Utf8.parse(payload));
-    
+
     var signature = CryptoJS.HmacSHA256(
-        encoded_header + "." + encoded_payload, 
+        encoded_header + "." + encoded_payload,
         secret
     );
-    
+
     return encoded_header + "." + encoded_payload + "." + base64url(signature);
 }
 
@@ -183,24 +183,24 @@ from django.conf import settings
 class SHAAuthService:
     """
     SHA Authentication Service.
-    
+
     Generates JWT tokens for SHA API authentication per official spec.
     """
-    
+
     def __init__(self):
         self.consumer_key = settings.SHA_CONSUMER_KEY
         self.secret = settings.SHA_CLIENT_SECRET
         self.username = settings.SHA_USERNAME
         self.base_url = settings.SHA_API_BASE_URL
-    
+
     def _base64url_encode(self, data: bytes) -> str:
         """Base64URL encode without padding."""
         return base64.urlsafe_b64encode(data).rstrip(b'=').decode('utf-8')
-    
+
     def generate_jwt(self) -> str:
         """
         Generate JWT token for SHA API authentication.
-        
+
         Uses HS256 algorithm as specified in official Postman collection.
         Token expires in 1 hour.
         """
@@ -210,11 +210,11 @@ class SHAAuthService:
             'agent': self.consumer_key,
             'exp': int(time.time()) + 3600  # 1 hour expiry
         }
-        
+
         # Encode header and payload
         header_encoded = self._base64url_encode(json.dumps(header).encode())
         payload_encoded = self._base64url_encode(json.dumps(payload).encode())
-        
+
         # Create signature
         message = f"{header_encoded}.{payload_encoded}"
         signature = hmac.new(
@@ -223,9 +223,9 @@ class SHAAuthService:
             hashlib.sha256
         ).digest()
         signature_encoded = self._base64url_encode(signature)
-        
+
         return f"{header_encoded}.{payload_encoded}.{signature_encoded}"
-    
+
     def get_auth_headers(self) -> dict:
         """Get headers with fresh JWT token."""
         token = self.generate_jwt()

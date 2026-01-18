@@ -191,7 +191,7 @@ export function Sidebar({ collapsed, onCollapse, mobileOpen, onMobileClose }: Si
               <span className="font-semibold text-lg">Vitora</span>
             </Link>
           )}
-          
+
           {collapsed && (
             <div className="h-8 w-8 rounded-lg bg-primary flex items-center justify-center mx-auto">
               <span className="text-lg font-bold text-primary-foreground">V</span>
@@ -467,7 +467,7 @@ export function Breadcrumb() {
     // Check if segment is an ID (numeric or UUID-like)
     const isId = /^[0-9]+$/.test(segment) || /^[a-f0-9-]{36}$/.test(segment);
     const label = isId ? `#${segment}` : routeLabels[segment] || segment;
-    
+
     return { label, href };
   });
 
@@ -490,7 +490,7 @@ export function Breadcrumb() {
         <Home className="h-4 w-4" />
         <span className="sr-only">Dashboard</span>
       </Link>
-      
+
       {items.map((item, index) => (
         <div key={item.href} className="flex items-center">
           <ChevronRight className="h-4 w-4 mx-2 text-muted-foreground" />
@@ -631,7 +631,7 @@ export function StatsCard({
   variant = 'default',
 }: StatsCardProps) {
   const TrendIcon = trend === 'up' ? TrendingUp : trend === 'down' ? TrendingDown : Minus;
-  
+
   return (
     <Card>
       <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
@@ -944,7 +944,7 @@ describe('Sidebar', () => {
 
   it('should render all main navigation items', () => {
     render(<Sidebar {...defaultProps} />);
-    
+
     expect(screen.getByText('Dashboard')).toBeInTheDocument();
     expect(screen.getByText('Patients')).toBeInTheDocument();
     expect(screen.getByText('Encounters')).toBeInTheDocument();

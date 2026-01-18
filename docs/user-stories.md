@@ -71,8 +71,8 @@ These roles focus on clinical encounters, diagnostics, and decision-making.
 
 #### KE-DOC-001 [Phase 1] [Sprint 1.1]: Patient Record Search and Access
 
-**As a** doctor/consultant/clinical officer,  
-**I want to** search and view patient records quickly using identifiers like national ID, MRN, or phone number,  
+**As a** doctor/consultant/clinical officer,
+**I want to** search and view patient records quickly using identifiers like national ID, MRN, or phone number,
 **So that** I can access full medical history before consultations.
 
 **Acceptance Criteria:**
@@ -94,8 +94,8 @@ These roles focus on clinical encounters, diagnostics, and decision-making.
 
 #### KE-DOC-002 [Phase 1] [Sprint 1.1]: Clinical Encounter Recording
 
-**As a** doctor/consultant/clinical officer,  
-**I want to** record clinical encounters including vitals, diagnoses, and treatment plans,  
+**As a** doctor/consultant/clinical officer,
+**I want to** record clinical encounters including vitals, diagnoses, and treatment plans,
 **So that** patient data is standardized and interoperable.
 
 **Acceptance Criteria:**
@@ -131,8 +131,8 @@ These roles focus on clinical encounters, diagnostics, and decision-making.
 
 #### KE-DOC-003 [Phase 1] [Sprint 1.2]: Treatment Plan Management
 
-**As a** doctor/consultant/clinical officer,  
-**I want to** create and manage treatment plans with clinical templates,  
+**As a** doctor/consultant/clinical officer,
+**I want to** create and manage treatment plans with clinical templates,
 **So that** care is standardized and evidence-based.
 
 **Acceptance Criteria:**
@@ -151,8 +151,8 @@ These roles focus on clinical encounters, diagnostics, and decision-making.
 
 #### KE-DOC-004 [Phase 4] [Sprint 4.1]: AI-Powered Clinical Risk Alerts
 
-**As a** doctor/consultant/clinical officer,  
-**I want** AI-powered alerts for clinical risks (e.g., sepsis, deterioration),  
+**As a** doctor/consultant/clinical officer,
+**I want** AI-powered alerts for clinical risks (e.g., sepsis, deterioration),
 **So that** I can intervene early and improve patient outcomes.
 
 **Acceptance Criteria:**
@@ -168,8 +168,8 @@ These roles focus on clinical encounters, diagnostics, and decision-making.
 
 #### KE-DOC-005 [Phase 1] [Sprint 1.2]: Clinical Officer Scope-Limited Access
 
-**As a** clinical officer,  
-**I want to** assess patients and initiate treatment within my scope,  
+**As a** clinical officer,
+**I want to** assess patients and initiate treatment within my scope,
 **So that** care continues when doctors are unavailable.
 
 **Acceptance Criteria:**
@@ -185,8 +185,8 @@ These roles focus on clinical encounters, diagnostics, and decision-making.
 
 #### KE-DOC-006 [Phase 2] [Sprint 2.2]: Consultant Referral Review
 
-**As a** consultant,  
-**I want to** review referred cases and provide specialist input,  
+**As a** consultant,
+**I want to** review referred cases and provide specialist input,
 **So that** patients receive expert care.
 
 **Acceptance Criteria:**
@@ -207,8 +207,8 @@ Focus on vitals, encounters, patient care, and clinical support.
 
 #### KE-NRS-001 [Phase 1] [Sprint 1.1]: Offline Vitals and Encounter Logging
 
-**As a** nurse/nurse aide,  
-**I want to** log vitals and encounters offline,  
+**As a** nurse/nurse aide,
+**I want to** log vitals and encounters offline,
 **So that** I can work effectively in rural areas without internet.
 
 **Acceptance Criteria:**
@@ -228,8 +228,8 @@ Focus on vitals, encounters, patient care, and clinical support.
 
 #### KE-NRS-002 [Phase 1] [Sprint 1.1]: SpO2 Critical Alert Response
 
-**As a** nurse,  
-**I want to** see visual alerts when SpO2 falls below 95%,  
+**As a** nurse,
+**I want to** see visual alerts when SpO2 falls below 95%,
 **So that** I can escalate hypoxemia cases immediately.
 
 **Acceptance Criteria:**
@@ -248,8 +248,8 @@ Focus on vitals, encounters, patient care, and clinical support.
 
 #### KE-NRS-003 [Phase 1] [Sprint 1.2]: Clinical Collaboration and Handoff
 
-**As a** nurse/nurse aide,  
-**I want** collaboration tools to share updates with doctors,  
+**As a** nurse/nurse aide,
+**I want** collaboration tools to share updates with doctors,
 **So that** care continuity is maintained across shifts.
 
 **Acceptance Criteria:**
@@ -264,8 +264,8 @@ Focus on vitals, encounters, patient care, and clinical support.
 
 #### KE-NRS-004 [Phase 3] [Sprint 3.1]: Maternal/Child Health Tracking
 
-**As a** nurse/nurse aide,  
-**I want to** track maternal/child health visits and immunizations,  
+**As a** nurse/nurse aide,
+**I want to** track maternal/child health visits and immunizations,
 **So that** care is compliant with national guidelines.
 
 **Acceptance Criteria:**
@@ -286,8 +286,8 @@ These roles focus on inpatient admission, ward management, nursing care, and dis
 
 #### KE-IPD-001 [Phase 1] [Sprint 1.5]: Admission Recommendation from OPD
 
-**As a** doctor/clinical officer,  
-**I want to** recommend a patient for inpatient admission directly from the outpatient encounter,  
+**As a** doctor/clinical officer,
+**I want to** recommend a patient for inpatient admission directly from the outpatient encounter,
 **So that** the admission process is faster, coordinated, and does not require re-registration of the patient.
 
 **Acceptance Criteria:**
@@ -310,8 +310,8 @@ These roles focus on inpatient admission, ward management, nursing care, and dis
 
 #### KE-IPD-002 [Phase 1] [Sprint 1.5]: Inpatient Admission Processing
 
-**As a** receptionist,  
-**I want to** be notified when a patient has been recommended for admission and complete the inpatient registration,  
+**As a** receptionist,
+**I want to** be notified when a patient has been recommended for admission and complete the inpatient registration,
 **So that** I can efficiently process admissions once the patient agrees.
 
 **Acceptance Criteria:**
@@ -339,8 +339,8 @@ These roles focus on inpatient admission, ward management, nursing care, and dis
 
 #### KE-IPD-003 [Phase 1] [Sprint 1.5]: Ward and Bed Management
 
-**As a** ward manager/receptionist,  
-**I want to** manage ward beds and view real-time occupancy,  
+**As a** ward manager/receptionist,
+**I want to** manage ward beds and view real-time occupancy,
 **So that** bed allocation is efficient and accurate.
 
 **Acceptance Criteria:**
@@ -362,8 +362,8 @@ These roles focus on inpatient admission, ward management, nursing care, and dis
 
 #### KE-IPD-004 [Phase 1] [Sprint 1.5]: Clinical Documentation Continuity
 
-**As a** doctor/clinical officer,  
-**I want to** continue documenting clinical notes after a patient is admitted,  
+**As a** doctor/clinical officer,
+**I want to** continue documenting clinical notes after a patient is admitted,
 **So that** inpatient care begins immediately without workflow disruption.
 
 **Acceptance Criteria:**
@@ -384,8 +384,8 @@ These roles focus on inpatient admission, ward management, nursing care, and dis
 
 #### KE-IPD-005 [Phase 1] [Sprint 1.6]: Daily Ward Rounds Documentation
 
-**As a** doctor/clinical officer,  
-**I want to** document daily ward rounds for inpatients,  
+**As a** doctor/clinical officer,
+**I want to** document daily ward rounds for inpatients,
 **So that** progress is tracked and care plans are updated.
 
 **Acceptance Criteria:**
@@ -406,8 +406,8 @@ These roles focus on inpatient admission, ward management, nursing care, and dis
 
 #### KE-IPD-006 [Phase 1] [Sprint 1.6]: Nurse's Kardex Management
 
-**As a** nurse,  
-**I want to** view and maintain a patient's Kardex during inpatient care,  
+**As a** nurse,
+**I want to** view and maintain a patient's Kardex during inpatient care,
 **So that** I can safely deliver, track, and hand over nursing care across shifts.
 
 **Acceptance Criteria:**
@@ -437,8 +437,8 @@ These roles focus on inpatient admission, ward management, nursing care, and dis
 
 #### KE-IPD-007 [Phase 1] [Sprint 1.6]: Nursing Shift Handover
 
-**As a** nurse,  
-**I want to** quickly review the Kardex at the start of my shift,  
+**As a** nurse,
+**I want to** quickly review the Kardex at the start of my shift,
 **So that** I understand the patient's current condition and care priorities.
 
 **Acceptance Criteria:**
@@ -458,8 +458,8 @@ These roles focus on inpatient admission, ward management, nursing care, and dis
 
 #### KE-IPD-008 [Phase 1] [Sprint 1.6]: Inpatient Transfer
 
-**As a** doctor/ward manager,  
-**I want to** transfer a patient between wards,  
+**As a** doctor/ward manager,
+**I want to** transfer a patient between wards,
 **So that** patients receive appropriate level of care.
 
 **Acceptance Criteria:**
@@ -480,8 +480,8 @@ These roles focus on inpatient admission, ward management, nursing care, and dis
 
 #### KE-IPD-009 [Phase 1] [Sprint 1.6]: Discharge Planning and Execution
 
-**As a** doctor/clinical officer,  
-**I want to** plan and execute patient discharge,  
+**As a** doctor/clinical officer,
+**I want to** plan and execute patient discharge,
 **So that** patients leave with clear instructions and follow-up plans.
 
 **Acceptance Criteria:**
@@ -512,8 +512,8 @@ These roles focus on inpatient admission, ward management, nursing care, and dis
 
 #### KE-IPD-010 [Phase 2] [Sprint 2.1]: Consultant Review and Referral (Inpatient)
 
-**As a** clinician,  
-**I want to** request consultant reviews or external referrals during admission,  
+**As a** clinician,
+**I want to** request consultant reviews or external referrals during admission,
 **So that** continuity of care and documentation are maintained.
 
 **Acceptance Criteria:**
@@ -540,8 +540,8 @@ These roles emphasize surgical scheduling, theatre management, and perioperative
 
 #### KE-SRG-001 [Phase 2] [Sprint 2.1]: Theatre Scheduling and Coordination
 
-**As a** surgeon/theatre nurse/perioperative theatre technician,  
-**I want to** schedule and view theatre procedures,  
+**As a** surgeon/theatre nurse/perioperative theatre technician,
+**I want to** schedule and view theatre procedures,
 **So that** operations are coordinated efficiently.
 
 **Acceptance Criteria:**
@@ -556,8 +556,8 @@ These roles emphasize surgical scheduling, theatre management, and perioperative
 
 #### KE-SRG-002 [Phase 2] [Sprint 2.1]: Perioperative Documentation
 
-**As a** surgeon/theatre nurse/perioperative theatre technician,  
-**I want to** record perioperative observations and outcomes,  
+**As a** surgeon/theatre nurse/perioperative theatre technician,
+**I want to** record perioperative observations and outcomes,
 **So that** post-op care is informed and reportable.
 
 **Acceptance Criteria:**
@@ -572,8 +572,8 @@ These roles emphasize surgical scheduling, theatre management, and perioperative
 
 #### KE-SRG-003 [Phase 2] [Sprint 2.2]: Surgical Supplies Stock Alerts
 
-**As a** surgeon/theatre nurse/perioperative theatre technician,  
-**I want** stock alerts for surgical supplies,  
+**As a** surgeon/theatre nurse/perioperative theatre technician,
+**I want** stock alerts for surgical supplies,
 **So that** procedures are not delayed due to shortages.
 
 **Acceptance Criteria:**
@@ -587,8 +587,8 @@ These roles emphasize surgical scheduling, theatre management, and perioperative
 
 #### KE-SRG-004 [Phase 2] [Sprint 2.1]: Equipment and Consumables Tracking
 
-**As a** perioperative theatre technician,  
-**I want to** track equipment and consumables,  
+**As a** perioperative theatre technician,
+**I want to** track equipment and consumables,
 **So that** theatre operations run smoothly.
 
 **Acceptance Criteria:**
@@ -610,8 +610,8 @@ Manage patient registrations, queue management, and record updates.
 
 #### KE-REC-001 [Phase 0] [Sprint 0.2]: Quick Patient Registration
 
-**As a** receptionist,  
-**I want to** register patients quickly with auto-generated MRN,  
+**As a** receptionist,
+**I want to** register patients quickly with auto-generated MRN,
 **So that** wait times are reduced.
 
 **Acceptance Criteria:**
@@ -634,8 +634,8 @@ Manage patient registrations, queue management, and record updates.
 
 #### KE-REC-002 [Phase 0] [Sprint 0.7]: Emergency Contact Management
 
-**As a** receptionist,  
-**I want to** record multiple emergency contacts for patients,  
+**As a** receptionist,
+**I want to** record multiple emergency contacts for patients,
 **So that** family can be notified in emergencies.
 
 **Acceptance Criteria:**
@@ -654,8 +654,8 @@ Manage patient registrations, queue management, and record updates.
 
 #### KE-REC-003 [Phase 1] [Sprint 1.1]: Patient Record Search and Update
 
-**As a** receptionist,  
-**I want to** search and update patient details,  
+**As a** receptionist,
+**I want to** search and update patient details,
 **So that** records remain accurate.
 
 **Acceptance Criteria:**
@@ -669,8 +669,8 @@ Manage patient registrations, queue management, and record updates.
 
 #### KE-REC-004 [Phase 1] [Sprint 1.2]: Consent Management
 
-**As a** receptionist,  
-**I want to** capture and manage patient consent,  
+**As a** receptionist,
+**I want to** capture and manage patient consent,
 **So that** data sharing is compliant with Kenya DPA.
 
 **Acceptance Criteria:**
@@ -693,8 +693,8 @@ Coordinate patient flow through facility departments.
 
 #### KE-QUE-001 [Phase 1] [Sprint 1.2]: OPD Queue Management
 
-**As a** queue manager,  
-**I want to** manage patient queues across departments,  
+**As a** queue manager,
+**I want to** manage patient queues across departments,
 **So that** flow is optimized and wait times are minimized.
 
 **Acceptance Criteria:**
@@ -715,8 +715,8 @@ Focus on medication management, dispensing, and inventory.
 
 #### KE-PHM-001 [Phase 1] [Sprint 1.3]: Medication Stock Management
 
-**As a** pharmacist,  
-**I want to** manage medication stock and track batches,  
+**As a** pharmacist,
+**I want to** manage medication stock and track batches,
 **So that** I can avoid stockouts and ensure drug safety.
 
 **Acceptance Criteria:**
@@ -738,8 +738,8 @@ Focus on medication management, dispensing, and inventory.
 
 #### KE-PHM-002 [Phase 1] [Sprint 1.3]: Prescription Fulfillment
 
-**As a** pharmacist,  
-**I want to** view and fulfill prescriptions from clinicians,  
+**As a** pharmacist,
+**I want to** view and fulfill prescriptions from clinicians,
 **So that** medications are dispensed securely and accurately.
 
 **Acceptance Criteria:**
@@ -760,8 +760,8 @@ Focus on medication management, dispensing, and inventory.
 
 #### KE-PHM-003 [Phase 1] [Sprint 1.4]: Drug Interaction and Allergy Warnings
 
-**As a** pharmacist,  
-**I want to** see warnings for drug interactions and allergies,  
+**As a** pharmacist,
+**I want to** see warnings for drug interactions and allergies,
 **So that** patient safety is ensured.
 
 **Acceptance Criteria:**
@@ -775,8 +775,8 @@ Focus on medication management, dispensing, and inventory.
 
 #### KE-PHM-004 [Phase 4] [Sprint 4.2]: Predictive Stock Analytics
 
-**As a** pharmacist,  
-**I want** predictive analytics for stockouts,  
+**As a** pharmacist,
+**I want** predictive analytics for stockouts,
 **So that** I can plan procurements proactively.
 
 **Acceptance Criteria:**
@@ -796,8 +796,8 @@ Dedicated inventory management role (distinct from dispensing pharmacist).
 
 #### KE-STK-001 [Phase 1] [Sprint 1.4]: Inventory Receipts and Adjustments
 
-**As a** stock controller,  
-**I want to** record inventory receipts and adjustments,  
+**As a** stock controller,
+**I want to** record inventory receipts and adjustments,
 **So that** stock levels are accurate.
 
 **Acceptance Criteria:**
@@ -820,8 +820,8 @@ Dedicated inventory management role (distinct from dispensing pharmacist).
 
 #### KE-STK-002 [Phase 1] [Sprint 1.4]: Stock Reports and Analytics
 
-**As a** stock controller,  
-**I want** comprehensive stock reports,  
+**As a** stock controller,
+**I want** comprehensive stock reports,
 **So that** I can manage inventory effectively.
 
 **Acceptance Criteria:**
@@ -844,8 +844,8 @@ Handle test orders, specimen processing, and results delivery.
 
 #### KE-LAB-001 [Phase 1] [Sprint 1.5]: Lab Order Processing
 
-**As a** laboratory technician,  
-**I want to** receive and process lab orders,  
+**As a** laboratory technician,
+**I want to** receive and process lab orders,
 **So that** results are delivered promptly to clinicians.
 
 **Acceptance Criteria:**
@@ -864,8 +864,8 @@ Handle test orders, specimen processing, and results delivery.
 
 #### KE-LAB-002 [Phase 1] [Sprint 1.5]: Lab Results Entry and Verification
 
-**As a** laboratory technician,  
-**I want to** enter and verify test results,  
+**As a** laboratory technician,
+**I want to** enter and verify test results,
 **So that** clinicians receive accurate data.
 
 **Acceptance Criteria:**
@@ -884,8 +884,8 @@ Handle test orders, specimen processing, and results delivery.
 
 #### KE-LAB-003 [Phase 1] [Sprint 1.5]: Lab Billing Integration
 
-**As a** laboratory technician,  
-**I want** lab tests to integrate with billing,  
+**As a** laboratory technician,
+**I want** lab tests to integrate with billing,
 **So that** services are invoiced accurately.
 
 **Acceptance Criteria:**
@@ -902,8 +902,8 @@ Handle test orders, specimen processing, and results delivery.
 
 #### KE-LAB-004 [Phase 2] [Sprint 2.3]: Radiology Integration
 
-**As a** radiologist,  
-**I want to** receive imaging orders and upload results,  
+**As a** radiologist,
+**I want to** receive imaging orders and upload results,
 **So that** diagnostic images are accessible to clinicians.
 
 **Acceptance Criteria:**
@@ -926,8 +926,8 @@ Handle payments and receipt generation.
 
 #### KE-CSH-001 [Phase 1] [Sprint 1.5]: Payment Processing
 
-**As a** cashier,  
-**I want to** process payments and generate receipts,  
+**As a** cashier,
+**I want to** process payments and generate receipts,
 **So that** transactions are seamless and auditable.
 
 **Acceptance Criteria:**
@@ -946,8 +946,8 @@ Handle payments and receipt generation.
 
 #### KE-CSH-002 [Phase 1] [Sprint 1.5]: Invoice Generation
 
-**As a** cashier,  
-**I want to** view and print patient invoices,  
+**As a** cashier,
+**I want to** view and print patient invoices,
 **So that** patients know their charges before payment.
 
 **Acceptance Criteria:**
@@ -972,8 +972,8 @@ Invoice generation and accounts receivable management (distinct from cashier).
 
 #### KE-BIL-001 [Phase 1] [Sprint 1.6]: Billing Reconciliation
 
-**As a** billing clerk,  
-**I want to** reconcile billings with services rendered,  
+**As a** billing clerk,
+**I want to** reconcile billings with services rendered,
 **So that** revenue capture is complete.
 
 **Acceptance Criteria:**
@@ -987,8 +987,8 @@ Invoice generation and accounts receivable management (distinct from cashier).
 
 #### KE-BIL-002 [Phase 2] [Sprint 2.1]: Corporate and Insurance Accounts
 
-**As a** billing clerk,  
-**I want to** manage corporate and insurance accounts,  
+**As a** billing clerk,
+**I want to** manage corporate and insurance accounts,
 **So that** bulk invoicing is efficient.
 
 **Acceptance Criteria:**
@@ -1008,8 +1008,8 @@ SHA claims submission and tracking.
 
 #### KE-CLM-001 [Phase 2] [Sprint 2.1]: SHA Claims Submission
 
-**As a** claims officer,  
-**I want to** submit SHA claims with attachments,  
+**As a** claims officer,
+**I want to** submit SHA claims with attachments,
 **So that** reimbursements are timely and accurate.
 
 **Acceptance Criteria:**
@@ -1029,8 +1029,8 @@ SHA claims submission and tracking.
 
 #### KE-CLM-002 [Phase 2] [Sprint 2.2]: Claims Reconciliation and Appeals
 
-**As a** claims officer,  
-**I want to** track claim status and manage appeals,  
+**As a** claims officer,
+**I want to** track claim status and manage appeals,
 **So that** revenue loss is minimized.
 
 **Acceptance Criteria:**
@@ -1044,8 +1044,8 @@ SHA claims submission and tracking.
 
 #### KE-CLM-003 [Phase 1] [Sprint 1.6]: Financial Performance Reports
 
-**As a** cashier/claims officer,  
-**I want** reports on financial performance,  
+**As a** cashier/claims officer,
+**I want** reports on financial performance,
 **So that** I can monitor revenue and collections.
 
 **Acceptance Criteria:**
@@ -1070,8 +1070,8 @@ Oversee operations, compliance, and reporting.
 
 #### KE-MGT-001 [Phase 1] [Sprint 1.6]: Operational Dashboard
 
-**As a** management/administrator,  
-**I want** dashboards for performance monitoring,  
+**As a** management/administrator,
+**I want** dashboards for performance monitoring,
 **So that** I can ensure operational efficiency and regulatory compliance.
 
 **Acceptance Criteria:**
@@ -1089,8 +1089,8 @@ Oversee operations, compliance, and reporting.
 
 #### KE-MGT-002 [Phase 0] [Sprint 0.4]: Audit Log Access
 
-**As a** management/administrator,  
-**I want** access to audit logs,  
+**As a** management/administrator,
+**I want** access to audit logs,
 **So that** I can investigate privacy queries and ensure compliance.
 
 **Acceptance Criteria:**
@@ -1114,8 +1114,8 @@ Oversee operations, compliance, and reporting.
 
 #### KE-MGT-003 [Phase 2] [Sprint 2.3]: KHIS/DHIS2 Reporting
 
-**As a** management/administrator,  
-**I want** automated KHIS reporting,  
+**As a** management/administrator,
+**I want** automated KHIS reporting,
 **So that** facility meets mandatory reporting requirements.
 
 **Acceptance Criteria:**
@@ -1133,8 +1133,8 @@ Oversee operations, compliance, and reporting.
 
 #### KE-MGT-004 [Phase 4] [Sprint 4.3]: AI-Powered Resource Optimization
 
-**As a** management/administrator,  
-**I want** AI insights for resource optimization,  
+**As a** management/administrator,
+**I want** AI insights for resource optimization,
 **So that** facility operations are data-driven.
 
 **Acceptance Criteria:**
@@ -1156,8 +1156,8 @@ System maintenance, security, and infrastructure management.
 
 #### KE-ITA-001 [Phase 0] [Sprint 0.4]: System Monitoring
 
-**As an** IT administrator,  
-**I want to** monitor system performance,  
+**As an** IT administrator,
+**I want to** monitor system performance,
 **So that** downtime is minimized.
 
 **Acceptance Criteria:**
@@ -1177,8 +1177,8 @@ System maintenance, security, and infrastructure management.
 
 #### KE-ITA-002 [Phase 0] [Sprint 0.4]: Security Policy Enforcement
 
-**As an** IT administrator,  
-**I want to** enforce security policies,  
+**As an** IT administrator,
+**I want to** enforce security policies,
 **So that** data is protected according to Kenya DPA.
 
 **Acceptance Criteria:**
@@ -1196,8 +1196,8 @@ System maintenance, security, and infrastructure management.
 
 #### KE-ITA-003 [Phase 1] [Sprint 1.2]: User and Role Management
 
-**As an** IT administrator,  
-**I want to** manage users, roles, and permissions,  
+**As an** IT administrator,
+**I want to** manage users, roles, and permissions,
 **So that** access control is properly enforced.
 
 **Acceptance Criteria:**
@@ -1219,8 +1219,8 @@ Temporary access for contract workers.
 
 #### KE-LOC-001 [Phase 1] [Sprint 1.2]: Temporary Role-Based Access
 
-**As** part-time/locum staff,  
-**I want** temporary role-based access,  
+**As** part-time/locum staff,
+**I want** temporary role-based access,
 **So that** I can perform duties without full admin rights.
 
 **Acceptance Criteria:**
@@ -1234,8 +1234,8 @@ Temporary access for contract workers.
 
 #### KE-LOC-002 [Phase 1] [Sprint 1.2]: Quick Onboarding
 
-**As** part-time/locum staff,  
-**I want** quick onboarding,  
+**As** part-time/locum staff,
+**I want** quick onboarding,
 **So that** I can start work immediately.
 
 **Acceptance Criteria:**
@@ -1257,8 +1257,8 @@ Maternal and child health specialists focusing on ANC, immunizations, and child 
 
 #### KE-MCH-001 [Phase 3] [Sprint 3.1]: MCH Client Enrollment
 
-**As an** MCH nurse/midwife,  
-**I want to** enroll pregnant women and children in the MCH module,  
+**As an** MCH nurse/midwife,
+**I want to** enroll pregnant women and children in the MCH module,
 **So that** I can track their care journey from registration to follow-up.
 
 **Acceptance Criteria:**
@@ -1275,8 +1275,8 @@ Maternal and child health specialists focusing on ANC, immunizations, and child 
 
 #### KE-MCH-002 [Phase 3] [Sprint 3.1]: Antenatal and Postnatal Visit Tracking
 
-**As an** MCH nurse/midwife or pediatrician,  
-**I want to** track antenatal and postnatal visits,  
+**As an** MCH nurse/midwife or pediatrician,
+**I want to** track antenatal and postnatal visits,
 **So that** care is compliant with national guidelines (4+ ANC visits).
 
 **Acceptance Criteria:**
@@ -1293,8 +1293,8 @@ Maternal and child health specialists focusing on ANC, immunizations, and child 
 
 #### KE-MCH-003 [Phase 3] [Sprint 3.2]: KEPI Immunization Schedule Management
 
-**As an** MCH nurse/midwife or pediatrician,  
-**I want to** manage immunization schedules and records,  
+**As an** MCH nurse/midwife or pediatrician,
+**I want to** manage immunization schedules and records,
 **So that** children receive timely vaccinations per KEPI program.
 
 **Acceptance Criteria:**
@@ -1325,8 +1325,8 @@ Maternal and child health specialists focusing on ANC, immunizations, and child 
 
 #### KE-MCH-004 [Phase 3] [Sprint 3.2]: Child Growth and HIV-Exposed Infant Follow-up
 
-**As an** MCH nurse/midwife or pediatrician,  
-**I want to** monitor child growth and HIV-exposed infant follow-up,  
+**As an** MCH nurse/midwife or pediatrician,
+**I want to** monitor child growth and HIV-exposed infant follow-up,
 **So that** early interventions can be made.
 
 **Acceptance Criteria:**
@@ -1348,8 +1348,8 @@ Maternal and child health specialists focusing on ANC, immunizations, and child 
 
 #### KE-MCH-005 [Phase 4] [Sprint 4.2]: AI Risk Predictions for MCH
 
-**As an** MCH nurse/midwife or pediatrician,  
-**I want** AI-powered risk predictions,  
+**As an** MCH nurse/midwife or pediatrician,
+**I want** AI-powered risk predictions,
 **So that** I can identify high-risk pregnancies or child health issues early.
 
 **Acceptance Criteria:**
@@ -1374,8 +1374,8 @@ Frontline workers bridging communities and health facilities.
 
 #### KE-CHW-001 [Phase 3] [Sprint 3.3]: Community Mobilization for Immunization
 
-**As a** CHW/CHP,  
-**I want to** educate and mobilize communities for immunizations,  
+**As a** CHW/CHP,
+**I want to** educate and mobilize communities for immunizations,
 **So that** vaccine hesitancy is reduced and coverage improves.
 
 **Acceptance Criteria:**
@@ -1390,8 +1390,8 @@ Frontline workers bridging communities and health facilities.
 
 #### KE-CHW-002 [Phase 3] [Sprint 3.3]: Defaulter Tracing and Referral
 
-**As a** CHW/CHP,  
-**I want to** trace and refer immunization defaulters,  
+**As a** CHW/CHP,
+**I want to** trace and refer immunization defaulters,
 **So that** children complete their vaccination schedules.
 
 **Acceptance Criteria:**
@@ -1407,8 +1407,8 @@ Frontline workers bridging communities and health facilities.
 
 #### KE-CHW-003 [Phase 3] [Sprint 3.4]: Field Data Collection
 
-**As a** CHW/CHP,  
-**I want to** record basic health data in the field,  
+**As a** CHW/CHP,
+**I want to** record basic health data in the field,
 **So that** information is captured at point of service.
 
 **Acceptance Criteria:**
@@ -1426,8 +1426,8 @@ Frontline workers bridging communities and health facilities.
 
 #### KE-CHW-004 [Phase 3] [Sprint 3.4]: Community-Level Reporting
 
-**As a** CHW/CHP,  
-**I want** integrated reporting tools,  
+**As a** CHW/CHP,
+**I want** integrated reporting tools,
 **So that** community-level data informs facility planning.
 
 **Acceptance Criteria:**
@@ -1452,8 +1452,8 @@ Access national-level aggregated data for oversight.
 
 #### KE-REG-001 [Phase 2] [Sprint 2.3]: Aggregated Health Reports
 
-**As a** regulator,  
-**I want** aggregated reports from facilities,  
+**As a** regulator,
+**I want** aggregated reports from facilities,
 **So that** I can oversee national health metrics.
 
 **Acceptance Criteria:**
@@ -1474,8 +1474,8 @@ Benefits from the system indirectly through improved care.
 
 #### KE-PAT-001 [Phase 0] [Sprint 0.4]: Data Privacy and Consent
 
-**As a** patient,  
-**I want** my data to be secure and private,  
+**As a** patient,
+**I want** my data to be secure and private,
 **So that** my information is protected.
 
 **Acceptance Criteria:**
@@ -1490,8 +1490,8 @@ Benefits from the system indirectly through improved care.
 
 #### KE-PAT-002 [Phase 2] [Sprint 2.4]: Appointment Reminders (SMS/USSD)
 
-**As a** patient,  
-**I want to** receive appointment reminders,  
+**As a** patient,
+**I want to** receive appointment reminders,
 **So that** I don't miss my scheduled visits.
 
 **Acceptance Criteria:**
@@ -1505,8 +1505,8 @@ Benefits from the system indirectly through improved care.
 
 #### KE-PAT-003 [Phase 3] [Sprint 3.2]: Immunization Reminders for Children
 
-**As a** parent/guardian,  
-**I want to** receive immunization reminders for my children,  
+**As a** parent/guardian,
+**I want to** receive immunization reminders for my children,
 **So that** they receive timely vaccinations.
 
 **Acceptance Criteria:**
@@ -1526,58 +1526,58 @@ These stories address system behavior in exceptional situations.
 
 #### KE-ERR-001 [Phase 1]: Sensitive Patient Access Denial
 
-**As a** clinician without sensitive access permission,  
-**When** I attempt to access a patient flagged as sensitive (HIV/GBV/Mental Health),  
-**Then** I receive a clear error message: "Access Denied: This patient record requires special authorization"  
+**As a** clinician without sensitive access permission,
+**When** I attempt to access a patient flagged as sensitive (HIV/GBV/Mental Health),
+**Then** I receive a clear error message: "Access Denied: This patient record requires special authorization"
 **And** the attempt is logged in AuditLog with action `sensitive_access_denied`
 
 ---
 
 #### KE-ERR-002 [Phase 1]: Drug Allergy Warning Override
 
-**As a** pharmacist,  
-**When** I attempt to dispense a medication that conflicts with patient's known allergies,  
-**Then** I see a prominent warning with allergy details  
-**And** I can override only with documented clinical reason  
+**As a** pharmacist,
+**When** I attempt to dispense a medication that conflicts with patient's known allergies,
+**Then** I see a prominent warning with allergy details
+**And** I can override only with documented clinical reason
 **And** override is logged with reason for audit
 
 ---
 
 #### KE-ERR-003 [Phase 1]: Offline Sync Conflict Resolution
 
-**As a** nurse who entered vitals offline,  
-**When** my data conflicts with another user's entry for the same encounter,  
-**Then** I see a conflict resolution interface showing both versions  
-**And** I can choose: Keep Mine, Keep Theirs, or Merge  
+**As a** nurse who entered vitals offline,
+**When** my data conflicts with another user's entry for the same encounter,
+**Then** I see a conflict resolution interface showing both versions
+**And** I can choose: Keep Mine, Keep Theirs, or Merge
 **And** resolution is logged with strategy used
 
 ---
 
 #### KE-ERR-004 [Phase 1]: Duplicate Patient Detection
 
-**As a** receptionist registering a new patient,  
-**When** the system detects potential duplicates (same name + DOB, or same national ID),  
-**Then** I see a warning with matching patient records  
-**And** I can choose to: Use Existing Record, or Create New (with justification)  
+**As a** receptionist registering a new patient,
+**When** the system detects potential duplicates (same name + DOB, or same national ID),
+**Then** I see a warning with matching patient records
+**And** I can choose to: Use Existing Record, or Create New (with justification)
 **And** decision is logged in AuditLog
 
 ---
 
 #### KE-ERR-005 [Phase 1]: Expired Medication Prevention
 
-**As a** pharmacist,  
-**When** I attempt to dispense from an expired batch,  
-**Then** the system blocks the transaction  
-**And** displays error: "Cannot dispense: Batch {number} expired on {date}"  
+**As a** pharmacist,
+**When** I attempt to dispense from an expired batch,
+**Then** the system blocks the transaction
+**And** displays error: "Cannot dispense: Batch {number} expired on {date}"
 **And** suggests alternative batches if available
 
 ---
 
 #### KE-ERR-006 [Phase 1]: Session Timeout Handling
 
-**As a** user with an idle session,  
-**When** my session times out after configured period (default: 30 minutes),  
-**Then** I am redirected to login with message "Session expired for security"  
+**As a** user with an idle session,
+**When** my session times out after configured period (default: 30 minutes),
+**Then** I am redirected to login with message "Session expired for security"
 **And** any unsaved work is preserved locally for recovery after re-login
 
 ---

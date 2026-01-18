@@ -1,6 +1,6 @@
 /**
  * Expo app configuration
- * 
+ *
  * This uses app.config.js to allow dynamic configuration
  * based on environment variables (set in eas.json)
  */

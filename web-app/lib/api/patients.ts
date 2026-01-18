@@ -12,7 +12,7 @@ export const patientsApi = {
    */
   async getPatients(params: PatientListParams = {}): Promise<PaginatedResponse<Patient>> {
     const searchParams = new URLSearchParams();
-    
+
     if (params.page) searchParams.set('page', String(params.page));
     if (params.page_size) searchParams.set('page_size', String(params.page_size));
     if (params.search) searchParams.set('search', params.search);

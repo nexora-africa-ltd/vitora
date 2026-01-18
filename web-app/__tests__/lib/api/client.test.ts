@@ -43,9 +43,9 @@ describe('transformAxiosError', () => {
         data: { detail: 'Bad request' },
       },
     } as AxiosError;
-    
+
     const result = transformAxiosError(error);
-    
+
     expect(result.message).toBe('Bad request');
     expect(result.status).toBe(400);
   });
@@ -54,9 +54,9 @@ describe('transformAxiosError', () => {
     const error = {
       request: {},
     } as AxiosError;
-    
+
     const result = transformAxiosError(error);
-    
+
     expect(result.code).toBe('NETWORK_ERROR');
     expect(result.status).toBe(0);
   });

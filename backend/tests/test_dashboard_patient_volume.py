@@ -220,7 +220,9 @@ class TestPatientVolumeResponseStructure:
 class TestPatientVolumeDataAccuracy:
     """Test data accuracy for patient volume endpoint."""
 
-    def test_counts_patient_registrations(self, authenticated_client, sample_county, sample_sub_county):
+    def test_counts_patient_registrations(
+        self, authenticated_client, sample_county, sample_sub_county
+    ):
         """Should accurately count patient registrations per day."""
         from hmis.apps.patients.models import Patient
 
@@ -244,9 +246,7 @@ class TestPatientVolumeDataAccuracy:
 
         assert response.status_code == status.HTTP_200_OK
         # Find today's entry
-        today_data = next(
-            (d for d in response.data["data"] if d["date"] == str(today)), None
-        )
+        today_data = next((d for d in response.data["data"] if d["date"] == str(today)), None)
         assert today_data is not None
         assert today_data["registrations"] >= 3
 
@@ -280,9 +280,7 @@ class TestPatientVolumeDataAccuracy:
             {"start_date": str(today), "end_date": str(today)},
         )
 
-        today_data = next(
-            (d for d in response.data["data"] if d["date"] == str(today)), None
-        )
+        today_data = next((d for d in response.data["data"] if d["date"] == str(today)), None)
         assert today_data is not None
         assert today_data["encounters"] >= 2
         assert today_data["by_type"]["OPD"] >= 1

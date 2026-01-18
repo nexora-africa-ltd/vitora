@@ -4,11 +4,11 @@
 
 import { useQuery, useInfiniteQuery } from '@tanstack/react-query';
 import { apiClient } from '@/lib/api/client';
-import type { 
-  PatientHistoryParams, 
-  PatientHistoryResponse, 
+import type {
+  PatientHistoryParams,
+  PatientHistoryResponse,
   TimelineEvent,
-  TimelineFilters 
+  TimelineFilters
 } from '@/lib/types/timeline';
 import type { Encounter } from '@/lib/types/encounter';
 
@@ -33,7 +33,7 @@ function transformEncounterToTimelineEvent(encounter: Encounter): TimelineEvent 
 // In production, this would call a dedicated /api/patients/{id}/history endpoint
 async function fetchPatientHistory(params: PatientHistoryParams): Promise<PatientHistoryResponse> {
   const { patientId, filters, page = 1, pageSize = 20 } = params;
-  
+
   // Fetch patient encounters
   const encountersResponse = await apiClient.get(`/api/encounters/`, {
     params: {
@@ -105,9 +105,9 @@ export function usePatientHistory(patientId: number, filters?: TimelineFilters) 
 export function usePatientHistoryInfinite(patientId: number, filters?: TimelineFilters) {
   return useInfiniteQuery({
     queryKey: ['patient-history-infinite', patientId, filters],
-    queryFn: ({ pageParam = 1 }) => 
+    queryFn: ({ pageParam = 1 }) =>
       fetchPatientHistory({ patientId, filters, page: pageParam }),
-    getNextPageParam: (lastPage, allPages) => 
+    getNextPageParam: (lastPage, allPages) =>
       lastPage.hasMore ? allPages.length + 1 : undefined,
     initialPageParam: 1,
     enabled: !!patientId,

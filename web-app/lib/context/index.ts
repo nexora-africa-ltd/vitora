@@ -1,6 +1,6 @@
 /**
  * Context exports for Vitora HMIS
- * 
+ *
  * Patient and Encounter contexts for clinical workflow management.
  */
 

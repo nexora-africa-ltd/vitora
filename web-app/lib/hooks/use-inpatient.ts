@@ -39,29 +39,29 @@ export const inpatientQueryKeys = {
   all: ['inpatient'] as const,
   wards: () => [...inpatientQueryKeys.all, 'wards'] as const,
   ward: (id: number) => [...inpatientQueryKeys.wards(), id] as const,
-  wardBeds: (wardId: number, params?: Record<string, unknown>) => 
+  wardBeds: (wardId: number, params?: Record<string, unknown>) =>
     [...inpatientQueryKeys.ward(wardId), 'beds', params] as const,
   beds: (params?: BedListParams) => [...inpatientQueryKeys.all, 'beds', params] as const,
-  recommendations: (params?: AdmissionRecommendationListParams) => 
+  recommendations: (params?: AdmissionRecommendationListParams) =>
     [...inpatientQueryKeys.all, 'admission-recommendations', params] as const,
-  admissions: (params?: AdmissionListParams) => 
+  admissions: (params?: AdmissionListParams) =>
     [...inpatientQueryKeys.all, 'admissions', params] as const,
   admission: (id: number) => [...inpatientQueryKeys.all, 'admissions', id] as const,
-  discharges: (params?: DischargeListParams) => 
+  discharges: (params?: DischargeListParams) =>
     [...inpatientQueryKeys.all, 'discharges', params] as const,
   discharge: (id: number) => [...inpatientQueryKeys.all, 'discharges', id] as const,
-  transfers: (params?: TransferListParams) => 
+  transfers: (params?: TransferListParams) =>
     [...inpatientQueryKeys.all, 'transfers', params] as const,
   transfer: (id: number) => [...inpatientQueryKeys.all, 'transfers', id] as const,
-  wardRounds: (params?: WardRoundListParams) => 
+  wardRounds: (params?: WardRoundListParams) =>
     [...inpatientQueryKeys.all, 'ward-rounds', params] as const,
   wardRound: (id: number) => [...inpatientQueryKeys.all, 'ward-rounds', id] as const,
-  kardex: (params?: KardexListParams) => 
+  kardex: (params?: KardexListParams) =>
     [...inpatientQueryKeys.all, 'kardex', params] as const,
   kardexById: (id: number) => [...inpatientQueryKeys.all, 'kardex', id] as const,
-  kardexByAdmission: (admissionId: number) => 
+  kardexByAdmission: (admissionId: number) =>
     [...inpatientQueryKeys.all, 'kardex', 'admission', admissionId] as const,
-  shiftHandovers: (params?: ShiftHandoverListParams) => 
+  shiftHandovers: (params?: ShiftHandoverListParams) =>
     [...inpatientQueryKeys.all, 'shift-handovers', params] as const,
   shiftHandover: (id: number) => [...inpatientQueryKeys.all, 'shift-handovers', id] as const,
 };
@@ -88,7 +88,7 @@ export function useInpatientWard(wardId: number | undefined) {
 export function useUpdateWard() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: ({ id, data }: { id: number; data: Partial<InpatientWard> }) => 
+    mutationFn: ({ id, data }: { id: number; data: Partial<InpatientWard> }) =>
       inpatientApi.updateWard(id, data),
     onSuccess: (_, { id }) => {
       queryClient.invalidateQueries({ queryKey: inpatientQueryKeys.ward(id) });
@@ -248,7 +248,7 @@ export function useCreateDischarge() {
 export function useUpdateDischarge() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: ({ id, data }: { id: number; data: Partial<DischargeCreateData> }) => 
+    mutationFn: ({ id, data }: { id: number; data: Partial<DischargeCreateData> }) =>
       inpatientApi.updateDischarge(id, data),
     onSuccess: (_data, variables) => {
       queryClient.invalidateQueries({ queryKey: inpatientQueryKeys.discharge(variables.id) });
@@ -331,7 +331,7 @@ export function useCreateWardRound() {
 export function useUpdateWardRound() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: ({ id, data }: { id: number; data: Partial<WardRoundCreateData> }) => 
+    mutationFn: ({ id, data }: { id: number; data: Partial<WardRoundCreateData> }) =>
       inpatientApi.updateWardRound(id, data),
     onSuccess: (_data, variables) => {
       queryClient.invalidateQueries({ queryKey: inpatientQueryKeys.wardRound(variables.id) });
@@ -370,7 +370,7 @@ export function useKardexByAdmission(admissionId: number | undefined) {
 export function useUpdateKardex() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: ({ id, data }: { id: number; data: KardexUpdateData }) => 
+    mutationFn: ({ id, data }: { id: number; data: KardexUpdateData }) =>
       inpatientApi.updateKardex(id, data),
     onSuccess: (_data, variables) => {
       queryClient.invalidateQueries({ queryKey: inpatientQueryKeys.kardexById(variables.id) });
@@ -382,7 +382,7 @@ export function useUpdateKardex() {
 export function useAddKardexShiftNote() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: ({ kardexId, data }: { kardexId: number; data: KardexShiftNoteCreateData }) => 
+    mutationFn: ({ kardexId, data }: { kardexId: number; data: KardexShiftNoteCreateData }) =>
       inpatientApi.addKardexShiftNote(kardexId, data),
     onSuccess: (_data, variables) => {
       queryClient.invalidateQueries({ queryKey: inpatientQueryKeys.kardexById(variables.kardexId) });
@@ -393,7 +393,7 @@ export function useAddKardexShiftNote() {
 export function useAddKardexHandoverNote() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: ({ kardexId, data }: { kardexId: number; data: KardexHandoverNoteCreateData }) => 
+    mutationFn: ({ kardexId, data }: { kardexId: number; data: KardexHandoverNoteCreateData }) =>
       inpatientApi.addKardexHandoverNote(kardexId, data),
     onSuccess: (_data, variables) => {
       queryClient.invalidateQueries({ queryKey: inpatientQueryKeys.kardexById(variables.kardexId) });

@@ -201,7 +201,7 @@ describe('Configuration Module', () => {
   describe('Default Export', () => {
     test('should export all config as default', () => {
       const config = require('../../constants/config').default;
-      
+
       expect(config.API_BASE_URL).toBeDefined();
       expect(config.API_TIMEOUT).toBeDefined();
       expect(config.IS_DEVELOPMENT).toBeDefined();

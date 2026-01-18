@@ -177,13 +177,13 @@ export function SOAPNoteSummary({
     if (labOrders.length === 0) return null;
     return labOrders.flatMap((order) => {
       const orderLines: string[] = [];
-      
+
       order.items?.forEach((item) => {
         if (item.result && order.status === 'COMPLETED') {
           // Show actual result
           const result = item.result;
           let resultStr = '';
-          
+
           if (result.numeric_value !== undefined && result.numeric_value !== null) {
             resultStr = `${result.numeric_value}`;
             if (result.result_unit) resultStr += ` ${result.result_unit}`;
@@ -197,12 +197,12 @@ export function SOAPNoteSummary({
           } else if (result.option_value) {
             resultStr = result.option_value;
           }
-          
+
           // Add flag if abnormal
-          const flagStr = result.result_flag && result.result_flag !== 'NORMAL' 
-            ? ` [${result.result_flag}]` 
+          const flagStr = result.result_flag && result.result_flag !== 'NORMAL'
+            ? ` [${result.result_flag}]`
             : '';
-          
+
           orderLines.push(`- ${item.test_name}: ${resultStr}${flagStr}`);
         } else {
           // Show pending status
@@ -210,7 +210,7 @@ export function SOAPNoteSummary({
           orderLines.push(`- ${item.test_name}${status}`);
         }
       });
-      
+
       return orderLines;
     });
   }, [labOrders]);

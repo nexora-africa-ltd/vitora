@@ -138,16 +138,16 @@ export function PatientTable({
           </EntityGrid>
         )
       ) : viewMode === 'list' ? (
-        <PatientListView 
-          patients={patients} 
-          selectMode={selectMode} 
-          onRowClick={handleRowClick} 
-          router={router} 
+        <PatientListView
+          patients={patients}
+          selectMode={selectMode}
+          onRowClick={handleRowClick}
+          router={router}
         />
       ) : (
-        <PatientGridView 
-          patients={patients} 
-          selectMode={selectMode} 
+        <PatientGridView
+          patients={patients}
+          selectMode={selectMode}
           onSelect={onSelect}
         />
       )}

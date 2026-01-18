@@ -1,8 +1,8 @@
 # Epic: Move "Awaiting Consultation" to Encounters Page
 
-> **Status**: In Progress (Phase 1 Complete)  
-> **Created**: January 4, 2026  
-> **Updated**: January 4, 2026  
+> **Status**: In Progress (Phase 1 Complete)
+> **Created**: January 4, 2026
+> **Updated**: January 4, 2026
 > **Epic Goal**: Separate triage nurse workflow from doctor/clinician workflow by moving consultation queue to encounters page
 
 ---
@@ -36,7 +36,7 @@
 │                                                      - Order Labs/Imaging
 │                                                      - Prescribe
 │                                                      - Discharge/Admit
-│                                                     
+│
 └─────────────────────────────────────────────────────────────────────┘
 ```
 
@@ -46,7 +46,7 @@
 
 ### Q1: Configurable & Context-Aware Triage Policy
 
-**Decision**: ✅ Triage requirement determined by visit type + facility policy  
+**Decision**: ✅ Triage requirement determined by visit type + facility policy
 
 #### Default Triage Policy (Configurable per Facility)
 
@@ -104,7 +104,7 @@ def determine_triage_requirement(encounter):
         'DIALYSIS',       # High-risk: Dialysis unit
         'ONCOLOGY',       # High-risk: Oncology
     ]
-    
+
     # OPTIONAL: Can bypass with reason, vitals taken in consultation
     OPTIONAL_TRIAGE = [
         'SCHEDULED_OPD',      # Pre-booked appointment
@@ -113,7 +113,7 @@ def determine_triage_requirement(encounter):
         'CHRONIC_STABLE',     # Routine HTN/DM visit
         'SPECIALIST_CLINIC',  # ENT, Ortho, etc.
     ]
-    
+
     # NOT_REQUIRED: Patient already assessed or under continuous care
     NO_TRIAGE = [
         'PROCEDURE',          # Pre-operative assessment done
@@ -121,9 +121,9 @@ def determine_triage_requirement(encounter):
         'WARD_ROUND',         # Patient under care
         'DISCHARGE_REVIEW',   # Already admitted
     ]
-    
+
     visit_type = encounter.encounter_type
-    
+
     if visit_type in NO_TRIAGE:
         return TriageRequirement.NOT_REQUIRED
     elif visit_type in OPTIONAL_TRIAGE:
@@ -167,15 +167,15 @@ Add the following fields to the Encounter model:
 
 ### Q3: Area Filtering & Multi-Clinician Queue
 
-**Decision**: ✅ Facility-configurable setting  
-**Implementation**: 
+**Decision**: ✅ Facility-configurable setting
+**Implementation**:
 - Add facility settings for queue visibility
 - Options: "All patients", "Assigned area only", "Assigned to me only"
 - Default: All patients visible (small facility mode)
 
 ### Q4: Call Patient Notification
 
-**Decision**: ✅ YES - Trigger notification/announcement  
+**Decision**: ✅ YES - Trigger notification/announcement
 **Implementation**:
 - Update encounter status to "CALLED"
 - Trigger real-time notification (WebSocket/polling)
@@ -199,7 +199,7 @@ Add the following fields to the Encounter model:
      ▼                                ▼                ▼
   Encounter                    triage_status      consultation_status
   created with                 = COMPLETED        = CALLED / IN_PROGRESS
-  triage_requirement           triage_category    
+  triage_requirement           triage_category
   = MANDATORY                  = RED/ORANGE/etc
   triage_status
   = PENDING
@@ -256,12 +256,12 @@ def get_consultation_queue():
     return Encounter.objects.filter(
         # Not yet completed consultation
         consultation_status__in=['WAITING', 'CALLED'],
-        
+
         # AND one of these triage conditions:
         Q(triage_status='COMPLETED') |           # Triaged
         Q(triage_status='BYPASSED') |            # Bypassed with reason
         Q(triage_status='NOT_APPLICABLE')        # Not required
-        
+
     ).exclude(
         # Exclude if triage is mandatory but not done
         triage_requirement='MANDATORY',
@@ -299,7 +299,7 @@ def get_consultation_queue():
   # ("OPD", "Outpatient Department"),
   # ("IPD", "Inpatient Department"),
   # ("EMERGENCY", "Emergency"),
-  
+
   # Add new choices:
   ENCOUNTER_TYPE_CHOICES = [
       # Existing (MANDATORY triage)
@@ -465,9 +465,9 @@ def get_consultation_queue():
                     ┌─────────────────────────────────────────────────────┐
                     │              ENCOUNTER TRIAGE STATE                  │
                     └─────────────────────────────────────────────────────┘
-                    
+
 MANDATORY/OPTIONAL Encounter:
-                    
+
     ┌─────────┐     ┌─────────────┐     ┌───────────┐
     │ PENDING │────▶│ IN_PROGRESS │────▶│ COMPLETED │
     └─────────┘     └─────────────┘     └───────────┘
@@ -491,7 +491,7 @@ MANDATORY/OPTIONAL Encounter:
 
 
 NOT_REQUIRED Encounter:
-    
+
     ┌────────────────┐
     │ NOT_APPLICABLE │─────▶ (enters consultation queue directly)
     └────────────────┘

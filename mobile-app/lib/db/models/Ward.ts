@@ -1,6 +1,6 @@
 /**
  * Ward Model
- * 
+ *
  * WatermelonDB model for Kenya wards (1448 total).
  */
 

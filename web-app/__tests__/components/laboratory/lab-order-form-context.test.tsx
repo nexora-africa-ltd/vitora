@@ -1,8 +1,8 @@
 /**
  * Lab Order Form Context Integration Tests - GREEN Phase (Batch 3)
- * 
+ *
  * Tests for lab-order-form consuming PatientContext and EncounterContext.
- * 
+ *
  * Acceptance Criteria:
  * - Form uses useOptionalPatientContext() for patient info
  * - Form uses useOptionalEncounterContext() for encounter info
@@ -105,7 +105,7 @@ describe('Lab Order Form - Context Integration', () => {
       const { PatientProvider } = await import('@/lib/context/patient-context');
       const { EncounterProvider } = await import('@/lib/context/encounter-context');
       const { LabOrderForm } = await import('@/components/laboratory/lab-order-form');
-      
+
       const Wrapper = createWrapper();
       render(
         <Wrapper>
@@ -119,7 +119,7 @@ describe('Lab Order Form - Context Integration', () => {
 
       await waitFor(() => {
         // Patient name should be displayed somewhere in the form
-        const patientDisplay = screen.queryByText(/Jane/) || 
+        const patientDisplay = screen.queryByText(/Jane/) ||
                               screen.queryByText(mockPatient.mrn);
         expect(patientDisplay).toBeTruthy();
       });
@@ -132,7 +132,7 @@ describe('Lab Order Form - Context Integration', () => {
       const { PatientProvider } = await import('@/lib/context/patient-context');
       const { EncounterProvider } = await import('@/lib/context/encounter-context');
       const { LabOrderForm } = await import('@/components/laboratory/lab-order-form');
-      
+
       const Wrapper = createWrapper();
       render(
         <Wrapper>
@@ -155,9 +155,9 @@ describe('Lab Order Form - Context Integration', () => {
       const { PatientProvider } = await import('@/lib/context/patient-context');
       const { EncounterProvider } = await import('@/lib/context/encounter-context');
       const { LabOrderForm } = await import('@/components/laboratory/lab-order-form');
-      
+
       const Wrapper = createWrapper();
-      
+
       // Pass different IDs as props - context should take precedence
       render(
         <Wrapper>
@@ -184,9 +184,9 @@ describe('Lab Order Form - Context Integration', () => {
     it('should show warning when no encounter context or props', async () => {
       const { PatientProvider } = await import('@/lib/context/patient-context');
       const { LabOrderForm } = await import('@/components/laboratory/lab-order-form');
-      
+
       const Wrapper = createWrapper();
-      
+
       // Render WITHOUT EncounterProvider and without props
       render(
         <Wrapper>
@@ -213,7 +213,7 @@ describe('Lab Order Form - Context Integration', () => {
       const { PatientProvider } = await import('@/lib/context/patient-context');
       const { EncounterProvider } = await import('@/lib/context/encounter-context');
       const { LabOrderForm } = await import('@/components/laboratory/lab-order-form');
-      
+
       const Wrapper = createWrapper();
       render(
         <Wrapper>
@@ -243,7 +243,7 @@ describe('Lab Order Form - Context Integration', () => {
       const { PatientProvider } = await import('@/lib/context/patient-context');
       const { EncounterProvider } = await import('@/lib/context/encounter-context');
       const { LabOrderForm } = await import('@/components/laboratory/lab-order-form');
-      
+
       const Wrapper = createWrapper();
       render(
         <Wrapper>

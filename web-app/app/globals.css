@@ -4,7 +4,7 @@
 
 /**
  * Vitora HMIS Design Tokens
- * 
+ *
  * Brand colors based on mobile-app/constants/colors.ts:
  * - Primary: Deep Burgundy #3D000F - professional, authoritative
  * - Secondary: Teal #1A4D5C - healthcare trust, calm
@@ -19,7 +19,7 @@
     --card-foreground: 222.2 84% 4.9%;
     --popover: 0 0% 100%;
     --popover-foreground: 222.2 84% 4.9%;
-    
+
     /* Brand Colors */
     --primary: 346 100% 12%;              /* Deep Burgundy #3D000F */
     --primary-foreground: 210 40% 98%;
@@ -27,7 +27,7 @@
     --secondary-foreground: 210 40% 98%;
     --accent: 32 33% 65%;                 /* Warm Gold #D4A574 */
     --accent-foreground: 222.2 47.4% 11.2%;
-    
+
     /* UI Colors */
     --muted: 210 40% 96.1%;
     --muted-foreground: 215.4 16.3% 46.9%;
@@ -37,7 +37,7 @@
     --input: 214.3 31.8% 91.4%;
     --ring: 346 100% 12%;                 /* Matches primary */
     --radius: 0.5rem;
-    
+
     /* Semantic Colors */
     --success: 145 46% 34%;               /* #2E7D4A */
     --success-foreground: 0 0% 100%;
@@ -45,14 +45,14 @@
     --warning-foreground: 30 15% 25%;
     --critical: 0 65% 47%;                /* #C62828 - matches mobile error.main */
     --critical-foreground: 0 0% 100%;
-    
+
     /* Chart Colors */
     --chart-1: 12 76% 61%;
     --chart-2: 173 58% 39%;
     --chart-3: 197 37% 24%;
     --chart-4: 43 74% 66%;
     --chart-5: 27 87% 67%;
-    
+
     /* Primary Scale (Deep Burgundy) */
     --primary-50: 350 50% 94%;
     --primary-100: 350 50% 85%;
@@ -64,7 +64,7 @@
     --primary-700: 346 100% 9%;
     --primary-800: 346 100% 8%;
     --primary-900: 346 100% 6%;
-    
+
     /* Secondary Scale (Teal) */
     --secondary-50: 190 35% 93%;
     --secondary-100: 190 40% 83%;
@@ -76,7 +76,7 @@
     --secondary-700: 196 53% 18%;
     --secondary-800: 196 53% 16%;
     --secondary-900: 196 53% 12%;
-    
+
     /* Accent Scale (Warm Gold) */
     --accent-50: 35 67% 96%;
     --accent-100: 35 67% 90%;
@@ -88,7 +88,7 @@
     --accent-700: 32 33% 51%;
     --accent-800: 32 33% 44%;
     --accent-900: 32 33% 37%;
-    
+
     /* Neutral Scale */
     --neutral-0: 0 0% 100%;
     --neutral-50: 0 7% 98%;
@@ -102,40 +102,40 @@
     --neutral-800: 0 6% 23%;
     --neutral-900: 0 8% 12%;
     --neutral-1000: 0 0% 0%;
-    
+
     /* Text Colors */
     --text-primary: 0 8% 12%;
     --text-secondary: 0 5% 42%;
     --text-tertiary: 0 5% 56%;
     --text-disabled: 0 4% 71%;
     --text-hint: 0 5% 56%;
-    
+
     /* Background Variants */
     --background-primary: 0 0% 100%;
     --background-secondary: 0 7% 98%;
     --background-paper: 0 5% 96%;
-    
+
     /* Border Variants */
     --border-default: 0 5% 86%;
     --border-light: 0 5% 93%;
     --border-dark: 0 4% 71%;
-    
+
     /* Info Colors */
     --info: 196 53% 23%;
     --info-foreground: 0 0% 100%;
     --info-light: 190 40% 50%;
     --info-dark: 196 53% 12%;
-    
+
     /* Error Colors */
     --error: 0 65% 47%;
     --error-foreground: 0 0% 100%;
     --error-light: 1 83% 63%;
     --error-dark: 0 100% 28%;
-    
+
     /* Success Variants */
     --success-light: 137 34% 52%;
     --success-dark: 145 46% 22%;
-    
+
     /* Warning Scale */
     --warning-50: 43 100% 95%;
     --warning-100: 43 100% 86%;
@@ -147,18 +147,18 @@
     --warning-700: 40 82% 42%;
     --warning-light: 37 100% 65%;
     --warning-dark: 40 82% 42%;
-    
+
     /* Critical Variants */
     --critical-light: 1 83% 63%;
     --critical-dark: 0 100% 28%;
-    
+
     /* Sync Status Colors */
     --sync-pending: 40 96% 53%;
     --sync-syncing: 196 53% 23%;
     --sync-synced: 145 46% 34%;
     --sync-failed: 0 65% 47%;
     --sync-conflict: 283 68% 38%;
-    
+
     /* Gender Colors */
     --gender-male: 196 53% 23%;
     --gender-female: 32 33% 65%;
@@ -172,7 +172,7 @@
     --card-foreground: 210 40% 98%;
     --popover: 222.2 84% 4.9%;
     --popover-foreground: 210 40% 98%;
-    
+
     /* Brand Colors - Dark Mode (slightly lighter for visibility) */
     --primary: 346 100% 20%;              /* Lighter burgundy */
     --primary-foreground: 210 40% 98%;
@@ -180,7 +180,7 @@
     --secondary-foreground: 210 40% 98%;
     --accent: 32 33% 55%;                 /* Slightly dimmed gold */
     --accent-foreground: 210 40% 98%;
-    
+
     /* UI Colors - Dark Mode */
     --muted: 217.2 32.6% 17.5%;
     --muted-foreground: 215 20.2% 65.1%;
@@ -189,7 +189,7 @@
     --border: 217.2 32.6% 17.5%;
     --input: 217.2 32.6% 17.5%;
     --ring: 346 100% 20%;
-    
+
     /* Semantic Colors - Dark Mode */
     --success: 145 46% 40%;
     --success-foreground: 145 46% 90%;
@@ -197,14 +197,14 @@
     --warning-foreground: 40 60% 85%;
     --critical: 0 63% 45%;
     --critical-foreground: 0 63% 90%;
-    
+
     /* Chart Colors - Dark Mode */
     --chart-1: 220 70% 50%;
     --chart-2: 160 60% 45%;
     --chart-3: 30 80% 55%;
     --chart-4: 280 65% 60%;
     --chart-5: 340 75% 55%;
-    
+
     /* Primary Scale - Dark Mode (slightly lighter) */
     --primary-50: 350 30% 20%;
     --primary-100: 350 40% 25%;
@@ -216,7 +216,7 @@
     --primary-700: 346 100% 30%;
     --primary-800: 346 100% 35%;
     --primary-900: 346 100% 40%;
-    
+
     /* Secondary Scale - Dark Mode (lighter) */
     --secondary-50: 190 20% 15%;
     --secondary-100: 190 25% 20%;
@@ -228,7 +228,7 @@
     --secondary-700: 196 53% 50%;
     --secondary-800: 196 53% 58%;
     --secondary-900: 196 53% 65%;
-    
+
     /* Accent Scale - Dark Mode (adjusted) */
     --accent-50: 35 25% 15%;
     --accent-100: 35 30% 22%;
@@ -240,7 +240,7 @@
     --accent-700: 32 40% 65%;
     --accent-800: 32 45% 70%;
     --accent-900: 32 50% 75%;
-    
+
     /* Neutral Scale - Dark Mode (inverted) */
     --neutral-0: 0 0% 0%;
     --neutral-50: 0 6% 10%;
@@ -254,40 +254,40 @@
     --neutral-800: 0 5% 85%;
     --neutral-900: 0 7% 92%;
     --neutral-1000: 0 0% 100%;
-    
+
     /* Text Colors - Dark Mode */
     --text-primary: 0 0% 100%;
     --text-secondary: 0 4% 71%;
     --text-tertiary: 0 5% 56%;
     --text-disabled: 0 5% 42%;
     --text-hint: 0 5% 56%;
-    
+
     /* Background Variants - Dark Mode */
     --background-primary: 350 8% 9%;
     --background-secondary: 350 8% 12%;
     --background-paper: 350 8% 15%;
-    
+
     /* Border Variants - Dark Mode */
     --border-default: 0 5% 28%;
     --border-light: 0 5% 20%;
     --border-dark: 0 4% 40%;
-    
+
     /* Info Colors - Dark Mode */
     --info: 196 53% 35%;
     --info-foreground: 196 53% 90%;
     --info-light: 190 40% 55%;
     --info-dark: 196 53% 25%;
-    
+
     /* Error Colors - Dark Mode */
     --error: 0 63% 45%;
     --error-foreground: 0 63% 90%;
     --error-light: 1 70% 55%;
     --error-dark: 0 65% 35%;
-    
+
     /* Success Variants - Dark Mode */
     --success-light: 137 34% 55%;
     --success-dark: 145 46% 30%;
-    
+
     /* Warning Scale - Dark Mode */
     --warning-50: 43 40% 15%;
     --warning-100: 43 50% 22%;
@@ -299,18 +299,18 @@
     --warning-700: 40 90% 55%;
     --warning-light: 37 90% 55%;
     --warning-dark: 40 70% 35%;
-    
+
     /* Critical Variants - Dark Mode */
     --critical-light: 1 70% 55%;
     --critical-dark: 0 65% 35%;
-    
+
     /* Sync Status Colors - Dark Mode */
     --sync-pending: 40 85% 48%;
     --sync-syncing: 196 53% 40%;
     --sync-synced: 145 46% 40%;
     --sync-failed: 0 63% 45%;
     --sync-conflict: 283 60% 50%;
-    
+
     /* Gender Colors - Dark Mode */
     --gender-male: 196 53% 40%;
     --gender-female: 32 35% 60%;
@@ -379,15 +379,15 @@
   body {
     @apply bg-white text-black;
   }
-  
+
   .no-print {
     display: none !important;
   }
-  
+
   .print-break-before {
     page-break-before: always;
   }
-  
+
   .print-break-after {
     page-break-after: always;
   }

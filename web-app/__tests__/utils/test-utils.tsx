@@ -59,7 +59,7 @@ function customRender(
   options?: CustomRenderOptions
 ) {
   const { queryClient, ...renderOptions } = options || {};
-  
+
   return render(ui, {
     wrapper: ({ children }) => (
       <AllProviders queryClient={queryClient}>{children}</AllProviders>
@@ -91,7 +91,7 @@ export async function waitForCondition(
   interval = 100
 ): Promise<void> {
   const startTime = Date.now();
-  
+
   while (!condition()) {
     if (Date.now() - startTime > timeout) {
       throw new Error('Condition was not met within the timeout');

@@ -54,7 +54,7 @@ const Card = React.forwardRef<HTMLDivElement, CardProps>(
   ({ className, variant, size, asButton, onClick, ...props }, ref) => {
     // Use interactive variant automatically when onClick is provided
     const effectiveVariant = onClick && !variant ? "interactive" : variant
-    
+
     return (
       <div
         ref={ref}

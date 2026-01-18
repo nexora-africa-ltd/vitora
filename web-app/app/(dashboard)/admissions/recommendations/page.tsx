@@ -248,17 +248,17 @@ export default function AdmissionRecommendationsPage() {
                   <Button variant="outline" size="sm">
                     View Details
                   </Button>
-                  <Button 
+                  <Button
                     variant="outline"
-                    size="sm" 
+                    size="sm"
                     onClick={() => handleDeclineClick(rec)}
                     data-testid="decline-button"
                   >
                     <X className="h-4 w-4 mr-2" />
                     Decline
                   </Button>
-                  <Button 
-                    size="sm" 
+                  <Button
+                    size="sm"
                     onClick={() => handleApproveClick(rec)}
                     data-testid="approve-button"
                   >
@@ -326,8 +326,8 @@ export default function AdmissionRecommendationsPage() {
             <Button variant="outline" onClick={() => setAcceptDialogOpen(false)}>
               Cancel
             </Button>
-            <Button 
-              onClick={handleApproveConfirm} 
+            <Button
+              onClick={handleApproveConfirm}
               disabled={!selectedWard || !selectedBed || acceptRecommendation.isPending}
             >
               {acceptRecommendation.isPending ? 'Creating...' : 'Confirm Admission'}
@@ -363,9 +363,9 @@ export default function AdmissionRecommendationsPage() {
             <Button variant="outline" onClick={() => setDeclineDialogOpen(false)}>
               Cancel
             </Button>
-            <Button 
+            <Button
               variant="destructive"
-              onClick={handleDeclineConfirm} 
+              onClick={handleDeclineConfirm}
               disabled={!declineReason.trim() || declineRecommendation.isPending}
             >
               {declineRecommendation.isPending ? 'Declining...' : 'Confirm Decline'}

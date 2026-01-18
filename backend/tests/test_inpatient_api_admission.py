@@ -9,7 +9,6 @@ Tests AdmissionRecommendation and Admission ViewSets with:
 - Authentication requirements
 """
 
-
 import pytest  # type: ignore
 from django.contrib.auth import get_user_model
 from django.utils import timezone

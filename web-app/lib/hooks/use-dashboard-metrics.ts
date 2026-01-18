@@ -10,9 +10,9 @@
 
 import { useQuery } from '@tanstack/react-query';
 import { apiClient } from '@/lib/api/client';
-import type { 
-  DashboardMetrics, 
-  DateRangeFilter, 
+import type {
+  DashboardMetrics,
+  DateRangeFilter,
   KPIMetric,
   PatientVolumeData,
   RevenueData,
@@ -195,7 +195,7 @@ function transformRevenueBreakdown(response: RevenueBreakdownResponse): RevenueD
 // Fetch dashboard metrics using real API endpoints
 async function fetchDashboardMetrics(filter?: DateRangeFilter): Promise<DashboardMetrics> {
   const dateRange = getDateRange(filter);
-  
+
   // Fetch all data in parallel for performance
   const [statsRes, volumeRes, revenueRes, activityRes] = await Promise.allSettled([
     apiClient.get<DashboardStats>('/api/core/dashboard/stats/'),
@@ -209,10 +209,10 @@ async function fetchDashboardMetrics(filter?: DateRangeFilter): Promise<Dashboar
       params: { limit: 10 },
     }),
   ]);
-  
+
   // Extract data with fallbacks for failed requests
   const stats = statsRes.status === 'fulfilled' ? statsRes.value.data : null;
-  const patientVolume = volumeRes.status === 'fulfilled' 
+  const patientVolume = volumeRes.status === 'fulfilled'
     ? transformPatientVolume(volumeRes.value.data)
     : [];
   const revenueBreakdown = revenueRes.status === 'fulfilled'
@@ -221,7 +221,7 @@ async function fetchDashboardMetrics(filter?: DateRangeFilter): Promise<Dashboar
   const recentActivity = activityRes.status === 'fulfilled'
     ? activityRes.value.data.results
     : [];
-  
+
   // Log any failures for debugging
   if (statsRes.status === 'rejected') {
     console.warn('Failed to fetch dashboard stats:', statsRes.reason);
@@ -278,7 +278,7 @@ export function useDashboardKPIs(filter?: DateRangeFilter) {
  */
 export function usePatientVolumeChart(filter?: DateRangeFilter) {
   const dateRange = getDateRange(filter);
-  
+
   return useQuery({
     queryKey: ['patient-volume-chart', dateRange],
     queryFn: async () => {
@@ -297,7 +297,7 @@ export function usePatientVolumeChart(filter?: DateRangeFilter) {
  */
 export function useRevenueBreakdown(filter?: DateRangeFilter) {
   const dateRange = getDateRange(filter);
-  
+
   return useQuery({
     queryKey: ['revenue-breakdown', dateRange],
     queryFn: async () => {
@@ -338,7 +338,7 @@ export function useActivityFeed(options?: {
   types?: string[];
 }) {
   const { limit = 20, offset = 0, types } = options ?? {};
-  
+
   return useQuery({
     queryKey: ['activity-feed', { limit, offset, types }],
     queryFn: async () => {

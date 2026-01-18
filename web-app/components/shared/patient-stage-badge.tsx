@@ -1,6 +1,6 @@
 /**
  * PatientStageBadge Component
- * 
+ *
  * Displays the current stage in a patient's journey through the facility.
  * Uses consistent color coding across the application.
  */
@@ -8,11 +8,11 @@
 
 import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils/cn';
-import { 
-  Clock, 
-  Activity, 
-  Stethoscope, 
-  CheckCircle2, 
+import {
+  Clock,
+  Activity,
+  Stethoscope,
+  CheckCircle2,
   UserPlus,
   FileText,
 } from 'lucide-react';
@@ -44,8 +44,8 @@ const stageColors: Record<PatientStage, string> = {
   COMPLETED: 'bg-gray-100 text-gray-600 border-gray-300 dark:bg-gray-800 dark:text-gray-400',
 };
 
-export function PatientStageBadge({ 
-  stage, 
+export function PatientStageBadge({
+  stage,
   size = 'default',
   showIcon = true,
   className,
@@ -55,7 +55,7 @@ export function PatientStageBadge({
   const colorClass = stageColors[stage];
 
   return (
-    <Badge 
+    <Badge
       variant="outline"
       className={cn(
         'font-medium border',

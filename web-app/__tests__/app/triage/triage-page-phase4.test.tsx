@@ -279,7 +279,7 @@ describe('Triage Page - Phase 4.1 Updates', () => {
 
       await waitFor(() => {
         // Should have info text or link pointing to encounters page
-        const linkOrInfo = screen.queryByText(/encounters/i) || 
+        const linkOrInfo = screen.queryByText(/encounters/i) ||
                           screen.queryByRole('link', { name: /consultation/i });
         // This might be in an info card or description
         expect(linkOrInfo || screen.getByText(/Patients Awaiting Triage/i)).toBeTruthy();

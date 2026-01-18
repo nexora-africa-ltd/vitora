@@ -11,8 +11,8 @@ from django.db import migrations
 def seed_essential_tests(apps, schema_editor):
     """Seed essential laboratory tests for Kenyan healthcare facilities."""
     # Skip seeding in test environment (in-memory database)
-    db_name = settings.DATABASES['default']['NAME']
-    if db_name == ':memory:':
+    db_name = settings.DATABASES["default"]["NAME"]
+    if db_name == ":memory:":
         return
 
     TestCatalog = apps.get_model("laboratory", "TestCatalog")
@@ -74,7 +74,6 @@ def seed_essential_tests(apps, schema_editor):
             "available_in_house": True,
             "turnaround_hours": 1,
         },
-        
         # Clinical Chemistry
         {
             "code": "RBS",
@@ -122,7 +121,6 @@ def seed_essential_tests(apps, schema_editor):
             "available_in_house": True,
             "turnaround_hours": 4,
         },
-        
         # Serology
         {
             "code": "HIV",
@@ -150,7 +148,6 @@ def seed_essential_tests(apps, schema_editor):
             "available_in_house": True,
             "turnaround_hours": 2,
         },
-        
         # Parasitology
         {
             "code": "MPS",
@@ -189,7 +186,6 @@ def seed_essential_tests(apps, schema_editor):
             "available_in_house": True,
             "turnaround_hours": 4,
         },
-        
         # Urinalysis
         {
             "code": "UA",
@@ -215,7 +211,6 @@ def seed_essential_tests(apps, schema_editor):
             "available_in_house": True,
             "turnaround_hours": 48,
         },
-        
         # Immunology (often external)
         {
             "code": "CD4",
@@ -248,21 +243,31 @@ def seed_essential_tests(apps, schema_editor):
             "turnaround_hours": 120,
         },
     ]
-    
+
     for test_data in essential_tests:
-        TestCatalog.objects.get_or_create(
-            code=test_data["code"],
-            defaults=test_data
-        )
+        TestCatalog.objects.get_or_create(code=test_data["code"], defaults=test_data)
 
 
 def reverse_seed(apps, schema_editor):
     """Remove seeded tests."""
     TestCatalog = apps.get_model("laboratory", "TestCatalog")
     test_codes = [
-        "CBC", "HB", "ESR", "BG", "RBS", "FBS", "CREA", 
-        "HIV", "HBSAG", "MPS", "MRDT", "STOOL", "UA", 
-        "UC", "CD4", "VL"
+        "CBC",
+        "HB",
+        "ESR",
+        "BG",
+        "RBS",
+        "FBS",
+        "CREA",
+        "HIV",
+        "HBSAG",
+        "MPS",
+        "MRDT",
+        "STOOL",
+        "UA",
+        "UC",
+        "CD4",
+        "VL",
     ]
     TestCatalog.objects.filter(code__in=test_codes).delete()
 
@@ -270,7 +275,7 @@ def reverse_seed(apps, schema_editor):
 class Migration(migrations.Migration):
 
     dependencies = [
-        ('laboratory', '0001_initial'),
+        ("laboratory", "0001_initial"),
     ]
 
     operations = [

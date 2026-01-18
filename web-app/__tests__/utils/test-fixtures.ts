@@ -43,7 +43,7 @@ export function createMockPatient(overrides?: Partial<Patient>): Patient {
  * Create multiple mock patients
  */
 export function createMockPatients(count: number, overrides?: Partial<Patient>[]): Patient[] {
-  return Array.from({ length: count }, (_, index) => 
+  return Array.from({ length: count }, (_, index) =>
     createMockPatient({
       id: index + 1,
       mrn: `MRN-20260101-${String(index + 1).padStart(4, '0')}`,
@@ -67,7 +67,7 @@ export function createMockEncounter(overrides?: Partial<Encounter>): Encounter {
     encounter_date: '2026-01-01',
     chief_complaint: 'Headache and fever',
     status: 'IN_PROGRESS',
-    
+
     // Vitals
     temperature: 37.5,
     pulse: 80,
@@ -76,7 +76,7 @@ export function createMockEncounter(overrides?: Partial<Encounter>): Encounter {
     spo2: 98,
     weight: 70,
     height: 170,
-    
+
     // Medical history
     allergies: 'Penicillin',
     chronic_conditions: 'None',
@@ -84,20 +84,20 @@ export function createMockEncounter(overrides?: Partial<Encounter>): Encounter {
     past_surgeries: 'Appendectomy 2015',
     family_history: 'Hypertension (father)',
     social_history: 'Non-smoker, occasional alcohol',
-    
+
     // Clinical notes
     notes: '',
     history_of_present_illness: 'Patient reports headache for 3 days',
     physical_examination: 'Alert, oriented. Temp elevated.',
     assessment: 'Possible viral infection',
     plan: 'Rest, fluids, paracetamol PRN',
-    
+
     // Metadata
     created_by: 1,
     created_by_name: 'Dr. Test User',
     created_at: '2026-01-01T10:00:00Z',
     updated_at: '2026-01-01T10:30:00Z',
-    
+
     ...overrides,
   };
 }

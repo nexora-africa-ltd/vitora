@@ -1,6 +1,6 @@
 /**
  * TDD Tests for Billing Zustand Store - RED PHASE
- * 
+ *
  * Tests for billing state management before implementation.
  * All tests should FAIL initially.
  */

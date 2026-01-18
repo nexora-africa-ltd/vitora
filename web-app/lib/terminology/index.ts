@@ -1,6 +1,6 @@
 /**
  * Terminology Module - Public Exports
- * 
+ *
  * Centralized module for Kenya DHA/SHA terminology lookups.
  * Provides type-safe APIs and React hooks for:
  * - ICD-11 (Diagnosis codes)
@@ -9,12 +9,12 @@
  * - LOINC (Lab test codes)
  * - Drug Products (Kenya drug registry)
  * - Active Components (Drug ingredients)
- * 
+ *
  * @example
  * // API usage (framework-agnostic)
  * import { terminologyApi } from '@/lib/terminology';
  * const results = await terminologyApi.searchICD11({ search: 'malaria' });
- * 
+ *
  * @example
  * // Hook usage (React Query)
  * import { useICD11Search } from '@/lib/terminology';

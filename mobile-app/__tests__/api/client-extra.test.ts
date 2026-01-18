@@ -1,6 +1,6 @@
 /**
  * API Client Additional Tests
- * 
+ *
  * Additional tests for API client to improve branch coverage.
  */
 

@@ -1,6 +1,6 @@
 /**
  * Patient Repository
- * 
+ *
  * CRUD operations for patient records with offline sync queue integration.
  * All operations automatically queue changes for backend synchronization.
  */
@@ -66,19 +66,19 @@ export const patientRepository = {
    */
   async search(query: string): Promise<Patient[]> {
     const database = getDatabase();
-    
+
     // For case-insensitive search, we need to search both uppercase and lowercase
     // since WatermelonDB/SQLite LIKE is case-sensitive for non-ASCII characters
     const allPatients = await database.get<Patient>('patients').query().fetch();
-    
+
     const lowerQuery = query.toLowerCase();
-    
+
     return allPatients.filter(patient => {
       const firstNameMatch = patient.firstName?.toLowerCase().includes(lowerQuery);
       const lastNameMatch = patient.lastName?.toLowerCase().includes(lowerQuery);
       const mrnMatch = patient.mrn?.includes(query);
       const phoneMatch = patient.phoneNumber?.includes(query);
-      
+
       return firstNameMatch || lastNameMatch || mrnMatch || phoneMatch;
     });
   },
@@ -116,7 +116,7 @@ export const patientRepository = {
    */
   async create(data: PatientData): Promise<Patient> {
     const database = getDatabase();
-    
+
     return database.write(async () => {
       // Create patient record
       const patient = await database.get<Patient>('patients').create((p) => {
@@ -127,7 +127,7 @@ export const patientRepository = {
         p.gender = data.gender;
         p.countyId = data.countyId;
         p.subCountyId = data.subCountyId;
-        
+
         // Optional fields
         if (data.wardId) p.wardId = data.wardId;
         if (data.phoneNumber) p.phoneNumber = data.phoneNumber;
@@ -140,16 +140,16 @@ export const patientRepository = {
         if (data.emergencyContactName) p.emergencyContactName = data.emergencyContactName;
         if (data.emergencyContactPhone) p.emergencyContactPhone = data.emergencyContactPhone;
         if (data.emergencyContactRelationship) p.emergencyContactRelationship = data.emergencyContactRelationship;
-        
+
         // Privacy & consent
         p.isSensitive = data.isSensitive || false;
         p.consentGiven = data.consentGiven || false;
         if (data.consentDate) p.consentDate = data.consentDate;
-        
+
         // Registration metadata
         if (data.registeredById) p.registeredById = data.registeredById;
         if (data.referralSource) p.referralSource = data.referralSource;
-        
+
         // Sync tracking
         p.isSynced = false;
       });
@@ -201,10 +201,10 @@ export const patientRepository = {
    */
   async update(id: string, data: Partial<PatientData>): Promise<Patient> {
     const database = getDatabase();
-    
+
     return database.write(async () => {
       const patient = await database.get<Patient>('patients').find(id);
-      
+
       await patient.update((p) => {
         // Update fields if provided
         if (data.mrn !== undefined) p.mrn = data.mrn;
@@ -230,7 +230,7 @@ export const patientRepository = {
         if (data.consentDate !== undefined) p.consentDate = data.consentDate;
         if (data.registeredById !== undefined) p.registeredById = data.registeredById;
         if (data.referralSource !== undefined) p.referralSource = data.referralSource;
-        
+
         // Mark as unsynced
         p.isSynced = false;
       });
@@ -281,10 +281,10 @@ export const patientRepository = {
    */
   async delete(id: string): Promise<void> {
     const database = getDatabase();
-    
+
     return database.write(async () => {
       const patient = await database.get<Patient>('patients').find(id);
-      
+
       // Add to sync queue before deleting
       await database.get<SyncQueue>('sync_queue').create((sq) => {
         sq.operation = 'DELETE';
@@ -296,7 +296,7 @@ export const patientRepository = {
         sq.status = 'PENDING';
         sq.retryCount = 0;
       });
-      
+
       // Soft delete (marks as deleted, doesn't remove from DB)
       await patient.markAsDeleted();
     });
@@ -308,14 +308,14 @@ export const patientRepository = {
    */
   async getUnsyncedCount(): Promise<number> {
     const database = getDatabase();
-    
+
     // Use filter approach for reliable boolean querying
     // markAsDeleted() records are automatically excluded by WatermelonDB
     const allPatients = await database
       .get<Patient>('patients')
       .query()
       .fetch();
-    
+
     return allPatients.filter((p) => !p.isSynced).length;
   },
 };

@@ -353,7 +353,7 @@ describe('TriageThresholdsSettings - Activation/Deactivation', () => {
   describe('@activate - Show inactive threshold differently', () => {
     it('should visually indicate inactive thresholds', () => {
       const baseThreshold = mockThresholds[0]!;
-      const inactiveThreshold: TriageVitalThreshold = { 
+      const inactiveThreshold: TriageVitalThreshold = {
         id: baseThreshold.id,
         vital_type: baseThreshold.vital_type,
         critical_low: baseThreshold.critical_low,

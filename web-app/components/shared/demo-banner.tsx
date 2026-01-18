@@ -6,7 +6,7 @@ import { APP_ENV } from '@/lib/utils/constants';
 
 /**
  * Demo Mode Banner
- * 
+ *
  * Displays a minimal banner when the app is running in staging/demo mode.
  * Uses the system-banner component for a less distracting UI.
  */
@@ -18,7 +18,7 @@ export function DemoBanner() {
   }, []);
 
   // Determine if we should show the banner
-  const isDemo = APP_ENV === 'staging' || 
+  const isDemo = APP_ENV === 'staging' ||
     process.env.NEXT_PUBLIC_DEMO_MODE === 'true';
 
   if (!mounted || !isDemo) {

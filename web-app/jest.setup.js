@@ -18,7 +18,7 @@ beforeAll(async () => {
       global.Headers = Headers;
       global.fetch = fetch;
     }
-    
+
     const serverModule = await import('./__tests__/mocks/server');
     server = serverModule.server;
     server.listen({ onUnhandledRequest: 'warn' });
@@ -94,4 +94,3 @@ global.ResizeObserver = MockResizeObserver;
 // Suppress console warnings in tests (optional - comment out for debugging)
 // global.console.warn = jest.fn();
 // global.console.error = jest.fn();
-

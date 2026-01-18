@@ -443,7 +443,7 @@ describe('TriageAssessmentForm - Submission', () => {
     await user.type(screen.getByLabelText(/spo2/i), '94');
     await user.clear(screen.getByLabelText(/heart rate/i));
     await user.type(screen.getByLabelText(/heart rate/i), '110');
-    
+
     const systolicInput = screen.getByLabelText(/systolic blood pressure/i);
     await user.clear(systolicInput);
     await user.type(systolicInput, '160');
@@ -483,4 +483,3 @@ describe('TriageAssessmentForm - Accessibility', () => {
     expect(screen.getByRole('form')).toBeInTheDocument();
   });
 });
-

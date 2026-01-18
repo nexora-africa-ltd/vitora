@@ -5,16 +5,16 @@ interface UIState {
   // Sidebar state
   sidebarCollapsed: boolean;
   mobileSidebarOpen: boolean;
-  
+
   // Theme
   theme: 'light' | 'dark' | 'system';
-  
+
   // Notifications
   unreadNotifications: number;
-  
+
   // Global loading
   isGlobalLoading: boolean;
-  
+
   // Actions
   toggleSidebar: () => void;
   setSidebarCollapsed: (collapsed: boolean) => void;
@@ -33,7 +33,7 @@ export const useUIStore = create<UIState>()(
       theme: 'system',
       unreadNotifications: 0,
       isGlobalLoading: false,
-      
+
       // Actions
       toggleSidebar: () => set((state) => ({ sidebarCollapsed: !state.sidebarCollapsed })),
       setSidebarCollapsed: (collapsed) => set({ sidebarCollapsed: collapsed }),

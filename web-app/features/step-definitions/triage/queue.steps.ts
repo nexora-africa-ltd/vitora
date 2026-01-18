@@ -1,6 +1,6 @@
 /**
  * Triage Queue Step Definitions
- * 
+ *
  * Steps for triage queue management, patient flow, and queue actions.
  */
 
@@ -17,7 +17,7 @@ Given(
   'I am on the triage queue dashboard',
   async function (this: VitoraWorld) {
     this.currentPage = 'triage queue';
-    
+
     if (this.page) {
       await this.page.goto('/triage/queue');
       await this.page.waitForLoadState('networkidle');
@@ -30,7 +30,7 @@ Given(
   async function (this: VitoraWorld, dataTable: DataTable) {
     const patients = safeHashes(dataTable.hashes());
     this.store('queuePatients', patients);
-    
+
     // In E2E tests, mock the API response
     if (this.page) {
       await this.page.route('**/api/triage/queue**', async route => {
@@ -69,7 +69,7 @@ Then(
   async function (this: VitoraWorld, dataTable: DataTable) {
     const expectedOrder = safeHashes(dataTable.hashes());
     this.store('expectedPatientOrder', expectedOrder);
-    
+
     if (this.page) {
       const patientCards = await this.page.locator('[data-testid="queue-card"]').all();
       for (let i = 0; i < expectedOrder.length; i++) {
@@ -150,13 +150,13 @@ Given(
   'the current time is {string}',
   async function (this: VitoraWorld, time: string) {
     this.store('currentTime', time);
-    
+
     if (this.page) {
       // Mock the current time
       const [hours, minutes] = time.replace(/\s*(AM|PM)/, '').split(':').map(Number);
       const isPM = time.includes('PM') && hours !== 12;
       const hour24 = isPM ? hours + 12 : hours;
-      
+
       await this.page.evaluate(({ hour24, minutes }) => {
         const mockDate = new Date();
         mockDate.setHours(hour24, minutes, 0, 0);
@@ -225,7 +225,7 @@ When(
   'I select area filter {string}',
   async function (this: VitoraWorld, area: string) {
     this.store('selectedAreaFilter', area);
-    
+
     if (this.page) {
       await this.page.selectOption('[data-testid="area-filter"]', area);
       await this.page.waitForTimeout(500); // Allow filter to apply
@@ -237,7 +237,7 @@ When(
   'I select category filter {string}',
   async function (this: VitoraWorld, category: string) {
     this.store('selectedCategoryFilter', category);
-    
+
     if (this.page) {
       await this.page.selectOption('[data-testid="category-filter"]', category);
       await this.page.waitForTimeout(500);
@@ -249,7 +249,7 @@ When(
   'I select status filter {string}',
   async function (this: VitoraWorld, status: string) {
     this.store('selectedStatusFilter', status);
-    
+
     if (this.page) {
       await this.page.selectOption('[data-testid="status-filter"]', status);
       await this.page.waitForTimeout(500);
@@ -261,11 +261,11 @@ Then(
   'I should only see patients:',
   async function (this: VitoraWorld, dataTable: DataTable) {
     const expectedPatients = safeHashes(dataTable.hashes());
-    
+
     if (this.page) {
       const visibleCards = await this.page.locator('[data-testid="queue-card"]:visible').all();
       expect(visibleCards.length).toBe(expectedPatients.length);
-      
+
       for (const expected of expectedPatients) {
         const cardWithName = this.page.locator(`[data-testid="queue-card"]:has-text("${expected.patient}")`);
         await expect(cardWithName).toBeVisible();
@@ -326,7 +326,7 @@ Then(
   'their status should change to {string}',
   async function (this: VitoraWorld, newStatus: string) {
     this.store('patientStatus', newStatus);
-    
+
     if (this.page) {
       const statusBadge = this.page.locator('[data-testid="status-badge"]').first();
       const statusText = await statusBadge.textContent();
@@ -395,11 +395,11 @@ Then(
   'I should see the full triage assessment details modal including:',
   async function (this: VitoraWorld, dataTable: DataTable) {
     const expectedSections = safeHashes(dataTable.hashes());
-    
+
     if (this.page) {
       const modal = this.page.locator('[data-testid="triage-details-modal"]');
       await expect(modal).toBeVisible();
-      
+
       for (const section of expectedSections) {
         const sectionElement = modal.locator(`[data-testid="section-${section.section?.toLowerCase().replace(/\s+/g, '-')}"]`);
         await expect(sectionElement).toBeVisible();
@@ -424,7 +424,7 @@ Then(
   'the queue header should show:',
   async function (this: VitoraWorld, dataTable: DataTable) {
     const expectedStats = safeHashes(dataTable.hashes());
-    
+
     if (this.page) {
       const header = this.page.locator('[data-testid="queue-header"]');
       for (const stat of expectedStats) {
@@ -441,7 +441,7 @@ Then(
     if (this.page) {
       const categorySummary = this.page.locator('[data-testid="category-summary"]');
       await expect(categorySummary).toBeVisible();
-      
+
       const categories = ['RED', 'ORANGE', 'YELLOW', 'GREEN', 'BLUE'];
       for (const cat of categories) {
         const catElement = categorySummary.locator(`[data-testid="category-count-${cat.toLowerCase()}"]`);

@@ -1,17 +1,17 @@
 /**
  * DHA Practitioner Search Component
- * 
+ *
  * Reusable component that searches the DHA (Digital Health Authority)
  * Health Worker Registry by National ID or Passport number.
- * 
+ *
  * Returns comprehensive practitioner information including:
  * - Membership status and registration details
  * - License history with validity dates
  * - Professional qualifications and cadre
  * - Contact information
- * 
+ *
  * Based on: https://uat.dha.go.ke/v1/practitioner-search API
- * 
+ *
  * @example
  * <DHAPractitionerSearch
  *   onSelect={(practitioner) => {
@@ -30,12 +30,12 @@
 'use client';
 
 import { useState, useCallback } from 'react';
-import { 
-  Search, 
-  CheckCircle2, 
-  XCircle, 
-  Loader2, 
-  UserCheck, 
+import {
+  Search,
+  CheckCircle2,
+  XCircle,
+  Loader2,
+  UserCheck,
   GraduationCap,
   Phone,
   Mail,

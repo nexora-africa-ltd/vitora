@@ -30,9 +30,9 @@ import {
   DialogTitle,
   DialogTrigger,
 } from '@/components/ui/dialog';
-import { 
-  useAdmission, 
-  useKardexByAdmission, 
+import {
+  useAdmission,
+  useKardexByAdmission,
   useUpdateKardex,
   useAddKardexShiftNote,
   useAddKardexHandoverNote
@@ -84,7 +84,7 @@ export default function KardexPage() {
   const [shiftNoteOpen, setShiftNoteOpen] = useState(false);
   const [shiftNoteContent, setShiftNoteContent] = useState('');
   const [shiftNoteType, setShiftNoteType] = useState<ShiftType>('DAY');
-  
+
   const [handoverNoteOpen, setHandoverNoteOpen] = useState(false);
   const [handoverNoteContent, setHandoverNoteContent] = useState('');
   const [handoverNoteShift, setHandoverNoteShift] = useState<ShiftType>('DAY');

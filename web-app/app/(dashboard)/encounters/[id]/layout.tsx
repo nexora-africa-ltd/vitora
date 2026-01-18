@@ -1,15 +1,15 @@
 /**
  * Encounter Shell Layout
- * 
+ *
  * Wraps all /encounters/[id]/* routes with PatientProvider and EncounterProvider.
  * Derives patientId from the encounter data, ensuring proper context hierarchy.
- * 
+ *
  * Flow:
  * 1. Fetch encounter to get patientId
  * 2. Wrap with PatientProvider using derived patientId
  * 3. Wrap with EncounterProvider for encounter-specific context
  * 4. Display PatientShellHeader with encounter info
- * 
+ *
  * Usage:
  * - Automatically applied to all routes under /encounters/[id]/
  * - Children have access to both usePatientContext() and useEncounterContext()

@@ -64,14 +64,14 @@ interface StatsCardProps {
   className?: string;
 }
 
-function StatsCard({ 
-  title, 
-  value, 
-  description, 
-  icon, 
-  trend, 
+function StatsCard({
+  title,
+  value,
+  description,
+  icon,
+  trend,
   trendValue,
-  className 
+  className
 }: StatsCardProps) {
   return (
     <Card className={className}>
@@ -90,8 +90,8 @@ function StatsCard({
         )}
         {trend && trendValue && (
           <p className={`text-xs mt-1 ${
-            trend === 'up' ? 'text-green-600' : 
-            trend === 'down' ? 'text-red-600' : 
+            trend === 'up' ? 'text-green-600' :
+            trend === 'down' ? 'text-red-600' :
             'text-gray-600'
           }`}>
             {trend === 'up' ? '↑' : trend === 'down' ? '↓' : '→'} {trendValue}
@@ -113,11 +113,11 @@ interface ClaimsFilterProps {
   onSearchChange: (query: string) => void;
 }
 
-function ClaimsFilter({ 
-  status, 
-  onStatusChange, 
-  searchQuery, 
-  onSearchChange 
+function ClaimsFilter({
+  status,
+  onStatusChange,
+  searchQuery,
+  onSearchChange
 }: ClaimsFilterProps) {
   return (
     <div className="flex flex-col sm:flex-row gap-4">
@@ -206,8 +206,8 @@ function ClaimsTable({ claims, isLoading, onClaimClick }: ClaimsTableProps) {
       </TableHeader>
       <TableBody>
         {claims.map((claim) => (
-          <TableRow 
-            key={claim.id} 
+          <TableRow
+            key={claim.id}
             className="cursor-pointer hover:bg-muted/50"
             onClick={() => onClaimClick(claim)}
           >
@@ -244,13 +244,13 @@ function ClaimsTable({ claims, isLoading, onClaimClick }: ClaimsTableProps) {
             </TableCell>
             <TableCell>
               <p className="text-sm">
-                {claim.submitted_at 
+                {claim.submitted_at
                   ? format(parseISO(claim.submitted_at), 'MMM d, yyyy')
                   : format(parseISO(claim.created_at), 'MMM d, yyyy')
                 }
               </p>
               <p className="text-xs text-muted-foreground">
-                {claim.submitted_at 
+                {claim.submitted_at
                   ? format(parseISO(claim.submitted_at), 'h:mm a')
                   : 'Not submitted'
                 }
@@ -273,17 +273,17 @@ function ClaimsTable({ claims, isLoading, onClaimClick }: ClaimsTableProps) {
 export default function SHAClaimsPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  
+
   const [statusFilter, setStatusFilter] = useState(searchParams.get('status') || 'all');
   const [searchQuery, setSearchQuery] = useState('');
-  
+
   // Fetch claims with filter
   const { data: claimsData, isLoading, refetch, isRefetching } = useClaims({
     status: statusFilter !== 'all' ? statusFilter as ClaimStatus : undefined,
   });
 
   const claims = claimsData?.results || [];
-  
+
   // Calculate stats
   const stats = {
     total: claims.length,
@@ -345,8 +345,8 @@ export default function SHAClaimsPage() {
           </p>
         </div>
         <div className="flex items-center gap-2">
-          <Button 
-            variant="outline" 
+          <Button
+            variant="outline"
             onClick={() => refetch()}
             disabled={isRefetching}
           >

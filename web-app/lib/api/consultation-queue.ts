@@ -11,8 +11,8 @@
  */
 
 import { apiClient } from './client';
-import type { 
-  ConsultationQueueItem, 
+import type {
+  ConsultationQueueItem,
   ConsultationQueueFilters,
   Encounter,
 } from '@/lib/types/encounter';
@@ -35,7 +35,7 @@ export interface ConsultationQueueResponse {
 export const consultationQueueApi = {
   /**
    * Get the consultation queue.
-   * 
+   *
    * Returns encounters ready for consultation (COMPLETED, BYPASSED, NOT_APPLICABLE triage).
    * Sorted by priority (triage category) then wait time.
    */
@@ -49,10 +49,10 @@ export const consultationQueueApi = {
 
   /**
    * Call a patient for consultation.
-   * 
+   *
    * Sets consultation_status to CALLED and records the call time.
    * Creates a notification for the patient.
-   * 
+   *
    * @param encounterId - The encounter ID to call
    * @returns The updated encounter
    */
@@ -65,10 +65,10 @@ export const consultationQueueApi = {
 
   /**
    * Start consultation for a patient.
-   * 
+   *
    * Sets consultation_status to IN_PROGRESS and records start time.
    * Only allowed from WAITING or CALLED status.
-   * 
+   *
    * @param encounterId - The encounter ID to start consultation for
    * @returns The updated encounter
    */
@@ -81,18 +81,18 @@ export const consultationQueueApi = {
 
   /**
    * Bypass triage for an encounter.
-   * 
+   *
    * Only allowed for OPTIONAL triage encounters.
    * Sets triage_status to BYPASSED with the given reason.
-   * 
+   *
    * @param encounterId - The encounter ID to bypass triage for
    * @param reason - The bypass reason (required)
    * @param notes - Additional notes (optional, for 'OTHER' reason)
    * @returns The updated encounter
    */
   async bypassTriage(
-    encounterId: number, 
-    reason: string, 
+    encounterId: number,
+    reason: string,
     notes?: string
   ): Promise<Encounter> {
     const response = await apiClient.post<Encounter>(

@@ -2,7 +2,7 @@
  * Clinical Flow Accordion Component
  * Renders the encounter clinical sections in an accordion format.
  * Replaces the tab-based navigation with a more visual accordion.
- * 
+ *
  * Sections:
  * 1. Medical History (Hx)
  * 2. History of Present Illness (HPI)

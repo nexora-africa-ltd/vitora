@@ -98,8 +98,8 @@ export default function DrugDetailPage({ params }: { params: Promise<{ id: strin
     } catch (err: any) {
       console.error('Error deleting drug:', err);
       setDeleteError(
-        err.response?.data?.detail || 
-        err.message || 
+        err.response?.data?.detail ||
+        err.message ||
         'Failed to delete drug. This drug may have existing stock.'
       );
       setIsDeleting(false);
@@ -328,8 +328,8 @@ export default function DrugDetailPage({ params }: { params: Promise<{ id: strin
                   ))}
                 </div>
                 {batches.results.length > 5 && (
-                  <Button 
-                    variant="link" 
+                  <Button
+                    variant="link"
                     onClick={() => router.push('/pharmacy?tab=inventory')}
                     className="mt-2"
                   >

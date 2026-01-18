@@ -10,7 +10,7 @@ export interface EncounterFormData {
   encounter_type: EncounterType;
   encounter_date: string;
   chief_complaint: string;
-  
+
   // Vital signs
   temperature: number | null;
   pulse: number | null;
@@ -20,7 +20,7 @@ export interface EncounterFormData {
   spo2: number | null;
   weight: number | null;
   height: number | null;
-  
+
   // Medical history
   allergies: string;
   chronic_conditions: string;
@@ -28,18 +28,18 @@ export interface EncounterFormData {
   past_surgeries: string;
   family_history: string;
   social_history: string;
-  
+
   // Clinical notes
   notes: string;
   history_of_present_illness: string;
   physical_examination: string;
   assessment: string;
   plan?: string;  // SOAP 'P' (Plan) - can also use TreatmentPlan.clinical_notes
-  
+
   // Clinical template
   clinical_template?: number | null;
   clinical_template_data?: Record<string, Record<string, unknown>> | null;
-  
+
   // Status
   status: 'DRAFT' | 'IN_PROGRESS' | 'COMPLETED';
 }
@@ -49,7 +49,7 @@ export const defaultEncounterFormData: EncounterFormData = {
   encounter_type: 'select' as EncounterType,
   encounter_date: new Date().toISOString().split('T')[0] || '',
   chief_complaint: '',
-  
+
   temperature: null,
   pulse: null,
   blood_pressure_systolic: null,
@@ -58,23 +58,23 @@ export const defaultEncounterFormData: EncounterFormData = {
   spo2: null,
   weight: null,
   height: null,
-  
+
   allergies: '',
   chronic_conditions: '',
   current_medications: '',
   past_surgeries: '',
   family_history: '',
   social_history: '',
-  
+
   notes: '',
   history_of_present_illness: '',
   physical_examination: '',
   assessment: '',
   // Note: SOAP 'P' (Plan) uses TreatmentPlan.clinical_notes
-  
+
   clinical_template: null,
   clinical_template_data: null,
-  
+
   status: 'DRAFT',
 };
 

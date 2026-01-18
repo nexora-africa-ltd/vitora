@@ -36,7 +36,7 @@ const processQueue = (error: Error | null, token: string | null = null) => {
 apiClient.interceptors.request.use(
   async (config: InternalAxiosRequestConfig) => {
     const token = tokenStorage.getAccessToken();
-    
+
     if (token) {
       // Check if token needs refresh
       if (isTokenExpired(token, 60)) {
@@ -49,7 +49,7 @@ apiClient.interceptors.request.use(
         config.headers.Authorization = `Bearer ${token}`;
       }
     }
-    
+
     return config;
   },
   (error) => Promise.reject(error)
@@ -62,7 +62,7 @@ apiClient.interceptors.response.use(
   (response) => response,
   async (error: AxiosError) => {
     const originalRequest = error.config as InternalAxiosRequestConfig & { _retry?: boolean };
-    
+
     // Handle 401 Unauthorized
     if (error.response?.status === 401 && !originalRequest._retry) {
       if (isRefreshing) {
@@ -116,7 +116,7 @@ async function refreshTokenIfNeeded(): Promise<string | null> {
     const response = await axios.post(`${API_BASE_URL}/api/token/refresh/`, {
       refresh: refreshToken,
     });
-    
+
     const newAccessToken = response.data.access;
     tokenStorage.setTokens(newAccessToken, refreshToken);
     return newAccessToken;
@@ -160,7 +160,7 @@ export function transformAxiosError(error: AxiosError): ApiError {
       details: data?.errors || data,
     };
   }
-  
+
   if (error.request) {
     return {
       message: 'Network error. Please check your connection.',
@@ -168,7 +168,7 @@ export function transformAxiosError(error: AxiosError): ApiError {
       code: 'NETWORK_ERROR',
     };
   }
-  
+
   return {
     message: error.message || 'An unexpected error occurred',
     status: 0,

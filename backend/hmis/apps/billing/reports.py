@@ -4,6 +4,7 @@ Billing Reports Service.
 Generates financial reports for billing module.
 Based on deliverables spec § 10 (lines 930-1014).
 """
+
 from datetime import date, timedelta
 from decimal import Decimal
 from typing import Any

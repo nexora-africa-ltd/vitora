@@ -103,16 +103,16 @@ export function useNotificationCenter(options?: {
   pollingInterval?: number | false;
 }) {
   const pollingInterval = options?.pollingInterval ?? DEFAULT_POLLING_INTERVAL;
-  
+
   const notificationsQuery = useNotifications(
     { is_read: false },
     { refetchInterval: pollingInterval }
   );
-  
+
   const unreadCountQuery = useUnreadCount({
     refetchInterval: pollingInterval,
   });
-  
+
   const markReadMutation = useMarkNotificationRead();
   const markAllReadMutation = useMarkAllRead();
 
@@ -121,24 +121,24 @@ export function useNotificationCenter(options?: {
     notifications: notificationsQuery.data?.results ?? [],
     unreadCount: unreadCountQuery.data?.unread_count ?? 0,
     serverTime: notificationsQuery.data?.server_time,
-    
+
     // Loading states
     isLoading: notificationsQuery.isLoading || unreadCountQuery.isLoading,
     isRefetching: notificationsQuery.isRefetching || unreadCountQuery.isRefetching,
-    
+
     // Error states
     error: notificationsQuery.error || unreadCountQuery.error,
-    
+
     // Actions
     markAsRead: markReadMutation.mutate,
     markAsReadAsync: markReadMutation.mutateAsync,
     markAllAsRead: markAllReadMutation.mutate,
     markAllAsReadAsync: markAllReadMutation.mutateAsync,
-    
+
     // Mutation states
     isMarkingRead: markReadMutation.isPending,
     isMarkingAllRead: markAllReadMutation.isPending,
-    
+
     // Refetch
     refetch: () => {
       notificationsQuery.refetch();

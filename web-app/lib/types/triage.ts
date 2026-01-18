@@ -124,12 +124,12 @@ export const AVPU_CONFIG: Record<AVPUStatus, AVPUConfig> = {
 // PATIENT JOURNEY STAGES
 // =============================================================================
 
-export type PatientStage = 
-  | 'REGISTERED' 
-  | 'AWAITING_TRIAGE' 
-  | 'IN_TRIAGE' 
-  | 'AWAITING_CONSULTATION' 
-  | 'IN_CONSULTATION' 
+export type PatientStage =
+  | 'REGISTERED'
+  | 'AWAITING_TRIAGE'
+  | 'IN_TRIAGE'
+  | 'AWAITING_CONSULTATION'
+  | 'IN_CONSULTATION'
   | 'COMPLETED';
 
 export interface PatientStageConfig {

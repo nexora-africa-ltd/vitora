@@ -307,7 +307,7 @@ describe('Form Components', () => {
   describe('useFormField', () => {
     it('should throw when used outside FormField', () => {
       const consoleSpy = jest.spyOn(console, 'error').mockImplementation(() => {});
-      
+
       // Note: The hook checks for fieldContext, not itemContext
       // This test verifies the hook exists and has expected behavior
       function TestComponent() {
@@ -328,10 +328,10 @@ describe('Form Components', () => {
       }
 
       render(<TestComponent />);
-      
+
       // Should render field info when used correctly
       expect(screen.getByTestId('field-name')).toHaveTextContent('test');
-      
+
       consoleSpy.mockRestore();
     });
   });

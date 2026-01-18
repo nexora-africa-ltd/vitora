@@ -5,22 +5,22 @@ from django.db import migrations, models
 
 def generate_prescription_numbers(apps, schema_editor):
     """Generate prescription numbers for existing prescriptions."""
-    Prescription = apps.get_model('pharmacy', 'Prescription')
+    Prescription = apps.get_model("pharmacy", "Prescription")
     from datetime import datetime
-    
+
     # Group prescriptions by date
     prescriptions_by_date = {}
-    for prescription in Prescription.objects.all().order_by('prescribed_at'):
+    for prescription in Prescription.objects.all().order_by("prescribed_at"):
         date_str = prescription.prescribed_at.strftime("%Y%m%d")
         if date_str not in prescriptions_by_date:
             prescriptions_by_date[date_str] = []
         prescriptions_by_date[date_str].append(prescription)
-    
+
     # Assign sequential numbers for each date
     for date_str, prescriptions in prescriptions_by_date.items():
         for idx, prescription in enumerate(prescriptions, start=1):
             prescription.prescription_number = f"RX-{date_str}-{idx:04d}"
-            prescription.save(update_fields=['prescription_number'])
+            prescription.save(update_fields=["prescription_number"])
 
 
 class Migration(migrations.Migration):

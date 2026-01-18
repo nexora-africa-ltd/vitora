@@ -4,11 +4,11 @@ import { useState, useCallback, useEffect } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { apiClient } from '@/lib/api/client';
 import { useDebounce } from '@/lib/hooks/use-debounce';
-import type { 
-  EncounterFormData, 
-  VitalAlert, 
+import type {
+  EncounterFormData,
+  VitalAlert,
   ICD10SearchResult,
-  DiagnosisFormData 
+  DiagnosisFormData
 } from '@/lib/types/encounter-form';
 import type { Encounter } from '@/lib/types/encounter';
 import type { Patient } from '@/lib/types/patient';
@@ -18,7 +18,7 @@ import type { Patient } from '@/lib/types/patient';
  */
 export function useICD10Search(query: string) {
   const debouncedQuery = useDebounce(query, 300);
-  
+
   return useQuery({
     queryKey: ['icd10-search', debouncedQuery],
     queryFn: async () => {
@@ -40,7 +40,7 @@ export function useICD10Search(query: string) {
  */
 export function usePatientSearch(query: string) {
   const debouncedQuery = useDebounce(query, 300);
-  
+
   return useQuery({
     queryKey: ['patient-search', debouncedQuery],
     queryFn: async () => {
@@ -79,7 +79,7 @@ export function useRecentPatients(limit: number = 10) {
  */
 export function useCreateEncounterWithValidation() {
   const queryClient = useQueryClient();
-  
+
   return useMutation({
     mutationFn: async (data: EncounterFormData) => {
       // Transform form data to API format
@@ -106,7 +106,7 @@ export function useCreateEncounterWithValidation() {
         notes: data.notes,
         status: data.status,
       };
-      
+
       const response = await apiClient.post<Encounter>('/api/encounters/', apiData);
       return response.data;
     },
@@ -123,7 +123,7 @@ export function useCreateEncounterWithValidation() {
  */
 export function useAddDiagnosis(encounterId: number) {
   const queryClient = useQueryClient();
-  
+
   return useMutation({
     mutationFn: async (data: DiagnosisFormData) => {
       const response = await apiClient.post(
@@ -143,7 +143,7 @@ export function useAddDiagnosis(encounterId: number) {
  */
 export function getVitalAlerts(data: EncounterFormData): VitalAlert[] {
   const alerts: VitalAlert[] = [];
-  
+
   // Temperature alerts
   if (data.temperature !== null) {
     if (data.temperature < 35 || data.temperature > 39) {
@@ -160,7 +160,7 @@ export function getVitalAlerts(data: EncounterFormData): VitalAlert[] {
       });
     }
   }
-  
+
   // Pulse alerts
   if (data.pulse !== null) {
     if (data.pulse < 50 || data.pulse > 120) {
@@ -177,7 +177,7 @@ export function getVitalAlerts(data: EncounterFormData): VitalAlert[] {
       });
     }
   }
-  
+
   // SpO2 alerts - spectrum-based ranges (using rounded integer values)
   if (data.spo2 !== null) {
     const spo2Rounded = Math.round(data.spo2);
@@ -208,7 +208,7 @@ export function getVitalAlerts(data: EncounterFormData): VitalAlert[] {
     }
     // 95-100% is normal, no alert needed
   }
-  
+
   // Respiratory rate alerts
   if (data.respiratory_rate !== null) {
     if (data.respiratory_rate < 8 || data.respiratory_rate > 30) {
@@ -225,12 +225,12 @@ export function getVitalAlerts(data: EncounterFormData): VitalAlert[] {
       });
     }
   }
-  
+
   // Blood pressure alerts
   if (data.blood_pressure_systolic !== null && data.blood_pressure_diastolic !== null) {
     const sys = data.blood_pressure_systolic;
     const dia = data.blood_pressure_diastolic;
-    
+
     if (sys >= 180 || dia >= 120) {
       alerts.push({
         field: 'blood_pressure',
@@ -251,7 +251,7 @@ export function getVitalAlerts(data: EncounterFormData): VitalAlert[] {
       });
     }
   }
-  
+
   return alerts;
 }
 
@@ -262,16 +262,16 @@ export function calculateBMI(weight: number | null, height: number | null): { bm
   if (!weight || !height || height <= 0) {
     return { bmi: null, classification: '' };
   }
-  
+
   const heightM = height / 100;
   const bmi = weight / (heightM * heightM);
-  
+
   let classification = '';
   if (bmi < 18.5) classification = 'Underweight';
   else if (bmi < 25) classification = 'Normal';
   else if (bmi < 30) classification = 'Overweight';
   else classification = 'Obese';
-  
+
   return { bmi: Math.round(bmi * 10) / 10, classification };
 }
 
@@ -285,12 +285,12 @@ export function useAutoSave(
 ) {
   const [lastSaved, setLastSaved] = useState<Date | null>(null);
   const [isSaving, setIsSaving] = useState(false);
-  
+
   const debouncedData = useDebounce(data, 5000); // 5 second debounce
-  
+
   useEffect(() => {
     if (!encounterId || !isDirty) return;
-    
+
     const save = async () => {
       setIsSaving(true);
       try {
@@ -308,9 +308,9 @@ export function useAutoSave(
         setIsSaving(false);
       }
     };
-    
+
     save();
   }, [debouncedData, encounterId, isDirty]);
-  
+
   return { lastSaved, isSaving };
 }

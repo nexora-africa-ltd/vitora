@@ -1,7 +1,7 @@
 'use client';
 
-import { 
-  ScanLine, 
+import {
+  ScanLine,
   Construction,
   ImageIcon,
   Radio,
@@ -76,8 +76,8 @@ export default function ImagingPage() {
           </div>
           <h2 className="text-2xl font-semibold mb-2">Coming Soon</h2>
           <p className="text-muted-foreground max-w-md">
-            The Imaging module is currently under development. This will provide 
-            comprehensive radiology workflow management including X-rays, ultrasounds, 
+            The Imaging module is currently under development. This will provide
+            comprehensive radiology workflow management including X-rays, ultrasounds,
             CT scans, and MRI integration.
           </p>
           <Badge variant="secondary" className="mt-4">
@@ -122,7 +122,7 @@ export default function ImagingPage() {
             <div>
               <p className="text-sm font-medium">DICOM & PACS Ready</p>
               <p className="text-sm text-muted-foreground">
-                The imaging module will support DICOM standards and integrate with 
+                The imaging module will support DICOM standards and integrate with
                 existing PACS systems for seamless image viewing and archiving.
               </p>
             </div>

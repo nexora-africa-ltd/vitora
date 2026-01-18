@@ -1,11 +1,11 @@
 /**
  * Terminology React Query Hooks
- * 
+ *
  * Pre-configured hooks for searching DHA/SHA terminologies with:
  * - Debounced search (minimum 2 characters)
  * - Smart caching (30 minutes - terminologies don't change often)
  * - Type-safe responses
- * 
+ *
  * @example
  * // In a component
  * const { data, isLoading } = useICD11Search({ search: 'malaria' });
@@ -26,17 +26,17 @@ import type {
 
 export const terminologyQueryKeys = {
   all: ['terminology'] as const,
-  icd11: (params?: TerminologySearchParams) => 
+  icd11: (params?: TerminologySearchParams) =>
     [...terminologyQueryKeys.all, 'icd11', params] as const,
-  interventions: (params?: InterventionSearchParams) => 
+  interventions: (params?: InterventionSearchParams) =>
     [...terminologyQueryKeys.all, 'interventions', params] as const,
-  ichi: (params?: TerminologySearchParams) => 
+  ichi: (params?: TerminologySearchParams) =>
     [...terminologyQueryKeys.all, 'ichi', params] as const,
-  loinc: (params?: TerminologySearchParams) => 
+  loinc: (params?: TerminologySearchParams) =>
     [...terminologyQueryKeys.all, 'loinc', params] as const,
-  drugs: (params?: DrugSearchParams) => 
+  drugs: (params?: DrugSearchParams) =>
     [...terminologyQueryKeys.all, 'drugs', params] as const,
-  activeComponents: (params?: TerminologySearchParams) => 
+  activeComponents: (params?: TerminologySearchParams) =>
     [...terminologyQueryKeys.all, 'activeComponents', params] as const,
 };
 
@@ -64,7 +64,7 @@ const DEFAULT_OPTIONS: Required<Omit<UseTerminologySearchOptions, 'enabled'>> = 
 
 /**
  * Search ICD-11 diagnosis codes
- * 
+ *
  * @example
  * const { data, isLoading, error } = useICD11Search({ search: 'diabetes' });
  */
@@ -74,7 +74,7 @@ export function useICD11Search(
 ) {
   const { minSearchLength, staleTime } = { ...DEFAULT_OPTIONS, ...options };
   const searchLength = params?.search?.length ?? 0;
-  
+
   return useQuery({
     queryKey: terminologyQueryKeys.icd11(params),
     queryFn: () => terminologyApi.searchICD11(params),
@@ -89,11 +89,11 @@ export function useICD11Search(
 
 /**
  * Search SHA interventions/procedures
- * 
+ *
  * @example
- * const { data } = useInterventionsSearch({ 
+ * const { data } = useInterventionsSearch({
  *   search: 'consultation',
- *   facility_level: 4 
+ *   facility_level: 4
  * });
  */
 export function useInterventionsSearch(
@@ -102,7 +102,7 @@ export function useInterventionsSearch(
 ) {
   const { minSearchLength, staleTime } = { ...DEFAULT_OPTIONS, ...options };
   const searchLength = params?.search?.length ?? 0;
-  
+
   return useQuery({
     queryKey: terminologyQueryKeys.interventions(params),
     queryFn: () => terminologyApi.searchInterventions(params),
@@ -117,7 +117,7 @@ export function useInterventionsSearch(
 
 /**
  * Search ICHI codes
- * 
+ *
  * @example
  * const { data } = useICHISearch({ search: 'appendectomy' });
  */
@@ -127,7 +127,7 @@ export function useICHISearch(
 ) {
   const { minSearchLength, staleTime } = { ...DEFAULT_OPTIONS, ...options };
   const searchLength = params?.search?.length ?? 0;
-  
+
   return useQuery({
     queryKey: terminologyQueryKeys.ichi(params),
     queryFn: () => terminologyApi.searchICHI(params),
@@ -142,7 +142,7 @@ export function useICHISearch(
 
 /**
  * Search LOINC lab test codes
- * 
+ *
  * @example
  * const { data } = useLOINCSearch({ search: 'hemoglobin' });
  */
@@ -152,7 +152,7 @@ export function useLOINCSearch(
 ) {
   const { minSearchLength, staleTime } = { ...DEFAULT_OPTIONS, ...options };
   const searchLength = params?.search?.length ?? 0;
-  
+
   return useQuery({
     queryKey: terminologyQueryKeys.loinc(params),
     queryFn: () => terminologyApi.searchLOINC(params),
@@ -167,7 +167,7 @@ export function useLOINCSearch(
 
 /**
  * Search Kenya drug registry
- * 
+ *
  * @example
  * const { data } = useDrugsSearch({ search: 'paracetamol' });
  */
@@ -177,7 +177,7 @@ export function useDrugsSearch(
 ) {
   const { minSearchLength, staleTime } = { ...DEFAULT_OPTIONS, ...options };
   const searchLength = params?.search?.length ?? 0;
-  
+
   return useQuery({
     queryKey: terminologyQueryKeys.drugs(params),
     queryFn: () => terminologyApi.searchDrugs(params),
@@ -192,7 +192,7 @@ export function useDrugsSearch(
 
 /**
  * Search drug active components
- * 
+ *
  * @example
  * const { data } = useActiveComponentsSearch({ search: 'acetaminophen' });
  */
@@ -202,7 +202,7 @@ export function useActiveComponentsSearch(
 ) {
   const { minSearchLength, staleTime } = { ...DEFAULT_OPTIONS, ...options };
   const searchLength = params?.search?.length ?? 0;
-  
+
   return useQuery({
     queryKey: terminologyQueryKeys.activeComponents(params),
     queryFn: () => terminologyApi.searchActiveComponents(params),

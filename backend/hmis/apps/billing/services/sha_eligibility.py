@@ -301,9 +301,11 @@ class SHAEligibilityService:
             ),
             response_data={
                 "cached": True,
-                "cached_from": sha_member.last_eligibility_check.isoformat()
-                if sha_member.last_eligibility_check
-                else None,
+                "cached_from": (
+                    sha_member.last_eligibility_check.isoformat()
+                    if sha_member.last_eligibility_check
+                    else None
+                ),
                 **cached_response,
             },
             response_time_ms=0,  # No API call made
@@ -510,9 +512,11 @@ class SHAEligibilityService:
                                 {
                                     "name": dep.patient.full_name if dep.patient else "Unknown",
                                     "relationship": dep.get_membership_type_display(),
-                                    "date_of_birth": dep.patient.date_of_birth.isoformat()
-                                    if dep.patient and dep.patient.date_of_birth
-                                    else None,
+                                    "date_of_birth": (
+                                        dep.patient.date_of_birth.isoformat()
+                                        if dep.patient and dep.patient.date_of_birth
+                                        else None
+                                    ),
                                     "sha_number": dep.sha_number,
                                     "is_active": dep.status == SHAMember.MembershipStatus.ACTIVE,
                                 }

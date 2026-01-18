@@ -5,7 +5,7 @@ Manage patient identity and information across the healthcare network.
 
 ## Introduction
 
-The Patient resource represents an individual receiving healthcare services within the HIE network. It contains demographic information, identifiers, and contact details necessary for healthcare coordination across facilities. 
+The Patient resource represents an individual receiving healthcare services within the HIE network. It contains demographic information, identifiers, and contact details necessary for healthcare coordination across facilities.
 
 **All Patient resource APIs require JWT authentication.** 🔑 [Learn how to obtain your JWT token here](#).
 
@@ -55,7 +55,7 @@ Healthcare providers can manage comprehensive patient information including demo
 
 ## Patient Resource APIs
 
-The following APIs are available for interacting with the Patient resource. 
+The following APIs are available for interacting with the Patient resource.
 
 🔒 **All requests require JWT authentication.**
 
@@ -97,8 +97,8 @@ curl -X GET "{base_url}/v3/client-registry/fetch-client?identification_type=Nati
 ```json
 curl -X GET "{base_url}/v3/client-registry/fetch-client?identification_type=National ID&identification_number=xxxxxxxx&agent=SAFARICOM-CONSORTIUM-SANDBOX" \
   -H "Authorization: Bearer YOUR_JWT_TOKEN"```
-  
-  
+
+
 #### Query Parameters
 
 | Parameter | Required | Description |
@@ -492,4 +492,3 @@ At patient registration or before scheduling procedures, use the Eligibility Che
 5. **Handle Sensitive Data Securely:** Always follow data privacy regulations and implement proper security measures when handling patient information.
 
 6. **Document Data Sources:** Track and document the origin of patient information and any modifications made to maintain data integrity.
-

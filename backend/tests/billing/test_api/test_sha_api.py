@@ -1418,11 +1418,12 @@ class TestOfflineClaimQueuing:
         sample_sha_claim.save()
 
         # Mock connectivity checker to return online
-        with patch(
-            "hmis.apps.billing.services.sha_claims.ConnectivityChecker"
-        ) as MockChecker, patch(
-            "hmis.apps.billing.services.sha_claims.SHAClaimsService._submit_to_sha_api"
-        ) as mock_submit:
+        with (
+            patch("hmis.apps.billing.services.sha_claims.ConnectivityChecker") as MockChecker,
+            patch(
+                "hmis.apps.billing.services.sha_claims.SHAClaimsService._submit_to_sha_api"
+            ) as mock_submit,
+        ):
             mock_instance = MagicMock()
             mock_instance.check.return_value = True  # Online
             MockChecker.return_value = mock_instance
@@ -1499,11 +1500,12 @@ class TestOfflineClaimQueuing:
         sample_sha_claim.save()
 
         # Mock connectivity as online but submission fails with network error
-        with patch(
-            "hmis.apps.billing.services.sha_claims.ConnectivityChecker"
-        ) as MockChecker, patch(
-            "hmis.apps.billing.services.sha_claims.SHAClaimsService._submit_to_sha_api"
-        ) as mock_submit:
+        with (
+            patch("hmis.apps.billing.services.sha_claims.ConnectivityChecker") as MockChecker,
+            patch(
+                "hmis.apps.billing.services.sha_claims.SHAClaimsService._submit_to_sha_api"
+            ) as mock_submit,
+        ):
             mock_instance = MagicMock()
             mock_instance.check.return_value = True  # Online
             MockChecker.return_value = mock_instance
@@ -1545,9 +1547,10 @@ class TestProcessQueuedClaims:
         assert sample_sha_claim.status == "pending_submission"
 
         # Now process queued claims (simulating connectivity restored)
-        with patch.object(SHAClaimsService, "_submit_to_sha_api") as mock_submit, patch(
-            "hmis.apps.billing.services.sha_claims.ConnectivityChecker"
-        ) as MockChecker:
+        with (
+            patch.object(SHAClaimsService, "_submit_to_sha_api") as mock_submit,
+            patch("hmis.apps.billing.services.sha_claims.ConnectivityChecker") as MockChecker,
+        ):
             mock_instance = MagicMock()
             mock_instance.check.return_value = True  # Back online
             MockChecker.return_value = mock_instance
@@ -1588,9 +1591,10 @@ class TestProcessQueuedClaims:
         queue_entry_id = response.data["queue_entry_id"]
 
         # Process queued claims
-        with patch.object(SHAClaimsService, "_submit_to_sha_api") as mock_submit, patch(
-            "hmis.apps.billing.services.sha_claims.ConnectivityChecker"
-        ) as MockChecker:
+        with (
+            patch.object(SHAClaimsService, "_submit_to_sha_api") as mock_submit,
+            patch("hmis.apps.billing.services.sha_claims.ConnectivityChecker") as MockChecker,
+        ):
             mock_instance = MagicMock()
             mock_instance.check.return_value = True
             MockChecker.return_value = mock_instance
@@ -1624,9 +1628,10 @@ class TestProcessQueuedClaims:
         queue_entry_id = response.data["queue_entry_id"]
 
         # Process with failure
-        with patch.object(SHAClaimsService, "submit_claim") as mock_submit, patch(
-            "hmis.apps.billing.services.sha_claims.ConnectivityChecker"
-        ) as MockChecker:
+        with (
+            patch.object(SHAClaimsService, "submit_claim") as mock_submit,
+            patch("hmis.apps.billing.services.sha_claims.ConnectivityChecker") as MockChecker,
+        ):
             mock_submit.side_effect = Exception("API Error")
 
             SHAClaimsService().process_queued_claims()

@@ -219,8 +219,8 @@ export default function ClaimDetailPage() {
         </div>
 
         <div className="flex items-center gap-2">
-          <Button 
-            variant="outline" 
+          <Button
+            variant="outline"
             onClick={() => refetch()}
             disabled={isRefetching}
           >
@@ -297,7 +297,7 @@ export default function ClaimDetailPage() {
               <Separator />
               <div className="flex justify-between">
                 <span className="text-muted-foreground">Invoice</span>
-                <Link 
+                <Link
                   href={`/billing/invoices/${claim.invoice_id}`}
                   className="font-medium text-primary hover:underline"
                 >
@@ -348,7 +348,7 @@ export default function ClaimDetailPage() {
               <Separator />
               <div className="flex justify-between">
                 <span className="text-muted-foreground">MRN</span>
-                <Link 
+                <Link
                   href={`/patients/${claim.patient_id}`}
                   className="font-medium font-mono text-primary hover:underline"
                 >
@@ -358,7 +358,7 @@ export default function ClaimDetailPage() {
               <Separator />
               <div className="flex justify-between">
                 <span className="text-muted-foreground">Encounter</span>
-                <Link 
+                <Link
                   href={`/encounters/${claim.encounter_id}`}
                   className="font-medium text-primary hover:underline"
                 >

@@ -2,17 +2,17 @@
 
 import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { 
-  ArrowLeft, 
-  Bed, 
-  Building2, 
-  Calendar, 
-  ClipboardList, 
-  Clock, 
-  FileText, 
-  LogOut, 
-  MoveRight, 
-  Stethoscope, 
+import {
+  ArrowLeft,
+  Bed,
+  Building2,
+  Calendar,
+  ClipboardList,
+  Clock,
+  FileText,
+  LogOut,
+  MoveRight,
+  Stethoscope,
   User,
   Activity,
   Plus
@@ -23,10 +23,10 @@ import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Separator } from '@/components/ui/separator';
-import { 
-  useAdmission, 
-  useAdmissionWardRounds, 
-  useKardexByAdmission 
+import {
+  useAdmission,
+  useAdmissionWardRounds,
+  useKardexByAdmission
 } from '@/lib/hooks/use-inpatient';
 import { formatDate, formatDateTime } from '@/lib/utils/format';
 
@@ -192,31 +192,31 @@ export default function AdmissionDetailPage() {
                 <CardTitle className="text-lg">Admission Details</CardTitle>
               </CardHeader>
               <CardContent className="space-y-3">
-                <InfoRow 
-                  icon={User} 
-                  label="Patient" 
-                  value={admission.patient_name} 
+                <InfoRow
+                  icon={User}
+                  label="Patient"
+                  value={admission.patient_name}
                   link={`/patients/${admission.patient}`}
                 />
-                <InfoRow 
-                  icon={FileText} 
-                  label="Admitting Diagnosis" 
-                  value={admission.admitting_diagnosis_text || admission.admitting_diagnosis} 
+                <InfoRow
+                  icon={FileText}
+                  label="Admitting Diagnosis"
+                  value={admission.admitting_diagnosis_text || admission.admitting_diagnosis}
                 />
-                <InfoRow 
-                  icon={User} 
-                  label="Admitted By" 
-                  value={admission.admitted_by_username || '—'} 
+                <InfoRow
+                  icon={User}
+                  label="Admitted By"
+                  value={admission.admitted_by_username || '—'}
                 />
-                <InfoRow 
-                  icon={Calendar} 
-                  label="Admission Date" 
-                  value={formatDateTime(admission.admission_date)} 
+                <InfoRow
+                  icon={Calendar}
+                  label="Admission Date"
+                  value={formatDateTime(admission.admission_date)}
                 />
-                <InfoRow 
-                  icon={Activity} 
-                  label="Payer Type" 
-                  value={admission.payer_type_display || admission.payer_type} 
+                <InfoRow
+                  icon={Activity}
+                  label="Payer Type"
+                  value={admission.payer_type_display || admission.payer_type}
                 />
               </CardContent>
             </Card>
@@ -404,15 +404,15 @@ export default function AdmissionDetailPage() {
 }
 
 // Helper Components
-function InfoRow({ 
-  icon: Icon, 
-  label, 
-  value, 
-  link 
-}: { 
-  icon: React.ComponentType<{ className?: string }>; 
-  label: string; 
-  value?: string; 
+function InfoRow({
+  icon: Icon,
+  label,
+  value,
+  link
+}: {
+  icon: React.ComponentType<{ className?: string }>;
+  label: string;
+  value?: string;
   link?: string;
 }) {
   const content = (

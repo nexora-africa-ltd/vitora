@@ -1,7 +1,7 @@
 /**
  * Receive Stock Page
  * Sprint 1.3-1.4 Track A: Pharmacy Module
- * 
+ *
  * Form for receiving new stock batches into inventory
  */
 

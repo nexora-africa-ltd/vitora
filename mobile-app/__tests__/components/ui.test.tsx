@@ -82,7 +82,7 @@ describe('UI Components', () => {
         <Button title="Disabled" onPress={mockOnPress} disabled testID="btn" />
       );
       // Check that the button has disabled state
-      expect(getByTestId('btn').props.accessibilityState?.disabled || 
+      expect(getByTestId('btn').props.accessibilityState?.disabled ||
              getByTestId('btn').props.disabled).toBeTruthy();
     });
 

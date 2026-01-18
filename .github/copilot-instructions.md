@@ -8,7 +8,7 @@
 
 ### Product & Company Context
 
-**Vitora HMIS** is a **software product** developed by **Nexora Africa Ltd**, an IT company. 
+**Vitora HMIS** is a **software product** developed by **Nexora Africa Ltd**, an IT company.
 
 > ⚠️ **IMPORTANT**: Vitora is the **name of the software product**, NOT a healthcare facility. When creating placeholder facility names, use generic names like "Demo Health Facility", "Sample Clinic", or "[Facility Name]" - never use "Vitora" as a facility name.
 
@@ -220,33 +220,33 @@ cd desktop-app && npm run dev
 class Patient(models.Model):
     # Auto-generated (NEVER set manually)
     mrn = models.CharField(unique=True, editable=False)  # Format: MRN-YYYYMMDD-XXXX
-    
+
     # Required fields
     first_name = models.CharField(max_length=100)
     last_name = models.CharField(max_length=100)
     date_of_birth = models.DateField()  # MUST NOT be in the future
     gender = models.CharField(choices=[('M', 'Male'), ('F', 'Female'), ('O', 'Other')])
-    
+
     # Kenya location hierarchy (FKs)
     county = models.ForeignKey('core.County')           # 47 Kenya counties
     sub_county = models.ForeignKey('core.SubCounty')    # 289 sub-counties
     ward = models.ForeignKey('core.Ward', null=True)    # 1448 wards (optional)
-    
+
     # Privacy (ENCRYPTED with Fernet)
     national_id = models.CharField(null=True)           # Encrypted at rest
     phone_number = models.CharField(null=True)          # Encrypted at rest
-    
+
     # Sensitive access control
     is_sensitive = models.BooleanField(default=False)   # HIV/GBV/Mental Health
-    
+
     # Consent (Kenya DPA compliance)
     consent_given = models.BooleanField(default=False)
     consent_date = models.DateTimeField(null=True)
-    
+
     # Tracking
     registered_by = models.ForeignKey(User)             # Auto-set in view
     referral_source = models.CharField(choices=['self', 'clinic', 'other_facility'])
-    
+
     # Emergency contact (quick access)
     emergency_contact_name = models.CharField(blank=True)
     emergency_contact_phone = models.CharField(blank=True)
@@ -262,7 +262,7 @@ class Encounter(models.Model):
     encounter_type = models.CharField(choices=['OPD', 'IPD', 'EMERGENCY'])
     encounter_date = models.DateField(default=date.today)
     chief_complaint = models.TextField()
-    
+
     # Vital signs
     temperature = models.DecimalField(null=True)        # Celsius (36.1-37.2 normal)
     pulse = models.IntegerField(null=True)              # BPM (60-100 normal adult)
@@ -271,7 +271,7 @@ class Encounter(models.Model):
     spo2 = models.DecimalField(null=True)               # Oxygen saturation (95-100% normal)
     weight = models.DecimalField(null=True)             # kg
     height = models.DecimalField(null=True)             # cm
-    
+
     # Medical history (captured per encounter)
     allergies = models.TextField(blank=True)
     chronic_conditions = models.TextField(blank=True)
@@ -279,11 +279,11 @@ class Encounter(models.Model):
     past_surgeries = models.TextField(blank=True)
     family_history = models.TextField(blank=True)
     social_history = models.TextField(blank=True)       # Smoking, alcohol, occupation
-    
+
     # Critical alert methods
     def has_critical_vitals(self) -> bool:
         """Returns True if SpO2 < 95% (hypoxemia)."""
-        
+
     def get_alerts(self) -> list[str]:
         """Returns list of critical vital alerts."""
 ```
@@ -313,7 +313,7 @@ class AuditLog(models.Model):
     timestamp = models.DateTimeField()
     ip_address = models.GenericIPAddressField()
     details = models.JSONField()             # Changes, purpose, etc.
-    
+
     @classmethod
     def log(cls, action, user, resource_type, resource_id, **kwargs):
         """Create audit log entry. Call this in every ViewSet CRUD method."""
@@ -408,26 +408,26 @@ from rest_framework import status
 
 class TestPatientCreation:
     """Tests for patient creation."""
-    
+
     def test_create_patient_with_valid_data(self, authenticated_client, patient_data):
         """Should create patient and auto-generate MRN."""
         response = authenticated_client.post('/api/patients/', patient_data)
-        
+
         assert response.status_code == status.HTTP_201_CREATED
         assert response.data['mrn'].startswith('MRN-')
         assert response.data['first_name'] == patient_data['first_name']
-    
+
     def test_create_patient_without_auth_fails(self, api_client, patient_data):
         """Should reject unauthenticated requests."""
         response = api_client.post('/api/patients/', patient_data)
-        
+
         assert response.status_code == status.HTTP_401_UNAUTHORIZED
-    
+
     def test_create_patient_with_future_dob_fails(self, authenticated_client, patient_data):
         """Should reject future date of birth."""
         patient_data['date_of_birth'] = '2030-01-01'
         response = authenticated_client.post('/api/patients/', patient_data)
-        
+
         assert response.status_code == status.HTTP_400_BAD_REQUEST
         assert 'date_of_birth' in response.data
 ```

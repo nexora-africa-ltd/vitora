@@ -2,8 +2,8 @@
 
 > **Document Purpose**: This document provides a comprehensive, verbose description of the ideal patient journey through the Vitora Hospital Management Information System, from first contact to discharge and follow-up. It covers all user roles, system logic, and data flows.
 
-**Version**: 1.0  
-**Created**: January 3, 2026  
+**Version**: 1.0
+**Created**: January 3, 2026
 **Author**: Engineering Team, Nexora Africa Ltd
 
 ---
@@ -1711,4 +1711,3 @@ ACKNOWLEDGMENT RECEIVED
 **Document History:**
 - v1.0 (2026-01-03): Initial comprehensive flow documentation
 ```
-

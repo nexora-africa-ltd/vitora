@@ -75,7 +75,7 @@ export default function EditEncounterPage() {
   const { user } = useAuth();
   const { isOnline } = useNetworkStatus();
   const encounterId = Number(params.id as string);
-  
+
   const { data: encounter, isLoading: isLoadingEncounter, error } = useEncounter(encounterId);
   const { data: existingDiagnoses } = useEncounterDiagnoses(encounterId);
   const { data: labOrders } = useEncounterLabOrders(encounterId);
@@ -84,26 +84,26 @@ export default function EditEncounterPage() {
   const editChiefComplaint = useEditChiefComplaint();
   const addDiagnosis = useAddDiagnosis(encounterId);
   const deleteDiagnosis = useDeleteDiagnosis(encounterId);
-  
+
   // Get current provider name for SOAP note
-  const providerName = user 
-    ? (user.first_name && user.last_name 
-        ? `${user.first_name} ${user.last_name}` 
+  const providerName = user
+    ? (user.first_name && user.last_name
+        ? `${user.first_name} ${user.last_name}`
         : user.username)
     : undefined;
-  
+
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [diagnoses, setDiagnoses] = useState<DiagnosisFormData[]>([]);
   const [isChiefComplaintDialogOpen, setIsChiefComplaintDialogOpen] = useState(false);
   const [showSOAPSummary, setShowSOAPSummary] = useState(false);
-  
+
   // Determine if patient went through triage
   const wasTriaged = useMemo(() => {
     if (!encounter) return false;
     // Patient was triaged if triage_status is COMPLETED
     return encounter.triage_status === 'COMPLETED';
   }, [encounter]);
-  
+
   // Form data state
   const [formData, setFormData] = useState<EncounterFormData>({
     patient: null,
@@ -132,20 +132,20 @@ export default function EditEncounterPage() {
     clinical_template: null,
     clinical_template_data: null,
   });
-  
+
   // Selected clinical template state
   const [selectedTemplate, setSelectedTemplate] = useState<ClinicalTemplate | null>(null);
-  
+
   // Fetch template if encounter has one
   const { data: existingTemplate } = useClinicalTemplate(encounter?.clinical_template || 0);
-  
+
   // Set selected template when existing template loads
   useEffect(() => {
     if (existingTemplate) {
       setSelectedTemplate(existingTemplate);
     }
   }, [existingTemplate]);
-  
+
   // Populate form with existing encounter data
   useEffect(() => {
     if (encounter) {
@@ -179,7 +179,7 @@ export default function EditEncounterPage() {
       });
     }
   }, [encounter]);
-  
+
   // Populate existing diagnoses
   useEffect(() => {
     if (existingDiagnoses && existingDiagnoses.length > 0) {
@@ -194,7 +194,7 @@ export default function EditEncounterPage() {
       })));
     }
   }, [existingDiagnoses]);
-  
+
   // Partial patient data from encounter (for display purposes)
   const selectedPatient = useMemo(() => {
     if (!encounter) return null;
@@ -214,13 +214,13 @@ export default function EditEncounterPage() {
       referral_source: 'self' as const,
       registered_by: 0,
     };  }, [encounter]);
-  
+
   // Prepare data for auto-save (build the payload similar to handleSave)
   const autoSaveData = useMemo(() => {
     const bp = formData.blood_pressure_systolic && formData.blood_pressure_diastolic
       ? `${formData.blood_pressure_systolic}/${formData.blood_pressure_diastolic}`
       : null;
-    
+
     return {
       encounter_type: formData.encounter_type,
       encounter_date: formData.encounter_date,
@@ -246,10 +246,10 @@ export default function EditEncounterPage() {
       clinical_template_data: formData.clinical_template_data,
     };
   }, [formData]);
-  
+
   // Check if encounter is editable for auto-save
   const isEncounterEditable = encounter?.status !== 'COMPLETED' && encounter?.status !== 'CANCELLED';
-  
+
   // Auto-save hook - automatically saves changes when user is online
   const autoSave = useAutoSave({
     data: autoSaveData,
@@ -263,18 +263,18 @@ export default function EditEncounterPage() {
       console.error('Auto-save failed:', error);
     },
   });
-  
+
   // Callback to save before navigating away (e.g., to create prescription)
   const handleBeforeNavigate = useCallback(async () => {
     if (autoSave.isDirty) {
       await autoSave.saveNow();
     }
   }, [autoSave]);
-  
+
   // Handle field changes
   const handleFieldChange = useCallback((field: keyof EncounterFormData, value: unknown) => {
     setFormData(prev => ({ ...prev, [field]: value }));
-    
+
     // Clear error for this field
     if (errors[field]) {
       setErrors(prev => {
@@ -284,7 +284,7 @@ export default function EditEncounterPage() {
       });
     }
   }, [errors]);
-  
+
   // Diagnoses handlers - save to backend immediately
   const handleAddDiagnosis = useCallback(async (diagnosis: DiagnosisFormData) => {
     try {
@@ -296,7 +296,7 @@ export default function EditEncounterPage() {
         is_confirmed: diagnosis.is_confirmed || false,
         certainty: (diagnosis.certainty?.toLowerCase() || 'suspected') as 'confirmed' | 'provisional' | 'ruled_out' | 'suspected',
       });
-      
+
       // Update local state with the saved diagnosis
       setDiagnoses(prev => [...prev, {
         icd10_code: savedDiagnosis.icd10_code,
@@ -307,7 +307,7 @@ export default function EditEncounterPage() {
         is_confirmed: savedDiagnosis.is_confirmed,
         certainty: savedDiagnosis.certainty,
       }]);
-      
+
       toast({
         title: 'Diagnosis Added',
         description: 'Diagnosis has been saved successfully.',
@@ -320,21 +320,21 @@ export default function EditEncounterPage() {
       });
     }
   }, [addDiagnosis, toast]);
-  
+
   const handleRemoveDiagnosis = useCallback(async (index: number) => {
     // Get the diagnosis to remove
-    const diagnosisArray = Array.isArray(existingDiagnoses) 
-      ? existingDiagnoses 
+    const diagnosisArray = Array.isArray(existingDiagnoses)
+      ? existingDiagnoses
       : (existingDiagnoses as unknown as { results?: typeof existingDiagnoses })?.results || [];
     const diagnosisToRemove = diagnosisArray[index];
-    
+
     if (diagnosisToRemove?.id) {
       try {
         await deleteDiagnosis.mutateAsync(diagnosisToRemove.id);
-        
+
         // Update local state
         setDiagnoses(prev => prev.filter((_, i) => i !== index));
-        
+
         toast({
           title: 'Diagnosis Removed',
           description: 'Diagnosis has been removed successfully.',
@@ -351,11 +351,11 @@ export default function EditEncounterPage() {
       setDiagnoses(prev => prev.filter((_, i) => i !== index));
     }
   }, [existingDiagnoses, deleteDiagnosis, toast]);
-  
+
   // Clinical template handler - auto-populates from existing encounter data
   const handleTemplateSelect = useCallback(async (template: ClinicalTemplate) => {
     setSelectedTemplate(template);
-    
+
     // Try to auto-populate template from existing encounter data
     try {
       const { encountersApi } = await import('@/lib/api/encounters');
@@ -364,16 +364,16 @@ export default function EditEncounterPage() {
         template.id,
         true // structure by section
       );
-      
+
       // Type cast to match expected shape
       const typedData = (populated_data || {}) as Record<string, Record<string, unknown>>;
-      
+
       setFormData(prev => ({
         ...prev,
         clinical_template: template.id,
         clinical_template_data: typedData,
       }));
-      
+
       toast({
         title: 'Template Applied',
         description: `${template.name} has been applied with existing data auto-populated.`,
@@ -386,16 +386,16 @@ export default function EditEncounterPage() {
         clinical_template: template.id,
         clinical_template_data: prev.clinical_template_data || {},
       }));
-      
+
       toast({
         title: 'Template Selected',
         description: `${template.name} has been applied to this encounter.`,
       });
     }
-    
+
     // No need to set isDirty - auto-save will detect the change
   }, [encounterId, toast]);
-  
+
   // Clinical template data handler - syncs back to encounter fields
   const handleTemplateDataChange = useCallback((data: Record<string, Record<string, unknown>>) => {
     setFormData(prev => {
@@ -404,13 +404,13 @@ export default function EditEncounterPage() {
         ...prev,
         clinical_template_data: data,
       };
-      
+
       // Sync syncable fields back to encounter form
       // Flatten section data to find syncable fields
       for (const sectionName of Object.keys(data)) {
         const sectionData = data[sectionName];
         if (typeof sectionData !== 'object' || sectionData === null) continue;
-        
+
         // Map template fields to encounter fields
         for (const [fieldName, value] of Object.entries(sectionData)) {
           switch (fieldName.toLowerCase()) {
@@ -465,26 +465,26 @@ export default function EditEncounterPage() {
           }
         }
       }
-      
+
       return updated;
     });
     // No need to set isDirty - auto-save will detect the change
   }, []);
-  
+
   // Validation
   const validateForm = useCallback((): boolean => {
     const newErrors: Record<string, string> = {};
-    
+
     if (!formData.chief_complaint.trim()) {
       newErrors.chief_complaint = 'Chief complaint is required';
     }
-    
+
     // encounter_date is auto-set and non-editable, no validation needed
-    
+
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   }, [formData]);
-  
+
   // Save encounter
   const handleSave = useCallback(async () => {
     if (!validateForm()) {
@@ -495,13 +495,13 @@ export default function EditEncounterPage() {
       });
       return;
     }
-    
+
     try {
       // Build blood pressure string
       const bp = formData.blood_pressure_systolic && formData.blood_pressure_diastolic
         ? `${formData.blood_pressure_systolic}/${formData.blood_pressure_diastolic}`
         : null;
-      
+
       await updateEncounter.mutateAsync({
         id: encounterId,
         data: {
@@ -529,7 +529,7 @@ export default function EditEncounterPage() {
           clinical_template_data: formData.clinical_template_data,
         },
       });
-      
+
       // Reset auto-save state after manual save
       autoSave.reset();
       toast({
@@ -544,7 +544,7 @@ export default function EditEncounterPage() {
       });
     }
   }, [formData, encounterId, validateForm, updateEncounter, toast, autoSave]);
-  
+
   // Finalize encounter
   const handleFinalize = useCallback(async () => {
     if (!validateForm()) {
@@ -555,13 +555,13 @@ export default function EditEncounterPage() {
       });
       return;
     }
-    
+
     try {
       // First save all the data
       const bp = formData.blood_pressure_systolic && formData.blood_pressure_diastolic
         ? `${formData.blood_pressure_systolic}/${formData.blood_pressure_diastolic}`
         : null;
-      
+
       await updateEncounter.mutateAsync({
         id: encounterId,
         data: {
@@ -589,16 +589,16 @@ export default function EditEncounterPage() {
           clinical_template_data: formData.clinical_template_data,
         },
       });
-      
+
       // Then call the finalize endpoint to change status to COMPLETED
       const { encountersApi } = await import('@/lib/api/encounters');
       await encountersApi.finalize(encounterId);
-      
+
       toast({
         title: 'Encounter Finalized',
         description: 'The encounter has been marked as completed',
       });
-      
+
       router.push(`/encounters/${encounterId}`);
     } catch (err) {
       toast({
@@ -608,7 +608,7 @@ export default function EditEncounterPage() {
       });
     }
   }, [formData, encounterId, validateForm, updateEncounter, toast, router]);
-  
+
   // Unsaved changes warning
   useEffect(() => {
     const handleBeforeUnload = (e: BeforeUnloadEvent) => {
@@ -617,15 +617,15 @@ export default function EditEncounterPage() {
         e.returnValue = '';
       }
     };
-    
+
     window.addEventListener('beforeunload', handleBeforeUnload);
     return () => window.removeEventListener('beforeunload', handleBeforeUnload);
   }, [autoSave.isDirty]);
-  
+
   if (isLoadingEncounter) {
     return <EditEncounterSkeleton />;
   }
-  
+
   if (error || !encounter) {
     return (
       <div className="container mx-auto py-12 text-center">
@@ -639,10 +639,10 @@ export default function EditEncounterPage() {
       </div>
     );
   }
-  
+
   const status = ENCOUNTER_STATUS.find((s) => s.value === encounter.status);
   const isEditable = encounter.status !== 'COMPLETED' && encounter.status !== 'CANCELLED';
-  
+
   return (
     <div className="container mx-auto py-6 max-w-5xl">
       {/* Header */}
@@ -663,7 +663,7 @@ export default function EditEncounterPage() {
             </div>
           </div>
         </div>
-        
+
         <div className="flex items-center gap-2">
           {/* Auto-save status indicator */}
           <AutoSaveStatusIndicator
@@ -675,7 +675,7 @@ export default function EditEncounterPage() {
           />
         </div>
       </div>
-      
+
       {/* Non-editable warning */}
       {!isEditable && (
         <Alert className="mb-6">
@@ -686,7 +686,7 @@ export default function EditEncounterPage() {
           </AlertDescription>
         </Alert>
       )}
-      
+
       {/* Main Form */}
       <div className="space-y-6">
         {/* Encounter Details */}
@@ -743,7 +743,7 @@ export default function EditEncounterPage() {
                   </SelectContent>
                 </Select>
               </div>
-              
+
               {/* Encounter Date */}
               <div className="space-y-2">
                 <Label htmlFor="encounter_date">
@@ -758,7 +758,7 @@ export default function EditEncounterPage() {
                   className="bg-muted cursor-not-allowed"
                 />
               </div>
-              
+
               {/* Status Badge */}
               <div className="space-y-2">
                 <Label>Status</Label>
@@ -767,7 +767,7 @@ export default function EditEncounterPage() {
                 </div>
               </div>
             </div>
-            
+
             {/* Chief Complaint */}
             <div className="space-y-2">
               <div className="flex items-center justify-between">
@@ -790,7 +790,7 @@ export default function EditEncounterPage() {
                   </Button>
                 )}
               </div>
-              
+
               {wasTriaged ? (
                 // Read-only display for triaged patients
                 <div className="relative">
@@ -854,15 +854,15 @@ export default function EditEncounterPage() {
                   edit_reason_other: data.edit_reason_other,
                 },
               });
-              
+
               // Update local form data
               setFormData((prev) => ({
                 ...prev,
                 chief_complaint: data.chief_complaint,
               }));
-              
+
               setIsChiefComplaintDialogOpen(false);
-              
+
               toast({
                 title: 'Chief Complaint Updated',
                 description: 'The chief complaint has been updated with audit trail.',
@@ -877,7 +877,7 @@ export default function EditEncounterPage() {
           }}
           isLoading={editChiefComplaint.isPending}
         />
-        
+
         {/* Clinical Flow - Accordion-based SOAP Documentation */}
         <Card>
           <CardHeader className="pb-3">
@@ -954,7 +954,7 @@ export default function EditEncounterPage() {
           </CardContent>
         </Card>
       </div>
-      
+
       {/* Sticky Floating Action Bar */}
       <div className="fixed bottom-4 right-4 z-50 flex items-center gap-2">
         {/* Save Button - Icon only on mobile, full on desktop */}
@@ -971,7 +971,7 @@ export default function EditEncounterPage() {
           )}
           <span className="hidden sm:inline">Save</span>
         </Button>
-        
+
         {/* Finalize Button - Icon only on mobile, full on desktop */}
         {isEditable && encounter.status !== 'COMPLETED' && (
           <Button
@@ -1008,7 +1008,7 @@ function EditEncounterSkeleton() {
           <Skeleton className="h-10 w-24" />
         </div>
       </div>
-      
+
       <div className="space-y-6">
         <Card>
           <CardHeader>
@@ -1023,7 +1023,7 @@ function EditEncounterSkeleton() {
             <Skeleton className="h-24 w-full mt-4" />
           </CardContent>
         </Card>
-        
+
         <Skeleton className="h-10 w-full" />
         <Card>
           <CardContent className="p-6">

@@ -1,7 +1,7 @@
 /**
  * SHA Claim Form Component
  * Form for submitting SHA (Social Health Authority) claims
- * 
+ *
  * IMPORTANT: SHA claims require an active encounter to be valid.
  * Claims submitted without encounter context will be rejected.
  */
@@ -50,32 +50,32 @@ export function SHAClaimForm({
   // Try to get from context first
   let contextPatientId: number | undefined;
   let contextEncounterId: number | undefined;
-  
+
   try {
     const patientContext = usePatientContext();
     contextPatientId = patientContext.patient?.id;
   } catch {
     // Not in patient context
   }
-  
+
   try {
     const encounterContext = useEncounterContext();
     contextEncounterId = encounterContext.encounter?.id;
   } catch {
     // Not in encounter context
   }
-  
+
   const effectivePatientId = patientId ?? contextPatientId;
   const effectiveEncounterId = encounterId ?? contextEncounterId;
   const hasEncounter = !!effectiveEncounterId;
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    
+
     if (!hasEncounter || !effectivePatientId) {
       return;
     }
-    
+
     onSubmit?.({
       invoice_id: invoiceId,
       encounter_id: effectiveEncounterId!,
@@ -143,8 +143,8 @@ export function SHAClaimForm({
                 Cancel
               </Button>
             )}
-            <Button 
-              type="submit" 
+            <Button
+              type="submit"
               disabled={!hasEncounter || isLoading}
               aria-label="Submit SHA Claim"
             >

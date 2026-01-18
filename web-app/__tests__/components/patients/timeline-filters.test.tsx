@@ -19,26 +19,26 @@ describe('TimelineFilters', () => {
 
   it('renders search input', () => {
     render(<TimelineFilters filters={defaultFilters} onChange={mockOnChange} />);
-    
+
     expect(screen.getByPlaceholderText('Search timeline...')).toBeInTheDocument();
   });
 
   it('renders filters button', () => {
     render(<TimelineFilters filters={defaultFilters} onChange={mockOnChange} />);
-    
+
     expect(screen.getByRole('button', { name: /filters/i })).toBeInTheDocument();
   });
 
   it('submits search on form submit', async () => {
     const user = userEvent.setup();
     render(<TimelineFilters filters={defaultFilters} onChange={mockOnChange} />);
-    
+
     const searchInput = screen.getByPlaceholderText('Search timeline...');
     await user.type(searchInput, 'test search');
-    
+
     const searchButton = screen.getByRole('button', { name: 'Search' });
     await user.click(searchButton);
-    
+
     expect(mockOnChange).toHaveBeenCalledWith({
       ...defaultFilters,
       searchQuery: 'test search',
@@ -48,10 +48,10 @@ describe('TimelineFilters', () => {
   it('opens filter popover on click', async () => {
     const user = userEvent.setup();
     render(<TimelineFilters filters={defaultFilters} onChange={mockOnChange} />);
-    
+
     const filtersButton = screen.getByRole('button', { name: /filters/i });
     await user.click(filtersButton);
-    
+
     expect(screen.getByText('Event Types')).toBeInTheDocument();
     expect(screen.getByText('Date Range')).toBeInTheDocument();
   });
@@ -59,9 +59,9 @@ describe('TimelineFilters', () => {
   it('shows event type checkboxes', async () => {
     const user = userEvent.setup();
     render(<TimelineFilters filters={defaultFilters} onChange={mockOnChange} />);
-    
+
     await user.click(screen.getByRole('button', { name: /filters/i }));
-    
+
     expect(screen.getByText('Visits')).toBeInTheDocument();
     expect(screen.getByText('Lab Results')).toBeInTheDocument();
     expect(screen.getByText('Prescriptions')).toBeInTheDocument();
@@ -72,9 +72,9 @@ describe('TimelineFilters', () => {
       ...defaultFilters,
       startDate: '2026-01-01',
     };
-    
+
     render(<TimelineFilters filters={filtersWithDate} onChange={mockOnChange} />);
-    
+
     // Should show badge with count
     expect(screen.getByText('1')).toBeInTheDocument();
   });
@@ -84,9 +84,9 @@ describe('TimelineFilters', () => {
       ...defaultFilters,
       searchQuery: 'test',
     };
-    
+
     render(<TimelineFilters filters={filtersWithSearch} onChange={mockOnChange} />);
-    
+
     expect(screen.getByText('"test"')).toBeInTheDocument();
   });
 
@@ -96,9 +96,9 @@ describe('TimelineFilters', () => {
       startDate: '2026-01-01',
       endDate: '2026-01-31',
     };
-    
+
     render(<TimelineFilters filters={filtersWithDates} onChange={mockOnChange} />);
-    
+
     expect(screen.getByText('From: 2026-01-01')).toBeInTheDocument();
     expect(screen.getByText('To: 2026-01-31')).toBeInTheDocument();
   });
@@ -109,13 +109,13 @@ describe('TimelineFilters', () => {
       ...defaultFilters,
       searchQuery: 'test',
     };
-    
+
     render(<TimelineFilters filters={filtersWithSearch} onChange={mockOnChange} />);
-    
+
     // Find the X button in the search tag
     const tagContainer = screen.getByText('"test"').parentElement;
     const clearButton = tagContainer?.querySelector('button');
-    
+
     if (clearButton) {
       await user.click(clearButton);
       expect(mockOnChange).toHaveBeenCalledWith({
@@ -128,9 +128,9 @@ describe('TimelineFilters', () => {
   it('has clear all button in popover', async () => {
     const user = userEvent.setup();
     render(<TimelineFilters filters={defaultFilters} onChange={mockOnChange} />);
-    
+
     await user.click(screen.getByRole('button', { name: /filters/i }));
-    
+
     expect(screen.getByText('Clear all')).toBeInTheDocument();
   });
 });

@@ -1,7 +1,7 @@
 /**
  * Pharmacy Page
  * Sprint 1.3-1.4 Track A: Pharmacy Module
- * 
+ *
  * Main pharmacy dashboard with tabs for:
  * - Drug Catalog
  * - Inventory (Stock Batches)
@@ -20,10 +20,10 @@ import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { 
-  DrugTable, 
-  StockTable, 
-  AlertsPanel, 
+import {
+  DrugTable,
+  StockTable,
+  AlertsPanel,
   PrescriptionsTable,
   DispensingHistoryTable,
   DirectDispenseDialog,
@@ -178,7 +178,7 @@ export default function PharmacyPage() {
           </p>
         </div>
         <div className="flex gap-2">
-          <Button 
+          <Button
             variant="outline"
             onClick={() => setShowDirectDispenseDialog(true)}
             data-testid="direct-dispense-button"
@@ -201,7 +201,7 @@ export default function PharmacyPage() {
         <div className="lg:col-span-1">
           <AlertsWidget />
         </div>
-        
+
         {/* Quick Stats */}
         <div className="lg:col-span-2">
           <Card>
@@ -245,8 +245,8 @@ export default function PharmacyPage() {
             <FileText className="h-4 w-4" />
             Prescriptions
             {pendingRxCount > 0 && (
-              <Badge 
-                variant="destructive" 
+              <Badge
+                variant="destructive"
                 className="ml-1 h-5 w-5 p-0 flex items-center justify-center text-xs"
                 data-testid="pending-count"
               >

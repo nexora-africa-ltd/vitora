@@ -462,7 +462,7 @@ class SHAEligibilityService:
 class DHASearchService:
     def search_facility(self, facility_code: str = None, fid: str = None) -> Optional[FacilityInfo]:
         # GET /v1/facility-search?facility_code={code}
-    
+
     def validate_facility_for_claims(self, facility_code: str) -> Tuple[bool, List[str]]:
         # Returns (is_valid, list_of_errors)
 ```
@@ -502,7 +502,7 @@ class DHASearchService:
         puid: str = None,
     ) -> Optional[PractitionerInfo]:
         # GET /v1/practitioner-search?registration_number={reg}
-    
+
     def validate_practitioner_for_claims(self, registration_number: str) -> Tuple[bool, List[str]]:
         # Returns (is_valid, list_of_errors)
 ```
@@ -573,8 +573,8 @@ class DHASearchService:
 
 ---
 
-**Document Status**: ✅ Complete (All APIs Implemented)  
-**Last Updated**: January 9, 2026  
-**Implementation Status**: 100% (15/15 APIs)  
-**Test Coverage**: 72+ unit tests in `tests/billing/test_dha_services/`  
+**Document Status**: ✅ Complete (All APIs Implemented)
+**Last Updated**: January 9, 2026
+**Implementation Status**: 100% (15/15 APIs)
+**Test Coverage**: 72+ unit tests in `tests/billing/test_dha_services/`
 **Analysis By**: Vitora HMIS Development Team

@@ -443,41 +443,41 @@ def get_patient_summary(base_url, cr_id, auth_header):
         """Fetch the patient's health summary"""
         url = f"{base_url}/v1/shr/summary?cr_id={cr_id}"
         response = requests.get(url, headers=auth_header)
-        
+
         if response.status_code != 200:
                 raise Exception(f"Failed to get patient summary: {response.status_code}")
-        
+
         return response.json()
 
 def calculate_refill_balance(ips_bundle, medication_request_id):
         """Calculate remaining refills based on the IPS data"""
-        
+
         # Initialize variables
         medication_request = None
         medication_dispenses = []
-        
+
         # Process IPS bundle to find the MedicationRequest and related MedicationDispense resources
         for entry in ips_bundle.get("entry", []):
                 resource = entry.get("resource", {})
-                
+
                 if resource.get("resourceType") == "MedicationRequest" and resource.get("id") == medication_request_id:
                         medication_request = resource
-                
+
                 if resource.get("resourceType") == "MedicationDispense":
                         for prescription in resource.get("authorizingPrescription", []):
                                 if prescription.get("reference") == f"MedicationRequest/{medication_request_id}":
                                         medication_dispenses.append(resource)
-        
+
         if not medication_request:
                 return {
                         "error": f"MedicationRequest {medication_request_id} not found in patient summary"
                 }
-        
+
         # Calculate refill information
         total_allowed_fills = medication_request.get("dispenseRequest", {}).get("numberOfRepeatsAllowed", 0) + 1
         total_dispenses = len(medication_dispenses)
         remaining_refills = total_allowed_fills - total_dispenses
-        
+
         # Find next refill date based on most recent dispense
         next_refill_date = None
         if medication_dispenses:
@@ -487,24 +487,24 @@ def calculate_refill_balance(ips_bundle, medication_request_id):
                         key=lambda x: x.get("whenHandedOver", ""),
                         reverse=True
                 )
-                
+
                 latest_dispense = sorted_dispenses[0]
                 latest_dispense_date = datetime.fromisoformat(latest_dispense["whenHandedOver"].replace("Z", "+00:00"))
                 days_supply = latest_dispense.get("daysSupply", {}).get("value", 30)
-                
+
                 next_refill_date = (latest_dispense_date + timedelta(days=days_supply)).isoformat()
-        
+
         # Check if prescription is still valid
         is_valid = True
         current_date = datetime.now()
-        
+
         if "dispenseRequest" in medication_request and "validityPeriod" in medication_request["dispenseRequest"]:
                 end_date_str = medication_request["dispenseRequest"]["validityPeriod"].get("end")
                 if end_date_str:
                         end_date = datetime.fromisoformat(end_date_str.replace("Z", "+00:00"))
                         if current_date > end_date:
                                 is_valid = False
-        
+
         return {
                 "medicationRequestId": medication_request_id,
                 "totalAllowedFills": total_allowed_fills,
