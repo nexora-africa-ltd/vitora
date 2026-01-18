@@ -167,6 +167,131 @@ class AuditLog(models.Model):
         )
 
 
+class ActivityFeed(models.Model):
+    """
+    Real-time activity feed for dashboard.
+
+    Provides a user-friendly activity stream for the dashboard,
+    capturing key events across all HMIS modules.
+
+    Unlike AuditLog (which is for compliance), ActivityFeed is designed
+    for user-facing notifications and dashboard widgets.
+    """
+
+    ACTIVITY_TYPES = [
+        ("patient", "Patient"),
+        ("encounter", "Encounter"),
+        ("laboratory", "Laboratory"),
+        ("pharmacy", "Pharmacy"),
+        ("billing", "Billing"),
+        ("triage", "Triage"),
+        ("inpatient", "Inpatient"),
+        ("prescription", "Prescription"),
+        ("appointment", "Appointment"),
+        ("system", "System"),
+    ]
+
+    activity_type = models.CharField(
+        max_length=20,
+        choices=ACTIVITY_TYPES,
+        db_index=True,
+        help_text="Type of activity (module)",
+    )
+    action = models.CharField(
+        max_length=50,
+        db_index=True,
+        help_text="Action performed (e.g., registered, completed, dispensed)",
+    )
+    title = models.CharField(
+        max_length=200,
+        help_text="Human-readable title for the activity",
+    )
+    description = models.TextField(
+        blank=True,
+        default="",
+        help_text="Additional description or context",
+    )
+    timestamp = models.DateTimeField(
+        default=timezone.now,
+        db_index=True,
+        help_text="When the activity occurred",
+    )
+    user = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="activity_feed",
+        help_text="User who performed the action",
+    )
+    resource_type = models.CharField(
+        max_length=50,
+        help_text="Type of resource (e.g., Patient, LabOrder)",
+    )
+    resource_id = models.PositiveIntegerField(
+        help_text="ID of the resource",
+    )
+    metadata = models.JSONField(
+        default=dict,
+        blank=True,
+        help_text="Additional structured data (e.g., MRN, patient name)",
+    )
+
+    class Meta:
+        """Meta options for ActivityFeed model."""
+
+        ordering = ["-timestamp"]
+        indexes = [
+            models.Index(fields=["activity_type", "-timestamp"]),
+            models.Index(fields=["-timestamp"]),
+        ]
+        verbose_name = "Activity Feed"
+        verbose_name_plural = "Activity Feed Entries"
+
+    def __str__(self) -> str:
+        """String representation of the activity."""
+        return f"{self.timestamp.isoformat()} - {self.activity_type}: {self.title}"
+
+    @classmethod
+    def log_activity(
+        cls,
+        activity_type: str,
+        action: str,
+        title: str,
+        resource_type: str,
+        resource_id: int,
+        user=None,
+        description: str = "",
+        metadata: dict = None,
+    ):
+        """
+        Create an activity feed entry.
+
+        Args:
+            activity_type: Type of activity (patient, encounter, etc.)
+            action: Action performed (registered, completed, etc.)
+            title: Human-readable title
+            resource_type: Type of resource (Patient, LabOrder, etc.)
+            resource_id: ID of the resource
+            user: User who performed the action (optional)
+            description: Additional description (optional)
+            metadata: Additional structured data (optional)
+
+        Returns:
+            ActivityFeed: The created activity entry
+        """
+        return cls.objects.create(
+            activity_type=activity_type,
+            action=action,
+            title=title,
+            description=description,
+            user=user,
+            resource_type=resource_type,
+            resource_id=resource_id,
+            metadata=metadata or {},
+        )
+
+
 class TimeStampedModel(models.Model):
     """
     Abstract base model with created/updated timestamps.

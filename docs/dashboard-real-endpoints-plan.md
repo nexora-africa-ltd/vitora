@@ -357,11 +357,11 @@ class ActivityFeed(models.Model):
 Use **Option A (AuditLog)** first since it already exists and captures all CRUD operations. Migrate to Option B later if needed for notifications/subscriptions.
 
 ### TDD Tests Required
-- [ ] `test_activity_feed_requires_authentication`
-- [ ] `test_activity_feed_returns_recent_first`
-- [ ] `test_activity_feed_respects_limit`
-- [ ] `test_activity_feed_filters_by_type`
-- [ ] `test_activity_feed_includes_user_info`
+- [x] `test_activity_feed_requires_authentication`
+- [x] `test_activity_feed_returns_recent_first`
+- [x] `test_activity_feed_respects_limit`
+- [x] `test_activity_feed_filters_by_type`
+- [x] `test_activity_feed_includes_user_info`
 
 ---
 
