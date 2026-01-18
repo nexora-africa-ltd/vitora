@@ -673,33 +673,6 @@ export default function EditEncounterPage() {
             isDirty={autoSave.isDirty}
             pendingCount={autoSave.pendingCount}
           />
-          
-          <Button
-            variant="outline"
-            onClick={handleSave}
-            disabled={updateEncounter.isPending || !isEditable}
-          >
-            {updateEncounter.isPending ? (
-              <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-            ) : (
-              <Save className="h-4 w-4 mr-2" />
-            )}
-            Save
-          </Button>
-          
-          {isEditable && encounter.status !== 'COMPLETED' && (
-            <Button
-              onClick={handleFinalize}
-              disabled={updateEncounter.isPending}
-            >
-              {updateEncounter.isPending ? (
-                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-              ) : (
-                <CheckCircle className="h-4 w-4 mr-2" />
-              )}
-              Finalize
-            </Button>
-          )}
         </div>
       </div>
       
@@ -982,29 +955,38 @@ export default function EditEncounterPage() {
         </Card>
       </div>
       
-      {/* Bottom Action Bar (Fixed on Mobile) */}
-      <div className="sticky bottom-0 mt-6 -mx-4 px-4 py-4 bg-background/95 backdrop-blur border-t md:hidden">
-        <div className="flex gap-2">
-          <Button
-            variant="outline"
-            onClick={handleSave}
-            disabled={updateEncounter.isPending || !isEditable}
-            className="flex-1"
-          >
-            <Save className="h-4 w-4 mr-2" />
-            Save
-          </Button>
-          {isEditable && encounter.status !== 'COMPLETED' && (
-            <Button
-              onClick={handleFinalize}
-              disabled={updateEncounter.isPending}
-              className="flex-1"
-            >
-              <CheckCircle className="h-4 w-4 mr-2" />
-              Finalize
-            </Button>
+      {/* Sticky Floating Action Bar */}
+      <div className="fixed bottom-4 right-4 z-50 flex items-center gap-2">
+        {/* Save Button - Icon only on mobile, full on desktop */}
+        <Button
+          variant="outline"
+          onClick={handleSave}
+          disabled={updateEncounter.isPending || !isEditable}
+          className="h-12 w-12 sm:w-auto shadow-lg bg-background/95 backdrop-blur border-2"
+        >
+          {updateEncounter.isPending ? (
+            <Loader2 className="h-5 w-5 animate-spin sm:mr-2" />
+          ) : (
+            <Save className="h-5 w-5 sm:mr-2" />
           )}
-        </div>
+          <span className="hidden sm:inline">Save</span>
+        </Button>
+        
+        {/* Finalize Button - Icon only on mobile, full on desktop */}
+        {isEditable && encounter.status !== 'COMPLETED' && (
+          <Button
+            onClick={handleFinalize}
+            disabled={updateEncounter.isPending}
+            className="h-12 w-12 sm:w-auto shadow-lg border-2"
+          >
+            {updateEncounter.isPending ? (
+              <Loader2 className="h-5 w-5 animate-spin sm:mr-2" />
+            ) : (
+              <CheckCircle className="h-5 w-5 sm:mr-2" />
+            )}
+            <span className="hidden sm:inline">Finalize</span>
+          </Button>
+        )}
       </div>
     </div>
   );
