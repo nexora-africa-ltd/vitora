@@ -15,6 +15,7 @@ import {
   Stethoscope,
   Pencil,
   Lock,
+  ClipboardList,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '@/components/ui/card';
@@ -37,13 +38,6 @@ import {
   AlertDescription,
   AlertTitle,
 } from '@/components/ui/alert';
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipProvider,
-  TooltipTrigger,
-} from '@/components/ui/tooltip';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Skeleton } from '@/components/ui/skeleton';
 import { AutoSaveStatusIndicator } from '@/components/ui/auto-save-status';
 import { useToast } from '@/lib/hooks/use-toast';
@@ -53,42 +47,15 @@ import { useEncounter, useUpdateEncounter, useEncounterDiagnoses, useEditChiefCo
 import { useEncounterLabOrders } from '@/lib/hooks/use-laboratory';
 import { useEncounterPrescriptions } from '@/lib/hooks/use-pharmacy';
 import { useAuth } from '@/lib/auth/context';
-import { MedicalHistoryForm } from '@/components/encounters/medical-history-form';
-import { ClinicalNotesForm } from '@/components/encounters/clinical-notes-form';
-import { DiagnosisForm } from '@/components/encounters/diagnosis-form';
+import { ClinicalFlowAccordion } from '@/components/encounters/clinical-flow-accordion';
 import { VitalsForm } from '@/components/encounters/vitals-form';
-import { EncounterLabOrders } from '@/components/encounters/encounter-lab-orders';
-import { EncounterPrescriptions } from '@/components/encounters/encounter-prescriptions';
 import { SOAPNoteSummary } from '@/components/encounters/soap-note-summary';
 import { ChiefComplaintEditDialog, ChiefComplaintEditReason } from '@/components/encounters/chief-complaint-edit-dialog';
-import { TemplateSelector } from '@/components/clinical-templates/template-selector';
-import { ClinicalTemplateForm } from '@/components/clinical-templates/clinical-template-form';
 import { useClinicalTemplate } from '@/lib/hooks/use-clinical-templates';
 import type { ClinicalTemplate } from '@/lib/types/clinical-template';
 import { ENCOUNTER_TYPES, ENCOUNTER_STATUS, ENCOUNTER_TYPE_GROUPS, getEncounterTypesByGroup } from '@/lib/utils/constants';
 import type { EncounterFormData, DiagnosisFormData } from '@/lib/types/encounter-form';
 import type { Patient } from '@/lib/types/patient';
-
-// Helper functions to check if sections have data
-function hasMedicalHistory(data: EncounterFormData): boolean {
-  return !!(
-    data.allergies?.trim() ||
-    data.chronic_conditions?.trim() ||
-    data.current_medications?.trim() ||
-    data.past_surgeries?.trim() ||
-    data.family_history?.trim() ||
-    data.social_history?.trim()
-  );
-}
-
-function hasClinicalNotes(data: EncounterFormData): boolean {
-  return !!(
-    data.history_of_present_illness?.trim() ||
-    data.physical_examination?.trim() ||
-    data.assessment?.trim() ||
-    data.notes?.trim()
-  );
-}
 
 // Parse blood pressure string "120/80" to systolic/diastolic
 function parseBP(bp: string | null | undefined): { systolic: number | null; diastolic: number | null } {
@@ -125,10 +92,10 @@ export default function EditEncounterPage() {
         : user.username)
     : undefined;
   
-  const [activeTab, setActiveTab] = useState('history');
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [diagnoses, setDiagnoses] = useState<DiagnosisFormData[]>([]);
   const [isChiefComplaintDialogOpen, setIsChiefComplaintDialogOpen] = useState(false);
+  const [showSOAPSummary, setShowSOAPSummary] = useState(false);
   
   // Determine if patient went through triage
   const wasTriaged = useMemo(() => {
@@ -938,278 +905,81 @@ export default function EditEncounterPage() {
           isLoading={editChiefComplaint.isPending}
         />
         
-        {/* Tabbed Sections - SOAP Flow */}
-        <Tabs value={activeTab} onValueChange={setActiveTab}>
-          <TooltipProvider delayDuration={300}>
-            <TabsList className="flex flex-wrap h-auto gap-1">
-              {/* S - Subjective */}
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <TabsTrigger value="history" className="gap-1">
-                    1. Hx
-                    {!hasMedicalHistory(formData) && (
-                      <span className="ml-1 text-muted-foreground">+</span>
-                    )}
-                  </TabsTrigger>
-                </TooltipTrigger>
-                <TooltipContent>
-                  <p className="font-medium">Medical History</p>
-                  <p className="text-xs text-muted-foreground">Allergies, chronic conditions, medications, surgeries</p>
-                </TooltipContent>
-              </Tooltip>
-              
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <TabsTrigger value="notes" className="gap-1">
-                    2. HPI
-                    {!hasClinicalNotes(formData) && (
-                      <span className="ml-1 text-muted-foreground">+</span>
-                    )}
-                  </TabsTrigger>
-                </TooltipTrigger>
-                <TooltipContent>
-                  <p className="font-medium">History of Present Illness</p>
-                  <p className="text-xs text-muted-foreground">Detailed narrative of current complaint</p>
-                </TooltipContent>
-              </Tooltip>
-              
-              {/* Clinical Template - Focused Assessment */}
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <TabsTrigger value="template" className="gap-1">
-                    3. Template
-                    {selectedTemplate ? (
-                      <Badge variant="secondary" className="ml-1 text-xs">{selectedTemplate.name.slice(0, 10)}{selectedTemplate.name.length > 10 ? '…' : ''}</Badge>
-                    ) : (
-                      <span className="ml-1 text-muted-foreground">+</span>
-                    )}
-                  </TabsTrigger>
-                </TooltipTrigger>
-                <TooltipContent className="max-w-xs">
-                  <p className="font-medium">Clinical Template</p>
-                  <p className="text-xs text-muted-foreground">
-                    Structured templates for focused assessments (e.g., Pediatric, ANC, Diabetes). 
-                    Guides documentation and ensures completeness.
-                  </p>
-                </TooltipContent>
-              </Tooltip>
-              
-              {/* A - Assessment */}
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <TabsTrigger value="diagnosis" className="gap-1">
-                    4. Dx
-                    {diagnoses.length === 0 ? (
-                      <span className="ml-1 text-muted-foreground">+</span>
-                    ) : (
-                      <Badge variant="secondary" className="ml-1">{diagnoses.length}</Badge>
-                    )}
-                  </TabsTrigger>
-                </TooltipTrigger>
-                <TooltipContent>
-                  <p className="font-medium">Diagnosis</p>
-                  <p className="text-xs text-muted-foreground">ICD-10 coded diagnoses and clinical impressions</p>
-                </TooltipContent>
-              </Tooltip>
-              
-              {/* P - Plan */}
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <TabsTrigger value="lab" className="gap-1">
-                    5. Labs
-                  </TabsTrigger>
-                </TooltipTrigger>
-                <TooltipContent>
-                  <p className="font-medium">Laboratory Orders</p>
-                  <p className="text-xs text-muted-foreground">Order lab tests and view results</p>
-                </TooltipContent>
-              </Tooltip>
-              
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <TabsTrigger value="pharmacy" className="gap-1">
-                    6. Rx
-                  </TabsTrigger>
-                </TooltipTrigger>
-                <TooltipContent>
-                  <p className="font-medium">Prescriptions</p>
-                  <p className="text-xs text-muted-foreground">Medications and pharmacy orders</p>
-                </TooltipContent>
-              </Tooltip>
-              
-              {/* Summary */}
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <TabsTrigger value="soap" className="gap-1">
-                    📋 SOAP Note
-                  </TabsTrigger>
-                </TooltipTrigger>
-                <TooltipContent>
-                  <p className="font-medium">SOAP Note Summary</p>
-                  <p className="text-xs text-muted-foreground">Complete encounter summary in SOAP format</p>
-                </TooltipContent>
-              </Tooltip>
-            </TabsList>
-          </TooltipProvider>
-          
-          <TabsContent value="history" className="mt-4">
-            <MedicalHistoryForm
-              data={formData}
-              onChange={(field, value) => handleFieldChange(field, value)}
-              onNext={() => setActiveTab('notes')}
-              disabled={!isEditable}
-            />
-          </TabsContent>
-          
-          <TabsContent value="notes" className="mt-4">
-            <ClinicalNotesForm
-              data={formData}
-              onChange={(field, value) => handleFieldChange(field, value)}
-              onPrevious={() => setActiveTab('history')}
-              onNext={() => setActiveTab('template')}
-              disabled={!isEditable}
-            />
-          </TabsContent>
-          
-          <TabsContent value="template" className="mt-4">
-            <Card>
-              <CardHeader className="pb-3">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <CardTitle className="text-lg flex items-center gap-2">
-                      <FileText className="h-5 w-5" />
-                      Clinical Template
-                      {selectedTemplate && (
-                        <Badge variant="secondary" className="ml-2">{selectedTemplate.name}</Badge>
-                      )}
-                    </CardTitle>
-                    <CardDescription>
-                      Use a structured template to guide focused clinical assessment
-                    </CardDescription>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    {selectedTemplate && formData.clinical_template_data && isEditable && (
-                      <Button
-                        type="button"
-                        variant="outline"
-                        size="sm"
-                        onClick={async () => {
-                          try {
-                            const { encountersApi } = await import('@/lib/api/encounters');
-                            await encountersApi.createTemplateSnapshot(
-                              encounterId,
-                              selectedTemplate.id,
-                              formData.clinical_template_data || {}
-                            );
-                            toast({
-                              title: 'Template Saved',
-                              description: 'Template assessment saved as attachment.',
-                            });
-                          } catch (err) {
-                            console.error('Failed to save template snapshot:', err);
-                            toast({
-                              title: 'Error',
-                              description: 'Failed to save template as attachment.',
-                              variant: 'destructive',
-                            });
-                          }
-                        }}
-                      >
-                        <FileText className="h-4 w-4 mr-1" />
-                        Save as Attachment
-                      </Button>
-                    )}
-                    {isEditable && (
-                      <TemplateSelector
-                        onSelect={handleTemplateSelect}
-                        encounterType={formData.encounter_type}
-                        chiefComplaint={formData.chief_complaint}
-                      />
-                    )}
-                  </div>
-                </div>
-              </CardHeader>
-              <CardContent>
-                {selectedTemplate ? (
-                  <ClinicalTemplateForm
-                    template={selectedTemplate}
-                    value={formData.clinical_template_data || {}}
-                    onChange={handleTemplateDataChange}
-                    disabled={!isEditable}
-                  />
-                ) : (
-                  <div className="text-center py-8 text-muted-foreground">
-                    <FileText className="h-12 w-12 mx-auto mb-4 opacity-50" />
-                    <p className="font-medium">No template selected</p>
-                    <p className="text-sm mt-1">
-                      Select a template above to guide your clinical assessment
-                    </p>
-                  </div>
-                )}
-              </CardContent>
-              <CardFooter className="flex justify-between border-t pt-4">
-                <Button
-                  type="button"
-                  variant="outline"
-                  onClick={() => setActiveTab('notes')}
-                >
-                  ← Previous: HPI
-                </Button>
-                <Button
-                  type="button"
-                  onClick={() => setActiveTab('diagnosis')}
-                >
-                  Next: Diagnosis →
-                </Button>
-              </CardFooter>
-            </Card>
-          </TabsContent>
-          
-          <TabsContent value="diagnosis" className="mt-4">
-            <DiagnosisForm
-              diagnoses={diagnoses}
-              onAdd={handleAddDiagnosis}
-              onRemove={handleRemoveDiagnosis}
-              onPrevious={() => setActiveTab('template')}
-              onNext={() => setActiveTab('lab')}
-              disabled={!isEditable}
-            />
-          </TabsContent>
-          
-          <TabsContent value="lab" className="mt-4">
-            <EncounterLabOrders
-              encounterId={encounterId}
-              patientId={encounter?.patient || 0}
-              disabled={!isEditable}
-              onNext={() => setActiveTab('pharmacy')}
-              onBeforeNavigate={handleBeforeNavigate}
-            />
-          </TabsContent>
-          
-          <TabsContent value="pharmacy" className="mt-4">
-            <EncounterPrescriptions
-              encounterId={encounterId}
-              patientId={encounter?.patient || 0}
-              disabled={!isEditable}
-              onPrevious={() => setActiveTab('lab')}
-              onBeforeNavigate={handleBeforeNavigate}
-            />
-          </TabsContent>
-          
-          <TabsContent value="soap" className="mt-4">
-            <SOAPNoteSummary
-              formData={formData}
-              diagnoses={diagnoses}
-              labOrders={labOrders || []}
-              prescriptions={prescriptions || []}
-              patientName={encounter?.patient_name}
-              patientMrn={encounter?.patient_mrn}
-              encounterDate={encounter?.encounter_date}
-              providerName={providerName}
-              disabled={!isEditable}
-            />
-          </TabsContent>
-        </Tabs>
+        {/* Clinical Flow - Accordion-based SOAP Documentation */}
+        <Card>
+          <CardHeader className="pb-3">
+            <div className="flex items-center justify-between">
+              <CardTitle className="text-lg flex items-center gap-2">
+                <ClipboardList className="h-5 w-5" />
+                Clinical Documentation
+              </CardTitle>
+              <Button
+                variant={showSOAPSummary ? 'secondary' : 'outline'}
+                size="sm"
+                onClick={() => setShowSOAPSummary(!showSOAPSummary)}
+              >
+                📋 {showSOAPSummary ? 'Hide SOAP Note' : 'View SOAP Note'}
+              </Button>
+            </div>
+            <CardDescription>
+              Complete the sections below to document the clinical encounter
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            {showSOAPSummary ? (
+              <SOAPNoteSummary
+                formData={formData}
+                diagnoses={diagnoses}
+                labOrders={labOrders || []}
+                prescriptions={prescriptions || []}
+                patientName={encounter?.patient_name}
+                patientMrn={encounter?.patient_mrn}
+                encounterDate={encounter?.encounter_date}
+                providerName={providerName}
+                disabled={!isEditable}
+              />
+            ) : (
+              <ClinicalFlowAccordion
+                formData={formData}
+                onFieldChange={handleFieldChange}
+                diagnoses={diagnoses}
+                onAddDiagnosis={handleAddDiagnosis}
+                onRemoveDiagnosis={handleRemoveDiagnosis}
+                selectedTemplate={selectedTemplate}
+                onTemplateSelect={handleTemplateSelect}
+                onTemplateDataChange={handleTemplateDataChange}
+                onSaveTemplateSnapshot={async () => {
+                  if (!selectedTemplate) return;
+                  try {
+                    const { encountersApi } = await import('@/lib/api/encounters');
+                    await encountersApi.createTemplateSnapshot(
+                      encounterId,
+                      selectedTemplate.id,
+                      formData.clinical_template_data || {}
+                    );
+                    toast({
+                      title: 'Template Saved',
+                      description: 'Template assessment saved as attachment.',
+                    });
+                  } catch (err) {
+                    console.error('Failed to save template snapshot:', err);
+                    toast({
+                      title: 'Error',
+                      description: 'Failed to save template as attachment.',
+                      variant: 'destructive',
+                    });
+                  }
+                }}
+                encounterId={encounterId}
+                patientId={encounter?.patient || 0}
+                labOrders={labOrders || []}
+                prescriptions={prescriptions || []}
+                disabled={!isEditable}
+                onBeforeNavigate={handleBeforeNavigate}
+              />
+            )}
+          </CardContent>
+        </Card>
       </div>
       
       {/* Bottom Action Bar (Fixed on Mobile) */}

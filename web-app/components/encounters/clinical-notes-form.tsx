@@ -7,6 +7,95 @@ import { Textarea } from '@/components/ui/textarea';
 import { Button } from '@/components/ui/button';
 import type { EncounterFormData } from '@/lib/types/encounter-form';
 
+interface ClinicalNotesFormContentProps {
+  data: EncounterFormData;
+  onChange: (field: keyof EncounterFormData, value: string) => void;
+  disabled?: boolean;
+}
+
+/**
+ * Content-only version of the Clinical Notes form (no Card wrapper)
+ * Used in accordion-based layouts
+ */
+export function ClinicalNotesFormContent({ data, onChange, disabled = false }: ClinicalNotesFormContentProps) {
+  return (
+    <div className="space-y-6">
+      <p className="text-sm text-muted-foreground">
+        Document subjective history, objective findings, and assessment
+      </p>
+      <div className="grid gap-6 md:grid-cols-2">
+        {/* History of Present Illness */}
+        <div className="space-y-2 md:col-span-2">
+          <Label htmlFor="history_of_present_illness" className="flex items-center gap-2">
+            <ClipboardList className="h-4 w-4 text-blue-500" />
+            History of Present Illness (HPI)
+          </Label>
+          <Textarea
+            id="history_of_present_illness"
+            placeholder="Detailed history of the current illness...&#10;Include: onset, duration, location, character, aggravating/relieving factors, associated symptoms"
+            value={data.history_of_present_illness}
+            onChange={(e) => onChange('history_of_present_illness', e.target.value)}
+            disabled={disabled}
+            rows={4}
+            className="resize-none"
+          />
+        </div>
+        
+        {/* Physical Examination */}
+        <div className="space-y-2 md:col-span-2">
+          <Label htmlFor="physical_examination" className="flex items-center gap-2">
+            <Stethoscope className="h-4 w-4 text-green-500" />
+            Physical Examination
+          </Label>
+          <Textarea
+            id="physical_examination"
+            placeholder="Physical examination findings...&#10;Include: general appearance, systems review (cardiovascular, respiratory, abdomen, etc.)"
+            value={data.physical_examination}
+            onChange={(e) => onChange('physical_examination', e.target.value)}
+            disabled={disabled}
+            rows={4}
+            className="resize-none"
+          />
+        </div>
+        
+        {/* Assessment */}
+        <div className="space-y-2 md:col-span-2">
+          <Label htmlFor="assessment" className="flex items-center gap-2">
+            <Target className="h-4 w-4 text-amber-500" />
+            Assessment
+          </Label>
+          <Textarea
+            id="assessment"
+            placeholder="Clinical assessment and reasoning...&#10;Differential diagnoses, working diagnosis"
+            value={data.assessment}
+            onChange={(e) => onChange('assessment', e.target.value)}
+            disabled={disabled}
+            rows={3}
+            className="resize-none"
+          />
+        </div>
+        
+        {/* Additional Notes */}
+        <div className="space-y-2 md:col-span-2">
+          <Label htmlFor="notes" className="flex items-center gap-2">
+            <FileText className="h-4 w-4 text-muted-foreground" />
+            Additional Notes
+          </Label>
+          <Textarea
+            id="notes"
+            placeholder="Any other relevant clinical notes, patient education provided, or special instructions..."
+            value={data.notes}
+            onChange={(e) => onChange('notes', e.target.value)}
+            disabled={disabled}
+            rows={3}
+            className="resize-none"
+          />
+        </div>
+      </div>
+    </div>
+  );
+}
+
 interface ClinicalNotesFormProps {
   data: EncounterFormData;
   onChange: (field: keyof EncounterFormData, value: string) => void;
@@ -15,6 +104,10 @@ interface ClinicalNotesFormProps {
   onPrevious?: () => void;
 }
 
+/**
+ * Card-wrapped version of the Clinical Notes form
+ * Used in tab-based layouts (legacy)
+ */
 export function ClinicalNotesForm({ 
   data, 
   onChange, 
@@ -27,93 +120,14 @@ export function ClinicalNotesForm({
       <CardHeader className="pb-3">
         <CardTitle className="text-lg flex items-center gap-2">
           <FileText className="h-5 w-5" />
-          HPI & Clinical Notes
+          History of Present Illness (HPI)
         </CardTitle>
         <CardDescription>
           Document subjective history, objective findings, assessment, and plan (SOAP)
         </CardDescription>
       </CardHeader>
-      <CardContent className="space-y-6">
-        <div className="grid gap-6 md:grid-cols-2">
-          {/* History of Present Illness */}
-          <div className="space-y-2 md:col-span-2">
-            <Label htmlFor="history_of_present_illness" className="flex items-center gap-2">
-              <ClipboardList className="h-4 w-4 text-blue-500" />
-              History of Present Illness (HPI)
-            </Label>
-            <Textarea
-              id="history_of_present_illness"
-              placeholder="Detailed history of the current illness...&#10;Include: onset, duration, location, character, aggravating/relieving factors, associated symptoms"
-              value={data.history_of_present_illness}
-              onChange={(e) => onChange('history_of_present_illness', e.target.value)}
-              disabled={disabled}
-              rows={4}
-              className="resize-none"
-            />
-          </div>
-          
-          {/* Physical Examination */}
-          <div className="space-y-2 md:col-span-2">
-            <Label htmlFor="physical_examination" className="flex items-center gap-2">
-              <Stethoscope className="h-4 w-4 text-green-500" />
-              Physical Examination
-            </Label>
-            <Textarea
-              id="physical_examination"
-              placeholder="Physical examination findings...&#10;Include: general appearance, systems review (cardiovascular, respiratory, abdomen, etc.)"
-              value={data.physical_examination}
-              onChange={(e) => onChange('physical_examination', e.target.value)}
-              disabled={disabled}
-              rows={4}
-              className="resize-none"
-            />
-          </div>
-          
-          {/* Assessment */}
-          <div className="space-y-2">
-            <Label htmlFor="assessment" className="flex items-center gap-2">
-              <Target className="h-4 w-4 text-amber-500" />
-              Assessment
-            </Label>
-            <Textarea
-              id="assessment"
-              placeholder="Clinical assessment and reasoning...&#10;Differential diagnoses, working diagnosis"
-              value={data.assessment}
-              onChange={(e) => onChange('assessment', e.target.value)}
-              disabled={disabled}
-              rows={3}
-              className="resize-none"
-            />
-          </div>
-          
-          {/* Plan note - handled by Treatment Plan, Lab Orders, and Prescriptions */}
-          <div className="space-y-2 md:col-span-2 p-3 bg-muted/50 rounded-lg">
-            <p className="text-sm text-muted-foreground flex items-center gap-2">
-              <ClipboardList className="h-4 w-4 text-purple-500" />
-              <span>
-                <strong>Plan:</strong> Use the Treatment Plan, Lab Orders, and Prescriptions tabs
-                to document the management plan with structured data.
-              </span>
-            </p>
-          </div>
-          
-          {/* Additional Notes */}
-          <div className="space-y-2 md:col-span-2">
-            <Label htmlFor="notes" className="flex items-center gap-2">
-              <FileText className="h-4 w-4 text-muted-foreground" />
-              Additional Notes
-            </Label>
-            <Textarea
-              id="notes"
-              placeholder="Any other relevant clinical notes, patient education provided, or special instructions..."
-              value={data.notes}
-              onChange={(e) => onChange('notes', e.target.value)}
-              disabled={disabled}
-              rows={3}
-              className="resize-none"
-            />
-          </div>
-        </div>
+      <CardContent>
+        <ClinicalNotesFormContent data={data} onChange={onChange} disabled={disabled} />
       </CardContent>
       
       {/* Navigation Footer */}

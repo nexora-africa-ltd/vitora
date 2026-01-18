@@ -420,6 +420,46 @@ export function DiagnosisListDisplay({ diagnoses, onRemove, disabled = false }: 
   );
 }
 
+interface DiagnosisFormContentProps {
+  diagnoses: DiagnosisFormData[];
+  onAdd: (diagnosis: DiagnosisFormData) => void;
+  onRemove: (index: number) => void;
+  disabled?: boolean;
+}
+
+/**
+ * Content-only version of the Diagnosis form (no Card wrapper)
+ * Used in accordion-based layouts
+ */
+export function DiagnosisFormContent({ diagnoses, onAdd, onRemove, disabled = false }: DiagnosisFormContentProps) {
+  return (
+    <div className="space-y-6">
+      <p className="text-sm text-muted-foreground">
+        Add one or more diagnoses using ICD-10/ICD-11 codes. You can add comorbidities as secondary diagnoses.
+      </p>
+      
+      {/* List of added diagnoses */}
+      <DiagnosisListDisplay
+        diagnoses={diagnoses}
+        onRemove={onRemove}
+        disabled={disabled}
+      />
+      
+      {/* Diagnosis entry form - Always visible for adding more */}
+      <div className="pt-2">
+        {diagnoses.length > 0 && (
+          <h4 className="text-sm font-medium mb-3 text-muted-foreground">Add Another Diagnosis</h4>
+        )}
+        <DiagnosisEntry
+          onAdd={onAdd}
+          existingDiagnoses={diagnoses}
+          disabled={disabled}
+        />
+      </div>
+    </div>
+  );
+}
+
 interface DiagnosisFormProps {
   diagnoses: DiagnosisFormData[];
   onAdd: (diagnosis: DiagnosisFormData) => void;
@@ -429,13 +469,17 @@ interface DiagnosisFormProps {
   onNext?: () => void;
 }
 
+/**
+ * Card-wrapped version of the Diagnosis form
+ * Used in tab-based layouts (legacy)
+ */
 export function DiagnosisForm({ diagnoses, onAdd, onRemove, disabled = false, onPrevious, onNext }: DiagnosisFormProps) {
   return (
     <Card>
       <CardHeader className="pb-3">
         <CardTitle className="text-lg flex items-center gap-2">
           <AlertCircle className="h-5 w-5" />
-          Diagnoses
+          Diagnosis (Dx)
           {diagnoses.length > 0 && (
             <Badge variant="secondary" className="ml-2">{diagnoses.length}</Badge>
           )}
@@ -444,25 +488,13 @@ export function DiagnosisForm({ diagnoses, onAdd, onRemove, disabled = false, on
           Add one or more diagnoses using ICD-10 codes. You can add comorbidities as secondary diagnoses.
         </CardDescription>
       </CardHeader>
-      <CardContent className="space-y-6">
-        {/* List of added diagnoses */}
-        <DiagnosisListDisplay
+      <CardContent>
+        <DiagnosisFormContent
           diagnoses={diagnoses}
+          onAdd={onAdd}
           onRemove={onRemove}
           disabled={disabled}
         />
-        
-        {/* Diagnosis entry form - Always visible for adding more */}
-        <div className="pt-2">
-          {diagnoses.length > 0 && (
-            <h4 className="text-sm font-medium mb-3 text-muted-foreground">Add Another Diagnosis</h4>
-          )}
-          <DiagnosisEntry
-            onAdd={onAdd}
-            existingDiagnoses={diagnoses}
-            disabled={disabled}
-          />
-        </div>
       </CardContent>
       
       {/* Navigation Footer */}
