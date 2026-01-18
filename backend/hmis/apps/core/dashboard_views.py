@@ -552,3 +552,231 @@ def _generate_periods(start_date, end_date, granularity: str) -> list:
                 current = current.replace(month=current.month + 1)
 
     return periods
+
+
+# =============================================================================
+# Revenue Breakdown API
+# =============================================================================
+
+# Cache configuration for revenue breakdown
+REVENUE_BREAKDOWN_CACHE_PREFIX = "revenue_breakdown"
+REVENUE_BREAKDOWN_CACHE_TTL = 300  # 5 minutes
+
+# Valid group_by options
+VALID_GROUP_BY_OPTIONS = ["category", "item_type", "payment_method"]
+
+
+@api_view(["GET"])
+@permission_classes([IsAuthenticated])
+def revenue_breakdown(request):
+    """
+    Get revenue breakdown by category, item type, or payment method.
+
+    Returns aggregated revenue data from completed payments for dashboard charts.
+
+    Query Parameters:
+        start_date (required): Start date in YYYY-MM-DD format
+        end_date (required): End date in YYYY-MM-DD format
+        group_by (optional): 'category' (default), 'item_type', or 'payment_method'
+        refresh (optional): Set to 'true' to bypass cache
+
+    Data Retention: Maximum 90 days range.
+
+    Response:
+        {
+            "date_range": {"start": "2026-01-01", "end": "2026-01-07"},
+            "total_revenue": 145200.00,
+            "currency": "KES",
+            "breakdown": [
+                {
+                    "name": "Consultation",
+                    "amount": 45000.00,
+                    "percentage": 31.0,
+                    "transaction_count": 120
+                },
+                ...
+            ]
+        }
+    """
+    from datetime import datetime
+
+    from django.db.models import Count, Sum
+
+    # Get query parameters
+    start_date_str = request.query_params.get("start_date")
+    end_date_str = request.query_params.get("end_date")
+    group_by = request.query_params.get("group_by", "category")
+    bypass_cache = request.query_params.get("refresh", "").lower() == "true"
+
+    # Validate required parameters
+    if not start_date_str:
+        return Response(
+            {"error": "start_date is required (YYYY-MM-DD format)"},
+            status=400,
+        )
+
+    if not end_date_str:
+        return Response(
+            {"error": "end_date is required (YYYY-MM-DD format)"},
+            status=400,
+        )
+
+    # Parse dates
+    try:
+        start_date = datetime.strptime(start_date_str, "%Y-%m-%d").date()
+        end_date = datetime.strptime(end_date_str, "%Y-%m-%d").date()
+    except ValueError:
+        return Response(
+            {"error": "Invalid date format. Use YYYY-MM-DD"},
+            status=400,
+        )
+
+    # Validate date range
+    if start_date > end_date:
+        return Response(
+            {"error": "start_date must be before or equal to end_date"},
+            status=400,
+        )
+
+    # Enforce 90-day limit
+    date_diff = (end_date - start_date).days
+    if date_diff > MAX_DATE_RANGE_DAYS:
+        return Response(
+            {"error": f"Date range cannot exceed {MAX_DATE_RANGE_DAYS} days"},
+            status=400,
+        )
+
+    # Validate group_by
+    if group_by not in VALID_GROUP_BY_OPTIONS:
+        return Response(
+            {"error": f"Invalid group_by value. Must be one of: {', '.join(VALID_GROUP_BY_OPTIONS)}"},
+            status=400,
+        )
+
+    # Check cache
+    cache_key = f"{REVENUE_BREAKDOWN_CACHE_PREFIX}:{start_date_str}:{end_date_str}:{group_by}"
+    if not bypass_cache:
+        cached_data = cache.get(cache_key)
+        if cached_data:
+            return Response(cached_data)
+
+    # Compute revenue breakdown
+    result = _compute_revenue_breakdown(start_date, end_date, group_by)
+
+    # Cache the result
+    cache.set(cache_key, result, REVENUE_BREAKDOWN_CACHE_TTL)
+
+    return Response(result)
+
+
+def _compute_revenue_breakdown(start_date, end_date, group_by: str) -> dict:
+    """Compute revenue breakdown from the database."""
+    from django.db.models import Count, Sum
+
+    try:
+        from hmis.apps.billing.models import InvoiceItem, Payment
+    except ImportError:
+        # Billing module not available
+        return {
+            "date_range": {"start": start_date.isoformat(), "end": end_date.isoformat()},
+            "total_revenue": 0,
+            "currency": "KES",
+            "breakdown": [],
+        }
+
+    # Filter completed payments in date range
+    payments = Payment.objects.filter(
+        status="completed",
+        payment_date__date__gte=start_date,
+        payment_date__date__lte=end_date,
+    )
+
+    # Determine grouping field based on group_by parameter
+    if group_by == "category":
+        # Group by service category via invoice items
+        # We need to aggregate through invoice -> items -> service -> category
+        breakdown_data = (
+            InvoiceItem.objects.filter(
+                invoice__payments__in=payments,
+                invoice__payments__status="completed",
+            )
+            .values("service__category__name")
+            .annotate(
+                amount=Sum("line_total"),
+                transaction_count=Count("id", distinct=True),
+            )
+            .order_by("-amount")
+        )
+        
+        breakdown = []
+        for item in breakdown_data:
+            name = item["service__category__name"] or "Uncategorized"
+            breakdown.append({
+                "name": name,
+                "amount": float(item["amount"] or 0),
+                "transaction_count": item["transaction_count"],
+            })
+
+    elif group_by == "item_type":
+        # Group by invoice item type (service, pharmacy, lab, etc.)
+        breakdown_data = (
+            InvoiceItem.objects.filter(
+                invoice__payments__in=payments,
+                invoice__payments__status="completed",
+            )
+            .values("item_type")
+            .annotate(
+                amount=Sum("line_total"),
+                transaction_count=Count("id", distinct=True),
+            )
+            .order_by("-amount")
+        )
+        
+        breakdown = []
+        for item in breakdown_data:
+            name = item["item_type"] or "Unknown"
+            breakdown.append({
+                "name": name,
+                "amount": float(item["amount"] or 0),
+                "transaction_count": item["transaction_count"],
+            })
+
+    elif group_by == "payment_method":
+        # Group by payment method
+        breakdown_data = (
+            payments
+            .values("method")
+            .annotate(
+                amount=Sum("amount"),
+                transaction_count=Count("id"),
+            )
+            .order_by("-amount")
+        )
+        
+        breakdown = []
+        for item in breakdown_data:
+            name = item["method"] or "Unknown"
+            breakdown.append({
+                "name": name,
+                "amount": float(item["amount"] or 0),
+                "transaction_count": item["transaction_count"],
+            })
+    else:
+        breakdown = []
+
+    # Calculate total revenue
+    total_revenue = sum(item["amount"] for item in breakdown) if breakdown else 0
+
+    # Calculate percentages
+    for item in breakdown:
+        if total_revenue > 0:
+            item["percentage"] = round(item["amount"] / total_revenue * 100, 1)
+        else:
+            item["percentage"] = 0
+
+    return {
+        "date_range": {"start": start_date.isoformat(), "end": end_date.isoformat()},
+        "total_revenue": total_revenue,
+        "currency": "KES",
+        "breakdown": breakdown,
+    }

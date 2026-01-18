@@ -229,10 +229,10 @@ def revenue_breakdown(request):
 ```
 
 ### TDD Tests Required
-- [ ] `test_revenue_breakdown_requires_authentication`
-- [ ] `test_revenue_breakdown_aggregates_by_department`
-- [ ] `test_revenue_breakdown_calculates_percentages`
-- [ ] `test_revenue_breakdown_filters_by_date_range`
+- [x] `test_revenue_breakdown_requires_authentication`
+- [x] `test_revenue_breakdown_aggregates_by_department`
+- [x] `test_revenue_breakdown_calculates_percentages`
+- [x] `test_revenue_breakdown_filters_by_date_range`
 
 ---
 
