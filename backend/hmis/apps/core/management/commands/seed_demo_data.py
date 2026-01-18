@@ -28,7 +28,6 @@ class Command(BaseCommand):
         from random import choice, randint
 
         from django.contrib.auth import get_user_model
-        from django.contrib.auth.models import Group
         from django.db import transaction
 
         from hmis.apps.core.models import County, Department, Role, StaffProfile
@@ -399,7 +398,7 @@ class Command(BaseCommand):
                             "is_active": True,
                         },
                     )
-                    
+
                     # Create beds if ward was just created
                     if created:
                         for i in range(1, capacity + 1):
@@ -421,7 +420,7 @@ class Command(BaseCommand):
             # Step 3: Create Demo Users with StaffProfiles
             # =============================================================
             self.stdout.write(self.style.MIGRATE_HEADING("\n3. Creating Demo Users with Staff Profiles..."))
-            
+
             for user_data in DEMO_USERS:
                 # Extract staff profile data (use .get() to avoid modifying original dict)
                 role_code = user_data["role_code"]
@@ -470,11 +469,11 @@ class Command(BaseCommand):
                             "date_joined": date.today() - timedelta(days=365),  # Joined 1 year ago
                         },
                     )
-                    
+
                     # Also add user to the role's Django group
                     if role.django_group:
                         user.groups.add(role.django_group)
-                    
+
                     sp_status = "Created" if sp_created else "Updated"
                     self.stdout.write(
                         f"  {'Created' if created else 'Updated'} user: {user.username} "
@@ -542,7 +541,7 @@ class Command(BaseCommand):
         self.stdout.write(self.style.SUCCESS("\n" + "=" * 60))
         self.stdout.write(self.style.SUCCESS("✅ Demo data seeding completed successfully!"))
         self.stdout.write(self.style.SUCCESS("=" * 60))
-        
+
         self.stdout.write("\n📋 Demo Credentials:")
         self.stdout.write("-" * 60)
         self.stdout.write(f"{'Username':<25} {'Role':<20} {'Department'}")

@@ -415,7 +415,6 @@ def _compute_patient_volume(start_date, end_date, granularity: str) -> list:
         List of dicts with date, registrations, encounters, and by_type breakdown
     """
     from collections import defaultdict
-    from datetime import timedelta
 
     from django.db.models import Count
     from django.db.models.functions import TruncDate, TruncMonth, TruncWeek
@@ -528,7 +527,6 @@ def _generate_periods(start_date, end_date, granularity: str) -> list:
             current += timedelta(days=1)
     elif granularity == "week":
         # Align to week start (Monday)
-        from datetime import date
 
         # Move to Monday of the start week
         days_since_monday = current.weekday()
@@ -539,7 +537,6 @@ def _generate_periods(start_date, end_date, granularity: str) -> list:
             periods.append(current)
             current += timedelta(weeks=1)
     elif granularity == "month":
-        from datetime import date
 
         # Start from first of month
         current = current.replace(day=1)
@@ -600,7 +597,6 @@ def revenue_breakdown(request):
     """
     from datetime import datetime
 
-    from django.db.models import Count, Sum
 
     # Get query parameters
     start_date_str = request.query_params.get("start_date")
@@ -707,7 +703,7 @@ def _compute_revenue_breakdown(start_date, end_date, group_by: str) -> dict:
             )
             .order_by("-amount")
         )
-        
+
         breakdown = []
         for item in breakdown_data:
             name = item["service__category__name"] or "Uncategorized"
@@ -731,7 +727,7 @@ def _compute_revenue_breakdown(start_date, end_date, group_by: str) -> dict:
             )
             .order_by("-amount")
         )
-        
+
         breakdown = []
         for item in breakdown_data:
             name = item["item_type"] or "Unknown"
@@ -752,7 +748,7 @@ def _compute_revenue_breakdown(start_date, end_date, group_by: str) -> dict:
             )
             .order_by("-amount")
         )
-        
+
         breakdown = []
         for item in breakdown_data:
             name = item["method"] or "Unknown"

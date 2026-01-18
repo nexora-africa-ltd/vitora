@@ -5,7 +5,12 @@ URL configuration for core app.
 from django.urls import path
 from rest_framework import routers
 
-from .dashboard_views import dashboard_stats, patient_volume_history, revenue_breakdown, activity_feed
+from .dashboard_views import (
+    activity_feed,
+    dashboard_stats,
+    patient_volume_history,
+    revenue_breakdown,
+)
 from .views import (
     AuditLogViewSet,
     DepartmentViewSet,

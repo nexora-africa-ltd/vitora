@@ -12,9 +12,10 @@ Provides revenue breakdown by department/category for dashboard charts.
 Data retention: 90 days maximum.
 """
 
-import pytest  # type: ignore
 from datetime import date, timedelta
 from decimal import Decimal
+
+import pytest  # type: ignore
 from django.utils import timezone
 from rest_framework import status
 
@@ -31,7 +32,7 @@ REVENUE_BREAKDOWN_URL = "/api/core/dashboard/revenue-breakdown/"
 def service_category(db):
     """Create a service category for testing."""
     from hmis.apps.billing.models import ServiceCategory
-    
+
     return ServiceCategory.objects.create(
         name="Consultation",
         code="CONS",
@@ -43,7 +44,7 @@ def service_category(db):
 def lab_category(db):
     """Create a lab service category for testing."""
     from hmis.apps.billing.models import ServiceCategory
-    
+
     return ServiceCategory.objects.create(
         name="Laboratory",
         code="LAB",
@@ -55,7 +56,7 @@ def lab_category(db):
 def pharmacy_category(db):
     """Create a pharmacy service category for testing."""
     from hmis.apps.billing.models import ServiceCategory
-    
+
     return ServiceCategory.objects.create(
         name="Pharmacy",
         code="PHARM",
@@ -67,7 +68,7 @@ def pharmacy_category(db):
 def consultation_service(db, service_category, test_user):
     """Create a consultation service for testing."""
     from hmis.apps.billing.models import Service
-    
+
     return Service.objects.create(
         category=service_category,
         code="CONS-001",
@@ -81,7 +82,7 @@ def consultation_service(db, service_category, test_user):
 def lab_service(db, lab_category, test_user):
     """Create a lab service for testing."""
     from hmis.apps.billing.models import Service
-    
+
     return Service.objects.create(
         category=lab_category,
         code="LAB-001",
@@ -95,7 +96,7 @@ def lab_service(db, lab_category, test_user):
 def pharmacy_service(db, pharmacy_category, test_user):
     """Create a pharmacy service for testing."""
     from hmis.apps.billing.models import Service
-    
+
     return Service.objects.create(
         category=pharmacy_category,
         code="PHARM-001",
@@ -109,7 +110,7 @@ def pharmacy_service(db, pharmacy_category, test_user):
 def sample_invoice(db, sample_patient, test_user):
     """Create a sample invoice for testing."""
     from hmis.apps.billing.models import Invoice
-    
+
     invoice = Invoice.objects.create(
         patient=sample_patient,
         status=Invoice.Status.PENDING,
@@ -123,7 +124,7 @@ def sample_invoice(db, sample_patient, test_user):
 def create_invoice_with_payment(patient, user, service, quantity, payment_date, payment_status="completed"):
     """Helper to create invoice with items and payment."""
     from hmis.apps.billing.models import Invoice, InvoiceItem, Payment
-    
+
     # Create invoice
     invoice = Invoice.objects.create(
         patient=patient,
@@ -132,7 +133,7 @@ def create_invoice_with_payment(patient, user, service, quantity, payment_date, 
         due_date=(payment_date.date() if hasattr(payment_date, 'date') else payment_date) + timedelta(days=30),
         created_by=user,
     )
-    
+
     # Add item
     line_total = service.unit_price * quantity
     InvoiceItem.objects.create(
@@ -144,13 +145,13 @@ def create_invoice_with_payment(patient, user, service, quantity, payment_date, 
         unit_price=service.unit_price,
         line_total=line_total,
     )
-    
+
     # Calculate totals
     invoice.subtotal = line_total
     invoice.total_amount = line_total
     invoice.balance_due = line_total
     invoice.save()
-    
+
     # Create payment
     payment = Payment.objects.create(
         invoice=invoice,
@@ -162,13 +163,13 @@ def create_invoice_with_payment(patient, user, service, quantity, payment_date, 
         ),
         received_by=user,
     )
-    
+
     if payment_status == "completed":
         invoice.amount_paid = line_total
         invoice.balance_due = Decimal("0.00")
         invoice.status = Invoice.Status.PAID
         invoice.save()
-    
+
     return invoice, payment
 
 
@@ -210,7 +211,7 @@ class TestRevenueBreakdownValidation:
         """Should return 400 when start_date is missing."""
         params = {"end_date": date.today().isoformat()}
         response = authenticated_client.get(REVENUE_BREAKDOWN_URL, params)
-        
+
         assert response.status_code == status.HTTP_400_BAD_REQUEST
         assert "start_date" in response.data.get("error", "").lower()
 
@@ -218,7 +219,7 @@ class TestRevenueBreakdownValidation:
         """Should return 400 when end_date is missing."""
         params = {"start_date": date.today().isoformat()}
         response = authenticated_client.get(REVENUE_BREAKDOWN_URL, params)
-        
+
         assert response.status_code == status.HTTP_400_BAD_REQUEST
         assert "end_date" in response.data.get("error", "").lower()
 
@@ -226,7 +227,7 @@ class TestRevenueBreakdownValidation:
         """Should return 400 for invalid date format."""
         params = {"start_date": "2026/01/01", "end_date": "2026-01-07"}
         response = authenticated_client.get(REVENUE_BREAKDOWN_URL, params)
-        
+
         assert response.status_code == status.HTTP_400_BAD_REQUEST
 
     def test_rejects_start_date_after_end_date(self, authenticated_client):
@@ -237,7 +238,7 @@ class TestRevenueBreakdownValidation:
             "end_date": (today - timedelta(days=7)).isoformat(),
         }
         response = authenticated_client.get(REVENUE_BREAKDOWN_URL, params)
-        
+
         assert response.status_code == status.HTTP_400_BAD_REQUEST
         assert "start_date" in response.data.get("error", "").lower()
 
@@ -249,7 +250,7 @@ class TestRevenueBreakdownValidation:
             "end_date": today.isoformat(),
         }
         response = authenticated_client.get(REVENUE_BREAKDOWN_URL, params)
-        
+
         assert response.status_code == status.HTTP_400_BAD_REQUEST
         assert "90" in response.data.get("error", "")
 
@@ -260,7 +261,7 @@ class TestRevenueBreakdownValidation:
             "start_date": (today - timedelta(days=7)).isoformat(),
             "end_date": today.isoformat(),
         }
-        
+
         for group_by in ["category", "item_type", "payment_method"]:
             params = {**base_params, "group_by": group_by}
             response = authenticated_client.get(REVENUE_BREAKDOWN_URL, params)
@@ -275,7 +276,7 @@ class TestRevenueBreakdownValidation:
             "group_by": "invalid_value",
         }
         response = authenticated_client.get(REVENUE_BREAKDOWN_URL, params)
-        
+
         assert response.status_code == status.HTTP_400_BAD_REQUEST
 
 
@@ -293,10 +294,10 @@ class TestRevenueBreakdownResponseStructure:
         today = date.today()
         start = (today - timedelta(days=7)).isoformat()
         end = today.isoformat()
-        
+
         params = {"start_date": start, "end_date": end}
         response = authenticated_client.get(REVENUE_BREAKDOWN_URL, params)
-        
+
         assert response.status_code == status.HTTP_200_OK
         assert "date_range" in response.data
         assert response.data["date_range"]["start"] == start
@@ -310,7 +311,7 @@ class TestRevenueBreakdownResponseStructure:
             "end_date": today.isoformat(),
         }
         response = authenticated_client.get(REVENUE_BREAKDOWN_URL, params)
-        
+
         assert response.status_code == status.HTTP_200_OK
         assert "total_revenue" in response.data
         assert isinstance(response.data["total_revenue"], (int, float))
@@ -323,7 +324,7 @@ class TestRevenueBreakdownResponseStructure:
             "end_date": today.isoformat(),
         }
         response = authenticated_client.get(REVENUE_BREAKDOWN_URL, params)
-        
+
         assert response.status_code == status.HTTP_200_OK
         assert "currency" in response.data
         assert response.data["currency"] == "KES"
@@ -336,7 +337,7 @@ class TestRevenueBreakdownResponseStructure:
             "end_date": today.isoformat(),
         }
         response = authenticated_client.get(REVENUE_BREAKDOWN_URL, params)
-        
+
         assert response.status_code == status.HTTP_200_OK
         assert "breakdown" in response.data
         assert isinstance(response.data["breakdown"], list)
@@ -346,7 +347,7 @@ class TestRevenueBreakdownResponseStructure:
     ):
         """Should return breakdown items with required fields."""
         today = date.today()
-        
+
         # Create payment
         create_invoice_with_payment(
             patient=sample_patient,
@@ -355,17 +356,17 @@ class TestRevenueBreakdownResponseStructure:
             quantity=Decimal("1"),
             payment_date=timezone.now(),
         )
-        
+
         params = {
             "start_date": (today - timedelta(days=1)).isoformat(),
             "end_date": today.isoformat(),
             "refresh": "true",
         }
         response = authenticated_client.get(REVENUE_BREAKDOWN_URL, params)
-        
+
         assert response.status_code == status.HTTP_200_OK
         assert len(response.data["breakdown"]) > 0
-        
+
         item = response.data["breakdown"][0]
         assert "name" in item
         assert "amount" in item
@@ -383,12 +384,12 @@ class TestRevenueBreakdownDataAccuracy:
     """Test data accuracy for revenue breakdown endpoint."""
 
     def test_aggregates_revenue_by_category(
-        self, authenticated_client, sample_patient, test_user, 
+        self, authenticated_client, sample_patient, test_user,
         consultation_service, lab_service
     ):
         """Should correctly aggregate revenue by service category."""
         today = date.today()
-        
+
         # Create consultation payment (500 x 2 = 1000)
         create_invoice_with_payment(
             patient=sample_patient,
@@ -397,7 +398,7 @@ class TestRevenueBreakdownDataAccuracy:
             quantity=Decimal("2"),
             payment_date=timezone.now(),
         )
-        
+
         # Create lab payment (800 x 1 = 800)
         create_invoice_with_payment(
             patient=sample_patient,
@@ -406,7 +407,7 @@ class TestRevenueBreakdownDataAccuracy:
             quantity=Decimal("1"),
             payment_date=timezone.now(),
         )
-        
+
         params = {
             "start_date": (today - timedelta(days=1)).isoformat(),
             "end_date": today.isoformat(),
@@ -414,10 +415,10 @@ class TestRevenueBreakdownDataAccuracy:
             "refresh": "true",
         }
         response = authenticated_client.get(REVENUE_BREAKDOWN_URL, params)
-        
+
         assert response.status_code == status.HTTP_200_OK
         assert response.data["total_revenue"] == 1800.0
-        
+
         breakdown = {item["name"]: item for item in response.data["breakdown"]}
         assert "Consultation" in breakdown
         assert breakdown["Consultation"]["amount"] == 1000.0
@@ -430,7 +431,7 @@ class TestRevenueBreakdownDataAccuracy:
     ):
         """Should calculate percentages correctly."""
         today = date.today()
-        
+
         # 1000 consultation + 1000 lab = 2000 total (50% each)
         create_invoice_with_payment(
             patient=sample_patient,
@@ -439,7 +440,7 @@ class TestRevenueBreakdownDataAccuracy:
             quantity=Decimal("2"),  # 500 x 2 = 1000
             payment_date=timezone.now(),
         )
-        
+
         # Create another lab service with price 1000
         from hmis.apps.billing.models import Service
         lab_service_2 = Service.objects.create(
@@ -449,7 +450,7 @@ class TestRevenueBreakdownDataAccuracy:
             unit_price=Decimal("1000.00"),
             created_by=test_user,
         )
-        
+
         create_invoice_with_payment(
             patient=sample_patient,
             user=test_user,
@@ -457,7 +458,7 @@ class TestRevenueBreakdownDataAccuracy:
             quantity=Decimal("1"),  # 1000 x 1 = 1000
             payment_date=timezone.now(),
         )
-        
+
         params = {
             "start_date": (today - timedelta(days=1)).isoformat(),
             "end_date": today.isoformat(),
@@ -465,9 +466,9 @@ class TestRevenueBreakdownDataAccuracy:
             "refresh": "true",
         }
         response = authenticated_client.get(REVENUE_BREAKDOWN_URL, params)
-        
+
         assert response.status_code == status.HTTP_200_OK
-        
+
         breakdown = {item["name"]: item for item in response.data["breakdown"]}
         # Each should be 50%
         assert breakdown["Consultation"]["percentage"] == 50.0
@@ -478,7 +479,7 @@ class TestRevenueBreakdownDataAccuracy:
     ):
         """Should count transactions correctly."""
         today = date.today()
-        
+
         # Create 3 separate payments for consultation
         for _ in range(3):
             create_invoice_with_payment(
@@ -488,7 +489,7 @@ class TestRevenueBreakdownDataAccuracy:
                 quantity=Decimal("1"),
                 payment_date=timezone.now(),
             )
-        
+
         params = {
             "start_date": (today - timedelta(days=1)).isoformat(),
             "end_date": today.isoformat(),
@@ -496,9 +497,9 @@ class TestRevenueBreakdownDataAccuracy:
             "refresh": "true",
         }
         response = authenticated_client.get(REVENUE_BREAKDOWN_URL, params)
-        
+
         assert response.status_code == status.HTTP_200_OK
-        
+
         breakdown = {item["name"]: item for item in response.data["breakdown"]}
         assert breakdown["Consultation"]["transaction_count"] == 3
 
@@ -509,7 +510,7 @@ class TestRevenueBreakdownDataAccuracy:
         today = date.today()
         yesterday = today - timedelta(days=1)
         three_days_ago = today - timedelta(days=3)
-        
+
         # Create payment from 3 days ago (outside range)
         create_invoice_with_payment(
             patient=sample_patient,
@@ -520,7 +521,7 @@ class TestRevenueBreakdownDataAccuracy:
                 timezone.datetime.combine(three_days_ago, timezone.datetime.min.time())
             ),
         )
-        
+
         # Create payment from today (inside range)
         create_invoice_with_payment(
             patient=sample_patient,
@@ -529,7 +530,7 @@ class TestRevenueBreakdownDataAccuracy:
             quantity=Decimal("2"),  # Different amount to distinguish
             payment_date=timezone.now(),
         )
-        
+
         # Query for yesterday to today only
         params = {
             "start_date": yesterday.isoformat(),
@@ -538,7 +539,7 @@ class TestRevenueBreakdownDataAccuracy:
             "refresh": "true",
         }
         response = authenticated_client.get(REVENUE_BREAKDOWN_URL, params)
-        
+
         assert response.status_code == status.HTTP_200_OK
         # Should only include today's payment (500 x 2 = 1000)
         assert response.data["total_revenue"] == 1000.0
@@ -548,7 +549,7 @@ class TestRevenueBreakdownDataAccuracy:
     ):
         """Should only include completed payments in revenue."""
         today = date.today()
-        
+
         # Create completed payment
         create_invoice_with_payment(
             patient=sample_patient,
@@ -558,7 +559,7 @@ class TestRevenueBreakdownDataAccuracy:
             payment_date=timezone.now(),
             payment_status="completed",
         )
-        
+
         # Create pending payment
         create_invoice_with_payment(
             patient=sample_patient,
@@ -568,14 +569,14 @@ class TestRevenueBreakdownDataAccuracy:
             payment_date=timezone.now(),
             payment_status="pending",
         )
-        
+
         params = {
             "start_date": (today - timedelta(days=1)).isoformat(),
             "end_date": today.isoformat(),
             "refresh": "true",
         }
         response = authenticated_client.get(REVENUE_BREAKDOWN_URL, params)
-        
+
         assert response.status_code == status.HTTP_200_OK
         # Should only include completed payment (500 x 1 = 500)
         assert response.data["total_revenue"] == 500.0
@@ -595,7 +596,7 @@ class TestRevenueBreakdownGroupBy:
     ):
         """Should group by category by default."""
         today = date.today()
-        
+
         create_invoice_with_payment(
             patient=sample_patient,
             user=test_user,
@@ -603,14 +604,14 @@ class TestRevenueBreakdownGroupBy:
             quantity=Decimal("1"),
             payment_date=timezone.now(),
         )
-        
+
         params = {
             "start_date": (today - timedelta(days=1)).isoformat(),
             "end_date": today.isoformat(),
             "refresh": "true",
         }
         response = authenticated_client.get(REVENUE_BREAKDOWN_URL, params)
-        
+
         assert response.status_code == status.HTTP_200_OK
         # Default should be category
         item = response.data["breakdown"][0]
@@ -621,7 +622,7 @@ class TestRevenueBreakdownGroupBy:
     ):
         """Should group by item type when specified."""
         today = date.today()
-        
+
         create_invoice_with_payment(
             patient=sample_patient,
             user=test_user,
@@ -629,7 +630,7 @@ class TestRevenueBreakdownGroupBy:
             quantity=Decimal("1"),
             payment_date=timezone.now(),
         )
-        
+
         params = {
             "start_date": (today - timedelta(days=1)).isoformat(),
             "end_date": today.isoformat(),
@@ -637,7 +638,7 @@ class TestRevenueBreakdownGroupBy:
             "refresh": "true",
         }
         response = authenticated_client.get(REVENUE_BREAKDOWN_URL, params)
-        
+
         assert response.status_code == status.HTTP_200_OK
         item = response.data["breakdown"][0]
         # Should be grouped by item type (service, pharmacy, lab, etc.)
@@ -648,7 +649,7 @@ class TestRevenueBreakdownGroupBy:
     ):
         """Should group by payment method when specified."""
         today = date.today()
-        
+
         create_invoice_with_payment(
             patient=sample_patient,
             user=test_user,
@@ -656,7 +657,7 @@ class TestRevenueBreakdownGroupBy:
             quantity=Decimal("1"),
             payment_date=timezone.now(),
         )
-        
+
         params = {
             "start_date": (today - timedelta(days=1)).isoformat(),
             "end_date": today.isoformat(),
@@ -664,7 +665,7 @@ class TestRevenueBreakdownGroupBy:
             "refresh": "true",
         }
         response = authenticated_client.get(REVENUE_BREAKDOWN_URL, params)
-        
+
         assert response.status_code == status.HTTP_200_OK
         item = response.data["breakdown"][0]
         # Should be grouped by payment method
@@ -688,7 +689,7 @@ class TestRevenueBreakdownEdgeCases:
             "end_date": today.isoformat(),
         }
         response = authenticated_client.get(REVENUE_BREAKDOWN_URL, params)
-        
+
         assert response.status_code == status.HTTP_200_OK
         assert response.data["total_revenue"] == 0
         assert response.data["breakdown"] == []
@@ -701,7 +702,7 @@ class TestRevenueBreakdownEdgeCases:
             "end_date": today.isoformat(),
         }
         response = authenticated_client.get(REVENUE_BREAKDOWN_URL, params)
-        
+
         assert response.status_code == status.HTTP_200_OK
         # Should not raise division by zero
         assert response.data["total_revenue"] == 0
@@ -723,11 +724,11 @@ class TestRevenueBreakdownCaching:
             "start_date": (today - timedelta(days=7)).isoformat(),
             "end_date": today.isoformat(),
         }
-        
+
         # First request
         response1 = authenticated_client.get(REVENUE_BREAKDOWN_URL, params)
         assert response1.status_code == status.HTTP_200_OK
-        
+
         # Second request should be cached
         response2 = authenticated_client.get(REVENUE_BREAKDOWN_URL, params)
         assert response2.status_code == status.HTTP_200_OK
@@ -742,11 +743,11 @@ class TestRevenueBreakdownCaching:
             "start_date": (today - timedelta(days=7)).isoformat(),
             "end_date": today.isoformat(),
         }
-        
+
         # First request (empty)
         response1 = authenticated_client.get(REVENUE_BREAKDOWN_URL, params)
         assert response1.data["total_revenue"] == 0
-        
+
         # Create payment
         create_invoice_with_payment(
             patient=sample_patient,
@@ -755,10 +756,10 @@ class TestRevenueBreakdownCaching:
             quantity=Decimal("1"),
             payment_date=timezone.now(),
         )
-        
+
         # Request with refresh
         params["refresh"] = "true"
         response2 = authenticated_client.get(REVENUE_BREAKDOWN_URL, params)
-        
+
         # Should have new data
         assert response2.data["total_revenue"] == 500.0

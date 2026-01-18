@@ -142,7 +142,7 @@ class AuditedTokenObtainPairView(TokenObtainPairView):
                 elif user.groups.exists():
                     # Fall back to first Django group as role
                     role = user.groups.first().name.upper().replace(" ", "_")
-                
+
                 # Superusers get ADMIN role
                 if user.is_superuser:
                     role = "ADMIN"
