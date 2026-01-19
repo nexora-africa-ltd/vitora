@@ -27,15 +27,49 @@ jest.mock('@/components/ui/tooltip', () => ({
   TooltipContent: () => null,
 }));
 
-// Mock Collapsible to render children directly
-jest.mock('@/components/ui/collapsible', () => ({
-  Collapsible: ({ children, open }: { children: React.ReactNode; open?: boolean }) =>
-    React.createElement('div', { 'data-testid': 'collapsible', 'data-open': open }, children),
-  CollapsibleTrigger: ({ children, asChild }: { children: React.ReactNode; asChild?: boolean }) =>
-    asChild ? children : React.createElement('button', null, children),
-  CollapsibleContent: ({ children }: { children: React.ReactNode }) =>
-    React.createElement('div', { 'data-testid': 'collapsible-content' }, children),
-}));
+// Mock Collapsible (lightweight) with trigger click support.
+// We still render content to keep existing tests simple, but allow the trigger
+// to call onOpenChange to simulate Radix behavior.
+jest.mock('@/components/ui/collapsible', () => {
+  const React = require('react');
+  const Ctx = React.createContext({ open: false, onOpenChange: undefined as undefined | ((open: boolean) => void) });
+
+  function Collapsible({
+    children,
+    open,
+    onOpenChange,
+  }: {
+    children: React.ReactNode;
+    open?: boolean;
+    onOpenChange?: (open: boolean) => void;
+  }) {
+    return React.createElement(
+      Ctx.Provider,
+      { value: { open: !!open, onOpenChange } },
+      React.createElement('div', { 'data-testid': 'collapsible', 'data-open': open }, children)
+    );
+  }
+
+  function CollapsibleTrigger({ children, asChild }: { children: any; asChild?: boolean }) {
+    const ctx = React.useContext(Ctx);
+    if (asChild && React.isValidElement(children)) {
+      const existingOnClick = children.props?.onClick;
+      return React.cloneElement(children, {
+        onClick: (e: any) => {
+          existingOnClick?.(e);
+          ctx.onOpenChange?.(!ctx.open);
+        },
+      });
+    }
+    return React.createElement('button', { onClick: () => ctx.onOpenChange?.(!ctx.open) }, children);
+  }
+
+  function CollapsibleContent({ children }: { children: React.ReactNode }) {
+    return React.createElement('div', { 'data-testid': 'collapsible-content' }, children);
+  }
+
+  return { Collapsible, CollapsibleTrigger, CollapsibleContent };
+});
 
 describe('Sidebar', () => {
   const defaultProps = {
@@ -45,8 +79,11 @@ describe('Sidebar', () => {
     onMobileClose: jest.fn(),
   };
 
+  const mockedUsePathname = require('next/navigation').usePathname as jest.Mock;
+
   beforeEach(() => {
     jest.clearAllMocks();
+    mockedUsePathname.mockReturnValue('/');
     // Reset localStorage mock
     Object.defineProperty(window, 'localStorage', {
       value: {
@@ -174,7 +211,7 @@ describe('Sidebar', () => {
     expect(reportsLinks.some(link => link.getAttribute('href') === '/theatre/reports')).toBe(true);
   });
 
-  it('should have Finance menu with Billing and Insurance children', () => {
+  it('should have Finance menu with Transactions and Insurance children', () => {
     render(<Sidebar {...defaultProps} />);
 
     // Finance parent should be visible
@@ -182,12 +219,12 @@ describe('Sidebar', () => {
 
     // Children should be visible
     expect(screen.getByText('Overview')).toBeInTheDocument();
-    expect(screen.getByText('Billing')).toBeInTheDocument();
+    expect(screen.getByText('Transactions')).toBeInTheDocument();
     expect(screen.getByText('Insurance')).toBeInTheDocument();
 
     // Children should be links with correct hrefs
     expect(screen.getByRole('link', { name: /^overview$/i })).toHaveAttribute('href', '/finance/overview');
-    expect(screen.getByRole('link', { name: /billing/i })).toHaveAttribute('href', '/billing');
+    expect(screen.getByRole('link', { name: /transactions/i })).toHaveAttribute('href', '/transactions');
     expect(screen.getByRole('link', { name: /insurance/i })).toHaveAttribute('href', '/insurance');
   });
 
@@ -200,5 +237,22 @@ describe('Sidebar', () => {
     // Reports should exist as a link to /reports (as an Admin child)
     const reportsLinks = screen.getAllByRole('link', { name: /reports/i });
     expect(reportsLinks.some(link => link.getAttribute('href') === '/reports')).toBe(true);
+  });
+
+  it('should allow collapsing an active parent menu', () => {
+    // Navigate to a Finance child route so Finance auto-opens
+    mockedUsePathname.mockReturnValue('/insurance');
+
+    render(<Sidebar {...defaultProps} />);
+
+    // Finance group should start open due to active child
+    const financeGroup = screen.getAllByTestId('collapsible').find((node) =>
+      node.textContent?.includes('Finance')
+    );
+    expect(financeGroup).toHaveAttribute('data-open', 'true');
+
+    // Clicking the group trigger should close it and it should remain closed
+    fireEvent.click(screen.getByRole('button', { name: 'Finance' }));
+    expect(financeGroup).toHaveAttribute('data-open', 'false');
   });
 });

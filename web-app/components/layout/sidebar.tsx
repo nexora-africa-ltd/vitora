@@ -269,11 +269,17 @@ export function Sidebar({
     activeParent ? [activeParent] : []
   );
 
+  const lastAutoOpenedParentRef = useRef<string | null>(null);
+
   useEffect(() => {
-    if (activeParent && !openMenus.includes(activeParent)) {
-      setOpenMenus((prev) => [...prev, activeParent]);
+    // Auto-open the current parent when navigation changes into a new section,
+    // but do not force it to stay open (users should be able to collapse it
+    // even if a child route is currently active).
+    if (activeParent && lastAutoOpenedParentRef.current !== activeParent) {
+      setOpenMenus((prev) => (prev.includes(activeParent) ? prev : [...prev, activeParent]));
+      lastAutoOpenedParentRef.current = activeParent;
     }
-  }, [activeParent, openMenus]);
+  }, [activeParent]);
 
   return (
     <TooltipProvider delayDuration={0}>
