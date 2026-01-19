@@ -1,5 +1,6 @@
 "use client";
 
+import * as React from "react";
 import { LoaderIcon } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -44,12 +45,12 @@ interface PageLoadingProps {
  */
 export function PageLoading({
   message = "Loading...",
-  fullScreen = false
+  fullScreen = true
 }: PageLoadingProps) {
   return (
     <div className={cn(
-      "flex items-center justify-center gap-3 p-8",
-      fullScreen && "min-h-screen"
+      "flex min-h-screen w-full items-center justify-center gap-3 p-8",
+      !fullScreen && "min-h-0"
     )}>
       <LoadingSpinner size="md" />
       <span className="text-muted-foreground">{message}</span>
