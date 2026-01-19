@@ -31,6 +31,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
+import { ScrollArea } from '@/components/ui/scroll-area';
 import { usePaymentPoints } from '@/lib/hooks/billing';
 import type { Invoice, PaymentMethod, PaymentCreateData } from '@/lib/types/billing';
 import { formatCurrency } from '@/lib/utils/format';
@@ -249,7 +250,9 @@ export function PaymentForm({
 
   return (
     <Form {...form}>
-      <form onSubmit={form.handleSubmit(handleSubmit)} className="space-y-6">
+      <form onSubmit={form.handleSubmit(handleSubmit)} className="flex flex-col max-h-[70vh]">
+        <ScrollArea className="flex-1 pr-4">
+          <div className="space-y-6 pb-4">
         {/* Invoice Summary */}
         <Card>
           <CardHeader>
@@ -537,9 +540,11 @@ export function PaymentForm({
             </FormItem>
           )}
         />
+          </div>
+        </ScrollArea>
 
-        {/* Form Actions */}
-        <div className="flex justify-end gap-2">
+        {/* Form Actions - Outside ScrollArea so always visible */}
+        <div className="flex justify-end gap-2 pt-4 border-t mt-4">
           <Button type="button" variant="outline" onClick={onCancel}>
             Cancel
           </Button>
