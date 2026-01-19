@@ -1,8 +1,6 @@
 import * as React from "react";
 import { cn } from "@/lib/utils";
 
-let idCounter = 0;
-
 interface InputProps extends React.InputHTMLAttributes<HTMLInputElement> {
   className?: string;
   label?: string;
@@ -10,12 +8,10 @@ interface InputProps extends React.InputHTMLAttributes<HTMLInputElement> {
 
 const Input = React.forwardRef<HTMLInputElement, InputProps>(
   ({ className, label, name, id, type = "text", ...props }, ref) => {
-    // Generate unique ID if none is provided
-    const inputId = React.useMemo(() => {
-      if (id) return id;
-      idCounter += 1;
-      return name ? name : `input-${idCounter}`;
-    }, [id, name]);
+    // Generate a stable, SSR/CSR-consistent ID (prevents hydration mismatches).
+    const reactId = React.useId();
+    const safeReactId = React.useMemo(() => reactId.replace(/:/g, ""), [reactId]);
+    const inputId = id ?? (name ? `${name}-${safeReactId}` : `input-${safeReactId}`);
 
     return (
       <div className="flex flex-col gap-1 w-full">
