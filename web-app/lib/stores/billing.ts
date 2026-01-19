@@ -57,7 +57,7 @@ type ReportType =
   | 'service-utilization'
   | 'payment-analysis';
 
-type BillingTab = 'invoices' | 'payments' | 'credit-notes' | 'reports';
+type BillingTab = 'invoices' | 'payments' | 'bills' | 'credit-notes' | 'reports';
 
 interface BillingState {
   // Invoice filters

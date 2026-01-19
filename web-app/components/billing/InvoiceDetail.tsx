@@ -262,7 +262,7 @@ export function InvoiceDetail({
                     )}
                   </div>
                   <Button variant="outline" size="sm" asChild>
-                    <Link href={`/billing/sha-claims/${linkedClaim.id}`}>
+                    <Link href={`/transactions/sha-claims/${linkedClaim.id}`}>
                       View Claim
                       <ExternalLink className="h-3 w-3 ml-1" />
                     </Link>

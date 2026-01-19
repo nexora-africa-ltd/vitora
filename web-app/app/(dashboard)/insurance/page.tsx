@@ -29,7 +29,7 @@ function RecentSHAClaims() {
             </p>
           </div>
           <Button asChild variant="outline" size="sm">
-            <Link href="/billing/sha-claims" className="inline-flex items-center gap-2">
+            <Link href="/transactions/sha-claims" className="inline-flex items-center gap-2">
               View all
               <ExternalLink className="h-4 w-4" />
             </Link>
@@ -64,7 +64,7 @@ function RecentSHAClaims() {
                   <div className="min-w-0">
                     <div className="flex flex-wrap items-center gap-2">
                       <Link
-                        href={`/billing/sha-claims/${claim.id}`}
+                        href={`/transactions/sha-claims/${claim.id}`}
                         className="font-medium hover:underline"
                       >
                         {claim.claim_number || `Claim #${claim.id}`}
@@ -112,15 +112,15 @@ export default function InsurancePage() {
               </div>
               <h2 className="text-2xl font-semibold mb-2">Partial Implementation</h2>
               <p className="text-muted-foreground max-w-md">
-                SHA claims workflows currently live under Finance → Billing. This Insurance
+                SHA claims workflows currently live under Finance → Transactions. This Insurance
                 screen will expand to include verification, coverage checks, and policy tracking.
               </p>
               <div className="flex flex-col sm:flex-row gap-2 mt-6">
                 <Button asChild variant="outline">
-                  <Link href="/billing">Go to Billing</Link>
+                  <Link href="/transactions">Go to Transactions</Link>
                 </Button>
                 <Button asChild>
-                  <Link href="/billing/sha-claims">Go to SHA Claims</Link>
+                  <Link href="/transactions/sha-claims">Go to SHA Claims</Link>
                 </Button>
               </div>
               <Badge variant="secondary" className="mt-4">

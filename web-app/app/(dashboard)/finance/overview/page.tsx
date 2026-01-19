@@ -33,7 +33,7 @@ export default function FinanceOverviewPage() {
     <div className="container mx-auto py-6 space-y-6">
       <PageHeader
         title="Finance Overview"
-        description="Billing, insurance, and claims at a glance"
+        description="Transactions, insurance, and claims at a glance"
       />
 
       <Card>
@@ -44,7 +44,7 @@ export default function FinanceOverviewPage() {
               <p className="text-lg font-semibold">SHA Claims Overview</p>
             </div>
             <Button variant="ghost" size="sm" asChild>
-              <Link href="/billing/sha-claims" className="gap-1">
+              <Link href="/transactions/sha-claims" className="gap-1">
                 View All <ArrowRight className="h-4 w-4" />
               </Link>
             </Button>
@@ -89,7 +89,7 @@ export default function FinanceOverviewPage() {
               <Link href="/insurance">Go to Insurance</Link>
             </Button>
             <Button asChild variant="outline">
-              <Link href="/billing">Go to Billing</Link>
+              <Link href="/transactions">Go to Transactions</Link>
             </Button>
           </div>
         </CardContent>
@@ -118,7 +118,7 @@ export default function FinanceOverviewPage() {
             <div className="flex items-start gap-3">
               <CreditCard className="h-5 w-5 text-muted-foreground mt-0.5" />
               <div>
-                <p className="text-sm font-medium">Billing KPIs</p>
+                <p className="text-sm font-medium">Accounts KPIs</p>
                 <p className="text-sm text-muted-foreground">
                   Invoices, receipts, outstanding balances, and collections.
                 </p>
