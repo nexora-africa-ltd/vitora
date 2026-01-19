@@ -15,11 +15,20 @@ from hmis.apps.billing.admin import (
     InvoiceAdmin,
     InvoiceItemInline,
     PaymentAdmin,
+    PaymentPointAdmin,
     ReceiptAdmin,
     ServiceAdmin,
     ServiceCategoryAdmin,
 )
-from hmis.apps.billing.models import CreditNote, Invoice, Payment, Receipt, Service, ServiceCategory
+from hmis.apps.billing.models import (
+    CreditNote,
+    Invoice,
+    Payment,
+    PaymentPoint,
+    Receipt,
+    Service,
+    ServiceCategory,
+)
 
 User = get_user_model()
 
@@ -72,6 +81,11 @@ class TestBillingAdminRegistration:
         """Receipt should be registered in admin."""
         assert Receipt in admin.site._registry
         assert isinstance(admin.site._registry[Receipt], ReceiptAdmin)
+
+    def test_payment_point_registered_in_admin(self):
+        """PaymentPoint should be registered in admin."""
+        assert PaymentPoint in admin.site._registry
+        assert isinstance(admin.site._registry[PaymentPoint], PaymentPointAdmin)
 
     def test_credit_note_registered_in_admin(self):
         """CreditNote should be registered in admin."""

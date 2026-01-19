@@ -21,6 +21,7 @@ from hmis.apps.billing.views import (
     InvoiceViewSet,
     MpesaViewSet,
     PaymentViewSet,
+    PaymentPointViewSet,
     ReportViewSet,
     ServiceCategoryViewSet,
     ServiceViewSet,
@@ -31,6 +32,7 @@ router.register(r"service-categories", ServiceCategoryViewSet, basename="service
 router.register(r"services", ServiceViewSet, basename="service")
 router.register(r"invoices", InvoiceViewSet, basename="invoice")
 router.register(r"payments", PaymentViewSet, basename="payment")
+router.register(r"payment-points", PaymentPointViewSet, basename="paymentpoint")
 router.register(r"credit-notes", CreditNoteViewSet, basename="creditnote")
 router.register(r"mpesa", MpesaViewSet, basename="mpesa")
 router.register(r"reports", ReportViewSet, basename="reports")

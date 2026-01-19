@@ -457,6 +457,15 @@ class Payment(models.Model):
     # Linkage
     invoice = models.ForeignKey(Invoice, on_delete=models.PROTECT, related_name="payments")
 
+    # Payment point / cashier / account used (supports multiple tills/cashiers)
+    payment_point = models.ForeignKey(
+        "billing.PaymentPoint",
+        on_delete=models.PROTECT,
+        related_name="payments",
+        null=True,
+        blank=True,
+    )
+
     # Payment details
     method = models.CharField(max_length=20, choices=Method.choices)
     amount = models.DecimalField(max_digits=12, decimal_places=2)
@@ -510,6 +519,11 @@ class Payment(models.Model):
         """Validate payment data."""
         if self.amount is not None and self.amount <= 0:
             raise ValidationError({"amount": "Payment amount must be greater than 0."})
+
+        if self.payment_point and self.payment_point.method != self.method:
+            raise ValidationError(
+                {"payment_point": "Payment point method must match payment method."}
+            )
 
         # Skip balance validation if payment is being reversed or refunded
         if self.pk and self.status in [self.Status.REVERSED, self.Status.REFUNDED]:
@@ -587,6 +601,77 @@ class Payment(models.Model):
     def is_mpesa(self) -> bool:
         """Check if M-Pesa payment."""
         return self.method == self.Method.MPESA
+
+
+class PaymentPoint(models.Model):
+    """A payment point/account used to collect payments.
+
+    Supports multiple cashiers/payment counters by representing the configured
+    cash drawer, M-Pesa till/paybill, or bank account used for collections.
+    """
+
+    id = models.BigAutoField(primary_key=True)
+
+    name = models.CharField(max_length=120)
+    code = models.CharField(
+        max_length=50,
+        unique=True,
+        help_text="Short unique code (e.g. CASH-01, MPESA-02)",
+    )
+
+    # Must match Payment.Method values
+    method = models.CharField(max_length=20, choices=Payment.Method.choices)
+
+    # M-Pesa specific
+    till_number = models.CharField(
+        max_length=30,
+        blank=True,
+        help_text="M-Pesa Till number (Buy Goods) for this payment point",
+    )
+    paybill_number = models.CharField(
+        max_length=30,
+        blank=True,
+        help_text="M-Pesa PayBill number for this payment point",
+    )
+    paybill_account_number = models.CharField(
+        max_length=60,
+        blank=True,
+        help_text="PayBill account/reference number (if applicable)",
+    )
+
+    # Bank specific
+    bank_name = models.CharField(max_length=120, blank=True)
+    bank_account_name = models.CharField(max_length=120, blank=True)
+    bank_account_number = models.CharField(max_length=60, blank=True)
+    bank_branch = models.CharField(max_length=120, blank=True)
+
+    is_active = models.BooleanField(default=True)
+    notes = models.TextField(blank=True)
+
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+    created_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.PROTECT,
+        related_name="payment_points_created",
+    )
+
+    class Meta:
+        ordering = ["method", "name"]
+        indexes = [
+            models.Index(fields=["method", "is_active"]),
+        ]
+
+    def __str__(self) -> str:
+        return f"{self.code} - {self.name}"
+
+    def clean(self):
+        if self.method == Payment.Method.MPESA and not (self.till_number or self.paybill_number):
+            raise ValidationError(
+                "M-Pesa payment points must have a till number or paybill number."
+            )
+        if self.method == Payment.Method.BANK_TRANSFER and not self.bank_account_number:
+            raise ValidationError("Bank transfer payment points must have a bank account number.")
 
 
 class Receipt(models.Model):
