@@ -13,6 +13,7 @@ from hmis.apps.billing.models import (
     Invoice,
     InvoiceItem,
     Payment,
+    PaymentPoint,
     Receipt,
     Service,
     ServiceCategory,
@@ -161,6 +162,18 @@ def sample_credit_note(db, sample_invoice, sample_invoice_item, test_user):
         reason=CreditNote.Reason.OVERCHARGE,
         reason_detail="Test overcharge",
         requested_by=test_user,
+    )
+
+
+@pytest.fixture
+def sample_payment_point(db, test_user):
+    """Create a sample M-Pesa payment point (till) for tests."""
+    return PaymentPoint.objects.create(
+        name="Cashier 1 M-Pesa Till",
+        code="MPESA-01",
+        method=Payment.Method.MPESA,
+        till_number="123456",
+        created_by=test_user,
     )
 
 

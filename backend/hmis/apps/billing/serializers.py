@@ -7,6 +7,7 @@ Following TDD - implemented to pass API tests.
 from rest_framework import serializers
 
 from hmis.apps.billing.models import (
+    PaymentPoint,
     CreditNote,
     Invoice,
     InvoiceItem,
@@ -176,6 +177,45 @@ class InvoiceSerializer(serializers.ModelSerializer):
         return super().create(validated_data)
 
 
+class PaymentPointSerializer(serializers.ModelSerializer):
+    """Serializer for PaymentPoint model."""
+
+    created_by_username = serializers.CharField(source="created_by.username", read_only=True)
+
+    class Meta:
+        model = PaymentPoint
+        fields = [
+            "id",
+            "name",
+            "code",
+            "method",
+            "till_number",
+            "paybill_number",
+            "paybill_account_number",
+            "bank_name",
+            "bank_account_name",
+            "bank_account_number",
+            "bank_branch",
+            "is_active",
+            "notes",
+            "created_by",
+            "created_by_username",
+            "created_at",
+            "updated_at",
+        ]
+        read_only_fields = [
+            "id",
+            "created_by",
+            "created_by_username",
+            "created_at",
+            "updated_at",
+        ]
+
+    def create(self, validated_data):
+        validated_data["created_by"] = self.context["request"].user
+        return super().create(validated_data)
+
+
 class PaymentSerializer(serializers.ModelSerializer):
     """Serializer for Payment model."""
 
@@ -190,6 +230,8 @@ class PaymentSerializer(serializers.ModelSerializer):
             "invoice",
             "invoice_number",
             "method",
+            "payment_point",
+            "payment_details",
             "amount",
             "status",
             "mpesa_receipt_number",
@@ -212,6 +254,22 @@ class PaymentSerializer(serializers.ModelSerializer):
             "created_at",
             "updated_at",
         ]
+
+    def validate(self, attrs):
+        method = attrs.get("method")
+        payment_point = attrs.get("payment_point")
+
+        if method in [Payment.Method.MPESA, Payment.Method.BANK_TRANSFER] and not payment_point:
+            raise serializers.ValidationError(
+                {"payment_point": "Payment point is required for M-Pesa and bank transfers."}
+            )
+
+        if payment_point and method and payment_point.method != method:
+            raise serializers.ValidationError(
+                {"payment_point": "Payment point method must match payment method."}
+            )
+
+        return attrs
 
     def create(self, validated_data):
         # Set received_by from request user

@@ -5,7 +5,16 @@ Django admin configuration for billing app.
 from django.contrib import admin
 from django.utils.html import format_html
 
-from .models import CreditNote, Invoice, InvoiceItem, Payment, Receipt, Service, ServiceCategory
+from .models import (
+    CreditNote,
+    Invoice,
+    InvoiceItem,
+    Payment,
+    PaymentPoint,
+    Receipt,
+    Service,
+    ServiceCategory,
+)
 
 
 class InvoiceItemInline(admin.TabularInline):
@@ -163,6 +172,7 @@ class PaymentAdmin(admin.ModelAdmin):
     list_display = [
         "payment_reference",
         "invoice",
+        "payment_point",
         "method",
         "amount",
         "status",
@@ -183,13 +193,22 @@ class PaymentAdmin(admin.ModelAdmin):
         "updated_at",
     ]
     ordering = ["-payment_date", "-created_at"]
-    autocomplete_fields = ["invoice"]
+    autocomplete_fields = ["invoice", "payment_point"]
     date_hierarchy = "payment_date"
 
     fieldsets = (
         (
             "Payment Information",
-            {"fields": ("payment_reference", "invoice", "method", "amount", "payment_date")},
+            {
+                "fields": (
+                    "payment_reference",
+                    "invoice",
+                    "payment_point",
+                    "method",
+                    "amount",
+                    "payment_date",
+                )
+            },
         ),
         (
             "M-Pesa Details",
@@ -208,6 +227,62 @@ class PaymentAdmin(admin.ModelAdmin):
                 "fields": ("created_at", "updated_at"),
                 "classes": ("collapse",),
             },
+        ),
+    )
+
+
+@admin.register(PaymentPoint)
+class PaymentPointAdmin(admin.ModelAdmin):
+    """Admin configuration for PaymentPoint model."""
+
+    list_display = [
+        "name",
+        "code",
+        "method",
+        "till_number",
+        "paybill_number",
+        "bank_name",
+        "bank_account_number",
+        "is_active",
+    ]
+    list_filter = ["method", "is_active"]
+    search_fields = [
+        "name",
+        "code",
+        "till_number",
+        "paybill_number",
+        "bank_name",
+        "bank_account_number",
+    ]
+    ordering = ["method", "name"]
+    readonly_fields = ["created_at", "updated_at", "created_by"]
+
+    fieldsets = (
+        (
+            "Payment Point",
+            {"fields": ("name", "code", "method", "is_active")},
+        ),
+        (
+            "M-Pesa",
+            {
+                "fields": ("till_number", "paybill_number", "paybill_account_number"),
+                "classes": ("collapse",),
+            },
+        ),
+        (
+            "Bank",
+            {
+                "fields": ("bank_name", "bank_branch", "bank_account_name", "bank_account_number"),
+                "classes": ("collapse",),
+            },
+        ),
+        (
+            "Notes",
+            {"fields": ("notes",)},
+        ),
+        (
+            "Audit",
+            {"fields": ("created_by", "created_at", "updated_at"), "classes": ("collapse",)},
         ),
     )
 

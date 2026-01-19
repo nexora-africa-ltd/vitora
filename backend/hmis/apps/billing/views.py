@@ -15,6 +15,7 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 
 from hmis.apps.billing.models import (
+    PaymentPoint,
     CreditNote,
     Invoice,
     InvoiceItem,
@@ -24,6 +25,7 @@ from hmis.apps.billing.models import (
     ServiceCategory,
 )
 from hmis.apps.billing.serializers import (
+    PaymentPointSerializer,
     CreditNoteSerializer,
     InvoiceItemSerializer,
     InvoiceSerializer,
@@ -260,6 +262,19 @@ class PaymentViewSet(viewsets.ModelViewSet):
 
         serializer = ReceiptSerializer(receipt)
         return Response(serializer.data)
+
+
+class PaymentPointViewSet(viewsets.ModelViewSet):
+    """ViewSet for managing payment points (cashier/till/bank accounts)."""
+
+    queryset = PaymentPoint.objects.select_related("created_by").all()
+    serializer_class = PaymentPointSerializer
+    permission_classes = [IsAuthenticated]
+    filter_backends = [DjangoFilterBackend, filters.SearchFilter, filters.OrderingFilter]
+    filterset_fields = ["method", "is_active"]
+    search_fields = ["name", "code", "till_number", "paybill_number", "bank_account_number"]
+    ordering_fields = ["name", "method", "created_at"]
+    ordering = ["method", "name"]
 
 
 class CreditNoteViewSet(viewsets.ModelViewSet):
