@@ -12,6 +12,8 @@ interface SelectContextValue {
   onValueChange: (value: string, displayText?: string) => void
   open: boolean
   setOpen: (open: boolean) => void
+  registerItem: (itemValue: string, displayText: string) => void
+  itemRegistry: Map<string, string>
 }
 
 const SelectContext = React.createContext<SelectContextValue | undefined>(undefined)
@@ -28,6 +30,8 @@ const Select: React.FC<SelectProps> = ({ value, defaultValue = '', onValueChange
   const [internalValue, setInternalValue] = React.useState(defaultValue)
   const [displayText, setDisplayText] = React.useState('')
   const [open, setOpen] = React.useState(false)
+  const [registryVersion, setRegistryVersion] = React.useState(0)
+  const itemRegistryRef = React.useRef<Map<string, string>>(new Map())
 
   const handleValueChange = React.useCallback((newValue: string, newDisplayText?: string) => {
     if (disabled) return
@@ -37,10 +41,29 @@ const Select: React.FC<SelectProps> = ({ value, defaultValue = '', onValueChange
     setOpen(false)
   }, [onValueChange, disabled])
 
+  const registerItem = React.useCallback((itemValue: string, itemDisplayText: string) => {
+    const existing = itemRegistryRef.current.get(itemValue)
+    if (existing !== itemDisplayText) {
+      itemRegistryRef.current.set(itemValue, itemDisplayText)
+      // Trigger re-render to update displayText lookup
+      setRegistryVersion((v) => v + 1)
+    }
+  }, [])
+
   const currentValue = value !== undefined ? value : internalValue
 
+  // Sync displayText when controlled value changes or registry updates
+  React.useEffect(() => {
+    if (currentValue && itemRegistryRef.current.has(currentValue)) {
+      const registeredText = itemRegistryRef.current.get(currentValue)
+      if (registeredText && registeredText !== displayText) {
+        setDisplayText(registeredText)
+      }
+    }
+  }, [currentValue, displayText, registryVersion])
+
   return (
-    <SelectContext.Provider value={{ value: currentValue, displayText, onValueChange: handleValueChange, open, setOpen }}>
+    <SelectContext.Provider value={{ value: currentValue, displayText, onValueChange: handleValueChange, open, setOpen, registerItem, itemRegistry: itemRegistryRef.current }}>
       <div className="relative">
         {children}
       </div>
@@ -83,12 +106,18 @@ const SelectValue: React.FC<SelectValueProps> = ({ placeholder, children }) => {
   if (!context) throw new Error('SelectValue must be used within Select')
 
   // If children provided (render prop pattern), use that
-  // Otherwise use displayText if available, then fall back to value
-  const displayContent = children || context.displayText || (context.value ? context.value : placeholder)
+  // Otherwise use displayText from state or registry lookup
+  // This handles both user-selected values and programmatically set values
+  const registryText = context.value ? context.itemRegistry.get(context.value) : undefined
+  const resolvedDisplayText = context.displayText || registryText
+  const displayContent = children || resolvedDisplayText || placeholder
+
+  const hasValue = !!context.value
+  const hasDisplayText = !!resolvedDisplayText
 
   return (
-    <span className={!context.value && !context.displayText ? 'text-muted-foreground' : ''}>
-      {context.value ? displayContent : placeholder}
+    <span className={!hasValue ? 'text-muted-foreground' : ''}>
+      {hasValue && hasDisplayText ? displayContent : (hasValue ? displayContent : placeholder)}
     </span>
   )
 }
@@ -100,13 +129,14 @@ const SelectContent = React.forwardRef<
   const context = React.useContext(SelectContext)
   if (!context) throw new Error('SelectContent must be used within Select')
 
-  if (!context.open) return null
-
+  // Always render children (hidden when closed) so SelectItems can register their display text
+  // This allows programmatically set values to display correctly
   return (
     <div
       ref={ref}
       className={cn(
         "absolute top-full left-0 z-50 mt-1 w-full min-w-[8rem] overflow-hidden rounded-md border bg-popover text-popover-foreground shadow-md animate-in fade-in-0 zoom-in-95",
+        !context.open && "hidden",
         className
       )}
       {...props}
@@ -141,6 +171,13 @@ const SelectItem = React.forwardRef<HTMLDivElement, SelectItemProps>(
       return ''
     }
 
+    const textContent = getTextContent(children)
+
+    // Register this item's value -> displayText mapping on mount
+    React.useEffect(() => {
+      context.registerItem(value, textContent)
+    }, [value, textContent, context])
+
     return (
       <div
         ref={ref}
@@ -149,7 +186,7 @@ const SelectItem = React.forwardRef<HTMLDivElement, SelectItemProps>(
           isSelected && "bg-accent text-accent-foreground",
           className
         )}
-        onClick={() => context.onValueChange(value, getTextContent(children))}
+        onClick={() => context.onValueChange(value, textContent)}
         {...props}
       >
         {children}
