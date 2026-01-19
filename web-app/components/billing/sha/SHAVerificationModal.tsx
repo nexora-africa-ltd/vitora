@@ -11,7 +11,7 @@
  */
 'use client';
 
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useEffect } from 'react';
 import {
   Dialog,
   DialogContent,
@@ -27,6 +27,7 @@ import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Card, CardContent } from '@/components/ui/card';
+import { ScrollArea } from '@/components/ui/scroll-area';
 import {
   Search,
   Loader2,
@@ -48,6 +49,33 @@ import type {
   ClientRegistryClient,
   DirectEligibilityCheckResponse,
 } from '@/lib/types/sha';
+
+// -----------------------------------------------------------------------------
+// Responsive helpers
+// -----------------------------------------------------------------------------
+
+function useMediaQuery(query: string): boolean {
+  const [matches, setMatches] = useState(false);
+
+  useEffect(() => {
+    if (typeof window === 'undefined' || !window.matchMedia) return;
+
+    const mediaQueryList = window.matchMedia(query);
+    const update = () => setMatches(mediaQueryList.matches);
+    update();
+
+    // Safari < 14 fallback
+    if (typeof mediaQueryList.addEventListener === 'function') {
+      mediaQueryList.addEventListener('change', update);
+      return () => mediaQueryList.removeEventListener('change', update);
+    }
+
+    mediaQueryList.addListener(update);
+    return () => mediaQueryList.removeListener(update);
+  }, [query]);
+
+  return matches;
+}
 
 // ============================================================================
 // Types
@@ -130,7 +158,7 @@ function CRLookupTab({ defaultNationalId, onClientFound }: CRLookupTabProps) {
     <div className="space-y-4">
       <div className="space-y-2">
         <Label htmlFor="cr-national-id">National ID Number</Label>
-        <div className="flex gap-2">
+        <div className="flex flex-col sm:flex-row gap-2">
           <Input
             id="cr-national-id"
             value={nationalId}
@@ -138,6 +166,7 @@ function CRLookupTab({ defaultNationalId, onClientFound }: CRLookupTabProps) {
             placeholder="Enter National ID"
             onKeyDown={handleKeyDown}
             className={cn(
+              'flex-1',
               status === 'success' && 'border-primary',
               status === 'error' && 'border-destructive'
             )}
@@ -145,6 +174,7 @@ function CRLookupTab({ defaultNationalId, onClientFound }: CRLookupTabProps) {
           <Button
             onClick={handleLookup}
             disabled={status === 'loading' || !nationalId.trim()}
+            className="w-full sm:w-auto"
           >
             {status === 'loading' ? (
               <Loader2 className="h-4 w-4 animate-spin" />
@@ -192,40 +222,40 @@ function CRLookupTab({ defaultNationalId, onClientFound }: CRLookupTabProps) {
               </Badge>
             </div>
 
-            <div className="grid grid-cols-2 gap-3 text-sm">
-              <div>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 sm:gap-3 text-sm">
+              <div className="min-w-0">
                 <Label className="text-muted-foreground text-xs">Full Name</Label>
-                <p className="font-medium">
+                <p className="font-medium break-words">
                   {client.first_name} {client.middle_name && `${client.middle_name} `}
                   {client.last_name}
                 </p>
               </div>
-              <div>
+              <div className="min-w-0">
                 <Label className="text-muted-foreground text-xs">Date of Birth</Label>
-                <p className="font-medium">{client.date_of_birth}</p>
+                <p className="font-medium break-words">{client.date_of_birth}</p>
               </div>
-              <div>
+              <div className="min-w-0">
                 <Label className="text-muted-foreground text-xs">Gender</Label>
-                <p className="font-medium">
+                <p className="font-medium break-words">
                   {client.gender === 'M' ? 'Male' : client.gender === 'F' ? 'Female' : 'Other'}
                 </p>
               </div>
               {client.phone_number && (
-                <div>
+                <div className="min-w-0">
                   <Label className="text-muted-foreground text-xs">Phone</Label>
-                  <p className="font-medium">{client.phone_number}</p>
+                  <p className="font-medium break-words">{client.phone_number}</p>
                 </div>
               )}
               {client.county && (
-                <div>
+                <div className="min-w-0">
                   <Label className="text-muted-foreground text-xs">County</Label>
-                  <p className="font-medium">{client.county}</p>
+                  <p className="font-medium break-words">{client.county}</p>
                 </div>
               )}
               {client.sub_county && (
-                <div>
+                <div className="min-w-0">
                   <Label className="text-muted-foreground text-xs">Sub-County</Label>
-                  <p className="font-medium">{client.sub_county}</p>
+                  <p className="font-medium break-words">{client.sub_county}</p>
                 </div>
               )}
             </div>
@@ -307,7 +337,7 @@ function EligibilityCheckTab({ defaultNationalId, onEligibilityVerified }: Eligi
     <div className="space-y-4">
       <div className="space-y-2">
         <Label htmlFor="elig-national-id">National ID Number</Label>
-        <div className="flex gap-2">
+        <div className="flex flex-col sm:flex-row gap-2">
           <Input
             id="elig-national-id"
             value={nationalId}
@@ -315,6 +345,7 @@ function EligibilityCheckTab({ defaultNationalId, onEligibilityVerified }: Eligi
             placeholder="Enter National ID"
             onKeyDown={handleKeyDown}
             className={cn(
+              'flex-1',
               status === 'success' && eligibility?.is_eligible && 'border-success',
               status === 'success' && !eligibility?.is_eligible && 'border-warning',
               status === 'error' && 'border-destructive'
@@ -323,6 +354,7 @@ function EligibilityCheckTab({ defaultNationalId, onEligibilityVerified }: Eligi
           <Button
             onClick={handleCheck}
             disabled={status === 'loading' || !nationalId.trim()}
+            className="w-full sm:w-auto"
           >
             {status === 'loading' ? (
               <Loader2 className="h-4 w-4 animate-spin" />
@@ -367,47 +399,47 @@ function EligibilityCheckTab({ defaultNationalId, onEligibilityVerified }: Eligi
                   </div>
                 </div>
 
-                <div className="grid grid-cols-2 gap-3 text-sm mt-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 sm:gap-3 text-sm mt-4">
                   {eligibility.full_name && (
-                    <div>
+                    <div className="min-w-0">
                       <Label className="text-muted-foreground text-xs">Name</Label>
-                      <p className="font-medium">{eligibility.full_name}</p>
+                      <p className="font-medium break-words">{eligibility.full_name}</p>
                     </div>
                   )}
                   {eligibility.sha_number && (
-                    <div>
+                    <div className="min-w-0">
                       <Label className="text-muted-foreground text-xs">SHA Number</Label>
-                      <p className="font-medium">{eligibility.sha_number}</p>
+                      <p className="font-medium break-words">{eligibility.sha_number}</p>
                     </div>
                   )}
                   {eligibility.coverage_end_date && (
-                    <div>
+                    <div className="min-w-0">
                       <Label className="text-muted-foreground text-xs">Coverage Until</Label>
-                      <p className="font-medium">{eligibility.coverage_end_date}</p>
+                      <p className="font-medium break-words">{eligibility.coverage_end_date}</p>
                     </div>
                   )}
-                  <div>
+                  <div className="min-w-0">
                     <Label className="text-muted-foreground text-xs">Copay</Label>
-                    <p className="font-medium">
+                    <div className="font-medium">
                       {eligibility.copay_percentage === 0 ? (
                         <Badge className="bg-success text-success-foreground">Full Coverage</Badge>
                       ) : (
-                        `${eligibility.copay_percentage}%`
+                        <span>{eligibility.copay_percentage}%</span>
                       )}
-                    </p>
+                    </div>
                   </div>
                   {eligibility.is_employed !== undefined && (
-                    <div>
+                    <div className="min-w-0">
                       <Label className="text-muted-foreground text-xs">Employment</Label>
-                      <p className="font-medium">
+                      <p className="font-medium break-words">
                         {eligibility.is_employed ? 'Employed' : 'Not Employed'}
                       </p>
                     </div>
                   )}
                   {eligibility.employer_name && (
-                    <div>
+                    <div className="min-w-0">
                       <Label className="text-muted-foreground text-xs">Employer</Label>
-                      <p className="font-medium">{eligibility.employer_name}</p>
+                      <p className="font-medium break-words">{eligibility.employer_name}</p>
                     </div>
                   )}
                 </div>
@@ -438,23 +470,23 @@ function EligibilityCheckTab({ defaultNationalId, onEligibilityVerified }: Eligi
                   </div>
                 </div>
 
-                <div className="grid grid-cols-2 gap-3 text-sm mt-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 sm:gap-3 text-sm mt-4">
                   {eligibility.full_name && (
-                    <div>
+                    <div className="min-w-0">
                       <Label className="text-muted-foreground text-xs">Name</Label>
-                      <p className="font-medium">{eligibility.full_name}</p>
+                      <p className="font-medium break-words">{eligibility.full_name}</p>
                     </div>
                   )}
                   {eligibility.sha_number && (
-                    <div>
+                    <div className="min-w-0">
                       <Label className="text-muted-foreground text-xs">SHA Number</Label>
-                      <p className="font-medium">{eligibility.sha_number}</p>
+                      <p className="font-medium break-words">{eligibility.sha_number}</p>
                     </div>
                   )}
                   {eligibility.is_employed !== undefined && (
-                    <div>
+                    <div className="min-w-0">
                       <Label className="text-muted-foreground text-xs">Employment Status</Label>
-                      <p className="font-medium">
+                      <p className="font-medium break-words">
                         {eligibility.is_employed ? 'Employed' : 'Not Employed'}
                         {eligibility.employment_type && eligibility.employment_type !== 'Unspecified' && (
                           <span className="text-muted-foreground"> ({eligibility.employment_type})</span>
@@ -463,9 +495,9 @@ function EligibilityCheckTab({ defaultNationalId, onEligibilityVerified }: Eligi
                     </div>
                   )}
                   {eligibility.employer_name && (
-                    <div>
+                    <div className="min-w-0">
                       <Label className="text-muted-foreground text-xs">Employer</Label>
-                      <p className="font-medium">{eligibility.employer_name}</p>
+                      <p className="font-medium break-words">{eligibility.employer_name}</p>
                     </div>
                   )}
                 </div>
@@ -481,19 +513,19 @@ function EligibilityCheckTab({ defaultNationalId, onEligibilityVerified }: Eligi
                 {eligibility.means_testing && eligibility.means_testing.means_testing_done === 1 && (
                   <div className="mt-4 p-3 rounded-lg bg-muted/50 border">
                     <Label className="text-muted-foreground text-xs font-semibold block mb-2">Means Testing Details</Label>
-                    <div className="grid grid-cols-2 gap-2 text-sm">
-                      <div>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-sm">
+                      <div className="min-w-0">
                         <span className="text-muted-foreground text-xs">Monthly Contribution:</span>
                         <p className="font-medium">KES {eligibility.means_testing.monthly_contribution?.toLocaleString()}</p>
                       </div>
-                      <div>
+                      <div className="min-w-0">
                         <span className="text-muted-foreground text-xs">Annual Contribution:</span>
                         <p className="font-medium">KES {eligibility.means_testing.annual_contribution?.toLocaleString()}</p>
                       </div>
                       {eligibility.means_testing.income_prediction_category && (
                         <div className="col-span-2">
                           <span className="text-muted-foreground text-xs">Income Category:</span>
-                          <p className="font-medium">{eligibility.means_testing.income_prediction_category}</p>
+                          <p className="font-medium break-words">{eligibility.means_testing.income_prediction_category}</p>
                         </div>
                       )}
                     </div>
@@ -542,6 +574,12 @@ export function SHAVerificationModal({
   const [internalOpen, setInternalOpen] = useState(false);
   const [isExpanded, setIsExpanded] = useState(false);
 
+  const isMobile = useMediaQuery('(max-width: 640px)');
+
+  // Always use fullscreen layout on small screens.
+  const effectiveExpanded = isMobile ? true : isExpanded;
+  const useFullScreenLayout = effectiveExpanded;
+
   const isControlled = open !== undefined;
   const isOpen = isControlled ? open : internalOpen;
   const setIsOpen = isControlled ? onOpenChange! : setInternalOpen;
@@ -555,80 +593,158 @@ export function SHAVerificationModal({
 
       <DialogContent className={cn(
         "transition-all duration-200 overflow-hidden",
-        isExpanded
-          ? "!max-w-[95vw] !w-[95vw] !h-[95vh] !max-h-[95vh]"
+        useFullScreenLayout
+          ? "!max-w-[95vw] !w-[95vw] !h-[95vh] !max-h-[95vh] p-0"
           : "max-w-md w-auto"
       )}>
-        <Button
-          variant="ghost"
-          size="icon"
-          className="absolute left-4 top-4 h-7 w-7 z-10"
-          onClick={() => setIsExpanded(!isExpanded)}
-          title={isExpanded ? "Minimize" : "Expand to fullscreen"}
-        >
-          {isExpanded ? (
-            <Minimize2 className="h-4 w-4" />
-          ) : (
-            <Maximize2 className="h-4 w-4" />
-          )}
-        </Button>
-        <DialogHeader className="pl-8">
-          <DialogTitle className="flex items-center gap-2">
-            <Database className="h-5 w-5 text-primary" />
-            Kenya Digital Health Verification
-          </DialogTitle>
-          <DialogDescription>
-            Lookup patient records from Client Registry or verify SHA insurance eligibility
-          </DialogDescription>
-        </DialogHeader>
+        {useFullScreenLayout ? (
+          <div className="flex h-full min-h-0 flex-col">
+            <div className="relative border-b px-4 py-3">
+              {!isMobile && (
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="absolute left-4 top-3 h-8 w-8"
+                  onClick={() => setIsExpanded(!isExpanded)}
+                  title={effectiveExpanded ? 'Minimize' : 'Expand to fullscreen'}
+                >
+                  {effectiveExpanded ? (
+                    <Minimize2 className="h-4 w-4" />
+                  ) : (
+                    <Maximize2 className="h-4 w-4" />
+                  )}
+                </Button>
+              )}
 
-        <div className={cn(
-          "overflow-y-auto",
-          isExpanded ? "max-h-[calc(95vh-140px)]" : "max-h-[70vh]"
-        )}>
-          <Tabs defaultValue={defaultTab} className="mt-4">
-            <TabsList className="grid w-full grid-cols-2">
-              <TabsTrigger value="cr" className="flex items-center gap-2">
-                <Database className="h-4 w-4" />
-                Client Registry
-              </TabsTrigger>
-              <TabsTrigger value="eligibility" className="flex items-center gap-2">
-                <ShieldCheck className="h-4 w-4" />
-                SHA Eligibility
-              </TabsTrigger>
-            </TabsList>
+              <DialogHeader className={cn('text-left pr-10', !isMobile && 'pl-10')}>
+                <DialogTitle className="flex items-center gap-2">
+                  <Database className="h-5 w-5 text-primary" />
+                  Kenya Digital Health Verification
+                </DialogTitle>
+                <DialogDescription>
+                  Lookup patient records from Client Registry or verify SHA insurance eligibility
+                </DialogDescription>
+              </DialogHeader>
+            </div>
 
-            <TabsContent value="cr" className="mt-4">
-              <div className="mb-4 p-3 bg-muted rounded-lg text-sm">
-                <p className="text-muted-foreground">
-                  <strong>Client Registry</strong> lookup retrieves patient demographic information
-                  from Kenya&apos;s national database to auto-fill registration details.
-                </p>
+            <ScrollArea className="flex-1 min-h-0">
+              <div className="p-4">
+                <Tabs defaultValue={defaultTab}>
+                  <TabsList className="grid w-full grid-cols-2">
+                    <TabsTrigger value="cr" className="flex items-center gap-2">
+                      <Database className="h-4 w-4" />
+                      Client Registry
+                    </TabsTrigger>
+                    <TabsTrigger value="eligibility" className="flex items-center gap-2">
+                      <ShieldCheck className="h-4 w-4" />
+                      SHA Eligibility
+                    </TabsTrigger>
+                  </TabsList>
+
+                  <TabsContent value="cr" className="mt-4">
+                    <div className="mb-4 p-3 bg-muted rounded-lg text-xs sm:text-sm leading-relaxed">
+                      <p className="text-muted-foreground">
+                        <strong>Client Registry</strong> lookup retrieves patient demographic information
+                        from Kenya&apos;s national database to auto-fill registration details.
+                      </p>
+                    </div>
+                    <CRLookupTab
+                      defaultNationalId={defaultNationalId}
+                      onClientFound={(client) => {
+                        onClientFound?.(client);
+                      }}
+                    />
+                  </TabsContent>
+
+                  <TabsContent value="eligibility" className="mt-4">
+                    <div className="mb-4 p-3 bg-muted rounded-lg text-xs sm:text-sm leading-relaxed">
+                      <p className="text-muted-foreground">
+                        <strong>SHA Eligibility</strong> verifies if a person has active Social Health Authority
+                        insurance coverage and determines their copay percentage.
+                      </p>
+                    </div>
+                    <EligibilityCheckTab
+                      defaultNationalId={defaultNationalId}
+                      onEligibilityVerified={(elig) => {
+                        onEligibilityVerified?.(elig);
+                      }}
+                    />
+                  </TabsContent>
+                </Tabs>
               </div>
-              <CRLookupTab
-                defaultNationalId={defaultNationalId}
-                onClientFound={(client) => {
-                  onClientFound?.(client);
-                }}
-              />
-            </TabsContent>
+            </ScrollArea>
+          </div>
+        ) : (
+          <>
+            <Button
+              variant="ghost"
+              size="icon"
+              className="absolute left-4 top-4 h-7 w-7 z-10"
+              onClick={() => setIsExpanded(!isExpanded)}
+              title={isExpanded ? 'Minimize' : 'Expand to fullscreen'}
+            >
+              {isExpanded ? (
+                <Minimize2 className="h-4 w-4" />
+              ) : (
+                <Maximize2 className="h-4 w-4" />
+              )}
+            </Button>
+            <DialogHeader className="pl-8">
+              <DialogTitle className="flex items-center gap-2">
+                <Database className="h-5 w-5 text-primary" />
+                Kenya Digital Health Verification
+              </DialogTitle>
+              <DialogDescription>
+                Lookup patient records from Client Registry or verify SHA insurance eligibility
+              </DialogDescription>
+            </DialogHeader>
 
-            <TabsContent value="eligibility" className="mt-4">
-              <div className="mb-4 p-3 bg-muted rounded-lg text-sm">
-                <p className="text-muted-foreground">
-                  <strong>SHA Eligibility</strong> verifies if a person has active Social Health Authority
-                  insurance coverage and determines their copay percentage.
-                </p>
-              </div>
-              <EligibilityCheckTab
-                defaultNationalId={defaultNationalId}
-                onEligibilityVerified={(elig) => {
-                  onEligibilityVerified?.(elig);
-                }}
-              />
-            </TabsContent>
-          </Tabs>
-        </div>
+            <div className="overflow-y-auto max-h-[70vh]">
+              <Tabs defaultValue={defaultTab} className="mt-4">
+                <TabsList className="grid w-full grid-cols-2">
+                  <TabsTrigger value="cr" className="flex items-center gap-2">
+                    <Database className="h-4 w-4" />
+                    Client Registry
+                  </TabsTrigger>
+                  <TabsTrigger value="eligibility" className="flex items-center gap-2">
+                    <ShieldCheck className="h-4 w-4" />
+                    SHA Eligibility
+                  </TabsTrigger>
+                </TabsList>
+
+                <TabsContent value="cr" className="mt-4">
+                  <div className="mb-4 p-3 bg-muted rounded-lg text-xs sm:text-sm leading-relaxed">
+                    <p className="text-muted-foreground">
+                      <strong>Client Registry</strong> lookup retrieves patient demographic information
+                      from Kenya&apos;s national database to auto-fill registration details.
+                    </p>
+                  </div>
+                  <CRLookupTab
+                    defaultNationalId={defaultNationalId}
+                    onClientFound={(client) => {
+                      onClientFound?.(client);
+                    }}
+                  />
+                </TabsContent>
+
+                <TabsContent value="eligibility" className="mt-4">
+                  <div className="mb-4 p-3 bg-muted rounded-lg text-xs sm:text-sm leading-relaxed">
+                    <p className="text-muted-foreground">
+                      <strong>SHA Eligibility</strong> verifies if a person has active Social Health Authority
+                      insurance coverage and determines their copay percentage.
+                    </p>
+                  </div>
+                  <EligibilityCheckTab
+                    defaultNationalId={defaultNationalId}
+                    onEligibilityVerified={(elig) => {
+                      onEligibilityVerified?.(elig);
+                    }}
+                  />
+                </TabsContent>
+              </Tabs>
+            </div>
+          </>
+        )}
       </DialogContent>
     </Dialog>
   );
