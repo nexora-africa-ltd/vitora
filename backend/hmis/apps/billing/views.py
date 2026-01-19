@@ -361,10 +361,13 @@ class MpesaViewSet(viewsets.ViewSet):
         invoice_id = request.data.get("invoice_id")
         phone_number = request.data.get("phone_number")
         amount = request.data.get("amount")
+        payment_point_id = request.data.get("payment_point")
 
-        if not all([invoice_id, phone_number, amount]):
+        if not all([invoice_id, phone_number, amount, payment_point_id]):
             return Response(
-                {"error": "invoice_id, phone_number, and amount are required"},
+                {
+                    "error": "invoice_id, phone_number, amount, and payment_point are required"
+                },
                 status=status.HTTP_400_BAD_REQUEST,
             )
 
@@ -372,19 +375,64 @@ class MpesaViewSet(viewsets.ViewSet):
             # Get invoice
             invoice = get_object_or_404(Invoice, id=invoice_id)
 
+            # Validate payment point
+            payment_point = get_object_or_404(
+                PaymentPoint,
+                id=payment_point_id,
+                is_active=True,
+            )
+
+            if payment_point.method != Payment.Method.MPESA:
+                return Response(
+                    {"error": "payment_point must be an active M-Pesa payment point"},
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
+
             # Convert amount to Decimal
             amount_decimal = Decimal(str(amount))
 
             # Initiate STK Push
             mpesa_service = MpesaService()
-            result = mpesa_service.initiate_stk_push(
-                phone_number=phone_number,
+            normalized_phone = mpesa_service.format_phone(str(phone_number))
+
+            stk_result = mpesa_service.initiate_stk_push(
+                phone_number=normalized_phone,
                 amount=amount_decimal,
                 account_reference=invoice.invoice_number,
                 transaction_desc=f"Payment for {invoice.invoice_number}",
             )
 
-            return Response(result, status=status.HTTP_201_CREATED)
+            # Persist pending payment so callbacks can be correlated
+            payment = Payment.objects.create(
+                invoice=invoice,
+                payment_point=payment_point,
+                method=Payment.Method.MPESA,
+                amount=amount_decimal,
+                mpesa_phone=normalized_phone,
+                status=Payment.Status.PENDING,
+                payment_details={
+                    "merchant_request_id": stk_result.get("MerchantRequestID"),
+                    "checkout_request_id": stk_result.get("CheckoutRequestID"),
+                },
+                received_by=request.user,
+            )
+
+            payment.mpesa_transaction_id = stk_result.get("CheckoutRequestID") or ""
+            payment.save(update_fields=["mpesa_transaction_id", "updated_at"])
+
+            return Response(
+                {
+                    "success": True,
+                    "checkout_request_id": stk_result.get("CheckoutRequestID"),
+                    "merchant_request_id": stk_result.get("MerchantRequestID"),
+                    "response_code": stk_result.get("ResponseCode"),
+                    "response_description": stk_result.get("ResponseDescription"),
+                    "customer_message": stk_result.get("CustomerMessage"),
+                    "payment_id": payment.id,
+                    "payment_reference": payment.payment_reference,
+                },
+                status=status.HTTP_201_CREATED,
+            )
 
         except ValidationError as e:
             return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
@@ -413,11 +461,58 @@ class MpesaViewSet(viewsets.ViewSet):
             mpesa_service = MpesaService()
             payment_data = mpesa_service.process_callback(request.data)
 
-            # If payment successful, create Payment record
-            if payment_data["success"]:
-                # Find invoice by checkout request ID or merchant request ID
-                # For now, just return success
-                pass
+            checkout_request_id = payment_data.get("checkout_request_id")
+
+            payment = None
+            if checkout_request_id:
+                payment = Payment.objects.filter(mpesa_transaction_id=checkout_request_id).first()
+
+            # If payment successful, update the pending Payment record
+            if payment and payment_data["success"]:
+                if payment.status != Payment.Status.COMPLETED:
+                    payment.mpesa_receipt_number = str(payment_data.get("mpesa_receipt_number") or "")
+                    if payment_data.get("phone_number"):
+                        payment.mpesa_phone = str(payment_data.get("phone_number"))
+
+                    details = dict(payment.payment_details or {})
+                    details.update(
+                        {
+                            "result_code": payment_data.get("result_code"),
+                            "result_description": payment_data.get("result_description"),
+                            "merchant_request_id": payment_data.get("merchant_request_id"),
+                            "checkout_request_id": payment_data.get("checkout_request_id"),
+                            "transaction_date": payment_data.get("transaction_date"),
+                        }
+                    )
+                    payment.payment_details = details
+                    payment.save(
+                        update_fields=[
+                            "mpesa_receipt_number",
+                            "mpesa_phone",
+                            "payment_details",
+                            "updated_at",
+                        ]
+                    )
+                    payment.process()
+
+            elif payment and not payment_data["success"]:
+                # Mark payment as failed/cancelled
+                if payment.status == Payment.Status.PENDING:
+                    payment.status = Payment.Status.FAILED
+                    payment.failure_reason = str(payment_data.get("result_description") or "")
+                    details = dict(payment.payment_details or {})
+                    details.update(
+                        {
+                            "result_code": payment_data.get("result_code"),
+                            "result_description": payment_data.get("result_description"),
+                            "merchant_request_id": payment_data.get("merchant_request_id"),
+                            "checkout_request_id": payment_data.get("checkout_request_id"),
+                        }
+                    )
+                    payment.payment_details = details
+                    payment.save(
+                        update_fields=["status", "failure_reason", "payment_details", "updated_at"]
+                    )
 
             return Response({"ResultCode": 0, "ResultDesc": "Success"}, status=status.HTTP_200_OK)
 
@@ -446,10 +541,52 @@ class MpesaViewSet(viewsets.ViewSet):
             )
 
         try:
+            payment = Payment.objects.filter(mpesa_transaction_id=checkout_request_id).first()
+            if payment and payment.status == Payment.Status.COMPLETED:
+                return Response(
+                    {
+                        "success": True,
+                        "result_code": 0,
+                        "result_description": "Success",
+                        "checkout_request_id": checkout_request_id,
+                        "amount": str(payment.amount),
+                        "mpesa_receipt_number": payment.mpesa_receipt_number or None,
+                        "phone_number": payment.mpesa_phone or None,
+                    },
+                    status=status.HTTP_200_OK,
+                )
+
+            if payment and payment.status == Payment.Status.FAILED:
+                return Response(
+                    {
+                        "success": False,
+                        "result_code": 1,
+                        "result_description": payment.failure_reason or "Failed",
+                        "checkout_request_id": checkout_request_id,
+                    },
+                    status=status.HTTP_200_OK,
+                )
+
             mpesa_service = MpesaService()
             result = mpesa_service.query_transaction_status(checkout_request_id)
 
-            return Response(result, status=status.HTTP_200_OK)
+            try:
+                result_code_raw = result.get("ResultCode")
+                result_code = int(result_code_raw) if result_code_raw is not None else 1
+            except (TypeError, ValueError):
+                result_code = 1
+
+            result_desc = result.get("ResultDesc") or result.get("ResponseDescription") or ""
+
+            return Response(
+                {
+                    "success": result_code == 0,
+                    "result_code": result_code,
+                    "result_description": result_desc,
+                    "checkout_request_id": result.get("CheckoutRequestID") or checkout_request_id,
+                },
+                status=status.HTTP_200_OK,
+            )
 
         except ValidationError as e:
             return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)

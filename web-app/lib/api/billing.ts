@@ -34,6 +34,10 @@ import type {
   PaymentCreateData,
   PaymentListParams,
   PaginatedPayments,
+  // Payment points
+  PaymentPoint,
+  PaymentPointListParams,
+  PaginatedPaymentPoints,
   // M-Pesa types
   MpesaSTKPushRequest,
   MpesaSTKPushResponse,
@@ -53,6 +57,19 @@ import type {
   ServiceUtilization,
   PaymentMethodAnalysis,
 } from '@/lib/types/billing';
+
+// ============================================================================
+// Enum mapping helpers (Web UI <-> Backend)
+// ============================================================================
+
+function paymentMethodToBackend(method: string): string {
+  // UI uses upper snake-case; backend uses lower snake-case
+  return method.toLowerCase();
+}
+
+function paymentMethodFromBackend(method: string): string {
+  return method.toUpperCase();
+}
 
 // ============================================================================
 // Helper Functions
@@ -220,7 +237,17 @@ async function getPayment(id: number): Promise<Payment> {
 }
 
 async function createPayment(data: PaymentCreateData): Promise<Payment> {
-  const response = await apiClient.post('/api/billing/payments/', data);
+  const payload: Record<string, unknown> = {
+    ...data,
+    method: paymentMethodToBackend(data.method),
+  };
+
+  // Backend field name is mpesa_phone
+  if (data.mpesa_phone !== undefined) {
+    payload.mpesa_phone = data.mpesa_phone;
+  }
+
+  const response = await apiClient.post('/api/billing/payments/', payload);
   return response.data;
 }
 
@@ -229,6 +256,36 @@ async function getPaymentReceipt(paymentId: number): Promise<Receipt> {
     `/api/billing/payments/${paymentId}/receipt/`
   );
   return response.data;
+}
+
+// ============================================================================
+// Payment Points API
+// ============================================================================
+
+async function getPaymentPoints(
+  params?: PaymentPointListParams
+): Promise<PaginatedPaymentPoints> {
+  const mappedParams: Record<string, unknown> = { ...params };
+  if (params?.method) {
+    mappedParams.method = paymentMethodToBackend(params.method);
+  }
+
+  const queryString = params ? buildQueryString(mappedParams) : '';
+  const url = queryString
+    ? `/api/billing/payment-points/?${queryString}`
+    : '/api/billing/payment-points/';
+
+  const response = await apiClient.get(url);
+
+  // Map backend method values to UI enum values
+  const data = response.data as PaginatedPaymentPoints;
+  return {
+    ...data,
+    results: (data.results || []).map((pp: PaymentPoint) => ({
+      ...pp,
+      method: paymentMethodFromBackend((pp as any).method) as PaymentPoint['method'],
+    })),
+  };
 }
 
 // ============================================================================
@@ -387,6 +444,9 @@ export const billingApi = {
   getPayment,
   createPayment,
   getPaymentReceipt,
+
+  // Payment points
+  getPaymentPoints,
 
   // M-Pesa
   initiateMpesaSTKPush,

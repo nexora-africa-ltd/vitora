@@ -15,6 +15,8 @@ import type {
   Payment,
   PaymentCreateData,
   PaymentListParams,
+  PaymentPointListParams,
+  PaginatedPaymentPoints,
   Service,
   ServiceListParams,
   ServiceCategory,
@@ -56,6 +58,11 @@ export const billingKeys = {
   paymentsList: (params?: PaymentListParams) => [...billingKeys.payments(), 'list', params] as const,
   paymentDetail: (id: number) => [...billingKeys.payments(), 'detail', id] as const,
   paymentReceipt: (id: number) => [...billingKeys.payments(), 'receipt', id] as const,
+
+  // Payment points
+  paymentPoints: () => [...billingKeys.all, 'payment-points'] as const,
+  paymentPointsList: (params?: PaymentPointListParams) =>
+    [...billingKeys.paymentPoints(), 'list', params] as const,
 
   // Services
   services: () => [...billingKeys.all, 'services'] as const,
@@ -229,6 +236,16 @@ export function useApplyDiscount() {
 // ============================================================================
 // Payment Hooks
 // ============================================================================
+
+/**
+ * Fetch available payment points (optionally filtered by method/is_active)
+ */
+export function usePaymentPoints(params?: PaymentPointListParams) {
+  return useQuery<PaginatedPaymentPoints>({
+    queryKey: billingKeys.paymentPointsList(params),
+    queryFn: () => billingApi.getPaymentPoints(params),
+  });
+}
 
 /**
  * Fetch paginated list of payments

@@ -121,9 +121,19 @@ class TestMpesaAPIEndpoints:
     @patch("hmis.apps.billing.services.mpesa.requests.post")
     @patch("hmis.apps.billing.services.mpesa.requests.get")
     def test_initiate_mpesa_stk_push(
-        self, mock_get, mock_post, authenticated_client, sample_invoice
+        self,
+        mock_get,
+        mock_post,
+        authenticated_client,
+        sample_invoice,
+        sample_invoice_item,
+        sample_payment_point,
     ):
         """Test POST /api/billing/mpesa/initiate/ - Initiate M-Pesa STK push."""
+        # Ensure invoice has totals/balance due
+        sample_invoice.calculate_totals()
+        sample_invoice.status = Invoice.Status.PENDING
+        sample_invoice.save()
         # Mock OAuth token response
         mock_oauth_response = Mock()
         mock_oauth_response.json.return_value = {
@@ -145,7 +155,12 @@ class TestMpesaAPIEndpoints:
         mock_stk_response.raise_for_status = Mock()
         mock_post.return_value = mock_stk_response
 
-        data = {"invoice_id": sample_invoice.id, "phone_number": "254712345678", "amount": "500.00"}
+        data = {
+            "invoice_id": sample_invoice.id,
+            "phone_number": "254712345678",
+            "amount": str(sample_invoice.balance_due),
+            "payment_point": sample_payment_point.id,
+        }
 
         response = authenticated_client.post("/api/billing/mpesa/initiate/", data)
 
@@ -156,11 +171,35 @@ class TestMpesaAPIEndpoints:
 
         # Should return checkout request ID
         assert response.status_code in [status.HTTP_200_OK, status.HTTP_201_CREATED]
-        assert "CheckoutRequestID" in response.data
+        assert response.data.get("success") is True
+        assert response.data.get("checkout_request_id")
+
+        # Should persist a pending payment tied to the checkout request
+        from hmis.apps.billing.models import Payment
+
+        payment = Payment.objects.filter(
+            invoice=sample_invoice,
+            mpesa_transaction_id=response.data["checkout_request_id"],
+        ).first()
+        assert payment is not None
+        assert payment.payment_point.pk == sample_payment_point.pk
+        assert payment.status == Payment.Status.PENDING
 
     @patch("hmis.apps.billing.services.mpesa.requests.get")
-    def test_mpesa_callback_success(self, mock_get, api_client):
+    def test_mpesa_callback_success(
+        self,
+        mock_get,
+        api_client,
+        sample_invoice,
+        sample_invoice_item,
+        sample_payment_point,
+        test_user,
+    ):
         """Test POST /api/billing/mpesa/callback/ - Successful callback processed."""
+        # Ensure invoice has totals/balance due
+        sample_invoice.calculate_totals()
+        sample_invoice.status = Invoice.Status.PENDING
+        sample_invoice.save()
         # Mock OAuth token response (may be needed for callback processing)
         mock_oauth_response = Mock()
         mock_oauth_response.json.return_value = {
@@ -169,6 +208,19 @@ class TestMpesaAPIEndpoints:
         }
         mock_oauth_response.raise_for_status = Mock()
         mock_get.return_value = mock_oauth_response
+
+        # Create a pending payment mapped to the checkout request id
+        from hmis.apps.billing.models import Payment
+
+        payment = Payment.objects.create(
+            invoice=sample_invoice,
+            payment_point=sample_payment_point,
+            method=Payment.Method.MPESA,
+            amount=sample_invoice.balance_due,
+            status=Payment.Status.PENDING,
+            mpesa_transaction_id="test-checkout-456",
+            received_by=test_user,
+        )
 
         # M-Pesa callbacks don't require authentication
         callback_data = {
@@ -180,7 +232,7 @@ class TestMpesaAPIEndpoints:
                     "ResultDesc": "The service request is processed successfully.",
                     "CallbackMetadata": {
                         "Item": [
-                            {"Name": "Amount", "Value": 500.00},
+                                {"Name": "Amount", "Value": float(sample_invoice.balance_due)},
                             {"Name": "MpesaReceiptNumber", "Value": "MPE123456"},
                             {"Name": "TransactionDate", "Value": 20260102120000},
                             {"Name": "PhoneNumber", "Value": 254712345678},
@@ -195,9 +247,25 @@ class TestMpesaAPIEndpoints:
         # Should acknowledge callback
         assert response.status_code == status.HTTP_200_OK
 
+        payment.refresh_from_db()
+        assert payment.status == Payment.Status.COMPLETED
+        assert payment.mpesa_receipt_number == "MPE123456"
+
     @patch("hmis.apps.billing.services.mpesa.requests.get")
-    def test_mpesa_callback_failure(self, mock_get, api_client):
+    def test_mpesa_callback_failure(
+        self,
+        mock_get,
+        api_client,
+        sample_invoice,
+        sample_invoice_item,
+        sample_payment_point,
+        test_user,
+    ):
         """Test M-Pesa callback with failed transaction."""
+        # Ensure invoice has totals/balance due
+        sample_invoice.calculate_totals()
+        sample_invoice.status = Invoice.Status.PENDING
+        sample_invoice.save()
         # Mock OAuth token response (may be needed for callback processing)
         mock_oauth_response = Mock()
         mock_oauth_response.json.return_value = {
@@ -206,6 +274,18 @@ class TestMpesaAPIEndpoints:
         }
         mock_oauth_response.raise_for_status = Mock()
         mock_get.return_value = mock_oauth_response
+
+        from hmis.apps.billing.models import Payment
+
+        payment = Payment.objects.create(
+            invoice=sample_invoice,
+            payment_point=sample_payment_point,
+            method=Payment.Method.MPESA,
+            amount=sample_invoice.balance_due,
+            status=Payment.Status.PENDING,
+            mpesa_transaction_id="test-checkout-456",
+            received_by=test_user,
+        )
 
         callback_data = {
             "Body": {
@@ -222,6 +302,9 @@ class TestMpesaAPIEndpoints:
 
         # Should acknowledge callback
         assert response.status_code == status.HTTP_200_OK
+
+        payment.refresh_from_db()
+        assert payment.status == Payment.Status.FAILED
 
     @patch("hmis.apps.billing.services.mpesa.requests.post")
     @patch("hmis.apps.billing.services.mpesa.requests.get")
@@ -255,6 +338,7 @@ class TestMpesaAPIEndpoints:
 
         # Should return status
         assert response.status_code == status.HTTP_200_OK
+        assert "checkout_request_id" in response.data
 
 
 class TestCreditNoteAPIEndpoints:

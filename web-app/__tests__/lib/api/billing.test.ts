@@ -619,7 +619,10 @@ describe('Billing API - Payments', () => {
 
       const result = await billingApi.createPayment(paymentData);
 
-      expect(mockApiClient.post).toHaveBeenCalledWith('/api/billing/payments/', paymentData);
+      expect(mockApiClient.post).toHaveBeenCalledWith('/api/billing/payments/', {
+        ...paymentData,
+        method: 'cash',
+      });
       expect(result.method).toBe('CASH');
       expect(result.status).toBe('COMPLETED');
     });
@@ -643,6 +646,11 @@ describe('Billing API - Payments', () => {
       mockApiClient.post.mockResolvedValue({ data: cardPayment });
 
       const result = await billingApi.createPayment(paymentData);
+
+      expect(mockApiClient.post).toHaveBeenCalledWith('/api/billing/payments/', {
+        ...paymentData,
+        method: 'card',
+      });
 
       expect(result.method).toBe('CARD');
       expect(result.card_last_four).toBe('4242');
@@ -677,6 +685,7 @@ describe('Billing API - M-Pesa', () => {
         invoice_id: 1,
         phone_number: '0712345678',
         amount: '500.00',
+        payment_point: 1,
       };
       const mockResponse = {
         success: true,
@@ -700,6 +709,7 @@ describe('Billing API - M-Pesa', () => {
         invoice_id: 1,
         phone_number: '123456',
         amount: '500.00',
+        payment_point: 1,
       };
       mockApiClient.post.mockRejectedValue({
         response: {
@@ -718,6 +728,7 @@ describe('Billing API - M-Pesa', () => {
         invoice_id: 1,
         phone_number: '0712345678',
         amount: '0.00',
+        payment_point: 1,
       };
       mockApiClient.post.mockRejectedValue({
         response: {

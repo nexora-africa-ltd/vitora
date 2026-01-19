@@ -10,6 +10,7 @@ import { ArrowLeft } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { InvoiceDetail } from '@/components/billing/InvoiceDetail';
 import { PaymentForm } from '@/components/billing/PaymentForm';
+import { MpesaPaymentDialog } from '@/components/billing/MpesaPaymentDialog';
 import {
   Dialog,
   DialogContent,
@@ -21,6 +22,8 @@ import {
   useCreatePayment,
   useFinalizeInvoice,
   useCancelInvoice,
+  useMpesaSTKPush,
+  useMpesaQuery,
 } from '@/lib/hooks/billing';
 import { useClaims } from '@/lib/hooks/use-sha';
 import { useToast } from '@/lib/hooks/use-toast';
@@ -35,6 +38,18 @@ export default function InvoiceDetailPage() {
 
   const [showPaymentDialog, setShowPaymentDialog] = useState(false);
 
+  const [showMpesaDialog, setShowMpesaDialog] = useState(false);
+  const [mpesaStatus, setMpesaStatus] = useState<
+    'idle' | 'initiating' | 'waiting' | 'success' | 'failed'
+  >('idle');
+  const [mpesaErrorMessage, setMpesaErrorMessage] = useState<string | null>(null);
+  const [mpesaReceiptNumber, setMpesaReceiptNumber] = useState<string | null>(null);
+  const [mpesaPhoneNumber, setMpesaPhoneNumber] = useState<string>('');
+  const [mpesaAmount, setMpesaAmount] = useState<number>(0);
+  const [mpesaInvoiceNumber, setMpesaInvoiceNumber] = useState<string>('');
+  const [mpesaPaymentPointId, setMpesaPaymentPointId] = useState<number>(0);
+  const [mpesaCheckoutRequestId, setMpesaCheckoutRequestId] = useState<string | null>(null);
+
   const { data: invoice, isLoading, refetch: refetchInvoice } = useInvoice(invoiceId);
 
   const { data: claimsData, refetch: refetchClaims } = useClaims({ invoice: invoiceId });
@@ -43,6 +58,29 @@ export default function InvoiceDetailPage() {
   const createPayment = useCreatePayment();
   const finalizeInvoice = useFinalizeInvoice();
   const cancelInvoice = useCancelInvoice();
+
+  const mpesaSTKPush = useMpesaSTKPush();
+  const mpesaQuery = useMpesaQuery(mpesaCheckoutRequestId, {
+    refetchInterval: mpesaStatus === 'waiting' ? 2000 : false,
+  });
+
+  React.useEffect(() => {
+    if (mpesaStatus !== 'waiting') return;
+    const data = mpesaQuery.data;
+    if (!data) return;
+
+    if (data.success && data.result_code === 0) {
+      setMpesaReceiptNumber(data.mpesa_receipt_number || null);
+      setMpesaStatus('success');
+      return;
+    }
+
+    // If the API reports a definite failure/cancel, surface it
+    if (!data.success && typeof data.result_code === 'number' && data.result_code !== 0) {
+      setMpesaErrorMessage(data.result_description || 'M-Pesa payment failed');
+      setMpesaStatus('failed');
+    }
+  }, [mpesaQuery.data, mpesaStatus]);
 
   const handleRecordPayment = () => {
     setShowPaymentDialog(true);
@@ -65,6 +103,7 @@ export default function InvoiceDetailPage() {
         description: 'Payment has been successfully recorded.',
       });
       setShowPaymentDialog(false);
+      refetchInvoice();
     } catch {
       toast({
         title: 'Error',
@@ -72,6 +111,54 @@ export default function InvoiceDetailPage() {
         variant: 'destructive',
       });
     }
+  };
+
+  const handleMpesaPayment = async (data: {
+    invoiceId: number;
+    phoneNumber: string;
+    amount: number;
+    paymentPointId: number;
+  }) => {
+    if (!invoice) return;
+
+    setShowPaymentDialog(false);
+    setShowMpesaDialog(true);
+    setMpesaStatus('initiating');
+    setMpesaErrorMessage(null);
+    setMpesaReceiptNumber(null);
+    setMpesaCheckoutRequestId(null);
+    setMpesaPhoneNumber(data.phoneNumber);
+    setMpesaAmount(data.amount);
+    setMpesaInvoiceNumber(invoice.invoice_number);
+    setMpesaPaymentPointId(data.paymentPointId);
+
+    try {
+      const res = await mpesaSTKPush.mutateAsync({
+        invoice_id: data.invoiceId,
+        phone_number: data.phoneNumber,
+        amount: data.amount.toFixed(2),
+        payment_point: data.paymentPointId,
+      });
+      setMpesaCheckoutRequestId(res.checkout_request_id);
+      setMpesaStatus('waiting');
+    } catch (e: any) {
+      const message =
+        e?.response?.data?.error || e?.message || 'Failed to initiate M-Pesa payment';
+      setMpesaErrorMessage(String(message));
+      setMpesaStatus('failed');
+    }
+  };
+
+  const resetMpesaState = () => {
+    setShowMpesaDialog(false);
+    setMpesaStatus('idle');
+    setMpesaErrorMessage(null);
+    setMpesaReceiptNumber(null);
+    setMpesaCheckoutRequestId(null);
+    setMpesaPhoneNumber('');
+    setMpesaAmount(0);
+    setMpesaInvoiceNumber('');
+    setMpesaPaymentPointId(0);
   };
 
   const handleFinalize = async (inv: Invoice) => {
@@ -147,10 +234,55 @@ export default function InvoiceDetailPage() {
               onSubmit={handlePaymentSubmit}
               onCancel={() => setShowPaymentDialog(false)}
               isLoading={createPayment.isPending}
+              onMpesaPayment={handleMpesaPayment}
             />
           )}
         </DialogContent>
       </Dialog>
+
+      <MpesaPaymentDialog
+        open={showMpesaDialog}
+        onOpenChange={(open) => {
+          if (!open) {
+            resetMpesaState();
+            return;
+          }
+          setShowMpesaDialog(true);
+        }}
+        amount={mpesaAmount}
+        invoiceNumber={mpesaInvoiceNumber}
+        initialPhoneNumber={mpesaPhoneNumber}
+        status={mpesaStatus}
+        errorMessage={mpesaErrorMessage}
+        receiptNumber={mpesaReceiptNumber}
+        onInitiate={(phone) => {
+          if (!invoice) return;
+          // Retry uses the last known amount & the currently selected payment point on the form
+          // (The backend will validate the phone and amount)
+          handleMpesaPayment({
+            invoiceId: invoice.id,
+            phoneNumber: phone,
+            amount: mpesaAmount,
+            paymentPointId: mpesaPaymentPointId,
+          });
+        }}
+        onCancel={() => {
+          resetMpesaState();
+          toast({
+            title: 'M-Pesa cancelled',
+            description: 'Payment request cancelled.',
+          });
+        }}
+        onComplete={() => {
+          resetMpesaState();
+          toast({
+            title: 'Payment received',
+            description: 'M-Pesa payment completed successfully.',
+          });
+          refetchInvoice();
+          refetchClaims();
+        }}
+      />
     </div>
   );
 }

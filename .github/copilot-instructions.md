@@ -6,6 +6,14 @@
 
 ## 🏥 Project Overview
 
+## 🎯 Current Frontend Focus
+
+**Frontend priority is `web-app/` (Next.js).** Implement and stabilize the web frontend first.
+
+Only after the web app implementation is complete should we shift focus to offline-first and platform clients:
+- `desktop-app/` (Electron)
+- `mobile-app/` (React Native)
+
 ### Product & Company Context
 
 **Vitora HMIS** is a **software product** developed by **Nexora Africa Ltd**, an IT company.
@@ -741,12 +749,27 @@ Before submitting a PR, verify:
 - [ ] All tests pass: `make test`
 - [ ] Quality checks pass: `make quality`
 - [ ] Coverage ≥80%: `poetry run pytest --cov=hmis`
+- [ ] Pre-commit hooks pass: `pre-commit run --all-files`
 - [ ] Tests written BEFORE implementation (TDD)
 - [ ] Audit logging added for new CRUD operations
 - [ ] Sensitive fields use encryption
 - [ ] Kenya locations validated (county → sub_county → ward cascade)
 - [ ] API endpoints require authentication
 - [ ] Documentation updated (docstrings, README if needed)
+
+---
+
+## ✅ Commit Discipline (Required)
+
+Every commit must follow these rules:
+
+1. **Run pre-commit before committing**
+    - Run: `pre-commit run --all-files`
+    - Fix any failures (formatting, linting, etc.) before `git commit`.
+
+2. **Write comprehensive commit messages**
+    - The commit message must encapsulate the change and act as the summary.
+    - Include a clear subject line plus a body that explains *what changed* and *why* (and notable API/model/test/migration impacts).
 
 ---
 

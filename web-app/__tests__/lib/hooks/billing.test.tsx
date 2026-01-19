@@ -473,6 +473,7 @@ describe('useMpesaSTKPush', () => {
       invoice_id: 1,
       phone_number: '0712345678',
       amount: '500.00',
+      payment_point: 1,
     });
 
     expect(response.success).toBe(true);
@@ -496,6 +497,7 @@ describe('useMpesaSTKPush', () => {
         invoice_id: 1,
         phone_number: 'invalid',
         amount: '500.00',
+        payment_point: 1,
       })
     ).rejects.toBeDefined();
   });
