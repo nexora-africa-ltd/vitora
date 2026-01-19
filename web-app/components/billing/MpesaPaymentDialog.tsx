@@ -29,6 +29,7 @@ interface MpesaPaymentDialogProps {
   onOpenChange: (open: boolean) => void;
   amount: number;
   invoiceNumber: string;
+  initialPhoneNumber?: string;
   status: 'idle' | 'initiating' | 'waiting' | 'success' | 'failed';
   errorMessage?: string | null;
   receiptNumber?: string | null;
@@ -58,6 +59,7 @@ export function MpesaPaymentDialog({
   onOpenChange,
   amount,
   invoiceNumber,
+  initialPhoneNumber,
   status,
   errorMessage,
   receiptNumber,
@@ -65,10 +67,15 @@ export function MpesaPaymentDialog({
   onCancel,
   onComplete,
 }: MpesaPaymentDialogProps) {
-  const [phoneNumber, setPhoneNumber] = React.useState('');
+  const [phoneNumber, setPhoneNumber] = React.useState(initialPhoneNumber || '');
   const [isValidPhone, setIsValidPhone] = React.useState(false);
 
   const displayPhone = phoneNumber.trim() || '0712345678';
+
+  React.useEffect(() => {
+    if (!initialPhoneNumber) return;
+    setPhoneNumber(initialPhoneNumber);
+  }, [initialPhoneNumber]);
 
   // Validate Kenyan phone number
   React.useEffect(() => {
@@ -144,7 +151,7 @@ export function MpesaPaymentDialog({
                 <Button
                   variant="outline"
                   className="flex-1"
-                  onClick={() => onOpenChange(false)}
+                  onClick={handleClose}
                 >
                   Cancel
                 </Button>
@@ -237,7 +244,7 @@ export function MpesaPaymentDialog({
                 <Button
                   variant="outline"
                   className="flex-1"
-                  onClick={() => onOpenChange(false)}
+                  onClick={handleClose}
                 >
                   Cancel
                 </Button>

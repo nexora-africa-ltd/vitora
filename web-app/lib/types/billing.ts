@@ -174,6 +174,47 @@ export type PaymentMethod =
   | 'INSURANCE'
   | 'BANK_TRANSFER';
 
+// ============================================================================
+// Payment Point Types
+// ============================================================================
+
+export interface PaymentPoint {
+  id: number;
+  name: string;
+  code: string;
+  method: PaymentMethod;
+
+  // M-Pesa
+  till_number?: string;
+  paybill_number?: string;
+  paybill_account_number?: string;
+
+  // Bank
+  bank_name?: string;
+  bank_account_name?: string;
+  bank_account_number?: string;
+  bank_branch?: string;
+
+  is_active: boolean;
+  notes?: string;
+
+  created_at: string;
+  updated_at: string;
+  created_by: number;
+}
+
+export interface PaymentPointListParams {
+  method?: PaymentMethod;
+  is_active?: boolean;
+}
+
+export interface PaginatedPaymentPoints {
+  count: number;
+  next: string | null;
+  previous: string | null;
+  results: PaymentPoint[];
+}
+
 export type PaymentStatus =
   | 'PENDING'
   | 'COMPLETED'
@@ -187,6 +228,8 @@ export interface Payment {
   invoice: number;
   invoice_number?: string;
   patient_name?: string;
+
+  payment_point?: number;
 
   amount: string;
   method: PaymentMethod;
@@ -228,7 +271,9 @@ export interface PaymentCreateData {
   invoice: number;
   amount: string;
   method: PaymentMethod;
-  mpesa_phone_number?: string;
+  payment_point?: number;
+  payment_details?: Record<string, unknown>;
+  mpesa_phone?: string;
   card_last_four?: string;
   card_type?: string;
   insurance_claim_number?: string;
@@ -243,6 +288,7 @@ export interface MpesaSTKPushRequest {
   invoice_id: number;
   phone_number: string;
   amount: string;
+  payment_point: number;
 }
 
 export interface MpesaSTKPushResponse {

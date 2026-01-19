@@ -24,6 +24,14 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Loader2, CreditCard, Smartphone, Banknote, Building } from 'lucide-react';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
+import { usePaymentPoints } from '@/lib/hooks/billing';
 import type { Invoice, PaymentMethod, PaymentCreateData } from '@/lib/types/billing';
 import { formatCurrency } from '@/lib/utils/format';
 
@@ -36,11 +44,17 @@ interface PaymentFormProps {
   isLoading?: boolean;
   onSubmit: (data: PaymentCreateData) => void;
   onCancel: () => void;
-  onMpesaPayment?: (phoneNumber: string, amount: number) => void;
+  onMpesaPayment?: (data: {
+    invoiceId: number;
+    phoneNumber: string;
+    amount: number;
+    paymentPointId: number;
+  }) => void;
 }
 
 const paymentFormSchema = z.object({
   payment_method: z.enum(['CASH', 'MPESA', 'CARD', 'BANK_TRANSFER', 'INSURANCE'] as const),
+  payment_point: z.string().min(1, 'Select a till/account'),
   amount: z.number().positive('Amount must be positive'),
   reference_number: z.string().optional(),
   notes: z.string().optional(),
@@ -90,6 +104,13 @@ export function PaymentForm({
   onCancel,
   onMpesaPayment,
 }: PaymentFormProps) {
+  const isInsuranceOrSHAInvoice = Boolean(
+    (invoice as any).sha_claim_number ||
+      (invoice as any).payment_type === 'insurance' ||
+      ((invoice as any).insurance_provider && String((invoice as any).insurance_provider).trim()) ||
+      (invoice as any).insurance_amount
+  );
+
   const computedBalance = parseFloat(invoice.total_amount) - parseFloat(invoice.amount_paid || '0');
   const balanceDue = invoice.balance_due ? parseFloat(invoice.balance_due) : Number.NaN;
   const balance = Number.isFinite(balanceDue) ? balanceDue : computedBalance;
@@ -97,7 +118,8 @@ export function PaymentForm({
   const form = useForm<PaymentFormValues>({
     resolver: zodResolver(paymentFormSchema),
     defaultValues: {
-      payment_method: 'CASH',
+      payment_method: isInsuranceOrSHAInvoice ? 'BANK_TRANSFER' : 'CASH',
+      payment_point: '',
       amount: balance,
       reference_number: '',
       notes: '',
@@ -111,6 +133,39 @@ export function PaymentForm({
   const watchedMethod = form.watch('payment_method');
   const watchedAmount = form.watch('amount');
   const watchedCashReceived = form.watch('cash_received');
+
+  // Force bank transfer for SHA/insurance invoices
+  React.useEffect(() => {
+    if (isInsuranceOrSHAInvoice) {
+      form.setValue('payment_method', 'BANK_TRANSFER', { shouldValidate: true });
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isInsuranceOrSHAInvoice]);
+
+  // Clear selected payment point whenever method changes
+  React.useEffect(() => {
+    form.setValue('payment_point', '', { shouldValidate: true });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [watchedMethod]);
+
+  const paymentPointsQuery = usePaymentPoints({
+    method: watchedMethod,
+    is_active: true,
+  });
+
+  const paymentPoints = paymentPointsQuery.data?.results || [];
+
+  // Auto-select a payment point when available (prevents accidental blank submissions)
+  React.useEffect(() => {
+    if (paymentPointsQuery.isLoading) return;
+    if (!paymentPoints.length) return;
+    const first = paymentPoints[0];
+    if (!first) return;
+    const current = form.getValues('payment_point');
+    if (current) return;
+    form.setValue('payment_point', String(first.id), { shouldValidate: true });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [paymentPointsQuery.isLoading, paymentPoints]);
 
   // Calculate change for cash payments
   const cashChange = watchedMethod === 'CASH' && watchedCashReceived
@@ -126,6 +181,14 @@ export function PaymentForm({
       return;
     }
 
+    if (!values.payment_point) {
+      form.setError('payment_point', {
+        type: 'manual',
+        message: 'Select a till/account',
+      });
+      return;
+    }
+
     if (values.payment_method === 'MPESA') {
       if (!values.phone_number || !isValidKenyanPhoneNumber(values.phone_number)) {
         form.setError('phone_number', {
@@ -136,15 +199,10 @@ export function PaymentForm({
       }
     }
 
-    // For M-Pesa, initiate STK Push instead of direct payment
-    if (values.payment_method === 'MPESA' && onMpesaPayment && values.phone_number) {
-      onMpesaPayment(values.phone_number, values.amount);
-      return;
-    }
-
     const data: PaymentCreateData = {
       invoice: invoice.id,
       method: values.payment_method,
+      payment_point: Number(values.payment_point),
       amount: values.amount.toFixed(2),
     };
 
@@ -152,13 +210,39 @@ export function PaymentForm({
       data.notes = values.notes;
     }
 
+    const paymentDetails: Record<string, unknown> = {};
+
+    if (values.reference_number && values.reference_number.trim()) {
+      paymentDetails.reference_number = values.reference_number.trim();
+    }
+
     if (values.payment_method === 'MPESA' && values.phone_number) {
-      data.mpesa_phone_number = values.phone_number;
+      data.mpesa_phone = values.phone_number;
     }
 
     if (values.payment_method === 'CARD') {
-      if (values.card_last_four) data.card_last_four = values.card_last_four;
-      if (values.card_type) data.card_type = values.card_type;
+      if (values.card_last_four) paymentDetails.card_last_four = values.card_last_four;
+      if (values.card_type) paymentDetails.card_type = values.card_type;
+    }
+
+    if (Object.keys(paymentDetails).length > 0) {
+      data.payment_details = paymentDetails;
+    }
+
+    // Optional M-Pesa flow: allow the UI to initiate STK push when provided
+    if (
+      values.payment_method === 'MPESA' &&
+      onMpesaPayment &&
+      values.phone_number &&
+      values.payment_point
+    ) {
+      onMpesaPayment({
+        invoiceId: invoice.id,
+        phoneNumber: values.phone_number,
+        amount: values.amount,
+        paymentPointId: Number(values.payment_point),
+      });
+      return;
     }
     onSubmit(data);
   };
@@ -205,16 +289,24 @@ export function PaymentForm({
               <FormControl>
                 <RadioGroup
                   value={field.value}
-                  onValueChange={field.onChange}
+                  onValueChange={(value) => {
+                    if (isInsuranceOrSHAInvoice) return;
+                    field.onChange(value);
+                  }}
                   className="grid gap-3"
                 >
                   {([
                     { value: 'CASH' as const, label: 'Cash', icon: paymentMethodIcons.CASH },
                     { value: 'MPESA' as const, label: 'M-Pesa', icon: paymentMethodIcons.MPESA },
                     { value: 'CARD' as const, label: 'Card', icon: paymentMethodIcons.CARD },
+                    { value: 'BANK_TRANSFER' as const, label: 'Bank Transfer', icon: paymentMethodIcons.BANK_TRANSFER },
                   ]).map((method) => (
                     <div key={method.value} className="flex items-center space-x-3">
-                      <RadioGroupItem value={method.value} id={`method-${method.value}`} />
+                      <RadioGroupItem
+                        value={method.value}
+                        id={`method-${method.value}`}
+                        disabled={isInsuranceOrSHAInvoice && method.value !== 'BANK_TRANSFER'}
+                      />
                       <label
                         htmlFor={`method-${method.value}`}
                         className="flex items-center gap-2 text-sm font-medium leading-none"
@@ -226,10 +318,61 @@ export function PaymentForm({
                   ))}
                 </RadioGroup>
               </FormControl>
+              {isInsuranceOrSHAInvoice && (
+                <FormDescription>
+                  SHA/insurance invoices are paid via bank transfer (method is locked).
+                </FormDescription>
+              )}
               <FormMessage />
             </FormItem>
           )}
         />
+
+        {/* Payment Point */}
+        <FormField
+          control={form.control}
+          name="payment_point"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>Till / Account *</FormLabel>
+              <FormControl>
+                <Select value={field.value} onValueChange={field.onChange}>
+                  <SelectTrigger role="combobox" aria-label="Till / Account">
+                    <SelectValue
+                      placeholder={
+                        paymentPointsQuery.isLoading
+                          ? 'Loading payment points…'
+                          : paymentPoints.length
+                          ? 'Select a till/account'
+                          : 'No payment points available'
+                      }
+                    />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {paymentPoints.map((pp) => (
+                      <SelectItem key={pp.id} value={String(pp.id)}>
+                        {pp.name} ({pp.code})
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </FormControl>
+              <FormDescription>
+                Choose the till/bank account used for this payment.
+              </FormDescription>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+
+        {!paymentPointsQuery.isLoading && paymentPoints.length === 0 && (
+          <Alert>
+            <AlertDescription>
+              No active payment points are configured for {watchedMethod.replace('_', ' ')}.
+              Create one in Admin → Billing → Payment points.
+            </AlertDescription>
+          </Alert>
+        )}
 
         {/* Amount */}
         <FormField
@@ -400,7 +543,10 @@ export function PaymentForm({
           <Button type="button" variant="outline" onClick={onCancel}>
             Cancel
           </Button>
-          <Button type="submit" disabled={isLoading}>
+          <Button
+            type="submit"
+            disabled={isLoading || paymentPointsQuery.isLoading || paymentPoints.length === 0}
+          >
             {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
             {watchedMethod === 'MPESA' && onMpesaPayment
               ? 'Send M-Pesa Request'

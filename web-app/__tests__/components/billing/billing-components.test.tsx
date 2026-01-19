@@ -29,6 +29,10 @@ import { BillingDashboard } from '@/components/billing/BillingDashboard';
 jest.mock('@/lib/hooks/billing');
 jest.mock('@/lib/api/billing');
 
+import { usePaymentPoints } from '@/lib/hooks/billing';
+
+const mockedUsePaymentPoints = usePaymentPoints as unknown as jest.Mock;
+
 // Test wrapper
 const createWrapper = () => {
   const queryClient = new QueryClient({
@@ -478,8 +482,43 @@ describe('PaymentForm', () => {
   const mockOnSubmit = jest.fn();
   const mockOnCancel = jest.fn();
 
+  const mockPaymentPoints = {
+    count: 1,
+    next: null,
+    previous: null,
+    results: [
+      {
+        id: 1,
+        name: 'Cashier 1 Till',
+        code: 'CASH-01',
+        method: 'CASH',
+        is_active: true,
+        created_at: '2026-01-03T10:00:00Z',
+        updated_at: '2026-01-03T10:00:00Z',
+        created_by: 1,
+      },
+    ],
+  };
+
   beforeEach(() => {
     jest.clearAllMocks();
+    mockedUsePaymentPoints.mockImplementation((params?: any) => {
+      const method = params?.method || 'CASH';
+      return {
+        data: {
+          ...mockPaymentPoints,
+          results: [
+            {
+              ...mockPaymentPoints.results[0],
+              method,
+              code: `${String(method).toUpperCase()}-01`,
+              name: `Demo ${String(method).replace('_', ' ')} Point`,
+            },
+          ],
+        },
+        isLoading: false,
+      };
+    });
   });
 
   it('should render payment method options', () => {
@@ -609,7 +648,8 @@ describe('PaymentForm', () => {
     expect(mockOnSubmit).toHaveBeenCalledWith(
       expect.objectContaining({
         method: 'MPESA',
-        mpesa_phone_number: '0712345678',
+        mpesa_phone: '0712345678',
+        payment_point: 1,
       })
     );
   });
@@ -643,11 +683,14 @@ describe('PaymentForm', () => {
     await userEvent.click(screen.getByRole('radio', { name: /cash/i }));
     await userEvent.click(screen.getByRole('button', { name: /submit|pay/i }));
 
-    expect(mockOnSubmit).toHaveBeenCalledWith({
-      invoice: 1,
-      amount: '1500.00',
-      method: 'CASH',
-    });
+    expect(mockOnSubmit).toHaveBeenCalledWith(
+      expect.objectContaining({
+        invoice: 1,
+        amount: '1500.00',
+        method: 'CASH',
+        payment_point: 1,
+      })
+    );
   });
 });
 
