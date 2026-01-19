@@ -28,6 +28,7 @@ import { Badge } from '@/components/ui/badge';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Card, CardContent } from '@/components/ui/card';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import { ScrollMoreButton } from '@/components/ui/scroll-more-button';
 import {
   Search,
   Loader2,
@@ -574,6 +575,8 @@ export function SHAVerificationModal({
   const [internalOpen, setInternalOpen] = useState(false);
   const [isExpanded, setIsExpanded] = useState(false);
 
+  const scrollAreaRef = React.useRef<HTMLDivElement | null>(null);
+
   const isMobile = useMediaQuery('(max-width: 640px)');
 
   // Always use fullscreen layout on small screens.
@@ -627,8 +630,9 @@ export function SHAVerificationModal({
               </DialogHeader>
             </div>
 
-            <ScrollArea className="flex-1 min-h-0">
-              <div className="p-4">
+            <div className="relative flex-1 min-h-0">
+              <ScrollArea ref={scrollAreaRef} className="h-full">
+                <div className="p-4">
                 <Tabs defaultValue={defaultTab}>
                   <TabsList className="grid w-full grid-cols-2">
                     <TabsTrigger value="cr" className="flex items-center gap-2">
@@ -671,8 +675,11 @@ export function SHAVerificationModal({
                     />
                   </TabsContent>
                 </Tabs>
-              </div>
-            </ScrollArea>
+                </div>
+              </ScrollArea>
+              <ScrollMoreButton scrollAreaRef={scrollAreaRef} direction="down" />
+              <ScrollMoreButton scrollAreaRef={scrollAreaRef} direction="up" />
+            </div>
           </div>
         ) : (
           <>

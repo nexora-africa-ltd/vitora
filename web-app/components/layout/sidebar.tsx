@@ -33,6 +33,7 @@ import {
   CollapsibleTrigger,
 } from '@/components/ui/collapsible';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import { ScrollMoreButton } from '@/components/ui/scroll-more-button';
 import { useLogout } from '@/lib/auth/hooks';
 import {
   mainNavItems,
@@ -258,6 +259,8 @@ export function Sidebar({
   const pathname = usePathname();
   const logout = useLogout();
 
+  const navScrollAreaRef = useRef<HTMLDivElement | null>(null);
+
   useSidebarPersistence(collapsed, onCollapse);
 
   const activeParent = useMemo(
@@ -311,37 +314,41 @@ export function Sidebar({
             </Button>
           </div>
 
-          <ScrollArea className="flex-1 px-3">
-            <div className="space-y-1 py-2">
-              {mainNavItems.map((item) =>
-                hasChildren(item) ? (
-                  <NavGroup
-                    key={item.label}
-                    item={item}
-                    collapsed={collapsed}
-                    pathname={pathname}
-                    isOpen={openMenus.includes(item.label)}
-                    onToggle={() =>
-                      setOpenMenus((prev) =>
-                        prev.includes(item.label)
-                          ? prev.filter((l) => l !== item.label)
-                          : [...prev, item.label]
-                      )
-                    }
-                    onMobileClose={onMobileClose}
-                  />
-                ) : (
-                  <NavLink
-                    key={item.href}
-                    item={item}
-                    collapsed={collapsed}
-                    pathname={pathname}
-                    onMobileClose={onMobileClose}
-                  />
-                )
-              )}
-            </div>
-          </ScrollArea>
+          <div className="relative flex-1 min-h-0">
+            <ScrollArea ref={navScrollAreaRef} className="h-full min-h-0 px-3">
+              <div className="space-y-1 py-2">
+                {mainNavItems.map((item) =>
+                  hasChildren(item) ? (
+                    <NavGroup
+                      key={item.label}
+                      item={item}
+                      collapsed={collapsed}
+                      pathname={pathname}
+                      isOpen={openMenus.includes(item.label)}
+                      onToggle={() =>
+                        setOpenMenus((prev) =>
+                          prev.includes(item.label)
+                            ? prev.filter((l) => l !== item.label)
+                            : [...prev, item.label]
+                        )
+                      }
+                      onMobileClose={onMobileClose}
+                    />
+                  ) : (
+                    <NavLink
+                      key={item.href}
+                      item={item}
+                      collapsed={collapsed}
+                      pathname={pathname}
+                      onMobileClose={onMobileClose}
+                    />
+                  )
+                )}
+              </div>
+            </ScrollArea>
+            <ScrollMoreButton scrollAreaRef={navScrollAreaRef} direction="down" />
+            <ScrollMoreButton scrollAreaRef={navScrollAreaRef} direction="up" />
+          </div>
 
           <div className="border-t px-2 py-2">
             <div className="grid grid-cols-3 gap-1">
