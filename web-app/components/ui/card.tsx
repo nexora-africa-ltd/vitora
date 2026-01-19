@@ -15,8 +15,12 @@ const cardVariants = cva(
           "shadow-md hover:shadow-xl hover:translate-y-[-2px]",
         outline:
           "border-2 hover:border-primary/50 hover:shadow-sm",
+        dashed:
+          "border-2 border-dashed border-muted-foreground/25 shadow-none hover:border-muted-foreground/40 hover:shadow-sm",
         ghost:
           "border-transparent shadow-none hover:bg-muted/50",
+        muted:
+          "bg-muted/50 border-muted/40 shadow-none hover:bg-muted/60",
         accent:
           "border-accent/20 bg-gradient-to-br from-card to-accent/5 hover:border-accent/40 hover:shadow-md",
         primary:
@@ -58,8 +62,7 @@ const Card = React.forwardRef<HTMLDivElement, CardProps>(
     return (
       <div
         ref={ref}
-        role={asButton || onClick ? "button" : undefined}
-        tabIndex={asButton || onClick ? 0 : undefined}
+        {...(asButton || onClick ? { role: "button" as const, tabIndex: 0 } : {})}
         onClick={onClick}
         onKeyDown={
           asButton || onClick
