@@ -113,7 +113,7 @@ export default function TransactionsPage() {
         </TabsContent>
 
         <TabsContent value="bills" className="space-y-4">
-          <Card className="border-dashed border-2 border-muted-foreground/25">
+          <Card variant="dashed">
             <CardHeader>
               <CardTitle>Bills (Coming Soon)</CardTitle>
               <CardDescription>

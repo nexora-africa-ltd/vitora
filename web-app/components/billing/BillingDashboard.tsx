@@ -158,7 +158,7 @@ export function BillingDashboard({
       {/* Summary Cards */}
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
         {/* Today's Collection */}
-        <Card>
+        <Card variant="primary">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Today&apos;s Collection</CardTitle>
             <TrendingUp className="h-4 w-4 text-muted-foreground" />
@@ -172,7 +172,7 @@ export function BillingDashboard({
         </Card>
 
         {/* Pending Invoices */}
-        <Card>
+        <Card variant="warning">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Pending</CardTitle>
             <Clock className="h-4 w-4 text-muted-foreground" />
@@ -186,7 +186,7 @@ export function BillingDashboard({
         </Card>
 
         {/* Overdue Invoices */}
-        <Card>
+        <Card variant="critical">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Overdue</CardTitle>
             <AlertCircle className="h-4 w-4 text-red-500" />
@@ -200,7 +200,7 @@ export function BillingDashboard({
         </Card>
 
         {/* Total Invoices Today */}
-        <Card>
+        <Card variant="accent">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Processed Today</CardTitle>
             <FileText className="h-4 w-4 text-muted-foreground" />
@@ -215,7 +215,7 @@ export function BillingDashboard({
       </div>
 
       {/* Payment Method Breakdown */}
-      <Card>
+      <Card variant="outline">
         <CardHeader>
           <CardTitle>Collection by Payment Method</CardTitle>
         </CardHeader>
