@@ -1,7 +1,7 @@
 "use client";
 
 import * as React from "react";
-import { LoaderIcon } from "lucide-react";
+import { Loader2Icon } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 // Size mappings for the spinner
@@ -25,10 +25,10 @@ export function LoadingSpinner({
   ...props
 }: LoadingSpinnerProps) {
   return (
-    <LoaderIcon
+    <Loader2Icon
       role="status"
       aria-label="Loading"
-      className={cn("animate-spin text-primary", sizeClasses[size], className)}
+      className={cn("animate-spin text-accent", sizeClasses[size], className)}
       {...props}
     />
   );
