@@ -289,6 +289,11 @@ cd backend
 poetry install
 poetry shell
 
+# Enable mandatory git hooks (runs pre-commit on every commit)
+cd ..
+./scripts/setup-git-hooks.sh
+cd backend
+
 # Environment setup
 cp .env.example .env
 # Edit .env with your settings

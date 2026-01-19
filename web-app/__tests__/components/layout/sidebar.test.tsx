@@ -67,6 +67,8 @@ describe('Sidebar', () => {
     expect(screen.getByText('Inpatient')).toBeInTheDocument();
     expect(screen.getByText('Pharmacy')).toBeInTheDocument();
     expect(screen.getByText('Diagnostics')).toBeInTheDocument();
+    expect(screen.getByText('Theatre')).toBeInTheDocument();
+    expect(screen.getByText('Finance')).toBeInTheDocument();
   });
 
   it('should highlight active navigation item via aria-current', () => {
@@ -112,8 +114,8 @@ describe('Sidebar', () => {
 
   it('should have logout button', () => {
     render(<Sidebar {...defaultProps} />);
-    // Just check for the text "Logout" which is always rendered when not collapsed
-    expect(screen.getByText('Logout')).toBeInTheDocument();
+    // Logout is now icon-only (text shown via tooltip); assert via aria-label
+    expect(screen.getByRole('button', { name: /logout/i })).toBeInTheDocument();
   });
 
   it('should apply correct styles when mobile sidebar is open', () => {
@@ -150,5 +152,53 @@ describe('Sidebar', () => {
     // Children should be links with correct hrefs
     expect(screen.getByRole('link', { name: /laboratory/i })).toHaveAttribute('href', '/laboratory');
     expect(screen.getByRole('link', { name: /imaging/i })).toHaveAttribute('href', '/imaging');
+  });
+
+  it('should have Theatre menu with Schedule, Checklists, Cases, and Reports children', () => {
+    render(<Sidebar {...defaultProps} />);
+
+    // Theatre parent should be visible
+    expect(screen.getByText('Theatre')).toBeInTheDocument();
+
+    // Children should be visible
+    expect(screen.getByText('Schedule')).toBeInTheDocument();
+    expect(screen.getByText('Checklists')).toBeInTheDocument();
+    expect(screen.getByText('Cases')).toBeInTheDocument();
+    expect(screen.getAllByText('Reports').length).toBeGreaterThan(0);
+
+    // Children should be links with correct hrefs
+    expect(screen.getByRole('link', { name: /schedule/i })).toHaveAttribute('href', '/theatre/schedule');
+    expect(screen.getByRole('link', { name: /checklists/i })).toHaveAttribute('href', '/theatre/checklists');
+    expect(screen.getByRole('link', { name: /cases/i })).toHaveAttribute('href', '/theatre/cases');
+    const reportsLinks = screen.getAllByRole('link', { name: /reports/i });
+    expect(reportsLinks.some(link => link.getAttribute('href') === '/theatre/reports')).toBe(true);
+  });
+
+  it('should have Finance menu with Billing and Insurance children', () => {
+    render(<Sidebar {...defaultProps} />);
+
+    // Finance parent should be visible
+    expect(screen.getByText('Finance')).toBeInTheDocument();
+
+    // Children should be visible
+    expect(screen.getByText('Overview')).toBeInTheDocument();
+    expect(screen.getByText('Billing')).toBeInTheDocument();
+    expect(screen.getByText('Insurance')).toBeInTheDocument();
+
+    // Children should be links with correct hrefs
+    expect(screen.getByRole('link', { name: /^overview$/i })).toHaveAttribute('href', '/finance/overview');
+    expect(screen.getByRole('link', { name: /billing/i })).toHaveAttribute('href', '/billing');
+    expect(screen.getByRole('link', { name: /insurance/i })).toHaveAttribute('href', '/insurance');
+  });
+
+  it('should have Reports under Admin', () => {
+    render(<Sidebar {...defaultProps} />);
+
+    // Admin parent should be visible
+    expect(screen.getByText('Admin')).toBeInTheDocument();
+
+    // Reports should exist as a link to /reports (as an Admin child)
+    const reportsLinks = screen.getAllByRole('link', { name: /reports/i });
+    expect(reportsLinks.some(link => link.getAttribute('href') === '/reports')).toBe(true);
   });
 });

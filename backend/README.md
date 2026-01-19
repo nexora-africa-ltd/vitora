@@ -26,6 +26,17 @@ poetry shell
 
 ## Development
 
+### Git Hooks (Mandatory)
+
+This repo runs `pre-commit` on every commit via a versioned hook stored in `.githooks/`.
+
+Enable once per clone:
+
+```bash
+cd ..
+./scripts/setup-git-hooks.sh
+```
+
 ### Running Tests
 
 ```bash

@@ -1,0 +1,40 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+# Repo-managed pre-commit hook.
+# Enable once per clone:
+#   git config core.hooksPath .githooks
+
+repo_root="$(git rev-parse --show-toplevel 2>/dev/null || pwd)"
+cd "$repo_root"
+
+run_pre_commit() {
+  # Prefer backend's Poetry-managed pre-commit, then venv, then PATH.
+  if command -v poetry >/dev/null 2>&1 && [ -f "backend/pyproject.toml" ]; then
+    poetry -C backend run pre-commit run --hook-stage commit
+    return
+  fi
+
+  if [ -x "backend/.venv/bin/pre-commit" ]; then
+    backend/.venv/bin/pre-commit run --hook-stage commit
+    return
+  fi
+
+  if command -v pre-commit >/dev/null 2>&1; then
+    pre-commit run --hook-stage commit
+    return
+  fi
+
+  cat >&2 <<'EOF'
+pre-commit is not available, so the commit is blocked.
+
+Fix:
+  cd backend && poetry install
+  git config core.hooksPath .githooks
+
+Then retry the commit.
+EOF
+  exit 1
+}
+
+run_pre_commit

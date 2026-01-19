@@ -6,11 +6,10 @@
 
 import React from 'react';
 import { useRouter } from 'next/navigation';
-import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Plus, FileText, CreditCard, Shield, ArrowRight, CheckCircle2, Clock, XCircle, AlertCircle } from 'lucide-react';
+import { Plus, FileText, CreditCard } from 'lucide-react';
 import { BillingDashboard } from '@/components/billing/BillingDashboard';
 import { InvoiceList } from '@/components/billing/InvoiceList';
 import { PaymentList } from '@/components/billing/PaymentList';
@@ -19,7 +18,6 @@ import {
   usePayments,
   useDailyCollectionReport,
 } from '@/lib/hooks/billing';
-import { useClaims } from '@/lib/hooks/use-sha';
 import { useBillingStore } from '@/lib/stores/billing';
 import type { Invoice, Payment } from '@/lib/types/billing';
 
@@ -32,9 +30,6 @@ export default function BillingPage() {
   const { data: paymentsData, isLoading: paymentsLoading } = usePayments();
   const today = new Date().toISOString().split('T')[0] as string;
   const { data: dailyReport, isLoading: reportLoading } = useDailyCollectionReport(today);
-
-  // Fetch SHA claims data
-  const { data: claimsData, isLoading: claimsLoading } = useClaims({});
 
   // Handlers
   const handleCreateInvoice = () => {
@@ -63,13 +58,6 @@ export default function BillingPage() {
     (inv) => inv.status === 'OVERDUE'
   ).length || 0;
 
-  // Calculate SHA claims stats
-  const claims = claimsData?.results || [];
-  const pendingClaims = claims.filter(c => c.status === 'draft' || c.status === 'pending').length;
-  const submittedClaims = claims.filter(c => c.status === 'submitted').length;
-  const approvedClaims = claims.filter(c => c.status === 'approved' || c.status === 'paid').length;
-  const rejectedClaims = claims.filter(c => c.status === 'rejected').length;
-
   return (
     <div className="space-y-6">
       {/* Page Header */}
@@ -81,70 +69,12 @@ export default function BillingPage() {
           </p>
         </div>
         <div className="flex gap-2">
-          <Button variant="outline" asChild>
-            <Link href="/billing/sha-claims">
-              <Shield className="h-4 w-4 mr-2" />
-              SHA Claims
-            </Link>
-          </Button>
           <Button onClick={handleCreateInvoice}>
             <Plus className="h-4 w-4 mr-2" />
             New Invoice
           </Button>
         </div>
       </div>
-
-      {/* SHA Claims Quick Stats Card */}
-      <Card>
-        <CardHeader className="pb-3">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <Shield className="h-5 w-5 text-blue-600" />
-              <CardTitle className="text-lg">SHA Claims Overview</CardTitle>
-            </div>
-            <Button variant="ghost" size="sm" asChild>
-              <Link href="/billing/sha-claims" className="gap-1">
-                View All <ArrowRight className="h-4 w-4" />
-              </Link>
-            </Button>
-          </div>
-          <CardDescription>
-            Social Health Authority insurance claims status
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-            <div className="flex items-center gap-3 p-3 rounded-lg bg-amber-50 dark:bg-amber-950/30">
-              <Clock className="h-8 w-8 text-amber-600" />
-              <div>
-                <p className="text-2xl font-bold">{claimsLoading ? '-' : pendingClaims}</p>
-                <p className="text-xs text-muted-foreground">Pending</p>
-              </div>
-            </div>
-            <div className="flex items-center gap-3 p-3 rounded-lg bg-blue-50 dark:bg-blue-950/30">
-              <AlertCircle className="h-8 w-8 text-blue-600" />
-              <div>
-                <p className="text-2xl font-bold">{claimsLoading ? '-' : submittedClaims}</p>
-                <p className="text-xs text-muted-foreground">Submitted</p>
-              </div>
-            </div>
-            <div className="flex items-center gap-3 p-3 rounded-lg bg-green-50 dark:bg-green-950/30">
-              <CheckCircle2 className="h-8 w-8 text-green-600" />
-              <div>
-                <p className="text-2xl font-bold">{claimsLoading ? '-' : approvedClaims}</p>
-                <p className="text-xs text-muted-foreground">Approved</p>
-              </div>
-            </div>
-            <div className="flex items-center gap-3 p-3 rounded-lg bg-red-50 dark:bg-red-950/30">
-              <XCircle className="h-8 w-8 text-red-600" />
-              <div>
-                <p className="text-2xl font-bold">{claimsLoading ? '-' : rejectedClaims}</p>
-                <p className="text-xs text-muted-foreground">Rejected</p>
-              </div>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
 
       {/* Dashboard Overview */}
       <BillingDashboard

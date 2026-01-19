@@ -284,90 +284,124 @@ export function Sidebar({
           mobileOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'
         )}
       >
-        <div className="flex h-16 items-center justify-between px-4 border-b">
-          <Link href="/" className="flex items-center gap-2">
-            <div className="flex h-8 w-8 items-center justify-center rounded-md bg-primary">
-              <span className="text-lg font-bold text-primary-foreground">V</span>
-            </div>
-            {!collapsed && (
-              <span className="font-semibold text-lg">Vitora</span>
-            )}
-          </Link>
-          <Button
-            variant="ghost"
-            size="icon"
-            className="lg:hidden"
-            onClick={onMobileClose}
-          >
-            <X className="h-5 w-5" />
-          </Button>
-        </div>
-
-        <ScrollArea className="h-[calc(100vh-4rem)] px-3">
-          <div className="space-y-1 py-2">
-            {mainNavItems.map((item) =>
-              hasChildren(item) ? (
-                <NavGroup
-                  key={item.label}
-                  item={item}
-                  collapsed={collapsed}
-                  pathname={pathname}
-                  isOpen={openMenus.includes(item.label)}
-                  onToggle={() =>
-                    setOpenMenus((prev) =>
-                      prev.includes(item.label)
-                        ? prev.filter((l) => l !== item.label)
-                        : [...prev, item.label]
-                    )
-                  }
-                  onMobileClose={onMobileClose}
-                />
-              ) : (
-                <NavLink
-                  key={item.href}
-                  item={item}
-                  collapsed={collapsed}
-                  pathname={pathname}
-                  onMobileClose={onMobileClose}
-                />
-              )
-            )}
+        <div className="flex h-full flex-col">
+          <div className="flex h-16 items-center justify-between px-4 border-b">
+            <Link href="/" className="flex items-center gap-2">
+              <div className="flex h-8 w-8 items-center justify-center rounded-md bg-primary">
+                <span className="text-lg font-bold text-primary-foreground">V</span>
+              </div>
+              {!collapsed && (
+                <span className="font-semibold text-lg">Vitora</span>
+              )}
+            </Link>
+            <Button
+              variant="ghost"
+              size="icon"
+              className="lg:hidden"
+              onClick={onMobileClose}
+              aria-label="Close sidebar"
+            >
+              <X className="h-5 w-5" />
+            </Button>
           </div>
 
-          <Separator className="my-2" />
-
-          {bottomNavItems.map((item) => (
-            <NavLink
-              key={item.href}
-              item={item}
-              collapsed={collapsed}
-              pathname={pathname}
-              onMobileClose={onMobileClose}
-            />
-          ))}
-
-          <button
-            onClick={logout}
-            className="mt-2 flex w-full items-center gap-3 rounded-lg px-3 py-2 text-sm text-muted-foreground hover:bg-destructive/15 hover:text-destructive active:scale-95 transition-all"
-          >
-            <LogOut className="h-5 w-5" />
-            {!collapsed && <span>Logout</span>}
-          </button>
-
-          <Button
-            variant="ghost"
-            size="sm"
-            className="mt-4 w-full"
-            onClick={() => onCollapse(!collapsed)}
-          >
-            <ChevronLeft
-              className={cn(
-                'h-4 w-4 transition-transform',
-                collapsed && 'rotate-180'
+          <ScrollArea className="flex-1 px-3">
+            <div className="space-y-1 py-2">
+              {mainNavItems.map((item) =>
+                hasChildren(item) ? (
+                  <NavGroup
+                    key={item.label}
+                    item={item}
+                    collapsed={collapsed}
+                    pathname={pathname}
+                    isOpen={openMenus.includes(item.label)}
+                    onToggle={() =>
+                      setOpenMenus((prev) =>
+                        prev.includes(item.label)
+                          ? prev.filter((l) => l !== item.label)
+                          : [...prev, item.label]
+                      )
+                    }
+                    onMobileClose={onMobileClose}
+                  />
+                ) : (
+                  <NavLink
+                    key={item.href}
+                    item={item}
+                    collapsed={collapsed}
+                    pathname={pathname}
+                    onMobileClose={onMobileClose}
+                  />
+                )
               )}
-            />
-          </Button>
-        </ScrollArea>
+            </div>
+          </ScrollArea>
+
+          <div className="border-t px-2 py-2">
+            <div className="grid grid-cols-3 gap-1">
+              {bottomNavItems.map((item) => {
+                const ItemIcon = item.icon;
+                const link = (
+                  <Link
+                    href={item.href}
+                    onClick={onMobileClose}
+                    aria-label={item.label}
+                    className={cn(
+                      'inline-flex h-9 w-full items-center justify-center rounded-md text-muted-foreground transition-colors',
+                      'hover:bg-cyan-500/10 hover:text-cyan-600 dark:hover:text-cyan-300'
+                    )}
+                  >
+                    <ItemIcon className="h-5 w-5" />
+                  </Link>
+                );
+
+                return (
+                  <Tooltip key={item.href}>
+                    <TooltipTrigger asChild>{link}</TooltipTrigger>
+                    <TooltipContent side="right">{item.label}</TooltipContent>
+                  </Tooltip>
+                );
+              })}
+
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <button
+                    type="button"
+                    onClick={logout}
+                    aria-label="Logout"
+                    className={cn(
+                      'inline-flex h-9 w-full items-center justify-center rounded-md text-muted-foreground transition-colors',
+                      'hover:bg-destructive/15 hover:text-destructive'
+                    )}
+                  >
+                    <LogOut className="h-5 w-5" />
+                  </button>
+                </TooltipTrigger>
+                <TooltipContent side="right">Logout</TooltipContent>
+              </Tooltip>
+
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <button
+                    type="button"
+                    onClick={() => onCollapse(!collapsed)}
+                    aria-label={collapsed ? 'Expand sidebar' : 'Collapse sidebar'}
+                    className={cn(
+                      'inline-flex h-9 w-full items-center justify-center rounded-md text-muted-foreground transition-colors',
+                      'hover:bg-cyan-500/10 hover:text-cyan-600 dark:hover:text-cyan-300',
+                      collapsed && 'rotate-180'
+                    )}
+                  >
+                    <ChevronLeft className="h-4 w-4" />
+                  </button>
+                </TooltipTrigger>
+                <TooltipContent side="right">
+                  {collapsed ? 'Expand' : 'Collapse'}
+                </TooltipContent>
+              </Tooltip>
+            </div>
+          </div>
+        </div>
       </aside>
     </TooltipProvider>
   );
