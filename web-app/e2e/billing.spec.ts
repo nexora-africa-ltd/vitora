@@ -90,6 +90,27 @@ const mockDailyReport = {
   },
 };
 
+const mockPaymentPoints = (method: string) => {
+  const methodUpper = method.toUpperCase();
+  return {
+    count: 1,
+    next: null,
+    previous: null,
+    results: [
+      {
+        id: 1,
+        name: `Demo ${methodUpper} Point`,
+        code: `${methodUpper}-01`,
+        method,
+        is_active: true,
+        created_at: '2026-01-03T10:00:00Z',
+        updated_at: '2026-01-03T10:00:00Z',
+        created_by: 1,
+      },
+    ],
+  };
+};
+
 // ============================================================================
 // Setup Helpers
 // ============================================================================
@@ -201,6 +222,18 @@ async function setupBillingMocks(page: Page) {
     }
   });
 
+  // Payment points (required by PaymentForm)
+  await page.route(/.*\/api\/billing\/payment-points\/(\?.*)?$/, async (route) => {
+    const url = new URL(route.request().url());
+    const method = (url.searchParams.get('method') || 'cash').toLowerCase();
+
+    await route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify(mockPaymentPoints(method)),
+    });
+  });
+
   // Daily report
   await page.route(/.*\/api\/billing\/reports\/daily-collection\/.*/, async (route) => {
     await route.fulfill({
@@ -235,15 +268,15 @@ test.describe('KE-CSH-001: Payment Processing', () => {
 
   test('should navigate to billing section', async ({ page }) => {
     // Navigate to billing
-    await page.goto('/billing');
+    await page.goto('/transactions');
 
     // Should show billing dashboard
-    await expect(page.getByRole('heading', { name: /billing/i })).toBeVisible();
+    await expect(page.getByRole('heading', { name: /transactions/i })).toBeVisible();
     await expect(page.getByText(/today's collection/i)).toBeVisible();
   });
 
   test('should display invoice list', async ({ page }) => {
-    await page.goto('/billing/invoices');
+    await page.goto('/transactions/invoices');
 
     // Should show invoice list
     await expect(page.getByText('INV-20260103-0001')).toBeVisible();
@@ -253,13 +286,13 @@ test.describe('KE-CSH-001: Payment Processing', () => {
   });
 
   test('should view invoice details', async ({ page }) => {
-    await page.goto('/billing/invoices');
+    await page.goto('/transactions/invoices');
 
     // Click on invoice
     await page.click('text=INV-20260103-0001');
 
     // Should navigate to invoice detail
-    await expect(page).toHaveURL(/\/billing\/invoices\/\d+/);
+    await expect(page).toHaveURL(/\/transactions\/invoices\/\d+/);
 
     // Should show invoice header
     await expect(page.getByText('INV-20260103-0001')).toBeVisible();
@@ -276,7 +309,7 @@ test.describe('KE-CSH-001: Payment Processing', () => {
   });
 
   test('should process cash payment', async ({ page }) => {
-    await page.goto('/billing/invoices/1');
+    await page.goto('/transactions/invoices/1');
 
     // Click pay button
     await page.click('button:has-text("Pay")');
@@ -286,6 +319,11 @@ test.describe('KE-CSH-001: Payment Processing', () => {
 
     // Select cash payment
     await page.click('label:has-text("Cash")');
+
+    // Wait for payment point to load and auto-select
+    await expect(page.getByRole('combobox', { name: 'Till / Account' })).toContainText(
+      /Demo CASH Point/i
+    );
 
     // Amount should be pre-filled with balance
     const amountInput = page.getByLabel(/amount/i);
@@ -304,8 +342,20 @@ test.describe('KE-CSH-001: Payment Processing', () => {
   test('should process M-Pesa payment with STK push', async ({ page }) => {
     // Mock M-Pesa endpoints
     await page.route('**/api/billing/mpesa/initiate/', async (route) => {
+      const body = JSON.parse(route.request().postData() || '{}');
+      if (!body.payment_point) {
+        await route.fulfill({
+          status: 400,
+          contentType: 'application/json',
+          body: JSON.stringify({ error: 'payment_point is required' }),
+        });
+        return;
+      }
+
+      // Small delay so the UI can render the "initiating" state
+      await new Promise((resolve) => setTimeout(resolve, 300));
       await route.fulfill({
-        status: 200,
+        status: 201,
         contentType: 'application/json',
         body: JSON.stringify({
           success: true,
@@ -319,6 +369,8 @@ test.describe('KE-CSH-001: Payment Processing', () => {
     });
 
     await page.route('**/api/billing/mpesa/query/**', async (route) => {
+      // Small delay so the UI can render the "waiting" state
+      await new Promise((resolve) => setTimeout(resolve, 500));
       await route.fulfill({
         status: 200,
         contentType: 'application/json',
@@ -329,11 +381,12 @@ test.describe('KE-CSH-001: Payment Processing', () => {
           checkout_request_id: 'ws_CO_123456789',
           mpesa_receipt_number: 'QJH3XXXXXX',
           amount: '1500.00',
+          phone_number: '254712345678',
         }),
       });
     });
 
-    await page.goto('/billing/invoices/1');
+    await page.goto('/transactions/invoices/1');
 
     // Click pay button
     await page.click('button:has-text("Pay")');
@@ -341,30 +394,43 @@ test.describe('KE-CSH-001: Payment Processing', () => {
     // Select M-Pesa
     await page.click('label:has-text("M-Pesa")');
 
+    // Wait for payment point to load and auto-select for MPESA
+    await expect(page.getByRole('combobox', { name: 'Till / Account' })).toContainText(
+      /Demo MPESA Point/i
+    );
+
     // Enter phone number
     await page.fill('input[name="phone_number"]', '0712345678');
 
     // Submit
-    await page.click('button:has-text("Initiate M-Pesa")');
+    await page.click('button:has-text("Send M-Pesa Request")');
 
-    // Should show waiting for PIN message
-    await expect(page.getByText(/enter your M-Pesa PIN/i)).toBeVisible();
-    await expect(page.getByText(/0712345678/)).toBeVisible();
+    // Should show M-Pesa payment dialog
+    await expect(page.getByText('M-Pesa Payment')).toBeVisible();
+
+    // Should show STK flow states
+    await expect(page.getByText('Initiating...')).toBeVisible();
+    await expect(page.getByText(/check your phone/i)).toBeVisible({ timeout: 10000 });
 
     // Wait for success
-    await expect(page.getByText(/payment successful/i)).toBeVisible({ timeout: 10000 });
+    await expect(page.getByText('Payment Successful!')).toBeVisible({ timeout: 10000 });
     await expect(page.getByText('QJH3XXXXXX')).toBeVisible();
   });
 
   test('should validate Kenyan phone number format', async ({ page }) => {
-    await page.goto('/billing/invoices/1');
+    await page.goto('/transactions/invoices/1');
 
     await page.click('button:has-text("Pay")');
     await page.click('label:has-text("M-Pesa")');
 
+    // Wait for payment point to load and auto-select
+    await expect(page.getByRole('combobox', { name: 'Till / Account' })).toContainText(
+      /Demo MPESA Point/i
+    );
+
     // Enter invalid phone
     await page.fill('input[name="phone_number"]', '123456');
-    await page.click('button:has-text("Initiate M-Pesa")');
+    await page.click('button:has-text("Send M-Pesa Request")');
 
     // Should show validation error
     await expect(page.getByText(/valid Kenyan phone number/i)).toBeVisible();
@@ -392,7 +458,7 @@ test.describe('KE-CSH-001: Payment Processing', () => {
       });
     });
 
-    await page.goto('/billing/invoices/1');
+    await page.goto('/transactions/invoices/1');
 
     // Process payment first
     await page.click('button:has-text("Pay")');
@@ -409,7 +475,7 @@ test.describe('KE-CSH-001: Payment Processing', () => {
   });
 
   test('should allow printing receipt', async ({ page }) => {
-    await page.goto('/billing/payments/1/receipt');
+    await page.goto('/transactions/payments/1/receipt');
 
     // Check print button exists
     await expect(page.getByRole('button', { name: /print/i })).toBeVisible();
@@ -433,7 +499,7 @@ test.describe('KE-CSH-001: Payment Processing', () => {
       });
     });
 
-    await page.goto('/billing/invoices/1');
+    await page.goto('/transactions/invoices/1');
 
     // Should show partial status
     await expect(page.getByText('PARTIAL')).toBeVisible();
@@ -457,7 +523,7 @@ test.describe('KE-CSH-002: Invoice Generation', () => {
   });
 
   test('should create new invoice for patient', async ({ page }) => {
-    await page.goto('/billing/invoices/new');
+    await page.goto('/transactions/invoices/new');
 
     // Should show patient search/select
     await expect(page.getByLabel(/patient/i)).toBeVisible();
@@ -476,12 +542,12 @@ test.describe('KE-CSH-002: Invoice Generation', () => {
     await page.click('button:has-text("Create Invoice")');
 
     // Should redirect to invoice detail
-    await expect(page).toHaveURL(/\/billing\/invoices\/\d+/);
+    await expect(page).toHaveURL(/\/transactions\/invoices\/\d+/);
     await expect(page.getByText('DRAFT')).toBeVisible();
   });
 
   test('should add line items to invoice', async ({ page }) => {
-    await page.goto('/billing/invoices/1');
+    await page.goto('/transactions/invoices/1');
 
     // Click add item
     await page.click('button:has-text("Add Item")');
@@ -503,7 +569,7 @@ test.describe('KE-CSH-002: Invoice Generation', () => {
       await route.fulfill({ status: 204 });
     });
 
-    await page.goto('/billing/invoices/1');
+    await page.goto('/transactions/invoices/1');
 
     // Find and click remove button for item
     const itemRow = page.locator('tr:has-text("General Consultation")');
@@ -533,7 +599,7 @@ test.describe('KE-CSH-002: Invoice Generation', () => {
       });
     });
 
-    await page.goto('/billing/invoices/1');
+    await page.goto('/transactions/invoices/1');
 
     // Click apply discount
     await page.click('button:has-text("Apply Discount")');
@@ -575,7 +641,7 @@ test.describe('KE-CSH-002: Invoice Generation', () => {
       });
     });
 
-    await page.goto('/billing/invoices/1');
+    await page.goto('/transactions/invoices/1');
 
     // Click finalize
     await page.click('button:has-text("Finalize")');
@@ -600,7 +666,7 @@ test.describe('KE-CSH-002: Invoice Generation', () => {
       });
     });
 
-    await page.goto('/billing/invoices/1');
+    await page.goto('/transactions/invoices/1');
 
     // Click cancel
     await page.click('button:has-text("Cancel Invoice")');
@@ -628,7 +694,7 @@ test.describe('KE-CSH-002: Invoice Generation', () => {
       });
     });
 
-    await page.goto('/billing/invoices/1');
+    await page.goto('/transactions/invoices/1');
 
     // Should show insurance coverage
     await expect(page.getByText(/insurance/i)).toBeVisible();
@@ -647,7 +713,7 @@ test.describe('KE-BIL-001: Billing Reconciliation', () => {
   });
 
   test('should show unbilled services dashboard', async ({ page }) => {
-    await page.goto('/billing/reconciliation');
+    await page.goto('/transactions/reconciliation');
 
     // Should show reconciliation dashboard
     await expect(page.getByRole('heading', { name: /reconciliation/i })).toBeVisible();
@@ -674,7 +740,7 @@ test.describe('KE-BIL-001: Billing Reconciliation', () => {
       });
     });
 
-    await page.goto('/billing/reconciliation/discrepancies');
+    await page.goto('/transactions/reconciliation/discrepancies');
 
     // Should show discrepancy
     await expect(page.getByText('Jane Doe')).toBeVisible();
@@ -700,7 +766,7 @@ test.describe('KE-BIL-001: Billing Reconciliation', () => {
       });
     });
 
-    await page.goto('/billing/reports/daily-closure');
+    await page.goto('/transactions/reports/daily-closure');
 
     // Should show closure report
     await expect(page.getByText(/daily closure/i)).toBeVisible();
@@ -720,7 +786,7 @@ test.describe('KE-CLM-003: Financial Performance Reports', () => {
   });
 
   test('should display daily collection dashboard', async ({ page }) => {
-    await page.goto('/billing');
+    await page.goto('/transactions');
 
     // Should show today's collection
     await expect(page.getByText(/today's collection/i)).toBeVisible();
@@ -755,7 +821,7 @@ test.describe('KE-CLM-003: Financial Performance Reports', () => {
       });
     });
 
-    await page.goto('/billing/reports/outstanding');
+    await page.goto('/transactions/reports/outstanding');
 
     // Should show outstanding balances
     await expect(page.getByText('INV-20260101-0001')).toBeVisible();
@@ -765,7 +831,7 @@ test.describe('KE-CLM-003: Financial Performance Reports', () => {
   });
 
   test('should filter reports by date range', async ({ page }) => {
-    await page.goto('/billing/reports/revenue');
+    await page.goto('/transactions/reports/revenue');
 
     // Should show date filters
     await expect(page.getByLabel(/start date/i)).toBeVisible();
@@ -781,7 +847,7 @@ test.describe('KE-CLM-003: Financial Performance Reports', () => {
   });
 
   test('should export report to CSV', async ({ page }) => {
-    await page.goto('/billing/reports/revenue');
+    await page.goto('/transactions/reports/revenue');
 
     // Should have export button
     await expect(page.getByRole('button', { name: /export|download/i })).toBeVisible();
@@ -812,7 +878,7 @@ test.describe('KE-CLM-003: Financial Performance Reports', () => {
       });
     });
 
-    await page.goto('/billing/reports/revenue');
+    await page.goto('/transactions/reports/revenue');
 
     // Should show revenue by department
     await expect(page.getByText('Consultation')).toBeVisible();
@@ -837,7 +903,7 @@ test.describe('KE-CLM-003: Financial Performance Reports', () => {
       });
     });
 
-    await page.goto('/billing/claims');
+    await page.goto('/transactions/claims');
 
     // Should show claims by status
     await expect(page.getByText('SHA-001')).toBeVisible();
@@ -856,7 +922,7 @@ test.describe('Billing Accessibility', () => {
   });
 
   test('should have accessible invoice list', async ({ page }) => {
-    await page.goto('/billing/invoices');
+    await page.goto('/transactions/invoices');
 
     // Table should be accessible
     await expect(page.getByRole('table')).toBeVisible();
@@ -867,7 +933,7 @@ test.describe('Billing Accessibility', () => {
   });
 
   test('should be keyboard navigable', async ({ page }) => {
-    await page.goto('/billing/invoices');
+    await page.goto('/transactions/invoices');
 
     // Tab through elements
     await page.keyboard.press('Tab');
@@ -879,7 +945,7 @@ test.describe('Billing Accessibility', () => {
   });
 
   test('should have proper form labels', async ({ page }) => {
-    await page.goto('/billing/invoices/1');
+    await page.goto('/transactions/invoices/1');
     await page.click('button:has-text("Pay")');
 
     // All form inputs should have labels
@@ -897,7 +963,7 @@ test.describe('Billing Offline Support', () => {
     await setupBillingMocks(page);
     await login(page, TEST_USER.username, TEST_USER.password);
 
-    await page.goto('/billing/invoices/1');
+    await page.goto('/transactions/invoices/1');
 
     // Go offline
     await page.context().setOffline(true);
@@ -918,7 +984,7 @@ test.describe('Billing Offline Support', () => {
     await setupBillingMocks(page);
     await login(page, TEST_USER.username, TEST_USER.password);
 
-    await page.goto('/billing');
+    await page.goto('/transactions');
 
     // Go offline
     await page.context().setOffline(true);
@@ -947,7 +1013,7 @@ test.describe('Billing Audit Logging', () => {
     });
 
     await login(page, TEST_USER.username, TEST_USER.password);
-    await page.goto('/billing/invoices/1');
+    await page.goto('/transactions/invoices/1');
 
     // Process payment
     await page.click('button:has-text("Pay")');
