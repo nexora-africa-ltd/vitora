@@ -291,7 +291,7 @@ export function SHASettingsTab() {
         <CardContent>
           <div className="grid gap-2 sm:grid-cols-2">
             <Button variant="outline" className="justify-start" asChild>
-              <a href="/billing/sha-claims" className="gap-2">
+              <a href="/transactions/sha-claims" className="gap-2">
                 <Shield className="h-4 w-4" />
                 View SHA Claims
               </a>

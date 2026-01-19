@@ -89,7 +89,7 @@ export const mainNavItems: NavItemType[] = [
     icon: PiggyBank,
     children: [
       { label: 'Overview', href: '/finance/overview', icon: ChartNoAxesGantt },
-      { label: 'Billing', href: '/billing', icon: CreditCard },
+      { label: 'Transactions', href: '/transactions', icon: CreditCard },
       { label: 'Insurance', href: '/insurance', icon: ShieldCheck },
     ],
   },
