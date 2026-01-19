@@ -3,8 +3,10 @@
 #
 # Install once:
 #   cd backend && poetry install
-#   poetry run pre-commit install
-#   poetry run pre-commit install --hook-type pre-push
+#   ./scripts/setup-git-hooks.sh
+#
+# Note: This repo uses versioned hooks in .githooks via core.hooksPath
+# (instead of `pre-commit install`), so the hook is shared consistently.
 #
 # Run manually:
 #   poetry run pre-commit run --all-files
