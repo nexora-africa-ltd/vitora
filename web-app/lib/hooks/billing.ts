@@ -501,3 +501,34 @@ export function usePaymentMethodAnalysis(startDate: string, endDate: string) {
     enabled: !!startDate && !!endDate,
   });
 }
+
+/**
+ * Fetch daily closure report
+ */
+export function useDailyClosureReport(date: string) {
+  return useQuery({
+    queryKey: [...billingKeys.reports(), 'daily-closure', date] as const,
+    queryFn: () => billingApi.getDailyClosureReport(date),
+    enabled: !!date,
+  });
+}
+
+/**
+ * Fetch billing discrepancies
+ */
+export function useBillingDiscrepancies() {
+  return useQuery({
+    queryKey: [...billingKeys.reports(), 'discrepancies'] as const,
+    queryFn: () => billingApi.getBillingDiscrepancies(),
+  });
+}
+
+/**
+ * Fetch unbilled services
+ */
+export function useUnbilledServices() {
+  return useQuery({
+    queryKey: [...billingKeys.reports(), 'unbilled-services'] as const,
+    queryFn: () => billingApi.getUnbilledServices(),
+  });
+}

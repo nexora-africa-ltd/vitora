@@ -5,7 +5,7 @@
 
 import React from 'react';
 import { useRouter } from 'next/navigation';
-import { Plus, FileText } from 'lucide-react';
+import { Plus } from 'lucide-react';
 
 import { Button } from '@/components/ui/button';
 import { InvoiceList } from '@/components/billing/InvoiceList';
@@ -27,14 +27,8 @@ export default function TransactionsInvoicesPage() {
   return (
     <div className="space-y-6">
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-        <div>
-          <h1 className="text-3xl font-bold tracking-tight">Invoices</h1>
-          <p className="text-muted-foreground">Create and manage patient invoices</p>
-        </div>
-        <Button onClick={handleCreateInvoice}>
-          <Plus className="h-4 w-4 mr-2" />
-          New Invoice
-        </Button>
+        <h1 className="text-3xl font-bold tracking-tight">Invoices</h1>
+        <p className="text-muted-foreground">Create and manage patient invoices</p>
       </div>
 
       <InvoiceList

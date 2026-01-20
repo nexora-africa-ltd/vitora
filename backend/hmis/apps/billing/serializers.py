@@ -284,41 +284,75 @@ class ReceiptSerializer(serializers.ModelSerializer):
     """Serializer for Receipt model."""
 
     patient_name = serializers.CharField(source="patient.full_name", read_only=True)
+    patient_mrn = serializers.CharField(source="patient.mrn", read_only=True)
     issued_by_username = serializers.CharField(source="issued_by.username", read_only=True)
+    # Fields from related Payment
+    received_by_username = serializers.SerializerMethodField()
+    payment_point_name = serializers.SerializerMethodField()
+    payment_point_code = serializers.SerializerMethodField()
+    receipt_date = serializers.DateTimeField(read_only=True)
 
     class Meta:
         model = Receipt
         fields = [
             "id",
             "receipt_number",
+            "receipt_date",
             "payment",
             "invoice",
             "patient",
             "patient_name",
+            "patient_mrn",
             "amount",
             "amount_in_words",
             "payment_method",
             "facility_name",
             "facility_address",
+            "facility_phone",
             "facility_kra_pin",
             "is_voided",
             "voided_at",
             "void_reason",
             "issued_by",
             "issued_by_username",
+            "received_by_username",
+            "payment_point_name",
+            "payment_point_code",
             "created_at",
         ]
         read_only_fields = [
             "id",
             "receipt_number",
+            "receipt_date",
             "amount_in_words",
             "is_voided",
             "voided_at",
             "void_reason",
             "issued_by",
             "issued_by_username",
+            "received_by_username",
+            "payment_point_name",
+            "payment_point_code",
             "created_at",
         ]
+
+    def get_received_by_username(self, obj) -> str | None:
+        """Get username of the person who received the payment."""
+        if obj.payment and obj.payment.received_by:
+            return obj.payment.received_by.username
+        return None
+
+    def get_payment_point_name(self, obj) -> str | None:
+        """Get payment point name (e.g., 'Main Cashier', 'M-Pesa Till 1')."""
+        if obj.payment and obj.payment.payment_point:
+            return obj.payment.payment_point.name
+        return None
+
+    def get_payment_point_code(self, obj) -> str | None:
+        """Get payment point code (e.g., 'CASH-01', 'MPESA-02')."""
+        if obj.payment and obj.payment.payment_point:
+            return obj.payment.payment_point.code
+        return None
 
 
 class CreditNoteSerializer(serializers.ModelSerializer):

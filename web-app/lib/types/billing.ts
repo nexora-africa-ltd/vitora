@@ -158,9 +158,12 @@ export interface InvoiceItemCreateData {
   sha_code?: string;
 }
 
+export type DiscountType = 'PERCENTAGE' | 'FIXED';
+
 export interface ApplyDiscountData {
-  discount_type: 'PERCENTAGE' | 'FIXED';
+  discount_type: DiscountType;
   discount_value: string;
+  discount_reason?: string;
 }
 
 // ============================================================================
@@ -350,6 +353,13 @@ export interface Receipt {
   payment_method: PaymentMethod;
   receipt_date: string;
 
+  // Served by / Till info
+  issued_by?: number;
+  issued_by_username?: string;
+  received_by_username?: string;
+  payment_point_name?: string;
+  payment_point_code?: string;
+
   // Void info
   is_voided: boolean;
   voided_at?: string;
@@ -357,7 +367,7 @@ export interface Receipt {
   void_reason?: string;
 
   created_at: string;
-  created_by: number;
+  created_by?: number;
 }
 
 // ============================================================================

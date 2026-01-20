@@ -6,11 +6,14 @@
 
 import React, { useState } from 'react';
 import { useRouter, useParams } from 'next/navigation';
-import { ArrowLeft } from 'lucide-react';
+import { Undo2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { InvoiceDetail } from '@/components/billing/InvoiceDetail';
 import { PaymentForm } from '@/components/billing/PaymentForm';
+import { AddInvoiceItemDialog } from '@/components/billing/AddInvoiceItemDialog';
+import { ApplyDiscountDialog } from '@/components/billing/ApplyDiscountDialog';
 import { MpesaPaymentDialog } from '@/components/billing/MpesaPaymentDialog';
+import { ReceiptDialog, ReceiptData } from '@/components/billing/ReceiptDialog';
 import {
   Dialog,
   DialogContent,
@@ -22,12 +25,17 @@ import {
   useCreatePayment,
   useFinalizeInvoice,
   useCancelInvoice,
+  useAddInvoiceItem,
+  useRemoveInvoiceItem,
+  useApplyDiscount,
   useMpesaSTKPush,
   useMpesaQuery,
+  usePaymentReceipt,
+  useServices,
 } from '@/lib/hooks/billing';
 import { useClaims } from '@/lib/hooks/use-sha';
 import { useToast } from '@/lib/hooks/use-toast';
-import type { Invoice, PaymentCreateData } from '@/lib/types/billing';
+import type { Invoice, PaymentCreateData, InvoiceItemCreateData, ApplyDiscountData } from '@/lib/types/billing';
 import type { Claim } from '@/lib/types/sha';
 
 export default function InvoiceDetailPage() {
@@ -37,6 +45,11 @@ export default function InvoiceDetailPage() {
   const invoiceId = Number(params.id);
 
   const [showPaymentDialog, setShowPaymentDialog] = useState(false);
+  const [showPaymentSuccessDialog, setShowPaymentSuccessDialog] = useState(false);
+  const [lastPaymentId, setLastPaymentId] = useState<number | null>(null);
+  const [showReceiptDialog, setShowReceiptDialog] = useState(false);
+  const [showAddItemDialog, setShowAddItemDialog] = useState(false);
+  const [showDiscountDialog, setShowDiscountDialog] = useState(false);
 
   const [showMpesaDialog, setShowMpesaDialog] = useState(false);
   const [mpesaStatus, setMpesaStatus] = useState<
@@ -51,13 +64,22 @@ export default function InvoiceDetailPage() {
   const [mpesaCheckoutRequestId, setMpesaCheckoutRequestId] = useState<string | null>(null);
 
   const { data: invoice, isLoading, refetch: refetchInvoice } = useInvoice(invoiceId);
+  const { data: servicesData } = useServices();
 
   const { data: claimsData, refetch: refetchClaims } = useClaims({ invoice: invoiceId });
   const linkedClaim = claimsData?.results?.[0] || null;
 
+  // Fetch receipt when we have a payment ID
+  const { data: receiptData, isLoading: isReceiptLoading } = usePaymentReceipt(
+    lastPaymentId ?? undefined
+  );
+
   const createPayment = useCreatePayment();
   const finalizeInvoice = useFinalizeInvoice();
   const cancelInvoice = useCancelInvoice();
+  const addInvoiceItem = useAddInvoiceItem();
+  const removeInvoiceItem = useRemoveInvoiceItem();
+  const applyDiscount = useApplyDiscount();
 
   const mpesaSTKPush = useMpesaSTKPush();
   const mpesaQuery = useMpesaQuery(mpesaCheckoutRequestId, {
@@ -97,12 +119,10 @@ export default function InvoiceDetailPage() {
 
   const handlePaymentSubmit = async (data: PaymentCreateData) => {
     try {
-      await createPayment.mutateAsync(data);
-      toast({
-        title: 'Payment recorded',
-        description: 'Payment has been successfully recorded.',
-      });
+      const payment = await createPayment.mutateAsync(data);
       setShowPaymentDialog(false);
+      setLastPaymentId(payment.id);
+      setShowPaymentSuccessDialog(true);
       refetchInvoice();
     } catch {
       toast({
@@ -111,6 +131,11 @@ export default function InvoiceDetailPage() {
         variant: 'destructive',
       });
     }
+  };
+
+  const handleViewReceipt = () => {
+    setShowPaymentSuccessDialog(false);
+    setShowReceiptDialog(true);
   };
 
   const handleMpesaPayment = async (data: {
@@ -194,15 +219,77 @@ export default function InvoiceDetailPage() {
     }
   };
 
+  const handleAddItem = () => {
+    setShowAddItemDialog(true);
+  };
+
+  const handleAddItemSubmit = async (data: InvoiceItemCreateData) => {
+    try {
+      await addInvoiceItem.mutateAsync({ invoiceId, item: data });
+      toast({
+        title: 'Item added',
+        description: 'Line item has been added to the invoice.',
+      });
+      setShowAddItemDialog(false);
+      refetchInvoice();
+    } catch {
+      toast({
+        title: 'Error',
+        description: 'Failed to add item to invoice.',
+        variant: 'destructive',
+      });
+    }
+  };
+
+  const handleRemoveItem = async (inv: Invoice, itemId: number) => {
+    try {
+      await removeInvoiceItem.mutateAsync({ invoiceId: inv.id, itemId });
+      toast({
+        title: 'Item removed',
+        description: 'Line item has been removed from the invoice.',
+      });
+      refetchInvoice();
+    } catch {
+      toast({
+        title: 'Error',
+        description: 'Failed to remove item from invoice.',
+        variant: 'destructive',
+      });
+    }
+  };
+
+  const handleApplyDiscount = () => {
+    setShowDiscountDialog(true);
+  };
+
+  const handleApplyDiscountSubmit = async (data: ApplyDiscountData) => {
+    try {
+      await applyDiscount.mutateAsync({ invoiceId, discount: data });
+      toast({
+        title: 'Discount applied',
+        description: 'Discount has been applied to the invoice.',
+      });
+      setShowDiscountDialog(false);
+      refetchInvoice();
+    } catch {
+      toast({
+        title: 'Error',
+        description: 'Failed to apply discount.',
+        variant: 'destructive',
+      });
+    }
+  };
+
   const handlePrint = () => {
     window.print();
   };
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center gap-4">
-        <Button variant="ghost" size="icon" onClick={() => router.back()}>
-          <ArrowLeft className="h-4 w-4" />
+      <div className="space-y-2">
+        <Button variant="ghost" size="sm" onClick={() => router.back()}>
+          <Undo2 className="h-4 w-4 mr-2" />
+          Back
         </Button>
         <div>
           <h1 className="text-2xl font-bold tracking-tight">
@@ -219,8 +306,29 @@ export default function InvoiceDetailPage() {
         onFinalize={handleFinalize}
         onCancel={handleCancel}
         onPrint={handlePrint}
+        onAddItem={handleAddItem}
+        onRemoveItem={handleRemoveItem}
+        onApplyDiscount={handleApplyDiscount}
         onClaimSubmitted={handleClaimSubmitted}
         linkedClaim={linkedClaim}
+      />
+
+      {/* Add Item Dialog */}
+      <AddInvoiceItemDialog
+        open={showAddItemDialog}
+        onOpenChange={setShowAddItemDialog}
+        services={servicesData?.results || []}
+        onSubmit={handleAddItemSubmit}
+        isLoading={addInvoiceItem.isPending}
+      />
+
+      {/* Apply Discount Dialog */}
+      <ApplyDiscountDialog
+        open={showDiscountDialog}
+        onOpenChange={setShowDiscountDialog}
+        invoice={invoice || null}
+        onSubmit={handleApplyDiscountSubmit}
+        isLoading={applyDiscount.isPending}
       />
 
       <Dialog open={showPaymentDialog} onOpenChange={setShowPaymentDialog}>
@@ -282,6 +390,55 @@ export default function InvoiceDetailPage() {
           refetchInvoice();
           refetchClaims();
         }}
+      />
+
+      {/* Payment Success Dialog with View Receipt option */}
+      <Dialog open={showPaymentSuccessDialog} onOpenChange={setShowPaymentSuccessDialog}>
+        <DialogContent className="max-w-sm">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2 text-green-600">
+              <svg
+                className="h-5 w-5"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M5 13l4 4L19 7"
+                />
+              </svg>
+              Payment Recorded
+            </DialogTitle>
+          </DialogHeader>
+          <div className="py-4">
+            <p className="text-muted-foreground">
+              Payment has been successfully recorded for this invoice.
+            </p>
+          </div>
+          <div className="flex gap-2">
+            <Button
+              variant="outline"
+              className="flex-1"
+              onClick={() => setShowPaymentSuccessDialog(false)}
+            >
+              Close
+            </Button>
+            <Button className="flex-1" onClick={handleViewReceipt}>
+              View Receipt
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Receipt Dialog */}
+      <ReceiptDialog
+        open={showReceiptDialog}
+        onClose={() => setShowReceiptDialog(false)}
+        receipt={receiptData as ReceiptData | null}
+        isLoading={isReceiptLoading}
       />
     </div>
   );

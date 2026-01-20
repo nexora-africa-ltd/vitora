@@ -719,3 +719,46 @@ class ReportViewSet(viewsets.ViewSet):
         report = service.payment_method_analysis(start_date, end_date)
 
         return Response(report, status=status.HTTP_200_OK)
+
+    @action(detail=False, methods=["get"], url_path="daily-closure")
+    def daily_closure(self, request):
+        """Get end-of-day closure report."""
+        from hmis.apps.billing.reports import BillingReportService
+
+        report_date = request.query_params.get("date")
+        if not report_date:
+            return Response(
+                {"error": "date parameter is required"}, status=status.HTTP_400_BAD_REQUEST
+            )
+
+        try:
+            report_date = date.fromisoformat(report_date)
+        except (ValueError, TypeError):
+            return Response(
+                {"error": "Invalid date format. Use YYYY-MM-DD"}, status=status.HTTP_400_BAD_REQUEST
+            )
+
+        service = BillingReportService()
+        report = service.daily_closure_report(report_date)
+
+        return Response(report, status=status.HTTP_200_OK)
+
+    @action(detail=False, methods=["get"], url_path="discrepancies")
+    def discrepancies(self, request):
+        """Get billing discrepancies report."""
+        from hmis.apps.billing.reports import BillingReportService
+
+        service = BillingReportService()
+        report = service.billing_discrepancies()
+
+        return Response(report, status=status.HTTP_200_OK)
+
+    @action(detail=False, methods=["get"], url_path="unbilled-services")
+    def unbilled_services(self, request):
+        """Get unbilled services by department."""
+        from hmis.apps.billing.reports import BillingReportService
+
+        service = BillingReportService()
+        report = service.unbilled_services()
+
+        return Response(report, status=status.HTTP_200_OK)

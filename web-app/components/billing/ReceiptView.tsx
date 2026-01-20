@@ -25,6 +25,8 @@ interface ReceiptViewProps {
   facilityName?: string;
   facilityAddress?: string;
   facilityPhone?: string;
+  /** Hide action buttons (Print/Download) - useful when embedded in dialog */
+  showActionButtons?: boolean;
 }
 
 // ============================================================================
@@ -95,6 +97,7 @@ export function ReceiptView({
   facilityName = 'Demo Health Facility',
   facilityAddress = '123 Health Street, Nairobi',
   facilityPhone = '+254 700 123 456',
+  showActionButtons = true,
 }: ReceiptViewProps) {
   const printRef = React.useRef<HTMLDivElement>(null);
 
@@ -118,31 +121,40 @@ export function ReceiptView({
     );
   }
 
+  // Use facility info from receipt if available, otherwise use defaults
+  const displayFacilityName = receipt.facility_name || facilityName;
+  const displayFacilityAddress = receipt.facility_address || facilityAddress;
+  const displayFacilityPhone = receipt.facility_phone || facilityPhone;
+
   const amount = parseFloat(receipt.amount);
   const amountDisplay = `KES ${amount.toFixed(2)}`;
+  // Use amount_in_words from receipt if available, otherwise calculate
+  const amountInWords = receipt.amount_in_words || amountToWords(amount);
 
   return (
     <div className="space-y-4">
-      {/* Action Buttons */}
-      <div className="flex justify-end gap-2 print:hidden">
-        <Button variant="outline" onClick={handlePrint}>
-          <Printer className="h-4 w-4 mr-2" />
-          Print
-        </Button>
-        {onDownload && (
-          <Button variant="outline" onClick={onDownload}>
-            <Download className="h-4 w-4 mr-2" />
-            Download PDF
+      {/* Action Buttons - conditionally rendered */}
+      {showActionButtons && (
+        <div className="flex justify-end gap-2 print:hidden">
+          <Button variant="outline" onClick={handlePrint}>
+            <Printer className="h-4 w-4 mr-2" />
+            Print
           </Button>
-        )}
-      </div>
+          {onDownload && (
+            <Button variant="outline" onClick={onDownload}>
+              <Download className="h-4 w-4 mr-2" />
+              Download PDF
+            </Button>
+          )}
+        </div>
+      )}
 
       {/* Receipt Content */}
       <Card ref={printRef} className="max-w-md mx-auto print:shadow-none print:border-none">
         <CardHeader className="text-center pb-2">
-          <h2 className="text-xl font-bold">{facilityName}</h2>
-          <p className="text-sm text-muted-foreground">{facilityAddress}</p>
-          <p className="text-sm text-muted-foreground">{facilityPhone}</p>
+          <h2 className="text-xl font-bold">{displayFacilityName}</h2>
+          <p className="text-sm text-muted-foreground">{displayFacilityAddress}</p>
+          <p className="text-sm text-muted-foreground">{displayFacilityPhone}</p>
           <Separator className="my-4" />
           <h3 className="text-lg font-semibold">PAYMENT RECEIPT</h3>
         </CardHeader>
@@ -165,8 +177,12 @@ export function ReceiptView({
             <div className="text-muted-foreground">Date:</div>
             <div className="text-right">{formatDateTime(receipt.receipt_date)}</div>
 
-            <div className="text-muted-foreground">Invoice:</div>
-            <div className="text-right">{receipt.payment_reference}</div>
+            {receipt.payment_reference && (
+              <>
+                <div className="text-muted-foreground">Invoice:</div>
+                <div className="text-right">{receipt.payment_reference}</div>
+              </>
+            )}
 
             <div className="text-muted-foreground">Patient:</div>
             <div className="text-right">{receipt.patient_name}</div>
@@ -182,6 +198,26 @@ export function ReceiptView({
             <div className="text-right capitalize">
               {receipt.payment_method.replace('_', ' ')}
             </div>
+
+            {/* Served By */}
+            {(receipt.received_by_username || receipt.issued_by_username) && (
+              <>
+                <div className="text-muted-foreground">Served By:</div>
+                <div className="text-right">
+                  {receipt.received_by_username || receipt.issued_by_username}
+                </div>
+              </>
+            )}
+
+            {/* Till/Payment Point */}
+            {(receipt.payment_point_name || receipt.payment_point_code) && (
+              <>
+                <div className="text-muted-foreground">Till/Point:</div>
+                <div className="text-right">
+                  {receipt.payment_point_name || receipt.payment_point_code}
+                </div>
+              </>
+            )}
           </div>
 
           <Separator />
@@ -196,7 +232,7 @@ export function ReceiptView({
               className="text-sm text-muted-foreground italic"
               data-testid="amount-in-words"
             >
-              {amountToWords(amount)}
+              {amountInWords}
             </div>
           </div>
 
