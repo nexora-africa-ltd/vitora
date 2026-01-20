@@ -66,6 +66,7 @@ export function AddInvoiceItemDialog({
     if (!selectedService) return;
 
     onSubmit({
+      description: selectedService.name,
       service: selectedService.id,
       quantity,
       unit_price: unitPrice,
