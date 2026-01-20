@@ -173,7 +173,6 @@ export function InvoiceDetail({
       {/* Header */}
       <div className="flex flex-col sm:flex-row justify-between items-start gap-4">
         <div>
-          <h2 className="text-2xl font-bold">{invoice.invoice_number}</h2>
           <p className="text-muted-foreground">
             Created {formatDate(invoice.invoice_date)}
           </p>

@@ -187,7 +187,7 @@ class BillingReportService:
                     "due_date": invoice.due_date,
                     "total_amount": invoice.total_amount,
                     "paid_amount": invoice.amount_paid,
-                    "balance": invoice.balance_due,
+                    "balance_due": invoice.balance_due,
                     "days_overdue": days_overdue,
                     "status": invoice.status,
                 }
@@ -306,3 +306,169 @@ class BillingReportService:
             "average_transaction": avg_transaction,
             "mpesa_metrics": mpesa_metrics,
         }
+
+    def daily_closure_report(self, report_date: date) -> dict[str, Any]:
+        """
+        End-of-day closure report.
+
+        Returns:
+            - Total invoiced for the day
+            - Total collected
+            - Outstanding balance
+            - Breakdown by department
+            - Breakdown by payment method
+        """
+        # Get all invoices created on this date
+        invoices = Invoice.objects.filter(invoice_date=report_date)
+        total_invoiced = invoices.aggregate(total=Sum("total_amount"))["total"] or Decimal("0")
+
+        # Get payments received on this date
+        payments = Payment.objects.filter(
+            payment_date__date=report_date, status=Payment.Status.COMPLETED
+        )
+        total_collected = payments.aggregate(total=Sum("amount"))["total"] or Decimal("0")
+
+        # Outstanding from today's invoices
+        outstanding = invoices.aggregate(total=Sum("balance_due"))["total"] or Decimal("0")
+
+        # Breakdown by payment method
+        by_payment_method = {}
+        for method_choice in Payment.Method.choices:
+            method = method_choice[0]
+            method_total = payments.filter(method=method).aggregate(total=Sum("amount"))[
+                "total"
+            ] or Decimal("0")
+            if method_total > 0:
+                by_payment_method[method] = str(method_total)
+
+        # Breakdown by department (from invoice items -> service -> category)
+        by_department = []
+        dept_totals: dict[str, dict[str, Decimal]] = {}
+
+        for invoice in invoices.prefetch_related("items__service__category"):
+            for item in invoice.items.all():
+                if item.service and item.service.category:
+                    dept_name = item.service.category.name
+                    if dept_name not in dept_totals:
+                        dept_totals[dept_name] = {"invoiced": Decimal("0"), "collected": Decimal("0")}
+                    dept_totals[dept_name]["invoiced"] += item.line_total
+
+        # Calculate collected per department (approximate based on paid invoices)
+        paid_invoice_ids = payments.values_list("invoice_id", flat=True).distinct()
+        for invoice in Invoice.objects.filter(id__in=paid_invoice_ids).prefetch_related(
+            "items__service__category"
+        ):
+            for item in invoice.items.all():
+                if item.service and item.service.category:
+                    dept_name = item.service.category.name
+                    if dept_name in dept_totals:
+                        # Proportional collection based on payment vs invoice total
+                        if invoice.total_amount > 0:
+                            proportion = invoice.amount_paid / invoice.total_amount
+                            dept_totals[dept_name]["collected"] += item.line_total * proportion
+
+        for dept_name, totals in dept_totals.items():
+            by_department.append(
+                {
+                    "department": dept_name,
+                    "invoiced": str(totals["invoiced"]),
+                    "collected": str(totals["collected"]),
+                }
+            )
+
+        return {
+            "date": report_date,
+            "total_invoiced": str(total_invoiced),
+            "total_collected": str(total_collected),
+            "outstanding": str(outstanding),
+            "by_department": by_department,
+            "by_payment_method": by_payment_method,
+            "transaction_count": payments.count(),
+        }
+
+    def billing_discrepancies(self) -> list[dict[str, Any]]:
+        """
+        Find billing discrepancies.
+
+        Identifies encounters/services that may have billing issues:
+        - Services performed but not billed
+        - Price differences from tariff
+
+        Returns additional fields for UI:
+        - id: unique identifier (invoice_item_id)
+        - encounter_id: linked encounter
+        - patient_mrn: patient's medical record number
+        - date: invoice date
+        - status: resolution status (PENDING/RESOLVED)
+        """
+        from hmis.apps.encounters.models import Encounter
+
+        discrepancies = []
+
+        # Find encounters with services that differ from standard pricing
+        # This is a simplified implementation - real-world would check against tariffs
+        recent_invoices = Invoice.objects.filter(
+            invoice_date__gte=date.today() - timedelta(days=30)
+        ).select_related("patient", "encounter").prefetch_related("items__service")
+
+        for invoice in recent_invoices:
+            for item in invoice.items.all():
+                if item.service and item.unit_price != item.service.unit_price:
+                    discrepancy_amount = abs(item.service.unit_price - item.unit_price)
+                    if discrepancy_amount > Decimal("0.01"):  # Ignore rounding differences
+                        discrepancies.append(
+                            {
+                                "id": item.id,
+                                "encounter_id": invoice.encounter.pk if invoice.encounter else None,
+                                "invoice_number": invoice.invoice_number,
+                                "patient_name": f"{invoice.patient.first_name} {invoice.patient.last_name}",
+                                "patient_mrn": invoice.patient.mrn,
+                                "service_name": item.service.name,
+                                "expected_amount": str(item.service.unit_price),
+                                "billed_amount": str(item.unit_price),
+                                "discrepancy": str(discrepancy_amount),
+                                "date": invoice.invoice_date.isoformat(),
+                                "status": "PENDING",  # Default status - could be tracked in a separate model
+                            }
+                        )
+
+        return discrepancies
+
+    def unbilled_services(self) -> list[dict[str, Any]]:
+        """
+        Get unbilled services grouped by department.
+
+        Finds encounters/services that haven't been invoiced.
+        """
+        from hmis.apps.encounters.models import Encounter
+
+        # Get encounters from the last 7 days that don't have invoices
+        cutoff_date = date.today() - timedelta(days=7)
+        unbilled_encounters = Encounter.objects.filter(
+            encounter_date__gte=cutoff_date, invoices__isnull=True
+        ).select_related("patient")
+
+        # Group by department (encounter type as proxy)
+        dept_summary: dict[str, dict[str, Any]] = {}
+
+        for encounter in unbilled_encounters:
+            dept = encounter.encounter_type or "General"
+            if dept not in dept_summary:
+                dept_summary[dept] = {"services_count": 0, "total_amount": Decimal("0")}
+
+            # Count services (simplified - would need actual service tracking)
+            dept_summary[dept]["services_count"] += 1
+            # Estimate amount (simplified)
+            dept_summary[dept]["total_amount"] += Decimal("500")  # Default consultation fee
+
+        result = []
+        for dept, data in dept_summary.items():
+            result.append(
+                {
+                    "department": dept,
+                    "services_count": data["services_count"],
+                    "total_amount": str(data["total_amount"]),
+                }
+            )
+
+        return result

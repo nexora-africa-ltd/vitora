@@ -411,6 +411,60 @@ async function getPaymentMethodAnalysis(
   return response.data;
 }
 
+// Daily Closure Report
+export interface DailyClosureReport {
+  date: string;
+  total_invoiced: string;
+  total_collected: string;
+  outstanding: string;
+  by_department: Array<{
+    department: string;
+    invoiced: string;
+    collected: string;
+  }>;
+  by_payment_method: Record<string, string>;
+  transaction_count: number;
+}
+
+async function getDailyClosureReport(date: string): Promise<DailyClosureReport> {
+  const response = await apiClient.get(
+    `/api/billing/reports/daily-closure/?date=${date}`
+  );
+  return response.data;
+}
+
+// Billing Discrepancies
+export interface BillingDiscrepancy {
+  id: number;
+  encounter_id: number | null;
+  invoice_number: string;
+  patient_name: string;
+  patient_mrn: string;
+  service_name: string;
+  expected_amount: string;
+  billed_amount: string;
+  discrepancy: string;
+  date: string;
+  status: 'PENDING' | 'RESOLVED';
+}
+
+async function getBillingDiscrepancies(): Promise<BillingDiscrepancy[]> {
+  const response = await apiClient.get('/api/billing/reports/discrepancies/');
+  return response.data;
+}
+
+// Unbilled Services
+export interface UnbilledService {
+  department: string;
+  services_count: number;
+  total_amount: string;
+}
+
+async function getUnbilledServices(): Promise<UnbilledService[]> {
+  const response = await apiClient.get('/api/billing/reports/unbilled-services/');
+  return response.data;
+}
+
 // ============================================================================
 // Export API Object
 // ============================================================================
@@ -466,4 +520,7 @@ export const billingApi = {
   getOutstandingBalances,
   getServiceUtilization,
   getPaymentMethodAnalysis,
+  getDailyClosureReport,
+  getBillingDiscrepancies,
+  getUnbilledServices,
 };

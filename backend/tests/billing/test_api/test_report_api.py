@@ -103,6 +103,94 @@ class TestReportAPIEndpoints:
         assert "by_method" in response.data
         assert isinstance(response.data["by_method"], dict)
 
+    def test_daily_closure_endpoint_returns_report(
+        self, authenticated_client, sample_invoice, sample_payment
+    ):
+        """Should return end-of-day closure report for specified date."""
+        url = reverse("billing:reports-daily-closure")
+        response = authenticated_client.get(url, {"date": str(date.today())})
+
+        assert response.status_code == status.HTTP_200_OK
+        assert "total_invoiced" in response.data
+        assert "total_collected" in response.data
+        assert "outstanding" in response.data
+        assert "by_department" in response.data
+        assert "by_payment_method" in response.data
+
+    def test_daily_closure_requires_date(self, authenticated_client):
+        """Should return 400 if date parameter is missing."""
+        url = reverse("billing:reports-daily-closure")
+        response = authenticated_client.get(url)
+
+        assert response.status_code == status.HTTP_400_BAD_REQUEST
+
+    def test_discrepancies_endpoint_returns_list(self, authenticated_client):
+        """Should return billing discrepancies list."""
+        url = reverse("billing:reports-discrepancies")
+        response = authenticated_client.get(url)
+
+        assert response.status_code == status.HTTP_200_OK
+        assert isinstance(response.data, list)
+
+    def test_discrepancies_returns_expected_fields(
+        self, authenticated_client, sample_invoice, sample_service
+    ):
+        """Should return discrepancies with all expected fields when price differs."""
+        from hmis.apps.billing.models import InvoiceItem
+
+        # Create an invoice item with a price different from service price
+        item = InvoiceItem.objects.create(
+            invoice=sample_invoice,
+            service=sample_service,
+            description=sample_service.name,
+            quantity=1,
+            unit_price=sample_service.unit_price - 100,  # Create discrepancy
+        )
+
+        url = reverse("billing:reports-discrepancies")
+        response = authenticated_client.get(url)
+
+        assert response.status_code == status.HTTP_200_OK
+        assert isinstance(response.data, list)
+        assert len(response.data) >= 1
+
+        # Find our discrepancy in the list
+        discrepancy = next(
+            (d for d in response.data if d["id"] == item.id),
+            None
+        )
+        assert discrepancy is not None, "Created discrepancy not found in response"
+
+        # Verify all expected fields are present
+        expected_fields = [
+            "id",
+            "encounter_id",
+            "invoice_number",
+            "patient_name",
+            "patient_mrn",
+            "service_name",
+            "expected_amount",
+            "billed_amount",
+            "discrepancy",
+            "date",
+            "status",
+        ]
+        for field in expected_fields:
+            assert field in discrepancy, f"Missing field: {field}"
+
+        # Verify field values
+        assert discrepancy["invoice_number"] == sample_invoice.invoice_number
+        assert discrepancy["service_name"] == sample_service.name
+        assert discrepancy["status"] in ["PENDING", "RESOLVED"]
+
+    def test_unbilled_services_endpoint_returns_list(self, authenticated_client):
+        """Should return unbilled services by department."""
+        url = reverse("billing:reports-unbilled-services")
+        response = authenticated_client.get(url)
+
+        assert response.status_code == status.HTTP_200_OK
+        assert isinstance(response.data, list)
+
     def test_report_endpoints_require_authentication(self, api_client):
         """Should return 401 for unauthenticated requests."""
         endpoints = [
@@ -111,6 +199,9 @@ class TestReportAPIEndpoints:
             "billing:reports-outstanding-balances",
             "billing:reports-service-utilization",
             "billing:reports-payment-analysis",
+            "billing:reports-daily-closure",
+            "billing:reports-discrepancies",
+            "billing:reports-unbilled-services",
         ]
 
         for endpoint_name in endpoints:
