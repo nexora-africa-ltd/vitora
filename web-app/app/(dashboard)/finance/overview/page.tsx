@@ -231,7 +231,7 @@ function PayerMixCard({
               <Skeleton key={i} className="h-8 w-full" />
             ))}
           </div>
-        ) : data.length === 0 ? (
+        ) : !Array.isArray(data) || data.length === 0 ? (
           <p className="text-sm text-muted-foreground text-center py-4">
             No payment data for this period
           </p>
@@ -402,8 +402,8 @@ export default function FinanceOverviewPage() {
     0
   );
 
-  // Payer mix
-  const payerMix = payerMixData?.by_method || [];
+  // Payer mix - ensure it's always an array
+  const payerMix = Array.isArray(payerMixData?.by_method) ? payerMixData.by_method : [];
 
   // Today's collection
   const todayCollection = dailyCollection?.total_amount || 0;
