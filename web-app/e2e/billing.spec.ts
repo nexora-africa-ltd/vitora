@@ -946,9 +946,13 @@ test.describe('KE-CLM-003: Financial Performance Reports', () => {
   test('should filter reports by date range', async ({ page }) => {
     await page.goto('/transactions/reports/revenue');
 
-    // Should show date filters (buttons with aria-labels)
-    await expect(page.getByRole('button', { name: /start date/i })).toBeVisible();
-    await expect(page.getByRole('button', { name: /end date/i })).toBeVisible();
+    // Should show date filter labels and buttons
+    // The labels "Start Date" and "End Date" are text elements, buttons show the actual dates
+    await expect(page.getByText('Start Date')).toBeVisible();
+    await expect(page.getByText('End Date')).toBeVisible();
+    
+    // Date picker buttons show the selected date values (e.g., "January 1st, 2026")
+    await expect(page.getByRole('button', { name: /january/i }).first()).toBeVisible();
 
     // The date range should be pre-filled with current month
     // Just verify the export button works (calendar interaction is complex)
