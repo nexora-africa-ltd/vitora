@@ -462,6 +462,117 @@ class LabOrder(models.Model):
             return self.completed_at - self.ordered_at
         return None
 
+    def add_test(self, test_catalog, quantity: int = 1):
+        """
+        Add a test to this lab order and create an invoice item.
+
+        Creates a LabOrderItem linked to the test catalog and
+        automatically creates an InvoiceItem on the encounter's invoice.
+
+        Args:
+            test_catalog: The TestCatalog instance to add
+            quantity: The quantity of the test (default 1)
+
+        Returns:
+            LabOrderItem: The created lab order item
+
+        Raises:
+            ValidationError: If the order is completed/cancelled or encounter has no invoice
+        """
+        from decimal import Decimal
+
+        from hmis.apps.billing.models import Invoice, InvoiceItem
+
+        # Validate order status
+        if self.status in ["COMPLETED", "CANCELLED", "REJECTED"]:
+            raise ValidationError(f"Cannot add tests to a {self.status.lower()} order.")
+
+        # Create lab order item
+        order_item = LabOrderItem.objects.create(
+            lab_order=self,
+            test=test_catalog,
+            unit_cost=test_catalog.cost,
+        )
+
+        # Get the encounter's invoice
+        invoice = Invoice.objects.filter(encounter=self.encounter).first()
+        if not invoice:
+            raise ValidationError("Encounter has no associated invoice.")
+
+        # Check if invoice is editable
+        if invoice.status != Invoice.Status.DRAFT:
+            raise ValidationError(
+                f"Cannot add lab tests to invoice with status '{invoice.status}'."
+            )
+
+        # Create invoice item
+        line_total = (test_catalog.cost * Decimal(str(quantity))).quantize(Decimal("0.01"))
+        InvoiceItem.objects.create(
+            invoice=invoice,
+            item_type=InvoiceItem.ItemType.LAB,
+            lab_order=self,
+            description=test_catalog.name,
+            quantity=quantity,
+            unit_price=test_catalog.cost,
+            line_total=line_total,
+            sha_code=test_catalog.loinc_code or "",
+        )
+
+        # Recalculate invoice totals
+        invoice.calculate_totals()
+        invoice.save(update_fields=["subtotal", "tax_amount", "discount_amount", "total_amount", "balance_due", "updated_at"])
+
+        # Update order total cost
+        self.calculate_total_cost()
+
+        return order_item
+
+    def cancel(self, user, reason: str):
+        """
+        Cancel the lab order and remove associated invoice items.
+
+        Args:
+            user: The user cancelling the order
+            reason: The reason for cancellation
+
+        Raises:
+            ValidationError: If the order cannot be cancelled
+        """
+        from hmis.apps.billing.models import Invoice
+
+        # Validate order can be cancelled
+        if self.status in ["COMPLETED", "CANCELLED"]:
+            raise ValidationError(f"Cannot cancel a {self.status.lower()} order.")
+
+        if self.status == "IN_PROGRESS":
+            # Check if any results have been entered
+            if self.items.filter(result__isnull=False).exists():
+                raise ValidationError("Cannot cancel order with existing results.")
+
+        # Store cancellation details
+        self.status = "CANCELLED"
+        self.cancellation_reason = reason
+        self.cancelled_by = user
+        self.cancelled_at = timezone.now()
+        self.save(update_fields=[
+            "status", "cancellation_reason", "cancelled_by", "cancelled_at", "updated_at"
+        ])
+
+        # Remove invoice items associated with this lab order
+        invoice = Invoice.objects.filter(encounter=self.encounter).first()
+        if invoice and invoice.status == Invoice.Status.DRAFT:
+            deleted_count, _ = invoice.items.filter(lab_order=self).delete()
+            if deleted_count > 0:
+                # Recalculate invoice totals
+                invoice.calculate_totals()
+                invoice.save(update_fields=[
+                    "subtotal", "tax_amount", "discount_amount",
+                    "total_amount", "balance_due", "updated_at"
+                ])
+
+        # Cancel all order items
+        self.items.update(status="CANCELLED")
+
 
 class LabOrderItem(models.Model):
     """Individual test within a lab order."""

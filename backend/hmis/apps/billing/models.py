@@ -417,15 +417,6 @@ class InvoiceItem(models.Model):
     def save(self, *args, **kwargs):
         """Override save to calculate line total, handle stock allocation, and update invoice."""
         is_new = self.pk is None
-        old_quantity = Decimal("0")
-        
-        # Track previous quantity for updates
-        if not is_new:
-            try:
-                old_item = InvoiceItem.objects.get(pk=self.pk)
-                old_quantity = old_item.quantity
-            except InvoiceItem.DoesNotExist:
-                pass
 
         # Calculate line_total before validation if not set
         if not self.line_total:
@@ -433,11 +424,8 @@ class InvoiceItem(models.Model):
         self.full_clean()
         self.line_total = self.calculate_line_total()  # Recalculate after validation
 
-        # Handle stock allocation for pharmacy items
-        if self.drug and self.item_type == self.ItemType.PHARMACY:
-            quantity_change = self.quantity - old_quantity if not is_new else self.quantity
-            if quantity_change != 0:
-                self._handle_stock_allocation(quantity_change)
+        # NOTE: Stock allocation is handled by the Dispensing model, not here.
+        # InvoiceItem records what's being charged; stock is deducted when dispensed.
 
         super().save(*args, **kwargs)
         # Update invoice totals
@@ -450,18 +438,18 @@ class InvoiceItem(models.Model):
         if self.unit_price is not None and self.unit_price <= 0:
             raise ValidationError({"unit_price": "Unit price must be greater than 0."})
         
-        # Validate stock availability for pharmacy items
-        if self.drug and self.item_type == self.ItemType.PHARMACY:
-            self._validate_stock_availability()
+        # NOTE: Stock validation is intentionally NOT done here.
+        # Stock availability is validated at DISPENSING time, not billing time.
+        # This allows prescriptions to be billed even when stock may not be
+        # immediately available (e.g., awaiting restock, patient to return later).
+        # The Dispensing model handles stock allocation and validation.
 
     def delete(self, *args, **kwargs):
-        """Override delete to restore stock and update invoice totals."""
+        """Override delete to update invoice totals."""
         invoice = self.invoice
         
-        # Restore stock if pharmacy item with allocation
-        if self.drug and self.stock_batch and self.stock_allocated > 0:
-            self.stock_batch.quantity_available += self.stock_allocated
-            self.stock_batch.save()
+        # NOTE: Stock deallocation is handled by the Dispensing model, not here.
+        # If a dispensing record exists, it must be cancelled separately.
         
         super().delete(*args, **kwargs)
         invoice.calculate_totals()

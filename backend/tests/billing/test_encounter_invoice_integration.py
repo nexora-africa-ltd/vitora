@@ -19,6 +19,7 @@ import pytest  # type: ignore
 
 from hmis.apps.billing.models import Invoice, InvoiceItem, Service, ServiceCategory
 from hmis.apps.encounters.models import Encounter
+from hmis.apps.laboratory.models import LabOrder, TestCatalog
 
 
 @pytest.fixture
@@ -96,6 +97,67 @@ def urinalysis_service(db, lab_category, test_user):
     )
 
 
+# ============================================================================
+# Lab TestCatalog Fixtures (for LabOrder integration)
+# ============================================================================
+
+
+@pytest.fixture
+def cbc_test(db):
+    """Create a Complete Blood Count test catalog entry."""
+    return TestCatalog.objects.create(
+        code="CBC",
+        name="Complete Blood Count",
+        short_name="CBC",
+        category="HEMATOLOGY",
+        specimen_type="BLOOD",
+        result_type="PANEL",
+        cost=Decimal("1500.00"),
+        sha_claimable=True,
+        loinc_code="58410-2",
+    )
+
+
+@pytest.fixture
+def urinalysis_test(db):
+    """Create a Urinalysis test catalog entry."""
+    return TestCatalog.objects.create(
+        code="UA",
+        name="Urinalysis",
+        short_name="UA",
+        category="URINALYSIS",
+        specimen_type="URINE",
+        result_type="PANEL",
+        cost=Decimal("800.00"),
+        sha_claimable=True,
+        loinc_code="24356-8",
+    )
+
+
+# ============================================================================
+# Pharmacy Drug Fixtures (for Prescription integration)
+# ============================================================================
+
+
+@pytest.fixture
+def sample_drug(db):
+    """Create a sample drug for prescription testing."""
+    from hmis.apps.pharmacy.models import Drug
+
+    return Drug.objects.create(
+        code="PARA-500",
+        generic_name="Paracetamol",
+        category="ANALGESIC",
+        form="TABLET",
+        strength="500mg",
+        unit="tablet",
+        schedule="OTC",
+        requires_prescription=False,
+        reference_price=Decimal("5.00"),
+        is_active=True,
+    )
+
+
 @pytest.fixture
 def test_encounter(db, sample_patient, test_user):
     """Create a test encounter."""
@@ -149,13 +211,10 @@ class TestEncounterAutoInvoiceCreation:
         assert item.unit_price == consultation_service.unit_price
         assert item.quantity == 1
 
-    @pytest.mark.skip(reason="Requires LabOrder.add_test() implementation in laboratory module")
     def test_lab_order_adds_invoice_items(
-        self, test_encounter, lab_test_service, urinalysis_service, test_user
+        self, test_encounter, cbc_test, urinalysis_test, test_user
     ):
         """Ordering lab tests should add invoice items."""
-        from hmis.apps.laboratory.models import LabOrder, LabTest
-
         invoice = Invoice.objects.get(encounter=test_encounter)
         initial_items = invoice.items.count()
 
@@ -168,21 +227,20 @@ class TestEncounterAutoInvoiceCreation:
         )
 
         # Add lab tests - each should create an invoice item
-        lab_order.add_test(lab_test_service)
-        lab_order.add_test(urinalysis_service)
+        lab_order.add_test(cbc_test)
+        lab_order.add_test(urinalysis_test)
 
         # Invoice should have items for each test
         assert invoice.items.count() == initial_items + 2
 
-        cbc_item = invoice.items.filter(service=lab_test_service).first()
+        cbc_item = invoice.items.filter(lab_order=lab_order, description=cbc_test.name).first()
         assert cbc_item is not None
-        assert cbc_item.unit_price == lab_test_service.unit_price
+        assert cbc_item.unit_price == cbc_test.cost
 
-        ua_item = invoice.items.filter(service=urinalysis_service).first()
+        ua_item = invoice.items.filter(lab_order=lab_order, description=urinalysis_test.name).first()
         assert ua_item is not None
-        assert ua_item.unit_price == urinalysis_service.unit_price
+        assert ua_item.unit_price == urinalysis_test.cost
 
-    @pytest.mark.skip(reason="Requires Prescription model updates and billing integration")
     def test_prescription_adds_invoice_items(
         self, test_encounter, sample_drug, test_user
     ):
@@ -192,21 +250,22 @@ class TestEncounterAutoInvoiceCreation:
         invoice = Invoice.objects.get(encounter=test_encounter)
         initial_items = invoice.items.count()
 
-        # Create prescription
+        # Create prescription with required valid_until field
         prescription = Prescription.objects.create(
             encounter=test_encounter,
             patient=test_encounter.patient,
             prescribed_by=test_user,
+            valid_until=date.today() + timedelta(days=30),
         )
 
-        # Add prescription item
+        # Add prescription item (quantity is the field name, not quantity_prescribed)
         prescription_item = PrescriptionItem.objects.create(
             prescription=prescription,
             drug=sample_drug,
             dosage="500mg",
             frequency="TDS",
             duration="5 days",
-            quantity_prescribed=15,
+            quantity=15,
         )
 
         # Invoice should have item for the drug
@@ -260,13 +319,10 @@ class TestEncounterAutoInvoiceCreation:
         expected_total += lab_test_service.unit_price
         assert invoice.subtotal == expected_total
 
-    @pytest.mark.skip(reason="Requires LabOrder.add_test() and cancel() integration")
-    def test_cancelled_service_removes_invoice_item(
-        self, test_encounter, lab_test_service, test_user
+    def test_cancelled_lab_order_removes_invoice_item(
+        self, test_encounter, cbc_test, test_user
     ):
-        """Cancelling a service should remove the invoice item."""
-        from hmis.apps.laboratory.models import LabOrder
-
+        """Cancelling a lab order should remove the invoice item."""
         # Add lab order
         lab_order = LabOrder.objects.create(
             encounter=test_encounter,
@@ -274,16 +330,24 @@ class TestEncounterAutoInvoiceCreation:
             ordered_by=test_user,
             priority="ROUTINE",
         )
-        lab_order.add_test(lab_test_service)
+        lab_order.add_test(cbc_test)
 
         invoice = Invoice.objects.get(encounter=test_encounter)
         assert invoice.items.filter(lab_order=lab_order).exists()
+        
+        # Verify invoice total includes the lab test
+        invoice.refresh_from_db()
+        assert invoice.subtotal == cbc_test.cost
 
         # Cancel the lab order
         lab_order.cancel(user=test_user, reason="Patient refused test")
 
         # Invoice item should be removed
         assert not invoice.items.filter(lab_order=lab_order).exists()
+        
+        # Invoice total should be updated
+        invoice.refresh_from_db()
+        assert invoice.subtotal == Decimal("0.00")
 
 
 @pytest.mark.django_db
