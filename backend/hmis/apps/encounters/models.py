@@ -1732,6 +1732,117 @@ class Encounter(models.Model):
 
         return " | ".join(parts) if parts else "Treatment plan created"
 
+    # =========================================================================
+    # Billing Integration Methods (Sprint 1.5-1.6)
+    # =========================================================================
+
+    def get_invoice(self):
+        """
+        Get or create the invoice associated with this encounter.
+
+        Returns:
+            Invoice: The invoice for this encounter, or None if none exists.
+        """
+        from hmis.apps.billing.models import Invoice
+
+        return Invoice.objects.filter(encounter=self).first()
+
+    def add_service(self, service, quantity: int = 1):
+        """
+        Add a service to this encounter's invoice.
+
+        Creates an InvoiceItem linked to the encounter's invoice.
+        If the same service already exists, updates the quantity.
+
+        Args:
+            service: The Service instance to add
+            quantity: The quantity of the service (default 1)
+
+        Returns:
+            InvoiceItem: The created or updated invoice item
+
+        Raises:
+            ValidationError: If the encounter is completed or has no invoice
+        """
+        from decimal import Decimal
+
+        from django.core.exceptions import ValidationError
+
+        from hmis.apps.billing.models import Invoice, InvoiceItem
+
+        # Validate encounter status
+        if self.status == "COMPLETED":
+            raise ValidationError("Cannot add services to a completed encounter.")
+
+        # Get the encounter's invoice
+        invoice = self.get_invoice()
+        if not invoice:
+            raise ValidationError("Encounter has no associated invoice.")
+
+        # Check if invoice is editable
+        if invoice.status not in [Invoice.Status.DRAFT]:
+            raise ValidationError(
+                f"Cannot add services to invoice with status '{invoice.status}'."
+            )
+
+        # Check if same service already exists on this invoice
+        existing_item = invoice.items.filter(service=service).first()
+
+        if existing_item:
+            # Update quantity
+            existing_item.quantity += quantity
+            existing_item.line_total = (
+                existing_item.quantity * existing_item.unit_price
+            ).quantize(Decimal("0.01"))
+            existing_item.save(update_fields=["quantity", "line_total", "updated_at"])
+            item = existing_item
+        else:
+            # Create new invoice item
+            item = InvoiceItem.objects.create(
+                invoice=invoice,
+                item_type=InvoiceItem.ItemType.SERVICE,
+                service=service,
+                description=service.name,
+                quantity=quantity,
+                unit_price=service.unit_price,
+                line_total=(service.unit_price * Decimal(str(quantity))).quantize(
+                    Decimal("0.01")
+                ),
+            )
+
+        # Recalculate invoice totals
+        invoice.calculate_totals()
+        invoice.save(update_fields=["subtotal", "tax_amount", "discount_amount", "total_amount", "balance_due", "updated_at"])
+
+        return item
+
+    def complete(self):
+        """
+        Complete the encounter and finalize its invoice.
+
+        Changes the encounter status to COMPLETED and the associated
+        invoice status from DRAFT to PENDING.
+
+        Raises:
+            ValidationError: If the encounter is already completed
+        """
+        from django.core.exceptions import ValidationError
+
+        from hmis.apps.billing.models import Invoice
+
+        if self.status == "COMPLETED":
+            raise ValidationError("Encounter is already completed.")
+
+        # Change encounter status
+        self.status = "COMPLETED"
+        self.save(update_fields=["status", "updated_at"])
+
+        # Finalize the invoice
+        invoice = self.get_invoice()
+        if invoice and invoice.status == Invoice.Status.DRAFT:
+            invoice.status = Invoice.Status.PENDING
+            invoice.save(update_fields=["status", "updated_at"])
+
 
 class Diagnosis(models.Model):
     """
