@@ -22,6 +22,7 @@ import {
   TrendingUp,
   Wallet,
   XCircle,
+  Plus,
 } from 'lucide-react';
 import { SHALogo } from '@/components/ui/sha-logo';
 import { PageHeader } from '@/components/shared/page-header';
@@ -39,6 +40,7 @@ import {
   TableRow,
 } from '@/components/ui/table';
 import { useClaims } from '@/lib/hooks/use-sha';
+import { ReceivePaymentModal } from '@/components/billing';
 import {
   useInvoices,
   useDailyCollectionReport,
@@ -410,10 +412,21 @@ export default function FinanceOverviewPage() {
 
   return (
     <div className="container mx-auto py-6 space-y-6">
-      <PageHeader
-        title="Finance Dashboard"
-        description="Receivables, collections, claims status, and payer mix at a glance"
-      />
+      {/* Header with Action Button */}
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+        <PageHeader
+          title="Finance Dashboard"
+          description="Receivables, collections, claims status, and payer mix at a glance"
+        />
+        <ReceivePaymentModal
+          trigger={
+            <Button size="lg" className="gap-2">
+              <Banknote className="h-5 w-5" />
+              Receive Payment
+            </Button>
+          }
+        />
+      </div>
 
       {/* Quick Stats Row */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
