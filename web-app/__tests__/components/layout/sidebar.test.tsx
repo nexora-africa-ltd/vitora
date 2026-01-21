@@ -13,12 +13,14 @@ jest.mock('@/lib/auth/hooks', () => ({
 }));
 
 // Mock ScrollArea to avoid Radix React 19 issues
-jest.mock('@/components/ui/scroll-area', () => ({
-  ScrollArea: React.forwardRef(
-    ({ children, className }: { children: React.ReactNode; className?: string }, ref) =>
+jest.mock('@/components/ui/scroll-area', () => {
+  const MockScrollArea = React.forwardRef<HTMLDivElement, { children: React.ReactNode; className?: string }>(
+    ({ children, className }, ref) =>
       React.createElement('div', { ref, 'data-testid': 'scroll-area', className }, children)
-  ),
-}));
+  );
+  MockScrollArea.displayName = 'MockScrollArea';
+  return { ScrollArea: MockScrollArea };
+});
 
 // Mock Tooltip to avoid Radix issues
 jest.mock('@/components/ui/tooltip', () => ({
