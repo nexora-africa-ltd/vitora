@@ -54,6 +54,7 @@ import { ChiefComplaintEditDialog, ChiefComplaintEditReason } from '@/components
 import { useClinicalTemplate } from '@/lib/hooks/use-clinical-templates';
 import type { ClinicalTemplate } from '@/lib/types/clinical-template';
 import { ENCOUNTER_TYPES, ENCOUNTER_STATUS, ENCOUNTER_TYPE_GROUPS, getEncounterTypesByGroup } from '@/lib/utils/constants';
+import { cn } from '@/lib/utils';
 import type { EncounterFormData, DiagnosisFormData } from '@/lib/types/encounter-form';
 import type { Patient } from '@/lib/types/patient';
 
@@ -692,27 +693,29 @@ export default function EditEncounterPage() {
   const isEditable = encounter.status !== 'COMPLETED' && encounter.status !== 'CANCELLED';
 
   return (
-    <div className="container mx-auto py-6 max-w-5xl">
+    <div className="container mx-auto px-3 py-4 sm:px-4 sm:py-6 max-w-5xl">
       {/* Header */}
-      <div className="flex items-center justify-between mb-6">
-        <div className="flex items-center gap-4">
-          <Button variant="ghost" size="icon" asChild>
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4 sm:mb-6">
+        <div className="flex items-center gap-2 sm:gap-4">
+          <Button variant="ghost" size="icon" className="shrink-0" asChild>
             <Link href={`/encounters/${encounterId}`}>
               <ArrowLeft className="h-5 w-5" />
               <span className="sr-only">Back to Encounter</span>
             </Link>
           </Button>
-          <div>
-            <h1 className="text-2xl font-bold">Edit Encounter</h1>
-            <div className="flex items-center gap-2 text-sm text-muted-foreground">
-              <User className="h-4 w-4" />
-              <span>{encounter.patient_name} ({encounter.patient_mrn})</span>
-              <Badge className={status?.color}>{status?.label}</Badge>
+          <div className="min-w-0">
+            <h1 className="text-xl sm:text-2xl font-bold truncate">Edit Encounter</h1>
+            <div className="flex flex-wrap items-center gap-1.5 sm:gap-2 text-xs sm:text-sm text-muted-foreground">
+              <User className="h-3 w-3 sm:h-4 sm:w-4 shrink-0" />
+              <span className="truncate max-w-[150px] sm:max-w-none">{encounter.patient_name}</span>
+              <span className="hidden xs:inline text-muted-foreground/50">•</span>
+              <span className="hidden xs:inline font-mono text-xs">{encounter.patient_mrn}</span>
+              <Badge className={cn(status?.color, 'text-xs')}>{status?.label}</Badge>
             </div>
           </div>
         </div>
 
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 self-end sm:self-auto">
           {/* Auto-save status indicator */}
           <AutoSaveStatusIndicator
             status={autoSave.status}
@@ -726,30 +729,30 @@ export default function EditEncounterPage() {
 
       {/* Non-editable warning */}
       {!isEditable && (
-        <Alert className="mb-6">
+        <Alert className="mb-4 sm:mb-6">
           <AlertTriangle className="h-4 w-4" />
           <AlertTitle>Read-only</AlertTitle>
-          <AlertDescription>
+          <AlertDescription className="text-sm">
             This encounter is {encounter.status.toLowerCase()} and cannot be edited.
           </AlertDescription>
         </Alert>
       )}
 
       {/* Main Form */}
-      <div className="space-y-6">
+      <div className="space-y-4 sm:space-y-6">
         {/* Encounter Details */}
         <Card>
-          <CardHeader className="pb-3">
-            <CardTitle className="text-lg flex items-center gap-2">
-              <Stethoscope className="h-5 w-5" />
+          <CardHeader className="pb-3 px-3 sm:px-6">
+            <CardTitle className="text-base sm:text-lg flex items-center gap-2">
+              <Stethoscope className="h-4 w-4 sm:h-5 sm:w-5" />
               Encounter Details
             </CardTitle>
           </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="grid gap-4 sm:grid-cols-3">
+          <CardContent className="space-y-4 px-3 sm:px-6">
+            <div className="grid gap-3 sm:gap-4 sm:grid-cols-3">
               {/* Encounter Type */}
-              <div className="space-y-2">
-                <Label htmlFor="encounter_type">Encounter Type</Label>
+              <div className="space-y-1.5 sm:space-y-2">
+                <Label htmlFor="encounter_type" className="text-sm">Encounter Type</Label>
                 <Select
                   value={formData.encounter_type}
                   onValueChange={(value) => handleFieldChange('encounter_type', value as EncounterFormData['encounter_type'])}
@@ -928,21 +931,23 @@ export default function EditEncounterPage() {
 
         {/* Clinical Flow - Accordion-based SOAP Documentation */}
         <Card>
-          <CardHeader className="pb-3">
-            <div className="flex items-center justify-between">
-              <CardTitle className="text-lg flex items-center gap-2">
-                <ClipboardList className="h-5 w-5" />
-                Clinical Documentation
+          <CardHeader className="pb-3 px-3 sm:px-6">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+              <CardTitle className="text-base sm:text-lg flex items-center gap-2">
+                <ClipboardList className="h-4 w-4 sm:h-5 sm:w-5 shrink-0" />
+                <span className="truncate">Clinical Documentation</span>
               </CardTitle>
               <Button
                 variant={showSOAPSummary ? 'secondary' : 'outline'}
                 size="sm"
                 onClick={() => setShowSOAPSummary(!showSOAPSummary)}
+                className="self-end sm:self-auto text-xs sm:text-sm"
               >
-                📋 {showSOAPSummary ? 'Hide SOAP Note' : 'View SOAP Note'}
+                📋 <span className="hidden xs:inline ml-1">{showSOAPSummary ? 'Hide SOAP Note' : 'View SOAP Note'}</span>
+                <span className="xs:hidden ml-1">{showSOAPSummary ? 'Hide' : 'SOAP'}</span>
               </Button>
             </div>
-            <CardDescription>
+            <CardDescription className="text-xs sm:text-sm">
               Complete the sections below to document the clinical encounter
             </CardDescription>
           </CardHeader>
@@ -1004,21 +1009,21 @@ export default function EditEncounterPage() {
         </Card>
       </div>
 
-      {/* Sticky Floating Action Bar */}
-      <div className="fixed bottom-4 right-4 z-50 flex items-center gap-2">
+      {/* Sticky Floating Action Bar - Bottom bar on mobile, floating on desktop */}
+      <div className="fixed bottom-0 left-0 right-0 sm:bottom-4 sm:left-auto sm:right-4 z-50 flex items-center justify-center sm:justify-end gap-2 p-3 sm:p-0 bg-background/95 sm:bg-transparent border-t sm:border-0 backdrop-blur">
         {/* Save Button - Icon only on mobile, full on desktop */}
         <Button
           variant="outline"
           onClick={handleSave}
           disabled={updateEncounter.isPending || !isEditable}
-          className="h-12 w-12 sm:w-auto shadow-lg bg-background/95 backdrop-blur border-2"
+          className="h-11 flex-1 sm:flex-none sm:h-12 sm:w-auto shadow-lg bg-background/95 backdrop-blur border-2"
         >
           {updateEncounter.isPending ? (
             <Loader2 className="h-5 w-5 animate-spin sm:mr-2" />
           ) : (
             <Save className="h-5 w-5 sm:mr-2" />
           )}
-          <span className="hidden sm:inline">Save</span>
+          <span className="ml-2 sm:ml-0">Save</span>
         </Button>
 
         {/* Finalize Button - Icon only on mobile, full on desktop */}
@@ -1026,25 +1031,28 @@ export default function EditEncounterPage() {
           <Button
             onClick={handleFinalize}
             disabled={updateEncounter.isPending}
-            className="h-12 w-12 sm:w-auto shadow-lg border-2"
+            className="h-11 flex-1 sm:flex-none sm:h-12 sm:w-auto shadow-lg border-2"
           >
             {updateEncounter.isPending ? (
               <Loader2 className="h-5 w-5 animate-spin sm:mr-2" />
             ) : (
               <CheckCircle className="h-5 w-5 sm:mr-2" />
             )}
-            <span className="hidden sm:inline">Finalize</span>
+            <span className="ml-2 sm:ml-0">Finalize</span>
           </Button>
         )}
       </div>
+
+      {/* Bottom padding spacer for fixed action bar on mobile */}
+      <div className="h-16 sm:hidden" aria-hidden="true" />
     </div>
   );
 }
 
 function EditEncounterSkeleton() {
   return (
-    <div className="container mx-auto py-6 max-w-5xl">
-      <div className="flex items-center justify-between mb-6">
+    <div className="container mx-auto px-3 py-4 sm:px-4 sm:py-6 max-w-5xl">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4 sm:mb-6">
         <div className="flex items-center gap-4">
           <Skeleton className="h-10 w-10" />
           <div>

@@ -636,7 +636,7 @@ export function SOAPNoteSummary({
       <CardFooter className="border-t pt-4 flex flex-col sm:flex-row gap-3">
         <Button variant="outline" onClick={handleCopy} className="flex-1">
           <Copy className="h-4 w-4 mr-2" />
-          Copy to Clipboard
+          Copy Note
         </Button>
         <Button variant="outline" onClick={handlePrint} className="flex-1">
           <Printer className="h-4 w-4 mr-2" />
