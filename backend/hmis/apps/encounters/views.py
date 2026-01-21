@@ -3,6 +3,7 @@ Views for the encounters app.
 """
 
 from django.core.exceptions import ValidationError
+from django.db.models import ProtectedError
 from django_filters.rest_framework import DjangoFilterBackend
 from rest_framework import filters, status, viewsets
 from rest_framework.decorators import action
@@ -343,13 +344,23 @@ class EncounterViewSet(viewsets.ModelViewSet):
         return response
 
     def destroy(self, request, *args, **kwargs):
-        """Override destroy to add audit logging."""
+        """Override destroy to add audit logging and handle protected references."""
         encounter = self.get_object()
         encounter_id = encounter.id
         patient_id = encounter.patient_id
         encounter_type = encounter.encounter_type
 
-        response = super().destroy(request, *args, **kwargs)
+        try:
+            response = super().destroy(request, *args, **kwargs)
+        except ProtectedError as e:
+            # Handle protected foreign key references (e.g., invoices)
+            return Response(
+                {
+                    "detail": "Cannot delete this encounter because it has associated billing records. "
+                    "Please void or delete the related invoices first."
+                },
+                status=status.HTTP_409_CONFLICT,
+            )
 
         if response.status_code == 204:
             AuditLog.log(
