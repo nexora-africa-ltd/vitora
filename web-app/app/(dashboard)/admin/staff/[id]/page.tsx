@@ -9,12 +9,14 @@
 import { useState, useEffect } from 'react';
 import { useRouter, useParams } from 'next/navigation';
 import Link from 'next/link';
+import { format, parseISO } from 'date-fns';
 import { ArrowLeft, Save, User, Building2, Shield, Briefcase, Phone, Mail, IdCard, AlertTriangle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
+import { DatePicker } from '@/components/ui/date-picker';
 import {
   Select,
   SelectContent,
@@ -447,11 +449,10 @@ export default function EditStaffPage() {
               </div>
               <div className="space-y-2">
                 <Label htmlFor="license_expiry">License Expiry</Label>
-                <Input
-                  id="license_expiry"
-                  type="date"
-                  value={formData.license_expiry}
-                  onChange={(e) => handleChange('license_expiry', e.target.value)}
+                <DatePicker
+                  value={formData.license_expiry ? parseISO(formData.license_expiry) : undefined}
+                  onChange={(date) => handleChange('license_expiry', date ? format(date, 'yyyy-MM-dd') : '')}
+                  placeholder="Select expiry date"
                 />
               </div>
             </div>

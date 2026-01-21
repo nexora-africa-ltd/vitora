@@ -3,6 +3,7 @@
 import { useState, useMemo } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
+import { format, parseISO } from 'date-fns';
 import { ArrowLeft, Save, Plus, Trash2, Clock, CheckCircle2 } from 'lucide-react';
 import { PageHeader } from '@/components/shared/page-header';
 import { Button } from '@/components/ui/button';
@@ -12,6 +13,7 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Checkbox } from '@/components/ui/checkbox';
+import { DatePicker } from '@/components/ui/date-picker';
 import {
   Select,
   SelectContent,
@@ -370,12 +372,10 @@ export default function DischargePage() {
           <div className="grid gap-4 md:grid-cols-2">
             <div className="space-y-2">
               <Label htmlFor="follow-up-date">Follow-up Date</Label>
-              <Input
-                id="follow-up-date"
-                type="date"
-                value={followUpDate}
-                onChange={(e) => setFollowUpDate(e.target.value)}
-                min={new Date().toISOString().split('T')[0]}
+              <DatePicker
+                value={followUpDate ? parseISO(followUpDate) : undefined}
+                onChange={(date) => setFollowUpDate(date ? format(date, 'yyyy-MM-dd') : '')}
+                placeholder="Select follow-up date"
               />
             </div>
             <div className="space-y-2">

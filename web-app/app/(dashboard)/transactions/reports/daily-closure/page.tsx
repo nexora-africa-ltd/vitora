@@ -8,12 +8,7 @@ import React from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
-import { Calendar } from '@/components/ui/calendar';
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from '@/components/ui/popover';
+import { DatePicker } from '@/components/ui/date-picker';
 import {
   Table,
   TableBody,
@@ -25,7 +20,6 @@ import {
 } from '@/components/ui/table';
 import {
   ArrowLeft,
-  CalendarIcon,
   Download,
   Printer,
   TrendingUp,
@@ -84,22 +78,10 @@ export default function DailyClosurePage() {
             End-of-day billing summary for {format(selectedDate, 'MMMM d, yyyy')}
           </p>
         </div>
-        <Popover>
-          <PopoverTrigger asChild>
-            <Button variant="outline">
-              <CalendarIcon className="h-4 w-4 mr-2" />
-              {format(selectedDate, 'MMM d, yyyy')}
-            </Button>
-          </PopoverTrigger>
-          <PopoverContent className="w-auto p-0" align="end">
-            <Calendar
-              mode="single"
-              selected={selectedDate}
-              onSelect={(date) => date && setSelectedDate(date)}
-              initialFocus
-            />
-          </PopoverContent>
-        </Popover>
+        <DatePicker
+          value={selectedDate}
+          onChange={(date) => date && setSelectedDate(date)}
+        />
         <Button variant="outline">
           <Printer className="h-4 w-4 mr-2" />
           Print

@@ -7,15 +7,8 @@
 import React from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
-import { Button } from '@/components/ui/button';
-import { Calendar } from '@/components/ui/calendar';
+import { DatePicker } from '@/components/ui/date-picker';
 import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from '@/components/ui/popover';
-import {
-  CalendarIcon,
   TrendingUp,
   Banknote,
   Smartphone,
@@ -84,16 +77,12 @@ export function BillingDashboard({
   onDateChange,
 }: BillingDashboardProps) {
   const [date, setDate] = React.useState<Date>(new Date());
-  const [open, setOpen] = React.useState(false);
 
-  const handleDateSelect = (selectedDate: Date | undefined) => {
-    if (selectedDate) {
-      setDate(selectedDate);
-      setOpen(false);
-      const formattedDate = format(selectedDate, 'yyyy-MM-dd');
-      if (onDateChange) {
-        onDateChange(formattedDate);
-      }
+  const handleDateSelect = (selectedDate: Date) => {
+    setDate(selectedDate);
+    const formattedDate = format(selectedDate, 'yyyy-MM-dd');
+    if (onDateChange) {
+      onDateChange(formattedDate);
     }
   };
 
@@ -115,44 +104,12 @@ export function BillingDashboard({
             Financial overview and daily collections
           </p>
         </div>
-        <Popover open={open} onOpenChange={setOpen}>
-          <PopoverTrigger asChild>
-            <Button
-              variant="outline"
-              className={cn(
-                'w-[240px] justify-start text-left font-normal',
-                !date && 'text-muted-foreground'
-              )}
-            >
-              <CalendarIcon className="mr-2 h-4 w-4" />
-              {date ? format(date, 'PPP') : <span>Pick a date</span>}
-            </Button>
-          </PopoverTrigger>
-          <PopoverContent
-            className="w-auto p-0"
-            align="end"
-            onClick={(event) => {
-              // Tests click the gridcell, but DayPicker attaches handlers to the day button.
-              // Delegate gridcell clicks to the inner button to ensure selection occurs.
-              const target = event.target as HTMLElement | null;
-              if (!target) return;
-              if (target.tagName.toLowerCase() === 'button') return;
-
-              const gridcell = target.closest('[role="gridcell"]') as HTMLElement | null;
-              if (!gridcell) return;
-              const dayButton = gridcell.querySelector('button') as HTMLButtonElement | null;
-              dayButton?.click();
-            }}
-          >
-            <Calendar
-              mode="single"
-              selected={date}
-              onSelect={handleDateSelect}
-              aria-label="Date"
-              initialFocus
-            />
-          </PopoverContent>
-        </Popover>
+        <DatePicker
+          value={date}
+          onChange={(newDate) => newDate && handleDateSelect(newDate)}
+          className="w-[240px]"
+          placeholder="Pick a date"
+        />
       </div>
 
       {/* Summary Cards */}
