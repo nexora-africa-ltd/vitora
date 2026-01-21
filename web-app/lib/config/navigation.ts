@@ -28,6 +28,10 @@ import {
   ShieldUser,
   UserCog,
   ScrollText,
+  Receipt,
+  Scale,
+  Shield,
+  Clock,
 } from 'lucide-react';
 
 export interface NavItem {
@@ -88,9 +92,15 @@ export const mainNavItems: NavItemType[] = [
     label: 'Finance',
     icon: PiggyBank,
     children: [
-      { label: 'Overview', href: '/finance/overview', icon: ChartNoAxesGantt },
-      { label: 'Transactions', href: '/transactions', icon: CreditCard },
-      { label: 'Insurance', href: '/insurance', icon: ShieldCheck },
+      { label: 'Dashboard', href: '/finance/overview', icon: ChartNoAxesGantt },
+      { label: 'Invoices', href: '/transactions/invoices', icon: FileText },
+      { label: 'Proformas', href: '/transactions/proformas', icon: Clock },
+      { label: 'Payments', href: '/transactions/payments', icon: CreditCard },
+      { label: 'Receipts', href: '/transactions/receipts', icon: Receipt },
+      { label: 'SHA Claims', href: '/transactions/sha-claims', icon: ShieldCheck },
+      { label: 'Insurance', href: '/insurance', icon: Shield },
+      { label: 'Reports', href: '/transactions/reports', icon: BarChart3 },
+      { label: 'Reconciliation', href: '/transactions/reconciliation', icon: Scale },
     ],
   },
   {
