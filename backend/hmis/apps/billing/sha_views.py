@@ -24,6 +24,7 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework.renderers import BrowsableAPIRenderer, JSONRenderer
 from rest_framework.response import Response
 
+from hmis.apps.billing.filters import SHAClaimFilter, SHAMemberFilter
 from hmis.apps.billing.models import (
     SHAClaim,
     SHAClaimAttachment,
@@ -73,7 +74,7 @@ class SHAMemberViewSet(viewsets.ModelViewSet):
     permission_classes = [IsAuthenticated, SHAPermission]
     pagination_class = SHAPagination
     filter_backends = [DjangoFilterBackend, filters.SearchFilter, filters.OrderingFilter]
-    filterset_fields = ["status", "membership_type", "patient"]
+    filterset_class = SHAMemberFilter
     search_fields = ["sha_number", "national_id", "patient__first_name", "patient__last_name"]
     ordering_fields = ["created_at", "sha_number"]
     ordering = ["-created_at"]
@@ -321,7 +322,7 @@ class SHAClaimViewSet(viewsets.ModelViewSet):
     renderer_classes = [JSONRenderer, BrowsableAPIRenderer, CSVRenderer, XLSXRenderer]
     pagination_class = SHAPagination
     filter_backends = [DjangoFilterBackend, filters.SearchFilter, filters.OrderingFilter]
-    filterset_fields = ["status", "claim_type", "patient", "invoice", "encounter"]
+    filterset_class = SHAClaimFilter
     search_fields = [
         "claim_number",
         "sha_claim_reference",

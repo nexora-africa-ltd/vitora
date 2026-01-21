@@ -14,6 +14,11 @@ from rest_framework.decorators import action
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 
+from hmis.apps.billing.filters import (
+    CreditNoteFilter,
+    InvoiceFilter,
+    PaymentFilter,
+)
 from hmis.apps.billing.models import (
     PaymentPoint,
     CreditNote,
@@ -89,7 +94,7 @@ class InvoiceViewSet(viewsets.ModelViewSet):
     serializer_class = InvoiceSerializer
     permission_classes = [IsAuthenticated]
     filter_backends = [DjangoFilterBackend, filters.SearchFilter, filters.OrderingFilter]
-    filterset_fields = ["status", "patient", "encounter", "payment_type"]
+    filterset_class = InvoiceFilter
     search_fields = ["invoice_number", "patient__first_name", "patient__last_name", "patient__mrn"]
     ordering_fields = ["invoice_date", "due_date", "total_amount", "created_at"]
     ordering = ["-invoice_date"]
@@ -288,7 +293,7 @@ class PaymentViewSet(viewsets.ModelViewSet):
     serializer_class = PaymentSerializer
     permission_classes = [IsAuthenticated]
     filter_backends = [DjangoFilterBackend, filters.SearchFilter, filters.OrderingFilter]
-    filterset_fields = ["method", "status", "invoice"]
+    filterset_class = PaymentFilter
     search_fields = ["reference", "mpesa_receipt_number", "transaction_reference"]
     ordering_fields = ["payment_date", "amount", "created_at"]
     ordering = ["-payment_date"]
@@ -342,7 +347,7 @@ class CreditNoteViewSet(viewsets.ModelViewSet):
     serializer_class = CreditNoteSerializer
     permission_classes = [IsAuthenticated]
     filter_backends = [DjangoFilterBackend, filters.SearchFilter, filters.OrderingFilter]
-    filterset_fields = ["status", "reason", "invoice", "patient"]
+    filterset_class = CreditNoteFilter
     search_fields = ["credit_note_number", "reason_detail"]
     ordering_fields = ["created_at", "approved_at"]
     ordering = ["-created_at"]
