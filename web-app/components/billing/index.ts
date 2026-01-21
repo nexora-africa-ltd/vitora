@@ -19,3 +19,4 @@ export { AddInvoiceItemDialog } from './AddInvoiceItemDialog';
 export { ApplyDiscountDialog } from './ApplyDiscountDialog';
 export { ProformaConvertDialog } from './ProformaConvertDialog';
 export { ProformaRenewDialog } from './ProformaRenewDialog';
+export { ReceivePaymentModal } from './ReceivePaymentModal';
