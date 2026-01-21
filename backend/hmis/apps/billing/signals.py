@@ -48,7 +48,13 @@ def create_invoice_for_encounter(sender, instance, created, **kwargs):
         User = get_user_model()
         
         # Try to get the system user or first superuser
-        system_user = User.objects.filter(is_superuser=True).first()
+        system_user, _ = User.objects.get_or_create(
+            username="system",
+            defaults={
+                "email": "system@vitora.local",
+                "is_active": True,
+            }
+        )
         if not system_user:
             # Create a system user if none exists
             system_user = User.objects.create_user(
