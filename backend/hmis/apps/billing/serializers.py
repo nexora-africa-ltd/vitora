@@ -115,6 +115,11 @@ class InvoiceSerializer(serializers.ModelSerializer):
     created_by_username = serializers.CharField(source="created_by.username", read_only=True)
     items = InvoiceItemSerializer(many=True, read_only=True)
     balance = serializers.SerializerMethodField()
+    
+    # Proforma-specific fields
+    is_valid = serializers.BooleanField(read_only=True)
+    days_until_expiry = serializers.IntegerField(read_only=True)
+    can_convert = serializers.BooleanField(read_only=True)
 
     class Meta:
         model = Invoice
@@ -143,6 +148,15 @@ class InvoiceSerializer(serializers.ModelSerializer):
             "cancellation_reason",
             "cancelled_by",
             "cancelled_at",
+            # Proforma fields
+            "valid_until",
+            "is_converted",
+            "converted_at",
+            "converted_from_proforma",
+            "is_valid",
+            "days_until_expiry",
+            "can_convert",
+            # Audit
             "created_by",
             "created_by_username",
             "items",
@@ -159,6 +173,12 @@ class InvoiceSerializer(serializers.ModelSerializer):
             "balance",
             "cancelled_by",
             "cancelled_at",
+            "is_converted",
+            "converted_at",
+            "converted_from_proforma",
+            "is_valid",
+            "days_until_expiry",
+            "can_convert",
             "created_by",
             "created_by_username",
             "items",

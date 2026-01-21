@@ -112,6 +112,7 @@ class Invoice(models.Model):
     """Patient invoice for services rendered."""
 
     class Status(models.TextChoices):
+        PROFORMA = "proforma", "Proforma Invoice"
         DRAFT = "draft", "Draft"
         PENDING = "pending", "Pending Payment"
         PARTIAL = "partial", "Partially Paid"
@@ -126,6 +127,9 @@ class Invoice(models.Model):
         INSURANCE = "insurance", "Insurance"
         CORPORATE = "corporate", "Corporate Account"
         MIXED = "mixed", "Mixed Payment"
+
+    # Default proforma validity in days
+    DEFAULT_PROFORMA_VALIDITY_DAYS = 30
 
     id = models.BigAutoField(primary_key=True)
 
@@ -189,23 +193,71 @@ class Invoice(models.Model):
     cancelled_at = models.DateTimeField(null=True, blank=True)
     cancellation_reason = models.TextField(blank=True)
 
+    # Proforma-specific fields
+    valid_until = models.DateField(
+        null=True,
+        blank=True,
+        help_text="Validity date for proforma invoices (default 30 days from creation)",
+    )
+    is_converted = models.BooleanField(
+        default=False,
+        help_text="True if this proforma has been converted to invoice(s)",
+    )
+    converted_at = models.DateTimeField(
+        null=True,
+        blank=True,
+        help_text="When this proforma was fully converted",
+    )
+    converted_from_proforma = models.ForeignKey(
+        "self",
+        on_delete=models.PROTECT,
+        null=True,
+        blank=True,
+        related_name="converted_invoices",
+        help_text="The proforma invoice this was converted from",
+    )
+    renewed_to = models.ForeignKey(
+        "self",
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="renewed_from",
+        help_text="The new proforma created when this one was renewed",
+    )
+
+    # Void support
+    is_voided = models.BooleanField(default=False)
+    voided_at = models.DateTimeField(null=True, blank=True)
+    voided_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.PROTECT,
+        related_name="invoices_voided",
+        null=True,
+        blank=True,
+    )
+    void_reason = models.TextField(blank=True)
+
     class Meta:
         ordering = ["-invoice_date", "-created_at"]
         indexes = [
             models.Index(fields=["invoice_number"]),
             models.Index(fields=["patient", "status"]),
             models.Index(fields=["status", "due_date"]),
+            models.Index(fields=["valid_until"]),  # For proforma expiry queries
         ]
 
     def __str__(self):
         return f"{self.invoice_number} - {self.patient}"
 
     def save(self, *args, **kwargs):
-        """Override save to generate invoice number and validate."""
+        """Override save to generate invoice number, set defaults, and validate."""
         if not self.invoice_number:
             self.invoice_number = self.generate_invoice_number()
         if not self.due_date:
             self.due_date = self.invoice_date + timedelta(days=settings.BILLING_DEFAULT_DUE_DAYS)
+        # Set default validity for proforma invoices
+        if self.status == self.Status.PROFORMA and not self.valid_until:
+            self.valid_until = self.invoice_date + timedelta(days=self.DEFAULT_PROFORMA_VALIDITY_DAYS)
         self.full_clean()
         super().save(*args, **kwargs)
 
@@ -213,17 +265,33 @@ class Invoice(models.Model):
         """Validate invoice data."""
         if self.due_date and self.invoice_date and self.due_date < self.invoice_date:
             raise ValidationError({"due_date": "Due date must be on or after invoice date."})
+        
+        # Proforma cannot transition directly to PAID
+        if self.pk:
+            old_instance = Invoice.objects.filter(pk=self.pk).first()
+            if old_instance and old_instance.status == self.Status.PROFORMA:
+                if self.status == self.Status.PAID:
+                    raise ValidationError(
+                        {"status": "Proforma invoices cannot be paid directly. Convert to invoice first."}
+                    )
 
-    @staticmethod
-    def generate_invoice_number() -> str:
-        """Generate unique invoice number in format INV-YYYYMMDD-XXXX."""
-        from datetime import date
-
+    def generate_invoice_number(self) -> str:
+        """Generate unique invoice number based on status.
+        
+        Format:
+        - Proforma: PRO-YYYYMMDD-XXXX
+        - Regular Invoice: INV-YYYYMMDD-XXXX
+        """
         today = date.today()
         date_str = today.strftime("%Y%m%d")
-        prefix = f"{settings.BILLING_INVOICE_PREFIX}{date_str}-"
+        
+        # Use different prefix for proforma vs regular invoice
+        if self.status == self.Status.PROFORMA:
+            prefix = f"PRO-{date_str}-"
+        else:
+            prefix = f"{settings.BILLING_INVOICE_PREFIX}{date_str}-"
 
-        # Get the last invoice number for today
+        # Get the last invoice number for today with this prefix
         last_invoice = (
             Invoice.objects.filter(invoice_number__startswith=prefix)
             .order_by("-invoice_number")
@@ -318,7 +386,204 @@ class Invoice(models.Model):
 
     def can_be_edited(self) -> bool:
         """Check if invoice can be edited."""
-        return self.status == self.Status.DRAFT
+        return self.status in [self.Status.DRAFT, self.Status.PROFORMA]
+
+    # =========================================================================
+    # Proforma Invoice Methods
+    # =========================================================================
+
+    @property
+    def is_valid(self) -> bool:
+        """Check if proforma is still valid (not expired)."""
+        if self.status != self.Status.PROFORMA:
+            return True  # Non-proforma invoices don't have validity concept
+        if not self.valid_until:
+            return True
+        return date.today() <= self.valid_until
+
+    @property
+    def days_until_expiry(self) -> int:
+        """Get number of days until proforma expires."""
+        if self.status != self.Status.PROFORMA or not self.valid_until:
+            return -1  # N/A for non-proforma
+        delta = self.valid_until - date.today()
+        return max(0, delta.days)
+
+    @property
+    def can_convert(self) -> bool:
+        """Check if proforma can be converted to invoice."""
+        return (
+            self.status == self.Status.PROFORMA
+            and self.is_valid
+            and not self.is_converted
+            and self.items.filter(is_converted=False).exists()
+        )
+
+    def void(self, voided_by, reason: str = ""):
+        """Void the invoice/proforma."""
+        if self.is_voided:
+            raise ValidationError("Invoice is already voided.")
+        if self.status == self.Status.PAID:
+            raise ValidationError("Cannot void a paid invoice.")
+        
+        self.is_voided = True
+        self.voided_at = timezone.now()
+        self.voided_by = voided_by
+        self.void_reason = reason
+        self.status = self.Status.CANCELLED
+        self.save()
+
+    def convert_to_invoice(self, converted_by, item_ids: list = None) -> "Invoice":
+        """
+        Convert proforma to a real invoice.
+        
+        Args:
+            converted_by: User performing the conversion
+            item_ids: Optional list of specific item IDs to convert.
+                     If None, converts all unconverted items.
+        
+        Returns:
+            The newly created Invoice
+        
+        Raises:
+            ValidationError: If conversion is not allowed
+        """
+        # Validate proforma status
+        if self.status != self.Status.PROFORMA:
+            raise ValidationError("Only proforma invoices can be converted to invoices.")
+        
+        # Check validity
+        if not self.is_valid:
+            raise ValidationError(
+                "This proforma has expired. Please renew it or create a new proforma."
+            )
+        
+        # Check if already fully converted
+        if self.is_converted:
+            raise ValidationError("This proforma has already been converted.")
+        
+        # Determine which items to convert
+        if item_ids:
+            items_to_convert = self.items.filter(pk__in=item_ids, is_converted=False)
+            if items_to_convert.count() != len(item_ids):
+                # Some items were already converted or don't exist
+                raise ValidationError(
+                    "Some items have already been converted or do not exist."
+                )
+        else:
+            items_to_convert = self.items.filter(is_converted=False)
+        
+        if not items_to_convert.exists():
+            raise ValidationError("No items available for conversion.")
+        
+        # Create the new invoice
+        new_invoice = Invoice.objects.create(
+            patient=self.patient,
+            encounter=self.encounter,
+            invoice_date=date.today(),
+            due_date=date.today() + timedelta(days=settings.BILLING_DEFAULT_DUE_DAYS),
+            status=self.Status.DRAFT,
+            payment_type=self.payment_type,
+            insurance_provider=self.insurance_provider,
+            insurance_member_no=self.insurance_member_no,
+            notes=f"Converted from proforma {self.invoice_number}",
+            created_by=converted_by,
+            converted_from_proforma=self,
+        )
+        
+        # Copy items to new invoice
+        for item in items_to_convert:
+            InvoiceItem.objects.create(
+                invoice=new_invoice,
+                item_type=item.item_type,
+                service=item.service,
+                drug=item.drug,
+                dispensing=item.dispensing,
+                lab_order=item.lab_order,
+                description=item.description,
+                quantity=item.quantity,
+                unit_price=item.unit_price,
+                line_total=item.line_total,
+                discount_amount=item.discount_amount,
+                discount_reason=item.discount_reason,
+                sha_code=item.sha_code,
+                is_covered_by_insurance=item.is_covered_by_insurance,
+                insurance_approved_amount=item.insurance_approved_amount,
+                converted_from_item=item,
+            )
+            # Mark original item as converted
+            item.is_converted = True
+            item.converted_at = timezone.now()
+            item.save(update_fields=["is_converted", "converted_at", "updated_at"])
+        
+        # Calculate totals for new invoice
+        new_invoice.calculate_totals()
+        
+        # Check if all items are now converted
+        if not self.items.filter(is_converted=False).exists():
+            self.is_converted = True
+            self.converted_at = timezone.now()
+            self.save(update_fields=["is_converted", "converted_at", "updated_at"])
+        
+        return new_invoice
+
+    def renew(self, renewed_by, validity_days: int = None) -> "Invoice":
+        """
+        Create a new proforma by copying an expired proforma.
+        
+        Args:
+            renewed_by: User performing the renewal
+            validity_days: Optional custom validity period
+        
+        Returns:
+            The newly created proforma Invoice
+        """
+        if self.status != self.Status.PROFORMA:
+            raise ValidationError("Only proforma invoices can be renewed.")
+        
+        validity = validity_days or self.DEFAULT_PROFORMA_VALIDITY_DAYS
+        
+        # Create new proforma
+        new_proforma = Invoice.objects.create(
+            patient=self.patient,
+            encounter=self.encounter,
+            invoice_date=date.today(),
+            due_date=date.today() + timedelta(days=settings.BILLING_DEFAULT_DUE_DAYS),
+            status=self.Status.PROFORMA,
+            payment_type=self.payment_type,
+            valid_until=date.today() + timedelta(days=validity),
+            insurance_provider=self.insurance_provider,
+            insurance_member_no=self.insurance_member_no,
+            notes=f"Renewed from proforma {self.invoice_number}",
+            created_by=renewed_by,
+        )
+        
+        # Copy items
+        for item in self.items.all():
+            InvoiceItem.objects.create(
+                invoice=new_proforma,
+                item_type=item.item_type,
+                service=item.service,
+                drug=item.drug,
+                description=item.description,
+                quantity=item.quantity,
+                unit_price=item.unit_price,
+                line_total=item.line_total,
+                discount_amount=item.discount_amount,
+                discount_reason=item.discount_reason,
+                sha_code=item.sha_code,
+            )
+        
+        # Calculate totals
+        new_proforma.calculate_totals()
+        
+        # Mark original as renewed and cancel it
+        self.renewed_to = new_proforma
+        self.status = self.Status.CANCELLED
+        self.cancellation_reason = f"Renewed to {new_proforma.invoice_number}"
+        self.save(update_fields=["renewed_to", "status", "cancellation_reason", "updated_at"])
+        
+        return new_proforma
 
 
 class InvoiceItem(models.Model):
@@ -402,6 +667,25 @@ class InvoiceItem(models.Model):
         decimal_places=2,
         default=Decimal("0.00"),
         help_text="Quantity allocated from stock batch",
+    )
+
+    # Proforma conversion tracking
+    is_converted = models.BooleanField(
+        default=False,
+        help_text="True if this item has been converted from a proforma",
+    )
+    converted_at = models.DateTimeField(
+        null=True,
+        blank=True,
+        help_text="When this item was converted",
+    )
+    converted_from_item = models.ForeignKey(
+        "self",
+        on_delete=models.PROTECT,
+        null=True,
+        blank=True,
+        related_name="converted_to_items",
+        help_text="The proforma item this was converted from",
     )
 
     # Audit
@@ -635,6 +919,12 @@ class Payment(models.Model):
         # Skip balance validation if payment is being reversed or refunded
         if self.pk and self.status in [self.Status.REVERSED, self.Status.REFUNDED]:
             return
+
+        # Prevent payment on proforma invoices
+        if self.invoice and self.invoice.status == Invoice.Status.PROFORMA:
+            raise ValidationError(
+                "Cannot create payment for proforma invoice. Convert to invoice first."
+            )
 
         # Check invoice balance
         if self.invoice and self.amount and self.amount > self.invoice.balance_due:
