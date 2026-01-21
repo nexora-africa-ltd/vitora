@@ -28,9 +28,11 @@ import {
 } from '@/components/ui/select';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { DatePicker } from '@/components/ui/date-picker';
-import { Plus, Trash2, Loader2 } from 'lucide-react';
-import { format } from 'date-fns';
-import type { Invoice, InvoiceCreateData, Service } from '@/lib/types/billing';
+import { Label } from '@/components/ui/label';
+import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
+import { Plus, Trash2, Loader2, FileText, Clock } from 'lucide-react';
+import { format, addDays } from 'date-fns';
+import type { Invoice, InvoiceCreateData, Service, ProformaCreateData } from '@/lib/types/billing';
 import { formatCurrency } from '@/lib/utils/format';
 
 // ============================================================================
@@ -43,9 +45,14 @@ interface InvoiceFormProps {
   services: Service[];
   isLoading?: boolean;
   onSubmit: (data: InvoiceCreateData) => void;
+  onSubmitProforma?: (data: ProformaCreateData) => void;
   onCancel: () => void;
   onPatientChange?: (patientId: number | null) => void;
   initialPatient?: number;
+  /** Default invoice type - 'invoice' or 'proforma' */
+  defaultType?: 'invoice' | 'proforma';
+  /** Whether to show the invoice type toggle */
+  showTypeToggle?: boolean;
 }
 
 interface LineItem {
@@ -68,6 +75,9 @@ const invoiceFormSchema = z.object({
   due_date: z.date({ required_error: 'Due date is required' }),
   notes: z.string().optional(),
   items: z.array(lineItemSchema).min(1, 'At least one item is required'),
+  // Proforma-specific fields
+  invoice_type: z.enum(['invoice', 'proforma']).default('invoice'),
+  valid_until: z.date().optional(),
 });
 
 type InvoiceFormValues = z.infer<typeof invoiceFormSchema>;
@@ -82,9 +92,12 @@ export function InvoiceForm({
   services,
   isLoading,
   onSubmit,
+  onSubmitProforma,
   onCancel,
   onPatientChange,
   initialPatient,
+  defaultType = 'invoice',
+  showTypeToggle = true,
 }: InvoiceFormProps) {
   const isEditing = !!invoice;
 
@@ -95,6 +108,8 @@ export function InvoiceForm({
       encounter: invoice?.encounter || undefined,
       due_date: invoice?.due_date ? new Date(invoice.due_date) : new Date(Date.now() + 30 * 24 * 60 * 60 * 1000), // 30 days from now
       notes: invoice?.notes || '',
+      invoice_type: invoice?.status === 'PROFORMA' ? 'proforma' : defaultType,
+      valid_until: invoice?.valid_until ? new Date(invoice.valid_until) : addDays(new Date(), 30),
       items: invoice?.items?.map((item) => ({
         service_id: item.service,
         quantity: item.quantity,
@@ -111,6 +126,8 @@ export function InvoiceForm({
 
   // Calculate totals
   const watchedItems = form.watch('items');
+  const watchedInvoiceType = form.watch('invoice_type');
+  const isProforma = watchedInvoiceType === 'proforma';
   const subtotal = watchedItems.reduce(
     (acc, item) => acc + (item.quantity || 0) * (item.unit_price || 0),
     0
@@ -126,22 +143,88 @@ export function InvoiceForm({
   };
 
   const handleSubmit = (values: InvoiceFormValues) => {
-    const data: InvoiceCreateData = {
-      patient: values.patient,
-      encounter: values.encounter,
-      due_date: format(values.due_date, 'yyyy-MM-dd'),
-      notes: values.notes,
-    };
-    onSubmit(data);
+    if (values.invoice_type === 'proforma' && onSubmitProforma) {
+      const data: ProformaCreateData = {
+        patient: values.patient,
+        encounter: values.encounter,
+        due_date: format(values.due_date, 'yyyy-MM-dd'),
+        notes: values.notes,
+        status: 'PROFORMA',
+        valid_until: values.valid_until ? format(values.valid_until, 'yyyy-MM-dd') : undefined,
+      };
+      onSubmitProforma(data);
+    } else {
+      const data: InvoiceCreateData = {
+        patient: values.patient,
+        encounter: values.encounter,
+        due_date: format(values.due_date, 'yyyy-MM-dd'),
+        notes: values.notes,
+      };
+      onSubmit(data);
+    }
   };
 
   return (
     <Form {...form}>
       <form onSubmit={form.handleSubmit(handleSubmit)} className="space-y-6">
+        {/* Invoice Type Toggle */}
+        {showTypeToggle && !isEditing && (
+          <Card>
+            <CardHeader>
+              <CardTitle>Document Type</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <FormField
+                control={form.control}
+                name="invoice_type"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormControl>
+                      <RadioGroup
+                        value={field.value}
+                        onValueChange={field.onChange}
+                        className="flex gap-4"
+                      >
+                        <div className="flex items-center space-x-2">
+                          <RadioGroupItem value="invoice" id="type-invoice" />
+                          <Label 
+                            htmlFor="type-invoice" 
+                            className="flex items-center gap-2 cursor-pointer"
+                          >
+                            <FileText className="h-4 w-4" />
+                            Invoice
+                          </Label>
+                        </div>
+                        <div className="flex items-center space-x-2">
+                          <RadioGroupItem value="proforma" id="type-proforma" />
+                          <Label 
+                            htmlFor="type-proforma" 
+                            className="flex items-center gap-2 cursor-pointer"
+                          >
+                            <Clock className="h-4 w-4 text-purple-600" />
+                            Proforma Invoice
+                          </Label>
+                        </div>
+                      </RadioGroup>
+                    </FormControl>
+                    {isProforma && (
+                      <p className="text-sm text-muted-foreground mt-2">
+                        Proforma invoices are quotations that can be converted to real invoices later. 
+                        They have a validity period and cannot receive payments directly.
+                      </p>
+                    )}
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            </CardContent>
+          </Card>
+        )}
+
         {/* Patient & Due Date */}
         <Card>
           <CardHeader>
-            <CardTitle>Invoice Details</CardTitle>
+            <CardTitle>{isProforma ? 'Proforma Details' : 'Invoice Details'}</CardTitle>
           </CardHeader>
           <CardContent className="grid md:grid-cols-2 gap-4">
             {/* Patient */}
@@ -184,7 +267,7 @@ export function InvoiceForm({
               name="due_date"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Due Date *</FormLabel>
+                  <FormLabel>{isProforma ? 'Quote Date *' : 'Due Date *'}</FormLabel>
                   <FormControl>
                     <DatePicker
                       value={field.value}
@@ -196,6 +279,33 @@ export function InvoiceForm({
                 </FormItem>
               )}
             />
+
+            {/* Validity Period (Proforma only) */}
+            {isProforma && (
+              <FormField
+                control={form.control}
+                name="valid_until"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel className="flex items-center gap-2">
+                      <Clock className="h-4 w-4 text-purple-600" />
+                      Valid Until *
+                    </FormLabel>
+                    <FormControl>
+                      <DatePicker
+                        value={field.value}
+                        onChange={field.onChange}
+                        placeholder="Pick expiry date"
+                      />
+                    </FormControl>
+                    <p className="text-xs text-muted-foreground">
+                      Proforma expires after this date and cannot be converted
+                    </p>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            )}
 
             {/* Notes */}
             <FormField
@@ -358,9 +468,23 @@ export function InvoiceForm({
           <Button type="button" variant="outline" onClick={onCancel}>
             Cancel
           </Button>
-          <Button type="submit" disabled={isLoading}>
+          <Button 
+            type="submit" 
+            disabled={isLoading || (isProforma && !onSubmitProforma)}
+            className={isProforma ? 'bg-purple-600 hover:bg-purple-700' : ''}
+          >
             {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-            {isEditing ? 'Update Invoice' : 'Create Invoice'}
+            {isProforma ? (
+              <>
+                <Clock className="mr-2 h-4 w-4" />
+                {isEditing ? 'Update Proforma' : 'Create Proforma'}
+              </>
+            ) : (
+              <>
+                <FileText className="mr-2 h-4 w-4" />
+                {isEditing ? 'Update Invoice' : 'Create Invoice'}
+              </>
+            )}
           </Button>
         </div>
       </form>
