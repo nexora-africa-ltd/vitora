@@ -230,7 +230,12 @@ class TestEncounterAPIEndpoints:
         assert response.data["chief_complaint"] == "Headache"  # Unchanged
 
     def test_delete_encounter(self, auth_client, sample_patient):
-        """Test DELETE /api/encounters/{id}/ - Delete an encounter."""
+        """Test DELETE /api/encounters/{id}/ - Delete an encounter with invoice.
+        
+        Since billing signals auto-create invoices for encounters,
+        we need to delete the invoice first before deleting the encounter.
+        """
+        from hmis.apps.billing.models import Invoice
         from hmis.apps.encounters.models import Encounter
 
         encounter = Encounter.objects.create(
@@ -240,10 +245,29 @@ class TestEncounterAPIEndpoints:
         )
         encounter_id = encounter.id
 
+        # Delete the auto-created invoice first (billing signal creates one)
+        Invoice.objects.filter(encounter=encounter).delete()
+
         response = auth_client.delete(f"/api/encounters/{encounter_id}/")
 
         assert response.status_code == status.HTTP_204_NO_CONTENT
         assert not Encounter.objects.filter(id=encounter_id).exists()
+
+    def test_delete_encounter_with_invoice_returns_conflict(self, auth_client, sample_patient):
+        """Test DELETE /api/encounters/{id}/ with invoice returns 409 Conflict."""
+        from hmis.apps.encounters.models import Encounter
+
+        encounter = Encounter.objects.create(
+            patient=sample_patient,
+            encounter_type="OPD",
+            chief_complaint="Headache",
+        )
+        # Invoice is auto-created by billing signal, don't delete it
+
+        response = auth_client.delete(f"/api/encounters/{encounter.id}/")
+
+        assert response.status_code == status.HTTP_409_CONFLICT
+        assert "billing records" in response.data["detail"]
 
 
 @pytest.mark.integration

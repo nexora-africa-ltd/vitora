@@ -169,7 +169,7 @@ class TestBillingReportService:
             assert "invoice_number" in item
             assert "patient_name" in item
             assert "total_amount" in item
-            assert "balance" in item
+            assert "balance_due" in item
             assert "days_overdue" in item
 
     def test_outstanding_balances_days_overdue(self, sample_invoice, sample_invoice_item):
