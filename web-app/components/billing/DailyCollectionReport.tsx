@@ -16,15 +16,8 @@ import {
   TableFooter,
 } from '@/components/ui/table';
 import { Skeleton } from '@/components/ui/skeleton';
-import { Button } from '@/components/ui/button';
-import { Calendar } from '@/components/ui/calendar';
+import { DatePicker } from '@/components/ui/date-picker';
 import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from '@/components/ui/popover';
-import {
-  CalendarIcon,
   TrendingUp,
   Banknote,
   Smartphone,
@@ -34,8 +27,7 @@ import {
   Printer,
 } from 'lucide-react';
 import { format } from 'date-fns';
-import { cn } from '@/lib/utils';
-import type { DailyCollectionReport } from '@/lib/types/billing';
+import { Button } from '@/components/ui/button';\nimport type { DailyCollectionReport } from '@/lib/types/billing';
 import { formatCurrency } from '@/lib/utils/format';
 
 // ============================================================================
@@ -110,23 +102,11 @@ export function DailyCollectionReportView({
 
         <div className="flex gap-2">
           {/* Date Picker */}
-          <Popover>
-            <PopoverTrigger asChild>
-              <Button variant="outline" className="w-[240px] justify-start text-left font-normal">
-                <CalendarIcon className="mr-2 h-4 w-4" />
-                {format(selectedDate, 'PPP')}
-              </Button>
-            </PopoverTrigger>
-            <PopoverContent className="w-auto p-0" align="end">
-              <Calendar
-                mode="single"
-                selected={selectedDate}
-                onSelect={(date) => date && onDateChange(date)}
-                disabled={(date) => date > new Date()}
-                initialFocus
-              />
-            </PopoverContent>
-          </Popover>
+          <DatePicker
+            value={selectedDate}
+            onChange={(date) => date && onDateChange(date)}
+            className="w-[240px]"
+          />
 
           {/* Actions */}
           {onPrint && (

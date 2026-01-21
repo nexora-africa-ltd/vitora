@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import { format, parseISO } from 'date-fns';
 import { Calendar, Filter, Search, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -12,6 +13,7 @@ import {
 } from '@/components/ui/popover';
 import { Badge } from '@/components/ui/badge';
 import { Checkbox } from '@/components/ui/checkbox';
+import { DatePicker } from '@/components/ui/date-picker';
 import type { TimelineFilters as FilterType, TimelineEventType } from '@/lib/types/timeline';
 
 interface TimelineFiltersProps {
@@ -131,24 +133,24 @@ export function TimelineFilters({ filters, onChange }: TimelineFiltersProps) {
               <div className="grid grid-cols-2 gap-2">
                 <div>
                   <Label className="text-xs text-muted-foreground">From</Label>
-                  <Input
-                    type="date"
-                    value={filters.startDate || ''}
-                    onChange={(e) =>
-                      onChange({ ...filters, startDate: e.target.value || undefined })
+                  <DatePicker
+                    value={filters.startDate ? parseISO(filters.startDate) : undefined}
+                    onChange={(date) =>
+                      onChange({ ...filters, startDate: date ? format(date, 'yyyy-MM-dd') : undefined })
                     }
                     className="h-8 text-sm"
+                    placeholder="Start"
                   />
                 </div>
                 <div>
                   <Label className="text-xs text-muted-foreground">To</Label>
-                  <Input
-                    type="date"
-                    value={filters.endDate || ''}
-                    onChange={(e) =>
-                      onChange({ ...filters, endDate: e.target.value || undefined })
+                  <DatePicker
+                    value={filters.endDate ? parseISO(filters.endDate) : undefined}
+                    onChange={(date) =>
+                      onChange({ ...filters, endDate: date ? format(date, 'yyyy-MM-dd') : undefined })
                     }
                     className="h-8 text-sm"
+                    placeholder="End"
                   />
                 </div>
               </div>

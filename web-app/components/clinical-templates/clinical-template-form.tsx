@@ -5,6 +5,7 @@
 'use client';
 
 import { useState, useCallback } from 'react';
+import { format, parseISO } from 'date-fns';
 import {
   ChevronRight,
   ChevronDown,
@@ -18,6 +19,7 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
 import { Checkbox } from '@/components/ui/checkbox';
+import { DatePicker } from '@/components/ui/date-picker';
 import {
   Select,
   SelectContent,
@@ -328,12 +330,11 @@ function TemplateFieldRenderer({
             {field.label}
             {field.required && <span className="text-destructive ml-1">*</span>}
           </Label>
-          <Input
-            id={id}
-            type="date"
-            value={(value as string) || ''}
-            onChange={(e) => onChange(e.target.value)}
+          <DatePicker
+            value={(value as string) ? parseISO(value as string) : undefined}
+            onChange={(date) => onChange(date ? format(date, 'yyyy-MM-dd') : '')}
             disabled={disabled}
+            placeholder="Select date"
           />
           {field.help_text && (
             <p className="text-xs text-muted-foreground">{field.help_text}</p>

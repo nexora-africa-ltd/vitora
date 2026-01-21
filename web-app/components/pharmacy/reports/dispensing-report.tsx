@@ -8,7 +8,7 @@
 'use client';
 
 import { useState } from 'react';
-import { format, subDays, startOfWeek, startOfMonth, endOfMonth } from 'date-fns';
+import { format, parseISO, subDays, startOfWeek, startOfMonth, endOfMonth } from 'date-fns';
 import {
   Download,
   Printer,
@@ -23,6 +23,7 @@ import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Label } from '@/components/ui/label';
 import { Checkbox } from '@/components/ui/checkbox';
+import { DatePicker } from '@/components/ui/date-picker';
 import {
   Select,
   SelectContent,
@@ -207,22 +208,20 @@ export function DispensingReport() {
         <div className="flex flex-wrap gap-4 items-end">
           <div className="space-y-2">
             <Label htmlFor="start-date">From</Label>
-            <Input
-              id="start-date"
-              type="date"
-              value={startDate}
-              onChange={(e) => setStartDate(e.target.value)}
+            <DatePicker
+              value={startDate ? parseISO(startDate) : undefined}
+              onChange={(date) => setStartDate(date ? format(date, 'yyyy-MM-dd') : '')}
               className="w-[160px]"
+              placeholder="Start date"
             />
           </div>
           <div className="space-y-2">
             <Label htmlFor="end-date">To</Label>
-            <Input
-              id="end-date"
-              type="date"
-              value={endDate}
-              onChange={(e) => setEndDate(e.target.value)}
+            <DatePicker
+              value={endDate ? parseISO(endDate) : undefined}
+              onChange={(date) => setEndDate(date ? format(date, 'yyyy-MM-dd') : '')}
               className="w-[160px]"
+              placeholder="End date"
             />
           </div>
           <div className="flex gap-2">

@@ -9,7 +9,7 @@
 'use client';
 
 import { useState } from 'react';
-import { format } from 'date-fns';
+import { format, parseISO } from 'date-fns';
 import { Search, Calendar, User, Pill, Package, DollarSign, Filter, RotateCcw, Printer } from 'lucide-react';
 import {
   Table,
@@ -24,6 +24,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
+import { DatePicker } from '@/components/ui/date-picker';
 import {
   Select,
   SelectContent,
@@ -188,20 +189,15 @@ export function DispensingHistoryTable({
                 Date Range
               </Label>
               <div className="flex gap-2">
-                <Input
-                  id="date-from"
-                  data-testid="date-filter"
-                  type="date"
+                <DatePicker
+                  value={dateFrom ? parseISO(dateFrom) : undefined}
+                  onChange={(date) => setDateFrom(date ? format(date, 'yyyy-MM-dd') : '')}
                   placeholder="From"
-                  value={dateFrom}
-                  onChange={(e) => setDateFrom(e.target.value)}
                 />
-                <Input
-                  id="date-to"
-                  type="date"
+                <DatePicker
+                  value={dateTo ? parseISO(dateTo) : undefined}
+                  onChange={(date) => setDateTo(date ? format(date, 'yyyy-MM-dd') : '')}
                   placeholder="To"
-                  value={dateTo}
-                  onChange={(e) => setDateTo(e.target.value)}
                 />
               </div>
             </div>
@@ -274,20 +270,15 @@ export function DispensingHistoryTable({
               Date Range
             </Label>
             <div className="flex gap-2">
-              <Input
-                id="date-from"
-                data-testid="date-filter"
-                type="date"
+              <DatePicker
+                value={dateFrom ? parseISO(dateFrom) : undefined}
+                onChange={(date) => setDateFrom(date ? format(date, 'yyyy-MM-dd') : '')}
                 placeholder="From"
-                value={dateFrom}
-                onChange={(e) => setDateFrom(e.target.value)}
               />
-              <Input
-                id="date-to"
-                type="date"
+              <DatePicker
+                value={dateTo ? parseISO(dateTo) : undefined}
+                onChange={(date) => setDateTo(date ? format(date, 'yyyy-MM-dd') : '')}
                 placeholder="To"
-                value={dateTo}
-                onChange={(e) => setDateTo(e.target.value)}
               />
             </div>
           </div>

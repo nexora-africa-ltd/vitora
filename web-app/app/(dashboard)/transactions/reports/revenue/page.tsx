@@ -9,13 +9,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Label } from '@/components/ui/label';
-import { Input } from '@/components/ui/input';
-import { Calendar } from '@/components/ui/calendar';
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from '@/components/ui/popover';
+import { DatePicker } from '@/components/ui/date-picker';
 import {
   Table,
   TableBody,
@@ -27,7 +21,6 @@ import {
 } from '@/components/ui/table';
 import {
   ArrowLeft,
-  CalendarIcon,
   Download,
   RefreshCw,
   TrendingUp,
@@ -35,7 +28,6 @@ import {
 } from 'lucide-react';
 import Link from 'next/link';
 import { format, subDays, startOfMonth, endOfMonth } from 'date-fns';
-import { cn } from '@/lib/utils';
 import { formatCurrency } from '@/lib/utils/format';
 import { useRevenueSummary } from '@/lib/hooks/billing';
 
@@ -140,58 +132,22 @@ export default function RevenueReportsPage() {
           <div className="flex flex-wrap items-end gap-4">
             <div className="space-y-2">
               <Label htmlFor="start_date">Start Date</Label>
-              <Popover>
-                <PopoverTrigger asChild>
-                  <Button
-                    id="start_date"
-                    variant="outline"
-                    className={cn(
-                      'w-[200px] justify-start text-left font-normal',
-                      !startDate && 'text-muted-foreground'
-                    )}
-                    aria-label="Start Date"
-                  >
-                    <CalendarIcon className="mr-2 h-4 w-4" />
-                    {startDate ? format(startDate, 'MMM d, yyyy') : 'Pick a date'}
-                  </Button>
-                </PopoverTrigger>
-                <PopoverContent className="w-auto p-0" align="start">
-                  <Calendar
-                    mode="single"
-                    selected={startDate}
-                    onSelect={(date) => date && setStartDate(date)}
-                    initialFocus
-                  />
-                </PopoverContent>
-              </Popover>
+              <DatePicker
+                value={startDate}
+                onChange={(date) => date && setStartDate(date)}
+                className="w-[200px]"
+                placeholder="Pick a date"
+              />
             </div>
 
             <div className="space-y-2">
               <Label htmlFor="end_date">End Date</Label>
-              <Popover>
-                <PopoverTrigger asChild>
-                  <Button
-                    id="end_date"
-                    variant="outline"
-                    className={cn(
-                      'w-[200px] justify-start text-left font-normal',
-                      !endDate && 'text-muted-foreground'
-                    )}
-                    aria-label="End Date"
-                  >
-                    <CalendarIcon className="mr-2 h-4 w-4" />
-                    {endDate ? format(endDate, 'MMM d, yyyy') : 'Pick a date'}
-                  </Button>
-                </PopoverTrigger>
-                <PopoverContent className="w-auto p-0" align="start">
-                  <Calendar
-                    mode="single"
-                    selected={endDate}
-                    onSelect={(date) => date && setEndDate(date)}
-                    initialFocus
-                  />
-                </PopoverContent>
-              </Popover>
+              <DatePicker
+                value={endDate}
+                onChange={(date) => date && setEndDate(date)}
+                className="w-[200px]"
+                placeholder="Pick a date"
+              />
             </div>
 
             <div className="flex gap-2">

@@ -11,6 +11,7 @@ import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
+import { format, parseISO } from 'date-fns';
 import * as z from 'zod';
 import { ArrowLeft, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -24,6 +25,7 @@ import {
   FormMessage,
 } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
+import { DatePicker } from '@/components/ui/date-picker';
 import {
   Select,
   SelectContent,
@@ -229,10 +231,10 @@ export default function ReceiveStockPage() {
                   <FormItem>
                     <FormLabel>Manufacture Date</FormLabel>
                     <FormControl>
-                      <Input
-                        type="date"
-                        aria-label="Manufacture Date"
-                        {...field}
+                      <DatePicker
+                        value={field.value ? parseISO(field.value) : undefined}
+                        onChange={(date) => field.onChange(date ? format(date, 'yyyy-MM-dd') : '')}
+                        placeholder="Select date"
                       />
                     </FormControl>
                     <FormMessage />
@@ -247,10 +249,10 @@ export default function ReceiveStockPage() {
                   <FormItem>
                     <FormLabel>Expiry Date</FormLabel>
                     <FormControl>
-                      <Input
-                        type="date"
-                        aria-label="Expiry Date"
-                        {...field}
+                      <DatePicker
+                        value={field.value ? parseISO(field.value) : undefined}
+                        onChange={(date) => field.onChange(date ? format(date, 'yyyy-MM-dd') : '')}
+                        placeholder="Select date"
                       />
                     </FormControl>
                     <FormMessage />
@@ -265,10 +267,10 @@ export default function ReceiveStockPage() {
                   <FormItem>
                     <FormLabel>Received Date</FormLabel>
                     <FormControl>
-                      <Input
-                        type="date"
-                        aria-label="Received Date"
-                        {...field}
+                      <DatePicker
+                        value={field.value ? parseISO(field.value) : undefined}
+                        onChange={(date) => field.onChange(date ? format(date, 'yyyy-MM-dd') : '')}
+                        placeholder="Select date"
                       />
                     </FormControl>
                     <FormMessage />
