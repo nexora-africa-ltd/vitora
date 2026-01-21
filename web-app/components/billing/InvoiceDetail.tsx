@@ -43,6 +43,10 @@ import {
   Plus,
   Shield,
   ExternalLink,
+  Clock,
+  ArrowRightCircle,
+  RefreshCw,
+  Link2,
 } from 'lucide-react';
 import { ClaimSubmissionButton, ClaimStatusBadge } from '@/components/billing/sha';
 import type { Invoice, InvoiceItem, InvoiceStatus } from '@/lib/types/billing';
@@ -74,6 +78,9 @@ interface InvoiceDetailProps {
   onApplyDiscount?: (invoice: Invoice) => void;
   onClaimSubmitted?: (claim: Claim) => void;
   linkedClaim?: Claim | null;
+  // Proforma-specific actions
+  onConvertProforma?: (invoice: Invoice) => void;
+  onRenewProforma?: (invoice: Invoice) => void;
 }
 
 // ============================================================================
@@ -146,6 +153,8 @@ export function InvoiceDetail({
   onApplyDiscount,
   onClaimSubmitted,
   linkedClaim,
+  onConvertProforma,
+  onRenewProforma,
 }: InvoiceDetailProps) {
   const [cancelDialogOpen, setCancelDialogOpen] = React.useState(false);
 
@@ -163,6 +172,12 @@ export function InvoiceDetail({
   const canCancel = ['DRAFT', 'PENDING'].includes(invoice.status);
   const isPaid = invoice.status === 'PAID';
   const isOverdue = invoice.status === 'OVERDUE';
+  
+  // Proforma-specific flags
+  const isProforma = invoice.status === 'PROFORMA';
+  const canConvertProforma = isProforma && invoice.can_convert;
+  const canRenewProforma = isProforma && !invoice.is_valid;
+  const isConvertedFromProforma = !!invoice.converted_from_proforma;
 
   const subtotal = parseFloat(invoice.subtotal || invoice.total_amount);
   const discount = parseFloat(invoice.discount_amount || '0');
@@ -190,6 +205,82 @@ export function InvoiceDetail({
           <AlertCircle className="h-4 w-4" />
           <AlertDescription>
             This invoice is overdue. The due date was {formatDate(invoice.due_date)}.
+          </AlertDescription>
+        </Alert>
+      )}
+
+      {/* Proforma Validity Banner */}
+      {isProforma && (
+        <Alert className={invoice.is_valid 
+          ? 'border-purple-200 bg-purple-50 dark:border-purple-800 dark:bg-purple-950' 
+          : 'border-red-200 bg-red-50 dark:border-red-800 dark:bg-red-950'
+        }>
+          <Clock className={`h-4 w-4 ${invoice.is_valid ? 'text-purple-600' : 'text-red-600'}`} />
+          <AlertDescription className="flex items-center justify-between">
+            <div>
+              {invoice.is_valid ? (
+                <>
+                  <span className="font-medium">Proforma Invoice</span>
+                  {invoice.days_until_expiry !== undefined && invoice.days_until_expiry >= 0 && (
+                    <span className="ml-2 text-muted-foreground">
+                      • Valid for {invoice.days_until_expiry} more {invoice.days_until_expiry === 1 ? 'day' : 'days'}
+                      {invoice.valid_until && ` (until ${formatDate(invoice.valid_until)})`}
+                    </span>
+                  )}
+                </>
+              ) : (
+                <>
+                  <span className="font-medium text-red-700">Expired Proforma</span>
+                  <span className="ml-2 text-muted-foreground">
+                    • This proforma has expired and cannot be converted to an invoice.
+                  </span>
+                </>
+              )}
+            </div>
+            <div className="flex gap-2">
+              {canConvertProforma && onConvertProforma && (
+                <Button 
+                  size="sm" 
+                  onClick={() => onConvertProforma(invoice)}
+                  className="bg-purple-600 hover:bg-purple-700"
+                >
+                  <ArrowRightCircle className="h-4 w-4 mr-1" />
+                  Convert to Invoice
+                </Button>
+              )}
+              {canRenewProforma && onRenewProforma && (
+                <Button 
+                  size="sm" 
+                  variant="outline"
+                  onClick={() => onRenewProforma(invoice)}
+                  className="border-red-500 text-red-600 hover:bg-red-50"
+                >
+                  <RefreshCw className="h-4 w-4 mr-1" />
+                  Renew
+                </Button>
+              )}
+            </div>
+          </AlertDescription>
+        </Alert>
+      )}
+
+      {/* Converted from Proforma Link */}
+      {isConvertedFromProforma && (
+        <Alert className="border-blue-200 bg-blue-50 dark:border-blue-800 dark:bg-blue-950">
+          <Link2 className="h-4 w-4 text-blue-600" />
+          <AlertDescription>
+            <span className="text-muted-foreground">
+              This invoice was converted from proforma{' '}
+              <Link 
+                href={`/billing/invoices/${invoice.converted_from_proforma}`}
+                className="font-medium text-blue-600 hover:underline"
+              >
+                PRO-{invoice.converted_from_proforma}
+              </Link>
+              {invoice.converted_at && (
+                <> on {formatDate(invoice.converted_at)}</>
+              )}
+            </span>
           </AlertDescription>
         </Alert>
       )}
@@ -435,6 +526,29 @@ export function InvoiceDetail({
           >
             <FileCheck className="h-4 w-4 mr-2" />
             Finalize
+          </Button>
+        )}
+
+        {/* Convert Proforma (valid proformas only) */}
+        {canConvertProforma && onConvertProforma && (
+          <Button
+            className="bg-purple-600 hover:bg-purple-700"
+            onClick={() => onConvertProforma(invoice)}
+          >
+            <ArrowRightCircle className="h-4 w-4 mr-2" />
+            Convert to Invoice
+          </Button>
+        )}
+
+        {/* Renew Proforma (expired proformas only) */}
+        {canRenewProforma && onRenewProforma && (
+          <Button
+            variant="outline"
+            className="border-amber-500 text-amber-600 hover:bg-amber-50"
+            onClick={() => onRenewProforma(invoice)}
+          >
+            <RefreshCw className="h-4 w-4 mr-2" />
+            Renew Proforma
           </Button>
         )}
 
