@@ -167,6 +167,129 @@ class AuditLog(models.Model):
         )
 
 
+class FrontendEvent(models.Model):
+    """
+    Frontend event logging for tracking user interactions in the web/mobile apps.
+
+    This captures clinical workflow events like:
+    - Viewing a patient record
+    - Opening an encounter
+    - Updating diagnosis certainty
+    - Saving form changes
+
+    These events complement AuditLog by providing more granular UX tracking
+    and support offline-first sync (events can be batched from the frontend).
+    """
+
+    # Event type categories
+    EVENT_TYPES = [
+        # Navigation events
+        ("page_view", "Page View"),
+        ("modal_open", "Modal Opened"),
+        ("tab_switch", "Tab Switch"),
+        # Clinical workflow events
+        ("encounter_open", "Encounter Opened"),
+        ("encounter_save", "Encounter Saved"),
+        ("encounter_finalize", "Encounter Finalized"),
+        ("diagnosis_add", "Diagnosis Added"),
+        ("diagnosis_update", "Diagnosis Updated"),
+        ("diagnosis_remove", "Diagnosis Removed"),
+        ("lab_order_create", "Lab Order Created"),
+        ("lab_result_view", "Lab Result Viewed"),
+        ("prescription_create", "Prescription Created"),
+        ("prescription_dispense", "Prescription Dispensed"),
+        # Patient events
+        ("patient_view", "Patient Viewed"),
+        ("patient_search", "Patient Search"),
+        # Form events
+        ("form_start", "Form Started"),
+        ("form_save", "Form Saved"),
+        ("form_submit", "Form Submitted"),
+        ("form_error", "Form Error"),
+        # Offline events
+        ("offline_queue", "Queued Offline"),
+        ("offline_sync", "Synced from Offline"),
+        # Other
+        ("custom", "Custom Event"),
+    ]
+
+    user = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="frontend_events",
+        help_text="User who triggered the event",
+    )
+    event_type = models.CharField(
+        max_length=50,
+        choices=EVENT_TYPES,
+        db_index=True,
+        help_text="Type of frontend event",
+    )
+    resource_type = models.CharField(
+        max_length=100,
+        blank=True,
+        default="",
+        db_index=True,
+        help_text="Type of resource (e.g., Patient, Encounter)",
+    )
+    resource_id = models.BigIntegerField(
+        null=True,
+        blank=True,
+        db_index=True,
+        help_text="ID of the resource",
+    )
+    # Client-side timestamp (when event actually occurred)
+    client_timestamp = models.DateTimeField(
+        help_text="When the event occurred on the client",
+    )
+    # Server-side timestamp (when event was received)
+    server_timestamp = models.DateTimeField(
+        default=timezone.now,
+        db_index=True,
+        help_text="When the event was received by the server",
+    )
+    # Session/device info
+    session_id = models.CharField(
+        max_length=100,
+        blank=True,
+        default="",
+        help_text="Client session identifier for grouping events",
+    )
+    device_type = models.CharField(
+        max_length=20,
+        blank=True,
+        default="web",
+        help_text="Device type (web, desktop, mobile)",
+    )
+    # Additional context
+    details = models.JSONField(
+        default=dict,
+        blank=True,
+        help_text="Additional event details (page, component, metadata)",
+    )
+    # Network status when event occurred
+    was_offline = models.BooleanField(
+        default=False,
+        help_text="Whether the event occurred while offline",
+    )
+
+    class Meta:
+        ordering = ["-server_timestamp"]
+        indexes = [
+            models.Index(fields=["user", "server_timestamp"]),
+            models.Index(fields=["event_type", "server_timestamp"]),
+            models.Index(fields=["resource_type", "resource_id"]),
+            models.Index(fields=["session_id"]),
+        ]
+        verbose_name = "Frontend Event"
+        verbose_name_plural = "Frontend Events"
+
+    def __str__(self):
+        return f"{self.event_type} by {self.user} at {self.client_timestamp}"
+
+
 class ActivityFeed(models.Model):
     """
     Real-time activity feed for dashboard.

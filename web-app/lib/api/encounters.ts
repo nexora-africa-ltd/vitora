@@ -84,6 +84,17 @@ export const encountersApi = {
   },
 
   /**
+   * Update a diagnosis (e.g., change certainty after lab results).
+   */
+  async updateDiagnosis(encounterId: number, diagnosisId: number, data: Partial<CreateDiagnosisData>): Promise<Diagnosis> {
+    const response = await apiClient.patch<Diagnosis>(
+      `/api/encounters/${encounterId}/diagnoses/${diagnosisId}/`,
+      data
+    );
+    return response.data;
+  },
+
+  /**
    * Get treatment plan for an encounter.
    */
   async getTreatmentPlan(encounterId: number): Promise<TreatmentPlan | null> {

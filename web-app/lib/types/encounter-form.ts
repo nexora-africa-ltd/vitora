@@ -101,7 +101,7 @@ export interface DiagnosisFormData {
   free_text_diagnosis: string;
   notes: string;
   is_confirmed: boolean;
-  certainty: 'SUSPECTED' | 'PROBABLE' | 'CONFIRMED';
+  certainty: 'SUSPECTED' | 'PROBABLE' | 'CONFIRMED' | 'RULED_OUT';
 }
 
 export const defaultDiagnosisFormData: DiagnosisFormData = {

@@ -43,7 +43,7 @@ import { AutoSaveStatusIndicator } from '@/components/ui/auto-save-status';
 import { useToast } from '@/lib/hooks/use-toast';
 import { useAutoSave } from '@/lib/hooks/use-auto-save';
 import { useNetworkStatus } from '@/lib/hooks/use-network-status';
-import { useEncounter, useUpdateEncounter, useEncounterDiagnoses, useEditChiefComplaint, useAddDiagnosis, useDeleteDiagnosis } from '@/lib/hooks/use-encounters';
+import { useEncounter, useUpdateEncounter, useEncounterDiagnoses, useEditChiefComplaint, useAddDiagnosis, useDeleteDiagnosis, useUpdateDiagnosis } from '@/lib/hooks/use-encounters';
 import { useEncounterLabOrders } from '@/lib/hooks/use-laboratory';
 import { useEncounterPrescriptions } from '@/lib/hooks/use-pharmacy';
 import { useAuth } from '@/lib/auth/context';
@@ -84,6 +84,7 @@ export default function EditEncounterPage() {
   const editChiefComplaint = useEditChiefComplaint();
   const addDiagnosis = useAddDiagnosis(encounterId);
   const deleteDiagnosis = useDeleteDiagnosis(encounterId);
+  const updateDiagnosis = useUpdateDiagnosis(encounterId);
 
   // Get current provider name for SOAP note
   const providerName = user
@@ -351,6 +352,48 @@ export default function EditEncounterPage() {
       setDiagnoses(prev => prev.filter((_, i) => i !== index));
     }
   }, [existingDiagnoses, deleteDiagnosis, toast]);
+
+  // Handler for updating a diagnosis (e.g., changing certainty after lab results)
+  const handleUpdateDiagnosis = useCallback(async (index: number, updatedDiagnosis: DiagnosisFormData) => {
+    // Get the diagnosis to update
+    const diagnosisArray = Array.isArray(existingDiagnoses)
+      ? existingDiagnoses
+      : (existingDiagnoses as unknown as { results?: typeof existingDiagnoses })?.results || [];
+    const diagnosisToUpdate = diagnosisArray[index];
+
+    if (diagnosisToUpdate?.id) {
+      try {
+        await updateDiagnosis.mutateAsync({
+          diagnosisId: diagnosisToUpdate.id,
+          data: {
+            icd10_code: updatedDiagnosis.icd10_code,
+            diagnosis_type: updatedDiagnosis.diagnosis_type,
+            free_text_diagnosis: updatedDiagnosis.free_text_diagnosis || '',
+            notes: updatedDiagnosis.notes || '',
+            is_confirmed: updatedDiagnosis.is_confirmed || false,
+            certainty: (updatedDiagnosis.certainty?.toLowerCase() || 'suspected') as 'confirmed' | 'provisional' | 'ruled_out' | 'suspected',
+          },
+        });
+
+        // Update local state
+        setDiagnoses(prev => prev.map((d, i) => i === index ? updatedDiagnosis : d));
+
+        toast({
+          title: 'Diagnosis Updated',
+          description: 'Diagnosis certainty has been updated successfully.',
+        });
+      } catch (err) {
+        toast({
+          title: 'Error',
+          description: 'Failed to update diagnosis. Please try again.',
+          variant: 'destructive',
+        });
+      }
+    } else {
+      // Diagnosis was only local (not saved yet), just update local state
+      setDiagnoses(prev => prev.map((d, i) => i === index ? updatedDiagnosis : d));
+    }
+  }, [existingDiagnoses, updateDiagnosis, toast]);
 
   // Clinical template handler - auto-populates from existing encounter data
   const handleTemplateSelect = useCallback(async (template: ClinicalTemplate) => {
@@ -918,6 +961,7 @@ export default function EditEncounterPage() {
                 diagnoses={diagnoses}
                 onAddDiagnosis={handleAddDiagnosis}
                 onRemoveDiagnosis={handleRemoveDiagnosis}
+                onUpdateDiagnosis={handleUpdateDiagnosis}
                 selectedTemplate={selectedTemplate}
                 onTemplateSelect={handleTemplateSelect}
                 onTemplateDataChange={handleTemplateDataChange}

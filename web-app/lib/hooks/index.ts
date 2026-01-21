@@ -5,6 +5,7 @@
 export { useDebounce } from './use-debounce';
 export { useAutoSave, type AutoSaveStatus } from './use-auto-save';
 export { useDraftSave } from './use-draft-save';
+export { useEventLogger } from './use-event-logger';
 export {
   useEncounters,
   useEncounter,

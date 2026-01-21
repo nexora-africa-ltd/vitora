@@ -211,6 +211,10 @@ export default function NewEncounterPage() {
     setDiagnoses(prev => prev.filter((_, i) => i !== index));
   }, []);
 
+  const handleUpdateDiagnosis = useCallback((index: number, updatedDiagnosis: DiagnosisFormData) => {
+    setDiagnoses(prev => prev.map((d, i) => i === index ? updatedDiagnosis : d));
+  }, []);
+
   // Validation
   const validateForm = useCallback((): boolean => {
     const newErrors: Record<string, string> = {};
@@ -609,6 +613,7 @@ export default function NewEncounterPage() {
               diagnoses={diagnoses}
               onAdd={handleAddDiagnosis}
               onRemove={handleRemoveDiagnosis}
+              onUpdate={handleUpdateDiagnosis}
               onPrevious={() => setActiveTab('notes')}
             />
           </TabsContent>
