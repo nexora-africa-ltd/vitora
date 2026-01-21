@@ -3,6 +3,7 @@
  * Centralized nav items for the sidebar
  */
 
+import { SHAIcon } from '@/components/ui/sha-logo';
 import {
   LayoutDashboard,
   Users,
@@ -13,7 +14,6 @@ import {
   CreditCard,
   PiggyBank,
   ChartNoAxesGantt,
-  ShieldCheck,
   Settings,
   AlertTriangle,
   BedDouble,
@@ -97,7 +97,7 @@ export const mainNavItems: NavItemType[] = [
       { label: 'Proformas', href: '/transactions/proformas', icon: Clock },
       { label: 'Payments', href: '/transactions/payments', icon: CreditCard },
       { label: 'Receipts', href: '/transactions/receipts', icon: Receipt },
-      { label: 'SHA Claims', href: '/transactions/sha-claims', icon: ShieldCheck },
+      { label: 'SHA Claims', href: '/transactions/sha-claims', icon: SHAIcon },
       { label: 'Insurance', href: '/insurance', icon: Shield },
       { label: 'Reports', href: '/transactions/reports', icon: BarChart3 },
       { label: 'Reconciliation', href: '/transactions/reconciliation', icon: Scale },

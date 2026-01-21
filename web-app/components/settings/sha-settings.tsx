@@ -7,7 +7,6 @@
 
 import { useState } from 'react';
 import {
-  Shield,
   Building2,
   User,
   CheckCircle2,
@@ -16,6 +15,7 @@ import {
   ExternalLink,
   Info,
 } from 'lucide-react';
+import { SHALogo } from '@/components/ui/sha-logo';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -56,7 +56,7 @@ export function SHASettingsTab() {
       <Card>
         <CardHeader>
           <div className="flex items-center gap-2">
-            <Shield className="h-5 w-5 text-blue-600" />
+            <SHALogo size="md" />
             <CardTitle>SHA Integration Status</CardTitle>
           </div>
           <CardDescription>
@@ -292,7 +292,7 @@ export function SHASettingsTab() {
           <div className="grid gap-2 sm:grid-cols-2">
             <Button variant="outline" className="justify-start" asChild>
               <a href="/transactions/sha-claims" className="gap-2">
-                <Shield className="h-4 w-4" />
+                <SHALogo size="sm" />
                 View SHA Claims
               </a>
             </Button>

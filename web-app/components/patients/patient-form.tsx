@@ -17,7 +17,8 @@ import React, { useState, useRef, useCallback, useEffect } from 'react';
 import { useForm, useWatch } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import { CalendarIcon, Loader2, CheckCircle2, AlertCircle, Info, Search, Lock, CreditCard, Shield, Building2, Wallet, ChevronDown, HelpCircle, ChevronsUpDown, Check, Ban, ChevronLeft, ChevronRight, Eye, BadgeCheck, XCircle, Users } from 'lucide-react';
+import { CalendarIcon, Loader2, CheckCircle2, AlertCircle, Info, Search, Lock, CreditCard, Building2, Wallet, ChevronDown, HelpCircle, ChevronsUpDown, Check, Ban, ChevronLeft, ChevronRight, Eye, BadgeCheck, XCircle, Users } from 'lucide-react';
+import { SHALogo } from '@/components/ui/sha-logo';
 import { format } from 'date-fns';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -208,7 +209,7 @@ interface PatientFormProps {
 // Payment mode icons - using muted foreground for consistent theming
 const PAYMENT_MODE_ICONS: Record<PaymentMode, React.ReactNode> = {
   cash: <Wallet className="h-4 w-4 text-success" />,
-  sha: <Shield className="h-4 w-4 text-primary" />,
+  sha: <SHALogo size="sm" />,
   insurance_private: <CreditCard className="h-4 w-4 text-accent-foreground" />,
   insurance_corporate: <Building2 className="h-4 w-4 text-warning-foreground" />,
 };
@@ -916,7 +917,7 @@ export function PatientForm({
                 render={({ field }) => (
                   <FormItem className="w-[180px] shrink-0 mt-1">
                     <FormLabel className="flex items-center gap-1 text-teal-400">
-                      <Shield className="h-4 w-4 text-teal-400" />
+                      <SHALogo size="sm" />
                       SHA Number
                     </FormLabel>
                     <FormControl>
@@ -1734,7 +1735,7 @@ export function PatientForm({
         <DialogContent className="max-w-lg">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
-              <Shield className="h-5 w-5 text-primary" />
+              <SHALogo size="md" />
               SHA Coverage Details
             </DialogTitle>
             <DialogDescription>

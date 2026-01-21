@@ -41,9 +41,9 @@ import {
   Mail,
   MapPin,
   Calendar,
-  Shield,
   IdCard,
 } from 'lucide-react';
+import { SHALogo } from '@/components/ui/sha-logo';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -244,7 +244,7 @@ export function DHAPractitionerSearch({
             <div className="space-y-3">
               <div className="flex items-center justify-between">
                 <h4 className="font-semibold flex items-center gap-2">
-                  <Shield className="h-4 w-4" />
+                  <SHALogo size="sm" />
                   Registration Details
                 </h4>
                 <Badge className={getStatusColor(practitioner.membership.status, practitioner.membership.is_active)}>

@@ -19,10 +19,10 @@ import {
   XCircle,
   AlertCircle,
   User,
-  Shield,
   Database,
   X,
 } from 'lucide-react';
+import { SHALogo } from '@/components/ui/sha-logo';
 import { cn } from '@/lib/utils';
 import { shaApi } from '@/lib/api/sha';
 import type {
@@ -316,7 +316,7 @@ export function PatientVerificationBar({
           {activeAction === 'eligibility' && isLoading ? (
             <Loader2 className="h-4 w-4 animate-spin mr-1" />
           ) : (
-            <Shield className="h-4 w-4 mr-1" />
+            <SHALogo size="sm" className="mr-1" />
           )}
           Check Eligibility
         </Button>

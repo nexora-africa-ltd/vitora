@@ -14,10 +14,10 @@ import {
   Clock,
   Loader2,
   RefreshCw,
-  ShieldCheck,
   ShieldOff,
   ShieldAlert,
 } from 'lucide-react';
+import { SHALogo } from '@/components/ui/sha-logo';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Card } from '@/components/ui/card';
@@ -118,7 +118,7 @@ function StatusIcon({
 
   switch (status) {
     case 'eligible':
-      return <ShieldCheck className={cn(iconClass, 'text-success')} />;
+      return <SHALogo size="md" className={className} />;
     case 'ineligible':
       return <ShieldOff className={cn(iconClass, 'text-destructive')} />;
     case 'expired':

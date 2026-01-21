@@ -36,7 +36,6 @@ import {
   XCircle,
   AlertCircle,
   UserCheck,
-  ShieldCheck,
   ShieldOff,
   Info,
   Database,
@@ -44,6 +43,7 @@ import {
   Maximize2,
   Minimize2,
 } from 'lucide-react';
+import { SHALogo } from '@/components/ui/sha-logo';
 import { cn } from '@/lib/utils';
 import { shaApi } from '@/lib/api/sha';
 import type {
@@ -389,7 +389,7 @@ function EligibilityCheckTab({ defaultNationalId, onEligibilityVerified }: Eligi
             {eligibility.is_eligible ? (
               <>
                 <div className="flex items-center gap-2 mb-3">
-                  <ShieldCheck className="h-6 w-6 text-success" />
+                  <SHALogo size="lg" />
                   <div>
                     <h4 className="font-semibold text-success text-lg">
                       SHA ELIGIBLE
@@ -640,7 +640,7 @@ export function SHAVerificationModal({
                       Client Registry
                     </TabsTrigger>
                     <TabsTrigger value="eligibility" className="flex items-center gap-2">
-                      <ShieldCheck className="h-4 w-4" />
+                      <SHALogo size="sm" />
                       SHA Eligibility
                     </TabsTrigger>
                   </TabsList>
@@ -714,7 +714,7 @@ export function SHAVerificationModal({
                     Client Registry
                   </TabsTrigger>
                   <TabsTrigger value="eligibility" className="flex items-center gap-2">
-                    <ShieldCheck className="h-4 w-4" />
+                    <SHALogo size="sm" />
                     SHA Eligibility
                   </TabsTrigger>
                 </TabsList>

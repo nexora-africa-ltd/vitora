@@ -19,12 +19,11 @@ import {
   CreditCard,
   FileText,
   Receipt,
-  Shield,
-  ShieldCheck,
   TrendingUp,
   Wallet,
   XCircle,
 } from 'lucide-react';
+import { SHALogo } from '@/components/ui/sha-logo';
 import { PageHeader } from '@/components/shared/page-header';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -138,7 +137,7 @@ function ClaimsStatusCard({
       <CardHeader className="pb-2">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <Shield className="h-5 w-5 text-blue-600" />
+            <SHALogo size="md" />
             <CardTitle className="text-base">SHA Claims Status</CardTitle>
           </div>
           <Button variant="ghost" size="sm" asChild>
@@ -502,7 +501,7 @@ export default function FinanceOverviewPage() {
             </Button>
             <Button variant="outline" asChild className="justify-start">
               <Link href="/insurance">
-                <ShieldCheck className="h-4 w-4 mr-2" />
+                <SHALogo size="sm" className="mr-2" />
                 Insurance
               </Link>
             </Button>

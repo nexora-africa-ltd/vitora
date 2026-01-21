@@ -12,11 +12,11 @@ import {
   AlertCircle,
   Loader2,
   Building2,
-  Shield,
   Calendar,
   MapPin,
   AlertTriangle,
 } from 'lucide-react';
+import { SHALogo } from '@/components/ui/sha-logo';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -140,12 +140,12 @@ function FacilityDetails({ facility, warnings }: FacilityDetailsProps) {
             <div className="flex items-center gap-1 mt-1">
               {facility.sha_approved ? (
                 <>
-                  <Shield className="h-4 w-4 text-green-600" />
+                  <SHALogo size="sm" />
                   <span className="text-green-600 font-medium">Yes</span>
                 </>
               ) : (
                 <>
-                  <Shield className="h-4 w-4 text-red-600" />
+                  <SHALogo size="sm" muted />
                   <span className="text-red-600 font-medium">No</span>
                 </>
               )}
@@ -526,7 +526,7 @@ export function PractitionerValidation({
             ) : status === 'valid' ? (
               <CheckCircle2 className="h-4 w-4" />
             ) : (
-              <Shield className="h-4 w-4" />
+              <SHALogo size="sm" />
             )}
             <span className="ml-2">
               {status === 'valid' ? 'Validated' : 'Validate'}

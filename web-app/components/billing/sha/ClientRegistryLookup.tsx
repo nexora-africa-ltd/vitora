@@ -8,7 +8,8 @@
 'use client';
 
 import React, { useState, useCallback } from 'react';
-import { Search, CheckCircle2, AlertCircle, Info, Loader2, UserCheck, ShieldCheck, ShieldOff } from 'lucide-react';
+import { Search, CheckCircle2, AlertCircle, Info, Loader2, UserCheck, ShieldOff } from 'lucide-react';
+import { SHALogo } from '@/components/ui/sha-logo';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -152,7 +153,7 @@ function ClientDetailsCard({ client, eligibility }: ClientDetailsCardProps) {
         )}>
           {isEligible ? (
             <>
-              <ShieldCheck className="h-5 w-5 text-green-600" />
+              <SHALogo size="md" />
               <div className="flex-1">
                 <span className="font-medium text-green-700 dark:text-green-300">SHA COVERED</span>
                 {eligibility.coverage_end_date && (

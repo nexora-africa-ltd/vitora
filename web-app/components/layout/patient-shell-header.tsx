@@ -29,12 +29,12 @@ import { Skeleton } from '@/components/ui/skeleton';
 import {
   User,
   Calendar,
-  Shield,
   ShieldCheck,
   AlertTriangle,
   Stethoscope,
   FileText,
 } from 'lucide-react';
+import { SHALogo } from '@/components/ui/sha-logo';
 import { calculateAge, formatDate } from '@/lib/utils/format';
 import { cn } from '@/lib/utils/cn';
 
@@ -153,7 +153,7 @@ export function PatientShellHeader({ className, compact = false }: PatientShellH
               )}
               {hasSHA && (
                 <Badge variant="outline" className="text-xs bg-blue-50 text-blue-700 border-blue-200">
-                  <Shield className="h-3 w-3 mr-1" />
+                  <SHALogo size="xs" className="mr-1" />
                   SHA
                 </Badge>
               )}
