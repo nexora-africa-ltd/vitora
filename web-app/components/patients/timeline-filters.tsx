@@ -1,8 +1,8 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, type FormEvent } from 'react';
 import { format, parseISO } from 'date-fns';
-import { Calendar, Filter, Search, X } from 'lucide-react';
+import { Filter, Search, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -47,7 +47,7 @@ export function TimelineFilters({ filters, onChange }: TimelineFiltersProps) {
     onChange({ ...filters, eventTypes: newTypes });
   };
 
-  const handleSearchSubmit = (e: React.FormEvent) => {
+  const handleSearchSubmit = (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     onChange({ ...filters, searchQuery: localSearch || undefined });
   };
@@ -99,6 +99,7 @@ export function TimelineFilters({ filters, onChange }: TimelineFiltersProps) {
             <div className="flex items-center justify-between">
               <h4 className="font-medium">Filters</h4>
               <Button
+                type="button"
                 variant="ghost"
                 size="sm"
                 onClick={handleClearFilters}
@@ -166,6 +167,9 @@ export function TimelineFilters({ filters, onChange }: TimelineFiltersProps) {
             <Badge variant="secondary" className="gap-1">
               &quot;{filters.searchQuery}&quot;
               <button
+                type="button"
+                aria-label="Clear search filter"
+                title="Clear search filter"
                 onClick={() => {
                   setLocalSearch('');
                   onChange({ ...filters, searchQuery: undefined });
@@ -180,6 +184,9 @@ export function TimelineFilters({ filters, onChange }: TimelineFiltersProps) {
             <Badge variant="secondary" className="gap-1">
               From: {filters.startDate}
               <button
+                type="button"
+                aria-label="Clear start date filter"
+                title="Clear start date filter"
                 onClick={() => onChange({ ...filters, startDate: undefined })}
                 className="hover:text-destructive"
               >
@@ -191,6 +198,9 @@ export function TimelineFilters({ filters, onChange }: TimelineFiltersProps) {
             <Badge variant="secondary" className="gap-1">
               To: {filters.endDate}
               <button
+                type="button"
+                aria-label="Clear end date filter"
+                title="Clear end date filter"
                 onClick={() => onChange({ ...filters, endDate: undefined })}
                 className="hover:text-destructive"
               >
