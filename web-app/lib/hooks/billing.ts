@@ -53,6 +53,10 @@ export const billingKeys = {
   invoiceDetail: (id: number) => [...billingKeys.invoices(), 'detail', id] as const,
   invoicesOverdue: () => [...billingKeys.invoices(), 'overdue'] as const,
 
+  // Proformas
+  proformas: () => [...billingKeys.all, 'proformas'] as const,
+  proformasList: (params?: InvoiceListParams) => [...billingKeys.proformas(), 'list', params] as const,
+
   // Payments
   payments: () => [...billingKeys.all, 'payments'] as const,
   paymentsList: (params?: PaymentListParams) => [...billingKeys.payments(), 'list', params] as const,
@@ -229,6 +233,67 @@ export function useApplyDiscount() {
     onSuccess: (_, { invoiceId }) => {
       queryClient.invalidateQueries({ queryKey: billingKeys.invoiceDetail(invoiceId) });
       queryClient.invalidateQueries({ queryKey: billingKeys.invoices() });
+    },
+  });
+}
+
+// ============================================================================
+// Proforma Invoice Hooks
+// ============================================================================
+
+/**
+ * Fetch paginated list of proforma invoices
+ */
+export function useProformas(params?: InvoiceListParams) {
+  return useQuery({
+    queryKey: billingKeys.proformasList(params),
+    queryFn: () => billingApi.getProformas(params),
+  });
+}
+
+/**
+ * Convert proforma to invoice (full conversion)
+ */
+export function useConvertProforma() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (id: number) => billingApi.convertProforma(id),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: billingKeys.invoices() });
+      queryClient.invalidateQueries({ queryKey: billingKeys.proformas() });
+    },
+  });
+}
+
+/**
+ * Convert proforma to invoice (partial - specific items)
+ */
+export function useConvertProformaItems() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: ({ id, itemIds }: { id: number; itemIds: number[] }) =>
+      billingApi.convertProformaItems(id, itemIds),
+    onSuccess: (_, { id }) => {
+      queryClient.invalidateQueries({ queryKey: billingKeys.invoices() });
+      queryClient.invalidateQueries({ queryKey: billingKeys.proformas() });
+      queryClient.invalidateQueries({ queryKey: billingKeys.invoiceDetail(id) });
+    },
+  });
+}
+
+/**
+ * Renew an expired proforma invoice
+ */
+export function useRenewProforma() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: ({ id, validityDays }: { id: number; validityDays?: number }) =>
+      billingApi.renewProforma(id, validityDays),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: billingKeys.proformas() });
     },
   });
 }
