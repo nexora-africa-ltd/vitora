@@ -45,12 +45,14 @@ interface InvoiceListProps {
 // ============================================================================
 
 const statusColors: Record<InvoiceStatus, string> = {
+  PROFORMA: 'bg-purple-100 text-purple-700 hover:bg-purple-200',
   DRAFT: 'bg-slate-100 text-slate-700 hover:bg-slate-200',
   PENDING: 'bg-amber-100 text-amber-700 hover:bg-amber-200',
   PARTIAL: 'bg-blue-100 text-blue-700 hover:bg-blue-200',
   PAID: 'bg-green-100 text-green-700 hover:bg-green-200',
   OVERDUE: 'bg-red-100 text-red-700 hover:bg-red-200',
   CANCELLED: 'bg-gray-100 text-gray-500 hover:bg-gray-200',
+  WRITTEN_OFF: 'bg-gray-100 text-gray-500 hover:bg-gray-200',
 };
 
 // ============================================================================

@@ -29,6 +29,9 @@ import type {
   InvoiceListParams,
   ApplyDiscountData,
   PaginatedInvoices,
+  ProformaCreateData,
+  ProformaConvertRequest,
+  ProformaRenewRequest,
   // Payment types
   Payment,
   PaymentCreateData,
@@ -217,6 +220,66 @@ async function applyDiscount(
 
 async function getOverdueInvoices(): Promise<PaginatedInvoices> {
   const response = await apiClient.get('/api/billing/invoices/overdue/');
+  return response.data;
+}
+
+// ============================================================================
+// Proforma Invoices API
+// ============================================================================
+
+/**
+ * Get proforma invoices only
+ * Convenience wrapper around getInvoices with status filter
+ */
+async function getProformas(params?: InvoiceListParams): Promise<PaginatedInvoices> {
+  return getInvoices({ ...params, status: 'PROFORMA' });
+}
+
+/**
+ * Convert proforma to regular invoice
+ * @param id - Proforma invoice ID
+ * @returns The newly created Invoice
+ */
+async function convertProforma(id: number): Promise<Invoice> {
+  const response = await apiClient.post(
+    `/api/billing/invoices/${id}/convert/`
+  );
+  return response.data;
+}
+
+/**
+ * Convert proforma to regular invoice (partial - specific items only)
+ * @param id - Proforma invoice ID
+ * @param itemIds - Specific item IDs to convert
+ * @returns The newly created Invoice
+ */
+async function convertProformaItems(
+  id: number,
+  itemIds: number[]
+): Promise<Invoice> {
+  const data: ProformaConvertRequest = { item_ids: itemIds };
+  const response = await apiClient.post(
+    `/api/billing/invoices/${id}/convert/`,
+    data
+  );
+  return response.data;
+}
+
+/**
+ * Renew an expired proforma invoice
+ * @param id - Proforma invoice ID
+ * @param validityDays - Optional: custom validity period (default 30 days)
+ * @returns The newly created proforma Invoice
+ */
+async function renewProforma(
+  id: number,
+  validityDays?: number
+): Promise<Invoice> {
+  const data: ProformaRenewRequest = validityDays ? { validity_days: validityDays } : {};
+  const response = await apiClient.post(
+    `/api/billing/invoices/${id}/renew/`,
+    data
+  );
   return response.data;
 }
 
@@ -492,6 +555,12 @@ export const billingApi = {
   removeInvoiceItem,
   applyDiscount,
   getOverdueInvoices,
+
+  // Proforma Invoices
+  getProformas,
+  convertProforma,
+  convertProformaItems,
+  renewProforma,
 
   // Payments
   getPayments,

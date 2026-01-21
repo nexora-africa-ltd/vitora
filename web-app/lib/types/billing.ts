@@ -60,12 +60,14 @@ export interface ServiceUpdateData extends Partial<ServiceCreateData> {}
 // ============================================================================
 
 export type InvoiceStatus =
+  | 'PROFORMA'
   | 'DRAFT'
   | 'PENDING'
   | 'PARTIAL'
   | 'PAID'
   | 'CANCELLED'
-  | 'OVERDUE';
+  | 'OVERDUE'
+  | 'WRITTEN_OFF';
 
 export interface Invoice {
   id: number;
@@ -105,6 +107,15 @@ export interface Invoice {
   cancelled_by?: number;
   cancellation_reason?: string;
 
+  // Proforma-specific fields
+  valid_until?: string;                  // ISO date string for proforma validity
+  is_converted: boolean;                 // True if proforma has been converted
+  converted_at?: string;                 // ISO datetime when conversion occurred
+  converted_from_proforma?: number;      // ID of source proforma (for converted invoices)
+  is_valid: boolean;                     // Computed: proforma not expired
+  days_until_expiry: number;             // Computed: -1 if N/A, 0+ for proformas
+  can_convert: boolean;                  // Computed: proforma + valid + has unconverted items
+
   // Nested items (when expanded)
   items?: InvoiceItem[];
 }
@@ -129,6 +140,11 @@ export interface InvoiceItem {
   // Insurance
   is_covered_by_insurance: boolean;
   sha_code?: string;
+
+  // Proforma conversion tracking
+  is_converted: boolean;
+  converted_at?: string;
+  converted_from_item?: number;          // ID of source proforma item
 
   created_at: string;
   updated_at: string;
@@ -156,6 +172,29 @@ export interface InvoiceItemCreateData {
   lab_order?: number;
   is_covered_by_insurance?: boolean;
   sha_code?: string;
+}
+
+/**
+ * Proforma invoice creation data
+ * Extends InvoiceCreateData with proforma-specific fields
+ */
+export interface ProformaCreateData extends InvoiceCreateData {
+  status: 'PROFORMA';
+  valid_until?: string;                  // Optional custom validity date (ISO date string)
+}
+
+/**
+ * Request data for converting proforma to invoice
+ */
+export interface ProformaConvertRequest {
+  item_ids?: number[];                   // Optional: specific items for partial conversion
+}
+
+/**
+ * Request data for renewing expired proforma
+ */
+export interface ProformaRenewRequest {
+  validity_days?: number;                // Optional: custom validity period (default 30)
 }
 
 export type DiscountType = 'PERCENTAGE' | 'FIXED';

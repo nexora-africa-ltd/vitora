@@ -103,6 +103,9 @@ export type {
   InvoiceItemCreateData,
   InvoiceListParams,
   ApplyDiscountData,
+  ProformaCreateData,
+  ProformaConvertRequest,
+  ProformaRenewRequest,
   // Payment types
   Payment,
   PaymentMethod,
