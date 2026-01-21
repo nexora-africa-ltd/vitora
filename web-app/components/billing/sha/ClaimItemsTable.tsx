@@ -8,7 +8,8 @@
 'use client';
 
 import React from 'react';
-import { Building2, Shield } from 'lucide-react';
+import { Building2 } from 'lucide-react';
+import { SHALogo } from '@/components/ui/sha-logo';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import {
@@ -51,7 +52,7 @@ function CoverageBadge({ coverageType }: { coverageType: CoverageType }) {
     className: string;
   }> = {
     sha: {
-      icon: <Shield className="h-3 w-3" />,
+      icon: <SHALogo size="xs" />,
       label: 'SHA',
       className: 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-100',
     },
@@ -61,7 +62,7 @@ function CoverageBadge({ coverageType }: { coverageType: CoverageType }) {
       className: 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-100',
     },
     both: {
-      icon: <Shield className="h-3 w-3" />,
+      icon: <SHALogo size="xs" />,
       label: 'SHA+PFMS',
       className: 'bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-100',
     },

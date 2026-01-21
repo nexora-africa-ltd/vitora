@@ -24,7 +24,8 @@ import {
 } from '@/components/ui/alert-dialog';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Badge } from '@/components/ui/badge';
-import { Shield, Users, UserCheck, AlertTriangle } from 'lucide-react';
+import { Users, UserCheck, AlertTriangle } from 'lucide-react';
+import { SHALogo } from '@/components/ui/sha-logo';
 import { cn } from '@/lib/utils';
 import type { DirectEligibilityCheckResponse, SHADependent } from '@/lib/types/sha';
 
@@ -79,7 +80,7 @@ export function SHAPrincipalConfirmationDialog({
       <AlertDialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
         <AlertDialogHeader>
           <AlertDialogTitle className="flex items-center gap-2">
-            <Shield className="h-5 w-5 text-secondary" />
+            <SHALogo size="md" />
             SHA Record Found - Confirm Identity
           </AlertDialogTitle>
           <AlertDialogDescription asChild>

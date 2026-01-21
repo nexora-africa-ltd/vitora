@@ -14,7 +14,6 @@ import { useQuery } from '@tanstack/react-query';
 import {
   Users,
   User,
-  Shield,
   CheckCircle2,
   XCircle,
   Clock,
@@ -23,6 +22,7 @@ import {
   UserPlus,
   AlertCircle,
 } from 'lucide-react';
+import { SHALogo } from '@/components/ui/sha-logo';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
@@ -361,7 +361,7 @@ export function DependentsView({
         {/* Principal Member Info */}
         <div className="mt-4 pt-4 border-t">
           <div className="flex items-center gap-2 text-sm text-muted-foreground">
-            <Shield className="h-4 w-4" />
+            <SHALogo size="sm" />
             <span>Principal: {principalMember.patient_name}</span>
             <span className="font-mono">({principalMember.sha_member_number})</span>
           </div>

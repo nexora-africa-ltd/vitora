@@ -1,6 +1,7 @@
 'use client';
 
-import { Building2, Construction, CreditCard, ShieldCheck } from 'lucide-react';
+import { Building2, Construction, CreditCard } from 'lucide-react';
+import { SHALogo } from '@/components/ui/sha-logo';
 import { PageHeader } from '@/components/shared/page-header';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -39,7 +40,7 @@ export default function InsurancePage() {
                 defaultTab="eligibility"
                 trigger={
                   <Button>
-                    <ShieldCheck className="h-4 w-4 mr-2" />
+                    <SHALogo size="sm" className="mr-2" />
                     Verify Member
                   </Button>
                 }

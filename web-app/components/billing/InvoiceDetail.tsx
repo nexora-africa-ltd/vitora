@@ -41,13 +41,13 @@ import {
   AlertCircle,
   Percent,
   Plus,
-  Shield,
   ExternalLink,
   Clock,
   ArrowRightCircle,
   RefreshCw,
   Link2,
 } from 'lucide-react';
+import { SHALogo } from '@/components/ui/sha-logo';
 import { ClaimSubmissionButton, ClaimStatusBadge } from '@/components/billing/sha';
 import type { Invoice, InvoiceItem, InvoiceStatus } from '@/lib/types/billing';
 import type { Claim } from '@/lib/types/sha';
@@ -337,7 +337,7 @@ export function InvoiceDetail({
         <Card className="border-blue-200 dark:border-blue-800">
           <CardHeader className="pb-2">
             <div className="flex items-center gap-2">
-              <Shield className="h-5 w-5 text-blue-600" />
+              <SHALogo size="md" />
               <CardTitle className="text-sm font-medium">SHA Insurance Claim</CardTitle>
             </div>
           </CardHeader>

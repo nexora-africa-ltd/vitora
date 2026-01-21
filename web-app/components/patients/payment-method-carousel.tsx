@@ -7,7 +7,8 @@
 'use client';
 
 import * as React from 'react';
-import { CheckCircle2, CreditCard, Shield, Building2, Wallet } from 'lucide-react';
+import { CheckCircle2, CreditCard, Building2, Wallet } from 'lucide-react';
+import { SHALogo } from '@/components/ui/sha-logo';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import {
@@ -24,7 +25,7 @@ import { type PaymentMode, PAYMENT_MODE_OPTIONS } from '@/lib/types/patient';
 // Payment mode icons mapping
 const PAYMENT_MODE_ICONS: Record<PaymentMode, React.ReactNode> = {
   cash: <Wallet className="h-6 w-6 text-green-600" />,
-  sha: <Shield className="h-6 w-6 text-blue-600" />,
+  sha: <SHALogo size="lg" />,
   insurance_private: <CreditCard className="h-6 w-6 text-purple-600" />,
   insurance_corporate: <Building2 className="h-6 w-6 text-orange-600" />,
 };
