@@ -199,6 +199,58 @@ class InvoiceViewSet(viewsets.ModelViewSet):
         serializer = self.get_serializer(queryset, many=True)
         return Response(serializer.data)
 
+    @action(detail=True, methods=["post"])
+    def convert(self, request, pk=None):
+        """
+        Convert a proforma invoice to a regular invoice.
+        
+        POST /api/billing/invoices/{id}/convert/
+        
+        Request body (optional):
+            item_ids: List of specific item IDs to convert (for partial conversion)
+        
+        Returns:
+            The newly created invoice
+        """
+        proforma = self.get_object()
+        item_ids = request.data.get("item_ids")
+        
+        try:
+            new_invoice = proforma.convert_to_invoice(
+                converted_by=request.user,
+                item_ids=item_ids,
+            )
+            serializer = self.get_serializer(new_invoice)
+            return Response(serializer.data, status=status.HTTP_201_CREATED)
+        except ValidationError as e:
+            return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
+
+    @action(detail=True, methods=["post"])
+    def renew(self, request, pk=None):
+        """
+        Renew an expired proforma invoice.
+        
+        POST /api/billing/invoices/{id}/renew/
+        
+        Request body (optional):
+            validity_days: Custom validity period in days (default: 30)
+        
+        Returns:
+            The newly created proforma invoice
+        """
+        proforma = self.get_object()
+        validity_days = request.data.get("validity_days")
+        
+        try:
+            new_proforma = proforma.renew(
+                renewed_by=request.user,
+                validity_days=validity_days,
+            )
+            serializer = self.get_serializer(new_proforma)
+            return Response(serializer.data, status=status.HTTP_201_CREATED)
+        except ValidationError as e:
+            return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
+
     @action(detail=True, methods=["get", "post"])
     def items(self, request, pk=None):
         """List or add invoice items."""
