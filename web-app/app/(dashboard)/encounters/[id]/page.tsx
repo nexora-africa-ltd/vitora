@@ -118,48 +118,49 @@ export default function EncounterDetailPage() {
   const type = ENCOUNTER_TYPES.find((t) => t.value === encounter.encounter_type);
 
   return (
-    <div className="container mx-auto py-6 space-y-6">
+    <div className="container mx-auto px-3 py-4 sm:px-4 sm:py-6 space-y-4 sm:space-y-6">
       {/* Header */}
-      <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
-        <div className="flex items-start gap-4">
-          <Button variant="ghost" size="icon" onClick={() => router.back()}>
-            <ArrowLeft className="h-5 w-5" />
+      <div className="flex flex-col gap-3 sm:gap-4">
+        <div className="flex items-start gap-2 sm:gap-4">
+          <Button variant="ghost" size="icon" className="shrink-0 h-9 w-9 sm:h-10 sm:w-10" onClick={() => router.back()}>
+            <ArrowLeft className="h-4 w-4 sm:h-5 sm:w-5" />
           </Button>
-          <div>
+          <div className="min-w-0 flex-1">
             <div className="flex items-center gap-2 flex-wrap">
-              <h1 className="text-2xl font-bold">
+              <h1 className="text-lg sm:text-2xl font-bold truncate">
                 {type?.label} Encounter
               </h1>
               <Badge className={status?.color}>{status?.label}</Badge>
             </div>
-            <div className="flex items-center gap-4 mt-1 text-sm text-muted-foreground">
+            <div className="flex flex-wrap items-center gap-x-3 gap-y-1 mt-1 text-xs sm:text-sm text-muted-foreground">
               <Link
                 href={`/patients/${encounter.patient}`}
-                className="flex items-center gap-1 hover:text-primary"
+                className="flex items-center gap-1 hover:text-primary truncate max-w-[200px] sm:max-w-none"
               >
-                <User className="h-4 w-4" />
-                {encounter.patient_name} ({encounter.patient_mrn})
+                <User className="h-3.5 w-3.5 sm:h-4 sm:w-4 shrink-0" />
+                <span className="truncate">{encounter.patient_name}</span>
+                <span className="hidden sm:inline">({encounter.patient_mrn})</span>
               </Link>
               <span className="flex items-center gap-1">
-                <Calendar className="h-4 w-4" />
+                <Calendar className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
                 {formatDate(encounter.encounter_date)}
               </span>
             </div>
           </div>
         </div>
 
-        {/* Action buttons */}
-        <div className="flex items-center gap-2">
+        {/* Action buttons - Full width on mobile, inline on desktop */}
+        <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 sm:self-end">
           {/* Show "Continue Encounter" for active encounters, "View Details" for completed */}
           {encounter.status === 'COMPLETED' || encounter.status === 'CANCELLED' ? (
-            <Button variant="outline" asChild>
+            <Button variant="outline" className="w-full sm:w-auto" asChild>
               <Link href={`/encounters/${encounter.id}/edit`}>
                 <Eye className="h-4 w-4 mr-2" />
                 View Details
               </Link>
             </Button>
           ) : (
-            <Button asChild>
+            <Button className="w-full sm:w-auto" asChild>
               <Link href={`/encounters/${encounter.id}/edit`}>
                 <PlayCircle className="h-4 w-4 mr-2" />
                 Continue Encounter
@@ -168,9 +169,10 @@ export default function EncounterDetailPage() {
           )}
 
           {encounter.encounter_type === 'OPD' && (
-            <Button variant="secondary" asChild>
+            <Button variant="secondary" className="w-full sm:w-auto text-sm" asChild>
               <Link href={`/admissions/recommendations/new?encounter=${encounter.id}`}>
-                Recommend for Admission
+                <span className="sm:hidden">Admit</span>
+                <span className="hidden sm:inline">Recommend for Admission</span>
               </Link>
             </Button>
           )}
@@ -179,14 +181,14 @@ export default function EncounterDetailPage() {
 
       {/* Chief Complaint */}
       <Card>
-        <CardHeader>
-          <CardTitle className="text-lg flex items-center gap-2">
-            <Stethoscope className="h-5 w-5" />
+        <CardHeader className="px-3 sm:px-6 py-3 sm:py-4">
+          <CardTitle className="text-base sm:text-lg flex items-center gap-2">
+            <Stethoscope className="h-4 w-4 sm:h-5 sm:w-5" />
             Chief Complaint
           </CardTitle>
         </CardHeader>
-        <CardContent>
-          <p>{encounter.chief_complaint}</p>
+        <CardContent className="px-3 sm:px-6">
+          <p className="text-sm sm:text-base">{encounter.chief_complaint}</p>
         </CardContent>
       </Card>
 
@@ -195,14 +197,14 @@ export default function EncounterDetailPage() {
 
       {/* Tabs */}
       <Tabs defaultValue="soap" className="space-y-4">
-        <TabsList className="flex-wrap h-auto gap-1">
-          <TabsTrigger value="soap">📋 SOAP Note</TabsTrigger>
-          <TabsTrigger value="assessment">Assessment</TabsTrigger>
-          <TabsTrigger value="diagnoses">Diagnoses ({diagnoses?.length || 0})</TabsTrigger>
-          <TabsTrigger value="treatment">Treatment Plan</TabsTrigger>
-          <TabsTrigger value="lab">Lab ({labOrders?.length || 0})</TabsTrigger>
-          <TabsTrigger value="pharmacy">Prescriptions ({prescriptions?.length || 0})</TabsTrigger>
-          <TabsTrigger value="history">History</TabsTrigger>
+        <TabsList className="flex flex-wrap h-auto gap-1 p-1 justify-start">
+          <TabsTrigger value="soap" className="text-xs sm:text-sm">📋 SOAP</TabsTrigger>
+          <TabsTrigger value="assessment" className="text-xs sm:text-sm">Assessment</TabsTrigger>
+          <TabsTrigger value="diagnoses" className="text-xs sm:text-sm">Dx ({diagnoses?.length || 0})</TabsTrigger>
+          <TabsTrigger value="treatment" className="text-xs sm:text-sm">Treatment</TabsTrigger>
+          <TabsTrigger value="lab" className="text-xs sm:text-sm">Lab ({labOrders?.length || 0})</TabsTrigger>
+          <TabsTrigger value="pharmacy" className="text-xs sm:text-sm">Rx ({prescriptions?.length || 0})</TabsTrigger>
+          <TabsTrigger value="history" className="text-xs sm:text-sm">Hx</TabsTrigger>
         </TabsList>
 
         <TabsContent value="soap">

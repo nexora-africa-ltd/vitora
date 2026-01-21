@@ -40,12 +40,19 @@ export function useEncounterDiagnoses(encounterId: number) {
 
 /**
  * Hook for fetching encounter treatment plan.
+ * Note: 404 is expected when no treatment plan exists - handled gracefully by returning null.
  */
 export function useEncounterTreatmentPlan(encounterId: number) {
   return useQuery({
     queryKey: ['encounters', encounterId, 'treatment-plan'],
     queryFn: () => encountersApi.getTreatmentPlan(encounterId),
     enabled: !!encounterId,
+    // Don't retry on 404 - it means no treatment plan exists (expected)
+    retry: (failureCount, error) => {
+      const axiosError = error as { response?: { status?: number } };
+      if (axiosError.response?.status === 404) return false;
+      return failureCount < 3;
+    },
   });
 }
 

@@ -50,14 +50,16 @@ export default function EncountersPage() {
       />
 
       <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4">
-        <TabsList className="grid w-full max-w-md grid-cols-2">
-          <TabsTrigger value="queue" className="flex items-center gap-2">
-            <Users className="h-4 w-4" />
-            Consultation Queue
+        <TabsList className="grid w-full max-w-md grid-cols-2 h-auto">
+          <TabsTrigger value="queue" className="flex items-center gap-1.5 sm:gap-2 text-xs sm:text-sm py-2">
+            <Users className="h-3.5 w-3.5 sm:h-4 sm:w-4 shrink-0" />
+            <span className="truncate">Queue</span>
+            <span className="hidden sm:inline">/ Consultation</span>
           </TabsTrigger>
-          <TabsTrigger value="all" className="flex items-center gap-2">
-            <ClipboardList className="h-4 w-4" />
-            All Encounters
+          <TabsTrigger value="all" className="flex items-center gap-1.5 sm:gap-2 text-xs sm:text-sm py-2">
+            <ClipboardList className="h-3.5 w-3.5 sm:h-4 sm:w-4 shrink-0" />
+            <span className="truncate">All</span>
+            <span className="hidden sm:inline">Encounters</span>
           </TabsTrigger>
         </TabsList>
 
