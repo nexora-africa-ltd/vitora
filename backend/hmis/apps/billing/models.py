@@ -388,6 +388,22 @@ class InvoiceItem(models.Model):
         max_digits=10, decimal_places=2, default=Decimal("0.00")
     )
 
+    # Stock allocation tracking (for pharmacy items)
+    stock_batch = models.ForeignKey(
+        "pharmacy.StockBatch",
+        on_delete=models.PROTECT,
+        null=True,
+        blank=True,
+        related_name="invoice_items",
+        help_text="Stock batch allocated for pharmacy items",
+    )
+    stock_allocated = models.DecimalField(
+        max_digits=10,
+        decimal_places=2,
+        default=Decimal("0.00"),
+        help_text="Quantity allocated from stock batch",
+    )
+
     # Audit
     created_at = models.DateTimeField(auto_now_add=True)
 
@@ -398,12 +414,30 @@ class InvoiceItem(models.Model):
         return f"{self.description} - {self.quantity} x {self.unit_price}"
 
     def save(self, *args, **kwargs):
-        """Override save to calculate line total and update invoice."""
+        """Override save to calculate line total, handle stock allocation, and update invoice."""
+        is_new = self.pk is None
+        old_quantity = Decimal("0")
+        
+        # Track previous quantity for updates
+        if not is_new:
+            try:
+                old_item = InvoiceItem.objects.get(pk=self.pk)
+                old_quantity = old_item.quantity
+            except InvoiceItem.DoesNotExist:
+                pass
+
         # Calculate line_total before validation if not set
         if not self.line_total:
             self.line_total = self.calculate_line_total()
         self.full_clean()
         self.line_total = self.calculate_line_total()  # Recalculate after validation
+
+        # Handle stock allocation for pharmacy items
+        if self.drug and self.item_type == self.ItemType.PHARMACY:
+            quantity_change = self.quantity - old_quantity if not is_new else self.quantity
+            if quantity_change != 0:
+                self._handle_stock_allocation(quantity_change)
+
         super().save(*args, **kwargs)
         # Update invoice totals
         self.invoice.calculate_totals()
@@ -414,12 +448,96 @@ class InvoiceItem(models.Model):
             raise ValidationError({"quantity": "Quantity must be greater than 0."})
         if self.unit_price is not None and self.unit_price <= 0:
             raise ValidationError({"unit_price": "Unit price must be greater than 0."})
+        
+        # Validate stock availability for pharmacy items
+        if self.drug and self.item_type == self.ItemType.PHARMACY:
+            self._validate_stock_availability()
 
     def delete(self, *args, **kwargs):
-        """Override delete to update invoice totals."""
+        """Override delete to restore stock and update invoice totals."""
         invoice = self.invoice
+        
+        # Restore stock if pharmacy item with allocation
+        if self.drug and self.stock_batch and self.stock_allocated > 0:
+            self.stock_batch.quantity_available += self.stock_allocated
+            self.stock_batch.save()
+        
         super().delete(*args, **kwargs)
         invoice.calculate_totals()
+
+    def _validate_stock_availability(self):
+        """Validate that sufficient stock is available for pharmacy items."""
+        from hmis.apps.pharmacy.models import StockBatch
+        
+        # Get available stock (FEFO - First Expiry, First Out)
+        available_batches = StockBatch.objects.filter(
+            drug=self.drug,
+            status="AVAILABLE",
+            quantity_available__gt=0,
+            expiry_date__gt=date.today(),  # Not expired
+        ).order_by("expiry_date")
+        
+        total_available = sum(batch.quantity_available for batch in available_batches)
+        
+        # For updates, account for currently allocated stock
+        currently_allocated = Decimal("0")
+        if self.pk:
+            try:
+                old_item = InvoiceItem.objects.get(pk=self.pk)
+                currently_allocated = old_item.stock_allocated
+            except InvoiceItem.DoesNotExist:
+                pass
+        
+        if total_available + currently_allocated < self.quantity:
+            raise ValidationError({
+                "quantity": f"Insufficient stock available. Requested: {self.quantity}, "
+                           f"Available: {total_available + currently_allocated}"
+            })
+        
+        if not available_batches.exists():
+            raise ValidationError({
+                "drug": f"No available stock for {self.drug.generic_name}. "
+                       "All batches are either expired or depleted."
+            })
+
+    def _handle_stock_allocation(self, quantity_change: Decimal):
+        """Handle stock allocation/deallocation for pharmacy items."""
+        from hmis.apps.pharmacy.models import StockBatch
+        
+        if quantity_change > 0:
+            # Need to allocate more stock (FEFO - First Expiry, First Out)
+            available_batches = StockBatch.objects.filter(
+                drug=self.drug,
+                status="AVAILABLE",
+                quantity_available__gt=0,
+                expiry_date__gt=date.today(),
+            ).order_by("expiry_date")
+            
+            remaining_to_allocate = quantity_change
+            
+            for batch in available_batches:
+                if remaining_to_allocate <= 0:
+                    break
+                
+                allocate_from_batch = min(batch.quantity_available, remaining_to_allocate)
+                batch.quantity_available -= allocate_from_batch
+                batch.save()
+                
+                # Track the batch used (use first batch for simplicity)
+                if not self.stock_batch:
+                    self.stock_batch = batch
+                
+                self.stock_allocated += allocate_from_batch
+                remaining_to_allocate -= allocate_from_batch
+                
+        elif quantity_change < 0:
+            # Need to deallocate stock (return to batch)
+            quantity_to_return = abs(quantity_change)
+            
+            if self.stock_batch and self.stock_allocated >= quantity_to_return:
+                self.stock_batch.quantity_available += quantity_to_return
+                self.stock_batch.save()
+                self.stock_allocated -= quantity_to_return
 
     def calculate_line_total(self) -> Decimal:
         """Calculate line total."""
