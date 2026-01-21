@@ -104,8 +104,8 @@ def test_encounter(db, sample_patient, test_user):
         encounter_type="OPD",
         encounter_date=date.today(),
         chief_complaint="Fever and headache",
-        status="in_progress",
-        created_by=test_user,
+        status="IN_PROGRESS",
+        finalized_by=test_user,
     )
 
 
@@ -307,8 +307,7 @@ class TestEncounterInvoiceEdgeCases:
             encounter_type="OPD",
             encounter_date=date.today(),
             chief_complaint="Follow-up visit",
-            status="in_progress",
-            created_by=test_user,
+            status="IN_PROGRESS",
         )
 
         # Should use existing invoice, not create new one
@@ -330,8 +329,8 @@ class TestEncounterInvoiceEdgeCases:
             encounter_type="EMERGENCY",
             encounter_date=date.today(),
             chief_complaint="Severe chest pain",
-            status="in_progress",
-            created_by=test_user,
+            status="IN_PROGRESS",
+            finalized_by=test_user,
         )
 
         invoice = Invoice.objects.get(encounter=encounter)
