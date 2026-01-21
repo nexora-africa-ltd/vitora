@@ -17,3 +17,5 @@ export { DailyCollectionReportView } from './DailyCollectionReport';
 export { BillingDashboard } from './BillingDashboard';
 export { AddInvoiceItemDialog } from './AddInvoiceItemDialog';
 export { ApplyDiscountDialog } from './ApplyDiscountDialog';
+export { ProformaConvertDialog } from './ProformaConvertDialog';
+export { ProformaRenewDialog } from './ProformaRenewDialog';
