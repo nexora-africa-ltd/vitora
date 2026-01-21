@@ -374,8 +374,8 @@ export default function FinanceOverviewPage() {
   const rejectedClaims = claims.filter((c) => c.status === 'rejected').length;
 
   // Invoice stats
-  const invoices = invoicesData?.results || [];
   const invoiceStats = useMemo(() => {
+    const invoices = invoicesData?.results || [];
     const pending = invoices.filter((i) => i.status === 'PENDING').length;
     const overdue = invoices.filter((i) => i.status === 'OVERDUE').length;
     const paid = invoices.filter((i) => i.status === 'PAID').length;
@@ -383,17 +383,17 @@ export default function FinanceOverviewPage() {
       .filter((i) => ['PENDING', 'PARTIAL', 'OVERDUE'].includes(i.status))
       .reduce((sum, i) => sum + parseFloat(i.balance_due || '0'), 0);
     return { pending, overdue, paid, totalReceivable };
-  }, [invoices]);
+  }, [invoicesData?.results]);
 
   // Proforma stats
-  const proformas = proformasData?.results || [];
   const proformaStats = useMemo(() => {
+    const proformas = proformasData?.results || [];
     const active = proformas.filter((p) => p.is_valid && !p.is_converted).length;
     const expiringSoon = proformas.filter(
       (p) => p.is_valid && !p.is_converted && p.days_until_expiry <= 7
     ).length;
     return { active, expiringSoon };
-  }, [proformas]);
+  }, [proformasData?.results]);
 
   // Outstanding balances
   const outstandingBalances = outstandingData || [];
