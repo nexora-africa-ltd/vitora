@@ -24,7 +24,7 @@ import {
 } from '@/components/ui/select';
 import { Input } from '@/components/ui/input';
 import { Skeleton } from '@/components/ui/skeleton';
-import { Plus, Search, FileText } from 'lucide-react';
+import { Plus, Search, FileText, Clock, ArrowRightCircle } from 'lucide-react';
 import type { Invoice, InvoiceStatus } from '@/lib/types/billing';
 import { formatCurrency, formatDate } from '@/lib/utils/format';
 
@@ -38,6 +38,7 @@ interface InvoiceListProps {
   onSelect: (invoice: Invoice) => void;
   onCreateNew: () => void;
   onFilter?: (filters: { status?: InvoiceStatus; search?: string }) => void;
+  onConvertProforma?: (invoice: Invoice) => void;
 }
 
 // ============================================================================
@@ -54,6 +55,41 @@ const statusColors: Record<InvoiceStatus, string> = {
   CANCELLED: 'bg-gray-100 text-gray-500 hover:bg-gray-200',
   WRITTEN_OFF: 'bg-gray-100 text-gray-500 hover:bg-gray-200',
 };
+
+// ============================================================================
+// Proforma Expiry Badge
+// ============================================================================
+
+function ProformaExpiryBadge({ invoice }: { invoice: Invoice }) {
+  if (invoice.status !== 'PROFORMA') return null;
+  
+  const days = invoice.days_until_expiry;
+  
+  // Determine color based on days remaining
+  let colorClass: string;
+  let label: string;
+  
+  if (days < 0 || !invoice.is_valid) {
+    colorClass = 'bg-red-100 text-red-700';
+    label = 'Expired';
+  } else if (days === 0) {
+    colorClass = 'bg-red-100 text-red-700';
+    label = 'Expires today';
+  } else if (days <= 7) {
+    colorClass = 'bg-amber-100 text-amber-700';
+    label = `${days}d left`;
+  } else {
+    colorClass = 'bg-green-100 text-green-700';
+    label = `${days}d left`;
+  }
+  
+  return (
+    <Badge variant="outline" className={`${colorClass} ml-1 text-xs`}>
+      <Clock className="h-3 w-3 mr-1" />
+      {label}
+    </Badge>
+  );
+}
 
 // ============================================================================
 // Loading Skeleton
@@ -108,6 +144,7 @@ export function InvoiceList({
   onSelect,
   onCreateNew,
   onFilter,
+  onConvertProforma,
 }: InvoiceListProps) {
   const [searchQuery, setSearchQuery] = React.useState('');
   const [statusFilter, setStatusFilter] = React.useState<string>('all');
@@ -159,6 +196,7 @@ export function InvoiceList({
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="all">All Statuses</SelectItem>
+              <SelectItem value="PROFORMA">Proforma</SelectItem>
               <SelectItem value="DRAFT">Draft</SelectItem>
               <SelectItem value="PENDING">Pending</SelectItem>
               <SelectItem value="PARTIAL">Partial</SelectItem>
@@ -190,6 +228,7 @@ export function InvoiceList({
                 <TableHead>Amount</TableHead>
                 <TableHead>Status</TableHead>
                 <TableHead>Due Date</TableHead>
+                <TableHead className="w-[100px]">Actions</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -217,11 +256,30 @@ export function InvoiceList({
                     {formatCurrency(parseFloat(invoice.total_amount))}
                   </TableCell>
                   <TableCell>
-                    <Badge className={statusColors[invoice.status]}>
-                      {invoice.status}
-                    </Badge>
+                    <div className="flex items-center gap-1">
+                      <Badge className={statusColors[invoice.status]}>
+                        {invoice.status}
+                      </Badge>
+                      <ProformaExpiryBadge invoice={invoice} />
+                    </div>
                   </TableCell>
                   <TableCell>{formatDate(invoice.due_date)}</TableCell>
+                  <TableCell>
+                    {invoice.status === 'PROFORMA' && invoice.can_convert && onConvertProforma && (
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          onConvertProforma(invoice);
+                        }}
+                        title="Convert to Invoice"
+                      >
+                        <ArrowRightCircle className="h-4 w-4 mr-1" />
+                        Convert
+                      </Button>
+                    )}
+                  </TableCell>
                 </TableRow>
               ))}
             </TableBody>
