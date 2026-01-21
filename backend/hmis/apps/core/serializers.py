@@ -5,7 +5,7 @@ Serializers for core app.
 from django.contrib.auth.models import Permission
 from rest_framework import serializers
 
-from .models import AuditLog, County, Department, Notification, Role, StaffProfile, SubCounty, Ward
+from .models import AuditLog, County, Department, FrontendEvent, Notification, Role, StaffProfile, SubCounty, Ward
 
 
 class PermissionSerializer(serializers.ModelSerializer):
@@ -45,6 +45,66 @@ class AuditLogSerializer(serializers.ModelSerializer):
             "patient_id",
         ]
         read_only_fields = fields  # All fields are read-only
+
+
+class FrontendEventSerializer(serializers.ModelSerializer):
+    """
+    Serializer for FrontendEvent model.
+    
+    Accepts events from frontend applications for logging user interactions.
+    Supports both single event and batch event submission.
+    """
+
+    username = serializers.CharField(source="user.username", read_only=True, default="Anonymous")
+
+    class Meta:
+        """Meta options for FrontendEventSerializer."""
+
+        model = FrontendEvent
+        fields = [
+            "id",
+            "user",
+            "username",
+            "event_type",
+            "resource_type",
+            "resource_id",
+            "client_timestamp",
+            "server_timestamp",
+            "session_id",
+            "device_type",
+            "details",
+            "was_offline",
+        ]
+        read_only_fields = ["id", "user", "username", "server_timestamp"]
+
+    def create(self, validated_data):
+        """Set the user from the request context."""
+        request = self.context.get("request")
+        if request and request.user.is_authenticated:
+            validated_data["user"] = request.user
+        return super().create(validated_data)
+
+
+class FrontendEventBatchSerializer(serializers.Serializer):
+    """
+    Serializer for batch frontend event submission.
+    
+    Allows submitting multiple events at once (useful for offline sync).
+    """
+    
+    events = FrontendEventSerializer(many=True)
+
+    def create(self, validated_data):
+        """Create multiple events at once."""
+        request = self.context.get("request")
+        user = request.user if request and request.user.is_authenticated else None
+        
+        events = []
+        for event_data in validated_data["events"]:
+            event_data["user"] = user
+            events.append(FrontendEvent(**event_data))
+        
+        return FrontendEvent.objects.bulk_create(events)
 
 
 class CountySerializer(serializers.ModelSerializer):

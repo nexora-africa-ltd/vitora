@@ -1,6 +1,6 @@
 'use client';
 
-import { FileText, Stethoscope, ClipboardList, Target, ChevronRight, ChevronLeft } from 'lucide-react';
+import { FileText, Stethoscope, ClipboardList, ChevronRight, ChevronLeft } from 'lucide-react';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '@/components/ui/card';
 import { Textarea } from '@/components/ui/textarea';
@@ -54,23 +54,6 @@ export function ClinicalNotesFormContent({ data, onChange, disabled = false }: C
             onChange={(e) => onChange('physical_examination', e.target.value)}
             disabled={disabled}
             rows={4}
-            className="resize-none"
-          />
-        </div>
-
-        {/* Assessment */}
-        <div className="space-y-2 md:col-span-2">
-          <Label htmlFor="assessment" className="flex items-center gap-2">
-            <Target className="h-4 w-4 text-amber-500" />
-            Assessment
-          </Label>
-          <Textarea
-            id="assessment"
-            placeholder="Clinical assessment and reasoning...&#10;Differential diagnoses, working diagnosis"
-            value={data.assessment}
-            onChange={(e) => onChange('assessment', e.target.value)}
-            disabled={disabled}
-            rows={3}
             className="resize-none"
           />
         </div>

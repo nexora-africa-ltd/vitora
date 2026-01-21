@@ -155,3 +155,27 @@ export function useDeleteDiagnosis(encounterId: number) {
     },
   });
 }
+
+/**
+ * Hook for updating a diagnosis (e.g., changing certainty after lab results).
+ */
+export function useUpdateDiagnosis(encounterId: number) {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: ({ diagnosisId, data }: {
+      diagnosisId: number;
+      data: {
+        icd10_code?: number | null;
+        diagnosis_type?: 'PRIMARY' | 'SECONDARY' | 'DIFFERENTIAL' | 'WORKING';
+        free_text_diagnosis?: string;
+        notes?: string;
+        is_confirmed?: boolean;
+        certainty?: 'confirmed' | 'provisional' | 'ruled_out' | 'suspected';
+      };
+    }) => encountersApi.updateDiagnosis(encounterId, diagnosisId, data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['encounters', encounterId, 'diagnoses'] });
+    },
+  });
+}

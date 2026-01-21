@@ -14,6 +14,7 @@ from .dashboard_views import (
 from .views import (
     AuditLogViewSet,
     DepartmentViewSet,
+    FrontendEventViewSet,
     NotificationViewSet,
     RoleViewSet,
     StaffProfileViewSet,
@@ -23,6 +24,7 @@ from .views import (
 
 router = routers.DefaultRouter()
 router.register(r"auditlogs", AuditLogViewSet, basename="auditlog")
+router.register(r"events", FrontendEventViewSet, basename="frontendevent")
 router.register(r"departments", DepartmentViewSet, basename="department")
 router.register(r"roles", RoleViewSet, basename="role")
 router.register(r"staff", StaffProfileViewSet, basename="staffprofile")

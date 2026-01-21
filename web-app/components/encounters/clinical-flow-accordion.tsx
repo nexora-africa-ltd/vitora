@@ -66,6 +66,8 @@ interface ClinicalFlowAccordionProps {
   onAddDiagnosis: (diagnosis: DiagnosisFormData) => void;
   /** Handler for removing diagnosis */
   onRemoveDiagnosis: (index: number) => void;
+  /** Handler for updating diagnosis (e.g., changing certainty after lab results) */
+  onUpdateDiagnosis?: (index: number, diagnosis: DiagnosisFormData) => void;
   /** Currently selected clinical template */
   selectedTemplate: ClinicalTemplate | null;
   /** Handler for template selection */
@@ -98,6 +100,7 @@ export function ClinicalFlowAccordion({
   diagnoses,
   onAddDiagnosis,
   onRemoveDiagnosis,
+  onUpdateDiagnosis,
   selectedTemplate,
   onTemplateSelect,
   onTemplateDataChange,
@@ -181,6 +184,7 @@ export function ClinicalFlowAccordion({
           diagnoses={diagnoses}
           onAdd={onAddDiagnosis}
           onRemove={onRemoveDiagnosis}
+          onUpdate={onUpdateDiagnosis}
           disabled={disabled}
         />
       ),

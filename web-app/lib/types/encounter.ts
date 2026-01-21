@@ -97,7 +97,7 @@ export interface Diagnosis {
   free_text_diagnosis?: string;
   notes: string;
   is_confirmed: boolean;
-  certainty: 'SUSPECTED' | 'PROBABLE' | 'CONFIRMED';
+  certainty: 'SUSPECTED' | 'PROBABLE' | 'CONFIRMED' | 'RULED_OUT';
   diagnosed_by?: number | null;
   diagnosed_by_name?: string;
   diagnosed_at?: string;

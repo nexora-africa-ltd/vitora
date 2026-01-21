@@ -11,12 +11,14 @@ from rest_framework.permissions import IsAdminUser, IsAuthenticated
 from rest_framework.response import Response
 from rest_framework_simplejwt.views import TokenObtainPairView
 
-from .models import AuditLog, County, Department, Role, StaffProfile, SubCounty, Ward
+from .models import AuditLog, County, Department, FrontendEvent, Role, StaffProfile, SubCounty, Ward
 from .permissions import AuditLogPermission
 from .serializers import (
     AuditLogSerializer,
     CountySerializer,
     DepartmentSerializer,
+    FrontendEventBatchSerializer,
+    FrontendEventSerializer,
     PermissionSerializer,
     RoleSerializer,
     StaffProfileSerializer,
@@ -39,6 +41,85 @@ class AuditLogViewSet(ListModelMixin, RetrieveModelMixin, viewsets.GenericViewSe
     search_fields = ["action", "resource_type", "user__username"]
     ordering_fields = ["timestamp", "action"]
     ordering = ["-timestamp"]
+
+
+class FrontendEventViewSet(viewsets.GenericViewSet):
+    """
+    ViewSet for frontend event logging.
+
+    Allows authenticated users to log frontend events for analytics and debugging.
+    Supports both single event and batch event submission.
+    
+    Endpoints:
+    - POST /api/events/ - Log a single event
+    - POST /api/events/batch/ - Log multiple events at once (for offline sync)
+    - GET /api/events/ - List events (admin only)
+    """
+
+    queryset = FrontendEvent.objects.all()
+    serializer_class = FrontendEventSerializer
+    permission_classes = [IsAuthenticated]
+    filterset_fields = ["event_type", "resource_type", "session_id", "was_offline"]
+    search_fields = ["event_type", "resource_type", "session_id"]
+    ordering_fields = ["server_timestamp", "client_timestamp"]
+    ordering = ["-server_timestamp"]
+
+    def get_queryset(self):
+        """Filter queryset based on user permissions."""
+        queryset = super().get_queryset()
+        # Non-admin users can only see their own events
+        if not self.request.user.is_staff:
+            queryset = queryset.filter(user=self.request.user)
+        return queryset
+
+    def list(self, request):
+        """List frontend events (filtered by permissions)."""
+        queryset = self.filter_queryset(self.get_queryset())
+        page = self.paginate_queryset(queryset)
+        if page is not None:
+            serializer = self.get_serializer(page, many=True)
+            return self.get_paginated_response(serializer.data)
+        serializer = self.get_serializer(queryset, many=True)
+        return Response(serializer.data)
+
+    def create(self, request):
+        """Log a single frontend event."""
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        serializer.save()
+        return Response(serializer.data, status=status.HTTP_201_CREATED)
+
+    @action(detail=False, methods=["post"])
+    def batch(self, request):
+        """
+        Log multiple frontend events at once.
+        
+        Useful for syncing events that were queued while offline.
+        
+        Request body:
+        {
+            "events": [
+                {
+                    "event_type": "encounter_save",
+                    "resource_type": "Encounter",
+                    "resource_id": 123,
+                    "client_timestamp": "2026-01-22T10:30:00Z",
+                    "session_id": "abc123",
+                    "device_type": "web",
+                    "details": {"field": "chief_complaint"},
+                    "was_offline": true
+                },
+                ...
+            ]
+        }
+        """
+        serializer = FrontendEventBatchSerializer(data=request.data, context={"request": request})
+        serializer.is_valid(raise_exception=True)
+        events = serializer.save()
+        return Response(
+            {"message": f"Successfully logged {len(events)} events", "count": len(events)},
+            status=status.HTTP_201_CREATED,
+        )
 
 
 class PermissionViewSet(ListModelMixin, RetrieveModelMixin, viewsets.GenericViewSet):

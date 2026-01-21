@@ -1,7 +1,7 @@
 'use client';
 
-import { useState, useCallback } from 'react';
-import { Search, Plus, Trash2, AlertCircle, Check, X, ChevronLeft } from 'lucide-react';
+import { useState, useCallback, useEffect } from 'react';
+import { Search, Plus, Trash2, AlertCircle, Check, X, ChevronLeft, Pencil } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -19,11 +19,21 @@ import type { DiagnosisFormData, ICD10SearchResult } from '@/lib/types/encounter
 
 interface DiagnosisEntryProps {
   onAdd: (diagnosis: DiagnosisFormData) => void;
+  onUpdate?: (index: number, diagnosis: DiagnosisFormData) => void;
   existingDiagnoses: DiagnosisFormData[];
+  editingDiagnosis?: { index: number; data: DiagnosisFormData } | null;
+  onCancelEdit?: () => void;
   disabled?: boolean;
 }
 
-export function DiagnosisEntry({ onAdd, existingDiagnoses, disabled = false }: DiagnosisEntryProps) {
+export function DiagnosisEntry({ 
+  onAdd, 
+  onUpdate,
+  existingDiagnoses, 
+  editingDiagnosis,
+  onCancelEdit,
+  disabled = false 
+}: DiagnosisEntryProps) {
   const [searchQuery, setSearchQuery] = useState('');
   const [isSearchOpen, setIsSearchOpen] = useState(false);
   const [selectedCode, setSelectedCode] = useState<ICD10SearchResult | null>(null);
@@ -40,6 +50,44 @@ export function DiagnosisEntry({ onAdd, existingDiagnoses, disabled = false }: D
   });
 
   const { data: searchResults, isLoading: isSearching } = useICD10Search(searchQuery);
+
+  // Populate form when editing an existing diagnosis
+  useEffect(() => {
+    if (editingDiagnosis) {
+      setFormData(editingDiagnosis.data);
+      // Set ICD-11 or ICD-10 selection based on existing data
+      if (editingDiagnosis.data.icd11_code) {
+        setUseICD11(true);
+        setIcd11Value({ 
+          code: editingDiagnosis.data.icd11_code, 
+          title: editingDiagnosis.data.icd11_display?.replace(`${editingDiagnosis.data.icd11_code} - `, '') || '' 
+        });
+        setSelectedCode(null);
+      } else if (editingDiagnosis.data.icd10_code) {
+        setUseICD11(false);
+        setSelectedCode({
+          id: editingDiagnosis.data.icd10_code,
+          code: editingDiagnosis.data.icd10_display?.split(' - ')[0] || '',
+          description: editingDiagnosis.data.icd10_display?.split(' - ')[1] || '',
+          short_description: editingDiagnosis.data.icd10_display?.split(' - ')[1] || '',
+          category: '',
+        });
+        setIcd11Value(null);
+      }
+    } else {
+      // Reset form when not editing
+      setSelectedCode(null);
+      setIcd11Value(null);
+      setFormData({
+        icd10_code: null,
+        diagnosis_type: existingDiagnoses.some(d => d.diagnosis_type === 'PRIMARY') ? 'SECONDARY' : 'PRIMARY',
+        free_text_diagnosis: '',
+        notes: '',
+        is_confirmed: false,
+        certainty: 'SUSPECTED',
+      });
+    }
+  }, [editingDiagnosis, existingDiagnoses]);
 
   const handleSelectCode = useCallback((code: ICD10SearchResult) => {
     setSelectedCode(code);
@@ -84,15 +132,22 @@ export function DiagnosisEntry({ onAdd, existingDiagnoses, disabled = false }: D
       return; // Need either ICD code or free text
     }
 
-    onAdd({
+    const diagnosisData: DiagnosisFormData = {
       ...formData,
       icd10_display: selectedCode
         ? `${selectedCode.code} - ${selectedCode.short_description || selectedCode.description}`
-        : undefined,
+        : formData.icd10_display,
       icd11_display: icd11Value
         ? `${icd11Value.code} - ${icd11Value.title}`
-        : undefined,
-    });
+        : formData.icd11_display,
+    };
+
+    // If editing, update the existing diagnosis
+    if (editingDiagnosis && onUpdate) {
+      onUpdate(editingDiagnosis.index, diagnosisData);
+    } else {
+      onAdd(diagnosisData);
+    }
 
     // Reset form for next entry
     setSelectedCode(null);
@@ -105,7 +160,7 @@ export function DiagnosisEntry({ onAdd, existingDiagnoses, disabled = false }: D
       is_confirmed: false,
       certainty: 'SUSPECTED',
     });
-  }, [formData, selectedCode, icd11Value, onAdd]);
+  }, [formData, selectedCode, icd11Value, onAdd, onUpdate, editingDiagnosis]);
 
   const hasSelectedCode = selectedCode || icd11Value;
 
@@ -278,7 +333,7 @@ export function DiagnosisEntry({ onAdd, existingDiagnoses, disabled = false }: D
             value={formData.certainty}
             onValueChange={(value) => setFormData(prev => ({
               ...prev,
-              certainty: value as 'SUSPECTED' | 'PROBABLE' | 'CONFIRMED'
+              certainty: value as 'SUSPECTED' | 'PROBABLE' | 'CONFIRMED' | 'RULED_OUT'
             }))}
             disabled={disabled}
             className="flex flex-wrap gap-3"
@@ -294,6 +349,10 @@ export function DiagnosisEntry({ onAdd, existingDiagnoses, disabled = false }: D
             <div className="flex items-center space-x-2">
               <RadioGroupItem value="CONFIRMED" id="certainty-confirmed" />
               <Label htmlFor="certainty-confirmed" className="cursor-pointer font-normal">Confirmed</Label>
+            </div>
+            <div className="flex items-center space-x-2">
+              <RadioGroupItem value="RULED_OUT" id="certainty-ruled-out" />
+              <Label htmlFor="certainty-ruled-out" className="cursor-pointer font-normal text-muted-foreground">Ruled Out</Label>
             </div>
           </RadioGroup>
         </div>
@@ -329,16 +388,40 @@ export function DiagnosisEntry({ onAdd, existingDiagnoses, disabled = false }: D
         />
       </div>
 
-      {/* Add Button */}
-      <Button
-        type="button"
-        onClick={handleAdd}
-        disabled={disabled || (!selectedCode && !formData.free_text_diagnosis.trim())}
-        className="w-full"
-      >
-        <Plus className="h-4 w-4 mr-2" />
-        Add Diagnosis
-      </Button>
+      {/* Add/Update Button */}
+      <div className="flex gap-2">
+        {editingDiagnosis && onCancelEdit && (
+          <Button
+            type="button"
+            variant="outline"
+            onClick={onCancelEdit}
+            disabled={disabled}
+            className="flex-1"
+          >
+            <X className="h-4 w-4 mr-2" />
+            Cancel
+          </Button>
+        )}
+        <Button
+          type="button"
+          onClick={handleAdd}
+          disabled={disabled || (!selectedCode && !icd11Value && !formData.free_text_diagnosis.trim())}
+          className={editingDiagnosis ? "flex-1" : "w-full"}
+          variant={editingDiagnosis ? "default" : "default"}
+        >
+          {editingDiagnosis ? (
+            <>
+              <Check className="h-4 w-4 mr-2" />
+              Update Diagnosis
+            </>
+          ) : (
+            <>
+              <Plus className="h-4 w-4 mr-2" />
+              Add Diagnosis
+            </>
+          )}
+        </Button>
+      </div>
 
       {/* Click outside to close search */}
       {isSearchOpen && (
@@ -354,10 +437,18 @@ export function DiagnosisEntry({ onAdd, existingDiagnoses, disabled = false }: D
 interface DiagnosisListDisplayProps {
   diagnoses: DiagnosisFormData[];
   onRemove: (index: number) => void;
+  onEdit?: (index: number) => void;
+  editingIndex?: number | null;
   disabled?: boolean;
 }
 
-export function DiagnosisListDisplay({ diagnoses, onRemove, disabled = false }: DiagnosisListDisplayProps) {
+export function DiagnosisListDisplay({ 
+  diagnoses, 
+  onRemove, 
+  onEdit,
+  editingIndex,
+  disabled = false 
+}: DiagnosisListDisplayProps) {
   if (diagnoses.length === 0) return null;
 
   const typeColors = {
@@ -370,6 +461,7 @@ export function DiagnosisListDisplay({ diagnoses, onRemove, disabled = false }: 
     SUSPECTED: 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-400',
     PROBABLE: 'bg-orange-100 text-orange-800 dark:bg-orange-900/30 dark:text-orange-400',
     CONFIRMED: 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400',
+    RULED_OUT: 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400 line-through',
   };
 
   return (
@@ -379,7 +471,11 @@ export function DiagnosisListDisplay({ diagnoses, onRemove, disabled = false }: 
         {diagnoses.map((diagnosis, index) => (
           <li
             key={index}
-            className="flex items-start gap-3 p-3 rounded-lg border bg-card"
+            className={cn(
+              "flex items-start gap-3 p-3 rounded-lg border bg-card transition-colors",
+              editingIndex === index && "ring-2 ring-primary border-primary",
+              diagnosis.certainty === 'RULED_OUT' && "opacity-60"
+            )}
           >
             <div className="flex-1 min-w-0">
               <div className="flex items-center gap-2 flex-wrap mb-1">
@@ -387,7 +483,7 @@ export function DiagnosisListDisplay({ diagnoses, onRemove, disabled = false }: 
                   {diagnosis.diagnosis_type}
                 </Badge>
                 <Badge className={certaintyColors[diagnosis.certainty]}>
-                  {diagnosis.certainty}
+                  {diagnosis.certainty === 'RULED_OUT' ? 'RULED OUT' : diagnosis.certainty}
                 </Badge>
                 {diagnosis.is_confirmed && (
                   <Badge variant="outline" className="gap-1">
@@ -396,23 +492,42 @@ export function DiagnosisListDisplay({ diagnoses, onRemove, disabled = false }: 
                   </Badge>
                 )}
               </div>
-              <p className="font-medium text-sm">
-                {diagnosis.icd10_display || diagnosis.free_text_diagnosis}
+              <p className={cn(
+                "font-medium text-sm",
+                diagnosis.certainty === 'RULED_OUT' && "line-through text-muted-foreground"
+              )}>
+                {diagnosis.icd11_display || diagnosis.icd10_display || diagnosis.free_text_diagnosis}
               </p>
               {diagnosis.notes && (
                 <p className="text-sm text-muted-foreground mt-1">{diagnosis.notes}</p>
               )}
             </div>
-            <Button
-              type="button"
-              variant="ghost"
-              size="icon"
-              onClick={() => onRemove(index)}
-              disabled={disabled}
-              className="shrink-0 text-destructive hover:text-destructive"
-            >
-              <Trash2 className="h-4 w-4" />
-            </Button>
+            <div className="flex gap-1 shrink-0">
+              {onEdit && (
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="icon"
+                  onClick={() => onEdit(index)}
+                  disabled={disabled || editingIndex === index}
+                  className="text-muted-foreground hover:text-foreground"
+                  title="Edit diagnosis"
+                >
+                  <Pencil className="h-4 w-4" />
+                </Button>
+              )}
+              <Button
+                type="button"
+                variant="ghost"
+                size="icon"
+                onClick={() => onRemove(index)}
+                disabled={disabled}
+                className="text-destructive hover:text-destructive"
+                title="Remove diagnosis"
+              >
+                <Trash2 className="h-4 w-4" />
+              </Button>
+            </div>
           </li>
         ))}
       </ul>
@@ -424,6 +539,7 @@ interface DiagnosisFormContentProps {
   diagnoses: DiagnosisFormData[];
   onAdd: (diagnosis: DiagnosisFormData) => void;
   onRemove: (index: number) => void;
+  onUpdate?: (index: number, diagnosis: DiagnosisFormData) => void;
   disabled?: boolean;
 }
 
@@ -431,30 +547,74 @@ interface DiagnosisFormContentProps {
  * Content-only version of the Diagnosis form (no Card wrapper)
  * Used in accordion-based layouts
  */
-export function DiagnosisFormContent({ diagnoses, onAdd, onRemove, disabled = false }: DiagnosisFormContentProps) {
+export function DiagnosisFormContent({ 
+  diagnoses, 
+  onAdd, 
+  onRemove, 
+  onUpdate,
+  disabled = false 
+}: DiagnosisFormContentProps) {
+  const [editingDiagnosis, setEditingDiagnosis] = useState<{ index: number; data: DiagnosisFormData } | null>(null);
+
+  const handleEdit = useCallback((index: number) => {
+    setEditingDiagnosis({ index, data: { ...diagnoses[index] } });
+  }, [diagnoses]);
+
+  const handleCancelEdit = useCallback(() => {
+    setEditingDiagnosis(null);
+  }, []);
+
+  const handleUpdate = useCallback((index: number, data: DiagnosisFormData) => {
+    if (onUpdate) {
+      onUpdate(index, data);
+    }
+    setEditingDiagnosis(null);
+  }, [onUpdate]);
+
   return (
     <div className="space-y-6">
       <p className="text-sm text-muted-foreground">
-        Add one or more diagnoses using ICD-10/ICD-11 codes. You can add comorbidities as secondary diagnoses.
+        Add diagnoses using ICD-10/ICD-11 codes. Click the pencil icon to update certainty after lab results.
       </p>
 
       {/* List of added diagnoses */}
       <DiagnosisListDisplay
         diagnoses={diagnoses}
         onRemove={onRemove}
+        onEdit={onUpdate ? handleEdit : undefined}
+        editingIndex={editingDiagnosis?.index ?? null}
         disabled={disabled}
       />
 
       {/* Diagnosis entry form - Always visible for adding more */}
       <div className="pt-2">
-        {diagnoses.length > 0 && (
-          <h4 className="text-sm font-medium mb-3 text-muted-foreground">Add Another Diagnosis</h4>
+        {editingDiagnosis ? (
+          <div className="p-3 border-2 border-primary rounded-lg bg-primary/5">
+            <h4 className="text-sm font-medium mb-3 flex items-center gap-2">
+              <Pencil className="h-4 w-4" />
+              Editing Diagnosis
+            </h4>
+            <DiagnosisEntry
+              onAdd={onAdd}
+              onUpdate={handleUpdate}
+              existingDiagnoses={diagnoses}
+              editingDiagnosis={editingDiagnosis}
+              onCancelEdit={handleCancelEdit}
+              disabled={disabled}
+            />
+          </div>
+        ) : (
+          <>
+            {diagnoses.length > 0 && (
+              <h4 className="text-sm font-medium mb-3 text-muted-foreground">Add Another Diagnosis</h4>
+            )}
+            <DiagnosisEntry
+              onAdd={onAdd}
+              existingDiagnoses={diagnoses}
+              disabled={disabled}
+            />
+          </>
         )}
-        <DiagnosisEntry
-          onAdd={onAdd}
-          existingDiagnoses={diagnoses}
-          disabled={disabled}
-        />
       </div>
     </div>
   );
@@ -464,6 +624,7 @@ interface DiagnosisFormProps {
   diagnoses: DiagnosisFormData[];
   onAdd: (diagnosis: DiagnosisFormData) => void;
   onRemove: (index: number) => void;
+  onUpdate?: (index: number, diagnosis: DiagnosisFormData) => void;
   disabled?: boolean;
   onPrevious?: () => void;
   onNext?: () => void;
@@ -473,7 +634,15 @@ interface DiagnosisFormProps {
  * Card-wrapped version of the Diagnosis form
  * Used in tab-based layouts (legacy)
  */
-export function DiagnosisForm({ diagnoses, onAdd, onRemove, disabled = false, onPrevious, onNext }: DiagnosisFormProps) {
+export function DiagnosisForm({ 
+  diagnoses, 
+  onAdd, 
+  onRemove, 
+  onUpdate,
+  disabled = false, 
+  onPrevious, 
+  onNext 
+}: DiagnosisFormProps) {
   return (
     <Card>
       <CardHeader className="pb-3">
@@ -485,7 +654,7 @@ export function DiagnosisForm({ diagnoses, onAdd, onRemove, disabled = false, on
           )}
         </CardTitle>
         <CardDescription>
-          Add one or more diagnoses using ICD-10 codes. You can add comorbidities as secondary diagnoses.
+          Add diagnoses using ICD-10/ICD-11 codes. Click the pencil icon to update certainty after lab results.
         </CardDescription>
       </CardHeader>
       <CardContent>
@@ -493,6 +662,7 @@ export function DiagnosisForm({ diagnoses, onAdd, onRemove, disabled = false, on
           diagnoses={diagnoses}
           onAdd={onAdd}
           onRemove={onRemove}
+          onUpdate={onUpdate}
           disabled={disabled}
         />
       </CardContent>

@@ -2,12 +2,21 @@
  * Auto-save hook for forms with debounced saving and network awareness.
  * Provides real-time sync when online and queues changes when offline.
  * Sprint 1.5-1.6: Enhanced encounter form auto-save
+ * 
+ * Features:
+ * - Debounced saving to reduce API calls
+ * - Offline queue with localStorage persistence (survives page refresh)
+ * - Automatic sync when coming back online
+ * - Network status awareness
  */
 
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useDebounce } from './use-debounce';
 import { useNetworkStatus } from './use-network-status';
 import { useSyncStatus } from '@/lib/context/sync-context';
+
+// LocalStorage key prefix for offline queue
+const OFFLINE_QUEUE_PREFIX = 'vitora_autosave_queue_';
 
 export type AutoSaveStatus =
   | 'idle'
@@ -32,6 +41,8 @@ interface AutoSaveOptions<T> {
   onError?: (error: Error) => void;
   /** Compare function to check if data has changed (default: JSON.stringify comparison) */
   hasChanged?: (prev: T | null, current: T) => boolean;
+  /** Unique key for localStorage persistence (e.g., 'encounter_123') */
+  persistKey?: string;
 }
 
 interface AutoSaveResult {
@@ -49,6 +60,12 @@ interface AutoSaveResult {
   reset: () => void;
   /** Number of pending saves (for offline queue) */
   pendingCount: number;
+  /** Whether there's recoverable data from localStorage */
+  hasRecoverableData: boolean;
+  /** Recover data from localStorage */
+  recoverData: () => T | null;
+  /** Clear recovered data without saving */
+  discardRecoverableData: () => void;
 }
 
 /**
@@ -59,6 +76,43 @@ function defaultHasChanged<T>(prev: T | null, current: T): boolean {
   return JSON.stringify(prev) !== JSON.stringify(current);
 }
 
+/**
+ * Get offline queue from localStorage
+ */
+function getOfflineQueue<T>(key: string): T[] {
+  if (typeof window === 'undefined') return [];
+  try {
+    const stored = localStorage.getItem(OFFLINE_QUEUE_PREFIX + key);
+    return stored ? JSON.parse(stored) : [];
+  } catch {
+    return [];
+  }
+}
+
+/**
+ * Save offline queue to localStorage
+ */
+function saveOfflineQueue<T>(key: string, queue: T[]): void {
+  if (typeof window === 'undefined') return;
+  try {
+    if (queue.length === 0) {
+      localStorage.removeItem(OFFLINE_QUEUE_PREFIX + key);
+    } else {
+      localStorage.setItem(OFFLINE_QUEUE_PREFIX + key, JSON.stringify(queue));
+    }
+  } catch (e) {
+    console.warn('[AutoSave] Failed to save offline queue:', e);
+  }
+}
+
+/**
+ * Clear offline queue from localStorage
+ */
+function clearOfflineQueue(key: string): void {
+  if (typeof window === 'undefined') return;
+  localStorage.removeItem(OFFLINE_QUEUE_PREFIX + key);
+}
+
 export function useAutoSave<T>({
   data,
   onSave,
@@ -67,6 +121,7 @@ export function useAutoSave<T>({
   onSuccess,
   onError,
   hasChanged = defaultHasChanged,
+  persistKey,
 }: AutoSaveOptions<T>): AutoSaveResult {
   const { isOnline } = useNetworkStatus();
   const syncStatus = useSyncStatus();
@@ -75,10 +130,26 @@ export function useAutoSave<T>({
   const [error, setError] = useState<string | null>(null);
   const [isDirty, setIsDirty] = useState(false);
   const [pendingCount, setPendingCount] = useState(0);
+  const [hasRecoverableData, setHasRecoverableData] = useState(false);
 
   const lastSavedData = useRef<T | null>(null);
   const saveInProgress = useRef(false);
   const offlineQueue = useRef<T[]>([]);
+  const storageKey = persistKey || 'default';
+
+  // Initialize offline queue from localStorage on mount
+  useEffect(() => {
+    if (persistKey) {
+      const savedQueue = getOfflineQueue<T>(storageKey);
+      if (savedQueue.length > 0) {
+        offlineQueue.current = savedQueue;
+        setPendingCount(savedQueue.length);
+        setHasRecoverableData(true);
+        setStatus('offline');
+        console.log(`[AutoSave] Recovered ${savedQueue.length} queued items from localStorage`);
+      }
+    }
+  }, [persistKey, storageKey]);
 
   // Debounced data for comparison
   const debouncedData = useDebounce(data, debounceMs);
@@ -106,6 +177,10 @@ export function useAutoSave<T>({
         offlineQueue.current = [debouncedData];
         setPendingCount(1);
         setStatus('offline');
+        // Persist to localStorage
+        if (persistKey) {
+          saveOfflineQueue(storageKey, offlineQueue.current);
+        }
       }
       return;
     }
@@ -169,12 +244,18 @@ export function useAutoSave<T>({
         lastSavedData.current = latestData;
         offlineQueue.current = [];
         setPendingCount(0);
+        setHasRecoverableData(false);
         setLastSaved(new Date());
         setStatus('saved');
         setIsDirty(false);
         syncStatus.reportSync();
         syncStatus.setPendingCount(0);
         onSuccess?.();
+        
+        // Clear localStorage queue after successful sync
+        if (persistKey) {
+          clearOfflineQueue(storageKey);
+        }
 
         setTimeout(() => {
           setStatus((s) => (s === 'saved' ? 'idle' : s));
@@ -202,6 +283,10 @@ export function useAutoSave<T>({
       setPendingCount(1);
       setStatus('offline');
       syncStatus.incrementPending();
+      // Persist to localStorage
+      if (persistKey) {
+        saveOfflineQueue(storageKey, offlineQueue.current);
+      }
       return;
     }
 
@@ -241,7 +326,31 @@ export function useAutoSave<T>({
     setError(null);
     offlineQueue.current = [];
     setPendingCount(0);
-  }, [data]);
+    setHasRecoverableData(false);
+    // Clear localStorage
+    if (persistKey) {
+      clearOfflineQueue(storageKey);
+    }
+  }, [data, persistKey, storageKey]);
+
+  // Recover data from localStorage
+  const recoverData = useCallback((): T | null => {
+    if (offlineQueue.current.length > 0) {
+      return offlineQueue.current[offlineQueue.current.length - 1] ?? null;
+    }
+    return null;
+  }, []);
+
+  // Discard recoverable data without saving
+  const discardRecoverableData = useCallback(() => {
+    offlineQueue.current = [];
+    setPendingCount(0);
+    setHasRecoverableData(false);
+    setStatus('idle');
+    if (persistKey) {
+      clearOfflineQueue(storageKey);
+    }
+  }, [persistKey, storageKey]);
 
   return {
     status,
@@ -251,6 +360,9 @@ export function useAutoSave<T>({
     saveNow,
     reset,
     pendingCount,
+    hasRecoverableData,
+    recoverData,
+    discardRecoverableData,
   };
 }
 
