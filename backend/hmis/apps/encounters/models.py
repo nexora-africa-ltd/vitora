@@ -1896,6 +1896,19 @@ class Diagnosis(models.Model):
         related_name="diagnoses",
         help_text="ICD-10 code for this diagnosis",
     )
+    # ICD-11 support (WHO standard, used alongside or instead of ICD-10)
+    icd11_code = models.CharField(
+        max_length=50,
+        blank=True,
+        default="",
+        help_text="ICD-11 code (e.g., 1A00, BA00.Z) from WHO ICD-11 API",
+    )
+    icd11_display = models.CharField(
+        max_length=500,
+        blank=True,
+        default="",
+        help_text="ICD-11 display text/title from WHO ICD-11 API",
+    )
     diagnosis_type = models.CharField(
         max_length=20,
         choices=DIAGNOSIS_TYPE_CHOICES,
@@ -1972,16 +1985,23 @@ class Diagnosis(models.Model):
         ).order_by("type_priority", "created_at")
 
     def __str__(self) -> str:
-        code_str = self.icd10_code.code if self.icd10_code else self.free_text_diagnosis[:30]
+        if self.icd10_code:
+            code_str = self.icd10_code.code
+        elif self.icd11_code:
+            code_str = self.icd11_code
+        else:
+            code_str = self.free_text_diagnosis[:30]
         return f"{code_str} ({self.diagnosis_type})"
 
     def clean(self):
         """Validate diagnosis constraints."""
         super().clean()
 
-        # Either ICD-10 code or free text must be provided
-        if not self.icd10_code and not self.free_text_diagnosis:
-            raise ValidationError("Either ICD-10 code or free-text diagnosis must be provided.")
+        # Either ICD-10 code, ICD-11 code, or free text must be provided
+        if not self.icd10_code and not self.icd11_code and not self.free_text_diagnosis:
+            raise ValidationError(
+                "Either ICD-10 code, ICD-11 code, or free-text diagnosis must be provided."
+            )
 
         # Check for existing primary diagnosis
         if self.diagnosis_type == "PRIMARY":

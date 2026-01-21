@@ -252,6 +252,8 @@ export interface TemplateSnapshot {
 
 export interface CreateDiagnosisData {
   icd10_code?: number | null;
+  icd11_code?: string;
+  icd11_display?: string;
   diagnosis_type: 'PRIMARY' | 'SECONDARY' | 'DIFFERENTIAL' | 'WORKING';
   free_text_diagnosis?: string;
   notes?: string;

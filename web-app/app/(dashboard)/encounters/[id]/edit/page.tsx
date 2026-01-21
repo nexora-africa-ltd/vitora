@@ -218,9 +218,10 @@ export default function EditEncounterPage() {
 
   // Prepare data for auto-save (build the payload similar to handleSave)
   const autoSaveData = useMemo(() => {
+    // Use empty string, not null, as backend expects string for blood_pressure
     const bp = formData.blood_pressure_systolic && formData.blood_pressure_diastolic
       ? `${formData.blood_pressure_systolic}/${formData.blood_pressure_diastolic}`
-      : null;
+      : '';
 
     return {
       encounter_type: formData.encounter_type,
@@ -291,6 +292,8 @@ export default function EditEncounterPage() {
     try {
       const savedDiagnosis = await addDiagnosis.mutateAsync({
         icd10_code: diagnosis.icd10_code,
+        icd11_code: diagnosis.icd11_code || '',
+        icd11_display: diagnosis.icd11_display || '',
         diagnosis_type: diagnosis.diagnosis_type,
         free_text_diagnosis: diagnosis.free_text_diagnosis || '',
         notes: diagnosis.notes || '',
@@ -302,6 +305,8 @@ export default function EditEncounterPage() {
       setDiagnoses(prev => [...prev, {
         icd10_code: savedDiagnosis.icd10_code,
         icd10_display: savedDiagnosis.icd10_code_display || savedDiagnosis.icd10_description,
+        icd11_code: savedDiagnosis.icd11_code,
+        icd11_display: savedDiagnosis.icd11_display,
         diagnosis_type: savedDiagnosis.diagnosis_type,
         free_text_diagnosis: savedDiagnosis.free_text_diagnosis || '',
         notes: savedDiagnosis.notes || '',
@@ -540,10 +545,10 @@ export default function EditEncounterPage() {
     }
 
     try {
-      // Build blood pressure string
+      // Build blood pressure string (use empty string, not null, as backend expects string)
       const bp = formData.blood_pressure_systolic && formData.blood_pressure_diastolic
         ? `${formData.blood_pressure_systolic}/${formData.blood_pressure_diastolic}`
-        : null;
+        : '';
 
       await updateEncounter.mutateAsync({
         id: encounterId,

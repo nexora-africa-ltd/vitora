@@ -48,6 +48,8 @@ class DiagnosisSerializer(serializers.ModelSerializer):
             "icd10_code",
             "icd10_code_display",
             "icd10_description",
+            "icd11_code",
+            "icd11_display",
             "diagnosis_type",
             "free_text_diagnosis",
             "notes",
@@ -62,22 +64,24 @@ class DiagnosisSerializer(serializers.ModelSerializer):
         read_only_fields = ["id", "diagnosed_at", "created_at", "updated_at"]
 
     def validate(self, data):
-        """Validate that either ICD-10 code or free text is provided."""
+        """Validate that either ICD-10 code, ICD-11 code, or free text is provided."""
         instance = getattr(self, "instance", None)
 
         # For partial updates, use instance values as defaults
         if instance:
             icd10_code = data.get("icd10_code", instance.icd10_code)
+            icd11_code = data.get("icd11_code", instance.icd11_code)
             free_text = data.get("free_text_diagnosis", instance.free_text_diagnosis)
             encounter = data.get("encounter", instance.encounter)
         else:
             icd10_code = data.get("icd10_code")
+            icd11_code = data.get("icd11_code", "")
             free_text = data.get("free_text_diagnosis", "")
             encounter = data.get("encounter")
 
-        if not icd10_code and not free_text:
+        if not icd10_code and not icd11_code and not free_text:
             raise serializers.ValidationError(
-                "Either ICD-10 code or free-text diagnosis must be provided."
+                "Either ICD-10 code, ICD-11 code, or free-text diagnosis must be provided."
             )
 
         # Check for existing primary diagnosis when adding a new primary
@@ -110,6 +114,8 @@ class DiagnosisNestedSerializer(serializers.ModelSerializer):
             "icd10_code",
             "icd10_code_display",
             "icd10_description",
+            "icd11_code",
+            "icd11_display",
             "diagnosis_type",
             "free_text_diagnosis",
             "is_confirmed",
