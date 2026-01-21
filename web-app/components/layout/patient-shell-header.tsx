@@ -73,7 +73,7 @@ export function PatientShellHeader({ className, compact = false }: PatientShellH
       <header
         data-testid="patient-shell-loading"
         className={cn(
-          'w-full h-16 bg-card border-b px-4 flex items-center',
+          'w-full min-h-14 md:h-16 bg-card border-b px-3 md:px-4 py-2 md:py-0 flex items-center',
           className
         )}
         role="banner"
@@ -95,7 +95,7 @@ export function PatientShellHeader({ className, compact = false }: PatientShellH
     return (
       <header
         className={cn(
-          'w-full h-16 bg-destructive/10 border-b border-destructive/20 px-4 flex items-center',
+          'w-full min-h-14 md:h-16 bg-destructive/10 border-b border-destructive/20 px-3 md:px-4 py-2 md:py-0 flex items-center',
           className
         )}
         role="alert"
@@ -116,48 +116,47 @@ export function PatientShellHeader({ className, compact = false }: PatientShellH
   return (
     <header
       className={cn(
-        'w-full h-16 bg-card border-b px-4 sticky top-0 z-30 flex items-center',
+        'w-full min-h-14 md:h-16 bg-card border-b px-3 md:px-4 py-2 md:py-0 sticky top-0 z-30 flex items-center',
         isSensitive && 'border-l-4 border-l-destructive',
         className
       )}
       role="banner"
       aria-label="Patient information"
     >
-      <div className="flex flex-wrap items-center justify-between gap-4 w-full">
+      <div className="flex flex-wrap items-center justify-between gap-2 md:gap-4 w-full">
         {/* Patient Identity Section */}
         <div className="flex items-center gap-4">
           {/* Avatar placeholder */}
           <div className={cn(
-            'flex items-center justify-center rounded-full bg-muted',
-            compact ? 'h-8 w-8' : 'h-10 w-10'
+            'flex items-center justify-center rounded-full bg-muted shrink-0',
+            compact ? 'h-8 w-8' : 'h-8 w-8 md:h-10 md:w-10'
           )}>
-            <User className={cn(compact ? 'h-4 w-4' : 'h-5 w-5', 'text-muted-foreground')} />
+            <User className={cn(compact ? 'h-4 w-4' : 'h-4 w-4 md:h-5 md:w-5', 'text-muted-foreground')} />
           </div>
 
           {/* Name and MRN */}
-          <div>
-            <div className="flex items-center gap-2 flex-wrap">
+          <div className="min-w-0 flex-1">
+            <div className="flex items-center gap-1.5 md:gap-2 flex-wrap">
               <h2 className={cn(
-                'font-semibold',
-                compact ? 'text-sm' : 'text-base'
+                'font-semibold truncate',
+                compact ? 'text-sm' : 'text-sm md:text-base'
               )}>
                 {patient.first_name} {patient.last_name}
               </h2>
 
-              {/* Verification Badges */}
-              {isVerified && (
+              {/* Verification Badges - Only show when patient data is confirmed loaded */}
+              {isVerified && patient?.cr_number && (
                 <Badge variant="outline" className="text-xs bg-green-50 text-green-700 border-green-200">
                   <ShieldCheck className="h-3 w-3 mr-1" />
                   CR Verified
                 </Badge>
               )}
-              {hasSHA && (
-                <Badge variant="outline" className="text-xs bg-blue-50 text-blue-700 border-blue-200">
-                  <SHALogo size="xs" className="mr-1" />
-                  SHA
+              {hasSHA && patient?.sha_number && (
+                <Badge variant="outline" className="text-xs bg-blue-50 text-blue-700 border-blue-200 px-1.5">
+                  <SHALogo size="sm" />
                 </Badge>
               )}
-              {isSensitive && (
+              {isSensitive && patient?.is_sensitive && (
                 <Badge
                   variant="destructive"
                   className="text-xs"
@@ -170,18 +169,19 @@ export function PatientShellHeader({ className, compact = false }: PatientShellH
             </div>
 
             {/* Demographics Row */}
-            <div className="flex items-center gap-3 text-sm text-muted-foreground mt-0.5">
-              <span className="font-mono text-xs">{patient.mrn}</span>
-              <span className="text-muted-foreground/50">•</span>
+            <div className="flex flex-wrap items-center gap-x-2 md:gap-x-3 gap-y-0.5 text-xs md:text-sm text-muted-foreground mt-0.5">
+              <span className="font-mono">{patient.mrn}</span>
+              <span className="hidden sm:inline text-muted-foreground/50">•</span>
               <span className="flex items-center gap-1">
                 <Calendar className="h-3 w-3" />
-                {formatDate(patient.date_of_birth)}
+                <span className="hidden sm:inline">{formatDate(patient.date_of_birth)}</span>
+                <span className="sm:hidden">{age !== null ? `${age}y` : ''}</span>
               </span>
               {age !== null && (
-                <>
-                  <span className="text-muted-foreground/50">•</span>
-                  <span>{age} yrs</span>
-                </>
+                <span className="hidden sm:inline">
+                  <span className="text-muted-foreground/50 mr-2 md:mr-3">•</span>
+                  {age} yrs
+                </span>
               )}
               <span className="text-muted-foreground/50">•</span>
               <span>{genderLabel}</span>
@@ -189,9 +189,9 @@ export function PatientShellHeader({ className, compact = false }: PatientShellH
           </div>
         </div>
 
-        {/* Encounter Section (when in encounter context) */}
+        {/* Encounter Section (when in encounter context) - hidden on mobile */}
         {encounterContext?.encounter && (
-          <div className="flex items-center gap-4 text-sm">
+          <div className="hidden md:flex items-center gap-4 text-sm">
             <div className="flex items-center gap-2 px-3 py-1.5 bg-muted/50 rounded-md">
               <Stethoscope className="h-4 w-4 text-muted-foreground" />
               <div>

@@ -121,17 +121,19 @@ export function PatientProvider({ patientId, children }: PatientProviderProps) {
   }, [patientId, activePatients]);
 
   // Derive verification status
+  // Important: Check patient exists AND has the field with a truthy value
+  // to avoid showing stale badges during patient transitions
   const isVerified = useMemo(() => {
-    return !!patient?.cr_number;
-  }, [patient?.cr_number]);
+    return Boolean(patient && patient.cr_number);
+  }, [patient]);
 
   const hasSHA = useMemo(() => {
-    return !!patient?.sha_number;
-  }, [patient?.sha_number]);
+    return Boolean(patient && patient.sha_number);
+  }, [patient]);
 
   const isSensitive = useMemo(() => {
-    return patient?.is_sensitive ?? false;
-  }, [patient?.is_sensitive]);
+    return Boolean(patient?.is_sensitive);
+  }, [patient]);
 
   // Build context value (memoized to prevent unnecessary rerenders)
   const contextValue = useMemo<PatientContextValue>(() => ({

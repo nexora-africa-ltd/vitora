@@ -376,10 +376,10 @@ export function DiagnosisEntry({
 
       {/* Notes */}
       <div className="space-y-2">
-        <Label htmlFor="diagnosis_notes">Clinical Notes</Label>
+        <Label htmlFor="diagnosis_notes">Diagnosis Notes</Label>
         <Textarea
           id="diagnosis_notes"
-          placeholder="Additional clinical notes for this diagnosis..."
+          placeholder="Notes specific to this diagnosis (e.g., clinical reasoning, supporting evidence)..."
           value={formData.notes}
           onChange={(e) => setFormData(prev => ({ ...prev, notes: e.target.value }))}
           disabled={disabled}
