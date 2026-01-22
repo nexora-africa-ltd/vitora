@@ -131,7 +131,8 @@ def generate_receipt_qr_url(
         Full verification URL
     """
     date_str = receipt_date[:10] if receipt_date else ""
-    sig = generate_document_signature("RECEIPT", receipt_number, amount, receipt_date)
+    # Use date_str for signature so it matches what's in the URL
+    sig = generate_document_signature("RECEIPT", receipt_number, amount, date_str)
     
     url = base_url or get_verification_base_url()
     params = f"?type=RECEIPT&number={receipt_number}&amount={amount}&date={date_str}&signature={sig}"
@@ -158,7 +159,8 @@ def generate_invoice_qr_url(
         Full verification URL
     """
     date_str = invoice_date[:10] if invoice_date else ""
-    sig = generate_document_signature("INVOICE", invoice_number, total_amount, invoice_date)
+    # Use date_str for signature so it matches what's in the URL
+    sig = generate_document_signature("INVOICE", invoice_number, total_amount, date_str)
     
     url = base_url or get_verification_base_url()
     params = f"?type=INVOICE&number={invoice_number}&amount={total_amount}&date={date_str}&signature={sig}"
