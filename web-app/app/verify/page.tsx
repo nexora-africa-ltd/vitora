@@ -2,14 +2,15 @@
  * Public Document Verification Page
  * 
  * Allows anyone to verify receipt/invoice authenticity by:
- * 1. Scanning QR code
+ * 1. Scanning QR code (opens this page with params - auto-verifies)
  * 2. Manually entering document details
  * 
  * No authentication required.
  */
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
+import { useSearchParams } from 'next/navigation';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -37,6 +38,7 @@ interface VerificationResult {
 }
 
 export default function VerifyPage() {
+  const searchParams = useSearchParams();
   const [qrData, setQrData] = useState('');
   const [manualData, setManualData] = useState({
     type: 'RECEIPT',
@@ -47,6 +49,43 @@ export default function VerifyPage() {
   });
   const [result, setResult] = useState<VerificationResult | null>(null);
   const [isLoading, setIsLoading] = useState(false);
+  const [autoVerified, setAutoVerified] = useState(false);
+
+  // Auto-verify if URL contains verification params (from QR scan)
+  useEffect(() => {
+    const type = searchParams.get('type');
+    const number = searchParams.get('number');
+    const amount = searchParams.get('amount');
+    const date = searchParams.get('date');
+    const signature = searchParams.get('signature');
+
+    if (type && number && amount && date && signature && !autoVerified) {
+      setAutoVerified(true);
+      setManualData({ type, number, amount, date, signature });
+      
+      // Auto-verify
+      const verify = async () => {
+        setIsLoading(true);
+        try {
+          const params = new URLSearchParams({ type, number, amount, date, signature });
+          const response = await fetch(
+            `${process.env.NEXT_PUBLIC_API_URL || ''}/api/core/verify/?${params}`
+          );
+          const data = await response.json();
+          setResult(data);
+        } catch {
+          setResult({
+            valid: false,
+            message: 'Failed to connect to verification server',
+            error: 'Network error',
+          });
+        } finally {
+          setIsLoading(false);
+        }
+      };
+      verify();
+    }
+  }, [searchParams, autoVerified]);
 
   const verifyWithQR = async () => {
     if (!qrData.trim()) return;
