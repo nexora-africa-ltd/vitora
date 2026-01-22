@@ -157,27 +157,33 @@ function buildKPIsFromStats(stats: DashboardStats | null): KPIMetric[] {
 
 // Transform patient volume response to frontend format
 function transformPatientVolume(response: PatientVolumeResponse): PatientVolumeData[] {
-  return response.data.map((item) => ({
-    date: item.date,
-    registrations: item.registrations,
-    encounters: item.encounters,
-    opd: item.opd ?? 0,
-    ipd: item.ipd ?? 0,
-    emergency: item.emergency ?? 0,
-    anc: item.anc,
-    paediatric: item.paediatric,
-    dialysis: item.dialysis,
-    oncology: item.oncology,
-    scheduled_opd: item.scheduled_opd,
-    follow_up: item.follow_up,
-    consultant_review: item.consultant_review,
-    chronic_stable: item.chronic_stable,
-    specialist_clinic: item.specialist_clinic,
-    procedure: item.procedure,
-    day_case: item.day_case,
-    ward_round: item.ward_round,
-    discharge_review: item.discharge_review,
-  }));
+  return response.data.map((item) => {
+    // Backend returns by_type as nested object with uppercase keys
+    const byType = (item as unknown as { by_type?: Record<string, number> }).by_type || {};
+    
+    return {
+      date: item.date,
+      registrations: item.registrations,
+      encounters: item.encounters,
+      // Extract from by_type (uppercase) or fallback to direct fields (lowercase)
+      opd: byType.OPD ?? item.opd ?? 0,
+      ipd: byType.IPD ?? item.ipd ?? 0,
+      emergency: byType.EMERGENCY ?? item.emergency ?? 0,
+      anc: byType.ANC ?? item.anc,
+      paediatric: byType.PAEDIATRIC ?? item.paediatric,
+      dialysis: byType.DIALYSIS ?? item.dialysis,
+      oncology: byType.ONCOLOGY ?? item.oncology,
+      scheduled_opd: byType.SCHEDULED_OPD ?? item.scheduled_opd,
+      follow_up: byType.FOLLOW_UP ?? item.follow_up,
+      consultant_review: byType.CONSULTANT_REVIEW ?? item.consultant_review,
+      chronic_stable: byType.CHRONIC_STABLE ?? item.chronic_stable,
+      specialist_clinic: byType.SPECIALIST_CLINIC ?? item.specialist_clinic,
+      procedure: byType.PROCEDURE ?? item.procedure,
+      day_case: byType.DAY_CASE ?? item.day_case,
+      ward_round: byType.WARD_ROUND ?? item.ward_round,
+      discharge_review: byType.DISCHARGE_REVIEW ?? item.discharge_review,
+    };
+  });
 }
 
 // Transform revenue breakdown response to frontend format
