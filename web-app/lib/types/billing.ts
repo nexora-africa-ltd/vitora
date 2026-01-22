@@ -374,11 +374,19 @@ export interface MpesaQueryResponse {
 // Receipt Types
 // ============================================================================
 
+export interface ReceiptLineItem {
+  description: string;
+  quantity: number;
+  unit_price: string;
+  line_total: string;
+}
+
 export interface Receipt {
   id: number;
   receipt_number: string;
   payment: number;
   payment_reference?: string;
+  invoice?: number;
 
   // Denormalized for printing
   patient_name: string;
@@ -391,6 +399,9 @@ export interface Receipt {
   amount_in_words: string;
   payment_method: PaymentMethod;
   receipt_date: string;
+
+  // Line items (from invoice)
+  line_items?: ReceiptLineItem[];
 
   // Served by / Till info
   issued_by?: number;

@@ -1,6 +1,6 @@
 /**
  * Receipt View Component
- * Displays printable receipt with amount in words
+ * Displays printable receipt with line items and amount in words
  */
 'use client';
 
@@ -9,8 +9,17 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { Separator } from '@/components/ui/separator';
 import { Skeleton } from '@/components/ui/skeleton';
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+  TableFooter,
+} from '@/components/ui/table';
 import { Printer, Download } from 'lucide-react';
-import type { Receipt } from '@/lib/types/billing';
+import type { Receipt, ReceiptLineItem } from '@/lib/types/billing';
 import { formatDateTime } from '@/lib/utils/format';
 import { printReceipt } from '@/lib/utils/print-receipt';
 
@@ -153,7 +162,7 @@ export function ReceiptView({
       )}
 
       {/* Receipt Content */}
-      <Card ref={printRef} className="max-w-md mx-auto print:shadow-none print:border-none">
+      <Card ref={printRef} className="max-w-lg mx-auto print:shadow-none print:border-none">
         <CardHeader className="text-center pb-2">
           <h2 className="text-xl font-bold">{displayFacilityName}</h2>
           <p className="text-sm text-muted-foreground">{displayFacilityAddress}</p>
@@ -225,19 +234,75 @@ export function ReceiptView({
 
           <Separator />
 
-          {/* Amount */}
-          <div className="text-center space-y-2">
-            <div className="text-sm text-muted-foreground">Amount Paid</div>
-            <div className="text-3xl font-bold" data-testid="receipt-amount">
-              {amountDisplay}
+          {/* Line Items Table */}
+          {receipt.line_items && receipt.line_items.length > 0 ? (
+            <div className="space-y-2">
+              <h4 className="text-sm font-medium">Services</h4>
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead className="text-xs">Description</TableHead>
+                    <TableHead className="text-xs text-center w-16">Qty</TableHead>
+                    <TableHead className="text-xs text-right w-24">Price</TableHead>
+                    <TableHead className="text-xs text-right w-24">Amount</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {receipt.line_items.map((item, index) => (
+                    <TableRow key={index}>
+                      <TableCell className="text-sm py-2">{item.description}</TableCell>
+                      <TableCell className="text-sm text-center py-2">{item.quantity}</TableCell>
+                      <TableCell className="text-sm text-right py-2">
+                        {parseFloat(item.unit_price).toLocaleString('en-KE', {
+                          minimumFractionDigits: 2,
+                          maximumFractionDigits: 2,
+                        })}
+                      </TableCell>
+                      <TableCell className="text-sm text-right py-2 font-medium">
+                        {parseFloat(item.line_total).toLocaleString('en-KE', {
+                          minimumFractionDigits: 2,
+                          maximumFractionDigits: 2,
+                        })}
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+                <TableFooter>
+                  <TableRow>
+                    <TableCell colSpan={3} className="text-sm font-semibold">
+                      Total
+                    </TableCell>
+                    <TableCell className="text-right font-bold" data-testid="receipt-amount">
+                      KES {amount.toLocaleString('en-KE', {
+                        minimumFractionDigits: 2,
+                        maximumFractionDigits: 2,
+                      })}
+                    </TableCell>
+                  </TableRow>
+                </TableFooter>
+              </Table>
+              <div
+                className="text-sm text-muted-foreground italic text-center pt-2"
+                data-testid="amount-in-words"
+              >
+                {amountInWords}
+              </div>
             </div>
-            <div
-              className="text-sm text-muted-foreground italic"
-              data-testid="amount-in-words"
-            >
-              {amountInWords}
+          ) : (
+            /* Fallback: Simple amount display when no line items */
+            <div className="text-center space-y-2">
+              <div className="text-sm text-muted-foreground">Amount Paid</div>
+              <div className="text-3xl font-bold" data-testid="receipt-amount">
+                {amountDisplay}
+              </div>
+              <div
+                className="text-sm text-muted-foreground italic"
+                data-testid="amount-in-words"
+              >
+                {amountInWords}
+              </div>
             </div>
-          </div>
+          )}
 
           <Separator />
 
