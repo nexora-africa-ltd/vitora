@@ -8,17 +8,16 @@
  */
 'use client';
 
-import { useCallback, useMemo } from 'react';
+import { useCallback, useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { Plus, RefreshCw, Clock, UserPlus, ExternalLink } from 'lucide-react';
-import Link from 'next/link';
+import { Plus, RefreshCw, Clock, UserPlus } from 'lucide-react';
 import { PageHeader } from '@/components/shared/page-header';
 import { PatientStageBadge } from '@/components/shared/patient-stage-badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
-import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
+import { NotificationBanner } from '@/components/shared/notification-banner';
 import { KPICard } from '@/components/reports/kpi-card';
 import { TrendIndicator } from '@/components/charts';
 import {
@@ -31,6 +30,7 @@ import { toast } from '@/lib/hooks/use-toast';
 
 export default function TriageQueuePage() {
   const router = useRouter();
+  const [showQueueBanner, setShowQueueBanner] = useState(true);
 
   // Fetch waiting queue (patients awaiting triage)
   const {
@@ -131,17 +131,17 @@ export default function TriageQueuePage() {
       />
 
       {/* Info: Consultation Queue moved to Encounters */}
-      <Alert>
-        <ExternalLink className="h-4 w-4" />
-        <AlertTitle>Consultation Queue Relocated</AlertTitle>
-        <AlertDescription>
-          Patients awaiting consultation after triage are now managed on the{' '}
-          <Link href="/encounters" className="font-medium underline underline-offset-4 hover:text-primary">
-            Encounters page
-          </Link>
-          .
-        </AlertDescription>
-      </Alert>
+      <NotificationBanner
+        show={showQueueBanner}
+        onDismiss={() => setShowQueueBanner(false)}
+        title="Consultation Queue Relocated"
+        description="Patients awaiting consultation after triage are now managed on the Encounters page."
+        variant="info"
+        action={{
+          label: "Go to Encounters",
+          onClick: () => router.push('/encounters'),
+        }}
+      />
 
       {/* KPI Stats Cards */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
