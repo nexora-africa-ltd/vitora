@@ -20,6 +20,7 @@ from .views import (
     StaffProfileViewSet,
     generate_case_number_view,
     generate_prc_number_view,
+    verify_document,
 )
 
 router = routers.DefaultRouter()
@@ -39,4 +40,6 @@ urlpatterns = [
     # Case number generation endpoints
     path("generate/prc-number/", generate_prc_number_view, name="generate-prc-number"),
     path("generate/case-number/", generate_case_number_view, name="generate-case-number"),
+    # Public document verification (no auth required)
+    path("verify/", verify_document, name="verify-document"),
 ] + router.urls
