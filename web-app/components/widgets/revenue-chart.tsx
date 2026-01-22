@@ -55,7 +55,7 @@ export function RevenueBreakdownChart({ data, showLegend = true }: RevenueBreakd
         data={chartData}
         config={chartConfig}
         showLegend={showLegend}
-        legendPosition="right"
+        legendPosition="bottom"
         innerRadius={40}
         outerRadius={80}
         showCenterLabel

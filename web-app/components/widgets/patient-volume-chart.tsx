@@ -23,7 +23,8 @@ export function PatientVolumeChart({ data, showLegend = true }: PatientVolumeCha
   const formattedData = useMemo(
     () => (data ?? []).map((item) => ({
       ...item,
-      formattedDate: format(parseISO(item.date), 'MMM d'),
+      // Use day number format for better x-axis display
+      formattedDate: format(parseISO(item.date), 'd MMM'),
     })),
     [data]
   );
@@ -54,6 +55,7 @@ export function PatientVolumeChart({ data, showLegend = true }: PatientVolumeCha
         showGradient
         areaType="monotone"
         minHeight="250px"
+        xAxisFormatter={(value) => value} // Don't truncate - show full date
       />
     </div>
   );
