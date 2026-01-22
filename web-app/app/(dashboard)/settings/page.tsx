@@ -14,6 +14,7 @@ import {
   Palette,
 } from 'lucide-react';
 import { SHALogo } from '@/components/ui/sha-logo';
+import { KenyaCoatOfArms } from '@/components/ui/kenya-coat-of-arms';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { SHASettingsTab } from '@/components/settings/sha-settings';
@@ -40,7 +41,7 @@ export default function SettingsPage() {
       <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4">
         <TabsList className="bg-muted">
           <TabsTrigger value="sha" className="gap-2">
-            <SHALogo size="sm" />
+            <KenyaCoatOfArms size={16} />
             SHA Integration
           </TabsTrigger>
           <TabsTrigger value="facility" className="gap-2">

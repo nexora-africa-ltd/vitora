@@ -3,11 +3,13 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useTheme } from 'next-themes';
-import { Eye, EyeOff, Loader2, Sun, Moon, AlertCircle } from 'lucide-react';
+import { Eye, EyeOff, Loader2, Sun, Moon, AlertCircle, WifiOff } from 'lucide-react';
 import { useAuth } from '@/lib/auth/context';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { KenyaCoatOfArms } from '@/components/ui/kenya-coat-of-arms';
+import { SHALogo } from '@/components/ui/sha-logo';
 import { APP_NAME } from '@/lib/utils/constants';
 
 export default function LoginPage() {
@@ -84,24 +86,33 @@ export default function LoginPage() {
           <p className="text-lg text-white/80 max-w-md">
             Offline-first Hospital Management Information System designed for Kenya&apos;s healthcare infrastructure.
           </p>
-          <div className="flex gap-4 text-sm text-white/60">
+          <div className="flex flex-wrap gap-4 text-sm text-white/60">
             <div className="flex items-center gap-2">
-              <div className="h-2 w-2 rounded-full bg-green-400" />
+              <KenyaCoatOfArms size={14} className="opacity-80" />
               KHIS/DHIS2 Ready
             </div>
             <div className="flex items-center gap-2">
-              <div className="h-2 w-2 rounded-full bg-green-400" />
+              <SHALogo size="xs" className="opacity-80" />
               SHA Compliant
             </div>
             <div className="flex items-center gap-2">
-              <div className="h-2 w-2 rounded-full bg-green-400" />
+              <WifiOff className="h-3.5 w-3.5 opacity-80" />
               Offline-First
             </div>
           </div>
         </div>
 
         <p className="text-sm text-white/40">
-          © {new Date().getFullYear()} Vitora HMIS. Powered by Nexora. Kenya Data Protection Act 2019 Compliant.
+          © {new Date().getFullYear()} Vitora HMIS. Powered by{' '}
+          <a 
+            href="https://nexora.africa" 
+            target="_blank" 
+            rel="noopener noreferrer"
+            className="underline hover:text-secondary/60 transition-colors"
+          >
+            Nexora
+          </a>
+          . Kenya Data Protection Act 2019 Compliant.
         </p>
       </div>
 

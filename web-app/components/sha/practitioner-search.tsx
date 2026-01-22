@@ -36,6 +36,7 @@ import {
   XCircle,
   Loader2,
   UserCheck,
+  UserX,
   GraduationCap,
   Phone,
   Mail,
@@ -44,6 +45,7 @@ import {
   IdCard,
 } from 'lucide-react';
 import { SHALogo } from '@/components/ui/sha-logo';
+import { KenyaCoatOfArms } from '@/components/ui/kenya-coat-of-arms';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -91,6 +93,7 @@ export function DHAPractitionerSearch({
   const [isLoading, setIsLoading] = useState(false);
   const [practitioner, setPractitioner] = useState<DHAPractitioner | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [notFound, setNotFound] = useState(false);
 
   const handleSearch = useCallback(async () => {
     if (!idNumber.trim()) {
@@ -100,6 +103,7 @@ export function DHAPractitionerSearch({
 
     setIsLoading(true);
     setError(null);
+    setNotFound(false);
     setPractitioner(null);
 
     try {
@@ -114,13 +118,24 @@ export function DHAPractitionerSearch({
           onSelect(response.message);
         }
       } else {
-        setError('No practitioner found with this identification');
+        setNotFound(true);
         onError?.('No practitioner found');
       }
-    } catch (err) {
-      const errorMessage = err instanceof Error ? err.message : 'Failed to search practitioner';
-      setError(errorMessage);
-      onError?.(errorMessage);
+    } catch (err: unknown) {
+      // Check if it's a 404 (not found) response - treat as "not found" not an error
+      const is404 = 
+        (err && typeof err === 'object' && 'response' in err && 
+          (err as { response?: { status?: number } }).response?.status === 404) ||
+        (err instanceof Error && err.message.includes('404'));
+      
+      if (is404) {
+        setNotFound(true);
+        onError?.('No practitioner found');
+      } else {
+        const errorMessage = err instanceof Error ? err.message : 'Failed to search practitioner';
+        setError(errorMessage);
+        onError?.(errorMessage);
+      }
     } finally {
       setIsLoading(false);
     }
@@ -167,7 +182,10 @@ export function DHAPractitionerSearch({
     <div className={cn('space-y-4', className)}>
       {/* Search Form */}
       <div className="space-y-3">
-        <Label>Search DHA Health Worker Registry</Label>
+        <Label className="flex items-center gap-2">
+          <KenyaCoatOfArms size={16} />
+          Search DHA Health Worker Registry
+        </Label>
         <div className="flex gap-2">
           <Select
             value={idType}
@@ -211,6 +229,36 @@ export function DHAPractitionerSearch({
           Search the Kenya Digital Health Authority registry to verify and auto-fill practitioner details
         </p>
       </div>
+
+      {/* Not Found Display */}
+      {notFound && (
+        <Card className="border-2 border-amber-400 bg-amber-50/50 dark:bg-amber-950/20">
+          <CardContent className="py-4">
+            <div className="flex items-start gap-3">
+              <div className="h-10 w-10 rounded-full bg-amber-100 dark:bg-amber-900/40 flex items-center justify-center shrink-0">
+                <UserX className="h-5 w-5 text-amber-600 dark:text-amber-400" />
+              </div>
+              <div className="flex-1 space-y-1">
+                <h4 className="font-semibold text-amber-800 dark:text-amber-300">
+                  Practitioner Not Found
+                </h4>
+                <p className="text-sm text-amber-700 dark:text-amber-400">
+                  No practitioner was found in the DHA Health Worker Registry with {idType}{' '}
+                  <span className="font-mono font-medium">{idNumber}</span>
+                </p>
+                <div className="pt-2 space-y-1 text-xs text-amber-600 dark:text-amber-500">
+                  <p>This could mean:</p>
+                  <ul className="list-disc list-inside space-y-0.5 ml-1">
+                    <li>The identification number was entered incorrectly</li>
+                    <li>The practitioner is not registered with a Kenyan licensing body</li>
+                    <li>The registration is under a different ID type (try Passport or National ID)</li>
+                  </ul>
+                </div>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
       {/* Error Display */}
       {error && (
