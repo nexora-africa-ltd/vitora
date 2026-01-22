@@ -300,6 +300,15 @@ class PaymentSerializer(serializers.ModelSerializer):
         return payment
 
 
+class ReceiptLineItemSerializer(serializers.Serializer):
+    """Serializer for receipt line items (from invoice items)."""
+
+    description = serializers.CharField()
+    quantity = serializers.IntegerField()
+    unit_price = serializers.DecimalField(max_digits=12, decimal_places=2)
+    line_total = serializers.DecimalField(max_digits=12, decimal_places=2)
+
+
 class ReceiptSerializer(serializers.ModelSerializer):
     """Serializer for Receipt model."""
 
@@ -311,6 +320,8 @@ class ReceiptSerializer(serializers.ModelSerializer):
     payment_point_name = serializers.SerializerMethodField()
     payment_point_code = serializers.SerializerMethodField()
     receipt_date = serializers.DateTimeField(read_only=True)
+    # Line items from invoice
+    line_items = serializers.SerializerMethodField()
 
     class Meta:
         model = Receipt
@@ -338,6 +349,7 @@ class ReceiptSerializer(serializers.ModelSerializer):
             "received_by_username",
             "payment_point_name",
             "payment_point_code",
+            "line_items",
             "created_at",
         ]
         read_only_fields = [
@@ -353,8 +365,16 @@ class ReceiptSerializer(serializers.ModelSerializer):
             "received_by_username",
             "payment_point_name",
             "payment_point_code",
+            "line_items",
             "created_at",
         ]
+
+    def get_line_items(self, obj) -> list[dict]:
+        """Get line items from the related invoice."""
+        if obj.invoice:
+            items = obj.invoice.items.all()
+            return ReceiptLineItemSerializer(items, many=True).data
+        return []
 
     def get_received_by_username(self, obj) -> str | None:
         """Get username of the person who received the payment."""

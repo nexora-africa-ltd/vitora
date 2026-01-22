@@ -4,14 +4,13 @@
  * Uses the template from /templates/receipt.html
  */
 
-import type { Receipt } from '@/lib/types/billing';
+import type { Receipt, ReceiptLineItem } from '@/lib/types/billing';
 
 interface PrintReceiptOptions {
   receipt: Receipt;
   facilityName?: string;
   facilityAddress?: string;
   facilityPhone?: string;
-  lineItems?: Array<{ description: string; amount: string }>;
 }
 
 function formatDate(dateStr: string): string {
@@ -30,6 +29,31 @@ function formatCurrency(amount: number): string {
 }
 
 /**
+ * Build line items HTML from receipt
+ */
+function buildLineItemsHtml(receipt: Receipt): string {
+  const amount = parseFloat(receipt.amount);
+  const amountPaid = formatCurrency(amount);
+  
+  // Use receipt.line_items if available, otherwise create single line item
+  if (receipt.line_items && receipt.line_items.length > 0) {
+    return receipt.line_items
+      .map(item => {
+        const qty = item.quantity > 1 ? ` x${item.quantity}` : '';
+        const lineTotal = parseFloat(item.line_total);
+        return `<tr>
+          <td>${escapeHtml(item.description)}${qty}</td>
+          <td>${formatCurrency(lineTotal)}</td>
+        </tr>`;
+      })
+      .join('\n');
+  }
+  
+  // Fallback: single payment line
+  return `<tr><td>Payment</td><td>${amountPaid}</td></tr>`;
+}
+
+/**
  * Open a new window with the receipt template and trigger print
  */
 export function printReceipt({
@@ -37,7 +61,6 @@ export function printReceipt({
   facilityName = 'Vitora Health Facility',
   facilityAddress = '123 Health Street, Nairobi',
   facilityPhone = '+254 700 123 456',
-  lineItems,
 }: PrintReceiptOptions): void {
   const displayFacilityName = receipt.facility_name || facilityName;
   const displayFacilityAddress = receipt.facility_address || facilityAddress;
@@ -45,12 +68,7 @@ export function printReceipt({
   
   const amount = parseFloat(receipt.amount);
   const amountPaid = formatCurrency(amount);
-  
-  // Build line items HTML
-  const items = lineItems || [{ description: 'Payment', amount: amountPaid }];
-  const lineItemsHtml = items
-    .map(item => `<tr><td>${escapeHtml(item.description)}</td><td>${escapeHtml(item.amount)}</td></tr>`)
-    .join('\n');
+  const lineItemsHtml = buildLineItemsHtml(receipt);
 
   const html = `<!DOCTYPE html>
 <html lang="en">
