@@ -46,7 +46,9 @@ import {
   ArrowRightCircle,
   RefreshCw,
   Link2,
+  Receipt,
 } from 'lucide-react';
+import { printInvoice } from '@/lib/utils/print-invoice';
 import { SHALogo } from '@/components/ui/sha-logo';
 import { ClaimSubmissionButton, ClaimStatusBadge } from '@/components/billing/sha';
 import type { Invoice, InvoiceItem, InvoiceStatus } from '@/lib/types/billing';
@@ -486,20 +488,27 @@ export function InvoiceDetail({
 
       {/* Action Buttons */}
       <div className="flex flex-wrap gap-2 justify-end">
-        {/* Print */}
+        {/* Print Invoice */}
         <Button
           variant="outline"
-          onClick={() => {
-            if (onPrint) {
-              onPrint(invoice);
-              return;
-            }
-            window.print();
-          }}
+          onClick={() => printInvoice({ invoice })}
         >
           <Printer className="h-4 w-4 mr-2" />
-          Print
+          Print Invoice
         </Button>
+
+        {/* Print Receipt - Show for paid/partial invoices */}
+        {(isPaid || invoice.status === 'PARTIAL') && parseFloat(invoice.amount_paid || '0') > 0 && (
+          <Button
+            variant="outline"
+            asChild
+          >
+            <Link href={`/transactions/payments?invoice=${invoice.id}`}>
+              <Receipt className="h-4 w-4 mr-2" />
+              View Payments
+            </Link>
+          </Button>
+        )}
 
         {/* Email */}
         {onEmail && (
