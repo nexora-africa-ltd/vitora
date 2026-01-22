@@ -239,11 +239,12 @@ export function printReceipt({
       <div><span>Total Paid:</span><span>${amountPaid}</span></div>
     </div>
 
-    <!-- BARCODE / QR PLACEHOLDER -->
+    <!-- QR CODE -->
     <div class="barcode">
-      <div class="barcode-placeholder">
-        BARCODE / QR CODE
-      </div>
+      ${receipt.qr_code 
+        ? `<img src="${receipt.qr_code}" alt="QR Code" style="width: 120px; height: 120px;" />`
+        : `<div class="barcode-placeholder">QR CODE</div>`
+      }
     </div>
 
     <!-- FOOTER -->
