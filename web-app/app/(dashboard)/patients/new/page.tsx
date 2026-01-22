@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { ArrowLeft, CheckCircle2, Stethoscope, User, Plus, UserPlus, ArrowRight, Clock, Activity, FileText } from 'lucide-react';
 import { SHALogo } from '@/components/ui/sha-logo';
+import { KenyaCoatOfArms } from '@/components/ui/kenya-coat-of-arms';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -304,7 +305,7 @@ export default function NewPatientPage() {
             {/* Left side - info */}
             <div className="flex items-center gap-3">
               <div className="h-10 w-10 rounded-full bg-muted flex items-center justify-center">
-                <SHALogo size="md" muted />
+                <KenyaCoatOfArms size={24} />
               </div>
               <div>
                 <p className="font-medium">Kenya Digital Health Services</p>
