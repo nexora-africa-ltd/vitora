@@ -112,17 +112,19 @@ function SearchStep({ onSelectInvoice, onCreateInvoice }: SearchStepProps) {
   const { data, isLoading, error } = useInvoices({
     search: debouncedSearch || undefined,
     status: undefined, // We'll filter client-side for PENDING, PARTIAL, OVERDUE
-    page_size: 20,
+    page_size: 50,
     ordering: '-invoice_date',
   });
 
   // Filter for payable invoices only
   const payableInvoices = React.useMemo(() => {
     if (!data?.results) return [];
-    return data.results.filter(inv => 
-      ['PENDING', 'PARTIAL', 'OVERDUE'].includes(inv.status) &&
-      parseFloat(inv.balance_due) > 0
-    );
+    return data.results.filter(inv => {
+      if (!['PENDING', 'PARTIAL', 'OVERDUE'].includes(inv.status)) return false;
+      // Check balance_due or balance field
+      const balance = parseFloat(inv.balance_due || (inv as any).balance || '0');
+      return balance > 0;
+    });
   }, [data?.results]);
 
   return (

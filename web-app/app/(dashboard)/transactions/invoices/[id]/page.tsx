@@ -280,10 +280,6 @@ export default function InvoiceDetailPage() {
     }
   };
 
-  const handlePrint = () => {
-    window.print();
-  };
-
   return (
     <div className="space-y-6">
       <div className="space-y-2">
@@ -305,7 +301,6 @@ export default function InvoiceDetailPage() {
         onRecordPayment={handleRecordPayment}
         onFinalize={handleFinalize}
         onCancel={handleCancel}
-        onPrint={handlePrint}
         onAddItem={handleAddItem}
         onRemoveItem={handleRemoveItem}
         onApplyDiscount={handleApplyDiscount}

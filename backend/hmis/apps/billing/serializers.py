@@ -112,9 +112,11 @@ class InvoiceSerializer(serializers.ModelSerializer):
     """Serializer for Invoice model."""
 
     patient_name = serializers.CharField(source="patient.full_name", read_only=True)
+    patient_mrn = serializers.CharField(source="patient.mrn", read_only=True)
     created_by_username = serializers.CharField(source="created_by.username", read_only=True)
     items = InvoiceItemSerializer(many=True, read_only=True)
     balance = serializers.SerializerMethodField()
+    balance_due = serializers.DecimalField(max_digits=12, decimal_places=2, read_only=True)
     
     # Proforma-specific fields
     is_valid = serializers.BooleanField(read_only=True)
@@ -128,6 +130,7 @@ class InvoiceSerializer(serializers.ModelSerializer):
             "invoice_number",
             "patient",
             "patient_name",
+            "patient_mrn",
             "encounter",
             "invoice_date",
             "due_date",
@@ -140,6 +143,7 @@ class InvoiceSerializer(serializers.ModelSerializer):
             "total_amount",
             "amount_paid",
             "balance",
+            "balance_due",
             "insurance_provider",
             "insurance_member_no",
             "sha_claim_number",
@@ -171,6 +175,7 @@ class InvoiceSerializer(serializers.ModelSerializer):
             "total_amount",
             "amount_paid",
             "balance",
+            "balance_due",
             "cancelled_by",
             "cancelled_at",
             "is_converted",
