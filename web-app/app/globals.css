@@ -380,7 +380,8 @@
     @apply bg-white text-black;
   }
 
-  .no-print {
+  .no-print,
+  .print\:hidden {
     display: none !important;
   }
 

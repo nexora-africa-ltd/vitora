@@ -18,10 +18,6 @@ export default function ReceiptPage() {
 
   const { data: receipt, isLoading } = usePaymentReceipt(receiptId);
 
-  const handlePrint = () => {
-    window.print();
-  };
-
   if (isLoading) {
     return (
       <div className="flex items-center justify-center min-h-[400px]">
@@ -56,7 +52,7 @@ export default function ReceiptPage() {
         </div>
       </div>
 
-      <ReceiptView receipt={receipt} isLoading={false} onPrint={handlePrint} />
+      <ReceiptView receipt={receipt} isLoading={false} />
     </div>
   );
 }
