@@ -18,8 +18,8 @@ from hmis.apps.billing.models import (
 )
 from hmis.apps.core.qr_utils import (
     generate_qr_data_uri,
-    generate_receipt_qr_data,
-    generate_invoice_qr_data,
+    generate_receipt_qr_url,
+    generate_invoice_qr_url,
 )
 
 
@@ -207,14 +207,13 @@ class InvoiceSerializer(serializers.ModelSerializer):
         return obj.total_amount - obj.amount_paid
 
     def get_qr_code(self, obj) -> str:
-        """Generate QR code data URI for the invoice."""
-        qr_data = generate_invoice_qr_data(
+        """Generate QR code data URI containing a verification URL."""
+        verification_url = generate_invoice_qr_url(
             invoice_number=obj.invoice_number,
             total_amount=str(obj.total_amount),
             invoice_date=obj.invoice_date.isoformat() if obj.invoice_date else "",
-            patient_mrn=obj.patient.mrn if obj.patient else None,
         )
-        return generate_qr_data_uri(qr_data)
+        return generate_qr_data_uri(verification_url)
 
     def create(self, validated_data):
         # Set created_by from request user
@@ -399,13 +398,13 @@ class ReceiptSerializer(serializers.ModelSerializer):
         ]
 
     def get_qr_code(self, obj) -> str:
-        """Generate QR code data URI for the receipt."""
-        qr_data = generate_receipt_qr_data(
+        """Generate QR code data URI containing a verification URL."""
+        verification_url = generate_receipt_qr_url(
             receipt_number=obj.receipt_number,
             amount=str(obj.amount),
             receipt_date=obj.receipt_date.isoformat() if obj.receipt_date else "",
         )
-        return generate_qr_data_uri(qr_data)
+        return generate_qr_data_uri(verification_url)
 
     def get_line_items(self, obj) -> list[dict]:
         """Get line items from the related invoice."""

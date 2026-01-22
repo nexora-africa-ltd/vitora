@@ -11,9 +11,11 @@ from PIL import Image
 from hmis.apps.core.qr_utils import (
     generate_document_signature,
     generate_invoice_qr_data,
+    generate_invoice_qr_url,
     generate_qr_base64,
     generate_qr_data_uri,
     generate_receipt_qr_data,
+    generate_receipt_qr_url,
     verify_document_signature,
 )
 
@@ -286,6 +288,97 @@ class TestGenerateInvoiceQRData:
 
         result = generate_qr_base64(qr_data)
         assert len(result) > 0
+
+
+class TestGenerateReceiptQRUrl:
+    """Tests for generate_receipt_qr_url function."""
+
+    def test_generates_valid_url(self):
+        """Should generate a valid verification URL."""
+        result = generate_receipt_qr_url(
+            receipt_number="RCP-001",
+            amount="1500.00",
+            receipt_date="2026-01-22T10:00:00Z",
+        )
+
+        assert "/verify?" in result
+        assert "type=RECEIPT" in result
+        assert "number=RCP-001" in result
+        assert "amount=1500.00" in result
+        assert "date=2026-01-22" in result
+        assert "signature=" in result
+
+    def test_uses_custom_base_url(self):
+        """Should use custom base URL when provided."""
+        result = generate_receipt_qr_url(
+            receipt_number="RCP-001",
+            amount="100.00",
+            receipt_date="2026-01-22",
+            base_url="https://myapp.com/verify",
+        )
+
+        assert result.startswith("https://myapp.com/verify?")
+
+    def test_signature_is_verifiable(self):
+        """The generated signature should be verifiable."""
+        result = generate_receipt_qr_url(
+            receipt_number="RCP-002",
+            amount="2000.00",
+            receipt_date="2026-01-22T15:00:00Z",
+        )
+
+        # Extract signature from URL
+        import urllib.parse
+        parsed = urllib.parse.urlparse(result)
+        params = urllib.parse.parse_qs(parsed.query)
+        
+        assert verify_document_signature(
+            document_type="RECEIPT",
+            document_number=params["number"][0],
+            amount=params["amount"][0],
+            date=params["date"][0],
+            signature=params["signature"][0],
+        )
+
+
+class TestGenerateInvoiceQRUrl:
+    """Tests for generate_invoice_qr_url function."""
+
+    def test_generates_valid_url(self):
+        """Should generate a valid verification URL."""
+        result = generate_invoice_qr_url(
+            invoice_number="INV-001",
+            total_amount="5000.00",
+            invoice_date="2026-01-22T09:00:00Z",
+        )
+
+        assert "/verify?" in result
+        assert "type=INVOICE" in result
+        assert "number=INV-001" in result
+        assert "amount=5000.00" in result
+        assert "date=2026-01-22" in result
+        assert "signature=" in result
+
+    def test_signature_is_verifiable(self):
+        """The generated signature should be verifiable."""
+        result = generate_invoice_qr_url(
+            invoice_number="INV-002",
+            total_amount="10000.00",
+            invoice_date="2026-01-22T12:00:00Z",
+        )
+
+        # Extract and verify signature
+        import urllib.parse
+        parsed = urllib.parse.urlparse(result)
+        params = urllib.parse.parse_qs(parsed.query)
+        
+        assert verify_document_signature(
+            document_type="INVOICE",
+            document_number=params["number"][0],
+            amount=params["amount"][0],
+            date=params["date"][0],
+            signature=params["signature"][0],
+        )
 
 
 class TestQRCodeIntegration:

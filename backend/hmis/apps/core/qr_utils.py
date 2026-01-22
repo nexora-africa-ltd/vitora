@@ -101,6 +101,71 @@ def generate_document_signature(
     return signature[:8].upper()
 
 
+def get_verification_base_url() -> str:
+    """
+    Get the base URL for document verification.
+    
+    Reads from DOCUMENT_VERIFICATION_URL setting, falls back to default.
+    """
+    return getattr(settings, 'DOCUMENT_VERIFICATION_URL', 'https://vitora.health/verify')
+
+
+def generate_receipt_qr_url(
+    receipt_number: str,
+    amount: str,
+    receipt_date: str,
+    base_url: Optional[str] = None,
+) -> str:
+    """
+    Generate a verification URL for a receipt that can be encoded in a QR code.
+    
+    When scanned, opens the verification page with the document pre-verified.
+    
+    Args:
+        receipt_number: The receipt number
+        amount: Payment amount as string
+        receipt_date: Receipt date as ISO string
+        base_url: Optional custom base URL (defaults to settings)
+    
+    Returns:
+        Full verification URL
+    """
+    date_str = receipt_date[:10] if receipt_date else ""
+    sig = generate_document_signature("RECEIPT", receipt_number, amount, receipt_date)
+    
+    url = base_url or get_verification_base_url()
+    params = f"?type=RECEIPT&number={receipt_number}&amount={amount}&date={date_str}&signature={sig}"
+    
+    return f"{url}{params}"
+
+
+def generate_invoice_qr_url(
+    invoice_number: str,
+    total_amount: str,
+    invoice_date: str,
+    base_url: Optional[str] = None,
+) -> str:
+    """
+    Generate a verification URL for an invoice that can be encoded in a QR code.
+    
+    Args:
+        invoice_number: The invoice number
+        total_amount: Total invoice amount as string
+        invoice_date: Invoice date as ISO string
+        base_url: Optional custom base URL (defaults to settings)
+    
+    Returns:
+        Full verification URL
+    """
+    date_str = invoice_date[:10] if invoice_date else ""
+    sig = generate_document_signature("INVOICE", invoice_number, total_amount, invoice_date)
+    
+    url = base_url or get_verification_base_url()
+    params = f"?type=INVOICE&number={invoice_number}&amount={total_amount}&date={date_str}&signature={sig}"
+    
+    return f"{url}{params}"
+
+
 def generate_receipt_qr_data(
     receipt_number: str,
     amount: str,

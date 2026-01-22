@@ -317,6 +317,10 @@ EMAIL_BACKEND = "django.core.mail.backends.console.EmailBackend"  # For developm
 # Frontend URL for notification links
 FRONTEND_URL = os.getenv("FRONTEND_URL", "http://localhost:3009")
 
+# Document verification URL (for QR codes on receipts/invoices)
+# In production, set to your public domain e.g., https://vitora.health/verify
+DOCUMENT_VERIFICATION_URL = os.getenv("DOCUMENT_VERIFICATION_URL", f"{FRONTEND_URL}/verify")
+
 # Facility information for documents
 FACILITY_NAME = os.getenv("FACILITY_NAME", "Vitora Health Facility")
 FACILITY_ADDRESS = os.getenv("FACILITY_ADDRESS", "")
