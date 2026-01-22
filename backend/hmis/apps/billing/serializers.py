@@ -16,6 +16,11 @@ from hmis.apps.billing.models import (
     Service,
     ServiceCategory,
 )
+from hmis.apps.core.qr_utils import (
+    generate_qr_data_uri,
+    generate_receipt_qr_data,
+    generate_invoice_qr_data,
+)
 
 
 class ServiceCategorySerializer(serializers.ModelSerializer):
@@ -122,6 +127,9 @@ class InvoiceSerializer(serializers.ModelSerializer):
     is_valid = serializers.BooleanField(read_only=True)
     days_until_expiry = serializers.IntegerField(read_only=True)
     can_convert = serializers.BooleanField(read_only=True)
+    
+    # QR code for validation
+    qr_code = serializers.SerializerMethodField()
 
     class Meta:
         model = Invoice
@@ -164,6 +172,7 @@ class InvoiceSerializer(serializers.ModelSerializer):
             "created_by",
             "created_by_username",
             "items",
+            "qr_code",
             "created_at",
             "updated_at",
         ]
@@ -187,6 +196,7 @@ class InvoiceSerializer(serializers.ModelSerializer):
             "created_by",
             "created_by_username",
             "items",
+            "qr_code",
             "created_at",
             "updated_at",
         ]
@@ -195,6 +205,16 @@ class InvoiceSerializer(serializers.ModelSerializer):
     def get_balance(self, obj):
         """Calculate balance dynamically."""
         return obj.total_amount - obj.amount_paid
+
+    def get_qr_code(self, obj) -> str:
+        """Generate QR code data URI for the invoice."""
+        qr_data = generate_invoice_qr_data(
+            invoice_number=obj.invoice_number,
+            total_amount=str(obj.total_amount),
+            invoice_date=obj.invoice_date.isoformat() if obj.invoice_date else "",
+            patient_mrn=obj.patient.mrn if obj.patient else None,
+        )
+        return generate_qr_data_uri(qr_data)
 
     def create(self, validated_data):
         # Set created_by from request user
@@ -327,6 +347,8 @@ class ReceiptSerializer(serializers.ModelSerializer):
     receipt_date = serializers.DateTimeField(read_only=True)
     # Line items from invoice
     line_items = serializers.SerializerMethodField()
+    # QR code for validation
+    qr_code = serializers.SerializerMethodField()
 
     class Meta:
         model = Receipt
@@ -355,6 +377,7 @@ class ReceiptSerializer(serializers.ModelSerializer):
             "payment_point_name",
             "payment_point_code",
             "line_items",
+            "qr_code",
             "created_at",
         ]
         read_only_fields = [
@@ -371,8 +394,18 @@ class ReceiptSerializer(serializers.ModelSerializer):
             "payment_point_name",
             "payment_point_code",
             "line_items",
+            "qr_code",
             "created_at",
         ]
+
+    def get_qr_code(self, obj) -> str:
+        """Generate QR code data URI for the receipt."""
+        qr_data = generate_receipt_qr_data(
+            receipt_number=obj.receipt_number,
+            amount=str(obj.amount),
+            receipt_date=obj.receipt_date.isoformat() if obj.receipt_date else "",
+        )
+        return generate_qr_data_uri(qr_data)
 
     def get_line_items(self, obj) -> list[dict]:
         """Get line items from the related invoice."""

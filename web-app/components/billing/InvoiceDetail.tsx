@@ -454,14 +454,15 @@ export function InvoiceDetail({
             </TableBody>
             <TableFooter>
               <TableRow>
-                <TableCell colSpan={canEdit && onRemoveItem ? 3 : 2}>Subtotal</TableCell>
-                <TableCell className="text-right" colSpan={canEdit && onRemoveItem ? 2 : 1}>
+                <TableCell colSpan={3}>Subtotal</TableCell>
+                <TableCell className="text-right">
                   {formatKES(subtotal)}
                 </TableCell>
+                {canEdit && onRemoveItem && <TableCell />}
               </TableRow>
               {discount > 0 && (
                 <TableRow>
-                  <TableCell colSpan={canEdit && onRemoveItem ? 3 : 2} className="text-green-600">
+                  <TableCell colSpan={3} className="text-green-600">
                     Discount
                     {invoice.discount_type === 'PERCENTAGE' && (() => {
                       const pct = parseFloat(invoice.discount_value || '0');
@@ -470,16 +471,18 @@ export function InvoiceDetail({
                       return ` (${pctLabel})`;
                     })()}
                   </TableCell>
-                  <TableCell className="text-right text-green-600" colSpan={canEdit && onRemoveItem ? 2 : 1}>
+                  <TableCell className="text-right text-green-600">
                     -{formatKES(discount)}
                   </TableCell>
+                  {canEdit && onRemoveItem && <TableCell />}
                 </TableRow>
               )}
               <TableRow className="font-bold">
-                <TableCell colSpan={canEdit && onRemoveItem ? 3 : 2}>Total</TableCell>
-                <TableCell className="text-right" colSpan={canEdit && onRemoveItem ? 2 : 1}>
+                <TableCell colSpan={3}>Total</TableCell>
+                <TableCell className="text-right">
                   {formatKES(total)}
                 </TableCell>
+                {canEdit && onRemoveItem && <TableCell />}
               </TableRow>
             </TableFooter>
           </Table>

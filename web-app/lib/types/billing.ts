@@ -116,6 +116,9 @@ export interface Invoice {
   days_until_expiry: number;             // Computed: -1 if N/A, 0+ for proformas
   can_convert: boolean;                  // Computed: proforma + valid + has unconverted items
 
+  // QR code for validation (base64 data URI)
+  qr_code?: string;
+
   // Nested items (when expanded)
   items?: InvoiceItem[];
 }
@@ -409,6 +412,9 @@ export interface Receipt {
   received_by_username?: string;
   payment_point_name?: string;
   payment_point_code?: string;
+
+  // QR code for validation (base64 data URI)
+  qr_code?: string;
 
   // Void info
   is_voided: boolean;
