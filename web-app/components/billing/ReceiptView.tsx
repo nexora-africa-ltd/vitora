@@ -12,6 +12,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { Printer, Download } from 'lucide-react';
 import type { Receipt } from '@/lib/types/billing';
 import { formatDateTime } from '@/lib/utils/format';
+import { printReceipt } from '@/lib/utils/print-receipt';
 
 // ============================================================================
 // Types
@@ -20,7 +21,6 @@ import { formatDateTime } from '@/lib/utils/format';
 interface ReceiptViewProps {
   receipt: Receipt | null;
   isLoading: boolean;
-  onPrint?: () => void;
   onDownload?: () => void;
   facilityName?: string;
   facilityAddress?: string;
@@ -92,7 +92,6 @@ function ReceiptSkeleton() {
 export function ReceiptView({
   receipt,
   isLoading,
-  onPrint,
   onDownload,
   facilityName = 'Demo Health Facility',
   facilityAddress = '123 Health Street, Nairobi',
@@ -102,10 +101,14 @@ export function ReceiptView({
   const printRef = React.useRef<HTMLDivElement>(null);
 
   const handlePrint = () => {
-    if (onPrint) {
-      onPrint();
-    } else {
-      window.print();
+    if (receipt) {
+      // Use the dedicated print template
+      printReceipt({
+        receipt,
+        facilityName,
+        facilityAddress,
+        facilityPhone,
+      });
     }
   };
 
