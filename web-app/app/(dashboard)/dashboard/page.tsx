@@ -3,15 +3,18 @@
 import Link from 'next/link';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Users, Stethoscope, Pill, AlertTriangle, ArrowRight } from 'lucide-react';
+import { Users, Stethoscope, Pill, AlertTriangle, ArrowRight, UserCheck } from 'lucide-react';
 import { StatsCard } from '@/components/dashboard/stats-card';
 import { TrendBadge } from '@/components/charts';
 import { RecentPatients } from '@/components/dashboard/recent-patients';
 import { AlertsWidget } from '@/components/dashboard/alerts-widget';
+import { AllClaimedEncountersWidget } from '@/components/dashboard/all-claimed-widget';
 import { useDashboardStats, formatNumber } from '@/lib/hooks/use-dashboard-stats';
+import { useIsSupervisor } from '@/lib/auth';
 
 export default function DashboardPage() {
   const { data: stats, isLoading } = useDashboardStats();
+  const isSupervisor = useIsSupervisor();
 
   // Calculate week-over-week changes (mock for now - would come from API in production)
   const weeklyChanges = {
@@ -122,7 +125,7 @@ export default function DashboardPage() {
       {/* Content grid */}
       <div className="grid gap-6 lg:grid-cols-2">
         {/* Recent patients */}
-        <Card >
+        <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <div>
               <CardTitle>Recent Patients</CardTitle>
@@ -155,6 +158,32 @@ export default function DashboardPage() {
           </CardContent>
         </Card>
       </div>
+
+      {/* Supervisor section - All Claimed Encounters */}
+      {isSupervisor && (
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <div>
+              <CardTitle className="flex items-center gap-2">
+                <UserCheck className="h-5 w-5" />
+                Active Consultations
+              </CardTitle>
+              <CardDescription>
+                All encounters currently being attended by clinicians
+              </CardDescription>
+            </div>
+            <Button variant="ghost" size="sm" asChild>
+              <Link href="/encounters?filter=all_claimed">
+                View All
+                <ArrowRight className="ml-1 h-4 w-4" />
+              </Link>
+            </Button>
+          </CardHeader>
+          <CardContent>
+            <AllClaimedEncountersWidget enabled={isSupervisor} />
+          </CardContent>
+        </Card>
+      )}
     </div>
   );
 }

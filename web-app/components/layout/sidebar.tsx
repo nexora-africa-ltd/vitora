@@ -132,11 +132,12 @@ const NavLink = memo(function NavLink({
       className={cn(
         baseStyles,
         isChild && !collapsed && 'ml-4 pl-3 opacity-90',
-        isActive ? activeStyles : inactiveStyles
+        isActive ? activeStyles : inactiveStyles,
+        collapsed && 'justify-center px-0'
       )}
     >
-      <div className="rounded-md p-1.5 transition-transform group-hover:scale-110 group-hover:bg-cyan-500/15">
-        <Icon className="h-5 w-5 shrink-0" />
+      <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md transition-transform group-hover:scale-110 group-hover:bg-cyan-500/15">
+        <Icon className="h-5 w-5" />
       </div>
 
       {!collapsed && <span>{item.label}</span>}
@@ -192,13 +193,15 @@ const NavGroup = memo(function NavGroup({
           <button
             aria-label={item.label}
             className={cn(
-              'group flex w-full items-center justify-center rounded-lg px-3 py-2 transition-all',
+              'group flex w-full items-center justify-center rounded-lg px-0 py-2 transition-all',
               hasActiveChild
                 ? 'bg-cyan-500/15 text-cyan-600 dark:text-cyan-300'
                 : 'text-muted-foreground hover:bg-cyan-500/10'
             )}
           >
-            <Icon className="h-5 w-5 transition-transform group-hover:scale-110" />
+            <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md transition-transform group-hover:scale-110 group-hover:bg-cyan-500/15">
+              <Icon className="h-5 w-5" />
+            </div>
           </button>
         </TooltipTrigger>
         <TooltipContent side="right">{item.label}</TooltipContent>
@@ -217,7 +220,7 @@ const NavGroup = memo(function NavGroup({
               : 'text-muted-foreground hover:bg-cyan-500/10'
           )}
         >
-          <div className="rounded-md p-1.5 group-hover:bg-cyan-500/15">
+          <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md group-hover:bg-cyan-500/15">
             <Icon className="h-5 w-5" />
           </div>
           <span className="flex-1 text-left">{item.label}</span>
@@ -351,7 +354,7 @@ export function Sidebar({
           </div>
 
           <div className="border-t px-2 py-2">
-            <div className="grid grid-cols-3 gap-1">
+            <div className={cn('grid gap-1', collapsed ? 'grid-cols-1' : 'grid-cols-3')}>
               {bottomNavItems.map((item) => {
                 const ItemIcon = item.icon;
                 const link = (
@@ -360,8 +363,9 @@ export function Sidebar({
                     onClick={onMobileClose}
                     aria-label={item.label}
                     className={cn(
-                      'inline-flex h-9 w-full items-center justify-center rounded-md text-muted-foreground transition-colors',
-                      'hover:bg-cyan-500/10 hover:text-cyan-600 dark:hover:text-cyan-300'
+                      'inline-flex h-9 items-center justify-center rounded-md text-muted-foreground transition-colors',
+                      'hover:bg-cyan-500/10 hover:text-cyan-600 dark:hover:text-cyan-300',
+                      collapsed ? 'w-full' : 'w-full'
                     )}
                   >
                     <ItemIcon className="h-5 w-5" />
@@ -383,8 +387,9 @@ export function Sidebar({
                     onClick={logout}
                     aria-label="Logout"
                     className={cn(
-                      'inline-flex h-9 w-full items-center justify-center rounded-md text-muted-foreground transition-colors',
-                      'hover:bg-destructive/15 hover:text-destructive'
+                      'inline-flex h-9 items-center justify-center rounded-md text-muted-foreground transition-colors',
+                      'hover:bg-destructive/15 hover:text-destructive',
+                      collapsed ? 'w-full' : 'w-full'
                     )}
                   >
                     <LogOut className="h-5 w-5" />
@@ -400,12 +405,13 @@ export function Sidebar({
                     onClick={() => onCollapse(!collapsed)}
                     aria-label={collapsed ? 'Expand sidebar' : 'Collapse sidebar'}
                     className={cn(
-                      'inline-flex h-9 w-full items-center justify-center rounded-md text-muted-foreground transition-colors',
+                      'inline-flex h-9 items-center justify-center rounded-md text-muted-foreground transition-colors',
                       'hover:bg-cyan-500/10 hover:text-cyan-600 dark:hover:text-cyan-300',
+                      collapsed ? 'w-full' : 'w-full',
                       collapsed && 'rotate-180'
                     )}
                   >
-                    <ChevronLeft className="h-4 w-4" />
+                    <ChevronLeft className="h-5 w-5" />
                   </button>
                 </TooltipTrigger>
                 <TooltipContent side="right">

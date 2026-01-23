@@ -973,6 +973,76 @@ class EncounterViewSet(viewsets.ModelViewSet):
         serializer = self.get_serializer(queryset, many=True)
         return Response({"results": serializer.data, "count": queryset.count()})
 
+    @action(detail=False, methods=["get"], url_path="all_claimed")
+    def all_claimed(self, request):
+        """
+        Get list of all currently claimed encounters.
+
+        This endpoint is for supervisors and management to see all encounters
+        currently being worked on by clinicians.
+
+        Requires user to have hierarchy_level <= 3 (supervisor or above)
+        or the 'encounters.view_all_claimed' permission.
+
+        GET /api/encounters/all_claimed/
+
+        Query params:
+        - status: Filter by encounter status (DRAFT, IN_PROGRESS)
+        - include_completed: Include completed encounters (default: false)
+        - clinician: Filter by clinician ID
+        - department: Filter by department ID
+        """
+        # Permission check: supervisor level (hierarchy_level <= 3) or specific permission
+        user = request.user
+
+        # Check if user has the specific permission
+        has_permission = user.has_perm("encounters.view_all_claimed")
+
+        # Check if user is supervisor level (hierarchy_level <= 3)
+        is_supervisor = False
+        if hasattr(user, "staff_profile") and user.staff_profile:
+            primary_role = user.staff_profile.primary_role
+            if primary_role and primary_role.hierarchy_level <= 3:
+                is_supervisor = True
+
+        # Also allow superusers and staff
+        if not (has_permission or is_supervisor or user.is_superuser or user.is_staff):
+            return Response(
+                {"error": "You do not have permission to view all claimed encounters."},
+                status=status.HTTP_403_FORBIDDEN,
+            )
+
+        # Get all claimed encounters (where assigned_clinician is set)
+        queryset = self.get_queryset().filter(
+            assigned_clinician__isnull=False
+        )
+
+        # By default, exclude completed encounters
+        include_completed = (
+            request.query_params.get("include_completed", "false").lower() == "true"
+        )
+        if not include_completed:
+            queryset = queryset.exclude(status__in=["COMPLETED", "CANCELLED"])
+
+        # Optional filters
+        status_filter = request.query_params.get("status")
+        if status_filter:
+            queryset = queryset.filter(status=status_filter)
+
+        clinician_filter = request.query_params.get("clinician")
+        if clinician_filter:
+            queryset = queryset.filter(assigned_clinician_id=clinician_filter)
+
+        department_filter = request.query_params.get("department")
+        if department_filter:
+            queryset = queryset.filter(department_id=department_filter)
+
+        # Order by claimed_at (most recent first)
+        queryset = queryset.order_by("-claimed_at")
+
+        serializer = self.get_serializer(queryset, many=True)
+        return Response({"results": serializer.data, "count": queryset.count()})
+
     # =========================================================================
     # Clinical Template Sync Actions
     # =========================================================================
