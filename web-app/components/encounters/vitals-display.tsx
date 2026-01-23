@@ -14,12 +14,12 @@ export function VitalsDisplay({ encounter }: VitalsDisplayProps) {
       name: 'Temperature',
       value: encounter.temperature,
       unit: '°C',
-      normalRange: '36.1-37.2',
+      normalRange: '36.5-37.5',
       isAbnormal: encounter.temperature
-        ? encounter.temperature < 36.1 || encounter.temperature > 37.2
+        ? encounter.temperature < 36.5 || encounter.temperature > 37.5
         : false,
       isCritical: encounter.temperature
-        ? encounter.temperature < 35 || encounter.temperature > 39
+        ? encounter.temperature < 35 || encounter.temperature > 40
         : false,
     },
     {

@@ -57,10 +57,10 @@ export const DEFAULT_THRESHOLDS: Record<VitalType, Omit<TriageVitalThreshold, 'i
   },
   TEMPERATURE: {
     vital_type: 'TEMPERATURE',
-    critical_low: 35.0,
-    warning_low: 36.0,
-    warning_high: 38.5,
-    critical_high: 40.0,
+    critical_low: 35.0,   // Hypothermia
+    warning_low: 36.5,    // Below normal (normal starts at 36.5)
+    warning_high: 37.5,   // Fever threshold
+    critical_high: 40.0,  // Hyperpyrexia
     is_active: true,
   },
   RESPIRATORY_RATE: {

@@ -65,7 +65,7 @@ function calculateKetaCategory(
   }
 
   // YELLOW triggers
-  if (temp !== undefined && temp >= 38.5) {
+  if (temp !== undefined && temp >= 37.5) {
     return { category: 'YELLOW', alerts };
   }
 
