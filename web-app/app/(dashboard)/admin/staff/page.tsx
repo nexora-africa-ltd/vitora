@@ -33,13 +33,13 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { ViewToggle, type ViewMode } from '@/components/ui/view-toggle';
 import { EntityCard, EntityGrid } from '@/components/shared/entity-card';
 import { useStaffList, useDepartments, useRoles } from '@/lib/hooks/use-rbac';
-import type { StaffProfile } from '@/lib/types/rbac';
+import type { StaffProfile, EmploymentStatus } from '@/lib/types/rbac';
 
 export default function StaffListPage() {
   const [search, setSearch] = useState('');
   const [departmentFilter, setDepartmentFilter] = useState('');
   const [roleFilter, setRoleFilter] = useState('');
-  const [statusFilter, setStatusFilter] = useState('');
+  const [statusFilter, setStatusFilter] = useState<EmploymentStatus | ''>('');
   const [viewMode, setViewMode] = useState<ViewMode>('list');
 
   const { data: departments } = useDepartments({ is_active: true });
@@ -49,7 +49,7 @@ export default function StaffListPage() {
     search: search || undefined,
     department: departmentFilter ? parseInt(departmentFilter) : undefined,
     role: roleFilter ? parseInt(roleFilter) : undefined,
-    is_active: statusFilter === '' ? undefined : statusFilter === 'active',
+    employment_status: statusFilter || undefined,
   });
 
   if (error) {
@@ -127,14 +127,17 @@ export default function StaffListPage() {
                 ))}
               </SelectContent>
             </Select>
-            <Select value={statusFilter} onValueChange={setStatusFilter}>
-              <SelectTrigger className="w-[140px]" aria-label="Status">
+            <Select value={statusFilter} onValueChange={(value) => setStatusFilter(value as EmploymentStatus | '')}>
+              <SelectTrigger className="w-[160px]" aria-label="Status">
                 <SelectValue placeholder="All Status" />
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="">All Status</SelectItem>
-                <SelectItem value="active">Active</SelectItem>
-                <SelectItem value="inactive">Inactive</SelectItem>
+                <SelectItem value="ACTIVE">Active</SelectItem>
+                <SelectItem value="INACTIVE">Inactive</SelectItem>
+                <SelectItem value="ON_LEAVE">On Leave</SelectItem>
+                <SelectItem value="SUSPENDED">Suspended</SelectItem>
+                <SelectItem value="TERMINATED">Terminated</SelectItem>
               </SelectContent>
             </Select>
             <ViewToggle value={viewMode} onChange={setViewMode} />
