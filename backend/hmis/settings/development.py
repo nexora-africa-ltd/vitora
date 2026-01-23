@@ -39,6 +39,7 @@ CORS_ALLOW_HEADERS = [
     "user-agent",
     "x-csrftoken",
     "x-requested-with",
+    "x-idempotency-key",  # Sprint 1.7: Idempotent API operations
     "ngrok-skip-browser-warning",
 ]
 
