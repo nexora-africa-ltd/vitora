@@ -52,13 +52,23 @@ export function usePatientEncounters(patientId: number) {
 }
 
 /**
- * Hook for creating a patient
+ * Hook for creating a patient with optional idempotency support.
+ *
+ * Sprint 1.7: Data Integrity - Idempotent API Operations
+ *
+ * @example
+ * const createPatient = useCreatePatient();
+ * const [idempotencyKey, clearKey] = useIdempotencyKey('patient-registration');
+ *
+ * await createPatient.mutateAsync({ data, idempotencyKey });
+ * clearKey(); // Clear after success
  */
 export function useCreatePatient() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: (data: PatientCreateData) => patientsApi.createPatient(data),
+    mutationFn: ({ data, idempotencyKey }: { data: PatientCreateData; idempotencyKey?: string }) =>
+      patientsApi.createPatient(data, idempotencyKey),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['patients'] });
     },

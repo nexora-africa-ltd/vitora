@@ -310,6 +310,11 @@ export interface ConsultationQueueItem {
   triage_completed_at: string | null;
   wait_time_minutes: number;
   called_at: string | null;
+  // Clinician Assignment (Data Integrity - Sprint 1.7)
+  assigned_clinician?: number | null;
+  assigned_clinician_username?: string | null;
+  assigned_clinician_name?: string | null;
+  claimed_at?: string | null;
 }
 
 export interface ConsultationQueueFilters {

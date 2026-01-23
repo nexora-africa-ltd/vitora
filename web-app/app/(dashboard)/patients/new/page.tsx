@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { ArrowLeft, CheckCircle2, Stethoscope, User, Plus, UserPlus, ArrowRight, Clock, Activity, FileText } from 'lucide-react';
@@ -21,8 +21,11 @@ import { useCreatePatient } from '@/lib/hooks/use-patients-enhanced';
 import { useCheckInPatient } from '@/lib/hooks/use-triage';
 import { useRegisterInCR } from '@/lib/hooks/use-sha';
 import { useToast } from '@/lib/hooks/use-toast';
+import { getOrCreateIdempotencyKey, clearIdempotencyKey } from '@/lib/utils/idempotency';
 import type { PatientCreateData, Patient } from '@/lib/types/patient';
 import type { ClientRegistryClient, DirectEligibilityCheckResponse } from '@/lib/types/sha';
+
+const IDEMPOTENCY_FORM_ID = 'patient-registration';
 
 export default function NewPatientPage() {
   const router = useRouter();
@@ -34,6 +37,9 @@ export default function NewPatientPage() {
   const [isCheckingIn, setIsCheckingIn] = useState(false);
   const [crClient, setCrClient] = useState<ClientRegistryClient | null>(null);
   const [eligibility, setEligibility] = useState<DirectEligibilityCheckResponse | null>(null);
+
+  // Generate idempotency key for form submission (Sprint 1.7)
+  const idempotencyKey = useMemo(() => getOrCreateIdempotencyKey(IDEMPOTENCY_FORM_ID), []);
 
   // Handle CR client found from modal
   const handleCRClientFound = useCallback((client: ClientRegistryClient) => {
@@ -51,8 +57,13 @@ export default function NewPatientPage() {
 
   const handleSubmit = async (data: PatientCreateData) => {
     try {
-      const patient = await createPatient.mutateAsync(data);
+      // Use idempotency key to prevent duplicate creation (Sprint 1.7)
+      const patient = await createPatient.mutateAsync({ data, idempotencyKey });
       setRegisteredPatient(patient);
+
+      // Clear idempotency key after successful creation
+      clearIdempotencyKey(IDEMPOTENCY_FORM_ID);
+
       toast({
         title: 'Patient registered',
         description: `Successfully registered ${data.first_name} ${data.last_name} (${patient.mrn})`,
@@ -82,6 +93,7 @@ export default function NewPatientPage() {
         }
       }
     } catch (error) {
+      // On error, idempotency key persists for retry
       toast({
         title: 'Registration failed',
         description: error instanceof Error ? error.message : 'Failed to register patient',
