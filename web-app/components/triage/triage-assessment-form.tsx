@@ -428,7 +428,7 @@ function getVitalThresholdStatus(
   const thresholds: Record<string, { critical: [number, number]; warning: [number, number]; unit: string }> = {
     spo2: { critical: [90, Infinity], warning: [95, Infinity], unit: '%' },
     heart_rate: { critical: [40, 150], warning: [50, 120], unit: 'bpm' },
-    temperature: { critical: [35, 40], warning: [36, 38.5], unit: '°C' },
+    temperature: { critical: [35, 40], warning: [36.5, 37.5], unit: '°C' },
     respiratory_rate: { critical: [10, 30], warning: [12, 24], unit: '/min' },
   };
 
@@ -634,7 +634,7 @@ function calculateSuggestedCategory(
   if (formData.pain_score !== null && formData.pain_score !== undefined && formData.pain_score >= 7)
     return 'YELLOW';
   if (formData.mental_status === 'V') return 'YELLOW';
-  if (typeof temperature === 'number' && temperature >= 38.5) return 'YELLOW';
+  if (typeof temperature === 'number' && temperature >= 37.5) return 'YELLOW';
   if (
     typeof respiratoryRate === 'number' &&
     (respiratoryRate < 10 || respiratoryRate > 30)

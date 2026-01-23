@@ -19,7 +19,7 @@ export {
 
 // Clinical normal ranges for reference (input validation, not alerting)
 export const VITAL_RANGES = {
-  temperature: { min: 30, max: 45, normalMin: 36.1, normalMax: 37.2, unit: '°C' },
+  temperature: { min: 30, max: 45, normalMin: 36.5, normalMax: 37.5, unit: '°C' },
   pulse: { min: 20, max: 250, normalMin: 60, normalMax: 100, unit: 'bpm' },
   blood_pressure_systolic: { min: 50, max: 300, normalMin: 90, normalMax: 120, unit: 'mmHg' },
   blood_pressure_diastolic: { min: 30, max: 200, normalMin: 60, normalMax: 80, unit: 'mmHg' },
