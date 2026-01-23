@@ -196,6 +196,20 @@ export function useDeactivateStaffProfile() {
   });
 }
 
+/**
+ * Terminate (soft-delete) a staff profile.
+ * Uses DELETE endpoint which sets employment_status to TERMINATED and date_left.
+ */
+export function useDeleteStaffProfile() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (id: number) => staffApi.delete(id),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['staff'] });
+    },
+  });
+}
+
 // =============================================================================
 // Audit Log Hooks
 // =============================================================================
