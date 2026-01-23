@@ -15,7 +15,7 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { consultationQueueApi } from '@/lib/api/consultation-queue';
 import { encountersApi } from '@/lib/api/encounters';
-import type { ConsultationQueueFilters, MyClaimedEncountersParams } from '@/lib/types/encounter';
+import type { ConsultationQueueFilters, MyClaimedEncountersParams, AllClaimedEncountersParams } from '@/lib/types/encounter';
 
 // =============================================================================
 // Query Keys
@@ -201,5 +201,40 @@ export function useMyClaimedEncounters(
     refetchInterval: options?.pollingInterval ?? 30000,
     refetchIntervalInBackground: false,
     placeholderData: (previousData) => previousData,
+  });
+}
+
+// =============================================================================
+// All Claimed Encounters Hook (Supervisor View)
+// =============================================================================
+
+export const allClaimedEncountersKeys = {
+  all: ['all-claimed-encounters'] as const,
+  list: (params?: AllClaimedEncountersParams) =>
+    [...allClaimedEncountersKeys.all, 'list', params] as const,
+};
+
+/**
+ * Hook for fetching all claimed encounters (supervisor/management view).
+ *
+ * Returns all encounters that are currently claimed by any clinician.
+ * Requires supervisor-level access (hierarchy_level <= 3) or specific permission.
+ *
+ * @param params - Optional filters (status, include_completed, clinician, department)
+ * @param options - Optional query options including polling interval and enabled flag
+ * @returns Query result with all claimed encounters data
+ */
+export function useAllClaimedEncounters(
+  params?: AllClaimedEncountersParams,
+  options?: { pollingInterval?: number | false; enabled?: boolean }
+) {
+  return useQuery({
+    queryKey: allClaimedEncountersKeys.list(params),
+    queryFn: () => encountersApi.getAllClaimed(params),
+    // Refetch every 30 seconds by default
+    refetchInterval: options?.pollingInterval ?? 30000,
+    refetchIntervalInBackground: false,
+    placeholderData: (previousData) => previousData,
+    enabled: options?.enabled ?? true,
   });
 }

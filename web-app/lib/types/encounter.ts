@@ -363,3 +363,15 @@ export interface MyClaimedEncountersResponse {
   results: Encounter[];
   count: number;
 }
+
+/**
+ * Parameters for fetching all claimed encounters (supervisor view)
+ */
+export interface AllClaimedEncountersParams {
+  status?: 'DRAFT' | 'IN_PROGRESS';
+  include_completed?: boolean;
+  clinician?: number;
+  department?: number;
+}
+
+export type AllClaimedEncountersResponse = MyClaimedEncountersResponse;

@@ -12,6 +12,8 @@ import {
   EncounterReleaseResponse,
   MyClaimedEncountersParams,
   MyClaimedEncountersResponse,
+  AllClaimedEncountersParams,
+  AllClaimedEncountersResponse,
 } from '@/lib/types/encounter';
 import { PaginatedResponse } from '@/lib/types';
 
@@ -111,6 +113,24 @@ export const encountersApi = {
   async getMyClaimed(params?: MyClaimedEncountersParams): Promise<MyClaimedEncountersResponse> {
     const response = await apiClient.get<MyClaimedEncountersResponse>(
       '/api/encounters/my_claimed/',
+      { params }
+    );
+    return response.data;
+  },
+
+  /**
+   * Get all claimed encounters (supervisor/management view).
+   *
+   * Returns all encounters that are currently claimed by any clinician.
+   * Requires supervisor-level access (hierarchy_level <= 3) or specific permission.
+   *
+   * @param params - Optional filters (status, include_completed, clinician, department)
+   * @returns List of all claimed encounters with count
+   * @throws 403 Forbidden if user lacks supervisor access
+   */
+  async getAllClaimed(params?: AllClaimedEncountersParams): Promise<AllClaimedEncountersResponse> {
+    const response = await apiClient.get<AllClaimedEncountersResponse>(
+      '/api/encounters/all_claimed/',
       { params }
     );
     return response.data;
