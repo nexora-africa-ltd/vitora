@@ -90,7 +90,7 @@ class TestIdempotentCreateMixin:
         # Should find existing key
         found = IdempotencyKey.get_or_none(key="test-get-or-none", user=test_user)
         assert found is not None
-        assert found.id == key.id
+        assert found.pk == key.pk
 
         # Should return None for non-existent key
         not_found = IdempotencyKey.get_or_none(key="non-existent", user=test_user)
