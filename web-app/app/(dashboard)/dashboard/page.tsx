@@ -9,6 +9,7 @@ import { TrendBadge } from '@/components/charts';
 import { RecentPatients } from '@/components/dashboard/recent-patients';
 import { AlertsWidget } from '@/components/dashboard/alerts-widget';
 import { AllClaimedEncountersWidget } from '@/components/dashboard/all-claimed-widget';
+import { MyClaimedEncountersWidget } from '@/components/dashboard/my-claimed-widget';
 import { useDashboardStats, formatNumber } from '@/lib/hooks/use-dashboard-stats';
 import { useIsSupervisor } from '@/lib/auth';
 
@@ -124,6 +125,30 @@ export default function DashboardPage() {
 
       {/* Content grid */}
       <div className="grid gap-6 lg:grid-cols-2">
+        {/* My Claimed Encounters - for clinicians */}
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <div>
+              <CardTitle className="flex items-center gap-2">
+                <UserCheck className="h-5 w-5 text-primary" />
+                My Active Consultations
+              </CardTitle>
+              <CardDescription>
+                Encounters you&apos;ve claimed and are working on
+              </CardDescription>
+            </div>
+            <Button variant="ghost" size="sm" asChild>
+              <Link href="/encounters?filter=my_claimed">
+                View All
+                <ArrowRight className="ml-1 h-4 w-4" />
+              </Link>
+            </Button>
+          </CardHeader>
+          <CardContent>
+            <MyClaimedEncountersWidget />
+          </CardContent>
+        </Card>
+
         {/* Recent patients */}
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
