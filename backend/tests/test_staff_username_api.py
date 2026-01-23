@@ -2,9 +2,10 @@
 Tests for staff API endpoints - username checking and suggestions.
 """
 
-import pytest
-from django.contrib.auth import get_user_model
-from rest_framework import status
+import pytest # type: ignore
+from django.contrib.auth import get_user_model # type: ignore
+from rest_framework import status # type: ignore
+from django.contrib.auth.models import Permission
 
 User = get_user_model()
 
@@ -160,10 +161,51 @@ class TestStaffUsernameSuggestion:
 class TestStaffDeactivation:
     """Tests for staff soft deletion (deactivation)."""
 
-    def test_staff_deactivation_sets_terminated_status(self, authenticated_client):
-        """Verify staff profile tracks termination fields."""
-        from hmis.apps.core.models import StaffProfile
+    def test_delete_staff_deactivates(self, authenticated_client, test_user):
+        """DELETE should deactivate staff, not hard delete."""
+        from hmis.apps.core.models import Department, StaffProfile, Role
 
-        # This tests that the model has the expected fields
-        assert hasattr(StaffProfile, "employment_status")
-        assert hasattr(StaffProfile, "date_left")
+        # Create department first (required)
+        dept = Department.objects.create(
+            name="Test Department",
+            code="TEST",
+        )
+
+        # Create a staff profile for a different user
+        other_user = User.objects.create_user(
+            username="staff_to_delete",
+            password="testpass123",
+        )
+
+        # Create a role first
+        role = Role.objects.create(
+            name="Test Role",
+            code="TEST_ROLE",
+        )
+
+        profile = StaffProfile.objects.create(
+            user=other_user,
+            employment_type="PERMANENT",
+            employment_status="ACTIVE",
+            date_joined="2024-01-01",
+            primary_department=dept,
+            primary_role=role,  # ✅ Add this
+        )
+
+        # Promote test_user to allow deletion (admin permission)
+        test_user.is_superuser = True
+        test_user.is_staff = True
+        delete_permission = Permission.objects.get(codename="delete_staffprofile")
+        test_user.user_permissions.add(delete_permission)
+        test_user.save()
+        authenticated_client.force_authenticate(user=test_user)  # Re-authenticate
+
+        response = authenticated_client.delete(f"/api/staff/{profile.pk}/")
+
+        # Should succeed
+        assert response.status_code == status.HTTP_204_NO_CONTENT
+
+        # Staff should still exist but be terminated
+        profile.refresh_from_db()
+        assert profile.employment_status == "TERMINATED"
+        assert profile.date_left is not None
