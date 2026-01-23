@@ -2,17 +2,20 @@
  * React hooks for consultation queue operations.
  *
  * Phase 3.3: Call Patient Functionality
+ * Sprint 1.7: Data Integrity - Clinician Claim/Release
  *
  * Provides hooks for:
  * - Fetching the consultation queue
  * - Calling patients
  * - Starting consultations
  * - Bypassing triage
+ * - Claiming/releasing encounters (Data Integrity)
  */
 
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { consultationQueueApi } from '@/lib/api/consultation-queue';
-import type { ConsultationQueueFilters } from '@/lib/types/encounter';
+import { encountersApi } from '@/lib/api/encounters';
+import type { ConsultationQueueFilters, MyClaimedEncountersParams } from '@/lib/types/encounter';
 
 // =============================================================================
 // Query Keys
@@ -120,5 +123,83 @@ export function useBypassTriage() {
       // Also invalidate encounters list
       queryClient.invalidateQueries({ queryKey: ['encounters'] });
     },
+  });
+}
+
+// =============================================================================
+// Clinician Claim/Release Hooks (Data Integrity - Sprint 1.7)
+// =============================================================================
+
+export const myClaimedEncountersKeys = {
+  all: ['my-claimed-encounters'] as const,
+  list: (params?: MyClaimedEncountersParams) =>
+    [...myClaimedEncountersKeys.all, 'list', params] as const,
+};
+
+/**
+ * Hook for claiming an encounter for consultation.
+ *
+ * Prevents multiple clinicians from attending the same patient.
+ * Uses database-level locking to prevent race conditions.
+ *
+ * @returns Mutation for claiming an encounter
+ */
+export function useClaimEncounter() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (encounterId: number) => encountersApi.claim(encounterId),
+    onSuccess: () => {
+      // Invalidate all related queries
+      queryClient.invalidateQueries({ queryKey: ['encounters'] });
+      queryClient.invalidateQueries({ queryKey: consultationQueueKeys.all });
+      queryClient.invalidateQueries({ queryKey: myClaimedEncountersKeys.all });
+    },
+  });
+}
+
+/**
+ * Hook for releasing an encounter you previously claimed.
+ *
+ * Only the assigned clinician can release an encounter.
+ * This allows another clinician to take over.
+ *
+ * @returns Mutation for releasing an encounter
+ */
+export function useReleaseEncounter() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (encounterId: number) => encountersApi.release(encounterId),
+    onSuccess: () => {
+      // Invalidate all related queries
+      queryClient.invalidateQueries({ queryKey: ['encounters'] });
+      queryClient.invalidateQueries({ queryKey: consultationQueueKeys.all });
+      queryClient.invalidateQueries({ queryKey: myClaimedEncountersKeys.all });
+    },
+  });
+}
+
+/**
+ * Hook for fetching the current user's claimed encounters.
+ *
+ * Returns all encounters where the current user is the assigned clinician.
+ * By default, excludes completed encounters.
+ *
+ * @param params - Optional filters (status, include_completed)
+ * @param options - Optional query options including polling interval
+ * @returns Query result with claimed encounters data
+ */
+export function useMyClaimedEncounters(
+  params?: MyClaimedEncountersParams,
+  options?: { pollingInterval?: number | false }
+) {
+  return useQuery({
+    queryKey: myClaimedEncountersKeys.list(params),
+    queryFn: () => encountersApi.getMyClaimed(params),
+    // Refetch every 30 seconds by default
+    refetchInterval: options?.pollingInterval ?? 30000,
+    refetchIntervalInBackground: false,
+    placeholderData: (previousData) => previousData,
   });
 }

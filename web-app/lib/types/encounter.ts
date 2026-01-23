@@ -68,6 +68,12 @@ export interface Encounter {
   // Triage fields
   triage_status?: 'PENDING' | 'IN_PROGRESS' | 'COMPLETED' | 'BYPASSED' | 'NOT_APPLICABLE';
 
+  // Clinician Assignment (Data Integrity - Sprint 1.7)
+  assigned_clinician?: number | null;
+  assigned_clinician_username?: string | null;
+  assigned_clinician_name?: string | null;
+  claimed_at?: string | null;
+
   // Chief complaint edit tracking
   chief_complaint_original?: string;
   chief_complaint_edited?: boolean;
@@ -325,4 +331,30 @@ export interface ConsultationQueueStats {
     bypassed: number;
     direct: number;
   };
+}
+
+// =============================================================================
+// Clinician Claim/Release Types (Data Integrity - Sprint 1.7)
+// =============================================================================
+
+export interface EncounterClaimResponse {
+  status: 'claimed';
+  encounter_id: number;
+  claimed_by: string;
+  claimed_at: string;
+}
+
+export interface EncounterReleaseResponse {
+  status: 'released';
+  encounter_id: number;
+}
+
+export interface MyClaimedEncountersParams {
+  status?: 'DRAFT' | 'IN_PROGRESS';
+  include_completed?: boolean;
+}
+
+export interface MyClaimedEncountersResponse {
+  results: Encounter[];
+  count: number;
 }
