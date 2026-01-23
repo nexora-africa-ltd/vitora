@@ -5,7 +5,8 @@
  * - Patient info (name, MRN, age, gender)
  * - Triage status badge
  * - Wait time
- * - Action buttons (Call, Start Consultation, Re-call)
+ * - Clinician claim status (Data Integrity - Sprint 1.7)
+ * - Action buttons (Call, Claim, Start Consultation, Release)
  */
 'use client';
 
@@ -28,6 +29,9 @@ import {
   AlertTriangle,
   User,
   FileText,
+  UserCheck,
+  UserX,
+  Lock,
 } from 'lucide-react';
 import type { ConsultationQueueItem as QueueItemType } from '@/lib/types/encounter';
 
@@ -37,9 +41,17 @@ import type { ConsultationQueueItem as QueueItemType } from '@/lib/types/encount
 
 export interface ConsultationQueueItemProps {
   item: QueueItemType;
+  /** Current user's ID to check claim ownership */
+  currentUserId?: number;
   onCall: (encounterId: number) => void;
   onStartConsultation: (encounterId: number) => void;
+  /** Claim encounter for consultation (Data Integrity - Sprint 1.7) */
+  onClaim?: (encounterId: number) => void;
+  /** Release a claimed encounter (Data Integrity - Sprint 1.7) */
+  onRelease?: (encounterId: number) => void;
   isCallingPatient?: boolean;
+  isClaimingEncounter?: boolean;
+  isReleasingEncounter?: boolean;
 }
 
 // =============================================================================
@@ -122,20 +134,46 @@ const isUrgentWaitTime = (minutes: number, category: string | null): boolean => 
   return minutes > (thresholds[category] || 60);
 };
 
+/** Format time since claimed */
+const getTimeSinceClaimed = (claimedAt: string | null): string => {
+  if (!claimedAt) return '';
+
+  const claimedTime = new Date(claimedAt);
+  const now = new Date();
+  const diffMs = now.getTime() - claimedTime.getTime();
+  const diffMin = Math.floor(diffMs / 60000);
+
+  if (diffMin < 1) return 'just now';
+  if (diffMin === 1) return '1 min ago';
+  if (diffMin < 60) return `${diffMin} min ago`;
+  const hours = Math.floor(diffMin / 60);
+  return hours === 1 ? '1 hour ago' : `${hours} hours ago`;
+};
+
 // =============================================================================
 // Component
 // =============================================================================
 
 export function ConsultationQueueItem({
   item,
+  currentUserId,
   onCall,
   onStartConsultation,
+  onClaim,
+  onRelease,
   isCallingPatient = false,
+  isClaimingEncounter = false,
+  isReleasingEncounter = false,
 }: ConsultationQueueItemProps) {
   const isWaiting = item.consultation_status === 'WAITING';
   const isCalled = item.consultation_status === 'CALLED';
   const isBypassed = item.triage_status === 'BYPASSED';
   const isDirect = item.triage_status === 'NOT_APPLICABLE';
+
+  // Claim status (Data Integrity - Sprint 1.7)
+  const isClaimed = !!item.assigned_clinician;
+  const isClaimedByMe = isClaimed && currentUserId === item.assigned_clinician;
+  const isClaimedByOther = isClaimed && currentUserId !== item.assigned_clinician;
   const isUrgent = isUrgentWaitTime(item.wait_time_minutes, item.triage_category);
 
   return (
@@ -209,6 +247,20 @@ export function ConsultationQueueItem({
             </Badge>
           )}
 
+          {/* Claimed Status Badge (Data Integrity - Sprint 1.7) */}
+          {isClaimedByMe && (
+            <Badge variant="info" className="gap-1">
+              <UserCheck className="h-3 w-3" />
+              Claimed by you
+            </Badge>
+          )}
+          {isClaimedByOther && (
+            <Badge variant="outline" className="border-amber-500 text-amber-600 gap-1">
+              <Lock className="h-3 w-3" />
+              {item.assigned_clinician_name || item.assigned_clinician_username}
+            </Badge>
+          )}
+
           {/* Wait Time */}
           <div className={cn(
             'flex items-center gap-1 text-sm',
@@ -224,12 +276,20 @@ export function ConsultationQueueItem({
               {getTimeSinceCalled(item.called_at)}
             </div>
           )}
+
+          {/* Time since claimed */}
+          {isClaimed && item.claimed_at && (
+            <div className="text-xs text-muted-foreground">
+              Claimed {getTimeSinceClaimed(item.claimed_at)}
+            </div>
+          )}
         </div>
 
         {/* Right: Actions */}
         <div className="flex flex-col gap-2">
           <TooltipProvider delayDuration={200}>
-            {isWaiting && (
+            {/* WAITING state: Call or Claim */}
+            {isWaiting && !isClaimedByOther && (
               <Tooltip>
                 <TooltipTrigger asChild>
                   <Button
@@ -258,52 +318,126 @@ export function ConsultationQueueItem({
               </Tooltip>
             )}
 
+            {/* CALLED state: Start Consultation or Claim */}
             {isCalled && (
               <>
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <Button
-                      size="sm"
-                      onClick={() => onStartConsultation(item.id)}
-                      className="min-w-[120px] bg-green-600 hover:bg-green-700"
-                      title="Start the consult and open encounter documentation."
-                    >
-                      <Play className="h-4 w-4 mr-1" />
-                      Start Consultation
-                    </Button>
-                  </TooltipTrigger>
-                  <TooltipContent>
-                    Start the consult and open encounter documentation.
-                  </TooltipContent>
-                </Tooltip>
+                {/* Claim button - show if not claimed or claimed by another (disabled) */}
+                {!isClaimedByMe && onClaim && (
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <Button
+                        size="sm"
+                        variant={isClaimedByOther ? 'outline' : 'default'}
+                        onClick={() => onClaim(item.id)}
+                        disabled={isClaimingEncounter || isClaimedByOther}
+                        className="min-w-[120px]"
+                      >
+                        {isClaimingEncounter ? (
+                          <>
+                            <RefreshCw className="h-4 w-4 mr-1 animate-spin" />
+                            Claiming...
+                          </>
+                        ) : isClaimedByOther ? (
+                          <>
+                            <Lock className="h-4 w-4 mr-1" />
+                            Claimed
+                          </>
+                        ) : (
+                          <>
+                            <UserCheck className="h-4 w-4 mr-1" />
+                            Claim
+                          </>
+                        )}
+                      </Button>
+                    </TooltipTrigger>
+                    <TooltipContent>
+                      {isClaimedByOther
+                        ? `Claimed by ${item.assigned_clinician_name || item.assigned_clinician_username}`
+                        : 'Claim this encounter to start consultation'}
+                    </TooltipContent>
+                  </Tooltip>
+                )}
 
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      onClick={() => onCall(item.id)}
-                      disabled={isCallingPatient}
-                      className="min-w-[120px]"
-                      title="Send another call notification."
-                    >
-                      {isCallingPatient ? (
-                        <>
-                          <RefreshCw className="h-4 w-4 mr-1 animate-spin" />
-                          Calling...
-                        </>
-                      ) : (
-                        <>
-                          <RefreshCw className="h-4 w-4 mr-1" />
-                          Re-call
-                        </>
-                      )}
-                    </Button>
-                  </TooltipTrigger>
-                  <TooltipContent>
-                    Send another call notification.
-                  </TooltipContent>
-                </Tooltip>
+                {/* Start Consultation - only if claimed by me or not claimed */}
+                {(isClaimedByMe || !isClaimed) && (
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <Button
+                        size="sm"
+                        onClick={() => onStartConsultation(item.id)}
+                        className="min-w-[120px] bg-green-600 hover:bg-green-700"
+                        title="Start the consult and open encounter documentation."
+                      >
+                        <Play className="h-4 w-4 mr-1" />
+                        Start Consultation
+                      </Button>
+                    </TooltipTrigger>
+                    <TooltipContent>
+                      Start the consult and open encounter documentation.
+                    </TooltipContent>
+                  </Tooltip>
+                )}
+
+                {/* Release button - only if claimed by me */}
+                {isClaimedByMe && onRelease && (
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => onRelease(item.id)}
+                        disabled={isReleasingEncounter}
+                        className="min-w-[120px]"
+                      >
+                        {isReleasingEncounter ? (
+                          <>
+                            <RefreshCw className="h-4 w-4 mr-1 animate-spin" />
+                            Releasing...
+                          </>
+                        ) : (
+                          <>
+                            <UserX className="h-4 w-4 mr-1" />
+                            Release
+                          </>
+                        )}
+                      </Button>
+                    </TooltipTrigger>
+                    <TooltipContent>
+                      Release this encounter for another clinician.
+                    </TooltipContent>
+                  </Tooltip>
+                )}
+
+                {/* Re-call button */}
+                {!isClaimedByOther && (
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        onClick={() => onCall(item.id)}
+                        disabled={isCallingPatient}
+                        className="min-w-[120px]"
+                        title="Send another call notification."
+                      >
+                        {isCallingPatient ? (
+                          <>
+                            <RefreshCw className="h-4 w-4 mr-1 animate-spin" />
+                            Calling...
+                          </>
+                        ) : (
+                          <>
+                            <RefreshCw className="h-4 w-4 mr-1" />
+                            Re-call
+                          </>
+                        )}
+                      </Button>
+                    </TooltipTrigger>
+                    <TooltipContent>
+                      Send another call notification.
+                    </TooltipContent>
+                  </Tooltip>
+                )}
               </>
             )}
           </TooltipProvider>
