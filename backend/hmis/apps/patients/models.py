@@ -279,6 +279,16 @@ class Patient(models.Model):
         permissions = [
             ("view_sensitive_patient", "Can view sensitive patient records"),
         ]
+        constraints = [
+            # Prevent duplicate patients with same identification
+            # (Only applies when identification_number is not null and not empty)
+            models.UniqueConstraint(
+                fields=["identification_type", "identification_number"],
+                condition=models.Q(identification_number__isnull=False)
+                & ~models.Q(identification_number=""),
+                name="unique_patient_identification",
+            ),
+        ]
 
     def __str__(self) -> str:
         """String representation of the patient."""

@@ -786,6 +786,194 @@ class EncounterViewSet(viewsets.ModelViewSet):
         return Response({"results": serializer.data})
 
     # =========================================================================
+    # Clinician Claim/Release Actions (Data Integrity - Sprint 1.7)
+    # =========================================================================
+
+    @action(detail=True, methods=["post"])
+    def claim(self, request, pk=None):
+        """
+        Clinician claims an encounter to attend the patient.
+
+        Prevents multiple clinicians from attending the same patient
+        at the same time. Uses database-level locking to prevent race conditions.
+
+        POST /api/encounters/{id}/claim/
+
+        Returns:
+        - 200: Successfully claimed
+        - 400: Cannot claim (invalid status)
+        - 409: Already claimed by another clinician
+        """
+        from django.db import transaction
+        from django.utils import timezone
+
+        with transaction.atomic():
+            # Lock the encounter row to prevent race conditions
+            encounter = Encounter.objects.select_for_update().get(pk=pk)
+
+            # Check if already claimed by another user
+            if encounter.assigned_clinician and encounter.assigned_clinician != request.user:
+                return Response(
+                    {
+                        "error": f"Encounter already claimed by {encounter.assigned_clinician.username}. "
+                        f"They must release it before you can claim it."
+                    },
+                    status=status.HTTP_409_CONFLICT,
+                )
+
+            # Check if encounter is in valid status for claiming
+            if encounter.status not in ("DRAFT", "IN_PROGRESS"):
+                return Response(
+                    {"error": f"Cannot claim encounter with status '{encounter.status}'."},
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
+
+            # Check if encounter is already completed
+            if encounter.status == "COMPLETED":
+                return Response(
+                    {"error": "Cannot claim a completed encounter."},
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
+
+            # Claim the encounter
+            encounter.assigned_clinician = request.user
+            encounter.claimed_at = timezone.now()
+            if encounter.status == "DRAFT":
+                encounter.status = "IN_PROGRESS"
+            encounter.save()
+
+            # Log the claim action
+            AuditLog.log(
+                action="encounter_claim",
+                user=request.user,
+                resource_type="Encounter",
+                resource_id=encounter.id,
+                ip_address=get_client_ip(request),
+                user_agent=request.META.get("HTTP_USER_AGENT", ""),
+                patient_id=encounter.patient_id,
+                details={"encounter_type": encounter.encounter_type},
+            )
+
+        return Response(
+            {
+                "status": "claimed",
+                "encounter_id": encounter.id,
+                "claimed_by": request.user.username,
+                "claimed_at": encounter.claimed_at.isoformat(),
+            }
+        )
+
+    @action(detail=True, methods=["post"])
+    def release(self, request, pk=None):
+        """
+        Clinician releases an encounter they previously claimed.
+
+        Only the assigned clinician can release an encounter.
+        This allows another clinician to take over.
+
+        POST /api/encounters/{id}/release/
+
+        Returns:
+        - 200: Successfully released
+        - 403: Not the assigned clinician
+        - 400: Cannot release (encounter completed/cancelled)
+        """
+        from django.db import transaction
+        from django.utils import timezone
+
+        with transaction.atomic():
+            encounter = Encounter.objects.select_for_update().get(pk=pk)
+
+            # Check if user is the assigned clinician
+            if encounter.assigned_clinician != request.user:
+                if encounter.assigned_clinician:
+                    return Response(
+                        {
+                            "error": f"You are not the assigned clinician. "
+                            f"This encounter is assigned to {encounter.assigned_clinician.username}."
+                        },
+                        status=status.HTTP_403_FORBIDDEN,
+                    )
+                else:
+                    return Response(
+                        {"error": "This encounter is not currently claimed by anyone."},
+                        status=status.HTTP_400_BAD_REQUEST,
+                    )
+
+            # Cannot release completed or cancelled encounters
+            if encounter.status in ("COMPLETED", "CANCELLED"):
+                return Response(
+                    {"error": f"Cannot release an encounter with status '{encounter.status}'."},
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
+
+            # Store previous clinician for audit log
+            previous_clinician = encounter.assigned_clinician.username
+
+            # Release the encounter
+            encounter.assigned_clinician = None
+            encounter.claimed_at = None
+            # Optionally revert to DRAFT if it was only IN_PROGRESS due to claiming
+            # (Leave as IN_PROGRESS if clinical work has started)
+            encounter.save()
+
+            # Log the release action
+            AuditLog.log(
+                action="encounter_release",
+                user=request.user,
+                resource_type="Encounter",
+                resource_id=encounter.id,
+                ip_address=get_client_ip(request),
+                user_agent=request.META.get("HTTP_USER_AGENT", ""),
+                patient_id=encounter.patient_id,
+                details={
+                    "encounter_type": encounter.encounter_type,
+                    "released_by": previous_clinician,
+                },
+            )
+
+        return Response(
+            {
+                "status": "released",
+                "encounter_id": encounter.id,
+            }
+        )
+
+    @action(detail=False, methods=["get"])
+    def my_claimed(self, request):
+        """
+        Get list of encounters claimed by the current user.
+
+        Returns all encounters where the current user is the assigned clinician
+        and the encounter is not yet completed.
+
+        GET /api/encounters/my_claimed/
+
+        Query params:
+        - status: Filter by encounter status (DRAFT, IN_PROGRESS)
+        - include_completed: Include completed encounters (default: false)
+        """
+        queryset = self.get_queryset().filter(assigned_clinician=request.user)
+
+        # By default, exclude completed encounters
+        include_completed = (
+            request.query_params.get("include_completed", "false").lower() == "true"
+        )
+        if not include_completed:
+            queryset = queryset.exclude(status__in=["COMPLETED", "CANCELLED"])
+
+        # Optional status filter
+        status_filter = request.query_params.get("status")
+        if status_filter:
+            queryset = queryset.filter(status=status_filter)
+
+        # Order by claimed_at (most recent first)
+        queryset = queryset.order_by("-claimed_at")
+
+        serializer = self.get_serializer(queryset, many=True)
+        return Response({"results": serializer.data, "count": queryset.count()})
+
+    # =========================================================================
     # Clinical Template Sync Actions
     # =========================================================================
 

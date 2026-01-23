@@ -210,6 +210,18 @@ class TestAdmissionCreation:
 
     def test_unique_admission_number(self, sample_patient, sample_ward, available_bed, test_user):
         """Should generate unique admission numbers."""
+        from hmis.apps.patients.models import Patient
+
+        # Create second patient for second admission (constraint: one active per patient)
+        patient2 = Patient.objects.create(
+            first_name="Second",
+            last_name="Patient",
+            date_of_birth="1990-01-15",
+            gender="M",
+            county=sample_patient.county,
+            sub_county=sample_patient.sub_county,
+        )
+
         # Create IPD encounters
         enc1 = Encounter.objects.create(
             patient=sample_patient,
@@ -218,7 +230,7 @@ class TestAdmissionCreation:
             chief_complaint="Test 1",
         )
         enc2 = Encounter.objects.create(
-            patient=sample_patient,
+            patient=patient2,
             encounter_type="IPD",
             encounter_date=timezone.now().date(),
             chief_complaint="Test 2",
@@ -244,7 +256,7 @@ class TestAdmissionCreation:
         )
 
         admission2 = Admission.objects.create(
-            patient=sample_patient,
+            patient=patient2,
             ipd_encounter=enc2,
             admission_date=timezone.now(),
             admitting_diagnosis="J18.9",
@@ -552,10 +564,26 @@ class TestAdmissionQueries:
 
     def test_filter_active_admissions(self, sample_patient, sample_ward, test_user):
         """Should filter active admissions."""
-        # Create active and discharged admissions
-        for i, status in enumerate(["ACTIVE", "DISCHARGED", "ACTIVE"]):
+        from hmis.apps.patients.models import Patient
+
+        # Create separate patients for each admission (constraint: one active per patient)
+        patients = [sample_patient]
+        for i in range(2):
+            p = Patient.objects.create(
+                first_name=f"Patient{i+2}",
+                last_name="TestFilter",
+                date_of_birth="1990-01-15",
+                gender="M",
+                county=sample_patient.county,
+                sub_county=sample_patient.sub_county,
+            )
+            patients.append(p)
+
+        # Create admissions with different statuses for different patients
+        statuses = ["ACTIVE", "DISCHARGED", "ACTIVE"]
+        for i, (patient, status) in enumerate(zip(patients, statuses)):
             enc = Encounter.objects.create(
-                patient=sample_patient,
+                patient=patient,
                 encounter_type="IPD",
                 encounter_date=timezone.now().date(),
                 chief_complaint=f"Admission {i+1}",
@@ -566,7 +594,7 @@ class TestAdmissionQueries:
                 status="AVAILABLE",
             )
             Admission.objects.create(
-                patient=sample_patient,
+                patient=patient,
                 ipd_encounter=enc,
                 admission_date=timezone.now(),
                 admitting_diagnosis="K35.8",
@@ -575,7 +603,7 @@ class TestAdmissionQueries:
                 ward=sample_ward,
                 bed=bed,
                 payer_type="CASH",
-                status=status,
+                admission_status=status,
             )
 
         active_admissions = Admission.objects.filter(admission_status="ACTIVE")
