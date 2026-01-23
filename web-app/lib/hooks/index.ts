@@ -134,10 +134,15 @@ export {
 } from './use-triage';
 
 // Consultation Queue hooks (Phase 3.3)
+// Clinician Claim/Release hooks (Sprint 1.7)
 export {
   consultationQueueKeys,
+  myClaimedEncountersKeys,
   useConsultationQueue,
   useCallPatient,
   useStartConsultation,
   useBypassTriage,
+  useClaimEncounter,
+  useReleaseEncounter,
+  useMyClaimedEncounters,
 } from './use-consultation-queue';

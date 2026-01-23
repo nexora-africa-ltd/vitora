@@ -8,6 +8,10 @@ import {
   EncounterListParams,
   Diagnosis,
   TreatmentPlan,
+  EncounterClaimResponse,
+  EncounterReleaseResponse,
+  MyClaimedEncountersParams,
+  MyClaimedEncountersResponse,
 } from '@/lib/types/encounter';
 import { PaginatedResponse } from '@/lib/types';
 
@@ -52,6 +56,63 @@ export const encountersApi = {
    */
   async finalize(id: number): Promise<Encounter> {
     const response = await apiClient.post<Encounter>(`/api/encounters/${id}/finalize/`);
+    return response.data;
+  },
+
+  // ===========================================================================
+  // Clinician Claim/Release Actions (Data Integrity - Sprint 1.7)
+  // ===========================================================================
+
+  /**
+   * Claim an encounter for consultation.
+   *
+   * Prevents multiple clinicians from attending the same patient.
+   * Uses database-level locking to prevent race conditions.
+   *
+   * @param id - The encounter ID to claim
+   * @returns Claim confirmation with timestamp
+   * @throws 409 Conflict if already claimed by another clinician
+   * @throws 400 Bad Request if encounter status is invalid
+   */
+  async claim(id: number): Promise<EncounterClaimResponse> {
+    const response = await apiClient.post<EncounterClaimResponse>(
+      `/api/encounters/${id}/claim/`
+    );
+    return response.data;
+  },
+
+  /**
+   * Release an encounter you previously claimed.
+   *
+   * Only the assigned clinician can release an encounter.
+   * This allows another clinician to take over.
+   *
+   * @param id - The encounter ID to release
+   * @returns Release confirmation
+   * @throws 403 Forbidden if not the assigned clinician
+   * @throws 400 Bad Request if encounter is completed/cancelled
+   */
+  async release(id: number): Promise<EncounterReleaseResponse> {
+    const response = await apiClient.post<EncounterReleaseResponse>(
+      `/api/encounters/${id}/release/`
+    );
+    return response.data;
+  },
+
+  /**
+   * Get encounters claimed by the current user.
+   *
+   * Returns all encounters where the current user is the assigned clinician.
+   * By default, excludes completed encounters.
+   *
+   * @param params - Optional filters (status, include_completed)
+   * @returns List of claimed encounters with count
+   */
+  async getMyClaimed(params?: MyClaimedEncountersParams): Promise<MyClaimedEncountersResponse> {
+    const response = await apiClient.get<MyClaimedEncountersResponse>(
+      '/api/encounters/my_claimed/',
+      { params }
+    );
     return response.data;
   },
 
