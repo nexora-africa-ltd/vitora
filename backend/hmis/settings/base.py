@@ -45,6 +45,7 @@ INSTALLED_APPS = [
     "rest_framework_simplejwt",
     "corsheaders",
     "django_filters",
+    "django_extensions",
     # Local apps
     "hmis.apps.core",
     "hmis.apps.patients",
