@@ -8,7 +8,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { EmptyState } from '@/components/shared/empty-state';
 import { formatDate, formatRelativeTime } from '@/lib/utils/format';
 import { ENCOUNTER_STATUS, ENCOUNTER_TYPES } from '@/lib/utils/constants';
-import { usePatientEncounters } from '@/lib/hooks/use-patients-enhanced';
+import { usePatientEncounters } from '@/lib/hooks/use-patients';
 
 interface PatientEncountersProps {
   patientId: number;

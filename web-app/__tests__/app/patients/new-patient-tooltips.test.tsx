@@ -28,7 +28,7 @@ jest.mock('@/lib/hooks/use-toast', () => ({
 }));
 
 const mockCreatePatientMutateAsync = jest.fn();
-jest.mock('@/lib/hooks/use-patients-enhanced', () => ({
+jest.mock('@/lib/hooks/use-patients', () => ({
   useCreatePatient: () => ({
     mutateAsync: mockCreatePatientMutateAsync,
     isPending: false,

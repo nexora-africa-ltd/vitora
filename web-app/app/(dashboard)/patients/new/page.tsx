@@ -17,7 +17,7 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from '@/components/ui/tooltip';
-import { useCreatePatient } from '@/lib/hooks/use-patients-enhanced';
+import { useCreatePatient } from '@/lib/hooks/use-patients';
 import { useCheckInPatient } from '@/lib/hooks/use-triage';
 import { useRegisterInCR } from '@/lib/hooks/use-sha';
 import { useToast } from '@/lib/hooks/use-toast';
