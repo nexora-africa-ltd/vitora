@@ -136,8 +136,12 @@ const NavLink = memo(function NavLink({
         collapsed && 'justify-center px-0'
       )}
     >
-      <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md transition-transform group-hover:scale-110 group-hover:bg-cyan-500/15">
-        <Icon className="h-5 w-5" />
+      <div className={cn(
+        'flex shrink-0 items-center justify-center rounded-md transition-all',
+        collapsed ? 'h-10 w-10' : 'h-8 w-8',
+        'group-hover:scale-110 group-hover:bg-cyan-500/15'
+      )}>
+        <Icon className={cn(collapsed ? 'h-6 w-6' : 'h-5 w-5')} />
       </div>
 
       {!collapsed && <span>{item.label}</span>}
@@ -199,8 +203,8 @@ const NavGroup = memo(function NavGroup({
                 : 'text-muted-foreground hover:bg-cyan-500/10'
             )}
           >
-            <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md transition-transform group-hover:scale-110 group-hover:bg-cyan-500/15">
-              <Icon className="h-5 w-5" />
+            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-md transition-transform group-hover:scale-110 group-hover:bg-cyan-500/15">
+              <Icon className="h-6 w-6" />
             </div>
           </button>
         </TooltipTrigger>
@@ -292,7 +296,7 @@ export function Sidebar({
       <aside
         className={cn(
           'fixed left-0 top-0 z-50 h-screen border-r bg-card/95 backdrop-blur transition-all duration-300',
-          collapsed ? 'w-16' : 'w-64',
+          collapsed ? 'w-20' : 'w-64',
           mobileOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'
         )}
       >
