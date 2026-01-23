@@ -53,13 +53,13 @@ export default function EncountersPage() {
         <TabsList className="grid w-full max-w-md grid-cols-2 h-auto">
           <TabsTrigger value="queue" className="flex items-center gap-1.5 sm:gap-2 text-xs sm:text-sm py-2">
             <Users className="h-3.5 w-3.5 sm:h-4 sm:w-4 shrink-0" />
-            <span className="truncate">Queue</span>
-            <span className="hidden sm:inline">/ Consultation</span>
+            <span className="sm:hidden">Queue</span>
+            <span className="hidden sm:inline">Consultation Queue</span>
           </TabsTrigger>
           <TabsTrigger value="all" className="flex items-center gap-1.5 sm:gap-2 text-xs sm:text-sm py-2">
             <ClipboardList className="h-3.5 w-3.5 sm:h-4 sm:w-4 shrink-0" />
-            <span className="truncate">All</span>
-            <span className="hidden sm:inline">Encounters</span>
+            <span className="sm:hidden">All</span>
+            <span className="hidden sm:inline">All Encounters</span>
           </TabsTrigger>
         </TabsList>
 
