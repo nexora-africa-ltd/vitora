@@ -16,16 +16,15 @@ export {
 } from './use-encounters';
 export { useCounties, useSubCounties, useWards, useLocationSelector } from './use-locations';
 export { useNetworkStatus } from './use-network-status';
-export { usePatients, usePatient } from './use-patients';
 export {
-  usePatients as usePatientsEnhanced,
-  usePatient as usePatientEnhanced,
+  usePatients,
+  usePatient,
   usePatientEmergencyContacts,
   usePatientEncounters,
   useCreatePatient,
   useUpdatePatient,
   useDeletePatient,
-} from './use-patients-enhanced';
+} from './use-patients';
 export { useToast, toast } from './use-toast';
 export { useToastNotification } from './use-toast-notification';
 

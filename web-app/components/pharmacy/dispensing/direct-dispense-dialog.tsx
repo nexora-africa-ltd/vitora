@@ -88,7 +88,7 @@ export function DirectDispenseDialog({
   // Fetch patients based on search
   const { data: patientsData, isLoading: patientsLoading } = usePatients({
     search: debouncedPatientSearch,
-    limit: 20,
+    page_size: 20,
   });
   const patients = patientsData?.results || [];
 
