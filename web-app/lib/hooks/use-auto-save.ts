@@ -45,7 +45,7 @@ interface AutoSaveOptions<T> {
   persistKey?: string;
 }
 
-interface AutoSaveResult {
+interface AutoSaveResult<T> {
   /** Current status of auto-save */
   status: AutoSaveStatus;
   /** Last saved timestamp */
@@ -122,7 +122,7 @@ export function useAutoSave<T>({
   onError,
   hasChanged = defaultHasChanged,
   persistKey,
-}: AutoSaveOptions<T>): AutoSaveResult {
+}: AutoSaveOptions<T>): AutoSaveResult<T> {
   const { isOnline } = useNetworkStatus();
   const syncStatus = useSyncStatus();
   const [status, setStatus] = useState<AutoSaveStatus>('idle');

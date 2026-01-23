@@ -557,7 +557,11 @@ export function DiagnosisFormContent({
   const [editingDiagnosis, setEditingDiagnosis] = useState<{ index: number; data: DiagnosisFormData } | null>(null);
 
   const handleEdit = useCallback((index: number) => {
-    setEditingDiagnosis({ index, data: { ...diagnoses[index] } });
+    const diagnosis = diagnoses[index];
+
+    if (!diagnosis) return;
+
+    setEditingDiagnosis({ index, data: { ...diagnosis } });
   }, [diagnoses]);
 
   const handleCancelEdit = useCallback(() => {
