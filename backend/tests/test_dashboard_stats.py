@@ -171,9 +171,18 @@ class TestDashboardStatsPatientCounts:
             registered_by=test_user,
         )
 
-        response = authenticated_client.get(DASHBOARD_STATS_URL)
+        # Use refresh=true to bypass cache
+        response = authenticated_client.get(DASHBOARD_STATS_URL + "?refresh=true")
 
-        # Should be at least 1 (the one we just created)
+        # Count actual patients created today using localdate (same as dashboard)
+        from django.utils import timezone
+
+        today = timezone.localdate()
+        actual_today_count = Patient.objects.filter(created_at__date=today).count()
+
+        # Verify the dashboard returns the correct count
+        assert response.data["patients"]["today"] == actual_today_count
+        # Should include the patient we just created
         assert response.data["patients"]["today"] >= 1
 
 
@@ -192,8 +201,8 @@ class TestDashboardStatsEncounterCounts:
 
         response = authenticated_client.get(DASHBOARD_STATS_URL)
 
-        # Count encounters for today
-        today = timezone.now().date()
+        # Count encounters for today using localdate (same as dashboard)
+        today = timezone.localdate()
         today_count = Encounter.objects.filter(encounter_date=today).count()
         assert response.data["encounters"]["today"] == today_count
 

@@ -58,7 +58,9 @@ def dashboard_stats(request):
 def _compute_dashboard_stats() -> dict:
     """Compute all dashboard statistics from the database."""
     now = timezone.now()
-    today = now.date()
+    # Use localdate() to get the date in the configured TIME_ZONE (Africa/Nairobi)
+    # This ensures dashboard stats match what users expect locally
+    today = timezone.localdate()
     week_ago = today - timedelta(days=7)
     month_start = today.replace(day=1)
 

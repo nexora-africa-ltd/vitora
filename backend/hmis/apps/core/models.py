@@ -1525,3 +1525,115 @@ class Notification(models.Model):
             self.is_read = True
             self.read_at = timezone.now()
             self.save(update_fields=["is_read", "read_at"])
+
+
+class IdempotencyKey(models.Model):
+    """
+    Track idempotent API requests to prevent duplicate operations.
+
+    This model stores idempotency keys for critical operations like
+    patient registration, admission, and encounter creation.
+
+    When a client submits a request with an X-Idempotency-Key header,
+    the system:
+    1. Checks if the key exists for this user
+    2. If yes, returns the cached response (idempotent replay)
+    3. If no, processes the request and caches the response
+
+    Keys are automatically cleaned up after 24 hours.
+
+    Attributes:
+        key: The idempotency key (UUID from client)
+        user: The user who made the request
+        resource_type: Type of resource created (Patient, Encounter, etc.)
+        resource_id: ID of the created resource
+        response_status: HTTP status code of the original response
+        response_data: JSON response data to replay
+        created_at: When the key was created
+    """
+
+    key = models.CharField(
+        max_length=64,
+        help_text="Unique idempotency key from client (usually UUID)",
+    )
+    user = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name="idempotency_keys",
+        help_text="User who made the request",
+    )
+    resource_type = models.CharField(
+        max_length=50,
+        help_text="Type of resource created (e.g., Patient, Encounter)",
+    )
+    resource_id = models.BigIntegerField(
+        null=True,
+        blank=True,
+        help_text="ID of the created resource",
+    )
+    response_status = models.IntegerField(
+        help_text="HTTP status code of the original response",
+    )
+    response_data = models.JSONField(
+        default=dict,
+        help_text="Response data to replay on duplicate requests",
+    )
+    created_at = models.DateTimeField(
+        auto_now_add=True,
+        help_text="When this key was created",
+    )
+
+    class Meta:
+        """Meta options for IdempotencyKey model."""
+
+        verbose_name = "Idempotency Key"
+        verbose_name_plural = "Idempotency Keys"
+        constraints = [
+            # Each user can only use each key once
+            models.UniqueConstraint(
+                fields=["key", "user"],
+                name="unique_idempotency_key_per_user",
+            ),
+        ]
+        indexes = [
+            models.Index(fields=["key", "user"]),
+            models.Index(fields=["created_at"]),  # For cleanup queries
+        ]
+
+    def __str__(self) -> str:
+        """String representation of the idempotency key."""
+        return f"{self.user.username}: {self.key[:16]}... -> {self.resource_type}"
+
+    @classmethod
+    def get_or_none(cls, key: str, user) -> "IdempotencyKey | None":
+        """
+        Get an existing idempotency key or None.
+
+        Args:
+            key: The idempotency key string
+            user: The user making the request
+
+        Returns:
+            IdempotencyKey if found, None otherwise
+        """
+        try:
+            return cls.objects.get(key=key, user=user)
+        except cls.DoesNotExist:
+            return None
+
+    @classmethod
+    def cleanup_old_keys(cls, hours: int = 24):
+        """
+        Delete idempotency keys older than specified hours.
+
+        Args:
+            hours: Number of hours after which keys are considered stale
+
+        Returns:
+            Number of deleted keys
+        """
+        from datetime import timedelta
+
+        cutoff = timezone.now() - timedelta(hours=hours)
+        deleted, _ = cls.objects.filter(created_at__lt=cutoff).delete()
+        return deleted

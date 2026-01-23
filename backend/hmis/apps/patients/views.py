@@ -4,6 +4,7 @@ Views for the patients app.
 
 from datetime import datetime
 
+from django.db import transaction
 from django.db.models import Count, Max, Min
 from django.shortcuts import get_object_or_404
 from django_filters.rest_framework import DjangoFilterBackend
@@ -12,7 +13,8 @@ from rest_framework.decorators import action
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 
-from hmis.apps.core.models import AuditLog
+from hmis.apps.core.mixins import IdempotentCreateMixin
+from hmis.apps.core.models import AuditLog, IdempotencyKey
 from hmis.apps.core.permissions import SensitiveAccessPermission, get_client_ip
 from hmis.apps.encounters.models import Encounter
 
@@ -20,7 +22,7 @@ from .models import EmergencyContact, Patient
 from .serializers import EmergencyContactSerializer, PatientSerializer
 
 
-class PatientViewSet(viewsets.ModelViewSet):
+class PatientViewSet(IdempotentCreateMixin, viewsets.ModelViewSet):
     """
     ViewSet for Patient model.
 
@@ -28,6 +30,12 @@ class PatientViewSet(viewsets.ModelViewSet):
     - Sensitive data access control
     - Automatic audit logging
     - Filtering of sensitive records for unauthorized users
+    - Idempotent patient creation (prevents duplicate submissions)
+
+    Idempotency:
+        Include X-Idempotency-Key header with a unique UUID to enable
+        idempotent patient creation. Repeated requests with the same
+        key will return the same response.
     """
 
     queryset = Patient.objects.all()
@@ -79,44 +87,70 @@ class PatientViewSet(viewsets.ModelViewSet):
         return response
 
     def create(self, request, *args, **kwargs):
-        """Override create to add audit logging, set registered_by, and handle emergency contact."""
-        serializer = self.get_serializer(data=request.data)
-        serializer.is_valid(raise_exception=True)
-        # Set registered_by to current user
-        patient = serializer.save(registered_by=request.user)
+        """
+        Override create to add audit logging, set registered_by, and handle emergency contact.
 
-        # Create emergency contact if data provided
-        emergency_contact_name = request.data.get("emergency_contact_name")
-        emergency_contact_phone = request.data.get("emergency_contact_phone")
-        emergency_contact_relationship = request.data.get("emergency_contact_relationship")
+        Supports idempotent creation via X-Idempotency-Key header.
+        """
+        # Check for idempotency key first
+        idempotency_key = request.META.get("HTTP_X_IDEMPOTENCY_KEY")
+        if idempotency_key:
+            existing = IdempotencyKey.get_or_none(key=idempotency_key, user=request.user)
+            if existing:
+                # Return cached response (idempotent replay)
+                return Response(existing.response_data, status=existing.response_status)
 
-        if emergency_contact_name or emergency_contact_phone:
-            EmergencyContact.objects.create(
-                patient=patient,
-                full_name=emergency_contact_name or "",
-                phone_number=emergency_contact_phone or "",
-                relationship=emergency_contact_relationship or "",
+        with transaction.atomic():
+            serializer = self.get_serializer(data=request.data)
+            serializer.is_valid(raise_exception=True)
+            # Set registered_by to current user
+            patient = serializer.save(registered_by=request.user)
+
+            # Create emergency contact if data provided
+            emergency_contact_name = request.data.get("emergency_contact_name")
+            emergency_contact_phone = request.data.get("emergency_contact_phone")
+            emergency_contact_relationship = request.data.get("emergency_contact_relationship")
+
+            if emergency_contact_name or emergency_contact_phone:
+                EmergencyContact.objects.create(
+                    patient=patient,
+                    full_name=emergency_contact_name or "",
+                    phone_number=emergency_contact_phone or "",
+                    relationship=emergency_contact_relationship or "",
+                )
+
+            # Log the create action
+            AuditLog.log(
+                action="patient_create",
+                user=request.user,
+                resource_type="Patient",
+                resource_id=patient.id,
+                ip_address=get_client_ip(request),
+                user_agent=request.META.get("HTTP_USER_AGENT", ""),
+                patient_id=patient.id,
+                details={
+                    "patient_mrn": patient.mrn,
+                    "registered_by": request.user.username,
+                },
             )
 
-        # Log the create action
-        AuditLog.log(
-            action="patient_create",
-            user=request.user,
-            resource_type="Patient",
-            resource_id=patient.id,
-            ip_address=get_client_ip(request),
-            user_agent=request.META.get("HTTP_USER_AGENT", ""),
-            patient_id=patient.id,
-            details={
-                "patient_mrn": patient.mrn,
-                "registered_by": request.user.username,
-            },
-        )
+            # Re-serialize to include the newly created emergency contact
+            response_serializer = self.get_serializer(patient)
+            response_data = response_serializer.data
 
-        # Re-serialize to include the newly created emergency contact
-        response_serializer = self.get_serializer(patient)
-        headers = self.get_success_headers(response_serializer.data)
-        return Response(response_serializer.data, status=status.HTTP_201_CREATED, headers=headers)
+            # Cache response for idempotency
+            if idempotency_key:
+                IdempotencyKey.objects.create(
+                    key=idempotency_key,
+                    user=request.user,
+                    resource_type="Patient",
+                    resource_id=patient.id,
+                    response_status=status.HTTP_201_CREATED,
+                    response_data=response_data,
+                )
+
+        headers = self.get_success_headers(response_data)
+        return Response(response_data, status=status.HTTP_201_CREATED, headers=headers)
 
     def update(self, request, *args, **kwargs):
         """Override update to add audit logging and handle emergency contact."""
