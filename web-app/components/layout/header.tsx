@@ -51,8 +51,8 @@ export function Header({ onMenuClick, sidebarCollapsed }: HeaderProps) {
     : 'U';
 
   return (
-    <header className="sticky top-0 z-30 h-16 bg-background/95 backdrop-blur border-b mt-2">
-      <div className="flex h-full items-center justify-between px-4 md:px-6 mt-2">
+    <header className="sticky top-0 z-30 w-full h-16 bg-background/95 backdrop-blur border-b">
+      <div className="flex h-full items-center justify-between px-4 md:px-6">
         {/* Left side */}
         <div className="flex items-center gap-4 min-w-0">
           {/* Mobile menu button */}
