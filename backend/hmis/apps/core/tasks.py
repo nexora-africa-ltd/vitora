@@ -335,3 +335,264 @@ def full_sync():
     )
 
     return total_results
+
+
+# =============================================================================
+# Chronic Care Alert Tasks
+# =============================================================================
+
+
+@shared_task(name="core.send_overdue_appointment_alerts")
+def send_overdue_appointment_alerts():
+    """
+    Send alerts for overdue clinic appointments.
+
+    This task checks for enrollments that are overdue and sends
+    alerts to patients and/or staff. Runs daily via Celery Beat.
+
+    Returns:
+        dict: Summary of alerts sent
+    """
+    from django.utils import timezone
+
+    from hmis.apps.clinics.models import ClinicEnrollment
+
+    logger.info("Checking for overdue appointments")
+
+    today = timezone.localdate()
+    results = {
+        "checked": 0,
+        "overdue_found": 0,
+        "alerts_sent": 0,
+        "errors": 0,
+    }
+
+    # Get active enrollments that are overdue and haven't had an alert in 7 days
+    overdue_enrollments = ClinicEnrollment.objects.filter(
+        status="ACTIVE",
+        next_appointment__lt=today,
+    ).select_related("patient", "clinic")
+
+    results["checked"] = overdue_enrollments.count()
+
+    for enrollment in overdue_enrollments:
+        results["overdue_found"] += 1
+
+        # Check if we should send an alert (not sent in last 7 days)
+        should_alert = (
+            enrollment.last_reminder_sent is None
+            or (timezone.now() - enrollment.last_reminder_sent).days >= 7
+        )
+
+        if should_alert:
+            try:
+                # Send alert (placeholder - implement actual notification)
+                _send_overdue_alert(enrollment)
+
+                # Update tracking
+                enrollment.last_reminder_sent = timezone.now()
+                enrollment.missed_appointment_alerts += 1
+                enrollment.save(update_fields=["last_reminder_sent", "missed_appointment_alerts"])
+
+                results["alerts_sent"] += 1
+                logger.info(
+                    f"Sent overdue alert for enrollment {enrollment.id} "
+                    f"(patient: {enrollment.patient.mrn}, clinic: {enrollment.clinic.name})"
+                )
+            except Exception as e:
+                results["errors"] += 1
+                logger.error(f"Failed to send alert for enrollment {enrollment.id}: {e}")
+
+    logger.info(
+        f"Overdue alert check complete: {results['overdue_found']} overdue, "
+        f"{results['alerts_sent']} alerts sent"
+    )
+
+    return results
+
+
+def _send_overdue_alert(enrollment):
+    """
+    Send an overdue appointment alert for an enrollment.
+
+    This is a placeholder that can be extended to:
+    - Send SMS via Africa's Talking
+    - Send email notifications
+    - Create in-app notifications
+    - Notify clinic staff
+
+    Args:
+        enrollment: ClinicEnrollment instance
+    """
+    from hmis.apps.core.models import AuditLog
+
+    # Log the alert for audit purposes
+    AuditLog.log(
+        action="overdue_appointment_alert",
+        user=None,  # System-generated
+        resource_type="ClinicEnrollment",
+        resource_id=enrollment.id,
+        ip_address="127.0.0.1",
+        details={
+            "patient_mrn": enrollment.patient.mrn,
+            "patient_name": f"{enrollment.patient.first_name} {enrollment.patient.last_name}",
+            "clinic": enrollment.clinic.name,
+            "clinic_type": enrollment.clinic.clinic_type,
+            "next_appointment": str(enrollment.next_appointment),
+            "days_overdue": enrollment.days_overdue(),
+            "alerts_count": enrollment.missed_appointment_alerts + 1,
+        },
+    )
+
+    # TODO: Implement actual notification channels
+    # - SMS: Use Africa's Talking API
+    # - Email: Use Django email
+    # - In-app: Create Notification model entry
+
+
+@shared_task(name="core.send_upcoming_appointment_reminders")
+def send_upcoming_appointment_reminders():
+    """
+    Send reminders for upcoming appointments (1-3 days before).
+
+    Returns:
+        dict: Summary of reminders sent
+    """
+    from datetime import timedelta
+
+    from django.utils import timezone
+
+    from hmis.apps.clinics.models import ClinicEnrollment
+
+    logger.info("Sending upcoming appointment reminders")
+
+    today = timezone.localdate()
+    reminder_window_start = today + timedelta(days=1)
+    reminder_window_end = today + timedelta(days=3)
+
+    results = {
+        "checked": 0,
+        "reminders_sent": 0,
+        "errors": 0,
+    }
+
+    # Get active enrollments with appointments in the next 1-3 days
+    upcoming = ClinicEnrollment.objects.filter(
+        status="ACTIVE",
+        next_appointment__gte=reminder_window_start,
+        next_appointment__lte=reminder_window_end,
+    ).select_related("patient", "clinic")
+
+    results["checked"] = upcoming.count()
+
+    for enrollment in upcoming:
+        # Only send if not reminded recently (within 3 days)
+        should_remind = (
+            enrollment.last_reminder_sent is None
+            or (timezone.now() - enrollment.last_reminder_sent).days >= 3
+        )
+
+        if should_remind:
+            try:
+                _send_appointment_reminder(enrollment)
+                enrollment.last_reminder_sent = timezone.now()
+                enrollment.save(update_fields=["last_reminder_sent"])
+                results["reminders_sent"] += 1
+            except Exception as e:
+                results["errors"] += 1
+                logger.error(f"Failed to send reminder for enrollment {enrollment.id}: {e}")
+
+    logger.info(f"Appointment reminders complete: {results['reminders_sent']} sent")
+
+    return results
+
+
+def _send_appointment_reminder(enrollment):
+    """
+    Send an appointment reminder for an enrollment.
+
+    Args:
+        enrollment: ClinicEnrollment instance
+    """
+    from hmis.apps.core.models import AuditLog
+
+    days_until = enrollment.days_to_edd() if enrollment.edd else None
+    if days_until is None and enrollment.next_appointment:
+        days_until = (enrollment.next_appointment - timezone.localdate()).days
+
+    AuditLog.log(
+        action="appointment_reminder",
+        user=None,
+        resource_type="ClinicEnrollment",
+        resource_id=enrollment.id,
+        ip_address="127.0.0.1",
+        details={
+            "patient_mrn": enrollment.patient.mrn,
+            "clinic": enrollment.clinic.name,
+            "next_appointment": str(enrollment.next_appointment),
+            "days_until": days_until,
+        },
+    )
+
+
+@shared_task(name="core.generate_defaulter_list")
+def generate_defaulter_list(clinic_id: int | None = None):
+    """
+    Generate a list of defaulters for follow-up.
+
+    A defaulter is a patient who has missed 2+ appointment cycles.
+
+    Args:
+        clinic_id: Optional clinic ID to filter by
+
+    Returns:
+        dict: Defaulter list summary
+    """
+    from django.utils import timezone
+
+    from hmis.apps.clinics.models import ClinicEnrollment
+
+    logger.info(f"Generating defaulter list (clinic_id={clinic_id})")
+
+    today = timezone.localdate()
+
+    queryset = ClinicEnrollment.objects.filter(
+        status="ACTIVE",
+        next_appointment__isnull=False,
+    ).select_related("patient", "clinic")
+
+    if clinic_id:
+        queryset = queryset.filter(clinic_id=clinic_id)
+
+    defaulters = []
+
+    for enrollment in queryset:
+        if enrollment.is_defaulter():
+            defaulters.append(
+                {
+                    "enrollment_id": enrollment.id,
+                    "patient_mrn": enrollment.patient.mrn,
+                    "patient_name": f"{enrollment.patient.first_name} {enrollment.patient.last_name}",
+                    "clinic": enrollment.clinic.name,
+                    "clinic_type": enrollment.clinic.clinic_type,
+                    "enrollment_number": enrollment.enrollment_number,
+                    "next_appointment": str(enrollment.next_appointment),
+                    "days_overdue": enrollment.days_overdue(),
+                    "last_visit_date": str(enrollment.last_visit_date)
+                    if enrollment.last_visit_date
+                    else None,
+                    "total_visits": enrollment.total_visits,
+                    "phone": enrollment.patient.phone_number
+                    if hasattr(enrollment.patient, "phone_number")
+                    else None,
+                }
+            )
+
+    logger.info(f"Found {len(defaulters)} defaulters")
+
+    return {
+        "generated_at": str(today),
+        "clinic_id": clinic_id,
+        "total_defaulters": len(defaulters),
+        "defaulters": defaulters,
+    }

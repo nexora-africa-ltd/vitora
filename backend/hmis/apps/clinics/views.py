@@ -116,14 +116,70 @@ class ClinicEnrollmentFilter(filters.FilterSet):
     """Filter for ClinicEnrollment queryset."""
 
     clinic = filters.NumberFilter(field_name="clinic__id")
+    clinic_type = filters.CharFilter(field_name="clinic__clinic_type")
     status = filters.CharFilter(field_name="status")
     patient = filters.NumberFilter(field_name="patient__id")
+    is_overdue = filters.BooleanFilter(method="filter_is_overdue")
+    is_defaulter = filters.BooleanFilter(method="filter_is_defaulter")
+    enrollment_type = filters.CharFilter(method="filter_enrollment_type")
 
     class Meta:
         """Meta options for ClinicEnrollmentFilter."""
 
         model = ClinicEnrollment
-        fields = ["clinic", "status", "patient"]
+        fields = ["clinic", "clinic_type", "status", "patient", "is_overdue", "is_defaulter"]
+
+    def filter_is_overdue(self, queryset, name, value):
+        """Filter enrollments by overdue status."""
+        today = timezone.localdate()
+        if value:
+            return queryset.filter(
+                status="ACTIVE",
+                next_appointment__lt=today,
+            )
+        return queryset.filter(
+            models.Q(next_appointment__gte=today) | models.Q(next_appointment__isnull=True)
+        )
+
+    def filter_is_defaulter(self, queryset, name, value):
+        """
+        Filter enrollments by defaulter status.
+
+        A defaulter is overdue by 2+ appointment cycles.
+        """
+        today = timezone.localdate()
+        if not value:
+            return queryset
+
+        # Get active enrollments with appointments
+        active = queryset.filter(
+            status="ACTIVE",
+            next_appointment__isnull=False,
+        )
+
+        # Filter to those overdue by 2+ appointment cycles
+        defaulter_ids = []
+        for enrollment in active:
+            if enrollment.next_appointment:
+                days_overdue = (today - enrollment.next_appointment).days
+                if days_overdue >= (enrollment.appointment_interval_days * 2):
+                    defaulter_ids.append(enrollment.id)
+
+        return queryset.filter(id__in=defaulter_ids)
+
+    def filter_enrollment_type(self, queryset, name, value):
+        """Filter by enrollment type (CCC, ANC, DIABETIC, etc.)."""
+        type_to_clinic_mapping = {
+            "CCC": ["CCC"],
+            "ANC": ["ANC", "PNC"],
+            "DIABETIC": ["DIABETIC"],
+            "HYPERTENSION": ["HYPERTENSION"],
+            "TB": ["TB"],
+        }
+        clinic_types = type_to_clinic_mapping.get(value.upper(), [])
+        if clinic_types:
+            return queryset.filter(clinic__clinic_type__in=clinic_types)
+        return queryset
 
 
 # =============================================================================
