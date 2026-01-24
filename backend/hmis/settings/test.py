@@ -4,15 +4,30 @@ Test settings for Vitora HMIS.
 These settings are used for running tests.
 """
 
+import os
+import tempfile
+
 from .base import *  # noqa: F401, F403
 
 DEBUG = False
 
-# Use in-memory SQLite for faster tests
+# Use a file-based SQLite database for tests
+# This is required for WebSocket tests where the async consumer runs in a
+# separate context and needs to see the same database as the test.
+# Using a shared-cache URL allows multiple connections to see the same data.
+_test_db_path = os.path.join(tempfile.gettempdir(), "vitora_test.db")
+
 DATABASES = {
     "default": {
         "ENGINE": "django.db.backends.sqlite3",
-        "NAME": ":memory:",
+        "NAME": f"file:{_test_db_path}?mode=rwc",
+        "OPTIONS": {
+            "timeout": 20,
+        },
+        "TEST": {
+            # Use the same file for tests
+            "NAME": f"file:{_test_db_path}?mode=rwc",
+        },
     }
 }
 
