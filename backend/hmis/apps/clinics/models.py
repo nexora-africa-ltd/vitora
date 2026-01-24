@@ -20,7 +20,6 @@ from django.utils import timezone
 
 from hmis.apps.core.models import TimeStampedModel
 
-
 # =============================================================================
 # Clinic Model - Organizational Unit / Service Delivery Point
 # =============================================================================
@@ -244,7 +243,7 @@ class Clinic(TimeStampedModel):
 
     def is_open_today(self):
         """Check if clinic is operating today based on schedule."""
-        today = timezone.now().date()
+        today = timezone.localdate()
         return self.schedules.filter(
             day_of_week=today.weekday(),
             is_active=True,
@@ -252,7 +251,7 @@ class Clinic(TimeStampedModel):
 
     def get_current_session(self):
         """Get or create today's clinic session."""
-        today = timezone.now().date()
+        today = timezone.localdate()
         session, _ = ClinicSession.objects.get_or_create(
             clinic=self,
             session_date=today,
@@ -400,10 +399,7 @@ class ClinicStaff(TimeStampedModel):
 
     def __str__(self):
         """Return string representation."""
-        return (
-            f"{self.user.get_full_name()} - {self.clinic.name} "
-            f"({self.get_role_display()})"
-        )
+        return f"{self.user.get_full_name()} - {self.clinic.name} " f"({self.get_role_display()})"
 
 
 # =============================================================================
@@ -507,12 +503,8 @@ class ClinicSession(TimeStampedModel):
         visits = self.visits.all()
         self.patients_registered = visits.count()
         self.patients_seen = visits.filter(status="COMPLETED").count()
-        self.patients_waiting = visits.filter(
-            status__in=["WAITING", "CALLED"]
-        ).count()
-        self.save(
-            update_fields=["patients_registered", "patients_seen", "patients_waiting"]
-        )
+        self.patients_waiting = visits.filter(status__in=["WAITING", "CALLED"]).count()
+        self.save(update_fields=["patients_registered", "patients_seen", "patients_waiting"])
 
 
 # =============================================================================
@@ -761,9 +753,7 @@ class ClinicVisit(TimeStampedModel):
         """Override save to auto-assign queue number if not set."""
         if not self.queue_number:
             last_visit = (
-                ClinicVisit.objects.filter(session=self.session)
-                .order_by("-queue_number")
-                .first()
+                ClinicVisit.objects.filter(session=self.session).order_by("-queue_number").first()
             )
             self.queue_number = (last_visit.queue_number + 1) if last_visit else 1
         super().save(*args, **kwargs)
@@ -801,9 +791,7 @@ class ClinicVisit(TimeStampedModel):
                 patient=self.patient,
                 encounter_type=self._map_clinic_to_encounter_type(),
                 chief_complaint=self.chief_complaint or "See clinic notes",
-                triage_status=(
-                    "COMPLETED" if self.triage_assessment else "NOT_APPLICABLE"
-                ),
+                triage_status=("COMPLETED" if self.triage_assessment else "NOT_APPLICABLE"),
             )
 
         # Generate billing if consultation fee not already charged
@@ -918,10 +906,7 @@ class ClinicVisit(TimeStampedModel):
     @property
     def wait_time_minutes(self):
         """Calculate current wait time in minutes."""
-        if self.consultation_started_at:
-            end = self.consultation_started_at
-        else:
-            end = timezone.now()
+        end = self.consultation_started_at if self.consultation_started_at else timezone.now()
         delta = end - self.registered_at
         return int(delta.total_seconds() / 60)
 
@@ -1061,29 +1046,24 @@ class ClinicEnrollment(TimeStampedModel):
 
     def __str__(self):
         """Return string representation."""
-        return (
-            f"{self.patient} - {self.clinic.name} "
-            f"({self.enrollment_number or 'No ID'})"
-        )
+        return f"{self.patient} - {self.clinic.name} " f"({self.enrollment_number or 'No ID'})"
 
     def is_overdue(self):
         """Check if patient is overdue for appointment."""
         if not self.next_appointment:
             return False
-        return self.next_appointment < timezone.now().date()
+        return self.next_appointment < timezone.localdate()
 
     def days_since_last_visit(self):
         """Calculate days since last visit."""
         if not self.last_visit_date:
             return None
-        return (timezone.now().date() - self.last_visit_date).days
+        return (timezone.localdate() - self.last_visit_date).days
 
     def record_visit(self, visit_date=None):
         """Record a clinic visit."""
-        visit_date = visit_date or timezone.now().date()
+        visit_date = visit_date or timezone.localdate()
         self.last_visit_date = visit_date
         self.total_visits += 1
-        self.next_appointment = visit_date + timedelta(
-            days=self.appointment_interval_days
-        )
+        self.next_appointment = visit_date + timedelta(days=self.appointment_interval_days)
         self.save()

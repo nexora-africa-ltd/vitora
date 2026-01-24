@@ -76,8 +76,23 @@ def user_with_sha_permissions(db):
         email="sha@example.com",
         password="testpass123",
     )
+
+    # Ensure the custom eligibility permission exists even if migrations
+    # are disabled or incomplete in a local/dev test run.
+    from django.contrib.contenttypes.models import ContentType
+
+    from hmis.apps.billing.models import SHAMember
+
+    shamember_ct = ContentType.objects.get_for_model(SHAMember)
+    Permission.objects.get_or_create(
+        content_type=shamember_ct,
+        codename="verify_sha_eligibility",
+        defaults={"name": "Can verify SHA eligibility"},
+    )
+
     # Add SHA permissions
     permissions = Permission.objects.filter(
+        content_type__app_label="billing",
         codename__in=[
             "view_shamember",
             "add_shamember",
@@ -89,7 +104,7 @@ def user_with_sha_permissions(db):
             "submit_sha_claim",
             "appeal_sha_claim",
             "verify_sha_eligibility",
-        ]
+        ],
     )
     user.user_permissions.add(*permissions)
     return user
