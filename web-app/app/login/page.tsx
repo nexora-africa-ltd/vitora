@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useTheme } from 'next-themes';
 import { Eye, EyeOff, Loader2, Sun, Moon, AlertCircle, WifiOff } from 'lucide-react';
@@ -19,9 +19,17 @@ export default function LoginPage() {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [validationErrors, setValidationErrors] = useState<{username?: string; password?: string}>({});
+  const [mounted, setMounted] = useState(false);
   const { login } = useAuth();
   const router = useRouter();
-  const { theme, setTheme } = useTheme();
+  const { resolvedTheme, setTheme } = useTheme();
+
+  // Prevent hydration mismatch for theme-dependent images
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
+  const isDark = mounted && resolvedTheme === 'dark';
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -60,7 +68,7 @@ export default function LoginPage() {
         variant="ghost"
         size="icon"
         className="absolute top-4 right-4 z-10"
-        onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
+        onClick={() => setTheme(resolvedTheme === 'dark' ? 'light' : 'dark')}
       >
         <Sun className="h-5 w-5 rotate-0 scale-100 transition-all dark:-rotate-90 dark:scale-0" />
         <Moon className="absolute h-5 w-5 rotate-90 scale-0 transition-all dark:rotate-0 dark:scale-100" />
@@ -69,13 +77,14 @@ export default function LoginPage() {
 
       {/* Left side - Branding */}
       <div className="hidden lg:flex lg:w-1/2 bg-gradient-to-br from-brand-burgundy-900 via-brand-burgundy-900 to-brand-teal-600 p-12 flex-col justify-between">
-        <div>
-          <div className="flex items-center gap-3">
-            <div className="h-10 w-10 rounded-lg bg-white/10 backdrop-blur flex items-center justify-center">
-              <span className="text-xl font-bold text-white">V</span>
-            </div>
-            <span className="text-2xl font-bold text-white">{APP_NAME}</span>
-          </div>
+        <div className="w-64">
+          {/* Logo - using full width with object-cover to fill space */}
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
+            src="/burgundy-teal.png"
+            alt={APP_NAME}
+            className="w-full object-cover"
+          />
         </div>
 
         <div className="space-y-6">
@@ -117,12 +126,27 @@ export default function LoginPage() {
       </div>
 
       {/* Right side - Login form */}
-      <div className="flex w-full lg:w-1/2 items-center justify-center p-8 bg-background">
-        <Card className="w-full max-w-md border-brand-burgundy-200 dark:border-0 shadow-none lg:shadow-lg lg:border-2 hover:shadow-2xl  hover:bg-red-400/10 hover:text-white">
-          <CardHeader className="text-center space-y-4">
+      <div className="relative flex w-full lg:w-1/2 items-center justify-center p-8 bg-background overflow-hidden">
+        <Card className="relative z-10 w-full max-w-md border-brand-burgundy-200 dark:border-muted/30 shadow-none lg:shadow-lg lg:border-2 transition-shadow duration-300 hover:shadow-2xl overflow-hidden">
+          {/* Background logo watermark - centered in card */}
+          {mounted && (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img
+              src={isDark ? '/white.png' : '/teal.png'}
+              alt=""
+              aria-hidden="true"
+              className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[90%] h-auto object-contain opacity-[0.05] pointer-events-none select-none"
+            />
+          )}
+          <CardHeader className="relative z-10 text-center space-y-4">
             {/* Mobile logo */}
-            <div className="lg:hidden mx-auto h-14 w-14 rounded-xl bg-gradient-to-br from-brand-burgundy-900 to-brand-teal-600 flex items-center justify-center">
-              <span className="text-2xl font-bold text-white">V</span>
+            <div className="lg:hidden mx-auto">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
+                src={isDark ? '/light-theme-logo.png' : '/dark-theme-logo.png'}
+                alt={APP_NAME}
+                className="h-14 w-auto object-contain mx-auto"
+              />
             </div>
             <div>
               <CardTitle className="text-2xl font-bold">Welcome back</CardTitle>
@@ -131,7 +155,7 @@ export default function LoginPage() {
               </CardDescription>
             </div>
           </CardHeader>
-          <CardContent>
+          <CardContent className="relative z-10">
             <form onSubmit={handleSubmit} className="space-y-4">
               {error && (
                 <div className="flex items-center gap-2 p-3 text-sm text-destructive bg-destructive/10 border border-destructive/20 rounded-lg">

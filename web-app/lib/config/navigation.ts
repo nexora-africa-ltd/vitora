@@ -32,6 +32,12 @@ import {
   Scale,
   Shield,
   Clock,
+  Activity,
+  Baby,
+  Eye,
+  HeartPulse,
+  Syringe,
+  Stethoscope as StethoscopeIcon,
 } from 'lucide-react';
 
 export interface NavItem {
@@ -60,6 +66,19 @@ export const mainNavItems: NavItemType[] = [
   { label: 'Dashboard', href: '/', icon: LayoutDashboard },
   { label: 'Patients', href: '/patients', icon: Users },
   { label: 'Triage', href: '/triage', icon: AlertTriangle },
+  {
+    label: 'Clinics',
+    icon: Activity,
+    children: [
+      { label: 'All Clinics', href: '/clinics', icon: Building2 },
+      { label: 'General OPD', href: '/clinics/general-opd', icon: StethoscopeIcon },
+      { label: 'MCH / Welfare', href: '/clinics/mch', icon: Baby },
+      { label: 'Eye Clinic', href: '/clinics/eye', icon: Eye },
+      { label: 'Dental Clinic', href: '/clinics/dental', icon: Activity },
+      { label: 'Chronic Care', href: '/clinics/chronic-care', icon: HeartPulse },
+      { label: 'Immunization', href: '/clinics/immunization', icon: Syringe },
+    ],
+  },
   { label: 'Encounters', href: '/encounters', icon: Stethoscope },
   {
     label: 'Inpatient',
