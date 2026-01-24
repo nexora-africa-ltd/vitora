@@ -8,10 +8,14 @@ Sprint 1.5-1.6 Track E: Triage Module MVP
 """
 
 from decimal import Decimal
+from typing import TYPE_CHECKING
 
 from django.core.validators import MaxValueValidator, MinValueValidator
 from django.db import models
 from django.utils import timezone
+
+if TYPE_CHECKING:
+    from hmis.apps.clinics.models import ClinicVisit
 
 
 class WaitingQueue(models.Model):

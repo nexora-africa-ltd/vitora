@@ -364,11 +364,10 @@ class BillingReportService:
             for item in invoice.items.all():
                 if item.service and item.service.category:
                     dept_name = item.service.category.name
-                    if dept_name in dept_totals:
+                    if dept_name in dept_totals and invoice.total_amount > 0:
                         # Proportional collection based on payment vs invoice total
-                        if invoice.total_amount > 0:
-                            proportion = invoice.amount_paid / invoice.total_amount
-                            dept_totals[dept_name]["collected"] += item.line_total * proportion
+                        proportion = invoice.amount_paid / invoice.total_amount
+                        dept_totals[dept_name]["collected"] += item.line_total * proportion
 
         for dept_name, totals in dept_totals.items():
             by_department.append(

@@ -101,31 +101,31 @@ Billing is not automatically triggered when a clinic consultation starts. Revenu
 ### 2.2 Implementation Tasks
 
 ```
-[ ] Add clinic_visit FK to Invoice model (optional)
+[x] Add clinic_visit FK to Invoice model (optional)
     - clinic_visit = ForeignKey('clinics.ClinicVisit', null=True, blank=True,
               related_name='invoices', on_delete=SET_NULL)
 
-[ ] Create clinic billing service
+[x] Create clinic billing service
     - Location: backend/hmis/apps/billing/services/clinic_billing.py
     - Function: create_consultation_invoice(clinic_visit) -> Invoice
     - Auto-add consultation fee based on clinic type
     - Support clinic-specific pricing (from Clinic.default_consultation_fee or Tariff)
 
-[ ] Add signal/hook in ClinicVisit.start_consultation()
+[x] Add signal/hook in ClinicVisit.start_consultation()
     - Option A: Signal (post_save with status change detection)
     - Option B: Direct call in start_consultation() method
     - Recommended: Option B for explicit control
 
-[ ] Update ClinicVisit.start_consultation() to create invoice
+[x] Update ClinicVisit.start_consultation() to create invoice
     - Create Invoice with status=DRAFT or PENDING
     - Link to encounter and clinic_visit
     - Add line item for consultation fee
 
-[ ] Add clinic_id filter to Invoice list API
-    - GET /api/invoices/?clinic={id}
-    - GET /api/invoices/?clinic_type={type}
+[x] Add clinic_id filter to Invoice list API
+    - GET /api/billing/invoices/?clinic={id}
+    - GET /api/billing/invoices/?clinic_type={type}
 
-[ ] Write tests
+[x] Write tests
     - test_start_consultation_creates_invoice
     - test_invoice_linked_to_clinic_visit
     - test_consultation_fee_based_on_clinic_type

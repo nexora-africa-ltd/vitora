@@ -823,57 +823,10 @@ class ClinicVisit(TimeStampedModel):
 
         Creates or uses existing invoice and adds consultation fee line item.
         """
-        from hmis.apps.billing.models import Invoice, InvoiceItem, Service
+        from hmis.apps.billing.services.clinic_billing import create_consultation_invoice
 
-        clinic = self.session.clinic
-        consultation_fee = clinic.default_service_fee
-
-        # Skip if no fee configured
-        if not consultation_fee:
-            return
-
-        # Get or create invoice for this encounter/patient
-        invoice = None
-        if self.encounter:
-            # Check for existing draft/pending invoice using TextChoices values
-            invoice = Invoice.objects.filter(
-                encounter=self.encounter,
-                status__in=[Invoice.Status.DRAFT, Invoice.Status.PENDING],
-            ).first()
-
-        if not invoice:
-            invoice = Invoice.objects.create(
-                patient=self.patient,
-                encounter=self.encounter,
-                status=Invoice.Status.DRAFT,
-                created_by=user,
-            )
-
-        # Determine service description
-        is_return = self.visit_type in ["RETURN", "FOLLOW_UP", "REFERRAL"]
-        description = (
-            f"Review/Follow-up Consultation - {clinic.name}"
-            if is_return
-            else f"Consultation - {clinic.name}"
-        )
-
-        # Try to find service by SHA code
-        service = None
-        if clinic.sha_service_code:
-            service = Service.objects.filter(code=clinic.sha_service_code).first()
-
-        # Create invoice line item
-        item = InvoiceItem.objects.create(
-            invoice=invoice,
-            service=service,
-            description=description,
-            quantity=1,
-            unit_price=consultation_fee,
-        )
-
-        # Mark as charged and link to billing
-        self.consultation_fee_charged = True
-        self.billing_line_item = item
+        # The service will mark this visit as charged and link billing line item.
+        create_consultation_invoice(self, created_by=user)
 
     def complete_visit(self):
         """Mark visit as completed."""

@@ -516,8 +516,6 @@ def _send_appointment_reminder(enrollment):
     """
     from datetime import date
 
-    from django.utils import timezone
-
     from hmis.apps.core.models import AuditLog
 
     days_until = enrollment.days_to_edd() if enrollment.edd else None

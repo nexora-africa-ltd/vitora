@@ -2,6 +2,8 @@
 App configuration for Clinics module.
 """
 
+from contextlib import suppress
+
 from django.apps import AppConfig
 
 
@@ -14,7 +16,5 @@ class ClinicsConfig(AppConfig):
 
     def ready(self):
         """Import signals when app is ready."""
-        try:
+        with suppress(ImportError):
             from . import signals  # noqa: F401
-        except ImportError:
-            pass

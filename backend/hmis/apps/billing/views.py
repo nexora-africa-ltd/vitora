@@ -7,6 +7,8 @@ Following TDD - implemented to pass API tests.
 from datetime import date
 from decimal import Decimal
 
+from django.core.exceptions import ValidationError
+from django.db.models import Q
 from django.shortcuts import get_object_or_404
 from django_filters.rest_framework import DjangoFilterBackend
 from rest_framework import filters, status, viewsets
@@ -107,6 +109,21 @@ class InvoiceViewSet(viewsets.ModelViewSet):
             queryset = queryset.filter(invoice_date__gte=start_date)
         if end_date:
             queryset = queryset.filter(invoice_date__lte=end_date)
+
+        # Clinic reporting filters
+        clinic_id = self.request.query_params.get("clinic")
+        if clinic_id:
+            queryset = queryset.filter(
+                Q(clinic_visit__session__clinic_id=clinic_id)
+                | Q(encounter__clinic_visit__session__clinic_id=clinic_id)
+            ).distinct()
+
+        clinic_type = self.request.query_params.get("clinic_type")
+        if clinic_type:
+            queryset = queryset.filter(
+                Q(clinic_visit__session__clinic__clinic_type=clinic_type)
+                | Q(encounter__clinic_visit__session__clinic__clinic_type=clinic_type)
+            ).distinct()
 
         return queryset
 
@@ -548,24 +565,25 @@ class MpesaViewSet(viewsets.ViewSet):
                     )
                     payment.process()
 
-            elif payment and not payment_data["success"]:
+            elif (
+                payment and not payment_data["success"] and payment.status == Payment.Status.PENDING
+            ):
                 # Mark payment as failed/cancelled
-                if payment.status == Payment.Status.PENDING:
-                    payment.status = Payment.Status.FAILED
-                    payment.failure_reason = str(payment_data.get("result_description") or "")
-                    details = dict(payment.payment_details or {})
-                    details.update(
-                        {
-                            "result_code": payment_data.get("result_code"),
-                            "result_description": payment_data.get("result_description"),
-                            "merchant_request_id": payment_data.get("merchant_request_id"),
-                            "checkout_request_id": payment_data.get("checkout_request_id"),
-                        }
-                    )
-                    payment.payment_details = details
-                    payment.save(
-                        update_fields=["status", "failure_reason", "payment_details", "updated_at"]
-                    )
+                payment.status = Payment.Status.FAILED
+                payment.failure_reason = str(payment_data.get("result_description") or "")
+                details = dict(payment.payment_details or {})
+                details.update(
+                    {
+                        "result_code": payment_data.get("result_code"),
+                        "result_description": payment_data.get("result_description"),
+                        "merchant_request_id": payment_data.get("merchant_request_id"),
+                        "checkout_request_id": payment_data.get("checkout_request_id"),
+                    }
+                )
+                payment.payment_details = details
+                payment.save(
+                    update_fields=["status", "failure_reason", "payment_details", "updated_at"]
+                )
 
             return Response({"ResultCode": 0, "ResultDesc": "Success"}, status=status.HTTP_200_OK)
 

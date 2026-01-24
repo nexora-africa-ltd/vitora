@@ -458,7 +458,7 @@ from hmis.apps.core.models import SyncableModel
 class MyModel(SyncableModel):
     name = models.CharField(max_length=100)
     # Adds: version, sync_status, last_synced_at, server_id
-    
+
     def save(self, *args, **kwargs):
         self.increment_version()
         super().save(*args, **kwargs)
