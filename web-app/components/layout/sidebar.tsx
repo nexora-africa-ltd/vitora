@@ -295,7 +295,7 @@ export function Sidebar({
     <TooltipProvider delayDuration={0}>
       <aside
         className={cn(
-          'fixed left-0 top-0 z-50 h-screen border-r bg-card/95 backdrop-blur transition-all duration-300',
+          'fixed left-0 top-0 z-50 h-dvh border-r bg-card/95 backdrop-blur transition-all duration-300',
           collapsed ? 'w-20' : 'w-64',
           mobileOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'
         )}
