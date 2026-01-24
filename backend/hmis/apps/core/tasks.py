@@ -514,11 +514,15 @@ def _send_appointment_reminder(enrollment):
     Args:
         enrollment: ClinicEnrollment instance
     """
+    from datetime import date
+
+    from django.utils import timezone
+
     from hmis.apps.core.models import AuditLog
 
     days_until = enrollment.days_to_edd() if enrollment.edd else None
     if days_until is None and enrollment.next_appointment:
-        days_until = (enrollment.next_appointment - timezone.localdate()).days
+        days_until = (enrollment.next_appointment - date.today()).days
 
     AuditLog.log(
         action="appointment_reminder",
