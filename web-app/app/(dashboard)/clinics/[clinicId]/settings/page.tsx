@@ -42,6 +42,7 @@ import {
   useClinicSchedule,
   useClinicStaff,
 } from '@/lib/hooks/use-clinics';
+import { ClinicNavigation } from '@/components/clinics/clinic-navigation';
 import { cn } from '@/lib/utils/cn';
 
 const DAYS_OF_WEEK = [
@@ -104,6 +105,9 @@ export default function ClinicSettingsPage() {
           </p>
         </div>
       </div>
+
+      {/* Navigation */}
+      <ClinicNavigation clinicId={clinicId} />
 
       <Tabs defaultValue="general" className="space-y-4">
         <TabsList>

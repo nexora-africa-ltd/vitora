@@ -1,34 +1,47 @@
 /**
- * Clinic Dashboard Page
+ * Clinic Queue Management Page
  *
- * Displays the clinic queue view with real-time updates.
- * Shows waiting patients, in-consultation, and completed visits.
+ * Dedicated queue management page with advanced filtering, search,
+ * and bulk operations for clinic queue management.
  *
- * Route: /clinics/[clinicId]
+ * Route: /clinics/[clinicId]/queue
  */
 'use client';
 
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useCallback } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import {
+  ArrowLeft,
   Clock,
   Users,
+  UserCheck,
   CheckCircle,
-  Settings,
   RefreshCw,
   Plus,
-  ArrowLeft,
+  Search,
+  Filter,
   Play,
   Pause,
   AlertCircle,
+  Phone,
+  LayoutGrid,
+  List,
+  Download,
 } from 'lucide-react';
-import { PageHeader } from '@/components/shared/page-header';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
+import { Input } from '@/components/ui/input';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -43,6 +56,7 @@ import {
 import { ClinicQueueTable } from '@/components/clinics/clinic-queue-table';
 import { ClinicVisitCard } from '@/components/clinics/clinic-visit-card';
 import { AddToQueueDialog } from '@/components/clinics/add-to-queue-dialog';
+import { ClinicPriorityBadge } from '@/components/clinics/clinic-priority-badge';
 import { ClinicNavigation } from '@/components/clinics/clinic-navigation';
 import {
   useClinic,
@@ -53,19 +67,26 @@ import {
   useCloseSession,
 } from '@/lib/hooks/use-clinics';
 import { toast } from '@/lib/hooks/use-toast';
-import type { ClinicVisit, ClinicVisitStatus } from '@/lib/types/clinic';
+import type { ClinicVisit, ClinicVisitPriority, ClinicVisitStatus } from '@/lib/types/clinic';
 import { cn } from '@/lib/utils/cn';
 
-export default function ClinicDashboardPage() {
+type ViewMode = 'table' | 'cards';
+
+export default function ClinicQueuePage() {
   const params = useParams();
   const router = useRouter();
   const clinicId = Number(params.clinicId);
 
+  // UI State
   const [addToQueueOpen, setAddToQueueOpen] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [priorityFilter, setPriorityFilter] = useState<ClinicVisitPriority | 'ALL'>('ALL');
+  const [statusFilter, setStatusFilter] = useState<ClinicVisitStatus | 'ALL'>('ALL');
+  const [viewMode, setViewMode] = useState<ViewMode>('table');
 
   // Fetch clinic data
   const { data: clinic, isLoading: clinicLoading } = useClinic(clinicId);
-  const { data: session, isLoading: sessionLoading, refetch: refetchSession } = useTodaySession(clinicId);
+  const { data: session, refetch: refetchSession } = useTodaySession(clinicId);
   const { data: queue, isLoading: queueLoading, refetch: refetchQueue } = useClinicQueue(clinicId);
   const { data: stats, refetch: refetchStats } = useQueueStats(clinicId);
 
@@ -73,30 +94,55 @@ export default function ClinicDashboardPage() {
   const { mutateAsync: openSession, isPending: openingSession } = useOpenSession();
   const { mutateAsync: closeSession, isPending: closingSession } = useCloseSession();
 
-  // Filter queue by status
+  // Filter and search logic
+  const filteredQueue = useMemo(() => {
+    let result = queue ?? [];
+
+    // Apply search filter
+    if (searchQuery.trim()) {
+      const query = searchQuery.toLowerCase();
+      result = result.filter(
+        (v) =>
+          v.patient.full_name.toLowerCase().includes(query) ||
+          v.patient.mrn.toLowerCase().includes(query) ||
+          v.queue_number.toString().includes(query)
+      );
+    }
+
+    // Apply priority filter
+    if (priorityFilter !== 'ALL') {
+      result = result.filter((v) => v.priority === priorityFilter);
+    }
+
+    // Apply status filter
+    if (statusFilter !== 'ALL') {
+      result = result.filter((v) => v.status === statusFilter);
+    }
+
+    // Sort by priority then by registered_at
+    return result.sort((a, b) => {
+      const priorityOrder = { EMERGENCY: 1, URGENT: 2, PRIORITY: 3, STANDARD: 4, NON_URGENT: 5 };
+      const aPriority = priorityOrder[a.priority] || 5;
+      const bPriority = priorityOrder[b.priority] || 5;
+      if (aPriority !== bPriority) return aPriority - bPriority;
+      return new Date(a.registered_at).getTime() - new Date(b.registered_at).getTime();
+    });
+  }, [queue, searchQuery, priorityFilter, statusFilter]);
+
+  // Queue by status
   const waitingQueue = useMemo(
-    () =>
-      (queue ?? [])
-        .filter((v) => v.status === 'WAITING' || v.status === 'CALLED')
-        .sort((a, b) => {
-          // Sort by priority first, then by registered_at
-          const priorityOrder = { EMERGENCY: 1, URGENT: 2, PRIORITY: 3, STANDARD: 4, NON_URGENT: 5 };
-          const aPriority = priorityOrder[a.priority] || 5;
-          const bPriority = priorityOrder[b.priority] || 5;
-          if (aPriority !== bPriority) return aPriority - bPriority;
-          return new Date(a.registered_at).getTime() - new Date(b.registered_at).getTime();
-        }),
-    [queue]
+    () => filteredQueue.filter((v) => v.status === 'WAITING' || v.status === 'CALLED'),
+    [filteredQueue]
   );
 
   const inConsultation = useMemo(
-    () => (queue ?? []).filter((v) => v.status === 'IN_CONSULTATION'),
-    [queue]
+    () => filteredQueue.filter((v) => v.status === 'IN_CONSULTATION'),
+    [filteredQueue]
   );
 
   const completedToday = useMemo(
-    () => (queue ?? []).filter((v) => v.status === 'COMPLETED'),
-    [queue]
+    () => filteredQueue.filter((v) => v.status === 'COMPLETED'),
+    [filteredQueue]
   );
 
   // Handle session actions
@@ -129,13 +175,19 @@ export default function ClinicDashboardPage() {
     }
   };
 
-  const handleRefresh = () => {
+  const handleRefresh = useCallback(() => {
     refetchQueue();
     refetchStats();
     refetchSession();
+  }, [refetchQueue, refetchStats, refetchSession]);
+
+  const clearFilters = () => {
+    setSearchQuery('');
+    setPriorityFilter('ALL');
+    setStatusFilter('ALL');
   };
 
-  if (clinicLoading || sessionLoading) {
+  if (clinicLoading) {
     return (
       <div className="space-y-6">
         <Skeleton className="h-10 w-1/3" />
@@ -165,12 +217,7 @@ export default function ClinicDashboardPage() {
   }
 
   const isSessionOpen = session?.status === 'OPEN';
-  const formattedDate = new Date().toLocaleDateString('en-US', {
-    weekday: 'long',
-    year: 'numeric',
-    month: 'long',
-    day: 'numeric',
-  });
+  const hasActiveFilters = searchQuery || priorityFilter !== 'ALL' || statusFilter !== 'ALL';
 
   return (
     <div className="space-y-6">
@@ -178,13 +225,17 @@ export default function ClinicDashboardPage() {
       <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
         <div className="flex items-center gap-4">
           <Button variant="ghost" size="icon" asChild>
-            <Link href="/clinics">
+            <Link href={`/clinics/${clinicId}`}>
               <ArrowLeft className="h-4 w-4" />
             </Link>
           </Button>
           <div>
-            <h1 className="text-2xl font-bold tracking-tight md:text-3xl">{clinic.name}</h1>
-            <p className="text-muted-foreground">{formattedDate}</p>
+            <h1 className="text-2xl font-bold tracking-tight md:text-3xl">
+              {clinic.name} - Queue Management
+            </h1>
+            <p className="text-muted-foreground">
+              Manage patient queue, call patients, and track consultations
+            </p>
           </div>
         </div>
         <div className="flex items-center gap-2">
@@ -206,7 +257,7 @@ export default function ClinicDashboardPage() {
                   <AlertDialogTitle>Close Today&apos;s Session?</AlertDialogTitle>
                   <AlertDialogDescription>
                     This will close the clinic session for today. Patients still in queue will remain
-                    but no new patients can be added. You can reopen the session if needed.
+                    but no new patients can be added.
                   </AlertDialogDescription>
                 </AlertDialogHeader>
                 <AlertDialogFooter>
@@ -226,16 +277,10 @@ export default function ClinicDashboardPage() {
             <Plus className="h-4 w-4 mr-2" />
             Add Patient
           </Button>
-
-          <Button variant="ghost" size="icon" asChild>
-            <Link href={`/clinics/${clinicId}/settings`}>
-              <Settings className="h-4 w-4" />
-            </Link>
-          </Button>
         </div>
       </div>
 
-      {/* Navigation Tabs */}
+      {/* Navigation */}
       <ClinicNavigation clinicId={clinicId} />
 
       {/* Session Status Banner */}
@@ -307,11 +352,83 @@ export default function ClinicDashboardPage() {
         </Card>
       </div>
 
-      {/* Queue Tabs */}
-      <Tabs defaultValue="queue" className="space-y-4">
+      {/* Filters and Search */}
+      <Card>
+        <CardContent className="pt-6">
+          <div className="flex flex-col gap-4 md:flex-row md:items-center">
+            <div className="relative flex-1">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+              <Input
+                placeholder="Search by name, MRN, or queue number..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="pl-10"
+              />
+            </div>
+
+            <Select value={priorityFilter} onValueChange={(v) => setPriorityFilter(v as ClinicVisitPriority | 'ALL')}>
+              <SelectTrigger className="w-[160px]">
+                <Filter className="h-4 w-4 mr-2" />
+                <SelectValue placeholder="Priority" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="ALL">All Priorities</SelectItem>
+                <SelectItem value="EMERGENCY">Emergency</SelectItem>
+                <SelectItem value="URGENT">Urgent</SelectItem>
+                <SelectItem value="PRIORITY">Priority</SelectItem>
+                <SelectItem value="STANDARD">Standard</SelectItem>
+                <SelectItem value="NON_URGENT">Non-Urgent</SelectItem>
+              </SelectContent>
+            </Select>
+
+            <Select value={statusFilter} onValueChange={(v) => setStatusFilter(v as ClinicVisitStatus | 'ALL')}>
+              <SelectTrigger className="w-[160px]">
+                <SelectValue placeholder="Status" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="ALL">All Statuses</SelectItem>
+                <SelectItem value="WAITING">Waiting</SelectItem>
+                <SelectItem value="CALLED">Called</SelectItem>
+                <SelectItem value="IN_CONSULTATION">In Consultation</SelectItem>
+                <SelectItem value="COMPLETED">Completed</SelectItem>
+                <SelectItem value="NO_SHOW">No Show</SelectItem>
+                <SelectItem value="CANCELLED">Cancelled</SelectItem>
+              </SelectContent>
+            </Select>
+
+            {hasActiveFilters && (
+              <Button variant="ghost" onClick={clearFilters}>
+                Clear Filters
+              </Button>
+            )}
+
+            <div className="flex items-center gap-1 border rounded-md">
+              <Button
+                variant={viewMode === 'table' ? 'secondary' : 'ghost'}
+                size="sm"
+                onClick={() => setViewMode('table')}
+                className="rounded-r-none"
+              >
+                <List className="h-4 w-4" />
+              </Button>
+              <Button
+                variant={viewMode === 'cards' ? 'secondary' : 'ghost'}
+                size="sm"
+                onClick={() => setViewMode('cards')}
+                className="rounded-l-none"
+              >
+                <LayoutGrid className="h-4 w-4" />
+              </Button>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Queue Content */}
+      <Tabs defaultValue="waiting" className="space-y-4">
         <TabsList>
-          <TabsTrigger value="queue">
-            Queue
+          <TabsTrigger value="waiting">
+            Waiting
             {waitingQueue.length > 0 && (
               <Badge variant="secondary" className="ml-2">
                 {waitingQueue.length}
@@ -334,9 +451,15 @@ export default function ClinicDashboardPage() {
               </Badge>
             )}
           </TabsTrigger>
+          <TabsTrigger value="all">
+            All
+            <Badge variant="secondary" className="ml-2">
+              {filteredQueue.length}
+            </Badge>
+          </TabsTrigger>
         </TabsList>
 
-        <TabsContent value="queue" className="space-y-4">
+        <TabsContent value="waiting" className="space-y-4">
           {queueLoading ? (
             <Skeleton className="h-96" />
           ) : waitingQueue.length === 0 ? (
@@ -345,20 +468,30 @@ export default function ClinicDashboardPage() {
                 <Clock className="h-12 w-12 text-muted-foreground mb-4" />
                 <h3 className="text-lg font-semibold mb-2">No patients waiting</h3>
                 <p className="text-muted-foreground text-center mb-4">
-                  Add a patient to the queue to get started.
+                  {hasActiveFilters
+                    ? 'No patients match your filters.'
+                    : 'Add a patient to the queue to get started.'}
                 </p>
-                <Button onClick={() => setAddToQueueOpen(true)} disabled={!isSessionOpen}>
-                  <Plus className="h-4 w-4 mr-2" />
-                  Add Patient
-                </Button>
+                {hasActiveFilters ? (
+                  <Button variant="outline" onClick={clearFilters}>
+                    Clear Filters
+                  </Button>
+                ) : (
+                  <Button onClick={() => setAddToQueueOpen(true)} disabled={!isSessionOpen}>
+                    <Plus className="h-4 w-4 mr-2" />
+                    Add Patient
+                  </Button>
+                )}
               </CardContent>
             </Card>
+          ) : viewMode === 'table' ? (
+            <ClinicQueueTable visits={waitingQueue} clinicId={clinicId} onRefresh={handleRefresh} />
           ) : (
-            <ClinicQueueTable
-              visits={waitingQueue}
-              clinicId={clinicId}
-              onRefresh={handleRefresh}
-            />
+            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+              {waitingQueue.map((visit) => (
+                <ClinicVisitCard key={visit.id} visit={visit} clinicId={clinicId} onRefresh={handleRefresh} />
+              ))}
+            </div>
           )}
         </TabsContent>
 
@@ -373,15 +506,12 @@ export default function ClinicDashboardPage() {
                 </p>
               </CardContent>
             </Card>
+          ) : viewMode === 'table' ? (
+            <ClinicQueueTable visits={inConsultation} clinicId={clinicId} onRefresh={handleRefresh} />
           ) : (
             <div className="grid gap-4 md:grid-cols-2">
               {inConsultation.map((visit) => (
-                <ClinicVisitCard
-                  key={visit.id}
-                  visit={visit}
-                  clinicId={clinicId}
-                  onRefresh={handleRefresh}
-                />
+                <ClinicVisitCard key={visit.id} visit={visit} clinicId={clinicId} onRefresh={handleRefresh} />
               ))}
             </div>
           )}
@@ -405,6 +535,28 @@ export default function ClinicDashboardPage() {
               onRefresh={handleRefresh}
               showActions={false}
             />
+          )}
+        </TabsContent>
+
+        <TabsContent value="all" className="space-y-4">
+          {filteredQueue.length === 0 ? (
+            <Card>
+              <CardContent className="flex flex-col items-center justify-center py-12">
+                <Users className="h-12 w-12 text-muted-foreground mb-4" />
+                <h3 className="text-lg font-semibold mb-2">No visits found</h3>
+                <p className="text-muted-foreground text-center">
+                  {hasActiveFilters ? 'No visits match your filters.' : 'No visits recorded today.'}
+                </p>
+              </CardContent>
+            </Card>
+          ) : viewMode === 'table' ? (
+            <ClinicQueueTable visits={filteredQueue} clinicId={clinicId} onRefresh={handleRefresh} />
+          ) : (
+            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+              {filteredQueue.map((visit) => (
+                <ClinicVisitCard key={visit.id} visit={visit} clinicId={clinicId} onRefresh={handleRefresh} />
+              ))}
+            </div>
           )}
         </TabsContent>
       </Tabs>
