@@ -8,6 +8,8 @@ from decimal import Decimal
 
 import pytest
 from django.contrib.auth import get_user_model
+from rest_framework import status
+from rest_framework.test import APIClient
 
 from hmis.apps.billing.models import Invoice, InvoiceItem, Service, ServiceCategory
 from hmis.apps.clinics.models import Clinic, ClinicSession, ClinicVisit
@@ -269,3 +271,123 @@ class TestReturnVisitBilling:
         consultation_item = invoice.items.filter(description__icontains="consultation").first()
         # Could be either review fee or standard, depending on implementation
         assert consultation_item is not None
+
+
+@pytest.mark.django_db
+class TestInvoiceClinicVisitLink:
+    """RED: Invoice must be linkable back to a ClinicVisit for reporting."""
+
+    def test_invoice_has_optional_clinic_visit_fk(self):
+        """Invoice should have nullable clinic_visit FK (for clinic revenue attribution)."""
+        from django.core.exceptions import FieldDoesNotExist
+
+        try:
+            field = Invoice._meta.get_field("clinic_visit")
+        except FieldDoesNotExist:
+            pytest.fail("Invoice is missing expected field: clinic_visit")
+
+        # Contract from completion plan: nullable FK with SET_NULL
+        assert getattr(field, "null", False) is True
+        assert getattr(field, "blank", False) is True
+        assert getattr(field.remote_field, "related_name", "") == "invoices"
+
+    def test_start_consultation_links_invoice_to_clinic_visit(
+        self, sample_clinic_visit, consultation_service, test_user
+    ):
+        """Starting consultation should set invoice.clinic_visit to the visit."""
+        sample_clinic_visit.start_consultation(user=test_user)
+
+        invoice = Invoice.objects.filter(patient=sample_clinic_visit.patient).first()
+        assert invoice is not None
+
+        assert hasattr(invoice, "clinic_visit_id"), "Invoice should expose clinic_visit_id"
+        assert invoice.clinic_visit_id == sample_clinic_visit.id
+
+
+@pytest.mark.django_db
+class TestClinicBillingServiceContract:
+    """RED: clinic billing service should exist and generate consultation invoices."""
+
+    def test_clinic_billing_service_exists_and_creates_invoice(
+        self, sample_clinic_visit, consultation_service, test_user
+    ):
+        """clinic_billing.create_consultation_invoice(clinic_visit) -> Invoice."""
+        try:
+            from hmis.apps.billing.services.clinic_billing import (  # type: ignore
+                create_consultation_invoice,
+            )
+        except ModuleNotFoundError:
+            pytest.fail("Missing module: hmis.apps.billing.services.clinic_billing")
+        except ImportError:
+            pytest.fail("Missing function: create_consultation_invoice")
+
+        invoice = create_consultation_invoice(sample_clinic_visit, created_by=test_user)
+        assert isinstance(invoice, Invoice)
+        assert invoice.patient_id == sample_clinic_visit.patient_id
+
+
+@pytest.mark.django_db
+class TestInvoiceAPIClinicFilters:
+    """RED: Invoice list API should support filtering by clinic and clinic_type."""
+
+    @pytest.fixture
+    def authenticated_client(self, test_user):
+        client = APIClient()
+        client.force_authenticate(user=test_user)
+        return client
+
+    def _results(self, response_data):
+        if isinstance(response_data, dict) and "results" in response_data:
+            return response_data["results"]
+        return response_data
+
+    def test_filter_invoices_by_clinic(self, authenticated_client, sample_clinic_visit, test_user):
+        """GET /api/billing/invoices/?clinic={id} should return only that clinic's invoices."""
+        # Create a second clinic + visit
+        from datetime import date
+
+        other_clinic = Clinic.objects.create(
+            name="Eye Clinic",
+            code="EYE-001",
+            clinic_type="EYE",
+            status="ACTIVE",
+            default_service_fee=Decimal("400.00"),
+            sha_service_code="CONS-EYE",
+        )
+        other_session = ClinicSession.objects.create(
+            clinic=other_clinic,
+            session_date=date.today(),
+            status="OPEN",
+        )
+        other_visit = ClinicVisit.objects.create(
+            session=other_session,
+            patient=sample_clinic_visit.patient,
+            status="WAITING",
+            chief_complaint="Eye check",
+        )
+
+        # Generate invoices via start_consultation
+        sample_clinic_visit.start_consultation(user=test_user)
+        other_visit.start_consultation(user=test_user)
+
+        response = authenticated_client.get(
+            f"/api/billing/invoices/?clinic={sample_clinic_visit.session.clinic_id}"
+        )
+
+        assert response.status_code == status.HTTP_200_OK
+        results = self._results(response.data)
+        assert len(results) == 1
+
+    def test_filter_invoices_by_clinic_type(
+        self, authenticated_client, sample_clinic_visit, test_user
+    ):
+        """GET /api/billing/invoices/?clinic_type={type} should filter by clinic type."""
+        sample_clinic_visit.start_consultation(user=test_user)
+
+        response = authenticated_client.get(
+            f"/api/billing/invoices/?clinic_type={sample_clinic_visit.session.clinic.clinic_type}"
+        )
+
+        assert response.status_code == status.HTTP_200_OK
+        results = self._results(response.data)
+        assert len(results) == 1

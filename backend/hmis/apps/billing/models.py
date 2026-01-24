@@ -148,6 +148,15 @@ class Invoice(models.Model):
         blank=True,
     )
 
+    # Optional clinic visit linkage (for clinic-based reporting)
+    clinic_visit = models.ForeignKey(
+        "clinics.ClinicVisit",
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="invoices",
+    )
+
     # Status
     status = models.CharField(max_length=20, choices=Status.choices, default=Status.DRAFT)
     payment_type = models.CharField(
@@ -271,13 +280,16 @@ class Invoice(models.Model):
         # Proforma cannot transition directly to PAID
         if self.pk:
             old_instance = Invoice.objects.filter(pk=self.pk).first()
-            if old_instance and old_instance.status == self.Status.PROFORMA:
-                if self.status == self.Status.PAID:
-                    raise ValidationError(
-                        {
-                            "status": "Proforma invoices cannot be paid directly. Convert to invoice first."
-                        }
-                    )
+            if (
+                old_instance
+                and old_instance.status == self.Status.PROFORMA
+                and self.status == self.Status.PAID
+            ):
+                raise ValidationError(
+                    {
+                        "status": "Proforma invoices cannot be paid directly. Convert to invoice first."
+                    }
+                )
 
     def generate_invoice_number(self) -> str:
         """Generate unique invoice number based on status.
@@ -702,8 +714,6 @@ class InvoiceItem(models.Model):
 
     def save(self, *args, **kwargs):
         """Override save to calculate line total, handle stock allocation, and update invoice."""
-        is_new = self.pk is None
-
         # Calculate line_total before validation if not set
         if not self.line_total:
             self.line_total = self.calculate_line_total()

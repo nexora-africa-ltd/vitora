@@ -390,7 +390,11 @@ class TestGenerateDefaulterList:
         assert "total_visits" in defaulter
 
     def test_filter_by_clinic_id(
-        self, ccc_clinic_for_alerts, anc_clinic_for_alerts, sample_patient_for_alerts, alert_test_user
+        self,
+        ccc_clinic_for_alerts,
+        anc_clinic_for_alerts,
+        sample_patient_for_alerts,
+        alert_test_user,
     ):
         """Task should filter defaulters by clinic_id when provided."""
         from hmis.apps.clinics.models import ClinicEnrollment
@@ -497,7 +501,11 @@ class TestChronicCareTasksIntegration:
     """Integration tests for chronic care alert tasks."""
 
     def test_multiple_clinics_processed(
-        self, ccc_clinic_for_alerts, anc_clinic_for_alerts, sample_patient_for_alerts, alert_test_user
+        self,
+        ccc_clinic_for_alerts,
+        anc_clinic_for_alerts,
+        sample_patient_for_alerts,
+        alert_test_user,
     ):
         """Tasks should process enrollments from multiple clinic types."""
         from hmis.apps.clinics.models import ClinicEnrollment

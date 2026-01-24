@@ -52,14 +52,14 @@ class ClinicQueueConsumer(AsyncJsonWebsocketConsumer):
         await self.accept()
         logger.info(f"WebSocket connected to clinic queue {self.clinic_id}")
 
-    async def disconnect(self, close_code):
+    async def disconnect(self, _close_code):
         """Handle WebSocket disconnection."""
         # Leave clinic group
         if hasattr(self, "room_group_name"):
             await self.channel_layer.group_discard(self.room_group_name, self.channel_name)
             logger.info(f"WebSocket disconnected from clinic queue {self.clinic_id}")
 
-    async def receive(self, text_data=None, bytes_data=None):
+    async def receive(self, text_data=None, _bytes_data=None):
         """
         Handle incoming WebSocket messages with error handling.
 

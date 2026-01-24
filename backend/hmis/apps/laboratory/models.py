@@ -553,10 +553,9 @@ class LabOrder(models.Model):
         if self.status in ["COMPLETED", "CANCELLED"]:
             raise ValidationError(f"Cannot cancel a {self.status.lower()} order.")
 
-        if self.status == "IN_PROGRESS":
+        if self.status == "IN_PROGRESS" and self.items.filter(result__isnull=False).exists():
             # Check if any results have been entered
-            if self.items.filter(result__isnull=False).exists():
-                raise ValidationError("Cannot cancel order with existing results.")
+            raise ValidationError("Cannot cancel order with existing results.")
 
         # Store cancellation details
         self.status = "CANCELLED"

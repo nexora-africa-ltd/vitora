@@ -1253,7 +1253,6 @@ class TestClinicEnrollmentSerializerComputedFields:
         self, authenticated_client, sample_patient, clinic_doctor_user
     ):
         """Diabetic enrollment serializer should include diabetic computed fields."""
-        from decimal import Decimal
 
         from hmis.apps.clinics.models import Clinic, ClinicEnrollment
 
