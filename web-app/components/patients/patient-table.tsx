@@ -120,16 +120,16 @@ export function PatientTable({
       {/* Loading state */}
       {isLoading ? (
         viewMode === 'list' ? (
-          <div className="rounded-md border">
+          <div className="rounded-md border overflow-x-auto">
             <Table>
               <TableHeader>
                 <TableRow>
                   <TableHead>MRN</TableHead>
                   <TableHead>Name</TableHead>
-                  <TableHead>Age/Gender</TableHead>
-                  <TableHead>Phone</TableHead>
-                  <TableHead>County</TableHead>
-                  <TableHead>Registered</TableHead>
+                  <TableHead className="hidden sm:table-cell">Age/Gender</TableHead>
+                  <TableHead className="hidden md:table-cell">Phone</TableHead>
+                  <TableHead className="hidden lg:table-cell">County</TableHead>
+                  <TableHead className="hidden sm:table-cell">Registered</TableHead>
                   <TableHead className="w-[50px]"></TableHead>
                 </TableRow>
               </TableHeader>
@@ -138,10 +138,10 @@ export function PatientTable({
                   <TableRow key={i}>
                     <TableCell><Skeleton className="h-4 w-24" /></TableCell>
                     <TableCell><Skeleton className="h-4 w-32" /></TableCell>
-                    <TableCell><Skeleton className="h-4 w-20" /></TableCell>
-                    <TableCell><Skeleton className="h-4 w-28" /></TableCell>
-                    <TableCell><Skeleton className="h-4 w-24" /></TableCell>
-                    <TableCell><Skeleton className="h-4 w-20" /></TableCell>
+                    <TableCell className="hidden sm:table-cell"><Skeleton className="h-4 w-20" /></TableCell>
+                    <TableCell className="hidden md:table-cell"><Skeleton className="h-4 w-28" /></TableCell>
+                    <TableCell className="hidden lg:table-cell"><Skeleton className="h-4 w-24" /></TableCell>
+                    <TableCell className="hidden sm:table-cell"><Skeleton className="h-4 w-20" /></TableCell>
                     <TableCell><Skeleton className="h-8 w-8" /></TableCell>
                   </TableRow>
                 ))}
@@ -174,7 +174,7 @@ export function PatientTable({
       {totalPages > 1 && (
         <div className="flex items-center justify-between">
           <p className="text-sm text-muted-foreground">
-            Page {page} of {totalPages}
+            <span className="hidden sm:inline">Page </span>{page}<span className="hidden sm:inline"> of {totalPages}</span><span className="sm:hidden">/{totalPages}</span>
           </p>
           <div className="flex items-center gap-2">
             <Button
@@ -183,8 +183,8 @@ export function PatientTable({
               onClick={() => onPageChange(page - 1)}
               disabled={page === 1}
             >
-              <ChevronLeft className="h-4 w-4 mr-1" />
-              Previous
+              <ChevronLeft className="h-4 w-4 sm:mr-1" />
+              <span className="hidden sm:inline">Previous</span>
             </Button>
             <Button
               variant="outline"
@@ -192,8 +192,8 @@ export function PatientTable({
               onClick={() => onPageChange(page + 1)}
               disabled={page === totalPages}
             >
-              Next
-              <ChevronRight className="h-4 w-4 ml-1" />
+              <span className="hidden sm:inline">Next</span>
+              <ChevronRight className="h-4 w-4 sm:ml-1" />
             </Button>
           </div>
         </div>
@@ -249,16 +249,16 @@ function PatientListView({ patients, selectMode, onRowClick, router }: PatientLi
   };
 
   return (
-    <div className="rounded-md border">
+    <div className="rounded-md border overflow-x-auto">
       <Table>
         <TableHeader>
           <TableRow>
             <TableHead>MRN</TableHead>
             <TableHead>Name</TableHead>
-            <TableHead>Age/Gender</TableHead>
-            <TableHead>Phone</TableHead>
-            <TableHead>County</TableHead>
-            <TableHead>Registered</TableHead>
+            <TableHead className="hidden sm:table-cell">Age/Gender</TableHead>
+            <TableHead className="hidden md:table-cell">Phone</TableHead>
+            <TableHead className="hidden lg:table-cell">County</TableHead>
+            <TableHead className="hidden sm:table-cell">Registered</TableHead>
             <TableHead className="w-[50px]"></TableHead>
           </TableRow>
         </TableHeader>
@@ -285,7 +285,7 @@ function PatientListView({ patients, selectMode, onRowClick, router }: PatientLi
                   )}
                 </div>
               </TableCell>
-              <TableCell>
+              <TableCell className="hidden sm:table-cell">
                 <div className="flex items-center gap-2">
                   <span>{calculateAge(patient.date_of_birth)} yrs</span>
                   <Badge className={genderColors[patient.gender]}>
@@ -293,9 +293,9 @@ function PatientListView({ patients, selectMode, onRowClick, router }: PatientLi
                   </Badge>
                 </div>
               </TableCell>
-              <TableCell>{patient.phone_number || '—'}</TableCell>
-              <TableCell>{patient.county_name || '—'}</TableCell>
-              <TableCell>{formatDate(patient.created_at)}</TableCell>
+              <TableCell className="hidden md:table-cell">{patient.phone_number || '—'}</TableCell>
+              <TableCell className="hidden lg:table-cell">{patient.county_name || '—'}</TableCell>
+              <TableCell className="hidden sm:table-cell">{formatDate(patient.created_at)}</TableCell>
               <TableCell>
                 {!selectMode && (
                   <DropdownMenu>
