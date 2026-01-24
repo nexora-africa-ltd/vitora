@@ -10,10 +10,9 @@ This module provides DRF views for:
 - ClinicEnrollment chronic care tracking
 """
 
-from datetime import date
-
 from django.db import models
 from django.db.models import Avg, Q
+from django.utils import timezone
 from django_filters import rest_framework as filters
 from rest_framework import permissions, status, viewsets
 from rest_framework.decorators import action
@@ -193,7 +192,7 @@ class ClinicViewSet(viewsets.ModelViewSet):
 
         if request.method == "GET":
             # Get or create today's session
-            session, _ = clinic.get_or_create_session(date.today())
+            session, _ = clinic.get_or_create_session(timezone.localdate())
 
             # Get waiting visits ordered by priority and queue number
             visits = ClinicVisit.objects.filter(
@@ -206,7 +205,7 @@ class ClinicViewSet(viewsets.ModelViewSet):
 
         elif request.method == "POST":
             # Get or create today's session
-            session, _ = clinic.get_or_create_session(date.today())
+            session, _ = clinic.get_or_create_session(timezone.localdate())
 
             # Create visit
             data = request.data.copy()
@@ -226,7 +225,7 @@ class ClinicViewSet(viewsets.ModelViewSet):
     def queue_stats(self, request, pk=None):
         """Get queue statistics for today's session."""
         clinic = self.get_object()
-        session, _ = clinic.get_or_create_session(date.today())
+        session, _ = clinic.get_or_create_session(timezone.localdate())
 
         visits = ClinicVisit.objects.filter(session=session)
 
@@ -302,7 +301,7 @@ class ClinicSessionViewSet(viewsets.ModelViewSet):
     def today(self, request, clinic_pk=None):
         """Get or create today's session."""
         clinic = Clinic.objects.get(pk=clinic_pk)
-        session, _ = clinic.get_or_create_session(date.today())
+        session, _ = clinic.get_or_create_session(timezone.localdate())
         serializer = self.get_serializer(session)
         return Response(serializer.data)
 
@@ -310,7 +309,7 @@ class ClinicSessionViewSet(viewsets.ModelViewSet):
     def open(self, request, clinic_pk=None):
         """Open today's session."""
         clinic = Clinic.objects.get(pk=clinic_pk)
-        session, _ = clinic.get_or_create_session(date.today())
+        session, _ = clinic.get_or_create_session(timezone.localdate())
         session.open_session(request.user)
         serializer = self.get_serializer(session)
         return Response(serializer.data)
@@ -319,7 +318,7 @@ class ClinicSessionViewSet(viewsets.ModelViewSet):
     def close(self, request, clinic_pk=None):
         """Close today's session."""
         clinic = Clinic.objects.get(pk=clinic_pk)
-        session, _ = clinic.get_or_create_session(date.today())
+        session, _ = clinic.get_or_create_session(timezone.localdate())
         session.close_session(request.user)
         serializer = self.get_serializer(session)
         return Response(serializer.data)
@@ -541,7 +540,7 @@ class ClinicEnrollmentViewSet(viewsets.ModelViewSet):
     @action(detail=False, methods=["get"])
     def overdue(self, request):
         """Get overdue patients (past next_appointment)."""
-        today = date.today()
+        today = timezone.localdate()
         queryset = self.get_queryset().filter(
             status="ACTIVE",
             next_appointment__lt=today,
@@ -563,7 +562,7 @@ class ClinicEnrollmentViewSet(viewsets.ModelViewSet):
     @action(detail=False, methods=["get"])
     def defaulters(self, request):
         """Get defaulters (significantly overdue - 2+ missed appointments)."""
-        today = date.today()
+        today = timezone.localdate()
 
         # Get enrollments with overdue by more than 2x appointment interval
         queryset = self.get_queryset().filter(
