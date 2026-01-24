@@ -618,7 +618,7 @@ test.describe('KE-CSH-002: Invoice Generation', () => {
 
     // Wait for the command list to appear and select a service
     await page.waitForSelector('input[placeholder="Search services..."]');
-    
+
     // Click on General Consultation in the command list (use force click to bypass overlay)
     await page.locator('[cmdk-item]').filter({ hasText: 'General Consultation' }).click({ force: true });
 
@@ -950,7 +950,7 @@ test.describe('KE-CLM-003: Financial Performance Reports', () => {
     // The labels "Start Date" and "End Date" are text elements, buttons show the actual dates
     await expect(page.getByText('Start Date')).toBeVisible();
     await expect(page.getByText('End Date')).toBeVisible();
-    
+
     // Date picker buttons show the selected date values (e.g., "January 1st, 2026")
     await expect(page.getByRole('button', { name: /january/i }).first()).toBeVisible();
 

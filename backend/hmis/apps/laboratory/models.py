@@ -520,7 +520,16 @@ class LabOrder(models.Model):
 
         # Recalculate invoice totals
         invoice.calculate_totals()
-        invoice.save(update_fields=["subtotal", "tax_amount", "discount_amount", "total_amount", "balance_due", "updated_at"])
+        invoice.save(
+            update_fields=[
+                "subtotal",
+                "tax_amount",
+                "discount_amount",
+                "total_amount",
+                "balance_due",
+                "updated_at",
+            ]
+        )
 
         # Update order total cost
         self.calculate_total_cost()
@@ -554,9 +563,15 @@ class LabOrder(models.Model):
         self.cancellation_reason = reason
         self.cancelled_by = user
         self.cancelled_at = timezone.now()
-        self.save(update_fields=[
-            "status", "cancellation_reason", "cancelled_by", "cancelled_at", "updated_at"
-        ])
+        self.save(
+            update_fields=[
+                "status",
+                "cancellation_reason",
+                "cancelled_by",
+                "cancelled_at",
+                "updated_at",
+            ]
+        )
 
         # Remove invoice items associated with this lab order
         invoice = Invoice.objects.filter(encounter=self.encounter).first()
@@ -565,10 +580,16 @@ class LabOrder(models.Model):
             if deleted_count > 0:
                 # Recalculate invoice totals
                 invoice.calculate_totals()
-                invoice.save(update_fields=[
-                    "subtotal", "tax_amount", "discount_amount",
-                    "total_amount", "balance_due", "updated_at"
-                ])
+                invoice.save(
+                    update_fields=[
+                        "subtotal",
+                        "tax_amount",
+                        "discount_amount",
+                        "total_amount",
+                        "balance_due",
+                        "updated_at",
+                    ]
+                )
 
         # Cancel all order items
         self.items.update(status="CANCELLED")

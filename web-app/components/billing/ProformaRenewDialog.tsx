@@ -68,7 +68,7 @@ export function ProformaRenewDialog({
   // Handlers
   const handleSubmit = () => {
     if (!invoice) return;
-    
+
     const days = useCustomValidity ? parseInt(validityDays, 10) : undefined;
     onRenew(invoice, days);
   };

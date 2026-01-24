@@ -81,11 +81,11 @@ from hmis.apps.core.models import TimeStampedModel
 class ProcedureCatalog(TimeStampedModel):
     """
     Master catalog of procedures that can be performed.
-    
+
     Links to standard coding systems (ICHI, CPT) and defines
     consent requirements, typical consumables, and billing codes.
     """
-    
+
     # =========================================================================
     # Category Choices
     # =========================================================================
@@ -104,7 +104,7 @@ class ProcedureCatalog(TimeStampedModel):
         ("INJECTION", "Injection/Infusion"),
         ("OTHER", "Other"),
     ]
-    
+
     # =========================================================================
     # Body System Choices (for filtering)
     # =========================================================================
@@ -123,7 +123,7 @@ class ProcedureCatalog(TimeStampedModel):
         ("DENTAL", "Dental"),
         ("GENERAL", "General/Multiple"),
     ]
-    
+
     # =========================================================================
     # Risk Level Choices
     # =========================================================================
@@ -132,7 +132,7 @@ class ProcedureCatalog(TimeStampedModel):
         ("MEDIUM", "Medium Risk"),
         ("HIGH", "High Risk"),
     ]
-    
+
     # =========================================================================
     # Core Fields
     # =========================================================================
@@ -165,7 +165,7 @@ class ProcedureCatalog(TimeStampedModel):
         choices=RISK_LEVEL_CHOICES,
         default="LOW"
     )
-    
+
     # =========================================================================
     # Standard Coding (ICHI, CPT)
     # =========================================================================
@@ -187,7 +187,7 @@ class ProcedureCatalog(TimeStampedModel):
         default="",
         help_text="ICD-10-PCS code (if applicable)"
     )
-    
+
     # =========================================================================
     # Consent & Requirements
     # =========================================================================
@@ -208,7 +208,7 @@ class ProcedureCatalog(TimeStampedModel):
         default=False,
         help_text="Whether a witness signature is required"
     )
-    
+
     # =========================================================================
     # Clinical Requirements
     # =========================================================================
@@ -240,7 +240,7 @@ class ProcedureCatalog(TimeStampedModel):
         default="",
         help_text="Instructions for patient after procedure"
     )
-    
+
     # =========================================================================
     # Staffing Requirements
     # =========================================================================
@@ -253,7 +253,7 @@ class ProcedureCatalog(TimeStampedModel):
         default=1,
         help_text="Minimum staff required"
     )
-    
+
     # =========================================================================
     # Billing & SHA
     # =========================================================================
@@ -276,7 +276,7 @@ class ProcedureCatalog(TimeStampedModel):
         default="",
         help_text="SHA package code (if bundled)"
     )
-    
+
     # =========================================================================
     # Follow-up
     # =========================================================================
@@ -296,7 +296,7 @@ class ProcedureCatalog(TimeStampedModel):
         related_name="follow_up_procedures",
         help_text="Default clinic for follow-up"
     )
-    
+
     # =========================================================================
     # Status
     # =========================================================================
@@ -304,7 +304,7 @@ class ProcedureCatalog(TimeStampedModel):
         default=True,
         help_text="Whether procedure is currently offered"
     )
-    
+
     class Meta:
         ordering = ["category", "name"]
         verbose_name = "Procedure Catalog Entry"
@@ -322,11 +322,11 @@ class ProcedureCatalog(TimeStampedModel):
 class ProcedureKit(TimeStampedModel):
     """
     Standard consumable kit for a procedure.
-    
+
     Defines the typical items needed for a procedure,
     allowing quick addition of all consumables.
     """
-    
+
     procedure = models.ForeignKey(
         ProcedureCatalog,
         on_delete=models.CASCADE,
@@ -359,7 +359,7 @@ class ProcedureKitItem(models.Model):
     """
     Individual item in a procedure kit.
     """
-    
+
     kit = models.ForeignKey(
         ProcedureKit,
         on_delete=models.CASCADE,
@@ -398,10 +398,10 @@ class ProcedureKitItem(models.Model):
 class ProcedureOrder(TimeStampedModel):
     """
     Order/request for a procedure to be performed.
-    
+
     Created when a clinician orders a procedure during an encounter.
     """
-    
+
     # =========================================================================
     # Status Choices
     # =========================================================================
@@ -414,7 +414,7 @@ class ProcedureOrder(TimeStampedModel):
         ("COMPLETED", "Completed"),
         ("CANCELLED", "Cancelled"),
     ]
-    
+
     # =========================================================================
     # Priority Choices
     # =========================================================================
@@ -424,7 +424,7 @@ class ProcedureOrder(TimeStampedModel):
         ("ROUTINE", "Routine - Scheduled"),
         ("ELECTIVE", "Elective - Non-urgent"),
     ]
-    
+
     # =========================================================================
     # Core Fields
     # =========================================================================
@@ -444,7 +444,7 @@ class ProcedureOrder(TimeStampedModel):
         on_delete=models.CASCADE,
         related_name="procedure_orders"
     )
-    
+
     # =========================================================================
     # Context (where order originated)
     # =========================================================================
@@ -472,7 +472,7 @@ class ProcedureOrder(TimeStampedModel):
         related_name="procedure_orders",
         help_text="If ordered for inpatient"
     )
-    
+
     # =========================================================================
     # Order Details
     # =========================================================================
@@ -494,7 +494,7 @@ class ProcedureOrder(TimeStampedModel):
         default="",
         help_text="Additional clinical notes"
     )
-    
+
     # =========================================================================
     # Site/Laterality
     # =========================================================================
@@ -504,7 +504,7 @@ class ProcedureOrder(TimeStampedModel):
         ("BILATERAL", "Bilateral"),
         ("NA", "Not Applicable"),
     ]
-    
+
     body_site = models.CharField(
         max_length=100,
         blank=True,
@@ -516,7 +516,7 @@ class ProcedureOrder(TimeStampedModel):
         choices=LATERALITY_CHOICES,
         default="NA"
     )
-    
+
     # =========================================================================
     # Scheduling
     # =========================================================================
@@ -541,7 +541,7 @@ class ProcedureOrder(TimeStampedModel):
         blank=True,
         help_text="Estimated duration (override from catalog)"
     )
-    
+
     # =========================================================================
     # Staff
     # =========================================================================
@@ -562,7 +562,7 @@ class ProcedureOrder(TimeStampedModel):
         related_name="assigned_procedures",
         help_text="Staff assigned to perform"
     )
-    
+
     # =========================================================================
     # Cancellation
     # =========================================================================
@@ -588,41 +588,41 @@ class ProcedureOrder(TimeStampedModel):
 
     def __str__(self):
         return f"{self.order_number} - {self.procedure.name} for {self.patient}"
-    
+
     def save(self, *args, **kwargs):
         if not self.order_number:
             self.order_number = self._generate_order_number()
         super().save(*args, **kwargs)
-    
+
     def _generate_order_number(self):
         """Generate unique order number: PROC-YYYYMMDD-XXXX"""
         from django.utils import timezone
         today = timezone.now().date()
         prefix = f"PROC-{today.strftime('%Y%m%d')}-"
-        
+
         last_order = ProcedureOrder.objects.filter(
             order_number__startswith=prefix
         ).order_by("-order_number").first()
-        
+
         if last_order:
             last_num = int(last_order.order_number.split("-")[-1])
             next_num = last_num + 1
         else:
             next_num = 1
-        
+
         return f"{prefix}{next_num:04d}"
-    
+
     def can_perform(self):
         """Check if procedure can be performed."""
         if self.status not in ["SCHEDULED", "READY"]:
             return False, "Order not in performable status"
-        
+
         if self.procedure.consent_required:
             if not hasattr(self, 'consent') or self.consent.status != "SIGNED":
                 return False, "Consent not obtained"
-        
+
         return True, "Ready to perform"
-    
+
     def cancel(self, user, reason):
         """Cancel the procedure order."""
         from django.utils import timezone
@@ -639,30 +639,30 @@ class ProcedureOrder(TimeStampedModel):
 class ProcedureConsent(TimeStampedModel):
     """
     Consent record for a procedure.
-    
+
     Tracks informed consent with patient signature,
     witness signature (if required), and guardian consent for minors.
     """
-    
+
     STATUS_CHOICES = [
         ("PENDING", "Pending - Not yet signed"),
         ("SIGNED", "Signed - Consent given"),
         ("DECLINED", "Declined - Consent refused"),
         ("WITHDRAWN", "Withdrawn - Consent withdrawn"),
     ]
-    
+
     CONSENT_TYPE_CHOICES = [
         ("WRITTEN", "Written Consent"),
         ("VERBAL", "Verbal Consent (documented)"),
         ("EMERGENCY", "Emergency (implied consent)"),
     ]
-    
+
     order = models.OneToOneField(
         ProcedureOrder,
         on_delete=models.CASCADE,
         related_name="consent"
     )
-    
+
     # =========================================================================
     # Consent Details
     # =========================================================================
@@ -679,7 +679,7 @@ class ProcedureConsent(TimeStampedModel):
     consent_text = models.TextField(
         help_text="Full consent form text presented to patient"
     )
-    
+
     # =========================================================================
     # Information Provided
     # =========================================================================
@@ -699,7 +699,7 @@ class ProcedureConsent(TimeStampedModel):
         default=False,
         help_text="Patient's questions were answered"
     )
-    
+
     # =========================================================================
     # Patient/Guardian Signature
     # =========================================================================
@@ -716,7 +716,7 @@ class ProcedureConsent(TimeStampedModel):
         null=True,
         blank=True
     )
-    
+
     # For minors or incapacitated patients
     signed_by_guardian = models.BooleanField(
         default=False,
@@ -747,7 +747,7 @@ class ProcedureConsent(TimeStampedModel):
         null=True,
         blank=True
     )
-    
+
     # =========================================================================
     # Witness
     # =========================================================================
@@ -773,7 +773,7 @@ class ProcedureConsent(TimeStampedModel):
         related_name="witnessed_consents",
         help_text="Staff who witnessed the consent"
     )
-    
+
     # =========================================================================
     # Staff who obtained consent
     # =========================================================================
@@ -787,7 +787,7 @@ class ProcedureConsent(TimeStampedModel):
         null=True,
         blank=True
     )
-    
+
     # =========================================================================
     # Decline/Withdrawal
     # =========================================================================
@@ -805,35 +805,35 @@ class ProcedureConsent(TimeStampedModel):
 
     def __str__(self):
         return f"Consent for {self.order}"
-    
+
     def is_valid(self):
         """Check if consent is valid."""
         if self.status != "SIGNED":
             return False
-        
+
         if not self.procedure_explained or not self.risks_explained:
             return False
-        
+
         if self.order.patient.is_minor() and self.order.procedure.guardian_consent_required:
             if not self.signed_by_guardian:
                 return False
         elif not self.signed_by_patient:
             return False
-        
+
         if self.witness_required and not self.witness_signature:
             return False
-        
+
         return True
 
 
 class ProcedureLog(TimeStampedModel):
     """
     Record of a performed procedure.
-    
+
     Documents the actual performance including timing,
     staff involved, findings, and immediate outcome.
     """
-    
+
     STATUS_CHOICES = [
         ("IN_PROGRESS", "In Progress"),
         ("COMPLETED", "Completed Successfully"),
@@ -841,13 +841,13 @@ class ProcedureLog(TimeStampedModel):
         ("ABANDONED", "Abandoned"),
         ("COMPLICATED", "Completed with Complications"),
     ]
-    
+
     order = models.OneToOneField(
         ProcedureOrder,
         on_delete=models.CASCADE,
         related_name="log"
     )
-    
+
     # =========================================================================
     # Timing
     # =========================================================================
@@ -864,7 +864,7 @@ class ProcedureLog(TimeStampedModel):
         blank=True,
         help_text="Actual duration in minutes"
     )
-    
+
     # =========================================================================
     # Staff Involved
     # =========================================================================
@@ -882,7 +882,7 @@ class ProcedureLog(TimeStampedModel):
         related_name="procedures_assisted",
         help_text="Assistant (if any)"
     )
-    
+
     # =========================================================================
     # Location
     # =========================================================================
@@ -890,7 +890,7 @@ class ProcedureLog(TimeStampedModel):
         max_length=100,
         help_text="Where procedure was performed"
     )
-    
+
     # =========================================================================
     # Anesthesia
     # =========================================================================
@@ -912,7 +912,7 @@ class ProcedureLog(TimeStampedModel):
         default="",
         help_text="Dose administered"
     )
-    
+
     # =========================================================================
     # Findings & Technique
     # =========================================================================
@@ -935,7 +935,7 @@ class ProcedureLog(TimeStampedModel):
         default="",
         help_text="Details of specimens collected"
     )
-    
+
     # =========================================================================
     # Status & Outcome
     # =========================================================================
@@ -949,7 +949,7 @@ class ProcedureLog(TimeStampedModel):
         default="",
         help_text="Immediate post-procedure notes"
     )
-    
+
     # =========================================================================
     # Complications
     # =========================================================================
@@ -958,7 +958,7 @@ class ProcedureLog(TimeStampedModel):
         blank=True,
         default=""
     )
-    
+
     # =========================================================================
     # Post-Procedure
     # =========================================================================
@@ -968,7 +968,7 @@ class ProcedureLog(TimeStampedModel):
         default="",
         help_text="Instructions given to patient"
     )
-    
+
     # =========================================================================
     # Documentation
     # =========================================================================
@@ -984,20 +984,20 @@ class ProcedureLog(TimeStampedModel):
 
     def __str__(self):
         return f"Log: {self.order}"
-    
+
     def save(self, *args, **kwargs):
         if self.started_at and self.ended_at:
             delta = self.ended_at - self.started_at
             self.actual_duration_minutes = int(delta.total_seconds() / 60)
         super().save(*args, **kwargs)
-    
+
     def complete(self, user, status="COMPLETED"):
         """Mark procedure as completed."""
         from django.utils import timezone
         self.ended_at = timezone.now()
         self.status = status
         self.save()
-        
+
         # Update order status
         self.order.status = "COMPLETED"
         self.order.save()
@@ -1006,11 +1006,11 @@ class ProcedureLog(TimeStampedModel):
 class ProcedureConsumable(models.Model):
     """
     Consumables used during a procedure.
-    
+
     Tracks stock items used for inventory management
     and billing purposes.
     """
-    
+
     log = models.ForeignKey(
         ProcedureLog,
         on_delete=models.CASCADE,
@@ -1064,20 +1064,20 @@ class ProcedureConsumable(models.Model):
 
     def __str__(self):
         return f"{self.stock_item.name} x{self.quantity} for {self.log.order}"
-    
+
     def save(self, *args, **kwargs):
         if self.unit_cost and self.quantity:
             self.total_cost = self.unit_cost * self.quantity
         super().save(*args, **kwargs)
-        
+
         # Deduct from inventory (if not already done)
         if not self.pk:  # New record
             self._deduct_stock()
-    
+
     def _deduct_stock(self):
         """Deduct consumable from pharmacy stock."""
         from hmis.apps.pharmacy.models import StockMovement
-        
+
         StockMovement.objects.create(
             stock_item=self.stock_item,
             batch=self.batch,
@@ -1093,11 +1093,11 @@ class ProcedureConsumable(models.Model):
 class ProcedureOutcome(TimeStampedModel):
     """
     Outcome tracking for a procedure.
-    
+
     Documents follow-up outcomes, healing progress,
     and any delayed complications.
     """
-    
+
     OUTCOME_CHOICES = [
         ("SUCCESSFUL", "Successful - Full recovery"),
         ("PARTIAL_SUCCESS", "Partial Success"),
@@ -1108,7 +1108,7 @@ class ProcedureOutcome(TimeStampedModel):
         ("RE_PROCEDURE_NEEDED", "Re-procedure Needed"),
         ("REFERRED", "Referred for Further Care"),
     ]
-    
+
     log = models.ForeignKey(
         ProcedureLog,
         on_delete=models.CASCADE,
@@ -1133,7 +1133,7 @@ class ProcedureOutcome(TimeStampedModel):
         on_delete=models.PROTECT,
         related_name="procedure_outcomes_assessed"
     )
-    
+
     # Follow-up scheduling
     next_follow_up = models.DateField(
         null=True,
@@ -1143,7 +1143,7 @@ class ProcedureOutcome(TimeStampedModel):
         blank=True,
         default=""
     )
-    
+
     # Photos/images (stored as references)
     images = models.JSONField(
         null=True,
@@ -1313,7 +1313,7 @@ class EncounterViewSet:
     def order_procedure(self, request, pk=None):
         """Order a procedure from an encounter."""
         encounter = self.get_object()
-        
+
         order = ProcedureOrder.objects.create(
             procedure_id=request.data["procedure_id"],
             patient=encounter.patient,
@@ -1322,10 +1322,10 @@ class EncounterViewSet:
             priority=request.data.get("priority", "ROUTINE"),
             ordered_by=request.user,
         )
-        
+
         # Auto-generate billing
         self._generate_procedure_billing(order)
-        
+
         return Response(ProcedureOrderSerializer(order).data)
 ```
 
@@ -1345,9 +1345,9 @@ StockMovement.objects.filter(movement_type="PROCEDURE")
 def _generate_procedure_billing(order):
     """Generate billing line items for procedure."""
     from hmis.apps.billing.models import BillingLineItem, Invoice
-    
+
     invoice = Invoice.get_or_create_for_patient(order.patient)
-    
+
     # Procedure fee
     if order.procedure.base_fee:
         BillingLineItem.objects.create(
@@ -1431,61 +1431,61 @@ INITIAL_PROCEDURES = [
     {"code": "PROC-WC-003", "name": "Suturing (Simple)", "category": "WOUND_CARE", "base_fee": 1500},
     {"code": "PROC-WC-004", "name": "Suturing (Complex)", "category": "WOUND_CARE", "base_fee": 3000},
     {"code": "PROC-WC-005", "name": "Suture Removal", "category": "WOUND_CARE", "base_fee": 300},
-    
+
     # Minor Surgical
     {"code": "PROC-MS-001", "name": "Incision & Drainage (Abscess)", "category": "MINOR", "base_fee": 3000},
     {"code": "PROC-MS-002", "name": "Foreign Body Removal (Skin)", "category": "MINOR", "base_fee": 2000},
     {"code": "PROC-MS-003", "name": "Cyst Excision", "category": "MINOR", "base_fee": 5000},
     {"code": "PROC-MS-004", "name": "Lipoma Excision", "category": "MINOR", "base_fee": 8000},
     {"code": "PROC-MS-005", "name": "Nail Removal", "category": "MINOR", "base_fee": 2500},
-    
+
     # Preventive
     {"code": "PROC-PV-001", "name": "Male Circumcision (Adult)", "category": "PREVENTIVE", "base_fee": 5000},
     {"code": "PROC-PV-002", "name": "Male Circumcision (Pediatric)", "category": "PREVENTIVE", "base_fee": 3000},
-    
+
     # Injections
     {"code": "PROC-INJ-001", "name": "IM Injection", "category": "INJECTION", "base_fee": 200},
     {"code": "PROC-INJ-002", "name": "IV Injection", "category": "INJECTION", "base_fee": 300},
     {"code": "PROC-INJ-003", "name": "SC Injection", "category": "INJECTION", "base_fee": 200},
     {"code": "PROC-INJ-004", "name": "IV Cannulation", "category": "INJECTION", "base_fee": 500},
     {"code": "PROC-INJ-005", "name": "IV Infusion Setup", "category": "INJECTION", "base_fee": 800},
-    
+
     # Ophthalmic
     {"code": "PROC-EYE-001", "name": "Eye Irrigation", "category": "OPHTHALMIC", "base_fee": 500},
     {"code": "PROC-EYE-002", "name": "Foreign Body Removal (Eye)", "category": "OPHTHALMIC", "base_fee": 1500},
     {"code": "PROC-EYE-003", "name": "Eye Examination (Detailed)", "category": "OPHTHALMIC", "base_fee": 1000},
-    
+
     # ENT
     {"code": "PROC-ENT-001", "name": "Ear Syringing", "category": "ENT", "base_fee": 500},
     {"code": "PROC-ENT-002", "name": "Foreign Body Removal (Ear)", "category": "ENT", "base_fee": 1000},
     {"code": "PROC-ENT-003", "name": "Foreign Body Removal (Nose)", "category": "ENT", "base_fee": 1000},
     {"code": "PROC-ENT-004", "name": "Nasal Packing", "category": "ENT", "base_fee": 1500},
-    
+
     # Urological
     {"code": "PROC-URO-001", "name": "Urethral Catheterization", "category": "THERAPEUTIC", "base_fee": 1000},
     {"code": "PROC-URO-002", "name": "Catheter Change", "category": "THERAPEUTIC", "base_fee": 500},
     {"code": "PROC-URO-003", "name": "Bladder Irrigation", "category": "THERAPEUTIC", "base_fee": 800},
-    
+
     # GI
     {"code": "PROC-GI-001", "name": "NG Tube Insertion", "category": "THERAPEUTIC", "base_fee": 1000},
     {"code": "PROC-GI-002", "name": "NG Tube Removal", "category": "THERAPEUTIC", "base_fee": 300},
     {"code": "PROC-GI-003", "name": "Gastric Lavage", "category": "THERAPEUTIC", "base_fee": 2000},
     {"code": "PROC-GI-004", "name": "Rectal Examination", "category": "DIAGNOSTIC", "base_fee": 500},
     {"code": "PROC-GI-005", "name": "Enema Administration", "category": "THERAPEUTIC", "base_fee": 800},
-    
+
     # Diagnostic
     {"code": "PROC-DX-001", "name": "Lumbar Puncture", "category": "DIAGNOSTIC", "base_fee": 5000},
     {"code": "PROC-DX-002", "name": "Paracentesis (Abdominal Tap)", "category": "DIAGNOSTIC", "base_fee": 5000},
     {"code": "PROC-DX-003", "name": "Thoracentesis", "category": "DIAGNOSTIC", "base_fee": 8000},
     {"code": "PROC-DX-004", "name": "Bone Marrow Aspiration", "category": "DIAGNOSTIC", "base_fee": 10000},
-    
+
     # Obstetric
     {"code": "PROC-OB-001", "name": "Vaginal Examination", "category": "OBSTETRIC", "base_fee": 500},
     {"code": "PROC-OB-002", "name": "Cervical Examination", "category": "OBSTETRIC", "base_fee": 500},
     {"code": "PROC-OB-003", "name": "Manual Vacuum Aspiration (MVA)", "category": "OBSTETRIC", "base_fee": 8000},
     {"code": "PROC-OB-004", "name": "Episiotomy Repair", "category": "OBSTETRIC", "base_fee": 3000},
     {"code": "PROC-OB-005", "name": "Perineal Tear Repair", "category": "OBSTETRIC", "base_fee": 5000},
-    
+
     # Dental
     {"code": "PROC-DENT-001", "name": "Tooth Extraction (Simple)", "category": "DENTAL", "base_fee": 2000},
     {"code": "PROC-DENT-002", "name": "Tooth Extraction (Surgical)", "category": "DENTAL", "base_fee": 5000},

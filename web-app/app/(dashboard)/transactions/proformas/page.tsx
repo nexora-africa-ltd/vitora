@@ -95,7 +95,7 @@ function StatsCard({ title, value, icon, description, variant = 'default' }: Sta
 
 function ExpiryBadge({ invoice }: { invoice: Invoice }) {
   const days = invoice.days_until_expiry;
-  
+
   if (invoice.is_converted) {
     return (
       <Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-200">
@@ -104,7 +104,7 @@ function ExpiryBadge({ invoice }: { invoice: Invoice }) {
       </Badge>
     );
   }
-  
+
   if (!invoice.is_valid || days < 0) {
     return (
       <Badge variant="outline" className="bg-red-50 text-red-700 border-red-200">
@@ -113,7 +113,7 @@ function ExpiryBadge({ invoice }: { invoice: Invoice }) {
       </Badge>
     );
   }
-  
+
   if (days === 0) {
     return (
       <Badge variant="outline" className="bg-red-50 text-red-700 border-red-200">
@@ -122,7 +122,7 @@ function ExpiryBadge({ invoice }: { invoice: Invoice }) {
       </Badge>
     );
   }
-  
+
   if (days <= 7) {
     return (
       <Badge variant="outline" className="bg-amber-50 text-amber-700 border-amber-200">
@@ -131,7 +131,7 @@ function ExpiryBadge({ invoice }: { invoice: Invoice }) {
       </Badge>
     );
   }
-  
+
   return (
     <Badge variant="outline" className="bg-green-50 text-green-700 border-green-200">
       <Clock className="h-3 w-3 mr-1" />
@@ -190,7 +190,7 @@ function EmptyState({ onCreateNew }: { onCreateNew: () => void }) {
 export default function ProformasPage() {
   const router = useRouter();
   const { toast } = useToast();
-  
+
   // State
   const [filter, setFilter] = useState<ProformaFilter>('all');
   const [searchQuery, setSearchQuery] = useState('');
@@ -207,7 +207,7 @@ export default function ProformasPage() {
   // Filter and search proformas
   const filteredProformas = useMemo(() => {
     let proformas = data?.results || [];
-    
+
     // Apply status filter
     switch (filter) {
       case 'active':
@@ -220,7 +220,7 @@ export default function ProformasPage() {
         proformas = proformas.filter((p) => p.is_converted);
         break;
     }
-    
+
     // Apply search
     if (searchQuery) {
       const query = searchQuery.toLowerCase();
@@ -231,7 +231,7 @@ export default function ProformasPage() {
           p.patient_mrn?.toLowerCase().includes(query)
       );
     }
-    
+
     return proformas;
   }, [data?.results, filter, searchQuery]);
 

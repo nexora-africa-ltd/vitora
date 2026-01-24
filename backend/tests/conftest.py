@@ -23,16 +23,18 @@ django.setup()
 # Pytest Configuration
 # ============================================================================
 
+
 @pytest.fixture(autouse=True)
 def system_user(db):
     """Ensure system user exists for billing signals."""
     from django.contrib.auth import get_user_model
+
     User = get_user_model()
     user, _ = User.objects.get_or_create(
-        username="system",
-        defaults={"email": "system@vitora.local", "is_active": True}
+        username="system", defaults={"email": "system@vitora.local", "is_active": True}
     )
     return user
+
 
 def pytest_configure(config):
     """Configure pytest with custom settings."""

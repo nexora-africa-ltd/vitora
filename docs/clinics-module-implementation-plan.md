@@ -83,11 +83,11 @@ Clinic (Organizational Unit)
 class Clinic(TimeStampedModel):
     """
     Represents a clinical service delivery point.
-    
+
     A clinic is an organizational unit where specific healthcare services
     are provided. Each clinic has its own queue, staff, and protocols.
     """
-    
+
     # =========================================================================
     # Clinic Type Choices
     # =========================================================================
@@ -95,7 +95,7 @@ class Clinic(TimeStampedModel):
         # Primary Care
         ("GENERAL_OPD", "General OPD"),
         ("FILTER_CLINIC", "Filter/Screening Clinic"),
-        
+
         # Maternal & Child Health
         ("ANC", "Antenatal Clinic"),
         ("PNC", "Postnatal Clinic"),
@@ -103,7 +103,7 @@ class Clinic(TimeStampedModel):
         ("CWC", "Child Welfare Clinic"),
         ("IMMUNIZATION", "Immunization Clinic"),
         ("NUTRITION", "Nutrition Clinic"),
-        
+
         # Specialized Clinics
         ("DENTAL", "Dental Clinic"),
         ("EYE", "Eye/Ophthalmology Clinic"),
@@ -112,7 +112,7 @@ class Clinic(TimeStampedModel):
         ("ORTHO", "Orthopedic Clinic"),
         ("PHYSIO", "Physiotherapy Clinic"),
         ("DERM", "Dermatology Clinic"),
-        
+
         # Chronic Care
         ("CCC", "Comprehensive Care Clinic (HIV)"),
         ("TB", "TB Clinic"),
@@ -121,14 +121,14 @@ class Clinic(TimeStampedModel):
         ("MENTAL_HEALTH", "Mental Health Clinic"),
         ("ONCOLOGY", "Oncology Clinic"),
         ("DIALYSIS", "Dialysis Unit"),
-        
+
         # Other
         ("PROCEDURE", "Procedure Room"),
         ("DRESSING", "Dressing/Wound Care"),
         ("INJECTION", "Injection Room"),
         ("OTHER", "Other Clinic"),
     ]
-    
+
     # =========================================================================
     # Status Choices
     # =========================================================================
@@ -137,7 +137,7 @@ class Clinic(TimeStampedModel):
         ("INACTIVE", "Inactive"),
         ("TEMPORARILY_CLOSED", "Temporarily Closed"),
     ]
-    
+
     # =========================================================================
     # Core Fields
     # =========================================================================
@@ -160,7 +160,7 @@ class Clinic(TimeStampedModel):
         default="",
         help_text="Description of services provided"
     )
-    
+
     # =========================================================================
     # Location & Capacity
     # =========================================================================
@@ -180,7 +180,7 @@ class Clinic(TimeStampedModel):
         default=1,
         help_text="Number of patients that can be seen simultaneously"
     )
-    
+
     # =========================================================================
     # Operational Settings
     # =========================================================================
@@ -205,7 +205,7 @@ class Clinic(TimeStampedModel):
         default=True,
         help_text="Whether triage is required before this clinic"
     )
-    
+
     # =========================================================================
     # Eligibility Rules (JSON)
     # =========================================================================
@@ -223,7 +223,7 @@ class Clinic(TimeStampedModel):
         }
         """
     )
-    
+
     # =========================================================================
     # Billing & SHA Integration
     # =========================================================================
@@ -240,7 +240,7 @@ class Clinic(TimeStampedModel):
         default="",
         help_text="SHA tariff code for claims"
     )
-    
+
     # =========================================================================
     # DHIS2 Integration
     # =========================================================================
@@ -256,7 +256,7 @@ class Clinic(TimeStampedModel):
         default="",
         help_text="MOH service code (for MOH 711/747 reporting)"
     )
-    
+
     # =========================================================================
     # Default Templates
     # =========================================================================
@@ -268,7 +268,7 @@ class Clinic(TimeStampedModel):
         related_name="default_for_clinics",
         help_text="Default clinical template for encounters in this clinic"
     )
-    
+
     # =========================================================================
     # Sensitive Access (CCC, Mental Health)
     # =========================================================================
@@ -296,7 +296,7 @@ class Clinic(TimeStampedModel):
 
     def __str__(self):
         return f"{self.name} ({self.get_clinic_type_display()})"
-    
+
     def is_open_today(self):
         """Check if clinic is operating today based on schedule."""
         from django.utils import timezone
@@ -305,7 +305,7 @@ class Clinic(TimeStampedModel):
             day_of_week=today.weekday(),
             is_active=True
         ).exists()
-    
+
     def get_current_session(self):
         """Get or create today's clinic session."""
         from django.utils import timezone
@@ -323,7 +323,7 @@ class ClinicSchedule(TimeStampedModel):
     Operating schedule for a clinic.
     Defines which days and times a clinic operates.
     """
-    
+
     DAY_CHOICES = [
         (0, "Monday"),
         (1, "Tuesday"),
@@ -333,7 +333,7 @@ class ClinicSchedule(TimeStampedModel):
         (5, "Saturday"),
         (6, "Sunday"),
     ]
-    
+
     clinic = models.ForeignKey(
         Clinic,
         on_delete=models.CASCADE,
@@ -378,7 +378,7 @@ class ClinicStaff(TimeStampedModel):
     Staff assignment to clinics.
     Tracks which staff members work in which clinics.
     """
-    
+
     ROLE_CHOICES = [
         ("LEAD", "Clinic Lead/In-Charge"),
         ("DOCTOR", "Doctor/Clinical Officer"),
@@ -388,7 +388,7 @@ class ClinicStaff(TimeStampedModel):
         ("CLERK", "Clerk/Receptionist"),
         ("OTHER", "Other"),
     ]
-    
+
     clinic = models.ForeignKey(
         Clinic,
         on_delete=models.CASCADE,
@@ -436,20 +436,20 @@ class ClinicStaff(TimeStampedModel):
 class ClinicSession(TimeStampedModel):
     """
     Represents a single day's operation of a clinic.
-    
+
     Each clinic has one session per day. Sessions track:
     - Patients seen
     - Staff on duty
     - Session statistics
     """
-    
+
     STATUS_CHOICES = [
         ("SCHEDULED", "Scheduled"),
         ("OPEN", "Open"),
         ("CLOSED", "Closed"),
         ("CANCELLED", "Cancelled"),
     ]
-    
+
     clinic = models.ForeignKey(
         Clinic,
         on_delete=models.CASCADE,
@@ -492,7 +492,7 @@ class ClinicSession(TimeStampedModel):
         default="",
         help_text="Session notes (e.g., issues, supply shortages)"
     )
-    
+
     # Session statistics (computed)
     patients_registered = models.PositiveIntegerField(default=0)
     patients_seen = models.PositiveIntegerField(default=0)
@@ -506,7 +506,7 @@ class ClinicSession(TimeStampedModel):
 
     def __str__(self):
         return f"{self.clinic.name} - {self.session_date}"
-    
+
     def open_session(self, user):
         """Open the clinic session."""
         from django.utils import timezone
@@ -514,7 +514,7 @@ class ClinicSession(TimeStampedModel):
         self.opened_at = timezone.now()
         self.opened_by = user
         self.save()
-    
+
     def close_session(self, user):
         """Close the clinic session."""
         from django.utils import timezone
@@ -522,7 +522,7 @@ class ClinicSession(TimeStampedModel):
         self.closed_at = timezone.now()
         self.closed_by = user
         self.save()
-    
+
     def update_statistics(self):
         """Update session statistics from visits."""
         visits = self.visits.all()
@@ -538,11 +538,11 @@ class ClinicSession(TimeStampedModel):
 class ClinicVisit(TimeStampedModel):
     """
     Represents a patient's visit to a specific clinic.
-    
+
     This is the queue entry - tracks the patient's journey through
     the clinic from arrival to consultation completion.
     """
-    
+
     # =========================================================================
     # Status Choices (Queue States)
     # =========================================================================
@@ -556,7 +556,7 @@ class ClinicVisit(TimeStampedModel):
         ("NO_SHOW", "No Show"),
         ("CANCELLED", "Cancelled"),
     ]
-    
+
     # =========================================================================
     # Priority Choices
     # =========================================================================
@@ -567,7 +567,7 @@ class ClinicVisit(TimeStampedModel):
         ("STANDARD", "Standard (GREEN)"),
         ("NON_URGENT", "Non-urgent (BLUE)"),
     ]
-    
+
     # =========================================================================
     # Visit Type Choices
     # =========================================================================
@@ -579,7 +579,7 @@ class ClinicVisit(TimeStampedModel):
         ("SCHEDULED", "Scheduled Appointment"),
         ("EMERGENCY", "Emergency"),
     ]
-    
+
     # =========================================================================
     # Source Choices
     # =========================================================================
@@ -590,7 +590,7 @@ class ClinicVisit(TimeStampedModel):
         ("APPOINTMENT", "Scheduled Appointment"),
         ("INPATIENT", "From Inpatient Ward"),
     ]
-    
+
     # =========================================================================
     # Core Fields
     # =========================================================================
@@ -604,7 +604,7 @@ class ClinicVisit(TimeStampedModel):
         on_delete=models.CASCADE,
         related_name="clinic_visits"
     )
-    
+
     # =========================================================================
     # Queue Management
     # =========================================================================
@@ -631,7 +631,7 @@ class ClinicVisit(TimeStampedModel):
         choices=SOURCE_CHOICES,
         default="TRIAGE"
     )
-    
+
     # =========================================================================
     # Timestamps
     # =========================================================================
@@ -654,7 +654,7 @@ class ClinicVisit(TimeStampedModel):
         blank=True,
         help_text="When visit was completed"
     )
-    
+
     # =========================================================================
     # Clinical Links
     # =========================================================================
@@ -674,7 +674,7 @@ class ClinicVisit(TimeStampedModel):
         related_name="clinic_visits",
         help_text="Triage assessment that routed patient here"
     )
-    
+
     # =========================================================================
     # Referral Tracking
     # =========================================================================
@@ -699,7 +699,7 @@ class ClinicVisit(TimeStampedModel):
         default="",
         help_text="Reason for referral"
     )
-    
+
     # =========================================================================
     # Staff Assignment
     # =========================================================================
@@ -719,7 +719,7 @@ class ClinicVisit(TimeStampedModel):
         related_name="registered_clinic_visits",
         help_text="Staff who registered the visit"
     )
-    
+
     # =========================================================================
     # Chief Complaint (from triage or direct entry)
     # =========================================================================
@@ -733,7 +733,7 @@ class ClinicVisit(TimeStampedModel):
         default="",
         help_text="Additional notes"
     )
-    
+
     # =========================================================================
     # Billing
     # =========================================================================
@@ -768,7 +768,7 @@ class ClinicVisit(TimeStampedModel):
 
     def __str__(self):
         return f"{self.patient} - {self.session.clinic.name} #{self.queue_number}"
-    
+
     def save(self, *args, **kwargs):
         # Auto-assign queue number if not set
         if not self.queue_number:
@@ -777,7 +777,7 @@ class ClinicVisit(TimeStampedModel):
             ).order_by("-queue_number").first()
             self.queue_number = (last_visit.queue_number + 1) if last_visit else 1
         super().save(*args, **kwargs)
-    
+
     def call_patient(self, clinician):
         """Call patient for consultation."""
         from django.utils import timezone
@@ -785,15 +785,15 @@ class ClinicVisit(TimeStampedModel):
         self.called_at = timezone.now()
         self.assigned_clinician = clinician
         self.save()
-    
+
     def start_consultation(self):
         """Start consultation - creates encounter if needed."""
         from django.utils import timezone
         from hmis.apps.encounters.models import Encounter
-        
+
         self.status = "IN_CONSULTATION"
         self.consultation_started_at = timezone.now()
-        
+
         # Create encounter if not exists
         if not self.encounter:
             self.encounter = Encounter.objects.create(
@@ -802,10 +802,10 @@ class ClinicVisit(TimeStampedModel):
                 chief_complaint=self.chief_complaint or "See clinic notes",
                 triage_status="COMPLETED" if self.triage_assessment else "NOT_APPLICABLE",
             )
-        
+
         self.save()
         return self.encounter
-    
+
     def complete_visit(self):
         """Mark visit as completed."""
         from django.utils import timezone
@@ -813,14 +813,14 @@ class ClinicVisit(TimeStampedModel):
         self.completed_at = timezone.now()
         self.save()
         self.session.update_statistics()
-    
+
     def refer_to_clinic(self, target_clinic, reason, user):
         """Refer patient to another clinic."""
         self.status = "REFERRED"
         self.referred_to_clinic = target_clinic
         self.referral_reason = reason
         self.save()
-        
+
         # Create visit in target clinic
         target_session = target_clinic.get_current_session()
         new_visit = ClinicVisit.objects.create(
@@ -834,7 +834,7 @@ class ClinicVisit(TimeStampedModel):
             registered_by=user,
         )
         return new_visit
-    
+
     def _map_clinic_to_encounter_type(self):
         """Map clinic type to encounter type."""
         mapping = {
@@ -850,7 +850,7 @@ class ClinicVisit(TimeStampedModel):
             "PROCEDURE": "PROCEDURE",
         }
         return mapping.get(self.session.clinic.clinic_type, "OPD")
-    
+
     @property
     def wait_time_minutes(self):
         """Calculate current wait time in minutes."""
@@ -869,11 +869,11 @@ class ClinicVisit(TimeStampedModel):
 class ClinicEnrollment(TimeStampedModel):
     """
     Patient enrollment in a clinic program.
-    
+
     Used for clinics that require ongoing enrollment (CCC, ANC, Diabetic, etc.)
     rather than one-off visits.
     """
-    
+
     STATUS_CHOICES = [
         ("ACTIVE", "Active"),
         ("COMPLETED", "Completed/Graduated"),
@@ -882,7 +882,7 @@ class ClinicEnrollment(TimeStampedModel):
         ("DECEASED", "Deceased"),
         ("SUSPENDED", "Suspended"),
     ]
-    
+
     clinic = models.ForeignKey(
         Clinic,
         on_delete=models.CASCADE,
@@ -893,7 +893,7 @@ class ClinicEnrollment(TimeStampedModel):
         on_delete=models.CASCADE,
         related_name="clinic_enrollments"
     )
-    
+
     # Enrollment details
     enrollment_number = models.CharField(
         max_length=50,
@@ -909,28 +909,28 @@ class ClinicEnrollment(TimeStampedModel):
         choices=STATUS_CHOICES,
         default="ACTIVE"
     )
-    
+
     # Clinical data specific to enrollment type
     enrollment_data = models.JSONField(
         null=True,
         blank=True,
         help_text="""
         Clinic-specific enrollment data. Examples:
-        
+
         CCC: {
             "art_start_date": "2024-01-15",
             "current_regimen": "TDF/3TC/DTG",
             "who_stage": 2,
             "cd4_baseline": 350
         }
-        
+
         ANC: {
             "lmp": "2025-09-01",
             "edd": "2026-06-08",
             "gravida": 2,
             "parity": 1
         }
-        
+
         Diabetic: {
             "diagnosis_date": "2020-05-15",
             "diabetes_type": "Type 2",
@@ -938,7 +938,7 @@ class ClinicEnrollment(TimeStampedModel):
         }
         """
     )
-    
+
     # Scheduling
     next_appointment = models.DateField(
         null=True,
@@ -949,7 +949,7 @@ class ClinicEnrollment(TimeStampedModel):
         default=30,
         help_text="Default days between appointments"
     )
-    
+
     # Tracking
     enrolled_by = models.ForeignKey(
         "auth.User",
@@ -967,7 +967,7 @@ class ClinicEnrollment(TimeStampedModel):
         default=0,
         help_text="Total visits since enrollment"
     )
-    
+
     # Outcome tracking
     outcome_date = models.DateField(
         null=True,
@@ -994,21 +994,21 @@ class ClinicEnrollment(TimeStampedModel):
 
     def __str__(self):
         return f"{self.patient} - {self.clinic.name} ({self.enrollment_number or 'No ID'})"
-    
+
     def is_overdue(self):
         """Check if patient is overdue for appointment."""
         from django.utils import timezone
         if not self.next_appointment:
             return False
         return self.next_appointment < timezone.now().date()
-    
+
     def days_since_last_visit(self):
         """Calculate days since last visit."""
         from django.utils import timezone
         if not self.last_visit_date:
             return None
         return (timezone.now().date() - self.last_visit_date).days
-    
+
     def record_visit(self, visit_date=None):
         """Record a clinic visit."""
         from django.utils import timezone
@@ -1250,10 +1250,10 @@ class TriageAssessment:
     def route_to_clinic(self, clinic_id, user):
         """Route triaged patient to specified clinic."""
         from hmis.apps.clinics.models import Clinic, ClinicVisit
-        
+
         clinic = Clinic.objects.get(id=clinic_id)
         session = clinic.get_current_session()
-        
+
         visit = ClinicVisit.objects.create(
             session=session,
             patient=self.patient,
@@ -1263,9 +1263,9 @@ class TriageAssessment:
             source="TRIAGE",
             registered_by=user,
         )
-        
+
         return visit
-    
+
     def _map_keta_to_priority(self):
         """Map KETA category to clinic priority."""
         mapping = {
@@ -1295,14 +1295,14 @@ encounter.clinic_visit  # Back-reference to ClinicVisit
 # Auto-generate billing when consultation starts
 def start_consultation(self):
     # ... create encounter ...
-    
+
     # Generate consultation fee
     if not self.consultation_fee_charged and self.session.clinic.default_service_fee:
         from hmis.apps.billing.models import BillingLineItem, Invoice
-        
+
         # Get or create invoice for patient
         invoice = Invoice.get_or_create_for_patient(self.patient)
-        
+
         self.billing_line_item = BillingLineItem.objects.create(
             invoice=invoice,
             service_type="CONSULTATION",
@@ -1347,7 +1347,7 @@ def build_claim_bundle(encounter):
 ### 6.1 Aggregate Data Flow
 
 ```
-ClinicVisit (raw) 
+ClinicVisit (raw)
     → ClinicSession (daily aggregate)
         → MonthlyClinicReport (MOH 711 format)
             → DHIS2 Push (aggregate API)
@@ -1362,12 +1362,12 @@ class MonthlyClinicReport(models.Model):
     """
     clinic = models.ForeignKey(Clinic, on_delete=models.CASCADE)
     report_month = models.DateField(help_text="First day of report month")
-    
+
     # Aggregates
     total_visits = models.PositiveIntegerField(default=0)
     new_patients = models.PositiveIntegerField(default=0)
     return_patients = models.PositiveIntegerField(default=0)
-    
+
     # Age/sex disaggregation (JSON)
     disaggregation = models.JSONField(
         null=True,
@@ -1382,7 +1382,7 @@ class MonthlyClinicReport(models.Model):
         }
         """
     )
-    
+
     # Status
     STATUS_CHOICES = [
         ("DRAFT", "Draft"),
@@ -1484,14 +1484,14 @@ class TestClinicAPI:
 ```gherkin
 # web-app/features/clinics/queue-management.feature
 Feature: Clinic Queue Management
-  
+
   Scenario: Add patient to clinic queue after triage
     Given I am logged in as a triage nurse
     And patient "John Doe" has completed triage with category "GREEN"
     When I route patient to "Eye Clinic"
     Then patient should appear in Eye Clinic queue
     And queue number should be assigned
-  
+
   Scenario: Call patient from queue
     Given I am logged in as a doctor assigned to "Eye Clinic"
     And there are 5 patients in the queue
@@ -1519,7 +1519,7 @@ def migrate_encounters_to_clinics():
         "CHRONIC_STABLE": "DIABETIC",  # or determine from diagnosis
         # ...
     }
-    
+
     for encounter in Encounter.objects.filter(
         encounter_type__in=clinic_type_mapping.keys()
     ):

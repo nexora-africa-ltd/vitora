@@ -56,9 +56,7 @@ class ClinicQueueConsumer(AsyncJsonWebsocketConsumer):
         """Handle WebSocket disconnection."""
         # Leave clinic group
         if hasattr(self, "room_group_name"):
-            await self.channel_layer.group_discard(
-                self.room_group_name, self.channel_name
-            )
+            await self.channel_layer.group_discard(self.room_group_name, self.channel_name)
             logger.info(f"WebSocket disconnected from clinic queue {self.clinic_id}")
 
     async def receive(self, text_data=None, bytes_data=None):
@@ -73,10 +71,12 @@ class ClinicQueueConsumer(AsyncJsonWebsocketConsumer):
                 await self.receive_json(content)
             except json.JSONDecodeError as e:
                 logger.warning(f"Invalid JSON received: {e}")
-                await self.send_json({
-                    "error": "Invalid JSON format",
-                    "detail": str(e),
-                })
+                await self.send_json(
+                    {
+                        "error": "Invalid JSON format",
+                        "detail": str(e),
+                    }
+                )
 
     async def receive_json(self, content):
         """

@@ -113,14 +113,14 @@ function calculateDuration(startTime: string, endTime: string): string {
   const startMinutes = startParts[1] ?? 0;
   const endHours = endParts[0] ?? 0;
   const endMinutes = endParts[1] ?? 0;
-  
+
   const startTotal = startHours * 60 + startMinutes;
   const endTotal = endHours * 60 + endMinutes;
   const duration = endTotal - startTotal;
-  
+
   const hours = Math.floor(duration / 60);
   const minutes = duration % 60;
-  
+
   if (hours === 0) return `${minutes}m`;
   if (minutes === 0) return `${hours}h`;
   return `${hours}h ${minutes}m`;

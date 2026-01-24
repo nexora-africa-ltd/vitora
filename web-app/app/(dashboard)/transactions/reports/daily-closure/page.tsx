@@ -48,7 +48,7 @@ function LoadingSkeleton() {
 export default function DailyClosurePage() {
   const [selectedDate, setSelectedDate] = React.useState<Date>(new Date());
   const dateString = format(selectedDate, 'yyyy-MM-dd');
-  
+
   const { data: report, isLoading } = useDailyClosureReport(dateString);
 
   if (isLoading) {

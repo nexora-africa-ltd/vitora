@@ -257,7 +257,9 @@ class Invoice(models.Model):
             self.due_date = self.invoice_date + timedelta(days=settings.BILLING_DEFAULT_DUE_DAYS)
         # Set default validity for proforma invoices
         if self.status == self.Status.PROFORMA and not self.valid_until:
-            self.valid_until = self.invoice_date + timedelta(days=self.DEFAULT_PROFORMA_VALIDITY_DAYS)
+            self.valid_until = self.invoice_date + timedelta(
+                days=self.DEFAULT_PROFORMA_VALIDITY_DAYS
+            )
         self.full_clean()
         super().save(*args, **kwargs)
 
@@ -265,26 +267,28 @@ class Invoice(models.Model):
         """Validate invoice data."""
         if self.due_date and self.invoice_date and self.due_date < self.invoice_date:
             raise ValidationError({"due_date": "Due date must be on or after invoice date."})
-        
+
         # Proforma cannot transition directly to PAID
         if self.pk:
             old_instance = Invoice.objects.filter(pk=self.pk).first()
             if old_instance and old_instance.status == self.Status.PROFORMA:
                 if self.status == self.Status.PAID:
                     raise ValidationError(
-                        {"status": "Proforma invoices cannot be paid directly. Convert to invoice first."}
+                        {
+                            "status": "Proforma invoices cannot be paid directly. Convert to invoice first."
+                        }
                     )
 
     def generate_invoice_number(self) -> str:
         """Generate unique invoice number based on status.
-        
+
         Format:
         - Proforma: PRO-YYYYMMDD-XXXX
         - Regular Invoice: INV-YYYYMMDD-XXXX
         """
         today = date.today()
         date_str = today.strftime("%Y%m%d")
-        
+
         # Use different prefix for proforma vs regular invoice
         if self.status == self.Status.PROFORMA:
             prefix = f"PRO-{date_str}-"
@@ -425,7 +429,7 @@ class Invoice(models.Model):
             raise ValidationError("Invoice is already voided.")
         if self.status == self.Status.PAID:
             raise ValidationError("Cannot void a paid invoice.")
-        
+
         self.is_voided = True
         self.voided_at = timezone.now()
         self.voided_by = voided_by
@@ -436,46 +440,44 @@ class Invoice(models.Model):
     def convert_to_invoice(self, converted_by, item_ids: list = None) -> "Invoice":
         """
         Convert proforma to a real invoice.
-        
+
         Args:
             converted_by: User performing the conversion
             item_ids: Optional list of specific item IDs to convert.
                      If None, converts all unconverted items.
-        
+
         Returns:
             The newly created Invoice
-        
+
         Raises:
             ValidationError: If conversion is not allowed
         """
         # Validate proforma status
         if self.status != self.Status.PROFORMA:
             raise ValidationError("Only proforma invoices can be converted to invoices.")
-        
+
         # Check validity
         if not self.is_valid:
             raise ValidationError(
                 "This proforma has expired. Please renew it or create a new proforma."
             )
-        
+
         # Check if already fully converted
         if self.is_converted:
             raise ValidationError("This proforma has already been converted.")
-        
+
         # Determine which items to convert
         if item_ids:
             items_to_convert = self.items.filter(pk__in=item_ids, is_converted=False)
             if items_to_convert.count() != len(item_ids):
                 # Some items were already converted or don't exist
-                raise ValidationError(
-                    "Some items have already been converted or do not exist."
-                )
+                raise ValidationError("Some items have already been converted or do not exist.")
         else:
             items_to_convert = self.items.filter(is_converted=False)
-        
+
         if not items_to_convert.exists():
             raise ValidationError("No items available for conversion.")
-        
+
         # Create the new invoice
         new_invoice = Invoice.objects.create(
             patient=self.patient,
@@ -490,7 +492,7 @@ class Invoice(models.Model):
             created_by=converted_by,
             converted_from_proforma=self,
         )
-        
+
         # Copy items to new invoice
         for item in items_to_convert:
             InvoiceItem.objects.create(
@@ -515,34 +517,34 @@ class Invoice(models.Model):
             item.is_converted = True
             item.converted_at = timezone.now()
             item.save(update_fields=["is_converted", "converted_at", "updated_at"])
-        
+
         # Calculate totals for new invoice
         new_invoice.calculate_totals()
-        
+
         # Check if all items are now converted
         if not self.items.filter(is_converted=False).exists():
             self.is_converted = True
             self.converted_at = timezone.now()
             self.save(update_fields=["is_converted", "converted_at", "updated_at"])
-        
+
         return new_invoice
 
     def renew(self, renewed_by, validity_days: int = None) -> "Invoice":
         """
         Create a new proforma by copying an expired proforma.
-        
+
         Args:
             renewed_by: User performing the renewal
             validity_days: Optional custom validity period
-        
+
         Returns:
             The newly created proforma Invoice
         """
         if self.status != self.Status.PROFORMA:
             raise ValidationError("Only proforma invoices can be renewed.")
-        
+
         validity = validity_days or self.DEFAULT_PROFORMA_VALIDITY_DAYS
-        
+
         # Create new proforma
         new_proforma = Invoice.objects.create(
             patient=self.patient,
@@ -557,7 +559,7 @@ class Invoice(models.Model):
             notes=f"Renewed from proforma {self.invoice_number}",
             created_by=renewed_by,
         )
-        
+
         # Copy items
         for item in self.items.all():
             InvoiceItem.objects.create(
@@ -573,16 +575,16 @@ class Invoice(models.Model):
                 discount_reason=item.discount_reason,
                 sha_code=item.sha_code,
             )
-        
+
         # Calculate totals
         new_proforma.calculate_totals()
-        
+
         # Mark original as renewed and cancel it
         self.renewed_to = new_proforma
         self.status = self.Status.CANCELLED
         self.cancellation_reason = f"Renewed to {new_proforma.invoice_number}"
         self.save(update_fields=["renewed_to", "status", "cancellation_reason", "updated_at"])
-        
+
         return new_proforma
 
 
@@ -721,7 +723,7 @@ class InvoiceItem(models.Model):
             raise ValidationError({"quantity": "Quantity must be greater than 0."})
         if self.unit_price is not None and self.unit_price <= 0:
             raise ValidationError({"unit_price": "Unit price must be greater than 0."})
-        
+
         # NOTE: Stock validation is intentionally NOT done here.
         # Stock availability is validated at DISPENSING time, not billing time.
         # This allows prescriptions to be billed even when stock may not be
@@ -731,17 +733,17 @@ class InvoiceItem(models.Model):
     def delete(self, *args, **kwargs):
         """Override delete to update invoice totals."""
         invoice = self.invoice
-        
+
         # NOTE: Stock deallocation is handled by the Dispensing model, not here.
         # If a dispensing record exists, it must be cancelled separately.
-        
+
         super().delete(*args, **kwargs)
         invoice.calculate_totals()
 
     def _validate_stock_availability(self):
         """Validate that sufficient stock is available for pharmacy items."""
         from hmis.apps.pharmacy.models import StockBatch
-        
+
         # Get available stock (FEFO - First Expiry, First Out)
         available_batches = StockBatch.objects.filter(
             drug=self.drug,
@@ -749,9 +751,9 @@ class InvoiceItem(models.Model):
             quantity_available__gt=0,
             expiry_date__gt=date.today(),  # Not expired
         ).order_by("expiry_date")
-        
+
         total_available = sum(batch.quantity_available for batch in available_batches)
-        
+
         # For updates, account for currently allocated stock
         currently_allocated = Decimal("0")
         if self.pk:
@@ -760,23 +762,27 @@ class InvoiceItem(models.Model):
                 currently_allocated = old_item.stock_allocated
             except InvoiceItem.DoesNotExist:
                 pass
-        
+
         if total_available + currently_allocated < self.quantity:
-            raise ValidationError({
-                "quantity": f"Insufficient stock available. Requested: {self.quantity}, "
-                           f"Available: {total_available + currently_allocated}"
-            })
-        
+            raise ValidationError(
+                {
+                    "quantity": f"Insufficient stock available. Requested: {self.quantity}, "
+                    f"Available: {total_available + currently_allocated}"
+                }
+            )
+
         if not available_batches.exists():
-            raise ValidationError({
-                "drug": f"No available stock for {self.drug.generic_name}. "
-                       "All batches are either expired or depleted."
-            })
+            raise ValidationError(
+                {
+                    "drug": f"No available stock for {self.drug.generic_name}. "
+                    "All batches are either expired or depleted."
+                }
+            )
 
     def _handle_stock_allocation(self, quantity_change: Decimal):
         """Handle stock allocation/deallocation for pharmacy items."""
         from hmis.apps.pharmacy.models import StockBatch
-        
+
         if quantity_change > 0:
             # Need to allocate more stock (FEFO - First Expiry, First Out)
             available_batches = StockBatch.objects.filter(
@@ -785,28 +791,28 @@ class InvoiceItem(models.Model):
                 quantity_available__gt=0,
                 expiry_date__gt=date.today(),
             ).order_by("expiry_date")
-            
+
             remaining_to_allocate = quantity_change
-            
+
             for batch in available_batches:
                 if remaining_to_allocate <= 0:
                     break
-                
+
                 allocate_from_batch = min(batch.quantity_available, remaining_to_allocate)
                 batch.quantity_available -= allocate_from_batch
                 batch.save()
-                
+
                 # Track the batch used (use first batch for simplicity)
                 if not self.stock_batch:
                     self.stock_batch = batch
-                
+
                 self.stock_allocated += allocate_from_batch
                 remaining_to_allocate -= allocate_from_batch
-                
+
         elif quantity_change < 0:
             # Need to deallocate stock (return to batch)
             quantity_to_return = abs(quantity_change)
-            
+
             if self.stock_batch and self.stock_allocated >= quantity_to_return:
                 self.stock_batch.quantity_available += quantity_to_return
                 self.stock_batch.save()

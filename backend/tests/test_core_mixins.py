@@ -2,7 +2,7 @@
 Tests for core mixins - idempotency, transaction safety, and concurrency control.
 """
 
-import pytest # type: ignore
+import pytest  # type: ignore
 from django.contrib.auth import get_user_model
 from rest_framework import status
 from rest_framework.test import APIRequestFactory
@@ -27,9 +27,7 @@ class TestIdempotentCreateMixin:
         assert response.status_code == status.HTTP_201_CREATED
         assert "mrn" in response.data
 
-    def test_create_with_idempotency_key_first_request(
-        self, authenticated_client, patient_data
-    ):
+    def test_create_with_idempotency_key_first_request(self, authenticated_client, patient_data):
         """Should create resource and cache response with idempotency key."""
         idempotency_key = "test-key-12345"
         response = authenticated_client.post(

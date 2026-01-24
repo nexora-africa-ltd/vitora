@@ -113,9 +113,9 @@ export default function LoginPage() {
 
         <p className="text-sm text-white/40">
           © {new Date().getFullYear()} Vitora HMIS. Powered by{' '}
-          <a 
-            href="https://nexora.africa" 
-            target="_blank" 
+          <a
+            href="https://nexora.africa"
+            target="_blank"
             rel="noopener noreferrer"
             className="underline hover:text-secondary/60 transition-colors"
           >

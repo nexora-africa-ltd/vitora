@@ -3,6 +3,7 @@ TDD Tests for Clinic → Billing Integration.
 
 Tests that starting a consultation auto-generates billing.
 """
+
 from decimal import Decimal
 
 import pytest
@@ -31,9 +32,7 @@ def sample_patient(db):
     from hmis.apps.core.models import County, SubCounty
 
     county, _ = County.objects.get_or_create(code=1, defaults={"name": "Nairobi"})
-    sub_county, _ = SubCounty.objects.get_or_create(
-        name="Westlands", defaults={"county": county}
-    )
+    sub_county, _ = SubCounty.objects.get_or_create(name="Westlands", defaults={"county": county})
     return Patient.objects.create(
         first_name="John",
         last_name="Smith",
@@ -131,9 +130,7 @@ class TestStartConsultationBilling:
         assert invoice is not None
 
         # Check for consultation line item (may or may not link to service)
-        consultation_item = invoice.items.filter(
-            description__icontains="consultation"
-        ).first()
+        consultation_item = invoice.items.filter(description__icontains="consultation").first()
         assert consultation_item is not None
         assert consultation_item.unit_price == Decimal("500.00")
         assert consultation_item.quantity == 1
@@ -160,11 +157,9 @@ class TestStartConsultationBilling:
         invoice = Invoice.objects.filter(
             patient=sample_clinic_visit.patient,
         ).first()
-        
+
         # Should use clinic's custom fee
-        consultation_item = invoice.items.filter(
-            description__icontains="consultation"
-        ).first()
+        consultation_item = invoice.items.filter(description__icontains="consultation").first()
         assert consultation_item is not None
         assert consultation_item.unit_price == Decimal("750.00")
 
@@ -185,7 +180,7 @@ class TestStartConsultationBilling:
         invoice = Invoice.objects.filter(
             patient=sample_clinic_visit.patient,
         ).first()
-        
+
         # Should only have one consultation item
         consultation_items = invoice.items.filter(
             item_type=InvoiceItem.ItemType.SERVICE,
@@ -198,9 +193,7 @@ class TestStartConsultationBilling:
 class TestBillingWithEncounter:
     """Test billing links to encounter when created."""
 
-    def test_billing_links_to_encounter(
-        self, sample_clinic_visit, consultation_service, test_user
-    ):
+    def test_billing_links_to_encounter(self, sample_clinic_visit, consultation_service, test_user):
         """Should link invoice to encounter when one is created."""
         # Start consultation (creates encounter)
         encounter = sample_clinic_visit.start_consultation(user=test_user)
@@ -223,13 +216,13 @@ class TestBillingWithEncounter:
             encounter_type="OPD",
             chief_complaint="Test",
         )
-        
+
         # Get the signal-created invoice
         existing_invoice = Invoice.objects.filter(
             encounter=encounter,
         ).first()
         assert existing_invoice is not None, "Signal should create invoice for encounter"
-        
+
         sample_clinic_visit.encounter = encounter
         sample_clinic_visit.save()
 
@@ -273,8 +266,6 @@ class TestReturnVisitBilling:
         assert invoice is not None
 
         # Should use review fee
-        consultation_item = invoice.items.filter(
-            description__icontains="consultation"
-        ).first()
+        consultation_item = invoice.items.filter(description__icontains="consultation").first()
         # Could be either review fee or standard, depending on implementation
         assert consultation_item is not None

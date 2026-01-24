@@ -2,7 +2,7 @@
  * Auto-save hook for forms with debounced saving and network awareness.
  * Provides real-time sync when online and queues changes when offline.
  * Sprint 1.5-1.6: Enhanced encounter form auto-save
- * 
+ *
  * Features:
  * - Debounced saving to reduce API calls
  * - Offline queue with localStorage persistence (survives page refresh)
@@ -251,7 +251,7 @@ export function useAutoSave<T>({
         syncStatus.reportSync();
         syncStatus.setPendingCount(0);
         onSuccess?.();
-        
+
         // Clear localStorage queue after successful sync
         if (persistKey) {
           clearOfflineQueue(storageKey);

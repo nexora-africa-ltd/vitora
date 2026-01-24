@@ -13,16 +13,17 @@ Events broadcasted:
 - queue.stats_updated: Queue statistics updated
 """
 
-import pytest
 from datetime import date
-from channels.testing import WebsocketCommunicator
-from channels.layers import get_channel_layer
+
+import pytest
 from channels.db import database_sync_to_async
+from channels.layers import get_channel_layer
+from channels.testing import WebsocketCommunicator
 from django.contrib.auth import get_user_model
 
 from hmis.apps.clinics.models import Clinic, ClinicSession, ClinicVisit
-from hmis.apps.patients.models import Patient
 from hmis.apps.core.models import County, SubCounty
+from hmis.apps.patients.models import Patient
 
 User = get_user_model()
 
@@ -48,9 +49,7 @@ def create_test_clinic(name="Test OPD", code="TEST-OPD-001"):
 def create_test_patient():
     """Create a test patient (async-safe)."""
     county, _ = County.objects.get_or_create(code=1, defaults={"name": "Nairobi"})
-    sub_county, _ = SubCounty.objects.get_or_create(
-        name="Westlands", defaults={"county": county}
-    )
+    sub_county, _ = SubCounty.objects.get_or_create(name="Westlands", defaults={"county": county})
     return Patient.objects.create(
         first_name="Test",
         last_name="Patient",
@@ -186,9 +185,7 @@ class TestClinicQueueConsumerConnection:
 
         clinic = await create_test_clinic(name="Valid OPD", code="VALID-001")
 
-        communicator = WebsocketCommunicator(
-            application, f"/ws/clinics/{clinic.id}/queue/"
-        )
+        communicator = WebsocketCommunicator(application, f"/ws/clinics/{clinic.id}/queue/")
         connected, _ = await communicator.connect()
 
         assert connected is True
@@ -198,9 +195,7 @@ class TestClinicQueueConsumerConnection:
         """Should reject connection to non-existent clinic."""
         from hmis.asgi import application
 
-        communicator = WebsocketCommunicator(
-            application, "/ws/clinics/99999/queue/"
-        )
+        communicator = WebsocketCommunicator(application, "/ws/clinics/99999/queue/")
         connected, _ = await communicator.connect()
 
         # Should disconnect immediately or reject
@@ -212,9 +207,7 @@ class TestClinicQueueConsumerConnection:
 
         clinic = await create_test_clinic(name="Group Test OPD", code="GROUP-001")
 
-        communicator = WebsocketCommunicator(
-            application, f"/ws/clinics/{clinic.id}/queue/"
-        )
+        communicator = WebsocketCommunicator(application, f"/ws/clinics/{clinic.id}/queue/")
         connected, _ = await communicator.connect()
         assert connected is True
 
@@ -243,9 +236,7 @@ class TestClinicQueueConsumerConnection:
 
         clinic = await create_test_clinic(name="Disconnect Test OPD", code="DISC-001")
 
-        communicator = WebsocketCommunicator(
-            application, f"/ws/clinics/{clinic.id}/queue/"
-        )
+        communicator = WebsocketCommunicator(application, f"/ws/clinics/{clinic.id}/queue/")
         connected, _ = await communicator.connect()
         assert connected is True
 
@@ -278,14 +269,12 @@ class TestQueueEventBroadcasts:
 
     async def test_patient_added_event_broadcasted(self):
         """Should broadcast event when patient is added to queue."""
-        from hmis.asgi import application
         from hmis.apps.clinics.websockets import broadcast_queue_event
+        from hmis.asgi import application
 
         clinic = await create_test_clinic(name="Broadcast OPD", code="BCAST-001")
 
-        communicator = WebsocketCommunicator(
-            application, f"/ws/clinics/{clinic.id}/queue/"
-        )
+        communicator = WebsocketCommunicator(application, f"/ws/clinics/{clinic.id}/queue/")
         connected, _ = await communicator.connect()
         assert connected is True
 
@@ -310,17 +299,15 @@ class TestQueueEventBroadcasts:
 
     async def test_patient_called_event_broadcasted(self):
         """Should broadcast event when patient is called."""
-        from hmis.asgi import application
         from hmis.apps.clinics.websockets import broadcast_queue_event
+        from hmis.asgi import application
 
         clinic = await create_test_clinic(name="Called OPD", code="CALL-001")
         session = await create_test_session(clinic)
         patient = await create_test_patient()
         visit = await create_test_visit(session, patient)
 
-        communicator = WebsocketCommunicator(
-            application, f"/ws/clinics/{clinic.id}/queue/"
-        )
+        communicator = WebsocketCommunicator(application, f"/ws/clinics/{clinic.id}/queue/")
         connected, _ = await communicator.connect()
         assert connected is True
 
@@ -342,17 +329,15 @@ class TestQueueEventBroadcasts:
 
     async def test_consultation_started_event_broadcasted(self):
         """Should broadcast event when consultation starts."""
-        from hmis.asgi import application
         from hmis.apps.clinics.websockets import broadcast_queue_event
+        from hmis.asgi import application
 
         clinic = await create_test_clinic(name="Consult OPD", code="CONS-001")
         session = await create_test_session(clinic)
         patient = await create_test_patient()
         visit = await create_test_visit(session, patient)
 
-        communicator = WebsocketCommunicator(
-            application, f"/ws/clinics/{clinic.id}/queue/"
-        )
+        communicator = WebsocketCommunicator(application, f"/ws/clinics/{clinic.id}/queue/")
         connected, _ = await communicator.connect()
         assert connected is True
 
@@ -374,17 +359,15 @@ class TestQueueEventBroadcasts:
 
     async def test_visit_completed_event_broadcasted(self):
         """Should broadcast event when visit is completed."""
-        from hmis.asgi import application
         from hmis.apps.clinics.websockets import broadcast_queue_event
+        from hmis.asgi import application
 
         clinic = await create_test_clinic(name="Complete OPD", code="COMP-001")
         session = await create_test_session(clinic)
         patient = await create_test_patient()
         visit = await create_test_visit(session, patient)
 
-        communicator = WebsocketCommunicator(
-            application, f"/ws/clinics/{clinic.id}/queue/"
-        )
+        communicator = WebsocketCommunicator(application, f"/ws/clinics/{clinic.id}/queue/")
         connected, _ = await communicator.connect()
         assert connected is True
 
@@ -404,14 +387,12 @@ class TestQueueEventBroadcasts:
 
     async def test_stats_updated_event_broadcasted(self):
         """Should broadcast queue stats update event."""
-        from hmis.asgi import application
         from hmis.apps.clinics.websockets import broadcast_queue_event
+        from hmis.asgi import application
 
         clinic = await create_test_clinic(name="Stats OPD", code="STAT-001")
 
-        communicator = WebsocketCommunicator(
-            application, f"/ws/clinics/{clinic.id}/queue/"
-        )
+        communicator = WebsocketCommunicator(application, f"/ws/clinics/{clinic.id}/queue/")
         connected, _ = await communicator.connect()
         assert connected is True
 
@@ -446,18 +427,14 @@ class TestMultipleClients:
 
     async def test_multiple_clients_receive_broadcasts(self):
         """All connected clients should receive broadcasted events."""
-        from hmis.asgi import application
         from hmis.apps.clinics.websockets import broadcast_queue_event
+        from hmis.asgi import application
 
         clinic = await create_test_clinic(name="Multi OPD", code="MULTI-001")
 
         # Connect multiple clients
-        communicator1 = WebsocketCommunicator(
-            application, f"/ws/clinics/{clinic.id}/queue/"
-        )
-        communicator2 = WebsocketCommunicator(
-            application, f"/ws/clinics/{clinic.id}/queue/"
-        )
+        communicator1 = WebsocketCommunicator(application, f"/ws/clinics/{clinic.id}/queue/")
+        communicator2 = WebsocketCommunicator(application, f"/ws/clinics/{clinic.id}/queue/")
 
         connected1, _ = await communicator1.connect()
         connected2, _ = await communicator2.connect()
@@ -485,18 +462,15 @@ class TestMultipleClients:
     async def test_different_clinics_isolated(self):
         """Clients connected to different clinics should not receive each other's events."""
         import asyncio
-        from hmis.asgi import application
+
         from hmis.apps.clinics.websockets import broadcast_queue_event
+        from hmis.asgi import application
 
         clinic1 = await create_test_clinic(name="Clinic One", code="ISO-001")
         clinic2 = await create_test_clinic(name="Clinic Two", code="ISO-002")
 
-        communicator1 = WebsocketCommunicator(
-            application, f"/ws/clinics/{clinic1.id}/queue/"
-        )
-        communicator2 = WebsocketCommunicator(
-            application, f"/ws/clinics/{clinic2.id}/queue/"
-        )
+        communicator1 = WebsocketCommunicator(application, f"/ws/clinics/{clinic1.id}/queue/")
+        communicator2 = WebsocketCommunicator(application, f"/ws/clinics/{clinic2.id}/queue/")
 
         await communicator1.connect()
         await communicator2.connect()
@@ -516,7 +490,7 @@ class TestMultipleClients:
         try:
             await communicator2.receive_json_from(timeout=0.5)
             pytest.fail("Client 2 should not have received a message")
-        except (TimeoutError, asyncio.TimeoutError):
+        except TimeoutError:
             pass  # Expected - client 2 didn't receive the message
 
         await communicator1.disconnect()
@@ -545,9 +519,7 @@ class TestModelSignalBroadcasts:
         session = await create_test_session(clinic)
         patient = await create_test_patient()
 
-        communicator = WebsocketCommunicator(
-            application, f"/ws/clinics/{clinic.id}/queue/"
-        )
+        communicator = WebsocketCommunicator(application, f"/ws/clinics/{clinic.id}/queue/")
         connected, _ = await communicator.connect()
         assert connected is True
 
@@ -572,9 +544,7 @@ class TestModelSignalBroadcasts:
         patient = await create_test_patient()
         visit = await create_test_visit(session, patient)
 
-        communicator = WebsocketCommunicator(
-            application, f"/ws/clinics/{clinic.id}/queue/"
-        )
+        communicator = WebsocketCommunicator(application, f"/ws/clinics/{clinic.id}/queue/")
         connected, _ = await communicator.connect()
         assert connected is True
 
@@ -606,9 +576,7 @@ class TestErrorHandling:
 
         clinic = await create_test_clinic(name="Error OPD", code="ERR-001")
 
-        communicator = WebsocketCommunicator(
-            application, f"/ws/clinics/{clinic.id}/queue/"
-        )
+        communicator = WebsocketCommunicator(application, f"/ws/clinics/{clinic.id}/queue/")
         connected, _ = await communicator.connect()
         assert connected is True
 

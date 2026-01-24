@@ -1,10 +1,10 @@
 /**
  * Public Document Verification Page
- * 
+ *
  * Allows anyone to verify receipt/invoice authenticity by:
  * 1. Scanning QR code (opens this page with params - auto-verifies)
  * 2. Manually entering document details
- * 
+ *
  * No authentication required.
  */
 'use client';
@@ -62,7 +62,7 @@ export default function VerifyPage() {
     if (type && number && amount && date && signature && !autoVerified) {
       setAutoVerified(true);
       setManualData({ type, number, amount, date, signature });
-      
+
       // Auto-verify
       const verify = async () => {
         setIsLoading(true);
@@ -89,10 +89,10 @@ export default function VerifyPage() {
 
   const verifyWithQR = async () => {
     if (!qrData.trim()) return;
-    
+
     setIsLoading(true);
     setResult(null);
-    
+
     try {
       const response = await fetch(
         `${process.env.NEXT_PUBLIC_API_URL || ''}/api/core/verify/?qr_data=${encodeURIComponent(qrData)}`
@@ -113,10 +113,10 @@ export default function VerifyPage() {
   const verifyManual = async () => {
     const { type, number, amount, date, signature } = manualData;
     if (!type || !number || !amount || !date || !signature) return;
-    
+
     setIsLoading(true);
     setResult(null);
-    
+
     try {
       const params = new URLSearchParams({
         type,
@@ -196,8 +196,8 @@ export default function VerifyPage() {
                     Use a QR scanner app to scan the code, then paste the content here
                   </p>
                 </div>
-                <Button 
-                  onClick={verifyWithQR} 
+                <Button
+                  onClick={verifyWithQR}
                   disabled={!qrData.trim() || isLoading}
                   className="w-full"
                 >
@@ -277,13 +277,13 @@ export default function VerifyPage() {
                   </p>
                 </div>
 
-                <Button 
-                  onClick={verifyManual} 
+                <Button
+                  onClick={verifyManual}
                   disabled={
-                    !manualData.number || 
-                    !manualData.amount || 
-                    !manualData.date || 
-                    !manualData.signature || 
+                    !manualData.number ||
+                    !manualData.amount ||
+                    !manualData.date ||
+                    !manualData.signature ||
                     isLoading
                   }
                   className="w-full"

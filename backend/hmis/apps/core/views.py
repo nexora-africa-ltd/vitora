@@ -49,7 +49,7 @@ class FrontendEventViewSet(viewsets.GenericViewSet):
 
     Allows authenticated users to log frontend events for analytics and debugging.
     Supports both single event and batch event submission.
-    
+
     Endpoints:
     - POST /api/events/ - Log a single event
     - POST /api/events/batch/ - Log multiple events at once (for offline sync)
@@ -93,9 +93,9 @@ class FrontendEventViewSet(viewsets.GenericViewSet):
     def batch(self, request):
         """
         Log multiple frontend events at once.
-        
+
         Useful for syncing events that were queued while offline.
-        
+
         Request body:
         {
             "events": [
@@ -668,7 +668,6 @@ class NotificationViewSet(viewsets.ModelViewSet):
 # ============================================================================
 
 
-from rest_framework.decorators import api_view
 from rest_framework.decorators import permission_classes as perm_classes
 from rest_framework.permissions import IsAuthenticated as IsAuth
 
@@ -731,14 +730,14 @@ def generate_case_number_view(request):
 def verify_document(request):
     """
     Verify a document (receipt or invoice) signature.
-    
+
     This endpoint is PUBLIC and does not require authentication.
     It allows anyone with a QR code to verify document authenticity.
-    
+
     QR Code Format:
         VITORA-RCPT|N:RCP-001|A:1500.00|D:2026-01-22|S:AB12CD34
         VITORA-INV|N:INV-001|A:5000.00|D:2026-01-22|P:MRN-001|S:EF56GH78
-    
+
     GET Parameters or POST Body:
         qr_data: Full QR code string (if provided, other params are ignored)
         -- OR --
@@ -747,7 +746,7 @@ def verify_document(request):
         amount: Amount as string
         date: Date (YYYY-MM-DD)
         signature: 8-character hex signature
-    
+
     Returns:
         JSON: {
             "valid": true/false,
@@ -759,13 +758,13 @@ def verify_document(request):
         }
     """
     from .qr_utils import verify_document_signature
-    
+
     # Get data from query params (GET) or body (POST)
     data = request.query_params if request.method == "GET" else request.data
-    
+
     # Check if full QR data string is provided
     qr_data = data.get("qr_data", "").strip()
-    
+
     if qr_data:
         # Parse QR data string
         parsed = _parse_qr_data(qr_data)
@@ -786,7 +785,7 @@ def verify_document(request):
         amount = data.get("amount", "")
         date = data.get("date", "")
         signature = data.get("signature", "")
-    
+
     # Validate required fields
     if not all([doc_type, doc_number, amount, date, signature]):
         return Response(
@@ -797,7 +796,7 @@ def verify_document(request):
             },
             status=status.HTTP_400_BAD_REQUEST,
         )
-    
+
     # Validate document type
     if doc_type not in ("RECEIPT", "INVOICE"):
         return Response(
@@ -808,7 +807,7 @@ def verify_document(request):
             },
             status=status.HTTP_400_BAD_REQUEST,
         )
-    
+
     # Verify the signature
     is_valid = verify_document_signature(
         document_type=doc_type,
@@ -817,35 +816,39 @@ def verify_document(request):
         date=date,
         signature=signature,
     )
-    
+
     if is_valid:
-        return Response({
-            "valid": True,
-            "document_type": doc_type,
-            "document_number": doc_number,
-            "amount": amount,
-            "date": date,
-            "message": "✓ Document is valid and authentic",
-        })
+        return Response(
+            {
+                "valid": True,
+                "document_type": doc_type,
+                "document_number": doc_number,
+                "amount": amount,
+                "date": date,
+                "message": "✓ Document is valid and authentic",
+            }
+        )
     else:
-        return Response({
-            "valid": False,
-            "document_type": doc_type,
-            "document_number": doc_number,
-            "amount": amount,
-            "date": date,
-            "message": "✗ Document signature is invalid. This document may have been tampered with.",
-        })
+        return Response(
+            {
+                "valid": False,
+                "document_type": doc_type,
+                "document_number": doc_number,
+                "amount": amount,
+                "date": date,
+                "message": "✗ Document signature is invalid. This document may have been tampered with.",
+            }
+        )
 
 
 def _parse_qr_data(qr_data: str) -> tuple | None:
     """
     Parse QR code data string into components.
-    
+
     Expected format:
         VITORA-RCPT|N:RCP-001|A:1500.00|D:2026-01-22|S:AB12CD34
         VITORA-INV|N:INV-001|A:5000.00|D:2026-01-22|P:MRN-001|S:EF56GH78
-    
+
     Returns:
         Tuple of (doc_type, doc_number, amount, date, signature) or None if invalid
     """
@@ -853,7 +856,7 @@ def _parse_qr_data(qr_data: str) -> tuple | None:
         parts = qr_data.split("|")
         if len(parts) < 5:
             return None
-        
+
         # First part is the document type identifier
         type_id = parts[0]
         if type_id == "VITORA-RCPT":
@@ -862,23 +865,23 @@ def _parse_qr_data(qr_data: str) -> tuple | None:
             doc_type = "INVOICE"
         else:
             return None
-        
+
         # Parse key:value pairs
         data = {}
         for part in parts[1:]:
             if ":" in part:
                 key, value = part.split(":", 1)
                 data[key] = value
-        
+
         # Extract required fields
         doc_number = data.get("N")
         amount = data.get("A")
         date = data.get("D")
         signature = data.get("S")
-        
+
         if not all([doc_number, amount, date, signature]):
             return None
-        
+
         return (doc_type, doc_number, amount, date, signature)
     except Exception:
         return None

@@ -11,11 +11,11 @@ from django.dispatch import receiver
 
 from .models import ClinicVisit
 from .websockets import (
+    broadcast_consultation_started,
     broadcast_patient_added,
     broadcast_patient_called,
-    broadcast_consultation_started,
-    broadcast_visit_completed,
     broadcast_patient_removed,
+    broadcast_visit_completed,
 )
 
 logger = logging.getLogger(__name__)

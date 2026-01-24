@@ -581,7 +581,7 @@ class TestAdmissionQueries:
 
         # Create admissions with different statuses for different patients
         statuses = ["ACTIVE", "DISCHARGED", "ACTIVE"]
-        for i, (patient, status) in enumerate(zip(patients, statuses)):
+        for i, (patient, status) in enumerate(zip(patients, statuses, strict=False)):
             enc = Encounter.objects.create(
                 patient=patient,
                 encounter_type="IPD",

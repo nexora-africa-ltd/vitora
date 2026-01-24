@@ -231,7 +231,7 @@ class TestEncounterAPIEndpoints:
 
     def test_delete_encounter(self, auth_client, sample_patient):
         """Test DELETE /api/encounters/{id}/ - Delete an encounter with invoice.
-        
+
         Since billing signals auto-create invoices for encounters,
         we need to delete the invoice first before deleting the encounter.
         """

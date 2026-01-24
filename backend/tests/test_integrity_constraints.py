@@ -14,11 +14,10 @@ import uuid
 from datetime import date, timedelta
 from decimal import Decimal
 
-import pytest # type: ignore
+import pytest  # type: ignore
 from django.core.exceptions import ValidationError
 from django.db import IntegrityError, transaction
 from rest_framework import status
-
 
 # ============================================================================
 # Patient Integrity Constraint Tests
@@ -28,9 +27,7 @@ from rest_framework import status
 class TestPatientDuplicatePrevention:
     """Tests for preventing duplicate patient registration."""
 
-    def test_unique_identification_number_constraint(
-        self, db, sample_county, sample_sub_county
-    ):
+    def test_unique_identification_number_constraint(self, db, sample_county, sample_sub_county):
         """Should prevent two patients with same identification type and number."""
         from hmis.apps.patients.models import Patient
 
@@ -60,9 +57,7 @@ class TestPatientDuplicatePrevention:
                     identification_number="12345678",
                 )
 
-    def test_different_identification_types_allowed(
-        self, db, sample_county, sample_sub_county
-    ):
+    def test_different_identification_types_allowed(self, db, sample_county, sample_sub_county):
         """Should allow same number with different identification types."""
         from hmis.apps.patients.models import Patient
 
@@ -92,9 +87,7 @@ class TestPatientDuplicatePrevention:
 
         assert p1.pk != p2.pk
 
-    def test_null_identification_numbers_allowed(
-        self, db, sample_county, sample_sub_county
-    ):
+    def test_null_identification_numbers_allowed(self, db, sample_county, sample_sub_county):
         """Should allow multiple patients without identification numbers."""
         from hmis.apps.patients.models import Patient
 
@@ -122,9 +115,7 @@ class TestPatientDuplicatePrevention:
 
         assert p1.pk != p2.pk
 
-    def test_empty_identification_numbers_allowed(
-        self, db, sample_county, sample_sub_county
-    ):
+    def test_empty_identification_numbers_allowed(self, db, sample_county, sample_sub_county):
         """Should allow multiple patients with empty identification numbers."""
         from hmis.apps.patients.models import Patient
 
@@ -184,7 +175,10 @@ class TestPatientDuplicatePrevention:
 
         # Should fail with duplicate warning
         assert response.status_code == status.HTTP_400_BAD_REQUEST
-        assert "duplicate" in str(response.data).lower() or "already exists" in str(response.data).lower()
+        assert (
+            "duplicate" in str(response.data).lower()
+            or "already exists" in str(response.data).lower()
+        )
 
     def test_case_insensitive_duplicate_detection(
         self, authenticated_client, sample_county, sample_sub_county
@@ -494,7 +488,10 @@ class TestEncounterClinicianAssignment:
         with pytest.raises(ValidationError) as exc_info:
             encounter.full_clean()
 
-        assert "already being attended" in str(exc_info.value).lower() or "assigned" in str(exc_info.value).lower()
+        assert (
+            "already being attended" in str(exc_info.value).lower()
+            or "assigned" in str(exc_info.value).lower()
+        )
 
     def test_clinician_can_release_encounter(self, db, sample_patient, test_user):
         """Should allow clinician to release an encounter."""
