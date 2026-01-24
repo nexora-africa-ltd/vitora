@@ -43,25 +43,25 @@ The `Encounter` model currently has no reference to `ClinicVisit`. This breaks:
 ### 1.2 Implementation Tasks
 
 ```
-[ ] Add clinic_visit FK to Encounter model
-    - Field: clinic_visit = ForeignKey('clinics.ClinicVisit', null=True, blank=True, 
+[x] Add clinic_visit FK to Encounter model
+    - Field: clinic_visit = ForeignKey('clinics.ClinicVisit', null=True, blank=True,
               related_name='encounters', on_delete=SET_NULL)
     - null=True for backward compatibility with existing encounters
 
-[ ] Update ClinicVisit.start_consultation() method
+[x] Update ClinicVisit.start_consultation() method
     - Create Encounter with clinic_visit reference
     - Set encounter.clinic_visit = self
 
-[ ] Update EncounterSerializer
+[x] Update EncounterSerializer
     - Add clinic_visit_id (read-only)
     - Add clinic_name (computed from clinic_visit.session.clinic.name)
     - Add clinic_type (computed)
 
-[ ] Create migration
+[x] Create migration
     - Add FK with null=True (non-breaking)
     - No data migration needed (new encounters will have reference)
 
-[ ] Write tests
+[x] Write tests
     - test_encounter_created_from_clinic_visit_has_reference
     - test_encounter_clinic_visit_optional_for_direct_encounters
     - test_encounter_serializer_includes_clinic_info
@@ -166,23 +166,23 @@ No aggregate reporting model exists for clinic statistics. KHIS/DHIS2 reporting 
 ```python
 class MonthlyClinicReport(TimeStampedModel):
     """Monthly aggregate statistics for DHIS2/KHIS reporting."""
-    
+
     clinic = models.ForeignKey(Clinic, on_delete=CASCADE, related_name='monthly_reports')
     year = models.PositiveIntegerField()
     month = models.PositiveIntegerField(validators=[MinValueValidator(1), MaxValueValidator(12)])
-    
+
     # Visit Statistics
     total_visits = models.PositiveIntegerField(default=0)
     new_visits = models.PositiveIntegerField(default=0)
     revisits = models.PositiveIntegerField(default=0)
-    
+
     # By Priority
     priority_red = models.PositiveIntegerField(default=0)
     priority_orange = models.PositiveIntegerField(default=0)
     priority_yellow = models.PositiveIntegerField(default=0)
     priority_green = models.PositiveIntegerField(default=0)
     priority_blue = models.PositiveIntegerField(default=0)
-    
+
     # Demographics
     male_visits = models.PositiveIntegerField(default=0)
     female_visits = models.PositiveIntegerField(default=0)
@@ -190,27 +190,27 @@ class MonthlyClinicReport(TimeStampedModel):
     under_18_visits = models.PositiveIntegerField(default=0)
     adult_visits = models.PositiveIntegerField(default=0)
     over_60_visits = models.PositiveIntegerField(default=0)
-    
+
     # Chronic Care (for CCC, Diabetic, etc.)
     new_enrollments = models.PositiveIntegerField(default=0)
     active_enrollments = models.PositiveIntegerField(default=0)
     defaulters = models.PositiveIntegerField(default=0)
-    
+
     # ANC Specific (for MCH clinics)
     anc_first_visits = models.PositiveIntegerField(default=0)
     anc_revisits = models.PositiveIntegerField(default=0)
     deliveries = models.PositiveIntegerField(default=0)
-    
+
     # Revenue
     total_revenue = models.DecimalField(max_digits=12, decimal_places=2, default=0)
     sha_claims_amount = models.DecimalField(max_digits=12, decimal_places=2, default=0)
     cash_amount = models.DecimalField(max_digits=12, decimal_places=2, default=0)
-    
+
     # DHIS2 Sync
     dhis2_submitted = models.BooleanField(default=False)
     dhis2_submitted_at = models.DateTimeField(null=True, blank=True)
     dhis2_response = models.JSONField(null=True, blank=True)
-    
+
     class Meta:
         unique_together = ['clinic', 'year', 'month']
         ordering = ['-year', '-month', 'clinic__name']
@@ -254,7 +254,7 @@ SHA claims bundle does not include clinic/service delivery point context, which 
 [ ] Update build_claim_bundle() to include clinic info
     - Add clinic context to Encounter extension or meta
     - Include clinic code in claim identifier
-    
+
 [ ] Add facility service point to FHIR Claim
     - Extension: clinic_code, clinic_type
     - Or use Encounter.serviceProvider reference
@@ -337,10 +337,10 @@ describe('Chronic Care Enrollment', () => {
     - dhis2_service.py
     - Authenticate with DHIS2 API
     - Map MonthlyClinicReport → DHIS2 DataValueSet
-    
+
 [ ] Create export endpoints
     - POST /api/clinics/{id}/reports/monthly/{year}/{month}/submit-dhis2/
-    
+
 [ ] Handle DHIS2 response/errors
     - Store response in dhis2_response field
     - Retry logic for failed submissions

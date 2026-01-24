@@ -1469,6 +1469,11 @@ class EncounterViewSet(viewsets.ModelViewSet):
             statuses = [s.strip().upper() for s in status_filter.split(",")]
             queryset = queryset.filter(status__in=statuses)
 
+        # Filter by clinic if provided
+        clinic_id = self.request.query_params.get("clinic")
+        if clinic_id:
+            queryset = queryset.filter(clinic_visit__session__clinic_id=clinic_id)
+
         return queryset
 
 

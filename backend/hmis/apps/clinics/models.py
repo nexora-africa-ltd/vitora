@@ -640,7 +640,7 @@ class ClinicVisit(TimeStampedModel):
         on_delete=models.SET_NULL,
         null=True,
         blank=True,
-        related_name="clinic_visit",
+        related_name="clinic_visit_o2o",
         help_text="Encounter created for this visit",
     )
     triage_assessment = models.ForeignKey(
@@ -758,6 +758,16 @@ class ClinicVisit(TimeStampedModel):
             self.queue_number = (last_visit.queue_number + 1) if last_visit else 1
         super().save(*args, **kwargs)
 
+        # Backward compatibility:
+        # If a ClinicVisit is linked to an Encounter via the legacy OneToOne field,
+        # ensure the new Encounter.clinic_visit FK is kept in sync for reporting.
+        if self.encounter_id:
+            from hmis.apps.encounters.models import Encounter
+
+            Encounter.objects.filter(pk=self.encounter_id).exclude(clinic_visit_id=self.pk).update(
+                clinic_visit_id=self.pk
+            )
+
     def call_patient(self, clinician):
         """Call patient for consultation."""
         self.status = "CALLED"
@@ -792,7 +802,13 @@ class ClinicVisit(TimeStampedModel):
                 encounter_type=self._map_clinic_to_encounter_type(),
                 chief_complaint=self.chief_complaint or "See clinic notes",
                 triage_status=("COMPLETED" if self.triage_assessment else "NOT_APPLICABLE"),
+                clinic_visit=self,
             )
+        else:
+            # Ensure forward link exists for reporting/traceability
+            if self.encounter.clinic_visit_id != self.id:
+                self.encounter.clinic_visit = self
+                self.encounter.save(update_fields=["clinic_visit"])
 
         # Generate billing if consultation fee not already charged
         if not self.consultation_fee_charged:
