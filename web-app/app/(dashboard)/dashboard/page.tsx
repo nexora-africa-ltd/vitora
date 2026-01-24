@@ -29,8 +29,8 @@ export default function DashboardPage() {
     <div className="space-y-6">
       {/* Page header */}
       <div>
-        <h1 className="text-3xl font-bold tracking-tight">Dashboard</h1>
-        <p className="text-muted-foreground">
+        <h1 className="text-2xl sm:text-3xl font-bold tracking-tight">Dashboard</h1>
+        <p className="text-sm sm:text-base text-muted-foreground">
           Welcome to Vitora HMIS. Here&apos;s an overview of your facility.
         </p>
       </div>
@@ -127,17 +127,17 @@ export default function DashboardPage() {
       <div className="grid gap-6 lg:grid-cols-2">
         {/* My Claimed Encounters - for clinicians */}
         <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+          <CardHeader className="flex flex-col sm:flex-row sm:items-center sm:justify-between space-y-2 sm:space-y-0 pb-2">
             <div>
-              <CardTitle className="flex items-center gap-2">
-                <UserCheck className="h-5 w-5 text-primary" />
+              <CardTitle className="flex items-center gap-2 text-base sm:text-lg">
+                <UserCheck className="h-4 w-4 sm:h-5 sm:w-5 text-primary" />
                 My Active Consultations
               </CardTitle>
-              <CardDescription>
+              <CardDescription className="text-xs sm:text-sm">
                 Encounters you&apos;ve claimed and are working on
               </CardDescription>
             </div>
-            <Button variant="ghost" size="sm" asChild>
+            <Button variant="ghost" size="sm" asChild className="self-start sm:self-auto">
               <Link href="/encounters?filter=my_claimed">
                 View All
                 <ArrowRight className="ml-1 h-4 w-4" />
@@ -151,14 +151,14 @@ export default function DashboardPage() {
 
         {/* Recent patients */}
         <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+          <CardHeader className="flex flex-col sm:flex-row sm:items-center sm:justify-between space-y-2 sm:space-y-0 pb-2">
             <div>
-              <CardTitle>Recent Patients</CardTitle>
-              <CardDescription>
+              <CardTitle className="text-base sm:text-lg">Recent Patients</CardTitle>
+              <CardDescription className="text-xs sm:text-sm">
                 Patients registered or seen recently
               </CardDescription>
             </div>
-            <Button variant="ghost" size="sm" asChild>
+            <Button variant="ghost" size="sm" asChild className="self-start sm:self-auto">
               <Link href="/patients">
                 View All
                 <ArrowRight className="ml-1 h-4 w-4" />
@@ -173,8 +173,8 @@ export default function DashboardPage() {
         {/* Alerts widget */}
         <Card>
           <CardHeader>
-            <CardTitle>Active Alerts</CardTitle>
-            <CardDescription>
+            <CardTitle className="text-base sm:text-lg">Active Alerts</CardTitle>
+            <CardDescription className="text-xs sm:text-sm">
               Critical items requiring attention
             </CardDescription>
           </CardHeader>
@@ -187,17 +187,17 @@ export default function DashboardPage() {
       {/* Supervisor section - All Claimed Encounters */}
       {isSupervisor && (
         <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+          <CardHeader className="flex flex-col sm:flex-row sm:items-center sm:justify-between space-y-2 sm:space-y-0 pb-2">
             <div>
-              <CardTitle className="flex items-center gap-2">
-                <UserCheck className="h-5 w-5" />
+              <CardTitle className="flex items-center gap-2 text-base sm:text-lg">
+                <UserCheck className="h-4 w-4 sm:h-5 sm:w-5" />
                 Active Consultations
               </CardTitle>
-              <CardDescription>
+              <CardDescription className="text-xs sm:text-sm">
                 All encounters currently being attended by clinicians
               </CardDescription>
             </div>
-            <Button variant="ghost" size="sm" asChild>
+            <Button variant="ghost" size="sm" asChild className="self-start sm:self-auto">
               <Link href="/encounters?filter=all_claimed">
                 View All
                 <ArrowRight className="ml-1 h-4 w-4" />
