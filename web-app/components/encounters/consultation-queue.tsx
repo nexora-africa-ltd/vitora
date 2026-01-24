@@ -50,9 +50,10 @@ export interface ConsultationQueueProps {
   queueItems: QueueItemType[];
   /** Current user's ID for claim ownership check */
   currentUserId?: number;
+  /** Call patient - now also claims automatically */
   onCallPatient: (encounterId: number) => Promise<void> | void;
   onStartConsultation: (encounterId: number) => Promise<void> | void;
-  /** Claim encounter callback (Data Integrity - Sprint 1.7) */
+  /** @deprecated Claim is now automatic when calling. Kept for backward compatibility. */
   onClaimEncounter?: (encounterId: number) => Promise<void> | void;
   /** Release encounter callback (Data Integrity - Sprint 1.7) */
   onReleaseEncounter?: (encounterId: number) => Promise<void> | void;
@@ -60,6 +61,7 @@ export interface ConsultationQueueProps {
   isLoading?: boolean;
   error?: string | null;
   autoRefreshInterval?: number; // ms, 0 to disable
+  /** @deprecated Use isCallingPatient on individual items */
   isClaimingEncounter?: boolean;
   isReleasingEncounter?: boolean;
 }

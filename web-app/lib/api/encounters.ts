@@ -62,6 +62,37 @@ export const encountersApi = {
   },
 
   // ===========================================================================
+  // Quick Consultation (Start consultation directly from patient list)
+  // ===========================================================================
+
+  /**
+   * Start a quick consultation for a patient.
+   *
+   * Creates a new OPD encounter and claims it in one step, or claims
+   * an existing unclaimed encounter for the patient.
+   *
+   * This is the preferred way to start a consultation from the patient list.
+   *
+   * @param patientId - The patient ID
+   * @param options - Optional encounter details
+   * @returns The created/claimed encounter
+   * @throws 409 Conflict if patient has an active encounter with another clinician
+   */
+  async quickConsultation(
+    patientId: number,
+    options?: { chief_complaint?: string; encounter_type?: string }
+  ): Promise<Encounter> {
+    const response = await apiClient.post<Encounter>(
+      '/api/encounters/quick_consultation/',
+      {
+        patient: patientId,
+        ...options,
+      }
+    );
+    return response.data;
+  },
+
+  // ===========================================================================
   // Clinician Claim/Release Actions (Data Integrity - Sprint 1.7)
   // ===========================================================================
 

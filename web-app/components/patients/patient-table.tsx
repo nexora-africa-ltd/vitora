@@ -2,6 +2,7 @@
 
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
+import axios from 'axios';
 import {
   Table,
   TableBody,
@@ -17,14 +18,31 @@ import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
+  DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import { MoreHorizontal, Eye, Edit, Trash2, ChevronLeft, ChevronRight, Phone, MapPin, Calendar, Hash } from 'lucide-react';
+import {
+  MoreHorizontal,
+  Eye,
+  Edit,
+  Trash2,
+  ChevronLeft,
+  ChevronRight,
+  Phone,
+  MapPin,
+  Calendar,
+  Hash,
+  Stethoscope,
+  FileText,
+  Loader2,
+} from 'lucide-react';
 import { Patient } from '@/lib/types/patient';
 import { calculateAge, formatDate } from '@/lib/utils/format';
 import { EmptyState } from '@/components/shared/empty-state';
 import { EntityCard, EntityGrid } from '@/components/shared/entity-card';
 import type { ViewMode } from '@/components/ui/view-toggle';
+import { useQuickConsultation } from '@/lib/hooks/use-encounters';
+import { useToast } from '@/lib/hooks/use-toast';
 
 interface PatientTableProps {
   patients: Patient[];
@@ -195,6 +213,41 @@ interface PatientListViewProps {
 }
 
 function PatientListView({ patients, selectMode, onRowClick, router }: PatientListViewProps) {
+  const { toast } = useToast();
+  const quickConsult = useQuickConsultation();
+
+  const handleStartConsultation = async (e: React.MouseEvent, patientId: number) => {
+    e.stopPropagation();
+    try {
+      const encounter = await quickConsult.mutateAsync({ patientId });
+      toast({
+        title: 'Consultation Started',
+        description: 'Patient has been called. You can now start the consultation.',
+      });
+      router.push(`/encounters/${encounter.id}`);
+    } catch (err) {
+      // Handle 409 Conflict - patient already has active encounter with another clinician
+      if (axios.isAxiosError(err) && err.response?.status === 409) {
+        const data = err.response.data;
+        toast({
+          title: 'Patient Unavailable',
+          description: data.detail || 'This patient already has an active encounter with another clinician.',
+          variant: 'destructive',
+        });
+        // If there's an encounter_id, optionally navigate to view it
+        if (data.encounter_id) {
+          // Could add a "View Encounter" action here
+        }
+      } else {
+        toast({
+          title: 'Error',
+          description: 'Failed to start consultation. Please try again.',
+          variant: 'destructive',
+        });
+      }
+    }
+  };
+
   return (
     <div className="rounded-md border">
       <Table>
@@ -266,6 +319,26 @@ function PatientListView({ patients, selectMode, onRowClick, router }: PatientLi
                         <Edit className="h-4 w-4 mr-2" />
                         Edit
                       </DropdownMenuItem>
+                      <DropdownMenuSeparator />
+                      <DropdownMenuItem
+                        onClick={(e) => handleStartConsultation(e, patient.id)}
+                        disabled={quickConsult.isPending}
+                      >
+                        {quickConsult.isPending ? (
+                          <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                        ) : (
+                          <Stethoscope className="h-4 w-4 mr-2" />
+                        )}
+                        Start Consultation
+                      </DropdownMenuItem>
+                      <DropdownMenuItem onClick={(e) => {
+                        e.stopPropagation();
+                        router.push(`/encounters/new?patient=${patient.id}`);
+                      }}>
+                        <FileText className="h-4 w-4 mr-2" />
+                        New Encounter
+                      </DropdownMenuItem>
+                      <DropdownMenuSeparator />
                       <DropdownMenuItem
                         className="text-destructive"
                         onClick={(e) => e.stopPropagation()}

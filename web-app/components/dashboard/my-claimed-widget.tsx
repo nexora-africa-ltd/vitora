@@ -95,7 +95,7 @@ export function MyClaimedEncountersWidget() {
           <Link
             key={encounter.id}
             href={`/encounters/${encounter.id}`}
-            className="flex items-center gap-3 p-2 rounded-lg hover:bg-accent group"
+            className="flex items-center gap-3 p-2 rounded-lg hover:bg-muted/50 dark:hover:bg-muted/30 group"
           >
             <Avatar className="h-10 w-10">
               <AvatarFallback className="bg-primary/10 text-primary text-sm">

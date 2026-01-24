@@ -84,7 +84,7 @@ export function ConsultationQueueContainer({
   // ===========================================================================
 
   /**
-   * Handle calling a patient
+   * Handle calling a patient (also claims the encounter automatically)
    */
   const handleCallPatient = useCallback(
     async (encounterId: number) => {
@@ -92,15 +92,24 @@ export function ConsultationQueueContainer({
         await callPatientMutation.mutateAsync(encounterId);
         toast({
           title: 'Patient Called',
-          description: 'The patient has been notified.',
+          description: 'The patient has been notified. You can now start the consultation.',
         });
       } catch (err) {
-        const message = err instanceof Error ? err.message : 'Failed to call patient';
-        toast({
-          title: 'Error',
-          description: message,
-          variant: 'destructive',
-        });
+        // Handle 409 Conflict (already claimed by another)
+        if (axios.isAxiosError(err) && err.response?.status === 409) {
+          toast({
+            title: 'Patient Unavailable',
+            description: err.response.data?.detail || 'This patient is already with another clinician.',
+            variant: 'destructive',
+          });
+        } else {
+          const message = err instanceof Error ? err.message : 'Failed to call patient';
+          toast({
+            title: 'Error',
+            description: message,
+            variant: 'destructive',
+          });
+        }
         throw err;
       }
     },
