@@ -619,6 +619,53 @@ class TriageAssessment(models.Model):
 
         return alerts
 
+    def route_to_clinic(self, clinic, user, notes: str = "") -> "ClinicVisit":
+        """
+        Route patient from triage to a specific clinic.
+
+        Creates a ClinicVisit in the target clinic's queue with appropriate
+        priority based on triage category.
+
+        Args:
+            clinic: Target Clinic instance
+            user: User performing the routing
+            notes: Optional routing notes
+
+        Returns:
+            ClinicVisit: The created clinic visit
+
+        Raises:
+            ValueError: If clinic is not active
+        """
+        from hmis.apps.clinics.models import Clinic, ClinicSession, ClinicVisit
+        from datetime import date
+
+        # Validate clinic is active
+        if clinic.status != "ACTIVE":
+            raise ValueError(f"Clinic '{clinic.name}' is not active")
+
+        # Get or create today's session for the clinic
+        session, created = ClinicSession.objects.get_or_create(
+            clinic=clinic,
+            session_date=date.today(),
+            defaults={"status": "OPEN"},
+        )
+
+        # Create clinic visit
+        visit = ClinicVisit.objects.create(
+            session=session,
+            patient=self.encounter.patient,
+            triage_assessment=self,
+            visit_type="NEW",
+            source="TRIAGE",
+            chief_complaint=self.chief_complaint,
+            priority=self.triage_category,  # Map triage category to priority
+            notes=notes or "",
+            registered_by=user,
+        )
+
+        return visit
+
 
 class TriageQueue(models.Model):
     """

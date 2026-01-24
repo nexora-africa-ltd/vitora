@@ -775,8 +775,21 @@ class ClinicVisit(TimeStampedModel):
         self.assigned_clinician = clinician
         self.save()
 
-    def start_consultation(self):
-        """Start consultation - creates encounter if needed."""
+    def start_consultation(self, user=None):
+        """
+        Start consultation - creates encounter and generates billing.
+
+        Args:
+            user: Optional user initiating the consultation (for billing audit)
+
+        Returns:
+            Encounter: The created or existing encounter
+
+        This method:
+        1. Creates an Encounter if one doesn't exist
+        2. Generates an Invoice for the consultation fee if not already charged
+        3. Links the billing to the clinic visit
+        """
         from hmis.apps.encounters.models import Encounter
 
         self.status = "IN_CONSULTATION"
@@ -793,8 +806,70 @@ class ClinicVisit(TimeStampedModel):
                 ),
             )
 
+        # Generate billing if consultation fee not already charged
+        if not self.consultation_fee_charged:
+            self._generate_consultation_billing(user=user)
+
         self.save()
         return self.encounter
+
+    def _generate_consultation_billing(self, user=None):
+        """
+        Generate billing for consultation fee.
+
+        Creates or uses existing invoice and adds consultation fee line item.
+        """
+        from hmis.apps.billing.models import Invoice, InvoiceItem, Service
+
+        clinic = self.session.clinic
+        consultation_fee = clinic.default_service_fee
+
+        # Skip if no fee configured
+        if not consultation_fee:
+            return
+
+        # Get or create invoice for this encounter/patient
+        invoice = None
+        if self.encounter:
+            # Check for existing draft/pending invoice using TextChoices values
+            invoice = Invoice.objects.filter(
+                encounter=self.encounter,
+                status__in=[Invoice.Status.DRAFT, Invoice.Status.PENDING],
+            ).first()
+
+        if not invoice:
+            invoice = Invoice.objects.create(
+                patient=self.patient,
+                encounter=self.encounter,
+                status=Invoice.Status.DRAFT,
+                created_by=user,
+            )
+
+        # Determine service description
+        is_return = self.visit_type in ["RETURN", "FOLLOW_UP", "REFERRAL"]
+        description = (
+            f"Review/Follow-up Consultation - {clinic.name}"
+            if is_return
+            else f"Consultation - {clinic.name}"
+        )
+
+        # Try to find service by SHA code
+        service = None
+        if clinic.sha_service_code:
+            service = Service.objects.filter(code=clinic.sha_service_code).first()
+
+        # Create invoice line item
+        item = InvoiceItem.objects.create(
+            invoice=invoice,
+            service=service,
+            description=description,
+            quantity=1,
+            unit_price=consultation_fee,
+        )
+
+        # Mark as charged and link to billing
+        self.consultation_fee_charged = True
+        self.billing_line_item = item
 
     def complete_visit(self):
         """Mark visit as completed."""
