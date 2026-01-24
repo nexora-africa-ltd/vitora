@@ -9,7 +9,9 @@ import React, {
   memo,
 } from 'react';
 import Link from 'next/link';
+import Image from 'next/image';
 import { usePathname } from 'next/navigation';
+import { useTheme } from 'next-themes';
 import {
   ChevronLeft,
   ChevronRight,
@@ -68,6 +70,63 @@ interface NavGroupProps {
   isOpen: boolean;
   onToggle: () => void;
   onMobileClose: () => void;
+}
+
+// -----------------------------------------------------------------------------
+// Logo Component
+// -----------------------------------------------------------------------------
+
+function SidebarLogo({ collapsed }: { collapsed: boolean }) {
+  const { resolvedTheme } = useTheme();
+  const [mounted, setMounted] = useState(false);
+
+  // Prevent hydration mismatch
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
+  const isDark = resolvedTheme === 'dark';
+
+  // Show placeholder during SSR/hydration
+  if (!mounted) {
+    return (
+      <div className={cn(
+        'flex items-center gap-2',
+        collapsed ? 'justify-center' : ''
+      )}>
+        <div className="h-8 w-8 rounded-md bg-muted animate-pulse" />
+        {!collapsed && <div className="h-5 w-20 rounded bg-muted animate-pulse" />}
+      </div>
+    );
+  }
+
+  if (collapsed) {
+    // Collapsed: show icon only
+    // Light mode = dark icon, Dark mode = light icon
+    return (
+      <Image
+        src={isDark ? '/light-icon.png' : '/dark-icon.png'}
+        alt="Vitora"
+        width={32}
+        height={32}
+        className="h-8 w-8 object-contain"
+        priority
+      />
+    );
+  }
+
+  // Expanded: show full logo
+  // Light mode = dark logo, Dark mode = light logo
+  return (
+    <Image
+      src={isDark ? '/light-theme-logo.png' : '/dark-theme-logo.png'}
+      alt="Vitora HMIS"
+      width={140}
+      height={40}
+      className="h-8 w-auto object-contain"
+      priority
+    />
+  );
 }
 
 // -----------------------------------------------------------------------------
@@ -303,12 +362,7 @@ export function Sidebar({
         <div className="flex h-full flex-col">
           <div className="flex h-16 items-center justify-between px-4 border-b">
             <Link href="/" className="flex items-center gap-2">
-              <div className="flex h-8 w-8 items-center justify-center rounded-md bg-primary">
-                <span className="text-lg font-bold text-primary-foreground">V</span>
-              </div>
-              {!collapsed && (
-                <span className="font-semibold text-lg">Vitora</span>
-              )}
+              <SidebarLogo collapsed={collapsed} />
             </Link>
             <Button
               variant="ghost"
