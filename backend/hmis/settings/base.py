@@ -55,6 +55,7 @@ INSTALLED_APPS = [
     "hmis.apps.billing",
     "hmis.apps.inpatient",
     "hmis.apps.triage",
+    "hmis.apps.clinics",
 ]
 
 MIDDLEWARE = [

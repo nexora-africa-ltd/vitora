@@ -10,6 +10,7 @@ import React, {
 } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
+import { useTheme } from 'next-themes';
 import {
   ChevronLeft,
   ChevronRight,
@@ -68,6 +69,64 @@ interface NavGroupProps {
   isOpen: boolean;
   onToggle: () => void;
   onMobileClose: () => void;
+}
+
+// -----------------------------------------------------------------------------
+// Logo Component
+// -----------------------------------------------------------------------------
+
+function SidebarLogo({ collapsed }: { collapsed: boolean }) {
+  const { resolvedTheme } = useTheme();
+  const [mounted, setMounted] = useState(false);
+
+  // Prevent hydration mismatch
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
+  // Default to light mode (dark logo) until mounted and theme resolved
+  const isDark = mounted && resolvedTheme === 'dark';
+
+  // Show placeholder during SSR/hydration
+  if (!mounted) {
+    return (
+      <div className={cn(
+        'flex items-center',
+        collapsed ? 'justify-center' : 'w-full'
+      )}>
+        {collapsed ? (
+          <div className="h-12 w-12 rounded-md bg-muted animate-pulse" />
+        ) : (
+          <div className="h-12 w-full rounded bg-muted animate-pulse" />
+        )}
+      </div>
+    );
+  }
+
+  if (collapsed) {
+    // Collapsed: show icon only
+    // Light mode = dark icon, Dark mode = light icon
+    return (
+      // eslint-disable-next-line @next/next/no-img-element
+      <img
+        src={isDark ? '/light-icon.png' : '/dark-icon.png'}
+        alt="Vitora"
+        className="w-full object-cover py-1"
+      />
+    );
+  }
+
+  // Expanded: show full logo - fill sidebar width
+  // Light mode = dark logo, Dark mode = light logo
+  // Using native img for better control over square images with internal padding
+  return (
+    // eslint-disable-next-line @next/next/no-img-element
+    <img
+      src={isDark ? '/light-theme-logo.png' : '/dark-theme-logo.png'}
+      alt="Vitora HMIS"
+      className="w-full object-cover py-1"
+    />
+  );
 }
 
 // -----------------------------------------------------------------------------
@@ -267,8 +326,25 @@ export function Sidebar({
   const logout = useLogout();
 
   const navScrollAreaRef = useRef<HTMLDivElement | null>(null);
+  const [isScrolled, setIsScrolled] = useState(false);
 
   useSidebarPersistence(collapsed, onCollapse);
+
+  // Track scroll position for fade effect
+  useEffect(() => {
+    const scrollArea = navScrollAreaRef.current;
+    if (!scrollArea) return;
+
+    const viewport = scrollArea.querySelector('[data-radix-scroll-area-viewport]');
+    if (!viewport) return;
+
+    const handleScroll = () => {
+      setIsScrolled(viewport.scrollTop > 8);
+    };
+
+    viewport.addEventListener('scroll', handleScroll);
+    return () => viewport.removeEventListener('scroll', handleScroll);
+  }, []);
 
   const activeParent = useMemo(
     () => findParentForPath(pathname),
@@ -301,19 +377,14 @@ export function Sidebar({
         )}
       >
         <div className="flex h-full flex-col">
-          <div className="flex h-16 items-center justify-between px-4 border-b">
-            <Link href="/" className="flex items-center gap-2">
-              <div className="flex h-8 w-8 items-center justify-center rounded-md bg-primary">
-                <span className="text-lg font-bold text-primary-foreground">V</span>
-              </div>
-              {!collapsed && (
-                <span className="font-semibold text-lg">Vitora</span>
-              )}
+          <div className="flex h-20 items-center justify-between px-3 mt-2">
+            <Link href="/" className="flex flex-1 items-center py-2">
+              <SidebarLogo collapsed={collapsed} />
             </Link>
             <Button
               variant="ghost"
               size="icon"
-              className="lg:hidden"
+              className="lg:hidden shrink-0"
               onClick={onMobileClose}
               aria-label="Close sidebar"
             >
@@ -322,6 +393,13 @@ export function Sidebar({
           </div>
 
           <div className="relative flex-1 min-h-0">
+            {/* Top fade gradient when scrolled */}
+            <div
+              className={cn(
+                'pointer-events-none absolute inset-x-0 top-0 z-10 h-6 bg-gradient-to-b from-card/95 via-card/60 to-transparent transition-opacity duration-200',
+                isScrolled ? 'opacity-100' : 'opacity-0'
+              )}
+            />
             <ScrollArea ref={navScrollAreaRef} className="h-full min-h-0 px-3">
               <div className="space-y-1 py-2">
                 {mainNavItems.map((item) =>

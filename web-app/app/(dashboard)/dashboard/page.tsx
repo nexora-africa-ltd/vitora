@@ -124,87 +124,90 @@ export default function DashboardPage() {
       </div>
 
       {/* Content grid */}
-      <div className="grid gap-6 lg:grid-cols-2">
-        {/* My Claimed Encounters - for clinicians */}
-        <Card className="overflow-hidden">
-          <CardHeader className="flex flex-col sm:flex-row sm:items-center sm:justify-between space-y-2 sm:space-y-0 pb-2">
-            <div className="min-w-0 flex-1">
-              <CardTitle className="flex items-center gap-2 text-base sm:text-lg">
-                <UserCheck className="h-4 w-4 sm:h-5 sm:w-5 text-primary shrink-0" />
-                <span className="truncate">My Active Consultations</span>
-              </CardTitle>
+      <div className="grid gap-6 lg:grid-cols-2 items-start">
+        {/* Left column: My Claimed + Alerts stacked */}
+        <div className="space-y-6">
+          {/* My Claimed Encounters - for clinicians */}
+          <Card>
+            <CardHeader className="flex flex-col sm:flex-row sm:items-center sm:justify-between space-y-2 sm:space-y-0 pb-2">
+              <div>
+                <CardTitle className="flex items-center gap-2 text-base sm:text-lg">
+                  <UserCheck className="h-4 w-4 sm:h-5 sm:w-5 text-primary" />
+                  My Active Consultations
+                </CardTitle>
+                <CardDescription className="text-xs sm:text-sm">
+                  Encounters you&apos;ve claimed and are working on
+                </CardDescription>
+              </div>
+              <Button variant="ghost" size="sm" asChild className="self-start sm:self-auto">
+                <Link href="/encounters?filter=my_claimed">
+                  View All
+                  <ArrowRight className="ml-1 h-4 w-4" />
+                </Link>
+              </Button>
+            </CardHeader>
+            <CardContent>
+              <MyClaimedEncountersWidget />
+            </CardContent>
+          </Card>
+
+          {/* Alerts widget */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-base sm:text-lg">Active Alerts</CardTitle>
               <CardDescription className="text-xs sm:text-sm">
-                Encounters you&apos;ve claimed and are working on
+                Critical items requiring attention
               </CardDescription>
-            </div>
-            <Button variant="ghost" size="sm" asChild className="self-start sm:self-auto shrink-0">
-              <Link href="/encounters?filter=my_claimed">
-                View All
-                <ArrowRight className="ml-1 h-4 w-4" />
-              </Link>
-            </Button>
-          </CardHeader>
-          <CardContent className="overflow-x-auto">
-            <MyClaimedEncountersWidget />
-          </CardContent>
-        </Card>
+            </CardHeader>
+            <CardContent>
+              <AlertsWidget />
+            </CardContent>
+          </Card>
+        </div>
 
         {/* Recent patients */}
-        <Card className="overflow-hidden">
+        <Card>
           <CardHeader className="flex flex-col sm:flex-row sm:items-center sm:justify-between space-y-2 sm:space-y-0 pb-2">
-            <div className="min-w-0 flex-1">
-              <CardTitle className="text-base sm:text-lg truncate">Recent Patients</CardTitle>
+            <div>
+              <CardTitle className="text-base sm:text-lg">Recent Patients</CardTitle>
               <CardDescription className="text-xs sm:text-sm">
                 Patients registered or seen recently
               </CardDescription>
             </div>
-            <Button variant="ghost" size="sm" asChild className="self-start sm:self-auto shrink-0">
+            <Button variant="ghost" size="sm" asChild className="self-start sm:self-auto">
               <Link href="/patients">
                 View All
                 <ArrowRight className="ml-1 h-4 w-4" />
               </Link>
             </Button>
           </CardHeader>
-          <CardContent className="overflow-x-auto">
+          <CardContent>
             <RecentPatients />
-          </CardContent>
-        </Card>
-
-        {/* Alerts widget */}
-        <Card className="overflow-hidden">
-          <CardHeader>
-            <CardTitle className="text-base sm:text-lg">Active Alerts</CardTitle>
-            <CardDescription className="text-xs sm:text-sm">
-              Critical items requiring attention
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="overflow-x-auto">
-            <AlertsWidget />
           </CardContent>
         </Card>
       </div>
 
       {/* Supervisor section - All Claimed Encounters */}
       {isSupervisor && (
-        <Card className="overflow-hidden">
+        <Card>
           <CardHeader className="flex flex-col sm:flex-row sm:items-center sm:justify-between space-y-2 sm:space-y-0 pb-2">
-            <div className="min-w-0 flex-1">
+            <div>
               <CardTitle className="flex items-center gap-2 text-base sm:text-lg">
-                <UserCheck className="h-4 w-4 sm:h-5 sm:w-5 shrink-0" />
-                <span className="truncate">Active Consultations</span>
+                <UserCheck className="h-4 w-4 sm:h-5 sm:w-5" />
+                Active Consultations
               </CardTitle>
               <CardDescription className="text-xs sm:text-sm">
                 All encounters currently being attended by clinicians
               </CardDescription>
             </div>
-            <Button variant="ghost" size="sm" asChild className="self-start sm:self-auto shrink-0">
+            <Button variant="ghost" size="sm" asChild className="self-start sm:self-auto">
               <Link href="/encounters?filter=all_claimed">
                 View All
                 <ArrowRight className="ml-1 h-4 w-4" />
               </Link>
             </Button>
           </CardHeader>
-          <CardContent className="overflow-x-auto">
+          <CardContent>
             <AllClaimedEncountersWidget enabled={isSupervisor} />
           </CardContent>
         </Card>
