@@ -229,6 +229,16 @@ class Encounter(models.Model):
         related_name="encounters",
         help_text="Patient associated with this encounter",
     )
+
+    # Clinic Visit Integration (Sprint 2.5 - Clinic Integration)
+    clinic_visit = models.ForeignKey(
+        "clinics.ClinicVisit",
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="encounters",
+        help_text="Clinic visit that initiated this encounter (if routed via clinic queue)",
+    )
     encounter_type = models.CharField(
         max_length=20, choices=ENCOUNTER_TYPE_CHOICES, help_text="Type of encounter"
     )
