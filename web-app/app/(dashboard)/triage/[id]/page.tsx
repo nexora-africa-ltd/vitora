@@ -9,7 +9,7 @@
 
 import { useCallback, useState } from 'react';
 import { useRouter, useParams } from 'next/navigation';
-import { ArrowLeft, Edit2 } from 'lucide-react';
+import { ArrowLeft, Edit2, Building2 } from 'lucide-react';
 import { PageHeader } from '@/components/shared/page-header';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -18,6 +18,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import {
   TriageCategoryBadge,
   VitalAlertsPanel,
+  RouteToClinicDialog,
 } from '@/components/triage';
 import {
   useTriageAssessment,
@@ -33,6 +34,7 @@ export default function TriageAssessmentDetailPage() {
   const assessmentId = params.id as string;
 
   const [isEditing, setIsEditing] = useState(false);
+  const [routeDialogOpen, setRouteDialogOpen] = useState(false);
 
   // Fetch assessment data
   const {
@@ -83,6 +85,14 @@ export default function TriageAssessmentDetailPage() {
     router.push('/triage');
   }, [router]);
 
+  const handleRouteSuccess = useCallback(() => {
+    refetch();
+    toast({
+      title: 'Success',
+      description: 'Patient has been routed to clinic queue.',
+    });
+  }, [refetch]);
+
   if (isLoading) {
     return (
       <div className="space-y-6">
@@ -124,10 +134,16 @@ export default function TriageAssessmentDetailPage() {
               Back
             </Button>
             {!isEditing && (
-              <Button onClick={handleEdit}>
-                <Edit2 className="h-4 w-4 mr-2" />
-                Edit
-              </Button>
+              <>
+                <Button variant="outline" onClick={() => setRouteDialogOpen(true)}>
+                  <Building2 className="h-4 w-4 mr-2" />
+                  Route to Clinic
+                </Button>
+                <Button onClick={handleEdit}>
+                  <Edit2 className="h-4 w-4 mr-2" />
+                  Edit
+                </Button>
+              </>
             )}
           </div>
         }
@@ -285,6 +301,14 @@ export default function TriageAssessmentDetailPage() {
           </Card>
         </div>
       </div>
+
+      {/* Route to Clinic Dialog */}
+      <RouteToClinicDialog
+        open={routeDialogOpen}
+        onOpenChange={setRouteDialogOpen}
+        assessment={assessment}
+        onSuccess={handleRouteSuccess}
+      />
     </div>
   );
 }

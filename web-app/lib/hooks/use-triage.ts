@@ -194,6 +194,35 @@ export function useCompleteTriageAssessment() {
 }
 
 /**
+ * Route triaged patient to a specific clinic.
+ * Creates a ClinicVisit in the target clinic's queue.
+ */
+export function useRouteToClinic() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async ({
+      assessmentId,
+      clinicId,
+      notes,
+    }: {
+      assessmentId: number;
+      clinicId: number;
+      notes?: string;
+    }) => {
+      return triageApi.routeToClinic(assessmentId, { clinic_id: clinicId, notes });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: triageKeys.queue() });
+      queryClient.invalidateQueries({ queryKey: triageKeys.assessments() });
+      queryClient.invalidateQueries({ queryKey: triageKeys.waitingQueue() });
+      // Also invalidate clinic queues
+      queryClient.invalidateQueries({ queryKey: ['clinics'] });
+    },
+  });
+}
+
+/**
  * Calculate triage category based on vitals and symptoms
  */
 export function useCalculateTriageCategory() {

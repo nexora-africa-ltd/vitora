@@ -88,6 +88,29 @@ export interface WaitTimeStatsResponse {
   by_category: WaitTimeStats[];
 }
 
+export interface RouteToClinicResponse {
+  id: number;
+  queue_number: string;
+  patient: {
+    id: number;
+    full_name: string;
+    mrn: string;
+  };
+  session: {
+    id: number;
+    clinic: {
+      id: number;
+      name: string;
+    };
+    session_date: string;
+  };
+  status: string;
+  priority: string;
+  chief_complaint: string;
+  notes: string;
+  registered_at: string;
+}
+
 // =============================================================================
 // WAITING QUEUE TYPES
 // =============================================================================
@@ -191,6 +214,21 @@ export const triageApi = {
   async completeAssessment(id: number): Promise<TriageAssessment> {
     const response = await apiClient.post<TriageAssessment>(
       `/api/triage/assessments/${id}/complete/`
+    );
+    return response.data;
+  },
+
+  /**
+   * Route a triaged patient to a specific clinic.
+   * Creates a ClinicVisit in the target clinic's queue.
+   */
+  async routeToClinic(
+    assessmentId: number,
+    data: { clinic_id: number; notes?: string }
+  ): Promise<RouteToClinicResponse> {
+    const response = await apiClient.post<RouteToClinicResponse>(
+      `/api/triage/assessments/${assessmentId}/route-to-clinic/`,
+      data
     );
     return response.data;
   },
