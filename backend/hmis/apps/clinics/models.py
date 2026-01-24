@@ -260,6 +260,15 @@ class Clinic(TimeStampedModel):
         )
         return session
 
+    def get_or_create_session(self, session_date):
+        """Get or create a clinic session for a specific date."""
+        session, created = ClinicSession.objects.get_or_create(
+            clinic=self,
+            session_date=session_date,
+            defaults={"status": "SCHEDULED"},
+        )
+        return session, created
+
 
 # =============================================================================
 # ClinicSchedule Model - Operating Hours
