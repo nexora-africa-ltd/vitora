@@ -1,16 +1,28 @@
 /**
  * TDD Tests for Patient Hooks
- * Tests usePatients and usePatient hooks
+ *
+ * Tests for consolidated patient hooks:
+ * - usePatients, usePatient (read)
+ * - usePatientEmergencyContacts, usePatientEncounters (related)
+ * - useCreatePatient, useUpdatePatient, useDeletePatient (mutations)
  */
 import React from 'react';
-import { renderHook, waitFor } from '@testing-library/react';
+import { renderHook, waitFor, act } from '@testing-library/react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { usePatients, usePatient } from '@/lib/hooks/use-patients';
-import { apiClient } from '@/lib/api/client';
+import {
+  usePatients,
+  usePatient,
+  usePatientEmergencyContacts,
+  usePatientEncounters,
+  useCreatePatient,
+  useUpdatePatient,
+  useDeletePatient,
+} from '@/lib/hooks/use-patients';
+import { patientsApi } from '@/lib/api/patients';
 
-jest.mock('@/lib/api/client');
+jest.mock('@/lib/api/patients');
 
-const mockApiClient = apiClient as jest.Mocked<typeof apiClient>;
+const mockPatientsApi = patientsApi as jest.Mocked<typeof patientsApi>;
 
 const createWrapper = () => {
   const queryClient = new QueryClient({
@@ -27,113 +39,219 @@ const createWrapper = () => {
   return Wrapper;
 };
 
-describe('usePatients', () => {
+describe('Patient Hooks', () => {
   beforeEach(() => {
     jest.clearAllMocks();
   });
 
-  it('should fetch patients list', async () => {
-    const mockPatients = {
-      count: 2,
-      next: null,
-      previous: null,
-      results: [
-        { id: 1, mrn: 'MRN-001', first_name: 'John' },
-        { id: 2, mrn: 'MRN-002', first_name: 'Jane' },
-      ],
-    };
-    mockApiClient.get.mockResolvedValue({ data: mockPatients });
+  // ===========================================================================
+  // usePatients
+  // ===========================================================================
+  describe('usePatients', () => {
+    it('should fetch patients list', async () => {
+      const mockPatients = {
+        count: 2,
+        next: null,
+        previous: null,
+        results: [
+          { id: 1, mrn: 'MRN-001', first_name: 'John' },
+          { id: 2, mrn: 'MRN-002', first_name: 'Jane' },
+        ],
+      };
+      mockPatientsApi.getPatients.mockResolvedValue(mockPatients as any);
 
-    const { result } = renderHook(() => usePatients(), { wrapper: createWrapper() });
+      const { result } = renderHook(() => usePatients(), { wrapper: createWrapper() });
 
-    await waitFor(() => expect(result.current.isSuccess).toBe(true));
+      await waitFor(() => expect(result.current.isSuccess).toBe(true));
 
-    expect(result.current.data?.results).toHaveLength(2);
-  });
-
-  it('should pass search parameter to API', async () => {
-    mockApiClient.get.mockResolvedValue({
-      data: { count: 0, results: [] },
+      expect(result.current.data?.results).toHaveLength(2);
     });
 
-    const { result } = renderHook(
-      () => usePatients({ search: 'john' }),
-      { wrapper: createWrapper() }
-    );
+    it('should pass filter params to API', async () => {
+      mockPatientsApi.getPatients.mockResolvedValue({ count: 0, results: [] } as any);
 
-    await waitFor(() => expect(result.current.isSuccess).toBe(true));
+      renderHook(() => usePatients({ search: 'john', page: 2 }), { wrapper: createWrapper() });
 
-    const url = mockApiClient.get.mock.calls[0]?.[0];
-    expect(url).toContain('search=john');
-  });
-
-  it('should handle pagination parameters', async () => {
-    mockApiClient.get.mockResolvedValue({
-      data: { count: 100, results: [] },
+      await waitFor(() => expect(mockPatientsApi.getPatients).toHaveBeenCalledWith(
+        expect.objectContaining({ search: 'john', page: 2 })
+      ));
     });
 
-    renderHook(
-      () => usePatients({ page: 2, limit: 25 }),
-      { wrapper: createWrapper() }
-    );
+    it('should handle API errors', async () => {
+      const error = new Error('Network error');
+      mockPatientsApi.getPatients.mockRejectedValue(error);
 
-    await waitFor(() => expect(mockApiClient.get).toHaveBeenCalled());
+      const { result } = renderHook(() => usePatients(), { wrapper: createWrapper() });
 
-    const url = mockApiClient.get.mock.calls[0]?.[0];
-    expect(url).toContain('page=2');
-    expect(url).toContain('page_size=25'); // Django REST Framework uses page_size
+      await waitFor(() => expect(result.current.isError).toBe(true));
+    });
   });
 
-  it('should handle API errors', async () => {
-    const error = new Error('Network error');
-    mockApiClient.get.mockRejectedValue(error);
+  // ===========================================================================
+  // usePatient
+  // ===========================================================================
+  describe('usePatient', () => {
+    it('should fetch single patient by id', async () => {
+      const mockPatient = { id: 1, mrn: 'MRN-001', first_name: 'John', last_name: 'Doe' };
+      mockPatientsApi.getPatient.mockResolvedValue(mockPatient as any);
 
-    const { result } = renderHook(() => usePatients(), { wrapper: createWrapper() });
+      const { result } = renderHook(() => usePatient(1), { wrapper: createWrapper() });
 
-    await waitFor(() => expect(result.current.isError).toBe(true));
+      await waitFor(() => expect(result.current.isSuccess).toBe(true));
 
-    expect(result.current.error).toBeDefined();
-  });
-});
+      expect(result.current.data).toEqual(mockPatient);
+    });
 
-describe('usePatient', () => {
-  beforeEach(() => {
-    jest.clearAllMocks();
-  });
+    it('should accept string id and convert to number', async () => {
+      const mockPatient = { id: 1, mrn: 'MRN-001', first_name: 'John' };
+      mockPatientsApi.getPatient.mockResolvedValue(mockPatient as any);
 
-  it('should fetch a single patient by ID', async () => {
-    const mockPatient = {
-      id: 1,
-      mrn: 'MRN-20251230-0001',
-      first_name: 'John',
-      last_name: 'Doe',
-      date_of_birth: '1990-05-15',
-      gender: 'M',
-    };
-    mockApiClient.get.mockResolvedValue({ data: mockPatient });
+      const { result } = renderHook(() => usePatient('1'), { wrapper: createWrapper() });
 
-    const { result } = renderHook(() => usePatient(1), { wrapper: createWrapper() });
+      await waitFor(() => expect(result.current.isSuccess).toBe(true));
+      expect(mockPatientsApi.getPatient).toHaveBeenCalledWith(1);
+    });
 
-    await waitFor(() => expect(result.current.isSuccess).toBe(true));
+    it('should not fetch when id is falsy', async () => {
+      const { result } = renderHook(() => usePatient(0), { wrapper: createWrapper() });
 
-    expect(result.current.data?.mrn).toBe('MRN-20251230-0001');
-    expect(mockApiClient.get).toHaveBeenCalledWith('/api/patients/1/');
+      expect(result.current.fetchStatus).toBe('idle');
+    });
   });
 
-  it('should not fetch when ID is not provided', () => {
-    const { result } = renderHook(() => usePatient(''), { wrapper: createWrapper() });
+  // ===========================================================================
+  // usePatientEmergencyContacts
+  // ===========================================================================
+  describe('usePatientEmergencyContacts', () => {
+    it('should fetch emergency contacts for patient', async () => {
+      const mockContacts = [
+        { id: 1, name: 'Jane Doe', phone: '0712345678', relationship: 'Spouse' },
+      ];
+      mockPatientsApi.getEmergencyContacts.mockResolvedValue(mockContacts as any);
 
-    expect(result.current.fetchStatus).toBe('idle');
-    expect(mockApiClient.get).not.toHaveBeenCalled();
+      const { result } = renderHook(() => usePatientEmergencyContacts(1), { wrapper: createWrapper() });
+
+      await waitFor(() => expect(result.current.isSuccess).toBe(true));
+
+      expect(result.current.data).toEqual(mockContacts);
+    });
+
+    it('should not fetch when patientId is falsy', () => {
+      const { result } = renderHook(() => usePatientEmergencyContacts(0), { wrapper: createWrapper() });
+      expect(result.current.fetchStatus).toBe('idle');
+    });
   });
 
-  it('should accept string or number ID', async () => {
-    mockApiClient.get.mockResolvedValue({ data: { id: 123 } });
+  // ===========================================================================
+  // usePatientEncounters
+  // ===========================================================================
+  describe('usePatientEncounters', () => {
+    it('should fetch encounters for patient', async () => {
+      const mockEncounters = [
+        { id: 1, encounter_type: 'OPD', chief_complaint: 'Headache' },
+        { id: 2, encounter_type: 'EMERGENCY', chief_complaint: 'Injury' },
+      ];
+      mockPatientsApi.getEncounters.mockResolvedValue(mockEncounters as any);
 
-    const { result } = renderHook(() => usePatient('123'), { wrapper: createWrapper() });
+      const { result } = renderHook(() => usePatientEncounters(1), { wrapper: createWrapper() });
 
-    await waitFor(() => expect(result.current.isSuccess).toBe(true));
+      await waitFor(() => expect(result.current.isSuccess).toBe(true));
 
-    expect(mockApiClient.get).toHaveBeenCalledWith('/api/patients/123/');
+      expect(result.current.data).toHaveLength(2);
+    });
+
+    it('should not fetch when patientId is falsy', () => {
+      const { result } = renderHook(() => usePatientEncounters(0), { wrapper: createWrapper() });
+      expect(result.current.fetchStatus).toBe('idle');
+    });
+  });
+
+  // ===========================================================================
+  // useCreatePatient
+  // ===========================================================================
+  describe('useCreatePatient', () => {
+    it('should create a new patient', async () => {
+      const newPatient = { first_name: 'New', last_name: 'Patient', date_of_birth: '1990-01-01', gender: 'M' };
+      const createdPatient = { id: 3, mrn: 'MRN-003', ...newPatient };
+      mockPatientsApi.createPatient.mockResolvedValue(createdPatient as any);
+
+      const { result } = renderHook(() => useCreatePatient(), { wrapper: createWrapper() });
+
+      await act(async () => {
+        result.current.mutate({ data: newPatient as any });
+      });
+
+      await waitFor(() => expect(result.current.isSuccess).toBe(true));
+
+      expect(mockPatientsApi.createPatient).toHaveBeenCalledWith(newPatient, undefined);
+    });
+
+    it('should pass idempotency key when provided', async () => {
+      const newPatient = { first_name: 'New', last_name: 'Patient' };
+      mockPatientsApi.createPatient.mockResolvedValue({ id: 1, ...newPatient } as any);
+
+      const { result } = renderHook(() => useCreatePatient(), { wrapper: createWrapper() });
+
+      await act(async () => {
+        result.current.mutate({ data: newPatient as any, idempotencyKey: 'test-key-123' });
+      });
+
+      await waitFor(() => expect(result.current.isSuccess).toBe(true));
+
+      expect(mockPatientsApi.createPatient).toHaveBeenCalledWith(newPatient, 'test-key-123');
+    });
+
+    it('should handle creation errors', async () => {
+      const error = new Error('Validation failed');
+      mockPatientsApi.createPatient.mockRejectedValue(error);
+
+      const { result } = renderHook(() => useCreatePatient(), { wrapper: createWrapper() });
+
+      await act(async () => {
+        result.current.mutate({ data: { first_name: '' } as any });
+      });
+
+      await waitFor(() => expect(result.current.isError).toBe(true));
+    });
+  });
+
+  // ===========================================================================
+  // useUpdatePatient
+  // ===========================================================================
+  describe('useUpdatePatient', () => {
+    it('should update an existing patient', async () => {
+      const updateData = { first_name: 'Updated' };
+      const updatedPatient = { id: 1, mrn: 'MRN-001', first_name: 'Updated', last_name: 'Doe' };
+      mockPatientsApi.updatePatient.mockResolvedValue(updatedPatient as any);
+
+      const { result } = renderHook(() => useUpdatePatient(), { wrapper: createWrapper() });
+
+      await act(async () => {
+        result.current.mutate({ id: 1, data: updateData });
+      });
+
+      await waitFor(() => expect(result.current.isSuccess).toBe(true));
+
+      expect(mockPatientsApi.updatePatient).toHaveBeenCalledWith(1, updateData);
+    });
+  });
+
+  // ===========================================================================
+  // useDeletePatient
+  // ===========================================================================
+  describe('useDeletePatient', () => {
+    it('should delete a patient', async () => {
+      mockPatientsApi.deletePatient.mockResolvedValue(undefined);
+
+      const { result } = renderHook(() => useDeletePatient(), { wrapper: createWrapper() });
+
+      await act(async () => {
+        result.current.mutate(1);
+      });
+
+      await waitFor(() => expect(result.current.isSuccess).toBe(true));
+
+      expect(mockPatientsApi.deletePatient).toHaveBeenCalledWith(1);
+    });
   });
 });

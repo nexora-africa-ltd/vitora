@@ -34,8 +34,8 @@ const VITAL_THRESHOLDS = {
   },
   temperature: {
     criticalLow: 35.0,
-    warningLow: 36.0,
-    warningHigh: 38.5,
+    warningLow: 36.5,
+    warningHigh: 37.5,
     criticalHigh: 40.0,
   },
   respiratoryRate: {

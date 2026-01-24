@@ -29,3 +29,11 @@ export type {
   EncounterType,
   EncounterStatusType,
 } from './constants';
+
+// Idempotency utilities (Sprint 1.7)
+export {
+  generateIdempotencyKey,
+  getOrCreateIdempotencyKey,
+  clearIdempotencyKey,
+  useIdempotencyKey,
+} from './idempotency';

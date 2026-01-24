@@ -72,6 +72,18 @@ CORS_ALLOWED_ORIGINS = [
     ).split(",")
     if origin.strip()
 ]
+CORS_ALLOW_HEADERS = [
+    "accept",
+    "accept-encoding",
+    "authorization",
+    "content-type",
+    "dnt",
+    "origin",
+    "user-agent",
+    "x-csrftoken",
+    "x-requested-with",
+    "x-idempotency-key",  # Sprint 1.7: Idempotent API operations
+]
 
 CSRF_TRUSTED_ORIGINS = [
     origin.strip()

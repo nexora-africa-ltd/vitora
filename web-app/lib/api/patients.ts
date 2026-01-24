@@ -36,10 +36,27 @@ export const patientsApi = {
   },
 
   /**
-   * Create a new patient
+   * Create a new patient with optional idempotency support.
+   *
+   * Sprint 1.7: Data Integrity - Idempotent API Operations
+   *
+   * When an idempotency key is provided:
+   * - First request: Creates the patient and caches the response
+   * - Subsequent requests with same key: Returns the cached response
+   *
+   * This prevents duplicate patient creation on network retries or
+   * accidental double-submissions.
+   *
+   * @param data - Patient data to create
+   * @param idempotencyKey - Optional UUID to prevent duplicate creation
+   * @returns The created patient
    */
-  async createPatient(data: PatientCreateData): Promise<Patient> {
-    const response = await apiClient.post<Patient>('/api/patients/', data);
+  async createPatient(data: PatientCreateData, idempotencyKey?: string): Promise<Patient> {
+    const headers: Record<string, string> = {};
+    if (idempotencyKey) {
+      headers['X-Idempotency-Key'] = idempotencyKey;
+    }
+    const response = await apiClient.post<Patient>('/api/patients/', data, { headers });
     return response.data;
   },
 

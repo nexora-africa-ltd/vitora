@@ -290,6 +290,14 @@ class EncounterSerializer(serializers.ModelSerializer):
         source="chief_complaint_edited_by.username", read_only=True, allow_null=True
     )
 
+    # Clinician claim fields (Sprint 1.7 - Data Integrity)
+    assigned_clinician = serializers.PrimaryKeyRelatedField(read_only=True)
+    assigned_clinician_username = serializers.CharField(
+        source="assigned_clinician.username", read_only=True, allow_null=True
+    )
+    assigned_clinician_name = serializers.SerializerMethodField()
+    claimed_at = serializers.DateTimeField(read_only=True)
+
     class Meta:
         model = Encounter
         fields = [
@@ -360,6 +368,11 @@ class EncounterSerializer(serializers.ModelSerializer):
             "chief_complaint_edited_by",
             "chief_complaint_edited_by_username",
             "chief_complaint_edited_at",
+            # Clinician claim fields (Sprint 1.7 - Data Integrity)
+            "assigned_clinician",
+            "assigned_clinician_username",
+            "assigned_clinician_name",
+            "claimed_at",
             "created_at",
             "updated_at",
         ]
@@ -403,9 +416,20 @@ class EncounterSerializer(serializers.ModelSerializer):
             "chief_complaint_edited_by",
             "chief_complaint_edited_by_username",
             "chief_complaint_edited_at",
+            # Clinician claim fields (Sprint 1.7 - Data Integrity)
+            "assigned_clinician",
+            "assigned_clinician_username",
+            "assigned_clinician_name",
+            "claimed_at",
             "created_at",
             "updated_at",
         ]
+
+    def get_assigned_clinician_name(self, obj: Encounter) -> str | None:
+        """Get the full name of the assigned clinician."""
+        if obj.assigned_clinician:
+            return obj.assigned_clinician.get_full_name() or obj.assigned_clinician.username
+        return None
 
     def get_alerts(self, obj: Encounter) -> str:
         """Get alerts for critical vital signs."""

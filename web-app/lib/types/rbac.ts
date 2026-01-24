@@ -245,6 +245,7 @@ export interface StaffListParams {
   department?: number;
   role?: number;
   is_active?: boolean;
+  employment_status?: EmploymentStatus;
 }
 
 export interface AuditLogListParams {

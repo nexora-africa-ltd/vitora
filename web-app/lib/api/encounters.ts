@@ -8,6 +8,12 @@ import {
   EncounterListParams,
   Diagnosis,
   TreatmentPlan,
+  EncounterClaimResponse,
+  EncounterReleaseResponse,
+  MyClaimedEncountersParams,
+  MyClaimedEncountersResponse,
+  AllClaimedEncountersParams,
+  AllClaimedEncountersResponse,
 } from '@/lib/types/encounter';
 import { PaginatedResponse } from '@/lib/types';
 
@@ -52,6 +58,112 @@ export const encountersApi = {
    */
   async finalize(id: number): Promise<Encounter> {
     const response = await apiClient.post<Encounter>(`/api/encounters/${id}/finalize/`);
+    return response.data;
+  },
+
+  // ===========================================================================
+  // Quick Consultation (Start consultation directly from patient list)
+  // ===========================================================================
+
+  /**
+   * Start a quick consultation for a patient.
+   *
+   * Creates a new OPD encounter and claims it in one step, or claims
+   * an existing unclaimed encounter for the patient.
+   *
+   * This is the preferred way to start a consultation from the patient list.
+   *
+   * @param patientId - The patient ID
+   * @param options - Optional encounter details
+   * @returns The created/claimed encounter
+   * @throws 409 Conflict if patient has an active encounter with another clinician
+   */
+  async quickConsultation(
+    patientId: number,
+    options?: { chief_complaint?: string; encounter_type?: string }
+  ): Promise<Encounter> {
+    const response = await apiClient.post<Encounter>(
+      '/api/encounters/quick_consultation/',
+      {
+        patient: patientId,
+        ...options,
+      }
+    );
+    return response.data;
+  },
+
+  // ===========================================================================
+  // Clinician Claim/Release Actions (Data Integrity - Sprint 1.7)
+  // ===========================================================================
+
+  /**
+   * Claim an encounter for consultation.
+   *
+   * Prevents multiple clinicians from attending the same patient.
+   * Uses database-level locking to prevent race conditions.
+   *
+   * @param id - The encounter ID to claim
+   * @returns Claim confirmation with timestamp
+   * @throws 409 Conflict if already claimed by another clinician
+   * @throws 400 Bad Request if encounter status is invalid
+   */
+  async claim(id: number): Promise<EncounterClaimResponse> {
+    const response = await apiClient.post<EncounterClaimResponse>(
+      `/api/encounters/${id}/claim/`
+    );
+    return response.data;
+  },
+
+  /**
+   * Release an encounter you previously claimed.
+   *
+   * Only the assigned clinician can release an encounter.
+   * This allows another clinician to take over.
+   *
+   * @param id - The encounter ID to release
+   * @returns Release confirmation
+   * @throws 403 Forbidden if not the assigned clinician
+   * @throws 400 Bad Request if encounter is completed/cancelled
+   */
+  async release(id: number): Promise<EncounterReleaseResponse> {
+    const response = await apiClient.post<EncounterReleaseResponse>(
+      `/api/encounters/${id}/release/`
+    );
+    return response.data;
+  },
+
+  /**
+   * Get encounters claimed by the current user.
+   *
+   * Returns all encounters where the current user is the assigned clinician.
+   * By default, excludes completed encounters.
+   *
+   * @param params - Optional filters (status, include_completed)
+   * @returns List of claimed encounters with count
+   */
+  async getMyClaimed(params?: MyClaimedEncountersParams): Promise<MyClaimedEncountersResponse> {
+    const response = await apiClient.get<MyClaimedEncountersResponse>(
+      '/api/encounters/my_claimed/',
+      { params }
+    );
+    return response.data;
+  },
+
+  /**
+   * Get all claimed encounters (supervisor/management view).
+   *
+   * Returns all encounters that are currently claimed by any clinician.
+   * Requires supervisor-level access (hierarchy_level <= 3) or specific permission.
+   *
+   * @param params - Optional filters (status, include_completed, clinician, department)
+   * @returns List of all claimed encounters with count
+   * @throws 403 Forbidden if user lacks supervisor access
+   */
+  async getAllClaimed(params?: AllClaimedEncountersParams): Promise<AllClaimedEncountersResponse> {
+    const response = await apiClient.get<AllClaimedEncountersResponse>(
+      '/api/encounters/all_claimed/',
+      { params }
+    );
     return response.data;
   },
 

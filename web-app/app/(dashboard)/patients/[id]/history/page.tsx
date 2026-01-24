@@ -6,7 +6,7 @@ import { ArrowLeft, User } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { PatientTimeline } from '@/components/patients/patient-timeline';
-import { usePatient } from '@/lib/hooks/use-patients-enhanced';
+import { usePatient } from '@/lib/hooks/use-patients';
 
 export default function PatientHistoryPage() {
   const params = useParams();

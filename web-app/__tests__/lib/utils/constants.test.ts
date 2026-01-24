@@ -111,8 +111,8 @@ describe('constants', () => {
   describe('VITAL_RANGES', () => {
     it('should have temperature range', () => {
       expect(VITAL_RANGES.temperature).toEqual({
-        min: 36.1,
-        max: 37.2,
+        min: 36.5,
+        max: 37.5,
         unit: '°C',
       });
     });

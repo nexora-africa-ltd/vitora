@@ -505,6 +505,23 @@ class Encounter(models.Model):
         help_text="Timestamp when chief complaint was edited",
     )
 
+    # =========================================================================
+    # Clinician Assignment Fields (Data Integrity - Sprint 1.7)
+    # =========================================================================
+    assigned_clinician = models.ForeignKey(
+        "auth.User",
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="assigned_encounters",
+        help_text="Clinician currently attending this encounter",
+    )
+    claimed_at = models.DateTimeField(
+        null=True,
+        blank=True,
+        help_text="Timestamp when clinician claimed this encounter",
+    )
+
     # Timestamps
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
@@ -517,6 +534,15 @@ class Encounter(models.Model):
             models.Index(fields=["patient", "-encounter_date"]),
             models.Index(fields=["encounter_type"]),
             models.Index(fields=["encounter_date"]),
+            models.Index(fields=["assigned_clinician", "status"]),
+        ]
+        constraints = [
+            # Only ONE IN_PROGRESS encounter per patient at a time
+            models.UniqueConstraint(
+                fields=["patient"],
+                condition=models.Q(status="IN_PROGRESS"),
+                name="unique_active_encounter_per_patient",
+            ),
         ]
         verbose_name = "Encounter"
         verbose_name_plural = "Encounters"
@@ -588,6 +614,29 @@ class Encounter(models.Model):
                     "triage_status": "Mandatory triage cannot be bypassed. Complete triage assessment or change encounter type."
                 }
             )
+
+        # =====================================================================
+        # Clinician Assignment Validation (Data Integrity - Sprint 1.7)
+        # =====================================================================
+
+        # Prevent reassigning an encounter that's already being attended
+        if self.pk and self.assigned_clinician:
+            try:
+                original = Encounter.objects.get(pk=self.pk)
+                if (
+                    original.assigned_clinician
+                    and original.assigned_clinician != self.assigned_clinician
+                    and original.status == "IN_PROGRESS"
+                ):
+                    raise ValidationError(
+                        {
+                            "assigned_clinician": f"This encounter is already being attended by "
+                            f"{original.assigned_clinician.username}. "
+                            f"They must release it before another clinician can claim it."
+                        }
+                    )
+            except Encounter.DoesNotExist:
+                pass  # New encounter, no validation needed
 
     def save(self, *args, **kwargs):
         """Override save to auto-set triage fields based on encounter type."""

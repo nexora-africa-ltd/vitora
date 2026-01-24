@@ -38,7 +38,7 @@ import {
 import { Skeleton } from '@/components/ui/skeleton';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { useToast } from '@/lib/hooks/use-toast';
-import { useStaffProfile, useUpdateStaffProfile, useDeactivateStaffProfile, useDepartments, useRoles } from '@/lib/hooks/use-rbac';
+import { useStaffProfile, useUpdateStaffProfile, useDeleteStaffProfile, useDepartments, useRoles } from '@/lib/hooks/use-rbac';
 
 export default function EditStaffPage() {
   const router = useRouter();
@@ -48,7 +48,7 @@ export default function EditStaffPage() {
 
   const { data: staff, isLoading, error } = useStaffProfile(staffId);
   const updateStaff = useUpdateStaffProfile();
-  const deactivateStaff = useDeactivateStaffProfile();
+  const terminateStaff = useDeleteStaffProfile();
 
   const { data: departments } = useDepartments({ is_active: true });
   const { data: roles } = useRoles();
@@ -168,14 +168,11 @@ export default function EditStaffPage() {
 
   const handleDeactivate = async () => {
     try {
-      await updateStaff.mutateAsync({
-        id: staffId,
-        data: { is_active: false },
-      });
+      await terminateStaff.mutateAsync(staffId);
 
       toast({
-        title: 'Staff deactivated',
-        description: `${staff?.user_first_name} ${staff?.user_last_name} has been deactivated`,
+        title: 'Staff terminated',
+        description: `${staff?.user_first_name} ${staff?.user_last_name} has been terminated`,
       });
 
       router.push('/admin/staff');
@@ -183,7 +180,7 @@ export default function EditStaffPage() {
       toast({
         variant: 'destructive',
         title: 'Error',
-        description: err instanceof Error ? err.message : 'Failed to deactivate staff',
+        description: err instanceof Error ? err.message : 'Failed to terminate staff',
       });
     }
   };
@@ -252,20 +249,20 @@ export default function EditStaffPage() {
         {staff.employment_status === 'ACTIVE' && (
           <AlertDialog>
             <AlertDialogTrigger asChild>
-              <Button variant="destructive">Deactivate</Button>
+              <Button variant="destructive">Terminate</Button>
             </AlertDialogTrigger>
             <AlertDialogContent>
               <AlertDialogHeader>
-                <AlertDialogTitle>Deactivate Staff Member?</AlertDialogTitle>
+                <AlertDialogTitle>Terminate Staff Member?</AlertDialogTitle>
                 <AlertDialogDescription>
-                  This will revoke {staff.user_first_name}&apos;s access to the system.
-                  They will no longer be able to log in. This action can be reversed.
+                  This will terminate {staff.user_first_name}&apos;s employment and revoke access to the system.
+                  They will no longer be able to log in. Their termination date will be recorded.
                 </AlertDialogDescription>
               </AlertDialogHeader>
               <AlertDialogFooter>
                 <AlertDialogCancel>Cancel</AlertDialogCancel>
                 <AlertDialogAction onClick={handleDeactivate}>
-                  Confirm Deactivate
+                  Confirm Termination
                 </AlertDialogAction>
               </AlertDialogFooter>
             </AlertDialogContent>

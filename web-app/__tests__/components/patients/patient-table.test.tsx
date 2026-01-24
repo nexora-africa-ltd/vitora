@@ -15,6 +15,21 @@ jest.mock('next/navigation', () => ({
   }),
 }));
 
+// Mock hooks
+const mockMutateAsync = jest.fn();
+jest.mock('@/lib/hooks/use-encounters', () => ({
+  useQuickConsultation: () => ({
+    mutateAsync: mockMutateAsync,
+    isPending: false,
+  }),
+}));
+
+jest.mock('@/lib/hooks/use-toast', () => ({
+  useToast: () => ({
+    toast: jest.fn(),
+  }),
+}));
+
 // Mock EmptyState component
 jest.mock('@/components/shared/empty-state', () => ({
   EmptyState: ({ title, description, action }: any) => (

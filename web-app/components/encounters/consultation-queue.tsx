@@ -48,12 +48,22 @@ import type {
 
 export interface ConsultationQueueProps {
   queueItems: QueueItemType[];
+  /** Current user's ID for claim ownership check */
+  currentUserId?: number;
+  /** Call patient - now also claims automatically */
   onCallPatient: (encounterId: number) => Promise<void> | void;
   onStartConsultation: (encounterId: number) => Promise<void> | void;
+  /** @deprecated Claim is now automatic when calling. Kept for backward compatibility. */
+  onClaimEncounter?: (encounterId: number) => Promise<void> | void;
+  /** Release encounter callback (Data Integrity - Sprint 1.7) */
+  onReleaseEncounter?: (encounterId: number) => Promise<void> | void;
   onRefresh?: () => void;
   isLoading?: boolean;
   error?: string | null;
   autoRefreshInterval?: number; // ms, 0 to disable
+  /** @deprecated Use isCallingPatient on individual items */
+  isClaimingEncounter?: boolean;
+  isReleasingEncounter?: boolean;
 }
 
 // =============================================================================
@@ -158,12 +168,17 @@ const sortByPriority = (items: QueueItemType[]): QueueItemType[] => {
 
 export function ConsultationQueue({
   queueItems,
+  currentUserId,
   onCallPatient,
   onStartConsultation,
+  onClaimEncounter,
+  onReleaseEncounter,
   onRefresh,
   isLoading = false,
   error = null,
   autoRefreshInterval = 0,
+  isClaimingEncounter = false,
+  isReleasingEncounter = false,
 }: ConsultationQueueProps) {
   const [filters, setFilters] = useState<ConsultationQueueFilters>({});
   const [callingPatientId, setCallingPatientId] = useState<number | null>(null);
@@ -424,9 +439,14 @@ export function ConsultationQueue({
               <ConsultationQueueItem
                 key={item.id}
                 item={item}
+                currentUserId={currentUserId}
                 onCall={handleCallPatient}
                 onStartConsultation={handleStartConsultation}
+                onClaim={onClaimEncounter}
+                onRelease={onReleaseEncounter}
                 isCallingPatient={callingPatientId === item.id}
+                isClaimingEncounter={isClaimingEncounter}
+                isReleasingEncounter={isReleasingEncounter}
               />
             ))}
           </div>

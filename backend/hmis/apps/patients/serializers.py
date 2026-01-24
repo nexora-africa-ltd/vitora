@@ -141,7 +141,7 @@ class PatientSerializer(serializers.ModelSerializer):
         return value
 
     def validate(self, data):
-        """Cross-field validation."""
+        """Cross-field validation including duplicate detection."""
         referral_source = data.get(
             "referral_source", self.instance.referral_source if self.instance else "self"
         )
@@ -164,5 +164,32 @@ class PatientSerializer(serializers.ModelSerializer):
                 raise serializers.ValidationError({"county": "County is required."})
             if not sub_county:
                 raise serializers.ValidationError({"sub_county": "Sub-county is required."})
+
+        # Check for potential duplicate patients (same name + DOB + gender)
+        # This provides a warning for demographic duplicates
+        if not self.instance:  # Only check for new patient creation
+            first_name = data.get("first_name", "")
+            last_name = data.get("last_name", "")
+            dob = data.get("date_of_birth")
+            gender = data.get("gender", "")
+
+            if first_name and last_name and dob and gender:
+                duplicate_qs = Patient.objects.filter(
+                    first_name__iexact=first_name,
+                    last_name__iexact=last_name,
+                    date_of_birth=dob,
+                    gender=gender,
+                )
+                if duplicate_qs.exists():
+                    existing = duplicate_qs.first()
+                    raise serializers.ValidationError(
+                        {
+                            "non_field_errors": [
+                                f"A patient with similar demographics already exists. "
+                                f"Possible duplicate: {existing.full_name} (MRN: {existing.mrn}). "
+                                f"If this is a different person, please add an identification number to distinguish them."
+                            ]
+                        }
+                    )
 
         return data

@@ -90,7 +90,7 @@ export function VitalsInputSection({
             {fieldState.error ? (
               <FormMessage>{fieldState.error.message}</FormMessage>
             ) : (
-              <p className="text-xs text-muted-foreground">Normal: 36.1-37.2°C</p>
+              <p className="text-xs text-muted-foreground">Normal: 36.5-37.5°C</p>
             )}
           </FormItem>
         )}

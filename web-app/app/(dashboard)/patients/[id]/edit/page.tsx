@@ -6,7 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
 import { PatientForm } from '@/components/patients/patient-form';
-import { usePatient, useUpdatePatient } from '@/lib/hooks/use-patients-enhanced';
+import { usePatient, useUpdatePatient } from '@/lib/hooks/use-patients';
 import { useRegisterInCR, useUpdateCR } from '@/lib/hooks/use-sha';
 import { useToast } from '@/lib/hooks/use-toast';
 import type { PatientCreateData } from '@/lib/types/patient';

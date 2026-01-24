@@ -2,6 +2,7 @@
 
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
+import axios from 'axios';
 import {
   Table,
   TableBody,
@@ -17,14 +18,31 @@ import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
+  DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import { MoreHorizontal, Eye, Edit, Trash2, ChevronLeft, ChevronRight, Phone, MapPin, Calendar, Hash } from 'lucide-react';
+import {
+  MoreHorizontal,
+  Eye,
+  Edit,
+  Trash2,
+  ChevronLeft,
+  ChevronRight,
+  Phone,
+  MapPin,
+  Calendar,
+  Hash,
+  Stethoscope,
+  FileText,
+  Loader2,
+} from 'lucide-react';
 import { Patient } from '@/lib/types/patient';
 import { calculateAge, formatDate } from '@/lib/utils/format';
 import { EmptyState } from '@/components/shared/empty-state';
 import { EntityCard, EntityGrid } from '@/components/shared/entity-card';
 import type { ViewMode } from '@/components/ui/view-toggle';
+import { useQuickConsultation } from '@/lib/hooks/use-encounters';
+import { useToast } from '@/lib/hooks/use-toast';
 
 interface PatientTableProps {
   patients: Patient[];
@@ -102,16 +120,16 @@ export function PatientTable({
       {/* Loading state */}
       {isLoading ? (
         viewMode === 'list' ? (
-          <div className="rounded-md border">
+          <div className="rounded-md border overflow-x-auto">
             <Table>
               <TableHeader>
                 <TableRow>
                   <TableHead>MRN</TableHead>
                   <TableHead>Name</TableHead>
-                  <TableHead>Age/Gender</TableHead>
-                  <TableHead>Phone</TableHead>
-                  <TableHead>County</TableHead>
-                  <TableHead>Registered</TableHead>
+                  <TableHead className="hidden sm:table-cell">Age/Gender</TableHead>
+                  <TableHead className="hidden md:table-cell">Phone</TableHead>
+                  <TableHead className="hidden lg:table-cell">County</TableHead>
+                  <TableHead className="hidden sm:table-cell">Registered</TableHead>
                   <TableHead className="w-[50px]"></TableHead>
                 </TableRow>
               </TableHeader>
@@ -120,10 +138,10 @@ export function PatientTable({
                   <TableRow key={i}>
                     <TableCell><Skeleton className="h-4 w-24" /></TableCell>
                     <TableCell><Skeleton className="h-4 w-32" /></TableCell>
-                    <TableCell><Skeleton className="h-4 w-20" /></TableCell>
-                    <TableCell><Skeleton className="h-4 w-28" /></TableCell>
-                    <TableCell><Skeleton className="h-4 w-24" /></TableCell>
-                    <TableCell><Skeleton className="h-4 w-20" /></TableCell>
+                    <TableCell className="hidden sm:table-cell"><Skeleton className="h-4 w-20" /></TableCell>
+                    <TableCell className="hidden md:table-cell"><Skeleton className="h-4 w-28" /></TableCell>
+                    <TableCell className="hidden lg:table-cell"><Skeleton className="h-4 w-24" /></TableCell>
+                    <TableCell className="hidden sm:table-cell"><Skeleton className="h-4 w-20" /></TableCell>
                     <TableCell><Skeleton className="h-8 w-8" /></TableCell>
                   </TableRow>
                 ))}
@@ -156,7 +174,7 @@ export function PatientTable({
       {totalPages > 1 && (
         <div className="flex items-center justify-between">
           <p className="text-sm text-muted-foreground">
-            Page {page} of {totalPages}
+            <span className="hidden sm:inline">Page </span>{page}<span className="hidden sm:inline"> of {totalPages}</span><span className="sm:hidden">/{totalPages}</span>
           </p>
           <div className="flex items-center gap-2">
             <Button
@@ -165,8 +183,8 @@ export function PatientTable({
               onClick={() => onPageChange(page - 1)}
               disabled={page === 1}
             >
-              <ChevronLeft className="h-4 w-4 mr-1" />
-              Previous
+              <ChevronLeft className="h-4 w-4 sm:mr-1" />
+              <span className="hidden sm:inline">Previous</span>
             </Button>
             <Button
               variant="outline"
@@ -174,8 +192,8 @@ export function PatientTable({
               onClick={() => onPageChange(page + 1)}
               disabled={page === totalPages}
             >
-              Next
-              <ChevronRight className="h-4 w-4 ml-1" />
+              <span className="hidden sm:inline">Next</span>
+              <ChevronRight className="h-4 w-4 sm:ml-1" />
             </Button>
           </div>
         </div>
@@ -195,17 +213,52 @@ interface PatientListViewProps {
 }
 
 function PatientListView({ patients, selectMode, onRowClick, router }: PatientListViewProps) {
+  const { toast } = useToast();
+  const quickConsult = useQuickConsultation();
+
+  const handleStartConsultation = async (e: React.MouseEvent, patientId: number) => {
+    e.stopPropagation();
+    try {
+      const encounter = await quickConsult.mutateAsync({ patientId });
+      toast({
+        title: 'Consultation Started',
+        description: 'Patient has been called. You can now start the consultation.',
+      });
+      router.push(`/encounters/${encounter.id}`);
+    } catch (err) {
+      // Handle 409 Conflict - patient already has active encounter with another clinician
+      if (axios.isAxiosError(err) && err.response?.status === 409) {
+        const data = err.response.data;
+        toast({
+          title: 'Patient Unavailable',
+          description: data.detail || 'This patient already has an active encounter with another clinician.',
+          variant: 'destructive',
+        });
+        // If there's an encounter_id, optionally navigate to view it
+        if (data.encounter_id) {
+          // Could add a "View Encounter" action here
+        }
+      } else {
+        toast({
+          title: 'Error',
+          description: 'Failed to start consultation. Please try again.',
+          variant: 'destructive',
+        });
+      }
+    }
+  };
+
   return (
-    <div className="rounded-md border">
+    <div className="rounded-md border overflow-x-auto">
       <Table>
         <TableHeader>
           <TableRow>
             <TableHead>MRN</TableHead>
             <TableHead>Name</TableHead>
-            <TableHead>Age/Gender</TableHead>
-            <TableHead>Phone</TableHead>
-            <TableHead>County</TableHead>
-            <TableHead>Registered</TableHead>
+            <TableHead className="hidden sm:table-cell">Age/Gender</TableHead>
+            <TableHead className="hidden md:table-cell">Phone</TableHead>
+            <TableHead className="hidden lg:table-cell">County</TableHead>
+            <TableHead className="hidden sm:table-cell">Registered</TableHead>
             <TableHead className="w-[50px]"></TableHead>
           </TableRow>
         </TableHeader>
@@ -232,7 +285,7 @@ function PatientListView({ patients, selectMode, onRowClick, router }: PatientLi
                   )}
                 </div>
               </TableCell>
-              <TableCell>
+              <TableCell className="hidden sm:table-cell">
                 <div className="flex items-center gap-2">
                   <span>{calculateAge(patient.date_of_birth)} yrs</span>
                   <Badge className={genderColors[patient.gender]}>
@@ -240,9 +293,9 @@ function PatientListView({ patients, selectMode, onRowClick, router }: PatientLi
                   </Badge>
                 </div>
               </TableCell>
-              <TableCell>{patient.phone_number || '—'}</TableCell>
-              <TableCell>{patient.county_name || '—'}</TableCell>
-              <TableCell>{formatDate(patient.created_at)}</TableCell>
+              <TableCell className="hidden md:table-cell">{patient.phone_number || '—'}</TableCell>
+              <TableCell className="hidden lg:table-cell">{patient.county_name || '—'}</TableCell>
+              <TableCell className="hidden sm:table-cell">{formatDate(patient.created_at)}</TableCell>
               <TableCell>
                 {!selectMode && (
                   <DropdownMenu>
@@ -266,6 +319,26 @@ function PatientListView({ patients, selectMode, onRowClick, router }: PatientLi
                         <Edit className="h-4 w-4 mr-2" />
                         Edit
                       </DropdownMenuItem>
+                      <DropdownMenuSeparator />
+                      <DropdownMenuItem
+                        onClick={(e) => handleStartConsultation(e, patient.id)}
+                        disabled={quickConsult.isPending}
+                      >
+                        {quickConsult.isPending ? (
+                          <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                        ) : (
+                          <Stethoscope className="h-4 w-4 mr-2" />
+                        )}
+                        Start Consultation
+                      </DropdownMenuItem>
+                      <DropdownMenuItem onClick={(e) => {
+                        e.stopPropagation();
+                        router.push(`/encounters/new?patient=${patient.id}`);
+                      }}>
+                        <FileText className="h-4 w-4 mr-2" />
+                        New Encounter
+                      </DropdownMenuItem>
+                      <DropdownMenuSeparator />
                       <DropdownMenuItem
                         className="text-destructive"
                         onClick={(e) => e.stopPropagation()}
