@@ -368,6 +368,11 @@ class EncounterSerializer(serializers.ModelSerializer):
             "chief_complaint_edited_by",
             "chief_complaint_edited_by_username",
             "chief_complaint_edited_at",
+            # Clinician claim fields (Sprint 1.7 - Data Integrity)
+            "assigned_clinician",
+            "assigned_clinician_username",
+            "assigned_clinician_name",
+            "claimed_at",
             "created_at",
             "updated_at",
         ]
