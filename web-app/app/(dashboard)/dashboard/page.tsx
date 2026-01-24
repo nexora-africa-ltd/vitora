@@ -124,30 +124,46 @@ export default function DashboardPage() {
       </div>
 
       {/* Content grid */}
-      <div className="grid gap-6 lg:grid-cols-2">
-        {/* My Claimed Encounters - for clinicians */}
-        <Card>
-          <CardHeader className="flex flex-col sm:flex-row sm:items-center sm:justify-between space-y-2 sm:space-y-0 pb-2">
-            <div>
-              <CardTitle className="flex items-center gap-2 text-base sm:text-lg">
-                <UserCheck className="h-4 w-4 sm:h-5 sm:w-5 text-primary" />
-                My Active Consultations
-              </CardTitle>
+      <div className="grid gap-6 lg:grid-cols-2 items-start">
+        {/* Left column: My Claimed + Alerts stacked */}
+        <div className="space-y-6">
+          {/* My Claimed Encounters - for clinicians */}
+          <Card>
+            <CardHeader className="flex flex-col sm:flex-row sm:items-center sm:justify-between space-y-2 sm:space-y-0 pb-2">
+              <div>
+                <CardTitle className="flex items-center gap-2 text-base sm:text-lg">
+                  <UserCheck className="h-4 w-4 sm:h-5 sm:w-5 text-primary" />
+                  My Active Consultations
+                </CardTitle>
+                <CardDescription className="text-xs sm:text-sm">
+                  Encounters you&apos;ve claimed and are working on
+                </CardDescription>
+              </div>
+              <Button variant="ghost" size="sm" asChild className="self-start sm:self-auto">
+                <Link href="/encounters?filter=my_claimed">
+                  View All
+                  <ArrowRight className="ml-1 h-4 w-4" />
+                </Link>
+              </Button>
+            </CardHeader>
+            <CardContent>
+              <MyClaimedEncountersWidget />
+            </CardContent>
+          </Card>
+
+          {/* Alerts widget */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-base sm:text-lg">Active Alerts</CardTitle>
               <CardDescription className="text-xs sm:text-sm">
-                Encounters you&apos;ve claimed and are working on
+                Critical items requiring attention
               </CardDescription>
-            </div>
-            <Button variant="ghost" size="sm" asChild className="self-start sm:self-auto">
-              <Link href="/encounters?filter=my_claimed">
-                View All
-                <ArrowRight className="ml-1 h-4 w-4" />
-              </Link>
-            </Button>
-          </CardHeader>
-          <CardContent>
-            <MyClaimedEncountersWidget />
-          </CardContent>
-        </Card>
+            </CardHeader>
+            <CardContent>
+              <AlertsWidget />
+            </CardContent>
+          </Card>
+        </div>
 
         {/* Recent patients */}
         <Card>
@@ -167,19 +183,6 @@ export default function DashboardPage() {
           </CardHeader>
           <CardContent>
             <RecentPatients />
-          </CardContent>
-        </Card>
-
-        {/* Alerts widget */}
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-base sm:text-lg">Active Alerts</CardTitle>
-            <CardDescription className="text-xs sm:text-sm">
-              Critical items requiring attention
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <AlertsWidget />
           </CardContent>
         </Card>
       </div>
