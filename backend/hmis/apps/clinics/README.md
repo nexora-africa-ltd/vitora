@@ -149,6 +149,38 @@ GET     /api/clinic-enrollments/defaulters/         # Get defaulters (2+ missed)
 POST    /api/clinic-enrollments/{id}/record-visit/  # Record visit attendance
 ```
 
+### WebSocket - Real-time Queue Updates
+```
+ws://localhost/ws/clinics/{clinic_id}/queue/    # Connect to clinic queue
+```
+
+**Events Received:**
+| Event | Description |
+|-------|-------------|
+| `patient_added` | New patient added to queue |
+| `patient_called` | Patient called for consultation |
+| `consultation_started` | Consultation has started |
+| `visit_completed` | Visit completed |
+| `patient_removed` | Patient removed (cancelled/no-show) |
+| `stats_updated` | Queue statistics updated |
+
+**Example Event Payload:**
+```json
+{
+    "event": "patient_added",
+    "data": {
+        "visit_id": 123,
+        "patient_id": 456,
+        "patient_name": "John Doe",
+        "queue_number": "Q001",
+        "priority": "STANDARD",
+        "status": "WAITING",
+        "chief_complaint": "Routine checkup",
+        "registered_at": "2026-01-24T09:00:00Z"
+    }
+}
+```
+
 ## Usage Examples
 
 ### Add Patient to Queue
@@ -232,6 +264,62 @@ poetry run pytest tests/test_clinic*.py -v
 
 # Run specific test class
 poetry run pytest tests/test_clinic_api.py::TestClinicVisitViewSet -v
+
+# Run WebSocket tests
+poetry run pytest tests/test_clinic_websockets.py -v
+```
+
+## WebSocket Integration
+
+### Frontend Connection Example (JavaScript)
+```javascript
+const socket = new WebSocket(`ws://localhost/ws/clinics/${clinicId}/queue/`);
+
+socket.onopen = () => {
+    console.log('Connected to clinic queue');
+};
+
+socket.onmessage = (event) => {
+    const data = JSON.parse(event.data);
+    switch (data.event) {
+        case 'patient_added':
+            // Add patient to queue display
+            addPatientToQueue(data.data);
+            break;
+        case 'patient_called':
+            // Highlight called patient
+            highlightPatient(data.data.visit_id);
+            break;
+        case 'stats_updated':
+            // Update queue statistics
+            updateStats(data.data);
+            break;
+    }
+};
+
+// Send ping to keep connection alive
+socket.send(JSON.stringify({ type: 'ping', timestamp: Date.now() }));
+```
+
+### Backend Broadcast Example (Python)
+```python
+from hmis.apps.clinics.websockets import broadcast_queue_event, broadcast_queue_stats
+
+# Broadcast custom event
+await broadcast_queue_event(
+    clinic_id=1,
+    event_type="stats_updated",
+    data={
+        "waiting_count": 5,
+        "in_consultation_count": 2,
+        "completed_count": 10,
+        "avg_wait_minutes": 15
+    }
+)
+
+# Or use sync version in views/signals
+from hmis.apps.clinics.websockets import broadcast_queue_event_sync
+broadcast_queue_event_sync(clinic_id=1, event_type="custom_event", data={...})
 ```
 
 ## Integration Points
@@ -241,3 +329,4 @@ poetry run pytest tests/test_clinic_api.py::TestClinicVisitViewSet -v
 - **Billing Module** - `ClinicVisit.billing_line_item` for consultation fees
 - **SHA Integration** - `Clinic.sha_service_code` for claims
 - **KHIS/DHIS2** - `Clinic.dhis2_org_unit_id` for reporting
+- **Django Channels** - Real-time WebSocket updates for queue changes
