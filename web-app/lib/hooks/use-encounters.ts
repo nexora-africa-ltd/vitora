@@ -71,6 +71,44 @@ export function useCreateEncounter() {
 }
 
 /**
+ * Hook for quick consultation - creates and claims encounter in one step.
+ *
+ * Use this from the patient list to quickly start a consultation.
+ * Creates a new OPD encounter or claims an existing unclaimed one.
+ *
+ * @example
+ * ```tsx
+ * const quickConsult = useQuickConsultation();
+ *
+ * const handleStartConsultation = async (patientId: number) => {
+ *   const encounter = await quickConsult.mutateAsync({ patientId });
+ *   router.push(`/encounters/${encounter.id}`);
+ * };
+ * ```
+ */
+export function useQuickConsultation() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: ({
+      patientId,
+      chief_complaint,
+      encounter_type,
+    }: {
+      patientId: number;
+      chief_complaint?: string;
+      encounter_type?: string;
+    }) => encountersApi.quickConsultation(patientId, { chief_complaint, encounter_type }),
+    onSuccess: () => {
+      // Invalidate relevant queries
+      queryClient.invalidateQueries({ queryKey: ['encounters'] });
+      queryClient.invalidateQueries({ queryKey: ['consultation-queue'] });
+      queryClient.invalidateQueries({ queryKey: ['my-claimed-encounters'] });
+    },
+  });
+}
+
+/**
  * Hook for updating an encounter.
  */
 export function useUpdateEncounter() {

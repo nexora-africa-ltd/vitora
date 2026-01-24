@@ -582,50 +582,212 @@ class EncounterViewSet(viewsets.ModelViewSet):
     @action(detail=True, methods=["post"])
     def call(self, request, pk=None):
         """
-        Call a patient for consultation.
+        Call a patient for consultation and claim the encounter.
 
-        Sets consultation_status to CALLED and records the call time.
-        Only allowed if encounter can enter consultation.
+        Sets consultation_status to CALLED, records the call time,
+        and automatically claims the encounter for the calling clinician.
+        This prevents the need for separate Call and Claim actions.
+
+        Only allowed if encounter can enter consultation and is not
+        already claimed by another clinician.
+
         Creates a notification for the patient called event.
 
         POST /api/encounters/{id}/call/
         """
+        from django.db import transaction
         from django.utils import timezone
 
         from .services import create_patient_called_notification
 
-        encounter = self.get_object()
+        with transaction.atomic():
+            # Lock the encounter row to prevent race conditions
+            encounter = Encounter.objects.select_for_update().get(pk=pk)
 
-        # Check if encounter can enter consultation
-        if not encounter.can_enter_consultation():
-            return Response(
-                {"detail": "Encounter cannot enter consultation. Triage may be required."},
-                status=status.HTTP_400_BAD_REQUEST,
+            # Check if encounter can enter consultation
+            if not encounter.can_enter_consultation():
+                return Response(
+                    {"detail": "Encounter cannot enter consultation. Triage may be required."},
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
+
+            # Check if consultation is not already in progress
+            if encounter.consultation_status == "IN_PROGRESS":
+                return Response(
+                    {"detail": "Consultation is already in progress."},
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
+
+            if encounter.consultation_status == "COMPLETED":
+                return Response(
+                    {"detail": "Consultation is already completed."},
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
+
+            # Check if already claimed by another user
+            if encounter.assigned_clinician and encounter.assigned_clinician != request.user:
+                return Response(
+                    {
+                        "detail": f"Patient already claimed by {encounter.assigned_clinician.get_full_name() or encounter.assigned_clinician.username}. "
+                        f"They must release it before you can call this patient."
+                    },
+                    status=status.HTTP_409_CONFLICT,
+                )
+
+            # Call the patient and claim the encounter
+            encounter.consultation_status = "CALLED"
+            encounter.called_at = timezone.now()
+            encounter.assigned_clinician = request.user
+            encounter.claimed_at = timezone.now()
+            encounter.save()
+
+            # Create notification for patient called event
+            create_patient_called_notification(encounter, request.user)
+
+            # Log the call+claim action
+            AuditLog.log(
+                action="encounter_call_and_claim",
+                user=request.user,
+                resource_type="Encounter",
+                resource_id=encounter.id,
+                ip_address=get_client_ip(request),
+                user_agent=request.META.get("HTTP_USER_AGENT", ""),
+                patient_id=encounter.patient_id,
+                details={"encounter_type": encounter.encounter_type},
             )
-
-        # Check if consultation is not already in progress
-        if encounter.consultation_status == "IN_PROGRESS":
-            return Response(
-                {"detail": "Consultation is already in progress."},
-                status=status.HTTP_400_BAD_REQUEST,
-            )
-
-        if encounter.consultation_status == "COMPLETED":
-            return Response(
-                {"detail": "Consultation is already completed."},
-                status=status.HTTP_400_BAD_REQUEST,
-            )
-
-        # Call the patient
-        encounter.consultation_status = "CALLED"
-        encounter.called_at = timezone.now()
-        encounter.save()
-
-        # Create notification for patient called event
-        create_patient_called_notification(encounter, request.user)
 
         serializer = self.get_serializer(encounter)
         return Response(serializer.data)
+
+    @action(detail=False, methods=["post"])
+    def quick_consultation(self, request):
+        """
+        Create a new encounter and claim it for the current clinician in one step.
+
+        This is a convenience endpoint for quickly starting a consultation
+        from the patient list. It:
+        1. Creates a new OPD encounter for the patient
+        2. Sets triage_status to NOT_APPLICABLE (direct to consultation)
+        3. Calls the patient (consultation_status = CALLED)
+        4. Claims the encounter for the current user
+
+        POST /api/encounters/quick_consultation/
+        Body: {
+            "patient": <patient_id>,
+            "chief_complaint": <optional string>,
+            "encounter_type": <optional, default "OPD">
+        }
+
+        Returns:
+        - 201: Encounter created and claimed
+        - 400: Invalid patient or validation error
+        - 409: Patient already has an active encounter with another clinician
+        """
+        from django.db import transaction
+        from django.utils import timezone
+
+        from hmis.apps.patients.models import Patient
+        from .services import create_patient_called_notification
+
+        patient_id = request.data.get("patient")
+        if not patient_id:
+            return Response(
+                {"detail": "patient ID is required"},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        try:
+            patient = Patient.objects.get(pk=patient_id)
+        except Patient.DoesNotExist:
+            return Response(
+                {"detail": "Patient not found"},
+                status=status.HTTP_404_NOT_FOUND,
+            )
+
+        # Check if patient already has an active encounter
+        existing_encounter = Encounter.objects.filter(
+            patient=patient,
+            status="IN_PROGRESS",
+        ).select_related("assigned_clinician").first()
+
+        if existing_encounter:
+            # If claimed by another user, return 409
+            if existing_encounter.assigned_clinician and existing_encounter.assigned_clinician != request.user:
+                return Response(
+                    {
+                        "detail": f"Patient already has an active encounter with {existing_encounter.assigned_clinician.get_full_name() or existing_encounter.assigned_clinician.username}",
+                        "encounter_id": existing_encounter.id,
+                        "claimed_by": existing_encounter.assigned_clinician.username,
+                    },
+                    status=status.HTTP_409_CONFLICT,
+                )
+            # If already claimed by current user, return that encounter
+            if existing_encounter.assigned_clinician == request.user:
+                return Response(
+                    {
+                        "detail": "You already have an active encounter with this patient",
+                        "encounter_id": existing_encounter.id,
+                    },
+                    status=status.HTTP_200_OK,
+                )
+            # If unclaimed, claim it
+            with transaction.atomic():
+                existing_encounter = Encounter.objects.select_for_update().get(pk=existing_encounter.pk)
+                existing_encounter.assigned_clinician = request.user
+                existing_encounter.claimed_at = timezone.now()
+                if existing_encounter.consultation_status == "WAITING":
+                    existing_encounter.consultation_status = "CALLED"
+                    existing_encounter.called_at = timezone.now()
+                existing_encounter.save()
+
+                AuditLog.log(
+                    action="encounter_quick_claim",
+                    user=request.user,
+                    resource_type="Encounter",
+                    resource_id=existing_encounter.id,
+                    ip_address=get_client_ip(request),
+                    user_agent=request.META.get("HTTP_USER_AGENT", ""),
+                    patient_id=patient.id,
+                    details={"existing_encounter": True},
+                )
+
+            serializer = self.get_serializer(existing_encounter)
+            return Response(serializer.data, status=status.HTTP_200_OK)
+
+        # Create a new encounter
+        with transaction.atomic():
+            encounter = Encounter.objects.create(
+                patient=patient,
+                encounter_type=request.data.get("encounter_type", "OPD"),
+                chief_complaint=request.data.get("chief_complaint", ""),
+                status="IN_PROGRESS",
+                triage_requirement="NOT_REQUIRED",
+                triage_status="NOT_APPLICABLE",
+                consultation_status="CALLED",
+                called_at=timezone.now(),
+                assigned_clinician=request.user,
+                claimed_at=timezone.now(),
+                encounter_date=timezone.now().date(),
+                registered_by=request.user,
+            )
+
+            # Create notification
+            create_patient_called_notification(encounter, request.user)
+
+            # Log the action
+            AuditLog.log(
+                action="encounter_quick_consultation",
+                user=request.user,
+                resource_type="Encounter",
+                resource_id=encounter.id,
+                ip_address=get_client_ip(request),
+                user_agent=request.META.get("HTTP_USER_AGENT", ""),
+                patient_id=patient.id,
+                details={"encounter_type": encounter.encounter_type},
+            )
+
+        serializer = self.get_serializer(encounter)
+        return Response(serializer.data, status=status.HTTP_201_CREATED)
 
     @action(detail=True, methods=["post"])
     def start_consultation(self, request, pk=None):

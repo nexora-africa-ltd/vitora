@@ -6,7 +6,9 @@
  * - Triage status badge
  * - Wait time
  * - Clinician claim status (Data Integrity - Sprint 1.7)
- * - Action buttons (Call, Claim, Start Consultation, Release)
+ * - Action buttons (Call Patient claims automatically, Start Consultation, Release)
+ *
+ * Flow: Call Patient → (auto-claims) → Start Consultation
  */
 'use client';
 
@@ -43,13 +45,15 @@ export interface ConsultationQueueItemProps {
   item: QueueItemType;
   /** Current user's ID to check claim ownership */
   currentUserId?: number;
+  /** Call patient (also claims the encounter automatically) */
   onCall: (encounterId: number) => void;
   onStartConsultation: (encounterId: number) => void;
-  /** Claim encounter for consultation (Data Integrity - Sprint 1.7) */
+  /** @deprecated Claim is now automatic when calling - kept for backward compatibility */
   onClaim?: (encounterId: number) => void;
   /** Release a claimed encounter (Data Integrity - Sprint 1.7) */
   onRelease?: (encounterId: number) => void;
   isCallingPatient?: boolean;
+  /** @deprecated Use isCallingPatient instead */
   isClaimingEncounter?: boolean;
   isReleasingEncounter?: boolean;
 }
@@ -288,7 +292,7 @@ export function ConsultationQueueItem({
         {/* Right: Actions */}
         <div className="flex flex-col gap-2">
           <TooltipProvider delayDuration={200}>
-            {/* WAITING state: Call or Claim */}
+            {/* WAITING state: Call Patient (also claims automatically) */}
             {isWaiting && !isClaimedByOther && (
               <Tooltip>
                 <TooltipTrigger asChild>
@@ -297,7 +301,7 @@ export function ConsultationQueueItem({
                     onClick={() => onCall(item.id)}
                     disabled={isCallingPatient}
                     className="min-w-[120px]"
-                    title="Mark as called and notify the patient/waiting area."
+                    title="Call the patient and claim for consultation"
                   >
                     {isCallingPatient ? (
                       <>
@@ -313,53 +317,36 @@ export function ConsultationQueueItem({
                   </Button>
                 </TooltipTrigger>
                 <TooltipContent>
-                  Mark as called and notify the patient/waiting area.
+                  Call the patient and claim for your consultation
                 </TooltipContent>
               </Tooltip>
             )}
 
-            {/* CALLED state: Start Consultation or Claim */}
+            {/* WAITING state: Locked by another clinician */}
+            {isWaiting && isClaimedByOther && (
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    disabled
+                    className="min-w-[120px]"
+                  >
+                    <Lock className="h-4 w-4 mr-1" />
+                    Claimed
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent>
+                  Claimed by {item.assigned_clinician_name || item.assigned_clinician_username}
+                </TooltipContent>
+              </Tooltip>
+            )}
+
+            {/* CALLED state: Start Consultation or Release */}
             {isCalled && (
               <>
-                {/* Claim button - show if not claimed or claimed by another (disabled) */}
-                {!isClaimedByMe && onClaim && (
-                  <Tooltip>
-                    <TooltipTrigger asChild>
-                      <Button
-                        size="sm"
-                        variant={isClaimedByOther ? 'outline' : 'default'}
-                        onClick={() => onClaim(item.id)}
-                        disabled={isClaimingEncounter || isClaimedByOther}
-                        className="min-w-[120px]"
-                      >
-                        {isClaimingEncounter ? (
-                          <>
-                            <RefreshCw className="h-4 w-4 mr-1 animate-spin" />
-                            Claiming...
-                          </>
-                        ) : isClaimedByOther ? (
-                          <>
-                            <Lock className="h-4 w-4 mr-1" />
-                            Claimed
-                          </>
-                        ) : (
-                          <>
-                            <UserCheck className="h-4 w-4 mr-1" />
-                            Claim
-                          </>
-                        )}
-                      </Button>
-                    </TooltipTrigger>
-                    <TooltipContent>
-                      {isClaimedByOther
-                        ? `Claimed by ${item.assigned_clinician_name || item.assigned_clinician_username}`
-                        : 'Claim this encounter to start consultation'}
-                    </TooltipContent>
-                  </Tooltip>
-                )}
-
-                {/* Start Consultation - only if claimed by me or not claimed */}
-                {(isClaimedByMe || !isClaimed) && (
+                {/* Start Consultation - only if claimed by me */}
+                {isClaimedByMe && (
                   <Tooltip>
                     <TooltipTrigger asChild>
                       <Button
@@ -374,6 +361,26 @@ export function ConsultationQueueItem({
                     </TooltipTrigger>
                     <TooltipContent>
                       Start the consult and open encounter documentation.
+                    </TooltipContent>
+                  </Tooltip>
+                )}
+
+                {/* If claimed by another - show disabled button with info */}
+                {isClaimedByOther && (
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        disabled
+                        className="min-w-[120px]"
+                      >
+                        <Lock className="h-4 w-4 mr-1" />
+                        With {item.assigned_clinician_name?.split(' ')[0] || 'Clinician'}
+                      </Button>
+                    </TooltipTrigger>
+                    <TooltipContent>
+                      Patient is with {item.assigned_clinician_name || item.assigned_clinician_username}
                     </TooltipContent>
                   </Tooltip>
                 )}
@@ -403,13 +410,13 @@ export function ConsultationQueueItem({
                       </Button>
                     </TooltipTrigger>
                     <TooltipContent>
-                      Release this encounter for another clinician.
+                      Release this patient for another clinician.
                     </TooltipContent>
                   </Tooltip>
                 )}
 
-                {/* Re-call button */}
-                {!isClaimedByOther && (
+                {/* Re-call button - only if claimed by me */}
+                {isClaimedByMe && (
                   <Tooltip>
                     <TooltipTrigger asChild>
                       <Button
