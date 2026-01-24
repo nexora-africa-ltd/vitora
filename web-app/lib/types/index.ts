@@ -275,6 +275,40 @@ export interface Ward {
   name: string;
 }
 
+// Re-export clinic types
+export type {
+  ClinicType,
+  ClinicStatus,
+  ClinicVisitStatus,
+  ClinicVisitPriority,
+  ClinicVisitType,
+  ClinicVisitSource,
+  ClinicSessionStatus,
+  EnrollmentStatus,
+  ClinicStaffRole,
+  ClinicPriorityConfig,
+  Clinic,
+  ClinicListItem,
+  ClinicSession,
+  ClinicVisitPatient,
+  ClinicVisit,
+  ClinicVisitCreateData,
+  ClinicVisitReferData,
+  ClinicStaff,
+  ClinicStaffCreateData,
+  ClinicSchedule,
+  ClinicScheduleCreateData,
+  ClinicEnrollment,
+  ClinicEnrollmentCreateData,
+  ClinicQueueStats,
+  ClinicDashboardStats,
+  ClinicListParams,
+  ClinicVisitListParams,
+  ClinicEnrollmentListParams,
+} from './clinic';
+
+export { CLINIC_PRIORITY_CONFIG } from './clinic';
+
 // Pagination
 export interface PaginatedResponse<T> {
   count: number;
