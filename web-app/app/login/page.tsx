@@ -77,13 +77,13 @@ export default function LoginPage() {
 
       {/* Left side - Branding */}
       <div className="hidden lg:flex lg:w-1/2 bg-gradient-to-br from-brand-burgundy-900 via-brand-burgundy-900 to-brand-teal-600 p-12 flex-col justify-between">
-        <div>
-          {/* Logo */}
+        <div className="w-64">
+          {/* Logo - using full width with object-cover to fill space */}
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img
             src="/burgundy-teal.png"
             alt={APP_NAME}
-            className="h-24 w-auto object-contain"
+            className="w-full object-cover"
           />
         </div>
 
@@ -127,19 +127,18 @@ export default function LoginPage() {
 
       {/* Right side - Login form */}
       <div className="relative flex w-full lg:w-1/2 items-center justify-center p-8 bg-background overflow-hidden">
-        {/* Background logo watermark - centered */}
-        {mounted && (
-          // eslint-disable-next-line @next/next/no-img-element
-          <img
-            src={isDark ? '/white.png' : '/teal.png'}
-            alt=""
-            aria-hidden="true"
-            className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[80%] max-w-lg h-auto object-contain opacity-[0.04] pointer-events-none select-none"
-          />
-        )}
-        
-        <Card className="relative z-10 w-full max-w-md border-brand-burgundy-200 dark:border-0 shadow-none lg:shadow-lg lg:border-2 hover:shadow-2xl hover:bg-red-400/10 hover:text-white">
-          <CardHeader className="text-center space-y-4">
+        <Card className="relative z-10 w-full max-w-md border-brand-burgundy-200 dark:border-muted/30 shadow-none lg:shadow-lg lg:border-2 transition-shadow duration-300 hover:shadow-2xl overflow-hidden">
+          {/* Background logo watermark - centered in card */}
+          {mounted && (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img
+              src={isDark ? '/white.png' : '/teal.png'}
+              alt=""
+              aria-hidden="true"
+              className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[90%] h-auto object-contain opacity-[0.05] pointer-events-none select-none"
+            />
+          )}
+          <CardHeader className="relative z-10 text-center space-y-4">
             {/* Mobile logo */}
             <div className="lg:hidden mx-auto">
               {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -156,7 +155,7 @@ export default function LoginPage() {
               </CardDescription>
             </div>
           </CardHeader>
-          <CardContent>
+          <CardContent className="relative z-10">
             <form onSubmit={handleSubmit} className="space-y-4">
               {error && (
                 <div className="flex items-center gap-2 p-3 text-sm text-destructive bg-destructive/10 border border-destructive/20 rounded-lg">
