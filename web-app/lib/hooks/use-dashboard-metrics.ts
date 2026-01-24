@@ -160,7 +160,7 @@ function transformPatientVolume(response: PatientVolumeResponse): PatientVolumeD
   return response.data.map((item) => {
     // Backend returns by_type as nested object with uppercase keys
     const byType = (item as unknown as { by_type?: Record<string, number> }).by_type || {};
-    
+
     return {
       date: item.date,
       registrations: item.registrations,

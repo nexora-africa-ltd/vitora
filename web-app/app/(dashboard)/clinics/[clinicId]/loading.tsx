@@ -31,7 +31,7 @@ export default function ClinicDashboardLoading() {
       {/* Tabs */}
       <div className="space-y-4">
         <Skeleton className="h-10 w-80" />
-        
+
         {/* Queue Table */}
         <Card>
           <CardHeader>

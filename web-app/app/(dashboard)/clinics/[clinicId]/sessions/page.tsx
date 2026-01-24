@@ -151,16 +151,16 @@ export default function ClinicSessionsPage() {
 
     const totalPatientsSeen = sessions.reduce((sum, s) => sum + (s.patients_seen || 0), 0);
     const closedSessions = sessions.filter((s) => s.status === 'CLOSED');
-    
+
     return {
       totalSessions: sessions.length,
       totalPatientsSeen,
-      avgPatientsPerSession: closedSessions.length > 0 
-        ? Math.round(totalPatientsSeen / closedSessions.length) 
+      avgPatientsPerSession: closedSessions.length > 0
+        ? Math.round(totalPatientsSeen / closedSessions.length)
         : 0,
       avgWaitTime: 0, // Would need additional data
-      completionRate: sessions.length > 0 
-        ? Math.round((closedSessions.length / sessions.length) * 100) 
+      completionRate: sessions.length > 0
+        ? Math.round((closedSessions.length / sessions.length) * 100)
         : 0,
     };
   }, [sessions]);

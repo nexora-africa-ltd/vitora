@@ -174,7 +174,7 @@ export function InvoiceDetail({
   const canCancel = ['DRAFT', 'PENDING'].includes(invoice.status);
   const isPaid = invoice.status === 'PAID';
   const isOverdue = invoice.status === 'OVERDUE';
-  
+
   // Proforma-specific flags
   const isProforma = invoice.status === 'PROFORMA';
   const canConvertProforma = isProforma && invoice.can_convert;
@@ -213,8 +213,8 @@ export function InvoiceDetail({
 
       {/* Proforma Validity Banner */}
       {isProforma && (
-        <Alert className={invoice.is_valid 
-          ? 'border-purple-200 bg-purple-50 dark:border-purple-800 dark:bg-purple-950' 
+        <Alert className={invoice.is_valid
+          ? 'border-purple-200 bg-purple-50 dark:border-purple-800 dark:bg-purple-950'
           : 'border-red-200 bg-red-50 dark:border-red-800 dark:bg-red-950'
         }>
           <Clock className={`h-4 w-4 ${invoice.is_valid ? 'text-purple-600' : 'text-red-600'}`} />
@@ -241,8 +241,8 @@ export function InvoiceDetail({
             </div>
             <div className="flex gap-2">
               {canConvertProforma && onConvertProforma && (
-                <Button 
-                  size="sm" 
+                <Button
+                  size="sm"
                   onClick={() => onConvertProforma(invoice)}
                   className="bg-purple-600 hover:bg-purple-700"
                 >
@@ -251,8 +251,8 @@ export function InvoiceDetail({
                 </Button>
               )}
               {canRenewProforma && onRenewProforma && (
-                <Button 
-                  size="sm" 
+                <Button
+                  size="sm"
                   variant="outline"
                   onClick={() => onRenewProforma(invoice)}
                   className="border-red-500 text-red-600 hover:bg-red-50"
@@ -273,7 +273,7 @@ export function InvoiceDetail({
           <AlertDescription>
             <span className="text-muted-foreground">
               This invoice was converted from proforma{' '}
-              <Link 
+              <Link
                 href={`/billing/invoices/${invoice.converted_from_proforma}`}
                 className="font-medium text-blue-600 hover:underline"
               >

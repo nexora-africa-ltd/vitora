@@ -269,4 +269,3 @@ Patient
 > **Clinics manage continuity, procedures capture discrete actions, and reporting turns everything into compliance-ready intelligence.**
 
 ---
-

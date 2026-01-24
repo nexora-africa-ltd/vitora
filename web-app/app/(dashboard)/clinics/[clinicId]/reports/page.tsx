@@ -177,11 +177,11 @@ export default function ClinicReportsPage() {
       totalPatientsRegistered,
       avgPatientsPerSession: closedSessions.length > 0 ? Math.round(totalPatientsSeen / closedSessions.length) : 0,
       completionRate: sessions.length > 0 ? Math.round((closedSessions.length / sessions.length) * 100) : 0,
-      noShowRate: totalPatientsRegistered > 0 
+      noShowRate: totalPatientsRegistered > 0
         ? Math.round(((totalPatientsRegistered - totalPatientsSeen) / totalPatientsRegistered) * 100)
         : 0,
-      utilizationRate: totalPatientsRegistered > 0 
-        ? Math.round((totalPatientsSeen / totalPatientsRegistered) * 100) 
+      utilizationRate: totalPatientsRegistered > 0
+        ? Math.round((totalPatientsSeen / totalPatientsRegistered) * 100)
         : 0,
       busyDays,
       slowDays,

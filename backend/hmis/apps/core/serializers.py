@@ -5,7 +5,17 @@ Serializers for core app.
 from django.contrib.auth.models import Permission
 from rest_framework import serializers
 
-from .models import AuditLog, County, Department, FrontendEvent, Notification, Role, StaffProfile, SubCounty, Ward
+from .models import (
+    AuditLog,
+    County,
+    Department,
+    FrontendEvent,
+    Notification,
+    Role,
+    StaffProfile,
+    SubCounty,
+    Ward,
+)
 
 
 class PermissionSerializer(serializers.ModelSerializer):
@@ -50,7 +60,7 @@ class AuditLogSerializer(serializers.ModelSerializer):
 class FrontendEventSerializer(serializers.ModelSerializer):
     """
     Serializer for FrontendEvent model.
-    
+
     Accepts events from frontend applications for logging user interactions.
     Supports both single event and batch event submission.
     """
@@ -88,22 +98,22 @@ class FrontendEventSerializer(serializers.ModelSerializer):
 class FrontendEventBatchSerializer(serializers.Serializer):
     """
     Serializer for batch frontend event submission.
-    
+
     Allows submitting multiple events at once (useful for offline sync).
     """
-    
+
     events = FrontendEventSerializer(many=True)
 
     def create(self, validated_data):
         """Create multiple events at once."""
         request = self.context.get("request")
         user = request.user if request and request.user.is_authenticated else None
-        
+
         events = []
         for event_data in validated_data["events"]:
             event_data["user"] = user
             events.append(FrontendEvent(**event_data))
-        
+
         return FrontendEvent.objects.bulk_create(events)
 
 

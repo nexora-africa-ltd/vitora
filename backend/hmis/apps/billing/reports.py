@@ -350,7 +350,10 @@ class BillingReportService:
                 if item.service and item.service.category:
                     dept_name = item.service.category.name
                     if dept_name not in dept_totals:
-                        dept_totals[dept_name] = {"invoiced": Decimal("0"), "collected": Decimal("0")}
+                        dept_totals[dept_name] = {
+                            "invoiced": Decimal("0"),
+                            "collected": Decimal("0"),
+                        }
                     dept_totals[dept_name]["invoiced"] += item.line_total
 
         # Calculate collected per department (approximate based on paid invoices)
@@ -401,15 +404,16 @@ class BillingReportService:
         - date: invoice date
         - status: resolution status (PENDING/RESOLVED)
         """
-        from hmis.apps.encounters.models import Encounter
 
         discrepancies = []
 
         # Find encounters with services that differ from standard pricing
         # This is a simplified implementation - real-world would check against tariffs
-        recent_invoices = Invoice.objects.filter(
-            invoice_date__gte=date.today() - timedelta(days=30)
-        ).select_related("patient", "encounter").prefetch_related("items__service")
+        recent_invoices = (
+            Invoice.objects.filter(invoice_date__gte=date.today() - timedelta(days=30))
+            .select_related("patient", "encounter")
+            .prefetch_related("items__service")
+        )
 
         for invoice in recent_invoices:
             for item in invoice.items.all():

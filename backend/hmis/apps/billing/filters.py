@@ -8,13 +8,7 @@ and lowercase values from frontends (e.g., 'PROFORMA' -> 'proforma').
 import django_filters
 from django_filters import rest_framework as filters
 
-from hmis.apps.billing.models import (
-    CreditNote,
-    Invoice,
-    Payment,
-    SHAClaim,
-    SHAMember,
-)
+from hmis.apps.billing.models import CreditNote, Invoice, Payment, SHAClaim, SHAMember
 
 
 class CaseInsensitiveCharFilter(filters.CharFilter):
@@ -23,7 +17,7 @@ class CaseInsensitiveCharFilter(filters.CharFilter):
 
     This allows frontends to send either 'PROFORMA' or 'proforma' and
     have it match the backend's lowercase status values.
-    
+
     Uses CharFilter instead of ChoiceFilter to avoid validation errors
     when frontend sends uppercase values.
     """

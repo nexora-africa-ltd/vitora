@@ -52,9 +52,7 @@ def create_invoice_item_for_prescription(sender, instance, created, **kwargs):
 
     # Check if invoice is editable
     if invoice.status != Invoice.Status.DRAFT:
-        logger.warning(
-            f"Cannot add prescription item to invoice with status '{invoice.status}'"
-        )
+        logger.warning(f"Cannot add prescription item to invoice with status '{invoice.status}'")
         return
 
     # Determine unit price (use reference price or get from available batch)
@@ -88,10 +86,16 @@ def create_invoice_item_for_prescription(sender, instance, created, **kwargs):
 
         # Recalculate invoice totals
         invoice.calculate_totals()
-        invoice.save(update_fields=[
-            "subtotal", "tax_amount", "discount_amount",
-            "total_amount", "balance_due", "updated_at"
-        ])
+        invoice.save(
+            update_fields=[
+                "subtotal",
+                "tax_amount",
+                "discount_amount",
+                "total_amount",
+                "balance_due",
+                "updated_at",
+            ]
+        )
 
         logger.info(
             f"Created invoice item for prescription item {instance.id} - "

@@ -1830,9 +1830,7 @@ class Encounter(models.Model):
 
         # Check if invoice is editable
         if invoice.status not in [Invoice.Status.DRAFT]:
-            raise ValidationError(
-                f"Cannot add services to invoice with status '{invoice.status}'."
-            )
+            raise ValidationError(f"Cannot add services to invoice with status '{invoice.status}'.")
 
         # Check if same service already exists on this invoice
         existing_item = invoice.items.filter(service=service).first()
@@ -1840,9 +1838,9 @@ class Encounter(models.Model):
         if existing_item:
             # Update quantity
             existing_item.quantity += quantity
-            existing_item.line_total = (
-                existing_item.quantity * existing_item.unit_price
-            ).quantize(Decimal("0.01"))
+            existing_item.line_total = (existing_item.quantity * existing_item.unit_price).quantize(
+                Decimal("0.01")
+            )
             existing_item.save(update_fields=["quantity", "line_total", "updated_at"])
             item = existing_item
         else:
@@ -1854,14 +1852,21 @@ class Encounter(models.Model):
                 description=service.name,
                 quantity=quantity,
                 unit_price=service.unit_price,
-                line_total=(service.unit_price * Decimal(str(quantity))).quantize(
-                    Decimal("0.01")
-                ),
+                line_total=(service.unit_price * Decimal(str(quantity))).quantize(Decimal("0.01")),
             )
 
         # Recalculate invoice totals
         invoice.calculate_totals()
-        invoice.save(update_fields=["subtotal", "tax_amount", "discount_amount", "total_amount", "balance_due", "updated_at"])
+        invoice.save(
+            update_fields=[
+                "subtotal",
+                "tax_amount",
+                "discount_amount",
+                "total_amount",
+                "balance_due",
+                "updated_at",
+            ]
+        )
 
         return item
 

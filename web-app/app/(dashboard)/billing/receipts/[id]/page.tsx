@@ -7,4 +7,3 @@ export default function BillingReceiptRedirect({
 }) {
   redirect(`/transactions/receipts/${params.id}`);
 }
-

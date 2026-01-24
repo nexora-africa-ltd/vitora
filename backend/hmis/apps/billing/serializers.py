@@ -7,19 +7,19 @@ Following TDD - implemented to pass API tests.
 from rest_framework import serializers
 
 from hmis.apps.billing.models import (
-    PaymentPoint,
     CreditNote,
     Invoice,
     InvoiceItem,
     Payment,
+    PaymentPoint,
     Receipt,
     Service,
     ServiceCategory,
 )
 from hmis.apps.core.qr_utils import (
+    generate_invoice_qr_url,
     generate_qr_data_uri,
     generate_receipt_qr_url,
-    generate_invoice_qr_url,
 )
 
 
@@ -122,12 +122,12 @@ class InvoiceSerializer(serializers.ModelSerializer):
     items = InvoiceItemSerializer(many=True, read_only=True)
     balance = serializers.SerializerMethodField()
     balance_due = serializers.DecimalField(max_digits=12, decimal_places=2, read_only=True)
-    
+
     # Proforma-specific fields
     is_valid = serializers.BooleanField(read_only=True)
     days_until_expiry = serializers.IntegerField(read_only=True)
     can_convert = serializers.BooleanField(read_only=True)
-    
+
     # QR code for validation
     qr_code = serializers.SerializerMethodField()
 

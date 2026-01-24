@@ -2,7 +2,7 @@
 Tests for encounters services - patient called notifications.
 """
 
-import pytest # type: ignore
+import pytest  # type: ignore
 from django.contrib.auth import get_user_model
 
 from hmis.apps.core.models import Notification
@@ -35,9 +35,7 @@ class TestPatientCalledNotification:
         assert notification.related_id == sample_encounter.id
         assert f"/encounters/{sample_encounter.id}" in notification.action_url
 
-    def test_create_notification_includes_patient_details(
-        self, sample_encounter, test_user
-    ):
+    def test_create_notification_includes_patient_details(self, sample_encounter, test_user):
         """Should include patient name and MRN in notification."""
         notification = create_patient_called_notification(
             encounter=sample_encounter,
@@ -62,9 +60,7 @@ class TestPatientCalledNotification:
         assert notifications[0].user == test_user
         assert notifications[0].notification_type == "patient_called"
 
-    def test_broadcast_notification_to_multiple_users(
-        self, sample_encounter, test_user
-    ):
+    def test_broadcast_notification_to_multiple_users(self, sample_encounter, test_user):
         """Should broadcast notification to multiple target users."""
         # Create additional users
         user2 = User.objects.create_user(
@@ -91,9 +87,7 @@ class TestPatientCalledNotification:
         assert user2 in notified_users
         assert user3 in notified_users
 
-    def test_broadcast_notification_includes_caller_name(
-        self, sample_encounter, test_user
-    ):
+    def test_broadcast_notification_includes_caller_name(self, sample_encounter, test_user):
         """Should include who called the patient in broadcast message."""
         test_user.first_name = "Doctor"
         test_user.last_name = "Smith"
@@ -134,9 +128,7 @@ class TestPatientCalledNotification:
 
         assert Notification.objects.count() == initial_count + 1
 
-    def test_broadcast_creates_separate_notifications_per_user(
-        self, sample_encounter, test_user
-    ):
+    def test_broadcast_creates_separate_notifications_per_user(self, sample_encounter, test_user):
         """Each user should get their own notification instance."""
         user2 = User.objects.create_user(
             username="another_user",

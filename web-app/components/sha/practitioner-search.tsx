@@ -123,11 +123,11 @@ export function DHAPractitionerSearch({
       }
     } catch (err: unknown) {
       // Check if it's a 404 (not found) response - treat as "not found" not an error
-      const is404 = 
-        (err && typeof err === 'object' && 'response' in err && 
+      const is404 =
+        (err && typeof err === 'object' && 'response' in err &&
           (err as { response?: { status?: number } }).response?.status === 404) ||
         (err instanceof Error && err.message.includes('404'));
-      
+
       if (is404) {
         setNotFound(true);
         onError?.('No practitioner found');

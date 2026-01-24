@@ -637,8 +637,9 @@ class TriageAssessment(models.Model):
         Raises:
             ValueError: If clinic is not active
         """
-        from hmis.apps.clinics.models import Clinic, ClinicSession, ClinicVisit
         from datetime import date
+
+        from hmis.apps.clinics.models import ClinicSession, ClinicVisit
 
         # Validate clinic is active
         if clinic.status != "ACTIVE":

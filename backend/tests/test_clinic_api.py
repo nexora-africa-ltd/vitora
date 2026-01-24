@@ -474,8 +474,8 @@ class TestClinicQueueEndpoints:
     ):
         """Queue is ordered by priority (emergency first)."""
         from hmis.apps.clinics.models import ClinicVisit
-        from hmis.apps.patients.models import Patient
         from hmis.apps.core.models import County, SubCounty
+        from hmis.apps.patients.models import Patient
 
         county = County.objects.first() or County.objects.create(code=99, name="Test")
         sub_county = SubCounty.objects.first() or SubCounty.objects.create(
