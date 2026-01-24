@@ -73,8 +73,8 @@ export function MyClaimedEncountersWidget() {
 
   if (!data?.results?.length) {
     return (
-      <div className="text-center py-6">
-        <UserCheck className="h-10 w-10 mx-auto text-muted-foreground mb-2" />
+      <div className="text-center py-4">
+        <UserCheck className="h-8 w-8 mx-auto text-muted-foreground mb-2" />
         <p className="text-sm text-muted-foreground">
           No claimed encounters
         </p>

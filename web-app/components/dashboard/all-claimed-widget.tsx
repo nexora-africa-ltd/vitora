@@ -60,8 +60,8 @@ export function AllClaimedEncountersWidget({ enabled = true }: AllClaimedEncount
 
   if (isError) {
     return (
-      <div className="text-center py-6">
-        <Users className="h-10 w-10 mx-auto text-muted-foreground mb-2" />
+      <div className="text-center py-4">
+        <Users className="h-8 w-8 mx-auto text-muted-foreground mb-2" />
         <p className="text-sm text-muted-foreground">
           Unable to load claimed encounters
         </p>
@@ -74,8 +74,8 @@ export function AllClaimedEncountersWidget({ enabled = true }: AllClaimedEncount
 
   if (!data?.results?.length) {
     return (
-      <div className="text-center py-6">
-        <Users className="h-10 w-10 mx-auto text-muted-foreground mb-2" />
+      <div className="text-center py-4">
+        <Users className="h-8 w-8 mx-auto text-muted-foreground mb-2" />
         <p className="text-sm text-muted-foreground">
           No active consultations
         </p>
