@@ -133,7 +133,7 @@ const mockThresholds = [
   { id: 2, vital_type: 'SYSTOLIC_BP', critical_low: 90, warning_low: 100, warning_high: 140, critical_high: 180, is_active: true },
   { id: 3, vital_type: 'DIASTOLIC_BP', critical_low: null, warning_low: null, warning_high: 90, critical_high: 120, is_active: true },
   { id: 4, vital_type: 'HEART_RATE', critical_low: 40, warning_low: 50, warning_high: 100, critical_high: 150, is_active: true },
-  { id: 5, vital_type: 'TEMPERATURE', critical_low: 35.0, warning_low: 36.0, warning_high: 38.5, critical_high: 40.0, is_active: true },
+  { id: 5, vital_type: 'TEMPERATURE', critical_low: 35.0, warning_low: 36.5, warning_high: 37.5, critical_high: 40.0, is_active: true },
   { id: 6, vital_type: 'RESPIRATORY_RATE', critical_low: 8, warning_low: 10, warning_high: 24, critical_high: 30, is_active: true },
 ];
 

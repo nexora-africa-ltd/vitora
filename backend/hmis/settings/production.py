@@ -61,6 +61,18 @@ SECURE_HSTS_PRELOAD = True
 CORS_ALLOWED_ORIGINS = [
     origin.strip() for origin in os.getenv("CORS_ALLOWED_ORIGINS", "").split(",") if origin.strip()
 ]
+CORS_ALLOW_HEADERS = [
+    "accept",
+    "accept-encoding",
+    "authorization",
+    "content-type",
+    "dnt",
+    "origin",
+    "user-agent",
+    "x-csrftoken",
+    "x-requested-with",
+    "x-idempotency-key",  # Sprint 1.7: Idempotent API operations
+]
 
 # CSRF trusted origins (required for Django 4.0+)
 CSRF_TRUSTED_ORIGINS = [

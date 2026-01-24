@@ -22,7 +22,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Skeleton } from '@/components/ui/skeleton';
-import { usePatientEmergencyContacts } from '@/lib/hooks/use-patients-enhanced';
+import { usePatientEmergencyContacts } from '@/lib/hooks/use-patients';
 import { usePatientContext } from '@/lib/context/patient-context';
 import { usePermissions } from '@/lib/hooks/use-permissions';
 import { calculateAge, formatDate, formatPhoneNumber } from '@/lib/utils/format';

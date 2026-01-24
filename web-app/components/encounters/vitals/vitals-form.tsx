@@ -235,7 +235,7 @@ export function VitalsForm({
                 label="Temperature"
                 icon={Thermometer}
                 placeholder="36.5"
-                normalRange="36.1-37.2°C"
+                normalRange="36.5-37.5°C"
                 status={getFieldStatus('temperature', alerts)}
                 disabled={!canEdit}
                 step="0.1"

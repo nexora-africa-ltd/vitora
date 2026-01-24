@@ -612,6 +612,20 @@ class Admission(TimeStampedModel):
         ordering = ["-admission_date"]
         verbose_name = "Admission"
         verbose_name_plural = "Admissions"
+        constraints = [
+            # Only ONE active admission per patient at a time
+            models.UniqueConstraint(
+                fields=["patient"],
+                condition=models.Q(admission_status="ACTIVE"),
+                name="unique_active_admission_per_patient",
+            ),
+            # Only ONE active admission per bed at a time
+            models.UniqueConstraint(
+                fields=["bed"],
+                condition=models.Q(admission_status="ACTIVE"),
+                name="unique_active_admission_per_bed",
+            ),
+        ]
 
     def __str__(self):
         """Return string representation."""

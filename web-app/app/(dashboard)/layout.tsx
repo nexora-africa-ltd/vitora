@@ -27,7 +27,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
           <div
             className={cn(
               'transition-all duration-300',
-              sidebarCollapsed ? 'lg:ml-16' : 'lg:ml-64'
+              sidebarCollapsed ? 'lg:ml-20' : 'lg:ml-64'
             )}
           >
             {/* Header */}

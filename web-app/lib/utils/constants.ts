@@ -101,7 +101,7 @@ export const ENCOUNTER_STATUS = [
 
 // Vital sign ranges (for display and validation)
 export const VITAL_RANGES = {
-  temperature: { min: 36.1, max: 37.2, unit: '°C' },
+  temperature: { min: 36.5, max: 37.5, unit: '°C' },
   pulse: { min: 60, max: 100, unit: 'bpm' },
   respiratoryRate: { min: 12, max: 20, unit: '/min' },
   spo2: { min: 95, max: 100, unit: '%', critical: 95 },

@@ -42,7 +42,7 @@ jest.mock('@/lib/api/sha', () => ({
 }));
 
 // Mock patient hooks
-jest.mock('@/lib/hooks/use-patients-enhanced', () => ({
+jest.mock('@/lib/hooks/use-patients', () => ({
   usePatientEmergencyContacts: jest.fn(() => ({ data: [], isLoading: false })),
   usePatientEncounters: jest.fn(() => ({ data: [], isLoading: false })),
 }));

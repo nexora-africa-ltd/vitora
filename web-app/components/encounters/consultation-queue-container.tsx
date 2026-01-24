@@ -7,10 +7,12 @@
  * - useCallPatient mutation hook
  * - useStartConsultation mutation hook
  * - useBypassTriage mutation hook
+ * - useClaimEncounter / useReleaseEncounter hooks (Sprint 1.7)
  * - StartConsultationDialog
  * - BypassTriageDialog
  *
  * Phase 3.5: Full Integration
+ * Sprint 1.7: Data Integrity - Clinician Claim/Release
  */
 'use client';
 
@@ -23,7 +25,10 @@ import {
   useCallPatient,
   useStartConsultation,
   useBypassTriage,
+  useClaimEncounter,
+  useReleaseEncounter,
 } from '@/lib/hooks/use-consultation-queue';
+import { useAuth } from '@/lib/auth';
 import { useToast } from '@/lib/hooks/use-toast';
 import type { ConsultationQueueItem } from '@/lib/types/encounter';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -31,6 +36,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { AlertCircle, Users, UserPlus } from 'lucide-react';
 import Link from 'next/link';
+import axios from 'axios';
 
 // =============================================================================
 // Types
@@ -49,6 +55,7 @@ export function ConsultationQueueContainer({
   autoRefreshInterval = 30000,
 }: ConsultationQueueContainerProps) {
   const { toast } = useToast();
+  const { user } = useAuth();
 
   // Data fetching
   const {
@@ -64,6 +71,8 @@ export function ConsultationQueueContainer({
   const callPatientMutation = useCallPatient();
   const startConsultationMutation = useStartConsultation();
   const bypassTriageMutation = useBypassTriage();
+  const claimEncounterMutation = useClaimEncounter();
+  const releaseEncounterMutation = useReleaseEncounter();
 
   // Dialog state
   const [startConsultationDialogOpen, setStartConsultationDialogOpen] = useState(false);
@@ -75,7 +84,7 @@ export function ConsultationQueueContainer({
   // ===========================================================================
 
   /**
-   * Handle calling a patient
+   * Handle calling a patient (also claims the encounter automatically)
    */
   const handleCallPatient = useCallback(
     async (encounterId: number) => {
@@ -83,15 +92,24 @@ export function ConsultationQueueContainer({
         await callPatientMutation.mutateAsync(encounterId);
         toast({
           title: 'Patient Called',
-          description: 'The patient has been notified.',
+          description: 'The patient has been notified. You can now start the consultation.',
         });
       } catch (err) {
-        const message = err instanceof Error ? err.message : 'Failed to call patient';
-        toast({
-          title: 'Error',
-          description: message,
-          variant: 'destructive',
-        });
+        // Handle 409 Conflict (already claimed by another)
+        if (axios.isAxiosError(err) && err.response?.status === 409) {
+          toast({
+            title: 'Patient Unavailable',
+            description: err.response.data?.detail || 'This patient is already with another clinician.',
+            variant: 'destructive',
+          });
+        } else {
+          const message = err instanceof Error ? err.message : 'Failed to call patient';
+          toast({
+            title: 'Error',
+            description: message,
+            variant: 'destructive',
+          });
+        }
         throw err;
       }
     },
@@ -176,6 +194,65 @@ export function ConsultationQueueContainer({
   }, [refetch]);
 
   // ===========================================================================
+  // Claim/Release Handlers (Data Integrity - Sprint 1.7)
+  // ===========================================================================
+
+  /**
+   * Handle claiming an encounter
+   */
+  const handleClaimEncounter = useCallback(
+    async (encounterId: number) => {
+      try {
+        await claimEncounterMutation.mutateAsync(encounterId);
+        toast({
+          title: 'Encounter Claimed',
+          description: 'You can now start the consultation.',
+        });
+      } catch (err) {
+        // Handle 409 Conflict (already claimed by another)
+        if (axios.isAxiosError(err) && err.response?.status === 409) {
+          toast({
+            title: 'Already Claimed',
+            description: err.response.data?.error || 'This encounter is already claimed by another clinician.',
+            variant: 'destructive',
+          });
+        } else {
+          const message = err instanceof Error ? err.message : 'Failed to claim encounter';
+          toast({
+            title: 'Error',
+            description: message,
+            variant: 'destructive',
+          });
+        }
+      }
+    },
+    [claimEncounterMutation, toast]
+  );
+
+  /**
+   * Handle releasing an encounter
+   */
+  const handleReleaseEncounter = useCallback(
+    async (encounterId: number) => {
+      try {
+        await releaseEncounterMutation.mutateAsync(encounterId);
+        toast({
+          title: 'Encounter Released',
+          description: 'Another clinician can now claim this encounter.',
+        });
+      } catch (err) {
+        const message = err instanceof Error ? err.message : 'Failed to release encounter';
+        toast({
+          title: 'Error',
+          description: message,
+          variant: 'destructive',
+        });
+      }
+    },
+    [releaseEncounterMutation, toast]
+  );
+
+  // ===========================================================================
   // Render States
   // ===========================================================================
 
@@ -251,12 +328,17 @@ export function ConsultationQueueContainer({
     <>
       <ConsultationQueue
         queueItems={queueData.results}
+        currentUserId={user?.id}
         onCallPatient={handleCallPatient}
         onStartConsultation={handleStartConsultationClick}
+        onClaimEncounter={handleClaimEncounter}
+        onReleaseEncounter={handleReleaseEncounter}
         onRefresh={handleRefresh}
         isLoading={isFetching}
         error={null}
         autoRefreshInterval={autoRefreshInterval}
+        isClaimingEncounter={claimEncounterMutation.isPending}
+        isReleasingEncounter={releaseEncounterMutation.isPending}
       />
 
       {/* Start Consultation Dialog */}

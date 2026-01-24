@@ -21,7 +21,7 @@ import { Badge } from '@/components/ui/badge';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { TriageAssessmentForm } from '@/components/triage';
 import { useCreateTriageAssessment, useWaitingQueue, useCheckInPatient } from '@/lib/hooks/use-triage';
-import { usePatient, usePatients } from '@/lib/hooks/use-patients-enhanced';
+import { usePatient, usePatients } from '@/lib/hooks/use-patients';
 import { useEncounter, useCreateEncounter } from '@/lib/hooks/use-encounters';
 import { toast } from '@/lib/hooks/use-toast';
 import type { TriageAssessmentCreateData } from '@/lib/types/triage';

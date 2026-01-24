@@ -16,7 +16,7 @@ import {
 } from '@/components/ui/select';
 import { ViewToggle, type ViewMode } from '@/components/ui/view-toggle';
 import { PatientTable } from '@/components/patients/patient-table';
-import { usePatients } from '@/lib/hooks/use-patients-enhanced';
+import { usePatients } from '@/lib/hooks/use-patients';
 import { useDebounce } from '@/lib/hooks/use-debounce';
 import { GENDER_OPTIONS } from '@/lib/utils/constants';
 

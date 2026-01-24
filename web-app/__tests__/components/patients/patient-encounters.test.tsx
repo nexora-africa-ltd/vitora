@@ -7,7 +7,7 @@ import { render, screen } from '@testing-library/react';
 import { PatientEncounters } from '@/components/patients/patient-encounters';
 
 // Mock the hook
-jest.mock('@/lib/hooks/use-patients-enhanced', () => ({
+jest.mock('@/lib/hooks/use-patients', () => ({
   usePatientEncounters: jest.fn(),
 }));
 
@@ -49,7 +49,7 @@ jest.mock('@/lib/utils/constants', () => ({
   ],
 }));
 
-import { usePatientEncounters } from '@/lib/hooks/use-patients-enhanced';
+import { usePatientEncounters } from '@/lib/hooks/use-patients';
 
 const mockUsePatientEncounters = usePatientEncounters as jest.MockedFunction<typeof usePatientEncounters>;
 

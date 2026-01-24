@@ -1,0 +1,170 @@
+"""
+Mixins for data integrity and idempotency.
+
+Sprint 1.7: Data Integrity & Idempotency
+
+This module provides mixins for:
+1. Idempotent API operations (preventing duplicate resource creation)
+2. Transaction-safe operations with row locking
+"""
+
+from django.db import transaction
+from rest_framework import status
+from rest_framework.response import Response
+
+from hmis.apps.core.models import IdempotencyKey
+
+
+class IdempotentCreateMixin:
+    """
+    Mixin to make create operations idempotent.
+
+    When a client includes an X-Idempotency-Key header, the system:
+    1. Checks if the key exists for this user
+    2. If yes, returns the cached response (idempotent replay)
+    3. If no, processes the request and caches the response
+
+    Usage:
+        class MyViewSet(IdempotentCreateMixin, viewsets.ModelViewSet):
+            ...
+
+    Client usage:
+        POST /api/patients/
+        X-Idempotency-Key: 550e8400-e29b-41d4-a716-446655440000
+        Content-Type: application/json
+        {"first_name": "John", ...}
+
+    On retry with same key:
+        Returns the same response as the first request (idempotent)
+    """
+
+    IDEMPOTENCY_HEADER = "HTTP_X_IDEMPOTENCY_KEY"
+
+    def create(self, request, *args, **kwargs):
+        """
+        Create with idempotency support.
+
+        If X-Idempotency-Key header is provided:
+        - Checks for existing cached response
+        - If found, returns cached response
+        - If not, processes request and caches response
+        """
+        idempotency_key = request.META.get(self.IDEMPOTENCY_HEADER)
+
+        if idempotency_key:
+            # Check for existing idempotency record
+            existing = IdempotencyKey.get_or_none(key=idempotency_key, user=request.user)
+
+            if existing:
+                # Return cached response (idempotent replay)
+                return Response(
+                    existing.response_data,
+                    status=existing.response_status,
+                )
+
+        # Process the request with atomic transaction
+        with transaction.atomic():
+            response = super().create(request, *args, **kwargs)
+
+            # Cache the response for idempotency
+            if idempotency_key and response.status_code in (200, 201):
+                IdempotencyKey.objects.create(
+                    key=idempotency_key,
+                    user=request.user,
+                    resource_type=self.get_serializer_class().Meta.model.__name__,
+                    resource_id=response.data.get("id"),
+                    response_status=response.status_code,
+                    response_data=response.data,
+                )
+
+        return response
+
+
+class TransactionSafeUpdateMixin:
+    """
+    Mixin to provide transaction-safe updates with row locking.
+
+    Uses SELECT ... FOR UPDATE to prevent race conditions
+    when multiple requests try to update the same resource.
+
+    Usage:
+        class MyViewSet(TransactionSafeUpdateMixin, viewsets.ModelViewSet):
+            ...
+    """
+
+    def update(self, request, *args, **kwargs):
+        """Update with row locking to prevent race conditions."""
+        partial = kwargs.pop("partial", False)
+
+        with transaction.atomic():
+            # Lock the row to prevent concurrent updates
+            instance = self.get_queryset().select_for_update().get(pk=kwargs.get("pk"))
+
+            serializer = self.get_serializer(instance, data=request.data, partial=partial)
+            serializer.is_valid(raise_exception=True)
+            self.perform_update(serializer)
+
+            if getattr(instance, "_prefetched_objects_cache", None):
+                # If 'prefetch_related' has been applied to a queryset, we need to
+                # forcibly invalidate the prefetch cache on the instance.
+                instance._prefetched_objects_cache = {}
+
+        return Response(serializer.data)
+
+
+class ConcurrencyControlMixin:
+    """
+    Mixin for optimistic concurrency control using version numbers.
+
+    Requires a 'version' field on the model.
+    Client must include the current version in update requests.
+
+    Usage:
+        class MyModel(models.Model):
+            version = models.IntegerField(default=1)
+
+        class MyViewSet(ConcurrencyControlMixin, viewsets.ModelViewSet):
+            ...
+
+    Client request:
+        PATCH /api/resource/1/
+        {"field": "value", "version": 1}
+
+    If version doesn't match current, returns 409 Conflict.
+    """
+
+    VERSION_FIELD = "version"
+
+    def update(self, request, *args, **kwargs):
+        """Update with optimistic concurrency control."""
+        partial = kwargs.pop("partial", False)
+        instance = self.get_object()
+
+        # Get version from request
+        request_version = request.data.get(self.VERSION_FIELD)
+
+        if request_version is not None:
+            current_version = getattr(instance, self.VERSION_FIELD, None)
+
+            if current_version is not None and int(request_version) != current_version:
+                return Response(
+                    {
+                        "error": "Concurrency conflict",
+                        "detail": f"Resource has been modified. "
+                        f"Expected version {request_version}, current version is {current_version}. "
+                        f"Please refresh and try again.",
+                        "current_version": current_version,
+                    },
+                    status=status.HTTP_409_CONFLICT,
+                )
+
+        serializer = self.get_serializer(instance, data=request.data, partial=partial)
+        serializer.is_valid(raise_exception=True)
+
+        # Increment version on successful update
+        if hasattr(instance, self.VERSION_FIELD):
+            setattr(instance, self.VERSION_FIELD, getattr(instance, self.VERSION_FIELD, 0) + 1)
+
+        self.perform_update(serializer)
+
+        return Response(serializer.data)
