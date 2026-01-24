@@ -33,6 +33,7 @@ dj-database-url = "^3.1.0"
 gunicorn = "^23.0.0"
 whitenoise = "^6.11.0"
 qrcode = {extras = ["pil"], version = "^8.2"}
+drf-nested-routers = "^0.95.0"
 
 [tool.poetry.group.dev.dependencies]
 # Testing
