@@ -16,7 +16,7 @@
  * - Bed Occupancy Dashboard
  */
 import { test, expect, Page } from '@playwright/test';
-import { TEST_USER, API_BASE, login, mockApiResponse } from './fixtures';
+import { TEST_USER, API_BASE, login, mockApiResponse } from '../fixtures';
 
 // =============================================================================
 // MOCK DATA

@@ -3,7 +3,7 @@
  * Tests for patient CRUD operations
  */
 import { test, expect } from '@playwright/test';
-import { API_BASE, TEST_USER } from './fixtures';
+import { API_BASE, TEST_USER } from '../fixtures';
 
 const mockPatient = {
   id: 1,

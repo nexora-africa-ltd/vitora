@@ -8,7 +8,7 @@
  * - "View all" button opens sliding panel notification center
  */
 import { test, expect, Page } from '@playwright/test';
-import { TEST_USER } from './fixtures';
+import { TEST_USER } from '../fixtures';
 
 // Mock notification data
 const mockNotifications = {
