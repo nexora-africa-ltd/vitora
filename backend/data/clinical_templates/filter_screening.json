@@ -1,0 +1,39 @@
+{
+  "name": "Filter/Screening Assessment",
+  "template_type": "assessment",
+  "specialty": "Primary Care",
+  "description": "Initial filter/screening clinic assessment for routing patients",
+  "content": {
+    "title": "Filter/Screening Assessment",
+    "version": "1.0",
+    "sections": [
+      {
+        "name": "Presenting Concern",
+        "order": 1,
+        "fields": [
+          {"name": "chief_complaint", "type": "text", "required": true, "label": "Chief Complaint"},
+          {"name": "duration", "type": "text", "required": false, "label": "Duration"},
+          {"name": "red_flags", "type": "multiselect", "required": false, "label": "Red Flags", "options": ["Chest pain", "Severe shortness of breath", "Altered mental status", "Severe bleeding", "Seizure", "Severe dehydration", "Trauma", "Pregnancy emergency"]}
+        ]
+      },
+      {
+        "name": "Screening",
+        "order": 2,
+        "fields": [
+          {"name": "pregnant", "type": "boolean", "required": false, "label": "Pregnant"},
+          {"name": "under_five", "type": "boolean", "required": false, "label": "Under 5 years"},
+          {"name": "chronic_care", "type": "multiselect", "required": false, "label": "Chronic Care", "options": ["HIV", "TB", "Diabetes", "Hypertension", "Mental Health"]},
+          {"name": "requires_emergency", "type": "boolean", "required": false, "label": "Needs Emergency Care"}
+        ]
+      },
+      {
+        "name": "Disposition",
+        "order": 3,
+        "fields": [
+          {"name": "recommended_clinic", "type": "select", "required": true, "label": "Recommended Clinic", "options": ["GENERAL_OPD", "ANC", "PNC", "FP", "CWC", "IMMUNIZATION", "NUTRITION", "DENTAL", "EYE", "ENT", "SURGICAL", "ORTHO", "PHYSIO", "DERM", "CCC", "TB", "DIABETIC", "HYPERTENSION", "MENTAL_HEALTH", "ONCOLOGY", "DIALYSIS", "EMERGENCY", "OTHER"]},
+          {"name": "notes", "type": "textarea", "required": false, "label": "Notes"}
+        ]
+      }
+    ]
+  }
+}

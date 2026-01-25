@@ -1,0 +1,49 @@
+{
+  "name": "Dermatology Clinic Assessment",
+  "template_type": "encounter",
+  "specialty": "Dermatology",
+  "description": "Dermatology outpatient assessment template",
+  "content": {
+    "title": "Dermatology Clinic Assessment",
+    "version": "1.0",
+    "sections": [
+      {
+        "name": "Presenting Problem",
+        "order": 1,
+        "fields": [
+          {"name": "presenting_complaint", "type": "text", "required": true, "label": "Presenting Complaint"},
+          {"name": "duration", "type": "text", "required": false, "label": "Duration"},
+          {"name": "itching", "type": "boolean", "required": false, "label": "Itching"},
+          {"name": "pain", "type": "boolean", "required": false, "label": "Pain"}
+        ]
+      },
+      {
+        "name": "Lesion Details",
+        "order": 2,
+        "fields": [
+          {"name": "location", "type": "textarea", "required": false, "label": "Location"},
+          {"name": "morphology", "type": "textarea", "required": false, "label": "Morphology"},
+          {"name": "distribution", "type": "select", "required": false, "label": "Distribution", "options": ["Localized", "Generalized"]}
+        ]
+      },
+      {
+        "name": "History",
+        "order": 3,
+        "fields": [
+          {"name": "exposures", "type": "textarea", "required": false, "label": "Exposures/Triggers"},
+          {"name": "previous_treatments", "type": "textarea", "required": false, "label": "Previous Treatments"},
+          {"name": "atopy_history", "type": "boolean", "required": false, "label": "Atopy History"}
+        ]
+      },
+      {
+        "name": "Assessment & Plan",
+        "order": 4,
+        "fields": [
+          {"name": "diagnosis", "type": "textarea", "required": true, "label": "Diagnosis"},
+          {"name": "treatment", "type": "textarea", "required": true, "label": "Treatment"},
+          {"name": "follow_up", "type": "textarea", "required": false, "label": "Follow-up"}
+        ]
+      }
+    ]
+  }
+}

@@ -12,6 +12,56 @@ This module provides functionality for:
 - **Schedule Management** - Weekly operating hours
 - **Chronic Care Enrollment** - Track patients enrolled in long-term care programs
 
+## Clinical Templates in the Clinic Flow
+
+Clinical templates (from [backend/data/clinical_templates](backend/data/clinical_templates)) are used to pre-fill an encounter's structure when a clinician starts a consultation.
+
+**Where it happens**
+- When a `ClinicVisit` transitions to **IN_CONSULTATION**, the model method `ClinicVisit.start_consultation()` resolves a default template and creates/updates an `Encounter` with `clinical_template` set.
+
+**Resolution order**
+1. `Clinic.default_clinical_template` (explicit per-clinic configuration)
+2. Code-based override (for seeded “special” clinics like `GBV-DEFAULT`)
+3. Clinic-type routing best-fit mapping
+4. If nothing matches, the encounter remains template-less
+
+**Operational notes**
+- Templates must be loaded into the DB (typically via `python manage.py load_clinical_templates`) for routing to return a `ClinicalTemplate`.
+- To backfill existing clinics that lack defaults, use `python manage.py populate_clinic_default_templates`.
+
+### Current Best-Fit Template Routing
+
+| Clinic Type / Code | Default ClinicalTemplate.name |
+|---|---|
+| `GENERAL_OPD` | `General OPD Assessment` |
+| `FILTER_CLINIC` | `Filter/Screening Assessment` |
+| `ANC` | `Antenatal Care (ANC) Visit` |
+| `CWC` | `Child Wellness Check` |
+| `PNC` | `Postnatal Care (PNC) Visit` |
+| `FP` | `Family Planning Visit` |
+| `IMMUNIZATION` | `Immunization Visit` |
+| `CCC` | `HIV Care and Treatment` |
+| `TB` | `TB Assessment` |
+| `DIABETIC` | `Chronic Disease Follow-up` |
+| `HYPERTENSION` | `Chronic Disease Follow-up` |
+| `DENTAL` | `Dental Clinic Assessment` |
+| `EYE` | `Eye Clinic Assessment` |
+| `ENT` | `ENT Clinic Assessment` |
+| `SURGICAL` | `Surgical OPD Assessment` |
+| `ORTHO` | `Orthopedic Clinic Assessment` |
+| `PHYSIO` | `Physiotherapy Session Note` |
+| `DERM` | `Dermatology Clinic Assessment` |
+| `NUTRITION` | `Nutrition Assessment` |
+| `MENTAL_HEALTH` | `Mental Health Assessment` |
+| `ONCOLOGY` | `Oncology Follow-up` |
+| `DIALYSIS` | `Dialysis Session Note` |
+| `PROCEDURE` | `Procedure Note` |
+| `DRESSING` | `Dressing/Wound Care Note` |
+| `INJECTION` | `Injection Administration Note` |
+| `OTHER` | `Other Clinic Assessment` |
+| `EMERGENCY` | `Emergency Triage (ETAT)` |
+| `GBV-DEFAULT` (clinic code override) | `Gender-Based Violence Assessment` |
+
 ## Models
 
 ### Clinic

@@ -15,7 +15,7 @@ from django.core.management.base import BaseCommand
 
 from hmis.apps.clinics.models import Clinic
 from hmis.apps.clinics.services.template_routing import (
-    resolve_default_clinical_template_for_clinic_type,
+    resolve_default_clinical_template,
 )
 
 
@@ -63,7 +63,7 @@ class Command(BaseCommand):
                 skipped += 1
                 continue
 
-            resolved = resolve_default_clinical_template_for_clinic_type(clinic.clinic_type)
+            resolved = resolve_default_clinical_template(clinic)
             if resolved is None:
                 missing_template += 1
                 continue

@@ -1,0 +1,50 @@
+{
+  "name": "ENT Clinic Assessment",
+  "template_type": "encounter",
+  "specialty": "ENT",
+  "description": "Ear, Nose and Throat clinic assessment template",
+  "content": {
+    "title": "ENT Clinic Assessment",
+    "version": "1.0",
+    "sections": [
+      {
+        "name": "Chief Complaint",
+        "order": 1,
+        "fields": [
+          {"name": "complaint", "type": "text", "required": true, "label": "Chief Complaint"},
+          {"name": "duration", "type": "text", "required": false, "label": "Duration"}
+        ]
+      },
+      {
+        "name": "ENT Symptom Review",
+        "order": 2,
+        "fields": [
+          {"name": "ear_symptoms", "type": "textarea", "required": false, "label": "Ear Symptoms"},
+          {"name": "nose_symptoms", "type": "textarea", "required": false, "label": "Nose Symptoms"},
+          {"name": "throat_symptoms", "type": "textarea", "required": false, "label": "Throat Symptoms"},
+          {"name": "hearing_loss", "type": "boolean", "required": false, "label": "Hearing Loss"},
+          {"name": "vertigo", "type": "boolean", "required": false, "label": "Vertigo"}
+        ]
+      },
+      {
+        "name": "Examination",
+        "order": 3,
+        "fields": [
+          {"name": "otoscopy", "type": "textarea", "required": false, "label": "Otoscopy"},
+          {"name": "nasal_exam", "type": "textarea", "required": false, "label": "Nasal Exam"},
+          {"name": "throat_exam", "type": "textarea", "required": false, "label": "Throat Exam"},
+          {"name": "neck_exam", "type": "textarea", "required": false, "label": "Neck Exam"}
+        ]
+      },
+      {
+        "name": "Plan",
+        "order": 4,
+        "fields": [
+          {"name": "diagnosis", "type": "textarea", "required": true, "label": "Diagnosis"},
+          {"name": "management_plan", "type": "textarea", "required": true, "label": "Management Plan"},
+          {"name": "follow_up", "type": "textarea", "required": false, "label": "Follow-up"}
+        ]
+      }
+    ]
+  }
+}
