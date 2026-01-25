@@ -105,6 +105,8 @@ markers = [
 source = ["hmis"]
 omit = [
     "*/migrations/*",
+    "*/management/*",
+    "*/management/commands/*",
     "*/tests/*",
     "*/__pycache__/*",
     "*/venv/*",
