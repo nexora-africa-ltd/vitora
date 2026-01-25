@@ -8,8 +8,7 @@ The goal is to keep reporting logic out of views/models and make it easy to test
 from __future__ import annotations
 
 from dataclasses import dataclass
-from datetime import date
-from datetime import timedelta
+from datetime import date, timedelta
 from decimal import Decimal
 
 from django.core.exceptions import ValidationError
@@ -31,10 +30,7 @@ def _month_range(year: int, month: int) -> MonthRange:
         raise ValidationError({"month": "Month must be between 1 and 12."})
 
     start = date(year, month, 1)
-    if month == 12:
-        end = date(year + 1, 1, 1)
-    else:
-        end = date(year, month + 1, 1)
+    end = date(year + 1, 1, 1) if month == 12 else date(year, month + 1, 1)
     return MonthRange(start=start, end=end)
 
 
@@ -99,12 +95,11 @@ def generate_monthly_report(clinic: Clinic, year: int, month: int) -> MonthlyCli
         invoice_date__gte=month_range.start,
         invoice_date__lt=month_range.end,
     ).filter(
-        Q(clinic_visit__session__clinic=clinic)
-        | Q(encounter__clinic_visit__session__clinic=clinic)
+        Q(clinic_visit__session__clinic=clinic) | Q(encounter__clinic_visit__session__clinic=clinic)
     )
 
-    total_revenue = (
-        paid_invoices.aggregate(total=Sum("total_amount")).get("total") or Decimal("0.00")
+    total_revenue = paid_invoices.aggregate(total=Sum("total_amount")).get("total") or Decimal(
+        "0.00"
     )
 
     # Enrollment aggregation

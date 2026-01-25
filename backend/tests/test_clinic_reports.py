@@ -202,7 +202,17 @@ def paid_invoice_for_visit(db, visits_in_month, clinic_user):
     invoice.calculate_totals()
     invoice.status = Invoice.Status.PAID
     invoice.amount_paid = invoice.total_amount
-    invoice.save(update_fields=["status", "amount_paid", "subtotal", "tax_amount", "total_amount", "balance_due", "updated_at"])
+    invoice.save(
+        update_fields=[
+            "status",
+            "amount_paid",
+            "subtotal",
+            "tax_amount",
+            "total_amount",
+            "balance_due",
+            "updated_at",
+        ]
+    )
 
     return invoice
 
@@ -215,10 +225,7 @@ def enrollments_for_reporting(db, sample_clinic, female_patient, clinic_user):
 
     today = timezone.now().date()
     start = date(today.year, today.month, 1)
-    if today.month == 12:
-        end = date(today.year + 1, 1, 1)
-    else:
-        end = date(today.year, today.month + 1, 1)
+    end = date(today.year + 1, 1, 1) if today.month == 12 else date(today.year, today.month + 1, 1)
     reference_date = end - timedelta(days=1)
 
     # New enrollment within reporting month
@@ -360,9 +367,7 @@ class TestMonthlyClinicReportAPI:
     def test_regenerate_monthly_report_endpoint(self, authenticated_client, sample_clinic):
         """POST regenerate endpoint recomputes report for (year, month)."""
         today = timezone.now().date()
-        url = (
-            f"/api/clinics/{sample_clinic.id}/reports/monthly/{today.year}/{today.month}/regenerate/"
-        )
+        url = f"/api/clinics/{sample_clinic.id}/reports/monthly/{today.year}/{today.month}/regenerate/"
         response = authenticated_client.post(url)
         assert response.status_code in (status.HTTP_200_OK, status.HTTP_201_CREATED)
 

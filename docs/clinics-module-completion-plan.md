@@ -251,15 +251,15 @@ SHA claims bundle does not include clinic/service delivery point context, which 
 ### 4.2 Implementation Tasks
 
 ```
-[ ] Update build_claim_bundle() to include clinic info
+[x] Update build_claim_bundle() to include clinic info
     - Add clinic context to Encounter extension or meta
     - Include clinic code in claim identifier
 
-[ ] Add facility service point to FHIR Claim
+[x] Add facility service point to FHIR Claim
     - Extension: clinic_code, clinic_type
     - Or use Encounter.serviceProvider reference
 
-[ ] Update tests
+[x] Update tests
     - test_claim_includes_clinic_context
     - test_claim_without_clinic_context_still_valid
 ```
