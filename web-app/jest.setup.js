@@ -1,5 +1,22 @@
 import '@testing-library/jest-dom';
 
+// Provide a safe default mock for Next.js App Router APIs.
+// Individual tests can override this with their own `jest.mock('next/navigation', ...)`.
+jest.mock('next/navigation', () => ({
+  useRouter: () => ({
+    push: jest.fn(),
+    replace: jest.fn(),
+    back: jest.fn(),
+    forward: jest.fn(),
+    refresh: jest.fn(),
+    prefetch: jest.fn(),
+  }),
+  usePathname: () => '/',
+  useSearchParams: () => new URLSearchParams(),
+  useParams: () => ({}),
+  redirect: jest.fn(),
+}));
+
 // Polyfill fetch API for Node.js (required for MSW)
 import { TextEncoder, TextDecoder } from 'util';
 global.TextEncoder = TextEncoder;

@@ -2,6 +2,11 @@ import { render, screen } from '@testing-library/react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import DashboardPage from '@/app/(dashboard)/dashboard/page';
 
+// Avoid needing AuthProvider in this unit test
+jest.mock('@/lib/auth', () => ({
+  useIsSupervisor: () => false,
+}));
+
 // Create a new query client for tests
 const createTestQueryClient = () => new QueryClient({
   defaultOptions: {

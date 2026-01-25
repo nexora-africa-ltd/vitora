@@ -1,5 +1,5 @@
 import React from 'react';
-import { render, screen, fireEvent } from '@testing-library/react';
+import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import { Header } from '@/components/layout/header';
 
 // Mock next/navigation
@@ -11,6 +11,7 @@ jest.mock('next/navigation', () => ({
 jest.mock('next-themes', () => ({
   useTheme: jest.fn(() => ({
     theme: 'light',
+    resolvedTheme: 'light',
     setTheme: jest.fn(),
   })),
 }));
@@ -100,9 +101,10 @@ describe('Header', () => {
 
   it('should render theme toggle button', () => {
     render(<Header {...defaultProps} />);
-    // Theme toggle might be a dropdown trigger with sun/moon icon
-    const themeButton = screen.getByRole('button', { name: /toggle theme/i });
-    expect(themeButton).toBeInTheDocument();
+    // AnimatedThemeToggle sets an explicit aria-label after mount
+    return waitFor(() => {
+      expect(screen.getByRole('button', { name: /switch to dark mode/i })).toBeInTheDocument();
+    });
   });
 
   it('should render user avatar with initials', () => {

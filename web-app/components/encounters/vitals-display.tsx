@@ -19,7 +19,7 @@ export function VitalsDisplay({ encounter }: VitalsDisplayProps) {
         ? encounter.temperature < 36.5 || encounter.temperature > 37.5
         : false,
       isCritical: encounter.temperature
-        ? encounter.temperature < 35 || encounter.temperature > 40
+        ? encounter.temperature < 35 || encounter.temperature >= 40
         : false,
     },
     {

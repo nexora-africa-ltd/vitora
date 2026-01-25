@@ -95,9 +95,8 @@ describe('AdmissionsPage', () => {
   it('shows admission recommendations section', () => {
     render(<AdmissionsPage />);
 
-    expect(
-      screen.getByRole('heading', { name: /pending admission recommendations/i })
-    ).toBeInTheDocument();
+    // CardTitle is not necessarily a semantic heading element
+    expect(screen.getByText(/pending admission recommendations/i)).toBeInTheDocument();
 
     expect(
       screen.getByText(/severe malaria requiring iv treatment/i)

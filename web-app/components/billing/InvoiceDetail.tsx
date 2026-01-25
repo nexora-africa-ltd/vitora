@@ -192,6 +192,16 @@ export function InvoiceDetail({
       {/* Header */}
       <div className="flex flex-col sm:flex-row justify-between items-start gap-4">
         <div>
+          <h2 className="text-2xl font-bold tracking-tight" data-testid="invoice-number">
+            {invoice.invoice_number}
+          </h2>
+          {(invoice.patient_name || invoice.patient_mrn) && (
+            <p className="text-sm text-muted-foreground mt-1">
+              {invoice.patient_name ? invoice.patient_name : ''}
+              {invoice.patient_name && invoice.patient_mrn ? ' • ' : ''}
+              {invoice.patient_mrn ? invoice.patient_mrn : ''}
+            </p>
+          )}
           <p className="text-muted-foreground">
             Created {formatDate(invoice.invoice_date)}
           </p>
@@ -494,7 +504,7 @@ export function InvoiceDetail({
         {/* Print Invoice */}
         <Button
           variant="outline"
-          onClick={() => printInvoice({ invoice })}
+          onClick={() => (onPrint ? onPrint(invoice) : printInvoice({ invoice }))}
         >
           <Printer className="h-4 w-4 mr-2" />
           Print Invoice
