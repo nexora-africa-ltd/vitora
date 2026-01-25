@@ -19,6 +19,7 @@ from .models import (
     ClinicSession,
     ClinicStaff,
     ClinicVisit,
+    MonthlyClinicReport,
 )
 
 # =============================================================================
@@ -637,3 +638,50 @@ class QueueStatsSerializer(serializers.Serializer):
     no_show = serializers.IntegerField()
     total = serializers.IntegerField()
     average_wait_time = serializers.FloatField()
+
+
+# =============================================================================
+# Monthly Clinic Reports
+# =============================================================================
+
+
+class MonthlyClinicReportSerializer(serializers.ModelSerializer):
+    """Serializer for MonthlyClinicReport model."""
+
+    class Meta:
+        model = MonthlyClinicReport
+        fields = [
+            "id",
+            "clinic",
+            "year",
+            "month",
+            "total_visits",
+            "new_visits",
+            "revisits",
+            "priority_red",
+            "priority_orange",
+            "priority_yellow",
+            "priority_green",
+            "priority_blue",
+            "male_visits",
+            "female_visits",
+            "under_5_visits",
+            "under_18_visits",
+            "adult_visits",
+            "over_60_visits",
+            "new_enrollments",
+            "active_enrollments",
+            "defaulters",
+            "anc_first_visits",
+            "anc_revisits",
+            "deliveries",
+            "total_revenue",
+            "sha_claims_amount",
+            "cash_amount",
+            "dhis2_submitted",
+            "dhis2_submitted_at",
+            "dhis2_response",
+            "created_at",
+            "updated_at",
+        ]
+        read_only_fields = ["id", "created_at", "updated_at"]
