@@ -13,8 +13,10 @@ Implements Phase 2.1 of the Clinics Module Implementation Plan.
 """
 
 from datetime import timedelta
+from decimal import Decimal
 
 from django.conf import settings
+from django.core.validators import MaxValueValidator, MinValueValidator
 from django.db import models
 from django.utils import timezone
 
@@ -1559,3 +1561,63 @@ class ClinicEnrollment(TimeStampedModel):
                 "type": enrollment_type,
                 "enrollment_data": self.enrollment_data,
             }
+
+
+# =============================================================================
+# MonthlyClinicReport Model - Monthly Aggregates (Priority 3)
+# =============================================================================
+
+
+class MonthlyClinicReport(TimeStampedModel):
+    """Monthly aggregate statistics for DHIS2/KHIS reporting."""
+
+    clinic = models.ForeignKey(Clinic, on_delete=models.CASCADE, related_name="monthly_reports")
+    year = models.PositiveIntegerField()
+    month = models.PositiveIntegerField(validators=[MinValueValidator(1), MaxValueValidator(12)])
+
+    # Visit Statistics
+    total_visits = models.PositiveIntegerField(default=0)
+    new_visits = models.PositiveIntegerField(default=0)
+    revisits = models.PositiveIntegerField(default=0)
+
+    # By Priority
+    priority_red = models.PositiveIntegerField(default=0)
+    priority_orange = models.PositiveIntegerField(default=0)
+    priority_yellow = models.PositiveIntegerField(default=0)
+    priority_green = models.PositiveIntegerField(default=0)
+    priority_blue = models.PositiveIntegerField(default=0)
+
+    # Demographics
+    male_visits = models.PositiveIntegerField(default=0)
+    female_visits = models.PositiveIntegerField(default=0)
+    under_5_visits = models.PositiveIntegerField(default=0)
+    under_18_visits = models.PositiveIntegerField(default=0)
+    adult_visits = models.PositiveIntegerField(default=0)
+    over_60_visits = models.PositiveIntegerField(default=0)
+
+    # Chronic Care (for CCC, Diabetic, etc.)
+    new_enrollments = models.PositiveIntegerField(default=0)
+    active_enrollments = models.PositiveIntegerField(default=0)
+    defaulters = models.PositiveIntegerField(default=0)
+
+    # ANC Specific (for MCH clinics)
+    anc_first_visits = models.PositiveIntegerField(default=0)
+    anc_revisits = models.PositiveIntegerField(default=0)
+    deliveries = models.PositiveIntegerField(default=0)
+
+    # Revenue
+    total_revenue = models.DecimalField(max_digits=12, decimal_places=2, default=Decimal("0.00"))
+    sha_claims_amount = models.DecimalField(max_digits=12, decimal_places=2, default=Decimal("0.00"))
+    cash_amount = models.DecimalField(max_digits=12, decimal_places=2, default=Decimal("0.00"))
+
+    # DHIS2 Sync
+    dhis2_submitted = models.BooleanField(default=False)
+    dhis2_submitted_at = models.DateTimeField(null=True, blank=True)
+    dhis2_response = models.JSONField(null=True, blank=True)
+
+    class Meta:
+        unique_together = ["clinic", "year", "month"]
+        ordering = ["-year", "-month", "clinic__name"]
+
+    def __str__(self) -> str:
+        return f"{self.clinic.name} - {self.year}-{self.month:02d}"

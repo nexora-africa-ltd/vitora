@@ -21,6 +21,7 @@ from rest_framework.response import Response
 from .models import (
     Clinic,
     ClinicEnrollment,
+    MonthlyClinicReport,
     ClinicSchedule,
     ClinicSession,
     ClinicStaff,
@@ -37,8 +38,11 @@ from .serializers import (
     ClinicVisitCreateSerializer,
     ClinicVisitReferSerializer,
     ClinicVisitSerializer,
+    MonthlyClinicReportSerializer,
     QueueStatsSerializer,
 )
+
+from .services.reporting import generate_monthly_report
 
 # =============================================================================
 # Permissions
@@ -210,7 +214,7 @@ class ClinicViewSet(viewsets.ModelViewSet):
 
     def get_permissions(self):
         """Return appropriate permissions for each action."""
-        if self.action in ["queue", "queue_stats"]:
+        if self.action in ["queue", "queue_stats", "regenerate_monthly_report"]:
             # Allow authenticated users to access queue endpoints
             return [permissions.IsAuthenticated()]
         return super().get_permissions()
@@ -316,6 +320,40 @@ class ClinicViewSet(viewsets.ModelViewSet):
 
         serializer = QueueStatsSerializer(stats)
         return Response(serializer.data)
+
+    @action(detail=True, methods=["get"], url_path="reports/monthly")
+    def monthly_reports(self, request, pk=None):
+        """List monthly reports for a clinic."""
+        clinic = self.get_object()
+        reports = MonthlyClinicReport.objects.filter(clinic=clinic).order_by(
+            "-year", "-month"
+        )
+        serializer = MonthlyClinicReportSerializer(reports, many=True)
+        return Response(serializer.data, status=status.HTTP_200_OK)
+
+    @action(
+        detail=True,
+        methods=["get"],
+        url_path=r"reports/monthly/(?P<year>\d{4})/(?P<month>\d{1,2})",
+    )
+    def monthly_report_detail(self, request, pk=None, year=None, month=None):
+        """Get (or generate) a clinic report for a specific month."""
+        clinic = self.get_object()
+        report = generate_monthly_report(clinic, year=int(year), month=int(month))
+        serializer = MonthlyClinicReportSerializer(report)
+        return Response(serializer.data, status=status.HTTP_200_OK)
+
+    @action(
+        detail=True,
+        methods=["post"],
+        url_path=r"reports/monthly/(?P<year>\d{4})/(?P<month>\d{1,2})/regenerate",
+    )
+    def regenerate_monthly_report(self, request, pk=None, year=None, month=None):
+        """Regenerate a clinic monthly report for a specific month."""
+        clinic = self.get_object()
+        report = generate_monthly_report(clinic, year=int(year), month=int(month))
+        serializer = MonthlyClinicReportSerializer(report)
+        return Response(serializer.data, status=status.HTTP_200_OK)
 
 
 # =============================================================================
