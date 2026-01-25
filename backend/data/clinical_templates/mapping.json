@@ -1,0 +1,83 @@
+{
+  "document_generator": {
+    "templates": [
+      {
+        "template_name": "sick_note",
+        "json_source": "/api/sick_notes/{note_id}",
+        "pdf_fields": [
+          "patient.name",
+          "patient.dob",
+          "clinician.name",
+          "dates.start_of_leave",
+          "dates.end_of_leave",
+          "diagnosis.description",
+          "recommendations"
+        ],
+        "html_fields": [
+          "patient.name",
+          "patient.mrn",
+          "clinician.name",
+          "dates.issued_on",
+          "dates.start_of_leave",
+          "dates.end_of_leave",
+          "diagnosis.description",
+          "recommendations"
+        ],
+        "qr_field": "note_id"
+      },
+      {
+        "template_name": "referral_letter",
+        "json_source": "/api/referral_letters/{letter_id}",
+        "pdf_fields": [
+          "patient.name",
+          "patient.mrn",
+          "referring_clinician.name",
+          "receiving_facility.name",
+          "reason_for_referral",
+          "clinical_summary.diagnosis",
+          "instructions_to_receiving_facility"
+        ],
+        "html_fields": [
+          "patient.name",
+          "patient.mrn",
+          "referring_clinician.name",
+          "receiving_facility.name",
+          "reason_for_referral",
+          "clinical_summary.diagnosis",
+          "instructions_to_receiving_facility"
+        ],
+        "qr_field": "letter_id"
+      },
+      {
+        "template_name": "theatre_case_document",
+        "json_source": "/api/theatre_cases/{case_id}",
+        "pdf_fields": [
+          "patient.name",
+          "procedure.type",
+          "theatre_team.surgeon.name",
+          "pre_op.assessment.vitals",
+          "intra_op.procedure_notes",
+          "post_op.vitals",
+          "post_op.disposition"
+        ],
+        "html_fields": [
+          "patient.name",
+          "procedure.type",
+          "theatre_team.surgeon.name",
+          "pre_op.assessment.vitals",
+          "intra_op.procedure_notes",
+          "post_op.vitals",
+          "post_op.disposition"
+        ],
+        "qr_field": "case_id"
+      }
+    ],
+    "generator_settings": {
+      "pdf_engine": "puppeteer | wkhtmltopdf",
+      "html_template_engine": "handlebars | react-pdf",
+      "qr_generator": "already integrated",
+      "audit_trail": true,
+      "signed_by_field": "clinician.signature"
+    }
+  }
+}
