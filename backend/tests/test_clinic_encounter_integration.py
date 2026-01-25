@@ -20,6 +20,7 @@ from django.contrib.auth import get_user_model
 from rest_framework import status
 from rest_framework.test import APIClient
 
+from hmis.apps.clinical_templates.models import ClinicalTemplate
 from hmis.apps.clinics.models import Clinic, ClinicSession, ClinicVisit
 from hmis.apps.encounters.models import Encounter
 from hmis.apps.patients.models import Patient
@@ -238,6 +239,85 @@ class TestStartConsultationEncounterLink:
         assert encounter is not None
         encounter.refresh_from_db()
         assert encounter.clinic_visit == eye_clinic_visit
+
+    def test_start_consultation_sets_encounter_clinical_template_from_clinic_default(
+        self, eye_clinic_visit, eye_clinic, integration_user
+    ):
+        """If clinic has default_clinical_template, encounter should inherit it."""
+        template = ClinicalTemplate.objects.create(
+            name="Eye Clinic Default Template",
+            template_type="encounter",
+            specialty="Ophthalmology",
+            description="Default template for eye clinic encounters",
+            content={"title": "Eye", "version": "1.0", "sections": []},
+            is_system=True,
+            is_active=True,
+        )
+        eye_clinic.default_clinical_template = template
+        eye_clinic.save(update_fields=["default_clinical_template"])
+
+        encounter = eye_clinic_visit.start_consultation(user=integration_user)
+        encounter.refresh_from_db()
+        assert encounter.clinical_template == template
+
+    def test_start_consultation_sets_encounter_clinical_template_from_clinic_type_mapping_when_default_missing(
+        self, ccc_clinic_visit, ccc_clinic, integration_user
+    ):
+        """If clinic has no default template, a system template can be selected by clinic_type."""
+        assert ccc_clinic.default_clinical_template is None
+
+        template = ClinicalTemplate.objects.create(
+            name="HIV Care and Treatment",
+            template_type="encounter",
+            specialty="HIV/AIDS",
+            description="System HIV follow-up template",
+            content={"title": "HIV", "version": "1.0", "sections": []},
+            is_system=True,
+            is_active=True,
+        )
+
+        encounter = ccc_clinic_visit.start_consultation(user=integration_user)
+        encounter.refresh_from_db()
+        assert encounter.clinical_template == template
+
+    def test_start_consultation_does_not_override_existing_encounter_clinical_template(
+        self, integration_patient, eye_clinic_visit, eye_clinic, integration_user
+    ):
+        """If an encounter already has a template, start_consultation should not replace it."""
+        clinic_default = ClinicalTemplate.objects.create(
+            name="Clinic Default Template",
+            template_type="encounter",
+            specialty="General",
+            description="",
+            content={"title": "Default", "version": "1.0", "sections": []},
+            is_system=True,
+            is_active=True,
+        )
+        eye_clinic.default_clinical_template = clinic_default
+        eye_clinic.save(update_fields=["default_clinical_template"])
+
+        existing_template = ClinicalTemplate.objects.create(
+            name="Existing Encounter Template",
+            template_type="encounter",
+            specialty="General",
+            description="",
+            content={"title": "Existing", "version": "1.0", "sections": []},
+            is_system=False,
+            is_active=True,
+        )
+
+        existing_encounter = Encounter.objects.create(
+            patient=integration_patient,
+            encounter_type="SPECIALIST_CLINIC",
+            chief_complaint="Eye examination",
+            clinical_template=existing_template,
+        )
+        eye_clinic_visit.encounter = existing_encounter
+        eye_clinic_visit.save(update_fields=["encounter"])
+
+        encounter = eye_clinic_visit.start_consultation(user=integration_user)
+        encounter.refresh_from_db()
+        assert encounter.clinical_template == existing_template
 
     def test_start_consultation_encounter_has_correct_clinic_context(
         self, eye_clinic_visit, integration_user

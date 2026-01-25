@@ -797,6 +797,10 @@ class ClinicVisit(TimeStampedModel):
         self.status = "IN_CONSULTATION"
         self.consultation_started_at = timezone.now()
 
+        from hmis.apps.clinics.services.template_routing import resolve_default_clinical_template
+
+        resolved_template = resolve_default_clinical_template(self.session.clinic)
+
         # Create encounter if not exists
         if not self.encounter:
             self.encounter = Encounter.objects.create(
@@ -805,12 +809,18 @@ class ClinicVisit(TimeStampedModel):
                 chief_complaint=self.chief_complaint or "See clinic notes",
                 triage_status=("COMPLETED" if self.triage_assessment else "NOT_APPLICABLE"),
                 clinic_visit=self,
+                clinical_template=resolved_template,
             )
         else:
             # Ensure forward link exists for reporting/traceability
             if self.encounter.clinic_visit_id != self.id:
                 self.encounter.clinic_visit = self
                 self.encounter.save(update_fields=["clinic_visit"])
+
+            # If encounter exists but has no template, set a default (do not override)
+            if self.encounter.clinical_template_id is None and resolved_template is not None:
+                self.encounter.clinical_template = resolved_template
+                self.encounter.save(update_fields=["clinical_template"])
 
         # Generate billing if consultation fee not already charged
         if not self.consultation_fee_charged:
