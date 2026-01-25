@@ -10,7 +10,7 @@
  */
 
 import { test, expect, Page } from '@playwright/test';
-import { TEST_USER } from './fixtures';
+import { TEST_USER } from '../fixtures';
 
 type AnyRecord = Record<string, unknown>;
 
