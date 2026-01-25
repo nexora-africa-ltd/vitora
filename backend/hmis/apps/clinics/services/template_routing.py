@@ -25,7 +25,7 @@ CLINIC_TYPE_DEFAULT_TEMPLATE_NAME: dict[str, str] = {
     "GENERAL_OPD": "General OPD Assessment",
     # MCH
     "ANC": "Antenatal Care (ANC) Visit",
-    "CWC": "Child Wellness Visit",
+    "CWC": "Child Wellness Check",
     # Chronic care (best-fit)
     "CCC": "HIV Care and Treatment",
     # Emergency
@@ -33,7 +33,19 @@ CLINIC_TYPE_DEFAULT_TEMPLATE_NAME: dict[str, str] = {
 }
 
 
-def resolve_default_clinical_template(clinic: "Clinic") -> ClinicalTemplate | None:
+def resolve_default_clinical_template_for_clinic_type(
+    clinic_type: str,
+) -> ClinicalTemplate | None:
+    """Resolve a best-fit default template for a given clinic type."""
+
+    template_name = CLINIC_TYPE_DEFAULT_TEMPLATE_NAME.get(clinic_type, "")
+    if not template_name:
+        return None
+
+    return ClinicalTemplate.objects.filter(name=template_name, is_active=True).first()
+
+
+def resolve_default_clinical_template(clinic: Clinic) -> ClinicalTemplate | None:
     """Resolve a default ClinicalTemplate for a clinic.
 
     Prefers the clinic's configured `default_clinical_template`.
@@ -42,8 +54,4 @@ def resolve_default_clinical_template(clinic: "Clinic") -> ClinicalTemplate | No
     if getattr(clinic, "default_clinical_template_id", None):
         return clinic.default_clinical_template
 
-    template_name = CLINIC_TYPE_DEFAULT_TEMPLATE_NAME.get(getattr(clinic, "clinic_type", ""), "")
-    if not template_name:
-        return None
-
-    return ClinicalTemplate.objects.filter(name=template_name, is_active=True).first()
+    return resolve_default_clinical_template_for_clinic_type(getattr(clinic, "clinic_type", ""))
