@@ -41,7 +41,7 @@ export const EnrollmentStatusSchema = z.enum([
   'ACTIVE', 'INACTIVE', 'TRANSFERRED', 'LOST_TO_FOLLOW_UP', 'DECEASED', 'COMPLETED',
 ]);
 
-export const ClinicStaffRoleSchema = z.enum(['LEAD', 'CLINICIAN', 'NURSE', 'RECEPTIONIST', 'SUPPORT']);
+export const ClinicStaffRoleSchema = z.enum(['LEAD', 'DOCTOR', 'NURSE', 'COUNSELOR', 'NUTRITIONIST', 'CLERK', 'OTHER']);
 
 // =============================================================================
 // CLINIC SCHEMAS
