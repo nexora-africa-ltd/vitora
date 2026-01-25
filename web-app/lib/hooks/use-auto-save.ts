@@ -222,7 +222,7 @@ export function useAutoSave<T>({
     };
 
     save();
-  }, [debouncedData, enabled, isDirty, isOnline, onSave, onSuccess, onError, hasChanged, syncStatus]);
+  }, [debouncedData, enabled, isDirty, isOnline, onSave, onSuccess, onError, hasChanged, syncStatus, persistKey, storageKey]);
 
   // Process offline queue when back online
   useEffect(() => {
@@ -272,7 +272,7 @@ export function useAutoSave<T>({
     };
 
     processQueue();
-  }, [isOnline, onSave, onSuccess, onError, syncStatus]);
+  }, [isOnline, onSave, onSuccess, onError, syncStatus, persistKey, storageKey]);
 
   // Manual save function
   const saveNow = useCallback(async () => {
@@ -316,7 +316,7 @@ export function useAutoSave<T>({
     } finally {
       saveInProgress.current = false;
     }
-  }, [data, isOnline, onSave, onSuccess, onError, syncStatus]);
+  }, [data, isOnline, onSave, onSuccess, onError, syncStatus, persistKey, storageKey]);
 
   // Reset function to clear dirty state (e.g., after manual save)
   const reset = useCallback(() => {
