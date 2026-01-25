@@ -421,6 +421,20 @@ async function login(page: Page) {
   await page.waitForURL(/.*dashboard.*/, { timeout: 15000 });
 }
 
+/**
+ * Dismiss all visible toast notifications by pressing Escape multiple times.
+ * Sonner dismisses one toast per Escape press.
+ */
+async function dismissAllToasts(page: Page) {
+  // Press Escape 3 times to dismiss multiple toasts
+  for (let i = 0; i < 3; i++) {
+    await page.keyboard.press('Escape');
+    await page.waitForTimeout(200);
+  }
+  // Wait for toast animations to complete
+  await page.waitForTimeout(400);
+}
+
 test.describe('Clinic Queue Management', () => {
   test.beforeEach(async ({ page }) => {
     await setupMocks(page);
@@ -460,19 +474,37 @@ test.describe('Clinic Queue Management', () => {
     await page.goto('/clinics/1/queue');
     await page.getByRole('button', { name: /^Open Session$/i }).first().click();
 
-    const row = page.locator('tr', { hasText: 'John Kamau' });
+    let row = page.locator('tr', { hasText: 'John Kamau' });
     await Promise.all([
-      page.waitForResponse(/.*\/api\/clinic-visits\/\d+\/call\/$/),
+      page.waitForResponse(/.*\/api\/clinic-visits\/\d+\/call\/?(\?.*)?$/),
       row.getByRole('button', { name: /^Call$/i }).click(),
     ]);
 
+    // Dismiss toasts (they may overlay the Start button)
+    await expect(page.getByText('Patient Called')).toBeVisible();
+    await dismissAllToasts(page);
+
+    // Re-acquire row after UI updates.
+    row = page.locator('tr', { hasText: 'John Kamau' });
+
     const startButton = row.getByRole('button', { name: /^Start$/i });
     await expect(startButton).toBeVisible();
-    await startButton.click({ force: true });
+    await expect(startButton).toBeEnabled();
+
+    // Scroll button into view and click without force
+    await startButton.scrollIntoViewIfNeeded();
+    const [startResponse] = await Promise.all([
+      page.waitForResponse((resp) => resp.url().includes('/api/clinic-visits/') && resp.url().includes('/start')),
+      startButton.click(),
+    ]);
+    expect(startResponse.status()).toBe(200);
     await expect(page.getByText('Consultation Started')).toBeVisible();
 
     // Ensure the UI refetches and reflects the updated status.
-    await page.getByRole('button', { name: /^Refresh$/i }).click();
+    await Promise.all([
+      page.waitForResponse(/.*\/api\/clinics\/\d+\/queue\//),
+      page.getByRole('button', { name: /^Refresh$/i }).click(),
+    ]);
 
     await page.getByRole('tab', { name: /In Consultation/i }).click();
     await expect(page.getByRole('cell', { name: /John Kamau/i })).toBeVisible();
@@ -482,19 +514,34 @@ test.describe('Clinic Queue Management', () => {
     await page.goto('/clinics/1/queue');
     await page.getByRole('button', { name: /^Open Session$/i }).first().click();
 
-    const row = page.locator('tr', { hasText: 'John Kamau' });
+    let row = page.locator('tr', { hasText: 'John Kamau' });
     await Promise.all([
-      page.waitForResponse(/.*\/api\/clinic-visits\/\d+\/call\/$/),
+      page.waitForResponse(/.*\/api\/clinic-visits\/\d+\/call\/?(\?.*)?$/),
       row.getByRole('button', { name: /^Call$/i }).click(),
     ]);
 
+    // Dismiss toasts (they may overlay the Start button)
+    await expect(page.getByText('Patient Called')).toBeVisible();
+    await dismissAllToasts(page);
+
+    // Re-acquire row after UI updates.
+    row = page.locator('tr', { hasText: 'John Kamau' });
+
     const startButton = row.getByRole('button', { name: /^Start$/i });
     await expect(startButton).toBeVisible();
-    await Promise.all([
-      page.waitForResponse(/.*\/api\/clinic-visits\/\d+\/start\/?/),
-      startButton.click({ force: true }),
+    await expect(startButton).toBeEnabled();
+
+    // Scroll button into view and click without force
+    await startButton.scrollIntoViewIfNeeded();
+    const [startResponse] = await Promise.all([
+      page.waitForResponse((resp) => resp.url().includes('/api/clinic-visits/') && resp.url().includes('/start')),
+      startButton.click(),
     ]);
+    expect(startResponse.status()).toBe(200);
     await expect(page.getByText('Consultation Started')).toBeVisible();
+
+    // Dismiss consultation toast before clicking Refresh
+    await dismissAllToasts(page);
 
     // Ensure the UI refetches and reflects the updated status.
     await Promise.all([
@@ -510,11 +557,18 @@ test.describe('Clinic Queue Management', () => {
 
     // Completing visits is available in cards view.
     await page.getByRole('button', { name: 'Cards view', exact: true }).click();
-    await expect(page.getByRole('button', { name: /^Complete$/i })).toBeVisible();
-    await Promise.all([
-      page.waitForResponse(/.*\/api\/clinic-visits\/\d+\/complete\/?/),
-      page.getByRole('button', { name: /^Complete$/i }).click({ force: true }),
+    const completeButton = page.getByRole('button', { name: /^Complete$/i });
+    await expect(completeButton).toBeVisible();
+    await expect(completeButton).toBeEnabled();
+
+    // Scroll button into view and click without force
+    await completeButton.scrollIntoViewIfNeeded();
+    const [completeResponse] = await Promise.all([
+      page.waitForResponse((resp) => resp.url().includes('/api/clinic-visits/') && resp.url().includes('/complete')),
+      completeButton.click(),
     ]);
+    expect(completeResponse.status()).toBe(200);
+    await expect(page.getByText('Visit Completed')).toBeVisible();
 
     await page.getByRole('tab', { name: /Completed/i }).click();
     await expect(page.getByRole('cell', { name: /John Kamau/i })).toBeVisible();

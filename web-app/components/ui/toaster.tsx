@@ -104,6 +104,8 @@ export function Toaster() {
       {/* Sonner handles stacking and dismiss */}
       <SonnerToaster
         position="bottom-right"
+        hotkey={['Escape']}
+        closeButton
         toastOptions={{
           duration: 4000,
           // Use custom class for base styling if needed
