@@ -1405,7 +1405,7 @@ class MonthlyClinicReport(models.Model):
 - [x] Create migrations
 - [x] Implement serializers and viewsets
 - [x] Write unit tests (target: 50+ tests)
-- [ ] Seed initial clinic data (General OPD, Eye, Dental, CCC, MCH clinics)
+- [x] Seed initial clinic data (General OPD, Eye, Dental, CCC, MCH clinics)
 
 ### Phase 2.2 (Weeks 3-4): Queue Management
 
@@ -1421,7 +1421,7 @@ class MonthlyClinicReport(models.Model):
 - [x] Implement clinic dashboard page
 - [x] Build queue management component
 - [x] Add patient call/start/complete UI
-- [ ] Implement clinic settings pages
+- [x] Implement clinic settings pages
 
 ### Phase 2.4 (Weeks 7-8): Enrollments & Chronic Care
 
