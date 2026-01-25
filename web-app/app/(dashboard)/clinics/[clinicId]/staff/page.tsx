@@ -88,6 +88,13 @@ import { toast } from '@/lib/hooks/use-toast';
 import type { ClinicStaff, ClinicStaffRole, ClinicStaffCreateData } from '@/lib/types/clinic';
 import { cn } from '@/lib/utils/cn';
 
+// Default fallback for unknown roles (defensive coding for API changes)
+const DEFAULT_ROLE_CONFIG = {
+  label: 'Staff',
+  color: 'bg-gray-100 text-gray-800 dark:bg-gray-900/30 dark:text-gray-400',
+  icon: User,
+};
+
 const ROLE_CONFIG: Record<ClinicStaffRole, { label: string; color: string; icon: typeof User }> = {
   LEAD: {
     label: 'Clinic Lead/In-Charge',
@@ -480,7 +487,8 @@ export default function ClinicStaffPage() {
                 </TableHeader>
                 <TableBody>
                   {filteredStaff.map((member) => {
-                    const roleConfig = ROLE_CONFIG[member.role];
+                    // Defensive fallback for unknown roles from API
+                    const roleConfig = ROLE_CONFIG[member.role] ?? DEFAULT_ROLE_CONFIG;
                     const RoleIcon = roleConfig.icon;
 
                     return (
