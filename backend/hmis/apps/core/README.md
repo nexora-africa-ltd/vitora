@@ -569,5 +569,9 @@ CELERY_BEAT_SCHEDULE = {
         'task': 'core.cleanup_idempotency_keys',
         'schedule': crontab(hour=2, minute=0),  # Daily at 2 AM
     },
+    'generate-monthly-clinic-reports': {
+        'task': 'hmis.apps.clinics.tasks.generate_monthly_clinic_reports',
+        'schedule': crontab(minute=0, hour=1, day_of_month=1),  # 1st of month at 01:00
+    },
 }
 ```

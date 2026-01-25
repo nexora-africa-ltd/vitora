@@ -91,6 +91,36 @@ poetry run pytest --cov=hmis --cov-fail-under=80
 poetry run bandit -r hmis
 ```
 
+## Celery (Optional)
+
+Celery is used for background tasks (offline sync, reminders/alerts, and monthly clinic reporting). It is optional in local development unless you’re testing async flows.
+
+### Environment
+
+Set a broker URL (Redis recommended):
+
+```bash
+CELERY_BROKER_URL=redis://localhost:6379/0
+```
+
+### Run Worker + Beat
+
+In two terminals:
+
+```bash
+cd backend
+poetry run celery -A hmis worker --loglevel=info
+```
+
+```bash
+cd backend
+poetry run celery -A hmis beat --loglevel=info
+```
+
+### Monthly Clinic Reports
+
+The monthly clinic reports task is scheduled via Celery Beat (see `hmis/celery.py`) to run on the **1st of every month at 01:00** (Africa/Nairobi). It generates reports for the **previous month** by default.
+
 ## Project Structure
 
 ```
