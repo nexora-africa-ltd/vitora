@@ -1400,20 +1400,20 @@ class MonthlyClinicReport(models.Model):
 
 ### Phase 2.1 (Weeks 1-2): Core Models & API
 
-- [ ] Create `clinics` Django app
-- [ ] Implement Clinic, ClinicSession, ClinicVisit models
-- [ ] Create migrations
-- [ ] Implement serializers and viewsets
-- [ ] Write unit tests (target: 50+ tests)
+- [x] Create `clinics` Django app
+- [x] Implement Clinic, ClinicSession, ClinicVisit models
+- [x] Create migrations
+- [x] Implement serializers and viewsets
+- [x] Write unit tests (target: 50+ tests)
 - [ ] Seed initial clinic data (General OPD, Eye, Dental, CCC, MCH clinics)
 
 ### Phase 2.2 (Weeks 3-4): Queue Management
 
-- [ ] Implement queue numbering logic
-- [ ] Add call/start/complete actions
-- [ ] Implement referral flow between clinics
-- [ ] Add WebSocket support for real-time queue updates
-- [ ] Write queue management tests
+- [x] Implement queue numbering logic
+- [x] Add call/start/complete actions
+- [x] Implement referral flow between clinics
+- [x] Add WebSocket support for real-time queue updates
+- [x] Write queue management tests
 
 ### Phase 2.3 (Weeks 5-6): Frontend - Clinic Pages
 
@@ -1425,17 +1425,17 @@ class MonthlyClinicReport(models.Model):
 
 ### Phase 2.4 (Weeks 7-8): Enrollments & Chronic Care
 
-- [ ] Implement ClinicEnrollment model
+- [x] Implement ClinicEnrollment model
 - [ ] Add CCC-specific fields and forms
 - [ ] Add ANC-specific fields and forms
-- [ ] Implement defaulter tracking
+- [x] Implement defaulter tracking
 - [ ] Build enrollment management UI
 
 ### Phase 2.5 (Weeks 9-10): Integration & Reporting
 
-- [ ] Integrate with Triage routing
-- [ ] Integrate with Billing
-- [ ] Implement monthly aggregate reports
+- [x] Integrate with Triage routing
+- [x] Integrate with Billing
+- [x] Implement monthly aggregate reports
 - [ ] Add DHIS2 export functionality
 - [ ] E2E testing
 
