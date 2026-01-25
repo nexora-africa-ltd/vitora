@@ -187,7 +187,7 @@ export default function ClinicDashboardPage() {
             <p className="text-muted-foreground">{formattedDate}</p>
           </div>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex flex-col gap-2 items-stretch sm:flex-row sm:flex-wrap sm:items-center">
           <Button variant="outline" size="sm" onClick={handleRefresh}>
             <RefreshCw className="h-4 w-4 mr-2" />
             Refresh
@@ -309,7 +309,7 @@ export default function ClinicDashboardPage() {
 
       {/* Queue Tabs */}
       <Tabs defaultValue="queue" className="space-y-4">
-        <TabsList>
+        <TabsList className="w-full overflow-x-auto justify-start">
           <TabsTrigger value="queue">
             Queue
             {waitingQueue.length > 0 && (
