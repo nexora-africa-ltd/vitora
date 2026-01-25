@@ -3,7 +3,7 @@
  * Tests for login, logout, and protected routes
  */
 import { test, expect } from '@playwright/test';
-import { TEST_USER, API_BASE } from './fixtures';
+import { TEST_USER, API_BASE } from '../fixtures';
 
 test.describe('Authentication', () => {
   test.beforeEach(async ({ page }) => {

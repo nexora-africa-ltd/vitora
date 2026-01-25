@@ -7,7 +7,7 @@
  * Sprint 1.5-1.6 Track E: Triage MVP
  */
 import { test, expect, Page } from '@playwright/test';
-import { TEST_USER } from './fixtures';
+import { TEST_USER } from '../fixtures';
 
 // =============================================================================
 // MOCK DATA

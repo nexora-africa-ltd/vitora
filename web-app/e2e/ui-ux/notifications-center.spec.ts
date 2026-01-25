@@ -6,8 +6,8 @@
  * - Close button collapses the center
  */
 
-import { test, expect } from './fixtures';
-import { TEST_USER } from './fixtures';
+import { test, expect } from '../fixtures';
+import { TEST_USER } from '../fixtures';
 
 const mockNotifications = {
   count: 3,

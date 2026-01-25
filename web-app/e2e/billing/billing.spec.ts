@@ -13,7 +13,7 @@
  * @see docs/user-stories.md
  */
 import { test, expect, Page } from '@playwright/test';
-import { TEST_USER, API_BASE, login, mockApiResponse } from './fixtures';
+import { TEST_USER, API_BASE, login, mockApiResponse } from '../fixtures';
 
 // ============================================================================
 // Test Fixtures

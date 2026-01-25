@@ -2,8 +2,8 @@
  * Navigation E2E Tests
  * Tests for sidebar navigation and routing
  */
-import { test, expect } from './fixtures';
-import { API_BASE, TEST_USER } from './fixtures';
+import { test, expect } from '../fixtures';
+import { API_BASE, TEST_USER } from '../fixtures';
 
 test.describe('Navigation', () => {
   test.beforeEach(async ({ page }) => {

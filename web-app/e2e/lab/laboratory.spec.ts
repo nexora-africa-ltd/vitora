@@ -16,7 +16,7 @@
  * - Clinician Notifications
  */
 import { test, expect, Page } from '@playwright/test';
-import { TEST_USER, API_BASE, login } from './fixtures';
+import { TEST_USER, API_BASE, login } from '../fixtures';
 
 // =============================================================================
 // MOCK DATA
