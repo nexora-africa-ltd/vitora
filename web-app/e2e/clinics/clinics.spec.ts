@@ -271,19 +271,21 @@ async function setupMocks(page: Page) {
 
   // Clinic staff
   await page.route(/.*\/api\/clinics\/\d+\/staff\/(\?.*)?$/, async (route) => {
+    // API returns { results: [...] } wrapper
     await route.fulfill({
       status: 200,
       contentType: 'application/json',
-      body: JSON.stringify(staffState),
+      body: JSON.stringify({ results: staffState }),
     });
   });
 
   // Clinic schedule
   await page.route(/.*\/api\/clinics\/\d+\/schedule\/(\?.*)?$/, async (route) => {
+    // API returns { results: [...] } wrapper
     await route.fulfill({
       status: 200,
       contentType: 'application/json',
-      body: JSON.stringify(scheduleState),
+      body: JSON.stringify({ results: scheduleState }),
     });
   });
 

@@ -239,8 +239,8 @@ export const clinicsApi = {
    * List staff for a clinic
    */
   listStaff: async (clinicId: number): Promise<ClinicStaff[]> => {
-    const response = await apiClient.get<ClinicStaff[]>(`/api/clinics/${clinicId}/staff/`);
-    return response.data;
+    const response = await apiClient.get<{ results: ClinicStaff[] }>(`/api/clinics/${clinicId}/staff/`);
+    return response.data.results;
   },
 
   /**
@@ -266,8 +266,8 @@ export const clinicsApi = {
    * Get clinic schedule
    */
   getSchedule: async (clinicId: number): Promise<ClinicSchedule[]> => {
-    const response = await apiClient.get<ClinicSchedule[]>(`/api/clinics/${clinicId}/schedule/`);
-    return response.data;
+    const response = await apiClient.get<{ results: ClinicSchedule[] }>(`/api/clinics/${clinicId}/schedule/`);
+    return response.data.results;
   },
 
   /**
