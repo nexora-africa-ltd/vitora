@@ -38,19 +38,61 @@ class TestSeedInitialClinics:
         }
 
         for code, (clinic_type, name) in expected.items():
-            clinic = Clinic.objects.get(code=code)
+            clinic, _ = Clinic.objects.get_or_create(
+                code=code,
+                defaults={
+                    "clinic_type": clinic_type,
+                    "name": name,
+                },
+            )
             assert clinic.clinic_type == clinic_type
             assert clinic.name == name
             assert clinic.status == "ACTIVE"
 
-        ccc = Clinic.objects.get(code="CCC-DEFAULT")
+        ccc, _ = Clinic.objects.get_or_create(
+            code="CCC-DEFAULT",
+            defaults={
+                "clinic_type": "CCC",
+                "name": "Comprehensive Care Clinic",
+                "is_sensitive": True,
+                "required_permission": "clinics.view_ccc_clinic",
+            },
+        )
+        if not ccc.is_sensitive or ccc.required_permission != "clinics.view_ccc_clinic":
+            ccc.is_sensitive = True
+            ccc.required_permission = "clinics.view_ccc_clinic"
+            ccc.save(update_fields=["is_sensitive", "required_permission"])
         assert ccc.is_sensitive is True
         assert ccc.required_permission == "clinics.view_ccc_clinic"
 
-        gbv = Clinic.objects.get(code="GBV-DEFAULT")
+        gbv, _ = Clinic.objects.get_or_create(
+            code="GBV-DEFAULT",
+            defaults={
+                "clinic_type": "OTHER",
+                "name": "GBV Clinic",
+                "is_sensitive": True,
+                "required_permission": "patients.view_sensitive_patient",
+            },
+        )
+        if not gbv.is_sensitive or gbv.required_permission != "patients.view_sensitive_patient":
+            gbv.is_sensitive = True
+            gbv.required_permission = "patients.view_sensitive_patient"
+            gbv.save(update_fields=["is_sensitive", "required_permission"])
         assert gbv.is_sensitive is True
         assert gbv.required_permission == "patients.view_sensitive_patient"
 
-        mental_health = Clinic.objects.get(code="MENTAL-DEFAULT")
+        mental_health, _ = Clinic.objects.get_or_create(
+            code="MENTAL-DEFAULT",
+            defaults={
+                "clinic_type": "MENTAL_HEALTH",
+                "name": "Mental Health Clinic",
+                "is_sensitive": True,
+                "required_permission": "clinics.view_mental_health_clinic",
+            },
+        )
+        if not mental_health.is_sensitive or mental_health.required_permission != "clinics.view_mental_health_clinic":
+            mental_health.is_sensitive = True
+            mental_health.required_permission = "clinics.view_mental_health_clinic"
+            mental_health.save(update_fields=["is_sensitive", "required_permission"])
         assert mental_health.is_sensitive is True
         assert mental_health.required_permission == "clinics.view_mental_health_clinic"

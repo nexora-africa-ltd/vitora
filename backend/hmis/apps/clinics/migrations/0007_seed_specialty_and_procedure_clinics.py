@@ -1,9 +1,17 @@
 from __future__ import annotations
 
+import os
+
+from django.conf import settings
 from django.db import migrations
 
 
 def seed_specialty_and_procedure_clinics(apps, schema_editor) -> None:
+    if os.getenv("DJANGO_ENV") == "test" or str(getattr(settings, "SETTINGS_MODULE", "")).endswith(
+        ".test"
+    ):
+        return
+
     Clinic = apps.get_model("clinics", "Clinic")
 
     clinics = [

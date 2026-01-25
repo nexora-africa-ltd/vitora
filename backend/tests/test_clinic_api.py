@@ -244,8 +244,11 @@ class TestClinicViewSet:
         response = authenticated_client.get(url, {"clinic_type": "EYE"})
 
         assert response.status_code == status.HTTP_200_OK
-        assert len(response.data["results"]) == 1
-        assert response.data["results"][0]["clinic_type"] == "EYE"
+        # May include seeded clinics from migrations, so check >= 1
+        assert len(response.data["results"]) >= 1
+        # All returned clinics should have the filtered type
+        for clinic in response.data["results"]:
+            assert clinic["clinic_type"] == "EYE"
 
     def test_list_clinics_filter_by_status(self, authenticated_client, sample_clinic, db):
         """Clinics can be filtered by status."""

@@ -103,3 +103,19 @@ def resolve_default_clinical_template(clinic: Clinic) -> ClinicalTemplate | None
             return ClinicalTemplate.objects.filter(name=template_name, is_active=True).first()
 
     return resolve_default_clinical_template_for_clinic_type(getattr(clinic, "clinic_type", ""))
+
+
+def resolve_mapped_default_clinical_template(clinic: Clinic) -> ClinicalTemplate | None:
+    """Resolve the best-fit default template for a clinic ignoring configured overrides.
+
+    This applies clinic-code overrides first, then falls back to the clinic_type mapping.
+    Useful for backfill commands that want to enforce the mapping (e.g. --force).
+    """
+
+    clinic_code = getattr(clinic, "code", "")
+    if clinic_code:
+        template_name = CLINIC_CODE_DEFAULT_TEMPLATE_NAME.get(clinic_code, "")
+        if template_name:
+            return ClinicalTemplate.objects.filter(name=template_name, is_active=True).first()
+
+    return resolve_default_clinical_template_for_clinic_type(getattr(clinic, "clinic_type", ""))

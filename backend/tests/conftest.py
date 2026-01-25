@@ -5,6 +5,7 @@ This file contains shared fixtures and configuration for all tests.
 """
 
 import os
+import tempfile
 from collections.abc import Generator
 
 import django
@@ -68,6 +69,17 @@ def pytest_pycollect_makeitem(collector, name, obj):
 def django_db_setup(django_db_blocker):
     """Set up test database with migrations."""
     with django_db_blocker.unblock():
+        # The test settings use a file-backed SQLite DB at a stable path (for Channels tests).
+        # If the file persists across runs, migrations are not re-executed, and data migrations
+        # (like default clinic seeding) can silently be skipped, causing flaky/incorrect state.
+        test_db_path = os.path.join(tempfile.gettempdir(), "vitora_test.db")
+        for path in (test_db_path, f"{test_db_path}-wal", f"{test_db_path}-shm"):
+            try:
+                if os.path.exists(path):
+                    os.remove(path)
+            except OSError:
+                # Best-effort cleanup; migrate will surface real DB issues.
+                pass
         call_command("migrate", "--run-syncdb", verbosity=0)
 
 

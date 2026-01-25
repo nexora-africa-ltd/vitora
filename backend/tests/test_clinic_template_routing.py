@@ -69,8 +69,102 @@ class TestClinicTemplateRouting:
             is_active=True,
         )
 
-        clinic = Clinic.objects.get(code="GBV-DEFAULT")
+        clinic, _ = Clinic.objects.get_or_create(
+            code="GBV-DEFAULT",
+            defaults={
+                "name": "GBV Clinic",
+                "clinic_type": "OTHER",
+            },
+        )
 
         resolved = resolve_default_clinical_template(clinic)
         assert resolved is not None
         assert resolved.name == "Gender-Based Violence Assessment"
+
+    def test_resolve_default_template_prefers_configured_default(self):
+        from hmis.apps.clinical_templates.models import ClinicalTemplate
+        from hmis.apps.clinics.models import Clinic
+        from hmis.apps.clinics.services.template_routing import resolve_default_clinical_template
+
+        mapped = ClinicalTemplate.objects.create(
+            name="Gender-Based Violence Assessment",
+            template_type="assessment",
+            specialty="",
+            description="",
+            content={"title": "Gender-Based Violence Assessment", "sections": []},
+            is_system=True,
+            is_active=True,
+        )
+        configured = ClinicalTemplate.objects.create(
+            name="Some Configured Template",
+            template_type="assessment",
+            specialty="",
+            description="",
+            content={"title": "Some Configured Template", "sections": []},
+            is_system=False,
+            is_active=True,
+        )
+
+        clinic, _ = Clinic.objects.get_or_create(
+            code="GBV-DEFAULT",
+            defaults={
+                "name": "GBV Clinic",
+                "clinic_type": "OTHER",
+            },
+        )
+        clinic.default_clinical_template = configured
+        clinic.save(update_fields=["default_clinical_template"])
+
+        resolved = resolve_default_clinical_template(clinic)
+        assert resolved is not None
+        assert resolved == configured
+        assert resolved != mapped
+
+    def test_resolve_mapped_default_ignores_configured_default(self):
+        from hmis.apps.clinical_templates.models import ClinicalTemplate
+        from hmis.apps.clinics.models import Clinic
+        from hmis.apps.clinics.services.template_routing import (
+            resolve_mapped_default_clinical_template,
+        )
+
+        mapped = ClinicalTemplate.objects.create(
+            name="Gender-Based Violence Assessment",
+            template_type="assessment",
+            specialty="",
+            description="",
+            content={"title": "Gender-Based Violence Assessment", "sections": []},
+            is_system=True,
+            is_active=True,
+        )
+        configured = ClinicalTemplate.objects.create(
+            name="Some Configured Template",
+            template_type="assessment",
+            specialty="",
+            description="",
+            content={"title": "Some Configured Template", "sections": []},
+            is_system=False,
+            is_active=True,
+        )
+
+        clinic, _ = Clinic.objects.get_or_create(
+            code="GBV-DEFAULT",
+            defaults={
+                "name": "GBV Clinic",
+                "clinic_type": "OTHER",
+            },
+        )
+        clinic.default_clinical_template = configured
+        clinic.save(update_fields=["default_clinical_template"])
+
+        resolved = resolve_mapped_default_clinical_template(clinic)
+        assert resolved is not None
+        assert resolved == mapped
+        assert resolved != configured
+
+    def test_resolve_default_template_returns_none_when_missing(self):
+        from hmis.apps.clinics.models import Clinic
+        from hmis.apps.clinics.services.template_routing import resolve_default_clinical_template
+
+        clinic = Clinic.objects.create(code="UNMAPPED-001", name="Unmapped", clinic_type="OTHER")
+        resolved = resolve_default_clinical_template(clinic)
+        assert resolved is None

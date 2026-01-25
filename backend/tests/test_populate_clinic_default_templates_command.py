@@ -119,3 +119,53 @@ class TestPopulateClinicDefaultTemplatesCommand:
 
         output = out.getvalue()
         assert "Overwritten" in output
+
+    def test_dry_run_force_reports_overwritten_but_does_not_persist(self):
+        """dry_run + force should count overwrites without saving."""
+        mapped = ClinicalTemplate.objects.create(
+            name="General OPD Assessment",
+            template_type="encounter",
+            specialty="General Practice",
+            description="",
+            content={"title": "OPD", "version": "1.0", "sections": []},
+            is_system=True,
+            is_active=True,
+        )
+        existing = ClinicalTemplate.objects.create(
+            name="Some Other Template",
+            template_type="encounter",
+            specialty="General",
+            description="",
+            content={"title": "Other", "version": "1.0", "sections": []},
+            is_system=False,
+            is_active=True,
+        )
+        clinic = Clinic.objects.create(name="OPD", clinic_type="GENERAL_OPD", code="OPD-DRYRUN")
+        clinic.default_clinical_template = existing
+        clinic.save(update_fields=["default_clinical_template"])
+
+        out = StringIO()
+        call_command(
+            "populate_clinic_default_templates",
+            dry_run=True,
+            force=True,
+            stdout=out,
+        )
+
+        clinic.refresh_from_db()
+        assert clinic.default_clinical_template == existing
+        assert clinic.default_clinical_template != mapped
+
+        output = out.getvalue()
+        assert "DRY RUN" in output
+        assert "Overwritten: 1" in output
+
+    def test_missing_template_increments_counter(self):
+        """Clinics without a matching template should be counted as missing."""
+        Clinic.objects.create(name="Unknown", clinic_type="OTHER", code="OTHER-001")
+
+        out = StringIO()
+        call_command("populate_clinic_default_templates", stdout=out)
+
+        output = out.getvalue()
+        assert "Missing template: 1" in output
