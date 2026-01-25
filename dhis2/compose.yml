@@ -1,0 +1,28 @@
+services:
+  db:
+    image: postgis/postgis:13-3.1
+    container_name: dhis2-db
+    environment:
+      POSTGRES_DB: dhis2
+      POSTGRES_USER: dhis
+      POSTGRES_PASSWORD: dhis
+    volumes:
+      - dhis2-db-data:/var/lib/postgresql/data
+    restart: always
+
+  dhis2:
+    image: dhis2/core:2.40
+    container_name: dhis2-core
+    depends_on:
+      - db
+    ports:
+      - "8082:8080"
+    environment:
+      DHIS2_DATABASE_HOST: db
+      DHIS2_DATABASE_NAME: dhis2
+      DHIS2_DATABASE_USERNAME: dhis
+      DHIS2_DATABASE_PASSWORD: dhis
+    restart: always
+
+volumes:
+  dhis2-db-data:
