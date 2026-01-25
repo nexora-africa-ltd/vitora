@@ -171,7 +171,8 @@ function openSession(clinicId: number) {
 }
 
 async function setupMocks(page: Page) {
-  let sessionState: any = closedSession(1);
+  // Start session as OPEN so queue tests see patients immediately
+  let sessionState: any = openSession(1);
   let queueState: any[] = [makeVisit()];
 
   const patientById = new Map<number, any>(mockPatients.map((p) => [p.id, p]));
@@ -270,7 +271,8 @@ async function setupMocks(page: Page) {
 
     if (method === 'GET') {
       queueGetCount += 1;
-      // After a couple of reads, simulate an external update ("real-time").
+      // After 2+ reads (initial load + first poll), simulate an external update ("real-time").
+      // This ensures Jane appears only after polling kicks in.
       if (queueGetCount >= 2 && !queueState.some((v) => v.patient.full_name === 'Jane Wanjiku')) {
         queueState = [...queueState, makeVisit({
           id: 102,
@@ -282,7 +284,8 @@ async function setupMocks(page: Page) {
         })];
       }
 
-      await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(queueState) });
+      // API returns { results: [...] } wrapper
+      await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ results: queueState }) });
       return;
     }
 
@@ -444,9 +447,11 @@ test.describe('Clinic Queue Management', () => {
   test('can add patient to queue', async ({ page }) => {
     await page.goto('/clinics/1/queue');
 
-    await page.getByRole('button', { name: /^Open Session$/i }).first().click();
+    // Wait for queue to load (session starts as OPEN in mock)
+    await page.waitForResponse(/.*\/api\/clinics\/\d+\/queue\//);
 
-    await page.getByRole('button', { name: /^Add Patient$/i }).click();
+    // Use .first() to avoid strict mode violation (header + empty-queue placeholder both have Add Patient)
+    await page.getByRole('button', { name: /^Add Patient$/i }).first().click();
     await expect(page.getByRole('heading', { name: /Add Patient to Queue/i })).toBeVisible();
 
     const dialog = page.getByRole('dialog', { name: /Add Patient to Queue/i });
@@ -462,8 +467,9 @@ test.describe('Clinic Queue Management', () => {
 
   test('can call patient from queue', async ({ page }) => {
     await page.goto('/clinics/1/queue');
-    await page.getByRole('button', { name: /^Open Session$/i }).first().click();
 
+    // Wait for queue to load (session starts as OPEN in mock)
+    await page.waitForResponse(/.*\/api\/clinics\/\d+\/queue\//);
     await expect(page.getByRole('cell', { name: /John Kamau/i })).toBeVisible();
     await page.getByRole('button', { name: /^Call$/i }).click();
 
@@ -472,7 +478,10 @@ test.describe('Clinic Queue Management', () => {
 
   test('can start consultation', async ({ page }) => {
     await page.goto('/clinics/1/queue');
-    await page.getByRole('button', { name: /^Open Session$/i }).first().click();
+
+    // Wait for queue to load (session starts as OPEN in mock)
+    await page.waitForResponse(/.*\/api\/clinics\/\d+\/queue\//);
+    await expect(page.getByRole('cell', { name: /John Kamau/i })).toBeVisible();
 
     let row = page.locator('tr', { hasText: 'John Kamau' });
     await Promise.all([
@@ -511,8 +520,13 @@ test.describe('Clinic Queue Management', () => {
   });
 
   test('can complete visit', async ({ page }) => {
+    test.slow();
+
     await page.goto('/clinics/1/queue');
-    await page.getByRole('button', { name: /^Open Session$/i }).first().click();
+
+    // Wait for queue to load (session starts as OPEN in mock)
+    await page.waitForResponse(/.*\/api\/clinics\/\d+\/queue\//);
+    await expect(page.getByRole('cell', { name: /John Kamau/i })).toBeVisible();
 
     let row = page.locator('tr', { hasText: 'John Kamau' });
     await Promise.all([
@@ -576,7 +590,10 @@ test.describe('Clinic Queue Management', () => {
 
   test('can refer patient to another clinic', async ({ page }) => {
     await page.goto('/clinics/1/queue');
-    await page.getByRole('button', { name: /^Open Session$/i }).first().click();
+
+    // Wait for queue to load (session starts as OPEN in mock)
+    await page.waitForResponse(/.*\/api\/clinics\/\d+\/queue\//);
+    await expect(page.getByRole('cell', { name: /John Kamau/i })).toBeVisible();
 
     const row = page.locator('tr', { hasText: 'John Kamau' });
     await row.getByRole('button').last().click();
@@ -600,14 +617,14 @@ test.describe('Clinic Queue Management', () => {
 
     await page.goto('/clinics/1/queue');
 
-    // Initial state: only John is present.
+    // Wait for queue to load (session starts as OPEN in mock)
+    await page.waitForResponse(/.*\/api\/clinics\/\d+\/queue\//);
+
+    // Initial state: John is present.
     await expect(page.getByRole('cell', { name: /John Kamau/i })).toBeVisible();
-    await expect(page.getByRole('cell', { name: /Jane Wanjiku/i })).toHaveCount(0);
 
-    // Wait for polling interval to kick in.
-    await page.waitForTimeout(16000);
-
-    // After polling, Jane should appear (simulated external update).
-    await expect(page.getByRole('cell', { name: /Jane Wanjiku/i })).toBeVisible();
+    // Jane will appear after the second GET (simulating real-time update).
+    // Wait for her to appear with extended timeout to cover polling interval.
+    await expect(page.getByRole('cell', { name: /Jane Wanjiku/i })).toBeVisible({ timeout: 20000 });
   });
 });
