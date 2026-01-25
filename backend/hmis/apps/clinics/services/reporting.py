@@ -9,6 +9,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from datetime import date
+from datetime import timedelta
 from decimal import Decimal
 
 from django.core.exceptions import ValidationError
@@ -16,7 +17,7 @@ from django.db import transaction
 from django.db.models import Q, Sum
 
 from hmis.apps.billing.models import Invoice
-from hmis.apps.clinics.models import Clinic, ClinicVisit, MonthlyClinicReport
+from hmis.apps.clinics.models import Clinic, ClinicEnrollment, ClinicVisit, MonthlyClinicReport
 
 
 @dataclass(frozen=True)
@@ -48,6 +49,7 @@ def generate_monthly_report(clinic: Clinic, year: int, month: int) -> MonthlyCli
     """
 
     month_range = _month_range(year, month)
+    reference_date = month_range.end - timedelta(days=1)
 
     visits = ClinicVisit.objects.select_related("patient", "session").filter(
         session__clinic=clinic,
@@ -105,6 +107,33 @@ def generate_monthly_report(clinic: Clinic, year: int, month: int) -> MonthlyCli
         paid_invoices.aggregate(total=Sum("total_amount")).get("total") or Decimal("0.00")
     )
 
+    # Enrollment aggregation
+    enrollments = ClinicEnrollment.objects.filter(clinic=clinic)
+
+    new_enrollments = enrollments.filter(
+        enrollment_date__gte=month_range.start,
+        enrollment_date__lt=month_range.end,
+    ).count()
+
+    active_enrollments_qs = enrollments.filter(
+        status="ACTIVE",
+        enrollment_date__lt=month_range.end,
+    )
+    active_enrollments = active_enrollments_qs.count()
+
+    defaulters = 0
+    for enrollment in active_enrollments_qs.only(
+        "next_appointment",
+        "appointment_interval_days",
+    ):
+        next_appointment = enrollment.next_appointment
+        if not next_appointment:
+            continue
+
+        days_overdue = max(0, (reference_date - next_appointment).days)
+        if days_overdue >= (enrollment.appointment_interval_days * 2):
+            defaulters += 1
+
     # For now, split is not implemented (future: based on payment method / SHA claims)
     sha_claims_amount = Decimal("0.00")
     cash_amount = total_revenue
@@ -127,6 +156,9 @@ def generate_monthly_report(clinic: Clinic, year: int, month: int) -> MonthlyCli
         "total_revenue": total_revenue,
         "sha_claims_amount": sha_claims_amount,
         "cash_amount": cash_amount,
+        "new_enrollments": new_enrollments,
+        "active_enrollments": active_enrollments,
+        "defaulters": defaulters,
     }
 
     with transaction.atomic():

@@ -207,6 +207,56 @@ def paid_invoice_for_visit(db, visits_in_month, clinic_user):
     return invoice
 
 
+@pytest.fixture
+def enrollments_for_reporting(db, sample_clinic, female_patient, clinic_user):
+    """Create a mix of enrollments for aggregation tests."""
+
+    from hmis.apps.clinics.models import ClinicEnrollment
+
+    today = timezone.now().date()
+    start = date(today.year, today.month, 1)
+    if today.month == 12:
+        end = date(today.year + 1, 1, 1)
+    else:
+        end = date(today.year, today.month + 1, 1)
+    reference_date = end - timedelta(days=1)
+
+    # New enrollment within reporting month
+    new_active = ClinicEnrollment.objects.create(
+        clinic=sample_clinic,
+        patient=female_patient,
+        enrollment_date=start,
+        status="ACTIVE",
+        enrolled_by=clinic_user,
+        appointment_interval_days=30,
+        next_appointment=reference_date + timedelta(days=7),
+    )
+
+    # Existing active enrollment (not a defaulter)
+    active_not_defaulter = ClinicEnrollment.objects.create(
+        clinic=sample_clinic,
+        patient=female_patient,
+        enrollment_date=start - timedelta(days=10),
+        status="ACTIVE",
+        enrolled_by=clinic_user,
+        appointment_interval_days=30,
+        next_appointment=reference_date - timedelta(days=30),
+    )
+
+    # Existing active enrollment that is a defaulter (>= 2 cycles overdue)
+    active_defaulter = ClinicEnrollment.objects.create(
+        clinic=sample_clinic,
+        patient=female_patient,
+        enrollment_date=start - timedelta(days=20),
+        status="ACTIVE",
+        enrolled_by=clinic_user,
+        appointment_interval_days=30,
+        next_appointment=reference_date - timedelta(days=61),
+    )
+
+    return new_active, active_not_defaulter, active_defaulter
+
+
 @pytest.mark.django_db
 class TestMonthlyClinicReportModelContract:
     def test_monthly_clinic_report_model_exists(self):
@@ -258,6 +308,7 @@ class TestMonthlyClinicReportService:
         visits_in_month,
         visit_outside_month,
         paid_invoice_for_visit,
+        enrollments_for_reporting,
     ):
         """generate_monthly_report aggregates ClinicVisit + Invoice for the month."""
         generate_monthly_report, _generate_all = _import_reporting_service()
@@ -274,6 +325,11 @@ class TestMonthlyClinicReportService:
         assert report.revisits == 1
 
         assert report.total_revenue == Decimal("500.00")
+
+        # Enrollment aggregation
+        assert report.new_enrollments == 1
+        assert report.active_enrollments == 3
+        assert report.defaulters == 1
 
     def test_generate_monthly_report_is_idempotent(self, sample_clinic, visits_in_month):
         """Calling generate_monthly_report twice should update/return same record."""

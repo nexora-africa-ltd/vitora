@@ -219,20 +219,20 @@ class MonthlyClinicReport(TimeStampedModel):
 ### 3.3 Implementation Tasks
 
 ```
-[ ] Create MonthlyClinicReport model
-[ ] Create migration
-[ ] Create reporting service
+[x] Create MonthlyClinicReport model
+[x] Create migration
+[x] Create reporting service
     - generate_monthly_report(clinic, year, month) -> MonthlyClinicReport
     - Aggregate from ClinicVisit, ClinicEnrollment, Invoice
-[ ] Create Celery task for monthly aggregation
+[x] Create Celery task for monthly aggregation
     - Run on 1st of each month for previous month
     - generate_all_clinic_reports(year, month)
-[ ] Create API endpoints
+[x] Create API endpoints
     - GET /api/clinics/{id}/reports/monthly/
     - GET /api/clinics/{id}/reports/monthly/{year}/{month}/
     - POST /api/clinics/{id}/reports/monthly/{year}/{month}/regenerate/
-[ ] Create serializer
-[ ] Write tests
+[x] Create serializer
+[x] Write tests
 ```
 
 ---
