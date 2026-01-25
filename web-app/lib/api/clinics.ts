@@ -127,8 +127,8 @@ export const clinicsApi = {
    * Get current queue for a clinic
    */
   getQueue: async (clinicId: number): Promise<ClinicVisit[]> => {
-    const response = await apiClient.get<ClinicVisit[]>(`/api/clinics/${clinicId}/queue/`);
-    return response.data;
+    const response = await apiClient.get<{ results: ClinicVisit[] }>(`/api/clinics/${clinicId}/queue/`);
+    return response.data.results;
   },
 
   /**
