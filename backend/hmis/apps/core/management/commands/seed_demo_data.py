@@ -572,7 +572,166 @@ class Command(BaseCommand):
                 registered_by = User.objects.get(username="demo_receptionist")
                 patients_created = 0
 
-                for i in range(30):  # Create 30 patients
+                # ---------------------------------------------------------
+                # Deterministic clinic demo patients (stable IDs via temporary_id)
+                # ---------------------------------------------------------
+                demo_patient_specs = [
+                    # General OPD / Filter
+                    {
+                        "identification_number": "DEMO-PT-0001",
+                        "first_name": "John",
+                        "last_name": "Kamau",
+                        "gender": "M",
+                        "date_of_birth": date.today() - timedelta(days=365 * 34),
+                        "notes": "General OPD demo patient",
+                    },
+                    {
+                        "identification_number": "DEMO-PT-0002",
+                        "first_name": "Mary",
+                        "last_name": "Otieno",
+                        "gender": "F",
+                        "date_of_birth": date.today() - timedelta(days=365 * 29),
+                        "notes": "Filter/Screening demo patient",
+                    },
+                    # MCH
+                    {
+                        "identification_number": "DEMO-PT-0101",
+                        "first_name": "Grace",
+                        "last_name": "Wambui",
+                        "gender": "F",
+                        "date_of_birth": date.today() - timedelta(days=365 * 26),
+                        "notes": "ANC demo patient",
+                    },
+                    {
+                        "identification_number": "DEMO-PT-0102",
+                        "first_name": "Faith",
+                        "last_name": "Nyambura",
+                        "gender": "F",
+                        "date_of_birth": date.today() - timedelta(days=365 * 30),
+                        "notes": "PNC demo patient",
+                    },
+                    {
+                        "identification_number": "DEMO-PT-0103",
+                        "first_name": "Jane",
+                        "last_name": "Wanjiku",
+                        "gender": "F",
+                        "date_of_birth": date.today() - timedelta(days=365 * 27),
+                        "notes": "Family planning demo patient",
+                    },
+                    {
+                        "identification_number": "DEMO-PT-0104",
+                        "first_name": "Brian",
+                        "last_name": "Mwangi",
+                        "gender": "M",
+                        "date_of_birth": date.today() - timedelta(days=365 * 2),
+                        "notes": "Child welfare demo patient",
+                    },
+                    # Specialty
+                    {
+                        "identification_number": "DEMO-PT-0201",
+                        "first_name": "Peter",
+                        "last_name": "Njeri",
+                        "gender": "M",
+                        "date_of_birth": date.today() - timedelta(days=365 * 41),
+                        "notes": "Dental demo patient",
+                    },
+                    {
+                        "identification_number": "DEMO-PT-0202",
+                        "first_name": "Esther",
+                        "last_name": "Akinyi",
+                        "gender": "F",
+                        "date_of_birth": date.today() - timedelta(days=365 * 52),
+                        "notes": "Eye clinic demo patient",
+                    },
+                    {
+                        "identification_number": "DEMO-PT-0203",
+                        "first_name": "Daniel",
+                        "last_name": "Kipchoge",
+                        "gender": "M",
+                        "date_of_birth": date.today() - timedelta(days=365 * 37),
+                        "notes": "ENT demo patient",
+                    },
+                    # Chronic care
+                    {
+                        "identification_number": "DEMO-PT-0301",
+                        "first_name": "Agnes",
+                        "last_name": "Chebet",
+                        "gender": "F",
+                        "date_of_birth": date.today() - timedelta(days=365 * 45),
+                        "notes": "Diabetic clinic demo patient",
+                    },
+                    {
+                        "identification_number": "DEMO-PT-0302",
+                        "first_name": "George",
+                        "last_name": "Mutua",
+                        "gender": "M",
+                        "date_of_birth": date.today() - timedelta(days=365 * 58),
+                        "notes": "Hypertension clinic demo patient",
+                    },
+                    # Sensitive
+                    {
+                        "identification_number": "DEMO-PT-0901",
+                        "first_name": "Ruth",
+                        "last_name": "Adhiambo",
+                        "gender": "F",
+                        "date_of_birth": date.today() - timedelta(days=365 * 33),
+                        "notes": "CCC (sensitive) demo patient",
+                        "is_sensitive": True,
+                    },
+                    {
+                        "identification_number": "DEMO-PT-0902",
+                        "first_name": "Naomi",
+                        "last_name": "Omondi",
+                        "gender": "F",
+                        "date_of_birth": date.today() - timedelta(days=365 * 24),
+                        "notes": "Mental Health (sensitive) demo patient",
+                        "is_sensitive": True,
+                    },
+                    {
+                        "identification_number": "DEMO-PT-0903",
+                        "first_name": "Mercy",
+                        "last_name": "Wanjiku",
+                        "gender": "F",
+                        "date_of_birth": date.today() - timedelta(days=365 * 22),
+                        "notes": "GBV clinic (sensitive) demo patient",
+                        "is_sensitive": True,
+                    },
+                ]
+
+                # Use a predictable county/sub-county combo for deterministic patients
+                default_county = counties[0]
+                default_sub_counties = list(default_county.sub_counties.all()[:5])
+                default_sub_county = default_sub_counties[0] if default_sub_counties else None
+
+                for spec in demo_patient_specs:
+                    if default_sub_county is None:
+                        break
+
+                    patient, created = Patient.objects.update_or_create(
+                        identification_type="temporary_id",
+                        identification_number=spec["identification_number"],
+                        defaults={
+                            "first_name": spec["first_name"],
+                            "last_name": spec["last_name"],
+                            "date_of_birth": spec["date_of_birth"],
+                            "gender": spec["gender"],
+                            "county": default_county,
+                            "sub_county": default_sub_county,
+                            "registered_by": registered_by,
+                            "phone_number": f"07{randint(10000000, 99999999)}",
+                            "consent_given": True,
+                            "consent_date": None,
+                            "is_sensitive": bool(spec.get("is_sensitive", False)),
+                            "address": spec.get("notes", ""),
+                        },
+                    )
+                    if created:
+                        patients_created += 1
+
+                # ---------------------------------------------------------
+                # Random sample patients (augment overall demo dataset)
+                # ---------------------------------------------------------
+                for i in range(60):  # Create up to 60 additional patients
                     gender = choice(["M", "F"])
                     if gender == "M":
                         first_name = choice(KENYAN_FIRST_NAMES_MALE)
@@ -599,6 +758,7 @@ class Command(BaseCommand):
                             "sub_county": sub_county,
                             "registered_by": registered_by,
                             "phone_number": f"07{randint(10000000, 99999999)}",
+                            "consent_given": True,
                         },
                     )
                     if created:
@@ -611,6 +771,12 @@ class Command(BaseCommand):
             # =============================================================
             self.stdout.write(self.style.MIGRATE_HEADING("\n5. Creating Billing Demo Data..."))
             self._seed_billing_data(options)
+
+            # =============================================================
+            # Step 6: Create Clinics Demo Data (clinics, sessions, queue)
+            # =============================================================
+            self.stdout.write(self.style.MIGRATE_HEADING("\n6. Creating Clinics Demo Data..."))
+            self._seed_clinics_data(options)
 
         # =============================================================
         # Summary
@@ -1327,3 +1493,683 @@ class Command(BaseCommand):
 
         self.stdout.write(f"    Created {credit_notes_created} credit notes")
         self.stdout.write(self.style.SUCCESS("  ✅ Billing demo data created successfully!"))
+
+    def _seed_clinics_data(self, options):
+        """Seed clinics demo data: clinics, schedules, sessions, staff assignments, enrollments, and queue visits."""
+        from datetime import date, time, timedelta
+        from decimal import Decimal
+        from random import choice, randint
+
+        from django.contrib.auth import get_user_model
+        from django.utils import timezone
+
+        from hmis.apps.clinics.models import (
+            Clinic,
+            ClinicEnrollment,
+            ClinicSchedule,
+            ClinicSession,
+            ClinicStaff,
+            ClinicVisit,
+        )
+        from hmis.apps.clinics.services.template_routing import resolve_default_clinical_template
+        from hmis.apps.patients.models import Patient
+
+        User = get_user_model()
+
+        today = timezone.localdate()
+        weekday = today.weekday()
+
+        # Resolve demo users
+        demo_admin = User.objects.filter(username="demo_admin").first() or User.objects.filter(
+            is_superuser=True
+        ).first()
+        receptionist = User.objects.filter(username="demo_receptionist").first() or demo_admin
+        nurse = User.objects.filter(username="demo_nurse").first() or demo_admin
+        doctor = User.objects.filter(username="demo_doctor").first() or demo_admin
+        clinical_officer = User.objects.filter(username="demo_clinical_officer").first() or doctor
+
+        if demo_admin is None:
+            self.stdout.write(self.style.WARNING("  No admin user found. Skipping clinics demo data."))
+            return
+
+        # -----------------------------------------------------------------
+        # Clinics to create (use DEMO- prefix to keep staging/demo data grouped)
+        # -----------------------------------------------------------------
+        CLINICS = [
+            # Primary care
+            {
+                "code": "DEMO-OPD-01",
+                "name": "General OPD - Room 1",
+                "clinic_type": "GENERAL_OPD",
+                "location": "Outpatient Block, Room 1",
+                "capacity": 3,
+                "default_service_fee": Decimal("500.00"),
+                "triage_required": True,
+            },
+            {
+                "code": "DEMO-FILTER-01",
+                "name": "Filter/Screening Clinic",
+                "clinic_type": "FILTER_CLINIC",
+                "location": "Outpatient Block, Triage Area",
+                "capacity": 2,
+                "default_service_fee": Decimal("0.00"),
+                "triage_required": False,
+            },
+            # MCH
+            {
+                "code": "DEMO-ANC-01",
+                "name": "Antenatal Clinic (ANC)",
+                "clinic_type": "ANC",
+                "location": "MCH Wing, Room 2",
+                "capacity": 2,
+                "default_service_fee": Decimal("300.00"),
+                "triage_required": False,
+            },
+            {
+                "code": "DEMO-PNC-01",
+                "name": "Postnatal Clinic (PNC)",
+                "clinic_type": "PNC",
+                "location": "MCH Wing, Room 3",
+                "capacity": 1,
+                "default_service_fee": Decimal("300.00"),
+                "triage_required": False,
+            },
+            {
+                "code": "DEMO-FP-01",
+                "name": "Family Planning Clinic",
+                "clinic_type": "FP",
+                "location": "MCH Wing, Room 4",
+                "capacity": 1,
+                "default_service_fee": Decimal("200.00"),
+                "triage_required": False,
+            },
+            {
+                "code": "DEMO-CWC-01",
+                "name": "Child Welfare Clinic (CWC)",
+                "clinic_type": "CWC",
+                "location": "MCH Wing, Room 1",
+                "capacity": 2,
+                "default_service_fee": Decimal("200.00"),
+                "triage_required": False,
+            },
+            {
+                "code": "DEMO-IMM-01",
+                "name": "Immunization Clinic",
+                "clinic_type": "IMMUNIZATION",
+                "location": "MCH Wing, Vaccination Room",
+                "capacity": 2,
+                "default_service_fee": Decimal("0.00"),
+                "triage_required": False,
+            },
+            {
+                "code": "DEMO-NUTR-01",
+                "name": "Nutrition Clinic",
+                "clinic_type": "NUTRITION",
+                "location": "Outpatient Block, Room 5",
+                "capacity": 1,
+                "default_service_fee": Decimal("200.00"),
+                "triage_required": True,
+            },
+            # Specialty clinics
+            {
+                "code": "DEMO-DENT-01",
+                "name": "Dental Clinic",
+                "clinic_type": "DENTAL",
+                "location": "Specialist Block, Dental Suite",
+                "capacity": 1,
+                "default_service_fee": Decimal("1500.00"),
+                "triage_required": False,
+            },
+            {
+                "code": "DEMO-EYE-01",
+                "name": "Eye Clinic",
+                "clinic_type": "EYE",
+                "location": "Specialist Block, Ophthalmology",
+                "capacity": 1,
+                "default_service_fee": Decimal("1500.00"),
+                "triage_required": False,
+            },
+            {
+                "code": "DEMO-ENT-01",
+                "name": "ENT Clinic",
+                "clinic_type": "ENT",
+                "location": "Specialist Block, ENT",
+                "capacity": 1,
+                "default_service_fee": Decimal("1500.00"),
+                "triage_required": False,
+            },
+            {
+                "code": "DEMO-SURG-OPD",
+                "name": "Surgical Outpatient Clinic",
+                "clinic_type": "SURGICAL",
+                "location": "Specialist Block, Surgery OPD",
+                "capacity": 1,
+                "default_service_fee": Decimal("1500.00"),
+                "triage_required": True,
+            },
+            {
+                "code": "DEMO-ORTHO-01",
+                "name": "Orthopedic Clinic",
+                "clinic_type": "ORTHO",
+                "location": "Specialist Block, Ortho",
+                "capacity": 1,
+                "default_service_fee": Decimal("1500.00"),
+                "triage_required": True,
+            },
+            {
+                "code": "DEMO-PHYSIO-01",
+                "name": "Physiotherapy Clinic",
+                "clinic_type": "PHYSIO",
+                "location": "Rehab Wing",
+                "capacity": 2,
+                "default_service_fee": Decimal("800.00"),
+                "triage_required": False,
+            },
+            {
+                "code": "DEMO-DERM-01",
+                "name": "Dermatology Clinic",
+                "clinic_type": "DERM",
+                "location": "Specialist Block, Dermatology",
+                "capacity": 1,
+                "default_service_fee": Decimal("1500.00"),
+                "triage_required": False,
+            },
+            # Chronic care
+            {
+                "code": "DEMO-CCC-01",
+                "name": "Comprehensive Care Clinic (CCC)",
+                "clinic_type": "CCC",
+                "location": "Chronic Care Wing",
+                "capacity": 2,
+                "default_service_fee": Decimal("0.00"),
+                "triage_required": False,
+                "is_sensitive": True,
+                "required_permission": "clinics.view_ccc_clinic",
+            },
+            {
+                "code": "DEMO-TB-01",
+                "name": "TB Clinic",
+                "clinic_type": "TB",
+                "location": "Chronic Care Wing",
+                "capacity": 1,
+                "default_service_fee": Decimal("0.00"),
+                "triage_required": False,
+            },
+            {
+                "code": "DEMO-DIAB-01",
+                "name": "Diabetic Clinic",
+                "clinic_type": "DIABETIC",
+                "location": "Chronic Care Wing",
+                "capacity": 1,
+                "default_service_fee": Decimal("0.00"),
+                "triage_required": False,
+            },
+            {
+                "code": "DEMO-HTN-01",
+                "name": "Hypertension Clinic",
+                "clinic_type": "HYPERTENSION",
+                "location": "Chronic Care Wing",
+                "capacity": 1,
+                "default_service_fee": Decimal("0.00"),
+                "triage_required": False,
+            },
+            {
+                "code": "DEMO-MH-01",
+                "name": "Mental Health Clinic",
+                "clinic_type": "MENTAL_HEALTH",
+                "location": "Chronic Care Wing, Counseling Room",
+                "capacity": 1,
+                "default_service_fee": Decimal("0.00"),
+                "triage_required": False,
+                "is_sensitive": True,
+                "required_permission": "clinics.view_mental_health_clinic",
+            },
+            {
+                "code": "DEMO-ONCO-01",
+                "name": "Oncology Clinic",
+                "clinic_type": "ONCOLOGY",
+                "location": "Specialist Block, Oncology",
+                "capacity": 1,
+                "default_service_fee": Decimal("0.00"),
+                "triage_required": True,
+            },
+            {
+                "code": "DEMO-DIAL-01",
+                "name": "Dialysis Unit",
+                "clinic_type": "DIALYSIS",
+                "location": "Renal Unit",
+                "capacity": 4,
+                "default_service_fee": Decimal("0.00"),
+                "triage_required": False,
+            },
+            # Procedure areas
+            {
+                "code": "DEMO-PROC-01",
+                "name": "Procedure Room",
+                "clinic_type": "PROCEDURE",
+                "location": "Outpatient Block, Procedure Room",
+                "capacity": 1,
+                "default_service_fee": Decimal("1200.00"),
+                "triage_required": False,
+            },
+            {
+                "code": "DEMO-DRESS-01",
+                "name": "Dressing / Wound Care",
+                "clinic_type": "DRESSING",
+                "location": "Outpatient Block, Dressing Room",
+                "capacity": 1,
+                "default_service_fee": Decimal("300.00"),
+                "triage_required": False,
+            },
+            {
+                "code": "DEMO-INJ-01",
+                "name": "Injection Room",
+                "clinic_type": "INJECTION",
+                "location": "Outpatient Block, Treatment Room",
+                "capacity": 1,
+                "default_service_fee": Decimal("200.00"),
+                "triage_required": False,
+            },
+            # Other / sensitive GBV handling
+            {
+                "code": "GBV-DEFAULT",
+                "name": "GBV Clinic",
+                "clinic_type": "OTHER",
+                "location": "Counseling Wing",
+                "capacity": 1,
+                "default_service_fee": Decimal("0.00"),
+                "triage_required": False,
+                "is_sensitive": True,
+                "required_permission": "patients.view_sensitive_patient",
+            },
+        ]
+
+        clinics_created = 0
+        clinics_updated = 0
+        clinics: list[Clinic] = []
+
+        for clinic_data in CLINICS:
+            code = clinic_data["code"]
+            defaults = {
+                "name": clinic_data["name"],
+                "clinic_type": clinic_data["clinic_type"],
+                "description": clinic_data.get("description", ""),
+                "location": clinic_data.get("location", ""),
+                "floor": clinic_data.get("floor", ""),
+                "capacity": clinic_data.get("capacity", 1),
+                "status": "ACTIVE",
+                "requires_appointment": clinic_data.get("requires_appointment", False),
+                "requires_referral": clinic_data.get("requires_referral", False),
+                "accepts_walk_ins": clinic_data.get("accepts_walk_ins", True),
+                "triage_required": clinic_data.get("triage_required", True),
+                "eligibility_rules": clinic_data.get("eligibility_rules"),
+                "default_service_fee": clinic_data.get("default_service_fee"),
+                "is_sensitive": clinic_data.get("is_sensitive", False),
+                "required_permission": clinic_data.get("required_permission", ""),
+            }
+
+            clinic, created = Clinic.objects.update_or_create(code=code, defaults=defaults)
+            if created:
+                clinics_created += 1
+            else:
+                clinics_updated += 1
+            clinics.append(clinic)
+
+        self.stdout.write(f"  Clinics: {clinics_created} created, {clinics_updated} updated")
+
+        # -----------------------------------------------------------------
+        # Schedules (Mon-Fri) + ensure open today
+        # -----------------------------------------------------------------
+        schedules_created = 0
+        schedules_updated = 0
+        for clinic in clinics:
+            for day in range(0, 5):
+                start = time(8, 0)
+                end = time(17, 0)
+                if clinic.clinic_type in {"DIALYSIS"}:
+                    start = time(7, 0)
+                    end = time(15, 0)
+                if clinic.clinic_type in {"IMMUNIZATION", "CWC"}:
+                    start = time(9, 0)
+                    end = time(16, 0)
+
+                sched, created = ClinicSchedule.objects.update_or_create(
+                    clinic=clinic,
+                    day_of_week=day,
+                    start_time=start,
+                    defaults={
+                        "end_time": end,
+                        "max_patients": 60,
+                        "is_active": True,
+                        "notes": "[DEMO] Default weekday schedule",
+                    },
+                )
+                if created:
+                    schedules_created += 1
+                else:
+                    schedules_updated += 1
+
+            # Ensure clinic is open today in case today is weekend
+            if weekday > 4:
+                ClinicSchedule.objects.update_or_create(
+                    clinic=clinic,
+                    day_of_week=weekday,
+                    start_time=time(9, 0),
+                    defaults={
+                        "end_time": time(13, 0),
+                        "max_patients": 40,
+                        "is_active": True,
+                        "notes": "[DEMO] Weekend schedule",
+                    },
+                )
+
+        self.stdout.write(
+            f"  Schedules: {schedules_created} created, {schedules_updated} updated"
+        )
+
+        # -----------------------------------------------------------------
+        # Staff assignments
+        # -----------------------------------------------------------------
+        assignments_created = 0
+        assignments_updated = 0
+
+        def assign(clinic: Clinic, user, role: str, is_primary: bool = False):
+            nonlocal assignments_created, assignments_updated
+            if user is None:
+                return
+            obj, created = ClinicStaff.objects.update_or_create(
+                clinic=clinic,
+                user=user,
+                role=role,
+                defaults={
+                    "is_primary": is_primary,
+                    "start_date": today - timedelta(days=30),
+                    "end_date": None,
+                    "is_active": True,
+                },
+            )
+            if created:
+                assignments_created += 1
+            else:
+                assignments_updated += 1
+            return obj
+
+        for clinic in clinics:
+            # Default staffing patterns
+            assign(clinic, receptionist, "CLERK", is_primary=(clinic.clinic_type == "GENERAL_OPD"))
+
+            if clinic.clinic_type in {"GENERAL_OPD", "SURGICAL", "ORTHO", "DERM", "EYE", "ENT", "DENTAL"}:
+                assign(clinic, doctor, "DOCTOR", is_primary=True)
+            elif clinic.clinic_type in {"FILTER_CLINIC"}:
+                assign(clinic, clinical_officer, "DOCTOR", is_primary=True)
+            elif clinic.clinic_type in {"ANC", "PNC", "FP", "CWC", "IMMUNIZATION", "NUTRITION"}:
+                assign(clinic, nurse, "NURSE", is_primary=True)
+            elif clinic.clinic_type in {"CCC", "TB", "DIABETIC", "HYPERTENSION", "ONCOLOGY", "DIALYSIS"}:
+                assign(clinic, doctor, "DOCTOR", is_primary=True)
+                assign(clinic, nurse, "NURSE", is_primary=False)
+            elif clinic.code == "GBV-DEFAULT":
+                assign(clinic, nurse, "COUNSELOR", is_primary=True)
+
+        self.stdout.write(
+            f"  Staff assignments: {assignments_created} created, {assignments_updated} updated"
+        )
+
+        # -----------------------------------------------------------------
+        # Sessions for today (open)
+        # -----------------------------------------------------------------
+        sessions_created = 0
+        sessions_updated = 0
+        sessions: list[ClinicSession] = []
+        for clinic in clinics:
+            session, created = ClinicSession.objects.update_or_create(
+                clinic=clinic,
+                session_date=today,
+                defaults={
+                    "status": "OPEN",
+                    "opened_at": timezone.now(),
+                    "opened_by": demo_admin,
+                    "notes": "[DEMO] Open session for today",
+                },
+            )
+            if created:
+                sessions_created += 1
+            else:
+                sessions_updated += 1
+                if session.status != "OPEN":
+                    session.status = "OPEN"
+                    session.opened_at = session.opened_at or timezone.now()
+                    session.opened_by = session.opened_by or demo_admin
+                    session.save(update_fields=["status", "opened_at", "opened_by"])
+            sessions.append(session)
+
+        self.stdout.write(f"  Sessions: {sessions_created} created, {sessions_updated} updated")
+
+        # -----------------------------------------------------------------
+        # Default clinical templates per clinic (best effort)
+        # -----------------------------------------------------------------
+        templates_set = 0
+        for clinic in clinics:
+            if clinic.default_clinical_template_id:
+                continue
+            resolved = resolve_default_clinical_template(clinic)
+            if resolved is None:
+                continue
+            clinic.default_clinical_template = resolved
+            clinic.save(update_fields=["default_clinical_template"])
+            templates_set += 1
+
+        self.stdout.write(f"  Default templates set: {templates_set}")
+
+        # -----------------------------------------------------------------
+        # Enrollments (CCC/ANC/Diabetic/HTN) for deterministic demo patients
+        # -----------------------------------------------------------------
+        enrollments_created = 0
+        enrollments_updated = 0
+
+        def get_patient_by_temp_id(temp_id: str) -> Patient | None:
+            return Patient.objects.filter(
+                identification_type="temporary_id", identification_number=temp_id
+            ).first()
+
+        clinic_by_type = {c.clinic_type: c for c in clinics}
+        ccc = clinic_by_type.get("CCC")
+        anc = clinic_by_type.get("ANC")
+        diab = clinic_by_type.get("DIABETIC")
+        htn = clinic_by_type.get("HYPERTENSION")
+        mental = clinic_by_type.get("MENTAL_HEALTH")
+
+        enrollment_specs = [
+            ("DEMO-PT-0901", ccc, {"appointment_interval_days": 30}),
+            ("DEMO-PT-0101", anc, {"appointment_interval_days": 28}),
+            ("DEMO-PT-0301", diab, {"appointment_interval_days": 30}),
+            ("DEMO-PT-0302", htn, {"appointment_interval_days": 30}),
+            ("DEMO-PT-0902", mental, {"appointment_interval_days": 14}),
+        ]
+
+        for temp_id, clinic, extra in enrollment_specs:
+            if clinic is None:
+                continue
+            patient = get_patient_by_temp_id(temp_id)
+            if patient is None:
+                continue
+
+            enrollment, created = ClinicEnrollment.objects.update_or_create(
+                clinic=clinic,
+                patient=patient,
+                defaults={
+                    "enrollment_date": today - timedelta(days=randint(30, 365)),
+                    "status": "ACTIVE",
+                    "enrolled_by": doctor,
+                    "next_appointment": today + timedelta(days=extra.get("appointment_interval_days", 30)),
+                    "appointment_interval_days": extra.get("appointment_interval_days", 30),
+                },
+            )
+            if created:
+                enrollments_created += 1
+            else:
+                enrollments_updated += 1
+
+        self.stdout.write(
+            f"  Enrollments: {enrollments_created} created, {enrollments_updated} updated"
+        )
+
+        # -----------------------------------------------------------------
+        # Queue visits across clinics (WAITING/CALLED/IN_CONSULTATION/COMPLETED)
+        # -----------------------------------------------------------------
+        complaints = [
+            "Fever and headache",
+            "Cough and chest discomfort",
+            "Follow-up visit",
+            "Medication refill",
+            "Routine check-up",
+            "Abdominal pain",
+            "Joint pain",
+            "Skin rash",
+            "Eye irritation",
+            "Toothache",
+        ]
+
+        def next_queue_number(session: ClinicSession) -> int:
+            last = ClinicVisit.objects.filter(session=session).order_by("-queue_number").first()
+            return (last.queue_number + 1) if last else 1
+
+        visits_created = 0
+        visits_updated = 0
+
+        # Use a stable pool of patients; prefer deterministic ones first
+        preferred_temp_ids = [
+            "DEMO-PT-0001",
+            "DEMO-PT-0002",
+            "DEMO-PT-0101",
+            "DEMO-PT-0102",
+            "DEMO-PT-0103",
+            "DEMO-PT-0104",
+            "DEMO-PT-0201",
+            "DEMO-PT-0202",
+            "DEMO-PT-0203",
+            "DEMO-PT-0301",
+            "DEMO-PT-0302",
+            "DEMO-PT-0901",
+            "DEMO-PT-0902",
+            "DEMO-PT-0903",
+        ]
+        preferred_patients = [p for p in (get_patient_by_temp_id(t) for t in preferred_temp_ids) if p]
+
+        other_patients = list(
+            Patient.objects.exclude(id__in=[p.id for p in preferred_patients])
+            .order_by("-id")
+            .all()[:50]
+        )
+        patient_pool = preferred_patients + other_patients
+        if not patient_pool:
+            self.stdout.write(self.style.WARNING("  No patients available for clinic queues."))
+            return
+
+        def upsert_visit(
+            *,
+            session: ClinicSession,
+            patient: Patient,
+            status: str,
+            priority: str = "STANDARD",
+            source: str = "TRIAGE",
+            visit_type: str = "NEW",
+            assigned=None,
+        ) -> ClinicVisit:
+            nonlocal visits_created, visits_updated
+
+            existing = ClinicVisit.objects.filter(session=session, patient=patient).first()
+            if existing:
+                existing.status = status
+                existing.priority = priority
+                existing.source = source
+                existing.visit_type = visit_type
+                existing.chief_complaint = existing.chief_complaint or choice(complaints)
+                existing.notes = "[DEMO] Seeded clinic visit"
+                if assigned is not None:
+                    existing.assigned_clinician = assigned
+                existing.save()
+                visits_updated += 1
+                return existing
+
+            visit = ClinicVisit.objects.create(
+                session=session,
+                patient=patient,
+                queue_number=next_queue_number(session),
+                status=status,
+                priority=priority,
+                source=source,
+                visit_type=visit_type,
+                chief_complaint=choice(complaints),
+                notes="[DEMO] Seeded clinic visit",
+                registered_by=receptionist,
+                assigned_clinician=assigned,
+            )
+            visits_created += 1
+            return visit
+
+        # Seed a small queue for each clinic session
+        pool_index = 0
+        for session in sessions:
+            # Keep sensitive clinics smaller
+            clinic = session.clinic
+            per_clinic = 3 if clinic.is_sensitive else 5
+
+            statuses = ["WAITING", "WAITING", "CALLED", "IN_CONSULTATION", "COMPLETED"]
+            statuses = statuses[:per_clinic]
+
+            for s in statuses:
+                patient = patient_pool[pool_index % len(patient_pool)]
+                pool_index += 1
+
+                priority = choice(["STANDARD", "PRIORITY", "URGENT"])
+                assigned_user = doctor if clinic.clinic_type not in {"ANC", "PNC", "FP", "CWC", "IMMUNIZATION"} else nurse
+                if clinic.clinic_type == "FILTER_CLINIC":
+                    assigned_user = clinical_officer
+                if clinic.code == "GBV-DEFAULT":
+                    assigned_user = nurse
+
+                visit = upsert_visit(
+                    session=session,
+                    patient=patient,
+                    status=s,
+                    priority=priority,
+                    source="TRIAGE" if clinic.triage_required else "DIRECT",
+                    visit_type=choice(["NEW", "RETURN", "FOLLOW_UP"]),
+                    assigned=assigned_user if s in {"CALLED", "IN_CONSULTATION", "COMPLETED"} else None,
+                )
+
+                # Add timestamps for realism
+                if visit.status in {"CALLED", "IN_CONSULTATION", "COMPLETED"} and visit.called_at is None:
+                    visit.called_at = timezone.now() - timedelta(minutes=randint(5, 60))
+                if visit.status in {"IN_CONSULTATION", "COMPLETED"} and visit.consultation_started_at is None:
+                    visit.consultation_started_at = timezone.now() - timedelta(minutes=randint(1, 30))
+                if visit.status == "COMPLETED" and visit.completed_at is None:
+                    visit.completed_at = timezone.now() - timedelta(minutes=randint(1, 10))
+                visit.save()
+
+            # Update session stats
+            session.update_statistics()
+
+        # Create one example referral flow (best-effort)
+        try:
+            source_clinic = Clinic.objects.filter(code="DEMO-FILTER-01").first()
+            target_clinic = Clinic.objects.filter(code="DEMO-OPD-01").first()
+            if source_clinic and target_clinic:
+                src_session = ClinicSession.objects.get(clinic=source_clinic, session_date=today)
+                patient = preferred_patients[0] if preferred_patients else patient_pool[0]
+                src_visit = upsert_visit(
+                    session=src_session,
+                    patient=patient,
+                    status="IN_CONSULTATION",
+                    priority="PRIORITY",
+                    source="DIRECT",
+                    visit_type="NEW",
+                    assigned=clinical_officer,
+                )
+                src_visit.refer_to_clinic(target_clinic, "Referred for clinician review", clinical_officer)
+        except Exception:
+            # Do not fail demo seeding because referral creation is best-effort
+            pass
+
+        self.stdout.write(f"  Clinic visits: {visits_created} created, {visits_updated} updated")
+        self.stdout.write(self.style.SUCCESS("  ✅ Clinics demo data created successfully!"))
