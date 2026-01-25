@@ -10,3 +10,4 @@ export { ClinicPriorityBadge } from './clinic-priority-badge';
 export { AddToQueueDialog } from './add-to-queue-dialog';
 export { ReferPatientDialog } from './refer-patient-dialog';
 export { ClinicTypePage } from './clinic-type-page';
+export { ClinicNavigation } from './clinic-navigation';

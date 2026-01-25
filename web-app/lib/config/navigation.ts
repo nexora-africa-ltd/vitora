@@ -75,6 +75,7 @@ export const mainNavItems: NavItemType[] = [
       { label: 'MCH / Welfare', href: '/clinics/mch', icon: Baby },
       { label: 'Eye Clinic', href: '/clinics/eye', icon: Eye },
       { label: 'Dental Clinic', href: '/clinics/dental', icon: Activity },
+      { label: 'Surgical Clinic', href: '/clinics/surgical', icon: Scissors },
       { label: 'Chronic Care', href: '/clinics/chronic-care', icon: HeartPulse },
       { label: 'Immunization', href: '/clinics/immunization', icon: Syringe },
     ],

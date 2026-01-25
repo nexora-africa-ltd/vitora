@@ -2,7 +2,7 @@
  * Auto-save hook for forms with debounced saving and network awareness.
  * Provides real-time sync when online and queues changes when offline.
  * Sprint 1.5-1.6: Enhanced encounter form auto-save
- * 
+ *
  * Features:
  * - Debounced saving to reduce API calls
  * - Offline queue with localStorage persistence (survives page refresh)
@@ -222,7 +222,7 @@ export function useAutoSave<T>({
     };
 
     save();
-  }, [debouncedData, enabled, isDirty, isOnline, onSave, onSuccess, onError, hasChanged, syncStatus]);
+  }, [debouncedData, enabled, isDirty, isOnline, onSave, onSuccess, onError, hasChanged, syncStatus, persistKey, storageKey]);
 
   // Process offline queue when back online
   useEffect(() => {
@@ -251,7 +251,7 @@ export function useAutoSave<T>({
         syncStatus.reportSync();
         syncStatus.setPendingCount(0);
         onSuccess?.();
-        
+
         // Clear localStorage queue after successful sync
         if (persistKey) {
           clearOfflineQueue(storageKey);
@@ -272,7 +272,7 @@ export function useAutoSave<T>({
     };
 
     processQueue();
-  }, [isOnline, onSave, onSuccess, onError, syncStatus]);
+  }, [isOnline, onSave, onSuccess, onError, syncStatus, persistKey, storageKey]);
 
   // Manual save function
   const saveNow = useCallback(async () => {
@@ -316,7 +316,7 @@ export function useAutoSave<T>({
     } finally {
       saveInProgress.current = false;
     }
-  }, [data, isOnline, onSave, onSuccess, onError, syncStatus]);
+  }, [data, isOnline, onSave, onSuccess, onError, syncStatus, persistKey, storageKey]);
 
   // Reset function to clear dirty state (e.g., after manual save)
   const reset = useCallback(() => {

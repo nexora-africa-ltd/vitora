@@ -3,9 +3,31 @@
  *
  * Provides API methods for clinic management, sessions, visits (queue),
  * staff assignments, schedules, and enrollments.
+ *
+ * All responses are validated with Zod schemas to catch data shape mismatches
+ * at runtime before they cause errors in components.
  */
 
 import { apiClient } from './client';
+import { parseResponse } from '@/lib/schemas/validation';
+import {
+  ClinicSchema,
+  ClinicListItemSchema,
+  ClinicSessionSchema,
+  ClinicVisitSchema,
+  ClinicStaffSchema,
+  ClinicScheduleSchema,
+  ClinicEnrollmentSchema,
+  ClinicQueueStatsSchema,
+  ClinicDashboardStatsSchema,
+  PaginatedClinicListSchema,
+  PaginatedClinicSessionSchema,
+  PaginatedClinicVisitSchema,
+  PaginatedClinicEnrollmentSchema,
+  ClinicVisitArrayResponseSchema,
+  ClinicStaffArrayResponseSchema,
+  ClinicScheduleArrayResponseSchema,
+} from '@/lib/schemas/clinic.schema';
 import type {
   Clinic,
   ClinicListItem,
@@ -41,7 +63,7 @@ export const clinicsApi = {
    */
   list: async (params?: ClinicListParams): Promise<PaginatedResponse<ClinicListItem>> => {
     const response = await apiClient.get<PaginatedResponse<ClinicListItem>>('/api/clinics/', { params });
-    return response.data;
+    return parseResponse(PaginatedClinicListSchema, response.data, { context: 'clinicsApi.list' });
   },
 
   /**
@@ -49,7 +71,7 @@ export const clinicsApi = {
    */
   get: async (id: number): Promise<Clinic> => {
     const response = await apiClient.get<Clinic>(`/api/clinics/${id}/`);
-    return response.data;
+    return parseResponse(ClinicSchema, response.data, { context: 'clinicsApi.get' });
   },
 
   /**
@@ -57,7 +79,7 @@ export const clinicsApi = {
    */
   create: async (data: Partial<Clinic>): Promise<Clinic> => {
     const response = await apiClient.post<Clinic>('/api/clinics/', data);
-    return response.data;
+    return parseResponse(ClinicSchema, response.data, { context: 'clinicsApi.create' });
   },
 
   /**
@@ -65,7 +87,7 @@ export const clinicsApi = {
    */
   update: async (id: number, data: Partial<Clinic>): Promise<Clinic> => {
     const response = await apiClient.patch<Clinic>(`/api/clinics/${id}/`, data);
-    return response.data;
+    return parseResponse(ClinicSchema, response.data, { context: 'clinicsApi.update' });
   },
 
   /**
@@ -80,7 +102,7 @@ export const clinicsApi = {
    */
   getDashboard: async (id: number): Promise<ClinicDashboardStats> => {
     const response = await apiClient.get<ClinicDashboardStats>(`/api/clinics/${id}/dashboard/`);
-    return response.data;
+    return parseResponse(ClinicDashboardStatsSchema, response.data, { context: 'clinicsApi.getDashboard' });
   },
 
   // -------------------------------------------------------------------------
@@ -92,7 +114,7 @@ export const clinicsApi = {
    */
   listSessions: async (clinicId: number, params?: { date_from?: string; date_to?: string }): Promise<PaginatedResponse<ClinicSession>> => {
     const response = await apiClient.get<PaginatedResponse<ClinicSession>>(`/api/clinics/${clinicId}/sessions/`, { params });
-    return response.data;
+    return parseResponse(PaginatedClinicSessionSchema, response.data, { context: 'clinicsApi.listSessions' });
   },
 
   /**
@@ -100,7 +122,7 @@ export const clinicsApi = {
    */
   getTodaySession: async (clinicId: number): Promise<ClinicSession> => {
     const response = await apiClient.get<ClinicSession>(`/api/clinics/${clinicId}/sessions/today/`);
-    return response.data;
+    return parseResponse(ClinicSessionSchema, response.data, { context: 'clinicsApi.getTodaySession' });
   },
 
   /**
@@ -108,7 +130,7 @@ export const clinicsApi = {
    */
   openSession: async (clinicId: number): Promise<ClinicSession> => {
     const response = await apiClient.post<ClinicSession>(`/api/clinics/${clinicId}/sessions/today/open/`);
-    return response.data;
+    return parseResponse(ClinicSessionSchema, response.data, { context: 'clinicsApi.openSession' });
   },
 
   /**
@@ -116,7 +138,7 @@ export const clinicsApi = {
    */
   closeSession: async (clinicId: number): Promise<ClinicSession> => {
     const response = await apiClient.post<ClinicSession>(`/api/clinics/${clinicId}/sessions/today/close/`);
-    return response.data;
+    return parseResponse(ClinicSessionSchema, response.data, { context: 'clinicsApi.closeSession' });
   },
 
   // -------------------------------------------------------------------------
@@ -127,8 +149,9 @@ export const clinicsApi = {
    * Get current queue for a clinic
    */
   getQueue: async (clinicId: number): Promise<ClinicVisit[]> => {
-    const response = await apiClient.get<ClinicVisit[]>(`/api/clinics/${clinicId}/queue/`);
-    return response.data;
+    const response = await apiClient.get<{ results: ClinicVisit[] }>(`/api/clinics/${clinicId}/queue/`);
+    const validated = parseResponse(ClinicVisitArrayResponseSchema, response.data, { context: 'clinicsApi.getQueue' });
+    return validated.results;
   },
 
   /**
@@ -136,7 +159,7 @@ export const clinicsApi = {
    */
   addToQueue: async (clinicId: number, data: ClinicVisitCreateData): Promise<ClinicVisit> => {
     const response = await apiClient.post<ClinicVisit>(`/api/clinics/${clinicId}/queue/`, data);
-    return response.data;
+    return parseResponse(ClinicVisitSchema, response.data, { context: 'clinicsApi.addToQueue' });
   },
 
   /**
@@ -144,7 +167,7 @@ export const clinicsApi = {
    */
   getQueueStats: async (clinicId: number): Promise<ClinicQueueStats> => {
     const response = await apiClient.get<ClinicQueueStats>(`/api/clinics/${clinicId}/queue/stats/`);
-    return response.data;
+    return parseResponse(ClinicQueueStatsSchema, response.data, { context: 'clinicsApi.getQueueStats' });
   },
 
   // -------------------------------------------------------------------------
@@ -156,7 +179,7 @@ export const clinicsApi = {
    */
   listVisits: async (params?: ClinicVisitListParams): Promise<PaginatedResponse<ClinicVisit>> => {
     const response = await apiClient.get<PaginatedResponse<ClinicVisit>>('/api/clinic-visits/', { params });
-    return response.data;
+    return parseResponse(PaginatedClinicVisitSchema, response.data, { context: 'clinicsApi.listVisits' });
   },
 
   /**
@@ -164,7 +187,7 @@ export const clinicsApi = {
    */
   getVisit: async (id: number): Promise<ClinicVisit> => {
     const response = await apiClient.get<ClinicVisit>(`/api/clinic-visits/${id}/`);
-    return response.data;
+    return parseResponse(ClinicVisitSchema, response.data, { context: 'clinicsApi.getVisit' });
   },
 
   /**
@@ -172,7 +195,7 @@ export const clinicsApi = {
    */
   createVisit: async (data: ClinicVisitCreateData): Promise<ClinicVisit> => {
     const response = await apiClient.post<ClinicVisit>('/api/clinic-visits/', data);
-    return response.data;
+    return parseResponse(ClinicVisitSchema, response.data, { context: 'clinicsApi.createVisit' });
   },
 
   /**
@@ -180,7 +203,7 @@ export const clinicsApi = {
    */
   updateVisit: async (id: number, data: Partial<ClinicVisit>): Promise<ClinicVisit> => {
     const response = await apiClient.patch<ClinicVisit>(`/api/clinic-visits/${id}/`, data);
-    return response.data;
+    return parseResponse(ClinicVisitSchema, response.data, { context: 'clinicsApi.updateVisit' });
   },
 
   /**
@@ -188,7 +211,7 @@ export const clinicsApi = {
    */
   callPatient: async (visitId: number): Promise<ClinicVisit> => {
     const response = await apiClient.post<ClinicVisit>(`/api/clinic-visits/${visitId}/call/`);
-    return response.data;
+    return parseResponse(ClinicVisitSchema, response.data, { context: 'clinicsApi.callPatient' });
   },
 
   /**
@@ -196,7 +219,7 @@ export const clinicsApi = {
    */
   startConsultation: async (visitId: number): Promise<ClinicVisit> => {
     const response = await apiClient.post<ClinicVisit>(`/api/clinic-visits/${visitId}/start/`);
-    return response.data;
+    return parseResponse(ClinicVisitSchema, response.data, { context: 'clinicsApi.startConsultation' });
   },
 
   /**
@@ -204,7 +227,7 @@ export const clinicsApi = {
    */
   completeVisit: async (visitId: number): Promise<ClinicVisit> => {
     const response = await apiClient.post<ClinicVisit>(`/api/clinic-visits/${visitId}/complete/`);
-    return response.data;
+    return parseResponse(ClinicVisitSchema, response.data, { context: 'clinicsApi.completeVisit' });
   },
 
   /**
@@ -212,7 +235,7 @@ export const clinicsApi = {
    */
   referVisit: async (visitId: number, data: ClinicVisitReferData): Promise<ClinicVisit> => {
     const response = await apiClient.post<ClinicVisit>(`/api/clinic-visits/${visitId}/refer/`, data);
-    return response.data;
+    return parseResponse(ClinicVisitSchema, response.data, { context: 'clinicsApi.referVisit' });
   },
 
   /**
@@ -220,7 +243,7 @@ export const clinicsApi = {
    */
   markNoShow: async (visitId: number): Promise<ClinicVisit> => {
     const response = await apiClient.post<ClinicVisit>(`/api/clinic-visits/${visitId}/no-show/`);
-    return response.data;
+    return parseResponse(ClinicVisitSchema, response.data, { context: 'clinicsApi.markNoShow' });
   },
 
   /**
@@ -228,7 +251,7 @@ export const clinicsApi = {
    */
   cancelVisit: async (visitId: number, reason?: string): Promise<ClinicVisit> => {
     const response = await apiClient.post<ClinicVisit>(`/api/clinic-visits/${visitId}/cancel/`, { reason });
-    return response.data;
+    return parseResponse(ClinicVisitSchema, response.data, { context: 'clinicsApi.cancelVisit' });
   },
 
   // -------------------------------------------------------------------------
@@ -239,8 +262,9 @@ export const clinicsApi = {
    * List staff for a clinic
    */
   listStaff: async (clinicId: number): Promise<ClinicStaff[]> => {
-    const response = await apiClient.get<ClinicStaff[]>(`/api/clinics/${clinicId}/staff/`);
-    return response.data;
+    const response = await apiClient.get<{ results: ClinicStaff[] }>(`/api/clinics/${clinicId}/staff/`);
+    const validated = parseResponse(ClinicStaffArrayResponseSchema, response.data, { context: 'clinicsApi.listStaff' });
+    return validated.results;
   },
 
   /**
@@ -248,7 +272,7 @@ export const clinicsApi = {
    */
   assignStaff: async (clinicId: number, data: ClinicStaffCreateData): Promise<ClinicStaff> => {
     const response = await apiClient.post<ClinicStaff>(`/api/clinics/${clinicId}/staff/`, data);
-    return response.data;
+    return parseResponse(ClinicStaffSchema, response.data, { context: 'clinicsApi.assignStaff' });
   },
 
   /**
@@ -266,8 +290,9 @@ export const clinicsApi = {
    * Get clinic schedule
    */
   getSchedule: async (clinicId: number): Promise<ClinicSchedule[]> => {
-    const response = await apiClient.get<ClinicSchedule[]>(`/api/clinics/${clinicId}/schedule/`);
-    return response.data;
+    const response = await apiClient.get<{ results: ClinicSchedule[] }>(`/api/clinics/${clinicId}/schedule/`);
+    const validated = parseResponse(ClinicScheduleArrayResponseSchema, response.data, { context: 'clinicsApi.getSchedule' });
+    return validated.results;
   },
 
   /**
@@ -275,7 +300,7 @@ export const clinicsApi = {
    */
   addSchedule: async (clinicId: number, data: ClinicScheduleCreateData): Promise<ClinicSchedule> => {
     const response = await apiClient.post<ClinicSchedule>(`/api/clinics/${clinicId}/schedule/`, data);
-    return response.data;
+    return parseResponse(ClinicScheduleSchema, response.data, { context: 'clinicsApi.addSchedule' });
   },
 
   /**
@@ -283,7 +308,7 @@ export const clinicsApi = {
    */
   updateSchedule: async (clinicId: number, scheduleId: number, data: Partial<ClinicScheduleCreateData>): Promise<ClinicSchedule> => {
     const response = await apiClient.patch<ClinicSchedule>(`/api/clinics/${clinicId}/schedule/${scheduleId}/`, data);
-    return response.data;
+    return parseResponse(ClinicScheduleSchema, response.data, { context: 'clinicsApi.updateSchedule' });
   },
 
   /**
@@ -302,7 +327,7 @@ export const clinicsApi = {
    */
   listEnrollments: async (params?: ClinicEnrollmentListParams): Promise<PaginatedResponse<ClinicEnrollment>> => {
     const response = await apiClient.get<PaginatedResponse<ClinicEnrollment>>('/api/clinic-enrollments/', { params });
-    return response.data;
+    return parseResponse(PaginatedClinicEnrollmentSchema, response.data, { context: 'clinicsApi.listEnrollments' });
   },
 
   /**
@@ -310,7 +335,7 @@ export const clinicsApi = {
    */
   getEnrollment: async (id: number): Promise<ClinicEnrollment> => {
     const response = await apiClient.get<ClinicEnrollment>(`/api/clinic-enrollments/${id}/`);
-    return response.data;
+    return parseResponse(ClinicEnrollmentSchema, response.data, { context: 'clinicsApi.getEnrollment' });
   },
 
   /**
@@ -318,7 +343,7 @@ export const clinicsApi = {
    */
   createEnrollment: async (data: ClinicEnrollmentCreateData): Promise<ClinicEnrollment> => {
     const response = await apiClient.post<ClinicEnrollment>('/api/clinic-enrollments/', data);
-    return response.data;
+    return parseResponse(ClinicEnrollmentSchema, response.data, { context: 'clinicsApi.createEnrollment' });
   },
 
   /**
@@ -326,7 +351,7 @@ export const clinicsApi = {
    */
   updateEnrollment: async (id: number, data: Partial<ClinicEnrollment>): Promise<ClinicEnrollment> => {
     const response = await apiClient.patch<ClinicEnrollment>(`/api/clinic-enrollments/${id}/`, data);
-    return response.data;
+    return parseResponse(ClinicEnrollmentSchema, response.data, { context: 'clinicsApi.updateEnrollment' });
   },
 
   /**
@@ -334,7 +359,7 @@ export const clinicsApi = {
    */
   getOverdueEnrollments: async (): Promise<PaginatedResponse<ClinicEnrollment>> => {
     const response = await apiClient.get<PaginatedResponse<ClinicEnrollment>>('/api/clinic-enrollments/overdue/');
-    return response.data;
+    return parseResponse(PaginatedClinicEnrollmentSchema, response.data, { context: 'clinicsApi.getOverdueEnrollments' });
   },
 
   /**
@@ -342,7 +367,7 @@ export const clinicsApi = {
    */
   getDefaulters: async (): Promise<PaginatedResponse<ClinicEnrollment>> => {
     const response = await apiClient.get<PaginatedResponse<ClinicEnrollment>>('/api/clinic-enrollments/defaulters/');
-    return response.data;
+    return parseResponse(PaginatedClinicEnrollmentSchema, response.data, { context: 'clinicsApi.getDefaulters' });
   },
 };
 

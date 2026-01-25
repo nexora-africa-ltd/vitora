@@ -92,7 +92,7 @@ class TransactionSafeUpdateMixin:
             ...
     """
 
-    def update(self, request, *args, **kwargs):
+    def update(self, request, *_args, **kwargs):
         """Update with row locking to prevent race conditions."""
         partial = kwargs.pop("partial", False)
 
@@ -135,7 +135,7 @@ class ConcurrencyControlMixin:
 
     VERSION_FIELD = "version"
 
-    def update(self, request, *args, **kwargs):
+    def update(self, request, *_args, **kwargs):
         """Update with optimistic concurrency control."""
         partial = kwargs.pop("partial", False)
         instance = self.get_object()

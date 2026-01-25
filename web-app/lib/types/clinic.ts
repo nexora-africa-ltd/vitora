@@ -101,8 +101,9 @@ export type EnrollmentStatus = 'ACTIVE' | 'INACTIVE' | 'TRANSFERRED' | 'LOST_TO_
 
 /**
  * Staff role in clinic
+ * Matches backend ClinicStaff.ROLE_CHOICES
  */
-export type ClinicStaffRole = 'LEAD' | 'CLINICIAN' | 'NURSE' | 'RECEPTIONIST' | 'SUPPORT';
+export type ClinicStaffRole = 'LEAD' | 'DOCTOR' | 'NURSE' | 'COUNSELOR' | 'NUTRITIONIST' | 'CLERK' | 'OTHER';
 
 // =============================================================================
 // PRIORITY CONFIGURATION

@@ -21,7 +21,7 @@ interface ClinicalNotesFormContentProps {
  */
 export function validateClinicalNotes(data: EncounterFormData): string[] {
   const missingFields: string[] = [];
-  
+
   if (!data.history_of_present_illness?.trim()) {
     missingFields.push('History of Present Illness (HPI)');
   }
@@ -31,7 +31,7 @@ export function validateClinicalNotes(data: EncounterFormData): string[] {
   if (!data.assessment?.trim()) {
     missingFields.push('Assessment / Clinical Impression');
   }
-  
+
   return missingFields;
 }
 
@@ -39,11 +39,11 @@ export function validateClinicalNotes(data: EncounterFormData): string[] {
  * Content-only version of the Clinical Notes form (no Card wrapper)
  * Used in accordion-based layouts
  */
-export function ClinicalNotesFormContent({ 
-  data, 
-  onChange, 
+export function ClinicalNotesFormContent({
+  data,
+  onChange,
   disabled = false,
-  showRequiredIndicators = true 
+  showRequiredIndicators = true
 }: ClinicalNotesFormContentProps) {
   return (
     <div className="space-y-6">
@@ -143,7 +143,7 @@ export function useClinicalNotesValidation() {
 
   const validate = useCallback((data: EncounterFormData): boolean => {
     const missingFields = validateClinicalNotes(data);
-    
+
     if (missingFields.length > 0) {
       toast({
         title: 'Required Fields Missing',
@@ -152,7 +152,7 @@ export function useClinicalNotesValidation() {
       });
       return false;
     }
-    
+
     return true;
   }, [toast]);
 

@@ -232,7 +232,7 @@ class TestMpesaAPIEndpoints:
                     "ResultDesc": "The service request is processed successfully.",
                     "CallbackMetadata": {
                         "Item": [
-                                {"Name": "Amount", "Value": float(sample_invoice.balance_due)},
+                            {"Name": "Amount", "Value": float(sample_invoice.balance_due)},
                             {"Name": "MpesaReceiptNumber", "Value": "MPE123456"},
                             {"Name": "TransactionDate", "Value": 20260102120000},
                             {"Name": "PhoneNumber", "Value": 254712345678},

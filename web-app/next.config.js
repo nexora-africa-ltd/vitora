@@ -6,7 +6,7 @@ const nextConfig = {
       bodySizeLimit: '2mb',
     },
   },
-  
+
   // Route aliases: /billing/* → /transactions/*
   // Allows cleaner URLs while keeping existing folder structure
   async rewrites() {

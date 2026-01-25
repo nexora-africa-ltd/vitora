@@ -71,7 +71,7 @@ interface ItemRowProps {
 
 function ItemRow({ item, isSelected, onToggle, disabled }: ItemRowProps) {
   const isConverted = item.is_converted;
-  
+
   return (
     <div
       className={`flex items-center gap-3 p-3 rounded-lg border transition-colors ${

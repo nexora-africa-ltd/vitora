@@ -1,6 +1,6 @@
 /**
  * Frontend Events API client
- * 
+ *
  * Handles logging user interactions and clinical workflow events
  * to the backend for analytics, debugging, and compliance tracking.
  */

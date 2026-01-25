@@ -1,0 +1,38 @@
+{
+  "name": "Dressing/Wound Care Note",
+  "template_type": "procedure",
+  "specialty": "Nursing",
+  "description": "Wound dressing and wound care documentation template",
+  "content": {
+    "title": "Dressing/Wound Care Note",
+    "version": "1.0",
+    "sections": [
+      {
+        "name": "Wound Assessment",
+        "order": 1,
+        "fields": [
+          {"name": "wound_site", "type": "text", "required": true, "label": "Wound Site"},
+          {"name": "wound_type", "type": "select", "required": false, "label": "Wound Type", "options": ["Surgical", "Traumatic", "Pressure", "Burn", "Ulcer", "Other"]},
+          {"name": "infection_signs", "type": "multiselect", "required": false, "label": "Signs of Infection", "options": ["None", "Redness", "Swelling", "Warmth", "Pus", "Odor"]}
+        ]
+      },
+      {
+        "name": "Dressing",
+        "order": 2,
+        "fields": [
+          {"name": "cleaning_solution", "type": "text", "required": false, "label": "Cleaning Solution"},
+          {"name": "dressing_material", "type": "text", "required": false, "label": "Dressing Material"},
+          {"name": "procedure_notes", "type": "textarea", "required": false, "label": "Procedure Notes"}
+        ]
+      },
+      {
+        "name": "Plan",
+        "order": 3,
+        "fields": [
+          {"name": "next_dressing_date", "type": "date", "required": false, "label": "Next Dressing Date"},
+          {"name": "follow_up", "type": "textarea", "required": false, "label": "Follow-up"}
+        ]
+      }
+    ]
+  }
+}

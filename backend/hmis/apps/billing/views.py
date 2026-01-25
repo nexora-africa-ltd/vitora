@@ -7,6 +7,8 @@ Following TDD - implemented to pass API tests.
 from datetime import date
 from decimal import Decimal
 
+from django.core.exceptions import ValidationError
+from django.db.models import Q
 from django.shortcuts import get_object_or_404
 from django_filters.rest_framework import DjangoFilterBackend
 from rest_framework import filters, status, viewsets
@@ -14,26 +16,22 @@ from rest_framework.decorators import action
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 
-from hmis.apps.billing.filters import (
-    CreditNoteFilter,
-    InvoiceFilter,
-    PaymentFilter,
-)
+from hmis.apps.billing.filters import CreditNoteFilter, InvoiceFilter, PaymentFilter
 from hmis.apps.billing.models import (
-    PaymentPoint,
     CreditNote,
     Invoice,
     InvoiceItem,
     Payment,
+    PaymentPoint,
     Receipt,
     Service,
     ServiceCategory,
 )
 from hmis.apps.billing.serializers import (
-    PaymentPointSerializer,
     CreditNoteSerializer,
     InvoiceItemSerializer,
     InvoiceSerializer,
+    PaymentPointSerializer,
     PaymentSerializer,
     ReceiptSerializer,
     ServiceCategorySerializer,
@@ -111,6 +109,21 @@ class InvoiceViewSet(viewsets.ModelViewSet):
             queryset = queryset.filter(invoice_date__gte=start_date)
         if end_date:
             queryset = queryset.filter(invoice_date__lte=end_date)
+
+        # Clinic reporting filters
+        clinic_id = self.request.query_params.get("clinic")
+        if clinic_id:
+            queryset = queryset.filter(
+                Q(clinic_visit__session__clinic_id=clinic_id)
+                | Q(encounter__clinic_visit__session__clinic_id=clinic_id)
+            ).distinct()
+
+        clinic_type = self.request.query_params.get("clinic_type")
+        if clinic_type:
+            queryset = queryset.filter(
+                Q(clinic_visit__session__clinic__clinic_type=clinic_type)
+                | Q(encounter__clinic_visit__session__clinic__clinic_type=clinic_type)
+            ).distinct()
 
         return queryset
 
@@ -208,18 +221,18 @@ class InvoiceViewSet(viewsets.ModelViewSet):
     def convert(self, request, pk=None):
         """
         Convert a proforma invoice to a regular invoice.
-        
+
         POST /api/billing/invoices/{id}/convert/
-        
+
         Request body (optional):
             item_ids: List of specific item IDs to convert (for partial conversion)
-        
+
         Returns:
             The newly created invoice
         """
         proforma = self.get_object()
         item_ids = request.data.get("item_ids")
-        
+
         try:
             new_invoice = proforma.convert_to_invoice(
                 converted_by=request.user,
@@ -234,18 +247,18 @@ class InvoiceViewSet(viewsets.ModelViewSet):
     def renew(self, request, pk=None):
         """
         Renew an expired proforma invoice.
-        
+
         POST /api/billing/invoices/{id}/renew/
-        
+
         Request body (optional):
             validity_days: Custom validity period in days (default: 30)
-        
+
         Returns:
             The newly created proforma invoice
         """
         proforma = self.get_object()
         validity_days = request.data.get("validity_days")
-        
+
         try:
             new_proforma = proforma.renew(
                 renewed_by=request.user,
@@ -422,9 +435,7 @@ class MpesaViewSet(viewsets.ViewSet):
 
         if not all([invoice_id, phone_number, amount, payment_point_id]):
             return Response(
-                {
-                    "error": "invoice_id, phone_number, amount, and payment_point are required"
-                },
+                {"error": "invoice_id, phone_number, amount, and payment_point are required"},
                 status=status.HTTP_400_BAD_REQUEST,
             )
 
@@ -527,7 +538,9 @@ class MpesaViewSet(viewsets.ViewSet):
             # If payment successful, update the pending Payment record
             if payment and payment_data["success"]:
                 if payment.status != Payment.Status.COMPLETED:
-                    payment.mpesa_receipt_number = str(payment_data.get("mpesa_receipt_number") or "")
+                    payment.mpesa_receipt_number = str(
+                        payment_data.get("mpesa_receipt_number") or ""
+                    )
                     if payment_data.get("phone_number"):
                         payment.mpesa_phone = str(payment_data.get("phone_number"))
 
@@ -552,24 +565,25 @@ class MpesaViewSet(viewsets.ViewSet):
                     )
                     payment.process()
 
-            elif payment and not payment_data["success"]:
+            elif (
+                payment and not payment_data["success"] and payment.status == Payment.Status.PENDING
+            ):
                 # Mark payment as failed/cancelled
-                if payment.status == Payment.Status.PENDING:
-                    payment.status = Payment.Status.FAILED
-                    payment.failure_reason = str(payment_data.get("result_description") or "")
-                    details = dict(payment.payment_details or {})
-                    details.update(
-                        {
-                            "result_code": payment_data.get("result_code"),
-                            "result_description": payment_data.get("result_description"),
-                            "merchant_request_id": payment_data.get("merchant_request_id"),
-                            "checkout_request_id": payment_data.get("checkout_request_id"),
-                        }
-                    )
-                    payment.payment_details = details
-                    payment.save(
-                        update_fields=["status", "failure_reason", "payment_details", "updated_at"]
-                    )
+                payment.status = Payment.Status.FAILED
+                payment.failure_reason = str(payment_data.get("result_description") or "")
+                details = dict(payment.payment_details or {})
+                details.update(
+                    {
+                        "result_code": payment_data.get("result_code"),
+                        "result_description": payment_data.get("result_description"),
+                        "merchant_request_id": payment_data.get("merchant_request_id"),
+                        "checkout_request_id": payment_data.get("checkout_request_id"),
+                    }
+                )
+                payment.payment_details = details
+                payment.save(
+                    update_fields=["status", "failure_reason", "payment_details", "updated_at"]
+                )
 
             return Response({"ResultCode": 0, "ResultDesc": "Success"}, status=status.HTTP_200_OK)
 

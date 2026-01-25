@@ -1,0 +1,48 @@
+{
+  "sick_note": {
+    "note_id": "string",
+    "patient": {
+      "id": "string",
+      "name": "string",
+      "dob": "YYYY-MM-DD",
+      "mrn": "string"
+    },
+    "clinician": {
+      "id": "string",
+      "name": "string",
+      "role": "Doctor | Clinical Officer | Nurse Practitioner | Physician Assistant | Other",
+      "license_number": "string",
+      "department": "string"
+    },
+    "employer": {
+      "name": "string",
+      "contact": "string"
+    },
+    "dates": {
+      "issued_on": "YYYY-MM-DD",
+      "start_of_leave": "YYYY-MM-DD",
+      "end_of_leave": "YYYY-MM-DD"
+    },
+    "diagnosis": {
+      "icd_code": "string",
+      "description": "string"
+    },
+    "recommendations": [
+      "Rest at home",
+      "Avoid strenuous activity",
+      "Return to work with restrictions if applicable"
+    ],
+    "notes": "string",
+    "signatures": {
+      "clinician_signature": "string", 
+      "date_signed": "YYYY-MM-DD"
+    },
+    "reporting_metadata": {
+      "created_by": {"id": "string", "name": "string"},
+      "created_at": "YYYY-MM-DDTHH:mm:ssZ",
+      "last_updated_by": {"id": "string", "name": "string"},
+      "last_updated_at": "YYYY-MM-DDTHH:mm:ssZ",
+      "facility_id": "string"
+    }
+  }
+}

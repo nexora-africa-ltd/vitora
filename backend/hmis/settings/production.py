@@ -4,11 +4,18 @@ Production settings for Vitora HMIS.
 These settings are used for production deployment (including Render).
 """
 
+import copy
 import os
 
 import dj_database_url
 
 from .base import *  # noqa: F401, F403
+
+# IMPORTANT: Don't mutate the shared LOGGING dict imported from base.py.
+# Some tests import/reload production settings in-process with a custom LOG_FILE.
+# If we mutate LOGGING in-place, later test modules (including ASGI/Channels)
+# can inherit a broken file handler configuration.
+LOGGING = copy.deepcopy(LOGGING)  # noqa: F405
 
 DEBUG = False
 

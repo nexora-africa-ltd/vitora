@@ -231,6 +231,7 @@ export function ClinicalFlowAccordion({
     diagnoses,
     onAddDiagnosis,
     onRemoveDiagnosis,
+    onUpdateDiagnosis,
     selectedTemplate,
     onTemplateSelect,
     onTemplateDataChange,

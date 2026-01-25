@@ -2,10 +2,10 @@
 Tests for staff API endpoints - username checking and suggestions.
 """
 
-import pytest # type: ignore
-from django.contrib.auth import get_user_model # type: ignore
-from rest_framework import status # type: ignore
+import pytest  # type: ignore
+from django.contrib.auth import get_user_model  # type: ignore
 from django.contrib.auth.models import Permission
+from rest_framework import status  # type: ignore
 
 User = get_user_model()
 
@@ -163,7 +163,7 @@ class TestStaffDeactivation:
 
     def test_delete_staff_deactivates(self, authenticated_client, test_user):
         """DELETE should deactivate staff, not hard delete."""
-        from hmis.apps.core.models import Department, StaffProfile, Role
+        from hmis.apps.core.models import Department, Role, StaffProfile
 
         # Create department first (required)
         dept = Department.objects.create(

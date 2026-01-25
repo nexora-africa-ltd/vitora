@@ -1,0 +1,50 @@
+{
+  "name": "Mental Health Assessment",
+  "template_type": "assessment",
+  "specialty": "Mental Health",
+  "description": "Mental health assessment template (Sensitive)",
+  "content": {
+    "title": "Mental Health Assessment",
+    "version": "1.0",
+    "sections": [
+      {
+        "name": "Presenting Complaint",
+        "order": 1,
+        "fields": [
+          {"name": "presenting_complaint", "type": "textarea", "required": true, "label": "Presenting Complaint"},
+          {"name": "duration", "type": "text", "required": false, "label": "Duration"}
+        ]
+      },
+      {
+        "name": "Risk Assessment",
+        "order": 2,
+        "fields": [
+          {"name": "suicidal_ideation", "type": "select", "required": true, "label": "Suicidal Ideation", "options": ["None", "Passive", "Active"]},
+          {"name": "self_harm_history", "type": "boolean", "required": false, "label": "History of Self-harm"},
+          {"name": "harm_to_others", "type": "boolean", "required": false, "label": "Risk of Harm to Others"},
+          {"name": "substance_use", "type": "select", "required": false, "label": "Substance Use", "options": ["None", "Alcohol", "Cannabis", "Stimulants", "Opioids", "Multiple"]}
+        ]
+      },
+      {
+        "name": "Mental State Examination",
+        "order": 3,
+        "fields": [
+          {"name": "appearance_behavior", "type": "textarea", "required": false, "label": "Appearance/Behavior"},
+          {"name": "mood_affect", "type": "textarea", "required": false, "label": "Mood/Affect"},
+          {"name": "thought_content", "type": "textarea", "required": false, "label": "Thought Content"},
+          {"name": "perception", "type": "textarea", "required": false, "label": "Perception"},
+          {"name": "cognition", "type": "textarea", "required": false, "label": "Cognition"}
+        ]
+      },
+      {
+        "name": "Plan",
+        "order": 4,
+        "fields": [
+          {"name": "diagnosis", "type": "textarea", "required": true, "label": "Diagnosis"},
+          {"name": "management_plan", "type": "textarea", "required": true, "label": "Management Plan"},
+          {"name": "follow_up", "type": "textarea", "required": false, "label": "Follow-up"}
+        ]
+      }
+    ]
+  }
+}

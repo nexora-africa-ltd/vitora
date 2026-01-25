@@ -1,0 +1,38 @@
+{
+  "name": "Procedure Note",
+  "template_type": "procedure",
+  "specialty": "General",
+  "description": "Generic procedure note template",
+  "content": {
+    "title": "Procedure Note",
+    "version": "1.0",
+    "sections": [
+      {
+        "name": "Procedure Details",
+        "order": 1,
+        "fields": [
+          {"name": "procedure_name", "type": "text", "required": true, "label": "Procedure"},
+          {"name": "indication", "type": "textarea", "required": false, "label": "Indication"},
+          {"name": "consent_obtained", "type": "boolean", "required": false, "label": "Consent Obtained"}
+        ]
+      },
+      {
+        "name": "Technique",
+        "order": 2,
+        "fields": [
+          {"name": "anesthesia", "type": "text", "required": false, "label": "Anesthesia"},
+          {"name": "steps", "type": "textarea", "required": true, "label": "Steps"},
+          {"name": "complications", "type": "textarea", "required": false, "label": "Complications"}
+        ]
+      },
+      {
+        "name": "Post-Procedure",
+        "order": 3,
+        "fields": [
+          {"name": "post_procedure_instructions", "type": "textarea", "required": false, "label": "Post-procedure Instructions"},
+          {"name": "follow_up", "type": "textarea", "required": false, "label": "Follow-up"}
+        ]
+      }
+    ]
+  }
+}

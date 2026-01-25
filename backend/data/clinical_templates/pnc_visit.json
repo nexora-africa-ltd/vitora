@@ -1,0 +1,51 @@
+{
+  "name": "Postnatal Care (PNC) Visit",
+  "template_type": "encounter",
+  "specialty": "Obstetrics",
+  "description": "Maternal and Child Health - Postnatal care visit template",
+  "content": {
+    "title": "Postnatal Care Visit",
+    "version": "1.0",
+    "sections": [
+      {
+        "name": "Mother Assessment",
+        "order": 1,
+        "fields": [
+          {"name": "days_post_delivery", "type": "number", "required": false, "label": "Days Post Delivery", "min": 0},
+          {"name": "bleeding", "type": "select", "required": false, "label": "Bleeding", "options": ["Normal", "Heavy", "Foul-smelling", "None"]},
+          {"name": "pain", "type": "boolean", "required": false, "label": "Pain Present"},
+          {"name": "fever", "type": "boolean", "required": false, "label": "Fever"},
+          {"name": "bp_check", "type": "text", "required": false, "label": "Blood Pressure"}
+        ]
+      },
+      {
+        "name": "Baby Assessment",
+        "order": 2,
+        "fields": [
+          {"name": "baby_feeding", "type": "select", "required": false, "label": "Feeding", "options": ["Exclusive Breastfeeding", "Mixed Feeding", "Formula"]},
+          {"name": "baby_weight_kg", "type": "number", "required": false, "label": "Baby Weight (kg)", "min": 0},
+          {"name": "jaundice", "type": "boolean", "required": false, "label": "Jaundice"},
+          {"name": "danger_signs", "type": "textarea", "required": false, "label": "Danger Signs"}
+        ]
+      },
+      {
+        "name": "Counselling",
+        "order": 3,
+        "fields": [
+          {"name": "family_planning_counselling", "type": "boolean", "required": false, "label": "Family Planning Counselling Done"},
+          {"name": "breastfeeding_counselling", "type": "boolean", "required": false, "label": "Breastfeeding Counselling Done"},
+          {"name": "mental_health_screen", "type": "select", "required": false, "label": "Postpartum Mood", "options": ["Normal", "Concern - Screen positive", "Not assessed"]}
+        ]
+      },
+      {
+        "name": "Plan",
+        "order": 4,
+        "fields": [
+          {"name": "assessment", "type": "textarea", "required": true, "label": "Assessment"},
+          {"name": "plan", "type": "textarea", "required": true, "label": "Plan"},
+          {"name": "follow_up", "type": "textarea", "required": false, "label": "Follow-up"}
+        ]
+      }
+    ]
+  }
+}

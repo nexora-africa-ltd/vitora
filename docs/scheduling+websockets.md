@@ -585,3 +585,183 @@ This design:
 * Fits healthcare operational risk
 
 ---
+
+# **HMIS Centralized Scheduling Engine Blueprint**
+
+---
+
+## **1️⃣ Core Architecture**
+
+```
+                 +----------------------+
+                 |  Central Scheduling  |
+                 |       Engine         |
+                 |---------------------|
+                 | REST API (CRUD)     |
+                 | WS / Event Stream   |
+                 | Assignment Engine   |
+                 | Rules DSL           |
+                 | Audit & Logging     |
+                 +----------+-----------+
+                            |
+        +-------------------+-------------------+
+        |                   |                   |
+  +-----+-----+       +-----+-----+       +-----+-----+
+  | OPD App   |       | Theatre   |       | Labs / Rx |
+  | Frontend  |       | Frontend  |       | Frontend  |
+  +-----------+       +-----------+       +-----------+
+        |                   |                   |
+        +-------------------+-------------------+
+                            |
+                 +----------+-----------+
+                 | Mobile / Remote Apps |
+                 +----------------------+
+```
+
+**Key Notes:**
+
+* All apps **consume the same API** → no duplicate scheduling logic.
+* All apps **listen to WS / Event Stream** → real-time updates.
+* **Assignment Engine & Rules DSL** live inside the scheduling engine.
+* **Audit logs** capture every creation, update, or cancellation.
+
+---
+
+## **2️⃣ Modules Integration**
+
+### **A) OPD / Clinics**
+
+* **Use case:** Schedule patient consultations with available doctors and nurses.
+* **Integration:**
+
+  * POST `/appointments` → create consultation encounters
+  * GET `/appointments?facility={id}` → fetch schedule
+  * WS `channel: /ws/{facility}/scheduling/appointments`
+* **Automatic Assignment:** Assign clinician based on specialty, load, and availability.
+* **Conflict Handling:** Prevent overlapping patient bookings or double-booking staff.
+
+---
+
+### **B) Theatre / Surgery**
+
+* **Use case:** Schedule pre-op, intra-op, and post-op theatre cases.
+* **Integration:**
+
+  * POST `/theatre_cases` → link patient encounter to theatre slot
+  * GET `/theatre_cases?date={YYYY-MM-DD}`
+  * WS `channel: /ws/{facility}/scheduling/theatre`
+* **Automatic Assignment:** Assign surgeon, anesthetist, nurse, and theatre room.
+* **Extra Features:**
+
+  * Capture preparation status (pre-op checklist)
+  * Lock theatre resources during procedure
+
+---
+
+### **C) Laboratory / Diagnostics**
+
+* **Use case:** Schedule lab tests, imaging appointments.
+* **Integration:**
+
+  * POST `/lab_appointments` → schedule tests
+  * GET `/lab_appointments?patient_id={id}`
+  * WS `channel: /ws/{facility}/scheduling/labs`
+* **Automatic Assignment:** Assign lab staff, machines, and priority based on urgency.
+
+---
+
+### **D) Pharmacy**
+
+* **Use case:** Reserve medication pickup slots to prevent overcrowding.
+* **Integration:**
+
+  * POST `/pharmacy_pickups`
+  * WS `channel: /ws/{facility}/scheduling/pharmacy`
+* **Automatic Assignment:** Assign pharmacist and pickup counter.
+
+---
+
+### **E) Mobile / Remote Apps**
+
+* **Use case:** Display schedules, send reminders, allow rescheduling.
+* **Integration:**
+
+  * Subscribe to WS channels for real-time updates
+  * Fetch schedule via API for offline support
+
+---
+
+## **3️⃣ Event Flow (Real-Time Updates)**
+
+```
+User creates / updates / cancels appointment
+         │
+         ▼
+ Central Scheduling Engine
+         │
+         ├─ Validates conflicts
+         ├─ Runs Automatic Assignment
+         ├─ Logs audit
+         ▼
+ Push event via WebSocket
+         │
+         ├─ OPD App updates UI
+         ├─ Theatre App blocks slot
+         ├─ Lab App queues patient
+         └─ Mobile app sends reminder
+```
+
+**Example WS Payload:**
+
+```json
+{
+  "event": "appointment.updated",
+  "appointment_id": "apt_123",
+  "patient_id": "patient_001",
+  "assigned_staff": ["doctor_101", "nurse_202"],
+  "facility_id": "facility_01",
+  "status": "CHECKED_IN",
+  "timestamp": "2026-01-25T08:30:00Z"
+}
+```
+
+---
+
+## **4️⃣ Automatic Assignment Engine & Rules DSL**
+
+* **DSL-driven rules:** Assign staff/resources based on:
+
+  * Availability
+  * Specialty
+  * Load / number of concurrent appointments
+  * Facility / department
+* **Auditable outputs:** Every assignment includes:
+
+  * Reason for selection
+  * Rule version
+  * Alternatives considered
+* **Fallback:** Manual override or notifications to supervisor
+
+---
+
+## **5️⃣ Multi-Facility & Scaling Considerations**
+
+* **Facility partitioning:** Each event and appointment tagged with `facility_id`
+* **Horizontal scaling:** Scheduling engine stateless; persistent data in DB
+* **Conflict resolution:** Centralized engine prevents cross-app double-booking
+* **Event fan-out:** Aggregate updates for low-priority events to reduce WS load
+
+---
+
+## **6️⃣ Key Advantages of This Architecture**
+
+1. Single source of truth → consistent scheduling
+2. Real-time updates across all modules
+3. Automatic assignment handled centrally
+4. Audit-friendly → easy reporting to MOH/DHIS2 or insurers
+5. Scalable across multiple facilities and high concurrency
+6. Extensible → new modules (radiology, physiotherapy) can plug in
+
+---
+
+This blueprint provides a clear technical plan for implementing a centralized HMIS scheduling engine that integrates seamlessly with all relevant modules, ensuring efficient and real-time scheduling across the healthcare facility.

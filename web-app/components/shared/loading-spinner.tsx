@@ -45,12 +45,12 @@ interface PageLoadingProps {
  */
 export function PageLoading({
   message = "Loading...",
-  fullScreen = true
+  fullScreen = false
 }: PageLoadingProps) {
   return (
     <div className={cn(
-      "flex min-h-screen w-full items-center justify-center gap-3 p-8",
-      !fullScreen && "min-h-0"
+      "flex w-full items-center justify-center gap-3 p-8",
+      fullScreen ? "min-h-screen" : "min-h-0"
     )}>
       <LoadingSpinner size="md" />
       <span className="text-muted-foreground">{message}</span>

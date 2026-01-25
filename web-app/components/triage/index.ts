@@ -22,3 +22,5 @@ export type { TriageReportsPageProps, DateRangePreset, ReportFilters } from './t
 
 export { TriageThresholdsSettings } from './triage-thresholds-settings';
 export type { TriageThresholdsSettingsProps } from './triage-thresholds-settings';
+
+export { RouteToClinicDialog } from './route-to-clinic-dialog';

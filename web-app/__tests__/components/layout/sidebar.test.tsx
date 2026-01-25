@@ -101,21 +101,22 @@ describe('Sidebar', () => {
   it('should render all main navigation items', () => {
     render(<Sidebar {...defaultProps} />);
 
-    expect(screen.getByText('Dashboard')).toBeInTheDocument();
-    expect(screen.getByText('Patients')).toBeInTheDocument();
-    expect(screen.getByText('Triage')).toBeInTheDocument();
-    expect(screen.getByText('Encounters')).toBeInTheDocument();
-    expect(screen.getByText('Inpatient')).toBeInTheDocument();
-    expect(screen.getByText('Pharmacy')).toBeInTheDocument();
-    expect(screen.getByText('Diagnostics')).toBeInTheDocument();
-    expect(screen.getByText('Theatre')).toBeInTheDocument();
-    expect(screen.getByText('Finance')).toBeInTheDocument();
+    // Some labels can appear more than once (e.g., mobile + desktop variants)
+    expect(screen.getAllByText('Dashboard').length).toBeGreaterThan(0);
+    expect(screen.getAllByText('Patients').length).toBeGreaterThan(0);
+    expect(screen.getAllByText('Triage').length).toBeGreaterThan(0);
+    expect(screen.getAllByText('Encounters').length).toBeGreaterThan(0);
+    expect(screen.getAllByText('Inpatient').length).toBeGreaterThan(0);
+    expect(screen.getAllByText('Pharmacy').length).toBeGreaterThan(0);
+    expect(screen.getAllByText('Diagnostics').length).toBeGreaterThan(0);
+    expect(screen.getAllByText('Theatre').length).toBeGreaterThan(0);
+    expect(screen.getAllByText('Finance').length).toBeGreaterThan(0);
   });
 
   it('should highlight active navigation item via aria-current', () => {
     render(<Sidebar {...defaultProps} />);
     // Dashboard link should have aria-current="page" when on root path
-    const dashboardLink = screen.getByRole('link', { name: /dashboard/i });
+    const dashboardLink = screen.getAllByRole('link', { name: /dashboard/i })[0];
     expect(dashboardLink).toHaveAttribute('aria-current', 'page');
   });
 
@@ -150,7 +151,7 @@ describe('Sidebar', () => {
 
   it('should show Vitora branding', () => {
     render(<Sidebar {...defaultProps} />);
-    expect(screen.getByText('Vitora')).toBeInTheDocument();
+    expect(screen.getByAltText(/Vitora HMIS/i)).toBeInTheDocument();
   });
 
   it('should have logout button', () => {
@@ -222,13 +223,16 @@ describe('Sidebar', () => {
     expect(screen.getByText('Finance')).toBeInTheDocument();
 
     // Children should be visible
-    expect(screen.getByText('Overview')).toBeInTheDocument();
-    expect(screen.getByText('Transactions')).toBeInTheDocument();
-    expect(screen.getByText('Insurance')).toBeInTheDocument();
+    expect(screen.getAllByText('Dashboard').length).toBeGreaterThan(0);
+    expect(screen.getAllByText('Invoices').length).toBeGreaterThan(0);
+    expect(screen.getAllByText('Payments').length).toBeGreaterThan(0);
+    expect(screen.getAllByText('Insurance').length).toBeGreaterThan(0);
 
-    // Children should be links with correct hrefs
-    expect(screen.getByRole('link', { name: /^overview$/i })).toHaveAttribute('href', '/finance/overview');
-    expect(screen.getByRole('link', { name: /transactions/i })).toHaveAttribute('href', '/transactions');
+    // Children should be links with correct hrefs (avoid ambiguity with the main Dashboard link)
+    const dashboardLinks = screen.getAllByRole('link', { name: /^dashboard$/i });
+    expect(dashboardLinks.some((l) => l.getAttribute('href') === '/finance/overview')).toBe(true);
+    expect(screen.getByRole('link', { name: /invoices/i })).toHaveAttribute('href', '/transactions/invoices');
+    expect(screen.getByRole('link', { name: /payments/i })).toHaveAttribute('href', '/transactions/payments');
     expect(screen.getByRole('link', { name: /insurance/i })).toHaveAttribute('href', '/insurance');
   });
 

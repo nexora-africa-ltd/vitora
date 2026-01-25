@@ -1,6 +1,6 @@
 'use client';
 
-import { Menu, Search, User, Wifi, WifiOff, RefreshCw } from 'lucide-react';
+import { Menu, Search, User, RefreshCw } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import {
@@ -20,6 +20,7 @@ import {
   TooltipTrigger,
 } from '@/components/ui/tooltip';
 import { AnimatedThemeToggle } from '@/components/ui/animated-theme-toggle';
+import StatusIndicator from '@/components/ui/status-indicator';
 import { useAuth } from '@/lib/auth/context';
 import { useLogout } from '@/lib/auth/hooks';
 import { useNetworkStatus } from '@/lib/hooks/use-network-status';
@@ -88,13 +89,10 @@ export function Header({ onMenuClick, sidebarCollapsed }: HeaderProps) {
                     isSyncing && 'opacity-80'
                   )}
                 >
-                  {isSyncing ? (
-                    <RefreshCw className="h-3.5 w-3.5 animate-spin" />
-                  ) : isOnline ? (
-                    <Wifi className="h-3.5 w-3.5" />
-                  ) : (
-                    <WifiOff className="h-3.5 w-3.5" />
-                  )}
+                  <StatusIndicator
+                    state={isSyncing ? 'fixing' : isOnline ? 'active' : 'down'}
+                    size="sm"
+                  />
                   <span className="hidden sm:inline">
                     {isSyncing ? 'Syncing...' : isOnline ? 'Online' : 'Offline'}
                   </span>
@@ -114,11 +112,10 @@ export function Header({ onMenuClick, sidebarCollapsed }: HeaderProps) {
               >
                 <div className="space-y-1.5">
                   <div className="flex items-center gap-2">
-                    {isOnline ? (
-                      <Wifi className="h-4 w-4 text-green-500" />
-                    ) : (
-                      <WifiOff className="h-4 w-4 text-red-500" />
-                    )}
+                    <StatusIndicator
+                      state={isOnline ? 'active' : 'down'}
+                      size="sm"
+                    />
                     <span className="font-medium">
                       {isOnline ? 'Connected' : 'No Connection'}
                     </span>

@@ -125,11 +125,14 @@ const mockQueueItems: ConsultationQueueItem[] = [
     wait_time_minutes: 45,
     called_at: new Date(Date.now() - 2 * 60 * 1000).toISOString(), // Called 2 min ago
     chief_complaint: 'Mild headache',
+    assigned_clinician: 10,
+    assigned_clinician_name: 'Dr Demo',
   }),
 ];
 
 const defaultProps = {
   queueItems: mockQueueItems,
+  currentUserId: 10,
   onCallPatient: jest.fn(),
   onStartConsultation: jest.fn(),
   isLoading: false,
@@ -288,7 +291,7 @@ describe('ConsultationQueue', () => {
 
       expect(callButton).toHaveAttribute(
         'title',
-        'Mark as called and notify the patient/waiting area.'
+        'Call the patient and claim for consultation'
       );
     });
 

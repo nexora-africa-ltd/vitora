@@ -326,6 +326,38 @@ def valid_claim(
 
 
 @pytest.fixture
+def clinic_visit_for_sha_claim_context(db, claims_patient, test_user):
+    """Create a clinic visit to attach to an encounter for clinic-context tests."""
+
+    from hmis.apps.clinics.models import Clinic, ClinicSession, ClinicVisit
+
+    clinic = Clinic.objects.create(
+        name="Eye Clinic",
+        clinic_type="EYE",
+        code="EYE-CLINIC",
+        status="ACTIVE",
+    )
+    session = ClinicSession.objects.create(
+        clinic=clinic,
+        session_date=timezone.localdate(),
+        status="OPEN",
+        opened_at=timezone.now(),
+        opened_by=test_user,
+    )
+    visit = ClinicVisit.objects.create(
+        session=session,
+        patient=claims_patient,
+        status="COMPLETED",
+        priority="STANDARD",
+        visit_type="NEW",
+        source="DIRECT",
+        chief_complaint="Eye pain",
+        registered_by=test_user,
+    )
+    return visit
+
+
+@pytest.fixture
 def mock_sha_submission_response():
     """Mock successful SHA API submission response."""
     return {
@@ -728,6 +760,79 @@ class TestSHAClaimsServicePackaging:
         assert "name" in org_resource
         # SHA requires identifier with facility code
         assert "identifier" in org_resource
+
+    def test_claim_includes_clinic_context_when_encounter_has_clinic_visit(
+        self, valid_claim, clinic_visit_for_sha_claim_context
+    ):
+        """Claim bundle should include clinic context (service delivery point) when available."""
+
+        from hmis.apps.billing.services.sha_claims import SHAClaimsService
+
+        # Attach clinic visit context to encounter
+        encounter = valid_claim.encounter
+        assert encounter is not None
+        encounter.clinic_visit = clinic_visit_for_sha_claim_context
+        encounter.save(update_fields=["clinic_visit"])
+
+        service = SHAClaimsService()
+        bundle = service.package_claim(valid_claim)
+
+        claim_entry = next(
+            (e for e in bundle["entry"] if e["resource"].get("resourceType") == "Claim"),
+            None,
+        )
+        assert claim_entry is not None
+        claim_resource = claim_entry["resource"]
+
+        clinic = clinic_visit_for_sha_claim_context.session.clinic
+
+        # Facility/service point should reference the clinic as a Location
+        assert "facility" in claim_resource
+        assert claim_resource["facility"]["reference"] == (
+            f"{service.fhir_base_url}/fhir/Location/{clinic.code}"
+        )
+        assert claim_resource["facility"].get("display") == clinic.name
+
+        # Include clinic code as a distinct identifier (do not change the primary UUID identifier)
+        clinic_code_identifier = next(
+            (
+                ident
+                for ident in claim_resource.get("identifier", [])
+                if ident.get("system", "").endswith("/identifier/clinic-code")
+            ),
+            None,
+        )
+        assert clinic_code_identifier is not None
+        assert clinic_code_identifier.get("value") == clinic.code
+
+        # Include clinic type for routing/reporting context
+        clinic_type_ext = next(
+            (
+                ext
+                for ext in claim_resource.get("extension", [])
+                if ext.get("url") == "https://vitora.health/fhir/StructureDefinition/clinic-type"
+            ),
+            None,
+        )
+        assert clinic_type_ext is not None
+        assert clinic_type_ext.get("valueString") == clinic.clinic_type
+
+    def test_claim_without_clinic_context_still_packages(self, valid_claim):
+        """Packaging must remain valid when encounter has no clinic visit context."""
+
+        from hmis.apps.billing.services.sha_claims import SHAClaimsService
+
+        service = SHAClaimsService()
+        bundle = service.package_claim(valid_claim)
+
+        claim_entry = next(
+            (e for e in bundle["entry"] if e["resource"].get("resourceType") == "Claim"),
+            None,
+        )
+        assert claim_entry is not None
+        claim_resource = claim_entry["resource"]
+
+        assert "facility" not in claim_resource
 
 
 @pytest.mark.django_db

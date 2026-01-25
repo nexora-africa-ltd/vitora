@@ -755,7 +755,62 @@ Before submitting a PR, verify:
 - [ ] Sensitive fields use encryption
 - [ ] Kenya locations validated (county → sub_county → ward cascade)
 - [ ] API endpoints require authentication
+- [ ] **API responses validated with Zod schemas** (see below)
 - [ ] Documentation updated (docstrings, README if needed)
+
+---
+
+## 🛡️ API Response Validation (Required)
+
+**All new API client methods MUST validate responses with Zod schemas.**
+
+This prevents runtime TypeErrors (e.g., `staff.map is not a function`) when API responses don't match expected shapes.
+
+### Implementation Pattern
+
+```typescript
+// 1. Define schema in lib/schemas/{module}.schema.ts
+export const PatientSchema = z.object({
+  id: z.number(),
+  mrn: z.string(),
+  first_name: z.string(),
+  // ... all fields
+});
+
+// 2. Use parseResponse in lib/api/{module}.ts
+import { parseResponse } from '@/lib/schemas/validation';
+import { PatientSchema } from '@/lib/schemas/patient.schema';
+
+export const patientsApi = {
+  get: async (id: number): Promise<Patient> => {
+    const response = await apiClient.get(`/api/patients/${id}/`);
+    return parseResponse(PatientSchema, response.data, { context: 'patientsApi.get' });
+  },
+};
+```
+
+### Schema Files
+
+| Module | Schema File | Status |
+|--------|-------------|--------|
+| Clinics | `lib/schemas/clinic.schema.ts` | ✅ Implemented |
+| Patients | `lib/schemas/patient.schema.ts` | 📋 Placeholder |
+| Encounters | `lib/schemas/encounter.schema.ts` | 📋 Placeholder |
+| Pharmacy | `lib/schemas/pharmacy.schema.ts` | 📋 Placeholder |
+| Laboratory | `lib/schemas/laboratory.schema.ts` | 📋 Placeholder |
+| Billing | `lib/schemas/billing.schema.ts` | 📋 Placeholder |
+| Triage | `lib/schemas/triage.schema.ts` | 📋 Placeholder |
+| Inpatient | `lib/schemas/inpatient.schema.ts` | 📋 Placeholder |
+| RBAC | `lib/schemas/rbac.schema.ts` | 📋 Placeholder |
+| SHA | `lib/schemas/sha.schema.ts` | 📋 Placeholder |
+| Core | `lib/schemas/core.schema.ts` | 📋 Placeholder |
+
+### When Adding New API Endpoints
+
+1. **Always** create/update the corresponding schema file
+2. **Always** use `parseResponse()` to validate the response
+3. **Include context** in parseResponse for debugging: `{ context: 'moduleName.methodName' }`
+4. Schema should match the TypeScript type in `lib/types/{module}.ts`
 
 ---
 

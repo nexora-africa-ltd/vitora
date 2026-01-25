@@ -1,0 +1,113 @@
+{
+  "theatre_case": {
+    "case_id": "string",
+    "patient": {
+      "id": "string",
+      "name": "string",
+      "dob": "YYYY-MM-DD",
+      "mrn": "string"
+    },
+    "procedure": {
+      "type": "string",
+      "code": "string",
+      "date_scheduled": "YYYY-MM-DDTHH:mm:ssZ",
+      "urgency": "elective | urgent | emergency"
+    },
+    "theatre_team": {
+      "surgeon": {"id": "string", "name": "string"},
+      "anesthetist": {"id": "string", "name": "string"},
+      "nurses": [{"id": "string", "name": "string"}],
+      "support_staff": [{"id": "string", "name": "string", "role": "string"}]
+    },
+    "pre_op": {
+      "assessment": {
+        "vitals": {
+          "bp": "string",
+          "hr": "string",
+          "rr": "string",
+          "spo2": "string",
+          "temp": "string"
+        },
+        "weight_kg": "number",
+        "height_cm": "number",
+        "allergies": ["string"],
+        "medications": ["string"],
+        "comorbidities": ["string"],
+        "labs": [{"test": "string", "result": "string", "date": "YYYY-MM-DD"}],
+        "imaging": [{"study": "string", "finding": "string", "date": "YYYY-MM-DD"}]
+      },
+      "consent": {
+        "signed_by": "string",
+        "date": "YYYY-MM-DD",
+        "notes": "string"
+      },
+      "pre_op_instructions": [
+        "NPO since 12am",
+        "Antibiotic prophylaxis given"
+      ]
+    },
+    "intra_op": {
+      "start_time": "YYYY-MM-DDTHH:mm:ssZ",
+      "end_time": "YYYY-MM-DDTHH:mm:ssZ",
+      "anesthesia": {
+        "type": "general | regional | local",
+        "agents_used": ["string"],
+        "dosage": ["string"]
+      },
+      "procedure_notes": "string",
+      "intra_op_vitals": [
+        {
+          "timestamp": "YYYY-MM-DDTHH:mm:ssZ",
+          "bp": "string",
+          "hr": "string",
+          "spo2": "string",
+          "temp": "string"
+        }
+      ],
+      "instruments": [
+        {"instrument": "string", "used": true, "remarks": "string"}
+      ],
+      "complications": [
+        {"time": "YYYY-MM-DDTHH:mm:ssZ", "description": "string", "action_taken": "string"}
+      ],
+      "blood_loss_ml": "number",
+      "fluids_administered_ml": "number"
+    },
+    "post_op": {
+      "recovery_time": "minutes",
+      "vitals": {
+        "bp": "string",
+        "hr": "string",
+        "rr": "string",
+        "spo2": "string",
+        "temp": "string"
+      },
+      "pain_score": "0-10",
+      "complications": [
+        {"description": "string", "severity": "mild | moderate | severe", "action_taken": "string"}
+      ],
+      "medications_given": [
+        {"medication": "string", "dose": "string", "route": "IV/PO/etc", "time": "YYYY-MM-DDTHH:mm:ssZ"}
+      ],
+      "instructions": [
+        "Keep wound clean and dry",
+        "Follow-up in 3 days"
+      ],
+      "disposition": "recovered | transferred | ICU | deceased",
+      "notes": "string"
+    },
+    "reporting_metadata": {
+      "created_by": {"id": "string", "name": "string"},
+      "created_at": "YYYY-MM-DDTHH:mm:ssZ",
+      "last_updated_by": {"id": "string", "name": "string"},
+      "last_updated_at": "YYYY-MM-DDTHH:mm:ssZ",
+      "facility_id": "string",
+      "procedure_category": "elective | urgent | emergency",
+      "dhis2_codes": {
+        "procedure": "string",
+        "anesthesia": "string",
+        "complication": ["string"]
+      }
+    }
+  }
+}

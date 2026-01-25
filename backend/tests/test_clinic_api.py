@@ -244,8 +244,11 @@ class TestClinicViewSet:
         response = authenticated_client.get(url, {"clinic_type": "EYE"})
 
         assert response.status_code == status.HTTP_200_OK
-        assert len(response.data["results"]) == 1
-        assert response.data["results"][0]["clinic_type"] == "EYE"
+        # May include seeded clinics from migrations, so check >= 1
+        assert len(response.data["results"]) >= 1
+        # All returned clinics should have the filtered type
+        for clinic in response.data["results"]:
+            assert clinic["clinic_type"] == "EYE"
 
     def test_list_clinics_filter_by_status(self, authenticated_client, sample_clinic, db):
         """Clinics can be filtered by status."""
@@ -474,8 +477,8 @@ class TestClinicQueueEndpoints:
     ):
         """Queue is ordered by priority (emergency first)."""
         from hmis.apps.clinics.models import ClinicVisit
-        from hmis.apps.patients.models import Patient
         from hmis.apps.core.models import County, SubCounty
+        from hmis.apps.patients.models import Patient
 
         county = County.objects.first() or County.objects.create(code=99, name="Test")
         sub_county = SubCounty.objects.first() or SubCounty.objects.create(
@@ -1071,6 +1074,273 @@ class TestClinicEnrollmentViewSet:
         assert response.status_code == status.HTTP_200_OK
         assert response.data["last_visit_date"] == str(date.today())
         assert response.data["total_visits"] == sample_clinic_enrollment.total_visits + 1
+
+
+# ============================================================================
+# TestClinicEnrollmentFilters - Tests for new filter parameters
+# ============================================================================
+
+
+@pytest.mark.django_db
+class TestClinicEnrollmentFilters:
+    """Test suite for ClinicEnrollment filter enhancements."""
+
+    def test_filter_by_clinic_type(
+        self, authenticated_client, ccc_clinic, sample_patient, clinic_doctor_user
+    ):
+        """Can filter enrollments by clinic_type."""
+        from hmis.apps.clinics.models import ClinicEnrollment
+
+        ClinicEnrollment.objects.create(
+            clinic=ccc_clinic,
+            patient=sample_patient,
+            enrollment_number="CCC-FILTER-1",
+            enrollment_date=date.today(),
+            enrolled_by=clinic_doctor_user,
+        )
+
+        url = reverse("clinicenrollment-list")
+        response = authenticated_client.get(url, {"clinic_type": "CCC"})
+
+        assert response.status_code == status.HTTP_200_OK
+        for enrollment in response.data["results"]:
+            assert enrollment["clinic_type"] == "CCC"
+
+    def test_filter_by_is_overdue_true(
+        self, authenticated_client, ccc_clinic, sample_patient, clinic_doctor_user
+    ):
+        """Can filter enrollments that are overdue."""
+        from hmis.apps.clinics.models import ClinicEnrollment
+
+        ClinicEnrollment.objects.create(
+            clinic=ccc_clinic,
+            patient=sample_patient,
+            enrollment_number="CCC-OVERDUE-FILTER",
+            enrollment_date=date.today() - timedelta(days=60),
+            status="ACTIVE",
+            next_appointment=date.today() - timedelta(days=7),
+            enrolled_by=clinic_doctor_user,
+        )
+
+        url = reverse("clinicenrollment-list")
+        response = authenticated_client.get(url, {"is_overdue": "true"})
+
+        assert response.status_code == status.HTTP_200_OK
+        for enrollment in response.data["results"]:
+            assert enrollment["is_overdue"] is True
+
+    def test_filter_by_is_defaulter_true(
+        self, authenticated_client, ccc_clinic, sample_patient, clinic_doctor_user
+    ):
+        """Can filter enrollments that are defaulters."""
+        from hmis.apps.clinics.models import ClinicEnrollment
+
+        # Create a defaulter (2+ appointment cycles overdue)
+        ClinicEnrollment.objects.create(
+            clinic=ccc_clinic,
+            patient=sample_patient,
+            enrollment_number="CCC-DEFAULTER-FILTER",
+            enrollment_date=date.today() - timedelta(days=180),
+            status="ACTIVE",
+            appointment_interval_days=30,
+            next_appointment=date.today() - timedelta(days=65),  # > 2x30 days
+            enrolled_by=clinic_doctor_user,
+        )
+
+        url = reverse("clinicenrollment-list")
+        response = authenticated_client.get(url, {"is_defaulter": "true"})
+
+        assert response.status_code == status.HTTP_200_OK
+        for enrollment in response.data["results"]:
+            assert enrollment["is_defaulter"] is True
+
+    def test_filter_by_enrollment_type_ccc(
+        self, authenticated_client, ccc_clinic, sample_patient, clinic_doctor_user
+    ):
+        """Can filter by enrollment_type=CCC."""
+        from hmis.apps.clinics.models import ClinicEnrollment
+
+        ClinicEnrollment.objects.create(
+            clinic=ccc_clinic,
+            patient=sample_patient,
+            enrollment_number="CCC-TYPE-FILTER",
+            enrollment_date=date.today() - timedelta(days=1),
+            enrolled_by=clinic_doctor_user,
+        )
+
+        url = reverse("clinicenrollment-list")
+        response = authenticated_client.get(url, {"enrollment_type": "CCC"})
+
+        assert response.status_code == status.HTTP_200_OK
+        for enrollment in response.data["results"]:
+            assert enrollment["enrollment_type"] == "CCC"
+
+
+# ============================================================================
+# TestClinicEnrollmentSerializerComputedFields - Tests for computed fields
+# ============================================================================
+
+
+@pytest.mark.django_db
+class TestClinicEnrollmentSerializerComputedFields:
+    """Test suite for ClinicEnrollment serializer computed fields."""
+
+    def test_ccc_enrollment_serializer_fields(
+        self, authenticated_client, ccc_clinic, sample_patient, clinic_doctor_user
+    ):
+        """CCC enrollment serializer should include CCC computed fields."""
+        from hmis.apps.clinics.models import ClinicEnrollment
+
+        enrollment = ClinicEnrollment.objects.create(
+            clinic=ccc_clinic,
+            patient=sample_patient,
+            enrollment_number="CCC-SERIALIZER-1",
+            enrollment_date=date.today() - timedelta(days=365),
+            enrolled_by=clinic_doctor_user,
+            art_start_date=date.today() - timedelta(days=365),
+            current_art_regimen="TDF/3TC/DTG",
+            latest_viral_load=50,
+            viral_load_suppressed=True,
+        )
+
+        url = reverse("clinicenrollment-detail", kwargs={"pk": enrollment.pk})
+        response = authenticated_client.get(url)
+
+        assert response.status_code == status.HTTP_200_OK
+        assert response.data["enrollment_type"] == "CCC"
+        assert response.data["days_on_art"] == 365
+        assert response.data["is_virally_suppressed"] is True
+        assert response.data["viral_load_due"] is True  # >6 months since no VL date
+        assert "clinic_specific_summary" in response.data
+        assert response.data["clinic_specific_summary"]["type"] == "CCC"
+
+    def test_anc_enrollment_serializer_fields(
+        self, authenticated_client, sample_patient, clinic_doctor_user
+    ):
+        """ANC enrollment serializer should include ANC computed fields."""
+        from hmis.apps.clinics.models import Clinic, ClinicEnrollment
+
+        anc_clinic = Clinic.objects.create(
+            name="ANC Test Clinic",
+            clinic_type="ANC",
+            code="ANC-TEST-SER",
+        )
+
+        lmp_date = date.today() - timedelta(days=140)  # 20 weeks
+
+        enrollment = ClinicEnrollment.objects.create(
+            clinic=anc_clinic,
+            patient=sample_patient,
+            enrollment_number="ANC-SERIALIZER-1",
+            enrollment_date=date.today(),
+            enrolled_by=clinic_doctor_user,
+            gravida=2,
+            para=1,
+            lmp=lmp_date,
+            edd=lmp_date + timedelta(days=280),
+            hiv_status="NEGATIVE",
+        )
+
+        url = reverse("clinicenrollment-detail", kwargs={"pk": enrollment.pk})
+        response = authenticated_client.get(url)
+
+        assert response.status_code == status.HTTP_200_OK
+        assert response.data["enrollment_type"] == "ANC"
+        assert response.data["gestation_weeks"] == 20
+        assert response.data["gestation_display"] == "20 weeks 0 days"
+        assert response.data["trimester"] == 2
+        assert response.data["days_to_edd"] is not None
+        assert response.data["clinic_specific_summary"]["type"] == "ANC"
+
+    def test_diabetic_enrollment_serializer_fields(
+        self, authenticated_client, sample_patient, clinic_doctor_user
+    ):
+        """Diabetic enrollment serializer should include diabetic computed fields."""
+
+        from hmis.apps.clinics.models import Clinic, ClinicEnrollment
+
+        diabetic_clinic = Clinic.objects.create(
+            name="Diabetic Test Clinic",
+            clinic_type="DIABETIC",
+            code="DM-TEST-SER",
+        )
+
+        enrollment = ClinicEnrollment.objects.create(
+            clinic=diabetic_clinic,
+            patient=sample_patient,
+            enrollment_number="DM-SERIALIZER-1",
+            enrollment_date=date.today(),
+            enrolled_by=clinic_doctor_user,
+            diabetes_type="TYPE_2",
+            latest_hba1c=Decimal("6.5"),
+            latest_hba1c_date=date.today() - timedelta(days=30),
+            on_insulin=True,
+        )
+
+        url = reverse("clinicenrollment-detail", kwargs={"pk": enrollment.pk})
+        response = authenticated_client.get(url)
+
+        assert response.status_code == status.HTTP_200_OK
+        assert response.data["enrollment_type"] == "DIABETIC"
+        assert response.data["hba1c_controlled"] is True  # < 7%
+        assert response.data["hba1c_due"] is False  # < 3 months
+        assert response.data["clinic_specific_summary"]["type"] == "DIABETIC"
+
+    def test_enrollment_defaulter_fields_in_response(
+        self, authenticated_client, ccc_clinic, sample_patient, clinic_doctor_user
+    ):
+        """Enrollment response should include defaulter tracking fields."""
+        from hmis.apps.clinics.models import ClinicEnrollment
+
+        enrollment = ClinicEnrollment.objects.create(
+            clinic=ccc_clinic,
+            patient=sample_patient,
+            enrollment_number="CCC-DEFAULTER-SER",
+            enrollment_date=date.today() - timedelta(days=180),
+            status="ACTIVE",
+            appointment_interval_days=30,
+            next_appointment=date.today() - timedelta(days=65),  # 65 days overdue
+            enrolled_by=clinic_doctor_user,
+        )
+
+        url = reverse("clinicenrollment-detail", kwargs={"pk": enrollment.pk})
+        response = authenticated_client.get(url)
+
+        assert response.status_code == status.HTTP_200_OK
+        assert response.data["is_overdue"] is True
+        assert response.data["is_defaulter"] is True
+        assert response.data["days_overdue"] == 65
+
+    def test_create_anc_enrollment_auto_calculates_edd(
+        self, authenticated_client, sample_patient, clinic_doctor_user
+    ):
+        """Creating ANC enrollment with LMP should auto-calculate EDD."""
+        from hmis.apps.clinics.models import Clinic
+
+        anc_clinic = Clinic.objects.create(
+            name="ANC Auto EDD Test",
+            clinic_type="ANC",
+            code="ANC-AUTO-EDD",
+        )
+
+        lmp_date = date.today() - timedelta(days=100)
+
+        url = reverse("clinicenrollment-list")
+        data = {
+            "clinic": anc_clinic.pk,
+            "patient": sample_patient.pk,
+            "enrollment_number": "ANC-EDD-AUTO",
+            "enrollment_date": str(date.today()),
+            "lmp": str(lmp_date),
+            "gravida": 1,
+            "para": 0,
+        }
+        response = authenticated_client.post(url, data, format="json")
+
+        assert response.status_code == status.HTTP_201_CREATED
+        # EDD should be LMP + 280 days
+        expected_edd = lmp_date + timedelta(days=280)
+        assert response.data["edd"] == str(expected_edd)
 
 
 # ============================================================================

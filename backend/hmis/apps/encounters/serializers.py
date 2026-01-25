@@ -298,6 +298,11 @@ class EncounterSerializer(serializers.ModelSerializer):
     assigned_clinician_name = serializers.SerializerMethodField()
     claimed_at = serializers.DateTimeField(read_only=True)
 
+    # Clinic Visit Integration (Sprint 2.5 - Clinic Integration)
+    clinic_visit_id = serializers.SerializerMethodField()
+    clinic_name = serializers.SerializerMethodField()
+    clinic_type = serializers.SerializerMethodField()
+
     class Meta:
         model = Encounter
         fields = [
@@ -373,6 +378,10 @@ class EncounterSerializer(serializers.ModelSerializer):
             "assigned_clinician_username",
             "assigned_clinician_name",
             "claimed_at",
+            # Clinic Visit Integration (Sprint 2.5 - Clinic Integration)
+            "clinic_visit_id",
+            "clinic_name",
+            "clinic_type",
             "created_at",
             "updated_at",
         ]
@@ -421,6 +430,10 @@ class EncounterSerializer(serializers.ModelSerializer):
             "assigned_clinician_username",
             "assigned_clinician_name",
             "claimed_at",
+            # Clinic Visit fields are read-only (Sprint 2.5)
+            "clinic_visit_id",
+            "clinic_name",
+            "clinic_type",
             "created_at",
             "updated_at",
         ]
@@ -430,6 +443,26 @@ class EncounterSerializer(serializers.ModelSerializer):
         if obj.assigned_clinician:
             return obj.assigned_clinician.get_full_name() or obj.assigned_clinician.username
         return None
+
+    def get_clinic_visit_id(self, obj: Encounter) -> int | None:
+        """Get the clinic visit ID from the linked clinic visit."""
+        return obj.clinic_visit_id
+
+    def get_clinic_name(self, obj: Encounter) -> str | None:
+        """Get the clinic name from the linked clinic visit."""
+        if not obj.clinic_visit:
+            return None
+        if not obj.clinic_visit.session:
+            return None
+        return obj.clinic_visit.session.clinic.name
+
+    def get_clinic_type(self, obj: Encounter) -> str | None:
+        """Get the clinic type from the linked clinic visit."""
+        if not obj.clinic_visit:
+            return None
+        if not obj.clinic_visit.session:
+            return None
+        return obj.clinic_visit.session.clinic.clinic_type
 
     def get_alerts(self, obj: Encounter) -> str:
         """Get alerts for critical vital signs."""
@@ -537,6 +570,11 @@ class EncounterListSerializer(serializers.ModelSerializer):
     patient_name = serializers.CharField(source="patient.full_name", read_only=True)
     has_critical_vitals = serializers.ReadOnlyField()
 
+    # Clinic Visit Integration (Sprint 2.5 - Clinic Integration)
+    clinic_visit_id = serializers.SerializerMethodField()
+    clinic_name = serializers.SerializerMethodField()
+    clinic_type = serializers.SerializerMethodField()
+
     class Meta:
         model = Encounter
         fields = [
@@ -551,6 +589,30 @@ class EncounterListSerializer(serializers.ModelSerializer):
             # Status workflow (Sprint 1.1-1.2)
             "status",
             "finalized_at",
+            # Clinic Visit Integration (Sprint 2.5)
+            "clinic_visit_id",
+            "clinic_name",
+            "clinic_type",
             "created_at",
         ]
         read_only_fields = fields
+
+    def get_clinic_visit_id(self, obj: Encounter) -> int | None:
+        """Get the clinic visit ID from the linked clinic visit."""
+        return obj.clinic_visit_id
+
+    def get_clinic_name(self, obj: Encounter) -> str | None:
+        """Get the clinic name from the linked clinic visit."""
+        if not obj.clinic_visit:
+            return None
+        if not obj.clinic_visit.session:
+            return None
+        return obj.clinic_visit.session.clinic.name
+
+    def get_clinic_type(self, obj: Encounter) -> str | None:
+        """Get the clinic type from the linked clinic visit."""
+        if not obj.clinic_visit:
+            return None
+        if not obj.clinic_visit.session:
+            return None
+        return obj.clinic_visit.session.clinic.clinic_type

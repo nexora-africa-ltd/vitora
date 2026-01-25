@@ -1,0 +1,58 @@
+{
+  "name": "Orthopedic Clinic Assessment",
+  "template_type": "encounter",
+  "specialty": "Orthopedics",
+  "description": "Orthopedic outpatient assessment template",
+  "content": {
+    "title": "Orthopedic Clinic Assessment",
+    "version": "1.0",
+    "sections": [
+      {
+        "name": "Chief Complaint",
+        "order": 1,
+        "fields": [
+          {"name": "complaint", "type": "text", "required": true, "label": "Chief Complaint"},
+          {"name": "duration", "type": "text", "required": false, "label": "Duration"},
+          {"name": "pain_score", "type": "number", "required": false, "label": "Pain Score (0-10)", "min": 0, "max": 10}
+        ]
+      },
+      {
+        "name": "History",
+        "order": 2,
+        "fields": [
+          {"name": "injury_mechanism", "type": "textarea", "required": false, "label": "Injury Mechanism (if applicable)"},
+          {"name": "functional_limitations", "type": "textarea", "required": false, "label": "Functional Limitations"},
+          {"name": "previous_injuries_or_surgery", "type": "textarea", "required": false, "label": "Previous Injuries/Surgery"}
+        ]
+      },
+      {
+        "name": "Examination",
+        "order": 3,
+        "fields": [
+          {"name": "inspection", "type": "textarea", "required": false, "label": "Inspection"},
+          {"name": "palpation", "type": "textarea", "required": false, "label": "Palpation"},
+          {"name": "range_of_motion", "type": "textarea", "required": false, "label": "Range of Motion"},
+          {"name": "neurovascular_status", "type": "textarea", "required": false, "label": "Neurovascular Status"}
+        ]
+      },
+      {
+        "name": "Investigations",
+        "order": 4,
+        "fields": [
+          {"name": "imaging_requested", "type": "textarea", "required": false, "label": "Imaging Requested"},
+          {"name": "imaging_results", "type": "textarea", "required": false, "label": "Imaging Results"}
+        ]
+      },
+      {
+        "name": "Plan",
+        "order": 5,
+        "fields": [
+          {"name": "diagnosis", "type": "textarea", "required": true, "label": "Diagnosis"},
+          {"name": "management", "type": "textarea", "required": true, "label": "Management"},
+          {"name": "splint_cast", "type": "boolean", "required": false, "label": "Splint/Cast Applied"},
+          {"name": "follow_up", "type": "textarea", "required": false, "label": "Follow-up"}
+        ]
+      }
+    ]
+  }
+}

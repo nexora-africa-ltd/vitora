@@ -169,9 +169,7 @@ class TestVerifyDocumentSignature:
         sig = generate_document_signature("RECEIPT", "RCP-001", "1000.00", "2026-01-22")
 
         # Try with different amount
-        result = verify_document_signature(
-            "RECEIPT", "RCP-001", "2000.00", "2026-01-22", sig
-        )
+        result = verify_document_signature("RECEIPT", "RCP-001", "2000.00", "2026-01-22", sig)
 
         assert result is False
 
@@ -329,9 +327,10 @@ class TestGenerateReceiptQRUrl:
 
         # Extract signature from URL
         import urllib.parse
+
         parsed = urllib.parse.urlparse(result)
         params = urllib.parse.parse_qs(parsed.query)
-        
+
         assert verify_document_signature(
             document_type="RECEIPT",
             document_number=params["number"][0],
@@ -369,9 +368,10 @@ class TestGenerateInvoiceQRUrl:
 
         # Extract and verify signature
         import urllib.parse
+
         parsed = urllib.parse.urlparse(result)
         params = urllib.parse.parse_qs(parsed.query)
-        
+
         assert verify_document_signature(
             document_type="INVOICE",
             document_number=params["number"][0],
@@ -438,15 +438,16 @@ class TestVerifyDocumentAPI:
     def api_client(self):
         """Return an unauthenticated API client."""
         from rest_framework.test import APIClient
+
         return APIClient()
 
     def test_verify_valid_receipt_with_qr_data(self, api_client):
         """Should verify a valid receipt using QR data string."""
         # Generate a valid QR data string
         qr_data = generate_receipt_qr_data("RCP-001", "1500.00", "2026-01-22")
-        
+
         response = api_client.get("/api/core/verify/", {"qr_data": qr_data})
-        
+
         assert response.status_code == 200
         assert response.data["valid"] is True
         assert response.data["document_type"] == "RECEIPT"
@@ -456,9 +457,9 @@ class TestVerifyDocumentAPI:
     def test_verify_valid_invoice_with_qr_data(self, api_client):
         """Should verify a valid invoice using QR data string."""
         qr_data = generate_invoice_qr_data("INV-001", "5000.00", "2026-01-22")
-        
+
         response = api_client.get("/api/core/verify/", {"qr_data": qr_data})
-        
+
         assert response.status_code == 200
         assert response.data["valid"] is True
         assert response.data["document_type"] == "INVOICE"
@@ -466,28 +467,34 @@ class TestVerifyDocumentAPI:
     def test_verify_valid_document_with_individual_params(self, api_client):
         """Should verify using individual parameters."""
         sig = generate_document_signature("RECEIPT", "RCP-002", "2000.00", "2026-01-22")
-        
-        response = api_client.get("/api/core/verify/", {
-            "type": "RECEIPT",
-            "number": "RCP-002",
-            "amount": "2000.00",
-            "date": "2026-01-22",
-            "signature": sig,
-        })
-        
+
+        response = api_client.get(
+            "/api/core/verify/",
+            {
+                "type": "RECEIPT",
+                "number": "RCP-002",
+                "amount": "2000.00",
+                "date": "2026-01-22",
+                "signature": sig,
+            },
+        )
+
         assert response.status_code == 200
         assert response.data["valid"] is True
 
     def test_verify_invalid_signature(self, api_client):
         """Should reject document with invalid signature."""
-        response = api_client.get("/api/core/verify/", {
-            "type": "RECEIPT",
-            "number": "RCP-003",
-            "amount": "3000.00",
-            "date": "2026-01-22",
-            "signature": "INVALID1",
-        })
-        
+        response = api_client.get(
+            "/api/core/verify/",
+            {
+                "type": "RECEIPT",
+                "number": "RCP-003",
+                "amount": "3000.00",
+                "date": "2026-01-22",
+                "signature": "INVALID1",
+            },
+        )
+
         assert response.status_code == 200
         assert response.data["valid"] is False
         assert "invalid" in response.data["message"].lower()
@@ -496,58 +503,70 @@ class TestVerifyDocumentAPI:
         """Should reject document where amount was tampered."""
         # Generate signature for original amount
         sig = generate_document_signature("RECEIPT", "RCP-004", "1000.00", "2026-01-22")
-        
+
         # Try to verify with different amount
-        response = api_client.get("/api/core/verify/", {
-            "type": "RECEIPT",
-            "number": "RCP-004",
-            "amount": "9999.00",  # Tampered!
-            "date": "2026-01-22",
-            "signature": sig,
-        })
-        
+        response = api_client.get(
+            "/api/core/verify/",
+            {
+                "type": "RECEIPT",
+                "number": "RCP-004",
+                "amount": "9999.00",  # Tampered!
+                "date": "2026-01-22",
+                "signature": sig,
+            },
+        )
+
         assert response.status_code == 200
         assert response.data["valid"] is False
 
     def test_verify_missing_fields(self, api_client):
         """Should return error when required fields are missing."""
-        response = api_client.get("/api/core/verify/", {
-            "type": "RECEIPT",
-            "number": "RCP-005",
-            # Missing amount, date, signature
-        })
-        
+        response = api_client.get(
+            "/api/core/verify/",
+            {
+                "type": "RECEIPT",
+                "number": "RCP-005",
+                # Missing amount, date, signature
+            },
+        )
+
         assert response.status_code == 400
         assert "Missing required fields" in response.data["error"]
 
     def test_verify_invalid_qr_format(self, api_client):
         """Should return error for invalid QR code format."""
-        response = api_client.get("/api/core/verify/", {
-            "qr_data": "INVALID|QR|DATA",
-        })
-        
+        response = api_client.get(
+            "/api/core/verify/",
+            {
+                "qr_data": "INVALID|QR|DATA",
+            },
+        )
+
         assert response.status_code == 400
         assert "Invalid QR code format" in response.data["error"]
 
     def test_verify_invalid_document_type(self, api_client):
         """Should reject invalid document type."""
-        response = api_client.get("/api/core/verify/", {
-            "type": "UNKNOWN",
-            "number": "DOC-001",
-            "amount": "100.00",
-            "date": "2026-01-22",
-            "signature": "ABCD1234",
-        })
-        
+        response = api_client.get(
+            "/api/core/verify/",
+            {
+                "type": "UNKNOWN",
+                "number": "DOC-001",
+                "amount": "100.00",
+                "date": "2026-01-22",
+                "signature": "ABCD1234",
+            },
+        )
+
         assert response.status_code == 400
         assert "Invalid document type" in response.data["error"]
 
     def test_verify_post_method(self, api_client):
         """Should accept POST requests as well."""
         qr_data = generate_receipt_qr_data("RCP-006", "750.00", "2026-01-22")
-        
+
         response = api_client.post("/api/core/verify/", {"qr_data": qr_data})
-        
+
         assert response.status_code == 200
         assert response.data["valid"] is True
 
@@ -555,9 +574,9 @@ class TestVerifyDocumentAPI:
         """Should work without any authentication."""
         # Client has no credentials set
         qr_data = generate_receipt_qr_data("RCP-007", "500.00", "2026-01-22")
-        
+
         response = api_client.get("/api/core/verify/", {"qr_data": qr_data})
-        
+
         # Should not return 401 or 403
         assert response.status_code == 200
         assert response.data["valid"] is True

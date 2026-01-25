@@ -155,10 +155,7 @@ class TestReportAPIEndpoints:
         assert len(response.data) >= 1
 
         # Find our discrepancy in the list
-        discrepancy = next(
-            (d for d in response.data if d["id"] == item.id),
-            None
-        )
+        discrepancy = next((d for d in response.data if d["id"] == item.id), None)
         assert discrepancy is not None, "Created discrepancy not found in response"
 
         # Verify all expected fields are present

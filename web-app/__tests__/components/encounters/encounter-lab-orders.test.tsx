@@ -103,7 +103,7 @@ describe('EncounterLabOrders', () => {
       { wrapper }
     );
 
-    expect(screen.getByRole('link', { name: /order lab test/i })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /order lab test/i })).toBeInTheDocument();
   });
 
   it('should hide Order Lab Test button when disabled', () => {

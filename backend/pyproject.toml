@@ -34,6 +34,12 @@ gunicorn = "^23.0.0"
 whitenoise = "^6.11.0"
 qrcode = {extras = ["pil"], version = "^8.2"}
 drf-nested-routers = "^0.95.0"
+channels = "^4.3.2"
+channels-redis = "^4.3.0"
+daphne = "^4.2.1"
+pytest-asyncio = "^0.23"
+cloc = "^0.2.5"
+pycloc = "^0.0.1a0"
 
 [tool.poetry.group.dev.dependencies]
 # Testing
@@ -101,6 +107,8 @@ markers = [
 source = ["hmis"]
 omit = [
     "*/migrations/*",
+    "*/management/*",
+    "*/management/commands/*",
     "*/tests/*",
     "*/__pycache__/*",
     "*/venv/*",
