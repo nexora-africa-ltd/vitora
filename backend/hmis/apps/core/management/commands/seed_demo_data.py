@@ -1533,13 +1533,23 @@ class Command(BaseCommand):
             return
 
         # -----------------------------------------------------------------
-        # Clinics to create (use DEMO- prefix to keep staging/demo data grouped)
+        # Idempotency / cleanup
+        # -----------------------------------------------------------------
+        # Older iterations of the demo seeder created extra clinics with DEMO-* codes.
+        # When re-seeding with --force, remove them to avoid parallel clinics in UI.
+        if options.get("force"):
+            deleted, _ = Clinic.objects.filter(code__startswith="DEMO-").delete()
+            if deleted:
+                self.stdout.write(f"  Removed legacy DEMO-* clinics: {deleted}")
+
+        # -----------------------------------------------------------------
+        # Clinics to use for demo (prefer the canonical *-DEFAULT clinics seeded by migrations)
         # -----------------------------------------------------------------
         CLINICS = [
             # Primary care
             {
-                "code": "DEMO-OPD-01",
-                "name": "General OPD - Room 1",
+                "code": "OPD-DEFAULT",
+                "name": "General OPD",
                 "clinic_type": "GENERAL_OPD",
                 "location": "Outpatient Block, Room 1",
                 "capacity": 3,
@@ -1547,7 +1557,7 @@ class Command(BaseCommand):
                 "triage_required": True,
             },
             {
-                "code": "DEMO-FILTER-01",
+                "code": "FILTER-DEFAULT",
                 "name": "Filter/Screening Clinic",
                 "clinic_type": "FILTER_CLINIC",
                 "location": "Outpatient Block, Triage Area",
@@ -1557,8 +1567,8 @@ class Command(BaseCommand):
             },
             # MCH
             {
-                "code": "DEMO-ANC-01",
-                "name": "Antenatal Clinic (ANC)",
+                "code": "ANC-DEFAULT",
+                "name": "Antenatal Clinic",
                 "clinic_type": "ANC",
                 "location": "MCH Wing, Room 2",
                 "capacity": 2,
@@ -1566,8 +1576,8 @@ class Command(BaseCommand):
                 "triage_required": False,
             },
             {
-                "code": "DEMO-PNC-01",
-                "name": "Postnatal Clinic (PNC)",
+                "code": "PNC-DEFAULT",
+                "name": "Postnatal Clinic",
                 "clinic_type": "PNC",
                 "location": "MCH Wing, Room 3",
                 "capacity": 1,
@@ -1575,7 +1585,7 @@ class Command(BaseCommand):
                 "triage_required": False,
             },
             {
-                "code": "DEMO-FP-01",
+                "code": "FP-DEFAULT",
                 "name": "Family Planning Clinic",
                 "clinic_type": "FP",
                 "location": "MCH Wing, Room 4",
@@ -1584,8 +1594,8 @@ class Command(BaseCommand):
                 "triage_required": False,
             },
             {
-                "code": "DEMO-CWC-01",
-                "name": "Child Welfare Clinic (CWC)",
+                "code": "CWC-DEFAULT",
+                "name": "Child Welfare Clinic",
                 "clinic_type": "CWC",
                 "location": "MCH Wing, Room 1",
                 "capacity": 2,
@@ -1593,7 +1603,7 @@ class Command(BaseCommand):
                 "triage_required": False,
             },
             {
-                "code": "DEMO-IMM-01",
+                "code": "IMM-DEFAULT",
                 "name": "Immunization Clinic",
                 "clinic_type": "IMMUNIZATION",
                 "location": "MCH Wing, Vaccination Room",
@@ -1602,7 +1612,7 @@ class Command(BaseCommand):
                 "triage_required": False,
             },
             {
-                "code": "DEMO-NUTR-01",
+                "code": "NUTRITION-DEFAULT",
                 "name": "Nutrition Clinic",
                 "clinic_type": "NUTRITION",
                 "location": "Outpatient Block, Room 5",
@@ -1612,7 +1622,7 @@ class Command(BaseCommand):
             },
             # Specialty clinics
             {
-                "code": "DEMO-DENT-01",
+                "code": "DENTAL-DEFAULT",
                 "name": "Dental Clinic",
                 "clinic_type": "DENTAL",
                 "location": "Specialist Block, Dental Suite",
@@ -1621,7 +1631,7 @@ class Command(BaseCommand):
                 "triage_required": False,
             },
             {
-                "code": "DEMO-EYE-01",
+                "code": "EYE-DEFAULT",
                 "name": "Eye Clinic",
                 "clinic_type": "EYE",
                 "location": "Specialist Block, Ophthalmology",
@@ -1630,7 +1640,7 @@ class Command(BaseCommand):
                 "triage_required": False,
             },
             {
-                "code": "DEMO-ENT-01",
+                "code": "ENT-DEFAULT",
                 "name": "ENT Clinic",
                 "clinic_type": "ENT",
                 "location": "Specialist Block, ENT",
@@ -1639,7 +1649,7 @@ class Command(BaseCommand):
                 "triage_required": False,
             },
             {
-                "code": "DEMO-SURG-OPD",
+                "code": "SURGICAL-DEFAULT",
                 "name": "Surgical Outpatient Clinic",
                 "clinic_type": "SURGICAL",
                 "location": "Specialist Block, Surgery OPD",
@@ -1648,7 +1658,7 @@ class Command(BaseCommand):
                 "triage_required": True,
             },
             {
-                "code": "DEMO-ORTHO-01",
+                "code": "ORTHO-DEFAULT",
                 "name": "Orthopedic Clinic",
                 "clinic_type": "ORTHO",
                 "location": "Specialist Block, Ortho",
@@ -1657,7 +1667,7 @@ class Command(BaseCommand):
                 "triage_required": True,
             },
             {
-                "code": "DEMO-PHYSIO-01",
+                "code": "PHYSIO-DEFAULT",
                 "name": "Physiotherapy Clinic",
                 "clinic_type": "PHYSIO",
                 "location": "Rehab Wing",
@@ -1666,7 +1676,7 @@ class Command(BaseCommand):
                 "triage_required": False,
             },
             {
-                "code": "DEMO-DERM-01",
+                "code": "DERM-DEFAULT",
                 "name": "Dermatology Clinic",
                 "clinic_type": "DERM",
                 "location": "Specialist Block, Dermatology",
@@ -1676,8 +1686,8 @@ class Command(BaseCommand):
             },
             # Chronic care
             {
-                "code": "DEMO-CCC-01",
-                "name": "Comprehensive Care Clinic (CCC)",
+                "code": "CCC-DEFAULT",
+                "name": "Comprehensive Care Clinic",
                 "clinic_type": "CCC",
                 "location": "Chronic Care Wing",
                 "capacity": 2,
@@ -1687,7 +1697,7 @@ class Command(BaseCommand):
                 "required_permission": "clinics.view_ccc_clinic",
             },
             {
-                "code": "DEMO-TB-01",
+                "code": "TB-DEFAULT",
                 "name": "TB Clinic",
                 "clinic_type": "TB",
                 "location": "Chronic Care Wing",
@@ -1696,7 +1706,7 @@ class Command(BaseCommand):
                 "triage_required": False,
             },
             {
-                "code": "DEMO-DIAB-01",
+                "code": "DIABETIC-DEFAULT",
                 "name": "Diabetic Clinic",
                 "clinic_type": "DIABETIC",
                 "location": "Chronic Care Wing",
@@ -1705,7 +1715,7 @@ class Command(BaseCommand):
                 "triage_required": False,
             },
             {
-                "code": "DEMO-HTN-01",
+                "code": "HYPERTENSION-DEFAULT",
                 "name": "Hypertension Clinic",
                 "clinic_type": "HYPERTENSION",
                 "location": "Chronic Care Wing",
@@ -1714,7 +1724,7 @@ class Command(BaseCommand):
                 "triage_required": False,
             },
             {
-                "code": "DEMO-MH-01",
+                "code": "MENTAL-DEFAULT",
                 "name": "Mental Health Clinic",
                 "clinic_type": "MENTAL_HEALTH",
                 "location": "Chronic Care Wing, Counseling Room",
@@ -1725,7 +1735,7 @@ class Command(BaseCommand):
                 "required_permission": "clinics.view_mental_health_clinic",
             },
             {
-                "code": "DEMO-ONCO-01",
+                "code": "ONCO-DEFAULT",
                 "name": "Oncology Clinic",
                 "clinic_type": "ONCOLOGY",
                 "location": "Specialist Block, Oncology",
@@ -1734,7 +1744,7 @@ class Command(BaseCommand):
                 "triage_required": True,
             },
             {
-                "code": "DEMO-DIAL-01",
+                "code": "DIALYSIS-DEFAULT",
                 "name": "Dialysis Unit",
                 "clinic_type": "DIALYSIS",
                 "location": "Renal Unit",
@@ -1744,7 +1754,7 @@ class Command(BaseCommand):
             },
             # Procedure areas
             {
-                "code": "DEMO-PROC-01",
+                "code": "PROCEDURE-DEFAULT",
                 "name": "Procedure Room",
                 "clinic_type": "PROCEDURE",
                 "location": "Outpatient Block, Procedure Room",
@@ -1753,8 +1763,8 @@ class Command(BaseCommand):
                 "triage_required": False,
             },
             {
-                "code": "DEMO-DRESS-01",
-                "name": "Dressing / Wound Care",
+                "code": "DRESSING-DEFAULT",
+                "name": "Dressing/Wound Care",
                 "clinic_type": "DRESSING",
                 "location": "Outpatient Block, Dressing Room",
                 "capacity": 1,
@@ -1762,7 +1772,7 @@ class Command(BaseCommand):
                 "triage_required": False,
             },
             {
-                "code": "DEMO-INJ-01",
+                "code": "INJECTION-DEFAULT",
                 "name": "Injection Room",
                 "clinic_type": "INJECTION",
                 "location": "Outpatient Block, Treatment Room",
@@ -2152,8 +2162,8 @@ class Command(BaseCommand):
 
         # Create one example referral flow (best-effort)
         try:
-            source_clinic = Clinic.objects.filter(code="DEMO-FILTER-01").first()
-            target_clinic = Clinic.objects.filter(code="DEMO-OPD-01").first()
+            source_clinic = Clinic.objects.filter(code="FILTER-DEFAULT").first()
+            target_clinic = Clinic.objects.filter(code="OPD-DEFAULT").first()
             if source_clinic and target_clinic:
                 src_session = ClinicSession.objects.get(clinic=source_clinic, session_date=today)
                 patient = preferred_patients[0] if preferred_patients else patient_pool[0]
