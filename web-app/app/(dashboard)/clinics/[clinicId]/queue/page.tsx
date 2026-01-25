@@ -408,6 +408,7 @@ export default function ClinicQueuePage() {
                 size="sm"
                 onClick={() => setViewMode('table')}
                 className="rounded-r-none"
+                aria-label="Table view"
               >
                 <List className="h-4 w-4" />
               </Button>
@@ -416,6 +417,7 @@ export default function ClinicQueuePage() {
                 size="sm"
                 onClick={() => setViewMode('cards')}
                 className="rounded-l-none"
+                aria-label="Cards view"
               >
                 <LayoutGrid className="h-4 w-4" />
               </Button>
