@@ -2,17 +2,27 @@
  * API Response Validation Utilities
  *
  * Provides safe parsing of API responses with Zod schemas.
- * Logs validation errors in development and throws in strict mode.
+ *
+ * Behavior by environment:
+ * - Development: Lenient mode - logs warnings, returns data as-is (for debugging)
+ * - Production: Strict mode - throws errors on validation failure (fail fast)
+ *
+ * This ensures data shape mismatches are caught in production before they
+ * cause cryptic runtime errors like "Cannot read properties of undefined".
  */
 import { z, ZodSchema, ZodError } from 'zod';
 
 const isDev = process.env.NODE_ENV === 'development';
+const isProd = process.env.NODE_ENV === 'production';
 
 /**
  * Validation options
  */
 export interface ParseOptions {
-  /** If true, throw on validation failure. If false, log warning and return data as-is. */
+  /**
+   * If true, throw on validation failure. If false, log warning and return data as-is.
+   * Default: true in production, false in development
+   */
   strict?: boolean;
   /** Context for error messages (e.g., "clinicsApi.getQueue") */
   context?: string;
@@ -21,16 +31,17 @@ export interface ParseOptions {
 /**
  * Safely parse API response data with a Zod schema.
  *
- * In development: logs detailed validation errors
- * In strict mode: throws ZodError
- * In lenient mode: returns data as-is with warning
+ * - Development: logs detailed validation errors, returns data as-is (lenient)
+ * - Production: throws error on validation failure (strict)
+ * - Can override with explicit `strict` option
  */
 export function parseResponse<T>(
   schema: ZodSchema<T>,
   data: unknown,
   options: ParseOptions = {}
 ): T {
-  const { strict = false, context = 'API response' } = options;
+  // Default to strict in production, lenient in development
+  const { strict = isProd, context = 'API response' } = options;
 
   const result = schema.safeParse(data);
 
