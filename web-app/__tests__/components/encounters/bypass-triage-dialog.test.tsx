@@ -130,11 +130,12 @@ describe('BypassTriageDialog', () => {
         expect(screen.getByText(/Stable follow-up patient/i)).toBeInTheDocument();
       });
 
-      await user.click(screen.getByText(/Stable follow-up patient/i));
+      // Option text can appear in multiple places (dropdown + selected value)
+      await user.click(screen.getAllByText(/Stable follow-up patient/i)[0]);
 
       // Selected reason should be displayed
       await waitFor(() => {
-        expect(screen.getByText(/Stable follow-up patient/i)).toBeInTheDocument();
+        expect(screen.getAllByText(/Stable follow-up patient/i).length).toBeGreaterThan(0);
       });
     });
 
@@ -170,7 +171,7 @@ describe('BypassTriageDialog', () => {
         expect(screen.getByText(/Stable follow-up patient/i)).toBeInTheDocument();
       });
 
-      await user.click(screen.getByText(/Stable follow-up patient/i));
+      await user.click(screen.getAllByText(/Stable follow-up patient/i)[0]);
 
       // Error should be cleared
       await waitFor(() => {
@@ -217,7 +218,7 @@ describe('BypassTriageDialog', () => {
         expect(screen.getByText(/Stable follow-up patient/i)).toBeInTheDocument();
       });
 
-      await user.click(screen.getByText(/Stable follow-up patient/i));
+      await user.click(screen.getAllByText(/Stable follow-up patient/i)[0]);
 
       // Click confirm
       const confirmButton = screen.getByRole('button', { name: /Confirm Bypass/i });

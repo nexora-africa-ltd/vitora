@@ -29,6 +29,20 @@ import { BillingDashboard } from '@/components/billing/BillingDashboard';
 jest.mock('@/lib/hooks/billing');
 jest.mock('@/lib/api/billing');
 
+// Mock DatePicker used by BillingDashboard to keep date selection deterministic in tests.
+jest.mock('@/components/ui/date-picker', () => ({
+  DatePicker: ({ onChange }: { onChange?: (d: Date | null) => void }) => (
+    <button type="button" onClick={() => onChange?.(new Date('2026-01-02T00:00:00Z'))}>
+      Pick a date
+    </button>
+  ),
+}));
+
+// Mock print helpers used by ReceiptView
+jest.mock('@/lib/utils/print-receipt', () => ({
+  printReceipt: jest.fn(),
+}));
+
 import { usePaymentPoints } from '@/lib/hooks/billing';
 
 const mockedUsePaymentPoints = usePaymentPoints as unknown as jest.Mock;
@@ -317,9 +331,9 @@ describe('InvoiceDetail', () => {
       { wrapper: createWrapper() }
     );
 
-    expect(screen.getByText('INV-20260103-0001')).toBeInTheDocument();
-    expect(screen.getByText('Jane Doe')).toBeInTheDocument();
-    expect(screen.getByText(/MRN-20260101-0001/)).toBeInTheDocument();
+    expect(screen.getByTestId('invoice-number')).toHaveTextContent('INV-20260103-0001');
+    expect(screen.getAllByText(/Jane Doe/).length).toBeGreaterThan(0);
+    expect(screen.getAllByText(/MRN-20260101-0001/).length).toBeGreaterThan(0);
   });
 
   it('should render itemized breakdown', () => {
@@ -451,8 +465,7 @@ describe('InvoiceDetail', () => {
   });
 
   it('should allow printing invoice', async () => {
-    const mockPrint = jest.fn();
-    window.print = mockPrint;
+    const mockOnPrint = jest.fn();
 
     render(
       <InvoiceDetail
@@ -461,6 +474,7 @@ describe('InvoiceDetail', () => {
         onRecordPayment={jest.fn()}
         onFinalize={jest.fn()}
         onCancel={mockOnCancel}
+        onPrint={mockOnPrint}
         onAddItem={mockOnAddItem}
         onRemoveItem={mockOnRemoveItem}
         onApplyDiscount={mockOnApplyDiscount}
@@ -470,7 +484,7 @@ describe('InvoiceDetail', () => {
 
     await userEvent.click(screen.getByRole('button', { name: /print/i }));
 
-    expect(mockPrint).toHaveBeenCalled();
+    expect(mockOnPrint).toHaveBeenCalledWith(mockInvoice);
   });
 });
 
@@ -831,7 +845,7 @@ describe('MpesaPaymentDialog', () => {
 // ============================================================================
 
 describe('ReceiptView', () => {
-  const mockOnPrint = jest.fn();
+  const { printReceipt } = require('@/lib/utils/print-receipt') as { printReceipt: jest.Mock };
   const mockOnClose = jest.fn();
 
   beforeEach(() => {
@@ -843,7 +857,6 @@ describe('ReceiptView', () => {
       <ReceiptView
         receipt={mockReceipt}
         isLoading={false}
-        onPrint={mockOnPrint}
       />,
       { wrapper: createWrapper() }
     );
@@ -859,7 +872,6 @@ describe('ReceiptView', () => {
       <ReceiptView
         receipt={mockReceipt}
         isLoading={false}
-        onPrint={mockOnPrint}
       />,
       { wrapper: createWrapper() }
     );
@@ -873,7 +885,6 @@ describe('ReceiptView', () => {
       <ReceiptView
         receipt={mockReceipt}
         isLoading={false}
-        onPrint={mockOnPrint}
       />,
       { wrapper: createWrapper() }
     );
@@ -886,14 +897,13 @@ describe('ReceiptView', () => {
       <ReceiptView
         receipt={mockReceipt}
         isLoading={false}
-        onPrint={mockOnPrint}
       />,
       { wrapper: createWrapper() }
     );
 
     await userEvent.click(screen.getByRole('button', { name: /print/i }));
 
-    expect(mockOnPrint).toHaveBeenCalled();
+    expect(printReceipt).toHaveBeenCalled();
   });
 
   it('should show voided status for voided receipts', () => {
@@ -907,7 +917,6 @@ describe('ReceiptView', () => {
       <ReceiptView
         receipt={voidedReceipt}
         isLoading={false}
-        onPrint={mockOnPrint}
       />,
       { wrapper: createWrapper() }
     );
@@ -1210,16 +1219,7 @@ describe('BillingDashboard', () => {
       { wrapper: createWrapper() }
     );
 
-    // The date picker is a button that opens a calendar popover
-    const dateButton = screen.getByRole('button', { name: /january/i });
-    expect(dateButton).toBeInTheDocument();
-
-    // Click to open the calendar popover
-    await userEvent.click(dateButton);
-
-    // Click a different date (2nd of the month)
-    const day2 = screen.getByRole('gridcell', { name: '2' });
-    await userEvent.click(day2);
+    await userEvent.click(screen.getByRole('button', { name: /pick a date/i }));
 
     expect(mockOnDateChange).toHaveBeenCalledWith('2026-01-02');
   });

@@ -46,7 +46,7 @@ function getStatusColor(status: string): { bg: string; color: string } {
  */
 export function printInvoice({
   invoice,
-  facilityName = 'Vitora Health Facility',
+  facilityName = 'Demo Health Facility',
   facilityAddress = '123 Health Street, Nairobi',
   facilityPhone = '+254 700 123 456',
   facilityLicense = 'MED-2024-001',
