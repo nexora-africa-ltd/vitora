@@ -90,12 +90,12 @@ import { cn } from '@/lib/utils/cn';
 
 const ROLE_CONFIG: Record<ClinicStaffRole, { label: string; color: string; icon: typeof User }> = {
   LEAD: {
-    label: 'Lead Clinician',
+    label: 'Clinic Lead/In-Charge',
     color: 'bg-purple-100 text-purple-800 dark:bg-purple-900/30 dark:text-purple-400',
     icon: Crown,
   },
-  CLINICIAN: {
-    label: 'Clinician',
+  DOCTOR: {
+    label: 'Doctor/Clinical Officer',
     color: 'bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400',
     icon: User,
   },
@@ -104,13 +104,23 @@ const ROLE_CONFIG: Record<ClinicStaffRole, { label: string; color: string; icon:
     color: 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400',
     icon: User,
   },
-  RECEPTIONIST: {
-    label: 'Receptionist',
+  COUNSELOR: {
+    label: 'Counselor',
+    color: 'bg-teal-100 text-teal-800 dark:bg-teal-900/30 dark:text-teal-400',
+    icon: User,
+  },
+  NUTRITIONIST: {
+    label: 'Nutritionist',
+    color: 'bg-lime-100 text-lime-800 dark:bg-lime-900/30 dark:text-lime-400',
+    icon: User,
+  },
+  CLERK: {
+    label: 'Clerk/Receptionist',
     color: 'bg-orange-100 text-orange-800 dark:bg-orange-900/30 dark:text-orange-400',
     icon: User,
   },
-  SUPPORT: {
-    label: 'Support Staff',
+  OTHER: {
+    label: 'Other',
     color: 'bg-gray-100 text-gray-800 dark:bg-gray-900/30 dark:text-gray-400',
     icon: User,
   },
@@ -136,7 +146,7 @@ export default function ClinicStaffPage() {
 
   // Form state
   const [newStaffData, setNewStaffData] = useState<Partial<ClinicStaffCreateData>>({
-    role: 'CLINICIAN',
+    role: 'DOCTOR',
     is_primary: false,
   });
 
@@ -159,9 +169,9 @@ export default function ClinicStaffPage() {
   // Count staff by role
   const staffCounts = {
     total: staff?.length ?? 0,
-    clinicians: staff?.filter((s) => s.role === 'CLINICIAN' || s.role === 'LEAD').length ?? 0,
+    clinicians: staff?.filter((s) => s.role === 'DOCTOR' || s.role === 'LEAD').length ?? 0,
     nurses: staff?.filter((s) => s.role === 'NURSE').length ?? 0,
-    support: staff?.filter((s) => s.role === 'RECEPTIONIST' || s.role === 'SUPPORT').length ?? 0,
+    support: staff?.filter((s) => s.role === 'CLERK' || s.role === 'OTHER' || s.role === 'COUNSELOR' || s.role === 'NUTRITIONIST').length ?? 0,
   };
 
   const handleAssignStaff = useCallback(async () => {
@@ -184,7 +194,7 @@ export default function ClinicStaffPage() {
         description: 'Staff member has been assigned to this clinic.',
       });
       setAddStaffOpen(false);
-      setNewStaffData({ role: 'CLINICIAN', is_primary: false });
+      setNewStaffData({ role: 'DOCTOR', is_primary: false });
       refetchStaff();
     } catch (error) {
       toast({
@@ -311,11 +321,13 @@ export default function ClinicStaffPage() {
                       <SelectValue placeholder="Select role" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="LEAD">Lead Clinician</SelectItem>
-                      <SelectItem value="CLINICIAN">Clinician</SelectItem>
+                      <SelectItem value="LEAD">Clinic Lead/In-Charge</SelectItem>
+                      <SelectItem value="DOCTOR">Doctor/Clinical Officer</SelectItem>
                       <SelectItem value="NURSE">Nurse</SelectItem>
-                      <SelectItem value="RECEPTIONIST">Receptionist</SelectItem>
-                      <SelectItem value="SUPPORT">Support Staff</SelectItem>
+                      <SelectItem value="COUNSELOR">Counselor</SelectItem>
+                      <SelectItem value="NUTRITIONIST">Nutritionist</SelectItem>
+                      <SelectItem value="CLERK">Clerk/Receptionist</SelectItem>
+                      <SelectItem value="OTHER">Other</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
