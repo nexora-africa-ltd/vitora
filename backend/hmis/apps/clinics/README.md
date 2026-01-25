@@ -170,6 +170,19 @@ enrollment.get_clinic_specific_summary()   # Dict of clinic-type-specific data
 enrollment.record_visit()                  # Record attendance, update next_appointment
 ```
 
+### MonthlyClinicReport
+Monthly aggregate statistics for DHIS2/KHIS reporting and dashboard summaries.
+
+| Field | Description |
+|-------|-------------|
+| `clinic` | Parent clinic |
+| `year`, `month` | Reporting period (unique per clinic) |
+| `total_visits`, `new_visits`, `revisits` | Visit volumes |
+| `male_visits`, `female_visits` | Gender breakdown |
+| `under_5_visits`, `under_18_visits`, `adult_visits`, `over_60_visits` | Age band breakdown |
+| `total_revenue`, `sha_claims_amount`, `cash_amount` | Revenue breakdown |
+| `dhis2_submitted`, `dhis2_submitted_at`, `dhis2_response` | Submission tracking |
+
 ## API Endpoints
 
 ### Clinics
@@ -233,6 +246,13 @@ PATCH   /api/clinic-enrollments/{id}/               # Update enrollment
 GET     /api/clinic-enrollments/overdue/            # Get overdue patients
 GET     /api/clinic-enrollments/defaulters/         # Get defaulters (2+ missed)
 POST    /api/clinic-enrollments/{id}/record-visit/  # Record visit attendance
+```
+
+### Monthly Reports
+```
+GET     /api/clinics/{id}/reports/monthly/                           # List available monthly reports
+GET     /api/clinics/{id}/reports/monthly/{year}/{month}/            # Get (or generate) a specific report
+POST    /api/clinics/{id}/reports/monthly/{year}/{month}/regenerate/ # Force regeneration
 ```
 
 **Query Parameters:**
@@ -498,3 +518,12 @@ Generates a list of defaulters for community health follow-up.
 - Identifies patients overdue by 2+ appointment cycles
 - Can be filtered by clinic
 - Returns patient contact details for outreach
+
+## Celery Task (Monthly Clinic Reports)
+
+### `generate_monthly_clinic_reports`
+Generates monthly reports for all clinics.
+
+- Scheduled via Celery Beat (see `hmis/celery.py`) to run on the **1st of every month at 01:00** (Africa/Nairobi).
+- Defaults to generating reports for the **previous month** if `year`/`month` are not provided.
+- Supports explicit `year` and `month` kwargs (useful for backfills).
