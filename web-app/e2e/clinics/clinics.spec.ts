@@ -179,7 +179,8 @@ function openSession(clinicId: number) {
 
 async function setupMocks(page: Page) {
   // Mutable state per test
-  let sessionState: AnyRecord = closedSession(1);
+  // Start session as OPEN so queue tests see patients without needing to click Open Session
+  let sessionState: AnyRecord = openSession(1);
   let queueState: AnyRecord[] = [makeVisit()];
 
   const staffState = [
@@ -338,7 +339,8 @@ async function setupMocks(page: Page) {
     const method = route.request().method();
 
     if (method === 'GET') {
-      await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(queueState) });
+      // API returns { results: [...] } wrapper
+      await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ results: queueState }) });
       return;
     }
 
@@ -412,9 +414,10 @@ async function setupMocks(page: Page) {
   });
 
   // Visit actions: call/start/complete/refer
-  await page.route(/.*\/api\/clinic-visits\/(\d+)\/(call|start|complete|refer)\/$/, async (route) => {
+  // Accept optional trailing slash and optional query params
+  await page.route(/.*\/api\/clinic-visits\/(\d+)\/(call|start|complete|refer)\/?(\?.*)?$/, async (route) => {
     const url = route.request().url();
-    const match = url.match(/\/api\/clinic-visits\/(\d+)\/(call|start|complete|refer)\/$/);
+    const match = url.match(/\/api\/clinic-visits\/(\d+)\/(call|start|complete|refer)\/?(\?.*)?$/);
     const visitId = match ? Number(match[1]) : NaN;
     const action = match ? match[2] : '';
 
