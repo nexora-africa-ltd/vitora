@@ -11,7 +11,6 @@ This module is intentionally small and transactional:
 from __future__ import annotations
 
 from decimal import Decimal
-from typing import Optional
 
 from django.contrib.auth import get_user_model
 from django.db import transaction
@@ -56,7 +55,7 @@ def create_consultation_invoice(
         return clinic_visit.billing_line_item.invoice
 
     clinic = clinic_visit.session.clinic
-    consultation_fee: Optional[Decimal] = clinic.default_service_fee
+    consultation_fee: Decimal | None = clinic.default_service_fee
 
     # Skip if no fee configured
     if not consultation_fee:

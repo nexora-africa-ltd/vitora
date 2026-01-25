@@ -1607,7 +1607,9 @@ class MonthlyClinicReport(TimeStampedModel):
 
     # Revenue
     total_revenue = models.DecimalField(max_digits=12, decimal_places=2, default=Decimal("0.00"))
-    sha_claims_amount = models.DecimalField(max_digits=12, decimal_places=2, default=Decimal("0.00"))
+    sha_claims_amount = models.DecimalField(
+        max_digits=12, decimal_places=2, default=Decimal("0.00")
+    )
     cash_amount = models.DecimalField(max_digits=12, decimal_places=2, default=Decimal("0.00"))
 
     # DHIS2 Sync

@@ -21,11 +21,11 @@ from rest_framework.response import Response
 from .models import (
     Clinic,
     ClinicEnrollment,
-    MonthlyClinicReport,
     ClinicSchedule,
     ClinicSession,
     ClinicStaff,
     ClinicVisit,
+    MonthlyClinicReport,
 )
 from .serializers import (
     ClinicEnrollmentListSerializer,
@@ -41,7 +41,6 @@ from .serializers import (
     MonthlyClinicReportSerializer,
     QueueStatsSerializer,
 )
-
 from .services.reporting import generate_monthly_report
 
 # =============================================================================
@@ -325,9 +324,7 @@ class ClinicViewSet(viewsets.ModelViewSet):
     def monthly_reports(self, request, pk=None):
         """List monthly reports for a clinic."""
         clinic = self.get_object()
-        reports = MonthlyClinicReport.objects.filter(clinic=clinic).order_by(
-            "-year", "-month"
-        )
+        reports = MonthlyClinicReport.objects.filter(clinic=clinic).order_by("-year", "-month")
         serializer = MonthlyClinicReportSerializer(reports, many=True)
         return Response(serializer.data, status=status.HTTP_200_OK)
 
