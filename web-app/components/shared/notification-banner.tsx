@@ -70,7 +70,7 @@ const variantIcons: Record<BannerVariant, typeof AlertCircle> = {
 
 /**
  * NotificationBanner - A dismissable notification banner component
- * 
+ *
  * Used for important announcements, system updates, or contextual information.
  * Supports different variants (info, warning, error, success) with optional actions.
  */

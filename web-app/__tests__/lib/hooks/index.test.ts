@@ -37,8 +37,6 @@ describe('Hooks barrel exports', () => {
     const hooks = await import('@/lib/hooks');
     expect(hooks.usePatients).toBeDefined();
     expect(hooks.usePatient).toBeDefined();
-    expect(hooks.usePatientsEnhanced).toBeDefined();
-    expect(hooks.usePatientEnhanced).toBeDefined();
     expect(hooks.usePatientEmergencyContacts).toBeDefined();
     expect(hooks.usePatientEncounters).toBeDefined();
     expect(hooks.useCreatePatient).toBeDefined();

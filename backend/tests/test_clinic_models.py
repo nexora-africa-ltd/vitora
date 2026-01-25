@@ -565,9 +565,7 @@ class TestClinicStaffModel:
                 start_date=date.today(),
             )
 
-    def test_clinic_staff_same_user_different_roles(
-        self, sample_clinic, clinic_user
-    ):
+    def test_clinic_staff_same_user_different_roles(self, sample_clinic, clinic_user):
         """Same user can have different roles in same clinic."""
         from hmis.apps.clinics.models import ClinicStaff
 
@@ -608,10 +606,10 @@ class TestClinicStaffModel:
     )
     def test_clinic_staff_valid_roles(self, sample_clinic, clinic_user, role):
         """All defined staff roles should be valid."""
-        from hmis.apps.clinics.models import ClinicStaff
-
         # Delete any existing assignment to avoid unique constraint
+        from hmis.apps.clinics.models import ClinicStaff
         from hmis.apps.clinics.models import ClinicStaff as CS
+
         CS.objects.filter(clinic=sample_clinic, user=clinic_user).delete()
 
         assignment = ClinicStaff.objects.create(
@@ -763,9 +761,7 @@ class TestClinicSessionModel:
 class TestClinicVisitModel:
     """Test suite for ClinicVisit model."""
 
-    def test_create_clinic_visit(
-        self, sample_clinic_session, sample_patient, clinic_user
-    ):
+    def test_create_clinic_visit(self, sample_clinic_session, sample_patient, clinic_user):
         """ClinicVisit can be created with required fields."""
         from hmis.apps.clinics.models import ClinicVisit
 
@@ -795,8 +791,8 @@ class TestClinicVisitModel:
         )
 
         # Create another patient for second visit
-        from hmis.apps.patients.models import Patient
         from hmis.apps.core.models import County, SubCounty
+        from hmis.apps.patients.models import Patient
 
         county = County.objects.first() or County.objects.create(code=99, name="Test")
         sub_county = SubCounty.objects.first() or SubCounty.objects.create(
@@ -836,8 +832,8 @@ class TestClinicVisitModel:
             registered_by=clinic_user,
         )
 
-        from hmis.apps.patients.models import Patient
         from hmis.apps.core.models import County, SubCounty
+        from hmis.apps.patients.models import Patient
 
         county = County.objects.first() or County.objects.create(code=98, name="Test2")
         sub_county = SubCounty.objects.first() or SubCounty.objects.create(
@@ -900,9 +896,7 @@ class TestClinicVisitModel:
         assert sample_clinic_visit.called_at is not None
         assert sample_clinic_visit.assigned_clinician == clinic_user
 
-    def test_clinic_visit_start_consultation_creates_encounter(
-        self, sample_clinic_visit
-    ):
+    def test_clinic_visit_start_consultation_creates_encounter(self, sample_clinic_visit):
         """start_consultation should create an Encounter if not exists."""
         encounter = sample_clinic_visit.start_consultation()
 
@@ -918,9 +912,7 @@ class TestClinicVisitModel:
         assert sample_clinic_visit.status == "COMPLETED"
         assert sample_clinic_visit.completed_at is not None
 
-    def test_clinic_visit_refer_to_clinic(
-        self, sample_clinic_visit, ccc_clinic, clinic_user
-    ):
+    def test_clinic_visit_refer_to_clinic(self, sample_clinic_visit, ccc_clinic, clinic_user):
         """refer_to_clinic should create new visit in target clinic."""
         new_visit = sample_clinic_visit.refer_to_clinic(
             target_clinic=ccc_clinic,
@@ -946,8 +938,10 @@ class TestClinicVisitModel:
     def test_clinic_visit_string_representation(self, sample_clinic_visit):
         """ClinicVisit string representation should include patient and clinic."""
         str_repr = str(sample_clinic_visit)
-        assert str(sample_clinic_visit.patient) in str_repr or \
-               sample_clinic_visit.session.clinic.name in str_repr
+        assert (
+            str(sample_clinic_visit.patient) in str_repr
+            or sample_clinic_visit.session.clinic.name in str_repr
+        )
 
     @pytest.mark.parametrize(
         "status",
@@ -1094,9 +1088,7 @@ class TestClinicEnrollmentModel:
 
         assert enrollment.appointment_interval_days == 30
 
-    def test_clinic_enrollment_unique_together(
-        self, ccc_clinic, sample_patient, clinic_user
-    ):
+    def test_clinic_enrollment_unique_together(self, ccc_clinic, sample_patient, clinic_user):
         """Same patient cannot have duplicate enrollment in same clinic on same date."""
         from hmis.apps.clinics.models import ClinicEnrollment
 
@@ -1115,9 +1107,7 @@ class TestClinicEnrollmentModel:
                 enrolled_by=clinic_user,
             )
 
-    def test_clinic_enrollment_ccc_data(
-        self, ccc_clinic, sample_patient, clinic_user
-    ):
+    def test_clinic_enrollment_ccc_data(self, ccc_clinic, sample_patient, clinic_user):
         """ClinicEnrollment can store CCC-specific enrollment data."""
         from hmis.apps.clinics.models import ClinicEnrollment
 
@@ -1169,9 +1159,7 @@ class TestClinicEnrollmentModel:
         assert enrollment.enrollment_data == anc_data
         assert enrollment.enrollment_data["gravida"] == 2
 
-    def test_clinic_enrollment_is_overdue_true(
-        self, ccc_clinic, sample_patient, clinic_user
-    ):
+    def test_clinic_enrollment_is_overdue_true(self, ccc_clinic, sample_patient, clinic_user):
         """is_overdue returns True when next_appointment is in the past."""
         from hmis.apps.clinics.models import ClinicEnrollment
 
@@ -1185,9 +1173,7 @@ class TestClinicEnrollmentModel:
 
         assert enrollment.is_overdue() is True
 
-    def test_clinic_enrollment_is_overdue_false(
-        self, ccc_clinic, sample_patient, clinic_user
-    ):
+    def test_clinic_enrollment_is_overdue_false(self, ccc_clinic, sample_patient, clinic_user):
         """is_overdue returns False when next_appointment is in the future."""
         from hmis.apps.clinics.models import ClinicEnrollment
 
@@ -1201,9 +1187,7 @@ class TestClinicEnrollmentModel:
 
         assert enrollment.is_overdue() is False
 
-    def test_clinic_enrollment_is_overdue_none(
-        self, ccc_clinic, sample_patient, clinic_user
-    ):
+    def test_clinic_enrollment_is_overdue_none(self, ccc_clinic, sample_patient, clinic_user):
         """is_overdue returns False when next_appointment is None."""
         from hmis.apps.clinics.models import ClinicEnrollment
 
@@ -1217,9 +1201,7 @@ class TestClinicEnrollmentModel:
 
         assert enrollment.is_overdue() is False
 
-    def test_clinic_enrollment_days_since_last_visit(
-        self, ccc_clinic, sample_patient, clinic_user
-    ):
+    def test_clinic_enrollment_days_since_last_visit(self, ccc_clinic, sample_patient, clinic_user):
         """days_since_last_visit calculates correct number of days."""
         from hmis.apps.clinics.models import ClinicEnrollment
 
@@ -1252,9 +1234,7 @@ class TestClinicEnrollmentModel:
 
         assert enrollment.days_since_last_visit() is None
 
-    def test_clinic_enrollment_record_visit(
-        self, ccc_clinic, sample_patient, clinic_user
-    ):
+    def test_clinic_enrollment_record_visit(self, ccc_clinic, sample_patient, clinic_user):
         """record_visit updates last_visit_date, total_visits, and next_appointment."""
         from hmis.apps.clinics.models import ClinicEnrollment
 
@@ -1273,9 +1253,7 @@ class TestClinicEnrollmentModel:
         assert enrollment.total_visits == 6
         assert enrollment.next_appointment == date.today() + timedelta(days=30)
 
-    def test_clinic_enrollment_string_representation(
-        self, ccc_clinic, sample_patient, clinic_user
-    ):
+    def test_clinic_enrollment_string_representation(self, ccc_clinic, sample_patient, clinic_user):
         """ClinicEnrollment string representation should include patient and clinic."""
         from hmis.apps.clinics.models import ClinicEnrollment
 
@@ -1316,3 +1294,604 @@ class TestClinicEnrollmentModel:
         )
 
         assert enrollment.status == status
+
+
+# ============================================================================
+# Test Class: CCC (HIV) Enrollment Features
+# ============================================================================
+
+
+@pytest.mark.django_db
+class TestCCCEnrollmentFeatures:
+    """Tests for CCC (HIV) specific enrollment features."""
+
+    def test_ccc_enrollment_art_fields(self, ccc_clinic, sample_patient, clinic_user):
+        """CCC enrollment should store ART-specific fields."""
+        from hmis.apps.clinics.models import ClinicEnrollment
+
+        enrollment = ClinicEnrollment.objects.create(
+            clinic=ccc_clinic,
+            patient=sample_patient,
+            enrollment_date=date.today(),
+            enrollment_number="CCC-12345",
+            enrolled_by=clinic_user,
+            # CCC specific fields
+            art_start_date=date.today() - timedelta(days=365),
+            current_art_regimen="TDF/3TC/DTG",
+            art_regimen_line="FIRST_LINE",
+            who_clinical_stage=2,
+            baseline_cd4_count=350,
+        )
+
+        assert enrollment.art_start_date == date.today() - timedelta(days=365)
+        assert enrollment.current_art_regimen == "TDF/3TC/DTG"
+        assert enrollment.art_regimen_line == "FIRST_LINE"
+        assert enrollment.who_clinical_stage == 2
+        assert enrollment.baseline_cd4_count == 350
+
+    def test_ccc_enrollment_viral_load_update(self, ccc_clinic, sample_patient, clinic_user):
+        """update_viral_load should update viral load and suppression status."""
+        from hmis.apps.clinics.models import ClinicEnrollment
+
+        enrollment = ClinicEnrollment.objects.create(
+            clinic=ccc_clinic,
+            patient=sample_patient,
+            enrollment_date=date.today(),
+            enrolled_by=clinic_user,
+        )
+
+        # Update with suppressed viral load (<1000)
+        enrollment.update_viral_load(50)
+
+        assert enrollment.latest_viral_load == 50
+        assert enrollment.latest_viral_load_date == date.today()
+        assert enrollment.viral_load_suppressed is True
+
+    def test_ccc_enrollment_viral_load_unsuppressed(self, ccc_clinic, sample_patient, clinic_user):
+        """Viral load >= 1000 should be marked as unsuppressed."""
+        from hmis.apps.clinics.models import ClinicEnrollment
+
+        enrollment = ClinicEnrollment.objects.create(
+            clinic=ccc_clinic,
+            patient=sample_patient,
+            enrollment_date=date.today(),
+            enrolled_by=clinic_user,
+        )
+
+        enrollment.update_viral_load(5000)
+
+        assert enrollment.latest_viral_load == 5000
+        assert enrollment.viral_load_suppressed is False
+
+    def test_ccc_enrollment_cd4_update(self, ccc_clinic, sample_patient, clinic_user):
+        """update_cd4_count should update CD4 count."""
+        from hmis.apps.clinics.models import ClinicEnrollment
+
+        enrollment = ClinicEnrollment.objects.create(
+            clinic=ccc_clinic,
+            patient=sample_patient,
+            enrollment_date=date.today(),
+            enrolled_by=clinic_user,
+        )
+
+        enrollment.update_cd4_count(450)
+
+        assert enrollment.latest_cd4_count == 450
+        assert enrollment.latest_cd4_date == date.today()
+
+    def test_ccc_enrollment_is_virally_suppressed(self, ccc_clinic, sample_patient, clinic_user):
+        """is_virally_suppressed should return correct status."""
+        from hmis.apps.clinics.models import ClinicEnrollment
+
+        enrollment = ClinicEnrollment.objects.create(
+            clinic=ccc_clinic,
+            patient=sample_patient,
+            enrollment_date=date.today(),
+            enrolled_by=clinic_user,
+            latest_viral_load=200,
+            viral_load_suppressed=True,
+        )
+
+        assert enrollment.is_virally_suppressed() is True
+
+    def test_ccc_enrollment_viral_load_due(self, ccc_clinic, sample_patient, clinic_user):
+        """viral_load_due should return True if > 6 months since last test."""
+        from hmis.apps.clinics.models import ClinicEnrollment
+
+        # Never tested
+        enrollment1 = ClinicEnrollment.objects.create(
+            clinic=ccc_clinic,
+            patient=sample_patient,
+            enrollment_date=date.today() - timedelta(days=365),
+            enrolled_by=clinic_user,
+        )
+        assert enrollment1.viral_load_due() is True
+
+        # Tested 7 months ago (different enrollment date to avoid unique constraint)
+        enrollment2 = ClinicEnrollment.objects.create(
+            clinic=ccc_clinic,
+            patient=sample_patient,
+            enrollment_date=date.today() - timedelta(days=364),
+            enrolled_by=clinic_user,
+            latest_viral_load_date=date.today() - timedelta(days=210),
+        )
+        assert enrollment2.viral_load_due() is True
+
+        # Tested 3 months ago (different enrollment date to avoid unique constraint)
+        enrollment3 = ClinicEnrollment.objects.create(
+            clinic=ccc_clinic,
+            patient=sample_patient,
+            enrollment_date=date.today() - timedelta(days=180),
+            enrolled_by=clinic_user,
+            latest_viral_load_date=date.today() - timedelta(days=90),
+        )
+        assert enrollment3.viral_load_due() is False
+
+    def test_ccc_enrollment_days_on_art(self, ccc_clinic, sample_patient, clinic_user):
+        """days_on_art should calculate correct duration."""
+        from hmis.apps.clinics.models import ClinicEnrollment
+
+        enrollment = ClinicEnrollment.objects.create(
+            clinic=ccc_clinic,
+            patient=sample_patient,
+            enrollment_date=date.today() - timedelta(days=365),
+            enrolled_by=clinic_user,
+            art_start_date=date.today() - timedelta(days=100),
+        )
+
+        assert enrollment.days_on_art() == 100
+
+    def test_ccc_enrollment_days_on_art_none(self, ccc_clinic, sample_patient, clinic_user):
+        """days_on_art should return None if art_start_date not set."""
+        from hmis.apps.clinics.models import ClinicEnrollment
+
+        enrollment = ClinicEnrollment.objects.create(
+            clinic=ccc_clinic,
+            patient=sample_patient,
+            enrollment_date=date.today(),
+            enrolled_by=clinic_user,
+        )
+
+        assert enrollment.days_on_art() is None
+
+    def test_ccc_enrollment_clinic_specific_summary(self, ccc_clinic, sample_patient, clinic_user):
+        """get_clinic_specific_summary should return CCC data."""
+        from hmis.apps.clinics.models import ClinicEnrollment
+
+        enrollment = ClinicEnrollment.objects.create(
+            clinic=ccc_clinic,
+            patient=sample_patient,
+            enrollment_date=date.today(),
+            enrolled_by=clinic_user,
+            art_start_date=date.today() - timedelta(days=365),
+            current_art_regimen="TDF/3TC/DTG",
+            latest_viral_load=50,
+            viral_load_suppressed=True,
+        )
+
+        summary = enrollment.get_clinic_specific_summary()
+
+        assert summary["type"] == "CCC"
+        assert summary["current_regimen"] == "TDF/3TC/DTG"
+        assert summary["viral_load_suppressed"] is True
+
+
+# ============================================================================
+# Test Class: ANC (Antenatal) Enrollment Features
+# ============================================================================
+
+
+@pytest.mark.django_db
+class TestANCEnrollmentFeatures:
+    """Tests for ANC (Antenatal) specific enrollment features."""
+
+    @pytest.fixture
+    def anc_clinic(self, db):
+        """Create an ANC clinic for testing."""
+        from hmis.apps.clinics.models import Clinic
+
+        return Clinic.objects.create(
+            name="Antenatal Clinic",
+            clinic_type="ANC",
+            code="ANC-001",
+            description="Antenatal care clinic",
+        )
+
+    def test_anc_enrollment_fields(self, anc_clinic, sample_patient, clinic_user):
+        """ANC enrollment should store ANC-specific fields."""
+        from hmis.apps.clinics.models import ClinicEnrollment
+
+        lmp_date = date.today() - timedelta(days=140)  # 20 weeks
+
+        enrollment = ClinicEnrollment.objects.create(
+            clinic=anc_clinic,
+            patient=sample_patient,
+            enrollment_date=date.today(),
+            enrolled_by=clinic_user,
+            gravida=2,
+            para=1,
+            lmp=lmp_date,
+            blood_group="O+",
+            rhesus_factor="POSITIVE",
+            hiv_status="NEGATIVE",
+        )
+
+        assert enrollment.gravida == 2
+        assert enrollment.para == 1
+        assert enrollment.lmp == lmp_date
+        assert enrollment.blood_group == "O+"
+
+    def test_anc_enrollment_calculate_edd(self, anc_clinic, sample_patient, clinic_user):
+        """calculate_edd should compute EDD from LMP (Naegele's rule: LMP + 280 days)."""
+        from hmis.apps.clinics.models import ClinicEnrollment
+
+        lmp_date = date.today() - timedelta(days=100)
+
+        enrollment = ClinicEnrollment.objects.create(
+            clinic=anc_clinic,
+            patient=sample_patient,
+            enrollment_date=date.today(),
+            enrolled_by=clinic_user,
+            lmp=lmp_date,
+        )
+
+        enrollment.calculate_edd()
+
+        assert enrollment.edd == lmp_date + timedelta(days=280)
+
+    def test_anc_enrollment_gestation_weeks(self, anc_clinic, sample_patient, clinic_user):
+        """gestation_weeks should calculate weeks from LMP."""
+        from hmis.apps.clinics.models import ClinicEnrollment
+
+        # 21 weeks (147 days)
+        lmp_date = date.today() - timedelta(days=147)
+
+        enrollment = ClinicEnrollment.objects.create(
+            clinic=anc_clinic,
+            patient=sample_patient,
+            enrollment_date=date.today(),
+            enrolled_by=clinic_user,
+            lmp=lmp_date,
+        )
+
+        assert enrollment.gestation_weeks() == 21
+
+    def test_anc_enrollment_gestation_display(self, anc_clinic, sample_patient, clinic_user):
+        """gestation_display should return 'X weeks Y days' format."""
+        from hmis.apps.clinics.models import ClinicEnrollment
+
+        # 21 weeks 3 days (150 days)
+        lmp_date = date.today() - timedelta(days=150)
+
+        enrollment = ClinicEnrollment.objects.create(
+            clinic=anc_clinic,
+            patient=sample_patient,
+            enrollment_date=date.today(),
+            enrolled_by=clinic_user,
+            lmp=lmp_date,
+        )
+
+        display = enrollment.gestation_display()
+        assert display == "21 weeks 3 days"
+
+    def test_anc_enrollment_trimester(self, anc_clinic, sample_patient, clinic_user):
+        """trimester should return correct trimester based on gestation."""
+        from hmis.apps.clinics.models import ClinicEnrollment
+
+        # First trimester (8 weeks)
+        enrollment1 = ClinicEnrollment.objects.create(
+            clinic=anc_clinic,
+            patient=sample_patient,
+            enrollment_date=date.today() - timedelta(days=56),
+            enrolled_by=clinic_user,
+            lmp=date.today() - timedelta(days=56),
+        )
+        assert enrollment1.trimester() == 1
+
+        # Second trimester (20 weeks)
+        enrollment2 = ClinicEnrollment.objects.create(
+            clinic=anc_clinic,
+            patient=sample_patient,
+            enrollment_date=date.today() - timedelta(days=140),
+            enrolled_by=clinic_user,
+            lmp=date.today() - timedelta(days=140),
+        )
+        assert enrollment2.trimester() == 2
+
+        # Third trimester (32 weeks)
+        enrollment3 = ClinicEnrollment.objects.create(
+            clinic=anc_clinic,
+            patient=sample_patient,
+            enrollment_date=date.today() - timedelta(days=224),
+            enrolled_by=clinic_user,
+            lmp=date.today() - timedelta(days=224),
+        )
+        assert enrollment3.trimester() == 3
+
+    def test_anc_enrollment_is_term(self, anc_clinic, sample_patient, clinic_user):
+        """is_term should return True when >= 37 weeks."""
+        from hmis.apps.clinics.models import ClinicEnrollment
+
+        # 38 weeks (266 days)
+        enrollment = ClinicEnrollment.objects.create(
+            clinic=anc_clinic,
+            patient=sample_patient,
+            enrollment_date=date.today() - timedelta(days=266),
+            enrolled_by=clinic_user,
+            lmp=date.today() - timedelta(days=266),
+        )
+
+        assert enrollment.is_term() is True
+
+    def test_anc_enrollment_days_to_edd(self, anc_clinic, sample_patient, clinic_user):
+        """days_to_edd should calculate days remaining."""
+        from hmis.apps.clinics.models import ClinicEnrollment
+
+        edd_date = date.today() + timedelta(days=60)
+
+        enrollment = ClinicEnrollment.objects.create(
+            clinic=anc_clinic,
+            patient=sample_patient,
+            enrollment_date=date.today(),
+            enrolled_by=clinic_user,
+            edd=edd_date,
+        )
+
+        assert enrollment.days_to_edd() == 60
+
+    def test_anc_enrollment_clinic_specific_summary(self, anc_clinic, sample_patient, clinic_user):
+        """get_clinic_specific_summary should return ANC data."""
+        from hmis.apps.clinics.models import ClinicEnrollment
+
+        lmp_date = date.today() - timedelta(days=140)
+
+        enrollment = ClinicEnrollment.objects.create(
+            clinic=anc_clinic,
+            patient=sample_patient,
+            enrollment_date=date.today(),
+            enrolled_by=clinic_user,
+            gravida=2,
+            para=1,
+            lmp=lmp_date,
+            hiv_status="NEGATIVE",
+        )
+        enrollment.calculate_edd()
+
+        summary = enrollment.get_clinic_specific_summary()
+
+        assert summary["type"] == "ANC"
+        assert summary["gravida"] == 2
+        assert summary["para"] == 1
+        assert summary["gestation_weeks"] == 20
+        assert summary["hiv_status"] == "NEGATIVE"
+
+
+# ============================================================================
+# Test Class: Diabetic Enrollment Features
+# ============================================================================
+
+
+@pytest.mark.django_db
+class TestDiabeticEnrollmentFeatures:
+    """Tests for Diabetic clinic specific enrollment features."""
+
+    @pytest.fixture
+    def diabetic_clinic(self, db):
+        """Create a Diabetic clinic for testing."""
+        from hmis.apps.clinics.models import Clinic
+
+        return Clinic.objects.create(
+            name="Diabetic Clinic",
+            clinic_type="DIABETIC",
+            code="DM-001",
+            description="Diabetes management clinic",
+        )
+
+    def test_diabetic_enrollment_fields(self, diabetic_clinic, sample_patient, clinic_user):
+        """Diabetic enrollment should store diabetes-specific fields."""
+        from hmis.apps.clinics.models import ClinicEnrollment
+
+        enrollment = ClinicEnrollment.objects.create(
+            clinic=diabetic_clinic,
+            patient=sample_patient,
+            enrollment_date=date.today(),
+            enrolled_by=clinic_user,
+            diabetes_type="TYPE_2",
+            diabetes_diagnosis_date=date.today() - timedelta(days=1825),  # 5 years
+            on_insulin=True,
+            diabetes_complications="Retinopathy",
+        )
+
+        assert enrollment.diabetes_type == "TYPE_2"
+        assert enrollment.on_insulin is True
+        assert "Retinopathy" in enrollment.diabetes_complications
+
+    def test_diabetic_enrollment_update_hba1c(self, diabetic_clinic, sample_patient, clinic_user):
+        """update_hba1c should update HbA1c value."""
+        from hmis.apps.clinics.models import ClinicEnrollment
+
+        enrollment = ClinicEnrollment.objects.create(
+            clinic=diabetic_clinic,
+            patient=sample_patient,
+            enrollment_date=date.today(),
+            enrolled_by=clinic_user,
+        )
+
+        enrollment.update_hba1c(6.5)
+
+        assert float(enrollment.latest_hba1c) == 6.5
+        assert enrollment.latest_hba1c_date == date.today()
+
+    def test_diabetic_enrollment_hba1c_controlled(
+        self, diabetic_clinic, sample_patient, clinic_user
+    ):
+        """hba1c_controlled should return True if < 7%."""
+        from hmis.apps.clinics.models import ClinicEnrollment
+
+        # Controlled
+        enrollment1 = ClinicEnrollment.objects.create(
+            clinic=diabetic_clinic,
+            patient=sample_patient,
+            enrollment_date=date.today() - timedelta(days=1),
+            enrolled_by=clinic_user,
+            latest_hba1c=Decimal("6.5"),
+        )
+        assert enrollment1.hba1c_controlled() is True
+
+        # Not controlled
+        enrollment2 = ClinicEnrollment.objects.create(
+            clinic=diabetic_clinic,
+            patient=sample_patient,
+            enrollment_date=date.today() - timedelta(days=2),
+            enrolled_by=clinic_user,
+            latest_hba1c=Decimal("8.5"),
+        )
+        assert enrollment2.hba1c_controlled() is False
+
+    def test_diabetic_enrollment_update_fbs(self, diabetic_clinic, sample_patient, clinic_user):
+        """update_fbs should update FBS value."""
+        from hmis.apps.clinics.models import ClinicEnrollment
+
+        enrollment = ClinicEnrollment.objects.create(
+            clinic=diabetic_clinic,
+            patient=sample_patient,
+            enrollment_date=date.today(),
+            enrolled_by=clinic_user,
+        )
+
+        enrollment.update_fbs(5.8)
+
+        assert float(enrollment.latest_fbs) == 5.8
+        assert enrollment.latest_fbs_date == date.today()
+
+    def test_diabetic_enrollment_hba1c_due(self, diabetic_clinic, sample_patient, clinic_user):
+        """hba1c_due should return True if > 3 months since last test."""
+        from hmis.apps.clinics.models import ClinicEnrollment
+
+        # Never tested
+        enrollment1 = ClinicEnrollment.objects.create(
+            clinic=diabetic_clinic,
+            patient=sample_patient,
+            enrollment_date=date.today() - timedelta(days=180),
+            enrolled_by=clinic_user,
+        )
+        assert enrollment1.hba1c_due() is True
+
+        # Tested 4 months ago (different enrollment date to avoid unique constraint)
+        enrollment2 = ClinicEnrollment.objects.create(
+            clinic=diabetic_clinic,
+            patient=sample_patient,
+            enrollment_date=date.today() - timedelta(days=179),
+            enrolled_by=clinic_user,
+            latest_hba1c_date=date.today() - timedelta(days=120),
+        )
+        assert enrollment2.hba1c_due() is True
+
+        # Tested 2 months ago (different enrollment date to avoid unique constraint)
+        enrollment3 = ClinicEnrollment.objects.create(
+            clinic=diabetic_clinic,
+            patient=sample_patient,
+            enrollment_date=date.today() - timedelta(days=90),
+            enrolled_by=clinic_user,
+            latest_hba1c_date=date.today() - timedelta(days=60),
+        )
+        assert enrollment3.hba1c_due() is False
+
+
+# ============================================================================
+# Test Class: Defaulter Tracking Features
+# ============================================================================
+
+
+@pytest.mark.django_db
+class TestDefaulterTracking:
+    """Tests for defaulter tracking functionality."""
+
+    def test_enrollment_is_defaulter_true(self, ccc_clinic, sample_patient, clinic_user):
+        """is_defaulter should return True when overdue by 2+ appointment cycles."""
+        from hmis.apps.clinics.models import ClinicEnrollment
+
+        # 30 day appointment interval, 65 days overdue (> 2x30)
+        enrollment = ClinicEnrollment.objects.create(
+            clinic=ccc_clinic,
+            patient=sample_patient,
+            enrollment_date=date.today() - timedelta(days=180),
+            enrolled_by=clinic_user,
+            appointment_interval_days=30,
+            next_appointment=date.today() - timedelta(days=65),
+        )
+
+        assert enrollment.is_defaulter() is True
+
+    def test_enrollment_is_defaulter_false(self, ccc_clinic, sample_patient, clinic_user):
+        """is_defaulter should return False when overdue by < 2 appointment cycles."""
+        from hmis.apps.clinics.models import ClinicEnrollment
+
+        # 30 day appointment interval, 45 days overdue (< 2x30)
+        enrollment = ClinicEnrollment.objects.create(
+            clinic=ccc_clinic,
+            patient=sample_patient,
+            enrollment_date=date.today() - timedelta(days=180),
+            enrolled_by=clinic_user,
+            appointment_interval_days=30,
+            next_appointment=date.today() - timedelta(days=45),
+        )
+
+        assert enrollment.is_defaulter() is False
+
+    def test_enrollment_days_overdue(self, ccc_clinic, sample_patient, clinic_user):
+        """days_overdue should calculate correct number of days."""
+        from hmis.apps.clinics.models import ClinicEnrollment
+
+        enrollment = ClinicEnrollment.objects.create(
+            clinic=ccc_clinic,
+            patient=sample_patient,
+            enrollment_date=date.today() - timedelta(days=180),
+            enrolled_by=clinic_user,
+            next_appointment=date.today() - timedelta(days=10),
+        )
+
+        assert enrollment.days_overdue() == 10
+
+    def test_enrollment_days_overdue_not_overdue(self, ccc_clinic, sample_patient, clinic_user):
+        """days_overdue should return 0 when not overdue."""
+        from hmis.apps.clinics.models import ClinicEnrollment
+
+        enrollment = ClinicEnrollment.objects.create(
+            clinic=ccc_clinic,
+            patient=sample_patient,
+            enrollment_date=date.today(),
+            enrolled_by=clinic_user,
+            next_appointment=date.today() + timedelta(days=10),
+        )
+
+        assert enrollment.days_overdue() == 0
+
+    def test_enrollment_type_detection(self, ccc_clinic, sample_patient, clinic_user):
+        """enrollment_type should detect type from clinic."""
+        from hmis.apps.clinics.models import ClinicEnrollment
+
+        enrollment = ClinicEnrollment.objects.create(
+            clinic=ccc_clinic,
+            patient=sample_patient,
+            enrollment_date=date.today(),
+            enrolled_by=clinic_user,
+        )
+
+        assert enrollment.enrollment_type() == "CCC"
+
+    def test_alert_tracking_fields(self, ccc_clinic, sample_patient, clinic_user):
+        """Alert tracking fields should be stored correctly."""
+        from hmis.apps.clinics.models import ClinicEnrollment
+
+        enrollment = ClinicEnrollment.objects.create(
+            clinic=ccc_clinic,
+            patient=sample_patient,
+            enrollment_date=date.today(),
+            enrolled_by=clinic_user,
+            last_reminder_sent=timezone.now() - timedelta(days=7),
+            missed_appointment_alerts=3,
+        )
+
+        assert enrollment.missed_appointment_alerts == 3
+        assert enrollment.last_reminder_sent is not None

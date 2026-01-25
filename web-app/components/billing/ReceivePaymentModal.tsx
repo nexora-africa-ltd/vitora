@@ -1,6 +1,6 @@
 /**
  * Receive Payment Modal
- * 
+ *
  * A modal for receiving payments against outstanding invoices.
  * Allows searching for patients/invoices and recording payments.
  */

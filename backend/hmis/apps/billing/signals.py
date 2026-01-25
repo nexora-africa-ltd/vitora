@@ -20,7 +20,7 @@ from hmis.apps.encounters.models import Encounter
 def create_invoice_for_encounter(sender, instance, created, **kwargs):
     """
     Auto-create a draft invoice when an encounter is created.
-    
+
     Business Rules:
     1. Only create invoice for new encounters
     2. Reuse existing draft invoice for the same patient from today
@@ -45,15 +45,16 @@ def create_invoice_for_encounter(sender, instance, created, **kwargs):
         # Create new draft invoice for the encounter
         # Get or create a system user for auto-created invoices
         from django.contrib.auth import get_user_model
+
         User = get_user_model()
-        
+
         # Try to get the system user or first superuser
         system_user, _ = User.objects.get_or_create(
             username="system",
             defaults={
                 "email": "system@vitora.local",
                 "is_active": True,
-            }
+            },
         )
         if not system_user:
             # Create a system user if none exists
@@ -67,7 +68,8 @@ def create_invoice_for_encounter(sender, instance, created, **kwargs):
             patient=instance.patient,
             encounter=instance,
             invoice_date=date.today(),
-            due_date=date.today() + timedelta(days=getattr(settings, 'BILLING_DEFAULT_DUE_DAYS', 30)),
+            due_date=date.today()
+            + timedelta(days=getattr(settings, "BILLING_DEFAULT_DUE_DAYS", 30)),
             status=Invoice.Status.DRAFT,
             payment_type=Invoice.PaymentType.CASH,
             created_by=system_user,

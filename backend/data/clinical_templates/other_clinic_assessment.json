@@ -1,0 +1,35 @@
+{
+  "name": "Other Clinic Assessment",
+  "template_type": "encounter",
+  "specialty": "General",
+  "description": "Generic assessment template for clinics categorized as OTHER",
+  "content": {
+    "title": "Other Clinic Assessment",
+    "version": "1.0",
+    "sections": [
+      {
+        "name": "Summary",
+        "order": 1,
+        "fields": [
+          {"name": "chief_complaint", "type": "text", "required": true, "label": "Chief Complaint"},
+          {"name": "history", "type": "textarea", "required": false, "label": "History"}
+        ]
+      },
+      {
+        "name": "Examination",
+        "order": 2,
+        "fields": [
+          {"name": "exam_findings", "type": "textarea", "required": false, "label": "Examination Findings"}
+        ]
+      },
+      {
+        "name": "Plan",
+        "order": 3,
+        "fields": [
+          {"name": "assessment", "type": "textarea", "required": true, "label": "Assessment"},
+          {"name": "plan", "type": "textarea", "required": true, "label": "Plan"}
+        ]
+      }
+    ]
+  }
+}

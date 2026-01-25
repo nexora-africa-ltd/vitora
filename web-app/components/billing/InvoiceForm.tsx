@@ -187,8 +187,8 @@ export function InvoiceForm({
                       >
                         <div className="flex items-center space-x-2">
                           <RadioGroupItem value="invoice" id="type-invoice" />
-                          <Label 
-                            htmlFor="type-invoice" 
+                          <Label
+                            htmlFor="type-invoice"
                             className="flex items-center gap-2 cursor-pointer"
                           >
                             <FileText className="h-4 w-4" />
@@ -197,8 +197,8 @@ export function InvoiceForm({
                         </div>
                         <div className="flex items-center space-x-2">
                           <RadioGroupItem value="proforma" id="type-proforma" />
-                          <Label 
-                            htmlFor="type-proforma" 
+                          <Label
+                            htmlFor="type-proforma"
                             className="flex items-center gap-2 cursor-pointer"
                           >
                             <Clock className="h-4 w-4 text-purple-600" />
@@ -209,7 +209,7 @@ export function InvoiceForm({
                     </FormControl>
                     {isProforma && (
                       <p className="text-sm text-muted-foreground mt-2">
-                        Proforma invoices are quotations that can be converted to real invoices later. 
+                        Proforma invoices are quotations that can be converted to real invoices later.
                         They have a validity period and cannot receive payments directly.
                       </p>
                     )}
@@ -468,8 +468,8 @@ export function InvoiceForm({
           <Button type="button" variant="outline" onClick={onCancel}>
             Cancel
           </Button>
-          <Button 
-            type="submit" 
+          <Button
+            type="submit"
             disabled={isLoading || (isProforma && !onSubmitProforma)}
             className={isProforma ? 'bg-purple-600 hover:bg-purple-700' : ''}
           >

@@ -34,7 +34,7 @@ function formatCurrency(amount: number): string {
 function buildLineItemsHtml(receipt: Receipt): string {
   const amount = parseFloat(receipt.amount);
   const amountPaid = formatCurrency(amount);
-  
+
   // Use receipt.line_items if available, otherwise create single line item
   if (receipt.line_items && receipt.line_items.length > 0) {
     return receipt.line_items
@@ -48,7 +48,7 @@ function buildLineItemsHtml(receipt: Receipt): string {
       })
       .join('\n');
   }
-  
+
   // Fallback: single payment line
   return `<tr><td>Payment</td><td>${amountPaid}</td></tr>`;
 }
@@ -65,7 +65,7 @@ export function printReceipt({
   const displayFacilityName = receipt.facility_name || facilityName;
   const displayFacilityAddress = receipt.facility_address || facilityAddress;
   const displayFacilityPhone = receipt.facility_phone || facilityPhone;
-  
+
   const amount = parseFloat(receipt.amount);
   const amountPaid = formatCurrency(amount);
   const lineItemsHtml = buildLineItemsHtml(receipt);
@@ -241,7 +241,7 @@ export function printReceipt({
 
     <!-- QR CODE -->
     <div class="barcode">
-      ${receipt.qr_code 
+      ${receipt.qr_code
         ? `<img src="${receipt.qr_code}" alt="QR Code" style="width: 120px; height: 120px;" />`
         : `<div class="barcode-placeholder">QR CODE</div>`
       }
@@ -265,7 +265,7 @@ export function printReceipt({
         window.print();
       }, 100);
     };
-    
+
     // Close window after printing (or if cancelled)
     window.onafterprint = function() {
       window.close();

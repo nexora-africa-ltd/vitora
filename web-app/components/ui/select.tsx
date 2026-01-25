@@ -134,6 +134,8 @@ const SelectContent = React.forwardRef<
   return (
     <div
       ref={ref}
+      role="listbox"
+      hidden={!context.open}
       className={cn(
         "absolute top-full left-0 z-50 mt-1 w-full min-w-[8rem] overflow-hidden rounded-md border bg-popover text-popover-foreground shadow-md animate-in fade-in-0 zoom-in-95",
         !context.open && "hidden",
@@ -181,6 +183,8 @@ const SelectItem = React.forwardRef<HTMLDivElement, SelectItemProps>(
     return (
       <div
         ref={ref}
+        role="option"
+        aria-selected={isSelected}
         className={cn(
           "relative flex w-full cursor-pointer select-none items-center rounded-sm py-1.5 px-2 text-sm outline-none hover:bg-accent hover:text-accent-foreground focus:bg-accent focus:text-accent-foreground",
           isSelected && "bg-accent text-accent-foreground",

@@ -28,12 +28,14 @@ describe('StockTable', () => {
     it('should render table headers', () => {
       render(<StockTable {...defaultProps} />);
 
-      expect(screen.getByText('Batch #')).toBeInTheDocument();
-      expect(screen.getByText('Drug')).toBeInTheDocument();
-      expect(screen.getByText('Available')).toBeInTheDocument();
-      expect(screen.getByText('Expiry Date')).toBeInTheDocument();
-      expect(screen.getByText('Status')).toBeInTheDocument();
-      expect(screen.getByText('Location')).toBeInTheDocument();
+      const table = screen.getByRole('table');
+      const headerRow = within(table).getAllByRole('row')[0];
+      expect(within(headerRow).getByText('Batch #')).toBeInTheDocument();
+      expect(within(headerRow).getByText('Drug')).toBeInTheDocument();
+      expect(within(headerRow).getByText('Available')).toBeInTheDocument();
+      expect(within(headerRow).getByText('Expiry Date')).toBeInTheDocument();
+      expect(within(headerRow).getByText('Status')).toBeInTheDocument();
+      expect(within(headerRow).getByText('Location')).toBeInTheDocument();
     });
 
     it('should render stock batch rows', () => {

@@ -116,7 +116,8 @@ describe('PatientVolumeChart', () => {
     const parsed = JSON.parse(chartData.textContent || '[]');
 
     // Check formatted dates
-    expect(parsed[0].formattedDate).toBe('Jan 1');
-    expect(parsed[1].formattedDate).toBe('Jan 2');
+    // Kenyan-style day-first format (e.g., "1 Jan")
+    expect(parsed[0].formattedDate).toBe('1 Jan');
+    expect(parsed[1].formattedDate).toBe('2 Jan');
   });
 });

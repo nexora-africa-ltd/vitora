@@ -211,6 +211,79 @@ class TriageAssessmentViewSet(viewsets.ModelViewSet):
         serializer = TriageAssessmentSerializer(instance, context={"request": request})
         return Response(serializer.data, status=status.HTTP_200_OK)
 
+    @action(detail=True, methods=["post"], url_path="route-to-clinic")
+    def route_to_clinic(self, request, pk=None):
+        """
+        Route patient from triage to a specific clinic.
+
+        Creates a ClinicVisit in the target clinic's queue with appropriate
+        priority based on triage category.
+
+        Request body:
+            clinic_id (required): ID of the target clinic
+            notes (optional): Routing notes
+
+        Returns:
+            201: ClinicVisit created successfully
+            400: Invalid request (missing clinic_id, clinic not active, etc.)
+        """
+        from hmis.apps.clinics.models import Clinic
+        from hmis.apps.clinics.serializers import ClinicVisitSerializer
+
+        instance = self.get_object()
+
+        # Validate clinic_id is provided
+        clinic_id = request.data.get("clinic_id")
+        if not clinic_id:
+            return Response(
+                {"clinic_id": "This field is required."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        # Get clinic
+        try:
+            clinic = Clinic.objects.get(id=clinic_id)
+        except Clinic.DoesNotExist:
+            return Response(
+                {"clinic_id": "Clinic not found."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        # Route to clinic
+        try:
+            notes = request.data.get("notes", "")
+            visit = instance.route_to_clinic(
+                clinic=clinic,
+                user=request.user,
+                notes=notes,
+            )
+        except ValueError as e:
+            return Response(
+                {"detail": str(e)},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        # Log the routing
+        AuditLog.log(
+            action="triage_route_to_clinic",
+            user=request.user,
+            resource_type="TriageAssessment",
+            resource_id=instance.id,
+            ip_address=get_client_ip(request),
+            user_agent=request.META.get("HTTP_USER_AGENT", ""),
+            details={
+                "clinic_id": clinic.id,
+                "clinic_name": clinic.name,
+                "clinic_visit_id": visit.id,
+                "queue_number": visit.queue_number,
+                "notes": notes,
+            },
+        )
+
+        # Return created visit
+        visit_serializer = ClinicVisitSerializer(visit, context={"request": request})
+        return Response(visit_serializer.data, status=status.HTTP_201_CREATED)
+
 
 class WaitingQueueViewSet(viewsets.ModelViewSet):
     """

@@ -175,9 +175,7 @@ def test_encounter(db, sample_patient, test_user):
 class TestEncounterAutoInvoiceCreation:
     """Tests for automatic invoice creation from encounter services."""
 
-    def test_encounter_start_creates_draft_invoice(
-        self, test_encounter, sample_patient, test_user
-    ):
+    def test_encounter_start_creates_draft_invoice(self, test_encounter, sample_patient, test_user):
         """Starting an encounter should create a draft invoice for the patient."""
         # Encounter created via fixture
         # Check that a draft invoice was created
@@ -191,9 +189,7 @@ class TestEncounterAutoInvoiceCreation:
         assert invoice.patient == sample_patient
         assert invoice.encounter == test_encounter
 
-    def test_consultation_adds_invoice_item(
-        self, test_encounter, consultation_service
-    ):
+    def test_consultation_adds_invoice_item(self, test_encounter, consultation_service):
         """Recording a consultation should add invoice item."""
         # Get the encounter's invoice
         invoice = Invoice.objects.get(encounter=test_encounter)
@@ -204,7 +200,7 @@ class TestEncounterAutoInvoiceCreation:
 
         # Invoice should have a new item
         assert invoice.items.count() == initial_items + 1
-        
+
         item = invoice.items.filter(service=consultation_service).first()
         assert item is not None
         assert item.description == consultation_service.name
@@ -237,13 +233,13 @@ class TestEncounterAutoInvoiceCreation:
         assert cbc_item is not None
         assert cbc_item.unit_price == cbc_test.cost
 
-        ua_item = invoice.items.filter(lab_order=lab_order, description=urinalysis_test.name).first()
+        ua_item = invoice.items.filter(
+            lab_order=lab_order, description=urinalysis_test.name
+        ).first()
         assert ua_item is not None
         assert ua_item.unit_price == urinalysis_test.cost
 
-    def test_prescription_adds_invoice_items(
-        self, test_encounter, sample_drug, test_user
-    ):
+    def test_prescription_adds_invoice_items(self, test_encounter, sample_drug, test_user):
         """Prescribing medications should add invoice items."""
         from hmis.apps.pharmacy.models import Prescription, PrescriptionItem
 
@@ -285,12 +281,12 @@ class TestEncounterAutoInvoiceCreation:
 
         # All items should be on the same invoice
         invoice = Invoice.objects.get(encounter=test_encounter)
-        
+
         cons_item = InvoiceItem.objects.filter(
             service=consultation_service,
             invoice__encounter=test_encounter,
         ).first()
-        
+
         lab_item = InvoiceItem.objects.filter(
             service=lab_test_service,
             invoice__encounter=test_encounter,
@@ -308,20 +304,18 @@ class TestEncounterAutoInvoiceCreation:
         # Add consultation
         test_encounter.add_service(consultation_service)
         invoice.refresh_from_db()
-        
+
         expected_total = consultation_service.unit_price
         assert invoice.subtotal == expected_total
 
         # Add lab test
         test_encounter.add_service(lab_test_service)
         invoice.refresh_from_db()
-        
+
         expected_total += lab_test_service.unit_price
         assert invoice.subtotal == expected_total
 
-    def test_cancelled_lab_order_removes_invoice_item(
-        self, test_encounter, cbc_test, test_user
-    ):
+    def test_cancelled_lab_order_removes_invoice_item(self, test_encounter, cbc_test, test_user):
         """Cancelling a lab order should remove the invoice item."""
         # Add lab order
         lab_order = LabOrder.objects.create(
@@ -334,7 +328,7 @@ class TestEncounterAutoInvoiceCreation:
 
         invoice = Invoice.objects.get(encounter=test_encounter)
         assert invoice.items.filter(lab_order=lab_order).exists()
-        
+
         # Verify invoice total includes the lab test
         invoice.refresh_from_db()
         assert invoice.subtotal == cbc_test.cost
@@ -344,7 +338,7 @@ class TestEncounterAutoInvoiceCreation:
 
         # Invoice item should be removed
         assert not invoice.items.filter(lab_order=lab_order).exists()
-        
+
         # Invoice total should be updated
         invoice.refresh_from_db()
         assert invoice.subtotal == Decimal("0.00")
@@ -354,9 +348,7 @@ class TestEncounterAutoInvoiceCreation:
 class TestEncounterInvoiceEdgeCases:
     """Edge case tests for encounter-invoice integration."""
 
-    def test_existing_invoice_used_for_same_day_encounter(
-        self, sample_patient, test_user
-    ):
+    def test_existing_invoice_used_for_same_day_encounter(self, sample_patient, test_user):
         """If patient has draft invoice from today, use it instead of creating new."""
         # Create existing draft invoice
         existing_invoice = Invoice.objects.create(
@@ -424,9 +416,7 @@ class TestEncounterInvoiceEdgeCases:
 class TestEncounterInvoiceStatus:
     """Tests for invoice status management during encounters."""
 
-    def test_completing_encounter_finalizes_invoice(
-        self, test_encounter, consultation_service
-    ):
+    def test_completing_encounter_finalizes_invoice(self, test_encounter, consultation_service):
         """Completing an encounter should change invoice from draft to pending."""
         test_encounter.add_service(consultation_service)
         invoice = Invoice.objects.get(encounter=test_encounter)

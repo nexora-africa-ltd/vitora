@@ -10,10 +10,9 @@ This module provides DRF views for:
 - ClinicEnrollment chronic care tracking
 """
 
-from datetime import date
-
 from django.db import models
 from django.db.models import Avg, Q
+from django.utils import timezone
 from django_filters import rest_framework as filters
 from rest_framework import permissions, status, viewsets
 from rest_framework.decorators import action
@@ -26,6 +25,7 @@ from .models import (
     ClinicSession,
     ClinicStaff,
     ClinicVisit,
+    MonthlyClinicReport,
 )
 from .serializers import (
     ClinicEnrollmentListSerializer,
@@ -38,8 +38,10 @@ from .serializers import (
     ClinicVisitCreateSerializer,
     ClinicVisitReferSerializer,
     ClinicVisitSerializer,
+    MonthlyClinicReportSerializer,
     QueueStatsSerializer,
 )
+from .services.reporting import generate_monthly_report
 
 # =============================================================================
 # Permissions
@@ -117,14 +119,70 @@ class ClinicEnrollmentFilter(filters.FilterSet):
     """Filter for ClinicEnrollment queryset."""
 
     clinic = filters.NumberFilter(field_name="clinic__id")
+    clinic_type = filters.CharFilter(field_name="clinic__clinic_type")
     status = filters.CharFilter(field_name="status")
     patient = filters.NumberFilter(field_name="patient__id")
+    is_overdue = filters.BooleanFilter(method="filter_is_overdue")
+    is_defaulter = filters.BooleanFilter(method="filter_is_defaulter")
+    enrollment_type = filters.CharFilter(method="filter_enrollment_type")
 
     class Meta:
         """Meta options for ClinicEnrollmentFilter."""
 
         model = ClinicEnrollment
-        fields = ["clinic", "status", "patient"]
+        fields = ["clinic", "clinic_type", "status", "patient", "is_overdue", "is_defaulter"]
+
+    def filter_is_overdue(self, queryset, name, value):
+        """Filter enrollments by overdue status."""
+        today = timezone.localdate()
+        if value:
+            return queryset.filter(
+                status="ACTIVE",
+                next_appointment__lt=today,
+            )
+        return queryset.filter(
+            models.Q(next_appointment__gte=today) | models.Q(next_appointment__isnull=True)
+        )
+
+    def filter_is_defaulter(self, queryset, name, value):
+        """
+        Filter enrollments by defaulter status.
+
+        A defaulter is overdue by 2+ appointment cycles.
+        """
+        today = timezone.localdate()
+        if not value:
+            return queryset
+
+        # Get active enrollments with appointments
+        active = queryset.filter(
+            status="ACTIVE",
+            next_appointment__isnull=False,
+        )
+
+        # Filter to those overdue by 2+ appointment cycles
+        defaulter_ids = []
+        for enrollment in active:
+            if enrollment.next_appointment:
+                days_overdue = (today - enrollment.next_appointment).days
+                if days_overdue >= (enrollment.appointment_interval_days * 2):
+                    defaulter_ids.append(enrollment.id)
+
+        return queryset.filter(id__in=defaulter_ids)
+
+    def filter_enrollment_type(self, queryset, name, value):
+        """Filter by enrollment type (CCC, ANC, DIABETIC, etc.)."""
+        type_to_clinic_mapping = {
+            "CCC": ["CCC"],
+            "ANC": ["ANC", "PNC"],
+            "DIABETIC": ["DIABETIC"],
+            "HYPERTENSION": ["HYPERTENSION"],
+            "TB": ["TB"],
+        }
+        clinic_types = type_to_clinic_mapping.get(value.upper(), [])
+        if clinic_types:
+            return queryset.filter(clinic__clinic_type__in=clinic_types)
+        return queryset
 
 
 # =============================================================================
@@ -155,7 +213,7 @@ class ClinicViewSet(viewsets.ModelViewSet):
 
     def get_permissions(self):
         """Return appropriate permissions for each action."""
-        if self.action in ["queue", "queue_stats"]:
+        if self.action in ["queue", "queue_stats", "regenerate_monthly_report"]:
             # Allow authenticated users to access queue endpoints
             return [permissions.IsAuthenticated()]
         return super().get_permissions()
@@ -193,7 +251,7 @@ class ClinicViewSet(viewsets.ModelViewSet):
 
         if request.method == "GET":
             # Get or create today's session
-            session, _ = clinic.get_or_create_session(date.today())
+            session, _ = clinic.get_or_create_session(timezone.localdate())
 
             # Get waiting visits ordered by priority and queue number
             visits = ClinicVisit.objects.filter(
@@ -206,7 +264,7 @@ class ClinicViewSet(viewsets.ModelViewSet):
 
         elif request.method == "POST":
             # Get or create today's session
-            session, _ = clinic.get_or_create_session(date.today())
+            session, _ = clinic.get_or_create_session(timezone.localdate())
 
             # Create visit
             data = request.data.copy()
@@ -226,7 +284,7 @@ class ClinicViewSet(viewsets.ModelViewSet):
     def queue_stats(self, request, pk=None):
         """Get queue statistics for today's session."""
         clinic = self.get_object()
-        session, _ = clinic.get_or_create_session(date.today())
+        session, _ = clinic.get_or_create_session(timezone.localdate())
 
         visits = ClinicVisit.objects.filter(session=session)
 
@@ -261,6 +319,38 @@ class ClinicViewSet(viewsets.ModelViewSet):
 
         serializer = QueueStatsSerializer(stats)
         return Response(serializer.data)
+
+    @action(detail=True, methods=["get"], url_path="reports/monthly")
+    def monthly_reports(self, request, pk=None):
+        """List monthly reports for a clinic."""
+        clinic = self.get_object()
+        reports = MonthlyClinicReport.objects.filter(clinic=clinic).order_by("-year", "-month")
+        serializer = MonthlyClinicReportSerializer(reports, many=True)
+        return Response(serializer.data, status=status.HTTP_200_OK)
+
+    @action(
+        detail=True,
+        methods=["get"],
+        url_path=r"reports/monthly/(?P<year>\d{4})/(?P<month>\d{1,2})",
+    )
+    def monthly_report_detail(self, request, pk=None, year=None, month=None):
+        """Get (or generate) a clinic report for a specific month."""
+        clinic = self.get_object()
+        report = generate_monthly_report(clinic, year=int(year), month=int(month))
+        serializer = MonthlyClinicReportSerializer(report)
+        return Response(serializer.data, status=status.HTTP_200_OK)
+
+    @action(
+        detail=True,
+        methods=["post"],
+        url_path=r"reports/monthly/(?P<year>\d{4})/(?P<month>\d{1,2})/regenerate",
+    )
+    def regenerate_monthly_report(self, request, pk=None, year=None, month=None):
+        """Regenerate a clinic monthly report for a specific month."""
+        clinic = self.get_object()
+        report = generate_monthly_report(clinic, year=int(year), month=int(month))
+        serializer = MonthlyClinicReportSerializer(report)
+        return Response(serializer.data, status=status.HTTP_200_OK)
 
 
 # =============================================================================
@@ -302,7 +392,7 @@ class ClinicSessionViewSet(viewsets.ModelViewSet):
     def today(self, request, clinic_pk=None):
         """Get or create today's session."""
         clinic = Clinic.objects.get(pk=clinic_pk)
-        session, _ = clinic.get_or_create_session(date.today())
+        session, _ = clinic.get_or_create_session(timezone.localdate())
         serializer = self.get_serializer(session)
         return Response(serializer.data)
 
@@ -310,7 +400,7 @@ class ClinicSessionViewSet(viewsets.ModelViewSet):
     def open(self, request, clinic_pk=None):
         """Open today's session."""
         clinic = Clinic.objects.get(pk=clinic_pk)
-        session, _ = clinic.get_or_create_session(date.today())
+        session, _ = clinic.get_or_create_session(timezone.localdate())
         session.open_session(request.user)
         serializer = self.get_serializer(session)
         return Response(serializer.data)
@@ -319,7 +409,7 @@ class ClinicSessionViewSet(viewsets.ModelViewSet):
     def close(self, request, clinic_pk=None):
         """Close today's session."""
         clinic = Clinic.objects.get(pk=clinic_pk)
-        session, _ = clinic.get_or_create_session(date.today())
+        session, _ = clinic.get_or_create_session(timezone.localdate())
         session.close_session(request.user)
         serializer = self.get_serializer(session)
         return Response(serializer.data)
@@ -541,7 +631,7 @@ class ClinicEnrollmentViewSet(viewsets.ModelViewSet):
     @action(detail=False, methods=["get"])
     def overdue(self, request):
         """Get overdue patients (past next_appointment)."""
-        today = date.today()
+        today = timezone.localdate()
         queryset = self.get_queryset().filter(
             status="ACTIVE",
             next_appointment__lt=today,
@@ -563,7 +653,7 @@ class ClinicEnrollmentViewSet(viewsets.ModelViewSet):
     @action(detail=False, methods=["get"])
     def defaulters(self, request):
         """Get defaulters (significantly overdue - 2+ missed appointments)."""
-        today = date.today()
+        today = timezone.localdate()
 
         # Get enrollments with overdue by more than 2x appointment interval
         queryset = self.get_queryset().filter(

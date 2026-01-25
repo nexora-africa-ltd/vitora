@@ -57,6 +57,7 @@ class Command(BaseCommand):
         created_count = 0
         updated_count = 0
         skipped_count = 0
+        ignored_count = 0
         error_count = 0
 
         for json_file in json_files:
@@ -71,6 +72,11 @@ class Command(BaseCommand):
                 elif result == "skipped":
                     skipped_count += 1
                     self.stdout.write(self.style.NOTICE(f"Skipped (exists): {json_file.name}"))
+                elif result == "ignored":
+                    ignored_count += 1
+                    self.stdout.write(
+                        self.style.NOTICE(f"Ignored (not a clinical template): {json_file.name}")
+                    )
             except json.JSONDecodeError as e:
                 error_count += 1
                 self.stderr.write(self.style.ERROR(f"Invalid JSON in {json_file.name}: {e}"))
@@ -86,6 +92,7 @@ class Command(BaseCommand):
         self.stdout.write(f"  Created: {created_count}")
         self.stdout.write(f"  Updated: {updated_count}")
         self.stdout.write(f"  Skipped: {skipped_count}")
+        self.stdout.write(f"  Ignored: {ignored_count}")
         self.stdout.write(f"  Errors:  {error_count}")
         self.stdout.write(self.style.SUCCESS("=" * 50))
 
@@ -103,9 +110,15 @@ class Command(BaseCommand):
         with open(json_file, encoding="utf-8") as f:
             data = json.load(f)
 
+        # This directory may also contain JSON schemas/configs used for other features
+        # (e.g., document generation). Only load files that match the ClinicalTemplate
+        # JSON shape.
+        if not isinstance(data, dict):
+            return "ignored"
+
         name = data.get("name")
         if not name:
-            raise ValueError("Template must have a 'name' field")
+            return "ignored"
 
         # Check if template already exists
         existing = ClinicalTemplate.objects.filter(name=name).first()

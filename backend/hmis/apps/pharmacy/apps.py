@@ -9,6 +9,7 @@ class PharmacyConfig(AppConfig):
     default_auto_field = "django.db.models.BigAutoField"
     name = "hmis.apps.pharmacy"
     verbose_name = "Pharmacy Management"
+
     def ready(self):
         """Import signals when the app is ready."""
         import hmis.apps.pharmacy.signals  # noqa: F401

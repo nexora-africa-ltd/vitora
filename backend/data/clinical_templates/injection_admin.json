@@ -1,0 +1,32 @@
+{
+  "name": "Injection Administration Note",
+  "template_type": "procedure",
+  "specialty": "Nursing",
+  "description": "Injection room documentation template",
+  "content": {
+    "title": "Injection Administration Note",
+    "version": "1.0",
+    "sections": [
+      {
+        "name": "Medication",
+        "order": 1,
+        "fields": [
+          {"name": "medication", "type": "text", "required": true, "label": "Medication"},
+          {"name": "dose", "type": "text", "required": false, "label": "Dose"},
+          {"name": "route", "type": "select", "required": true, "label": "Route", "options": ["IM", "IV", "SC", "ID", "Other"]},
+          {"name": "site", "type": "text", "required": false, "label": "Site"}
+        ]
+      },
+      {
+        "name": "Administration",
+        "order": 2,
+        "fields": [
+          {"name": "time_given", "type": "datetime", "required": false, "label": "Time Given"},
+          {"name": "batch_number", "type": "text", "required": false, "label": "Batch Number"},
+          {"name": "adverse_reaction", "type": "boolean", "required": false, "label": "Adverse Reaction"},
+          {"name": "reaction_details", "type": "textarea", "required": false, "label": "Reaction Details"}
+        ]
+      }
+    ]
+  }
+}

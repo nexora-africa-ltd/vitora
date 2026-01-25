@@ -1,23 +1,23 @@
 /**
  * Frontend Event Logger Hook
- * 
+ *
  * Provides a convenient way to log user interactions and clinical workflow
  * events throughout the application. Automatically handles:
  * - Session ID generation and persistence
  * - Device type detection
  * - Offline event queueing with localStorage persistence
  * - Automatic sync when coming back online
- * 
+ *
  * @example
  * ```tsx
  * const { logEvent, logPageView, logFormSave } = useEventLogger();
- * 
+ *
  * // Log a custom event
  * logEvent('encounter_open', 'Encounter', encounterId, { source: 'dashboard' });
- * 
+ *
  * // Log a page view
  * logPageView('/encounters/123/edit');
- * 
+ *
  * // Log a form save
  * logFormSave('Encounter', encounterId, { fields: ['chief_complaint'] });
  * ```
@@ -44,7 +44,7 @@ function generateSessionId(): string {
  */
 function getSessionId(): string {
   if (typeof window === 'undefined') return 'server';
-  
+
   let sessionId = sessionStorage.getItem(SESSION_ID_KEY);
   if (!sessionId) {
     sessionId = generateSessionId();
@@ -58,17 +58,17 @@ function getSessionId(): string {
  */
 function getDeviceType(): 'web' | 'desktop' | 'mobile' {
   if (typeof window === 'undefined') return 'web';
-  
+
   // Check if running in Electron
   if (window.navigator.userAgent.includes('Electron')) {
     return 'desktop';
   }
-  
+
   // Check for mobile
   if (/Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(window.navigator.userAgent)) {
     return 'mobile';
   }
-  
+
   return 'web';
 }
 
@@ -77,7 +77,7 @@ function getDeviceType(): 'web' | 'desktop' | 'mobile' {
  */
 function getQueuedEvents(): Omit<FrontendEvent, 'id' | 'server_timestamp'>[] {
   if (typeof window === 'undefined') return [];
-  
+
   try {
     const stored = localStorage.getItem(EVENT_QUEUE_KEY);
     return stored ? JSON.parse(stored) : [];
@@ -91,7 +91,7 @@ function getQueuedEvents(): Omit<FrontendEvent, 'id' | 'server_timestamp'>[] {
  */
 function saveEventQueue(events: Omit<FrontendEvent, 'id' | 'server_timestamp'>[]): void {
   if (typeof window === 'undefined') return;
-  
+
   try {
     localStorage.setItem(EVENT_QUEUE_KEY, JSON.stringify(events));
   } catch (e) {
@@ -119,17 +119,17 @@ interface UseEventLoggerReturn {
     resourceId?: number | null,
     details?: Record<string, unknown>
   ) => void;
-  
+
   /** Log a page view event */
   logPageView: (page: string, details?: Record<string, unknown>) => void;
-  
+
   /** Log a form save event */
   logFormSave: (
     resourceType: ResourceType,
     resourceId: number,
     details?: Record<string, unknown>
   ) => void;
-  
+
   /** Log a form error event */
   logFormError: (
     resourceType: ResourceType,
@@ -137,14 +137,14 @@ interface UseEventLoggerReturn {
     error?: string,
     details?: Record<string, unknown>
   ) => void;
-  
+
   /** Log an encounter workflow event */
   logEncounterEvent: (
     eventType: 'encounter_open' | 'encounter_save' | 'encounter_finalize',
     encounterId: number,
     details?: Record<string, unknown>
   ) => void;
-  
+
   /** Log a diagnosis event */
   logDiagnosisEvent: (
     eventType: 'diagnosis_add' | 'diagnosis_update' | 'diagnosis_remove',
@@ -152,17 +152,17 @@ interface UseEventLoggerReturn {
     diagnosisId?: number,
     details?: Record<string, unknown>
   ) => void;
-  
+
   /** Log a lab event */
   logLabEvent: (
     eventType: 'lab_order_create' | 'lab_result_view',
     resourceId: number,
     details?: Record<string, unknown>
   ) => void;
-  
+
   /** Number of events queued offline */
   queuedCount: number;
-  
+
   /** Manually sync queued events */
   syncQueue: () => Promise<void>;
 }
@@ -175,12 +175,12 @@ export function useEventLogger(): UseEventLoggerReturn {
   const { user } = useAuth();
   const queueRef = useRef<Omit<FrontendEvent, 'id' | 'server_timestamp'>[]>([]);
   const syncingRef = useRef(false);
-  
+
   // Initialize queue from localStorage on mount
   useEffect(() => {
     queueRef.current = getQueuedEvents();
   }, []);
-  
+
   // Sync queue when coming back online
   useEffect(() => {
     if (isOnline && queueRef.current.length > 0 && !syncingRef.current) {
@@ -188,16 +188,16 @@ export function useEventLogger(): UseEventLoggerReturn {
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isOnline]);
-  
+
   /**
    * Sync queued events to server
    */
   const syncQueue = useCallback(async () => {
     if (!isOnline || syncingRef.current || queueRef.current.length === 0) return;
-    
+
     syncingRef.current = true;
     const eventsToSync = [...queueRef.current];
-    
+
     try {
       await eventsApi.logBatch(eventsToSync);
       // Clear the queue after successful sync
@@ -210,7 +210,7 @@ export function useEventLogger(): UseEventLoggerReturn {
       syncingRef.current = false;
     }
   }, [isOnline]);
-  
+
   /**
    * Log an event (handles offline queueing)
    */
@@ -222,7 +222,7 @@ export function useEventLogger(): UseEventLoggerReturn {
   ) => {
     // Don't log if user is not authenticated
     if (!user) return;
-    
+
     const event: Omit<FrontendEvent, 'id' | 'server_timestamp'> = {
       event_type: eventType,
       resource_type: resourceType,
@@ -233,7 +233,7 @@ export function useEventLogger(): UseEventLoggerReturn {
       details,
       was_offline: !isOnline,
     };
-    
+
     if (isOnline) {
       // Send immediately
       eventsApi.logEvent(event).catch((error) => {
@@ -248,14 +248,14 @@ export function useEventLogger(): UseEventLoggerReturn {
       saveEventQueue(queueRef.current);
     }
   }, [isOnline, user]);
-  
+
   /**
    * Log a page view
    */
   const logPageView = useCallback((page: string, details: Record<string, unknown> = {}) => {
     logEvent('page_view', '', null, { page, ...details });
   }, [logEvent]);
-  
+
   /**
    * Log a form save
    */
@@ -266,7 +266,7 @@ export function useEventLogger(): UseEventLoggerReturn {
   ) => {
     logEvent('form_save', resourceType, resourceId, details);
   }, [logEvent]);
-  
+
   /**
    * Log a form error
    */
@@ -278,7 +278,7 @@ export function useEventLogger(): UseEventLoggerReturn {
   ) => {
     logEvent('form_error', resourceType, resourceId, { error, ...details });
   }, [logEvent]);
-  
+
   /**
    * Log an encounter workflow event
    */
@@ -289,7 +289,7 @@ export function useEventLogger(): UseEventLoggerReturn {
   ) => {
     logEvent(eventType, 'Encounter', encounterId, details);
   }, [logEvent]);
-  
+
   /**
    * Log a diagnosis event
    */
@@ -301,7 +301,7 @@ export function useEventLogger(): UseEventLoggerReturn {
   ) => {
     logEvent(eventType, 'Diagnosis', diagnosisId, { encounterId, ...details });
   }, [logEvent]);
-  
+
   /**
    * Log a lab event
    */
@@ -313,7 +313,7 @@ export function useEventLogger(): UseEventLoggerReturn {
     const resourceType: ResourceType = eventType === 'lab_order_create' ? 'LabOrder' : 'LabResult';
     logEvent(eventType, resourceType, resourceId, details);
   }, [logEvent]);
-  
+
   return {
     logEvent,
     logPageView,

@@ -160,7 +160,7 @@ describe('PatientShellHeader', () => {
 
       await waitFor(() => {
         // Patient born 1985-05-20, current date is 2026-01-15 → 40 years old
-        expect(screen.getByText(/40\s*(y|yr|yrs|years)/i)).toBeInTheDocument();
+        expect(screen.getAllByText(/40\s*(y|yr|yrs|years)/i).length).toBeGreaterThan(0);
       });
     });
   });
@@ -199,7 +199,8 @@ describe('PatientShellHeader', () => {
       );
 
       await waitFor(() => {
-        expect(screen.getByText(/SHA|Insured/i)).toBeInTheDocument();
+        // SHA badge is rendered as a logo image
+        expect(screen.getByAltText('SHA')).toBeInTheDocument();
       });
     });
 

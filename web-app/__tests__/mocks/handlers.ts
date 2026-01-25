@@ -243,6 +243,94 @@ export const handlers = [
   }),
 
   // ===================
+  // Triage endpoints
+  // ===================
+  http.get(`${API_BASE}/api/triage/vital-thresholds/`, () => {
+    // Minimal threshold set used by vitals components/hooks.
+    // Matches the structure expected by `useVitalThresholds`.
+    return HttpResponse.json([
+      {
+        id: 1,
+        vital_type: 'SPO2',
+        critical_low: 90,
+        warning_low: 95,
+        warning_high: null,
+        critical_high: null,
+        unit: '%',
+        description: 'Oxygen saturation',
+        is_active: true,
+        created_at: '2026-01-01T00:00:00Z',
+        updated_at: '2026-01-01T00:00:00Z',
+      },
+      {
+        id: 2,
+        vital_type: 'SYSTOLIC_BP',
+        critical_low: 90,
+        warning_low: 100,
+        warning_high: 140,
+        critical_high: 180,
+        unit: 'mmHg',
+        description: 'Systolic blood pressure',
+        is_active: true,
+        created_at: '2026-01-01T00:00:00Z',
+        updated_at: '2026-01-01T00:00:00Z',
+      },
+      {
+        id: 3,
+        vital_type: 'DIASTOLIC_BP',
+        critical_low: 60,
+        warning_low: 70,
+        warning_high: 90,
+        critical_high: 120,
+        unit: 'mmHg',
+        description: 'Diastolic blood pressure',
+        is_active: true,
+        created_at: '2026-01-01T00:00:00Z',
+        updated_at: '2026-01-01T00:00:00Z',
+      },
+      {
+        id: 4,
+        vital_type: 'TEMPERATURE',
+        critical_low: 35,
+        warning_low: 36.5,
+        warning_high: 37.5,
+        critical_high: 39,
+        unit: '°C',
+        description: 'Body temperature',
+        is_active: true,
+        created_at: '2026-01-01T00:00:00Z',
+        updated_at: '2026-01-01T00:00:00Z',
+      },
+      {
+        id: 5,
+        vital_type: 'HEART_RATE',
+        critical_low: 40,
+        warning_low: 50,
+        warning_high: 100,
+        critical_high: 130,
+        unit: 'bpm',
+        description: 'Heart rate',
+        is_active: true,
+        created_at: '2026-01-01T00:00:00Z',
+        updated_at: '2026-01-01T00:00:00Z',
+      },
+      {
+        id: 6,
+        vital_type: 'RESPIRATORY_RATE',
+        critical_low: 8,
+        warning_low: 12,
+        warning_high: 20,
+        critical_high: 30,
+        unit: '/min',
+        description: 'Respiratory rate',
+        is_active: true,
+        created_at: '2026-01-01T00:00:00Z',
+        updated_at: '2026-01-01T00:00:00Z',
+      },
+    ]);
+  }),
+
+  // ===================
   // Inpatient endpoints
   // ===================
   http.get(`${API_BASE}/api/inpatient/wards/`, ({ request }) => {

@@ -359,6 +359,15 @@ class SHAClaimsService:
         # Check for PFMS eligibility (checklist item #13)
         is_pfms_eligible = getattr(claim.sha_member, "is_pfms_eligible", False)
 
+        # Optional clinic/service delivery point context
+        clinic = None
+        if claim.encounter is not None:
+            clinic_visit = getattr(claim.encounter, "clinic_visit", None)
+            if clinic_visit is not None:
+                clinic_session = getattr(clinic_visit, "session", None)
+                if clinic_session is not None:
+                    clinic = getattr(clinic_session, "clinic", None)
+
         # Build base entries
         entries = [
             # Order per SHA spec: Practitioner, Organization, Coverage, Patient, Claim
@@ -370,6 +379,23 @@ class SHAClaimsService:
                 "fullUrl": f"{self.fhir_base_url}/fhir/Organization/{self.facility_code}",
                 "resource": self._build_organization_resource(),
             },
+            # Include a Location resource for clinic/service delivery point when available
+            # (keeps any facility reference resolvable within the bundle)
+            *(
+                [
+                    {
+                        "fullUrl": f"{self.fhir_base_url}/fhir/Location/{clinic.code}",
+                        "resource": {
+                            "resourceType": "Location",
+                            "id": clinic.code,
+                            "name": clinic.name,
+                            "status": "active",
+                        },
+                    }
+                ]
+                if clinic is not None and getattr(clinic, "code", "")
+                else []
+            ),
             {
                 "fullUrl": f"{self.fhir_base_url}/fhir/Coverage/{cr_number}-sha-coverage",
                 "resource": self._build_coverage_resource(claim.sha_member, cr_number),
@@ -389,24 +415,65 @@ class SHAClaimsService:
             )
 
         # Add patient and claim resources
-        entries.extend(
-            [
-                {
-                    "fullUrl": f"{self.fhir_base_url}/fhir/Patient/{cr_number}",
-                    "resource": self._build_patient_resource(claim.patient, claim.sha_member),
+        entries.append(
+            {
+                "fullUrl": f"{self.fhir_base_url}/fhir/Patient/{cr_number}",
+                "resource": self._build_patient_resource(claim.patient, claim.sha_member),
+            }
+        )
+
+        # Include Encounter context when available (helps traceability & clinic reporting)
+        if claim.encounter is not None:
+            encounter_resource: dict = {
+                "resourceType": "Encounter",
+                "id": str(getattr(claim.encounter, "id", "")) or str(uuid.uuid4()),
+                "status": "finished",
+                "subject": {"reference": f"{self.fhir_base_url}/fhir/Patient/{cr_number}"},
+                "serviceProvider": {
+                    "reference": f"{self.fhir_base_url}/fhir/Organization/{self.facility_code}"
                 },
+            }
+
+            if clinic is not None and getattr(clinic, "code", ""):
+                encounter_resource.setdefault("extension", []).extend(
+                    [
+                        {
+                            "url": "https://vitora.health/fhir/StructureDefinition/clinic-code",
+                            "valueString": clinic.code,
+                        },
+                        {
+                            "url": "https://vitora.health/fhir/StructureDefinition/clinic-type",
+                            "valueString": clinic.clinic_type,
+                        },
+                        {
+                            "url": "https://vitora.health/fhir/StructureDefinition/service-delivery-point",
+                            "valueReference": {
+                                "reference": f"{self.fhir_base_url}/fhir/Location/{clinic.code}",
+                                "display": clinic.name,
+                            },
+                        },
+                    ]
+                )
+
+            entries.append(
                 {
-                    "fullUrl": f"{self.fhir_base_url}/fhir/Claim/{bundle_guid}",
-                    "resource": self._build_claim_resource(
-                        claim,
-                        bundle_guid,
-                        cr_number,
-                        practitioner_id,
-                        practitioner_user,
-                        is_pfms_eligible=is_pfms_eligible,
-                    ),
-                },
-            ]
+                    "fullUrl": f"{self.fhir_base_url}/fhir/Encounter/{encounter_resource['id']}",
+                    "resource": encounter_resource,
+                }
+            )
+
+        entries.append(
+            {
+                "fullUrl": f"{self.fhir_base_url}/fhir/Claim/{bundle_guid}",
+                "resource": self._build_claim_resource(
+                    claim,
+                    bundle_guid,
+                    cr_number,
+                    practitioner_id,
+                    practitioner_user,
+                    is_pfms_eligible=is_pfms_eligible,
+                ),
+            }
         )
 
         bundle = {
@@ -609,6 +676,54 @@ class SHAClaimsService:
             "total": {"value": float(claim.claimed_amount), "currency": "KES"},
             "resourceType": "Claim",
         }
+
+        # ---------------------------------------------------------------------
+        # Clinic/service delivery point context (Priority 4.2)
+        # ---------------------------------------------------------------------
+        clinic = None
+        if claim.encounter is not None:
+            clinic_visit = getattr(claim.encounter, "clinic_visit", None)
+            if clinic_visit is not None:
+                clinic_session = getattr(clinic_visit, "session", None)
+                if clinic_session is not None:
+                    clinic = getattr(clinic_session, "clinic", None)
+
+        if clinic is not None and getattr(clinic, "code", ""):
+            claim_resource["facility"] = {
+                "reference": f"{self.fhir_base_url}/fhir/Location/{clinic.code}",
+                "display": clinic.name,
+            }
+
+            claim_resource.setdefault("identifier", []).append(
+                {
+                    "system": f"{self.fhir_base_url}/fhir/identifier/clinic-code",
+                    "value": clinic.code,
+                }
+            )
+
+            claim_resource.setdefault("extension", []).append(
+                {
+                    "url": "https://vitora.health/fhir/StructureDefinition/clinic-code",
+                    "valueString": clinic.code,
+                }
+            )
+
+            claim_resource.setdefault("extension", []).append(
+                {
+                    "url": "https://vitora.health/fhir/StructureDefinition/clinic-type",
+                    "valueString": clinic.clinic_type,
+                }
+            )
+
+            claim_resource.setdefault("extension", []).append(
+                {
+                    "url": "https://vitora.health/fhir/StructureDefinition/service-delivery-point",
+                    "valueReference": {
+                        "reference": f"{self.fhir_base_url}/fhir/Location/{clinic.code}",
+                        "display": clinic.name,
+                    },
+                }
+            )
 
         return claim_resource
 

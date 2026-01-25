@@ -35,7 +35,7 @@ describe('Select Component', () => {
         </Select>
       );
 
-      expect(screen.getByText('option1')).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: /Option 1/i })).toBeInTheDocument();
     });
 
     it('should open dropdown on trigger click', () => {
@@ -173,8 +173,9 @@ describe('Select Component', () => {
       // Open to see items
       fireEvent.click(screen.getByRole('button'));
 
-      const selectedItem = screen.getByText('Option 1').closest('div');
-      expect(selectedItem).toHaveClass('bg-accent');
+      const selectedOption = screen.getByRole('option', { name: 'Option 1' });
+      expect(selectedOption).toHaveAttribute('aria-selected', 'true');
+      expect(selectedOption).toHaveClass('bg-accent');
     });
   });
 

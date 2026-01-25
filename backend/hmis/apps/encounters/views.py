@@ -352,7 +352,7 @@ class EncounterViewSet(viewsets.ModelViewSet):
 
         try:
             response = super().destroy(request, *args, **kwargs)
-        except ProtectedError as e:
+        except ProtectedError:
             # Handle protected foreign key references (e.g., invoices)
             return Response(
                 {
@@ -687,6 +687,7 @@ class EncounterViewSet(viewsets.ModelViewSet):
         from django.utils import timezone
 
         from hmis.apps.patients.models import Patient
+
         from .services import create_patient_called_notification
 
         patient_id = request.data.get("patient")
@@ -705,14 +706,21 @@ class EncounterViewSet(viewsets.ModelViewSet):
             )
 
         # Check if patient already has an active encounter
-        existing_encounter = Encounter.objects.filter(
-            patient=patient,
-            status="IN_PROGRESS",
-        ).select_related("assigned_clinician").first()
+        existing_encounter = (
+            Encounter.objects.filter(
+                patient=patient,
+                status="IN_PROGRESS",
+            )
+            .select_related("assigned_clinician")
+            .first()
+        )
 
         if existing_encounter:
             # If claimed by another user, return 409
-            if existing_encounter.assigned_clinician and existing_encounter.assigned_clinician != request.user:
+            if (
+                existing_encounter.assigned_clinician
+                and existing_encounter.assigned_clinician != request.user
+            ):
                 return Response(
                     {
                         "detail": f"Patient already has an active encounter with {existing_encounter.assigned_clinician.get_full_name() or existing_encounter.assigned_clinician.username}",
@@ -732,7 +740,9 @@ class EncounterViewSet(viewsets.ModelViewSet):
                 )
             # If unclaimed, claim it
             with transaction.atomic():
-                existing_encounter = Encounter.objects.select_for_update().get(pk=existing_encounter.pk)
+                existing_encounter = Encounter.objects.select_for_update().get(
+                    pk=existing_encounter.pk
+                )
                 existing_encounter.assigned_clinician = request.user
                 existing_encounter.claimed_at = timezone.now()
                 if existing_encounter.consultation_status == "WAITING":
@@ -1041,7 +1051,6 @@ class EncounterViewSet(viewsets.ModelViewSet):
         - 400: Cannot release (encounter completed/cancelled)
         """
         from django.db import transaction
-        from django.utils import timezone
 
         with transaction.atomic():
             encounter = Encounter.objects.select_for_update().get(pk=pk)
@@ -1118,9 +1127,7 @@ class EncounterViewSet(viewsets.ModelViewSet):
         queryset = self.get_queryset().filter(assigned_clinician=request.user)
 
         # By default, exclude completed encounters
-        include_completed = (
-            request.query_params.get("include_completed", "false").lower() == "true"
-        )
+        include_completed = request.query_params.get("include_completed", "false").lower() == "true"
         if not include_completed:
             queryset = queryset.exclude(status__in=["COMPLETED", "CANCELLED"])
 
@@ -1175,14 +1182,10 @@ class EncounterViewSet(viewsets.ModelViewSet):
             )
 
         # Get all claimed encounters (where assigned_clinician is set)
-        queryset = self.get_queryset().filter(
-            assigned_clinician__isnull=False
-        )
+        queryset = self.get_queryset().filter(assigned_clinician__isnull=False)
 
         # By default, exclude completed encounters
-        include_completed = (
-            request.query_params.get("include_completed", "false").lower() == "true"
-        )
+        include_completed = request.query_params.get("include_completed", "false").lower() == "true"
         if not include_completed:
             queryset = queryset.exclude(status__in=["COMPLETED", "CANCELLED"])
 
@@ -1465,6 +1468,11 @@ class EncounterViewSet(viewsets.ModelViewSet):
         if status_filter:
             statuses = [s.strip().upper() for s in status_filter.split(",")]
             queryset = queryset.filter(status__in=statuses)
+
+        # Filter by clinic if provided
+        clinic_id = self.request.query_params.get("clinic")
+        if clinic_id:
+            queryset = queryset.filter(clinic_visit__session__clinic_id=clinic_id)
 
         return queryset
 

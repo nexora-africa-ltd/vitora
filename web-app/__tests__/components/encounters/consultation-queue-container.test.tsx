@@ -44,6 +44,10 @@ jest.mock('next/navigation', () => ({
   useRouter: jest.fn(),
 }));
 
+jest.mock('@/lib/auth', () => ({
+  useAuth: () => ({ user: { id: 10 } }),
+}));
+
 const mockedApi = consultationQueueApi as jest.Mocked<typeof consultationQueueApi>;
 const mockPush = jest.fn();
 const mockUseRouter = useRouter as jest.Mock;
@@ -106,6 +110,8 @@ const mockQueueData = {
       patient_name: 'Peter Ochieng',
       consultation_status: 'CALLED',
       called_at: new Date().toISOString(),
+      assigned_clinician: 10,
+      assigned_clinician_name: 'Dr Demo',
     }),
   ],
   count: 3,

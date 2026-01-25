@@ -1,0 +1,46 @@
+{
+  "name": "Immunization Visit",
+  "template_type": "encounter",
+  "specialty": "Pediatrics",
+  "description": "Immunization service template for recording vaccines due/given and counselling",
+  "content": {
+    "title": "Immunization Visit",
+    "version": "1.0",
+    "sections": [
+      {
+        "name": "Eligibility & Screening",
+        "order": 1,
+        "fields": [
+          {"name": "age_months", "type": "number", "required": false, "label": "Age (months)", "min": 0},
+          {"name": "contraindications", "type": "textarea", "required": false, "label": "Contraindications"},
+          {"name": "fever_today", "type": "boolean", "required": false, "label": "Fever Today"}
+        ]
+      },
+      {
+        "name": "Vaccines",
+        "order": 2,
+        "fields": [
+          {"name": "vaccines_due", "type": "multiselect", "required": false, "label": "Vaccines Due", "options": ["BCG", "OPV", "Pentavalent", "PCV", "Rotavirus", "Measles", "Yellow Fever", "Vitamin A"]},
+          {"name": "vaccines_given", "type": "multiselect", "required": false, "label": "Vaccines Given", "options": ["BCG", "OPV", "Pentavalent", "PCV", "Rotavirus", "Measles", "Yellow Fever", "Vitamin A"]},
+          {"name": "adverse_event_risk", "type": "textarea", "required": false, "label": "AEFI Risk / Notes"}
+        ]
+      },
+      {
+        "name": "Counselling",
+        "order": 3,
+        "fields": [
+          {"name": "post_vaccination_advice", "type": "textarea", "required": false, "label": "Post-vaccination Advice"},
+          {"name": "next_visit_date", "type": "date", "required": false, "label": "Next Visit Date"}
+        ]
+      },
+      {
+        "name": "Assessment",
+        "order": 4,
+        "fields": [
+          {"name": "assessment", "type": "textarea", "required": true, "label": "Assessment"},
+          {"name": "plan", "type": "textarea", "required": true, "label": "Plan"}
+        ]
+      }
+    ]
+  }
+}

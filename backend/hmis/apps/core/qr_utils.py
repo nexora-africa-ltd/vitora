@@ -9,7 +9,6 @@ import base64
 import hashlib
 import hmac
 from io import BytesIO
-from typing import Optional
 
 import qrcode
 from django.conf import settings
@@ -77,7 +76,7 @@ def generate_document_signature(
     document_number: str,
     amount: str,
     date: str,
-    secret_key: Optional[str] = None,
+    secret_key: str | None = None,
 ) -> str:
     """
     Generate a HMAC signature for document verification.
@@ -96,7 +95,7 @@ def generate_document_signature(
         8-character hex signature
     """
     key = (secret_key or settings.SECRET_KEY).encode("utf-8")
-    message = f"{document_type}:{document_number}:{amount}:{date}".encode("utf-8")
+    message = f"{document_type}:{document_number}:{amount}:{date}".encode()
     signature = hmac.new(key, message, hashlib.sha256).hexdigest()
     return signature[:8].upper()
 
@@ -104,39 +103,41 @@ def generate_document_signature(
 def get_verification_base_url() -> str:
     """
     Get the base URL for document verification.
-    
+
     Reads from DOCUMENT_VERIFICATION_URL setting, falls back to default.
     """
-    return getattr(settings, 'DOCUMENT_VERIFICATION_URL', 'https://vitora.health/verify')
+    return getattr(settings, "DOCUMENT_VERIFICATION_URL", "https://vitora.health/verify")
 
 
 def generate_receipt_qr_url(
     receipt_number: str,
     amount: str,
     receipt_date: str,
-    base_url: Optional[str] = None,
+    base_url: str | None = None,
 ) -> str:
     """
     Generate a verification URL for a receipt that can be encoded in a QR code.
-    
+
     When scanned, opens the verification page with the document pre-verified.
-    
+
     Args:
         receipt_number: The receipt number
         amount: Payment amount as string
         receipt_date: Receipt date as ISO string
         base_url: Optional custom base URL (defaults to settings)
-    
+
     Returns:
         Full verification URL
     """
     date_str = receipt_date[:10] if receipt_date else ""
     # Use date_str for signature so it matches what's in the URL
     sig = generate_document_signature("RECEIPT", receipt_number, amount, date_str)
-    
+
     url = base_url or get_verification_base_url()
-    params = f"?type=RECEIPT&number={receipt_number}&amount={amount}&date={date_str}&signature={sig}"
-    
+    params = (
+        f"?type=RECEIPT&number={receipt_number}&amount={amount}&date={date_str}&signature={sig}"
+    )
+
     return f"{url}{params}"
 
 
@@ -144,27 +145,27 @@ def generate_invoice_qr_url(
     invoice_number: str,
     total_amount: str,
     invoice_date: str,
-    base_url: Optional[str] = None,
+    base_url: str | None = None,
 ) -> str:
     """
     Generate a verification URL for an invoice that can be encoded in a QR code.
-    
+
     Args:
         invoice_number: The invoice number
         total_amount: Total invoice amount as string
         invoice_date: Invoice date as ISO string
         base_url: Optional custom base URL (defaults to settings)
-    
+
     Returns:
         Full verification URL
     """
     date_str = invoice_date[:10] if invoice_date else ""
     # Use date_str for signature so it matches what's in the URL
     sig = generate_document_signature("INVOICE", invoice_number, total_amount, date_str)
-    
+
     url = base_url or get_verification_base_url()
     params = f"?type=INVOICE&number={invoice_number}&amount={total_amount}&date={date_str}&signature={sig}"
-    
+
     return f"{url}{params}"
 
 
@@ -172,7 +173,7 @@ def generate_receipt_qr_data(
     receipt_number: str,
     amount: str,
     receipt_date: str,
-    facility_id: Optional[int] = None,
+    facility_id: int | None = None,
     include_signature: bool = True,
 ) -> str:
     """
@@ -194,7 +195,7 @@ def generate_receipt_qr_data(
         Formatted string for QR encoding
     """
     parts = [
-        f"VITORA-RCPT",
+        "VITORA-RCPT",
         f"N:{receipt_number}",
         f"A:{amount}",
         f"D:{receipt_date[:10]}",  # Date only (YYYY-MM-DD)
@@ -214,8 +215,8 @@ def generate_invoice_qr_data(
     invoice_number: str,
     total_amount: str,
     invoice_date: str,
-    patient_mrn: Optional[str] = None,
-    facility_id: Optional[int] = None,
+    patient_mrn: str | None = None,
+    facility_id: int | None = None,
     include_signature: bool = True,
 ) -> str:
     """
@@ -233,7 +234,7 @@ def generate_invoice_qr_data(
         Formatted string for QR encoding
     """
     parts = [
-        f"VITORA-INV",
+        "VITORA-INV",
         f"N:{invoice_number}",
         f"A:{total_amount}",
         f"D:{invoice_date[:10]}",
@@ -258,7 +259,7 @@ def verify_document_signature(
     amount: str,
     date: str,
     signature: str,
-    secret_key: Optional[str] = None,
+    secret_key: str | None = None,
 ) -> bool:
     """
     Verify a document signature.
@@ -274,7 +275,5 @@ def verify_document_signature(
     Returns:
         True if signature is valid, False otherwise
     """
-    expected = generate_document_signature(
-        document_type, document_number, amount, date, secret_key
-    )
+    expected = generate_document_signature(document_type, document_number, amount, date, secret_key)
     return hmac.compare_digest(expected, signature.upper())

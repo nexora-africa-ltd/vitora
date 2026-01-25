@@ -34,6 +34,7 @@ ALLOWED_HOSTS = []
 # Application definition
 
 INSTALLED_APPS = [
+    "daphne",  # ASGI server for channels (must be before django.contrib.staticfiles)
     "django.contrib.admin",
     "django.contrib.auth",
     "django.contrib.contenttypes",
@@ -45,6 +46,7 @@ INSTALLED_APPS = [
     "rest_framework_simplejwt",
     "corsheaders",
     "django_filters",
+    "channels",  # Django Channels for WebSocket support
     # Local apps
     "hmis.apps.core",
     "hmis.apps.patients",
@@ -416,4 +418,21 @@ SHA_WEBHOOK_SECRET = os.getenv(
 
 # Facility identification (for SHA claims)
 FACILITY_MFL_CODE = os.getenv("FACILITY_MFL_CODE", "TEST-001")  # Master Facility List code
+
+# =============================================================================
+# DJANGO CHANNELS CONFIGURATION (WebSocket Support)
+# =============================================================================
+
+# ASGI application
+ASGI_APPLICATION = "hmis.asgi.application"
+
+# Channel layers configuration
+# In production, use Redis: channels_redis.core.RedisChannelLayer
+# For development/testing, use in-memory layer
+CHANNEL_LAYERS = {
+    "default": {
+        "BACKEND": "channels.layers.InMemoryChannelLayer",
+    },
+}
+
 FACILITY_LEVEL = os.getenv("FACILITY_LEVEL", "L3")  # Default to Level 3

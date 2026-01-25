@@ -62,13 +62,13 @@ const statusColors: Record<InvoiceStatus, string> = {
 
 function ProformaExpiryBadge({ invoice }: { invoice: Invoice }) {
   if (invoice.status !== 'PROFORMA') return null;
-  
+
   const days = invoice.days_until_expiry;
-  
+
   // Determine color based on days remaining
   let colorClass: string;
   let label: string;
-  
+
   if (days < 0 || !invoice.is_valid) {
     colorClass = 'bg-red-100 text-red-700';
     label = 'Expired';
@@ -82,7 +82,7 @@ function ProformaExpiryBadge({ invoice }: { invoice: Invoice }) {
     colorClass = 'bg-green-100 text-green-700';
     label = `${days}d left`;
   }
-  
+
   return (
     <Badge variant="outline" className={`${colorClass} ml-1 text-xs`}>
       <Clock className="h-3 w-3 mr-1" />

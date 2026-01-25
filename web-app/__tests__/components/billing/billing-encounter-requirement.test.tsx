@@ -24,6 +24,7 @@ jest.mock('next/navigation', () => ({
   })),
   usePathname: jest.fn(() => '/billing/invoices/new'),
   useSearchParams: jest.fn(() => new URLSearchParams()),
+  redirect: jest.fn(),
 }));
 
 // Mock the API modules
@@ -306,67 +307,25 @@ describe('Billing Encounter Requirement', () => {
   // ===========================================================================
   describe('Encounter Selection Flow', () => {
     it('should allow creating invoice and show patient selection', async () => {
-      // The billing/invoices/new page exists and should render
-      const { useSearchParams } = await import('next/navigation');
-      (useSearchParams as jest.Mock).mockReturnValue(new URLSearchParams());
-
-      // Mock the hooks used by the page
-      jest.mock('@/lib/hooks/billing', () => ({
-        useCreateInvoice: jest.fn(() => ({
-          mutateAsync: jest.fn(),
-          isPending: false,
-        })),
-        useServices: jest.fn(() => ({
-          data: { results: [] },
-          isLoading: false,
-        })),
-      }));
-
-      jest.mock('@/lib/hooks/use-patients', () => ({
-        usePatients: jest.fn(() => ({
-          data: { results: [] },
-          isLoading: false,
-        })),
-      }));
-
-      jest.mock('@/lib/hooks/use-toast', () => ({
-        useToast: jest.fn(() => ({ toast: jest.fn() })),
-      }));
-
+      // This route is a redirect shim to the new transactions URL.
+      const { redirect } = await import('next/navigation');
       const BillingNewPage = (await import('@/app/(dashboard)/billing/invoices/new/page')).default;
 
-      const Wrapper = createWrapper();
-      render(
-        <Wrapper>
-          <BillingNewPage />
-        </Wrapper>
-      );
+      render(<BillingNewPage searchParams={{}} />);
 
       await waitFor(() => {
-        // Page should render with New Invoice heading
-        expect(screen.getByRole('heading', { name: /new invoice/i })).toBeInTheDocument();
+        expect(redirect).toHaveBeenCalledWith('/transactions/invoices/new');
       });
     });
 
     it('should use patient from URL params when provided', async () => {
-      const { useSearchParams } = await import('next/navigation');
-      // Simulate patient ID in URL params
-      (useSearchParams as jest.Mock).mockReturnValue(
-        new URLSearchParams(`patient=${mockPatient.id}`)
-      );
-
+      const { redirect } = await import('next/navigation');
       const BillingNewPage = (await import('@/app/(dashboard)/billing/invoices/new/page')).default;
 
-      const Wrapper = createWrapper();
-      render(
-        <Wrapper>
-          <BillingNewPage />
-        </Wrapper>
-      );
+      render(<BillingNewPage searchParams={{ patient: String(mockPatient.id) }} />);
 
       await waitFor(() => {
-        // Page should render - patient will be pre-selected via initialPatient prop
-        expect(screen.getByRole('heading', { name: /new invoice/i })).toBeInTheDocument();
+        expect(redirect).toHaveBeenCalledWith(`/transactions/invoices/new?patient=${mockPatient.id}`);
       });
     });
   });

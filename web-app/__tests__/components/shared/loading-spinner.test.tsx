@@ -41,11 +41,11 @@ describe('LoadingSpinner Component', () => {
     expect(spinner).toHaveClass('custom-spinner');
   });
 
-  it('should have primary text color', () => {
+  it('should have accent text color', () => {
     const { container } = render(<LoadingSpinner />);
 
     const spinner = container.querySelector('.animate-spin');
-    expect(spinner).toHaveClass('text-primary');
+    expect(spinner).toHaveClass('text-accent');
   });
 
   it('should render as SVG (Lucide icon)', () => {

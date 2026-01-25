@@ -371,7 +371,7 @@ export function Sidebar({
     <TooltipProvider delayDuration={0}>
       <aside
         className={cn(
-          'fixed left-0 top-0 z-50 h-dvh border-r bg-card/95 backdrop-blur transition-all duration-300',
+          'fixed left-0 top-0 z-50 h-dvh border-r bg-card/95 backdrop-blur transition-all duration-300 overscroll-contain',
           collapsed ? 'w-20' : 'w-64',
           mobileOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'
         )}
@@ -400,7 +400,10 @@ export function Sidebar({
                 isScrolled ? 'opacity-100' : 'opacity-0'
               )}
             />
-            <ScrollArea ref={navScrollAreaRef} className="h-full min-h-0 px-3">
+            <ScrollArea
+              ref={navScrollAreaRef}
+              className="h-full min-h-0 px-3 [&_[data-slot=scroll-area-viewport]]:overscroll-contain [&_[data-slot=scroll-area-viewport]]:touch-pan-y"
+            >
               <div className="space-y-1 py-2">
                 {mainNavItems.map((item) =>
                   hasChildren(item) ? (

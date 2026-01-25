@@ -1,0 +1,39 @@
+{
+  "name": "Dialysis Session Note",
+  "template_type": "note",
+  "specialty": "Nephrology",
+  "description": "Dialysis session documentation template",
+  "content": {
+    "title": "Dialysis Session Note",
+    "version": "1.0",
+    "sections": [
+      {
+        "name": "Pre-Dialysis",
+        "order": 1,
+        "fields": [
+          {"name": "access_type", "type": "select", "required": false, "label": "Access Type", "options": ["AV Fistula", "AV Graft", "CVC", "Peritoneal"]},
+          {"name": "pre_weight_kg", "type": "number", "required": false, "label": "Pre-weight (kg)", "min": 0},
+          {"name": "bp_pre", "type": "text", "required": false, "label": "BP (Pre)"}
+        ]
+      },
+      {
+        "name": "Session",
+        "order": 2,
+        "fields": [
+          {"name": "duration_hours", "type": "number", "required": false, "label": "Duration (hours)", "min": 0},
+          {"name": "ultrafiltration_l", "type": "number", "required": false, "label": "Ultrafiltration (L)", "min": 0},
+          {"name": "complications", "type": "textarea", "required": false, "label": "Complications"}
+        ]
+      },
+      {
+        "name": "Post-Dialysis",
+        "order": 3,
+        "fields": [
+          {"name": "post_weight_kg", "type": "number", "required": false, "label": "Post-weight (kg)", "min": 0},
+          {"name": "bp_post", "type": "text", "required": false, "label": "BP (Post)"},
+          {"name": "notes", "type": "textarea", "required": false, "label": "Notes"}
+        ]
+      }
+    ]
+  }
+}

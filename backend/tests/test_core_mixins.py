@@ -2,7 +2,7 @@
 Tests for core mixins - idempotency, transaction safety, and concurrency control.
 """
 
-import pytest # type: ignore
+import pytest  # type: ignore
 from django.contrib.auth import get_user_model
 from rest_framework import status
 from rest_framework.test import APIRequestFactory
@@ -27,9 +27,7 @@ class TestIdempotentCreateMixin:
         assert response.status_code == status.HTTP_201_CREATED
         assert "mrn" in response.data
 
-    def test_create_with_idempotency_key_first_request(
-        self, authenticated_client, patient_data
-    ):
+    def test_create_with_idempotency_key_first_request(self, authenticated_client, patient_data):
         """Should create resource and cache response with idempotency key."""
         idempotency_key = "test-key-12345"
         response = authenticated_client.post(
@@ -134,3 +132,122 @@ class TestConcurrencyControlMixin:
         )
         # Should succeed as encounters don't have version field
         assert response.status_code == status.HTTP_200_OK
+
+
+@pytest.mark.django_db
+class TestCoreMixinsDirectUnitCoverage:
+    """Direct unit-ish tests to exercise mixin branches."""
+
+    def test_idempotent_create_caches_and_replays_response(self, test_user):
+        from rest_framework.response import Response
+
+        class DummySerializer:
+            class Meta:
+                model = IdempotencyKey
+
+        class Base:
+            called = 0
+
+            def create(self, request, *args, **kwargs):
+                Base.called += 1
+                return Response({"id": 777, "ok": True}, status=201)
+
+        class View(IdempotentCreateMixin, Base):
+            def get_serializer_class(self):
+                return DummySerializer
+
+        request = type(
+            "Req",
+            (),
+            {"META": {"HTTP_X_IDEMPOTENCY_KEY": "unit-key-1"}, "user": test_user},
+        )()
+
+        response1 = View().create(request)
+        assert response1.status_code == 201
+        assert Base.called == 1
+        assert IdempotencyKey.objects.filter(key="unit-key-1", user=test_user).exists()
+
+        response2 = View().create(request)
+        assert response2.status_code == 201
+        assert response2.data == response1.data
+        assert Base.called == 1  # replay should not call super().create
+
+    def test_transaction_safe_update_clears_prefetch_cache(self):
+        from rest_framework.response import Response
+
+        class Instance:
+            def __init__(self):
+                self._prefetched_objects_cache = {"x": [1]}
+
+        instance = Instance()
+
+        class DummySerializer:
+            def __init__(self):
+                self.data = {"ok": True}
+
+            def is_valid(self, raise_exception=False):
+                return True
+
+        class QS:
+            def select_for_update(self):
+                return self
+
+            def get(self, pk=None):
+                assert pk == 1
+                return instance
+
+        class View(TransactionSafeUpdateMixin):
+            def get_queryset(self):
+                return QS()
+
+            def get_serializer(self, _instance, data=None, partial=False):
+                assert partial is True
+                assert data == {"field": "value"}
+                return DummySerializer()
+
+            def perform_update(self, serializer):
+                assert serializer.data == {"ok": True}
+
+        request = type("Req", (), {"data": {"field": "value"}})()
+        response = View().update(request, pk=1, partial=True)
+        assert isinstance(response, Response)
+        assert response.status_code == 200
+        assert instance._prefetched_objects_cache == {}
+
+    def test_concurrency_control_returns_409_and_increments_on_success(self):
+        from rest_framework.response import Response
+
+        class Instance:
+            def __init__(self):
+                self.version = 2
+
+        instance = Instance()
+
+        class DummySerializer:
+            def __init__(self):
+                self.data = {"ok": True}
+
+            def is_valid(self, raise_exception=False):
+                return True
+
+        class View(ConcurrencyControlMixin):
+            def get_object(self):
+                return instance
+
+            def get_serializer(self, _instance, data=None, partial=False):
+                return DummySerializer()
+
+            def perform_update(self, serializer):
+                assert serializer.data == {"ok": True}
+
+        # Conflict
+        request_conflict = type("Req", (), {"data": {"version": 1}})()
+        response_conflict = View().update(request_conflict)
+        assert isinstance(response_conflict, Response)
+        assert response_conflict.status_code == status.HTTP_409_CONFLICT
+
+        # Success increments
+        request_ok = type("Req", (), {"data": {"version": 2}})()
+        response_ok = View().update(request_ok)
+        assert response_ok.status_code == 200
+        assert instance.version == 3

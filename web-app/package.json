@@ -21,6 +21,8 @@
     "e2e": "playwright test",
     "e2e:ui": "playwright test --ui",
     "e2e:debug": "playwright test --debug",
+    "e2e:smoke": "NODE_ENV=production playwright test --grep @smoke --project=chromium",
+    "e2e:prod": "NODE_ENV=production playwright test --project=chromium",
     "e2e:report": "playwright show-report",
     "bdd": "cucumber-js",
     "bdd:smoke": "cucumber-js --profile smoke",

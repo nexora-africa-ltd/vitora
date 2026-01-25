@@ -111,6 +111,9 @@ quality: lint type-check security
 pre-commit: format quality test
 	@echo "Pre-commit checks complete!"
 
+cloc:
+	cloc . --exclude-dir=tests,venv,.venv,node_modules,__tests__,.mypy_cache,.pytest_cache,.ruff_cache,dist,build,__pycache__
+
 clean:
 	find . -type d -name __pycache__ -exec rm -rf {} + 2>/dev/null || true
 	find . -type f -name "*.pyc" -delete

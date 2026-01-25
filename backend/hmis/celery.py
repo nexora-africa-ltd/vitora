@@ -10,6 +10,7 @@ Sprint 0.5: Offline Sync Logic
 import os
 
 from celery import Celery
+from celery.schedules import crontab
 
 # Set the default Django settings module
 os.environ.setdefault("DJANGO_SETTINGS_MODULE", "hmis.settings.development")
@@ -59,6 +60,10 @@ app.conf.beat_schedule = {
     "retry-failed-entries-hourly": {
         "task": "hmis.apps.core.tasks.retry_failed_entries",
         "schedule": 3600.0,  # Every hour
+    },
+    "generate-monthly-clinic-reports": {
+        "task": "hmis.apps.clinics.tasks.generate_monthly_clinic_reports",
+        "schedule": crontab(minute=0, hour=1, day_of_month=1),
     },
 }
 

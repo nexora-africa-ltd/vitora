@@ -1,0 +1,61 @@
+{
+  "name": "Surgical OPD Assessment",
+  "template_type": "encounter",
+  "specialty": "Surgery",
+  "description": "Surgical outpatient assessment and follow-up template",
+  "content": {
+    "title": "Surgical OPD Assessment",
+    "version": "1.0",
+    "sections": [
+      {
+        "name": "Presenting Complaint",
+        "order": 1,
+        "fields": [
+          {"name": "complaint", "type": "text", "required": true, "label": "Chief Complaint"},
+          {"name": "duration", "type": "text", "required": false, "label": "Duration"},
+          {"name": "injury_related", "type": "boolean", "required": false, "label": "Injury/Trauma Related"}
+        ]
+      },
+      {
+        "name": "History & Assessment",
+        "order": 2,
+        "fields": [
+          {"name": "history_of_present_illness", "type": "textarea", "required": true, "label": "History of Present Illness"},
+          {"name": "surgical_history", "type": "textarea", "required": false, "label": "Past Surgical History"},
+          {"name": "comorbidities", "type": "textarea", "required": false, "label": "Comorbidities"},
+          {"name": "allergies", "type": "textarea", "required": false, "label": "Allergies"},
+          {"name": "current_medications", "type": "textarea", "required": false, "label": "Current Medications"}
+        ]
+      },
+      {
+        "name": "Examination",
+        "order": 3,
+        "fields": [
+          {"name": "exam_findings", "type": "textarea", "required": true, "label": "Examination Findings"},
+          {"name": "wound_or_mass_description", "type": "textarea", "required": false, "label": "Wound/Mass Description"},
+          {"name": "neurovascular_status", "type": "textarea", "required": false, "label": "Neurovascular Status (if applicable)"}
+        ]
+      },
+      {
+        "name": "Investigations",
+        "order": 4,
+        "fields": [
+          {"name": "labs_requested", "type": "textarea", "required": false, "label": "Labs Requested"},
+          {"name": "imaging_requested", "type": "textarea", "required": false, "label": "Imaging Requested"},
+          {"name": "results_summary", "type": "textarea", "required": false, "label": "Results Summary"}
+        ]
+      },
+      {
+        "name": "Plan",
+        "order": 5,
+        "fields": [
+          {"name": "diagnosis_or_impression", "type": "textarea", "required": true, "label": "Diagnosis/Impression"},
+          {"name": "management_plan", "type": "textarea", "required": true, "label": "Management Plan"},
+          {"name": "procedure_planned", "type": "boolean", "required": false, "label": "Procedure Planned"},
+          {"name": "procedure_details", "type": "textarea", "required": false, "label": "Procedure Details"},
+          {"name": "referral_or_follow_up", "type": "textarea", "required": false, "label": "Referral/Follow-up"}
+        ]
+      }
+    ]
+  }
+}

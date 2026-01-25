@@ -26,13 +26,13 @@ interface DiagnosisEntryProps {
   disabled?: boolean;
 }
 
-export function DiagnosisEntry({ 
-  onAdd, 
+export function DiagnosisEntry({
+  onAdd,
   onUpdate,
-  existingDiagnoses, 
+  existingDiagnoses,
   editingDiagnosis,
   onCancelEdit,
-  disabled = false 
+  disabled = false
 }: DiagnosisEntryProps) {
   const [searchQuery, setSearchQuery] = useState('');
   const [isSearchOpen, setIsSearchOpen] = useState(false);
@@ -58,9 +58,9 @@ export function DiagnosisEntry({
       // Set ICD-11 or ICD-10 selection based on existing data
       if (editingDiagnosis.data.icd11_code) {
         setUseICD11(true);
-        setIcd11Value({ 
-          code: editingDiagnosis.data.icd11_code, 
-          title: editingDiagnosis.data.icd11_display?.replace(`${editingDiagnosis.data.icd11_code} - `, '') || '' 
+        setIcd11Value({
+          code: editingDiagnosis.data.icd11_code,
+          title: editingDiagnosis.data.icd11_display?.replace(`${editingDiagnosis.data.icd11_code} - `, '') || ''
         });
         setSelectedCode(null);
       } else if (editingDiagnosis.data.icd10_code) {
@@ -442,12 +442,12 @@ interface DiagnosisListDisplayProps {
   disabled?: boolean;
 }
 
-export function DiagnosisListDisplay({ 
-  diagnoses, 
-  onRemove, 
+export function DiagnosisListDisplay({
+  diagnoses,
+  onRemove,
   onEdit,
   editingIndex,
-  disabled = false 
+  disabled = false
 }: DiagnosisListDisplayProps) {
   if (diagnoses.length === 0) return null;
 
@@ -547,12 +547,12 @@ interface DiagnosisFormContentProps {
  * Content-only version of the Diagnosis form (no Card wrapper)
  * Used in accordion-based layouts
  */
-export function DiagnosisFormContent({ 
-  diagnoses, 
-  onAdd, 
-  onRemove, 
+export function DiagnosisFormContent({
+  diagnoses,
+  onAdd,
+  onRemove,
   onUpdate,
-  disabled = false 
+  disabled = false
 }: DiagnosisFormContentProps) {
   const [editingDiagnosis, setEditingDiagnosis] = useState<{ index: number; data: DiagnosisFormData } | null>(null);
 
@@ -638,14 +638,14 @@ interface DiagnosisFormProps {
  * Card-wrapped version of the Diagnosis form
  * Used in tab-based layouts (legacy)
  */
-export function DiagnosisForm({ 
-  diagnoses, 
-  onAdd, 
-  onRemove, 
+export function DiagnosisForm({
+  diagnoses,
+  onAdd,
+  onRemove,
   onUpdate,
-  disabled = false, 
-  onPrevious, 
-  onNext 
+  disabled = false,
+  onPrevious,
+  onNext
 }: DiagnosisFormProps) {
   return (
     <Card>

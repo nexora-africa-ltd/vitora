@@ -103,7 +103,7 @@ describe('EncounterPrescriptions', () => {
       { wrapper }
     );
 
-    expect(screen.getByRole('link', { name: /new prescription/i })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /new prescription/i })).toBeInTheDocument();
   });
 
   it('should hide New Prescription button when disabled', () => {

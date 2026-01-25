@@ -19,6 +19,7 @@ from .models import (
     ClinicSession,
     ClinicStaff,
     ClinicVisit,
+    MonthlyClinicReport,
 )
 
 # =============================================================================
@@ -346,15 +347,36 @@ class ClinicScheduleSerializer(serializers.ModelSerializer):
 
 
 class ClinicEnrollmentSerializer(serializers.ModelSerializer):
-    """Serializer for ClinicEnrollment model."""
+    """Serializer for ClinicEnrollment model with full chronic care fields."""
 
     patient_name = serializers.SerializerMethodField()
     patient_mrn = serializers.CharField(source="patient.mrn", read_only=True)
     clinic_name = serializers.CharField(source="clinic.name", read_only=True)
+    clinic_type = serializers.CharField(source="clinic.clinic_type", read_only=True)
     status_display = serializers.CharField(source="get_status_display", read_only=True)
     is_overdue = serializers.SerializerMethodField()
+    is_defaulter = serializers.SerializerMethodField()
     days_since_last_visit = serializers.SerializerMethodField()
+    days_overdue = serializers.SerializerMethodField()
     enrolled_by_name = serializers.CharField(source="enrolled_by.get_full_name", read_only=True)
+    enrollment_type = serializers.SerializerMethodField()
+    clinic_specific_summary = serializers.SerializerMethodField()
+
+    # CCC computed fields
+    days_on_art = serializers.SerializerMethodField()
+    viral_load_due = serializers.SerializerMethodField()
+    cd4_due = serializers.SerializerMethodField()
+    is_virally_suppressed = serializers.SerializerMethodField()
+
+    # ANC computed fields
+    gestation_weeks = serializers.SerializerMethodField()
+    gestation_display = serializers.SerializerMethodField()
+    trimester = serializers.SerializerMethodField()
+    days_to_edd = serializers.SerializerMethodField()
+
+    # Diabetic computed fields
+    hba1c_controlled = serializers.SerializerMethodField()
+    hba1c_due = serializers.SerializerMethodField()
 
     class Meta:
         """Meta options for ClinicEnrollmentSerializer."""
@@ -364,6 +386,7 @@ class ClinicEnrollmentSerializer(serializers.ModelSerializer):
             "id",
             "clinic",
             "clinic_name",
+            "clinic_type",
             "patient",
             "patient_name",
             "patient_mrn",
@@ -382,7 +405,58 @@ class ClinicEnrollmentSerializer(serializers.ModelSerializer):
             "outcome_reason",
             "transfer_facility",
             "is_overdue",
+            "is_defaulter",
             "days_since_last_visit",
+            "days_overdue",
+            "enrollment_type",
+            "clinic_specific_summary",
+            # CCC fields
+            "art_start_date",
+            "current_art_regimen",
+            "art_regimen_line",
+            "who_clinical_stage",
+            "baseline_cd4_count",
+            "latest_cd4_count",
+            "latest_cd4_date",
+            "latest_viral_load",
+            "latest_viral_load_date",
+            "viral_load_suppressed",
+            "days_on_art",
+            "viral_load_due",
+            "cd4_due",
+            "is_virally_suppressed",
+            # ANC fields
+            "gravida",
+            "para",
+            "lmp",
+            "edd",
+            "height_cm",
+            "blood_group",
+            "rhesus_factor",
+            "hiv_status",
+            "partner_hiv_status",
+            "previous_cesarean",
+            "high_risk_pregnancy",
+            "high_risk_factors",
+            "gestation_weeks",
+            "gestation_display",
+            "trimester",
+            "days_to_edd",
+            # Diabetic fields
+            "diabetes_type",
+            "diabetes_diagnosis_date",
+            "latest_hba1c",
+            "latest_hba1c_date",
+            "latest_fbs",
+            "latest_fbs_date",
+            "on_insulin",
+            "diabetes_complications",
+            "hba1c_controlled",
+            "hba1c_due",
+            # Alert tracking
+            "last_reminder_sent",
+            "missed_appointment_alerts",
+            # Timestamps
             "created_at",
             "updated_at",
         ]
@@ -391,6 +465,8 @@ class ClinicEnrollmentSerializer(serializers.ModelSerializer):
             "enrolled_by",
             "last_visit_date",
             "total_visits",
+            "last_reminder_sent",
+            "missed_appointment_alerts",
             "created_at",
             "updated_at",
         ]
@@ -403,14 +479,90 @@ class ClinicEnrollmentSerializer(serializers.ModelSerializer):
         """Check if patient is overdue."""
         return obj.is_overdue()
 
+    def get_is_defaulter(self, obj):
+        """Check if patient is a defaulter."""
+        return obj.is_defaulter()
+
     def get_days_since_last_visit(self, obj):
         """Get days since last visit."""
         return obj.days_since_last_visit()
 
+    def get_days_overdue(self, obj):
+        """Get days overdue for appointment."""
+        return obj.days_overdue()
+
+    def get_enrollment_type(self, obj):
+        """Get enrollment type based on clinic."""
+        return obj.enrollment_type()
+
+    def get_clinic_specific_summary(self, obj):
+        """Get clinic-specific data summary."""
+        return obj.get_clinic_specific_summary()
+
+    # CCC getters
+    def get_days_on_art(self, obj):
+        """Get days on ART."""
+        return obj.days_on_art()
+
+    def get_viral_load_due(self, obj):
+        """Check if viral load test is due."""
+        return obj.viral_load_due()
+
+    def get_cd4_due(self, obj):
+        """Check if CD4 count is due."""
+        return obj.cd4_due()
+
+    def get_is_virally_suppressed(self, obj):
+        """Check if patient is virally suppressed."""
+        return obj.is_virally_suppressed()
+
+    # ANC getters
+    def get_gestation_weeks(self, obj):
+        """Get gestation in weeks."""
+        return obj.gestation_weeks()
+
+    def get_gestation_display(self, obj):
+        """Get gestation display string."""
+        return obj.gestation_display()
+
+    def get_trimester(self, obj):
+        """Get current trimester."""
+        return obj.trimester()
+
+    def get_days_to_edd(self, obj):
+        """Get days remaining to EDD."""
+        return obj.days_to_edd()
+
+    # Diabetic getters
+    def get_hba1c_controlled(self, obj):
+        """Check if HbA1c is controlled."""
+        return obj.hba1c_controlled()
+
+    def get_hba1c_due(self, obj):
+        """Check if HbA1c test is due."""
+        return obj.hba1c_due()
+
     def create(self, validated_data):
-        """Create enrollment with enrolled_by set."""
+        """Create enrollment with enrolled_by set and auto-calculate EDD for ANC."""
         validated_data["enrolled_by"] = self.context["request"].user
-        return super().create(validated_data)
+        instance = super().create(validated_data)
+
+        # Auto-calculate EDD for ANC enrollments
+        if instance.lmp and not instance.edd:
+            instance.calculate_edd()
+
+        return instance
+
+    def update(self, instance, validated_data):
+        """Update enrollment and recalculate EDD if LMP changed."""
+        old_lmp = instance.lmp
+        instance = super().update(instance, validated_data)
+
+        # Recalculate EDD if LMP changed
+        if instance.lmp and instance.lmp != old_lmp:
+            instance.calculate_edd()
+
+        return instance
 
 
 class ClinicEnrollmentListSerializer(serializers.ModelSerializer):
@@ -419,7 +571,11 @@ class ClinicEnrollmentListSerializer(serializers.ModelSerializer):
     patient_name = serializers.SerializerMethodField()
     patient_mrn = serializers.CharField(source="patient.mrn", read_only=True)
     clinic_name = serializers.CharField(source="clinic.name", read_only=True)
+    clinic_type = serializers.CharField(source="clinic.clinic_type", read_only=True)
     is_overdue = serializers.SerializerMethodField()
+    is_defaulter = serializers.SerializerMethodField()
+    days_overdue = serializers.SerializerMethodField()
+    enrollment_type = serializers.SerializerMethodField()
 
     class Meta:
         """Meta options for ClinicEnrollmentListSerializer."""
@@ -429,6 +585,7 @@ class ClinicEnrollmentListSerializer(serializers.ModelSerializer):
             "id",
             "clinic",
             "clinic_name",
+            "clinic_type",
             "patient",
             "patient_name",
             "patient_mrn",
@@ -437,6 +594,11 @@ class ClinicEnrollmentListSerializer(serializers.ModelSerializer):
             "status",
             "next_appointment",
             "is_overdue",
+            "is_defaulter",
+            "days_overdue",
+            "enrollment_type",
+            "last_visit_date",
+            "total_visits",
         ]
 
     def get_patient_name(self, obj):
@@ -446,6 +608,18 @@ class ClinicEnrollmentListSerializer(serializers.ModelSerializer):
     def get_is_overdue(self, obj):
         """Check if patient is overdue."""
         return obj.is_overdue()
+
+    def get_is_defaulter(self, obj):
+        """Check if patient is a defaulter."""
+        return obj.is_defaulter()
+
+    def get_days_overdue(self, obj):
+        """Get days overdue."""
+        return obj.days_overdue()
+
+    def get_enrollment_type(self, obj):
+        """Get enrollment type."""
+        return obj.enrollment_type()
 
 
 # =============================================================================
@@ -464,3 +638,50 @@ class QueueStatsSerializer(serializers.Serializer):
     no_show = serializers.IntegerField()
     total = serializers.IntegerField()
     average_wait_time = serializers.FloatField()
+
+
+# =============================================================================
+# Monthly Clinic Reports
+# =============================================================================
+
+
+class MonthlyClinicReportSerializer(serializers.ModelSerializer):
+    """Serializer for MonthlyClinicReport model."""
+
+    class Meta:
+        model = MonthlyClinicReport
+        fields = [
+            "id",
+            "clinic",
+            "year",
+            "month",
+            "total_visits",
+            "new_visits",
+            "revisits",
+            "priority_red",
+            "priority_orange",
+            "priority_yellow",
+            "priority_green",
+            "priority_blue",
+            "male_visits",
+            "female_visits",
+            "under_5_visits",
+            "under_18_visits",
+            "adult_visits",
+            "over_60_visits",
+            "new_enrollments",
+            "active_enrollments",
+            "defaulters",
+            "anc_first_visits",
+            "anc_revisits",
+            "deliveries",
+            "total_revenue",
+            "sha_claims_amount",
+            "cash_amount",
+            "dhis2_submitted",
+            "dhis2_submitted_at",
+            "dhis2_response",
+            "created_at",
+            "updated_at",
+        ]
+        read_only_fields = ["id", "created_at", "updated_at"]

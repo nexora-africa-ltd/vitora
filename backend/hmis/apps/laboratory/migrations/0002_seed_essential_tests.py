@@ -2,6 +2,8 @@
 Data migration to seed essential Kenya laboratory tests.
 """
 
+import os
+
 from decimal import Decimal
 
 from django.conf import settings
@@ -10,7 +12,13 @@ from django.db import migrations
 
 def seed_essential_tests(apps, schema_editor):
     """Seed essential laboratory tests for Kenyan healthcare facilities."""
-    # Skip seeding in test environment (in-memory database)
+    # Skip seeding in test environments (tests create their own catalog rows)
+    if os.getenv("DJANGO_ENV") == "test" or str(getattr(settings, "SETTINGS_MODULE", "")).endswith(
+        ".test"
+    ):
+        return
+
+    # Also skip seeding for in-memory databases.
     db_name = settings.DATABASES["default"]["NAME"]
     if db_name == ":memory:":
         return
