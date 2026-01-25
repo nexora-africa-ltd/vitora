@@ -1,0 +1,48 @@
+{
+  "name": "Family Planning Visit",
+  "template_type": "encounter",
+  "specialty": "MCH",
+  "description": "Family planning counselling and service visit template",
+  "content": {
+    "title": "Family Planning Visit",
+    "version": "1.0",
+    "sections": [
+      {
+        "name": "Client History",
+        "order": 1,
+        "fields": [
+          {"name": "reason_for_visit", "type": "select", "required": true, "label": "Reason", "options": ["New FP", "Method Change", "Follow-up", "Side Effects"]},
+          {"name": "parity", "type": "number", "required": false, "label": "Parity", "min": 0},
+          {"name": "lmp", "type": "date", "required": false, "label": "LMP"},
+          {"name": "pregnancy_ruled_out", "type": "boolean", "required": false, "label": "Pregnancy Ruled Out"}
+        ]
+      },
+      {
+        "name": "Method Selection",
+        "order": 2,
+        "fields": [
+          {"name": "method_chosen", "type": "select", "required": true, "label": "Method Chosen", "options": ["Implant", "IUD", "Injectable", "Pill", "Condoms", "Sterilization", "Other"]},
+          {"name": "counselling_notes", "type": "textarea", "required": false, "label": "Counselling Notes"},
+          {"name": "contraindications", "type": "textarea", "required": false, "label": "Contraindications / Risks"}
+        ]
+      },
+      {
+        "name": "Service",
+        "order": 3,
+        "fields": [
+          {"name": "service_provided", "type": "textarea", "required": false, "label": "Service Provided"},
+          {"name": "side_effects_discussed", "type": "boolean", "required": false, "label": "Side Effects Discussed"},
+          {"name": "follow_up_date", "type": "date", "required": false, "label": "Follow-up Date"}
+        ]
+      },
+      {
+        "name": "Plan",
+        "order": 4,
+        "fields": [
+          {"name": "assessment", "type": "textarea", "required": true, "label": "Assessment"},
+          {"name": "plan", "type": "textarea", "required": true, "label": "Plan"}
+        ]
+      }
+    ]
+  }
+}

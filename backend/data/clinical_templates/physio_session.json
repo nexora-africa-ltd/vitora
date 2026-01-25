@@ -1,0 +1,39 @@
+{
+  "name": "Physiotherapy Session Note",
+  "template_type": "note",
+  "specialty": "Physiotherapy",
+  "description": "Physiotherapy session documentation template",
+  "content": {
+    "title": "Physiotherapy Session Note",
+    "version": "1.0",
+    "sections": [
+      {
+        "name": "Baseline",
+        "order": 1,
+        "fields": [
+          {"name": "functional_status", "type": "textarea", "required": false, "label": "Functional Status"},
+          {"name": "pain_score", "type": "number", "required": false, "label": "Pain Score (0-10)", "min": 0, "max": 10},
+          {"name": "mobility", "type": "select", "required": false, "label": "Mobility", "options": ["Independent", "Assisted", "Wheelchair", "Bed-bound"]}
+        ]
+      },
+      {
+        "name": "Intervention",
+        "order": 2,
+        "fields": [
+          {"name": "exercises", "type": "textarea", "required": false, "label": "Exercises/Activities"},
+          {"name": "manual_therapy", "type": "textarea", "required": false, "label": "Manual Therapy"},
+          {"name": "modalities", "type": "textarea", "required": false, "label": "Modalities (e.g., heat, TENS)"}
+        ]
+      },
+      {
+        "name": "Outcome",
+        "order": 3,
+        "fields": [
+          {"name": "response", "type": "textarea", "required": false, "label": "Response to Therapy"},
+          {"name": "home_program", "type": "textarea", "required": false, "label": "Home Exercise Program"},
+          {"name": "next_session", "type": "date", "required": false, "label": "Next Session Date"}
+        ]
+      }
+    ]
+  }
+}

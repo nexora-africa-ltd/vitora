@@ -1,0 +1,39 @@
+{
+  "name": "Oncology Follow-up",
+  "template_type": "encounter",
+  "specialty": "Oncology",
+  "description": "Oncology follow-up visit template",
+  "content": {
+    "title": "Oncology Follow-up",
+    "version": "1.0",
+    "sections": [
+      {
+        "name": "Visit Summary",
+        "order": 1,
+        "fields": [
+          {"name": "cancer_diagnosis", "type": "text", "required": true, "label": "Cancer Diagnosis"},
+          {"name": "treatment_phase", "type": "select", "required": false, "label": "Treatment Phase", "options": ["New", "On Treatment", "Surveillance", "Palliative"]},
+          {"name": "symptoms", "type": "textarea", "required": false, "label": "Symptoms"}
+        ]
+      },
+      {
+        "name": "Treatment",
+        "order": 2,
+        "fields": [
+          {"name": "current_regimen", "type": "textarea", "required": false, "label": "Current Regimen"},
+          {"name": "toxicity", "type": "textarea", "required": false, "label": "Toxicity/Side Effects"},
+          {"name": "performance_status", "type": "select", "required": false, "label": "Performance Status", "options": ["0", "1", "2", "3", "4"]}
+        ]
+      },
+      {
+        "name": "Plan",
+        "order": 3,
+        "fields": [
+          {"name": "assessment", "type": "textarea", "required": true, "label": "Assessment"},
+          {"name": "plan", "type": "textarea", "required": true, "label": "Plan"},
+          {"name": "next_visit", "type": "date", "required": false, "label": "Next Visit Date"}
+        ]
+      }
+    ]
+  }
+}

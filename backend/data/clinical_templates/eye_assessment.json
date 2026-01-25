@@ -1,0 +1,51 @@
+{
+  "name": "Eye Clinic Assessment",
+  "template_type": "encounter",
+  "specialty": "Ophthalmology",
+  "description": "Ophthalmology/eye clinic assessment template",
+  "content": {
+    "title": "Eye Clinic Assessment",
+    "version": "1.0",
+    "sections": [
+      {
+        "name": "Presenting Problem",
+        "order": 1,
+        "fields": [
+          {"name": "presenting_complaint", "type": "text", "required": true, "label": "Presenting Complaint"},
+          {"name": "duration", "type": "text", "required": false, "label": "Duration"},
+          {"name": "laterality", "type": "select", "required": false, "label": "Laterality", "options": ["Right", "Left", "Both"]}
+        ]
+      },
+      {
+        "name": "Visual Assessment",
+        "order": 2,
+        "fields": [
+          {"name": "visual_acuity_right", "type": "text", "required": false, "label": "Visual Acuity (Right)"},
+          {"name": "visual_acuity_left", "type": "text", "required": false, "label": "Visual Acuity (Left)"},
+          {"name": "pain", "type": "boolean", "required": false, "label": "Pain Present"},
+          {"name": "photophobia", "type": "boolean", "required": false, "label": "Photophobia"},
+          {"name": "discharge", "type": "boolean", "required": false, "label": "Discharge"}
+        ]
+      },
+      {
+        "name": "Examination",
+        "order": 3,
+        "fields": [
+          {"name": "external_exam", "type": "textarea", "required": false, "label": "External Exam"},
+          {"name": "anterior_segment", "type": "textarea", "required": false, "label": "Anterior Segment"},
+          {"name": "posterior_segment", "type": "textarea", "required": false, "label": "Posterior Segment/Fundus"},
+          {"name": "intraocular_pressure", "type": "text", "required": false, "label": "Intraocular Pressure"}
+        ]
+      },
+      {
+        "name": "Plan",
+        "order": 4,
+        "fields": [
+          {"name": "diagnosis", "type": "textarea", "required": true, "label": "Diagnosis"},
+          {"name": "management", "type": "textarea", "required": true, "label": "Management"},
+          {"name": "referral_follow_up", "type": "textarea", "required": false, "label": "Referral/Follow-up"}
+        ]
+      }
+    ]
+  }
+}

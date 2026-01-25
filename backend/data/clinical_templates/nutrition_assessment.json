@@ -1,0 +1,49 @@
+{
+  "name": "Nutrition Assessment",
+  "template_type": "encounter",
+  "specialty": "Nutrition",
+  "description": "Nutrition assessment and counselling template",
+  "content": {
+    "title": "Nutrition Assessment",
+    "version": "1.0",
+    "sections": [
+      {
+        "name": "Anthropometry",
+        "order": 1,
+        "fields": [
+          {"name": "weight_kg", "type": "number", "required": false, "label": "Weight (kg)", "min": 0},
+          {"name": "height_cm", "type": "number", "required": false, "label": "Height (cm)", "min": 0},
+          {"name": "muac_cm", "type": "number", "required": false, "label": "MUAC (cm)", "min": 0},
+          {"name": "bmi", "type": "number", "required": false, "label": "BMI", "min": 0}
+        ]
+      },
+      {
+        "name": "Dietary Assessment",
+        "order": 2,
+        "fields": [
+          {"name": "diet_history", "type": "textarea", "required": true, "label": "Diet History (24-hr recall / typical intake)"},
+          {"name": "food_security", "type": "select", "required": false, "label": "Food Security", "options": ["Secure", "Mild insecurity", "Moderate insecurity", "Severe insecurity"]},
+          {"name": "feeding_challenges", "type": "textarea", "required": false, "label": "Feeding Challenges"}
+        ]
+      },
+      {
+        "name": "Clinical",
+        "order": 3,
+        "fields": [
+          {"name": "clinical_findings", "type": "textarea", "required": false, "label": "Clinical Findings"},
+          {"name": "comorbidities", "type": "textarea", "required": false, "label": "Comorbidities"}
+        ]
+      },
+      {
+        "name": "Plan",
+        "order": 4,
+        "fields": [
+          {"name": "nutrition_diagnosis", "type": "textarea", "required": true, "label": "Nutrition Diagnosis"},
+          {"name": "counselling", "type": "textarea", "required": true, "label": "Counselling / Education"},
+          {"name": "supplementation", "type": "textarea", "required": false, "label": "Supplementation"},
+          {"name": "follow_up", "type": "textarea", "required": false, "label": "Follow-up"}
+        ]
+      }
+    ]
+  }
+}

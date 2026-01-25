@@ -1,0 +1,50 @@
+{
+  "name": "Dental Clinic Assessment",
+  "template_type": "encounter",
+  "specialty": "Dental",
+  "description": "Dental outpatient assessment template",
+  "content": {
+    "title": "Dental Clinic Assessment",
+    "version": "1.0",
+    "sections": [
+      {
+        "name": "Chief Complaint",
+        "order": 1,
+        "fields": [
+          {"name": "complaint", "type": "text", "required": true, "label": "Main Complaint"},
+          {"name": "pain_score", "type": "number", "required": false, "label": "Pain Score (0-10)", "min": 0, "max": 10},
+          {"name": "duration", "type": "text", "required": false, "label": "Duration"}
+        ]
+      },
+      {
+        "name": "Dental History",
+        "order": 2,
+        "fields": [
+          {"name": "previous_dental_treatment", "type": "textarea", "required": false, "label": "Previous Dental Treatment"},
+          {"name": "oral_hygiene", "type": "select", "required": false, "label": "Oral Hygiene", "options": ["Good", "Fair", "Poor"]},
+          {"name": "allergies", "type": "textarea", "required": false, "label": "Allergies"}
+        ]
+      },
+      {
+        "name": "Examination",
+        "order": 3,
+        "fields": [
+          {"name": "extra_oral_exam", "type": "textarea", "required": false, "label": "Extra-oral Examination"},
+          {"name": "intra_oral_exam", "type": "textarea", "required": true, "label": "Intra-oral Examination"},
+          {"name": "teeth_findings", "type": "textarea", "required": false, "label": "Teeth Findings"},
+          {"name": "gum_findings", "type": "textarea", "required": false, "label": "Gum/Periodontal Findings"}
+        ]
+      },
+      {
+        "name": "Plan",
+        "order": 4,
+        "fields": [
+          {"name": "diagnosis", "type": "textarea", "required": true, "label": "Diagnosis"},
+          {"name": "treatment_plan", "type": "textarea", "required": true, "label": "Treatment Plan"},
+          {"name": "procedure_done", "type": "textarea", "required": false, "label": "Procedure Done"},
+          {"name": "follow_up", "type": "textarea", "required": false, "label": "Follow-up"}
+        ]
+      }
+    ]
+  }
+}
