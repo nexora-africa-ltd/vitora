@@ -263,7 +263,7 @@ export default function ClinicStaffPage() {
             </p>
           </div>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex flex-col gap-2 items-stretch sm:flex-row sm:flex-wrap sm:items-center">
           <Button variant="outline" size="sm" onClick={() => refetchStaff()}>
             <RefreshCw className="h-4 w-4 mr-2" />
             Refresh

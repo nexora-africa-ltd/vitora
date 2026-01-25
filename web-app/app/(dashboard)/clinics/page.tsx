@@ -103,7 +103,7 @@ export default function ClinicsPage() {
         title="Clinics"
         description="Manage and monitor all clinic operations"
         actions={
-          <div className="flex items-center gap-2">
+          <div className="flex flex-col gap-2 items-stretch sm:flex-row sm:flex-wrap sm:items-center">
             <Button variant="outline" size="sm" onClick={() => refetch()}>
               <RefreshCw className="h-4 w-4 mr-2" />
               Refresh

@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { AuthGuard } from '@/lib/auth/guard';
 import { SyncProvider } from '@/lib/context/sync-context';
 import { Sidebar } from '@/components/layout/sidebar';
@@ -10,6 +10,22 @@ import { cn } from '@/lib/utils/cn';
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
+
+  // Prevent scroll chaining into the underlying page when the mobile sidebar is open.
+  useEffect(() => {
+    if (!mobileSidebarOpen) return;
+
+    const prevBodyOverflow = document.body.style.overflow;
+    const prevHtmlOverflow = document.documentElement.style.overflow;
+
+    document.body.style.overflow = 'hidden';
+    document.documentElement.style.overflow = 'hidden';
+
+    return () => {
+      document.body.style.overflow = prevBodyOverflow;
+      document.documentElement.style.overflow = prevHtmlOverflow;
+    };
+  }, [mobileSidebarOpen]);
 
   return (
     <AuthGuard>
