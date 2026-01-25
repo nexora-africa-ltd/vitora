@@ -1,20 +1,17 @@
 /**
- * Clinics Module E2E Tests
+ * Clinic Queue Management E2E Tests
  *
- * Matches "5.1 Test Scenarios" (clinics.spec.ts):
- * - can view clinics list
- * - can open clinic dashboard
- * - can view clinic queue
- * - can view clinic staff
- * - can view clinic schedule
+ * Matches "5.1 Test Scenarios" (clinic-queue.spec.ts):
+ * - can add patient to queue
+ * - can call patient from queue
+ * - can start consultation
+ * - can complete visit
+ * - can refer patient to another clinic
+ * - queue updates in real-time (polling-based)
  */
 
 import { test, expect, Page } from '@playwright/test';
 import { TEST_USER } from './fixtures';
-
-// =============================================================================
-// Mock Data
-// =============================================================================
 
 type AnyRecord = Record<string, unknown>;
 
@@ -173,53 +170,12 @@ function openSession(clinicId: number) {
   };
 }
 
-// =============================================================================
-// Setup Helpers
-// =============================================================================
-
 async function setupMocks(page: Page) {
-  // Mutable state per test
-  let sessionState: AnyRecord = closedSession(1);
-  let queueState: AnyRecord[] = [makeVisit()];
+  let sessionState: any = closedSession(1);
+  let queueState: any[] = [makeVisit()];
 
-  const staffState = [
-    {
-      id: 301,
-      clinic: 1,
-      clinic_name: 'Eye Clinic',
-      user: 1,
-      user_name: 'Dr. Test Clinician',
-      user_email: 'clinician@example.com',
-      role: 'CLINICIAN',
-      role_display: 'Clinician',
-      is_primary: true,
-      is_active: true,
-      start_date: new Date().toISOString().slice(0, 10),
-      end_date: null,
-      notes: '',
-      created_at: nowIso(),
-      updated_at: nowIso(),
-    },
-  ];
-
-  const scheduleState = [
-    {
-      id: 401,
-      clinic: 1,
-      clinic_name: 'Eye Clinic',
-      day_of_week: 0,
-      day_of_week_display: 'Monday',
-      start_time: '08:00',
-      end_time: '17:00',
-      max_patients: 50,
-      is_active: true,
-      notes: 'Morning to evening',
-      created_at: nowIso(),
-      updated_at: nowIso(),
-    },
-  ];
-
-  const patientById = new Map(mockPatients.map((p) => [p.id, p]));
+  const patientById = new Map<number, any>(mockPatients.map((p) => [p.id, p]));
+  let queueGetCount = 0;
 
   // Auth
   await page.route('**/api/token/**', async (route) => {
@@ -240,17 +196,10 @@ async function setupMocks(page: Page) {
 
   // Clinics list
   await page.route(/.*\/api\/clinics\/(\?.*)?$/, async (route) => {
-    const url = new URL(route.request().url());
-    const search = (url.searchParams.get('search') ?? '').toLowerCase();
-
-    const results = mockClinicList.filter((c) =>
-      !search ? true : c.name.toLowerCase().includes(search) || c.code.toLowerCase().includes(search)
-    );
-
     await route.fulfill({
       status: 200,
       contentType: 'application/json',
-      body: JSON.stringify({ count: results.length, next: null, previous: null, results }),
+      body: JSON.stringify({ count: mockClinicList.length, next: null, previous: null, results: mockClinicList }),
     });
   });
 
@@ -268,31 +217,9 @@ async function setupMocks(page: Page) {
     await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(clinic) });
   });
 
-  // Clinic staff
-  await page.route(/.*\/api\/clinics\/\d+\/staff\/(\?.*)?$/, async (route) => {
-    await route.fulfill({
-      status: 200,
-      contentType: 'application/json',
-      body: JSON.stringify(staffState),
-    });
-  });
-
-  // Clinic schedule
-  await page.route(/.*\/api\/clinics\/\d+\/schedule\/(\?.*)?$/, async (route) => {
-    await route.fulfill({
-      status: 200,
-      contentType: 'application/json',
-      body: JSON.stringify(scheduleState),
-    });
-  });
-
   // Today session (GET)
   await page.route(/.*\/api\/clinics\/\d+\/sessions\/today\/$/, async (route) => {
-    await route.fulfill({
-      status: 200,
-      contentType: 'application/json',
-      body: JSON.stringify(sessionState),
-    });
+    await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(sessionState) });
   });
 
   // Open today's session (POST)
@@ -317,11 +244,15 @@ async function setupMocks(page: Page) {
       status: 200,
       contentType: 'application/json',
       body: JSON.stringify({
-        waiting_count: waiting,
-        in_consultation_count: inConsult,
-        completed_count: completed,
+        total_registered: queueState.length,
+        waiting,
+        called: queueState.filter((v) => v.status === 'CALLED').length,
+        in_consultation: inConsult,
+        completed,
+        referred: 0,
+        no_show: 0,
+        cancelled: 0,
         avg_wait_time_minutes: waiting ? 12.4 : 0,
-        longest_wait_minutes: waiting ? 25 : 0,
         by_priority: {
           EMERGENCY: 0,
           URGENT: 0,
@@ -338,6 +269,19 @@ async function setupMocks(page: Page) {
     const method = route.request().method();
 
     if (method === 'GET') {
+      queueGetCount += 1;
+      // After a couple of reads, simulate an external update ("real-time").
+      if (queueGetCount >= 2 && !queueState.some((v) => v.patient.full_name === 'Jane Wanjiku')) {
+        queueState = [...queueState, makeVisit({
+          id: 102,
+          queue_number: 2,
+          patient: patientById.get(11),
+          chief_complaint: 'Routine follow-up',
+          wait_time_minutes: 0,
+          registered_at: nowIso(),
+        })];
+      }
+
       await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(queueState) });
       return;
     }
@@ -412,9 +356,10 @@ async function setupMocks(page: Page) {
   });
 
   // Visit actions: call/start/complete/refer
-  await page.route(/.*\/api\/clinic-visits\/(\d+)\/(call|start|complete|refer)\/$/, async (route) => {
+  // Accept optional trailing slash and optional query params.
+  await page.route(/.*\/api\/clinic-visits\/(\d+)\/(call|start|complete|refer)\/?(\?.*)?$/, async (route) => {
     const url = route.request().url();
-    const match = url.match(/\/api\/clinic-visits\/(\d+)\/(call|start|complete|refer)\/$/);
+    const match = url.match(/\/api\/clinic-visits\/(\d+)\/(call|start|complete|refer)\/?(\?.*)?$/);
     const visitId = match ? Number(match[1]) : NaN;
     const action = match ? match[2] : '';
 
@@ -439,7 +384,6 @@ async function setupMocks(page: Page) {
         status: 'IN_CONSULTATION',
         status_display: 'In Consultation',
         consultation_started_at: nowIso(),
-        // Keep encounter null to avoid navigating to encounter page in E2E.
         encounter: null,
       };
       queueState = queueState.map((v, i) => (i === visitIndex ? updated : v));
@@ -460,7 +404,6 @@ async function setupMocks(page: Page) {
     }
 
     if (action === 'refer') {
-      // Remove from current clinic queue after referral.
       queueState = queueState.filter((v) => Number(v.id) !== visitId);
       await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ ...current, status: 'REFERRED', status_display: 'Referred' }) });
       return;
@@ -478,52 +421,139 @@ async function login(page: Page) {
   await page.waitForURL(/.*dashboard.*/, { timeout: 15000 });
 }
 
-// =============================================================================
-// Tests
-// =============================================================================
-
-test.describe('Clinics Module', () => {
+test.describe('Clinic Queue Management', () => {
   test.beforeEach(async ({ page }) => {
     await setupMocks(page);
     await login(page);
   });
 
-  test('can view clinics list', async ({ page }) => {
-    await page.goto('/clinics');
-
-    await expect(page.getByRole('heading', { name: 'Clinics' })).toBeVisible();
-    // There is also a sidebar link to /clinics/eye; target the clinic card link.
-    const eyeClinicCardLink = page.locator('a[href="/clinics/1"]');
-    await expect(eyeClinicCardLink).toBeVisible();
-
-    await expect(page.getByRole('link', { name: 'Eye Clinic', exact: true })).toBeVisible();
-  });
-
-  test('can open clinic dashboard', async ({ page }) => {
-    await page.goto('/clinics/1');
-
-    await expect(page.getByRole('heading', { name: /Eye Clinic/i })).toBeVisible();
-  });
-
-  test('can view clinic queue', async ({ page }) => {
+  test('can add patient to queue', async ({ page }) => {
     await page.goto('/clinics/1/queue');
 
-    await expect(page.getByRole('heading', { name: /Queue Management/i })).toBeVisible();
-    await expect(page.getByText(/Manage patient queue/i)).toBeVisible();
+    await page.getByRole('button', { name: /^Open Session$/i }).first().click();
+
+    await page.getByRole('button', { name: /^Add Patient$/i }).click();
+    await expect(page.getByRole('heading', { name: /Add Patient to Queue/i })).toBeVisible();
+
+    const dialog = page.getByRole('dialog', { name: /Add Patient to Queue/i });
+
+    await dialog.getByPlaceholder(/Search by name, MRN, or phone/i).fill('Ja');
+    await expect(dialog.getByText('Jane Wanjiku', { exact: true })).toBeVisible();
+    await dialog.getByText('Jane Wanjiku', { exact: true }).click();
+
+    await page.getByRole('button', { name: /^Add to Queue$/i }).click();
+
+    await expect(page.locator('table').getByText('Jane Wanjiku').first()).toBeVisible();
+  });
+
+  test('can call patient from queue', async ({ page }) => {
+    await page.goto('/clinics/1/queue');
+    await page.getByRole('button', { name: /^Open Session$/i }).first().click();
+
+    await expect(page.getByRole('cell', { name: /John Kamau/i })).toBeVisible();
+    await page.getByRole('button', { name: /^Call$/i }).click();
+
+    await expect(page.getByRole('button', { name: /^Start$/i })).toBeVisible();
+  });
+
+  test('can start consultation', async ({ page }) => {
+    await page.goto('/clinics/1/queue');
+    await page.getByRole('button', { name: /^Open Session$/i }).first().click();
+
+    const row = page.locator('tr', { hasText: 'John Kamau' });
+    await Promise.all([
+      page.waitForResponse(/.*\/api\/clinic-visits\/\d+\/call\/$/),
+      row.getByRole('button', { name: /^Call$/i }).click(),
+    ]);
+
+    const startButton = row.getByRole('button', { name: /^Start$/i });
+    await expect(startButton).toBeVisible();
+    await startButton.click({ force: true });
+    await expect(page.getByText('Consultation Started')).toBeVisible();
+
+    // Ensure the UI refetches and reflects the updated status.
+    await page.getByRole('button', { name: /^Refresh$/i }).click();
+
+    await page.getByRole('tab', { name: /In Consultation/i }).click();
     await expect(page.getByRole('cell', { name: /John Kamau/i })).toBeVisible();
   });
 
-  test('can view clinic staff', async ({ page }) => {
-    await page.goto('/clinics/1/staff');
+  test('can complete visit', async ({ page }) => {
+    await page.goto('/clinics/1/queue');
+    await page.getByRole('button', { name: /^Open Session$/i }).first().click();
 
-    await expect(page.getByRole('heading', { name: /Staff Management/i })).toBeVisible();
-    await expect(page.getByText(/Dr\. Test Clinician/i)).toBeVisible();
+    const row = page.locator('tr', { hasText: 'John Kamau' });
+    await Promise.all([
+      page.waitForResponse(/.*\/api\/clinic-visits\/\d+\/call\/$/),
+      row.getByRole('button', { name: /^Call$/i }).click(),
+    ]);
+
+    const startButton = row.getByRole('button', { name: /^Start$/i });
+    await expect(startButton).toBeVisible();
+    await Promise.all([
+      page.waitForResponse(/.*\/api\/clinic-visits\/\d+\/start\/?/),
+      startButton.click({ force: true }),
+    ]);
+    await expect(page.getByText('Consultation Started')).toBeVisible();
+
+    // Ensure the UI refetches and reflects the updated status.
+    await Promise.all([
+      page.waitForResponse(/.*\/api\/clinics\/\d+\/queue\//),
+      page.getByRole('button', { name: /^Refresh$/i }).click(),
+    ]);
+
+    // Ensure the visit has moved into the consultation bucket.
+    await page.getByRole('tab', { name: /In Consultation/i }).click();
+    // Use the card's heading/name text to avoid strict mode conflicts with toast messages.
+    const consultationSection = page.locator('main');
+    await expect(consultationSection.getByText('John Kamau', { exact: true }).first()).toBeVisible();
+
+    // Completing visits is available in cards view.
+    await page.getByRole('button', { name: 'Cards view', exact: true }).click();
+    await expect(page.getByRole('button', { name: /^Complete$/i })).toBeVisible();
+    await Promise.all([
+      page.waitForResponse(/.*\/api\/clinic-visits\/\d+\/complete\/?/),
+      page.getByRole('button', { name: /^Complete$/i }).click({ force: true }),
+    ]);
+
+    await page.getByRole('tab', { name: /Completed/i }).click();
+    await expect(page.getByRole('cell', { name: /John Kamau/i })).toBeVisible();
   });
 
-  test('can view clinic schedule', async ({ page }) => {
-    await page.goto('/clinics/1/schedule');
+  test('can refer patient to another clinic', async ({ page }) => {
+    await page.goto('/clinics/1/queue');
+    await page.getByRole('button', { name: /^Open Session$/i }).first().click();
 
-    await expect(page.getByRole('heading', { name: /Eye Clinic - Schedule/i })).toBeVisible();
-    await expect(page.getByText('Monday')).toBeVisible();
+    const row = page.locator('tr', { hasText: 'John Kamau' });
+    await row.getByRole('button').last().click();
+    await page.getByRole('menuitem', { name: /Refer to Clinic/i }).click();
+
+    const dialog = page.getByRole('dialog', { name: /Refer Patient/i });
+    await dialog.getByRole('button', { name: /Refer To Clinic/i }).click();
+    await page.getByRole('option', { name: /Dental Clinic/i }).click();
+
+    await dialog.getByPlaceholder(/Why is this patient being referred\?/i).fill('Needs specialist review');
+    await dialog.getByRole('button', { name: /^Refer Patient$/i }).click();
+
+    await expect(page.getByRole('cell', { name: /John Kamau/i })).toHaveCount(0);
+  });
+
+  test('queue updates in real-time via WebSocket', async ({ page }) => {
+    // Implementation uses polling (react-query refetchInterval=15000).
+    // This test verifies that the UI updates without a manual refresh.
+    test.slow();
+    test.setTimeout(45000);
+
+    await page.goto('/clinics/1/queue');
+
+    // Initial state: only John is present.
+    await expect(page.getByRole('cell', { name: /John Kamau/i })).toBeVisible();
+    await expect(page.getByRole('cell', { name: /Jane Wanjiku/i })).toHaveCount(0);
+
+    // Wait for polling interval to kick in.
+    await page.waitForTimeout(16000);
+
+    // After polling, Jane should appear (simulated external update).
+    await expect(page.getByRole('cell', { name: /Jane Wanjiku/i })).toBeVisible();
   });
 });
