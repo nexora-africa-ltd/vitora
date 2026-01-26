@@ -3,6 +3,7 @@
  *
  * Displays real-time connection status for WebSocket connectivity.
  * Shows visual indicator and tooltip with connection details.
+ * Reuses StatusIndicator for consistent styling across the app.
  *
  * Usage:
  * ```tsx
@@ -18,7 +19,6 @@ import React from 'react';
 import {
   type WebSocketConnectionState,
   getConnectionStatusText,
-  getConnectionStatusColor,
 } from '@/lib/hooks/use-websocket';
 import {
   Tooltip,
@@ -26,6 +26,7 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from '@/components/ui/tooltip';
+import StatusIndicator from '@/components/ui/status-indicator';
 import { Wifi, WifiOff, Loader2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
@@ -42,18 +43,41 @@ export interface WebSocketStatusProps {
   showLabel?: boolean;
   /** Size variant */
   size?: 'sm' | 'md' | 'lg';
+  /** Whether to show the WiFi icon */
+  showIcon?: boolean;
 }
 
-const sizeClasses = {
+/**
+ * Map WebSocket connection state to StatusIndicator state
+ */
+function mapConnectionState(
+  connectionState: WebSocketConnectionState
+): 'active' | 'down' | 'fixing' | 'idle' {
+  switch (connectionState) {
+    case 'connected':
+      return 'active';
+    case 'connecting':
+    case 'reconnecting':
+      return 'fixing';
+    case 'error':
+      return 'down';
+    case 'disconnected':
+    default:
+      return 'idle';
+  }
+}
+
+const iconSizeClasses = {
   sm: 'h-3 w-3',
   md: 'h-4 w-4',
   lg: 'h-5 w-5',
 };
 
-const dotSizeClasses = {
-  sm: 'h-2 w-2',
-  md: 'h-2.5 w-2.5',
-  lg: 'h-3 w-3',
+const iconColorClasses = {
+  active: 'text-green-500 dark:text-green-400',
+  fixing: 'text-yellow-500 dark:text-yellow-400',
+  down: 'text-red-500 dark:text-red-400',
+  idle: 'text-gray-400 dark:text-gray-500',
 };
 
 export function WebSocketStatus({
@@ -63,34 +87,48 @@ export function WebSocketStatus({
   className,
   showLabel = false,
   size = 'md',
+  showIcon = true,
 }: WebSocketStatusProps) {
-  const statusColor = getConnectionStatusColor(connectionState);
   const statusText = getConnectionStatusText(connectionState);
-
-  const colorClasses = {
-    green: 'text-green-500 dark:text-green-400',
-    yellow: 'text-yellow-500 dark:text-yellow-400',
-    red: 'text-red-500 dark:text-red-400',
-    gray: 'text-gray-400 dark:text-gray-500',
-  };
-
-  const dotColorClasses = {
-    green: 'bg-green-500',
-    yellow: 'bg-yellow-500',
-    red: 'bg-red-500',
-    gray: 'bg-gray-400',
-  };
+  const indicatorState = mapConnectionState(connectionState);
 
   const renderIcon = () => {
+    if (!showIcon) return null;
+
     if (connectionState === 'connecting' || connectionState === 'reconnecting') {
-      return <Loader2 className={cn(sizeClasses[size], 'animate-spin', colorClasses[statusColor])} />;
+      return (
+        <Loader2
+          className={cn(
+            iconSizeClasses[size],
+            'animate-spin',
+            iconColorClasses[indicatorState]
+          )}
+        />
+      );
     }
 
     if (connectionState === 'connected') {
-      return <Wifi className={cn(sizeClasses[size], colorClasses[statusColor])} />;
+      return (
+        <Wifi className={cn(iconSizeClasses[size], iconColorClasses[indicatorState])} />
+      );
     }
 
-    return <WifiOff className={cn(sizeClasses[size], colorClasses[statusColor])} />;
+    return (
+      <WifiOff className={cn(iconSizeClasses[size], iconColorClasses[indicatorState])} />
+    );
+  };
+
+  const getLabel = () => {
+    switch (connectionState) {
+      case 'connected':
+        return 'Live';
+      case 'reconnecting':
+        return 'Reconnecting...';
+      case 'connecting':
+        return 'Connecting...';
+      default:
+        return 'Offline';
+    }
   };
 
   const tooltipContent = (
@@ -114,41 +152,21 @@ export function WebSocketStatus({
       <Tooltip>
         <TooltipTrigger asChild>
           <div className={cn('flex items-center gap-1.5', className)}>
-            {/* Animated dot indicator */}
-            <span className="relative flex">
-              <span
-                className={cn(
-                  dotSizeClasses[size],
-                  'rounded-full',
-                  dotColorClasses[statusColor],
-                  connectionState === 'connected' && 'animate-pulse'
-                )}
-              />
-              {connectionState === 'connected' && (
-                <span
-                  className={cn(
-                    'absolute inline-flex h-full w-full rounded-full opacity-75 animate-ping',
-                    dotColorClasses[statusColor]
-                  )}
-                  style={{ animationDuration: '2s' }}
-                />
-              )}
-            </span>
+            {/* Use StatusIndicator for the dot */}
+            <StatusIndicator state={indicatorState} size={size} />
 
             {/* Icon */}
             {renderIcon()}
 
             {/* Optional label */}
             {showLabel && (
-              <span className={cn('text-xs', colorClasses[statusColor])}>
-                {connectionState === 'connected' ? 'Live' : connectionState === 'reconnecting' ? 'Reconnecting...' : 'Offline'}
+              <span className={cn('text-xs', iconColorClasses[indicatorState])}>
+                {getLabel()}
               </span>
             )}
           </div>
         </TooltipTrigger>
-        <TooltipContent side="bottom">
-          {tooltipContent}
-        </TooltipContent>
+        <TooltipContent side="bottom">{tooltipContent}</TooltipContent>
       </Tooltip>
     </TooltipProvider>
   );
@@ -156,32 +174,28 @@ export function WebSocketStatus({
 
 /**
  * Minimal dot-only indicator for tight spaces
+ * Uses StatusIndicator internally
  */
 export function WebSocketDot({
   connectionState,
   className,
+  size = 'sm',
 }: {
   connectionState: WebSocketConnectionState;
   className?: string;
+  size?: 'sm' | 'md' | 'lg';
 }) {
-  const statusColor = getConnectionStatusColor(connectionState);
-
-  const dotColorClasses = {
-    green: 'bg-green-500',
-    yellow: 'bg-yellow-500',
-    red: 'bg-red-500',
-    gray: 'bg-gray-400',
-  };
+  const indicatorState = mapConnectionState(connectionState);
+  const statusText = getConnectionStatusText(connectionState);
 
   return (
-    <span
-      className={cn(
-        'h-2 w-2 rounded-full',
-        dotColorClasses[statusColor],
-        connectionState === 'connected' && 'animate-pulse',
-        className
-      )}
-      title={getConnectionStatusText(connectionState)}
-    />
+    <div title={statusText} className={className}>
+      <StatusIndicator state={indicatorState} size={size} />
+    </div>
   );
 }
+
+/**
+ * Export the state mapper for external use
+ */
+export { mapConnectionState };
