@@ -201,6 +201,7 @@ export function useWebSocket(
 
   const wsRef = useRef<WebSocket | null>(null);
   const reconnectTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const reconnectAttemptsRef = useRef(0);
   const [connectionState, setConnectionState] = useState<WebSocketConnectionState>('disconnected');
   const [reconnectAttempts, setReconnectAttempts] = useState(0);
 
@@ -220,8 +221,15 @@ export function useWebSocket(
   const connect = useCallback(() => {
     if (!url || typeof window === 'undefined') return;
 
-    // Close existing connection
-    if (wsRef.current) {
+    // Don't connect if already connected or connecting
+    if (wsRef.current?.readyState === WebSocket.OPEN || 
+        wsRef.current?.readyState === WebSocket.CONNECTING) {
+      return;
+    }
+
+    // Close existing connection if in closing state
+    if (wsRef.current?.readyState === WebSocket.CLOSING) {
+      wsRef.current.onclose = null; // Prevent triggering reconnect
       wsRef.current.close();
     }
 
@@ -255,14 +263,16 @@ export function useWebSocket(
 
       ws.onclose = () => {
         setConnectionState('disconnected');
+        wsRef.current = null;
         onDisconnectRef.current?.();
         console.log('[WebSocket] Disconnected');
 
-        // Auto-reconnect if enabled
-        if (autoReconnect && reconnectAttempts < maxReconnectAttempts) {
+        // Auto-reconnect if enabled and not intentionally closed
+        if (autoReconnect && reconnectAttemptsRef.current < maxReconnectAttempts) {
           setConnectionState('reconnecting');
           reconnectTimeoutRef.current = setTimeout(() => {
-            setReconnectAttempts((prev) => prev + 1);
+            reconnectAttemptsRef.current += 1;
+            setReconnectAttempts(reconnectAttemptsRef.current);
             connect();
           }, reconnectDelay);
         }
@@ -271,7 +281,7 @@ export function useWebSocket(
       console.error('[WebSocket] Failed to connect:', e);
       setConnectionState('error');
     }
-  }, [url, autoReconnect, reconnectDelay, maxReconnectAttempts, reconnectAttempts]);
+  }, [url, autoReconnect, reconnectDelay, maxReconnectAttempts]);
 
   const disconnect = useCallback(() => {
     if (reconnectTimeoutRef.current) {
@@ -279,17 +289,21 @@ export function useWebSocket(
       reconnectTimeoutRef.current = null;
     }
     if (wsRef.current) {
+      wsRef.current.onclose = null; // Prevent auto-reconnect
       wsRef.current.close();
       wsRef.current = null;
     }
     setConnectionState('disconnected');
+    reconnectAttemptsRef.current = 0;
     setReconnectAttempts(0);
   }, []);
 
   const reconnect = useCallback(() => {
     disconnect();
+    reconnectAttemptsRef.current = 0;
     setReconnectAttempts(0);
-    connect();
+    // Small delay to ensure clean disconnect
+    setTimeout(() => connect(), 100);
   }, [connect, disconnect]);
 
   const send = useCallback((data: unknown) => {
