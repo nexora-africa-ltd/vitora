@@ -24,6 +24,7 @@
 import React, { createContext, useContext, useMemo, useEffect, ReactNode } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { patientsApi } from '@/lib/api/patients';
+import { patientKeys } from '@/lib/hooks/use-patients';
 import { usePatientJourneyStore, type PatientStage } from '@/lib/stores/patient-journey';
 import type { Patient } from '@/lib/types/patient';
 
@@ -85,7 +86,7 @@ export function PatientProvider({ patientId, children }: PatientProviderProps) {
     error,
     refetch,
   } = useQuery({
-    queryKey: ['patient-context', patientId],
+    queryKey: patientKeys.detail(patientId!),
     queryFn: () => patientsApi.getPatient(patientId!),
     enabled: !!patientId && patientId > 0,
     staleTime: 5 * 60 * 1000, // 5 minutes - patient data doesn't change often
