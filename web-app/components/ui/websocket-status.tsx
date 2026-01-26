@@ -27,7 +27,6 @@ import {
   TooltipTrigger,
 } from '@/components/ui/tooltip';
 import StatusIndicator from '@/components/ui/status-indicator';
-import { Wifi, WifiOff, Loader2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 export interface WebSocketStatusProps {
@@ -43,8 +42,6 @@ export interface WebSocketStatusProps {
   showLabel?: boolean;
   /** Size variant */
   size?: 'sm' | 'md' | 'lg';
-  /** Whether to show the WiFi icon */
-  showIcon?: boolean;
 }
 
 /**
@@ -67,17 +64,11 @@ function mapConnectionState(
   }
 }
 
-const iconSizeClasses = {
-  sm: 'h-3 w-3',
-  md: 'h-4 w-4',
-  lg: 'h-5 w-5',
-};
-
-const iconColorClasses = {
-  active: 'text-green-500 dark:text-green-400',
-  fixing: 'text-yellow-500 dark:text-yellow-400',
-  down: 'text-red-500 dark:text-red-400',
-  idle: 'text-gray-400 dark:text-gray-500',
+const labelColorClasses = {
+  active: 'text-green-600 dark:text-green-400',
+  fixing: 'text-yellow-600 dark:text-yellow-400',
+  down: 'text-red-600 dark:text-red-400',
+  idle: 'text-gray-500 dark:text-gray-400',
 };
 
 export function WebSocketStatus({
@@ -87,36 +78,9 @@ export function WebSocketStatus({
   className,
   showLabel = false,
   size = 'md',
-  showIcon = true,
 }: WebSocketStatusProps) {
   const statusText = getConnectionStatusText(connectionState);
   const indicatorState = mapConnectionState(connectionState);
-
-  const renderIcon = () => {
-    if (!showIcon) return null;
-
-    if (connectionState === 'connecting' || connectionState === 'reconnecting') {
-      return (
-        <Loader2
-          className={cn(
-            iconSizeClasses[size],
-            'animate-spin',
-            iconColorClasses[indicatorState]
-          )}
-        />
-      );
-    }
-
-    if (connectionState === 'connected') {
-      return (
-        <Wifi className={cn(iconSizeClasses[size], iconColorClasses[indicatorState])} />
-      );
-    }
-
-    return (
-      <WifiOff className={cn(iconSizeClasses[size], iconColorClasses[indicatorState])} />
-    );
-  };
 
   const getLabel = () => {
     switch (connectionState) {
@@ -127,7 +91,7 @@ export function WebSocketStatus({
       case 'connecting':
         return 'Connecting...';
       default:
-        return 'Offline';
+        return 'Polling';
     }
   };
 
@@ -152,15 +116,12 @@ export function WebSocketStatus({
       <Tooltip>
         <TooltipTrigger asChild>
           <div className={cn('flex items-center gap-1.5', className)}>
-            {/* Use StatusIndicator for the dot */}
+            {/* StatusIndicator dot */}
             <StatusIndicator state={indicatorState} size={size} />
-
-            {/* Icon */}
-            {renderIcon()}
 
             {/* Optional label */}
             {showLabel && (
-              <span className={cn('text-xs', iconColorClasses[indicatorState])}>
+              <span className={cn('text-xs font-medium', labelColorClasses[indicatorState])}>
                 {getLabel()}
               </span>
             )}
