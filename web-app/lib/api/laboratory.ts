@@ -17,6 +17,11 @@ import {
   CriticalAlert,
 } from '@/lib/types/laboratory';
 import { PaginatedResponse } from '@/lib/types';
+import { parseResponse } from '@/lib/schemas/validation';
+import {
+  LabResultSchema,
+  PaginatedLabTestCatalogSchema,
+} from '@/lib/schemas/laboratory.schema';
 
 export const laboratoryApi = {
   // ============ Test Catalog ============
@@ -28,7 +33,7 @@ export const laboratoryApi = {
     const response = await apiClient.get<PaginatedResponse<TestCatalog>>('/api/lab/tests/', {
       params,
     });
-    return response.data;
+    return parseResponse(PaginatedLabTestCatalogSchema, response.data, { context: 'laboratoryApi.listTests' });
   },
 
   /**
@@ -182,6 +187,14 @@ export const laboratoryApi = {
   // ============ Lab Results ============
 
   /**
+   * Get a single lab result by result ID.
+   */
+  async getResult(resultId: number): Promise<LabResult> {
+    const response = await apiClient.get<LabResult>(`/api/lab/results/${resultId}/`);
+    return parseResponse(LabResultSchema, response.data, { context: 'laboratoryApi.getResult' });
+  },
+
+  /**
    * Get results for an order.
    */
   async getOrderResults(orderNumber: string): Promise<LabResult[]> {
@@ -217,7 +230,7 @@ export const laboratoryApi = {
    */
   async updateResult(resultId: number, data: Partial<LabResult>): Promise<LabResult> {
     const response = await apiClient.patch<LabResult>(`/api/lab/results/${resultId}/`, data);
-    return response.data;
+    return parseResponse(LabResultSchema, response.data, { context: 'laboratoryApi.updateResult' });
   },
 
   /**
@@ -228,25 +241,47 @@ export const laboratoryApi = {
       approved,
       comments: comments || '',
     });
-    return response.data;
+    return parseResponse(LabResultSchema, response.data, { context: 'laboratoryApi.verifyResult' });
   },
 
   /**
    * Upload external result attachment.
    */
+  async listResultAttachments(resultId: number): Promise<Array<{ id: number; file: string; file_name: string; uploaded_at?: string }>> {
+    const response = await apiClient.get<Array<{ id: number; file: string; file_name: string; uploaded_at?: string }>>(
+      `/api/lab/results/${resultId}/attachments/`
+    );
+    return response.data;
+  },
+
   async uploadResultAttachment(resultId: number, file: File): Promise<LabResult> {
     const formData = new FormData();
     formData.append('attachment', file);
-    const response = await apiClient.post<LabResult>(
-      `/api/lab/results/${resultId}/attachment/`,
-      formData,
-      {
-        headers: {
-          'Content-Type': 'multipart/form-data',
-        },
-      }
-    );
-    return response.data;
+    // Prefer the plural endpoint (matches backend patterns and our E2E mocks),
+    // and fall back to the singular endpoint for backward compatibility.
+    try {
+      const response = await apiClient.post<LabResult>(
+        `/api/lab/results/${resultId}/attachments/`,
+        formData,
+        {
+          headers: {
+            'Content-Type': 'multipart/form-data',
+          },
+        }
+      );
+      return parseResponse(LabResultSchema, response.data, { context: 'laboratoryApi.uploadResultAttachment' });
+    } catch {
+      const response = await apiClient.post<LabResult>(
+        `/api/lab/results/${resultId}/attachment/`,
+        formData,
+        {
+          headers: {
+            'Content-Type': 'multipart/form-data',
+          },
+        }
+      );
+      return parseResponse(LabResultSchema, response.data, { context: 'laboratoryApi.uploadResultAttachment.fallback' });
+    }
   },
 
   /**
