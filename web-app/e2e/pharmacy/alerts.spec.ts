@@ -196,15 +196,14 @@ test.describe('Stock Alerts - Filtering', () => {
     await severityFilter.click();
 
     // Try to select critical option
-    const criticalOption = page.getByRole('option', { name: /critical/i }).or(
-      page.getByRole('menuitem', { name: /critical/i })
-    ).or(
-      page.getByText(/critical/i).first()
-    );
+    const criticalOption = page.getByRole('option', { name: /critical/i });
     await criticalOption.click();
 
-    // Should show critical alerts
-    await expect(page.getByText(/critical/i).first()).toBeVisible();
+    // Wait for dropdown to close and filter to apply
+    await expect(page.getByRole('listbox')).toBeHidden({ timeout: 5000 });
+
+    // Should show critical alerts - look for CRITICAL badge in the alerts list
+    await expect(page.locator('text=CRITICAL').first()).toBeVisible();
   });
 });
 
