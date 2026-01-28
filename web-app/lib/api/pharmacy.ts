@@ -362,10 +362,10 @@ export const pharmacyApi = {
    * Get expiry report.
    */
   async getExpiryReport(params?: { days?: number }): Promise<ExpiryReportItem[]> {
-    const response = await apiClient.get<ExpiryReportItem[]>('/api/pharmacy/reports/expiry-report/', {
+    const response = await apiClient.get<{ results: ExpiryReportItem[] }>('/api/pharmacy/reports/expiry-report/', {
       params,
     });
-    return response.data;
+    return response.data.results;
   },
 
   /**
