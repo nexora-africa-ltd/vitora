@@ -112,7 +112,7 @@ export function DispenseDialog({
   };
 
   // Calculate total price
-  const totalPrice = selectedBatch ? (quantity || 0) * selectedBatch.selling_price : 0;
+  const totalPrice = selectedBatch ? (quantity || 0) * (Number(selectedBatch.selling_price) || 0) : 0;
 
   // Validation checks
   const exceedsStock = selectedBatch && quantity > selectedBatch.quantity_available;
@@ -291,7 +291,7 @@ export function DispenseDialog({
                     <div className="flex items-center justify-between">
                       <span className="text-sm text-muted-foreground">Unit Price:</span>
                       <span className="font-medium">
-                        KSh {selectedBatch.selling_price.toFixed(2)}
+                        KSh {(Number(selectedBatch.selling_price) || 0).toFixed(2)}
                       </span>
                     </div>
                   </div>
@@ -358,7 +358,7 @@ export function DispenseDialog({
                 <span className="font-bold">KSh {totalPrice.toFixed(2)}</span>
               </div>
               <p className="text-xs text-muted-foreground mt-1">
-                {quantity} units × KSh {selectedBatch.selling_price.toFixed(2)}
+                {quantity} units × KSh {(Number(selectedBatch.selling_price) || 0).toFixed(2)}
               </p>
             </div>
           )}
