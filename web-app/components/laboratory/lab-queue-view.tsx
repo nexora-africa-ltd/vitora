@@ -882,7 +882,7 @@ function TATDisplay({ item }: TATDisplayProps) {
   const { expected_tat_hours, elapsed_hours, actual_tat_hours, is_overdue, queue_status } = item;
 
   // Released - show actual TAT
-  if (queue_status === 'RELEASED' && actual_tat_hours !== undefined) {
+  if (queue_status === 'RELEASED' && actual_tat_hours != null) {
     const isWithinExpected = actual_tat_hours <= (expected_tat_hours || 24);
     return (
       <Tooltip>
@@ -903,7 +903,7 @@ function TATDisplay({ item }: TATDisplayProps) {
   }
 
   // In progress - show elapsed vs expected
-  if (elapsed_hours !== undefined) {
+  if (elapsed_hours != null) {
     return (
       <Tooltip>
         <TooltipTrigger asChild>
