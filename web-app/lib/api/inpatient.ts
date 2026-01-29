@@ -3,6 +3,30 @@
  */
 
 import { apiClient } from './client';
+import { parseResponse } from '@/lib/schemas/validation';
+import {
+  WardSchema,
+  BedSchema,
+  AdmissionRecommendationSchema,
+  AdmissionSchema,
+  DischargeSchema,
+  TransferSchema,
+  WardRoundSchema,
+  NursingKardexSchema,
+  KardexShiftNoteSchema,
+  KardexHandoverNoteSchema,
+  ShiftHandoverSchema,
+  PaginatedWardSchema,
+  PaginatedBedSchema,
+  PaginatedAdmissionRecommendationSchema,
+  PaginatedAdmissionSchema,
+  PaginatedDischargeSchema,
+  PaginatedTransferSchema,
+  PaginatedWardRoundSchema,
+  PaginatedNursingKardexSchema,
+  PaginatedShiftHandoverSchema,
+  BedArraySchema,
+} from '@/lib/schemas/inpatient.schema';
 import type {
   Admission,
   AdmissionListParams,
@@ -47,17 +71,17 @@ export const inpatientApi = {
   // ============================================================================
   async listWards(params?: { ward_type?: string; page?: number; page_size?: number }): Promise<Paginated<InpatientWard>> {
     const response = await apiClient.get<Paginated<InpatientWard>>('/api/inpatient/wards/', { params });
-    return response.data;
+    return parseResponse(PaginatedWardSchema, response.data, { context: 'inpatientApi.listWards' });
   },
 
   async getWard(wardId: number): Promise<InpatientWard> {
     const response = await apiClient.get<InpatientWard>(`/api/inpatient/wards/${wardId}/`);
-    return response.data;
+    return parseResponse(WardSchema, response.data, { context: 'inpatientApi.getWard' });
   },
 
   async updateWard(wardId: number, data: Partial<InpatientWard>): Promise<InpatientWard> {
     const response = await apiClient.patch<InpatientWard>(`/api/inpatient/wards/${wardId}/`, data);
-    return response.data;
+    return parseResponse(WardSchema, response.data, { context: 'inpatientApi.updateWard' });
   },
 
   async listWardBeds(
@@ -65,7 +89,11 @@ export const inpatientApi = {
     params?: Omit<BedListParams, 'ward'> & { page?: number; page_size?: number }
   ): Promise<Paginated<Bed> | Bed[]> {
     const response = await apiClient.get(`/api/inpatient/wards/${wardId}/beds/`, { params });
-    return response.data as any;
+    // Response can be paginated or array - try paginated first, fall back to array
+    if (response.data && 'results' in response.data) {
+      return parseResponse(PaginatedBedSchema, response.data, { context: 'inpatientApi.listWardBeds' });
+    }
+    return parseResponse(BedArraySchema, response.data, { context: 'inpatientApi.listWardBeds' });
   },
 
   // ============================================================================
@@ -73,12 +101,12 @@ export const inpatientApi = {
   // ============================================================================
   async listBeds(params?: BedListParams & { page?: number; page_size?: number }): Promise<Paginated<Bed>> {
     const response = await apiClient.get<Paginated<Bed>>('/api/inpatient/beds/', { params });
-    return response.data;
+    return parseResponse(PaginatedBedSchema, response.data, { context: 'inpatientApi.listBeds' });
   },
 
   async updateBed(bedId: number, data: Partial<Bed>): Promise<Bed> {
     const response = await apiClient.patch<Bed>(`/api/inpatient/beds/${bedId}/`, data);
-    return response.data;
+    return parseResponse(BedSchema, response.data, { context: 'inpatientApi.updateBed' });
   },
 
   // ============================================================================
@@ -91,7 +119,7 @@ export const inpatientApi = {
       '/api/inpatient/admission-recommendations/',
       { params }
     );
-    return response.data;
+    return parseResponse(PaginatedAdmissionRecommendationSchema, response.data, { context: 'inpatientApi.listAdmissionRecommendations' });
   },
 
   async createAdmissionRecommendation(
@@ -101,7 +129,7 @@ export const inpatientApi = {
       '/api/inpatient/admission-recommendations/',
       data
     );
-    return response.data;
+    return parseResponse(AdmissionRecommendationSchema, response.data, { context: 'inpatientApi.createAdmissionRecommendation' });
   },
 
   async acceptAdmissionRecommendation(recommendationId: number, userId: number) {
@@ -109,7 +137,7 @@ export const inpatientApi = {
       `/api/inpatient/admission-recommendations/${recommendationId}/accept/`,
       { user: userId }
     );
-    return response.data;
+    return parseResponse(AdmissionRecommendationSchema, response.data, { context: 'inpatientApi.acceptAdmissionRecommendation' });
   },
 
   async declineAdmissionRecommendation(recommendationId: number, userId: number, reason: string) {
@@ -117,7 +145,7 @@ export const inpatientApi = {
       `/api/inpatient/admission-recommendations/${recommendationId}/decline/`,
       { user: userId, reason }
     );
-    return response.data;
+    return parseResponse(AdmissionRecommendationSchema, response.data, { context: 'inpatientApi.declineAdmissionRecommendation' });
   },
 
   // ============================================================================
@@ -127,22 +155,22 @@ export const inpatientApi = {
     const response = await apiClient.get<AdmissionListResponse>('/api/inpatient/admissions/', {
       params,
     });
-    return response.data;
+    return parseResponse(PaginatedAdmissionSchema, response.data, { context: 'inpatientApi.listAdmissions' });
   },
 
   async getAdmission(admissionId: number): Promise<Admission> {
     const response = await apiClient.get<Admission>(`/api/inpatient/admissions/${admissionId}/`);
-    return response.data;
+    return parseResponse(AdmissionSchema, response.data, { context: 'inpatientApi.getAdmission' });
   },
 
   async createAdmission(data: Partial<Admission>): Promise<Admission> {
     const response = await apiClient.post<Admission>('/api/inpatient/admissions/', data);
-    return response.data;
+    return parseResponse(AdmissionSchema, response.data, { context: 'inpatientApi.createAdmission' });
   },
 
   async updateAdmission(admissionId: number, data: Partial<Admission>): Promise<Admission> {
     const response = await apiClient.patch<Admission>(`/api/inpatient/admissions/${admissionId}/`, data);
-    return response.data;
+    return parseResponse(AdmissionSchema, response.data, { context: 'inpatientApi.updateAdmission' });
   },
 
   // ============================================================================
@@ -152,22 +180,22 @@ export const inpatientApi = {
     const response = await apiClient.get<DischargeListResponse>('/api/inpatient/discharges/', {
       params,
     });
-    return response.data;
+    return parseResponse(PaginatedDischargeSchema, response.data, { context: 'inpatientApi.listDischarges' });
   },
 
   async getDischarge(dischargeId: number): Promise<Discharge> {
     const response = await apiClient.get<Discharge>(`/api/inpatient/discharges/${dischargeId}/`);
-    return response.data;
+    return parseResponse(DischargeSchema, response.data, { context: 'inpatientApi.getDischarge' });
   },
 
   async createDischarge(data: DischargeCreateData): Promise<Discharge> {
     const response = await apiClient.post<Discharge>('/api/inpatient/discharges/', data);
-    return response.data;
+    return parseResponse(DischargeSchema, response.data, { context: 'inpatientApi.createDischarge' });
   },
 
   async updateDischarge(dischargeId: number, data: Partial<DischargeCreateData>): Promise<Discharge> {
     const response = await apiClient.patch<Discharge>(`/api/inpatient/discharges/${dischargeId}/`, data);
-    return response.data;
+    return parseResponse(DischargeSchema, response.data, { context: 'inpatientApi.updateDischarge' });
   },
 
   // ============================================================================
@@ -177,17 +205,17 @@ export const inpatientApi = {
     const response = await apiClient.get<TransferListResponse>('/api/inpatient/transfers/', {
       params,
     });
-    return response.data;
+    return parseResponse(PaginatedTransferSchema, response.data, { context: 'inpatientApi.listTransfers' });
   },
 
   async getTransfer(transferId: number): Promise<Transfer> {
     const response = await apiClient.get<Transfer>(`/api/inpatient/transfers/${transferId}/`);
-    return response.data;
+    return parseResponse(TransferSchema, response.data, { context: 'inpatientApi.getTransfer' });
   },
 
   async createTransfer(data: TransferCreateData): Promise<Transfer> {
     const response = await apiClient.post<Transfer>('/api/inpatient/transfers/', data);
-    return response.data;
+    return parseResponse(TransferSchema, response.data, { context: 'inpatientApi.createTransfer' });
   },
 
   // ============================================================================
@@ -197,22 +225,22 @@ export const inpatientApi = {
     const response = await apiClient.get<WardRoundListResponse>('/api/inpatient/ward-rounds/', {
       params,
     });
-    return response.data;
+    return parseResponse(PaginatedWardRoundSchema, response.data, { context: 'inpatientApi.listWardRounds' });
   },
 
   async getWardRound(wardRoundId: number): Promise<WardRound> {
     const response = await apiClient.get<WardRound>(`/api/inpatient/ward-rounds/${wardRoundId}/`);
-    return response.data;
+    return parseResponse(WardRoundSchema, response.data, { context: 'inpatientApi.getWardRound' });
   },
 
   async createWardRound(data: WardRoundCreateData): Promise<WardRound> {
     const response = await apiClient.post<WardRound>('/api/inpatient/ward-rounds/', data);
-    return response.data;
+    return parseResponse(WardRoundSchema, response.data, { context: 'inpatientApi.createWardRound' });
   },
 
   async updateWardRound(wardRoundId: number, data: Partial<WardRoundCreateData>): Promise<WardRound> {
     const response = await apiClient.patch<WardRound>(`/api/inpatient/ward-rounds/${wardRoundId}/`, data);
-    return response.data;
+    return parseResponse(WardRoundSchema, response.data, { context: 'inpatientApi.updateWardRound' });
   },
 
   // ============================================================================
@@ -222,26 +250,27 @@ export const inpatientApi = {
     const response = await apiClient.get<KardexListResponse>('/api/inpatient/kardex/', {
       params,
     });
-    return response.data;
+    return parseResponse(PaginatedNursingKardexSchema, response.data, { context: 'inpatientApi.listKardex' });
   },
 
   async getKardex(kardexId: number): Promise<NursingKardex> {
     const response = await apiClient.get<NursingKardex>(`/api/inpatient/kardex/${kardexId}/`);
-    return response.data;
+    return parseResponse(NursingKardexSchema, response.data, { context: 'inpatientApi.getKardex' });
   },
 
   async getKardexByAdmission(admissionId: number): Promise<NursingKardex | null> {
     const response = await apiClient.get<KardexListResponse>('/api/inpatient/kardex/', {
       params: { admission: admissionId },
     });
+    const validated = parseResponse(PaginatedNursingKardexSchema, response.data, { context: 'inpatientApi.getKardexByAdmission' });
     // Return the first (and should be only) kardex for this admission, or null if none
-    const kardex = response.data.results[0];
+    const kardex = validated.results[0];
     return kardex ?? null;
   },
 
   async updateKardex(kardexId: number, data: KardexUpdateData): Promise<NursingKardex> {
     const response = await apiClient.patch<NursingKardex>(`/api/inpatient/kardex/${kardexId}/`, data);
-    return response.data;
+    return parseResponse(NursingKardexSchema, response.data, { context: 'inpatientApi.updateKardex' });
   },
 
   async addKardexShiftNote(kardexId: number, data: KardexShiftNoteCreateData): Promise<KardexShiftNote> {
@@ -249,7 +278,7 @@ export const inpatientApi = {
       `/api/inpatient/kardex/${kardexId}/add-shift-note/`,
       data
     );
-    return response.data;
+    return parseResponse(KardexShiftNoteSchema, response.data, { context: 'inpatientApi.addKardexShiftNote' });
   },
 
   async addKardexHandoverNote(kardexId: number, data: KardexHandoverNoteCreateData): Promise<KardexHandoverNote> {
@@ -257,7 +286,7 @@ export const inpatientApi = {
       `/api/inpatient/kardex/${kardexId}/add-handover-note/`,
       data
     );
-    return response.data;
+    return parseResponse(KardexHandoverNoteSchema, response.data, { context: 'inpatientApi.addKardexHandoverNote' });
   },
 
   // ============================================================================
@@ -267,30 +296,30 @@ export const inpatientApi = {
     const response = await apiClient.get<ShiftHandoverListResponse>('/api/inpatient/shift-handovers/', {
       params,
     });
-    return response.data;
+    return parseResponse(PaginatedShiftHandoverSchema, response.data, { context: 'inpatientApi.listShiftHandovers' });
   },
 
   async getShiftHandover(handoverId: number): Promise<ShiftHandover> {
     const response = await apiClient.get<ShiftHandover>(`/api/inpatient/shift-handovers/${handoverId}/`);
-    return response.data;
+    return parseResponse(ShiftHandoverSchema, response.data, { context: 'inpatientApi.getShiftHandover' });
   },
 
   async createShiftHandover(data: ShiftHandoverCreateData): Promise<ShiftHandover> {
     const response = await apiClient.post<ShiftHandover>('/api/inpatient/shift-handovers/', data);
-    return response.data;
+    return parseResponse(ShiftHandoverSchema, response.data, { context: 'inpatientApi.createShiftHandover' });
   },
 
   async acknowledgeShiftHandover(handoverId: number): Promise<ShiftHandover> {
     const response = await apiClient.post<ShiftHandover>(
       `/api/inpatient/shift-handovers/${handoverId}/acknowledge/`
     );
-    return response.data;
+    return parseResponse(ShiftHandoverSchema, response.data, { context: 'inpatientApi.acknowledgeShiftHandover' });
   },
 
   async autoPopulateShiftHandover(handoverId: number): Promise<ShiftHandover> {
     const response = await apiClient.post<ShiftHandover>(
       `/api/inpatient/shift-handovers/${handoverId}/auto-populate/`
     );
-    return response.data;
+    return parseResponse(ShiftHandoverSchema, response.data, { context: 'inpatientApi.autoPopulateShiftHandover' });
   },
 };

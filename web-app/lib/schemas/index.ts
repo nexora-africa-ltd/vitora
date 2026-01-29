@@ -12,10 +12,10 @@
  * ✅ rbac.schema.ts - Fully implemented with parseResponse validation
  * ✅ sha.schema.ts - Fully implemented with parseResponse validation
  * ✅ core.schema.ts - Fully implemented with parseResponse validation
+ * ✅ inpatient.schema.ts - Fully implemented with parseResponse validation
  * ⚠️ pharmacy.schema.ts - Schemas defined, parseResponse TODO
  * ⚠️ laboratory.schema.ts - Schemas defined, parseResponse TODO
  * ⚠️ billing.schema.ts - Schemas defined, parseResponse TODO
- * ⚠️ inpatient.schema.ts - Schemas defined, parseResponse TODO
  *
  * Note: Some schemas define the same enum (e.g., GenderSchema, QueueStatusSchema).
  * We export from the "primary" schema to avoid conflicts:
