@@ -1,6 +1,6 @@
 'use client';
 
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { QueryClientProvider } from '@tanstack/react-query';
 import { ThemeProvider } from 'next-themes';
 import { useState, ReactNode, Suspense } from 'react';
 import dynamic from 'next/dynamic';
@@ -8,6 +8,7 @@ import { AuthProvider } from '@/lib/auth/context';
 import { Toaster } from '@/components/ui/toaster';
 import { NavigationProgress } from '@/components/layout/navigation-progress';
 import { DemoBanner, DemoWatermark } from '@/components/shared/demo-banner';
+import { createQueryClient } from '@/lib/query-client';
 
 // Only load devtools in development - use dynamic import to avoid build errors
 const ReactQueryDevtools = dynamic(
@@ -26,28 +27,15 @@ interface ProvidersProps {
 /**
  * Root providers component
  * Wraps the app with necessary context providers:
- * - QueryClientProvider: React Query for data fetching
+ * - QueryClientProvider: React Query for data fetching (with global error handling)
  * - ThemeProvider: next-themes for dark/light mode
  * - AuthProvider: JWT authentication state
  * - NavigationProgress: Top progress bar for route transitions
  * - Toaster: Toast notifications
  */
 export function Providers({ children }: ProvidersProps) {
-  const [queryClient] = useState(
-    () =>
-      new QueryClient({
-        defaultOptions: {
-          queries: {
-            staleTime: 60 * 1000, // 1 minute
-            refetchOnWindowFocus: false,
-            retry: 1,
-          },
-          mutations: {
-            retry: 0,
-          },
-        },
-      })
-  );
+  // Use centralized createQueryClient for consistent config and global error handling
+  const [queryClient] = useState(() => createQueryClient());
 
   return (
     <QueryClientProvider client={queryClient}>
