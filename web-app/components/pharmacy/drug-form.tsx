@@ -7,12 +7,12 @@
 
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
-import { Loader2, Plus, X } from 'lucide-react';
+import { HelpCircle, Loader2, Plus, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -39,6 +39,11 @@ import {
   FormLabel,
   FormMessage,
 } from '@/components/ui/form';
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from '@/components/ui/popover';
 import { Drug, DrugCreateData, DrugCategory, DrugForm as DrugFormType, DrugSchedule } from '@/lib/types/pharmacy';
 import { pharmacyApi } from '@/lib/api/pharmacy';
 import { getApiErrorMessage } from '@/lib/api/client';
@@ -49,21 +54,8 @@ const drugFormSchema = z.object({
   code: z.string().min(1, 'Drug code is required'),
   generic_name: z.string().min(1, 'Generic name is required'),
   brand_names: z.array(z.string()).optional(),
-  categories: z.array(z.enum([
-    'ANALGESIC',
-    'ANTIBIOTIC',
-    'ANTIMALARIAL',
-    'ANTIRETROVIRAL',
-    'ANTIHYPERTENSIVE',
-    'ANTIDIABETIC',
-    'ANTIHISTAMINE',
-    'VITAMIN',
-    'VACCINE',
-    'CONTRACEPTIVE',
-    'PSYCHOTROPIC',
-    'CONTROLLED',
-    'OTHER',
-  ] as const)).min(1, 'At least one category is required'),
+  // Dynamic category codes (fetched from backend registry)
+  categories: z.array(z.string()).min(1, 'At least one category is required'),
   form: z.enum([
     'TABLET',
     'CAPSULE',
@@ -90,11 +82,12 @@ const drugFormSchema = z.object({
   keml_code: z.string().optional(),
   is_essential: z.boolean().optional(),
   nhif_code: z.string().optional(),
-  default_reorder_level: z.number().min(0).optional(),
-  default_reorder_quantity: z.number().min(0).optional(),
-  shelf_life_months: z.number().min(0).optional(),
+  // Use coercion because number inputs can still emit strings
+  default_reorder_level: z.coerce.number().min(0).optional(),
+  default_reorder_quantity: z.coerce.number().min(0).optional(),
+  shelf_life_months: z.coerce.number().min(0).optional(),
   storage_requirements: z.string().optional(),
-  reference_price: z.number().min(0).optional(),
+  reference_price: z.coerce.number().min(0).optional(),
 });
 
 type DrugFormData = z.infer<typeof drugFormSchema>;
@@ -143,8 +136,14 @@ export function DrugForm({ drug, onSuccess, onCancel }: DrugFormProps) {
   const router = useRouter();
   const { toast } = useToast();
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isLoadingCategories, setIsLoadingCategories] = useState(false);
+  const [isCreatingCategory, setIsCreatingCategory] = useState(false);
+  const [newCategoryName, setNewCategoryName] = useState('');
   const [brandNameInput, setBrandNameInput] = useState('');
   const [brandNames, setBrandNames] = useState<string[]>(drug?.brand_names ?? []);
+  const [categoryOptions, setCategoryOptions] = useState<Array<{ value: string; label: string }>>(
+    Object.entries(CATEGORY_LABELS).map(([value, label]) => ({ value, label }))
+  );
 
   const form = useForm<DrugFormData>({
     resolver: zodResolver(drugFormSchema),
@@ -152,12 +151,17 @@ export function DrugForm({ drug, onSuccess, onCancel }: DrugFormProps) {
       code: drug?.code ?? '',
       generic_name: drug?.generic_name ?? '',
       brand_names: drug?.brand_names ?? [],
-      categories: drug?.categories ?? [],
+      // Backward compatibility: if older payloads only include `category`
+      categories: drug?.categories?.length
+        ? drug.categories
+        : (drug?.category ? [drug.category] : []),
       form: drug?.form ?? undefined,
       strength: drug?.strength ?? '',
       unit: drug?.unit ?? '',
-      schedule: drug?.schedule ?? undefined,
-      requires_prescription: drug?.requires_prescription ?? false,
+      // Align with backend default (POM)
+      schedule: drug?.schedule ?? 'POM',
+      // Keep consistent with schedule when user can't edit directly
+      requires_prescription: drug?.requires_prescription ?? (drug?.schedule === 'OTC' ? false : true),
       is_controlled: drug?.is_controlled ?? false,
       is_narcotic: drug?.is_narcotic ?? false,
       keml_code: drug?.keml_code ?? '',
@@ -170,6 +174,62 @@ export function DrugForm({ drug, onSuccess, onCancel }: DrugFormProps) {
       reference_price: drug?.reference_price ?? undefined,
     },
   });
+
+  useEffect(() => {
+    let isMounted = true;
+    setIsLoadingCategories(true);
+
+    pharmacyApi
+      .listDrugCategories()
+      .then((options) => {
+        if (!isMounted) return;
+        if (options.length > 0) {
+          setCategoryOptions(options);
+        }
+      })
+      .catch((err: unknown) => {
+        console.warn('Failed to load drug categories from backend:', err);
+        // Fall back to static labels
+      })
+      .finally(() => {
+        if (!isMounted) return;
+        setIsLoadingCategories(false);
+      });
+
+    return () => {
+      isMounted = false;
+    };
+  }, []);
+
+  const addNewCategory = async () => {
+    const name = newCategoryName.trim();
+    if (!name) return;
+
+    setIsCreatingCategory(true);
+    try {
+      const created = await pharmacyApi.createDrugCategory({ name });
+      setCategoryOptions((prev) => {
+        const exists = prev.some((o) => o.value === created.value);
+        return exists ? prev : [...prev, created].sort((a, b) => a.label.localeCompare(b.label));
+      });
+      form.setValue('categories', Array.from(new Set([...(form.getValues('categories') ?? []), created.value])));
+      setNewCategoryName('');
+
+      toast({
+        title: 'Category added',
+        description: `${created.label} is now available.`,
+      });
+    } catch (err: unknown) {
+      const errorMessage = getApiErrorMessage(err);
+      toast({
+        title: 'Failed to add category',
+        description: errorMessage,
+        variant: 'destructive',
+      });
+    } finally {
+      setIsCreatingCategory(false);
+    }
+  };
 
   const addBrandName = () => {
     if (brandNameInput.trim()) {
@@ -190,12 +250,16 @@ export function DrugForm({ drug, onSuccess, onCancel }: DrugFormProps) {
     setIsSubmitting(true);
 
     try {
+      const schedule: DrugSchedule = (data.schedule ?? 'POM') as DrugSchedule;
+      const requiresPrescription = data.requires_prescription ?? (schedule !== 'OTC');
+
       const payload: DrugCreateData = {
         ...data,
+        categories: data.categories as DrugCategory[],
         brand_names: brandNames,
         // Set defaults for optional fields
-        schedule: data.schedule || 'OTC',
-        requires_prescription: data.requires_prescription ?? false,
+        schedule,
+        requires_prescription: requiresPrescription,
         is_controlled: data.is_controlled ?? false,
         is_narcotic: data.is_narcotic ?? false,
         is_essential: data.is_essential ?? false,
@@ -324,10 +388,7 @@ export function DrugForm({ drug, onSuccess, onCancel }: DrugFormProps) {
               <FormItem>
                 <FormLabel>Categories *</FormLabel>
                 <MultiSelect
-                  data={Object.entries(CATEGORY_LABELS).map(([value, label]) => ({
-                    value,
-                    label,
-                  }))}
+                  data={categoryOptions}
                   type="category"
                   values={field.value || []}
                   onValuesChange={field.onChange}
@@ -338,11 +399,13 @@ export function DrugForm({ drug, onSuccess, onCancel }: DrugFormProps) {
                   <MultiSelectContent>
                     <MultiSelectInput />
                     <MultiSelectList>
-                      <MultiSelectEmpty />
+                      <MultiSelectEmpty>
+                        {isLoadingCategories ? 'Loading categories...' : 'No categories found.'}
+                      </MultiSelectEmpty>
                       <MultiSelectGroup>
-                        {Object.entries(CATEGORY_LABELS).map(([value, label]) => (
-                          <MultiSelectItem key={value} value={value}>
-                            {label}
+                        {categoryOptions.map((option) => (
+                          <MultiSelectItem key={option.value} value={option.value}>
+                            {option.label}
                           </MultiSelectItem>
                         ))}
                       </MultiSelectGroup>
@@ -350,6 +413,28 @@ export function DrugForm({ drug, onSuccess, onCancel }: DrugFormProps) {
                   </MultiSelectContent>
                   <MultiSelectBadges />
                 </MultiSelect>
+
+                <FormDescription>
+                  Categories are loaded from the backend. You can add a new one if needed.
+                </FormDescription>
+
+                <div className="flex gap-2">
+                  <Input
+                    placeholder="Add new category (e.g., Herbal Medicine)"
+                    value={newCategoryName}
+                    onChange={(e) => setNewCategoryName(e.target.value)}
+                    disabled={isCreatingCategory}
+                  />
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={addNewCategory}
+                    disabled={isCreatingCategory || !newCategoryName.trim()}
+                  >
+                    {isCreatingCategory ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Add'}
+                  </Button>
+                </div>
+
                 <FormMessage />
               </FormItem>
             )}
@@ -577,6 +662,7 @@ export function DrugForm({ drug, onSuccess, onCancel }: DrugFormProps) {
                     <Input
                       type="number"
                       placeholder="24"
+                      {...field}
                       value={field.value ?? ''}
                       onChange={(e) => field.onChange(e.target.value ? parseInt(e.target.value) : undefined)}
                     />
@@ -591,12 +677,28 @@ export function DrugForm({ drug, onSuccess, onCancel }: DrugFormProps) {
               name="reference_price"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Reference Price (KES)</FormLabel>
+                  <FormLabel className="flex items-center gap-1">
+                    Reference Price (KES)
+                    <Popover>
+                      <PopoverTrigger asChild>
+                        <button type="button" className="inline-flex">
+                          <HelpCircle className="h-4 w-4 text-muted-foreground cursor-help" />
+                        </button>
+                      </PopoverTrigger>
+                      <PopoverContent className="max-w-xs text-sm">
+                        <p>
+                          The standard unit cost for this drug, used as a baseline for pricing and reporting.
+                          Actual selling prices are set per batch at stock receipt.
+                        </p>
+                      </PopoverContent>
+                    </Popover>
+                  </FormLabel>
                   <FormControl>
                     <Input
                       type="number"
                       step="0.01"
                       placeholder="50.00"
+                      {...field}
                       value={field.value ?? ''}
                       onChange={(e) => field.onChange(e.target.value ? parseFloat(e.target.value) : undefined)}
                     />
