@@ -2,6 +2,9 @@
 Serializers for Pharmacy app.
 """
 
+import re
+
+from django.apps import apps
 from django.contrib.auth import get_user_model
 from rest_framework import serializers
 
@@ -22,6 +25,43 @@ from hmis.apps.pharmacy.models import (
 )
 
 User = get_user_model()
+
+
+def _normalize_category_code(value: str) -> str:
+    code = re.sub(r"[^A-Za-z0-9]+", "_", value.strip()).strip("_")
+    return code.upper()[:50]
+
+
+class DrugCategorySerializer(serializers.ModelSerializer):
+    """Serializer for DrugCategory registry."""
+
+    value = serializers.CharField(source="code", read_only=True)
+    label = serializers.CharField(source="name", read_only=True)
+
+    class Meta:
+        model = apps.get_model("pharmacy", "DrugCategory")
+        fields = ["id", "code", "name", "value", "label", "is_active", "created_at", "updated_at"]
+        read_only_fields = ["id", "value", "label", "created_at", "updated_at"]
+        extra_kwargs = {
+            "code": {"required": False, "allow_blank": True},
+            "is_active": {"required": False},
+        }
+
+    def validate_code(self, value: str) -> str:
+        if not value:
+            return value
+        normalized = _normalize_category_code(value)
+        if value != normalized:
+            raise serializers.ValidationError(
+                f"Invalid code format. Suggested code: '{normalized}'"
+            )
+        return value
+
+    def create(self, validated_data):
+        # If code not provided, generate from name
+        if not validated_data.get("code"):
+            validated_data["code"] = _normalize_category_code(validated_data["name"])
+        return super().create(validated_data)
 
 
 class DrugSerializer(serializers.ModelSerializer):
@@ -68,22 +108,35 @@ class DrugSerializer(serializers.ModelSerializer):
         """Return primary (first) category for backward compatibility."""
         return obj.categories[0] if obj.categories else None
 
-    def create(self, validated_data):
-        """Handle both 'category' (single) and 'categories' (list) on create."""
-        # If 'categories' not provided but 'category' was sent (backward compat)
-        if "categories" not in validated_data or not validated_data.get("categories"):
+    def validate(self, attrs):
+        """Map legacy `category` to `categories` and validate against registry."""
+        # Backward compat: allow `category` on create/update
+        if ("categories" not in attrs or not attrs.get("categories")):
             category = self.initial_data.get("category")
             if category:
-                validated_data["categories"] = [category] if isinstance(category, str) else category
+                attrs["categories"] = [category] if isinstance(category, str) else list(category)
+
+        categories = attrs.get("categories")
+        if categories:
+            DrugCategory = apps.get_model("pharmacy", "DrugCategory")
+            existing = set(
+                DrugCategory.objects.filter(is_active=True, code__in=categories)
+                .values_list("code", flat=True)
+            )
+            missing = [c for c in categories if c not in existing]
+            if missing:
+                raise serializers.ValidationError(
+                    {"categories": f"Unknown categories: {', '.join(missing)}"}
+                )
+
+        return attrs
+
+    def create(self, validated_data):
+        """Handle both 'category' (single) and 'categories' (list) on create."""
         return super().create(validated_data)
 
     def update(self, instance, validated_data):
         """Handle both 'category' (single) and 'categories' (list) on update."""
-        # If 'categories' not provided but 'category' was sent (backward compat)
-        if "categories" not in validated_data:
-            category = self.initial_data.get("category")
-            if category:
-                validated_data["categories"] = [category] if isinstance(category, str) else category
         return super().update(instance, validated_data)
 
 

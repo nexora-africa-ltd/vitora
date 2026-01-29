@@ -156,7 +156,13 @@ class Drug(models.Model):
     def clean(self):
         """Validate that categories contain valid values."""
         super().clean()
-        valid_categories = {cat[0] for cat in self.DRUG_CATEGORIES}
+        # Prefer DB-backed category registry (dynamic), fall back to legacy constants.
+        DrugCategory = apps.get_model("pharmacy", "DrugCategory")
+        valid_categories = set(
+            DrugCategory.objects.filter(is_active=True).values_list("code", flat=True)
+        )
+        if not valid_categories:
+            valid_categories = {cat[0] for cat in self.DRUG_CATEGORIES}
         if self.categories:
             invalid = [c for c in self.categories if c not in valid_categories]
             if invalid:
@@ -187,6 +193,26 @@ class Drug(models.Model):
             )["total"]
             or 0
         )
+
+
+class DrugCategory(models.Model):
+    """Registry of available drug categories (DB-backed for extensibility)."""
+
+    code = models.CharField(max_length=50, unique=True)
+    name = models.CharField(max_length=200)
+    is_active = models.BooleanField(default=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ["name"]
+        indexes = [
+            models.Index(fields=["code"]),
+            models.Index(fields=["is_active"]),
+        ]
+
+    def __str__(self) -> str:
+        return f"{self.code} - {self.name}"
 
 
 class StockBatch(models.Model):

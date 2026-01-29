@@ -158,6 +158,54 @@ class TestDrugAPI:
         assert response.data["results"][0]["category"] == "ANTIBIOTIC"
 
 
+# =========================================================================
+# Drug Category Registry API Tests
+# =========================================================================
+
+
+@pytest.mark.django_db
+class TestDrugCategoryAPI:
+    """Tests for Drug category registry endpoints."""
+
+    def test_list_drug_categories_requires_auth(self, api_client):
+        response = api_client.get("/api/pharmacy/drug-categories/")
+        assert response.status_code == status.HTTP_401_UNAUTHORIZED
+
+    def test_list_drug_categories_authenticated(self, authenticated_client):
+        response = authenticated_client.get("/api/pharmacy/drug-categories/")
+        assert response.status_code == status.HTTP_200_OK
+        assert len(response.data["results"]) >= 1
+
+        # Expect the default seeded category to exist
+        codes = {item["code"] for item in response.data["results"]}
+        assert "OTHER" in codes
+
+    def test_create_drug_category_and_use_for_drug(self, authenticated_client):
+        # Create new category
+        category_resp = authenticated_client.post(
+            "/api/pharmacy/drug-categories/",
+            {"name": "Herbal Medicine"},
+        )
+        assert category_resp.status_code == status.HTTP_201_CREATED
+        assert category_resp.data["code"] == "HERBAL_MEDICINE"
+
+        # Use it for a new drug
+        drug_resp = authenticated_client.post(
+            "/api/pharmacy/drugs/",
+            {
+                "code": "HERB001",
+                "generic_name": "Herbal Drug",
+                "strength": "10mg",
+                "form": "TABLET",
+                "categories": ["HERBAL_MEDICINE"],
+                "unit": "tablet",
+            },
+        )
+        assert drug_resp.status_code == status.HTTP_201_CREATED
+        assert drug_resp.data["code"] == "HERB001"
+        assert drug_resp.data["categories"] == ["HERBAL_MEDICINE"]
+
+
 # ============================================================================
 # Stock API Tests (4 tests)
 # ============================================================================
