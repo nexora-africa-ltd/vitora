@@ -53,13 +53,13 @@ export interface Role {
   code: string;
   description: string;
   category: RoleCategory;
-  category_display?: string;
+  category_display?: string | null;
   permissions_matrix: Record<string, Record<string, boolean>>;
   hierarchy_level: number;
   parent_role: number | null;
-  parent_role_name?: string;
+  parent_role_name?: string | null;
   django_group: number | null;
-  django_group_name?: string;
+  django_group_name?: string | null;
   requires_license: boolean;
   license_body: string;
   is_active: boolean;
