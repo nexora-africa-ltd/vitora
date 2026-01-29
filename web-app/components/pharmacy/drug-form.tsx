@@ -20,6 +20,17 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Checkbox } from '@/components/ui/checkbox';
 import { Badge } from '@/components/ui/badge';
 import {
+  MultiSelect,
+  MultiSelectTrigger,
+  MultiSelectContent,
+  MultiSelectInput,
+  MultiSelectList,
+  MultiSelectEmpty,
+  MultiSelectGroup,
+  MultiSelectItem,
+  MultiSelectBadges,
+} from '@/components/kibo-ui/multi-select';
+import {
   Form,
   FormControl,
   FormDescription,
@@ -305,87 +316,43 @@ export function DrugForm({ drug, onSuccess, onCancel }: DrugFormProps) {
             )}
           </div>
 
-          {/* Categories (Multi-select with combobox) */}
+          {/* Categories (Multi-select with Kibo UI) */}
           <FormField
             control={form.control}
             name="categories"
-            render={({ field }) => {
-              const selectedCategories = field.value || [];
-              const availableCategories = Object.entries(CATEGORY_LABELS).filter(
-                ([key]) => !selectedCategories.includes(key as DrugCategory)
-              );
-
-              const addCategory = (category: string) => {
-                if (category && !selectedCategories.includes(category as DrugCategory)) {
-                  field.onChange([...selectedCategories, category]);
-                }
-              };
-
-              const removeCategory = (category: string) => {
-                field.onChange(selectedCategories.filter((c) => c !== category));
-              };
-
-              return (
-                <FormItem>
-                  <FormLabel>Categories *</FormLabel>
-                  <div className="flex gap-2">
-                    <Select onValueChange={addCategory} value="">
-                      <FormControl>
-                        <SelectTrigger className="flex-1">
-                          <SelectValue placeholder="Select a category to add" />
-                        </SelectTrigger>
-                      </FormControl>
-                      <SelectContent>
-                        {availableCategories.length > 0 ? (
-                          availableCategories.map(([key, label]) => (
-                            <SelectItem key={key} value={key}>{label}</SelectItem>
-                          ))
-                        ) : (
-                          <div className="px-2 py-1.5 text-sm text-muted-foreground">
-                            All categories selected
-                          </div>
-                        )}
-                      </SelectContent>
-                    </Select>
-                    <Button
-                      type="button"
-                      variant="outline"
-                      size="icon"
-                      disabled={availableCategories.length === 0}
-                      onClick={() => {
-                        // Add first available category
-                        const first = availableCategories[0];
-                        if (first) {
-                          addCategory(first[0]);
-                        }
-                      }}
-                      title="Add category"
-                    >
-                      <Plus className="h-4 w-4" />
-                    </Button>
-                  </div>
-                  {selectedCategories.length > 0 && (
-                    <div className="flex flex-wrap gap-2 mt-2">
-                      {selectedCategories.map((cat) => (
-                        <Badge key={cat} variant="secondary" className="gap-1">
-                          {CATEGORY_LABELS[cat] || cat}
-                          <button
-                            type="button"
-                            onClick={() => removeCategory(cat)}
-                            className="ml-1 hover:bg-secondary-foreground/20 rounded-full"
-                            title={`Remove ${CATEGORY_LABELS[cat] || cat}`}
-                            aria-label={`Remove ${CATEGORY_LABELS[cat] || cat}`}
-                          >
-                            <X className="h-3 w-3" />
-                          </button>
-                        </Badge>
-                      ))}
-                    </div>
-                  )}
-                  <FormMessage />
-                </FormItem>
-              );
-            }}
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Categories *</FormLabel>
+                <MultiSelect
+                  data={Object.entries(CATEGORY_LABELS).map(([value, label]) => ({
+                    value,
+                    label,
+                  }))}
+                  type="category"
+                  values={field.value || []}
+                  onValuesChange={field.onChange}
+                >
+                  <FormControl>
+                    <MultiSelectTrigger className="w-full" placeholder="Select categories..." />
+                  </FormControl>
+                  <MultiSelectContent>
+                    <MultiSelectInput />
+                    <MultiSelectList>
+                      <MultiSelectEmpty />
+                      <MultiSelectGroup>
+                        {Object.entries(CATEGORY_LABELS).map(([value, label]) => (
+                          <MultiSelectItem key={value} value={value}>
+                            {label}
+                          </MultiSelectItem>
+                        ))}
+                      </MultiSelectGroup>
+                    </MultiSelectList>
+                  </MultiSelectContent>
+                  <MultiSelectBadges />
+                </MultiSelect>
+                <FormMessage />
+              </FormItem>
+            )}
           />
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
