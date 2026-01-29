@@ -1,0 +1,149 @@
+/**
+ * Document Styles - Thermal 58mm Printer
+ *
+ * Optimized layout for 58mm thermal receipt printers.
+ * Compact format - some elements hidden for space.
+ */
+
+@page {
+  size: 58mm auto;
+  margin: 0;
+}
+
+body {
+  padding: 3mm;
+  font-size: 9px;
+}
+
+/* Label container - 58mm width */
+.label,
+.page {
+  width: 54mm; /* 58mm - padding */
+  padding: 2mm;
+  border-width: 1px;
+}
+
+/* Smaller fonts throughout */
+.clinic {
+  font-size: 10px;
+  padding-bottom: 3px;
+  margin-bottom: 3px;
+}
+
+.row {
+  font-size: 9px;
+  margin-bottom: 2px;
+}
+
+.drug {
+  font-size: 11px;
+  padding: 2px;
+  margin: 3px 0;
+}
+
+.instructions {
+  font-size: 8px;
+  padding-top: 3px;
+  margin-top: 3px;
+}
+
+/* Smaller QR code */
+.qr {
+  width: 32px;
+  height: 32px;
+  font-size: 6px;
+}
+
+/* Warning very compact */
+.warning {
+  font-size: 7px;
+  padding: 2px;
+  margin-top: 4px;
+}
+
+/* Footer very compact */
+.footer {
+  font-size: 7px;
+  margin-top: 3px;
+  padding-top: 2px;
+}
+
+.batch-info {
+  font-size: 7px;
+}
+
+/* Hide tables on 58mm - too narrow */
+table {
+  display: none;
+}
+
+/* Alternative: medication list instead of table */
+.medication-list {
+  display: block;
+}
+
+.medication-list .item {
+  border-bottom: 1px dashed #ccc;
+  padding: 3px 0;
+  font-size: 9px;
+}
+
+.medication-list .item:last-child {
+  border-bottom: none;
+}
+
+/* Patient grid - single column */
+.patient-grid {
+  display: block;
+  font-size: 9px;
+}
+
+.patient-grid > div {
+  margin-bottom: 2px;
+}
+
+/* Section title very small */
+.section-title {
+  font-size: 9px;
+  margin-bottom: 3px;
+  padding-bottom: 2px;
+}
+
+/* Hide notes section - too large */
+.notes {
+  display: none;
+}
+
+/* Signature block - simplified */
+.signature-block {
+  display: none; /* Too narrow for signatures */
+}
+
+/* Footer single line */
+.footer {
+  text-align: center;
+  font-size: 7px;
+}
+
+/* Header simplified */
+.header {
+  flex-direction: column;
+  text-align: center;
+  padding-bottom: 6px;
+  margin-bottom: 8px;
+}
+
+.clinic-info {
+  font-size: 9px;
+  text-align: center;
+}
+
+/* Hide QR on very narrow labels (optional) */
+/* .qr { display: none; } */
+
+/* Print specific */
+@media print {
+  body {
+    padding: 1mm;
+  }
+}

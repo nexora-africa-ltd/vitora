@@ -1,0 +1,69 @@
+/**
+ * Document Styles - Default Theme
+ *
+ * Default theme with CSS variables for document styling.
+ * This is a neutral black/white theme suitable for most facilities.
+ */
+
+:root {
+  /* Primary colors */
+  --primary-color: #000;
+  --border-color: #000;
+  --accent-color: #333;
+  
+  /* Text colors */
+  --text-color: #000;
+  --muted-color: #666;
+  
+  /* Background colors */
+  --background-color: #fff;
+  --header-bg: #f2f2f2;
+  --section-bg: #fafafa;
+  
+  /* Status colors */
+  --success-color: #166534;
+  --warning-color: #92400e;
+  --danger-color: #991b1b;
+}
+
+/* Header styling */
+.header {
+  border-bottom-color: var(--border-color);
+}
+
+/* Title styling */
+h1 {
+  color: var(--primary-color);
+}
+
+/* Table header */
+th {
+  background: var(--header-bg);
+}
+
+/* Section title */
+.section-title {
+  color: var(--text-color);
+}
+
+/* Muted text */
+.text-muted,
+.muted {
+  color: var(--muted-color);
+}
+
+/* Notes/highlight sections */
+.notes {
+  background: var(--section-bg);
+  border-color: var(--border-color);
+}
+
+/* Drug name highlight */
+.drug {
+  background: var(--header-bg);
+}
+
+/* Footer */
+.footer {
+  color: var(--muted-color);
+}
