@@ -65,6 +65,8 @@ export const AlertTypeSchema = z.enum([
 ]);
 
 export const AlertSeveritySchema = z.enum(['LOW', 'MEDIUM', 'HIGH', 'CRITICAL']);
+// Alias for module-specific export to avoid conflicts with triage AlertSeveritySchema
+export const PharmacyAlertSeveritySchema = AlertSeveritySchema;
 
 export const PrescriptionStatusSchema = z.enum([
   'PENDING',
