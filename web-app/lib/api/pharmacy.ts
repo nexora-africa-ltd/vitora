@@ -39,6 +39,8 @@ import {
   StockSummaryItemSchema,
   ExpiryReportItemSchema,
   DispensingReportSummarySchema,
+  StockMovementReportSchema,
+  AlertSettingsSchema,
   PaginatedDrugSchema,
   PaginatedDrugCategorySchema,
   PaginatedStockBatchSchema,
@@ -442,7 +444,7 @@ export const pharmacyApi = {
     const response = await apiClient.get('/api/pharmacy/reports/movement/', {
       params,
     });
-    return response.data;
+    return parseResponse(StockMovementReportSchema, response.data, { context: 'pharmacyApi.getStockMovementReport' });
   },
 
   // ============ Alert Settings ============
@@ -452,7 +454,7 @@ export const pharmacyApi = {
    */
   async getAlertSettings(): Promise<any> {
     const response = await apiClient.get('/api/pharmacy/alert-settings/');
-    return response.data;
+    return parseResponse(AlertSettingsSchema, response.data, { context: 'pharmacyApi.getAlertSettings' });
   },
 
   /**
@@ -466,6 +468,6 @@ export const pharmacyApi = {
     notification_email_recipients?: string;
   }): Promise<any> {
     const response = await apiClient.patch('/api/pharmacy/alert-settings/', data);
-    return response.data;
+    return parseResponse(AlertSettingsSchema, response.data, { context: 'pharmacyApi.updateAlertSettings' });
   },
 };

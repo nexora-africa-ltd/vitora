@@ -55,7 +55,8 @@ export const MembershipTypeSchema = z.enum(['PRINCIPAL', 'SPOUSE', 'CHILD', 'PAR
 
 export const MemberStatusSchema = z.enum(['ACTIVE', 'INACTIVE', 'PENDING_VERIFICATION', 'SUSPENDED']);
 
-export const GenderSchema = z.enum(['M', 'F', 'O']);
+// Use SHAGenderSchema internally to avoid conflict with patient.schema GenderSchema
+const SHAGenderSchema = z.enum(['M', 'F', 'O']);
 
 // =============================================================================
 // CLIENT REGISTRY SCHEMAS
@@ -67,7 +68,7 @@ export const ClientRegistryClientSchema = z.object({
   last_name: z.string(),
   middle_name: z.string().optional(),
   date_of_birth: z.string(),
-  gender: GenderSchema,
+  gender: SHAGenderSchema,
   national_id: z.string().optional(),
   huduma_number: z.string().optional(),
   passport_number: z.string().optional(),
