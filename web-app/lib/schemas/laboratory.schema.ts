@@ -311,3 +311,30 @@ export const LabResultArrayResponseSchema = z.object({
 export const CriticalAlertArraySchema = z.array(CriticalAlertSchema);
 
 export const LabTechnicianArraySchema = z.array(LabTechnicianSchema);
+
+// =============================================================================
+// QUEUE STATS
+// =============================================================================
+
+export const LabQueueStatsSchema = z.object({
+  pending: z.number(),
+  collected: z.number(),
+  processing: z.number(),
+  review: z.number(),
+  released: z.number(),
+});
+
+export type LabQueueStatsSchemaType = z.infer<typeof LabQueueStatsSchema>;
+
+// =============================================================================
+// RESULT ATTACHMENTS
+// =============================================================================
+
+export const LabResultAttachmentSchema = z.object({
+  id: z.number(),
+  file: z.string(),
+  file_name: z.string(),
+  uploaded_at: z.string().optional(),
+});
+
+export const LabResultAttachmentArraySchema = z.array(LabResultAttachmentSchema);

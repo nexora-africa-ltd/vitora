@@ -489,3 +489,20 @@ export const StockMovementSchema = z.object({
   created_by_name: z.string().optional().nullable(),
   created_at: z.string(),
 });
+
+// Alert settings
+export const AlertSettingsSchema = z.object({
+  id: z.number().optional(),
+  low_stock_threshold: z.number(),
+  expiry_warning_days: z.number(),
+  expiry_critical_days: z.number(),
+  enable_email_notifications: z.boolean(),
+  notification_email_recipients: z.string().optional().nullable(),
+});
+
+export type AlertSettingsSchemaType = z.infer<typeof AlertSettingsSchema>;
+
+// Stock movement report
+export const StockMovementReportSchema = z.object({
+  results: z.array(StockMovementSchema),
+});

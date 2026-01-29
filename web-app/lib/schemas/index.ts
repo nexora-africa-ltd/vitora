@@ -13,9 +13,9 @@
  * ✅ sha.schema.ts - Fully implemented with parseResponse validation
  * ✅ core.schema.ts - Fully implemented with parseResponse validation
  * ✅ inpatient.schema.ts - Fully implemented with parseResponse validation
- * ⚠️ pharmacy.schema.ts - Schemas defined, parseResponse TODO
- * ⚠️ laboratory.schema.ts - Schemas defined, parseResponse TODO
- * ⚠️ billing.schema.ts - Schemas defined, parseResponse TODO
+ * ✅ pharmacy.schema.ts - Fully implemented with parseResponse validation
+ * ✅ laboratory.schema.ts - Fully implemented with parseResponse validation
+ * ✅ billing.schema.ts - Fully implemented with parseResponse validation
  *
  * Note: Some schemas define the same enum (e.g., GenderSchema, QueueStatusSchema).
  * We export from the "primary" schema to avoid conflicts:
@@ -126,5 +126,70 @@ export {
   PaginatedAuditLogSchema,
 } from './rbac.schema';
 
-export * from './sha.schema';
+// SHA schema - exclude GenderSchema (use canonical from patient.schema)
+export {
+  // Enums
+  SchemeCategorySchema,
+  PFMSCategorySchema,
+  CoverageTypeSchema,
+  ClaimStatusSchema,
+  ClaimItemStatusSchema,
+  MembershipTypeSchema,
+  MemberStatusSchema,
+  // Client Registry
+  ClientRegistryClientSchema,
+  ClientRegistryFetchResponseSchema,
+  ClientRegistryRegisterResponseSchema,
+  ClientRegistryUpdateResponseSchema,
+  // SHA Members
+  SHAMemberSchema,
+  // Eligibility
+  EligibilityCheckResponseSchema,
+  MeansTestingDetailsSchema,
+  SHADependentSchema,
+  DirectEligibilityCheckResponseSchema,
+  // Terminology
+  ICD11CodeSchema,
+  SHAInterventionSchema,
+  ICHICodeSchema,
+  LOINCCodeSchema,
+  DrugProductSchema,
+  ActiveComponentSchema,
+  // Claims
+  ClaimSchema,
+  ClaimItemSchema,
+  ClaimCreateResponseSchema,
+  ClaimSubmitResponseSchema,
+  // Facility
+  FacilityInfoSchema,
+  FacilityValidationResponseSchema,
+  // DHA Practitioner
+  DHAPractitionerMembershipSchema,
+  DHAPractitionerLicenseSchema,
+  DHAPractitionerProfessionalDetailsSchema,
+  DHAPractitionerContactsSchema,
+  DHAPractitionerIdentifiersSchema,
+  DHAPractitionerSchema,
+  DHAPractitionerSearchResponseSchema,
+  PractitionerInfoSchema,
+  PractitionerValidationResponseSchema,
+  // Paginated
+  PaginatedSHAMembersSchema,
+  PaginatedClaimsSchema,
+  PaginatedICD11CodesSchema,
+  PaginatedSHAInterventionsSchema,
+  PaginatedICHICodesSchema,
+  PaginatedLOINCCodesSchema,
+  PaginatedDrugProductsSchema,
+  PaginatedActiveComponentsSchema,
+  // Arrays & Legacy
+  ClaimItemArraySchema,
+  SHAMemberSearchResultSchema,
+  SHAClaimSchema,
+  SHAClaimItemSchema,
+  SHAPreauthorizationSchema,
+  PaginatedSHAClaimSchema,
+  SHAClaimItemArrayResponseSchema,
+} from './sha.schema';
+
 export * from './core.schema';

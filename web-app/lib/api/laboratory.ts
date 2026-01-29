@@ -29,6 +29,8 @@ import {
   PaginatedLabOrderSchema,
   CriticalAlertArraySchema,
   LabTechnicianArraySchema,
+  LabQueueStatsSchema,
+  LabResultAttachmentArraySchema,
 } from '@/lib/schemas/laboratory.schema';
 
 export const laboratoryApi = {
@@ -259,7 +261,7 @@ export const laboratoryApi = {
     const response = await apiClient.get<Array<{ id: number; file: string; file_name: string; uploaded_at?: string }>>(
       `/api/lab/results/${resultId}/attachments/`
     );
-    return response.data;
+    return parseResponse(LabResultAttachmentArraySchema, response.data, { context: 'laboratoryApi.listResultAttachments' });
   },
 
   async uploadResultAttachment(resultId: number, file: File): Promise<LabResult> {
@@ -412,6 +414,6 @@ export const laboratoryApi = {
     released: number;
   }> {
     const response = await apiClient.get('/api/lab/queue/stats/');
-    return response.data;
+    return parseResponse(LabQueueStatsSchema, response.data, { context: 'laboratoryApi.getQueueStats' });
   },
 };
