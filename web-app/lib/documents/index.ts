@@ -54,6 +54,8 @@ export { getCSSConfig } from './types';
 
 export { prescriptionSchema, prescriptionDefaults } from './schemas/prescription.schema';
 export { labelSchema, labelDefaults } from './schemas/label.schema';
+export { receiptSchema, receiptDefaults } from './schemas/receipt.schema';
+export { invoiceSchema, invoiceDefaults, invoiceStatusColors } from './schemas/invoice.schema';
 
 // =============================================================================
 // RENDERER
@@ -116,3 +118,15 @@ export {
   printMultipleLabels,
   type PrintLabelOptions,
 } from './print-label';
+
+export {
+  printReceipt,
+  previewReceipt,
+  type PrintReceiptOptions,
+} from './print-receipt';
+
+export {
+  printInvoice,
+  previewInvoice,
+  type PrintInvoiceOptions,
+} from './print-invoice';
