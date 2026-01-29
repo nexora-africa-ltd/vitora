@@ -5,16 +5,27 @@
  * See validation.ts for the parseResponse utility.
  *
  * Implementation status:
- * ✅ clinic.schema.ts - Fully implemented
- * ✅ triage.schema.ts - Fully implemented
- * ✅ encounter.schema.ts - Fully implemented
- * 📋 All others - Placeholder schemas (TODO: implement)
+ * ✅ clinic.schema.ts - Fully implemented with parseResponse validation
+ * ✅ triage.schema.ts - Fully implemented with parseResponse validation
+ * ✅ encounter.schema.ts - Fully implemented with parseResponse validation
+ * ✅ patient.schema.ts - Fully implemented with parseResponse validation
+ * ✅ rbac.schema.ts - Fully implemented with parseResponse validation
+ * ⚠️ pharmacy.schema.ts - Schemas defined, parseResponse TODO
+ * ⚠️ laboratory.schema.ts - Schemas defined, parseResponse TODO
+ * ⚠️ billing.schema.ts - Schemas defined, parseResponse TODO
+ * ⚠️ inpatient.schema.ts - Schemas defined, parseResponse TODO
+ * ⚠️ sha.schema.ts - Schemas defined, parseResponse TODO
+ * ⚠️ core.schema.ts - Schemas defined, parseResponse TODO
  *
  * Note: Some schemas define the same enum (e.g., GenderSchema, QueueStatusSchema).
- * We export from the "primary" schema to avoid conflicts.
- * - GenderSchema: from patient.schema
- * - QueueStatusSchema: from triage.schema
- * - AlertSeveritySchema: triage vs pharmacy have DIFFERENT values, so both are exported with prefixes
+ * We export from the "primary" schema to avoid conflicts:
+ * - GenderSchema: from patient.schema (canonical)
+ * - EncounterStatusSchema: from patient.schema (canonical)
+ * - QueueStatusSchema: from triage.schema (canonical)
+ * - AlertSeveritySchema: triage vs pharmacy have DIFFERENT values
+ *   - Triage: 'CRITICAL' | 'WARNING'
+ *   - Pharmacy: 'LOW' | 'MEDIUM' | 'HIGH' | 'CRITICAL'
+ *   Both exported with PharmacyAlertSeveritySchema alias for pharmacy
  */
 
 // Validation utilities
@@ -25,7 +36,7 @@ export * from './clinic.schema';
 export * from './triage.schema';
 export * from './encounter.schema';
 
-// Patient schema (canonical source for GenderSchema)
+// Patient schema (canonical source for GenderSchema, EncounterStatusSchema)
 export * from './patient.schema';
 
 // Schemas with potential conflicts - export selectively
@@ -114,9 +125,6 @@ export {
   PaginatedDepartmentSchema,
   PaginatedAuditLogSchema,
 } from './rbac.schema';
-
-export * from './sha.schema';
-export * from './core.schema';
 
 export * from './sha.schema';
 export * from './core.schema';
