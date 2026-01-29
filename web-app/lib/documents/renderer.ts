@@ -15,6 +15,12 @@ import type {
   LayoutType,
   PrintOptions,
 } from './types';
+import {
+  generateQRDataUri,
+  generateQRBlockHtml,
+  type QRContent,
+  type QRCodeOptions,
+} from '@/lib/utils/qr';
 
 // =============================================================================
 // UTILITY FUNCTIONS
@@ -204,8 +210,8 @@ export function processRepeater(
 }
 
 /**
- * Generate a simple QR code placeholder (actual QR generation would use a library)
- * For now, returns a data display; integrate with qrcode library for production
+ * Generate a simple QR code placeholder for templates
+ * Used when no actual QR data is available
  */
 export function generateQRPlaceholder(data: string, width = 90, height = 90): string {
   return `
@@ -215,6 +221,35 @@ export function generateQRPlaceholder(data: string, width = 90, height = 90): st
       ${escapeHtml(data)}
     </div>
   `;
+}
+
+/**
+ * Generate actual QR code HTML with verification status label
+ *
+ * @param qrContent - QR content with verification status
+ * @param options - QR code options
+ * @returns Promise resolving to HTML string with QR image and label
+ */
+export async function generateQRHtml(
+  qrContent: QRContent,
+  options: QRCodeOptions = {}
+): Promise<string> {
+  return generateQRBlockHtml(qrContent, options);
+}
+
+/**
+ * Generate QR image only (without label)
+ *
+ * @param data - Data to encode
+ * @param size - Size in pixels
+ * @returns Promise resolving to img tag HTML
+ */
+export async function generateQRImageHtml(
+  data: string,
+  size = 90
+): Promise<string> {
+  const dataUri = await generateQRDataUri(data, { size });
+  return `<img src="${dataUri}" alt="QR Code" width="${size}" height="${size}" style="display: block;" />`;
 }
 
 // =============================================================================
@@ -403,7 +438,10 @@ export function getThemeCSS(theme: string = 'default'): string {
 // =============================================================================
 
 /**
- * Render a document by applying data to an HTML template
+ * Render a document by applying data to an HTML template (synchronous)
+ *
+ * Note: This version uses placeholders for QR codes.
+ * Use renderDocumentAsync for actual QR generation.
  *
  * @param htmlTemplate - The raw HTML template string
  * @param schema - Document definition with bindings and repeaters
@@ -435,7 +473,7 @@ export function renderDocument(
     }
   }
 
-  // 3. Generate QR codes (placeholder for now)
+  // 3. Generate QR codes (placeholder for sync version)
   if (schema.assets?.qr) {
     const qrAsset = schema.assets.qr;
     const qrData = resolveDataPath(
@@ -453,6 +491,44 @@ export function renderDocument(
         `<div class="qr">${qrHtml}</div>`
       );
     }
+  }
+
+  return html;
+}
+
+/**
+ * Render a document with actual QR code generation (async)
+ *
+ * This version generates real QR codes using the qrcode library.
+ * Includes verification status labels based on whether the QR contains
+ * a backend-signed verification URL.
+ *
+ * @param htmlTemplate - The raw HTML template string
+ * @param schema - Document definition with bindings and repeaters
+ * @param data - Data context (patient, prescription, facility, etc.)
+ * @param qrContent - QR content with verification status
+ * @param options - Print/render options
+ * @returns Promise resolving to fully populated HTML string
+ */
+export async function renderDocumentAsync(
+  htmlTemplate: string,
+  schema: DocumentDefinition,
+  data: RenderContext,
+  qrContent?: QRContent,
+  options?: PrintOptions
+): Promise<string> {
+  // First do synchronous rendering
+  let html = renderDocument(htmlTemplate, schema, data, options);
+
+  // Then replace QR placeholder with actual QR code
+  if (qrContent && html.includes('class="qr"')) {
+    const qrBlockHtml = await generateQRBlockHtml(qrContent, {
+      size: schema.assets?.qr?.width || 90,
+    });
+    html = html.replace(
+      /<div class="qr">[\s\S]*?<\/div>/i,
+      `<div class="qr">${qrBlockHtml}</div>`
+    );
   }
 
   return html;

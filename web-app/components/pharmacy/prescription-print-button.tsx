@@ -65,29 +65,35 @@ export function PrescriptionPrintButton({
 }: PrescriptionPrintButtonProps) {
   const [selectedLayout, setSelectedLayout] = useState<LayoutType>('a4');
   const [selectedTheme, setSelectedTheme] = useState<string>('default');
+  const [isPrinting, setIsPrinting] = useState(false);
 
-  const handlePrint = (layout: LayoutType = selectedLayout, theme: string = selectedTheme) => {
+  const handlePrint = async (layout: LayoutType = selectedLayout, theme: string = selectedTheme) => {
     if (!prescription || !prescription.items || prescription.items.length === 0) {
       console.warn('Cannot print prescription: no items');
       return;
     }
 
-    const options: PrintPrescriptionOptions = {
-      prescription,
-      patient: patient || {
-        full_name: prescription.patient_name || 'Patient',
-        mrn: prescription.patient_mrn,
-      },
-      facility,
-      clinician: clinician || {
-        name: prescription.prescriber_name || 'Prescriber',
-      },
-      encounterId: encounterId || prescription.encounter,
-      layout,
-      theme,
-    };
+    setIsPrinting(true);
+    try {
+      const options: PrintPrescriptionOptions = {
+        prescription,
+        patient: patient || {
+          full_name: prescription.patient_name || 'Patient',
+          mrn: prescription.patient_mrn,
+        },
+        facility,
+        clinician: clinician || {
+          name: prescription.prescriber_name || 'Prescriber',
+        },
+        encounterId: encounterId || prescription.encounter,
+        layout,
+        theme,
+      };
 
-    printPrescription(options);
+      await printPrescription(options);
+    } finally {
+      setIsPrinting(false);
+    }
   };
 
   // Simple button (no options)
@@ -97,7 +103,7 @@ export function PrescriptionPrintButton({
         variant={variant}
         size={size}
         onClick={() => handlePrint()}
-        disabled={disabled || !prescription?.items?.length}
+        disabled={disabled || isPrinting || !prescription?.items?.length}
         className={className}
       >
         <Printer className="h-4 w-4 mr-2" />
@@ -113,11 +119,11 @@ export function PrescriptionPrintButton({
         <Button
           variant={variant}
           size={size}
-          disabled={disabled || !prescription?.items?.length}
+          disabled={disabled || isPrinting || !prescription?.items?.length}
           className={className}
         >
           <Printer className="h-4 w-4 mr-2" />
-          Print
+          {isPrinting ? 'Printing...' : 'Print'}
           <Settings2 className="h-3 w-3 ml-2" />
         </Button>
       </DropdownMenuTrigger>
@@ -152,10 +158,10 @@ export function PrescriptionPrintButton({
  * Hook for printing prescriptions programmatically
  */
 export function usePrintPrescription() {
-  const print = (
+  const print = async (
     prescription: Prescription,
     options?: Partial<Omit<PrintPrescriptionOptions, 'prescription'>>
-  ) => {
+  ): Promise<Window | null> => {
     if (!prescription || !prescription.items?.length) {
       console.warn('Cannot print prescription: no items');
       return null;

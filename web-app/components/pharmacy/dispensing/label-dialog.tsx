@@ -54,37 +54,43 @@ export function LabelDialog({
   const [showBatchInfo, setShowBatchInfo] = useState(true);
   const [showExpiryWarning, setShowExpiryWarning] = useState(true);
   const [showOptions, setShowOptions] = useState(false);
+  const [isPrinting, setIsPrinting] = useState(false);
 
-  const handlePrint = () => {
+  const handlePrint = async () => {
     if (!dispensing) return;
 
-    // Get extended dispensing data
-    const extendedDispensing = dispensing as Dispensing & {
-      dosage?: string;
-      frequency?: string;
-      duration?: string;
-      instructions?: string;
-      batch_expiry?: string;
-    };
+    setIsPrinting(true);
+    try {
+      // Get extended dispensing data
+      const extendedDispensing = dispensing as Dispensing & {
+        dosage?: string;
+        frequency?: string;
+        duration?: string;
+        instructions?: string;
+        batch_expiry?: string;
+      };
 
-    const options: PrintLabelOptions = {
-      dispensing,
-      facility: {
-        name: facilityName,
-      },
-      drug: {
-        name: dispensing.drug_name,
-        dosage: extendedDispensing.dosage,
-        frequency: extendedDispensing.frequency,
-        duration: extendedDispensing.duration,
-        instructions: extendedDispensing.instructions || 'Take as directed by your healthcare provider.',
-      },
-      layout,
-      showBatchInfo,
-      showExpiryWarning,
-    };
+      const options: PrintLabelOptions = {
+        dispensing,
+        facility: {
+          name: facilityName,
+        },
+        drug: {
+          name: dispensing.drug_name,
+          dosage: extendedDispensing.dosage,
+          frequency: extendedDispensing.frequency,
+          duration: extendedDispensing.duration,
+          instructions: extendedDispensing.instructions || 'Take as directed by your healthcare provider.',
+        },
+        layout,
+        showBatchInfo,
+        showExpiryWarning,
+      };
 
-    printLabel(options);
+      await printLabel(options);
+    } finally {
+      setIsPrinting(false);
+    }
   };
 
   if (!dispensing) return null;
@@ -238,12 +244,12 @@ export function LabelDialog({
         </div>
 
         <DialogFooter>
-          <Button variant="outline" onClick={onClose}>
+          <Button variant="outline" onClick={onClose} disabled={isPrinting}>
             Cancel
           </Button>
-          <Button onClick={handlePrint}>
+          <Button onClick={handlePrint} disabled={isPrinting}>
             <Printer className="h-4 w-4 mr-2" />
-            Print Label
+            {isPrinting ? 'Printing...' : 'Print Label'}
           </Button>
         </DialogFooter>
       </DialogContent>

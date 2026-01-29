@@ -68,13 +68,37 @@ export {
   replaceBindings,
   processRepeater,
   generateQRPlaceholder,
+  generateQRHtml,
+  generateQRImageHtml,
   getBaseCSS,
   getLayoutCSS,
   getThemeCSS,
   renderDocument,
+  renderDocumentAsync,
   buildPrintDocument,
   openPrintWindow,
 } from './renderer';
+
+// =============================================================================
+// QR CODE UTILITIES (re-exported for convenience)
+// =============================================================================
+
+export {
+  generateQRDataUri,
+  generateQRSvg,
+  generateQRDataUriSync,
+  generateQRBlockHtml,
+  generateQRBlockHtmlSync,
+  getPrescriptionQRContent,
+  getDispensingQRContent,
+  getReceiptQRContent,
+  getInvoiceQRContent,
+  getLabResultQRContent,
+  type QRContent,
+  type QRCodeOptions,
+  type QRErrorCorrectionLevel,
+  type QRDocumentType,
+} from '@/lib/utils/qr';
 
 // =============================================================================
 // PRINT UTILITIES

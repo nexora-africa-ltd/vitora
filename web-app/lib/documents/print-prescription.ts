@@ -15,12 +15,13 @@ import type {
 } from './types';
 import { prescriptionSchema, prescriptionDefaults } from './schemas/prescription.schema';
 import {
-  renderDocument,
+  renderDocumentAsync,
   buildPrintDocument,
   openPrintWindow,
   escapeHtml,
   formatDate,
 } from './renderer';
+import { getPrescriptionQRContent, type QRContent } from '@/lib/utils/qr';
 
 // =============================================================================
 // PRESCRIPTION TEMPLATE
@@ -234,6 +235,8 @@ export interface PrintPrescriptionOptions {
   layout?: LayoutType;
   /** Theme name */
   theme?: string;
+  /** Backend-provided verification URL (if available) */
+  verificationUrl?: string;
 }
 
 // =============================================================================
@@ -263,9 +266,9 @@ function calculateAge(dob: string | undefined): string {
  * Print a prescription document
  *
  * @param options - Prescription data and print options
- * @returns The print window, or null if failed
+ * @returns Promise that resolves to the print window, or null if failed
  */
-export function printPrescription(options: PrintPrescriptionOptions): Window | null {
+export async function printPrescription(options: PrintPrescriptionOptions): Promise<Window | null> {
   const {
     prescription,
     patient,
@@ -274,6 +277,7 @@ export function printPrescription(options: PrintPrescriptionOptions): Window | n
     encounterId,
     layout = 'a4',
     theme = 'default',
+    verificationUrl,
   } = options;
 
   // Validate required data
@@ -285,6 +289,13 @@ export function printPrescription(options: PrintPrescriptionOptions): Window | n
   if (!prescription.items || prescription.items.length === 0) {
     console.warn('printPrescription: prescription has no items');
   }
+
+  // Get QR content with verification status
+  const qrContent = getPrescriptionQRContent({
+    prescription_number: prescription.prescription_number,
+    verification_url: verificationUrl || (prescription as Prescription & { verification_url?: string }).verification_url,
+    id: prescription.id,
+  });
 
   // Build render context
   const context: RenderContext = {
@@ -320,11 +331,12 @@ export function printPrescription(options: PrintPrescriptionOptions): Window | n
     system_name: prescriptionDefaults.system_name,
   };
 
-  // Render the document
-  const bodyHtml = renderDocument(
+  // Render the document with QR code
+  const bodyHtml = await renderDocumentAsync(
     PRESCRIPTION_TEMPLATE,
     prescriptionSchema,
-    context
+    context,
+    qrContent
   );
 
   // Build complete HTML with CSS
@@ -339,7 +351,7 @@ export function printPrescription(options: PrintPrescriptionOptions): Window | n
  * Preview a prescription without printing
  * Returns the generated HTML for inspection
  */
-export function previewPrescription(options: PrintPrescriptionOptions): string {
+export async function previewPrescription(options: PrintPrescriptionOptions): Promise<string> {
   const {
     prescription,
     patient,
@@ -348,7 +360,15 @@ export function previewPrescription(options: PrintPrescriptionOptions): string {
     encounterId,
     layout = 'a4',
     theme = 'default',
+    verificationUrl,
   } = options;
+
+  // Get QR content with verification status
+  const qrContent = getPrescriptionQRContent({
+    prescription_number: prescription.prescription_number,
+    verification_url: verificationUrl || (prescription as Prescription & { verification_url?: string }).verification_url,
+    id: prescription.id,
+  });
 
   const context: RenderContext = {
     patient: patient || {
@@ -372,10 +392,11 @@ export function previewPrescription(options: PrintPrescriptionOptions): string {
     system_name: prescriptionDefaults.system_name,
   };
 
-  const bodyHtml = renderDocument(
+  const bodyHtml = await renderDocumentAsync(
     PRESCRIPTION_TEMPLATE,
     prescriptionSchema,
-    context
+    context,
+    qrContent
   );
 
   const title = `Prescription - ${prescription.prescription_number}`;
