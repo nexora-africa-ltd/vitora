@@ -473,7 +473,20 @@ export function DrugTable({
                   <TableCell>{FORM_LABELS[drug.form]}</TableCell>
                   <TableCell>{drug.strength}</TableCell>
                   <TableCell>
-                    <Badge variant="secondary">{CATEGORY_LABELS[drug.category]}</Badge>
+                    <div className="flex flex-wrap gap-1">
+                      {drug.categories.length > 0 ? (
+                        drug.categories.slice(0, 2).map((cat) => (
+                          <Badge key={cat} variant="secondary" className="text-xs">
+                            {CATEGORY_LABELS[cat]}
+                          </Badge>
+                        ))
+                      ) : (
+                        <Badge variant="outline" className="text-xs">-</Badge>
+                      )}
+                      {drug.categories.length > 2 && (
+                        <Badge variant="outline" className="text-xs">+{drug.categories.length - 2}</Badge>
+                      )}
+                    </div>
                   </TableCell>
                   <TableCell>
                     <div className="flex items-center gap-2">

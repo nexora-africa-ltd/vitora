@@ -72,7 +72,7 @@ class TestDrugAPI:
             generic_name="List Test Drug",
             strength="50mg",
             form="TABLET",
-            category="OTHER",
+            categories=["OTHER"],
             unit="tablet",
         )
 
@@ -89,7 +89,7 @@ class TestDrugAPI:
             generic_name="Detail Test Drug",
             strength="100mg",
             form="TABLET",
-            category="OTHER",
+            categories=["OTHER"],
             unit="tablet",
         )
 
@@ -114,7 +114,7 @@ class TestDrugAPI:
             generic_name="Paracetamol",
             strength="500mg",
             form="TABLET",
-            category="ANALGESIC",
+            categories=["ANALGESIC"],
             unit="tablet",
         )
         Drug.objects.create(
@@ -122,7 +122,7 @@ class TestDrugAPI:
             generic_name="Ibuprofen",
             strength="400mg",
             form="TABLET",
-            category="ANALGESIC",
+            categories=["ANALGESIC"],
             unit="tablet",
         )
 
@@ -140,7 +140,7 @@ class TestDrugAPI:
             generic_name="Antibiotic Drug",
             strength="250mg",
             form="CAPSULE",
-            category="ANTIBIOTIC",
+            categories=["ANTIBIOTIC"],
             unit="capsule",
         )
         Drug.objects.create(
@@ -148,7 +148,7 @@ class TestDrugAPI:
             generic_name="Analgesic Drug",
             strength="500mg",
             form="TABLET",
-            category="ANALGESIC",
+            categories=["ANALGESIC"],
             unit="tablet",
         )
 
@@ -176,7 +176,7 @@ class TestStockAPI:
             generic_name="Stock Test Drug",
             strength="100mg",
             form="TABLET",
-            category="OTHER",
+            categories=["OTHER"],
             unit="tablet",
         )
 
@@ -205,7 +205,7 @@ class TestStockAPI:
             generic_name="Stock Test Drug 2",
             strength="100mg",
             form="TABLET",
-            category="OTHER",
+            categories=["OTHER"],
             unit="tablet",
         )
 
@@ -234,7 +234,7 @@ class TestStockAPI:
             generic_name="Stock Test Drug 3",
             strength="100mg",
             form="TABLET",
-            category="OTHER",
+            categories=["OTHER"],
             unit="tablet",
         )
 
@@ -262,7 +262,7 @@ class TestStockAPI:
             generic_name="Stock Test Drug 4",
             strength="100mg",
             form="TABLET",
-            category="OTHER",
+            categories=["OTHER"],
             unit="tablet",
         )
 
@@ -395,7 +395,7 @@ class TestPrescriptionAPI:
             generic_name="Nested Test Drug",
             strength="500mg",
             form="TABLET",
-            category="ANALGESIC",
+            categories=["ANALGESIC"],
             unit="tablet",
         )
 
@@ -468,7 +468,7 @@ class TestPrescriptionAPI:
             generic_name="Prescription Drug",
             strength="100mg",
             form="TABLET",
-            category="OTHER",
+            categories=["OTHER"],
             unit="tablet",
         )
 
@@ -634,7 +634,7 @@ class TestDispensingAPI:
             generic_name="Disp Drug",
             strength="100mg",
             form="TABLET",
-            category="OTHER",
+            categories=["OTHER"],
             unit="tablet",
         )
 
@@ -687,7 +687,7 @@ class TestDispensingAPI:
             generic_name="Disp Drug 2",
             strength="100mg",
             form="TABLET",
-            category="OTHER",
+            categories=["OTHER"],
             unit="tablet",
         )
 
@@ -737,7 +737,7 @@ class TestDispensingAPI:
             generic_name="Disp Drug 3",
             strength="100mg",
             form="TABLET",
-            category="OTHER",
+            categories=["OTHER"],
             unit="tablet",
         )
 
@@ -786,7 +786,7 @@ class TestDispensingAPI:
             generic_name="Disp Drug 4",
             strength="100mg",
             form="TABLET",
-            category="OTHER",
+            categories=["OTHER"],
             unit="tablet",
         )
 
@@ -847,7 +847,7 @@ class TestDispensingAPI:
             generic_name="Controlled Drug",
             strength="10mg",
             form="INJECTION",
-            category="CONTROLLED",
+            categories=["CONTROLLED"],
             unit="vial",
             schedule="CD",
             is_controlled=True,
@@ -912,7 +912,7 @@ class TestDispensingAPI:
             generic_name="Disp Drug 6",
             strength="100mg",
             form="TABLET",
-            category="OTHER",
+            categories=["OTHER"],
             unit="tablet",
         )
 

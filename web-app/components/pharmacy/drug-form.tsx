@@ -38,7 +38,7 @@ const drugFormSchema = z.object({
   code: z.string().min(1, 'Drug code is required'),
   generic_name: z.string().min(1, 'Generic name is required'),
   brand_names: z.array(z.string()).optional(),
-  category: z.enum([
+  categories: z.array(z.enum([
     'ANALGESIC',
     'ANTIBIOTIC',
     'ANTIMALARIAL',
@@ -52,7 +52,7 @@ const drugFormSchema = z.object({
     'PSYCHOTROPIC',
     'CONTROLLED',
     'OTHER',
-  ] as const, { required_error: 'Category is required' }),
+  ] as const)).min(1, 'At least one category is required'),
   form: z.enum([
     'TABLET',
     'CAPSULE',
@@ -141,7 +141,7 @@ export function DrugForm({ drug, onSuccess, onCancel }: DrugFormProps) {
       code: drug?.code ?? '',
       generic_name: drug?.generic_name ?? '',
       brand_names: drug?.brand_names ?? [],
-      category: drug?.category ?? undefined,
+      categories: drug?.categories ?? [],
       form: drug?.form ?? undefined,
       strength: drug?.strength ?? '',
       unit: drug?.unit ?? '',
@@ -305,30 +305,46 @@ export function DrugForm({ drug, onSuccess, onCancel }: DrugFormProps) {
             )}
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <FormField
-              control={form.control}
-              name="category"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Category *</FormLabel>
-                  <Select onValueChange={field.onChange} value={field.value}>
-                    <FormControl>
-                      <SelectTrigger>
-                        <SelectValue placeholder="Select category" />
-                      </SelectTrigger>
-                    </FormControl>
-                    <SelectContent>
-                      {Object.entries(CATEGORY_LABELS).map(([key, label]) => (
-                        <SelectItem key={key} value={key}>{label}</SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
+          {/* Categories (Multi-select) */}
+          <FormField
+            control={form.control}
+            name="categories"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Categories *</FormLabel>
+                <FormDescription>
+                  Select one or more categories that apply to this drug
+                </FormDescription>
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-2 pt-2">
+                  {Object.entries(CATEGORY_LABELS).map(([key, label]) => (
+                    <div key={key} className="flex items-center space-x-2">
+                      <Checkbox
+                        id={`category-${key}`}
+                        checked={field.value?.includes(key as DrugCategory)}
+                        onCheckedChange={(checked) => {
+                          const currentValue = field.value || [];
+                          if (checked) {
+                            field.onChange([...currentValue, key]);
+                          } else {
+                            field.onChange(currentValue.filter((v) => v !== key));
+                          }
+                        }}
+                      />
+                      <label
+                        htmlFor={`category-${key}`}
+                        className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 cursor-pointer"
+                      >
+                        {label}
+                      </label>
+                    </div>
+                  ))}
+                </div>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
 
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <FormField
               control={form.control}
               name="form"
