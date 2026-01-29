@@ -39,7 +39,7 @@ jest.mock('@/components/ui/date-picker', () => ({
 }));
 
 // Mock print helpers used by ReceiptView
-jest.mock('@/lib/utils/print-receipt', () => ({
+jest.mock('@/lib/documents', () => ({
   printReceipt: jest.fn(),
 }));
 
@@ -845,7 +845,7 @@ describe('MpesaPaymentDialog', () => {
 // ============================================================================
 
 describe('ReceiptView', () => {
-  const { printReceipt } = require('@/lib/utils/print-receipt') as { printReceipt: jest.Mock };
+  const { printReceipt } = require('@/lib/documents') as { printReceipt: jest.Mock };
   const mockOnClose = jest.fn();
 
   beforeEach(() => {
