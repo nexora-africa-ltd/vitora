@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Medication Label</title>
+  <style>
+    body {
+      margin: 0;
+      padding: 8px;
+      font-family: Arial, Helvetica, sans-serif;
+      font-size: 12px;
+    }
+
+    .label {
+      width: 280px;
+      border: 1px solid #000;
+      padding: 8px;
+      box-sizing: border-box;
+    }
+
+    .clinic {
+      font-weight: bold;
+      font-size: 13px;
+      margin-bottom: 4px;
+    }
+
+    .row {
+      margin-bottom: 4px;
+    }
+
+    .drug {
+      font-size: 14px;
+      font-weight: bold;
+      margin: 6px 0;
+    }
+
+    .instructions {
+      border-top: 1px dashed #000;
+      padding-top: 6px;
+      margin-top: 6px;
+    }
+
+    .qr {
+      margin-top: 8px;
+      width: 64px;
+      height: 64px;
+      border: 1px dashed #999;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 9px;
+    }
+
+    .footer {
+      font-size: 10px;
+      margin-top: 6px;
+    }
+  </style>
+</head>
+<body>
+  <div class="label">
+    <div class="clinic">{{facility.name}}</div>
+
+    <div class="row"><strong>Patient:</strong> {{patient.full_name}}</div>
+    <div class="row"><strong>Date:</strong> {{dispense.date}}</div>
+
+    <div class="drug">{{drug.name}}</div>
+
+    <div class="row"><strong>Dose:</strong> {{drug.dose}}</div>
+    <div class="row"><strong>Frequency:</strong> {{drug.frequency}}</div>
+    <div class="row"><strong>Duration:</strong> {{drug.duration}}</div>
+
+    <div class="instructions">
+      {{drug.instructions}}
+    </div>
+
+    <div class="qr">
+      QR / Barcode
+    </div>
+
+    <div class="footer">
+      Keep out of reach of children<br />
+      Store as directed
+    </div>
+  </div>
+</body>
+</html>
