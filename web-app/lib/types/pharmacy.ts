@@ -112,13 +112,30 @@ export interface Drug {
   storage_requirements?: string;
   reference_price?: number;
   is_active: boolean;
+  /**
+   * Total available stock across ALL batches for this drug.
+   * Aggregated from batches.filter(status="AVAILABLE").sum(quantity_available)
+   */
   current_stock: number;
   created_at: string;
   updated_at: string;
 }
 
 /**
- * Stock batch
+ * Stock batch - represents a single shipment/receipt of a drug.
+ * 
+ * IMPORTANT: Each batch belongs to ONE drug only.
+ * A drug can have multiple batches (one-to-many relationship).
+ * 
+ * Example:
+ * - Drug: Paracetamol 500mg Tablets
+ *   - Batch A (exp: Mar 2026): 50 available
+ *   - Batch B (exp: Jun 2026): 500 available
+ *   - Batch C (exp: Dec 2026): 200 available
+ *   - Total (Drug.current_stock): 750
+ * 
+ * Uses FEFO (First Expiry First Out) dispensing:
+ * Batches are ordered by expiry_date, earliest first.
  */
 export interface StockBatch {
   id: number;
@@ -376,6 +393,21 @@ export interface DrugCreateData {
 
 /**
  * Stock batch create data (receiving stock)
+ * 
+ * Creates a NEW batch for a drug. Does NOT modify existing batches.
+ * The backend auto-sets: quantity_available = quantity_received
+ * 
+ * @example
+ * // Receiving 500 units of Paracetamol (drug id: 123)
+ * {
+ *   drug: 123,
+ *   batch_number: "BATCH-2026-001",
+ *   quantity_received: 500,  // quantity_available auto-set to 500
+ *   expiry_date: "2027-01-29",
+ *   received_date: "2026-01-29",
+ *   cost_price: 3.00,
+ *   selling_price: 5.00,
+ * }
  */
 export interface StockBatchCreateData {
   drug: number;

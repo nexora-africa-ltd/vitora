@@ -175,3 +175,55 @@ export function transformAxiosError(error: AxiosError): ApiError {
     code: 'UNKNOWN_ERROR',
   };
 }
+
+/**
+ * Extract user-friendly error message from API error response.
+ * Handles Django REST Framework error format: {"field": ["error message"]}
+ */
+export function getApiErrorMessage(error: unknown): string {
+  if (error instanceof AxiosError) {
+    const data = error.response?.data;
+    
+    // Handle DRF validation errors: {"code": ["drug with this code already exists."]}
+    if (data && typeof data === 'object' && !Array.isArray(data)) {
+      const messages: string[] = [];
+      
+      for (const [field, errors] of Object.entries(data)) {
+        if (Array.isArray(errors)) {
+          // Format: "Code: drug with this code already exists"
+          const fieldName = field.replace(/_/g, ' ').replace(/^\w/, c => c.toUpperCase());
+          errors.forEach(err => {
+            if (typeof err === 'string') {
+              messages.push(`${fieldName}: ${err}`);
+            }
+          });
+        } else if (typeof errors === 'string') {
+          // Handle {"detail": "error message"} format
+          if (field === 'detail') {
+            messages.push(errors);
+          } else {
+            const fieldName = field.replace(/_/g, ' ').replace(/^\w/, c => c.toUpperCase());
+            messages.push(`${fieldName}: ${errors}`);
+          }
+        }
+      }
+      
+      if (messages.length > 0) {
+        return messages.join('. ');
+      }
+    }
+    
+    // Fallback to status text
+    if (error.response?.statusText) {
+      return `${error.response.status}: ${error.response.statusText}`;
+    }
+    
+    return error.message || 'An error occurred';
+  }
+  
+  if (error instanceof Error) {
+    return error.message;
+  }
+  
+  return 'An unexpected error occurred';
+}
