@@ -78,6 +78,8 @@ export const QueueStatusSchema = z.enum([
   'RELEASED',
   'REJECTED',
 ]);
+// Alias for module-specific export to avoid conflicts with triage QueueStatusSchema
+export const LabQueueStatusSchema = QueueStatusSchema;
 
 // =============================================================================
 // LAB RESULT SCHEMA (defined first for forward reference)

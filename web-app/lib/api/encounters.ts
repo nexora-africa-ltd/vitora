@@ -3,6 +3,23 @@
  */
 
 import { apiClient } from './client';
+import { parseResponse } from '@/lib/schemas/validation';
+import {
+  EncounterSchema,
+  DiagnosisSchema,
+  DiagnosisArraySchema,
+  TreatmentPlanSchema,
+  EncounterClaimResponseSchema,
+  EncounterReleaseResponseSchema,
+  MyClaimedEncountersResponseSchema,
+  AllClaimedEncountersResponseSchema,
+  PaginatedEncounterSchema,
+  PaginatedPreTriageQueueSchema,
+  TemplatePopulateResponseSchema,
+  TemplateSyncResponseSchema,
+  TemplateSnapshotSchema,
+  TemplateSnapshotArraySchema,
+} from '@/lib/schemas/encounter.schema';
 import {
   Encounter,
   EncounterListParams,
@@ -25,7 +42,7 @@ export const encountersApi = {
     const response = await apiClient.get<PaginatedResponse<Encounter>>('/api/encounters/', {
       params,
     });
-    return response.data;
+    return parseResponse(PaginatedEncounterSchema, response.data, { context: 'encountersApi.list' });
   },
 
   /**
@@ -33,7 +50,7 @@ export const encountersApi = {
    */
   async get(id: number): Promise<Encounter> {
     const response = await apiClient.get<Encounter>(`/api/encounters/${id}/`);
-    return response.data;
+    return parseResponse(EncounterSchema, response.data, { context: 'encountersApi.get' });
   },
 
   /**
@@ -41,7 +58,7 @@ export const encountersApi = {
    */
   async create(data: Partial<Encounter>): Promise<Encounter> {
     const response = await apiClient.post<Encounter>('/api/encounters/', data);
-    return response.data;
+    return parseResponse(EncounterSchema, response.data, { context: 'encountersApi.create' });
   },
 
   /**
@@ -49,7 +66,7 @@ export const encountersApi = {
    */
   async update(id: number, data: Partial<Encounter>): Promise<Encounter> {
     const response = await apiClient.patch<Encounter>(`/api/encounters/${id}/`, data);
-    return response.data;
+    return parseResponse(EncounterSchema, response.data, { context: 'encountersApi.update' });
   },
 
   /**
@@ -58,7 +75,7 @@ export const encountersApi = {
    */
   async finalize(id: number): Promise<Encounter> {
     const response = await apiClient.post<Encounter>(`/api/encounters/${id}/finalize/`);
-    return response.data;
+    return parseResponse(EncounterSchema, response.data, { context: 'encountersApi.finalize' });
   },
 
   // ===========================================================================
@@ -89,7 +106,7 @@ export const encountersApi = {
         ...options,
       }
     );
-    return response.data;
+    return parseResponse(EncounterSchema, response.data, { context: 'encountersApi.quickConsultation' });
   },
 
   // ===========================================================================
@@ -111,7 +128,7 @@ export const encountersApi = {
     const response = await apiClient.post<EncounterClaimResponse>(
       `/api/encounters/${id}/claim/`
     );
-    return response.data;
+    return parseResponse(EncounterClaimResponseSchema, response.data, { context: 'encountersApi.claim' });
   },
 
   /**
@@ -129,7 +146,7 @@ export const encountersApi = {
     const response = await apiClient.post<EncounterReleaseResponse>(
       `/api/encounters/${id}/release/`
     );
-    return response.data;
+    return parseResponse(EncounterReleaseResponseSchema, response.data, { context: 'encountersApi.release' });
   },
 
   /**
@@ -146,7 +163,7 @@ export const encountersApi = {
       '/api/encounters/my_claimed/',
       { params }
     );
-    return response.data;
+    return parseResponse(MyClaimedEncountersResponseSchema, response.data, { context: 'encountersApi.getMyClaimed' });
   },
 
   /**
@@ -164,7 +181,7 @@ export const encountersApi = {
       '/api/encounters/all_claimed/',
       { params }
     );
-    return response.data;
+    return parseResponse(AllClaimedEncountersResponseSchema, response.data, { context: 'encountersApi.getAllClaimed' });
   },
 
   /**
@@ -174,7 +191,7 @@ export const encountersApi = {
     const response = await apiClient.get<Diagnosis[]>(
       `/api/encounters/${encounterId}/diagnoses/`
     );
-    return response.data;
+    return parseResponse(DiagnosisArraySchema, response.data, { context: 'encountersApi.getDiagnoses' });
   },
 
   /**
@@ -185,7 +202,7 @@ export const encountersApi = {
       `/api/encounters/${encounterId}/diagnoses/`,
       data
     );
-    return response.data;
+    return parseResponse(DiagnosisSchema, response.data, { context: 'encountersApi.createDiagnosis' });
   },
 
   /**
@@ -203,7 +220,7 @@ export const encountersApi = {
       `/api/encounters/${encounterId}/diagnoses/${diagnosisId}/`,
       data
     );
-    return response.data;
+    return parseResponse(DiagnosisSchema, response.data, { context: 'encountersApi.updateDiagnosis' });
   },
 
   /**
@@ -214,7 +231,7 @@ export const encountersApi = {
       const response = await apiClient.get<TreatmentPlan>(
         `/api/encounters/${encounterId}/treatment-plan/`
       );
-      return response.data;
+      return parseResponse(TreatmentPlanSchema, response.data, { context: 'encountersApi.getTreatmentPlan' }) as TreatmentPlan;
     } catch (error: unknown) {
       const axiosError = error as { response?: { status?: number } };
       if (axiosError.response?.status === 404) {
@@ -238,7 +255,7 @@ export const encountersApi = {
       '/api/encounters/pre_triage_queue/',
       { params }
     );
-    return response.data;
+    return parseResponse(PaginatedPreTriageQueueSchema, response.data, { context: 'encountersApi.getPreTriageQueue' });
   },
 
   /**
@@ -258,7 +275,7 @@ export const encountersApi = {
       `/api/encounters/${encounterId}/edit_chief_complaint/`,
       data
     );
-    return response.data;
+    return parseResponse(EncounterSchema, response.data, { context: 'encountersApi.editChiefComplaint' });
   },
 
   // ===========================================================================
@@ -282,7 +299,7 @@ export const encountersApi = {
       `/api/encounters/${encounterId}/populate-template/`,
       { params }
     );
-    return response.data;
+    return parseResponse(TemplatePopulateResponseSchema, response.data, { context: 'encountersApi.populateTemplate' });
   },
 
   /**
@@ -301,7 +318,7 @@ export const encountersApi = {
         template_data: templateData,
       }
     );
-    return response.data;
+    return parseResponse(TemplateSyncResponseSchema, response.data, { context: 'encountersApi.syncTemplate' });
   },
 
   /**
@@ -311,7 +328,7 @@ export const encountersApi = {
     const response = await apiClient.get<TemplateSnapshot[]>(
       `/api/encounters/${encounterId}/template-snapshots/`
     );
-    return response.data;
+    return parseResponse(TemplateSnapshotArraySchema, response.data, { context: 'encountersApi.listTemplateSnapshots' });
   },
 
   /**
@@ -330,7 +347,7 @@ export const encountersApi = {
         template_data: templateData,
       }
     );
-    return response.data;
+    return parseResponse(TemplateSnapshotSchema, response.data, { context: 'encountersApi.createTemplateSnapshot' });
   },
 };
 
@@ -391,7 +408,7 @@ export interface PreTriageQueueItem {
   patient_age: number | null;
   patient_gender: string;
   encounter_type: string;
-  encounter_type_display?: string;
+  encounter_type_display?: string | null;
   chief_complaint: string;
   triage_requirement: 'MANDATORY' | 'OPTIONAL' | 'NOT_REQUIRED';
   triage_status: 'PENDING' | 'IN_PROGRESS' | 'COMPLETED' | 'BYPASSED' | 'NOT_APPLICABLE';
