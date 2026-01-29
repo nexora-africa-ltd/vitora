@@ -19,7 +19,6 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Badge } from '@/components/ui/badge';
-import { Alert, AlertDescription } from '@/components/ui/alert';
 import {
   Form,
   FormControl,
@@ -31,6 +30,8 @@ import {
 } from '@/components/ui/form';
 import { Drug, DrugCreateData, DrugCategory, DrugForm as DrugFormType, DrugSchedule } from '@/lib/types/pharmacy';
 import { pharmacyApi } from '@/lib/api/pharmacy';
+import { getApiErrorMessage } from '@/lib/api/client';
+import { useToast } from '@/lib/hooks/use-toast';
 
 // Form validation schema
 const drugFormSchema = z.object({
@@ -129,9 +130,8 @@ const FORM_LABELS: Record<DrugFormType, string> = {
 
 export function DrugForm({ drug, onSuccess, onCancel }: DrugFormProps) {
   const router = useRouter();
+  const { toast } = useToast();
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [success, setSuccess] = useState(false);
   const [brandNameInput, setBrandNameInput] = useState('');
   const [brandNames, setBrandNames] = useState<string[]>(drug?.brand_names ?? []);
 
@@ -177,8 +177,6 @@ export function DrugForm({ drug, onSuccess, onCancel }: DrugFormProps) {
 
   const onSubmit = async (data: DrugFormData) => {
     setIsSubmitting(true);
-    setError(null);
-    setSuccess(false);
 
     try {
       const payload: DrugCreateData = {
@@ -203,18 +201,27 @@ export function DrugForm({ drug, onSuccess, onCancel }: DrugFormProps) {
         result = await pharmacyApi.createDrug(payload);
       }
 
-      setSuccess(true);
+      toast({
+        title: drug ? 'Drug Updated' : 'Drug Created',
+        description: `${result.generic_name} has been ${drug ? 'updated' : 'added to the catalog'} successfully.`,
+      });
+
       if (onSuccess) {
         onSuccess(result);
       } else {
-        // Redirect to drug detail page after 1 second
+        // Redirect to drug detail page after short delay
         setTimeout(() => {
           router.push(`/pharmacy/drugs/${result.id}`);
-        }, 1000);
+        }, 500);
       }
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error('Error saving drug:', err);
-      setError(err.response?.data?.detail || err.message || 'Failed to save drug');
+      const errorMessage = getApiErrorMessage(err);
+      toast({
+        title: 'Error',
+        description: errorMessage,
+        variant: 'destructive',
+      });
     } finally {
       setIsSubmitting(false);
     }
@@ -223,22 +230,6 @@ export function DrugForm({ drug, onSuccess, onCancel }: DrugFormProps) {
   return (
     <Form {...form}>
       <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6" data-testid="drug-form">
-        {/* Success Message */}
-        {success && (
-          <Alert className="bg-emerald-500/10 border-emerald-500/20">
-            <AlertDescription className="text-emerald-700 dark:text-emerald-400">
-              Drug {drug ? 'updated' : 'created'} successfully!
-            </AlertDescription>
-          </Alert>
-        )}
-
-        {/* Error Message */}
-        {error && (
-          <Alert variant="destructive">
-            <AlertDescription>{error}</AlertDescription>
-          </Alert>
-        )}
-
         {/* Basic Information */}
         <div className="space-y-4">
           <h3 className="text-lg font-semibold">Basic Information</h3>
@@ -559,8 +550,8 @@ export function DrugForm({ drug, onSuccess, onCancel }: DrugFormProps) {
                     <Input
                       type="number"
                       placeholder="24"
-                      {...field}
-                      onChange={(e) => field.onChange(parseInt(e.target.value) || undefined)}
+                      value={field.value ?? ''}
+                      onChange={(e) => field.onChange(e.target.value ? parseInt(e.target.value) : undefined)}
                     />
                   </FormControl>
                   <FormMessage />
@@ -579,8 +570,8 @@ export function DrugForm({ drug, onSuccess, onCancel }: DrugFormProps) {
                       type="number"
                       step="0.01"
                       placeholder="50.00"
-                      {...field}
-                      onChange={(e) => field.onChange(parseFloat(e.target.value) || undefined)}
+                      value={field.value ?? ''}
+                      onChange={(e) => field.onChange(e.target.value ? parseFloat(e.target.value) : undefined)}
                     />
                   </FormControl>
                   <FormMessage />

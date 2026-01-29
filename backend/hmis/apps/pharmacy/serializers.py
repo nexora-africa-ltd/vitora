@@ -5,6 +5,10 @@ Serializers for Pharmacy app.
 from django.contrib.auth import get_user_model
 from rest_framework import serializers
 
+from hmis.apps.core.qr_utils import (
+    generate_document_signature,
+    get_verification_base_url,
+)
 from hmis.apps.encounters.models import Encounter
 from hmis.apps.pharmacy.models import (
     AlertSettings,
@@ -94,6 +98,7 @@ class StockBatchSerializer(serializers.ModelSerializer):
         ]
         read_only_fields = [
             "id",
+            "quantity_available",  # Auto-set from quantity_received on create
             "quantity_dispensed",
             "quantity_damaged",
             "quantity_expired",
@@ -104,6 +109,11 @@ class StockBatchSerializer(serializers.ModelSerializer):
             "is_expired_status",
             "is_low_stock_status",
         ]
+
+    def create(self, validated_data):
+        """Auto-set quantity_available to quantity_received on create."""
+        validated_data["quantity_available"] = validated_data["quantity_received"]
+        return super().create(validated_data)
 
 
 class StockAlertSerializer(serializers.ModelSerializer):
@@ -234,6 +244,8 @@ class PrescriptionSerializer(serializers.ModelSerializer):
     is_fully_dispensed = serializers.BooleanField(
         source="is_fully_dispensed_status", read_only=True
     )
+    # QR verification URL
+    verification_url = serializers.SerializerMethodField()
 
     class Meta:
         model = Prescription
@@ -256,6 +268,7 @@ class PrescriptionSerializer(serializers.ModelSerializer):
             "is_fully_dispensed",
             "is_fully_dispensed_status",
             "items",
+            "verification_url",
             "created_at",
             "updated_at",
         ]
@@ -297,6 +310,27 @@ class PrescriptionSerializer(serializers.ModelSerializer):
     def get_is_valid(self, obj):
         """Alias for is_valid_prescription."""
         return obj.is_valid()
+
+    def get_verification_url(self, obj):
+        """Generate verification URL for QR code."""
+        if not obj.prescription_number or not obj.prescribed_at:
+            return None
+
+        date_str = obj.prescribed_at.strftime("%Y-%m-%d")
+        sig = generate_document_signature(
+            document_type="PRESCRIPTION",
+            document_number=obj.prescription_number,
+            amount="0",  # Prescriptions don't have amounts
+            date=date_str,
+        )
+
+        base_url = get_verification_base_url()
+        return (
+            f"{base_url}?type=PRESCRIPTION"
+            f"&number={obj.prescription_number}"
+            f"&date={date_str}"
+            f"&signature={sig}"
+        )
 
 
 class PrescriptionCreateSerializer(serializers.ModelSerializer):
