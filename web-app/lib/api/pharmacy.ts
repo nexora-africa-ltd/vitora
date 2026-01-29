@@ -26,9 +26,41 @@ import {
   DispensingReportSummary,
 } from '@/lib/types/pharmacy';
 import { PaginatedResponse } from '@/lib/types';
+import { parseResponse } from '@/lib/schemas/validation';
+import { DrugCategorySchema, PaginatedDrugCategorySchema } from '@/lib/schemas/pharmacy.schema';
+
+export interface DrugCategoryCreateData {
+  name: string;
+  code?: string;
+}
 
 export const pharmacyApi = {
   // ============ Drug Catalog ============
+
+  /**
+   * Get available drug categories (from backend registry).
+   */
+  async listDrugCategories(): Promise<Array<{ value: string; label: string }>> {
+    const response = await apiClient.get('/api/pharmacy/drug-categories/', {
+      params: { page_size: 500 },
+    });
+    const parsed = parseResponse(PaginatedDrugCategorySchema, response.data, {
+      context: 'pharmacyApi.listDrugCategories',
+    });
+    return parsed.results.map((c) => ({ value: c.value, label: c.label }));
+  },
+
+  /**
+   * Create a new drug category in the backend registry.
+   */
+  async createDrugCategory(data: DrugCategoryCreateData): Promise<{ value: string; label: string }>
+  {
+    const response = await apiClient.post('/api/pharmacy/drug-categories/', data);
+    const parsed = parseResponse(DrugCategorySchema, response.data, {
+      context: 'pharmacyApi.createDrugCategory',
+    });
+    return { value: parsed.value, label: parsed.label };
+  },
 
   /**
    * Get paginated list of drugs.

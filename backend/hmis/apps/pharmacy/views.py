@@ -15,6 +15,7 @@ from rest_framework.views import APIView
 from hmis.apps.pharmacy.models import (
     Dispensing,
     Drug,
+    DrugCategory,
     Prescription,
     StockAdjustment,
     StockAlert,
@@ -22,6 +23,7 @@ from hmis.apps.pharmacy.models import (
 )
 from hmis.apps.pharmacy.serializers import (
     DispensingSerializer,
+    DrugCategorySerializer,
     DrugSerializer,
     PrescriptionCreateSerializer,
     PrescriptionSerializer,
@@ -30,6 +32,21 @@ from hmis.apps.pharmacy.serializers import (
     StockBatchSerializer,
 )
 from hmis.apps.pharmacy.services import FEFODispenser, InsufficientStockError
+
+
+class DrugCategoryViewSet(viewsets.ModelViewSet):
+    """ViewSet for DrugCategory registry."""
+
+    queryset = DrugCategory.objects.all()
+    serializer_class = DrugCategorySerializer
+    permission_classes = [IsAuthenticated]
+    http_method_names = ["get", "post", "head", "options"]
+
+    def get_queryset(self):
+        queryset = super().get_queryset()
+        if self.action == "list":
+            return queryset.filter(is_active=True)
+        return queryset
 
 
 class DrugViewSet(viewsets.ModelViewSet):

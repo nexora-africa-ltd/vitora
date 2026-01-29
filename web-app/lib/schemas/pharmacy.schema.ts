@@ -14,6 +14,25 @@ import { z } from 'zod';
 export const DrugSchema = z.object({}).passthrough();
 export const DrugListItemSchema = z.object({}).passthrough();
 
+// Drug category registry schemas
+export const DrugCategorySchema = z.object({
+  id: z.number(),
+  code: z.string(),
+  name: z.string(),
+  value: z.string(),
+  label: z.string(),
+  is_active: z.boolean().optional(),
+  created_at: z.string().optional(),
+  updated_at: z.string().optional(),
+});
+
+export const PaginatedDrugCategorySchema = z.object({
+  count: z.number(),
+  next: z.string().nullable(),
+  previous: z.string().nullable(),
+  results: z.array(DrugCategorySchema),
+});
+
 // Prescription schemas
 export const PrescriptionSchema = z.object({}).passthrough();
 export const PrescriptionItemSchema = z.object({}).passthrough();

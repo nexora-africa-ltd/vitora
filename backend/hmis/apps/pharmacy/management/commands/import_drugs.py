@@ -95,7 +95,7 @@ class Command(BaseCommand):
                                 fields=[
                                     "generic_name",
                                     "brand_names",
-                                    "category",
+                                    "categories",
                                     "form",
                                     "strength",
                                     "unit",
@@ -136,7 +136,7 @@ class Command(BaseCommand):
                         fields=[
                             "generic_name",
                             "brand_names",
-                            "category",
+                            "categories",
                             "form",
                             "strength",
                             "unit",
@@ -226,7 +226,7 @@ class Command(BaseCommand):
             "code": row.get("code", "").strip(),
             "generic_name": row.get("generic_name", "").strip(),
             "brand_names": brand_names,
-            "category": category,
+            "categories": [category],
             "form": form,
             "strength": row.get("strength", "").strip(),
             "unit": row.get("unit", "").strip(),
