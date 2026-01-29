@@ -282,7 +282,7 @@ Prescribed by: ${prescriberName}
   }, [generatePrescriptionText, toast]);
 
   // Print prescription using document generation system
-  const handlePrint = useCallback(() => {
+  const handlePrint = useCallback(async () => {
     if (items.length === 0) {
       toast({
         title: 'No Items',
@@ -363,7 +363,7 @@ Prescribed by: ${prescriberName}
       theme: 'default',
     };
 
-    printPrescription(printOptions);
+    await printPrescription(printOptions);
   }, [items, patient, patientId, encounter, encounterId, clinicalNotes, prescriberName, user, toast]);
 
   // Validate current item before adding

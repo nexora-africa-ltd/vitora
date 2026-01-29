@@ -14,12 +14,13 @@ import type {
 } from './types';
 import { labelSchema, labelDefaults } from './schemas/label.schema';
 import {
-  renderDocument,
+  renderDocumentAsync,
   buildPrintDocument,
   openPrintWindow,
   escapeHtml,
   formatDate,
 } from './renderer';
+import { getDispensingQRContent, type QRContent } from '@/lib/utils/qr';
 
 // =============================================================================
 // LABEL TEMPLATE
@@ -209,6 +210,8 @@ export interface PrintLabelOptions {
   showBatchInfo?: boolean;
   /** Show expiry warning */
   showExpiryWarning?: boolean;
+  /** Backend-provided verification URL (if available) */
+  verificationUrl?: string;
 }
 
 // =============================================================================
@@ -273,9 +276,9 @@ function buildLabelHtml(
  * Print a medication label
  *
  * @param options - Dispensing data and print options
- * @returns The print window, or null if failed
+ * @returns Promise that resolves to the print window, or null if failed
  */
-export function printLabel(options: PrintLabelOptions): Window | null {
+export async function printLabel(options: PrintLabelOptions): Promise<Window | null> {
   const {
     dispensing,
     patient,
@@ -285,6 +288,7 @@ export function printLabel(options: PrintLabelOptions): Window | null {
     theme = 'default',
     showBatchInfo = true,
     showExpiryWarning = true,
+    verificationUrl,
   } = options;
 
   // Validate required data
@@ -292,6 +296,13 @@ export function printLabel(options: PrintLabelOptions): Window | null {
     console.error('printLabel: dispensing is required');
     return null;
   }
+
+  // Get QR content with verification status
+  const qrContent = getDispensingQRContent({
+    id: dispensing.id,
+    verification_url: verificationUrl || (dispensing as Dispensing & { verification_url?: string }).verification_url,
+    batch_number: dispensing.batch_number,
+  });
 
   // Build render context
   const context: RenderContext = {
@@ -324,8 +335,8 @@ export function printLabel(options: PrintLabelOptions): Window | null {
     },
   };
 
-  // Render the document
-  let bodyHtml = renderDocument(LABEL_TEMPLATE, labelSchema, context);
+  // Render the document with QR code
+  let bodyHtml = await renderDocumentAsync(LABEL_TEMPLATE, labelSchema, context, qrContent);
 
   // Add batch info and warnings
   bodyHtml = buildLabelHtml(bodyHtml, dispensing, showBatchInfo, showExpiryWarning);
@@ -349,7 +360,7 @@ export function printLabel(options: PrintLabelOptions): Window | null {
  * Preview a label without printing
  * Returns the generated HTML for inspection
  */
-export function previewLabel(options: PrintLabelOptions): string {
+export async function previewLabel(options: PrintLabelOptions): Promise<string> {
   const {
     dispensing,
     patient,
@@ -359,7 +370,15 @@ export function previewLabel(options: PrintLabelOptions): string {
     theme = 'default',
     showBatchInfo = true,
     showExpiryWarning = true,
+    verificationUrl,
   } = options;
+
+  // Get QR content with verification status
+  const qrContent = getDispensingQRContent({
+    id: dispensing.id,
+    verification_url: verificationUrl || (dispensing as Dispensing & { verification_url?: string }).verification_url,
+    batch_number: dispensing.batch_number,
+  });
 
   const context: RenderContext = {
     patient: patient || {
@@ -382,7 +401,7 @@ export function previewLabel(options: PrintLabelOptions): string {
     },
   };
 
-  let bodyHtml = renderDocument(LABEL_TEMPLATE, labelSchema, context);
+  let bodyHtml = await renderDocumentAsync(LABEL_TEMPLATE, labelSchema, context, qrContent);
   bodyHtml = buildLabelHtml(bodyHtml, dispensing, showBatchInfo, showExpiryWarning);
 
   const title = `Label - ${dispensing.drug_name || 'Medication'}`;
@@ -395,12 +414,12 @@ export function previewLabel(options: PrintLabelOptions): string {
  *
  * @param dispensings - Array of dispensing records
  * @param options - Shared options for all labels
- * @returns The print window, or null if failed
+ * @returns Promise that resolves to the print window, or null if failed
  */
-export function printMultipleLabels(
+export async function printMultipleLabels(
   dispensings: Dispensing[],
   options?: Omit<PrintLabelOptions, 'dispensing'>
-): Window | null {
+): Promise<Window | null> {
   if (!dispensings || dispensings.length === 0) {
     console.error('printMultipleLabels: at least one dispensing record is required');
     return null;
@@ -415,36 +434,44 @@ export function printMultipleLabels(
     showExpiryWarning = true,
   } = options || {};
 
-  // Generate HTML for each label
-  const labelsHtml = dispensings
-    .map((dispensing) => {
-      const context: RenderContext = {
-        patient: patient || {
-          full_name: dispensing.patient_name || 'Patient',
-          mrn: dispensing.patient_mrn || '',
-        },
-        facility: facility || labelDefaults.facility,
-        drug: {
-          drug_name: dispensing.drug_name || 'Medication',
-          dosage: (dispensing as Dispensing & { dosage?: string }).dosage || '',
-          frequency: (dispensing as Dispensing & { frequency?: string }).frequency || '',
-          duration: (dispensing as Dispensing & { duration?: string }).duration || '',
-          instructions:
-            (dispensing as Dispensing & { instructions?: string }).instructions ||
-            labelDefaults.drug.instructions,
-        },
-        dispensing: {
-          id: dispensing.id,
-          dispensed_at: dispensing.dispensed_at,
-          batch_number: dispensing.batch_number,
-          quantity: dispensing.quantity,
-        },
-      };
+  // Generate HTML for each label (in parallel)
+  const labelPromises = dispensings.map(async (dispensing) => {
+    // Get QR content with verification status
+    const qrContent = getDispensingQRContent({
+      id: dispensing.id,
+      verification_url: (dispensing as Dispensing & { verification_url?: string }).verification_url,
+      batch_number: dispensing.batch_number,
+    });
 
-      let bodyHtml = renderDocument(LABEL_TEMPLATE, labelSchema, context);
-      return buildLabelHtml(bodyHtml, dispensing, showBatchInfo, showExpiryWarning);
-    })
-    .join('\n<div style="page-break-after: always;"></div>\n');
+    const context: RenderContext = {
+      patient: patient || {
+        full_name: dispensing.patient_name || 'Patient',
+        mrn: dispensing.patient_mrn || '',
+      },
+      facility: facility || labelDefaults.facility,
+      drug: {
+        drug_name: dispensing.drug_name || 'Medication',
+        dosage: (dispensing as Dispensing & { dosage?: string }).dosage || '',
+        frequency: (dispensing as Dispensing & { frequency?: string }).frequency || '',
+        duration: (dispensing as Dispensing & { duration?: string }).duration || '',
+        instructions:
+          (dispensing as Dispensing & { instructions?: string }).instructions ||
+          labelDefaults.drug.instructions,
+      },
+      dispensing: {
+        id: dispensing.id,
+        dispensed_at: dispensing.dispensed_at,
+        batch_number: dispensing.batch_number,
+        quantity: dispensing.quantity,
+      },
+    };
+
+    let bodyHtml = await renderDocumentAsync(LABEL_TEMPLATE, labelSchema, context, qrContent);
+    return buildLabelHtml(bodyHtml, dispensing, showBatchInfo, showExpiryWarning);
+  });
+
+  const labelHtmlArray = await Promise.all(labelPromises);
+  const labelsHtml = labelHtmlArray.join('\n<div style="page-break-after: always;"></div>\n');
 
   const title = `Labels (${dispensings.length})`;
   const variantCSS = getLayoutVariantCSS(layout);

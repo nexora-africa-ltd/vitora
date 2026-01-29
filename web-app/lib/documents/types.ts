@@ -179,6 +179,8 @@ export interface PrintPrescriptionData {
   prescription_number: string;
   prescribed_date: string;
   clinical_notes?: string;
+  /** Backend-generated verification URL with HMAC signature */
+  verification_url?: string;
   items: Array<{
     drug_name?: string;
     dosage: string;
