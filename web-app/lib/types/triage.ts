@@ -331,8 +331,8 @@ export interface TriageAlert {
   message: string;
   value: number;
   threshold: number;
-  clinical_note?: string;
-  actions?: string[];
+  clinical_note?: string | null;
+  actions?: string[] | null;
 }
 
 // =============================================================================
@@ -342,10 +342,10 @@ export interface TriageAlert {
 export interface TriageAssessment {
   id: number;
   encounter: number;
-  encounter_mrn?: string;
-  patient_name?: string;
-  patient_age?: number;
-  patient_gender?: string;
+  encounter_mrn?: string | null;
+  patient_name?: string | null;
+  patient_age?: number | null;
+  patient_gender?: string | null;
 
   // Arrival information
   arrival_mode: ArrivalMode;
@@ -365,7 +365,7 @@ export interface TriageAssessment {
   category_override_reason: string | null;
   assigned_area: AssignedArea;
   assigned_clinician: number | null;
-  assigned_clinician_name?: string;
+  assigned_clinician_name?: string | null;
 
   // Timestamps
   triage_start_time: string;
@@ -377,7 +377,7 @@ export interface TriageAssessment {
 
   // Audit
   triaged_by: number;
-  triaged_by_name?: string;
+  triaged_by_name?: string | null;
   created_at: string;
   updated_at: string;
 }
