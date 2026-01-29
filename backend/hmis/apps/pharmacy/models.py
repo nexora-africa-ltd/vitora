@@ -107,7 +107,13 @@ class Drug(models.Model):
     brand_names = models.JSONField(default=list, blank=True)
 
     # Classification
-    category = models.CharField(max_length=30, choices=DRUG_CATEGORIES)
+    # Supports multiple categories (e.g., Aspirin = ["ANALGESIC", "ANTICOAGULANT"])
+    # Stored as JSON array for SQLite/PostgreSQL compatibility
+    categories = models.JSONField(
+        default=list,
+        blank=True,
+        help_text="List of drug categories (e.g., ['ANALGESIC', 'ANTIBIOTIC'])",
+    )
     form = models.CharField(max_length=20, choices=DRUG_FORMS)
     strength = models.CharField(max_length=150)  # Some strengths are long (e.g., combo packs)
     unit = models.CharField(max_length=20)
@@ -141,12 +147,33 @@ class Drug(models.Model):
         ordering = ["generic_name", "strength"]
         indexes = [
             models.Index(fields=["generic_name"]),
-            models.Index(fields=["category"]),
             models.Index(fields=["keml_code"]),
         ]
 
     def __str__(self):
         return f"{self.generic_name} {self.strength} ({self.form})"
+
+    def clean(self):
+        """Validate that categories contain valid values."""
+        super().clean()
+        valid_categories = {cat[0] for cat in self.DRUG_CATEGORIES}
+        if self.categories:
+            invalid = [c for c in self.categories if c not in valid_categories]
+            if invalid:
+                raise ValidationError(
+                    {"categories": f"Invalid categories: {', '.join(invalid)}"}
+                )
+
+    @property
+    def category(self):
+        """Backward compatibility: return primary (first) category."""
+        return self.categories[0] if self.categories else None
+
+    @category.setter
+    def category(self, value):
+        """Backward compatibility: set single category as list."""
+        if value:
+            self.categories = [value] if isinstance(value, str) else list(value)
 
     def get_display_name(self) -> str:
         """Return formatted display name with generic name, strength, and form."""

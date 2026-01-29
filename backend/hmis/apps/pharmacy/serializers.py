@@ -29,6 +29,8 @@ class DrugSerializer(serializers.ModelSerializer):
 
     display_name = serializers.CharField(source="get_display_name", read_only=True)
     current_stock = serializers.IntegerField(source="get_current_stock", read_only=True)
+    # Backward compatibility: expose both 'category' (primary) and 'categories' (all)
+    category = serializers.SerializerMethodField()
 
     class Meta:
         model = Drug
@@ -39,7 +41,8 @@ class DrugSerializer(serializers.ModelSerializer):
             "brand_names",
             "strength",
             "form",
-            "category",
+            "category",      # Primary category (backward compatible)
+            "categories",    # All categories (new)
             "unit",
             "schedule",
             "is_essential",
@@ -60,6 +63,28 @@ class DrugSerializer(serializers.ModelSerializer):
             "updated_at",
         ]
         read_only_fields = ["id", "created_at", "updated_at", "display_name", "current_stock"]
+
+    def get_category(self, obj):
+        """Return primary (first) category for backward compatibility."""
+        return obj.categories[0] if obj.categories else None
+
+    def create(self, validated_data):
+        """Handle both 'category' (single) and 'categories' (list) on create."""
+        # If 'categories' not provided but 'category' was sent (backward compat)
+        if "categories" not in validated_data or not validated_data.get("categories"):
+            category = self.initial_data.get("category")
+            if category:
+                validated_data["categories"] = [category] if isinstance(category, str) else category
+        return super().create(validated_data)
+
+    def update(self, instance, validated_data):
+        """Handle both 'category' (single) and 'categories' (list) on update."""
+        # If 'categories' not provided but 'category' was sent (backward compat)
+        if "categories" not in validated_data:
+            category = self.initial_data.get("category")
+            if category:
+                validated_data["categories"] = [category] if isinstance(category, str) else category
+        return super().update(instance, validated_data)
 
 
 class StockBatchSerializer(serializers.ModelSerializer):

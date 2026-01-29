@@ -95,7 +95,15 @@ export interface Drug {
   code: string;
   generic_name: string;
   brand_names: string[];
-  category: DrugCategory;
+  /**
+   * Primary category (backward compatible - returns first category)
+   */
+  category: DrugCategory | null;
+  /**
+   * All categories this drug belongs to.
+   * A drug can belong to multiple categories (e.g., Aspirin = ['ANALGESIC', 'OTHER'])
+   */
+  categories: DrugCategory[];
   form: DrugForm;
   strength: string;
   unit: string;
@@ -368,12 +376,23 @@ export interface DispensingListParams {
 
 /**
  * Drug create/update data
+ * 
+ * Supports both single category (backward compatible) and multiple categories:
+ * - `category`: Single category (will be converted to array)
+ * - `categories`: Array of categories (preferred)
  */
 export interface DrugCreateData {
   code: string;
   generic_name: string;
   brand_names?: string[];
-  category: DrugCategory;
+  /**
+   * Single category (backward compatible) - converted to categories array
+   */
+  category?: DrugCategory;
+  /**
+   * Multiple categories (preferred)
+   */
+  categories?: DrugCategory[];
   form: DrugForm;
   strength: string;
   unit: string;

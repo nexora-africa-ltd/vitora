@@ -49,9 +49,25 @@ class DrugViewSet(viewsets.ModelViewSet):
     permission_classes = [IsAuthenticated]
     filter_backends = [DjangoFilterBackend, filters.SearchFilter, filters.OrderingFilter]
     search_fields = ["generic_name", "brand_names", "code"]
-    filterset_fields = ["form", "category", "schedule", "is_essential", "is_active"]
+    filterset_fields = ["form", "schedule", "is_essential", "is_active"]
     ordering_fields = ["generic_name", "created_at"]
     ordering = ["generic_name"]
+
+    def get_queryset(self):
+        """Filter by category if provided (searches within categories array)."""
+        from django.db.models import Q, Value
+        from django.db.models.functions import Cast
+        from django.db.models import CharField
+
+        queryset = super().get_queryset()
+        category = self.request.query_params.get("category")
+        if category:
+            # For SQLite compatibility, check if category appears in JSON string
+            # This works because JSONField stores as text in SQLite
+            queryset = queryset.filter(
+                Q(categories__icontains=f'"{category}"')
+            )
+        return queryset
 
 
 class StockBatchViewSet(viewsets.ModelViewSet):
