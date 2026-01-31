@@ -5,7 +5,7 @@
 
 # Kenya HMIS (Hospital Management Information System)
 _Comprehensive Technical Blueprint & Implementation Guide (Kenya-Tailored)_
-_Last Updated: January 17, 2026_
+_Last Updated: January 31, 2026_
 
 ---
 
@@ -51,14 +51,14 @@ A modular-monolith Hospital Management Information System tailored for Kenya, co
 | Layer | Technology | Status |
 |-------|------------|--------|
 | Desktop GUI | Electron (Node.js) with embedded Django backend | ✅ Complete |
-| Web Frontend | Next.js 14+, TypeScript, TailwindCSS, shadcn/ui | ✅ Complete |
-| Mobile | React Native (Expo), SQLite, Offline sync | ✅ Complete |
+| Web Frontend | Next.js 16+, React 19, TypeScript, TailwindCSS, shadcn/ui | ✅ Complete |
+| Mobile | React Native 0.81 (Expo 54), WatermelonDB, Offline sync | ✅ Complete |
 | Backend | Python 3.12, Django 5.x, Django REST Framework, Celery | ✅ Complete |
 | Auth | Django + Simple JWT (refresh tokens) | ✅ Complete |
 | DB | SQLite (standalone/offline) or PostgreSQL 16 (cloud) | ✅ Complete |
 | Object Storage | Local file system (standalone) or S3-compatible | ✅ Complete |
 | Messaging | Celery + Redis for background tasks | ✅ Complete |
-| CI/CD | GitHub Actions | ✅ Complete |
+| CI/CD | GitHub Actions (3 workflows) | ✅ Complete |
 | Container | Docker / Docker Compose | ✅ Complete |
 
 ### 1.3 Kenya-Specific Considerations
@@ -115,17 +115,21 @@ A modular-monolith Hospital Management Information System tailored for Kenya, co
 ### 2.2 Test Coverage
 | Component | Tests | Coverage |
 |-----------|-------|----------|
-| Backend (Django) | 900+ | 82%+ |
+| Backend (Django) | 3,624+ | 87.08% |
+| Web App (Jest + Playwright) | 142+ files | E2E + Unit |
 | Desktop (Jest) | 66+ | 70%+ |
-| E2E (Playwright) | 15+ suites | - |
-| **Total** | **1000+** | **80%+ enforced** |
+| Mobile (Jest) | 388+ | - |
+| **Total** | **4,200+** | **80%+ enforced** |
 
 ### 2.3 Key Metrics Achieved
-- ✅ ≥80% test coverage maintained
-- ✅ Zero critical security vulnerabilities (Bandit scan)
+- ✅ 87%+ backend test coverage (3,624+ tests)
+- ✅ Zero critical security vulnerabilities (Bandit + Trivy scan)
 - ✅ 100% Kenya Data Protection Act compliance
 - ✅ All 15 SHA/DHA APIs integrated
 - ✅ Offline-first architecture validated
+- ✅ Full RBAC with department-scoped permissions
+- ✅ 21 route groups in web dashboard
+- ✅ 18 API client modules with Zod validation
 
 ---
 
@@ -147,128 +151,77 @@ vitora/
 │   │   │   └── test.py             # Test configuration
 │   │   ├── urls.py                 # API routes
 │   │   ├── celery.py               # Celery configuration
-│   │   └── apps/
+│   │   └── apps/                   # 10 Django apps
 │   │       ├── core/               # AuditLog, Sync, Locations, RBAC, Permissions
-│   │       │   ├── models.py       # County, SubCounty, Ward, Department, Role, StaffProfile
-│   │       │   ├── permissions.py  # SensitiveAccessPermission, RoleBasedPermission
-│   │       │   └── sync.py         # SyncQueue, SyncConflict, SyncManager
 │   │       ├── patients/           # Patient, EmergencyContact
-│   │       │   ├── models.py       # Patient with auto-MRN, encryption
-│   │       │   ├── serializers.py
-│   │       │   └── views.py
 │   │       ├── encounters/         # Encounter, Diagnosis, TreatmentPlan
-│   │       │   ├── models.py       # Vitals, medical history, status workflow
-│   │       │   ├── services.py     # Consultation queue service
-│   │       │   └── views.py
+│   │       ├── clinics/            # Clinic, Session, Visit, Enrollment (8 clinic types)
 │   │       ├── laboratory/         # LabOrder, LabResult, LabQueue
-│   │       │   ├── models.py       # In-house vs external workflow
-│   │       │   └── services/       # Notifications, PDF generation
 │   │       ├── pharmacy/           # Drug, Prescription, Dispensing, Inventory
-│   │       │   ├── models.py       # Stock management, FEFO
-│   │       │   └── views.py
-│   │       ├── billing/            # Invoice, Payment, SHA Claims
-│   │       │   ├── models.py       # Billing workflow
-│   │       │   ├── services/       # SHA auth, eligibility, claims, terminology
-│   │       │   │   ├── sha_auth.py
-│   │       │   │   ├── sha_eligibility.py
-│   │       │   │   ├── sha_claims.py
-│   │       │   │   ├── client_registry.py
-│   │       │   │   ├── dha_search.py
-│   │       │   │   └── terminology.py
-│   │       │   └── sha_views.py
-│   │       ├── inpatient/          # Ward, Bed, Admission, Discharge
-│   │       │   ├── models.py       # Nursing Kardex, Ward Rounds
-│   │       │   └── views.py
-│   │       ├── triage/             # TriageAssessment, WaitingQueue
-│   │       │   ├── models.py       # KETA scale, vital thresholds
-│   │       │   └── views.py
+│   │       ├── billing/            # Invoice, Payment, SHA Claims, M-Pesa
+│   │       ├── inpatient/          # Ward, Bed, Admission, Discharge, NursingKardex
+│   │       ├── triage/             # TriageAssessment, WaitingQueue, KETA scale
 │   │       └── clinical_templates/ # ClinicalTemplate, TemplateSection
-│   ├── tests/                      # Pytest test suites (900+ tests)
-│   │   ├── conftest.py             # Fixtures: authenticated_client, sample_patient
-│   │   ├── test_patient_api.py
-│   │   ├── test_encounter_api.py
-│   │   ├── test_sha_*.py           # SHA integration tests
-│   │   └── ...
-│   └── data/                       # CSV imports
-│       ├── kenya_locations.csv     # Counties, sub-counties, wards
-│       └── icd10_codes.csv
+│   ├── tests/                      # Pytest test suites (3,624+ tests)
+│   └── data/                       # CSV imports, clinical templates
 │
 ├── desktop-app/                    # Electron desktop application
 │   ├── package.json
 │   ├── jest.config.js
 │   ├── playwright.config.js
 │   ├── src/
-│   │   ├── main/
-│   │   │   └── index.js            # Main process: backend lifecycle, IPC
-│   │   ├── preload/
-│   │   │   └── preload.js          # Context bridge: secure API exposure
-│   │   └── renderer/
-│   │       ├── index.html
-│   │       ├── app.js              # UI logic, patient/encounter forms
-│   │       └── styles.css          # Styling with dark mode
+│   │   ├── main/               # Electron main process
+│   │   ├── preload/            # Context bridge
+│   │   └── renderer/           # UI layer
 │   └── tests/
-│       ├── *.test.js               # Jest unit tests (66+)
-│       └── e2e/                    # Playwright E2E tests
 │
-├── web-app/                        # Next.js 14 web frontend
+├── web-app/                        # Next.js 16 web frontend (React 19)
 │   ├── package.json
 │   ├── next.config.js
 │   ├── tailwind.config.js
-│   ├── src/
-│   │   ├── app/
-│   │   │   ├── (dashboard)/        # Protected routes
-│   │   │   │   ├── layout.tsx
-│   │   │   │   ├── page.tsx        # Dashboard
-│   │   │   │   ├── patients/
-│   │   │   │   ├── encounters/
-│   │   │   │   ├── pharmacy/
-│   │   │   │   ├── laboratory/
-│   │   │   │   ├── billing/
-│   │   │   │   ├── triage/
-│   │   │   │   └── inpatient/
-│   │   │   └── login/
-│   │   ├── components/
-│   │   │   ├── layout/             # Sidebar, Header, Breadcrumb
-│   │   │   ├── ui/                 # shadcn/ui components
-│   │   │   └── shared/             # LoadingSpinner, EmptyState
-│   │   └── lib/
-│   │       ├── api/                # Axios client, interceptors
-│   │       ├── auth/               # AuthProvider, AuthGuard
-│   │       └── hooks/
-│   └── __tests__/                  # Jest tests (22+)
-│
-├── mobile-app/                     # React Native (Expo)
-│   ├── package.json
-│   ├── app.json
-│   ├── src/
-│   │   ├── screens/
+│   ├── app/                        # 21 route groups
+│   │   ├── (dashboard)/            # Protected routes
 │   │   │   ├── patients/
 │   │   │   ├── encounters/
-│   │   │   └── sync/
-│   │   ├── components/
-│   │   ├── services/
-│   │   │   ├── api.ts
-│   │   │   ├── sqlite.ts           # Offline storage
-│   │   │   └── sync.ts             # Background sync
-│   │   └── navigation/
-│   └── __tests__/
+│   │   │   ├── clinics/            # 8 clinic types
+│   │   │   ├── pharmacy/
+│   │   │   ├── laboratory/
+│   │   │   ├── billing/
+│   │   │   ├── triage/
+│   │   │   ├── wards/
+│   │   │   ├── admissions/
+│   │   │   ├── reports/
+│   │   │   ├── admin/
+│   │   │   ├── finance/
+│   │   │   ├── insurance/
+│   │   │   └── notifications/
+│   │   └── login/
+│   ├── components/
+│   ├── lib/
+│   │   ├── api/                    # 18 API client modules
+│   │   ├── schemas/                # Zod validation schemas
+│   │   └── hooks/
+│   ├── features/                   # BDD feature files (~750 scenarios)
+│   └── e2e/                        # Playwright E2E tests
+│
+├── mobile-app/                     # React Native (Expo 54)
+│   ├── package.json
+│   ├── app.config.js
+│   ├── app/
+│   │   ├── (auth)/                 # Authentication screens
+│   │   └── (main)/                 # Main app screens
+│   ├── components/
+│   ├── lib/
+│   │   ├── db/                     # WatermelonDB offline storage
+│   │   └── sync/                   # Background sync
+│   └── __tests__/                  # Jest tests (388+)
 │
 ├── docs/                           # Documentation
-│   ├── sprint-*.md                 # Sprint deliverables
-│   ├── tdd-guidelines.md
-│   ├── coding-standards.md
-│   ├── dpia.md                     # Data Protection Impact Assessment
-│   ├── sha-guides/                 # SHA integration guides
-│   │   ├── claims-submission.md
-│   │   ├── eligibility.md
-│   │   └── fhir-guide.md
-│   └── templates/
-│
 ├── scripts/                        # Utility scripts
 ├── docker/                         # Docker configurations
 ├── .github/
 │   ├── copilot-instructions.md     # AI agent onboarding
-│   └── workflows/                  # CI/CD pipelines
+│   └── workflows/                  # CI/CD pipelines (3 workflows)
 ├── ROADMAP.md                      # Development roadmap
 └── README.md                       # This document
 \`\`\`
@@ -836,13 +789,42 @@ GET    /api/locations/wards/?sub_county={id}     # Cascading
 ## 6. Frontend (Next.js) Implementation
 
 ### 6.1 Architecture
-- **Framework**: Next.js 14+ with App Router
+- **Framework**: Next.js 16+ with App Router (React 19)
 - **Styling**: TailwindCSS + shadcn/ui component library
-- **State Management**: TanStack Query for server state, Zustand for local state
-- **Forms**: React Hook Form + Zod validation
+- **State Management**: TanStack Query 5 for server state, Zustand 4 for local state
+- **Forms**: React Hook Form 7 + Zod 3.22 validation
 - **Offline Support**: Service Workers + IndexedDB
+- **API Validation**: Zod schemas for all API responses
 
-### 6.2 Project Structure
+### 6.2 Web App Modules
+| Module | Routes | Status |
+|--------|--------|--------|
+| **Dashboard** | `/dashboard` | ✅ Complete |
+| **Patients** | `/patients`, `/patients/new`, `/patients/[id]` | ✅ Complete |
+| **Encounters** | `/encounters`, `/encounters/[id]` | ✅ Complete |
+| **Clinics** | `/clinics` (8 types: General OPD, MCH, Dental, Eye, Chronic Care, Immunization, Surgical, Enrollments) | ✅ Complete |
+| **Triage** | `/triage`, reports, settings | ✅ Complete |
+| **Pharmacy** | Dispensing, drugs, prescriptions, stock, reports | ✅ Complete |
+| **Laboratory** | Orders, results, tests | ✅ Complete |
+| **Billing** | Invoices, receipts, SHA claims | ✅ Complete |
+| **Wards** | `/wards`, `/wards/[id]` | ✅ Complete |
+| **Admissions** | `/admissions` | ✅ Complete |
+| **Reports** | `/reports` | ✅ Complete |
+| **Admin** | `/admin` | ✅ Complete |
+| **Finance** | `/finance` | ✅ Complete |
+| **Insurance** | `/insurance` | ✅ Complete |
+| **Notifications** | `/notifications` | ✅ Complete |
+| **Imaging** | `/imaging` | 📋 Planned |
+| **Theatre** | `/theatre` | 📋 Planned |
+
+### 6.3 API Client Modules (18 modules)
+All API clients include Zod validation schemas:
+- `billing.ts`, `clinical-templates.ts`, `clinics.ts`, `consultation-queue.ts`
+- `core.ts`, `encounters.ts`, `events.ts`, `inpatient.ts`
+- `laboratory.ts`, `locations.ts`, `notifications.ts`, `patients.ts`
+- `pharmacy.ts`, `rbac.ts`, `sha.ts`, `triage.ts`
+
+### 6.4 Project Structure
 \`\`\`
 web-app/
 ├── app/
