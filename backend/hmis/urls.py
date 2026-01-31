@@ -168,4 +168,6 @@ urlpatterns = [
     path("api/token/verify/", TokenVerifyView.as_view(), name="token_verify"),
     # SMART on FHIR OAuth2 endpoints
     path("", include("hmis.apps.core.oauth.urls")),
+    # FHIR R4 Resource endpoints (for IPS testing)
+    path("fhir/", include("hmis.apps.core.fhir.urls", namespace="fhir")),
 ]
