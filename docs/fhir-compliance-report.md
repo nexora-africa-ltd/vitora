@@ -1,29 +1,44 @@
 # FHIR Compliance Report - Vitora HMIS
 
-> **Generated**: [DATE]  
-> **Inferno Version**: [VERSION]  
-> **Vitora Version**: [VERSION]  
+> **Generated**: January 31, 2026  
+> **Inferno Version**: Community Edition (latest)  
+> **Vitora Version**: develop branch  
 > **Tester**: [NAME]
 
 ---
 
 ## Executive Summary
 
-This document records the results of FHIR compliance testing for Vitora HMIS using the HL7 Inferno testing framework. Testing validates conformance to:
+This document records the results of FHIR compliance testing for Vitora HMIS using the HL7 Inferno testing framework.
 
-- **US Core v6.1.0** - Patient Access API profiles
-- **SMART App Launch v2.0.0** - OAuth2 authorization for FHIR
-- **International Patient Summary (IPS)** - Critical for Kenya SHA integration
+### Implementation Status
+
+| Component | Status | Notes |
+|-----------|--------|-------|
+| SMART Configuration | ✅ Implemented | `/.well-known/smart-configuration` |
+| CapabilityStatement | ✅ Implemented | `/fhir/metadata` |
+| OAuth2 Endpoints | ✅ Implemented | Authorization & token endpoints |
+| **FHIR Resource Endpoints** | 🔴 **NOT IMPLEMENTED** | Required for IPS testing |
+| **IPS Bundle Generation** | 🔴 **NOT IMPLEMENTED** | `$summary` operation |
 
 ### Overall Compliance Status
 
 | Test Suite | Pass Rate | Status | Target |
 |------------|-----------|--------|--------|
-| US Core Profile | -% | 🔴 Not Run | ≥80% |
-| SMART App Launch | -% | 🔴 Not Run | ≥90% |
-| International Patient Summary | -% | 🔴 Not Run | ≥90% |
+| International Patient Summary | -% | 🔴 **BLOCKED** - FHIR endpoints needed | ≥90% |
 
-**Overall Status**: 🔴 **PENDING** - Tests not yet executed
+**Overall Status**: 🔴 **BLOCKED** - FHIR resource endpoints must be implemented first
+
+### Required Implementation
+
+Before IPS tests can run, these FHIR endpoints must be implemented:
+
+1. `/fhir/Patient/{id}` - Patient resource read
+2. `/fhir/Patient/{id}/$summary` - IPS Bundle generation  
+3. `/fhir/Composition/{id}` - Composition resource read
+4. `/fhir/Practitioner/{id}` - Practitioner resource read
+5. `/fhir/Observation/{id}` - Observation resource read
+6. Supporting resources (Condition, MedicationStatement, AllergyIntolerance, etc.)
 
 ---
 
@@ -31,165 +46,40 @@ This document records the results of FHIR compliance testing for Vitora HMIS usi
 
 ### 1.1 Vitora HMIS Configuration
 
-| Component | Value |
-|-----------|-------|
-| FHIR Base URL | `http://localhost:9088/fhir` |
-| FHIR Version | R4 (4.0.1) |
-| SMART Configuration | `http://localhost:9088/.well-known/smart-configuration` |
-| CapabilityStatement | `http://localhost:9088/fhir/metadata` |
-| OAuth2 Authorize | `http://localhost:9088/oauth/authorize/` |
-| OAuth2 Token | `http://localhost:9088/oauth/token/` |
+| Component | Value | Status |
+|-----------|-------|--------|
+| FHIR Base URL | `http://localhost:9088/fhir` | 🔴 Endpoints needed |
+| FHIR Version | R4 (4.0.1) | ✅ Targeted |
+| SMART Configuration | `http://localhost:9088/.well-known/smart-configuration` | ✅ Working |
+| CapabilityStatement | `http://localhost:9088/fhir/metadata` | ✅ Working |
+| OAuth2 Authorize | `http://localhost:9088/oauth/authorize/` | ✅ Working |
+| OAuth2 Token | `http://localhost:9088/oauth/token/` | ✅ Working |
 
-### 1.2 Inferno Test Suite URLs
+### 1.2 Inferno Test Suite
 
-| Test Kit | URL | Purpose |
-|----------|-----|---------|
-| Inferno Core | http://localhost:4567 | Main interface |
-| US Core | http://localhost:4568 | US Core profile tests |
-| SMART | http://localhost:4569 | SMART App Launch tests |
-| IPS | http://localhost:4570 | International Patient Summary |
+| Test Kit | URL | Purpose | Status |
+|----------|-----|---------|--------|
+| Inferno Core | http://localhost:4567 | IPS & SMART Health Cards | ✅ Available |
 
-### 1.3 Test Data
+### 1.3 Test Data Requirements
 
-| Resource | ID | Description |
-|----------|----| ------------|
-| Patient | TBD | Test patient with complete demographics |
-| Encounter | TBD | Test encounter with vitals |
-| Practitioner | TBD | Test provider |
-| Organization | TBD | Test facility |
+| Resource | ID | Description | Status |
+|----------|----| ------------|--------|
+| Patient | TBD | Test patient with complete demographics | 🔴 Need FHIR endpoint |
+| Composition | TBD | IPS document composition | 🔴 Need FHIR endpoint |
+| Practitioner | TBD | Test provider | 🔴 Need FHIR endpoint |
+| Organization | TBD | Test facility | 🔴 Need FHIR endpoint |
+| Observation | TBD | Lab results, vitals | 🔴 Need FHIR endpoint |
 
 ---
 
-## 2. US Core Profile Tests
+## 2. International Patient Summary (IPS) Tests
 
 ### 2.1 Summary
 
-**Test Suite**: US Core v6.1.0 Patient Access  
-**Executed**: [DATE]  
-**Duration**: [TIME]
-
-| Category | Tests | Passed | Failed | Skipped |
-|----------|-------|--------|--------|---------|
-| Patient | - | - | - | - |
-| AllergyIntolerance | - | - | - | - |
-| Condition | - | - | - | - |
-| MedicationRequest | - | - | - | - |
-| Observation | - | - | - | - |
-| Encounter | - | - | - | - |
-| **TOTAL** | - | - | - | - |
-
-**Pass Rate**: -% (Target: ≥80%)
-
-### 2.2 Detailed Results
-
-#### 2.2.1 Patient Resource
-
-| Test | Result | Notes |
-|------|--------|-------|
-| Patient Search by ID | ⬜ | |
-| Patient Search by Name | ⬜ | |
-| Patient Search by Birthdate | ⬜ | |
-| Patient Search by Gender | ⬜ | |
-| Patient Read | ⬜ | |
-| Patient $everything | ⬜ | |
-
-#### 2.2.2 Encounter Resource
-
-| Test | Result | Notes |
-|------|--------|-------|
-| Encounter Search by Patient | ⬜ | |
-| Encounter Search by Date | ⬜ | |
-| Encounter Search by Status | ⬜ | |
-| Encounter Read | ⬜ | |
-
-#### 2.2.3 Condition Resource
-
-| Test | Result | Notes |
-|------|--------|-------|
-| Condition Search by Patient | ⬜ | |
-| Condition Search by Category | ⬜ | |
-| Condition Read | ⬜ | |
-
-### 2.3 Failures & Remediation
-
-| Test | Error | Root Cause | Remediation | Priority |
-|------|-------|------------|-------------|----------|
-| - | - | - | - | - |
-
----
-
-## 3. SMART App Launch Tests
-
-### 3.1 Summary
-
-**Test Suite**: SMART App Launch STU2  
-**Executed**: [DATE]  
-**Duration**: [TIME]
-
-| Category | Tests | Passed | Failed | Skipped |
-|----------|-------|--------|--------|---------|
-| Discovery | - | - | - | - |
-| Standalone Launch | - | - | - | - |
-| EHR Launch | - | - | - | - |
-| Scopes | - | - | - | - |
-| Token Exchange | - | - | - | - |
-| **TOTAL** | - | - | - | - |
-
-**Pass Rate**: -% (Target: ≥90%)
-
-### 3.2 Detailed Results
-
-#### 3.2.1 Discovery & Configuration
-
-| Test | Result | Notes |
-|------|--------|-------|
-| SMART Configuration Endpoint | ⬜ | `/.well-known/smart-configuration` |
-| CapabilityStatement | ⬜ | `/fhir/metadata` |
-| Authorization Endpoint Declared | ⬜ | |
-| Token Endpoint Declared | ⬜ | |
-| Scopes Supported | ⬜ | |
-
-#### 3.2.2 Authorization Flows
-
-| Test | Result | Notes |
-|------|--------|-------|
-| Authorization Code Flow | ⬜ | |
-| PKCE Support | ⬜ | |
-| State Parameter | ⬜ | |
-| Redirect URI Validation | ⬜ | |
-
-#### 3.2.3 Token Operations
-
-| Test | Result | Notes |
-|------|--------|-------|
-| Token Exchange | ⬜ | |
-| Refresh Token | ⬜ | |
-| Token Introspection | ⬜ | |
-| Access Token Scopes | ⬜ | |
-
-#### 3.2.4 Launch Context
-
-| Test | Result | Notes |
-|------|--------|-------|
-| launch/patient | ⬜ | |
-| launch/encounter | ⬜ | |
-| fhirUser claim | ⬜ | |
-
-### 3.3 Failures & Remediation
-
-| Test | Error | Root Cause | Remediation | Priority |
-|------|-------|------------|-------------|----------|
-| - | - | - | - | - |
-
----
-
-## 4. International Patient Summary (IPS) Tests
-
-### 4.1 Summary
-
 **Test Suite**: IPS  
-**Executed**: [DATE]  
-**Duration**: [TIME]
+**Executed**: NOT YET - Awaiting FHIR endpoint implementation  
+**Duration**: N/A
 
 | Category | Tests | Passed | Failed | Skipped |
 |----------|-------|--------|--------|---------|
@@ -200,133 +90,108 @@ This document records the results of FHIR compliance testing for Vitora HMIS usi
 
 **Pass Rate**: -% (Target: ≥90%)
 
-### 4.2 Detailed Results
+**Status**: 🔴 **BLOCKED** - Cannot run until FHIR resource endpoints are implemented
 
-#### 4.2.1 Bundle Structure
+### 2.2 Required Inputs for IPS Testing
 
-| Test | Result | Notes |
-|------|--------|-------|
-| Bundle Type = document | ⬜ | |
-| Composition Resource Present | ⬜ | |
-| Patient Resource Present | ⬜ | |
-| All References Resolvable | ⬜ | |
+The Inferno IPS test suite requires these test inputs:
 
-#### 4.2.2 Required Sections
+| Input | Description | Required | Status |
+|-------|-------------|----------|--------|
+| `url` | FHIR server base URL | Yes | ✅ `http://host.docker.internal:9088/fhir` |
+| `patient_id` | Patient resource ID | Yes | 🔴 Need `/fhir/Patient/{id}` |
+| `composition_id` | IPS Composition ID | Yes | 🔴 Need `/fhir/Composition/{id}` |
+| `practitioner_id` | Practitioner resource ID | Optional | 🔴 Need `/fhir/Practitioner/{id}` |
+| `observation_results_laboratory_id` | Lab observation ID | Optional | 🔴 Need `/fhir/Observation/{id}` |
+| `observation_results_radiology_id` | Radiology observation ID | Optional | 🔴 Need `/fhir/Observation/{id}` |
+| `observation_alcohol_use_id` | Social history observation | Optional | 🔴 Need `/fhir/Observation/{id}` |
+| `device_id` | Device resource ID | Optional | 🔴 Need `/fhir/Device/{id}` |
 
-| Section | Result | Notes |
-|---------|--------|-------|
-| Allergies and Intolerances | ⬜ | |
-| Medications | ⬜ | |
-| Problems/Conditions | ⬜ | |
-| Immunizations | ⬜ | Optional |
-| Results | ⬜ | Optional |
+### 2.3 FHIR Endpoints Needed
 
-#### 4.2.3 Coding Systems
-
-| System | Result | Notes |
-|--------|--------|-------|
-| ICD-11 for Diagnoses | ⬜ | Required for SHA |
-| LOINC for Lab Results | ⬜ | |
-| SNOMED CT | ⬜ | |
-
-### 4.3 Failures & Remediation
-
-| Test | Error | Root Cause | Remediation | Priority |
-|------|-------|------------|-------------|----------|
-| - | - | - | - | - |
+| Endpoint | Method | Description | Priority |
+|----------|--------|-------------|----------|
+| `/fhir/Patient/{id}` | GET | Read patient resource | Critical |
+| `/fhir/Patient/{id}/$summary` | GET | Generate IPS Bundle | Critical |
+| `/fhir/Composition/{id}` | GET | Read composition | Critical |
+| `/fhir/Practitioner/{id}` | GET | Read practitioner | High |
+| `/fhir/Organization/{id}` | GET | Read organization | High |
+| `/fhir/Observation/{id}` | GET | Read observation | High |
+| `/fhir/Condition/{id}` | GET | Read condition | High |
+| `/fhir/MedicationStatement/{id}` | GET | Read medication statement | High |
+| `/fhir/AllergyIntolerance/{id}` | GET | Read allergy | Medium |
+| `/fhir/Device/{id}` | GET | Read device | Low |
 
 ---
 
-## 5. Kenya SHA-Specific Validation
+## 3. Kenya SHA-Specific Validation
 
-### 5.1 SHA Profile Compliance
+### 3.1 SHA Profile Compliance
 
 | Requirement | Result | Notes |
 |-------------|--------|-------|
-| MFL Code in Organization | ⬜ | `urn:kenya:mfl` |
-| CR Number in Patient | ⬜ | `urn:sha:client-registry` |
-| SHA Scheme Extension | ⬜ | `urn:sha:scheme` |
-| ICD-11 Diagnoses | ⬜ | Required (not ICD-10) |
-| Bundle.type = message | ⬜ | For claims |
+| MFL Code in Organization | ⬜ Pending | `urn:kenya:mfl` |
+| CR Number in Patient | ⬜ Pending | `urn:sha:client-registry` |
+| SHA Scheme Extension | ⬜ Pending | `urn:sha:scheme` |
+| ICD-11 Diagnoses | ⬜ Pending | Required (not ICD-10) |
+| Bundle.type = message | ⬜ Pending | For claims |
 
-### 5.2 SHA API Compatibility
+### 3.2 SHA API Compatibility
 
 | Endpoint | Result | Notes |
 |----------|--------|-------|
-| Pre-authorization | ⬜ | |
-| Claim Submission | ⬜ | |
-| Claim Status Check | ⬜ | |
+| Pre-authorization | ⬜ Pending | |
+| Claim Submission | ⬜ Pending | |
+| Claim Status Check | ⬜ Pending | |
 
 ---
 
-## 6. Critical Issues & Remediation Plan
+## 4. Implementation Plan
 
-### 6.1 Critical Failures (Must Fix)
+### 4.1 Phase 1: Core FHIR Resource Endpoints (Required for IPS)
 
-| Issue | Impact | Remediation | Owner | Target Date |
-|-------|--------|-------------|-------|-------------|
-| - | - | - | - | - |
+| Task | Priority | Estimate |
+|------|----------|----------|
+| Implement `/fhir/Patient/{id}` | Critical | 2 hours |
+| Implement `/fhir/Patient/{id}/$summary` | Critical | 4 hours |
+| Implement `/fhir/Composition/{id}` | Critical | 2 hours |
+| Implement `/fhir/Practitioner/{id}` | High | 1 hour |
+| Implement `/fhir/Organization/{id}` | High | 1 hour |
+| Implement `/fhir/Observation/{id}` | High | 2 hours |
+| Seed test data | High | 1 hour |
 
-### 6.2 High Priority Issues
+**Total Estimate**: ~13 hours for Phase 1
 
-| Issue | Impact | Remediation | Owner | Target Date |
-|-------|--------|-------------|-------|-------------|
-| - | - | - | - | - |
+### 4.2 Phase 2: Additional FHIR Resources
 
-### 6.3 Medium/Low Priority Issues
-
-| Issue | Impact | Remediation | Owner | Target Date |
-|-------|--------|-------------|-------|-------------|
-| - | - | - | - | - |
-
----
-
-## 7. Recommendations
-
-### 7.1 Immediate Actions
-
-1. **[TBD]** - Description
-
-### 7.2 Short-term Improvements
-
-1. **[TBD]** - Description
-
-### 7.3 Long-term Enhancements
-
-1. **[TBD]** - Description
+| Task | Priority | Estimate |
+|------|----------|----------|
+| Implement `/fhir/Condition/{id}` | Medium | 1 hour |
+| Implement `/fhir/MedicationStatement/{id}` | Medium | 1 hour |
+| Implement `/fhir/AllergyIntolerance/{id}` | Medium | 1 hour |
+| Implement `/fhir/Device/{id}` | Low | 1 hour |
 
 ---
 
-## 8. Appendices
+## 5. Next Steps
 
-### 8.1 Test Execution Logs
+1. **Implement FHIR resource endpoints** - See Section 4.1
+2. **Seed test data** - Create test patient, observations, etc.
+3. **Run IPS tests** - Use Inferno Core at http://localhost:4567
+4. **Document results** - Update this report with pass/fail results
 
-```
-[Paste relevant logs here]
-```
+---
 
-### 8.2 Screenshots
+## Appendices
 
-[Include screenshots of test results from Inferno UI]
-
-### 8.3 Related Documents
+### A. Related Documents
 
 - [FHIR Validation Plan](fhir-validation-plan.md)
 - [SHA Implementation Summary](sha-implementation-summary.md)
-- [SHA Frontend Integration Guide](sha-frontend-integration-guide.md)
+- [Inferno Setup README](../docker/inferno/README.md)
 
 ---
 
-## 9. Sign-off
-
-| Role | Name | Date | Signature |
-|------|------|------|-----------|
-| QA Lead | | | |
-| Tech Lead | | | |
-| Project Manager | | | |
-
----
-
-**Document Version**: 1.0.0  
-**Last Updated**: [DATE]  
-**Next Review**: [DATE]
+**Document Version**: 1.1.0  
+**Last Updated**: January 31, 2026  
+**Next Review**: After FHIR endpoint implementation
