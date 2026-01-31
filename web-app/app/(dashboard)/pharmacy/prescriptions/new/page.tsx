@@ -66,6 +66,7 @@ import { useDrugs, useCreatePrescription } from '@/lib/hooks/use-pharmacy';
 import { useAuth } from '@/lib/auth';
 import { useOptionalPatientContext } from '@/lib/context/patient-context';
 import { useOptionalEncounterContext } from '@/lib/context/encounter-context';
+import { printPrescription, type PrintPrescriptionOptions } from '@/lib/documents';
 import {
   generateDosageSuggestions,
   getSuggestedRoute,
@@ -280,8 +281,8 @@ Prescribed by: ${prescriberName}
     }
   }, [generatePrescriptionText, toast]);
 
-  // Print prescription
-  const handlePrint = useCallback(() => {
+  // Print prescription using document generation system
+  const handlePrint = useCallback(async () => {
     if (items.length === 0) {
       toast({
         title: 'No Items',
@@ -291,179 +292,79 @@ Prescribed by: ${prescriberName}
       return;
     }
 
-    const today = new Date().toLocaleDateString('en-GB', {
-      day: '2-digit',
-      month: 'short',
-      year: 'numeric',
-    });
+    // Build prescription data for printing
+    // Note: For drafts (not yet saved), we generate a temporary prescription number
+    const prescriptionData = {
+      prescription_number: `DRAFT-${Date.now()}`,
+      prescribed_date: new Date().toISOString(),
+      clinical_notes: clinicalNotes,
+      items: items.map((item) => ({
+        drug_name: item.drug_name,
+        dosage: item.dosage,
+        frequency: FREQUENCY_OPTIONS.find((f) => f.value === item.frequency)?.label || item.frequency,
+        duration: item.duration,
+        instructions: item.instructions,
+        quantity_prescribed: item.quantity_prescribed,
+      })),
+    };
 
-    const printContent = `
-      <!DOCTYPE html>
-      <html>
-      <head>
-        <title>Prescription - ${patient?.mrn}</title>
-        <style>
-          * { margin: 0; padding: 0; box-sizing: border-box; }
-          body {
-            font-family: 'Segoe UI', Arial, sans-serif;
-            padding: 20mm;
-            max-width: 210mm;
-            font-size: 11pt;
-            line-height: 1.4;
+    // Build print options
+    const printOptions: PrintPrescriptionOptions = {
+      prescription: {
+        id: 0,
+        prescription_number: prescriptionData.prescription_number,
+        patient: patientId || 0,
+        patient_name: patient ? `${patient.first_name} ${patient.last_name}` : undefined,
+        patient_mrn: patient?.mrn,
+        prescriber: user?.id || 0,
+        prescriber_name: prescriberName,
+        status: 'PENDING',
+        prescribed_date: prescriptionData.prescribed_date,
+        valid_until: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(), // 30 days
+        clinical_notes: clinicalNotes || undefined,
+        items: prescriptionData.items.map((item, index) => ({
+          id: index,
+          prescription: 0,
+          drug: items[index]?.drug || 0,
+          drug_name: item.drug_name,
+          quantity_prescribed: item.quantity_prescribed,
+          quantity_dispensed: 0,
+          dosage: item.dosage,
+          frequency: item.frequency,
+          duration: item.duration,
+          instructions: item.instructions,
+          is_substitutable: items[index]?.is_substitutable ?? true,
+          is_cancelled: false,
+          remaining_quantity: item.quantity_prescribed,
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString(),
+        })),
+        is_valid: true,
+        is_fully_dispensed: false,
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+      },
+      patient: patient
+        ? {
+            full_name: `${patient.first_name} ${patient.last_name}`,
+            mrn: patient.mrn,
+            age: patient.date_of_birth
+              ? `${Math.floor((Date.now() - new Date(patient.date_of_birth).getTime()) / (365.25 * 24 * 60 * 60 * 1000))} years`
+              : undefined,
+            gender: patient.gender === 'M' ? 'Male' : patient.gender === 'F' ? 'Female' : patient.gender,
           }
-          .header {
-            text-align: center;
-            border-bottom: 2px solid #333;
-            padding-bottom: 15px;
-            margin-bottom: 20px;
-          }
-          .header h1 { font-size: 18pt; margin-bottom: 5px; }
-          .header p { color: #666; font-size: 10pt; }
-          .section { margin-bottom: 20px; }
-          .section-title {
-            font-weight: bold;
-            font-size: 11pt;
-            border-bottom: 1px solid #ccc;
-            padding-bottom: 5px;
-            margin-bottom: 10px;
-            text-transform: uppercase;
-            letter-spacing: 0.5px;
-          }
-          .patient-info {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 10px;
-          }
-          .patient-info p { margin: 3px 0; }
-          .medication {
-            border: 1px solid #ddd;
-            padding: 12px;
-            margin-bottom: 10px;
-            border-radius: 5px;
-            background: #fafafa;
-          }
-          .medication-name {
-            font-weight: bold;
-            font-size: 12pt;
-            color: #1a1a1a;
-            margin-bottom: 8px;
-          }
-          .medication-details {
-            display: grid;
-            grid-template-columns: repeat(2, 1fr);
-            gap: 5px;
-            font-size: 10pt;
-          }
-          .medication-details span { color: #666; }
-          .medication-instructions {
-            margin-top: 8px;
-            padding-top: 8px;
-            border-top: 1px dashed #ddd;
-            font-style: italic;
-          }
-          .badge {
-            display: inline-block;
-            background: #e0f2fe;
-            color: #0369a1;
-            padding: 2px 8px;
-            border-radius: 10px;
-            font-size: 9pt;
-            margin-top: 5px;
-          }
-          .notes {
-            background: #fffbeb;
-            padding: 12px;
-            border-radius: 5px;
-            border-left: 3px solid #f59e0b;
-          }
-          .footer {
-            margin-top: 30px;
-            padding-top: 20px;
-            border-top: 2px solid #333;
-            display: flex;
-            justify-content: space-between;
-          }
-          .signature-line {
-            border-top: 1px solid #333;
-            width: 200px;
-            padding-top: 5px;
-            margin-top: 40px;
-            font-size: 10pt;
-          }
-          @media print {
-            body { padding: 10mm; }
-            .medication { break-inside: avoid; }
-          }
-        </style>
-      </head>
-      <body>
-        <div class="header">
-          <h1>℞ PRESCRIPTION</h1>
-          <p>Date: ${today}</p>
-        </div>
+        : undefined,
+      clinician: {
+        name: prescriberName,
+        registration_number: '', // Could be fetched from user profile
+      },
+      encounterId: encounterId,
+      layout: 'a4',
+      theme: 'default',
+    };
 
-        <div class="section">
-          <div class="section-title">Prescriber Information</div>
-          <div class="patient-info">
-            <p><strong>Prescriber:</strong> ${prescriberName}</p>
-          </div>
-        </div>
-
-        <div class="section">
-          <div class="section-title">Patient Information</div>
-          <div class="patient-info">
-            <p><strong>Name:</strong> ${patient?.first_name} ${patient?.last_name}</p>
-            <p><strong>MRN:</strong> ${patient?.mrn}</p>
-            ${encounter ? `<p><strong>Encounter:</strong> #${encounterId}</p>` : ''}
-          </div>
-        </div>
-
-        <div class="section">
-          <div class="section-title">Medications (${items.length})</div>
-          ${items.map((item, index) => `
-            <div class="medication">
-              <div class="medication-name">${index + 1}. ${item.drug_name}</div>
-              <div class="medication-details">
-                <p><span>Dosage:</span> ${item.dosage}</p>
-                <p><span>Frequency:</span> ${FREQUENCY_OPTIONS.find(f => f.value === item.frequency)?.label || item.frequency}</p>
-                <p><span>Duration:</span> ${item.duration}</p>
-                <p><span>Route:</span> ${ROUTE_OPTIONS.find(r => r.value === item.route)?.label || item.route || 'Oral'}</p>
-                <p><span>Quantity:</span> <strong>${item.quantity_prescribed}</strong></p>
-              </div>
-              ${item.instructions ? `<div class="medication-instructions">📝 ${item.instructions}</div>` : ''}
-              ${item.is_substitutable ? '<span class="badge">Substitution Allowed</span>' : ''}
-            </div>
-          `).join('')}
-        </div>
-
-        ${clinicalNotes ? `
-        <div class="section">
-          <div class="section-title">Clinical Notes</div>
-          <div class="notes">${clinicalNotes}</div>
-        </div>
-        ` : ''}
-
-        <div class="footer">
-          <div>
-            <p style="margin-bottom: 5px;"><strong>Prescribed by:</strong> ${prescriberName}</p>
-            <div class="signature-line">Prescriber Signature</div>
-          </div>
-          <div class="signature-line">Date</div>
-        </div>
-      </body>
-      </html>
-    `;
-
-    const printWindow = window.open('', '_blank');
-    if (printWindow) {
-      printWindow.document.write(printContent);
-      printWindow.document.close();
-      printWindow.focus();
-      setTimeout(() => {
-        printWindow.print();
-      }, 250);
-    }
-  }, [items, patient, encounter, encounterId, clinicalNotes, prescriberName, toast]);
+    await printPrescription(printOptions);
+  }, [items, patient, patientId, encounter, encounterId, clinicalNotes, prescriberName, user, toast]);
 
   // Validate current item before adding
   const validateItem = useCallback((): boolean => {

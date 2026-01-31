@@ -11,12 +11,34 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { patientsApi } from '@/lib/api/patients';
 import type { PatientListParams, PatientCreateData, PatientUpdateData } from '@/lib/types/patient';
 
+// =============================================================================
+// QUERY KEYS
+// =============================================================================
+
+/**
+ * Standardized query keys for patient data.
+ * Use these keys consistently across all patient-related queries.
+ */
+export const patientKeys = {
+  all: ['patients'] as const,
+  lists: () => [...patientKeys.all, 'list'] as const,
+  list: (params?: PatientListParams) => [...patientKeys.lists(), params] as const,
+  details: () => [...patientKeys.all, 'detail'] as const,
+  detail: (id: number) => [...patientKeys.details(), id] as const,
+  emergencyContacts: (id: number) => [...patientKeys.detail(id), 'emergency-contacts'] as const,
+  encounters: (id: number) => [...patientKeys.detail(id), 'encounters'] as const,
+};
+
+// =============================================================================
+// QUERY HOOKS
+// =============================================================================
+
 /**
  * Hook for fetching paginated patients list
  */
 export function usePatients(params: PatientListParams = {}) {
   return useQuery({
-    queryKey: ['patients', params],
+    queryKey: patientKeys.list(params),
     queryFn: () => patientsApi.getPatients(params),
     staleTime: 30000, // 30 seconds
   });
@@ -29,7 +51,7 @@ export function usePatient(id: number | string) {
   const numericId = typeof id === 'string' ? parseInt(id, 10) : id;
 
   return useQuery({
-    queryKey: ['patient', numericId],
+    queryKey: patientKeys.detail(numericId),
     queryFn: () => patientsApi.getPatient(numericId),
     enabled: !!id && !isNaN(numericId),
   });
@@ -40,7 +62,7 @@ export function usePatient(id: number | string) {
  */
 export function usePatientEmergencyContacts(patientId: number) {
   return useQuery({
-    queryKey: ['patient', patientId, 'emergency-contacts'],
+    queryKey: patientKeys.emergencyContacts(patientId),
     queryFn: () => patientsApi.getEmergencyContacts(patientId),
     enabled: !!patientId,
   });
@@ -51,7 +73,7 @@ export function usePatientEmergencyContacts(patientId: number) {
  */
 export function usePatientEncounters(patientId: number) {
   return useQuery({
-    queryKey: ['patient', patientId, 'encounters'],
+    queryKey: patientKeys.encounters(patientId),
     queryFn: () => patientsApi.getEncounters(patientId),
     enabled: !!patientId,
   });
@@ -76,7 +98,7 @@ export function useCreatePatient() {
     mutationFn: ({ data, idempotencyKey }: { data: PatientCreateData; idempotencyKey?: string }) =>
       patientsApi.createPatient(data, idempotencyKey),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['patients'] });
+      queryClient.invalidateQueries({ queryKey: patientKeys.lists() });
     },
   });
 }
@@ -91,8 +113,8 @@ export function useUpdatePatient() {
     mutationFn: ({ id, data }: { id: number; data: PatientUpdateData }) =>
       patientsApi.updatePatient(id, data),
     onSuccess: (_, { id }) => {
-      queryClient.invalidateQueries({ queryKey: ['patient', id] });
-      queryClient.invalidateQueries({ queryKey: ['patients'] });
+      queryClient.invalidateQueries({ queryKey: patientKeys.detail(id) });
+      queryClient.invalidateQueries({ queryKey: patientKeys.lists() });
     },
   });
 }
@@ -106,7 +128,7 @@ export function useDeletePatient() {
   return useMutation({
     mutationFn: (id: number) => patientsApi.deletePatient(id),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['patients'] });
+      queryClient.invalidateQueries({ queryKey: patientKeys.lists() });
     },
   });
 }

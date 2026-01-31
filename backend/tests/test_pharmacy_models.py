@@ -29,7 +29,7 @@ class TestDrugModel:
             generic_name="Test Drug",
             strength="100mg",
             form="TABLET",
-            category="OTHER",
+            categories=["OTHER"],
             unit="tablet",
         )
 
@@ -51,7 +51,7 @@ class TestDrugModel:
             generic_name="Drug One",
             strength="100mg",
             form="TABLET",
-            category="OTHER",
+            categories=["OTHER"],
             unit="tablet",
         )
 
@@ -62,7 +62,7 @@ class TestDrugModel:
                 generic_name="Drug Two",
                 strength="200mg",
                 form="CAPSULE",
-                category="OTHER",
+                categories=["OTHER"],
                 unit="capsule",
             )
 
@@ -78,7 +78,7 @@ class TestDrugModel:
                 generic_name="Test Drug",
                 strength="100mg",
                 form=form,
-                category="OTHER",
+                categories=["OTHER"],
                 unit="unit",
             )
             drug.full_clean()  # Should not raise error
@@ -95,7 +95,7 @@ class TestDrugModel:
                 generic_name="Test Drug",
                 strength="100mg",
                 form="TABLET",
-                category=category,
+                categories=[category],
                 unit="tablet",
             )
             drug.full_clean()  # Should not raise error
@@ -109,7 +109,7 @@ class TestDrugModel:
             generic_name="KEML Drug",
             strength="100mg",
             form="TABLET",
-            category="OTHER",
+            categories=["OTHER"],
             unit="tablet",
             keml_code="02.01.03",
             is_essential=True,
@@ -128,7 +128,7 @@ class TestDrugModel:
             generic_name="OTC Drug",
             strength="100mg",
             form="TABLET",
-            category="OTHER",
+            categories=["OTHER"],
             unit="tablet",
             schedule="OTC",
             requires_prescription=False,
@@ -141,7 +141,7 @@ class TestDrugModel:
             generic_name="POM Drug",
             strength="100mg",
             form="TABLET",
-            category="OTHER",
+            categories=["OTHER"],
             unit="tablet",
             schedule="POM",
             requires_prescription=True,
@@ -157,7 +157,7 @@ class TestDrugModel:
             generic_name="Controlled Drug",
             strength="10mg",
             form="TABLET",
-            category="CONTROLLED",
+            categories=["CONTROLLED"],
             unit="tablet",
             schedule="CD",
             is_controlled=True,
@@ -179,7 +179,7 @@ class TestDrugModel:
             brand_names=["Brand A", "Brand B", "Brand C"],
             strength="100mg",
             form="TABLET",
-            category="OTHER",
+            categories=["OTHER"],
             unit="tablet",
         )
 
@@ -195,7 +195,7 @@ class TestDrugModel:
             generic_name="Paracetamol",
             strength="500mg",
             form="TABLET",
-            category="ANALGESIC",
+            categories=["ANALGESIC"],
             unit="tablet",
         )
 
@@ -213,7 +213,7 @@ class TestDrugModel:
             generic_name="Amoxicillin",
             strength="500mg",
             form="CAPSULE",
-            category="ANTIBIOTIC",
+            categories=["ANTIBIOTIC"],
             unit="capsule",
         )
 
@@ -232,7 +232,7 @@ class TestDrugModel:
             brand_names=["Amoxil", "Trimox", "Moxatag"],
             strength="500mg",
             form="CAPSULE",
-            category="ANTIBIOTIC",
+            categories=["ANTIBIOTIC"],
             unit="capsule",
         )
 
@@ -251,7 +251,7 @@ class TestDrugModel:
             generic_name="Test Drug",
             strength="100mg",
             form="TABLET",
-            category="OTHER",
+            categories=["OTHER"],
             unit="tablet",
             default_reorder_level=50,
             default_reorder_quantity=100,
@@ -269,7 +269,7 @@ class TestDrugModel:
             generic_name="Test Drug",
             strength="100mg",
             form="TABLET",
-            category="OTHER",
+            categories=["OTHER"],
             unit="tablet",
             reference_price=Decimal("99.99"),
         )
@@ -281,7 +281,7 @@ class TestDrugModel:
             generic_name="Test Drug",
             strength="100mg",
             form="TABLET",
-            category="OTHER",
+            categories=["OTHER"],
             unit="tablet",
             reference_price=None,
         )
@@ -311,7 +311,7 @@ class TestStockBatchModel:
             generic_name="Test Drug",
             strength="100mg",
             form="TABLET",
-            category="OTHER",
+            categories=["OTHER"],
             unit="tablet",
         )
 
@@ -347,7 +347,7 @@ class TestStockBatchModel:
             generic_name="Test Drug",
             strength="100mg",
             form="TABLET",
-            category="OTHER",
+            categories=["OTHER"],
             unit="tablet",
         )
 
@@ -391,7 +391,7 @@ class TestStockBatchModel:
             generic_name="Test Drug",
             strength="100mg",
             form="TABLET",
-            category="OTHER",
+            categories=["OTHER"],
             unit="tablet",
         )
 
@@ -426,7 +426,7 @@ class TestStockBatchModel:
             generic_name="Test Drug",
             strength="100mg",
             form="TABLET",
-            category="OTHER",
+            categories=["OTHER"],
             unit="tablet",
         )
 
@@ -458,7 +458,7 @@ class TestStockBatchModel:
             generic_name="Test Drug",
             strength="100mg",
             form="TABLET",
-            category="OTHER",
+            categories=["OTHER"],
             unit="tablet",
         )
 
@@ -492,7 +492,7 @@ class TestStockBatchModel:
             generic_name="Test Drug",
             strength="100mg",
             form="TABLET",
-            category="OTHER",
+            categories=["OTHER"],
             unit="tablet",
         )
 
@@ -539,7 +539,7 @@ class TestStockBatchModel:
             generic_name="Test Drug",
             strength="100mg",
             form="TABLET",
-            category="OTHER",
+            categories=["OTHER"],
             unit="tablet",
             default_reorder_level=50,
         )
@@ -586,7 +586,7 @@ class TestStockBatchModel:
             generic_name="Test Drug",
             strength="100mg",
             form="TABLET",
-            category="OTHER",
+            categories=["OTHER"],
             unit="tablet",
         )
 
@@ -622,7 +622,7 @@ class TestStockBatchModel:
             generic_name="Test Drug",
             strength="100mg",
             form="TABLET",
-            category="OTHER",
+            categories=["OTHER"],
             unit="tablet",
         )
 
@@ -656,7 +656,7 @@ class TestStockBatchModel:
             generic_name="Test Drug",
             strength="100mg",
             form="TABLET",
-            category="OTHER",
+            categories=["OTHER"],
             unit="tablet",
         )
 
@@ -693,7 +693,7 @@ class TestStockBatchModel:
             generic_name="Test Drug",
             strength="100mg",
             form="TABLET",
-            category="OTHER",
+            categories=["OTHER"],
             unit="tablet",
         )
 
@@ -729,7 +729,7 @@ class TestStockBatchModel:
             generic_name="Test Drug",
             strength="100mg",
             form="TABLET",
-            category="OTHER",
+            categories=["OTHER"],
             unit="tablet",
         )
 
@@ -764,7 +764,7 @@ class TestStockBatchModel:
             generic_name="Test Drug",
             strength="100mg",
             form="TABLET",
-            category="OTHER",
+            categories=["OTHER"],
             unit="tablet",
         )
 
@@ -813,7 +813,7 @@ class TestStockBatchModel:
             generic_name="Test Drug",
             strength="100mg",
             form="TABLET",
-            category="OTHER",
+            categories=["OTHER"],
             unit="tablet",
         )
 
@@ -856,7 +856,7 @@ class TestStockBatchModel:
             generic_name="Test Drug",
             strength="100mg",
             form="TABLET",
-            category="OTHER",
+            categories=["OTHER"],
             unit="tablet",
         )
 
@@ -890,7 +890,7 @@ class TestStockBatchModel:
             generic_name="Test Drug",
             strength="100mg",
             form="TABLET",
-            category="OTHER",
+            categories=["OTHER"],
             unit="tablet",
         )
 
@@ -924,7 +924,7 @@ class TestStockBatchModel:
             generic_name="Test Drug",
             strength="100mg",
             form="TABLET",
-            category="OTHER",
+            categories=["OTHER"],
             unit="tablet",
         )
 
@@ -959,7 +959,7 @@ class TestStockBatchModel:
             generic_name="Test Drug",
             strength="100mg",
             form="TABLET",
-            category="OTHER",
+            categories=["OTHER"],
             unit="tablet",
         )
 

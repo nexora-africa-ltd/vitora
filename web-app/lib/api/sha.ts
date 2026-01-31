@@ -12,6 +12,29 @@
  * @see backend/hmis/apps/billing/
  */
 import { apiClient } from './client';
+import { parseResponse } from '@/lib/schemas/validation';
+import {
+  ClientRegistryFetchResponseSchema,
+  ClientRegistryRegisterResponseSchema,
+  ClientRegistryUpdateResponseSchema,
+  SHAMemberSchema,
+  PaginatedSHAMembersSchema,
+  EligibilityCheckResponseSchema,
+  DirectEligibilityCheckResponseSchema,
+  PaginatedICD11CodesSchema,
+  PaginatedSHAInterventionsSchema,
+  PaginatedICHICodesSchema,
+  PaginatedLOINCCodesSchema,
+  PaginatedDrugProductsSchema,
+  PaginatedActiveComponentsSchema,
+  ClaimSchema,
+  PaginatedClaimsSchema,
+  ClaimCreateResponseSchema,
+  ClaimSubmitResponseSchema,
+  FacilityValidationResponseSchema,
+  DHAPractitionerSearchResponseSchema,
+  PractitionerValidationResponseSchema,
+} from '@/lib/schemas/sha.schema';
 import type {
   // Client Registry
   ClientRegistryFetchRequest,
@@ -86,7 +109,7 @@ async function fetchFromClientRegistry(
 ): Promise<ClientRegistryFetchResponse> {
   const queryString = buildQueryString(data);
   const response = await apiClient.get(`/api/billing/client-registry/fetch/?${queryString}`);
-  return response.data;
+  return parseResponse(ClientRegistryFetchResponseSchema, response.data, { context: 'shaApi.fetchFromClientRegistry' });
 }
 
 /**
@@ -96,7 +119,7 @@ async function registerInClientRegistry(
   data: ClientRegistryRegisterRequest
 ): Promise<ClientRegistryRegisterResponse> {
   const response = await apiClient.post('/api/billing/client-registry/register/', data);
-  return response.data;
+  return parseResponse(ClientRegistryRegisterResponseSchema, response.data, { context: 'shaApi.registerInClientRegistry' });
 }
 
 /**
@@ -106,7 +129,7 @@ async function updateClientRegistry(
   data: ClientRegistryUpdateRequest
 ): Promise<ClientRegistryUpdateResponse> {
   const response = await apiClient.put('/api/billing/client-registry/update/', data);
-  return response.data;
+  return parseResponse(ClientRegistryUpdateResponseSchema, response.data, { context: 'shaApi.updateClientRegistry' });
 }
 
 // ============================================================================
@@ -122,7 +145,7 @@ async function getSHAMembers(params?: { patient?: number }): Promise<PaginatedSH
     ? `/api/billing/sha-members/?${queryString}`
     : '/api/billing/sha-members/';
   const response = await apiClient.get(url);
-  return response.data;
+  return parseResponse(PaginatedSHAMembersSchema, response.data, { context: 'shaApi.getSHAMembers' });
 }
 
 /**
@@ -130,7 +153,7 @@ async function getSHAMembers(params?: { patient?: number }): Promise<PaginatedSH
  */
 async function getSHAMember(id: number): Promise<SHAMember> {
   const response = await apiClient.get(`/api/billing/sha-members/${id}/`);
-  return response.data;
+  return parseResponse(SHAMemberSchema, response.data, { context: 'shaApi.getSHAMember' });
 }
 
 /**
@@ -139,7 +162,7 @@ async function getSHAMember(id: number): Promise<SHAMember> {
  */
 async function getSHAMemberDependents(memberId: number): Promise<PaginatedSHAMembers> {
   const response = await apiClient.get(`/api/billing/sha-members/${memberId}/dependents/`);
-  return response.data;
+  return parseResponse(PaginatedSHAMembersSchema, response.data, { context: 'shaApi.getSHAMemberDependents' });
 }
 
 // ============================================================================
@@ -153,7 +176,7 @@ async function checkEligibility(
   data: EligibilityCheckRequest
 ): Promise<EligibilityCheckResponse> {
   const response = await apiClient.post('/api/billing/eligibility/check/', data);
-  return response.data;
+  return parseResponse(EligibilityCheckResponseSchema, response.data, { context: 'shaApi.checkEligibility' });
 }
 
 /**
@@ -241,7 +264,7 @@ async function checkDirectEligibility(
 ): Promise<DirectEligibilityCheckResponse> {
   const queryString = buildQueryString(params);
   const response = await apiClient.get(`/api/billing/eligibility/direct/?${queryString}`);
-  return response.data;
+  return parseResponse(DirectEligibilityCheckResponseSchema, response.data, { context: 'shaApi.checkDirectEligibility' });
 }
 
 // ============================================================================
@@ -257,7 +280,7 @@ async function searchICD11(params?: TerminologySearchParams): Promise<PaginatedI
     ? `/api/billing/terminology/icd11/?${queryString}`
     : '/api/billing/terminology/icd11/';
   const response = await apiClient.get(url);
-  return response.data;
+  return parseResponse(PaginatedICD11CodesSchema, response.data, { context: 'shaApi.searchICD11' });
 }
 
 // ============================================================================
@@ -275,7 +298,7 @@ async function searchInterventions(
     ? `/api/billing/terminology/interventions/?${queryString}`
     : '/api/billing/terminology/interventions/';
   const response = await apiClient.get(url);
-  return response.data;
+  return parseResponse(PaginatedSHAInterventionsSchema, response.data, { context: 'shaApi.searchInterventions' });
 }
 
 // ============================================================================
@@ -291,7 +314,7 @@ async function searchICHI(params?: TerminologySearchParams): Promise<PaginatedIC
     ? `/api/billing/terminology/ichi/?${queryString}`
     : '/api/billing/terminology/ichi/';
   const response = await apiClient.get(url);
-  return response.data;
+  return parseResponse(PaginatedICHICodesSchema, response.data, { context: 'shaApi.searchICHI' });
 }
 
 // ============================================================================
@@ -307,7 +330,7 @@ async function searchLOINC(params?: TerminologySearchParams): Promise<PaginatedL
     ? `/api/billing/terminology/loinc/?${queryString}`
     : '/api/billing/terminology/loinc/';
   const response = await apiClient.get(url);
-  return response.data;
+  return parseResponse(PaginatedLOINCCodesSchema, response.data, { context: 'shaApi.searchLOINC' });
 }
 
 // ============================================================================
@@ -323,7 +346,7 @@ async function searchDrugs(params?: DrugSearchParams): Promise<PaginatedDrugProd
     ? `/api/billing/terminology/drugs/?${queryString}`
     : '/api/billing/terminology/drugs/';
   const response = await apiClient.get(url);
-  return response.data;
+  return parseResponse(PaginatedDrugProductsSchema, response.data, { context: 'shaApi.searchDrugs' });
 }
 
 /**
@@ -337,7 +360,7 @@ async function searchActiveComponents(
     ? `/api/billing/terminology/active-components/?${queryString}`
     : '/api/billing/terminology/active-components/';
   const response = await apiClient.get(url);
-  return response.data;
+  return parseResponse(PaginatedActiveComponentsSchema, response.data, { context: 'shaApi.searchActiveComponents' });
 }
 
 // ============================================================================
@@ -353,7 +376,7 @@ async function getClaims(params?: ClaimListParams): Promise<PaginatedClaims> {
     ? `/api/billing/claims/?${queryString}`
     : '/api/billing/claims/';
   const response = await apiClient.get(url);
-  return response.data;
+  return parseResponse(PaginatedClaimsSchema, response.data, { context: 'shaApi.getClaims' });
 }
 
 /**
@@ -361,7 +384,7 @@ async function getClaims(params?: ClaimListParams): Promise<PaginatedClaims> {
  */
 async function getClaim(id: number): Promise<Claim> {
   const response = await apiClient.get(`/api/billing/claims/${id}/`);
-  return response.data;
+  return parseResponse(ClaimSchema, response.data, { context: 'shaApi.getClaim' });
 }
 
 /**
@@ -369,7 +392,7 @@ async function getClaim(id: number): Promise<Claim> {
  */
 async function createClaim(data: ClaimCreateRequest): Promise<ClaimCreateResponse> {
   const response = await apiClient.post('/api/billing/claims/', data);
-  return response.data;
+  return parseResponse(ClaimCreateResponseSchema, response.data, { context: 'shaApi.createClaim' });
 }
 
 /**
@@ -377,7 +400,7 @@ async function createClaim(data: ClaimCreateRequest): Promise<ClaimCreateRespons
  */
 async function submitClaim(claimId: number): Promise<ClaimSubmitResponse> {
   const response = await apiClient.post(`/api/billing/claims/${claimId}/submit/`);
-  return response.data;
+  return parseResponse(ClaimSubmitResponseSchema, response.data, { context: 'shaApi.submitClaim' });
 }
 
 /**
@@ -385,7 +408,7 @@ async function submitClaim(claimId: number): Promise<ClaimSubmitResponse> {
  */
 async function resubmitClaim(claimId: number): Promise<ClaimSubmitResponse> {
   const response = await apiClient.post(`/api/billing/claims/${claimId}/resubmit/`);
-  return response.data;
+  return parseResponse(ClaimSubmitResponseSchema, response.data, { context: 'shaApi.resubmitClaim' });
 }
 
 /**
@@ -414,7 +437,7 @@ async function validateFacility(
   data: FacilityValidationRequest
 ): Promise<FacilityValidationResponse> {
   const response = await apiClient.post('/api/billing/dha/validate-facility/', data);
-  return response.data;
+  return parseResponse(FacilityValidationResponseSchema, response.data, { context: 'shaApi.validateFacility' });
 }
 
 // ============================================================================
@@ -440,7 +463,7 @@ async function searchPractitioner(
 ): Promise<DHAPractitionerSearchResponse> {
   const queryString = buildQueryString(params);
   const response = await apiClient.get(`/api/sha/practitioner/validate/?${queryString}`);
-  return response.data;
+  return parseResponse(DHAPractitionerSearchResponseSchema, response.data, { context: 'shaApi.searchPractitioner' });
 }
 
 /**
@@ -451,7 +474,7 @@ async function validatePractitioner(
   data: PractitionerValidationRequest
 ): Promise<PractitionerValidationResponse> {
   const response = await apiClient.post('/api/billing/dha/validate-practitioner/', data);
-  return response.data;
+  return parseResponse(PractitionerValidationResponseSchema, response.data, { context: 'shaApi.validatePractitioner' });
 }
 
 // ============================================================================

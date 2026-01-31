@@ -55,7 +55,8 @@ export const ClinicListItemSchema = z.object({
   code: z.string(),
   status: ClinicStatusSchema,
   location: z.string(),
-  is_open_today: z.boolean(),
+  is_sensitive: z.boolean().optional(),
+  is_open_today: z.boolean().optional(), // Not returned in list endpoint
 });
 
 export const ClinicSchema = z.object({
@@ -101,9 +102,9 @@ export const ClinicSessionSchema = z.object({
   opened_at: z.string().nullable(),
   closed_at: z.string().nullable(),
   opened_by: z.number().nullable(),
-  opened_by_name: z.string().nullable(),
+  opened_by_name: z.string().nullable().optional(), // May not be returned by API
   closed_by: z.number().nullable(),
-  closed_by_name: z.string().nullable(),
+  closed_by_name: z.string().nullable().optional(), // May not be returned by API
   patients_registered: z.number(),
   patients_seen: z.number(),
   patients_waiting: z.number(),
@@ -162,22 +163,27 @@ export const ClinicVisitSchema = z.object({
 });
 
 export const ClinicQueueStatsSchema = z.object({
-  total_registered: z.number(),
+  // Core stats (always returned)
   waiting: z.number(),
   called: z.number(),
   in_consultation: z.number(),
   completed: z.number(),
   referred: z.number(),
   no_show: z.number(),
-  cancelled: z.number(),
-  avg_wait_time_minutes: z.number(),
+  total: z.number(),
+  // API returns average_wait_time, not avg_wait_time_minutes
+  average_wait_time: z.number().optional(),
+  // These may not be returned by all stats endpoints
+  total_registered: z.number().optional(),
+  cancelled: z.number().optional(),
+  avg_wait_time_minutes: z.number().optional(),
   by_priority: z.object({
     EMERGENCY: z.number(),
     URGENT: z.number(),
     PRIORITY: z.number(),
     STANDARD: z.number(),
     NON_URGENT: z.number(),
-  }),
+  }).optional(),
 });
 
 // =============================================================================

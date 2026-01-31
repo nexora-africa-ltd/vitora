@@ -1,4 +1,10 @@
 import { apiClient } from './client';
+import { parseResponse } from '@/lib/schemas/validation';
+import {
+  CountyArraySchema,
+  SubCountyArraySchema,
+  LocationWardArraySchema,
+} from '@/lib/schemas/core.schema';
 
 export interface County {
   id: number;
@@ -24,7 +30,7 @@ export const locationsApi = {
    */
   async getCounties(): Promise<County[]> {
     const response = await apiClient.get<County[]>('/api/locations/counties/');
-    return response.data;
+    return parseResponse(CountyArraySchema, response.data, { context: 'locationsApi.getCounties' });
   },
 
   /**
@@ -35,7 +41,7 @@ export const locationsApi = {
       `/api/locations/sub-counties/`,
       { params: { county: countyId } }
     );
-    return response.data;
+    return parseResponse(SubCountyArraySchema, response.data, { context: 'locationsApi.getSubCounties' });
   },
 
   /**
@@ -46,6 +52,6 @@ export const locationsApi = {
       `/api/locations/wards/`,
       { params: { sub_county: subCountyId } }
     );
-    return response.data;
+    return parseResponse(LocationWardArraySchema, response.data, { context: 'locationsApi.getWards' });
   },
 };

@@ -9,6 +9,7 @@ from hmis.apps.pharmacy.views import (
     AlertSettingsView,
     DispensingReportView,
     DispensingViewSet,
+    DrugCategoryViewSet,
     DrugViewSet,
     ExpiryReportView,
     PrescriptionViewSet,
@@ -21,6 +22,7 @@ from hmis.apps.pharmacy.views import (
 
 router = DefaultRouter()
 router.register(r"drugs", DrugViewSet, basename="drug")
+router.register(r"drug-categories", DrugCategoryViewSet, basename="drugcategory")
 router.register(r"stock", StockBatchViewSet, basename="stockbatch")
 router.register(r"alerts", StockAlertViewSet, basename="stockalert")
 router.register(r"prescriptions", PrescriptionViewSet, basename="prescription")

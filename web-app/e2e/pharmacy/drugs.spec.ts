@@ -55,17 +55,17 @@ test.describe('Drug Catalog - List View', () => {
   test('should display drug categories', async ({ page }) => {
     await page.getByRole('tab', { name: /drugs/i }).click();
 
-    // Should show drug categories
-    await expect(page.getByText(/analgesic/i)).toBeVisible();
-    await expect(page.getByText(/antibiotic/i)).toBeVisible();
+    // Should show drug categories in table cells
+    await expect(page.getByRole('cell', { name: /analgesic/i }).first()).toBeVisible();
+    await expect(page.getByRole('cell', { name: /antibiotic/i }).first()).toBeVisible();
   });
 
   test('should display drug schedules (OTC, POM, P, CD)', async ({ page }) => {
     await page.getByRole('tab', { name: /drugs/i }).click();
 
-    // Should show schedule badges/labels
+    // Should show schedule badges/labels in table cells
     // OTC = Over The Counter, POM = Prescription Only Medicine, CD = Controlled Drug
-    await expect(page.getByText('OTC').or(page.getByText(/over.the.counter/i))).toBeVisible();
+    await expect(page.getByRole('cell', { name: 'OTC' }).first()).toBeVisible();
   });
 
   test('should display current stock levels', async ({ page }) => {
@@ -97,8 +97,8 @@ test.describe('Drug Catalog - List View', () => {
 
     // Morphine is controlled - should have special indicator
     await expect(page.getByText(/morphine/i).first()).toBeVisible();
-    // Should show controlled drug indicator (CD badge)
-    await expect(page.getByText('CD').first()).toBeVisible();
+    // Should show controlled drug indicator (CD badge) in table cell
+    await expect(page.getByRole('cell', { name: 'CD' })).toBeVisible();
   });
 });
 
@@ -233,9 +233,7 @@ test.describe('Drug Catalog - Pagination', () => {
 
   test('should show total drug count', async ({ page }) => {
     // Should display total number of drugs
-    await expect(page.getByText(/5.*(drugs|items|results)/i).or(
-      page.getByText(/showing.*of.*5/i)
-    )).toBeVisible();
+    await expect(page.getByText('Showing 5 of 5 drugs')).toBeVisible();
   });
 });
 

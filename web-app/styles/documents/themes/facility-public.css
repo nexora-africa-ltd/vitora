@@ -1,0 +1,100 @@
+/**
+ * Document Styles - Public Facility Theme
+ *
+ * Green-themed branding for public/government healthcare facilities.
+ * Clean and official appearance.
+ */
+
+:root {
+  /* Primary colors - Green */
+  --primary-color: #1b5e20;
+  --border-color: #1b5e20;
+  --accent-color: #43a047;
+  
+  /* Text colors */
+  --text-color: #1a1a1a;
+  --muted-color: #555;
+  
+  /* Background colors */
+  --background-color: #fff;
+  --header-bg: #e8f5e9;
+  --section-bg: #f1f8e9;
+  
+  /* Status colors */
+  --success-color: #2e7d32;
+  --warning-color: #f57c00;
+  --danger-color: #c62828;
+}
+
+/* Header styling */
+.header {
+  border-bottom: 3px solid var(--primary-color);
+}
+
+/* Title styling */
+h1 {
+  color: var(--primary-color);
+}
+
+/* Clinic name emphasis */
+.clinic-info strong,
+.clinic {
+  color: var(--primary-color);
+}
+
+/* Table header */
+th {
+  background: var(--header-bg);
+  color: var(--primary-color);
+}
+
+/* Table borders */
+table,
+th,
+td {
+  border-color: var(--border-color);
+}
+
+/* Section title */
+.section-title {
+  color: var(--primary-color);
+  border-bottom-color: var(--accent-color);
+}
+
+/* Notes section */
+.notes {
+  background: var(--section-bg);
+  border-color: var(--accent-color);
+  border-left: 3px solid var(--accent-color);
+}
+
+/* Drug name highlight */
+.drug {
+  background: var(--header-bg);
+  color: var(--primary-color);
+}
+
+/* Signature lines */
+.sig {
+  border-top-color: var(--primary-color);
+}
+
+/* QR border */
+.qr {
+  border-color: var(--accent-color);
+}
+
+/* Official document indicator */
+.header::before {
+  content: '';
+  display: block;
+  height: 4px;
+  background: linear-gradient(
+    to right,
+    var(--primary-color) 33%,
+    var(--accent-color) 33%,
+    var(--accent-color) 66%,
+    var(--primary-color) 66%
+  );
+  margin-bottom: 12px;
+}

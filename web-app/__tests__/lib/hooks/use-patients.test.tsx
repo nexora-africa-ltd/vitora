@@ -2,6 +2,7 @@
  * TDD Tests for Patient Hooks
  *
  * Tests for consolidated patient hooks:
+ * - patientKeys (query key factory)
  * - usePatients, usePatient (read)
  * - usePatientEmergencyContacts, usePatientEncounters (related)
  * - useCreatePatient, useUpdatePatient, useDeletePatient (mutations)
@@ -10,6 +11,7 @@ import React from 'react';
 import { renderHook, waitFor, act } from '@testing-library/react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import {
+  patientKeys,
   usePatients,
   usePatient,
   usePatientEmergencyContacts,
@@ -42,6 +44,44 @@ const createWrapper = () => {
 describe('Patient Hooks', () => {
   beforeEach(() => {
     jest.clearAllMocks();
+  });
+
+  // ===========================================================================
+  // patientKeys - Query Key Factory
+  // ===========================================================================
+  describe('patientKeys', () => {
+    it('should generate correct base key', () => {
+      expect(patientKeys.all).toEqual(['patients']);
+    });
+
+    it('should generate correct lists key', () => {
+      expect(patientKeys.lists()).toEqual(['patients', 'list']);
+    });
+
+    it('should generate correct list key with params', () => {
+      const params = { search: 'john', page: 2 };
+      expect(patientKeys.list(params)).toEqual(['patients', 'list', params]);
+    });
+
+    it('should generate correct list key without params', () => {
+      expect(patientKeys.list()).toEqual(['patients', 'list', undefined]);
+    });
+
+    it('should generate correct details key', () => {
+      expect(patientKeys.details()).toEqual(['patients', 'detail']);
+    });
+
+    it('should generate correct detail key with id', () => {
+      expect(patientKeys.detail(123)).toEqual(['patients', 'detail', 123]);
+    });
+
+    it('should generate correct emergency contacts key', () => {
+      expect(patientKeys.emergencyContacts(123)).toEqual(['patients', 'detail', 123, 'emergency-contacts']);
+    });
+
+    it('should generate correct encounters key', () => {
+      expect(patientKeys.encounters(123)).toEqual(['patients', 'detail', 123, 'encounters']);
+    });
   });
 
   // ===========================================================================

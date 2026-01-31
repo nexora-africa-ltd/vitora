@@ -1,0 +1,132 @@
+/**
+ * Document Styles - Label Layout
+ *
+ * Layout styles for medication labels (280px standard label size)
+ */
+
+/* Page setup for print - auto height for labels */
+@page {
+  size: auto;
+  margin: 0;
+}
+
+/* Body padding for screen preview */
+body {
+  padding: 8px;
+  font-size: 12px;
+}
+
+/* Label container */
+.label {
+  width: 280px;
+  border: 1px solid #000;
+  padding: 8px;
+  box-sizing: border-box;
+  background: #fff;
+}
+
+/* Facility/Clinic name */
+.clinic {
+  font-weight: bold;
+  font-size: 13px;
+  margin-bottom: 4px;
+  text-align: center;
+  border-bottom: 1px solid #000;
+  padding-bottom: 4px;
+}
+
+/* Row items */
+.row {
+  margin-bottom: 4px;
+  font-size: 12px;
+}
+
+.row strong {
+  color: var(--muted-color, #666);
+  font-size: 10px;
+  font-weight: normal;
+}
+
+/* Drug name - prominent */
+.drug {
+  font-size: 14px;
+  font-weight: bold;
+  margin: 6px 0;
+  padding: 4px;
+  background: var(--header-bg, #f5f5f5);
+  text-align: center;
+}
+
+/* Instructions section */
+.instructions {
+  border-top: 1px dashed #000;
+  padding-top: 6px;
+  margin-top: 6px;
+  font-size: 11px;
+  min-height: 24px;
+}
+
+/* QR/Barcode placeholder */
+.qr {
+  margin-top: 8px;
+  width: 64px;
+  height: 64px;
+  border: 1px dashed #999;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 9px;
+  text-align: center;
+}
+
+/* Warning box */
+.warning {
+  border: 1px solid #f00;
+  background: #fff5f5;
+  padding: 4px;
+  font-size: 10px;
+  color: #c00;
+  margin-top: 8px;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+/* Batch info */
+.batch-info {
+  font-size: 9px;
+  color: var(--muted-color, #666);
+  margin-top: 4px;
+}
+
+/* Footer */
+.footer {
+  font-size: 10px;
+  margin-top: 6px;
+  color: var(--muted-color, #666);
+  border-top: 1px solid #ccc;
+  padding-top: 4px;
+}
+
+/* Print optimizations */
+@media print {
+  body {
+    margin: 0;
+    padding: 4px;
+  }
+
+  .label {
+    page-break-inside: avoid;
+  }
+}
+
+/* Multiple labels per page */
+.labels-container {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.labels-container .label {
+  page-break-inside: avoid;
+}

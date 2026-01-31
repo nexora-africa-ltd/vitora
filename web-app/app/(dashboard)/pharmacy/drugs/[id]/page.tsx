@@ -229,8 +229,16 @@ export default function DrugDetailPage({ params }: { params: Promise<{ id: strin
                 <p>{drug.strength}</p>
               </div>
               <div>
-                <p className="text-sm text-muted-foreground">Category</p>
-                <Badge variant="secondary">{CATEGORY_LABELS[drug.category]}</Badge>
+                <p className="text-sm text-muted-foreground">Categories</p>
+                <div className="flex flex-wrap gap-1">
+                  {drug.categories.length > 0 ? (
+                    drug.categories.map((cat) => (
+                      <Badge key={cat} variant="secondary">{CATEGORY_LABELS[cat]}</Badge>
+                    ))
+                  ) : (
+                    <Badge variant="outline">Uncategorized</Badge>
+                  )}
+                </div>
               </div>
               <div>
                 <p className="text-sm text-muted-foreground">Schedule</p>

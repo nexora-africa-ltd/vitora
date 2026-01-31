@@ -1,8 +1,19 @@
 /**
  * Patients API client for Vitora HMIS
+ *
+ * All responses are validated with Zod schemas to catch data shape mismatches
+ * before they cause runtime errors in components.
  */
 
 import { apiClient } from './client';
+import { parseResponse } from '@/lib/schemas/validation';
+import {
+  PatientSchema,
+  PatientListItemSchema,
+  PaginatedPatientSchema,
+  EmergencyContactArrayResponseSchema,
+  PatientEncounterArrayResponseSchema,
+} from '@/lib/schemas/patient.schema';
 import type { Patient, PatientCreateData, PatientUpdateData, PatientListParams, EmergencyContact, PatientEncounter } from '@/lib/types/patient';
 import type { PaginatedResponse } from '@/lib/types';
 
@@ -24,7 +35,9 @@ export const patientsApi = {
     const response = await apiClient.get<PaginatedResponse<Patient>>(
       `/api/patients/?${searchParams.toString()}`
     );
-    return response.data;
+    return parseResponse(PaginatedPatientSchema, response.data, {
+      context: 'patientsApi.getPatients',
+    }) as PaginatedResponse<Patient>;
   },
 
   /**
@@ -32,7 +45,9 @@ export const patientsApi = {
    */
   async getPatient(id: number): Promise<Patient> {
     const response = await apiClient.get<Patient>(`/api/patients/${id}/`);
-    return response.data;
+    return parseResponse(PatientSchema, response.data, {
+      context: 'patientsApi.getPatient',
+    }) as Patient;
   },
 
   /**
@@ -57,7 +72,9 @@ export const patientsApi = {
       headers['X-Idempotency-Key'] = idempotencyKey;
     }
     const response = await apiClient.post<Patient>('/api/patients/', data, { headers });
-    return response.data;
+    return parseResponse(PatientSchema, response.data, {
+      context: 'patientsApi.createPatient',
+    }) as Patient;
   },
 
   /**
@@ -65,7 +82,9 @@ export const patientsApi = {
    */
   async updatePatient(id: number, data: PatientUpdateData): Promise<Patient> {
     const response = await apiClient.patch<Patient>(`/api/patients/${id}/`, data);
-    return response.data;
+    return parseResponse(PatientSchema, response.data, {
+      context: 'patientsApi.updatePatient',
+    }) as Patient;
   },
 
   /**
@@ -82,7 +101,9 @@ export const patientsApi = {
     const response = await apiClient.get<EmergencyContact[]>(
       `/api/patients/${patientId}/emergency-contacts/`
     );
-    return response.data;
+    return parseResponse(EmergencyContactArrayResponseSchema, response.data, {
+      context: 'patientsApi.getEmergencyContacts',
+    }) as EmergencyContact[];
   },
 
   /**
@@ -92,6 +113,9 @@ export const patientsApi = {
     const response = await apiClient.get<{ results: PatientEncounter[] }>(
       `/api/encounters/?patient=${patientId}`
     );
-    return response.data.results || [];
+    const validated = parseResponse(PatientEncounterArrayResponseSchema, response.data, {
+      context: 'patientsApi.getEncounters',
+    });
+    return validated.results;
   },
 };

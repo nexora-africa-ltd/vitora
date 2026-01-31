@@ -7,10 +7,13 @@
  * - Queue management and visits
  * - Staff assignments
  * - Enrollments (chronic care)
+ *
+ * Queue mutations sync to patient-journey store for real-time tracking.
  */
 
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { clinicsApi } from '@/lib/api/clinics';
+import { usePatientJourneyStore } from '@/lib/stores/patient-journey';
 import type {
   Clinic,
   ClinicListItem,
@@ -241,14 +244,32 @@ export function useQueueStats(clinicId: number | undefined) {
  */
 export function useAddToQueue() {
   const queryClient = useQueryClient();
+  const { registerPatient, addToWaitingQueue } = usePatientJourneyStore();
 
   return useMutation({
     mutationFn: ({ clinicId, data }: { clinicId: number; data: ClinicVisitCreateData }) =>
       clinicsApi.addToQueue(clinicId, data),
-    onSuccess: (_data, variables) => {
+    onSuccess: (visit, variables) => {
+      // Invalidate relevant queries
       queryClient.invalidateQueries({ queryKey: clinicKeys.queue(variables.clinicId) });
       queryClient.invalidateQueries({ queryKey: clinicKeys.queueStats(variables.clinicId) });
       queryClient.invalidateQueries({ queryKey: clinicKeys.dashboard(variables.clinicId) });
+
+      // Sync to patient journey store (non-blocking - don't fail mutation on store errors)
+      try {
+        const patient = visit.patient;
+        registerPatient({
+          id: patient.id,
+          mrn: patient.mrn,
+          name: patient.full_name,
+          date_of_birth: patient.date_of_birth,
+          gender: patient.gender as 'M' | 'F' | 'O' | undefined,
+          phone: patient.phone_number,
+        });
+        addToWaitingQueue(patient.id);
+      } catch (error) {
+        console.warn('[useAddToQueue] Failed to sync to journey store:', error);
+      }
     },
   });
 }
@@ -283,11 +304,19 @@ export function useClinicVisit(id: number | undefined) {
  */
 export function useCallPatient() {
   const queryClient = useQueryClient();
+  const { callPatient } = usePatientJourneyStore();
 
   return useMutation({
     mutationFn: (visitId: number) => clinicsApi.callPatient(visitId),
-    onSuccess: () => {
+    onSuccess: (visit) => {
       queryClient.invalidateQueries({ queryKey: clinicKeys.all });
+
+      // Sync to patient journey store (non-blocking)
+      try {
+        callPatient(visit.patient.id);
+      } catch (error) {
+        console.warn('[useCallPatient] Failed to sync to journey store:', error);
+      }
     },
   });
 }
@@ -297,11 +326,30 @@ export function useCallPatient() {
  */
 export function useStartConsultation() {
   const queryClient = useQueryClient();
+  const { startConsultation, setEncounter } = usePatientJourneyStore();
 
   return useMutation({
     mutationFn: (visitId: number) => clinicsApi.startConsultation(visitId),
-    onSuccess: () => {
+    onSuccess: (visit) => {
       queryClient.invalidateQueries({ queryKey: clinicKeys.all });
+
+      // Sync to patient journey store (non-blocking)
+      try {
+        const patientId = visit.patient.id;
+        startConsultation(
+          patientId,
+          visit.assigned_clinician ?? undefined,
+          visit.assigned_clinician_name ?? undefined
+        );
+
+        // Set encounter if available - use visit_type as encounter type indicator
+        if (visit.encounter) {
+          const encounterType = visit.visit_type === 'FOLLOW_UP' ? 'FOLLOW_UP' : 'OPD';
+          setEncounter(patientId, visit.encounter, encounterType);
+        }
+      } catch (error) {
+        console.warn('[useStartConsultation] Failed to sync to journey store:', error);
+      }
     },
   });
 }
@@ -311,11 +359,19 @@ export function useStartConsultation() {
  */
 export function useCompleteVisit() {
   const queryClient = useQueryClient();
+  const { endConsultation } = usePatientJourneyStore();
 
   return useMutation({
     mutationFn: (visitId: number) => clinicsApi.completeVisit(visitId),
-    onSuccess: () => {
+    onSuccess: (visit) => {
       queryClient.invalidateQueries({ queryKey: clinicKeys.all });
+
+      // Sync to patient journey store (non-blocking)
+      try {
+        endConsultation(visit.patient.id);
+      } catch (error) {
+        console.warn('[useCompleteVisit] Failed to sync to journey store:', error);
+      }
     },
   });
 }
@@ -340,11 +396,19 @@ export function useReferVisit() {
  */
 export function useMarkNoShow() {
   const queryClient = useQueryClient();
+  const { markLeftWithoutBeingSeen } = usePatientJourneyStore();
 
   return useMutation({
     mutationFn: (visitId: number) => clinicsApi.markNoShow(visitId),
-    onSuccess: () => {
+    onSuccess: (visit) => {
       queryClient.invalidateQueries({ queryKey: clinicKeys.all });
+
+      // Sync to patient journey store (non-blocking)
+      try {
+        markLeftWithoutBeingSeen(visit.patient.id);
+      } catch (error) {
+        console.warn('[useMarkNoShow] Failed to sync to journey store:', error);
+      }
     },
   });
 }

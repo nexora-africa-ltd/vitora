@@ -24,7 +24,6 @@ import {
   CheckCircle,
   Clock,
   XCircle,
-  Printer,
   Ban
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -54,6 +53,7 @@ import { usePrescription, useCancelPrescription } from '@/lib/hooks/use-pharmacy
 import { PrescriptionStatus } from '@/lib/types/pharmacy';
 import { useState } from 'react';
 import { useToast } from '@/lib/hooks/use-toast';
+import { PrescriptionPrintButton } from '@/components/pharmacy';
 
 // Status badge colors
 const STATUS_COLORS: Record<PrescriptionStatus, string> = {
@@ -120,16 +120,6 @@ export default function PrescriptionDetailPage() {
   const handleDispense = () => {
     // Navigate to dispensing page with prescription context
     router.push(`/pharmacy/dispensing?prescription=${prescriptionId}`);
-  };
-
-  const handlePrint = () => {
-    // Trigger print dialog
-    window.print();
-  };
-
-  const handlePrintLabel = () => {
-    // Navigate to label print view
-    router.push(`/pharmacy/prescriptions/${prescriptionId}/label`);
   };
 
   if (isLoading) {
@@ -206,14 +196,10 @@ export default function PrescriptionDetailPage() {
               View History
             </Button>
           )}
-          <Button variant="outline" onClick={handlePrint}>
-            <Printer className="h-4 w-4 mr-2" />
-            Print
-          </Button>
-          <Button variant="outline" onClick={handlePrintLabel}>
-            <Printer className="h-4 w-4 mr-2" />
-            Print Label
-          </Button>
+          <PrescriptionPrintButton
+            prescription={prescription}
+            showOptions={true}
+          />
         </div>
       </div>
 

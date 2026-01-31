@@ -1,0 +1,128 @@
+/**
+ * Document Styles - Thermal 80mm Printer
+ *
+ * Optimized layout for 80mm thermal receipt printers.
+ * Common in pharmacies for medication labels.
+ */
+
+@page {
+  size: 80mm auto;
+  margin: 0;
+}
+
+body {
+  padding: 4mm;
+  font-size: 10px;
+}
+
+/* Label container - 80mm width */
+.label,
+.page {
+  width: 76mm; /* 80mm - padding */
+  padding: 3mm;
+  border-width: 1px;
+}
+
+/* Smaller fonts throughout */
+.clinic {
+  font-size: 11px;
+}
+
+.row {
+  font-size: 10px;
+  margin-bottom: 2px;
+}
+
+.drug {
+  font-size: 12px;
+  padding: 3px;
+  margin: 4px 0;
+}
+
+.instructions {
+  font-size: 9px;
+  padding-top: 4px;
+  margin-top: 4px;
+}
+
+/* Smaller QR code */
+.qr {
+  width: 40px;
+  height: 40px;
+  font-size: 7px;
+}
+
+/* Warning compact */
+.warning {
+  font-size: 8px;
+  padding: 3px;
+  margin-top: 6px;
+}
+
+/* Footer compact */
+.footer {
+  font-size: 8px;
+  margin-top: 4px;
+  padding-top: 3px;
+}
+
+.batch-info {
+  font-size: 8px;
+}
+
+/* Table adjustments for prescriptions */
+table,
+th,
+td {
+  font-size: 9px;
+  padding: 4px;
+}
+
+th {
+  font-size: 8px;
+}
+
+/* Patient grid - single column */
+.patient-grid {
+  grid-template-columns: 1fr;
+  gap: 4px;
+  font-size: 10px;
+}
+
+/* Section title smaller */
+.section-title {
+  font-size: 10px;
+  margin-bottom: 4px;
+}
+
+/* Notes smaller */
+.notes {
+  font-size: 9px;
+  min-height: 40px;
+  padding: 4px;
+}
+
+/* Signature block - stacked */
+.signature-block {
+  flex-direction: column;
+  gap: 20px;
+  margin-top: 16px;
+}
+
+.sig {
+  width: 100%;
+}
+
+/* Footer single column */
+.footer {
+  flex-direction: column;
+  gap: 4px;
+  font-size: 8px;
+}
+
+/* Print specific */
+@media print {
+  body {
+    padding: 2mm;
+  }
+}

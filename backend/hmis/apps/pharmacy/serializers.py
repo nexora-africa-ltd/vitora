@@ -2,9 +2,16 @@
 Serializers for Pharmacy app.
 """
 
+import re
+
+from django.apps import apps
 from django.contrib.auth import get_user_model
 from rest_framework import serializers
 
+from hmis.apps.core.qr_utils import (
+    generate_document_signature,
+    get_verification_base_url,
+)
 from hmis.apps.encounters.models import Encounter
 from hmis.apps.pharmacy.models import (
     AlertSettings,
@@ -20,11 +27,50 @@ from hmis.apps.pharmacy.models import (
 User = get_user_model()
 
 
+def _normalize_category_code(value: str) -> str:
+    code = re.sub(r"[^A-Za-z0-9]+", "_", value.strip()).strip("_")
+    return code.upper()[:50]
+
+
+class DrugCategorySerializer(serializers.ModelSerializer):
+    """Serializer for DrugCategory registry."""
+
+    value = serializers.CharField(source="code", read_only=True)
+    label = serializers.CharField(source="name", read_only=True)
+
+    class Meta:
+        model = apps.get_model("pharmacy", "DrugCategory")
+        fields = ["id", "code", "name", "value", "label", "is_active", "created_at", "updated_at"]
+        read_only_fields = ["id", "value", "label", "created_at", "updated_at"]
+        extra_kwargs = {
+            "code": {"required": False, "allow_blank": True},
+            "is_active": {"required": False},
+        }
+
+    def validate_code(self, value: str) -> str:
+        if not value:
+            return value
+        normalized = _normalize_category_code(value)
+        if value != normalized:
+            raise serializers.ValidationError(
+                f"Invalid code format. Suggested code: '{normalized}'"
+            )
+        return value
+
+    def create(self, validated_data):
+        # If code not provided, generate from name
+        if not validated_data.get("code"):
+            validated_data["code"] = _normalize_category_code(validated_data["name"])
+        return super().create(validated_data)
+
+
 class DrugSerializer(serializers.ModelSerializer):
     """Serializer for Drug model."""
 
     display_name = serializers.CharField(source="get_display_name", read_only=True)
     current_stock = serializers.IntegerField(source="get_current_stock", read_only=True)
+    # Backward compatibility: expose both 'category' (primary) and 'categories' (all)
+    category = serializers.SerializerMethodField()
 
     class Meta:
         model = Drug
@@ -35,7 +81,8 @@ class DrugSerializer(serializers.ModelSerializer):
             "brand_names",
             "strength",
             "form",
-            "category",
+            "category",      # Primary category (backward compatible)
+            "categories",    # All categories (new)
             "unit",
             "schedule",
             "is_essential",
@@ -56,6 +103,41 @@ class DrugSerializer(serializers.ModelSerializer):
             "updated_at",
         ]
         read_only_fields = ["id", "created_at", "updated_at", "display_name", "current_stock"]
+
+    def get_category(self, obj):
+        """Return primary (first) category for backward compatibility."""
+        return obj.categories[0] if obj.categories else None
+
+    def validate(self, attrs):
+        """Map legacy `category` to `categories` and validate against registry."""
+        # Backward compat: allow `category` on create/update
+        if ("categories" not in attrs or not attrs.get("categories")):
+            category = self.initial_data.get("category")
+            if category:
+                attrs["categories"] = [category] if isinstance(category, str) else list(category)
+
+        categories = attrs.get("categories")
+        if categories:
+            DrugCategory = apps.get_model("pharmacy", "DrugCategory")
+            existing = set(
+                DrugCategory.objects.filter(is_active=True, code__in=categories)
+                .values_list("code", flat=True)
+            )
+            missing = [c for c in categories if c not in existing]
+            if missing:
+                raise serializers.ValidationError(
+                    {"categories": f"Unknown categories: {', '.join(missing)}"}
+                )
+
+        return attrs
+
+    def create(self, validated_data):
+        """Handle both 'category' (single) and 'categories' (list) on create."""
+        return super().create(validated_data)
+
+    def update(self, instance, validated_data):
+        """Handle both 'category' (single) and 'categories' (list) on update."""
+        return super().update(instance, validated_data)
 
 
 class StockBatchSerializer(serializers.ModelSerializer):
@@ -94,6 +176,7 @@ class StockBatchSerializer(serializers.ModelSerializer):
         ]
         read_only_fields = [
             "id",
+            "quantity_available",  # Auto-set from quantity_received on create
             "quantity_dispensed",
             "quantity_damaged",
             "quantity_expired",
@@ -104,6 +187,11 @@ class StockBatchSerializer(serializers.ModelSerializer):
             "is_expired_status",
             "is_low_stock_status",
         ]
+
+    def create(self, validated_data):
+        """Auto-set quantity_available to quantity_received on create."""
+        validated_data["quantity_available"] = validated_data["quantity_received"]
+        return super().create(validated_data)
 
 
 class StockAlertSerializer(serializers.ModelSerializer):
@@ -234,6 +322,8 @@ class PrescriptionSerializer(serializers.ModelSerializer):
     is_fully_dispensed = serializers.BooleanField(
         source="is_fully_dispensed_status", read_only=True
     )
+    # QR verification URL
+    verification_url = serializers.SerializerMethodField()
 
     class Meta:
         model = Prescription
@@ -256,6 +346,7 @@ class PrescriptionSerializer(serializers.ModelSerializer):
             "is_fully_dispensed",
             "is_fully_dispensed_status",
             "items",
+            "verification_url",
             "created_at",
             "updated_at",
         ]
@@ -297,6 +388,27 @@ class PrescriptionSerializer(serializers.ModelSerializer):
     def get_is_valid(self, obj):
         """Alias for is_valid_prescription."""
         return obj.is_valid()
+
+    def get_verification_url(self, obj):
+        """Generate verification URL for QR code."""
+        if not obj.prescription_number or not obj.prescribed_at:
+            return None
+
+        date_str = obj.prescribed_at.strftime("%Y-%m-%d")
+        sig = generate_document_signature(
+            document_type="PRESCRIPTION",
+            document_number=obj.prescription_number,
+            amount="0",  # Prescriptions don't have amounts
+            date=date_str,
+        )
+
+        base_url = get_verification_base_url()
+        return (
+            f"{base_url}?type=PRESCRIPTION"
+            f"&number={obj.prescription_number}"
+            f"&date={date_str}"
+            f"&signature={sig}"
+        )
 
 
 class PrescriptionCreateSerializer(serializers.ModelSerializer):

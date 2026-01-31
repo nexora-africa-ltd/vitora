@@ -21,7 +21,7 @@ import {
 import { Printer, Download } from 'lucide-react';
 import type { Receipt, ReceiptLineItem } from '@/lib/types/billing';
 import { formatDateTime } from '@/lib/utils/format';
-import { printReceipt } from '@/lib/utils/print-receipt';
+import { printReceipt } from '@/lib/documents';
 
 // ============================================================================
 // Types
@@ -111,12 +111,14 @@ export function ReceiptView({
 
   const handlePrint = () => {
     if (receipt) {
-      // Use the dedicated print template
+      // Use the centralized document print system
       printReceipt({
         receipt,
-        facilityName,
-        facilityAddress,
-        facilityPhone,
+        facility: {
+          name: facilityName,
+          address: facilityAddress,
+          phone: facilityPhone,
+        },
       });
     }
   };

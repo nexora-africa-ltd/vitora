@@ -67,7 +67,7 @@ class TestDispensingModel:
             generic_name="Test Drug",
             strength="100mg",
             form="TABLET",
-            category="OTHER",
+            categories=["OTHER"],
             unit="tablet",
         )
 
@@ -138,7 +138,7 @@ class TestDispensingModel:
             generic_name="OTC Drug",
             strength="100mg",
             form="TABLET",
-            category="OTHER",
+            categories=["OTHER"],
             unit="tablet",
             schedule="OTC",
             requires_prescription=False,
@@ -199,7 +199,7 @@ class TestDispensingModel:
             generic_name="Test Drug 3",
             strength="100mg",
             form="TABLET",
-            category="OTHER",
+            categories=["OTHER"],
             unit="tablet",
         )
 
@@ -256,7 +256,7 @@ class TestDispensingModel:
             generic_name="Test Drug 4",
             strength="100mg",
             form="TABLET",
-            category="OTHER",
+            categories=["OTHER"],
             unit="tablet",
         )
 
@@ -315,7 +315,7 @@ class TestDispensingModel:
             generic_name="Test Drug 5",
             strength="100mg",
             form="TABLET",
-            category="OTHER",
+            categories=["OTHER"],
             unit="tablet",
         )
 
@@ -374,7 +374,7 @@ class TestDispensingModel:
             generic_name="Test Drug 6",
             strength="100mg",
             form="TABLET",
-            category="OTHER",
+            categories=["OTHER"],
             unit="tablet",
         )
 
@@ -431,7 +431,7 @@ class TestDispensingModel:
             generic_name="Test Drug 7",
             strength="100mg",
             form="TABLET",
-            category="OTHER",
+            categories=["OTHER"],
             unit="tablet",
         )
 
@@ -489,7 +489,7 @@ class TestDispensingModel:
             generic_name="Test Drug 8",
             strength="100mg",
             form="TABLET",
-            category="OTHER",
+            categories=["OTHER"],
             unit="tablet",
         )
 
@@ -550,7 +550,7 @@ class TestDispensingModel:
             generic_name="Test Drug 9",
             strength="100mg",
             form="TABLET",
-            category="OTHER",
+            categories=["OTHER"],
             unit="tablet",
         )
 
@@ -613,7 +613,7 @@ class TestDispensingModel:
             generic_name="Controlled Drug",
             strength="10mg",
             form="INJECTION",
-            category="CONTROLLED",
+            categories=["CONTROLLED"],
             unit="vial",
             schedule="CD",
             is_controlled=True,
@@ -672,7 +672,7 @@ class TestDispensingModel:
             generic_name="Controlled Drug 2",
             strength="10mg",
             form="INJECTION",
-            category="CONTROLLED",
+            categories=["CONTROLLED"],
             unit="vial",
             schedule="CD",
             is_controlled=True,
@@ -734,7 +734,7 @@ class TestDispensingModel:
             generic_name="Test Drug 12",
             strength="100mg",
             form="TABLET",
-            category="OTHER",
+            categories=["OTHER"],
             unit="tablet",
         )
 
@@ -794,7 +794,7 @@ class TestDispensingModel:
             generic_name="Test Drug 13",
             strength="100mg",
             form="TABLET",
-            category="OTHER",
+            categories=["OTHER"],
             unit="tablet",
         )
 
@@ -851,7 +851,7 @@ class TestDispensingModel:
             generic_name="Test Drug 14",
             strength="100mg",
             form="TABLET",
-            category="OTHER",
+            categories=["OTHER"],
             unit="tablet",
         )
 
@@ -917,7 +917,7 @@ class TestDispensingModel:
             generic_name="Test Drug 15",
             strength="100mg",
             form="TABLET",
-            category="OTHER",
+            categories=["OTHER"],
             unit="tablet",
         )
 
@@ -976,7 +976,7 @@ class TestDispensingModel:
             generic_name="Test Drug 16",
             strength="100mg",
             form="TABLET",
-            category="OTHER",
+            categories=["OTHER"],
             unit="tablet",
         )
 

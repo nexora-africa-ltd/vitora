@@ -84,6 +84,7 @@ import {
   useRemoveStaff,
 } from '@/lib/hooks/use-clinics';
 import { ClinicNavigation } from '@/components/clinics/clinic-navigation';
+import { StaffSearchCombobox } from '@/components/clinics/staff-search-combobox';
 import { toast } from '@/lib/hooks/use-toast';
 import type { ClinicStaff, ClinicStaffRole, ClinicStaffCreateData } from '@/lib/types/clinic';
 import { cn } from '@/lib/utils/cn';
@@ -301,18 +302,17 @@ export default function ClinicStaffPage() {
               </DialogHeader>
               <div className="space-y-4 py-4">
                 <div className="space-y-2">
-                  <Label htmlFor="user_id">Staff Member</Label>
-                  <Input
-                    id="user_id"
-                    type="number"
-                    placeholder="Enter user ID"
-                    value={newStaffData.user_id || ''}
-                    onChange={(e) =>
-                      setNewStaffData((prev) => ({ ...prev, user_id: Number(e.target.value) }))
+                  <Label>Staff Member</Label>
+                  <StaffSearchCombobox
+                    value={newStaffData.user_id}
+                    onSelect={(userId) =>
+                      setNewStaffData((prev) => ({ ...prev, user_id: userId }))
                     }
+                    placeholder="Search and select a staff member..."
+                    excludeUserIds={(staff ?? []).map((s) => s.user)}
                   />
                   <p className="text-xs text-muted-foreground">
-                    Enter the user ID of the staff member to assign
+                    Search by name, email, or employee ID
                   </p>
                 </div>
 

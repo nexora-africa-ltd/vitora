@@ -184,3 +184,16 @@ export {
   useOverdueEnrollments,
   useDefaulters,
 } from './use-clinics';
+
+// WebSocket hooks for real-time updates
+export {
+  useWebSocket,
+  useClinicQueueSocket,
+  getConnectionStatusText,
+  getConnectionStatusColor,
+  type WebSocketConnectionState,
+  type ClinicQueueEventType,
+  type WebSocketMessage,
+  type UseWebSocketOptions,
+  type UseWebSocketReturn,
+} from './use-websocket';
