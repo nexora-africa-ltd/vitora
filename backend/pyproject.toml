@@ -96,10 +96,12 @@ addopts = [
     "--cov-report=html",
     "--cov-report=xml",
     "--cov-fail-under=80",
+    "--ignore=tests/integration",
 ]
 markers = [
     "unit: Unit tests",
     "integration: Integration tests",
+    "fhir_integration: Tests requiring HAPI FHIR server",
     "e2e: End-to-end tests",
     "slow: Slow running tests",
 ]
