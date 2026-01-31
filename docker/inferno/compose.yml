@@ -89,29 +89,13 @@ services:
     networks:
       - inferno-network
 
-  # ONC Inferno Program (includes SMART App Launch tests)
-  # This is the official ONC testing tool with multiple test suites
-  onc-program:
-    image: onchealthit/inferno-program:latest
-    container_name: vitora-onc-program
-    ports:
-      - "4568:4567"  # ONC Program tests (internal port is 4567)
-    environment:
-      - POSTGRES_HOST=postgres
-      - POSTGRES_USER=postgres
-      - POSTGRES_PASSWORD=postgres
-      - POSTGRES_DB=onc_program
-      - REDIS_URL=redis://redis:6379
-    depends_on:
-      postgres:
-        condition: service_healthy
-      redis:
-        condition: service_healthy
-    profiles:
-      - onc  # Only starts with: docker compose --profile onc up
-    restart: unless-stopped
-    networks:
-      - inferno-network
+  # NOTE: ONC Inferno Program v1.9 is DEPRECATED (retired June 2022)
+  # For SMART App Launch and US Core testing, use:
+  #   1. Inferno Core (http://localhost:4567) - Modern framework
+  #   2. IPS Test Kit (run from source) - ./run-tests.sh --ips
+  #
+  # The deprecated ONC Program has been removed from this compose file.
+  # For reference: https://inferno.healthit.gov/
 
 volumes:
   inferno-data:
