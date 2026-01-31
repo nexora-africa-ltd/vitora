@@ -14,6 +14,8 @@ help:
 	@echo "  test-fast     - Run tests without coverage"
 	@echo "  test-unit     - Run unit tests only"
 	@echo "  test-integration - Run integration tests only"
+	@echo "  test-fhir     - Run FHIR validation tests"
+	@echo "  test-shr      - Run SHA SHR compliance tests"
 	@echo ""
 	@echo "Code Quality:"
 	@echo "  lint          - Run all linters (ruff, black check, isort check)"
@@ -68,6 +70,12 @@ test-unit:
 
 test-integration:
 	poetry run pytest -m integration
+
+test-fhir:
+	poetry run pytest tests/core/test_fhir_validator.py tests/billing/test_shr_compliance/ -v --cov=hmis.apps.core.services.fhir_validator --cov-report=term-missing
+
+test-shr:
+	poetry run pytest tests/billing/test_shr_compliance/ -v
 
 test-watch:
 	poetry run pytest-watch

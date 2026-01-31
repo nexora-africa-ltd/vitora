@@ -1087,6 +1087,38 @@ Support for key FHIR resources:
 - Encounter: Clinical visit mapping
 - Observation: Vitals and lab results
 - MedicationRequest: Prescriptions
+- MedicationDispense: Pharmacy dispensing
+- Claim: SHA insurance claims
+- Bundle: IPS and claim bundles
+
+#### FHIR Validation Service
+Vitora includes a built-in FHIR R4 validator using the `fhir.resources` library:
+
+```python
+from hmis.apps.core.services.fhir_validator import FHIRValidator
+
+validator = FHIRValidator()
+
+# Validate a Patient resource
+result = validator.validate_patient(patient_dict)
+if result.is_valid:
+    print("Patient resource is valid")
+else:
+    for error in result.errors:
+        print(f"Error: {error.field} - {error.message}")
+
+# Validate a Bundle (claims, IPS)
+result = validator.validate_bundle(bundle_dict)
+```
+
+Run FHIR validation tests:
+```bash
+cd backend
+make test-fhir  # Runs 190 FHIR/SHR compliance tests
+make test-shr   # Runs SHA SHR compliance tests only
+```
+
+See [docs/fhir-validation-plan.md](docs/fhir-validation-plan.md) for the complete FHIR validation roadmap.
 
 ---
 

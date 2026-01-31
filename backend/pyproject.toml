@@ -40,6 +40,7 @@ daphne = "^4.2.1"
 pytest-asyncio = "^0.23"
 cloc = "^0.2.5"
 pycloc = "^0.0.1a0"
+fhir-resources = "^8.1.0"
 
 [tool.poetry.group.dev.dependencies]
 # Testing
