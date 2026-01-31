@@ -1,8 +1,9 @@
 # FHIR/HL7/SMART on FHIR Validation Plan
 
-> **Document Version**: 1.0  
+> **Document Version**: 1.1  
 > **Created**: January 31, 2026  
-> **Status**: Phase 1 In Progress  
+> **Last Updated**: January 31, 2026  
+> **Status**: Phase 1-2 Complete, Phase 3 In Progress  
 > **Owner**: Engineering Team
 
 ---
@@ -29,7 +30,7 @@ This document outlines the validation strategy for Vitora HMIS's FHIR R4, HL7, a
 
 ## 3. Validation Phases
 
-### Phase 1: Automated FHIR R4 Schema Validation ✅ CURRENT
+### Phase 1: Automated FHIR R4 Schema Validation ✅ COMPLETE
 
 **Objective**: Add programmatic FHIR R4 resource validation using the official `fhir.resources` library.
 
@@ -59,7 +60,7 @@ This document outlines the validation strategy for Vitora HMIS's FHIR R4, HL7, a
 
 ---
 
-### Phase 2: Kenya SHA Profile Conformance
+### Phase 2: Kenya SHA Profile Conformance ✅ COMPLETE
 
 **Objective**: Validate FHIR resources against Kenya SHA-specific profiles and extensions.
 
@@ -88,31 +89,40 @@ This document outlines the validation strategy for Vitora HMIS's FHIR R4, HL7, a
 
 ---
 
-### Phase 3: HAPI FHIR Server Integration Testing
+### Phase 3: HAPI FHIR Server Integration Testing 🚧 IN PROGRESS
 
 **Objective**: Validate resources against a real FHIR R4 server for end-to-end compliance.
 
 #### Deliverables
 
-| Deliverable | Description | File |
-|-------------|-------------|------|
-| HAPI FHIR Docker setup | Test FHIR server for CI/CD | `emr-validation/compose.yml` |
-| Integration test suite | Tests against live FHIR server | `tests/integration/test_fhir_server.py` |
-| Resource CRUD tests | Create/Read/Update/Delete all resources | Integrated |
-| Bundle transaction tests | Transaction and message bundle tests | Integrated |
-| CI integration | GitHub Actions workflow | `.github/workflows/fhir-integration.yml` |
+| Deliverable | Description | File | Status |
+|-------------|-------------|------|--------|
+| HAPI FHIR Docker setup | Test FHIR server for CI/CD | `docker/hapi-fhir/compose.yml` | ✅ Created |
+| FHIR Client service | Consolidated client with retry/auth | `hmis/apps/core/services/fhir_client.py` | ✅ Implemented |
+| Integration test suite | Tests against live FHIR server | `tests/integration/test_fhir_server.py` | ✅ Written (55 tests) |
+| Test fixtures (conftest) | Shared fixtures for FHIR tests | `tests/integration/conftest.py` | ✅ Created |
+| CI integration | GitHub Actions workflow | `.github/workflows/fhir-integration.yml` | 📋 Pending |
 
 #### Exit Criteria
 
-- [ ] HAPI FHIR server runs in Docker with health check
-- [ ] All FHIR resources can be:
+- [x] HAPI FHIR Docker compose file created with health check
+- [x] FHIRClient service consolidated with:
+  - [x] Retry logic with exponential backoff
+  - [x] Proper exception hierarchy (FHIRClientError, FHIRConnectionError, FHIRNotFoundError)
+  - [x] Context manager support
+  - [x] wait_for_server() method
+- [x] Integration test suite written (55 tests covering CRUD, search, bundles, versioning)
+- [ ] All FHIR resources verified against live server:
   - [ ] Created (POST) successfully
   - [ ] Retrieved (GET) with correct data
   - [ ] Updated (PUT/PATCH) correctly
   - [ ] Searched with standard parameters
-- [ ] Bundle transactions complete atomically
-- [ ] Integration tests run in CI (can be optional/manual trigger)
+- [ ] Bundle transactions verified atomically
+- [ ] Integration tests run in CI (optional/manual trigger)
 - [ ] Response times documented (<500ms for single resource operations)
+
+> **Note**: Integration tests are excluded from `make test` as they require HAPI FHIR server.
+> Run manually with: `poetry run pytest tests/integration/ -v`
 
 ---
 

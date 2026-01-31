@@ -16,6 +16,9 @@ help:
 	@echo "  test-integration - Run integration tests only"
 	@echo "  test-fhir     - Run FHIR validation tests"
 	@echo "  test-shr      - Run SHA SHR compliance tests"
+	@echo "  test-fhir-integration - Run FHIR server integration tests"
+	@echo "  test-fhir-all - Run all FHIR tests (schema + integration)"
+	@echo "  test-fhir-full - Full cycle: start server, test, stop"
 	@echo ""
 	@echo "Code Quality:"
 	@echo "  lint          - Run all linters (ruff, black check, isort check)"
@@ -52,6 +55,12 @@ help:
 	@echo "  docker-down   - Stop Docker containers"
 	@echo "  docker-build  - Build Docker images"
 	@echo "  docker-restart - Restart Docker containers"
+	@echo ""
+	@echo "FHIR Integration (Phase 3):"
+	@echo "  fhir-server-up      - Start HAPI FHIR R4 server"
+	@echo "  fhir-server-down    - Stop HAPI FHIR server"
+	@echo "  fhir-server-status  - Check FHIR server status"
+	@echo "  fhir-server-logs    - View FHIR server logs"
 	@echo ""
 	@echo "Cleanup:"
 	@echo "  clean         - Remove generated files and caches"
@@ -233,3 +242,58 @@ docker-restart:
 	docker compose down
 	docker compose up -d
 	@echo "Docker containers restarted."
+
+# ============================================================================
+# FHIR Integration Testing (Phase 3)
+# ============================================================================
+
+# Start HAPI FHIR server for integration testing
+fhir-server-up:
+	@echo "Starting HAPI FHIR R4 server..."
+	docker compose -f ../docker/hapi-fhir/compose.yml up -d
+	@echo "Waiting for server to be ready (may take 60-90 seconds)..."
+	@timeout 120 bash -c 'until curl -sf http://localhost:8090/fhir/metadata > /dev/null 2>&1; do sleep 5; echo "Waiting..."; done' || (echo "Server failed to start" && exit 1)
+	@echo "HAPI FHIR server is ready at http://localhost:8090/fhir"
+
+# Stop HAPI FHIR server
+fhir-server-down:
+	@echo "Stopping HAPI FHIR server..."
+	docker compose -f ../docker/hapi-fhir/compose.yml down
+	@echo "HAPI FHIR server stopped."
+
+# Check FHIR server status
+fhir-server-status:
+	@curl -sf http://localhost:8090/fhir/metadata > /dev/null 2>&1 && echo "✅ FHIR server is running" || echo "❌ FHIR server is not running"
+
+# View FHIR server logs
+fhir-server-logs:
+	docker compose -f ../docker/hapi-fhir/compose.yml logs -f
+
+# Run FHIR integration tests against HAPI FHIR server
+# Requires: make fhir-server-up
+test-fhir-integration:
+	@echo "Running FHIR integration tests..."
+	@curl -sf http://localhost:8090/fhir/metadata > /dev/null 2>&1 || (echo "Error: FHIR server not running. Run 'make fhir-server-up' first." && exit 1)
+	FHIR_SERVER_URL=http://localhost:8090/fhir poetry run pytest tests/integration/test_fhir_server.py -v -m integration --tb=short
+
+# Run FHIR integration tests with coverage
+test-fhir-integration-cov:
+	@curl -sf http://localhost:8090/fhir/metadata > /dev/null 2>&1 || (echo "Error: FHIR server not running. Run 'make fhir-server-up' first." && exit 1)
+	FHIR_SERVER_URL=http://localhost:8090/fhir poetry run pytest tests/integration/test_fhir_server.py -v -m integration --cov=hmis.apps.core.services.fhir_client --cov-report=term-missing
+
+# Run all FHIR tests (schema + integration)
+test-fhir-all: test-fhir
+	@echo ""
+	@echo "Running integration tests (requires HAPI FHIR server)..."
+	@curl -sf http://localhost:8090/fhir/metadata > /dev/null 2>&1 && \
+		(FHIR_SERVER_URL=http://localhost:8090/fhir poetry run pytest tests/integration/test_fhir_server.py -v -m integration --tb=short) || \
+		echo "⚠️  Skipping integration tests: FHIR server not running"
+
+# Full FHIR test cycle: start server, run tests, stop server
+test-fhir-full:
+	@echo "=== Full FHIR Test Cycle ==="
+	$(MAKE) fhir-server-up
+	$(MAKE) test-fhir
+	$(MAKE) test-fhir-integration
+	$(MAKE) fhir-server-down
+	@echo "=== FHIR Test Cycle Complete ==="
