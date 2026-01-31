@@ -42,6 +42,7 @@ cloc = "^0.2.5"
 pycloc = "^0.0.1a0"
 fhir-resources = "^8.1.0"
 hl7apy = "^1.3.4"
+django-oauth-toolkit = "^3.2.0"
 
 [tool.poetry.group.dev.dependencies]
 # Testing
