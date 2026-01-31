@@ -70,25 +70,23 @@ Usage: ./docker/inferno/run-tests.sh [options]
 
 Options:
   --setup         Start Inferno Core infrastructure (PostgreSQL, Redis, Inferno)
-  --onc           Start ONC Inferno Program (includes SMART App Launch & US Core)
   --ips           Setup and start IPS test kit (clones from GitHub)
   --teardown      Stop and remove all Inferno containers
   --status        Check status of Inferno services  
   --help          Show this help message
 
 Test Suite URLs:
-  - Inferno Core:    http://localhost:4567
-  - ONC Program:     http://localhost:4568 (SMART + US Core)
+  - Inferno Core:    http://localhost:4567 (FHIR validation & testing)
   - IPS Test Kit:    http://localhost:80 (when running from source)
+
+NOTE: The ONC Inferno Program v1.9 has been deprecated (retired June 2022).
+      Use Inferno Core or IPS Test Kit for compliance testing.
 
 Example:
   # Start Inferno Core
   ./docker/inferno/run-tests.sh --setup
   
-  # Start ONC Program for SMART tests
-  ./docker/inferno/run-tests.sh --onc
-  
-  # Setup IPS test kit
+  # Setup IPS test kit (for International Patient Summary)
   ./docker/inferno/run-tests.sh --ips
 EOF
     exit 0
@@ -229,7 +227,7 @@ setup_ips_test_kit() {
 
 teardown() {
     log_info "Stopping and removing all Inferno containers..."
-    docker compose -f "$COMPOSE_FILE" --profile onc down -v
+    docker compose -f "$COMPOSE_FILE" down -v
     
     # Also stop IPS if running
     if [ -d "$IPS_DIR" ] && [ -f "$IPS_DIR/docker-compose.yml" ]; then
@@ -244,12 +242,11 @@ teardown() {
 show_status() {
     log_info "Inferno Service Status:"
     echo ""
-    docker compose -f "$COMPOSE_FILE" --profile onc ps
+    docker compose -f "$COMPOSE_FILE" ps
     echo ""
     
     log_info "Service URLs:"
     echo "  - Inferno Core:     http://localhost:4567"
-    echo "  - ONC Program:      http://localhost:4568 (if started with --onc)"
     echo "  - IPS Test Kit:     http://localhost:80 (if started separately)"
     echo ""
     
@@ -342,15 +339,15 @@ main() {
         --status)
             show_status
             ;;
-        --onc|--smart|--us-core)
-            check_prerequisites
-            setup_env_file
-            start_inferno_core
-            start_onc_program
-            ;;
         --ips)
             check_prerequisites
             setup_ips_test_kit
+            ;;
+        --onc|--smart|--us-core)
+            log_warning "ONC Inferno Program v1.9 has been DEPRECATED (retired June 2022)"
+            log_info "Use Inferno Core (http://localhost:4567) instead"
+            log_info "Or run IPS Test Kit with: ./run-tests.sh --ips"
+            exit 1
             ;;
         *)
             log_info "Vitora HMIS - Inferno FHIR Compliance Testing"
