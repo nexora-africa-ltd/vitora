@@ -4,24 +4,31 @@ This directory contains the Inferno testing suite configuration for validating V
 
 ## Overview
 
-[Inferno](https://inferno-framework.github.io/) is the official HL7 testing framework for FHIR implementations.
+[Inferno](https://inferno-framework.github.io/) is the official HL7 testing framework for FHIR implementations. It validates conformance to:
 
-**Available Test Suites:**
+- **FHIR R4** - Core resource profiles
+- **SMART App Launch v2.0.0** - OAuth2 authorization for FHIR apps
 - **International Patient Summary (IPS)** - Critical for Kenya SHA integration
-- **SMART Health Cards** - Vaccination & testing credentials
 
-## Current Implementation Status
+## Architecture
 
-| Component | Status | Notes |
-|-----------|--------|-------|
-| SMART Configuration | ✅ Implemented | `/.well-known/smart-configuration` |
-| CapabilityStatement | ✅ Implemented | `/fhir/metadata` |
-| OAuth2 Endpoints | ✅ Implemented | `/oauth/authorize/`, `/oauth/token/` |
-| FHIR Resource Endpoints | 🔴 **NOT IMPLEMENTED** | `/fhir/Patient`, `/fhir/Observation`, etc. |
-| IPS Bundle Generation | 🔴 **NOT IMPLEMENTED** | `/fhir/Patient/$summary` |
+Vitora implements FHIR R4 resource endpoints **natively** in Django:
 
-> **⚠️ IMPORTANT**: Inferno IPS tests require FHIR resource endpoints that are not yet implemented in Vitora.
-> See [FHIR Compliance Report](../../docs/fhir-compliance-report.md) for implementation plan.
+\`\`\`
+┌─────────────────┐          ┌─────────────────┐
+│   Inferno       │   HTTP   │  Vitora HMIS    │
+│   Test Suite    │◄────────►│  Django Backend │
+│  (localhost:4567)│          │ (localhost:9088) │
+└─────────────────┘          └─────────────────┘
+                                     │
+                                     ▼
+                             ┌─────────────────┐
+                             │  SQLite/Postgres │
+                             │   Patient Data   │
+                             └─────────────────┘
+\`\`\`
+
+No external FHIR server is required - Vitora handles all FHIR operations directly.
 
 ## Quick Start
 
@@ -29,60 +36,93 @@ This directory contains the Inferno testing suite configuration for validating V
 
 - Docker and Docker Compose installed
 - Vitora backend running on port 9088
-- **FHIR resource endpoints implemented** (see status above)
 - Test data seeded in the database
 
-### 2. Start Inferno
+### 2. Seed Test Data
 
-```bash
-# Start Inferno Core
+\`\`\`bash
+cd backend
+poetry shell
+python manage.py seed_fhir_test_data
+\`\`\`
+
+### 3. Start Vitora Backend
+
+\`\`\`bash
+cd backend
+python manage.py runserver 0.0.0.0:9088
+\`\`\`
+
+### 4. Start Inferno
+
+\`\`\`bash
+# Start Inferno Core (IPS testing)
 ./docker/inferno/run-tests.sh --setup
 
-# Check status
-./docker/inferno/run-tests.sh --status
+# Or for ONC Program (SMART + US Core tests)
+./docker/inferno/run-tests.sh --onc
+\`\`\`
 
-# Teardown
-./docker/inferno/run-tests.sh --teardown
-```
+### 5. Access Test UIs
 
-### 3. Access Test UI
+| Test Kit | URL | How to Start |
+|----------|-----|--------------|
+| Inferno Core | http://localhost:4567 | \`--setup\` (default) |
+| ONC Program | http://localhost:4568 | \`--onc\` |
 
-| Test Kit | URL | Status |
-|----------|-----|--------|
-| Inferno Core | http://localhost:4567 | ✅ Available |
-
-**Available Test Suites:**
-- International Patient Summary (IPS)
-- SMART Health Cards: Vaccination & Testing
-
-### 4. Configure Tests
+### 6. Configure Tests
 
 When prompted in the Inferno UI, use these Vitora endpoints:
 
-| Setting | Value | Status |
-|---------|-------|--------|
-| FHIR Server URL | `http://host.docker.internal:9088/fhir` | 🔴 Endpoints needed |
-| SMART Config | `http://host.docker.internal:9088/.well-known/smart-configuration` | ✅ Working |
-| CapabilityStatement | `http://host.docker.internal:9088/fhir/metadata` | ✅ Working |
+| Setting | Value |
+|---------|-------|
+| FHIR Server URL | \`http://host.docker.internal:9088/fhir\` |
+| SMART Config | \`http://host.docker.internal:9088/.well-known/smart-configuration\` |
+| Authorization | \`http://host.docker.internal:9088/oauth/authorize/\` |
+| Token | \`http://host.docker.internal:9088/oauth/token/\` |
 
-> **Note**: Use `host.docker.internal` when Inferno (in Docker) needs to reach Vitora (on host).
+> **Note**: Use \`host.docker.internal\` when Inferno (in Docker) needs to reach Vitora (on host).
 
-### 5. Required FHIR Endpoints for IPS Testing
+### 7. Create Test OAuth2 Client (for SMART tests)
 
-The IPS test suite requires these FHIR resource endpoints:
+\`\`\`bash
+cd backend
+poetry run python manage.py shell
+\`\`\`
 
-| Endpoint | Resource | Priority | Status |
-|----------|----------|----------|--------|
-| `/fhir/Patient/{id}` | Patient | Critical | 🔴 Not implemented |
-| `/fhir/Patient/{id}/$summary` | IPS Bundle | Critical | 🔴 Not implemented |
-| `/fhir/Composition/{id}` | Composition | Critical | 🔴 Not implemented |
-| `/fhir/Practitioner/{id}` | Practitioner | High | 🔴 Not implemented |
-| `/fhir/Organization/{id}` | Organization | High | 🔴 Not implemented |
-| `/fhir/Observation/{id}` | Observation | High | 🔴 Not implemented |
-| `/fhir/Condition/{id}` | Condition | High | 🔴 Not implemented |
-| `/fhir/MedicationStatement/{id}` | MedicationStatement | High | 🔴 Not implemented |
-| `/fhir/AllergyIntolerance/{id}` | AllergyIntolerance | Medium | 🔴 Not implemented |
-| `/fhir/Device/{id}` | Device | Low | 🔴 Not implemented |
+\`\`\`python
+from oauth2_provider.models import Application
+from django.contrib.auth import get_user_model
+
+User = get_user_model()
+admin = User.objects.filter(is_superuser=True).first()
+
+Application.objects.create(
+    name='Inferno Test Client',
+    user=admin,
+    client_id='inferno-test-client',
+    client_secret='inferno-test-secret',
+    client_type='confidential',
+    authorization_grant_type='authorization-code',
+    redirect_uris='http://localhost:4567/custom/smart/redirect http://localhost:4568/custom/smart/redirect'
+)
+\`\`\`
+
+## Implemented FHIR Endpoints
+
+All endpoints require JWT authentication via Bearer token.
+
+| Endpoint | Description | Status |
+|----------|-------------|--------|
+| \`/fhir/metadata\` | CapabilityStatement | ✅ Working |
+| \`/fhir/Patient/{id}\` | Patient resource | ✅ Working |
+| \`/fhir/Patient/{id}/$summary\` | IPS Bundle | ✅ Working |
+| \`/fhir/Practitioner/{id}\` | Practitioner resource | ✅ Working |
+| \`/fhir/Organization/{id}\` | Organization resource | ✅ Working |
+| \`/fhir/Condition/{id}\` | Condition (from Diagnosis) | ✅ Working |
+| \`/fhir/Observation/{id}\` | Lab results & vitals | ✅ Working |
+| \`/fhir/Encounter/{id}\` | Encounter resource | ✅ Working |
+| \`/fhir/Composition/{id}\` | IPS Composition | ✅ Working |
 
 ## Test Suites
 
@@ -92,62 +132,81 @@ Tests IPS document generation (critical for Kenya SHA):
 
 1. **Bundle Structure**: Document bundle with Composition
 2. **Required Sections**: Allergies, Medications, Problems
-3. **Coding Systems**: ICD-11, LOINC, SNOMED CT validation
+3. **Coding Systems**: ICD-10, LOINC, SNOMED CT validation
 
 **Target**: ≥90% pass rate
 
-**Required Test Inputs:**
-- `url` - FHIR server base URL
-- `patient_id` - Patient resource ID
-- `composition_id` - IPS Composition ID
-- `practitioner_id` - Practitioner resource ID (optional)
-- `observation_*_id` - Various observation IDs (optional)
-- `device_id` - Device resource ID (optional)
+### SMART App Launch Tests
+
+Tests OAuth2 authorization flows for FHIR applications:
+
+1. **Discovery Tests**: Validates \`/.well-known/smart-configuration\` and \`CapabilityStatement\`
+2. **Standalone Launch**: Tests authorization code flow with PKCE
+3. **EHR Launch**: Tests context-aware launch from EHR
+4. **Scopes**: Validates SMART v2 scope handling
+5. **Token Operations**: Tests token exchange, refresh, and introspection
+
+**Target**: ≥90% pass rate
 
 ## Files
 
 | File | Description |
 |------|-------------|
-| `compose.yml` | Docker Compose configuration for Inferno services |
-| `.env.example` | Environment configuration template |
-| `run-tests.sh` | Test runner script with helpful options |
+| \`compose.yml\` | Docker Compose configuration for Inferno services |
+| \`.env.example\` | Environment configuration template |
+| \`run-tests.sh\` | Test runner script with helpful options |
 
 ## Troubleshooting
 
 ### Inferno Won't Start
 
-```bash
+\`\`\`bash
 # Check container logs
 docker compose -f docker/inferno/compose.yml logs -f
 
 # Restart services
 docker compose -f docker/inferno/compose.yml down -v
 docker compose -f docker/inferno/compose.yml up -d
-```
+\`\`\`
 
 ### Can't Reach Vitora from Inferno
 
 Ensure Vitora is bound to all interfaces:
 
-```bash
+\`\`\`bash
 cd backend
-poetry run python manage.py runserver 0.0.0.0:9088
-```
+python manage.py runserver 0.0.0.0:9088
+\`\`\`
 
-### IPS Tests Can't Find Resources
+### SMART Tests Fail on Authorization
 
-The FHIR resource endpoints (Patient, Observation, etc.) are **not yet implemented** in Vitora. See the implementation plan in [FHIR Compliance Report](../../docs/fhir-compliance-report.md).
+1. Verify OAuth2 client exists with correct redirect URIs
+2. Check SMART configuration endpoint returns valid JSON
+3. Ensure user is logged in to Vitora before authorizing
 
-## Next Steps
+### 401 Unauthorized on FHIR Endpoints
 
-1. **Implement FHIR resource endpoints** in Vitora
-2. **Seed test data** - Create test patient, observations, etc.
-3. **Run IPS tests** - Use Inferno Core at http://localhost:4567
-4. **Document results** - Update compliance report
+FHIR endpoints require JWT authentication:
+
+\`\`\`bash
+# Get token
+TOKEN=\$(curl -s -X POST http://localhost:9088/api/token/ \\
+  -H "Content-Type: application/json" \\
+  -d '{"username":"admin","password":"admin123"}' | jq -r '.access')
+
+# Use token
+curl -H "Authorization: Bearer \$TOKEN" http://localhost:9088/fhir/Patient/1
+\`\`\`
+
+## Reporting
+
+After running tests, document results in:
+- [FHIR Compliance Report](../../docs/fhir-compliance-report.md)
 
 ## References
 
 - [Inferno Framework Documentation](https://inferno-framework.github.io/)
+- [US Core Implementation Guide](https://hl7.org/fhir/us/core/)
+- [SMART App Launch IG](https://hl7.org/fhir/smart-app-launch/)
 - [International Patient Summary](https://hl7.org/fhir/uv/ips/)
-- [FHIR Compliance Report](../../docs/fhir-compliance-report.md)
-- [FHIR Validation Plan](../../docs/fhir-validation-plan.md)
+- [Vitora FHIR Validation Plan](../../docs/fhir-validation-plan.md)
