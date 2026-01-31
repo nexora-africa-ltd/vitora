@@ -198,7 +198,7 @@ HAPI is the most widely-used open-source HL7 v2 library (Java) and provides robu
 | [hl7apy validation](https://hl7apy.readthedocs.io/) | Python | Programmatic validation in tests |
 | [Gazelle](https://gazelle.ihe.net/) | Web | IHE profile testing (EU/international) |
 
-# TODO: Evaluate Gazelle for future use.
+> TODO: Evaluate Gazelle for future use.
 
 **Adding Programmatic Validation** (future enhancement):
 ```python
