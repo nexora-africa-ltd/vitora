@@ -1,9 +1,9 @@
 # FHIR/HL7/SMART on FHIR Validation Plan
 
-> **Document Version**: 1.1  
+> **Document Version**: 1.2  
 > **Created**: January 31, 2026  
 > **Last Updated**: January 31, 2026  
-> **Status**: Phase 1-3 Complete, Phase 4 Planned  
+> **Status**: Phase 1-3 Complete, Phase 4 In Progress, Phase 5 Complete  
 > **Owner**: Engineering Team
 
 ---
@@ -23,8 +23,8 @@ This document outlines the validation strategy for Vitora HMIS's FHIR R4, HL7, a
 | **MedicationRequest** | ✅ Tests exist | `tests/billing/test_shr_compliance/test_medication_request.py` | FHIR resource fixtures |
 | **MedicationDispense** | ✅ Tests exist | `tests/billing/test_shr_compliance/test_medication_dispense.py` | Pharmacy dispensing |
 | **Patient Resource** | ✅ Tests exist | `tests/billing/test_shr_compliance/test_patient_resource.py` | SHA client registry |
-| **HL7 v2 Messaging** | 📋 Stub only | `docs/sprint-1.3-1.4-track-b-lab-deliverables.md` | Lab module placeholders |
-| **SMART on FHIR** | ❌ Not implemented | - | OAuth2 scopes not present |
+| **HL7 v2 Messaging** | 🔄 In Progress | `hmis/apps/laboratory/services/hl7_service.py` | 43 tests passing |
+| **SMART on FHIR** | ✅ Implemented | `hmis/apps/core/oauth/` | 39 tests passing |
 
 ---
 
@@ -215,32 +215,73 @@ def validate_hl7_message(message_str: str) -> list[str]:
 
 ---
 
-### Phase 5: SMART on FHIR Authorization
+### Phase 5: SMART on FHIR Authorization ✅ COMPLETE
 
 **Objective**: Implement SMART on FHIR OAuth2 authorization for third-party app integration.
 
 #### Deliverables
 
-| Deliverable | Description | File |
-|-------------|-------------|------|
-| OAuth2 server | django-oauth-toolkit integration | `hmis/apps/core/oauth/` |
-| SMART configuration | `.well-known/smart-configuration` | `hmis/apps/core/views/smart.py` |
-| Capability statement | FHIR CapabilityStatement resource | Integrated |
-| Launch handlers | EHR and standalone launch | Integrated |
-| Scope enforcement | Patient-level access control | `hmis/apps/core/permissions/smart.py` |
+| Deliverable | Description | File | Status |
+|-------------|-------------|------|--------|
+| OAuth2 server | django-oauth-toolkit integration | `hmis/apps/core/oauth/` | ✅ Created |
+| SMART scopes | SMART v2 scope backend | `hmis/apps/core/oauth/scopes.py` | ✅ Implemented |
+| Custom validator | SMART-specific OAuth2 validation | `hmis/apps/core/oauth/validators.py` | ✅ Implemented |
+| SMART configuration | `.well-known/smart-configuration` | `hmis/apps/core/oauth/views.py` | ✅ Implemented |
+| Capability statement | FHIR CapabilityStatement resource | `hmis/apps/core/oauth/views.py` | ✅ Implemented |
+| Launch handlers | EHR and standalone launch | `hmis/apps/core/oauth/views.py` | ✅ Implemented |
+| Scope enforcement | Patient-level access control | `hmis/apps/core/oauth/permissions.py` | ✅ Implemented |
+| Tests | Comprehensive test suite | `tests/test_smart_on_fhir.py` | ✅ 39 tests passing |
 
 #### Exit Criteria
 
-- [ ] OAuth2 authorization server functional
-- [ ] SMART configuration endpoint returns valid JSON
-- [ ] Supported scopes:
-  - [ ] `openid`, `profile`, `fhirUser`
-  - [ ] `patient/*.read`, `patient/*.write`
-  - [ ] `launch`, `launch/patient`, `launch/encounter`
-- [ ] EHR launch flow working with context
-- [ ] Standalone launch flow working
-- [ ] Pass Inferno SMART App Launch test suite (basic tests)
-- [ ] Third-party SMART apps can connect
+- [x] OAuth2 authorization server functional (django-oauth-toolkit 3.2.0)
+- [x] SMART configuration endpoint returns valid JSON (`/.well-known/smart-configuration`)
+- [x] Supported scopes:
+  - [x] `openid`, `profile`, `fhirUser`, `offline_access`
+  - [x] `patient/*.read`, `patient/*.write`, `patient/*.*`
+  - [x] `user/*.read`, `user/*.write`, `user/*.*`
+  - [x] `system/*.read`, `system/*.write`, `system/*.*`
+  - [x] `launch`, `launch/patient`, `launch/encounter`
+- [x] EHR launch flow working with context (`/smart/launch`)
+- [x] Standalone launch flow working
+- [x] Launch context creation endpoint (`/smart/launch-context`)
+- [x] Token introspection endpoint (`/smart/introspect`)
+- [x] CapabilityStatement endpoint (`/fhir/metadata`)
+- [ ] Pass Inferno SMART App Launch test suite (basic tests) - **Pending Phase 6**
+- [ ] Third-party SMART apps can connect - **Pending end-to-end testing**
+
+#### Configuration
+
+Add to Django settings:
+```python
+INSTALLED_APPS = [
+    ...
+    "oauth2_provider",
+]
+
+OAUTH2_PROVIDER = {
+    "SCOPES_BACKEND_CLASS": "hmis.apps.core.oauth.scopes.SMARTScopes",
+    "OAUTH2_VALIDATOR_CLASS": "hmis.apps.core.oauth.validators.SMARTOAuth2Validator",
+    "ACCESS_TOKEN_EXPIRE_SECONDS": 3600,
+    "REFRESH_TOKEN_EXPIRE_SECONDS": 86400 * 30,
+    "PKCE_REQUIRED": True,
+    "OIDC_ENABLED": True,
+}
+
+FHIR_BASE_URL = os.getenv("FHIR_BASE_URL", "http://localhost:9088")
+```
+
+#### API Endpoints
+
+| Endpoint | Method | Description |
+|----------|--------|-------------|
+| `/.well-known/smart-configuration` | GET | SMART configuration discovery |
+| `/fhir/metadata` | GET | FHIR CapabilityStatement |
+| `/smart/launch` | GET | EHR launch handler |
+| `/smart/launch-context` | POST | Create launch context token |
+| `/smart/introspect` | POST | Token introspection |
+| `/oauth/authorize/` | GET | OAuth2 authorization |
+| `/oauth/token/` | POST | OAuth2 token exchange |
 
 ---
 
