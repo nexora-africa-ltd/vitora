@@ -75,15 +75,15 @@ This document outlines the validation strategy for Vitora HMIS's FHIR R4, HL7, a
 
 #### Exit Criteria
 
-- [ ] SHA FHIR profiles documented (Patient, Claim, Coverage, Organization)
-- [ ] `SHAProfileValidator` class implemented
-- [ ] All SHA bundles validated against Kenya-specific constraints:
-  - [ ] Bundle.type = "message" for claims
-  - [ ] Patient has SHA CR identifier with system `urn:sha:client-registry`
-  - [ ] Diagnosis uses ICD-11 coding system
-  - [ ] Organization has MFL (Master Facility List) code
-  - [ ] Coverage includes SHA scheme extensions
-- [ ] ≥95% of existing SHA tests pass profile validation
+- [x] SHA FHIR profiles documented (Patient, Claim, Coverage, Organization)
+- [x] `SHAProfileValidator` class implemented
+- [x] All SHA bundles validated against Kenya-specific constraints:
+  - [x] Bundle.type = "message" for claims
+  - [x] Patient has SHA CR identifier with system `urn:sha:client-registry`
+  - [x] Diagnosis uses ICD-11 coding system
+  - [x] Organization has MFL (Master Facility List) code
+  - [x] Coverage includes SHA scheme extensions
+- [x] ≥95% of existing SHA tests pass profile validation
 - [ ] Profile validation integrated into claim submission workflow
 
 ---
