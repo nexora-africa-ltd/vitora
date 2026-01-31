@@ -96,7 +96,7 @@ This document outlines the validation strategy for Vitora HMIS's FHIR R4, HL7, a
 
 | Deliverable | Description | File |
 |-------------|-------------|------|
-| HAPI FHIR Docker setup | Test FHIR server for CI/CD | `docker/docker-compose.fhir-test.yml` |
+| HAPI FHIR Docker setup | Test FHIR server for CI/CD | `emr-validation/compose.yml` |
 | Integration test suite | Tests against live FHIR server | `tests/integration/test_fhir_server.py` |
 | Resource CRUD tests | Create/Read/Update/Delete all resources | Integrated |
 | Bundle transaction tests | Transaction and message bundle tests | Integrated |
