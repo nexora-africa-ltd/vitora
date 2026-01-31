@@ -94,10 +94,10 @@ export interface ICD10SearchResult {
 
 export interface DiagnosisFormData {
   icd10_code: number | null;
-  icd10_display?: string;
-  icd11_code?: string;
-  icd11_display?: string;
-  diagnosis_type: 'PRIMARY' | 'SECONDARY' | 'DIFFERENTIAL';
+  icd10_display?: string | null;
+  icd11_code?: string | null;
+  icd11_display?: string | null;
+  diagnosis_type: 'PRIMARY' | 'SECONDARY' | 'DIFFERENTIAL' | 'WORKING';
   free_text_diagnosis: string;
   notes: string;
   is_confirmed: boolean;

@@ -20,6 +20,14 @@ interface DatePickerProps {
   placeholder?: string;
   className?: string;
   error?: boolean;
+  /** Allow selecting dates in the future (default: false for backward compatibility) */
+  allowFuture?: boolean;
+  /** Allow selecting dates in the past (default: true) */
+  allowPast?: boolean;
+  /** Minimum selectable date */
+  minDate?: Date;
+  /** Maximum selectable date */
+  maxDate?: Date;
 }
 
 export function DatePicker({
@@ -29,15 +37,22 @@ export function DatePicker({
   placeholder = "Select",
   className,
   error,
+  allowFuture = false,
+  allowPast = true,
+  minDate,
+  maxDate,
 }: DatePickerProps) {
   const [open, setOpen] = React.useState(false);
 
   const defaultMonth = React.useMemo(() => {
     if (value) return value;
+    // For future dates (like expiry), default to current month
+    if (allowFuture) return new Date();
+    // For past dates (like DOB), default to 30 years ago
     const d = new Date();
     d.setFullYear(d.getFullYear() - 30);
     return d;
-  }, [value]);
+  }, [value, allowFuture]);
 
   return (
     <Popover open={open} onOpenChange={setOpen}>
@@ -83,11 +98,21 @@ export function DatePicker({
             onChange(date);
             setOpen(false);
           }}
-          disabled={(date) =>
-            date > new Date() || date < new Date("1900-01-01")
-          }
+          disabled={(date) => {
+            // Check explicit min/max dates first
+            if (minDate && date < minDate) return true;
+            if (maxDate && date > maxDate) return true;
+            // Check past/future restrictions
+            const today = new Date();
+            today.setHours(0, 0, 0, 0);
+            if (!allowFuture && date > today) return true;
+            if (!allowPast && date < today) return true;
+            // Always enforce reasonable bounds
+            if (date < new Date("1900-01-01")) return true;
+            return false;
+          }}
           fromYear={1900}
-          toYear={new Date().getFullYear()}
+          toYear={allowFuture ? new Date().getFullYear() + 10 : new Date().getFullYear()}
           className="rounded-md"
         />
       </PopoverContent>

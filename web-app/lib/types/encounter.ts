@@ -6,10 +6,10 @@
 export interface Encounter {
   id: number;
   patient: number;
-  patient_name?: string;
-  patient_mrn?: string;
-  patient_gender?: 'M' | 'F' | 'O';
-  patient_date_of_birth?: string;
+  patient_name?: string | null;
+  patient_mrn?: string | null;
+  patient_gender?: 'M' | 'F' | 'O' | null;
+  patient_date_of_birth?: string | null;
 
   // Encounter details
   encounter_type: EncounterType;
@@ -32,8 +32,8 @@ export interface Encounter {
   systolic_bp?: number | null;
   diastolic_bp?: number | null;
   has_critical_vitals?: boolean;
-  alerts?: string;
-  vitals_summary?: string;
+  alerts?: string | null;
+  vitals_summary?: string | null;
 
   // Vitals source tracking
   vitals_source?: 'TRIAGE' | 'CONSULTATION' | 'DIRECT' | null;
@@ -54,16 +54,16 @@ export interface Encounter {
 
   // Clinical notes
   notes: string;
-  history_of_present_illness?: string;
-  physical_examination?: string;
-  assessment?: string;
-  plan?: string;  // SOAP 'P' (Plan) - can also use TreatmentPlan.clinical_notes
+  history_of_present_illness?: string | null;
+  physical_examination?: string | null;
+  assessment?: string | null;
+  plan?: string | null;  // SOAP 'P' (Plan) - can also use TreatmentPlan.clinical_notes
 
   // Status workflow
   finalized_by?: number | null;
   finalized_by_username?: string | null;
   finalized_at?: string | null;
-  cancellation_reason?: string;
+  cancellation_reason?: string | null;
 
   // Triage fields
   triage_status?: 'PENDING' | 'IN_PROGRESS' | 'COMPLETED' | 'BYPASSED' | 'NOT_APPLICABLE';
@@ -75,17 +75,17 @@ export interface Encounter {
   claimed_at?: string | null;
 
   // Chief complaint edit tracking
-  chief_complaint_original?: string;
+  chief_complaint_original?: string | null;
   chief_complaint_edited?: boolean;
-  chief_complaint_edit_reason?: string;
-  chief_complaint_edit_reason_other?: string;
+  chief_complaint_edit_reason?: string | null;
+  chief_complaint_edit_reason_other?: string | null;
   chief_complaint_edited_by?: number | null;
   chief_complaint_edited_by_username?: string | null;
   chief_complaint_edited_at?: string | null;
 
   // Metadata
   created_by?: number | null;
-  created_by_name?: string;
+  created_by_name?: string | null;
   created_at: string;
   updated_at: string;
 }
@@ -94,19 +94,19 @@ export interface Diagnosis {
   id: number;
   encounter: number;
   icd10_code: number | null;
-  icd10_code_display?: string;
-  icd10_display?: string; // Alias for display text
-  icd10_description?: string;
-  icd11_code?: string;
-  icd11_display?: string;
-  diagnosis_type: 'PRIMARY' | 'SECONDARY' | 'DIFFERENTIAL';
-  free_text_diagnosis?: string;
+  icd10_code_display?: string | null;
+  icd10_display?: string | null; // Alias for display text
+  icd10_description?: string | null;
+  icd11_code?: string | null;
+  icd11_display?: string | null;
+  diagnosis_type: 'PRIMARY' | 'SECONDARY' | 'DIFFERENTIAL' | 'WORKING';
+  free_text_diagnosis?: string | null;
   notes: string;
   is_confirmed: boolean;
   certainty: 'SUSPECTED' | 'PROBABLE' | 'CONFIRMED' | 'RULED_OUT';
   diagnosed_by?: number | null;
-  diagnosed_by_name?: string;
-  diagnosed_at?: string;
+  diagnosed_by_name?: string | null;
+  diagnosed_at?: string | null;
   created_at: string;
   updated_at: string;
 }
@@ -115,7 +115,7 @@ export interface TreatmentPlan {
   id: number;
   encounter: number;
   template?: number | null;
-  template_name?: string;
+  template_name?: string | null;
   clinical_notes: string;
   medications_json: unknown;
   procedures_json: unknown;
@@ -131,9 +131,9 @@ export interface TreatmentPlan {
   has_referral?: boolean;
   medications: Medication[];
   created_by?: number | null;
-  created_by_name?: string;
+  created_by_name?: string | null;
   approved_by?: number | null;
-  approved_by_name?: string;
+  approved_by_name?: string | null;
   created_at: string;
   updated_at: string;
 }

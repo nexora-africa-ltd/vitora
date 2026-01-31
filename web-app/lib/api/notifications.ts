@@ -9,6 +9,14 @@
  */
 
 import { apiClient } from './client';
+import { parseResponse } from '@/lib/schemas/validation';
+import {
+  NotificationSchema,
+  NotificationListResponseSchema,
+  UnreadCountResponseSchema,
+  MarkReadResponseSchema,
+  MarkAllReadResponseSchema,
+} from '@/lib/schemas/core.schema';
 import type {
   Notification,
   NotificationListResponse,
@@ -27,7 +35,7 @@ export const notificationApi = {
     const response = await apiClient.get<NotificationListResponse>('/api/notifications/', {
       params,
     });
-    return response.data;
+    return parseResponse(NotificationListResponseSchema, response.data, { context: 'notificationApi.listNotifications' });
   },
 
   /**
@@ -36,7 +44,7 @@ export const notificationApi = {
    */
   async getUnreadCount(): Promise<UnreadCountResponse> {
     const response = await apiClient.get<UnreadCountResponse>('/api/notifications/unread_count/');
-    return response.data;
+    return parseResponse(UnreadCountResponseSchema, response.data, { context: 'notificationApi.getUnreadCount' });
   },
 
   /**
@@ -45,7 +53,7 @@ export const notificationApi = {
    */
   async markAsRead(id: number): Promise<MarkReadResponse> {
     const response = await apiClient.post<MarkReadResponse>(`/api/notifications/${id}/mark_read/`);
-    return response.data;
+    return parseResponse(MarkReadResponseSchema, response.data, { context: 'notificationApi.markAsRead' });
   },
 
   /**
@@ -54,7 +62,7 @@ export const notificationApi = {
    */
   async markAllAsRead(): Promise<MarkAllReadResponse> {
     const response = await apiClient.post<MarkAllReadResponse>('/api/notifications/mark_all_read/');
-    return response.data;
+    return parseResponse(MarkAllReadResponseSchema, response.data, { context: 'notificationApi.markAllAsRead' });
   },
 
   /**
@@ -63,7 +71,7 @@ export const notificationApi = {
    */
   async getNotification(id: number): Promise<Notification> {
     const response = await apiClient.get<Notification>(`/api/notifications/${id}/`);
-    return response.data;
+    return parseResponse(NotificationSchema, response.data, { context: 'notificationApi.getNotification' });
   },
 };
 

@@ -506,16 +506,19 @@ export const mockStockSummaryReport = {
   ],
 };
 
+// Expiry report - backend returns { results: [...] }, API layer extracts results array
 export const mockExpiryReport = {
   results: [
     {
       batch_id: 3,
       drug_name: 'Paracetamol 500mg Tablet',
+      drug_code: 'PARA-500',
       batch_number: 'BATCH-2025-010',
       expiry_date: '2026-02-15',
       days_to_expiry: 37,
       quantity_available: 50,
-      status: 'LOW',
+      status: 'WARNING',
+      value: 250.00,
     },
   ],
 };

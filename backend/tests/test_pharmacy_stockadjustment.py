@@ -33,7 +33,7 @@ class TestStockAdjustmentModel:
             generic_name="Test Drug",
             strength="100mg",
             form="TABLET",
-            category="OTHER",
+            categories=["OTHER"],
             unit="tablet",
         )
 
@@ -78,7 +78,7 @@ class TestStockAdjustmentModel:
             generic_name="Test Drug 2",
             strength="100mg",
             form="TABLET",
-            category="OTHER",
+            categories=["OTHER"],
             unit="tablet",
         )
 
@@ -123,7 +123,7 @@ class TestStockAdjustmentModel:
             generic_name="Test Drug 3",
             strength="100mg",
             form="TABLET",
-            category="OTHER",
+            categories=["OTHER"],
             unit="tablet",
         )
 
@@ -165,7 +165,7 @@ class TestStockAdjustmentModel:
             generic_name="Test Drug 4",
             strength="100mg",
             form="TABLET",
-            category="OTHER",
+            categories=["OTHER"],
             unit="tablet",
         )
 
@@ -214,7 +214,7 @@ class TestStockAdjustmentModel:
             generic_name="Test Drug 5",
             strength="100mg",
             form="TABLET",
-            category="OTHER",
+            categories=["OTHER"],
             unit="tablet",
         )
 
@@ -257,7 +257,7 @@ class TestStockAdjustmentModel:
             generic_name="Test Drug 6",
             strength="100mg",
             form="TABLET",
-            category="OTHER",
+            categories=["OTHER"],
             unit="tablet",
         )
 
@@ -309,7 +309,7 @@ class TestStockAdjustmentModel:
             generic_name="Test Drug 7",
             strength="100mg",
             form="TABLET",
-            category="OTHER",
+            categories=["OTHER"],
             unit="tablet",
         )
 
@@ -352,7 +352,7 @@ class TestStockAdjustmentModel:
             generic_name="Test Drug 8",
             strength="100mg",
             form="TABLET",
-            category="OTHER",
+            categories=["OTHER"],
             unit="tablet",
         )
 

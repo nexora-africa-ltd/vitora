@@ -66,6 +66,8 @@ import {
   useOpenSession,
   useCloseSession,
 } from '@/lib/hooks/use-clinics';
+import { useClinicQueueSocket } from '@/lib/hooks/use-websocket';
+import { WebSocketStatus } from '@/components/ui/websocket-status';
 import { toast } from '@/lib/hooks/use-toast';
 import type { ClinicVisit, ClinicVisitPriority, ClinicVisitStatus } from '@/lib/types/clinic';
 import { cn } from '@/lib/utils/cn';
@@ -89,6 +91,9 @@ export default function ClinicQueuePage() {
   const { data: session, refetch: refetchSession } = useTodaySession(clinicId);
   const { data: queue, isLoading: queueLoading, refetch: refetchQueue } = useClinicQueue(clinicId);
   const { data: stats, refetch: refetchStats } = useQueueStats(clinicId);
+
+  // WebSocket for real-time queue updates
+  const { connectionState, reconnectAttempts } = useClinicQueueSocket(clinicId);
 
   // Mutations
   const { mutateAsync: openSession, isPending: openingSession } = useOpenSession();
@@ -239,6 +244,14 @@ export default function ClinicQueuePage() {
           </div>
         </div>
         <div className="flex flex-col gap-2 items-stretch sm:flex-row sm:flex-wrap sm:items-center">
+          {/* WebSocket Status */}
+          <WebSocketStatus
+            connectionState={connectionState}
+            reconnectAttempts={reconnectAttempts}
+            showLabel
+            size="sm"
+          />
+
           <Button variant="outline" size="sm" onClick={handleRefresh}>
             <RefreshCw className="h-4 w-4 mr-2" />
             Refresh

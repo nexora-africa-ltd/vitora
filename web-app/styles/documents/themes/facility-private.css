@@ -1,0 +1,85 @@
+/**
+ * Document Styles - Private Facility Theme
+ *
+ * Blue-themed branding for private healthcare facilities.
+ * Professional and modern appearance.
+ */
+
+:root {
+  /* Primary colors - Blue */
+  --primary-color: #0a3d62;
+  --border-color: #0a3d62;
+  --accent-color: #1e88e5;
+  
+  /* Text colors */
+  --text-color: #1a1a1a;
+  --muted-color: #555;
+  
+  /* Background colors */
+  --background-color: #fff;
+  --header-bg: #e3f2fd;
+  --section-bg: #f8fafc;
+  
+  /* Status colors */
+  --success-color: #0d6efd;
+  --warning-color: #f59e0b;
+  --danger-color: #dc3545;
+}
+
+/* Header styling */
+.header {
+  border-bottom: 3px solid var(--primary-color);
+}
+
+/* Title styling */
+h1 {
+  color: var(--primary-color);
+}
+
+/* Clinic name emphasis */
+.clinic-info strong,
+.clinic {
+  color: var(--primary-color);
+}
+
+/* Table header */
+th {
+  background: var(--header-bg);
+  color: var(--primary-color);
+}
+
+/* Table borders */
+table,
+th,
+td {
+  border-color: var(--border-color);
+}
+
+/* Section title */
+.section-title {
+  color: var(--primary-color);
+  border-bottom-color: var(--accent-color);
+}
+
+/* Notes section */
+.notes {
+  background: var(--section-bg);
+  border-color: var(--accent-color);
+  border-left: 3px solid var(--accent-color);
+}
+
+/* Drug name highlight */
+.drug {
+  background: var(--header-bg);
+  color: var(--primary-color);
+}
+
+/* Signature lines */
+.sig {
+  border-top-color: var(--primary-color);
+}
+
+/* QR border */
+.qr {
+  border-color: var(--accent-color);
+}

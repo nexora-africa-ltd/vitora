@@ -5,17 +5,59 @@
 import { test, expect } from '@playwright/test';
 import { API_BASE, TEST_USER } from '../fixtures';
 
+function createMockJwt(userId: number, expSecondsFromNow: number) {
+  const nowSeconds = Math.floor(Date.now() / 1000);
+  const header = Buffer.from(JSON.stringify({ alg: 'none', typ: 'JWT' })).toString('base64');
+  const payload = Buffer.from(
+    JSON.stringify({
+      token_type: 'access',
+      exp: nowSeconds + expSecondsFromNow,
+      iat: nowSeconds,
+      jti: 'e2e',
+      user_id: userId,
+    })
+  ).toString('base64');
+  return `${header}.${payload}.sig`;
+}
+
+const mockAccessToken = createMockJwt(1, 60 * 60 * 24 * 7);
+const mockRefreshToken = createMockJwt(1, 60 * 60 * 24 * 30);
+
 const mockPatient = {
   id: 1,
   mrn: 'MRN-20260101-0001',
+  title: null,
+  cr_number: null,
+  sha_number: null,
   first_name: 'Jane',
   last_name: 'Doe',
+  middle_name: null,
   date_of_birth: '1985-05-20',
   gender: 'F',
   phone_number: '+254712345678',
+  email: null,
+  address: null,
+  county: 47,
   county_name: 'Nairobi',
+  sub_county: 1,
   sub_county_name: 'Westlands',
+  ward: null,
+  ward_name: null,
+  village: null,
+  is_sensitive: false,
+  consent_given: true,
+  consent_date: null,
+  consent_deferred: false,
+  referral_source: 'self',
+  referred_from_facility: null,
+  emergency_contacts: [],
+  emergency_contact_name: null,
+  emergency_contact_phone: null,
+  emergency_contact_relationship: null,
+  registered_by: 1,
+  registered_by_username: 'testuser',
   created_at: '2026-01-01T10:00:00Z',
+  updated_at: '2026-01-01T10:00:00Z',
 };
 
 const mockPatients = {
@@ -23,17 +65,38 @@ const mockPatients = {
   next: null,
   previous: null,
   results: [
-    mockPatient,
+    {
+      id: mockPatient.id,
+      mrn: mockPatient.mrn,
+      title: mockPatient.title,
+      cr_number: mockPatient.cr_number,
+      sha_number: mockPatient.sha_number,
+      first_name: mockPatient.first_name,
+      middle_name: mockPatient.middle_name,
+      last_name: mockPatient.last_name,
+      date_of_birth: mockPatient.date_of_birth,
+      gender: mockPatient.gender,
+      phone_number: mockPatient.phone_number,
+      county_name: mockPatient.county_name,
+      sub_county_name: mockPatient.sub_county_name,
+      is_sensitive: mockPatient.is_sensitive,
+      created_at: mockPatient.created_at,
+    },
     {
       id: 2,
       mrn: 'MRN-20260101-0002',
+      title: null,
+      cr_number: null,
+      sha_number: null,
       first_name: 'John',
+      middle_name: null,
       last_name: 'Smith',
       date_of_birth: '1990-03-15',
       gender: 'M',
       phone_number: '+254712345679',
       county_name: 'Mombasa',
       sub_county_name: 'Nyali',
+      is_sensitive: false,
       created_at: '2026-01-01T11:00:00Z',
     },
   ],
@@ -47,9 +110,24 @@ test.describe('Patient Management', () => {
         status: 200,
         contentType: 'application/json',
         body: JSON.stringify({
-          access: 'mock-access-token',
-          refresh: 'mock-refresh-token',
-          user: { id: 1, username: TEST_USER.username },
+          access: mockAccessToken,
+          refresh: mockRefreshToken,
+          user: {
+            id: 1,
+            username: TEST_USER.username,
+            email: 'test@vitora.health',
+            first_name: 'Test',
+            last_name: 'User',
+            is_staff: true,
+            is_superuser: true,
+            role: 'ADMIN',
+            permissions: [
+              'patients.view_patient',
+              'patients.add_patient',
+              'patients.change_patient',
+              'encounters.view_encounter',
+            ],
+          },
         }),
       });
     });
@@ -137,9 +215,8 @@ test.describe('Patient Management', () => {
       }
     }
 
-    // Get sidebar patients link and click using evaluate for reliable clicking
-    const patientsLink = page.locator('[data-testid="sidebar"]').getByRole('link', { name: /patients/i });
-    await patientsLink.evaluate((el: HTMLElement) => el.click());
+    // Click sidebar Patients link (stable: role-based, scoped to the sidebar)
+    await page.getByRole('complementary').getByRole('link', { name: /^patients$/i }).click();
     await expect(page).toHaveURL(/.*patients.*/);
 
     // Wait for the page to settle and API to respond
@@ -164,14 +241,12 @@ test.describe('Patient Management', () => {
       }
     }
 
-    // Get sidebar patients link and click using evaluate
-    const patientsLink = page.locator('[data-testid="sidebar"]').getByRole('link', { name: /patients/i });
-    await patientsLink.evaluate((el: HTMLElement) => el.click());
+    await page.getByRole('complementary').getByRole('link', { name: /^patients$/i }).click();
     await expect(page).toHaveURL(/.*patients.*/);
     await page.waitForLoadState('networkidle');
 
-    // Enter search query
-    await page.getByPlaceholder(/search/i).fill('Jane');
+    // Enter search query (page has multiple search inputs)
+    await page.getByPlaceholder(/search by name, mrn, or phone/i).fill('Jane');
     await page.waitForTimeout(500); // Debounce wait
 
     // Should filter results
@@ -191,9 +266,7 @@ test.describe('Patient Management', () => {
       }
     }
 
-    // Get sidebar patients link and click using evaluate
-    const patientsLink = page.locator('[data-testid="sidebar"]').getByRole('link', { name: /patients/i });
-    await patientsLink.evaluate((el: HTMLElement) => el.click());
+    await page.getByRole('complementary').getByRole('link', { name: /^patients$/i }).click();
     await expect(page).toHaveURL(/.*patients.*/);
     await page.waitForLoadState('networkidle');
 
@@ -221,9 +294,7 @@ test.describe('Patient Management', () => {
       }
     }
 
-    // Get sidebar patients link and click using evaluate
-    const patientsLink = page.locator('[data-testid="sidebar"]').getByRole('link', { name: /patients/i });
-    await patientsLink.evaluate((el: HTMLElement) => el.click());
+    await page.getByRole('complementary').getByRole('link', { name: /^patients$/i }).click();
     await expect(page).toHaveURL(/.*patients.*/);
     await page.waitForLoadState('networkidle');
 
@@ -236,7 +307,7 @@ test.describe('Patient Management', () => {
     // Should show form
     await expect(page.getByLabel(/first name/i)).toBeVisible({ timeout: 10000 });
     await expect(page.getByLabel(/last name/i)).toBeVisible();
-    await expect(page.getByLabel(/date of birth/i)).toBeVisible();
+    await expect(page.getByText(/date of birth/i)).toBeVisible();
   });
 
   test('should validate required fields on new patient form', async ({ page }) => {
@@ -252,9 +323,7 @@ test.describe('Patient Management', () => {
       }
     }
 
-    // Get sidebar patients link and click using evaluate
-    const patientsLink = page.locator('[data-testid="sidebar"]').getByRole('link', { name: /patients/i });
-    await patientsLink.evaluate((el: HTMLElement) => el.click());
+    await page.getByRole('complementary').getByRole('link', { name: /^patients$/i }).click();
     await expect(page).toHaveURL(/.*patients.*/);
     await page.waitForLoadState('networkidle');
 

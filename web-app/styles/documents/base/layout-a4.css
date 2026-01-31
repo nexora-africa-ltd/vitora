@@ -1,0 +1,174 @@
+/**
+ * Document Styles - A4 Layout
+ *
+ * Layout styles for A4-sized documents (prescriptions, invoices, etc.)
+ * A4 dimensions: 210mm x 297mm
+ */
+
+/* Page setup for print */
+@page {
+  size: A4;
+  margin: 20mm;
+}
+
+/* Screen preview */
+@media screen {
+  body {
+    background: #f5f5f5;
+    padding: 20px;
+  }
+}
+
+/* Main page container */
+.page {
+  max-width: 794px; /* A4 width at 96dpi */
+  min-height: 1123px; /* A4 height at 96dpi */
+  margin: 0 auto;
+  padding: 32px;
+  background: #fff;
+}
+
+@media screen {
+  .page {
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  }
+}
+
+/* Header section */
+.header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  border-bottom: 2px solid var(--border-color, #000);
+  padding-bottom: 12px;
+  margin-bottom: 16px;
+}
+
+.clinic-info {
+  font-size: 12px;
+  line-height: 1.4;
+}
+
+.clinic-info strong {
+  font-size: 14px;
+}
+
+/* QR/Barcode placeholder */
+.qr {
+  width: 90px;
+  height: 90px;
+  border: 1px dashed #999;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 10px;
+  text-align: center;
+}
+
+/* Section blocks */
+.section {
+  margin-bottom: 16px;
+}
+
+.section-title {
+  font-weight: bold;
+  font-size: 13px;
+  margin-bottom: 6px;
+  border-bottom: 1px solid #ccc;
+  padding-bottom: 4px;
+}
+
+/* Patient info grid */
+.patient-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 8px 16px;
+  font-size: 13px;
+}
+
+/* Tables */
+table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+  margin-top: 8px;
+}
+
+th,
+td {
+  border: 1px solid var(--border-color, #000);
+  padding: 8px;
+  vertical-align: top;
+}
+
+th {
+  background: var(--header-bg, #f2f2f2);
+  text-align: left;
+  font-weight: bold;
+}
+
+/* Notes section */
+.notes {
+  min-height: 80px;
+  border: 1px solid var(--border-color, #000);
+  padding: 8px;
+  font-size: 13px;
+}
+
+/* Signature block */
+.signature-block {
+  margin-top: 32px;
+  display: flex;
+  justify-content: space-between;
+  font-size: 13px;
+}
+
+.sig {
+  width: 45%;
+  border-top: 1px solid var(--border-color, #000);
+  padding-top: 6px;
+  text-align: center;
+}
+
+/* Footer */
+.footer {
+  margin-top: 24px;
+  font-size: 11px;
+  border-top: 1px solid #ccc;
+  padding-top: 8px;
+  display: flex;
+  justify-content: space-between;
+}
+
+/* Print optimizations */
+@media print {
+  body {
+    margin: 0;
+    padding: 0;
+  }
+
+  .page {
+    padding: 0;
+    margin: 0;
+    max-width: none;
+    min-height: auto;
+    box-shadow: none;
+  }
+
+  .section {
+    page-break-inside: avoid;
+  }
+
+  table {
+    page-break-inside: auto;
+  }
+
+  tr {
+    page-break-inside: avoid;
+    page-break-after: auto;
+  }
+
+  .signature-block {
+    page-break-inside: avoid;
+  }
+}

@@ -6,8 +6,8 @@ A React Native mobile application built with Expo, designed for Community Health
 
 ![Version](https://img.shields.io/badge/version-0.1.0-blue.svg)
 ![Platform](https://img.shields.io/badge/platform-Android-green.svg)
-![React Native](https://img.shields.io/badge/React%20Native-0.76-61dafb.svg)
-![Expo](https://img.shields.io/badge/Expo-52-000020.svg)
+![React Native](https://img.shields.io/badge/React%20Native-0.81-61dafb.svg)
+![Expo](https://img.shields.io/badge/Expo-54-000020.svg)
 ![Tests](https://img.shields.io/badge/tests-388%20passing-brightgreen.svg)
 
 ---
@@ -23,7 +23,6 @@ A React Native mobile application built with Expo, designed for Community Health
 - [Building for Production](#-building-for-production)
 - [Configuration](#-configuration)
 - [Architecture](#-architecture)
-- [Known Limitations](#-known-limitations)
 - [Troubleshooting](#-troubleshooting)
 
 ---
@@ -33,7 +32,7 @@ A React Native mobile application built with Expo, designed for Community Health
 ### Core Functionality
 - **Offline-First Architecture**: Full CRUD operations work without internet
 - **Patient Management**: Create, view, search, and update patient records
-- **Kenya Location Hierarchy**: 47 Counties → 289 Sub-Counties → 1448 Wards
+- **Kenya Location Hierarchy**: 47 Counties → 289 Sub-Counties → 1,448 Wards
 - **Secure Authentication**: JWT-based auth with secure token storage
 - **Sync Queue**: Automatic queuing of changes for later synchronization
 
@@ -52,33 +51,31 @@ A React Native mobile application built with Expo, designed for Community Health
 
 ## 🔧 Prerequisites
 
-Before you begin, ensure you have:
-
 | Requirement | Version | Check Command |
 |-------------|---------|---------------|
-| Node.js | ≥18.0.0 | `node --version` |
-| npm | ≥9.0.0 | `npm --version` |
-| Expo CLI | Latest | `npx expo --version` |
+| Node.js | ≥18.0.0 | \`node --version\` |
+| npm | ≥9.0.0 | \`npm --version\` |
+| Expo CLI | Latest | \`npx expo --version\` |
 | Android Studio | Latest | For Android emulator |
-| Java JDK | 17 | `java --version` |
+| Java JDK | 17 | \`java --version\` |
 
 ### For Android Development
 1. Install [Android Studio](https://developer.android.com/studio)
 2. Set up Android SDK (API Level 34+)
-3. Configure `ANDROID_HOME` environment variable
+3. Configure \`ANDROID_HOME\` environment variable
 4. Create an Android Virtual Device (AVD) or connect a physical device
 
 ### For EAS Build (Production)
-```bash
+\`\`\`bash
 npm install -g eas-cli
 eas login  # Login with Expo account
-```
+\`\`\`
 
 ---
 
 ## 🚀 Quick Start
 
-```bash
+\`\`\`bash
 # Clone the repository
 git clone https://github.com/nexora-africa-ltd/vitora.git
 cd vitora/mobile-app
@@ -95,68 +92,61 @@ npx expo start
 
 # Press 'a' to open on Android emulator
 # Or scan QR code with Expo Go app on device
-```
+\`\`\`
 
 ---
 
 ## 🛠 Development Setup
 
 ### 1. Install Dependencies
-
-```bash
+\`\`\`bash
 cd mobile-app
 npm install
-```
+\`\`\`
 
 ### 2. Environment Configuration
-
-Create a `.env` file based on `.env.example`:
-
-```bash
+Create a \`.env\` file based on \`.env.example\`:
+\`\`\`bash
 # .env
 API_BASE_URL=http://localhost:9088
 # For physical device, use your machine's IP:
 # API_BASE_URL=http://192.168.1.100:9088
-```
+\`\`\`
 
 ### 3. Start Backend Server
-
 The mobile app requires the Django backend running:
-
-```bash
+\`\`\`bash
 # In a separate terminal
 cd ../backend
 poetry install
 poetry shell
 python manage.py runserver 0.0.0.0:9088
-```
+\`\`\`
 
 ### 4. Start Development Server
-
-```bash
+\`\`\`bash
 # Development with Expo Go
 npx expo start
 
 # Development build (recommended for native modules)
 npx expo run:android
-```
+\`\`\`
 
 ### 5. Running on Physical Device
-
 1. Enable USB debugging on your Android device
 2. Connect device via USB
-3. Run `adb devices` to verify connection
-4. Run `npx expo run:android --device`
+3. Run \`adb devices\` to verify connection
+4. Run \`npx expo run:android --device\`
 
 Or use Expo Go:
 1. Install Expo Go from Play Store
-2. Scan QR code from `npx expo start`
+2. Scan QR code from \`npx expo start\`
 
 ---
 
 ## 📁 Project Structure
 
-```
+\`\`\`
 mobile-app/
 ├── app/                      # Expo Router screens
 │   ├── (auth)/               # Authentication screens
@@ -189,12 +179,6 @@ mobile-app/
 │       ├── OfflineBanner.tsx
 │       └── index.ts
 │
-├── constants/
-│   ├── colors.ts             # Design tokens
-│   ├── config.ts             # App configuration
-│   ├── theme.ts              # Theme constants
-│   └── index.ts
-│
 ├── hooks/
 │   ├── usePatients.ts        # Patient list query
 │   ├── usePatient.ts         # Single patient query
@@ -207,7 +191,7 @@ mobile-app/
 ├── lib/
 │   ├── api/                  # API client layer
 │   │   ├── client.ts         # Axios instance with interceptors
-│   │   ├── auth.ts           # Auth API (login, refresh, verify)
+│   │   ├── auth.ts           # Auth API
 │   │   ├── patients.ts       # Patient CRUD API
 │   │   ├── locations.ts      # Kenya locations API
 │   │   └── index.ts
@@ -218,76 +202,70 @@ mobile-app/
 │   ├── db/                   # WatermelonDB offline storage
 │   │   ├── schema.ts         # Database schema
 │   │   ├── context.tsx       # DatabaseProvider
-│   │   ├── index.ts          # Database initialization
 │   │   ├── models/           # WatermelonDB models
 │   │   │   ├── Patient.ts
 │   │   │   ├── SyncQueue.ts
 │   │   │   ├── County.ts
-│   │   │   ├── SubCounty.ts
-│   │   │   ├── Ward.ts
-│   │   │   └── index.ts
+│   │   │   └── ...
 │   │   └── repositories/     # Data access layer
-│   │       └── patientRepository.ts
 │   └── sync/                 # Offline sync
 │       ├── queue.ts          # Sync queue manager
 │       ├── processor.ts      # Sync processor
 │       └── index.ts
 │
-├── __tests__/                # Jest tests
-│   ├── setup/
-│   │   └── jest.setup.ts     # Test configuration
-│   ├── api/                  # API tests
-│   ├── components/           # Component tests
-│   ├── hooks/                # Hook tests
-│   ├── lib/                  # Library tests
-│   └── navigation/           # Navigation tests
+├── constants/
+│   ├── colors.ts             # Design tokens
+│   ├── config.ts             # App configuration
+│   ├── theme.ts              # Theme constants
+│   └── index.ts
 │
+├── __tests__/                # Jest tests (388+)
 ├── assets/                   # Images, fonts, icons
-├── app.json                  # Expo configuration
+├── app.config.js             # Expo configuration
 ├── eas.json                  # EAS Build configuration
 ├── package.json
 ├── tsconfig.json
 └── jest.config.js
-```
+\`\`\`
 
 ---
 
 ## 🧪 Running Tests
 
 ### All Tests
-```bash
+\`\`\`bash
 npm test
-```
+\`\`\`
 
 ### With Coverage Report
-```bash
+\`\`\`bash
 npm test -- --coverage
-```
+\`\`\`
 
 ### Watch Mode (Development)
-```bash
+\`\`\`bash
 npm test -- --watch
-```
+\`\`\`
 
 ### Specific Test File
-```bash
+\`\`\`bash
 npm test -- --testPathPattern="PatientCard"
-```
+\`\`\`
 
 ### Coverage Thresholds
 | Metric | Threshold | Current |
 |--------|-----------|---------|
-| Statements | 85% | 87.14% |
-| Branches | 60% | 61.40% |
-| Functions | 80% | 81.22% |
-| Lines | 85% | 89.86% |
+| Statements | 85% | 87%+ |
+| Branches | 60% | 61%+ |
+| Functions | 80% | 81%+ |
+| Lines | 85% | 89%+ |
 
 ---
 
 ## 📱 Building for Production
 
 ### Prerequisites
-```bash
+\`\`\`bash
 # Install EAS CLI
 npm install -g eas-cli
 
@@ -296,294 +274,128 @@ eas login
 
 # Configure project (if not done)
 eas build:configure
-```
+\`\`\`
 
-### Build Android APK (Preview)
-```bash
+### Development Build (Testing)
+\`\`\`bash
 # Build APK for testing
-eas build --platform android --profile preview
+eas build --platform android --profile development
+\`\`\`
 
-# Download APK from provided URL after build completes
-```
-
-### Build Android AAB (Production)
-```bash
-# Build for Play Store
+### Production Build
+\`\`\`bash
+# Build AAB for Play Store
 eas build --platform android --profile production
-```
+\`\`\`
 
-### Local Development Build
-```bash
-# Build locally (requires Android SDK)
+### Local Build
+\`\`\`bash
+# Build APK locally
 npx expo run:android --variant release
-```
-
-### Build Profiles (`eas.json`)
-```json
-{
-  "build": {
-    "preview": {
-      "android": {
-        "buildType": "apk",
-        "gradleCommand": ":app:assembleRelease"
-      }
-    },
-    "production": {
-      "android": {
-        "buildType": "app-bundle"
-      }
-    }
-  }
-}
-```
+\`\`\`
 
 ---
 
 ## ⚙️ Configuration
 
+### Key Dependencies
+| Package | Version | Purpose |
+|---------|---------|---------|
+| expo | ^54.0.30 | React Native framework |
+| react-native | 0.81.5 | Core framework |
+| @nozbe/watermelondb | ^0.28 | Offline database |
+| @tanstack/react-query | ^5.90 | Data fetching |
+| zustand | ^5.0 | State management |
+| expo-secure-store | ^15.0 | Secure storage |
+| expo-sqlite | ^16.0 | SQLite support |
+
 ### Environment Variables
-
-| Variable | Description | Default |
-|----------|-------------|---------|
-| `API_BASE_URL` | Backend API URL | `http://localhost:9088` |
-
-### App Configuration (`app.json`)
-
-| Setting | Value |
-|---------|-------|
-| Package Name | `com.nexora.vitora` |
-| Version | `0.1.0` |
-| Android Target SDK | 34 |
-| Minimum SDK | 24 (Android 7.0) |
-
-### Build Configuration (`eas.json`)
-
-See [eas.json](./eas.json) for build profiles.
+\`\`\`bash
+# .env
+API_BASE_URL=http://localhost:9088
+\`\`\`
 
 ---
 
 ## 🏗 Architecture
 
 ### Offline-First Design
+1. **WatermelonDB**: Local SQLite database for offline storage
+2. **Sync Queue**: Tracks changes made while offline
+3. **Background Sync**: Automatically syncs when connectivity is restored
+4. **Conflict Resolution**: Server-wins strategy for conflicts
 
-```
-┌─────────────────────────────────────────────────────────┐
-│                      Mobile App                          │
-├─────────────────────────────────────────────────────────┤
-│                                                          │
-│  ┌─────────────┐     ┌─────────────┐     ┌───────────┐  │
-│  │   Screens   │────▶│    Hooks    │────▶│  TanStack │  │
-│  │  (Expo      │     │  usePatients│     │   Query   │  │
-│  │   Router)   │     │  useAuth    │     │           │  │
-│  └─────────────┘     └─────────────┘     └─────┬─────┘  │
-│                                                 │        │
-│                            ┌────────────────────┼────┐   │
-│                            │                    │    │   │
-│                      ┌─────▼─────┐        ┌─────▼────┴┐  │
-│                      │  API      │        │ WaterMelon│  │
-│                      │  Client   │        │    DB     │  │
-│                      │  (Axios)  │        │  (SQLite) │  │
-│                      └─────┬─────┘        └─────┬─────┘  │
-│                            │                    │        │
-│                      ┌─────▼─────┐        ┌─────▼─────┐  │
-│                      │   Sync    │◀──────▶│   Sync    │  │
-│                      │ Processor │        │   Queue   │  │
-│                      └─────┬─────┘        └───────────┘  │
-│                            │                             │
-└────────────────────────────┼─────────────────────────────┘
-                             │
-                             ▼
-                    ┌─────────────────┐
-                    │  Django Backend │
-                    │  (REST API)     │
-                    └─────────────────┘
-```
+### State Management
+- **Server State**: TanStack Query for API data
+- **Local State**: Zustand for UI state
+- **Auth State**: React Context for authentication
 
 ### Data Flow
-
-1. **Online Mode**: API → TanStack Query Cache → UI
-2. **Offline Mode**: WatermelonDB → UI
-3. **Sync**: SyncQueue → SyncProcessor → API → Clear Queue
-
-### Key Technologies
-
-| Layer | Technology | Purpose |
-|-------|------------|---------|
-| UI Framework | React Native + Expo | Cross-platform mobile |
-| Navigation | Expo Router | File-based routing |
-| State Management | TanStack Query | Server state + caching |
-| Offline Storage | WatermelonDB | SQLite with React integration |
-| API Client | Axios | HTTP requests + interceptors |
-| Auth Storage | expo-secure-store | Encrypted token storage |
-| Testing | Jest + RTL | Unit and integration tests |
+\`\`\`
+User Action
+    ↓
+Local Database (WatermelonDB)
+    ↓
+Sync Queue (if offline)
+    ↓
+API Request (when online)
+    ↓
+Server Response
+    ↓
+Cache Update (TanStack Query)
+\`\`\`
 
 ---
 
-## ⚠️ Known Limitations
+## 🐛 Troubleshooting
 
-### Current Version (0.1.0)
+### Metro Bundler Issues
+\`\`\`bash
+# Clear cache
+npx expo start -c
+\`\`\`
 
-1. **Android Only**: iOS support planned for future release
-2. **No Real-Time Sync**: Manual sync trigger required (automatic sync in v0.2.0)
-3. **Limited Conflict Resolution**: Last-write-wins strategy only
-4. **No Image Support**: Patient photos not yet implemented
-5. **Single User**: Multi-user offline support in progress
-6. **Kenya Locations**: Pre-loaded, not dynamically updated
-
-### Database Constraints
-
-- Maximum offline patients: ~10,000 (SQLite limitation)
-- Sync queue maximum: 1,000 pending operations
-- Date range: 1900-01-01 to current date
-
-### Network Requirements
-
-- Initial login requires internet
-- Sync requires internet connection
-- Location data cached on first load
-
-### Performance Notes
-
-- Cold start: ~2-3 seconds
-- Patient list render: <500ms for 100 patients
-- Search: <200ms response time
-- APK size: ~25MB (estimated)
-
----
-
-## 🔧 Troubleshooting
-
-### Common Issues
-
-#### Metro Bundler Issues
-```bash
-# Clear cache and restart
-npx expo start --clear
-```
-
-#### Android Build Failures
-```bash
-# Clean Android build
+### Android Build Fails
+\`\`\`bash
+# Clean build
 cd android && ./gradlew clean && cd ..
 npx expo run:android
-```
+\`\`\`
 
-#### Database Reset
-```bash
-# Delete local database (development only)
-rm -f vitora_hmis.db
-npx expo start --clear
-```
+### WatermelonDB Issues
+\`\`\`bash
+# Reset database
+# Clear app data on device/emulator
+\`\`\`
 
-#### Authentication Issues
-```bash
-# Clear secure storage (development)
-# In app: Settings > Clear Data
-# Or reinstall the app
-```
-
-#### Network Connection to Backend
-1. Ensure backend is running on `0.0.0.0:9088`
-2. For physical device, use machine's IP in `.env`
-3. Check firewall allows port 8000
-
-#### Testing with ngrok (Remote Backend Access)
-
-When testing the mobile app on a physical device against a locally running backend, you can use [ngrok](https://ngrok.com/) to expose your backend:
-
-```bash
-# Start backend on port 9088
-cd backend && poetry run python manage.py runserver 0.0.0.0:9088
-
-# In another terminal, start ngrok
-ngrok http 9088
-```
-
-**Important Configuration Notes:**
-
-1. **ngrok Browser Warning**: Free ngrok accounts show an interstitial warning page. Mobile apps cannot handle this, so you MUST add the `ngrok-skip-browser-warning` header to all API requests:
-   ```typescript
-   // In axios client configuration
-   headers: {
-     'ngrok-skip-browser-warning': 'true',
-   }
-   ```
-
-2. **Dynamic API URL**: The app uses `app.config.js` (not `app.json`) to read the `API_BASE_URL` from environment variables at build time. This allows EAS builds to use different URLs per profile.
-
-3. **EAS Build Profiles** (in `eas.json`):
-   ```json
-   {
-     "preview": {
-       "env": {
-         "API_BASE_URL": "https://your-subdomain.ngrok-free.dev"
-       }
-     }
-   }
-   ```
-
-4. **CORS & CSRF**: Ensure your Django backend allows the ngrok domain:
-   ```python
-   # settings/development.py
-   ALLOWED_HOSTS = ["*", ".ngrok-free.dev", ".ngrok.io"]
-   CORS_ALLOW_ALL_ORIGINS = True
-   CORS_ALLOW_HEADERS = [..., "ngrok-skip-browser-warning"]
-   # For JWT-based auth, CSRF can be disabled in development
-   ```
-
-5. **Verify the flow works** before building:
-   ```bash
-   curl -H "ngrok-skip-browser-warning: true" \
-        -H "Content-Type: application/json" \
-        -X POST https://your-subdomain.ngrok-free.dev/api/token/ \
-        -d '{"username":"testuser","password":"testpassword123"}'
-   ```
-
-### Debug Mode
-
-```bash
-# Enable React Native debugger
-npx expo start
-# Press 'j' for JavaScript debugger
-# Press 'm' for menu, then 'Debug Remote JS'
-```
-
-### Logs
-
-```bash
-# Android logs
-adb logcat | grep -i vitora
-
-# Expo logs
-npx expo start --verbose
-```
+### Network Issues on Emulator
+- Use \`10.0.2.2\` instead of \`localhost\` for Android emulator
+- Ensure backend is running on \`0.0.0.0:9088\`
 
 ---
 
-## 📚 Additional Resources
+## 📚 Related Documentation
 
-- [Expo Documentation](https://docs.expo.dev/)
-- [WatermelonDB Guide](https://nozbe.github.io/WatermelonDB/)
-- [TanStack Query](https://tanstack.com/query/latest)
-- [Vitora Backend README](../backend/README.md)
-- [Project Roadmap](../ROADMAP.md)
+- **Backend API**: [../backend/README.md](../backend/README.md)
+- **Main Documentation**: [../README.md](../README.md)
+- **Roadmap**: [../ROADMAP.md](../ROADMAP.md)
 
 ---
 
-## 🤝 Contributing
+## Known Limitations
 
-1. Follow TDD methodology (write tests first)
-2. Ensure all tests pass: `npm test`
-3. Maintain coverage thresholds
-4. Use conventional commits
-5. Update documentation as needed
+- **Android Only**: iOS support planned for future release
+- **Expo Go Restrictions**: Some native modules require development build
+- **Sync Conflicts**: Complex conflicts require manual resolution
 
 ---
 
-## 📄 License
+## License
 
-Copyright © 2025 Nexora Africa Ltd. All rights reserved.
+Apache-2.0 - Nexora Africa Ltd © 2026
 
 ---
 
-**Built with ❤️ for Kenya's Healthcare Workers**
+## Contributing
+
+This is part of Phase 1 of the Vitora HMIS development. See \`ROADMAP.md\` in the repository root for more information.

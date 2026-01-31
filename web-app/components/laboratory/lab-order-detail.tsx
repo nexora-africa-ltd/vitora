@@ -218,10 +218,22 @@ export function LabOrderDetail({ orderNumber }: LabOrderDetailProps) {
 
         <div className="flex items-center gap-2">
           {order.order_type === 'EXTERNAL' && (
-            <Button variant="outline" onClick={handleDownloadRequisition}>
-              <Download className="h-4 w-4 mr-2" />
-              Requisition PDF
-            </Button>
+            <>
+              <Button variant="outline" onClick={handleDownloadRequisition}>
+                <Download className="h-4 w-4 mr-2" />
+                Requisition PDF
+              </Button>
+              <Button
+                variant="outline"
+                onClick={() => {
+                  // Used for E2E; browser print may be blocked in some environments.
+                  // Still provides a user-friendly action.
+                  window.print();
+                }}
+              >
+                Print
+              </Button>
+            </>
           )}
 
           {canSubmit && (
@@ -373,10 +385,10 @@ export function LabOrderDetail({ orderNumber }: LabOrderDetailProps) {
               <p className="text-muted-foreground">Order Type</p>
               <p className="font-medium">{order.order_type === 'IN_HOUSE' ? 'In-House' : 'External'}</p>
             </div>
-            {order.external_lab && (
+            {(order.external_lab || (order as any).external_lab_name) && (
               <div>
                 <p className="text-muted-foreground">External Lab</p>
-                <p className="font-medium">{order.external_lab}</p>
+                <p className="font-medium">{order.external_lab || (order as any).external_lab_name}</p>
               </div>
             )}
             <div>

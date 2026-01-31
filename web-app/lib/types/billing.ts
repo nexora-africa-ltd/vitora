@@ -24,7 +24,7 @@ export interface ServiceCategory {
 export interface Service {
   id: number;
   category: number;
-  category_name?: string;
+  category_name?: string | null;
   code: string;
   name: string;
   description: string;
@@ -73,9 +73,9 @@ export interface Invoice {
   id: number;
   invoice_number: string;
   patient: number;
-  patient_name?: string;
-  patient_mrn?: string;
-  encounter?: number;
+  patient_name?: string | null;
+  patient_mrn?: string | null;
+  encounter?: number | null;
   status: InvoiceStatus;
   invoice_date: string;
   due_date: string;
@@ -91,7 +91,7 @@ export interface Invoice {
   balance_due: string;
 
   // Insurance/SHA
-  sha_claim_number?: string;
+  sha_claim_number?: string | null;
   insurance_coverage: string;
 
   // Notes
@@ -101,23 +101,23 @@ export interface Invoice {
   created_at: string;
   updated_at: string;
   created_by: number;
-  finalized_at?: string;
-  finalized_by?: number;
-  cancelled_at?: string;
-  cancelled_by?: number;
-  cancellation_reason?: string;
+  finalized_at?: string | null;
+  finalized_by?: number | null;
+  cancelled_at?: string | null;
+  cancelled_by?: number | null;
+  cancellation_reason?: string | null;
 
   // Proforma-specific fields
-  valid_until?: string;                  // ISO date string for proforma validity
+  valid_until?: string | null;                  // ISO date string for proforma validity
   is_converted: boolean;                 // True if proforma has been converted
-  converted_at?: string;                 // ISO datetime when conversion occurred
-  converted_from_proforma?: number;      // ID of source proforma (for converted invoices)
+  converted_at?: string | null;                 // ISO datetime when conversion occurred
+  converted_from_proforma?: number | null;      // ID of source proforma (for converted invoices)
   is_valid: boolean;                     // Computed: proforma not expired
   days_until_expiry: number;             // Computed: -1 if N/A, 0+ for proformas
   can_convert: boolean;                  // Computed: proforma + valid + has unconverted items
 
   // QR code for validation (base64 data URI)
-  qr_code?: string;
+  qr_code?: string | null;
 
   // Nested items (when expanded)
   items?: InvoiceItem[];
@@ -133,21 +133,21 @@ export interface InvoiceItem {
   line_total: string;
 
   // Linked entities (optional)
-  service?: number;
-  service_name?: string;
-  drug?: number;
-  drug_name?: string;
-  lab_order?: number;
-  lab_order_name?: string;
+  service?: number | null;
+  service_name?: string | null;
+  drug?: number | null;
+  drug_name?: string | null;
+  lab_order?: number | null;
+  lab_order_name?: string | null;
 
   // Insurance
   is_covered_by_insurance: boolean;
-  sha_code?: string;
+  sha_code?: string | null;
 
   // Proforma conversion tracking
   is_converted: boolean;
-  converted_at?: string;
-  converted_from_item?: number;          // ID of source proforma item
+  converted_at?: string | null;
+  converted_from_item?: number | null;          // ID of source proforma item
 
   created_at: string;
   updated_at: string;
@@ -230,18 +230,18 @@ export interface PaymentPoint {
   method: PaymentMethod;
 
   // M-Pesa
-  till_number?: string;
-  paybill_number?: string;
-  paybill_account_number?: string;
+  till_number?: string | null;
+  paybill_number?: string | null;
+  paybill_account_number?: string | null;
 
   // Bank
-  bank_name?: string;
-  bank_account_name?: string;
-  bank_account_number?: string;
-  bank_branch?: string;
+  bank_name?: string | null;
+  bank_account_name?: string | null;
+  bank_account_number?: string | null;
+  bank_branch?: string | null;
 
   is_active: boolean;
-  notes?: string;
+  notes?: string | null;
 
   created_at: string;
   updated_at: string;
@@ -271,40 +271,40 @@ export interface Payment {
   id: number;
   payment_reference: string;
   invoice: number;
-  invoice_number?: string;
-  patient_name?: string;
+  invoice_number?: string | null;
+  patient_name?: string | null;
 
-  payment_point?: number;
+  payment_point?: number | null;
 
   amount: string;
   method: PaymentMethod;
   status: PaymentStatus;
 
   // M-Pesa specific
-  mpesa_receipt_number?: string;
-  mpesa_phone_number?: string;
-  mpesa_checkout_request_id?: string;
+  mpesa_receipt_number?: string | null;
+  mpesa_phone_number?: string | null;
+  mpesa_checkout_request_id?: string | null;
 
   // Card specific
-  card_last_four?: string;
-  card_type?: string;
-  card_authorization_code?: string;
+  card_last_four?: string | null;
+  card_type?: string | null;
+  card_authorization_code?: string | null;
 
   // Insurance specific
-  insurance_claim_number?: string;
-  insurance_approval_code?: string;
+  insurance_claim_number?: string | null;
+  insurance_approval_code?: string | null;
 
   // Processing
-  processed_at?: string;
-  processed_by?: number;
-  failure_reason?: string;
+  processed_at?: string | null;
+  processed_by?: number | null;
+  failure_reason?: string | null;
 
   // Reversal/Refund
-  reversed_at?: string;
-  reversed_by?: number;
-  reversal_reason?: string;
-  refunded_at?: string;
-  refund_reference?: string;
+  reversed_at?: string | null;
+  reversed_by?: number | null;
+  reversal_reason?: string | null;
+  refunded_at?: string | null;
+  refund_reference?: string | null;
 
   notes: string;
   created_at: string;
@@ -388,15 +388,15 @@ export interface Receipt {
   id: number;
   receipt_number: string;
   payment: number;
-  payment_reference?: string;
-  invoice?: number;
+  payment_reference?: string | null;
+  invoice?: number | null;
 
   // Denormalized for printing
   patient_name: string;
-  patient_mrn?: string;
+  patient_mrn?: string | null;
   facility_name: string;
-  facility_address?: string;
-  facility_phone?: string;
+  facility_address?: string | null;
+  facility_phone?: string | null;
 
   amount: string;
   amount_in_words: string;
@@ -407,23 +407,23 @@ export interface Receipt {
   line_items?: ReceiptLineItem[];
 
   // Served by / Till info
-  issued_by?: number;
-  issued_by_username?: string;
-  received_by_username?: string;
-  payment_point_name?: string;
-  payment_point_code?: string;
+  issued_by?: number | null;
+  issued_by_username?: string | null;
+  received_by_username?: string | null;
+  payment_point_name?: string | null;
+  payment_point_code?: string | null;
 
   // QR code for validation (base64 data URI)
-  qr_code?: string;
+  qr_code?: string | null;
 
   // Void info
   is_voided: boolean;
-  voided_at?: string;
-  voided_by?: number;
-  void_reason?: string;
+  voided_at?: string | null;
+  voided_by?: number | null;
+  void_reason?: string | null;
 
   created_at: string;
-  created_by?: number;
+  created_by?: number | null;
 }
 
 // ============================================================================
@@ -447,8 +447,8 @@ export interface CreditNote {
   id: number;
   credit_note_number: string;
   invoice: number;
-  invoice_number?: string;
-  patient_name?: string;
+  invoice_number?: string | null;
+  patient_name?: string | null;
 
   amount: string;
   reason: CreditNoteReason;
@@ -457,20 +457,20 @@ export interface CreditNote {
 
   // Workflow
   requested_by: number;
-  requested_by_name?: string;
+  requested_by_name?: string | null;
   created_at: string;
 
-  approved_by?: number;
-  approved_by_name?: string;
-  approved_at?: string;
+  approved_by?: number | null;
+  approved_by_name?: string | null;
+  approved_at?: string | null;
 
-  rejected_by?: number;
-  rejection_reason?: string;
-  rejected_at?: string;
+  rejected_by?: number | null;
+  rejection_reason?: string | null;
+  rejected_at?: string | null;
 
-  refunded_at?: string;
-  refund_reference?: string;
-  refund_method?: PaymentMethod;
+  refunded_at?: string | null;
+  refund_reference?: string | null;
+  refund_method?: PaymentMethod | null;
 }
 
 export interface CreditNoteCreateData {

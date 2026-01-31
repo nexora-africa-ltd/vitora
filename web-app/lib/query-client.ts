@@ -1,6 +1,30 @@
-import { QueryClient, DefaultOptions } from '@tanstack/react-query';
-import { transformAxiosError } from './api/client';
+import { QueryClient, DefaultOptions, QueryCache, MutationCache } from '@tanstack/react-query';
+import { transformAxiosError, type ApiError } from './api/client';
 import { AxiosError } from 'axios';
+
+/**
+ * Global error handler for queries and mutations.
+ * Transforms Axios errors into a consistent ApiError format for logging/monitoring.
+ */
+function handleGlobalError(error: Error): ApiError | null {
+  if (error instanceof AxiosError) {
+    const apiError = transformAxiosError(error);
+    
+    // Log error for monitoring (could integrate with Sentry, etc.)
+    if (process.env.NODE_ENV === 'development') {
+      console.error('[Query Error]', {
+        message: apiError.message,
+        status: apiError.status,
+        code: apiError.code,
+        details: apiError.details,
+      });
+    }
+    
+    return apiError;
+  }
+  
+  return null;
+}
 
 const defaultOptions: DefaultOptions = {
   queries: {
@@ -36,9 +60,24 @@ const defaultOptions: DefaultOptions = {
   },
 };
 
+/**
+ * Create QueryClient with global error handling.
+ * Uses QueryCache and MutationCache onError callbacks
+ * to transform and log errors consistently.
+ */
 export function createQueryClient(): QueryClient {
   return new QueryClient({
     defaultOptions,
+    queryCache: new QueryCache({
+      onError: (error) => {
+        handleGlobalError(error);
+      },
+    }),
+    mutationCache: new MutationCache({
+      onError: (error) => {
+        handleGlobalError(error);
+      },
+    }),
   });
 }
 

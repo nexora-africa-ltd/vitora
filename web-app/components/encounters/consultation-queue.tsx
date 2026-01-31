@@ -32,8 +32,16 @@ import {
   Users,
   AlertCircle,
   Filter,
+  Clock,
 } from 'lucide-react';
 import { ConsultationQueueItem } from './consultation-queue-item';
+import StatusIndicator from '@/components/ui/status-indicator';
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from '@/components/ui/tooltip';
 import type {
   ConsultationQueueItem as QueueItemType,
   ConsultationQueueFilters,
@@ -300,19 +308,43 @@ export function ConsultationQueue({
             </Badge>
           </CardTitle>
 
-          {onRefresh && (
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={onRefresh}
-              disabled={isLoading}
-            >
-              <RefreshCw
-                className={cn('h-4 w-4 mr-2', isLoading && 'animate-spin')}
-              />
-              Refresh
-            </Button>
-          )}
+          <div className="flex items-center gap-2">
+            {/* Polling Status Indicator */}
+            {autoRefreshInterval > 0 && (
+              <TooltipProvider>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                      <StatusIndicator state="active" size="sm" />
+                      <span className="hidden sm:inline">Auto-refresh</span>
+                    </div>
+                  </TooltipTrigger>
+                  <TooltipContent side="bottom">
+                    <div className="text-xs">
+                      <div className="font-medium">Polling every {autoRefreshInterval / 1000}s</div>
+                      <div className="text-muted-foreground mt-1">
+                        Queue updates automatically
+                      </div>
+                    </div>
+                  </TooltipContent>
+                </Tooltip>
+              </TooltipProvider>
+            )}
+
+            {onRefresh && (
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={onRefresh}
+                disabled={isLoading}
+              >
+                <RefreshCw
+                  className={cn('h-4 w-4 mr-2', isLoading && 'animate-spin')}
+                />
+                Refresh
+              </Button>
+            )}
+          </div>
         </div>
 
         {/* Stats Summary */}

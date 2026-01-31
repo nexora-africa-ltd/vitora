@@ -48,7 +48,7 @@ import {
   Link2,
   Receipt,
 } from 'lucide-react';
-import { printInvoice } from '@/lib/utils/print-invoice';
+import { printInvoice } from '@/lib/documents';
 import { SHALogo } from '@/components/ui/sha-logo';
 import { ClaimSubmissionButton, ClaimStatusBadge } from '@/components/billing/sha';
 import type { Invoice, InvoiceItem, InvoiceStatus } from '@/lib/types/billing';

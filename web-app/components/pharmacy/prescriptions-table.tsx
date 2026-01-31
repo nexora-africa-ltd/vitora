@@ -5,7 +5,7 @@
 
 'use client';
 
-import { useState } from 'react';
+import { useState, Fragment } from 'react';
 import { useRouter } from 'next/navigation';
 import { format } from 'date-fns';
 import {
@@ -235,10 +235,9 @@ export function PrescriptionsTable({
               const canDispense = ['PENDING', 'PARTIAL'].includes(rx.status);
 
               return (
-                <>
+                <Fragment key={rx.id}>
                   {/* Main Row */}
                   <TableRow
-                    key={rx.id}
                     className={canDispense ? 'cursor-pointer hover:bg-muted/50' : ''}
                     onClick={canDispense ? () => {
                       const newExpanded = new Set(expandedRows);
@@ -375,7 +374,7 @@ export function PrescriptionsTable({
                       </TableCell>
                     </TableRow>
                   )}
-                </>
+                </Fragment>
               );
             })}
           </TableBody>

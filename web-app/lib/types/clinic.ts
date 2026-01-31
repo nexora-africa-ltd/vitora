@@ -220,7 +220,8 @@ export interface ClinicListItem {
   code: string;
   status: ClinicStatus;
   location: string;
-  is_open_today: boolean;
+  is_sensitive?: boolean;
+  is_open_today?: boolean; // Not returned in list endpoint
 }
 
 // =============================================================================
@@ -237,9 +238,9 @@ export interface ClinicSession {
   opened_at: string | null;
   closed_at: string | null;
   opened_by: number | null;
-  opened_by_name: string | null;
+  opened_by_name?: string | null; // May not be returned by API
   closed_by: number | null;
-  closed_by_name: string | null;
+  closed_by_name?: string | null; // May not be returned by API
   patients_registered: number;
   patients_seen: number;
   patients_waiting: number;
@@ -414,16 +415,21 @@ export interface ClinicEnrollmentCreateData {
 // =============================================================================
 
 export interface ClinicQueueStats {
-  total_registered: number;
+  // Core stats (always returned)
   waiting: number;
   called: number;
   in_consultation: number;
   completed: number;
   referred: number;
   no_show: number;
-  cancelled: number;
-  avg_wait_time_minutes: number;
-  by_priority: Record<ClinicVisitPriority, number>;
+  total: number;
+  // API returns average_wait_time, not avg_wait_time_minutes
+  average_wait_time?: number;
+  // These may not be returned by all stats endpoints
+  total_registered?: number;
+  cancelled?: number;
+  avg_wait_time_minutes?: number;
+  by_priority?: Record<ClinicVisitPriority, number>;
 }
 
 // =============================================================================

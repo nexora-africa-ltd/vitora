@@ -41,8 +41,17 @@ jest.mock('@/lib/api/sha', () => ({
   },
 }));
 
-// Mock patient hooks
+// Mock patient hooks - include patientKeys which is used by PatientProvider
 jest.mock('@/lib/hooks/use-patients', () => ({
+  patientKeys: {
+    all: ['patients'] as const,
+    lists: () => ['patients', 'list'] as const,
+    list: (params?: Record<string, unknown>) => ['patients', 'list', params] as const,
+    details: () => ['patients', 'detail'] as const,
+    detail: (id: number) => ['patients', 'detail', id] as const,
+    emergencyContacts: (id: number) => ['patients', 'detail', id, 'emergency-contacts'] as const,
+    encounters: (id: number) => ['patients', 'detail', id, 'encounters'] as const,
+  },
   usePatientEmergencyContacts: jest.fn(() => ({ data: [], isLoading: false })),
   usePatientEncounters: jest.fn(() => ({ data: [], isLoading: false })),
 }));
