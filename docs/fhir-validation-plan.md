@@ -285,23 +285,42 @@ FHIR_BASE_URL = os.getenv("FHIR_BASE_URL", "http://localhost:9088")
 
 ---
 
-### Phase 6: Inferno Testing Suite
+### Phase 6: Inferno Testing Suite 🔄 IN PROGRESS
 
 **Objective**: Validate implementation against official HL7 Inferno testing framework.
 
 #### Deliverables
 
-| Deliverable | Description | File |
-|-------------|-------------|------|
-| Inferno setup | Local Inferno instance | `docker/inferno/compose.yml` |
-| US Core tests | Basic US Core profile tests | N/A (external tool) |
-| IPS tests | International Patient Summary | N/A (external tool) |
-| SMART tests | SMART App Launch tests | N/A (external tool) |
-| Compliance report | Test results documentation | `docs/fhir-compliance-report.md` |
+| Deliverable | Description | File | Status |
+|-------------|-------------|------|--------|
+| Inferno setup | Local Inferno instance | `docker/inferno/compose.yml` | ✅ Created |
+| Test runner script | Automated setup/teardown | `docker/inferno/run-tests.sh` | ✅ Created |
+| Environment config | Configuration template | `docker/inferno/.env.example` | ✅ Created |
+| Documentation | Setup and usage guide | `docker/inferno/README.md` | ✅ Created |
+| US Core tests | Basic US Core profile tests | N/A (external tool) | 📋 Pending |
+| IPS tests | International Patient Summary | N/A (external tool) | 📋 Pending |
+| SMART tests | SMART App Launch tests | N/A (external tool) | 📋 Pending |
+| Compliance report | Test results documentation | `docs/fhir-compliance-report.md` | ✅ Template created |
+
+#### Quick Start
+
+```bash
+# Start Inferno test suite
+./docker/inferno/run-tests.sh --all
+
+# Access test UIs
+# - Inferno Core:  http://localhost:4567
+# - US Core:       http://localhost:4568
+# - SMART:         http://localhost:4569
+# - IPS:           http://localhost:4570
+
+# Teardown
+./docker/inferno/run-tests.sh --teardown
+```
 
 #### Exit Criteria
 
-- [ ] Inferno test suite runs against Vitora
+- [x] Inferno test suite runs against Vitora
 - [ ] US Core Profile tests: ≥80% pass rate
 - [ ] IPS tests: ≥90% pass rate (critical for SHA)
 - [ ] SMART App Launch tests: ≥90% pass rate
