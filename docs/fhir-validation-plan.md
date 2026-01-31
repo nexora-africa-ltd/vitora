@@ -138,28 +138,80 @@ This document outlines the validation strategy for Vitora HMIS's FHIR R4, HL7, a
 
 ---
 
-### Phase 4: HL7 v2 Messaging (Lab Integration)
+### Phase 4: HL7 v2 Messaging (Lab Integration) 🔄 IN PROGRESS
 
 **Objective**: Implement HL7 v2.x messaging for laboratory system integration.
 
 #### Deliverables
 
-| Deliverable | Description | File |
-|-------------|-------------|------|
-| HL7 library | Add `hl7apy` or similar | `pyproject.toml` |
-| Message builder | HL7 ORM/ORU message generation | `hmis/apps/laboratory/services/hl7_service.py` |
-| Message parser | Parse incoming HL7 results | Integrated |
-| MLLP adapter | TCP/IP transport layer | `hmis/apps/laboratory/services/mllp_client.py` |
-| Integration tests | HL7 message round-trip tests | `tests/laboratory/test_hl7_integration.py` |
+| Deliverable | Description | File | Status |
+|-------------|-------------|------|--------|
+| HL7 library | Add `hl7apy` | `pyproject.toml` | ✅ Installed |
+| Message builder | HL7 ORM/ORU message generation | `hmis/apps/laboratory/services/hl7_service.py` | ✅ Implemented |
+| Message parser | Parse incoming HL7 results | Integrated in hl7_service.py | ✅ Implemented |
+| MLLP adapter | TCP/IP transport layer | `hmis/apps/laboratory/services/mllp_client.py` | ✅ Implemented |
+| Integration tests | HL7 message round-trip tests | `tests/test_hl7_integration.py` | ✅ 43 tests passing |
 
 #### Exit Criteria
 
-- [ ] Generate valid HL7 v2.5.1 ORM^O01 (Lab Order) messages
-- [ ] Parse HL7 v2.5.1 ORU^R01 (Lab Result) messages
-- [ ] Messages pass HL7 validation tools
-- [ ] MLLP client can send/receive messages
-- [ ] Lab results auto-import from HL7 messages
-- [ ] Acknowledgment (ACK) messages handled correctly
+- [x] Generate valid HL7 v2.5.1 ORM^O01 (Lab Order) messages
+- [x] Parse HL7 v2.5.1 ORU^R01 (Lab Result) messages
+- [ ] Messages pass HL7 validation tools (external validation pending)
+- [x] MLLP client can send/receive messages
+- [x] Lab results auto-import from HL7 messages
+- [x] Acknowledgment (ACK) messages handled correctly
+
+#### External HL7 Validation Guide
+
+**Recommended Validator**: [HAPI HL7 v2 Validator](https://hapifhir.github.io/hapi-hl7v2/)
+
+HAPI is the most widely-used open-source HL7 v2 library (Java) and provides robust validation against the official HL7 v2.5.1 specification.
+
+**Quick Validation Steps**:
+
+1. **Install HAPI Test Panel** (GUI tool):
+   ```bash
+   # Download from: https://github.com/hapifhir/hapi-hl7v2/releases
+   # Run the JAR file
+   java -jar hapi-testpanel-x.x.jar
+   ```
+
+2. **Generate a test message**:
+   ```python
+   from hmis.apps.laboratory.services import HL7Service
+   
+   service = HL7Service()
+   message = service.build_orm_o01(lab_order)
+   print(message)  # Copy this output
+   ```
+
+3. **Validate in HAPI Test Panel**:
+   - Paste message in "Messages" tab
+   - Select "HL7 v2.5.1" profile
+   - Click "Validate" → Review any conformance warnings
+
+**Alternative Validators**:
+
+| Validator | Type | Use Case |
+|-----------|------|----------|
+| [NIST HL7 Tool](https://hl7v2.nist.gov/) | Web | Official NIST testing (US healthcare) |
+| [hl7apy validation](https://hl7apy.readthedocs.io/) | Python | Programmatic validation in tests |
+| [Gazelle](https://gazelle.ihe.net/) | Web | IHE profile testing (EU/international) |
+
+# TODO: Evaluate Gazelle for future use.
+
+**Adding Programmatic Validation** (future enhancement):
+```python
+# Using hl7apy's built-in validation
+from hl7apy.parser import parse_message
+from hl7apy.validation import Validator
+
+def validate_hl7_message(message_str: str) -> list[str]:
+    """Validate HL7 message and return any errors."""
+    msg = parse_message(message_str, version="2.5.1")
+    validator = Validator(msg)
+    return validator.validate()
+```
 
 ---
 
@@ -200,7 +252,7 @@ This document outlines the validation strategy for Vitora HMIS's FHIR R4, HL7, a
 
 | Deliverable | Description | File |
 |-------------|-------------|------|
-| Inferno setup | Local Inferno instance | `docker/docker-compose.inferno.yml` |
+| Inferno setup | Local Inferno instance | `docker/inferno/compose.yml` |
 | US Core tests | Basic US Core profile tests | N/A (external tool) |
 | IPS tests | International Patient Summary | N/A (external tool) |
 | SMART tests | SMART App Launch tests | N/A (external tool) |
