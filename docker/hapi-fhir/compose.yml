@@ -35,12 +35,11 @@ services:
       - hapi.fhir.reuse_cached_search_results_millis=60000
       - hapi.fhir.default_page_size=20
       - hapi.fhir.max_page_size=200
-      # Database - use H2 in-memory for CI tests (no persistence needed)
-      - spring.datasource.url=jdbc:h2:mem:hapi_fhir;MODE=PostgreSQL;DB_CLOSE_DELAY=-1;DB_CLOSE_ON_EXIT=FALSE
-      - spring.datasource.driver-class-name=org.h2.Driver
-      - spring.jpa.properties.hibernate.dialect=ca.uhn.fhir.jpa.model.dialect.HapiFhirH2Dialect
-    volumes:
-      - hapi-fhir-data:/data
+      # Database - use HAPI's default H2 configuration
+      # HAPI v7.x uses embedded H2 by default with proper schema initialization
+      - spring.datasource.url=jdbc:h2:mem:hapi;DB_CLOSE_DELAY=-1
+      - spring.datasource.username=sa
+      - spring.datasource.password=
     healthcheck:
       test: ["CMD", "wget", "-q", "--spider", "http://localhost:8080/fhir/metadata"]
       interval: 10s
