@@ -44,19 +44,23 @@ Scheduling applies to:
 
 ---
 
-## Phase 1: Core Scheduling Foundation (No WebSockets)
+## Phase 1: Core Scheduling Foundation (No WebSockets) ✅ COMPLETE
+
+> **Implemented**: February 7, 2026  
+> **Test Coverage**: 70 tests passing (34 model + 36 API)  
+> **Location**: `backend/hmis/apps/scheduling/`
 
 ### Objectives
 Establish a single, authoritative scheduling engine.
 
-### Deliverables
-- Central `Schedule` domain model
-- Time-slot abstraction (start, end, timezone-safe)
-- Resource abstraction:
+### Deliverables ✅
+- Central `Schedule` domain model ✅
+- Time-slot abstraction (start, end, timezone-safe) ✅
+- Resource abstraction: ✅
   - Person (doctor, nurse, lab tech)
   - Place (room, clinic, ward)
   - Asset (bed, machine, theatre)
-- Appointment / booking lifecycle:
+- Appointment / booking lifecycle: ✅
   - CREATED
   - CONFIRMED
   - CHECKED_IN
@@ -65,13 +69,48 @@ Establish a single, authoritative scheduling engine.
   - CANCELLED
   - NO_SHOW
 
-### APIs
-- Create / update / cancel schedules
-- Query availability
-- Conflict detection & prevention
-- Manual override endpoints (admin only)
+### APIs ✅
+- Create / update / cancel schedules ✅
+- Query availability ✅
+- Conflict detection & prevention ✅
+- Manual override endpoints (admin only) ✅
 
-### Non-Goals
+### Implementation Details
+
+#### Models Created
+| Model | Purpose |
+|-------|--------|
+| `Resource` | PERSON/PLACE/ASSET abstraction with staff profile linking |
+| `TimeSlot` | Timezone-safe (Africa/Nairobi) time range with overlap detection |
+| `Schedule` | RECURRING (weekly) or ONE_TIME schedules with breaks |
+| `ScheduleBreak` | Break periods within schedules |
+| `Appointment` | Full lifecycle with state machine transitions |
+
+#### API Endpoints
+| Endpoint | Methods |
+|----------|--------|
+| `/api/scheduling/resources/` | GET, POST, PATCH, DELETE |
+| `/api/scheduling/resources/{id}/availability/` | GET (daily slots) |
+| `/api/scheduling/resources/{id}/availability/weekly/` | GET (week view) |
+| `/api/scheduling/resources/{id}/availability/check/` | GET (slot check) |
+| `/api/scheduling/schedules/` | GET, POST, PATCH, DELETE |
+| `/api/scheduling/schedules/{id}/breaks/` | GET, POST |
+| `/api/scheduling/appointments/` | GET, POST, PATCH, DELETE |
+| `/api/scheduling/appointments/{id}/confirm/` | POST |
+| `/api/scheduling/appointments/{id}/check-in/` | POST |
+| `/api/scheduling/appointments/{id}/start/` | POST |
+| `/api/scheduling/appointments/{id}/complete/` | POST |
+| `/api/scheduling/appointments/{id}/cancel/` | POST |
+| `/api/scheduling/appointments/{id}/no-show/` | POST |
+
+#### Audit Tracking
+All appointment lifecycle actions are logged to `AuditLog` with:
+- User who performed action
+- IP address
+- Timestamp
+- Action type (`appointment_create`, `appointment_confirm`, etc.)
+
+### Non-Goals (Deferred to Phase 2+)
 - No real-time push
 - No live dashboards
 - No background auto-assignment yet
@@ -256,21 +295,23 @@ Sprint 1        Sprint 2        Sprint 3        Sprint 4        Sprint 5
 
 ---
 
-### 🟦 Phase 1: Core Scheduling Foundation (Sprints 1–4)
+### ✅ Phase 1: Core Scheduling Foundation (Sprints 1–4) — COMPLETE
 
 ```
-[Scheduling Models] ██████████
-[Availability Engine] ████████
-[Conflict Detection] ████████
-[REST APIs] ██████████
-[Audit Logging] ██████
+[Scheduling Models] ██████████ ✅
+[Availability Engine] ████████ ✅
+[Conflict Detection] ████████ ✅
+[REST APIs] ██████████ ✅
+[Audit Logging] ██████ ✅
 ```
 
-**Exit criteria**
+**Exit criteria** ✅
 
-* App fully usable without real-time
-* Scheduling is deterministic and authoritative
-* Conflicts are prevented, not detected late
+* App fully usable without real-time ✅
+* Scheduling is deterministic and authoritative ✅
+* Conflicts are prevented, not detected late ✅
+
+**Completed**: February 7, 2026 | 70 tests | `hmis.apps.scheduling`
 
 ---
 

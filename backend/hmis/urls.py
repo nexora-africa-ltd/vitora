@@ -155,6 +155,8 @@ urlpatterns = [
     path("api/sha/", include("hmis.apps.billing.sha_urls", namespace="sha")),
     # Inpatient API
     path("api/inpatient/", include("hmis.apps.inpatient.urls", namespace="inpatient")),
+    # Scheduling API
+    path("api/scheduling/", include("hmis.apps.scheduling.urls", namespace="scheduling")),
     # Triage API
     path("api/triage/", include("hmis.apps.triage.urls", namespace="triage")),
     # Imaging/Radiology API
