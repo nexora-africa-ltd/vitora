@@ -2,8 +2,8 @@
 
 > **Project**: Vitora HMIS  
 > **Module**: Diagnostics (Imaging/Radiology)  
-> **Version**: 1.0  
-> **Last Updated**: February 6, 2026  
+> **Version**: 1.1  
+> **Last Updated**: February 7, 2026  
 > **Estimated Duration**: 9-12 weeks  
 > **Original Roadmap**: Phase 3, Sprint 3.4-3.6 (Apr-Sep 2027)
 
@@ -46,6 +46,7 @@ The imaging module will provide comprehensive radiology and diagnostic imaging w
 |--------|--------|-------|
 | Backend imaging app | ✅ Complete | Phase A implemented |
 | Frontend imaging page | ✅ Complete | Phase B implemented |
+| Scheduling integration | ✅ Complete | Uses scheduling module (ImagingOrder → Appointment link) |
 | Roadmap placement | Sprint 3.4-3.6 | Phase 3 (Apr-Sep 2027) |
 | Similar pattern reference | ✅ Laboratory module | Fully implemented, use as template |
 | Test infrastructure | ✅ Ready | pytest, Jest, Playwright configured |
@@ -489,10 +490,21 @@ class RadiologyReport(models.Model):
 | GET | `/api/imaging/orders/{id}/` | Get order details |
 | PATCH | `/api/imaging/orders/{id}/` | Update order |
 | POST | `/api/imaging/orders/{id}/submit/` | Submit order (DRAFT → ORDERED) |
-| POST | `/api/imaging/orders/{id}/schedule/` | Schedule order |
+| POST | `/api/imaging/orders/{id}/schedule/` | Schedule order (optionally links to scheduling.Appointment) |
 | POST | `/api/imaging/orders/{id}/start/` | Start imaging (→ IN_PROGRESS) |
 | POST | `/api/imaging/orders/{id}/complete/` | Mark imaging complete |
 | POST | `/api/imaging/orders/{id}/cancel/` | Cancel order |
+
+### Imaging Scheduling Resources
+
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| GET | `/api/imaging/resources/` | List radiology resources (rooms/scanners) |
+| GET | `/api/imaging/resources/{id}/` | Get resource details |
+| GET | `/api/imaging/resources/{id}/availability/` | Get slots for specific date |
+| GET | `/api/imaging/resources/{id}/availability/weekly/` | Get weekly availability |
+| GET | `/api/imaging/resources/{id}/availability/check/` | Check specific slot |
+| GET | `/api/imaging/calendar/` | Department-wide calendar view |
 
 ### Imaging Catalog
 
@@ -662,7 +674,7 @@ class RadiologyReport(models.Model):
 |---|------|----------|
 | B.2.1 | Build radiologist/tech worklist page | ✅ Done |
 | B.2.2 | Integrate order creation with encounters | ✅ Done |
-| B.2.3 | Add scheduling calendar view | ⏸️ Deferred |
+| B.2.3 | Add scheduling calendar view (backend) | ✅ Done |
 | B.2.4 | Implement order status updates | ✅ Done |
 | B.2.5 | Add procedure search/autocomplete | ✅ Done |
 | B.2.6 | Write Jest unit tests | ✅ Done (136 tests) |
@@ -705,7 +717,7 @@ class RadiologyReport(models.Model):
   - [x] ImagingOrderForm with validation
   - [x] OrderStatusBadge with colors
   - [x] ProcedureCombobox with search
-  - [ ] SchedulingCalendar (basic) - Deferred to Phase C
+  - [x] SchedulingCalendar backend API (frontend view deferred)
 
 - [x] **Integration**
   - [x] Order button in encounter view
