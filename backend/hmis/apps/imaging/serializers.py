@@ -176,9 +176,64 @@ class ScheduleOrderSerializer(serializers.Serializer):
 
     scheduled_datetime = serializers.DateTimeField()
     scheduled_room = serializers.CharField(required=False, allow_blank=True)
+    resource_id = serializers.IntegerField(required=False, help_text="Scheduling resource ID")
+
+
+class ScheduleOrderWithResourceSerializer(serializers.Serializer):
+    """Serializer for scheduling with resource integration."""
+
+    resource_id = serializers.IntegerField(help_text="Scheduling resource ID")
+    scheduled_datetime = serializers.DateTimeField()
 
 
 class CancelOrderSerializer(serializers.Serializer):
     """Serializer for cancelling an imaging order."""
 
     reason = serializers.CharField(required=False, allow_blank=True, default="No reason provided")
+
+
+class ImagingResourceSerializer(serializers.Serializer):
+    """Serializer for imaging resources."""
+
+    id = serializers.IntegerField()
+    name = serializers.CharField()
+    code = serializers.CharField()
+    resource_type = serializers.CharField()
+    is_active = serializers.BooleanField()
+    metadata = serializers.JSONField()
+
+
+class ImagingSlotSerializer(serializers.Serializer):
+    """Serializer for imaging time slots."""
+
+    date = serializers.CharField()
+    start_time = serializers.CharField()
+    end_time = serializers.CharField()
+    is_available = serializers.BooleanField()
+    appointment = serializers.DictField(allow_null=True)
+
+
+class ImagingResourceAvailabilitySerializer(serializers.Serializer):
+    """Serializer for resource availability response."""
+
+    resource = ImagingResourceSerializer()
+    slots = ImagingSlotSerializer(many=True)
+    total_slots = serializers.IntegerField()
+    available_slots = serializers.IntegerField()
+
+
+class ImagingCalendarSerializer(serializers.Serializer):
+    """Serializer for department calendar response."""
+
+    resources = ImagingResourceAvailabilitySerializer(many=True)
+
+
+class AppointmentSummarySerializer(serializers.Serializer):
+    """Summary serializer for linked appointment."""
+
+    id = serializers.IntegerField()
+    appointment_number = serializers.CharField()
+    status = serializers.CharField()
+    scheduled_start = serializers.DateTimeField()
+    scheduled_end = serializers.DateTimeField()
+    resource = ImagingResourceSerializer()

@@ -214,6 +214,16 @@ class ImagingOrder(models.Model):
     scheduled_datetime = models.DateTimeField(null=True, blank=True)
     scheduled_room = models.CharField(max_length=50, blank=True)
 
+    # Link to scheduling system appointment
+    appointment = models.OneToOneField(
+        "scheduling.Appointment",
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="imaging_order",
+        help_text="Linked scheduling appointment",
+    )
+
     # DICOM/PACS
     accession_number = models.CharField(
         max_length=50, blank=True, help_text="PACS accession number"
