@@ -60,6 +60,7 @@ INSTALLED_APPS = [
     "hmis.apps.triage",
     "hmis.apps.clinics",
     "hmis.apps.imaging.apps.ImagingConfig",
+    "hmis.apps.scheduling.apps.SchedulingConfig",
 ]
 
 MIDDLEWARE = [
