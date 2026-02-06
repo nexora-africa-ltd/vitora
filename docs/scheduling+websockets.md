@@ -252,9 +252,14 @@ Decouple scheduling logic from UI concerns.
 - Durable (can be replayed)
 - Source for audit trails
 
+### Overlap with Phase 4
+At the end of this phase (Sprint 9), build **one simple projection** (e.g., queue waiting count) as a "canary" to validate that event contracts are correct before committing to the full projection suite. This de-risks Phase 4 without merging the phases.
+
 ---
 
 ## Phase 4: Read Models & Projections
+
+> **Note**: Sprint 9 overlaps with Phase 3 (canary projection only). Full work begins Sprint 10.
 
 ### Objectives
 Prepare data for real-time consumption.
@@ -268,6 +273,10 @@ Prepare data for real-time consumption.
 
 ### Important Rule
 Read models are **derived**, never authoritative.
+
+### Implementation Approach
+1. **Sprint 9 (overlap)**: Validate canary projection, freeze event contracts
+2. **Sprints 10–11**: Build full projection suite with confidence
 
 ---
 
@@ -468,30 +477,60 @@ Sprint 1        Sprint 2        Sprint 3        Sprint 4        Sprint 5
 ### 🟦 Phase 3: Domain Events Layer (Sprints 8–9)
 
 ```
-[Event Definitions] █████
-[Event Emission] ██████
-[Event Persistence] ██████
+[Event Definitions] ██████████
+[Event Emission] ██████████
+[Event Persistence] ██████████
+[Canary Projection] ████████   ← Overlap with Phase 4
 ```
 
 **Exit criteria**
 
 * Scheduling logic no longer talks to UI directly
 * Events can be replayed
+* One simple projection validates event contracts (canary)
+
+**Overlap Strategy**
+
+> Phases 3 and 4 have a deliberate 1-sprint overlap. A single lightweight 
+> projection (e.g., queue waiting count) is built at the end of Sprint 9 
+> to validate the event layer before committing to all projections.
+
+**Why keep separate (not merge)?**
+
+| Factor | Rationale |
+|--------|-----------|
+| **Dependency chain** | Read models *consume* domain events. Wrong event contracts → wrong projections. |
+| **Debugging clarity** | Projection bugs need certainty that events are solid. Mixed sprints obscure root causes. |
+| **Replay validation** | Exit criteria "events can be replayed" must be tested *before* building complex projections. |
 
 ---
 
-### 🟦 Phase 4: Read Models & Projections (Sprints 10–11)
+### 🟦 Phase 4: Read Models & Projections (Sprints 9–11)
+
+> **Note**: Sprint 9 overlaps with Phase 3 (canary projection only).
+> Full projection work begins Sprint 10.
 
 ```
-[Queues Projection] ██████
-[Timetables] ██████
-[Occupancy Views] ██████
+Sprint 9 (overlap)           Sprints 10–11 (full)
+├── Canary projection        ├── Timetable views
+├── Validate replay works    ├── Room/ward occupancy views
+└── Event contract freeze    ├── Staff workload views
+                             └── Performance tuning
+```
+
+```
+[Canary Validation] ████████   (Sprint 9 overlap)
+[Queues Projection] ██████████
+[Timetables] ██████████
+[Occupancy Views] ██████████
+[Workload Views] ██████████
 ```
 
 **Exit criteria**
 
 * Fast, read-optimized views
 * No writes to projections
+* Event contracts frozen before full projection build
 
 ---
 
