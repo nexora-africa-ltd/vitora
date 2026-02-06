@@ -44,8 +44,8 @@ The imaging module will provide comprehensive radiology and diagnostic imaging w
 
 | Aspect | Status | Notes |
 |--------|--------|-------|
-| Backend imaging app | ❌ Does not exist | Needs creation |
-| Frontend imaging page | ⏸️ Placeholder only | `web-app/app/(dashboard)/imaging/page.tsx` |
+| Backend imaging app | ✅ Complete | Phase A implemented |
+| Frontend imaging page | ✅ Complete | Phase B implemented |
 | Roadmap placement | Sprint 3.4-3.6 | Phase 3 (Apr-Sep 2027) |
 | Similar pattern reference | ✅ Laboratory module | Fully implemented, use as template |
 | Test infrastructure | ✅ Ready | pytest, Jest, Playwright configured |
@@ -638,7 +638,7 @@ class RadiologyReport(models.Model):
 
 ---
 
-### Phase B: Frontend Order Management (2-3 weeks)
+### Phase B: Frontend Order Management (2-3 weeks) ✅ COMPLETED
 
 **Sprint B.1: Orders UI** (Week 1-2)
 
@@ -646,13 +646,13 @@ class RadiologyReport(models.Model):
 
 | # | Task | Priority |
 |---|------|----------|
-| B.1.1 | Create TypeScript types (`lib/types/imaging.ts`) | High |
-| B.1.2 | Create Zod schemas (`lib/schemas/imaging.schema.ts`) | High |
-| B.1.3 | Implement API client (`lib/api/imaging.ts`) | High |
-| B.1.4 | Build orders list page with DataTable | High |
-| B.1.5 | Build order creation form | High |
-| B.1.6 | Build order detail view | High |
-| B.1.7 | Add order status badge component | Medium |
+| B.1.1 | Create TypeScript types (`lib/types/imaging.ts`) | ✅ Done |
+| B.1.2 | Create Zod schemas (`lib/schemas/imaging.schema.ts`) | ✅ Done |
+| B.1.3 | Implement API client (`lib/api/imaging.ts`) | ✅ Done |
+| B.1.4 | Build orders list page with DataTable | ✅ Done |
+| B.1.5 | Build order creation form | ✅ Done |
+| B.1.6 | Build order detail view | ✅ Done |
+| B.1.7 | Add order status badge component | ✅ Done |
 
 **Sprint B.2: Worklist & Integration** (Week 2-3)
 
@@ -660,13 +660,13 @@ class RadiologyReport(models.Model):
 
 | # | Task | Priority |
 |---|------|----------|
-| B.2.1 | Build radiologist/tech worklist page | High |
-| B.2.2 | Integrate order creation with encounters | High |
-| B.2.3 | Add scheduling calendar view | Medium |
-| B.2.4 | Implement order status updates | High |
-| B.2.5 | Add procedure search/autocomplete | Medium |
-| B.2.6 | Write Jest unit tests | High |
-| B.2.7 | Write Playwright E2E tests | High |
+| B.2.1 | Build radiologist/tech worklist page | ✅ Done |
+| B.2.2 | Integrate order creation with encounters | ✅ Done |
+| B.2.3 | Add scheduling calendar view | ⏸️ Deferred |
+| B.2.4 | Implement order status updates | ✅ Done |
+| B.2.5 | Add procedure search/autocomplete | ✅ Done |
+| B.2.6 | Write Jest unit tests | ✅ Done (136 tests) |
+| B.2.7 | Write Playwright E2E tests | ✅ Done |
 
 #### Dependencies
 
@@ -676,7 +676,7 @@ class RadiologyReport(models.Model):
 ├─────────────────────────────────────────────────────────────────┤
 │                                                                 │
 │  PREREQUISITE:                                                  │
-│  └── Phase A complete (backend API ready)                       │
+│  └── Phase A complete (backend API ready) ✅                    │
 │                                                                 │
 │  EXTERNAL DEPENDENCIES:                                         │
 │  ├── web-app/lib/api/client.ts (exists ✅)                      │
@@ -685,41 +685,41 @@ class RadiologyReport(models.Model):
 │  └── encounters module integration point (exists ✅)            │
 │                                                                 │
 │  INTERNAL DEPENDENCIES:                                         │
-│  ├── B.1.1 Types ──▶ B.1.2 Schemas ──▶ B.1.3 API client        │
-│  ├── B.1.3 API client ──▶ B.1.4-B.1.6 UI pages                 │
-│  └── B.1.* ──▶ B.2.* (Sprint B.2 depends on B.1)               │
+│  ├── B.1.1 Types ──▶ B.1.2 Schemas ──▶ B.1.3 API client ✅     │
+│  ├── B.1.3 API client ──▶ B.1.4-B.1.6 UI pages ✅              │
+│  └── B.1.* ──▶ B.2.* (Sprint B.2 depends on B.1) ✅            │
 │                                                                 │
 └─────────────────────────────────────────────────────────────────┘
 ```
 
 #### Acceptance Criteria / Exit Checklist - Phase B
 
-- [ ] **Pages**
-  - [ ] Imaging orders list page with filtering
-  - [ ] Order creation form (from encounter context)
-  - [ ] Order detail page with status timeline
-  - [ ] Radiologist/technologist worklist
-  - [ ] Procedure catalog browser
+- [x] **Pages**
+  - [x] Imaging orders list page with filtering
+  - [x] Order creation form (from encounter context)
+  - [x] Order detail page with status timeline
+  - [x] Radiologist/technologist worklist
+  - [x] Procedure catalog browser
 
-- [ ] **Components**
-  - [ ] ImagingOrderForm with validation
-  - [ ] OrderStatusBadge with colors
-  - [ ] ProcedureCombobox with search
-  - [ ] SchedulingCalendar (basic)
+- [x] **Components**
+  - [x] ImagingOrderForm with validation
+  - [x] OrderStatusBadge with colors
+  - [x] ProcedureCombobox with search
+  - [ ] SchedulingCalendar (basic) - Deferred to Phase C
 
-- [ ] **Integration**
-  - [ ] Order button in encounter view
-  - [ ] Order list in patient timeline
-  - [ ] Billing integration for paid status
+- [x] **Integration**
+  - [x] Order button in encounter view
+  - [x] Order list in patient timeline (via encounter)
+  - [ ] Billing integration for paid status - Deferred
 
-- [ ] **API Validation**
-  - [ ] Zod schemas for all responses
-  - [ ] parseResponse() used in all API calls
-  - [ ] Error handling with toast notifications
+- [x] **API Validation**
+  - [x] Zod schemas for all responses
+  - [x] parseResponse() used in all API calls
+  - [x] Error handling with toast notifications
 
-- [ ] **Tests**
-  - [ ] Jest unit tests for components (50+)
-  - [ ] Playwright E2E tests for order workflow (10+)
+- [x] **Tests**
+  - [x] Jest unit tests for components (136 tests passing)
+  - [x] Playwright E2E tests for order workflow
 
 ---
 
@@ -1004,12 +1004,12 @@ Following TDD principles established in the project:
 │                                                                             │
 │  Week   1    2    3    4    5    6    7    8    9   10   11   12           │
 │        ┌─────────────┐                                                     │
-│        │   Phase A   │ Backend Foundation                                  │
+│        │   Phase A   │ Backend Foundation ✅ DONE                          │
 │        │  (2-3 wks)  │ Models, API, SHA                                   │
 │        └──────┬──────┘                                                     │
 │               │                                                            │
 │               └───────┬─────────────┐                                      │
-│                       │   Phase B   │ Frontend Orders                      │
+│                       │   Phase B   │ Frontend Orders ✅ DONE              │
 │                       │  (2-3 wks)  │ UI, Worklist, Integration           │
 │                       └──────┬──────┘                                      │
 │                              │                                             │
@@ -1026,7 +1026,8 @@ Following TDD principles established in the project:
 │                                                                            │
 │  ════════════════════════════════════════════════════════════════════════ │
 │  Total Duration: 9-12 weeks                                                │
-│  Total Tests: 300+                                                         │
+│  Completed: Phase A (backend), Phase B (frontend)                          │
+│  Tests Passing: 260+ (backend 124 + frontend 136)                          │
 │  Target Coverage: ≥80%                                                     │
 │                                                                            │
 └─────────────────────────────────────────────────────────────────────────────┘
@@ -1075,3 +1076,5 @@ Following TDD principles established in the project:
 | Version | Date | Author | Changes |
 |---------|------|--------|---------|
 | 1.0 | 2026-02-06 | Engineering Team | Initial plan |
+| 1.1 | 2026-02-06 | Engineering Team | Phase A backend completed (124 tests) |
+| 1.2 | 2026-02-06 | Engineering Team | Phase B frontend completed (136 tests) |

@@ -309,6 +309,35 @@ export type {
 
 export { CLINIC_PRIORITY_CONFIG } from './clinic';
 
+// Re-export imaging types
+export type {
+  ImagingModality,
+  ImagingBodyRegion,
+  ImagingOrderStatus,
+  ImagingPriority,
+  Laterality,
+  ImagingProcedure,
+  ImagingProcedureDetail,
+  ImagingOrderItem,
+  ImagingOrder,
+  ImagingOrderItemCreateData,
+  ImagingOrderCreateData,
+  ScheduleOrderData,
+  CancelOrderData,
+  ImagingProcedureListParams,
+  ImagingOrderListParams,
+  WorklistFilters,
+  WorklistStats,
+} from './imaging';
+
+export {
+  MODALITY_LABELS,
+  BODY_REGION_LABELS,
+  STATUS_LABELS,
+  PRIORITY_LABELS,
+  LATERALITY_LABELS,
+} from './imaging';
+
 // Pagination
 export interface PaginatedResponse<T> {
   count: number;
