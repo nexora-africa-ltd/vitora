@@ -2,12 +2,17 @@
 Scheduling views for Vitora HMIS.
 
 Phase 1: Core Scheduling Foundation
+Phase 2: Automatic Assignment Engine
 
 This module contains ViewSets for:
 - Resource CRUD
 - Schedule CRUD
 - Appointment CRUD and lifecycle actions
 - Availability queries
+- Assignment Rules CRUD
+- Assignment Decisions (read-only)
+- Assignment Overrides with approval workflow
+- Auto-assign and manual override actions
 """
 
 from django_filters import rest_framework as filters
@@ -18,6 +23,9 @@ from rest_framework.response import Response
 from hmis.apps.core.models import AuditLog
 from hmis.apps.scheduling.models import (
     Appointment,
+    AssignmentDecision,
+    AssignmentOverride,
+    AssignmentRule,
     Resource,
     Schedule,
 )
@@ -423,3 +431,320 @@ class AppointmentViewSet(viewsets.ModelViewSet):
 
         self._log_action("appointment_noshow", appointment)
         return Response(AppointmentSerializer(appointment).data)
+
+
+# =============================================================================
+# Phase 2: Assignment Engine ViewSets
+# =============================================================================
+
+
+class AssignmentRuleFilter(filters.FilterSet):
+    """Filter for AssignmentRule model."""
+
+    applies_to = filters.CharFilter(field_name="applies_to")
+    is_active = filters.BooleanFilter(field_name="is_active")
+    priority_gte = filters.NumberFilter(field_name="priority", lookup_expr="gte")
+    rule_code = filters.CharFilter(field_name="rule_code", lookup_expr="icontains")
+
+    class Meta:
+        """Meta options for AssignmentRuleFilter."""
+
+        model = AssignmentRule
+        fields = ["applies_to", "is_active", "priority_gte", "rule_code"]
+
+
+class AssignmentRuleViewSet(viewsets.ModelViewSet):
+    """
+    ViewSet for managing assignment rules.
+
+    Supports CRUD operations plus activate/deactivate actions.
+    """
+
+    queryset = AssignmentRule.objects.all()
+    permission_classes = [permissions.IsAuthenticated]
+    filterset_class = AssignmentRuleFilter
+
+    def get_serializer_class(self):
+        """Use list serializer for list action."""
+        from hmis.apps.scheduling.serializers import (
+            AssignmentRuleListSerializer,
+            AssignmentRuleSerializer,
+        )
+
+        if self.action == "list":
+            return AssignmentRuleListSerializer
+        return AssignmentRuleSerializer
+
+    @action(detail=True, methods=["post"])
+    def activate(self, request, pk=None):
+        """Activate a rule."""
+        from hmis.apps.scheduling.serializers import AssignmentRuleSerializer
+
+        rule = self.get_object()
+        rule.is_active = True
+        rule.save(update_fields=["is_active", "updated_at"])
+        return Response(AssignmentRuleSerializer(rule).data)
+
+    @action(detail=True, methods=["post"])
+    def deactivate(self, request, pk=None):
+        """Deactivate a rule."""
+        from hmis.apps.scheduling.serializers import AssignmentRuleSerializer
+
+        rule = self.get_object()
+        rule.is_active = False
+        rule.save(update_fields=["is_active", "updated_at"])
+        return Response(AssignmentRuleSerializer(rule).data)
+
+
+class AssignmentDecisionFilter(filters.FilterSet):
+    """Filter for AssignmentDecision model."""
+
+    assignment_type = filters.CharFilter(field_name="assignment_type")
+    target_type = filters.CharFilter(field_name="target_type")
+    target_id = filters.NumberFilter(field_name="target_id")
+    decision_outcome = filters.CharFilter(field_name="decision_outcome")
+
+    class Meta:
+        """Meta options for AssignmentDecisionFilter."""
+
+        model = AssignmentDecision
+        fields = ["assignment_type", "target_type", "target_id", "decision_outcome"]
+
+
+class AssignmentDecisionViewSet(viewsets.ReadOnlyModelViewSet):
+    """
+    ViewSet for viewing assignment decisions (read-only).
+
+    Decisions are immutable - they serve as an audit trail.
+    """
+
+    from hmis.apps.scheduling.serializers import AssignmentDecisionSerializer
+
+    queryset = AssignmentDecision.objects.all()
+    serializer_class = AssignmentDecisionSerializer
+    permission_classes = [permissions.IsAuthenticated]
+    filterset_class = AssignmentDecisionFilter
+
+
+class AssignmentOverrideFilter(filters.FilterSet):
+    """Filter for AssignmentOverride model."""
+
+    target_type = filters.CharFilter(field_name="target_type")
+    target_id = filters.NumberFilter(field_name="target_id")
+    override_reason = filters.CharFilter(field_name="override_reason")
+    approval_status = filters.CharFilter(field_name="approval_status")
+
+    class Meta:
+        """Meta options for AssignmentOverrideFilter."""
+
+        model = AssignmentOverride
+        fields = ["target_type", "target_id", "override_reason", "approval_status"]
+
+
+class AssignmentOverrideViewSet(viewsets.ModelViewSet):
+    """
+    ViewSet for managing assignment overrides.
+
+    Supports creating overrides and approval/rejection workflow.
+    """
+
+    from hmis.apps.scheduling.serializers import AssignmentOverrideSerializer
+
+    queryset = AssignmentOverride.objects.all()
+    serializer_class = AssignmentOverrideSerializer
+    permission_classes = [permissions.IsAuthenticated]
+    filterset_class = AssignmentOverrideFilter
+
+    @action(detail=True, methods=["post"])
+    def approve(self, request, pk=None):
+        """Approve a pending override."""
+        from hmis.apps.scheduling.serializers import (
+            AssignmentOverrideSerializer,
+            OverrideApprovalSerializer,
+        )
+
+        override = self.get_object()
+        serializer = OverrideApprovalSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+
+        try:
+            override.approve(
+                user=request.user,
+                notes=serializer.validated_data.get("notes", ""),
+            )
+        except ValueError as e:
+            return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
+
+        return Response(AssignmentOverrideSerializer(override).data)
+
+    @action(detail=True, methods=["post"])
+    def reject(self, request, pk=None):
+        """Reject a pending override."""
+        from hmis.apps.scheduling.serializers import (
+            AssignmentOverrideSerializer,
+            OverrideRejectionSerializer,
+        )
+
+        override = self.get_object()
+        serializer = OverrideRejectionSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+
+        try:
+            override.reject(
+                user=request.user,
+                reason=serializer.validated_data["reason"],
+            )
+        except ValueError as e:
+            return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
+
+        return Response(AssignmentOverrideSerializer(override).data)
+
+
+class AssignmentViewSet(viewsets.ViewSet):
+    """
+    ViewSet for assignment actions.
+
+    Provides auto-assign and manual-override endpoints.
+    """
+
+    permission_classes = [permissions.IsAuthenticated]
+
+    @action(detail=False, methods=["post"], url_path="auto-assign")
+    def auto_assign(self, request):
+        """
+        Automatically assign a resource based on active rules.
+
+        Request body:
+        {
+            "assignment_type": "APPOINTMENT",
+            "patient_id": 123,
+            "scheduled_start": "2026-02-07T10:00:00Z",
+            "scheduled_end": "2026-02-07T10:30:00Z",
+            "reason": "General checkup",
+            "candidate_ids": [1, 2, 3]
+        }
+        """
+        from hmis.apps.patients.models import Patient
+        from hmis.apps.scheduling.models import Resource
+        from hmis.apps.scheduling.serializers import (
+            AutoAssignRequestSerializer,
+            AutoAssignResponseSerializer,
+        )
+        from hmis.apps.scheduling.services.assignment import AssignmentService
+
+        serializer = AutoAssignRequestSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        data = serializer.validated_data
+
+        # Get patient if specified
+        patient = None
+        if data.get("patient_id"):
+            try:
+                patient = Patient.objects.get(id=data["patient_id"])
+            except Patient.DoesNotExist:
+                return Response(
+                    {"error": "Patient not found"},
+                    status=status.HTTP_404_NOT_FOUND,
+                )
+
+        # Get candidate resources
+        candidate_ids = data.get("candidate_ids", [])
+        if candidate_ids:
+            candidates = list(Resource.objects.filter(id__in=candidate_ids, is_active=True))
+        else:
+            candidates = list(Resource.objects.filter(is_active=True, resource_type="PERSON"))
+
+        if not candidates:
+            return Response(
+                {"error": "No candidates available"},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        # Build target data
+        target_data = {
+            "patient": patient,
+            "scheduled_start": data.get("scheduled_start"),
+            "scheduled_end": data.get("scheduled_end"),
+            "reason": data.get("reason", "Auto-assigned"),
+            "appointment_type": data.get("appointment_type", "CONSULTATION"),
+        }
+
+        # Perform assignment
+        service = AssignmentService()
+        result = service.auto_assign(
+            assignment_type=data["assignment_type"],
+            target_data=target_data,
+            candidates=candidates,
+            user=request.user,
+        )
+
+        # Build response
+        from hmis.apps.scheduling.serializers import (
+            AssignmentDecisionSerializer,
+            ResourceListSerializer,
+        )
+
+        response_data = {
+            "success": result.success,
+            "assigned_resource": ResourceListSerializer(result.assigned_resource).data if result.assigned_resource else None,
+            "decision": AssignmentDecisionSerializer(result.decision).data if result.decision else None,
+            "target_id": result.target_id,
+            "error": result.error,
+        }
+
+        return Response(response_data)
+
+    @action(detail=False, methods=["post"], url_path="manual-override")
+    def manual_override(self, request):
+        """
+        Manually override an assignment.
+
+        Request body:
+        {
+            "target_type": "Appointment",
+            "target_id": 123,
+            "new_resource_id": 456,
+            "override_reason": "PATIENT_REQUEST",
+            "justification": "Patient requested different doctor"
+        }
+        """
+        from hmis.apps.scheduling.models import Resource
+        from hmis.apps.scheduling.serializers import (
+            AssignmentOverrideSerializer,
+            ManualOverrideRequestSerializer,
+        )
+        from hmis.apps.scheduling.services.assignment import AssignmentService
+
+        serializer = ManualOverrideRequestSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        data = serializer.validated_data
+
+        # Get new resource
+        try:
+            new_resource = Resource.objects.get(id=data["new_resource_id"])
+        except Resource.DoesNotExist:
+            return Response(
+                {"error": "Resource not found"},
+                status=status.HTTP_404_NOT_FOUND,
+            )
+
+        # Perform override
+        service = AssignmentService()
+        result = service.manual_override(
+            target_type=data["target_type"],
+            target_id=data["target_id"],
+            new_resource=new_resource,
+            override_reason=data["override_reason"],
+            justification=data["justification"],
+            user=request.user,
+            requires_approval=data.get("requires_approval", False),
+        )
+
+        response_data = {
+            "success": result.success,
+            "override": AssignmentOverrideSerializer(result.override).data if result.override else None,
+            "error": result.error,
+        }
+
+        return Response(response_data)
+

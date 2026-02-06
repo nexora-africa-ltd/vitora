@@ -472,3 +472,280 @@ class SlotCheckResponseSerializer(serializers.Serializer):
     available = serializers.BooleanField()
     reason = serializers.CharField(allow_null=True)
     conflicting_appointment = serializers.CharField(required=False, allow_null=True)
+
+
+# =============================================================================
+# Phase 2: Assignment Engine Serializers
+# =============================================================================
+
+
+class AssignmentRuleSerializer(serializers.ModelSerializer):
+    """Serializer for AssignmentRule model."""
+
+    created_by_name = serializers.SerializerMethodField()
+
+    class Meta:
+        """Meta options for AssignmentRuleSerializer."""
+
+        from hmis.apps.scheduling.models import AssignmentRule
+
+        model = AssignmentRule
+        fields = [
+            "id",
+            "name",
+            "rule_code",
+            "applies_to",
+            "rule_definition",
+            "version",
+            "priority",
+            "is_active",
+            "effective_from",
+            "effective_until",
+            "description",
+            "created_by",
+            "created_by_name",
+            "created_at",
+            "updated_at",
+        ]
+        read_only_fields = ["id", "created_by", "created_by_name", "created_at", "updated_at"]
+
+    def get_created_by_name(self, obj) -> str | None:
+        """Get creator's display name."""
+        if obj.created_by:
+            return f"{obj.created_by.first_name} {obj.created_by.last_name}".strip() or obj.created_by.username
+        return None
+
+    def validate_rule_code(self, value: str) -> str:
+        """Validate unique rule code."""
+        from hmis.apps.scheduling.models import AssignmentRule
+
+        instance = self.instance
+        if AssignmentRule.objects.filter(rule_code=value).exclude(pk=instance.pk if instance else None).exists():
+            raise serializers.ValidationError("Rule with this code already exists.")
+        return value
+
+    def create(self, validated_data):
+        """Create rule with current user as creator."""
+        request = self.context.get("request")
+        if request and hasattr(request, "user"):
+            validated_data["created_by"] = request.user
+        return super().create(validated_data)
+
+
+class AssignmentRuleListSerializer(serializers.ModelSerializer):
+    """Lightweight serializer for rule listings."""
+
+    class Meta:
+        """Meta options for AssignmentRuleListSerializer."""
+
+        from hmis.apps.scheduling.models import AssignmentRule
+
+        model = AssignmentRule
+        fields = ["id", "name", "rule_code", "applies_to", "priority", "is_active", "version"]
+
+
+class AssignmentDecisionSerializer(serializers.ModelSerializer):
+    """Serializer for AssignmentDecision model (read-only)."""
+
+    rule_applied_name = serializers.SerializerMethodField()
+    assigned_resource_name = serializers.SerializerMethodField()
+    triggered_by_name = serializers.SerializerMethodField()
+
+    class Meta:
+        """Meta options for AssignmentDecisionSerializer."""
+
+        from hmis.apps.scheduling.models import AssignmentDecision
+
+        model = AssignmentDecision
+        fields = [
+            "id",
+            "assignment_type",
+            "target_id",
+            "target_type",
+            "rule_applied",
+            "rule_applied_name",
+            "assigned_resource",
+            "assigned_resource_name",
+            "decision_outcome",
+            "decision_reason",
+            "candidates_evaluated",
+            "scoring_details",
+            "evaluation_inputs",
+            "evaluation_time_ms",
+            "triggered_by",
+            "triggered_by_name",
+            "created_at",
+        ]
+        read_only_fields = fields  # All fields are read-only
+
+    def get_rule_applied_name(self, obj) -> str | None:
+        """Get rule name."""
+        return obj.rule_applied.name if obj.rule_applied else None
+
+    def get_assigned_resource_name(self, obj) -> str | None:
+        """Get assigned resource name."""
+        return obj.assigned_resource.name if obj.assigned_resource else None
+
+    def get_triggered_by_name(self, obj) -> str | None:
+        """Get triggering user's name."""
+        if obj.triggered_by:
+            return f"{obj.triggered_by.first_name} {obj.triggered_by.last_name}".strip() or obj.triggered_by.username
+        return None
+
+
+class AssignmentOverrideSerializer(serializers.ModelSerializer):
+    """Serializer for AssignmentOverride model."""
+
+    original_resource_name = serializers.SerializerMethodField()
+    new_resource_name = serializers.SerializerMethodField()
+    overridden_by_name = serializers.SerializerMethodField()
+    approved_by_name = serializers.SerializerMethodField()
+
+    class Meta:
+        """Meta options for AssignmentOverrideSerializer."""
+
+        from hmis.apps.scheduling.models import AssignmentOverride
+
+        model = AssignmentOverride
+        fields = [
+            "id",
+            "target_type",
+            "target_id",
+            "original_resource",
+            "original_resource_name",
+            "new_resource",
+            "new_resource_name",
+            "override_reason",
+            "justification",
+            "overridden_by",
+            "overridden_by_name",
+            "requires_approval",
+            "approval_status",
+            "approved_by",
+            "approved_by_name",
+            "approved_at",
+            "approval_notes",
+            "rejected_by",
+            "rejected_at",
+            "rejection_reason",
+            "created_at",
+        ]
+        read_only_fields = [
+            "id",
+            "overridden_by",
+            "overridden_by_name",
+            "original_resource_name",
+            "new_resource_name",
+            "approval_status",
+            "approved_by",
+            "approved_by_name",
+            "approved_at",
+            "approval_notes",
+            "rejected_by",
+            "rejected_at",
+            "rejection_reason",
+            "created_at",
+        ]
+
+    def get_original_resource_name(self, obj) -> str | None:
+        """Get original resource name."""
+        return obj.original_resource.name if obj.original_resource else None
+
+    def get_new_resource_name(self, obj) -> str | None:
+        """Get new resource name."""
+        return obj.new_resource.name if obj.new_resource else None
+
+    def get_overridden_by_name(self, obj) -> str | None:
+        """Get overriding user's name."""
+        if obj.overridden_by:
+            return f"{obj.overridden_by.first_name} {obj.overridden_by.last_name}".strip() or obj.overridden_by.username
+        return None
+
+    def get_approved_by_name(self, obj) -> str | None:
+        """Get approving user's name."""
+        if obj.approved_by:
+            return f"{obj.approved_by.first_name} {obj.approved_by.last_name}".strip() or obj.approved_by.username
+        return None
+
+    def validate_justification(self, value: str) -> str:
+        """Require non-empty justification."""
+        if not value or not value.strip():
+            raise serializers.ValidationError("Justification is required for all overrides.")
+        return value
+
+    def create(self, validated_data):
+        """Create override with current user."""
+        request = self.context.get("request")
+        if request and hasattr(request, "user"):
+            validated_data["overridden_by"] = request.user
+        return super().create(validated_data)
+
+
+class OverrideApprovalSerializer(serializers.Serializer):
+    """Serializer for override approval action."""
+
+    notes = serializers.CharField(required=False, allow_blank=True, default="")
+
+
+class OverrideRejectionSerializer(serializers.Serializer):
+    """Serializer for override rejection action."""
+
+    reason = serializers.CharField(required=True, min_length=1)
+
+
+class AutoAssignRequestSerializer(serializers.Serializer):
+    """Serializer for auto-assignment request."""
+
+    assignment_type = serializers.ChoiceField(
+        choices=["APPOINTMENT", "SHIFT", "BED_ASSIGNMENT", "LAB_BATCH", "THEATRE_SLOT"]
+    )
+    patient_id = serializers.IntegerField(required=False)
+    scheduled_start = serializers.DateTimeField(required=False)
+    scheduled_end = serializers.DateTimeField(required=False)
+    reason = serializers.CharField(required=False, default="Auto-assigned")
+    appointment_type = serializers.CharField(required=False, default="CONSULTATION")
+    candidate_ids = serializers.ListField(
+        child=serializers.IntegerField(),
+        required=False,
+        default=list,
+    )
+
+
+class AutoAssignResponseSerializer(serializers.Serializer):
+    """Serializer for auto-assignment response."""
+
+    success = serializers.BooleanField()
+    assigned_resource = ResourceListSerializer(allow_null=True)
+    decision = AssignmentDecisionSerializer(allow_null=True)
+    target_id = serializers.IntegerField(allow_null=True)
+    error = serializers.CharField(allow_null=True, required=False)
+
+
+class ManualOverrideRequestSerializer(serializers.Serializer):
+    """Serializer for manual override request."""
+
+    target_type = serializers.CharField()
+    target_id = serializers.IntegerField()
+    new_resource_id = serializers.IntegerField()
+    override_reason = serializers.ChoiceField(
+        choices=[
+            "PATIENT_REQUEST",
+            "STAFF_UNAVAILABLE",
+            "EMERGENCY",
+            "SPECIALIZATION_NEEDED",
+            "LOAD_BALANCING",
+            "ADMINISTRATIVE",
+            "OTHER",
+        ]
+    )
+    justification = serializers.CharField(min_length=1)
+    requires_approval = serializers.BooleanField(required=False, default=False)
+
+
+class ManualOverrideResponseSerializer(serializers.Serializer):
+    """Serializer for manual override response."""
+
+    success = serializers.BooleanField()
+    override = AssignmentOverrideSerializer(allow_null=True)
+    error = serializers.CharField(allow_null=True, required=False)
+
