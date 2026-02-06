@@ -157,6 +157,8 @@ urlpatterns = [
     path("api/inpatient/", include("hmis.apps.inpatient.urls", namespace="inpatient")),
     # Triage API
     path("api/triage/", include("hmis.apps.triage.urls", namespace="triage")),
+    # Imaging/Radiology API
+    path("api/imaging/", include("hmis.apps.imaging.urls")),
     # Clinics API
     path("api/", include("hmis.apps.clinics.urls")),
     # Core utilities API (PRC number generation, etc.)
