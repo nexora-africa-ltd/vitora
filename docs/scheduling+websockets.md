@@ -12,6 +12,29 @@ Key principles:
 
 ---
 
+## Implementation Status Summary
+
+| Phase | Status | Tests | Location |
+|-------|--------|-------|----------|
+| **Phase 1: Scheduling Foundation** | ✅ Complete | 70 | `hmis.apps.scheduling` |
+| **Phase 2: Assignment Engine** | 📋 Planned | - | - |
+| **Phase 3: Domain Events** | 📋 Planned | - | - |
+| **Phase 4: Read Models** | 📋 Planned | - | - |
+| **Phase 5: WebSocket Infrastructure** | ✅ Complete | 15 | `hmis.asgi`, `hmis.apps.clinics` |
+| **Phase 6: Multi-Facility** | 📋 Planned | - | - |
+
+### Module Real-Time Status
+
+| Module | WebSocket | Endpoint | Events |
+|--------|-----------|----------|--------|
+| **Clinics/OPD** | ✅ Complete | `ws/clinics/{id}/queue/` | 6 event types |
+| **Laboratory** | 📋 Planned | `ws/lab/{id}/queue/` | - |
+| **Theatre** | 📋 Planned | `ws/theatre/{id}/board/` | - |
+| **Inpatient** | 📋 Planned | `ws/wards/{id}/beds/` | - |
+| **Pharmacy** | 📋 Planned | `ws/pharmacy/{id}/queue/` | - |
+
+---
+
 ## Guiding Architecture Principles
 
 1. **State First, Realtime Second**
@@ -186,10 +209,24 @@ Read models are **derived**, never authoritative.
 
 ---
 
-## Phase 5: WebSockets Introduction
+## Phase 5: WebSockets Introduction ✅ INFRASTRUCTURE COMPLETE
+
+> **Infrastructure Implemented**: February 2026  
+> **Test Coverage**: 15 tests passing  
+> **Location**: `backend/hmis/apps/clinics/` (first module)
 
 ### Objectives
 Enable live updates without impacting core logic.
+
+### Infrastructure Status ✅
+
+| Component | Status | Notes |
+|-----------|--------|-------|
+| Django Channels | ✅ Installed | `daphne` + `channels` in INSTALLED_APPS |
+| ASGI Application | ✅ Configured | `hmis/asgi.py` with ProtocolTypeRouter |
+| Channel Layers | ✅ Ready | InMemoryChannelLayer (dev), Redis-ready (prod) |
+| WebSocket Routing | ✅ Implemented | Per-module routing pattern established |
+| Auth Middleware | ✅ Configured | AuthMiddlewareStack wrapping URLRouter |
 
 ### WebSocket Responsibilities
 - Push schedule changes to clients
@@ -202,7 +239,7 @@ Enable live updates without impacting core logic.
 - `assignment.changed`
 - `resource.status.changed`
 
-### Strict Constraints
+### Strict Constraints ✅ ENFORCED
 - WebSockets DO NOT:
   - Create schedules
   - Assign resources
@@ -213,10 +250,42 @@ Enable live updates without impacting core logic.
 
 ## Phase 6: Module-Specific Real-Time Features
 
-### Clinics & OPD
-- Live patient queues
-- Arrival notifications
-- Doctor availability updates
+### Clinics & OPD ✅ COMPLETE
+
+> **Implemented**: February 2026 | 15 tests | `hmis.apps.clinics`
+
+**WebSocket Endpoint**: `ws://host/ws/clinics/{clinic_id}/queue/`
+
+**Consumer**: `ClinicQueueConsumer` (AsyncJsonWebsocketConsumer)
+
+**Events Broadcasted**:
+| Event | Trigger | Payload |
+|-------|---------|--------|
+| `patient_added` | New patient joins queue | visit_id, patient_name, queue_number, priority |
+| `patient_called` | Patient called to room | visit_id, called_at |
+| `consultation_started` | Consultation begins | visit_id, encounter_id, consultation_start |
+| `visit_completed` | Consultation ends | visit_id, consultation_end |
+| `patient_removed` | Cancel/no-show | visit_id, status, reason |
+| `stats_updated` | Queue stats change | waiting_count, avg_wait_time, etc. |
+
+**Broadcast Helpers**:
+```python
+# Async (for consumers/async views)
+from hmis.apps.clinics.websockets import broadcast_queue_event
+await broadcast_queue_event(clinic_id, event_type, data)
+
+# Sync (for views/signals)
+from hmis.apps.clinics.websockets import broadcast_queue_event_sync
+broadcast_queue_event_sync(clinic_id, event_type, data)
+
+# Convenience functions
+broadcast_patient_added(visit)
+broadcast_patient_called(visit)
+broadcast_consultation_started(visit)
+broadcast_visit_completed(visit)
+broadcast_patient_removed(visit, reason)
+broadcast_queue_stats(clinic_id, stats)
+```
 
 ### Diagnostics
 - Sample queue updates
@@ -362,18 +431,21 @@ Sprint 1        Sprint 2        Sprint 3        Sprint 4        Sprint 5
 
 ---
 
-### 🟦 Phase 5: WebSockets (Sprints 12–13)
+### ✅ Phase 5: WebSockets Infrastructure (Sprints 12–13) — COMPLETE
 
 ```
-[WS Infrastructure] ██████
-[Channel Design] █████
-[Client Sync] ██████
+[WS Infrastructure] ██████████ ✅
+[Channel Design] █████████ ✅
+[Client Sync] ██████████ ✅
+[Clinics Queue] ██████████ ✅
 ```
 
-**Exit criteria**
+**Exit criteria** ✅
 
-* Real-time UX without correctness dependency
-* REST fallback works
+* Real-time UX without correctness dependency ✅
+* REST fallback works ✅
+
+**Completed**: February 2026 | 15 tests | Django Channels + Daphne
 
 ---
 
