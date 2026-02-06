@@ -81,8 +81,8 @@ const mockWorklistStats = () => ({
 // =============================================================================
 
 async function setupImagingMocks(page: Page) {
-  // Mock procedures list
-  await page.route(`${API_BASE}/api/imaging/procedures/*`, async (route) => {
+  // Mock procedures list (** matches any path including nested segments and trailing slashes)
+  await page.route(`${API_BASE}/api/imaging/procedures/**`, async (route) => {
     const url = route.request().url();
     if (url.includes('search=')) {
       await route.fulfill({
@@ -116,8 +116,8 @@ async function setupImagingMocks(page: Page) {
     }
   });
 
-  // Mock orders list
-  await page.route(`${API_BASE}/api/imaging/orders/*`, async (route) => {
+  // Mock orders list (** matches any path including trailing slashes)
+  await page.route(`${API_BASE}/api/imaging/orders/**`, async (route) => {
     const url = route.request().url();
     const method = route.request().method();
 
@@ -164,7 +164,8 @@ async function setupImagingMocks(page: Page) {
         contentType: 'application/json',
         body: JSON.stringify(mockImagingOrder({ status: 'CANCELLED' })),
       });
-    } else if (url.includes('/IMG-2026-0001/')) {
+    } else if (url.includes('/IMG-2026-0001')) {
+      // Match order detail URL (with or without trailing slash)
       await route.fulfill({
         status: 200,
         contentType: 'application/json',
@@ -197,8 +198,8 @@ async function setupImagingMocks(page: Page) {
     }
   });
 
-  // Mock worklist
-  await page.route(`${API_BASE}/api/imaging/orders/worklist/*`, async (route) => {
+  // Mock worklist (registered after orders/ to take precedence)
+  await page.route(`${API_BASE}/api/imaging/orders/worklist/**`, async (route) => {
     await route.fulfill({
       status: 200,
       contentType: 'application/json',
@@ -273,9 +274,9 @@ test.describe('Imaging Module - Main Page', () => {
 
     await page.getByRole('tab', { name: /worklist/i }).click();
 
-    // Should show worklist stats
-    await expect(page.getByText(/pending/i)).toBeVisible();
-    await expect(page.getByText(/in progress/i)).toBeVisible();
+    // Should show worklist stats (use exact match to avoid ambiguity)
+    await expect(page.getByText('Pending', { exact: true }).first()).toBeVisible();
+    await expect(page.getByText('In Progress', { exact: true }).first()).toBeVisible();
   });
 
   test('navigates to procedure catalog', async ({ page }) => {
@@ -303,33 +304,39 @@ test.describe('Imaging Module - Order Detail', () => {
     await login(page, TEST_USER.username, TEST_USER.password);
     await page.goto('/imaging/orders/IMG-2026-0001');
 
-    // Order number should be visible
-    await expect(page.getByText('IMG-2026-0001')).toBeVisible();
+    // Wait for order to load (order number in h1)
+    await expect(page.locator('h1', { hasText: 'IMG-2026-0001' })).toBeVisible();
 
     // Clinical indication should be visible
-    await expect(page.getByText(/rule out pneumonia/i)).toBeVisible();
+    await expect(page.getByText('Rule out pneumonia', { exact: false })).toBeVisible();
 
     // Procedure should be listed
-    await expect(page.getByText('Chest X-Ray PA View')).toBeVisible();
+    await expect(page.getByText('Chest X-Ray PA View').first()).toBeVisible();
   });
 
   test('shows status progress timeline', async ({ page }) => {
     await login(page, TEST_USER.username, TEST_USER.password);
     await page.goto('/imaging/orders/IMG-2026-0001');
 
-    // Progress steps should be visible
+    // Wait for order to load first
+    await expect(page.locator('h1', { hasText: 'IMG-2026-0001' })).toBeVisible();
+
+    // Progress steps should be visible (use first() since status badge also contains these texts)
     await expect(page.getByText('Order Progress')).toBeVisible();
-    await expect(page.getByText('Ordered')).toBeVisible();
-    await expect(page.getByText('Scheduled')).toBeVisible();
-    await expect(page.getByText('In Progress')).toBeVisible();
+    await expect(page.getByText('Ordered', { exact: true }).first()).toBeVisible();
+    await expect(page.getByText('Scheduled', { exact: true }).first()).toBeVisible();
+    await expect(page.getByText('In Progress', { exact: true }).first()).toBeVisible();
   });
 
   test('shows action buttons for pending order', async ({ page }) => {
     await login(page, TEST_USER.username, TEST_USER.password);
     await page.goto('/imaging/orders/IMG-2026-0001');
 
+    // Wait for order to load first
+    await expect(page.locator('h1', { hasText: 'IMG-2026-0001' })).toBeVisible();
+
     // Should show schedule and start buttons
-    await expect(page.getByRole('button', { name: /schedule/i })).toBeVisible();
+    await expect(page.getByRole('button', { name: 'Schedule' })).toBeVisible();
     await expect(page.getByRole('button', { name: /start imaging/i })).toBeVisible();
   });
 });
@@ -347,19 +354,19 @@ test.describe('Imaging Module - Worklist', () => {
     await login(page, TEST_USER.username, TEST_USER.password);
     await page.goto('/imaging/worklist');
 
-    // Stats cards should show
-    await expect(page.getByText('Pending')).toBeVisible();
-    await expect(page.getByText('In Progress')).toBeVisible();
-    await expect(page.getByText('STAT Orders')).toBeVisible();
-    await expect(page.getByText('Completed Today')).toBeVisible();
+    // Stats cards should show (use first() to avoid multiple matches)
+    await expect(page.getByText('Pending', { exact: true }).first()).toBeVisible();
+    await expect(page.getByText('In Progress', { exact: true }).first()).toBeVisible();
+    await expect(page.getByText('STAT Orders', { exact: true })).toBeVisible();
+    await expect(page.getByText('Completed Today', { exact: true })).toBeVisible();
   });
 
   test('displays orders in worklist', async ({ page }) => {
     await login(page, TEST_USER.username, TEST_USER.password);
     await page.goto('/imaging/worklist');
 
-    // Orders should be visible
-    await expect(page.getByText('IMG-2026-0001')).toBeVisible();
+    // Orders should be visible (use first() as order ID appears multiple times)
+    await expect(page.getByText('IMG-2026-0001').first()).toBeVisible();
   });
 
   test('shows start button for pending orders', async ({ page }) => {
@@ -412,24 +419,28 @@ test.describe('Imaging Module - Order Creation', () => {
     await login(page, TEST_USER.username, TEST_USER.password);
     await page.goto('/imaging/orders/new?patient=1&encounter=1');
 
-    // Form elements should be visible
-    await expect(page.getByText('Order Details')).toBeVisible();
-    await expect(page.getByText(/clinical indication/i)).toBeVisible();
-    await expect(page.getByText(/imaging procedures/i)).toBeVisible();
+    // Form elements should be visible (labels have asterisk for required fields)
+    await expect(page.getByText('Order Details', { exact: true })).toBeVisible();
+    await expect(page.getByText('Clinical Indication *')).toBeVisible();
+    await expect(page.getByText('Imaging Procedures', { exact: true }).first()).toBeVisible();
   });
 
   test('can select priority', async ({ page }) => {
     await login(page, TEST_USER.username, TEST_USER.password);
     await page.goto('/imaging/orders/new?patient=1&encounter=1');
 
-    // Priority selector should be clickable
-    const priorityTrigger = page.getByRole('combobox').first();
+    // Wait for form to load
+    await expect(page.getByText('Order Details', { exact: true })).toBeVisible();
+
+    // Priority selector is a button with label "Priority" (not a combobox)
+    const priorityTrigger = page.getByRole('button', { name: 'Priority' });
     await priorityTrigger.click();
 
-    // Priority options should appear
-    await expect(page.getByRole('option', { name: /routine/i })).toBeVisible();
-    await expect(page.getByRole('option', { name: /urgent/i })).toBeVisible();
-    await expect(page.getByRole('option', { name: /stat/i })).toBeVisible();
+    // Priority options should appear in the dropdown (role="option" via custom Select component)
+    // Labels from PRIORITY_LABELS: Routine, Urgent, STAT (Immediate)
+    await expect(page.getByRole('option', { name: 'Routine' })).toBeVisible();
+    await expect(page.getByRole('option', { name: 'Urgent' })).toBeVisible();
+    await expect(page.getByRole('option', { name: 'STAT (Immediate)' })).toBeVisible();
   });
 });
 
@@ -441,7 +452,7 @@ test.describe('Imaging Module - Encounter Integration', () => {
   test.beforeEach(async ({ page }) => {
     await setupImagingMocks(page);
 
-    // Mock encounter with imaging orders
+    // Mock encounter detail
     await page.route(`${API_BASE}/api/encounters/1/`, async (route) => {
       await route.fulfill({
         status: 200,
@@ -455,12 +466,49 @@ test.describe('Imaging Module - Encounter Integration', () => {
           encounter_date: '2026-02-06',
           status: 'IN_PROGRESS',
           chief_complaint: 'Cough and fever',
+          created_by_name: 'Dr. James Mwangi',
         }),
       });
     });
 
-    // Mock encounter imaging orders
-    await page.route(`${API_BASE}/api/imaging/orders/?encounter=1*`, async (route) => {
+    // Mock encounter diagnoses
+    await page.route(`${API_BASE}/api/encounters/1/diagnoses/**`, async (route) => {
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({ count: 0, results: [] }),
+      });
+    });
+
+    // Mock encounter treatment plan
+    await page.route(`${API_BASE}/api/encounters/1/treatment-plan/**`, async (route) => {
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify([]),
+      });
+    });
+
+    // Mock encounter lab orders
+    await page.route(`${API_BASE}/api/laboratory/orders/?encounter=1**`, async (route) => {
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({ count: 0, results: [] }),
+      });
+    });
+
+    // Mock encounter prescriptions
+    await page.route(`${API_BASE}/api/pharmacy/prescriptions/?encounter=1**`, async (route) => {
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({ count: 0, results: [] }),
+      });
+    });
+
+    // Mock encounter imaging orders (for the tab count)
+    await page.route(`${API_BASE}/api/imaging/orders/?encounter=1**`, async (route) => {
       await route.fulfill({
         status: 200,
         contentType: 'application/json',
