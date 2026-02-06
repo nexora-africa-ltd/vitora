@@ -106,6 +106,28 @@ export {
   useCriticalAlerts,
 } from './use-laboratory';
 
+// Imaging hooks
+export {
+  imagingKeys,
+  useImagingProcedures,
+  useImagingProcedure,
+  useImagingProcedureSearch,
+  useImagingOrders,
+  useImagingOrder,
+  usePatientImagingOrders,
+  useEncounterImagingOrders,
+  useImagingWorklist,
+  useWorklistStats,
+  useCreateImagingOrder,
+  useUpdateImagingOrder,
+  useDeleteImagingOrder,
+  useSubmitImagingOrder,
+  useScheduleImagingOrder,
+  useStartImagingOrder,
+  useCompleteImagingOrder,
+  useCancelImagingOrder,
+} from './use-imaging';
+
 // Triage hooks
 export {
   triageKeys,
