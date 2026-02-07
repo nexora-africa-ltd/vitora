@@ -12,7 +12,7 @@
 | **Frontend Zod schemas** | 16 schema files, `parseResponse()` validation on every API call |
 | **OpenAPI schema** | ✅ `drf-spectacular` configured (`/api/schema/`, `/api/docs/`) |
 | **Backend contract tests** | ✅ 67 serializer snapshot tests in `tests/test_contracts.py` |
-| **Frontend contract tests** | ✅ Started — 9/12 modules (171 tests) |
+| **Frontend contract tests** | ✅ Started — 10/13 modules (216 tests) |
 
 The frontend validates API responses with Zod at runtime via `parseResponse()`. Backend serializer snapshot tests now catch field changes **before deployment**. When a serializer field is added, renamed, or removed, the contract test fails with a clear message directing the developer to update the frontend Zod schema.
 
@@ -83,7 +83,7 @@ The frontend validates API responses with Zod at runtime via `parseResponse()`. 
 | `sha.schema.ts` | `sha.contract.test.ts` | ✅ Done (25 tests) | SHAMember, Claim, ClaimItem + 7 enums |
 | `checkin.schema.ts` | `checkin.contract.test.ts` | ✅ Done (24 tests) | CheckInResponse, TodayCheckin, PatientLookup, ClinicalSnapshot + 2 enums |
 | `core.schema.ts` | `core.contract.test.ts` | ✅ Done (24 tests) | County, SubCounty, Ward, Notification, ClinicalTemplate, AuditLog + 2 enums |
-| `rbac.schema.ts` | `rbac.contract.test.ts` | 📋 TODO | User, Role, Permission, Group |
+| `rbac.schema.ts` | `rbac.contract.test.ts` | ✅ Done (45 tests) | Department, Role, Permission, StaffProfile, AuditLogEntry + 6 enums |
 
 **Note**: Document schemas (`invoice.schema.ts`, `prescription.schema.ts`, etc.) are frontend-only and do not require contract tests.
 
@@ -284,4 +284,4 @@ jobs:
 
 ---
 
-*Generated: 2026-02-07 | Updated: 2026-02-08 (Layers 1, 2 & 3: 9 modules done)*
+*Generated: 2026-02-07 | Updated: 2026-02-08 (Layers 1, 2 & 3: 10 modules done)*
