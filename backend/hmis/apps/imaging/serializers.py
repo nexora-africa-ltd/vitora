@@ -4,7 +4,14 @@ Serializers for imaging models.
 
 from rest_framework import serializers
 
-from .models import ImagingOrder, ImagingOrderItem, ImagingProcedure
+from .models import (
+    DICOMInstance,
+    DICOMSeries,
+    DICOMStudy,
+    ImagingOrder,
+    ImagingOrderItem,
+    ImagingProcedure,
+)
 
 
 class ImagingProcedureSerializer(serializers.ModelSerializer):
@@ -237,3 +244,122 @@ class AppointmentSummarySerializer(serializers.Serializer):
     scheduled_start = serializers.DateTimeField()
     scheduled_end = serializers.DateTimeField()
     resource = ImagingResourceSerializer()
+
+
+# ============================================================================
+# DICOM Serializers (Phase C)
+# ============================================================================
+
+
+class DICOMInstanceSerializer(serializers.ModelSerializer):
+    """Serializer for a single DICOM instance."""
+
+    class Meta:
+        model = DICOMInstance
+        fields = [
+            "id",
+            "sop_instance_uid",
+            "sop_class_uid",
+            "instance_number",
+            "file_path",
+            "file_size",
+            "transfer_syntax_uid",
+            "rows",
+            "columns",
+            "bits_allocated",
+            "photometric_interpretation",
+            "thumbnail_path",
+            "created_at",
+        ]
+        read_only_fields = fields
+
+
+class DICOMSeriesSerializer(serializers.ModelSerializer):
+    """Serializer for a DICOM series with nested instances."""
+
+    instances = DICOMInstanceSerializer(many=True, read_only=True)
+
+    class Meta:
+        model = DICOMSeries
+        fields = [
+            "id",
+            "series_instance_uid",
+            "series_number",
+            "series_description",
+            "modality",
+            "body_part_examined",
+            "number_of_instances",
+            "total_file_size",
+            "thumbnail_path",
+            "instances",
+            "created_at",
+        ]
+        read_only_fields = fields
+
+
+class DICOMSeriesListSerializer(serializers.ModelSerializer):
+    """Compact series serializer without instances (for listing)."""
+
+    class Meta:
+        model = DICOMSeries
+        fields = [
+            "id",
+            "series_instance_uid",
+            "series_number",
+            "series_description",
+            "modality",
+            "body_part_examined",
+            "number_of_instances",
+            "total_file_size",
+            "thumbnail_path",
+            "created_at",
+        ]
+        read_only_fields = fields
+
+
+class DICOMStudySerializer(serializers.ModelSerializer):
+    """Serializer for a DICOM study (list view)."""
+
+    patient_name = serializers.SerializerMethodField()
+    uploaded_by_name = serializers.SerializerMethodField()
+
+    class Meta:
+        model = DICOMStudy
+        fields = [
+            "id",
+            "study_instance_uid",
+            "patient",
+            "patient_name",
+            "imaging_order",
+            "study_date",
+            "study_time",
+            "study_description",
+            "accession_number",
+            "referring_physician_name",
+            "modality",
+            "institution_name",
+            "number_of_series",
+            "number_of_instances",
+            "total_file_size",
+            "thumbnail_path",
+            "uploaded_by",
+            "uploaded_by_name",
+            "created_at",
+            "updated_at",
+        ]
+        read_only_fields = fields
+
+    def get_patient_name(self, obj):
+        return f"{obj.patient.first_name} {obj.patient.last_name}"
+
+    def get_uploaded_by_name(self, obj):
+        return obj.uploaded_by.get_full_name() or obj.uploaded_by.username
+
+
+class DICOMStudyDetailSerializer(DICOMStudySerializer):
+    """Detailed study serializer with nested series."""
+
+    series = DICOMSeriesListSerializer(many=True, read_only=True, source="series_set")
+
+    class Meta(DICOMStudySerializer.Meta):
+        fields = DICOMStudySerializer.Meta.fields + ["series"]
