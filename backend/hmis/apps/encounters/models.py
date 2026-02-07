@@ -380,18 +380,24 @@ class Encounter(models.Model):
         help_text="Structured data collected using the clinical template (JSON)",
     )
 
-    # Encounter Status (Sprint 1.1-1.2)
+    # Encounter Status (Sprint 2 - Enhanced State Machine)
     STATUS_CHOICES = [
-        ("DRAFT", "Draft"),
+        ("CREATED", "Created"),
+        ("CHECKED_IN", "Checked In"),
+        ("TRIAGED", "Triaged"),
         ("IN_PROGRESS", "In Progress"),
-        ("COMPLETED", "Completed"),
+        ("ON_HOLD", "On Hold"),
+        ("ORDERS_PLACED", "Orders Placed"),
+        ("RESULTS_PENDING", "Results Pending"),
+        ("READY_TO_CLOSE", "Ready to Close"),
+        ("CLOSED", "Closed"),
         ("CANCELLED", "Cancelled"),
     ]
     status = models.CharField(
         max_length=20,
         choices=STATUS_CHOICES,
-        default="DRAFT",
-        help_text="Encounter status: DRAFT, IN_PROGRESS, COMPLETED, or CANCELLED",
+        default="CREATED",
+        help_text="Encounter status lifecycle",
     )
     finalized_by = models.ForeignKey(
         "auth.User",
@@ -530,6 +536,38 @@ class Encounter(models.Model):
         null=True,
         blank=True,
         help_text="Timestamp when clinician claimed this encounter",
+    )
+
+    # =========================================================================
+    # Encounter Linking (Sprint 2 - Phase 2B)
+    # =========================================================================
+    linked_encounter = models.ForeignKey(
+        "self",
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="follow_up_encounters",
+        help_text="Previous encounter this visit is following up on",
+    )
+
+    # =========================================================================
+    # Visit Reason Taxonomy (Sprint 2 - Phase 2D)
+    # =========================================================================
+    VISIT_REASON_CHOICES = [
+        ("NEW_COMPLAINT", "New Complaint"),
+        ("FOLLOW_UP", "Follow-up"),
+        ("CHRONIC_CARE", "Chronic Care Review"),
+        ("PROCEDURE_REVIEW", "Post-Procedure Review"),
+        ("REFILL_ONLY", "Medication Refill Only"),
+        ("LAB_REVIEW", "Lab Results Review"),
+        ("REFERRAL_VISIT", "Referral from Another Facility"),
+        ("OTHER", "Other"),
+    ]
+    visit_reason = models.CharField(
+        max_length=30,
+        choices=VISIT_REASON_CHOICES,
+        default="NEW_COMPLAINT",
+        help_text="Reason for visit",
     )
 
     # Timestamps
@@ -845,25 +883,31 @@ class Encounter(models.Model):
     # Encounter Status Workflow Methods (Sprint 1.1-1.2)
     # =========================================================================
 
-    # Valid status transitions
+    # Valid status transitions (Sprint 2 - Enhanced State Machine)
     VALID_TRANSITIONS = {
-        "DRAFT": {"IN_PROGRESS", "COMPLETED", "CANCELLED"},
-        "IN_PROGRESS": {"COMPLETED", "CANCELLED"},
-        "COMPLETED": set(),  # Terminal state - no transitions allowed
-        "CANCELLED": set(),  # Terminal state - no transitions allowed
+        "CREATED": {"CHECKED_IN", "CANCELLED"},
+        "CHECKED_IN": {"TRIAGED", "IN_PROGRESS", "CANCELLED"},
+        "TRIAGED": {"IN_PROGRESS", "CANCELLED"},
+        "IN_PROGRESS": {"ON_HOLD", "ORDERS_PLACED", "READY_TO_CLOSE", "CANCELLED"},
+        "ON_HOLD": {"IN_PROGRESS", "CANCELLED"},
+        "ORDERS_PLACED": {"RESULTS_PENDING", "READY_TO_CLOSE"},
+        "RESULTS_PENDING": {"READY_TO_CLOSE"},
+        "READY_TO_CLOSE": {"CLOSED"},
+        "CLOSED": set(),  # Terminal state - immutable
+        "CANCELLED": set(),  # Terminal state
     }
 
     def can_edit(self) -> bool:
         """
         Check if the encounter can be edited.
 
-        Only DRAFT and IN_PROGRESS encounters can be edited.
-        COMPLETED and CANCELLED encounters are immutable.
+        CLOSED and CANCELLED encounters are immutable.
+        All other statuses allow editing.
 
         Returns:
             bool: True if the encounter can be edited, False otherwise
         """
-        return self.status in ("DRAFT", "IN_PROGRESS")
+        return self.status not in ("CLOSED", "CANCELLED")
 
     def is_valid_transition(self, new_status: str) -> bool:
         """
@@ -879,17 +923,17 @@ class Encounter(models.Model):
 
     def start_progress(self) -> None:
         """
-        Transition encounter from DRAFT to IN_PROGRESS.
+        Transition encounter to IN_PROGRESS.
 
         Raises:
-            ValidationError: If the encounter is not in DRAFT status
+            ValidationError: If the encounter cannot transition to IN_PROGRESS
         """
         from django.core.exceptions import ValidationError
 
-        if self.status != "DRAFT":
+        if not self.is_valid_transition("IN_PROGRESS"):
             raise ValidationError(
                 f"Cannot start progress on encounter with status '{self.status}'. "
-                "Only DRAFT encounters can be started."
+                "Only CREATED, CHECKED_IN, TRIAGED, or ON_HOLD encounters can be started."
             )
 
         self.status = "IN_PROGRESS"
@@ -897,25 +941,25 @@ class Encounter(models.Model):
 
     def finalize(self, user) -> None:
         """
-        Finalize/complete the encounter.
+        Finalize/close the encounter.
 
-        Sets status to COMPLETED, records the finalizing user and timestamp.
+        Sets status to CLOSED, records the finalizing user and timestamp.
         Creates an audit log entry for the status change.
 
         Args:
             user: The user who is finalizing the encounter
 
         Raises:
-            ValidationError: If the encounter is already COMPLETED or CANCELLED
+            ValidationError: If the encounter is already CLOSED or CANCELLED
         """
         from django.core.exceptions import ValidationError
         from django.utils import timezone
 
         from hmis.apps.core.models import AuditLog
 
-        if self.status == "COMPLETED":
+        if self.status == "CLOSED":
             raise ValidationError(
-                "Encounter is already completed. Completed encounters cannot be finalized again."
+                "Encounter is already closed. Closed encounters cannot be finalized again."
             )
 
         if self.status == "CANCELLED":
@@ -924,7 +968,7 @@ class Encounter(models.Model):
             )
 
         old_status = self.status
-        self.status = "COMPLETED"
+        self.status = "CLOSED"
         self.finalized_by = user
         self.finalized_at = timezone.now()
         self.save(update_fields=["status", "finalized_by", "finalized_at", "updated_at"])
@@ -940,7 +984,7 @@ class Encounter(models.Model):
             patient_id=self.patient_id,
             details={
                 "old_status": old_status,
-                "new_status": "COMPLETED",
+                "new_status": "CLOSED",
                 "encounter_type": self.encounter_type,
             },
         )
@@ -950,25 +994,29 @@ class Encounter(models.Model):
         Cancel the encounter.
 
         Sets status to CANCELLED and records the reason.
-        Creates an audit log entry for the status change.
 
         Args:
             reason: The reason for cancellation
 
         Raises:
-            ValidationError: If the encounter is already COMPLETED
+            ValidationError: If the encounter is already CLOSED or CANCELLED
         """
         from django.core.exceptions import ValidationError
 
-        if self.status == "COMPLETED":
+        if self.status == "CLOSED":
             raise ValidationError(
-                "Cannot cancel a completed encounter. "
-                "Completed encounters require a correction workflow."
+                "Cannot cancel a closed encounter. "
+                "Closed encounters require a correction workflow."
             )
 
         if self.status == "CANCELLED":
             # Already cancelled, no action needed
             return
+
+        if not self.is_valid_transition("CANCELLED"):
+            raise ValidationError(
+                f"Cannot cancel encounter with status '{self.status}'."
+            )
 
         self.status = "CANCELLED"
         self.cancellation_reason = reason
@@ -2446,3 +2494,57 @@ class Medication(models.Model):
         """Save with validation."""
         self.full_clean()
         super().save(*args, **kwargs)
+
+
+class EncounterStateHistory(models.Model):
+    """
+    Audit trail for encounter state transitions.
+
+    Records every status change for compliance, debugging, and
+    encounter lifecycle tracking.
+
+    Sprint 2 - Phase 2A: Encounter State Machine
+    """
+
+    encounter = models.ForeignKey(
+        Encounter,
+        on_delete=models.CASCADE,
+        related_name="state_history",
+        help_text="The encounter whose state changed",
+    )
+    from_status = models.CharField(
+        max_length=20,
+        help_text="Previous status",
+    )
+    to_status = models.CharField(
+        max_length=20,
+        help_text="New status",
+    )
+    changed_at = models.DateTimeField(
+        auto_now_add=True,
+        help_text="When the status changed",
+    )
+    changed_by = models.ForeignKey(
+        "auth.User",
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="encounter_state_changes",
+        help_text="User who triggered the state change",
+    )
+    reason = models.TextField(
+        blank=True,
+        default="",
+        help_text="Reason for status change (optional)",
+    )
+
+    class Meta:
+        ordering = ["-changed_at"]
+        verbose_name = "Encounter State History"
+        verbose_name_plural = "Encounter State Histories"
+        indexes = [
+            models.Index(fields=["encounter", "-changed_at"]),
+        ]
+
+    def __str__(self):
+        return f"Encounter {self.encounter_id}: {self.from_status} → {self.to_status}"
