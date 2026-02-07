@@ -10,7 +10,7 @@
  * - Never generate HMAC signatures client-side
  */
 
-import QRCode from 'qrcode';
+import * as QRCode from 'qrcode';
 
 // =============================================================================
 // TYPES
