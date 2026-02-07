@@ -27,6 +27,8 @@ export const PaymentMethodSchema = z.enum([
   'CARD',
   'INSURANCE',
   'BANK_TRANSFER',
+  'CORPORATE',
+  'CHEQUE',
 ]);
 
 export const PaymentStatusSchema = z.enum([
@@ -43,10 +45,14 @@ export const CreditNoteReasonSchema = z.enum([
   'DUPLICATE_BILLING',
   'PRICING_ERROR',
   'OTHER',
+  'DUPLICATE',
+  'INSURANCE',
+  'GOODWILL',
 ]);
 
 export const CreditNoteStatusSchema = z.enum([
   'PENDING',
+  'DRAFT',
   'APPROVED',
   'REJECTED',
   'REFUNDED',

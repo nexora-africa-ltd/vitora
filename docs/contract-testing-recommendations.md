@@ -12,7 +12,7 @@
 | **Frontend Zod schemas** | 16 schema files, `parseResponse()` validation on every API call |
 | **OpenAPI schema** | ✅ `drf-spectacular` configured (`/api/schema/`, `/api/docs/`) |
 | **Backend contract tests** | ✅ 67 serializer snapshot tests in `tests/test_contracts.py` |
-| **Frontend contract tests** | ✅ Started — 6/13 modules (98 tests) |
+| **Frontend contract tests** | ✅ Started — 9/12 modules (171 tests) |
 
 The frontend validates API responses with Zod at runtime via `parseResponse()`. Backend serializer snapshot tests now catch field changes **before deployment**. When a serializer field is added, renamed, or removed, the contract test fails with a clear message directing the developer to update the frontend Zod schema.
 
@@ -77,13 +77,13 @@ The frontend validates API responses with Zod at runtime via `parseResponse()`. 
 | `pharmacy.schema.ts` | `pharmacy.contract.test.ts` | ✅ Done (18 tests) | Drug, StockBatch, Prescription, Dispensing, Adjustment + 9 enums |
 | `laboratory.schema.ts` | `laboratory.contract.test.ts` | ✅ Done (16 tests) | LabOrder, LabOrderItem, LabResult, LabQueue + 10 enums |
 | `imaging.schema.ts` | `imaging.contract.test.ts` | ✅ Done (20 tests) | ImagingOrder, ImagingOrderItem, ImagingProcedure, ImagingResource + 5 enums |
-| `billing.schema.ts` | `billing.contract.test.ts` | 📋 TODO | Invoice, Payment, BillingItem, InsuranceClaim |
-| `triage.schema.ts` | `triage.contract.test.ts` | 📋 TODO | TriageAssessment, TriageCategory, VitalSigns |
-| `inpatient.schema.ts` | `inpatient.contract.test.ts` | 📋 TODO | Admission, Bed, Ward, Discharge |
-| `sha.schema.ts` | `sha.contract.test.ts` | 📋 TODO | SHAClaim, SHAPreauth, SHAMember |
+| `billing.schema.ts` | `billing.contract.test.ts` | ✅ Done (25 tests) | Invoice, InvoiceItem, Payment, PaymentPoint, Service, ServiceCategory, CreditNote + 6 enums |
+| `triage.schema.ts` | `triage.contract.test.ts` | ✅ Done (22 tests) | TriageAssessment, TriageQueue, TriageVitalThreshold + 8 enums |
+| `inpatient.schema.ts` | `inpatient.contract.test.ts` | ✅ Done (40 tests) | Ward, Bed, Admission, Discharge, Transfer, WardRound, NursingKardex, ShiftHandover + 11 enums |
+| `sha.schema.ts` | `sha.contract.test.ts` | ✅ Done (25 tests) | SHAMember, Claim, ClaimItem + 7 enums |
+| `checkin.schema.ts` | `checkin.contract.test.ts` | ✅ Done (24 tests) | CheckInResponse, TodayCheckin, PatientLookup, ClinicalSnapshot + 2 enums |
+| `core.schema.ts` | `core.contract.test.ts` | ✅ Done (24 tests) | County, SubCounty, Ward, Notification, ClinicalTemplate, AuditLog + 2 enums |
 | `rbac.schema.ts` | `rbac.contract.test.ts` | 📋 TODO | User, Role, Permission, Group |
-| `core.schema.ts` | `core.contract.test.ts` | 📋 TODO | County, SubCounty, Ward, AuditLog |
-| `checkin.schema.ts` | `checkin.contract.test.ts` | 📋 TODO | CheckIn, Queue, WaitTime |
 
 **Note**: Document schemas (`invoice.schema.ts`, `prescription.schema.ts`, etc.) are frontend-only and do not require contract tests.
 
@@ -284,4 +284,4 @@ jobs:
 
 ---
 
-*Generated: 2026-02-07 | Updated: 2026-02-08 (Layers 1, 2 & 3: 6 modules done)*
+*Generated: 2026-02-07 | Updated: 2026-02-08 (Layers 1, 2 & 3: 9 modules done)*
