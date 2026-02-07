@@ -77,7 +77,7 @@ export default function EncounterDetailPage() {
       history_of_present_illness: encounter.history_of_present_illness || '',
       physical_examination: encounter.physical_examination || '',
       assessment: encounter.assessment || '',
-      status: encounter.status === 'CANCELLED' ? 'DRAFT' : encounter.status,
+        status: encounter.status === 'CANCELLED' ? 'CREATED' : encounter.status,
       clinical_template: encounter.clinical_template || null,
       clinical_template_data: encounter.clinical_template_data || null,
     };
@@ -155,7 +155,7 @@ export default function EncounterDetailPage() {
         {/* Action buttons - Full width on mobile, inline on desktop */}
         <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 sm:self-end">
           {/* Show "Continue Encounter" for active encounters, "View Details" for completed */}
-          {encounter.status === 'COMPLETED' || encounter.status === 'CANCELLED' ? (
+          {encounter.status === 'CLOSED' || encounter.status === 'CANCELLED' ? (
             <Button variant="outline" className="w-full sm:w-auto" asChild>
               <Link href={`/encounters/${encounter.id}/edit`}>
                 <Eye className="h-4 w-4 mr-2" />
@@ -286,7 +286,7 @@ export default function EncounterDetailPage() {
           <EncounterLabOrders
             encounterId={encounterId}
             patientId={encounter.patient}
-            disabled={encounter.status === 'COMPLETED' || encounter.status === 'CANCELLED'}
+            disabled={encounter.status === 'CLOSED' || encounter.status === 'CANCELLED'}
           />
         </TabsContent>
 
@@ -294,7 +294,7 @@ export default function EncounterDetailPage() {
           <EncounterImagingOrders
             encounterId={encounterId}
             patientId={encounter.patient}
-            disabled={encounter.status === 'COMPLETED' || encounter.status === 'CANCELLED'}
+            disabled={encounter.status === 'CLOSED' || encounter.status === 'CANCELLED'}
           />
         </TabsContent>
 
@@ -302,7 +302,7 @@ export default function EncounterDetailPage() {
           <EncounterPrescriptions
             encounterId={encounterId}
             patientId={encounter.patient}
-            disabled={encounter.status === 'COMPLETED' || encounter.status === 'CANCELLED'}
+            disabled={encounter.status === 'CLOSED' || encounter.status === 'CANCELLED'}
           />
         </TabsContent>
 

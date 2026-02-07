@@ -41,7 +41,7 @@ export interface EncounterFormData {
   clinical_template_data?: Record<string, Record<string, unknown>> | null;
 
   // Status
-  status: 'DRAFT' | 'IN_PROGRESS' | 'COMPLETED';
+  status: 'CREATED' | 'CHECKED_IN' | 'TRIAGED' | 'IN_PROGRESS' | 'ON_HOLD' | 'ORDERS_PLACED' | 'RESULTS_PENDING' | 'READY_TO_CLOSE' | 'CLOSED' | 'CANCELLED';
 }
 
 export const defaultEncounterFormData: EncounterFormData = {
@@ -75,7 +75,7 @@ export const defaultEncounterFormData: EncounterFormData = {
   clinical_template: null,
   clinical_template_data: null,
 
-  status: 'DRAFT',
+  status: 'CREATED',
 };
 
 export interface VitalAlert {

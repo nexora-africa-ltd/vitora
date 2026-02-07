@@ -113,7 +113,7 @@ const initialFormData: EncounterFormData = {
   physical_examination: '',
   assessment: '',
 
-  status: 'DRAFT',
+  status: 'CREATED',
 };
 
 // Type for draft data (includes diagnoses)
@@ -247,7 +247,7 @@ export default function NewEncounterPage() {
     try {
       const result = await createEncounter.mutateAsync({
         ...formData,
-        status: 'DRAFT',
+        status: 'CREATED',
       });
 
       toast({

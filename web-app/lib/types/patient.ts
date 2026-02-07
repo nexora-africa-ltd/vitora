@@ -170,7 +170,7 @@ export interface PatientListParams {
 export interface PatientEncounter {
   id: number;
   encounter_type: string;
-  status: 'DRAFT' | 'IN_PROGRESS' | 'COMPLETED' | 'CANCELLED';
+  status: 'CREATED' | 'CHECKED_IN' | 'TRIAGED' | 'IN_PROGRESS' | 'ON_HOLD' | 'ORDERS_PLACED' | 'RESULTS_PENDING' | 'READY_TO_CLOSE' | 'CLOSED' | 'CANCELLED';
   encounter_date: string;
   chief_complaint: string;
   created_at: string;
