@@ -21,8 +21,8 @@ from .models import (
 )
 
 
-class WardSerializer(serializers.ModelSerializer):
-    """Serializer for Ward model."""
+class InpatientWardSerializer(serializers.ModelSerializer):
+    """Serializer for Ward model (inpatient-specific with occupancy stats)."""
 
     available_beds = serializers.ReadOnlyField()
     total_beds = serializers.ReadOnlyField()
