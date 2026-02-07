@@ -168,14 +168,14 @@ export function EncounterProvider({ encounterId, children }: EncounterProviderPr
   // Derive order permissions
   const canPlaceOrders = useMemo(() => {
     if (!encounter) return false;
-    // Can only place orders on IN_PROGRESS or DRAFT encounters
-    return encounter.status === 'IN_PROGRESS' || encounter.status === 'DRAFT';
+    // Can only place orders on IN_PROGRESS or CREATED encounters
+    return encounter.status === 'IN_PROGRESS' || encounter.status === 'CREATED';
   }, [encounter]);
 
   // Derive active encounter status
   const isActiveEncounter = useMemo(() => {
     if (!encounter) return false;
-    return encounter.status !== 'COMPLETED' && encounter.status !== 'CANCELLED';
+    return encounter.status !== 'CLOSED' && encounter.status !== 'CANCELLED';
   }, [encounter]);
 
   // Extract statuses
