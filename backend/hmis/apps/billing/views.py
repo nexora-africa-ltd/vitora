@@ -11,7 +11,9 @@ from django.core.exceptions import ValidationError
 from django.db.models import Q
 from django.shortcuts import get_object_or_404
 from django_filters.rest_framework import DjangoFilterBackend
-from rest_framework import filters, status, viewsets
+from drf_spectacular.types import OpenApiTypes
+from drf_spectacular.utils import OpenApiParameter, extend_schema, inline_serializer
+from rest_framework import filters, serializers, status, viewsets
 from rest_framework.decorators import action
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
@@ -410,6 +412,28 @@ class MpesaViewSet(viewsets.ViewSet):
 
     permission_classes = [IsAuthenticated]
 
+    @extend_schema(
+        request=inline_serializer(
+            name="MpesaInitiateRequest",
+            fields={
+                "invoice_id": serializers.IntegerField(),
+                "phone_number": serializers.CharField(),
+                "amount": serializers.DecimalField(max_digits=10, decimal_places=2),
+                "payment_point": serializers.IntegerField(),
+            },
+        ),
+        responses={
+            200: inline_serializer(
+                name="MpesaInitiateResponse",
+                fields={
+                    "success": serializers.BooleanField(),
+                    "checkout_request_id": serializers.CharField(required=False),
+                    "merchant_request_id": serializers.CharField(required=False),
+                    "message": serializers.CharField(required=False),
+                },
+            )
+        },
+    )
     @action(detail=False, methods=["post"])
     def initiate(self, request):
         """
@@ -677,6 +701,12 @@ class ReportViewSet(viewsets.ViewSet):
 
     permission_classes = [IsAuthenticated]
 
+    @extend_schema(
+        parameters=[
+            OpenApiParameter("date", OpenApiTypes.DATE, description="Report date (YYYY-MM-DD)", required=True),
+        ],
+        responses={200: OpenApiTypes.OBJECT},
+    )
     @action(detail=False, methods=["get"], url_path="daily-collection")
     def daily_collection(self, request):
         """Get daily collection report."""
@@ -700,6 +730,13 @@ class ReportViewSet(viewsets.ViewSet):
 
         return Response(report, status=status.HTTP_200_OK)
 
+    @extend_schema(
+        parameters=[
+            OpenApiParameter("start_date", OpenApiTypes.DATE, description="Start date (YYYY-MM-DD)", required=True),
+            OpenApiParameter("end_date", OpenApiTypes.DATE, description="End date (YYYY-MM-DD)", required=True),
+        ],
+        responses={200: OpenApiTypes.OBJECT},
+    )
     @action(detail=False, methods=["get"], url_path="revenue-summary")
     def revenue_summary(self, request):
         """Get revenue summary for date range."""
@@ -727,6 +764,9 @@ class ReportViewSet(viewsets.ViewSet):
 
         return Response(report, status=status.HTTP_200_OK)
 
+    @extend_schema(
+        responses={200: OpenApiTypes.OBJECT},
+    )
     @action(detail=False, methods=["get"], url_path="outstanding-balances")
     def outstanding_balances(self, request):
         """Get list of outstanding invoices."""
@@ -737,6 +777,13 @@ class ReportViewSet(viewsets.ViewSet):
 
         return Response(report, status=status.HTTP_200_OK)
 
+    @extend_schema(
+        parameters=[
+            OpenApiParameter("start_date", OpenApiTypes.DATE, description="Start date (YYYY-MM-DD)", required=True),
+            OpenApiParameter("end_date", OpenApiTypes.DATE, description="End date (YYYY-MM-DD)", required=True),
+        ],
+        responses={200: OpenApiTypes.OBJECT},
+    )
     @action(detail=False, methods=["get"], url_path="service-utilization")
     def service_utilization(self, request):
         """Get service utilization report."""
@@ -764,6 +811,13 @@ class ReportViewSet(viewsets.ViewSet):
 
         return Response(report, status=status.HTTP_200_OK)
 
+    @extend_schema(
+        parameters=[
+            OpenApiParameter("start_date", OpenApiTypes.DATE, description="Start date (YYYY-MM-DD)", required=True),
+            OpenApiParameter("end_date", OpenApiTypes.DATE, description="End date (YYYY-MM-DD)", required=True),
+        ],
+        responses={200: OpenApiTypes.OBJECT},
+    )
     @action(detail=False, methods=["get"], url_path="payment-analysis")
     def payment_analysis(self, request):
         """Get payment method analysis."""

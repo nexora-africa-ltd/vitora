@@ -6,6 +6,8 @@ Sprint 1.5-1.6 Track E: Triage Module MVP - Phase 5
 
 from django.db.models import Count
 from django_filters.rest_framework import DjangoFilterBackend
+from drf_spectacular.types import OpenApiTypes
+from drf_spectacular.utils import OpenApiParameter, extend_schema
 from rest_framework import filters, status, viewsets
 from rest_framework.decorators import action
 from rest_framework.permissions import BasePermission, IsAdminUser, IsAuthenticated
@@ -476,6 +478,9 @@ class WaitTimesReportView(APIView):
 
     permission_classes = [IsAuthenticated]
 
+    @extend_schema(
+        responses={200: OpenApiTypes.OBJECT},
+    )
     def get(self, request):
         """Get wait time statistics."""
         from django.utils import timezone
@@ -540,6 +545,9 @@ class VolumeReportView(APIView):
 
     permission_classes = [IsAuthenticated]
 
+    @extend_schema(
+        responses={200: OpenApiTypes.OBJECT},
+    )
     def get(self, request):
         """Get volume counts by category."""
         from django.utils import timezone

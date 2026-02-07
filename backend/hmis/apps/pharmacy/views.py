@@ -6,6 +6,8 @@ from datetime import date, timedelta
 
 from django.db.models import Sum
 from django_filters.rest_framework import DjangoFilterBackend
+from drf_spectacular.types import OpenApiTypes
+from drf_spectacular.utils import OpenApiParameter, extend_schema
 from rest_framework import filters, status, viewsets
 from rest_framework.decorators import action
 from rest_framework.permissions import IsAuthenticated
@@ -425,6 +427,9 @@ class StockSummaryReportView(APIView):
 
     permission_classes = [IsAuthenticated]
 
+    @extend_schema(
+        responses={200: OpenApiTypes.OBJECT},
+    )
     def get(self, request):
         """Get stock summary for all drugs."""
         # Get all drugs with their stock batches
@@ -474,6 +479,12 @@ class ExpiryReportView(APIView):
 
     permission_classes = [IsAuthenticated]
 
+    @extend_schema(
+        parameters=[
+            OpenApiParameter("days", OpenApiTypes.INT, description="Days threshold (default 90)", required=False),
+        ],
+        responses={200: OpenApiTypes.OBJECT},
+    )
     def get(self, request):
         """Get batches expiring within specified days (default 90)."""
         days = int(request.query_params.get("days", 90))
@@ -514,6 +525,13 @@ class DispensingReportView(APIView):
 
     permission_classes = [IsAuthenticated]
 
+    @extend_schema(
+        parameters=[
+            OpenApiParameter("start_date", OpenApiTypes.DATE, description="Start date (YYYY-MM-DD)", required=False),
+            OpenApiParameter("end_date", OpenApiTypes.DATE, description="End date (YYYY-MM-DD)", required=False),
+        ],
+        responses={200: OpenApiTypes.OBJECT},
+    )
     def get(self, request):
         """Get dispensing records with optional date range filtering."""
         start_date = request.query_params.get("start_date")
@@ -556,6 +574,13 @@ class StockMovementReportView(APIView):
 
     permission_classes = [IsAuthenticated]
 
+    @extend_schema(
+        parameters=[
+            OpenApiParameter("start_date", OpenApiTypes.DATE, description="Start date (YYYY-MM-DD)", required=False),
+            OpenApiParameter("end_date", OpenApiTypes.DATE, description="End date (YYYY-MM-DD)", required=False),
+        ],
+        responses={200: OpenApiTypes.OBJECT},
+    )
     def get(self, request):
         """Get stock movements (received, dispensed, adjusted)."""
         start_date = request.query_params.get("start_date")
@@ -642,6 +667,9 @@ class AlertSettingsView(APIView):
 
     permission_classes = [IsAuthenticated]
 
+    @extend_schema(
+        responses={200: OpenApiTypes.OBJECT},
+    )
     def get(self, request):
         """Get current alert settings."""
         from hmis.apps.pharmacy.models import AlertSettings
@@ -651,10 +679,18 @@ class AlertSettingsView(APIView):
         serializer = AlertSettingsSerializer(settings)
         return Response(serializer.data)
 
+    @extend_schema(
+        request=OpenApiTypes.OBJECT,
+        responses={200: OpenApiTypes.OBJECT},
+    )
     def put(self, request):
         """Update alert settings (full update)."""
         return self._update(request, partial=False)
 
+    @extend_schema(
+        request=OpenApiTypes.OBJECT,
+        responses={200: OpenApiTypes.OBJECT},
+    )
     def patch(self, request):
         """Update alert settings (partial update)."""
         return self._update(request, partial=True)

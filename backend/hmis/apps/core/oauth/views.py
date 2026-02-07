@@ -17,6 +17,9 @@ from django.views import View
 from rest_framework import status
 from rest_framework.permissions import AllowAny
 from rest_framework.response import Response
+from drf_spectacular.types import OpenApiTypes
+from drf_spectacular.utils import extend_schema
+
 from rest_framework.views import APIView
 
 from hmis.apps.core.oauth.scopes import SMARTScopes
@@ -109,6 +112,7 @@ class CapabilityStatementView(APIView):
 
     permission_classes = [AllowAny]
 
+    @extend_schema(responses={200: OpenApiTypes.OBJECT})
     def get(self, request) -> Response:
         """Return FHIR CapabilityStatement."""
         base_url = get_base_url(request)
@@ -430,6 +434,7 @@ class SMARTLaunchView(APIView):
 
     permission_classes = [AllowAny]
 
+    @extend_schema(responses={200: OpenApiTypes.OBJECT})
     def get(self, request) -> Response:
         """
         Handle SMART EHR launch.
@@ -507,6 +512,7 @@ class SMARTLaunchContextView(APIView):
 
     Used by the EHR to create a launch token for third-party apps.
     """
+    @extend_schema(request=OpenApiTypes.OBJECT, responses={200: OpenApiTypes.OBJECT})
 
     def post(self, request) -> Response:
         """
@@ -572,6 +578,7 @@ class SMARTTokenIntrospectionView(APIView):
     - Scopes granted
     - Launch context (patient, encounter)
     """
+    @extend_schema(request=OpenApiTypes.OBJECT, responses={200: OpenApiTypes.OBJECT})
 
     def post(self, request) -> Response:
         """

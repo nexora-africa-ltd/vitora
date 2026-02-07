@@ -12,6 +12,8 @@ Sprint: Returning Patient Workflow - Sprint 1
 from django.db.models import Q
 from django.shortcuts import get_object_or_404
 from django_filters.rest_framework import DjangoFilterBackend
+from drf_spectacular.types import OpenApiTypes
+from drf_spectacular.utils import OpenApiParameter, extend_schema
 from rest_framework import filters, status, views, viewsets
 from rest_framework.decorators import action
 from rest_framework.pagination import PageNumberPagination
@@ -58,6 +60,12 @@ class PatientLookupView(views.APIView):
 
     permission_classes = [IsAuthenticated]
 
+    @extend_schema(
+        parameters=[
+            OpenApiParameter("q", OpenApiTypes.STR, description="Search query (MRN, ID, phone, or name)", required=True),
+        ],
+        responses={200: PatientLookupSerializer},
+    )
     def get(self, request):
         """Look up a patient by MRN, ID, phone, or name."""
         query = request.query_params.get("q", "").strip()
@@ -180,6 +188,10 @@ class PatientCheckinView(views.APIView):
 
     permission_classes = [IsAuthenticated]
 
+    @extend_schema(
+        request=CheckInRequestSerializer,
+        responses={200: CheckInResponseSerializer},
+    )
     def post(self, request, patient_id):
         """Check in a patient."""
         # Get patient
