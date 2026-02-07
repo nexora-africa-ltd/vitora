@@ -4,6 +4,8 @@ Serializers for SHA (Social Health Authority) billing models.
 Provides serialization for SHA Members, Tariffs, Claims, and related models.
 """
 
+
+from typing import Optional
 from rest_framework import serializers
 
 from hmis.apps.billing.models import (
@@ -59,17 +61,17 @@ class SHAMemberSerializer(serializers.ModelSerializer):
             "updated_at",
         ]
 
-    def get_patient_name(self, obj):
+    def get_patient_name(self, obj) -> Optional[str]:
         """Return patient's full name."""
         if obj.patient:
             return f"{obj.patient.first_name} {obj.patient.last_name}"
         return None
 
-    def get_eligibility_display(self, obj):
+    def get_eligibility_display(self, obj) -> str:
         """Return human-readable eligibility status."""
         return obj.get_eligibility_display()
 
-    def get_pfms_category_display(self, obj):
+    def get_pfms_category_display(self, obj) -> Optional[str]:
         """Return human-readable PFMS category."""
         if obj.is_pfms_eligible and obj.pfms_category:
             return obj.get_pfms_category_display()
@@ -112,7 +114,7 @@ class SHAMemberDetailSerializer(SHAMemberSerializer):
 
     patient = serializers.SerializerMethodField()
 
-    def get_patient(self, obj):
+    def get_patient(self, obj) -> str:
         """Return nested patient details."""
         if obj.patient:
             return {
@@ -153,7 +155,7 @@ class SHATariffSerializer(serializers.ModelSerializer):
         ]
         read_only_fields = ["id", "created_at", "updated_at"]
 
-    def get_is_valid(self, obj):
+    def get_is_valid(self, obj) -> bool:
         """Check if tariff is currently valid."""
         return obj.is_valid_on_date()
 
@@ -202,7 +204,7 @@ class SHAClaimItemSerializer(serializers.ModelSerializer):
             "updated_at",
         ]
 
-    def get_coverage_type_display(self, obj):
+    def get_coverage_type_display(self, obj) -> str:
         """Return human-readable coverage type."""
         return obj.get_coverage_type_display()
 
@@ -339,17 +341,17 @@ class SHAClaimSerializer(serializers.ModelSerializer):
             "updated_at",
         ]
 
-    def get_patient_name(self, obj):
+    def get_patient_name(self, obj) -> str:
         """Return patient's full name."""
         if obj.patient:
             return f"{obj.patient.first_name} {obj.patient.last_name}"
         return None
 
-    def get_items_count(self, obj):
+    def get_items_count(self, obj) -> Optional[int]:
         """Return count of claim items."""
         return obj.items.count()
 
-    def get_attachments_count(self, obj):
+    def get_attachments_count(self, obj) -> int:
         """Return count of attachments."""
         return obj.attachments.count()
 

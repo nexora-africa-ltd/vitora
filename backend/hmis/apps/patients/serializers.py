@@ -119,17 +119,17 @@ class PatientSerializer(serializers.ModelSerializer):
             "emergency_contact_relationship",
         ]
 
-    def get_emergency_contact_name(self, obj):
+    def get_emergency_contact_name(self, obj) -> str:
         """Get the primary emergency contact's name."""
         contact = obj.emergency_contacts.first()
         return contact.full_name if contact else None
 
-    def get_emergency_contact_phone(self, obj):
+    def get_emergency_contact_phone(self, obj) -> str:
         """Get the primary emergency contact's phone number."""
         contact = obj.emergency_contacts.first()
         return contact.phone_number if contact else None
 
-    def get_emergency_contact_relationship(self, obj):
+    def get_emergency_contact_relationship(self, obj) -> str:
         """Get the primary emergency contact's relationship."""
         contact = obj.emergency_contacts.first()
         return contact.relationship if contact else None

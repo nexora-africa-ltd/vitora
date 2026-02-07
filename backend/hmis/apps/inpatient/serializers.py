@@ -127,7 +127,7 @@ class AdmissionRecommendationSerializer(serializers.ModelSerializer):
             "updated_at",
         ]
 
-    def get_is_expired(self, obj):
+    def get_is_expired(self, obj) -> bool:
         return obj.is_expired()
 
 
@@ -188,7 +188,7 @@ class AdmissionSerializer(serializers.ModelSerializer):
             "updated_at",
         ]
 
-    def get_patient_name(self, obj):
+    def get_patient_name(self, obj) -> str:
         """Get patient full name."""
         return f"{obj.patient.first_name} {obj.patient.last_name}"
 
@@ -262,7 +262,7 @@ class DischargeSerializer(serializers.ModelSerializer):
         ]
         read_only_fields = ["id", "created_at", "updated_at"]
 
-    def get_patient_name(self, obj):
+    def get_patient_name(self, obj) -> str:
         """Get patient full name."""
         patient = obj.admission.patient
         return f"{patient.first_name} {patient.last_name}"
@@ -311,7 +311,7 @@ class TransferSerializer(serializers.ModelSerializer):
         ]
         read_only_fields = ["id", "created_at", "updated_at"]
 
-    def get_patient_name(self, obj):
+    def get_patient_name(self, obj) -> str:
         """Get patient full name."""
         patient = obj.admission.patient
         return f"{patient.first_name} {patient.last_name}"
@@ -351,7 +351,7 @@ class WardRoundSerializer(serializers.ModelSerializer):
         ]
         read_only_fields = ["id", "created_at", "updated_at"]
 
-    def get_patient_name(self, obj):
+    def get_patient_name(self, obj) -> str:
         """Get patient full name."""
         patient = obj.admission.patient
         return f"{patient.first_name} {patient.last_name}"
@@ -455,7 +455,7 @@ class NursingKardexSerializer(serializers.ModelSerializer):
         ]
         read_only_fields = ["id", "admission", "created_at", "updated_at"]
 
-    def get_patient_name(self, obj):
+    def get_patient_name(self, obj) -> str:
         """Get patient full name."""
         patient = obj.admission.patient
         return f"{patient.first_name} {patient.last_name}"
