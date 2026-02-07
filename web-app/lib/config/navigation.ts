@@ -38,6 +38,7 @@ import {
   HeartPulse,
   Syringe,
   Stethoscope as StethoscopeIcon,
+  UserCheck,
 } from 'lucide-react';
 
 export interface NavItem {
@@ -64,6 +65,7 @@ export function hasChildren(item: NavItemType): item is NavItemWithChildren {
  */
 export const mainNavItems: NavItemType[] = [
   { label: 'Dashboard', href: '/', icon: LayoutDashboard },
+  { label: 'Check-in', href: '/patients/checkin', icon: UserCheck },
   { label: 'Patients', href: '/patients', icon: Users },
   { label: 'Triage', href: '/triage', icon: AlertTriangle },
   {

@@ -258,7 +258,8 @@ export function useWebSocket(
       ws.onerror = (event) => {
         setConnectionState('error');
         onErrorRef.current?.(event);
-        console.error('[WebSocket] Error:', event);
+        // WebSocket error events don't carry useful info — log the URL instead
+        console.warn(`[WebSocket] Connection error for ${url}. Server may not be running or WebSocket endpoint is unavailable. Falling back to polling.`);
       };
 
       ws.onclose = () => {

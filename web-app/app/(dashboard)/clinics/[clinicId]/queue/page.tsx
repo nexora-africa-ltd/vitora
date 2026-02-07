@@ -136,7 +136,7 @@ export default function ClinicQueuePage() {
 
   // Queue by status
   const waitingQueue = useMemo(
-    () => filteredQueue.filter((v) => v.status === 'WAITING' || v.status === 'CALLED'),
+    () => filteredQueue.filter((v) => v.status === 'REGISTERED' || v.status === 'WAITING' || v.status === 'CALLED'),
     [filteredQueue]
   );
 

@@ -82,7 +82,7 @@ export default function ClinicDashboardPage() {
   const waitingQueue = useMemo(
     () =>
       (queue ?? [])
-        .filter((v) => v.status === 'WAITING' || v.status === 'CALLED')
+        .filter((v) => v.status === 'REGISTERED' || v.status === 'WAITING' || v.status === 'CALLED')
         .sort((a, b) => {
           // Sort by priority first, then by registered_at
           const priorityOrder = { EMERGENCY: 1, URGENT: 2, PRIORITY: 3, STANDARD: 4, NON_URGENT: 5 };

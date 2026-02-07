@@ -221,7 +221,7 @@ export interface ClinicListItem {
   status: ClinicStatus;
   location: string;
   is_sensitive?: boolean;
-  is_open_today?: boolean; // Not returned in list endpoint
+  is_open_today: boolean;
 }
 
 // =============================================================================

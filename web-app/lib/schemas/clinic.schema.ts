@@ -56,7 +56,7 @@ export const ClinicListItemSchema = z.object({
   status: ClinicStatusSchema,
   location: z.string(),
   is_sensitive: z.boolean().optional(),
-  is_open_today: z.boolean().optional(), // Not returned in list endpoint
+  is_open_today: z.boolean(),
 });
 
 export const ClinicSchema = z.object({

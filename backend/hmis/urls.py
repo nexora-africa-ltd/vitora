@@ -163,6 +163,8 @@ urlpatterns = [
     path("api/imaging/", include("hmis.apps.imaging.urls")),
     # Clinics API
     path("api/", include("hmis.apps.clinics.urls")),
+    # Check-in API
+    path("api/checkin/", include("hmis.apps.checkin.urls", namespace="checkin")),
     # Core utilities API (PRC number generation, etc.)
     path("api/core/", include("hmis.apps.core.urls")),
     path("api-auth/", include("rest_framework.urls", namespace="rest_framework")),
