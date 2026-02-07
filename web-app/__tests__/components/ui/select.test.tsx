@@ -35,7 +35,8 @@ describe('Select Component', () => {
         </Select>
       );
 
-      expect(screen.getByRole('button', { name: /Option 1/i })).toBeInTheDocument();
+      expect(screen.getByRole('combobox')).toBeInTheDocument();
+      expect(screen.getByText('Option 1')).toBeInTheDocument();
     });
 
     it('should open dropdown on trigger click', () => {
@@ -52,7 +53,7 @@ describe('Select Component', () => {
       );
 
       // Click trigger to open
-      fireEvent.click(screen.getByRole('button'));
+      fireEvent.click(screen.getByRole('combobox'));
 
       // Options should be visible
       expect(screen.getByText('Option 1')).toBeInTheDocument();
@@ -75,7 +76,7 @@ describe('Select Component', () => {
       );
 
       // Open dropdown
-      fireEvent.click(screen.getByRole('button'));
+      fireEvent.click(screen.getByRole('combobox'));
 
       // Select an option
       fireEvent.click(screen.getByText('Option 1'));
@@ -96,7 +97,7 @@ describe('Select Component', () => {
       );
 
       // Open dropdown
-      fireEvent.click(screen.getByRole('button'));
+      fireEvent.click(screen.getByRole('combobox'));
       expect(screen.getByText('Option 1')).toBeInTheDocument();
 
       // Select option
@@ -120,7 +121,7 @@ describe('Select Component', () => {
         </Select>
       );
 
-      expect(screen.getByRole('button')).toBeInTheDocument();
+      expect(screen.getByRole('combobox')).toBeInTheDocument();
     });
 
     it('should accept custom className', () => {
@@ -135,7 +136,7 @@ describe('Select Component', () => {
         </Select>
       );
 
-      expect(screen.getByRole('button')).toHaveClass('custom-class');
+      expect(screen.getByRole('combobox')).toHaveClass('custom-class');
     });
   });
 
@@ -171,7 +172,7 @@ describe('Select Component', () => {
       );
 
       // Open to see items
-      fireEvent.click(screen.getByRole('button'));
+      fireEvent.click(screen.getByRole('combobox'));
 
       const selectedOption = screen.getByRole('option', { name: 'Option 1' });
       expect(selectedOption).toHaveAttribute('aria-selected', 'true');
