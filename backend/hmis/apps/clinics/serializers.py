@@ -95,6 +95,7 @@ class ClinicListSerializer(serializers.ModelSerializer):
     """Lightweight serializer for listing clinics."""
 
     clinic_type_display = serializers.CharField(source="get_clinic_type_display", read_only=True)
+    is_open_today = serializers.SerializerMethodField()
 
     class Meta:
         """Meta options for ClinicListSerializer."""
@@ -109,7 +110,12 @@ class ClinicListSerializer(serializers.ModelSerializer):
             "location",
             "status",
             "is_sensitive",
+            "is_open_today",
         ]
+
+    def get_is_open_today(self, obj):
+        """Check if clinic is open today."""
+        return obj.is_open_today()
 
 
 # =============================================================================
