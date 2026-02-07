@@ -99,14 +99,14 @@ describe('BypassTriageDialog', () => {
     it('should render reason selector', () => {
       render(<BypassTriageDialog {...defaultProps} />);
 
-      expect(screen.getByRole('button', { name: /Select a reason/i })).toBeInTheDocument();
+      expect(screen.getByRole('combobox', { name: /Select a reason/i })).toBeInTheDocument();
     });
 
     it('should display all bypass reason options when clicked', async () => {
       const user = userEvent.setup();
       render(<BypassTriageDialog {...defaultProps} />);
 
-      const selector = screen.getByRole('button', { name: /Select a reason/i });
+      const selector = screen.getByRole('combobox', { name: /Select a reason/i });
       await user.click(selector);
 
       await waitFor(() => {
@@ -123,7 +123,7 @@ describe('BypassTriageDialog', () => {
       const user = userEvent.setup();
       render(<BypassTriageDialog {...defaultProps} />);
 
-      const selector = screen.getByRole('button', { name: /Select a reason/i });
+      const selector = screen.getByRole('combobox', { name: /Select a reason/i });
       await user.click(selector);
 
       await waitFor(() => {
@@ -164,7 +164,7 @@ describe('BypassTriageDialog', () => {
       });
 
       // Select a reason
-      const selector = screen.getByRole('button', { name: /Select a reason/i });
+      const selector = screen.getByRole('combobox', { name: /Select a reason/i });
       await user.click(selector);
 
       await waitFor(() => {
@@ -211,7 +211,7 @@ describe('BypassTriageDialog', () => {
       render(<BypassTriageDialog {...defaultProps} />);
 
       // Select a reason
-      const selector = screen.getByRole('button', { name: /Select a reason/i });
+      const selector = screen.getByRole('combobox', { name: /Select a reason/i });
       await user.click(selector);
 
       await waitFor(() => {
@@ -267,7 +267,7 @@ describe('BypassTriageDialog', () => {
       render(<BypassTriageDialog {...defaultProps} isLoading={true} />);
 
       // The select trigger button should be disabled
-      const selector = screen.getByRole('button', { name: /Select a reason/i });
+      const selector = screen.getByRole('combobox', { name: /Select a reason/i });
       expect(selector).toBeDisabled();
     });
   });
@@ -299,7 +299,7 @@ describe('BypassTriageDialog', () => {
       render(<BypassTriageDialog {...defaultProps} />);
 
       // Select "Other reason"
-      const selector = screen.getByRole('button', { name: /Select a reason/i });
+      const selector = screen.getByRole('combobox', { name: /Select a reason/i });
       await user.click(selector);
 
       await waitFor(() => {
@@ -319,7 +319,7 @@ describe('BypassTriageDialog', () => {
       render(<BypassTriageDialog {...defaultProps} />);
 
       // Select "Other reason"
-      const selector = screen.getByRole('button', { name: /Select a reason/i });
+      const selector = screen.getByRole('combobox', { name: /Select a reason/i });
       await user.click(selector);
 
       await waitFor(() => {
@@ -386,7 +386,7 @@ describe('BypassTriageDialog', () => {
       const { rerender } = render(<BypassTriageDialog {...defaultProps} />);
 
       // Select a reason
-      const selector = screen.getByRole('button', { name: /Select a reason/i });
+      const selector = screen.getByRole('combobox', { name: /Select a reason/i });
       await user.click(selector);
 
       await waitFor(() => {
@@ -402,7 +402,7 @@ describe('BypassTriageDialog', () => {
       rerender(<BypassTriageDialog {...defaultProps} open={true} />);
 
       // Should show placeholder again, not selected value
-      expect(screen.getByRole('button', { name: /Select a reason/i })).toBeInTheDocument();
+      expect(screen.getByRole('combobox', { name: /Select a reason/i })).toBeInTheDocument();
     });
   });
 });
