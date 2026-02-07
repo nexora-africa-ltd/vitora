@@ -68,7 +68,7 @@ class ClinicSerializer(serializers.ModelSerializer):
         ]
         read_only_fields = ["id", "created_at", "updated_at"]
 
-    def get_is_open_today(self, obj):
+    def get_is_open_today(self, obj) -> bool:
         """Check if clinic is open today."""
         return obj.is_open_today()
 
@@ -113,7 +113,7 @@ class ClinicListSerializer(serializers.ModelSerializer):
             "is_open_today",
         ]
 
-    def get_is_open_today(self, obj):
+    def get_is_open_today(self, obj) -> bool:
         """Check if clinic is open today."""
         return obj.is_open_today()
 
@@ -192,7 +192,7 @@ class ClinicVisitPatientSerializer(serializers.Serializer):
     gender = serializers.CharField()
     phone_number = serializers.SerializerMethodField()
 
-    def get_phone_number(self, obj):
+    def get_phone_number(self, obj) -> str:
         """Get phone number, returning empty string if encrypted/unavailable."""
         try:
             return obj.phone_number or ""
@@ -271,11 +271,11 @@ class ClinicVisitSerializer(serializers.ModelSerializer):
             "updated_at",
         ]
 
-    def get_patient_name(self, obj):
+    def get_patient_name(self, obj) -> str:
         """Get patient full name."""
         return f"{obj.patient.first_name} {obj.patient.last_name}"
 
-    def get_registered_by_name(self, obj):
+    def get_registered_by_name(self, obj) -> str:
         """Get the name of the user who registered this visit."""
         if obj.registered_by:
             return obj.registered_by.get_full_name() or obj.registered_by.username
@@ -511,74 +511,74 @@ class ClinicEnrollmentSerializer(serializers.ModelSerializer):
             "updated_at",
         ]
 
-    def get_patient_name(self, obj):
+    def get_patient_name(self, obj) -> str:
         """Get patient full name."""
         return f"{obj.patient.first_name} {obj.patient.last_name}"
 
-    def get_is_overdue(self, obj):
+    def get_is_overdue(self, obj) -> bool:
         """Check if patient is overdue."""
         return obj.is_overdue()
 
-    def get_is_defaulter(self, obj):
+    def get_is_defaulter(self, obj) -> bool:
         """Check if patient is a defaulter."""
         return obj.is_defaulter()
 
-    def get_days_since_last_visit(self, obj):
+    def get_days_since_last_visit(self, obj) -> str:
         """Get days since last visit."""
         return obj.days_since_last_visit()
 
-    def get_days_overdue(self, obj):
+    def get_days_overdue(self, obj) -> str:
         """Get days overdue for appointment."""
         return obj.days_overdue()
 
-    def get_enrollment_type(self, obj):
+    def get_enrollment_type(self, obj) -> str:
         """Get enrollment type based on clinic."""
         return obj.enrollment_type()
 
-    def get_clinic_specific_summary(self, obj):
+    def get_clinic_specific_summary(self, obj) -> str:
         """Get clinic-specific data summary."""
         return obj.get_clinic_specific_summary()
 
     # CCC getters
-    def get_days_on_art(self, obj):
+    def get_days_on_art(self, obj) -> str:
         """Get days on ART."""
         return obj.days_on_art()
 
-    def get_viral_load_due(self, obj):
+    def get_viral_load_due(self, obj) -> str:
         """Check if viral load test is due."""
         return obj.viral_load_due()
 
-    def get_cd4_due(self, obj):
+    def get_cd4_due(self, obj) -> str:
         """Check if CD4 count is due."""
         return obj.cd4_due()
 
-    def get_is_virally_suppressed(self, obj):
+    def get_is_virally_suppressed(self, obj) -> bool:
         """Check if patient is virally suppressed."""
         return obj.is_virally_suppressed()
 
     # ANC getters
-    def get_gestation_weeks(self, obj):
+    def get_gestation_weeks(self, obj) -> str:
         """Get gestation in weeks."""
         return obj.gestation_weeks()
 
-    def get_gestation_display(self, obj):
+    def get_gestation_display(self, obj) -> str:
         """Get gestation display string."""
         return obj.gestation_display()
 
-    def get_trimester(self, obj):
+    def get_trimester(self, obj) -> str:
         """Get current trimester."""
         return obj.trimester()
 
-    def get_days_to_edd(self, obj):
+    def get_days_to_edd(self, obj) -> str:
         """Get days remaining to EDD."""
         return obj.days_to_edd()
 
     # Diabetic getters
-    def get_hba1c_controlled(self, obj):
+    def get_hba1c_controlled(self, obj) -> str:
         """Check if HbA1c is controlled."""
         return obj.hba1c_controlled()
 
-    def get_hba1c_due(self, obj):
+    def get_hba1c_due(self, obj) -> str:
         """Check if HbA1c test is due."""
         return obj.hba1c_due()
 
@@ -641,23 +641,23 @@ class ClinicEnrollmentListSerializer(serializers.ModelSerializer):
             "total_visits",
         ]
 
-    def get_patient_name(self, obj):
+    def get_patient_name(self, obj) -> str:
         """Get patient full name."""
         return f"{obj.patient.first_name} {obj.patient.last_name}"
 
-    def get_is_overdue(self, obj):
+    def get_is_overdue(self, obj) -> bool:
         """Check if patient is overdue."""
         return obj.is_overdue()
 
-    def get_is_defaulter(self, obj):
+    def get_is_defaulter(self, obj) -> bool:
         """Check if patient is a defaulter."""
         return obj.is_defaulter()
 
-    def get_days_overdue(self, obj):
+    def get_days_overdue(self, obj) -> str:
         """Get days overdue."""
         return obj.days_overdue()
 
-    def get_enrollment_type(self, obj):
+    def get_enrollment_type(self, obj) -> str:
         """Get enrollment type."""
         return obj.enrollment_type()
 

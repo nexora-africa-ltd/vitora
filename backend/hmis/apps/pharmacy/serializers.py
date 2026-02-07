@@ -2,6 +2,8 @@
 Serializers for Pharmacy app.
 """
 
+
+from typing import Optional
 import re
 
 from django.apps import apps
@@ -104,7 +106,7 @@ class DrugSerializer(serializers.ModelSerializer):
         ]
         read_only_fields = ["id", "created_at", "updated_at", "display_name", "current_stock"]
 
-    def get_category(self, obj):
+    def get_category(self, obj) -> str:
         """Return primary (first) category for backward compatibility."""
         return obj.categories[0] if obj.categories else None
 
@@ -367,29 +369,29 @@ class PrescriptionSerializer(serializers.ModelSerializer):
             "is_fully_dispensed_status",
         ]
 
-    def get_patient_name(self, obj):
+    def get_patient_name(self, obj) -> str:
         """Get patient full name."""
         return f"{obj.patient.first_name} {obj.patient.last_name}"
 
-    def get_prescriber_name(self, obj):
+    def get_prescriber_name(self, obj) -> str:
         """Get prescriber full name."""
         return obj.prescribed_by.get_full_name() or obj.prescribed_by.username
 
-    def get_prescribed_date(self, obj):
+    def get_prescribed_date(self, obj) -> Optional[str]:
         """Get prescription date (date only, not datetime)."""
         if obj.prescribed_at:
             return obj.prescribed_at.date()
         return None
 
-    def get_is_valid_prescription(self, obj):
+    def get_is_valid_prescription(self, obj) -> bool:
         """Get prescription validity status."""
         return obj.is_valid()
 
-    def get_is_valid(self, obj):
+    def get_is_valid(self, obj) -> bool:
         """Alias for is_valid_prescription."""
         return obj.is_valid()
 
-    def get_verification_url(self, obj):
+    def get_verification_url(self, obj) -> str:
         """Generate verification URL for QR code."""
         if not obj.prescription_number or not obj.prescribed_at:
             return None
@@ -505,15 +507,15 @@ class DispensingSerializer(serializers.ModelSerializer):
             "batch_number",
         ]
 
-    def get_patient_name(self, obj):
+    def get_patient_name(self, obj) -> str:
         """Get patient full name."""
         return f"{obj.patient.first_name} {obj.patient.last_name}"
 
-    def get_dispensed_by_name(self, obj):
+    def get_dispensed_by_name(self, obj) -> str:
         """Get dispenser full name."""
         return obj.dispensed_by.get_full_name() or obj.dispensed_by.username
 
-    def get_verified_by_name(self, obj):
+    def get_verified_by_name(self, obj) -> str:
         """Get verifier full name."""
         if obj.verified_by:
             return obj.verified_by.get_full_name() or obj.verified_by.username
@@ -557,11 +559,11 @@ class StockAdjustmentSerializer(serializers.ModelSerializer):
             "approved_by_name",
         ]
 
-    def get_adjusted_by_name(self, obj):
+    def get_adjusted_by_name(self, obj) -> str:
         """Get adjuster full name."""
         return obj.adjusted_by.get_full_name() or obj.adjusted_by.username
 
-    def get_approved_by_name(self, obj):
+    def get_approved_by_name(self, obj) -> str:
         """Get approver full name."""
         if obj.approved_by:
             return obj.approved_by.get_full_name() or obj.approved_by.username
@@ -594,7 +596,7 @@ class AlertSettingsSerializer(serializers.ModelSerializer):
             "created_at",
         ]
 
-    def get_updated_by_name(self, obj):
+    def get_updated_by_name(self, obj) -> str:
         """Get updater full name."""
         if obj.updated_by:
             return obj.updated_by.get_full_name() or obj.updated_by.username
