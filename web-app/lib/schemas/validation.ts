@@ -3,45 +3,66 @@
  *
  * Provides safe parsing of API responses with Zod schemas.
  *
- * Behavior by environment:
- * - Development: Lenient mode - logs warnings, returns data as-is (for debugging)
- * - Production: Strict mode - throws errors on validation failure (fail fast)
+ * Behavior:
+ * - Strict by default in all environments (fail fast, catch bugs early)
+ * - Throws ZodError directly for structured error inspection
+ * - Logs detailed validation errors in development
+ * - Can opt-out with explicit `strict: false` (not recommended)
  *
- * This ensures data shape mismatches are caught in production before they
+ * This ensures data shape mismatches are caught immediately before they
  * cause cryptic runtime errors like "Cannot read properties of undefined".
  */
-import { z, ZodSchema, ZodError } from 'zod';
+import { z, ZodError, ZodTypeAny } from 'zod';
 
 const isDev = process.env.NODE_ENV === 'development';
-const isProd = process.env.NODE_ENV === 'production';
 
 /**
  * Validation options
  */
 export interface ParseOptions {
   /**
-   * If true, throw on validation failure. If false, log warning and return data as-is.
-   * Default: true in production, false in development
+   * If true, throw ZodError on validation failure.
+   * If false, log warning and return data as-is (not recommended).
+   * @default true
    */
   strict?: boolean;
+
   /** Context for error messages (e.g., "clinicsApi.getQueue") */
   context?: string;
+
+  /**
+   * Log received data on validation failure (dev only).
+   * @default true
+   */
+  logData?: boolean;
 }
 
 /**
  * Safely parse API response data with a Zod schema.
  *
- * - Development: logs detailed validation errors, returns data as-is (lenient)
- * - Production: throws error on validation failure (strict)
- * - Can override with explicit `strict` option
+ * @param schema - Zod schema to validate against
+ * @param data - Raw API response data
+ * @param options - Validation options
+ * @returns Parsed and typed data
+ * @throws ZodError if validation fails and strict mode is enabled
+ *
+ * @example
+ * ```ts
+ * const patient = parseResponse(PatientSchema, response.data, {
+ *   context: 'patientsApi.get'
+ * });
+ * ```
  */
-export function parseResponse<T>(
-  schema: ZodSchema<T>,
+export function parseResponse<S extends ZodTypeAny>(
+  schema: S,
   data: unknown,
   options: ParseOptions = {}
-): T {
-  // Default to strict in production, lenient in development
-  const { strict = isProd, context = 'API response' } = options;
+): z.infer<S> {
+  const {
+    strict = true,
+    context = 'API response',
+    logData = true,
+  } = options;
 
   const result = schema.safeParse(data);
 
@@ -49,42 +70,62 @@ export function parseResponse<T>(
     return result.data;
   }
 
-  // Log validation errors
-  const errorDetails = formatZodError(result.error);
-  const message = `[API Validation] ${context}: Response validation failed\n${errorDetails}`;
+  // Attach context to error for programmatic access
+  (result.error as ZodError & { context?: string }).context = context;
+
+  const message = `[API Validation] ${context}: response validation failed`;
 
   if (isDev) {
     console.warn(message);
-    console.warn('[API Validation] Received data:', JSON.stringify(data, null, 2).slice(0, 1000));
+    console.warn(formatZodError(result.error));
+
+    if (logData) {
+      try {
+        console.warn(
+          '[API Validation] Received data:',
+          JSON.stringify(data, null, 2).slice(0, 1000)
+        );
+      } catch {
+        console.warn('[API Validation] Received data: <unserializable>');
+      }
+    }
   }
 
   if (strict) {
-    throw new Error(`${context}: Invalid API response - ${result.error.issues[0]?.message || 'validation failed'}`);
+    throw result.error;
   }
 
-  // Return data as-is in lenient mode (type assertion since validation failed)
-  return data as T;
+  // Explicitly lenient mode (not recommended)
+  return data as z.infer<S>;
 }
 
 /**
- * Format Zod errors for logging
+ * Format Zod errors for readable console output
  */
 function formatZodError(error: ZodError): string {
   return error.issues
     .map((issue) => {
-      const path = issue.path.join('.');
-      return `  - ${path || 'root'}: ${issue.message} (${issue.code})`;
+      const path = issue.path.length ? issue.path.join('.') : 'root';
+      return `  - ${path}: ${issue.message} (${issue.code})`;
     })
     .join('\n');
 }
 
 /**
- * Create a validated API method wrapper
+ * Create a validated async API method wrapper.
  *
- * Usage:
+ * Wraps an async function to automatically validate its return value
+ * against a Zod schema.
+ *
+ * @param schema - Zod schema to validate response against
+ * @param fn - Async function that returns raw API data
+ * @param options - Validation options
+ * @returns Wrapped function that returns validated, typed data
+ *
+ * @example
  * ```ts
  * const getQueue = validated(
- *   ClinicVisitArrayResponseSchema,
+ *   ClinicVisitArraySchema,
  *   async (clinicId: number) => {
  *     const response = await apiClient.get(`/api/clinics/${clinicId}/queue/`);
  *     return response.data;
@@ -93,12 +134,12 @@ function formatZodError(error: ZodError): string {
  * );
  * ```
  */
-export function validated<T, Args extends unknown[]>(
-  schema: ZodSchema<T>,
+export function validated<S extends ZodTypeAny, Args extends unknown[]>(
+  schema: S,
   fn: (...args: Args) => Promise<unknown>,
-  options: ParseOptions = {}
-): (...args: Args) => Promise<T> {
-  return async (...args: Args): Promise<T> => {
+  options?: ParseOptions
+): (...args: Args) => Promise<z.infer<S>> {
+  return async (...args: Args) => {
     const data = await fn(...args);
     return parseResponse(schema, data, options);
   };
