@@ -14,6 +14,7 @@ interface SelectContextValue {
   setOpen: (open: boolean) => void
   registerItem: (itemValue: string, displayText: string) => void
   itemRegistry: Map<string, string>
+  listboxId: string
 }
 
 const SelectContext = React.createContext<SelectContextValue | undefined>(undefined)
@@ -32,6 +33,7 @@ const Select: React.FC<SelectProps> = ({ value, defaultValue = '', onValueChange
   const [open, setOpen] = React.useState(false)
   const [registryVersion, setRegistryVersion] = React.useState(0)
   const itemRegistryRef = React.useRef<Map<string, string>>(new Map())
+  const listboxId = React.useId()
 
   const handleValueChange = React.useCallback((newValue: string, newDisplayText?: string) => {
     if (disabled) return
@@ -62,8 +64,47 @@ const Select: React.FC<SelectProps> = ({ value, defaultValue = '', onValueChange
     }
   }, [currentValue, displayText, registryVersion])
 
+  const extractText = React.useCallback((node: React.ReactNode): string => {
+    if (typeof node === 'string') return node
+    if (typeof node === 'number') return String(node)
+    if (Array.isArray(node)) return node.map(extractText).join('')
+    if (React.isValidElement(node) && node.props.children) {
+      return extractText(node.props.children)
+    }
+    return ''
+  }, [])
+
+  const collectedItems = React.useMemo(() => {
+    const items: Array<{ value: string; text: string }> = []
+    const walk = (node: React.ReactNode) => {
+      if (!React.isValidElement(node)) return
+      const nodeType = node.type as { displayName?: string }
+      if (nodeType?.displayName === 'SelectItem' && typeof node.props.value === 'string') {
+        items.push({
+          value: node.props.value,
+          text: extractText(node.props.children),
+        })
+      }
+      if (node.props?.children) {
+        React.Children.forEach(node.props.children, walk)
+      }
+    }
+    React.Children.forEach(children, walk)
+    return items
+  }, [children, extractText])
+
+  React.useEffect(() => {
+    collectedItems.forEach(({ value: itemValue, text }) => {
+      const existing = itemRegistryRef.current.get(itemValue)
+      if (existing !== text) {
+        itemRegistryRef.current.set(itemValue, text)
+        setRegistryVersion((v) => v + 1)
+      }
+    })
+  }, [collectedItems])
+
   return (
-    <SelectContext.Provider value={{ value: currentValue, displayText, onValueChange: handleValueChange, open, setOpen, registerItem, itemRegistry: itemRegistryRef.current }}>
+    <SelectContext.Provider value={{ value: currentValue, displayText, onValueChange: handleValueChange, open, setOpen, registerItem, itemRegistry: itemRegistryRef.current, listboxId }}>
       <div className="relative">
         {children}
       </div>
@@ -82,6 +123,10 @@ const SelectTrigger = React.forwardRef<
     <button
       ref={ref}
       type="button"
+      role="combobox"
+      aria-expanded={context.open}
+      aria-haspopup="listbox"
+      aria-controls={context.listboxId}
       className={cn(
         "flex h-10 w-full items-center justify-between rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 animate-pulse hover:bg-teal-400/10 hover:text-foreground hover:shadow-sm",
         className
@@ -129,12 +174,11 @@ const SelectContent = React.forwardRef<
   const context = React.useContext(SelectContext)
   if (!context) throw new Error('SelectContent must be used within Select')
 
-  // Always render children (hidden when closed) so SelectItems can register their display text
-  // This allows programmatically set values to display correctly
   return (
     <div
       ref={ref}
       role="listbox"
+      id={context.listboxId}
       hidden={!context.open}
       className={cn(
         "absolute top-full left-0 z-50 mt-1 w-full min-w-[8rem] overflow-hidden rounded-md border bg-popover text-popover-foreground shadow-md animate-in fade-in-0 zoom-in-95",
@@ -144,7 +188,7 @@ const SelectContent = React.forwardRef<
       {...props}
     >
       <div className="p-1">
-        {children}
+        {context.open ? children : null}
       </div>
     </div>
   )
@@ -198,6 +242,7 @@ const SelectItem = React.forwardRef<HTMLDivElement, SelectItemProps>(
     )
   }
 )
+SelectItem.displayName = "SelectItem"
 SelectItem.displayName = "SelectItem"
 
 interface SelectGroupProps extends React.HTMLAttributes<HTMLDivElement> {

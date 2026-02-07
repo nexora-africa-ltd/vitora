@@ -40,6 +40,9 @@ daphne = "^4.2.1"
 pytest-asyncio = "^0.23"
 cloc = "^0.2.5"
 pycloc = "^0.0.1a0"
+fhir-resources = "^8.1.0"
+hl7apy = "^1.3.4"
+django-oauth-toolkit = "^3.2.0"
 
 [tool.poetry.group.dev.dependencies]
 # Testing
@@ -95,10 +98,12 @@ addopts = [
     "--cov-report=html",
     "--cov-report=xml",
     "--cov-fail-under=80",
+    "--ignore=tests/integration",
 ]
 markers = [
     "unit: Unit tests",
     "integration: Integration tests",
+    "fhir_integration: Tests requiring HAPI FHIR server",
     "e2e: End-to-end tests",
     "slow: Slow running tests",
 ]

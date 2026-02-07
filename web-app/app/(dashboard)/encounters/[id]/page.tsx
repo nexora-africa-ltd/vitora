@@ -11,6 +11,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { useEncounterContext } from '@/lib/context/encounter-context';
 import { useEncounterDiagnoses, useEncounterTreatmentPlan } from '@/lib/hooks/use-encounters';
 import { useEncounterLabOrders } from '@/lib/hooks/use-laboratory';
+import { useEncounterImagingOrders } from '@/lib/hooks/use-imaging';
 import { useEncounterPrescriptions } from '@/lib/hooks/use-pharmacy';
 import { formatDate } from '@/lib/utils/format';
 import { ENCOUNTER_STATUS, ENCOUNTER_TYPES } from '@/lib/utils/constants';
@@ -19,6 +20,7 @@ import { DiagnosesList } from '@/components/encounters/diagnoses-list';
 import { TreatmentPlanView } from '@/components/encounters/treatment-plan-view';
 import { MedicalHistoryView } from '@/components/encounters/medical-history-view';
 import { EncounterLabOrders } from '@/components/encounters/encounter-lab-orders';
+import { EncounterImagingOrders } from '@/components/encounters/encounter-imaging-orders';
 import { EncounterPrescriptions } from '@/components/encounters/encounter-prescriptions';
 import { SOAPNoteSummary } from '@/components/encounters/soap-note-summary';
 import Link from 'next/link';
@@ -45,6 +47,7 @@ export default function EncounterDetailPage() {
   const { data: diagnoses } = useEncounterDiagnoses(encounterId);
   const { data: treatmentPlan } = useEncounterTreatmentPlan(encounterId);
   const { data: labOrders } = useEncounterLabOrders(encounterId);
+  const { data: imagingOrders } = useEncounterImagingOrders(encounterId);
   const { data: prescriptions } = useEncounterPrescriptions(encounterId);
 
   // Convert encounter to formData format for SOAP Note Summary
@@ -203,6 +206,7 @@ export default function EncounterDetailPage() {
           <TabsTrigger value="diagnoses" className="text-xs sm:text-sm">Dx ({diagnoses?.length || 0})</TabsTrigger>
           <TabsTrigger value="treatment" className="text-xs sm:text-sm">Treatment</TabsTrigger>
           <TabsTrigger value="lab" className="text-xs sm:text-sm">Lab ({labOrders?.length || 0})</TabsTrigger>
+          <TabsTrigger value="imaging" className="text-xs sm:text-sm">Imaging ({imagingOrders?.length || 0})</TabsTrigger>
           <TabsTrigger value="pharmacy" className="text-xs sm:text-sm">Rx ({prescriptions?.length || 0})</TabsTrigger>
           <TabsTrigger value="history" className="text-xs sm:text-sm">Hx</TabsTrigger>
         </TabsList>
@@ -214,10 +218,10 @@ export default function EncounterDetailPage() {
               diagnoses={diagnosisFormData}
               labOrders={labOrders || []}
               prescriptions={prescriptions || []}
-              patientName={encounter.patient_name}
-              patientMrn={encounter.patient_mrn}
+              patientName={encounter.patient_name ?? undefined}
+              patientMrn={encounter.patient_mrn ?? undefined}
               encounterDate={encounter.encounter_date}
-              providerName={encounter.created_by_name}
+              providerName={encounter.created_by_name ?? undefined}
               disabled={true}
             />
           )}
@@ -280,6 +284,14 @@ export default function EncounterDetailPage() {
 
         <TabsContent value="lab">
           <EncounterLabOrders
+            encounterId={encounterId}
+            patientId={encounter.patient}
+            disabled={encounter.status === 'COMPLETED' || encounter.status === 'CANCELLED'}
+          />
+        </TabsContent>
+
+        <TabsContent value="imaging">
+          <EncounterImagingOrders
             encounterId={encounterId}
             patientId={encounter.patient}
             disabled={encounter.status === 'COMPLETED' || encounter.status === 'CANCELLED'}

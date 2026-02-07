@@ -362,5 +362,224 @@
       "created_at": "2026-01-01T00:00:00Z",
       "updated_at": "2026-01-01T00:00:00Z"
     }
+  },
+  {
+    "model": "auth.group",
+    "pk": 13,
+    "fields": {
+      "name": "Radiographer"
+    }
+  },
+  {
+    "model": "core.role",
+    "pk": 13,
+    "fields": {
+      "code": "RADIOGRAPHER",
+      "name": "Radiographer",
+      "category": "TECHNICAL",
+      "description": "Licensed radiographer operating X-ray, CT, fluoroscopy, and mammography equipment (KRCHRRD - Kenya Radiographers and Clinical Health Records and Data Officers Registration Board registered). Responsible for patient positioning, radiation safety, and image acquisition.",
+      "permissions_matrix": {
+        "Patient": {"create": false, "read": true, "update": false, "delete": false, "view_sensitive": false},
+        "ImagingOrder": {"create": false, "read": true, "update": true, "delete": false},
+        "ImagingOrderItem": {"create": false, "read": true, "update": true, "delete": false},
+        "ImagingProcedure": {"create": false, "read": true, "update": false, "delete": false}
+      },
+      "hierarchy_level": 4,
+      "parent_role": null,
+      "django_group": 13,
+      "requires_license": true,
+      "license_body": "KRCHRRD",
+      "is_active": true,
+      "created_at": "2026-01-01T00:00:00Z",
+      "updated_at": "2026-01-01T00:00:00Z"
+    }
+  },
+  {
+    "model": "auth.group",
+    "pk": 14,
+    "fields": {
+      "name": "Sonographer"
+    }
+  },
+  {
+    "model": "core.role",
+    "pk": 14,
+    "fields": {
+      "code": "SONOGRAPHER",
+      "name": "Sonographer",
+      "category": "TECHNICAL",
+      "description": "Licensed sonographer/ultrasonographer specializing in diagnostic ultrasound imaging (KRCHRRD registered). Performs obstetric, abdominal, pelvic, vascular, and musculoskeletal ultrasound examinations.",
+      "permissions_matrix": {
+        "Patient": {"create": false, "read": true, "update": false, "delete": false, "view_sensitive": false},
+        "ImagingOrder": {"create": false, "read": true, "update": true, "delete": false},
+        "ImagingOrderItem": {"create": false, "read": true, "update": true, "delete": false},
+        "ImagingProcedure": {"create": false, "read": true, "update": false, "delete": false}
+      },
+      "hierarchy_level": 4,
+      "parent_role": null,
+      "django_group": 14,
+      "requires_license": true,
+      "license_body": "KRCHRRD",
+      "is_active": true,
+      "created_at": "2026-01-01T00:00:00Z",
+      "updated_at": "2026-01-01T00:00:00Z"
+    }
+  },
+  {
+    "model": "auth.group",
+    "pk": 15,
+    "fields": {
+      "name": "Radiologist"
+    }
+  },
+  {
+    "model": "core.role",
+    "pk": 15,
+    "fields": {
+      "code": "RADIOLOGIST",
+      "name": "Radiologist",
+      "category": "CLINICAL",
+      "description": "Licensed medical doctor specializing in diagnostic and interventional radiology (KMPDB registered). Interprets imaging studies, generates radiology reports, and performs image-guided procedures.",
+      "permissions_matrix": {
+        "Patient": {"create": false, "read": true, "update": false, "delete": false, "view_sensitive": true},
+        "Encounter": {"create": false, "read": true, "update": false, "delete": false},
+        "ImagingOrder": {"create": true, "read": true, "update": true, "delete": false},
+        "ImagingOrderItem": {"create": true, "read": true, "update": true, "delete": false},
+        "ImagingProcedure": {"create": true, "read": true, "update": true, "delete": false},
+        "ImagingReport": {"create": true, "read": true, "update": true, "delete": false}
+      },
+      "hierarchy_level": 2,
+      "parent_role": null,
+      "django_group": 15,
+      "requires_license": true,
+      "license_body": "KMPDB",
+      "is_active": true,
+      "created_at": "2026-01-01T00:00:00Z",
+      "updated_at": "2026-01-01T00:00:00Z"
+    }
+  },
+  {
+    "model": "auth.group",
+    "pk": 16,
+    "fields": {
+      "name": "Radiology Assistant"
+    }
+  },
+  {
+    "model": "core.role",
+    "pk": 16,
+    "fields": {
+      "code": "RADIOLOGY_ASSISTANT",
+      "name": "Radiology Assistant",
+      "category": "TECHNICAL",
+      "description": "Entry-level radiology support staff assisting with patient preparation, positioning, and equipment setup. Works under supervision of radiographers. No license required.",
+      "permissions_matrix": {
+        "Patient": {"create": false, "read": true, "update": false, "delete": false, "view_sensitive": false},
+        "ImagingOrder": {"create": false, "read": true, "update": false, "delete": false},
+        "ImagingOrderItem": {"create": false, "read": true, "update": false, "delete": false},
+        "ImagingProcedure": {"create": false, "read": true, "update": false, "delete": false}
+      },
+      "hierarchy_level": 5,
+      "parent_role": null,
+      "django_group": 16,
+      "requires_license": false,
+      "license_body": "",
+      "is_active": true,
+      "created_at": "2026-01-01T00:00:00Z",
+      "updated_at": "2026-01-01T00:00:00Z"
+    }
+  },
+  {
+    "model": "auth.group",
+    "pk": 17,
+    "fields": {
+      "name": "MRI Technologist"
+    }
+  },
+  {
+    "model": "core.role",
+    "pk": 17,
+    "fields": {
+      "code": "MRI_TECHNOLOGIST",
+      "name": "MRI Technologist",
+      "category": "TECHNICAL",
+      "description": "Specialized radiographer trained in Magnetic Resonance Imaging (KRCHRRD registered). Operates MRI equipment, ensures patient safety in magnetic environment, and optimizes image quality for various body parts.",
+      "permissions_matrix": {
+        "Patient": {"create": false, "read": true, "update": false, "delete": false, "view_sensitive": false},
+        "ImagingOrder": {"create": false, "read": true, "update": true, "delete": false},
+        "ImagingOrderItem": {"create": false, "read": true, "update": true, "delete": false},
+        "ImagingProcedure": {"create": false, "read": true, "update": false, "delete": false}
+      },
+      "hierarchy_level": 4,
+      "parent_role": null,
+      "django_group": 17,
+      "requires_license": true,
+      "license_body": "KRCHRRD",
+      "is_active": true,
+      "created_at": "2026-01-01T00:00:00Z",
+      "updated_at": "2026-01-01T00:00:00Z"
+    }
+  },
+  {
+    "model": "auth.group",
+    "pk": 18,
+    "fields": {
+      "name": "CT Technologist"
+    }
+  },
+  {
+    "model": "core.role",
+    "pk": 18,
+    "fields": {
+      "code": "CT_TECHNOLOGIST",
+      "name": "CT Technologist",
+      "category": "TECHNICAL",
+      "description": "Specialized radiographer trained in Computed Tomography scanning (KRCHRRD registered). Operates CT equipment, administers contrast media under protocol, and ensures radiation dose optimization.",
+      "permissions_matrix": {
+        "Patient": {"create": false, "read": true, "update": false, "delete": false, "view_sensitive": false},
+        "ImagingOrder": {"create": false, "read": true, "update": true, "delete": false},
+        "ImagingOrderItem": {"create": false, "read": true, "update": true, "delete": false},
+        "ImagingProcedure": {"create": false, "read": true, "update": false, "delete": false}
+      },
+      "hierarchy_level": 4,
+      "parent_role": null,
+      "django_group": 18,
+      "requires_license": true,
+      "license_body": "KRCHRRD",
+      "is_active": true,
+      "created_at": "2026-01-01T00:00:00Z",
+      "updated_at": "2026-01-01T00:00:00Z"
+    }
+  },
+  {
+    "model": "auth.group",
+    "pk": 19,
+    "fields": {
+      "name": "Nuclear Medicine Technologist"
+    }
+  },
+  {
+    "model": "core.role",
+    "pk": 19,
+    "fields": {
+      "code": "NUCLEAR_MED_TECH",
+      "name": "Nuclear Medicine Technologist",
+      "category": "TECHNICAL",
+      "description": "Specialized technologist handling radioactive materials for diagnostic imaging (KRCHRRD and RPBK registered). Prepares and administers radiopharmaceuticals, operates gamma cameras, PET/CT scanners, and ensures radiation safety.",
+      "permissions_matrix": {
+        "Patient": {"create": false, "read": true, "update": false, "delete": false, "view_sensitive": false},
+        "ImagingOrder": {"create": false, "read": true, "update": true, "delete": false},
+        "ImagingOrderItem": {"create": false, "read": true, "update": true, "delete": false},
+        "ImagingProcedure": {"create": false, "read": true, "update": false, "delete": false}
+      },
+      "hierarchy_level": 4,
+      "parent_role": null,
+      "django_group": 19,
+      "requires_license": true,
+      "license_body": "KRCHRRD",
+      "is_active": true,
+      "created_at": "2026-01-01T00:00:00Z",
+      "updated_at": "2026-01-01T00:00:00Z"
+    }
   }
 ]

@@ -155,8 +155,12 @@ urlpatterns = [
     path("api/sha/", include("hmis.apps.billing.sha_urls", namespace="sha")),
     # Inpatient API
     path("api/inpatient/", include("hmis.apps.inpatient.urls", namespace="inpatient")),
+    # Scheduling API
+    path("api/scheduling/", include("hmis.apps.scheduling.urls", namespace="scheduling")),
     # Triage API
     path("api/triage/", include("hmis.apps.triage.urls", namespace="triage")),
+    # Imaging/Radiology API
+    path("api/imaging/", include("hmis.apps.imaging.urls")),
     # Clinics API
     path("api/", include("hmis.apps.clinics.urls")),
     # Core utilities API (PRC number generation, etc.)
@@ -166,4 +170,8 @@ urlpatterns = [
     path("api/token/", AuditedTokenObtainPairView.as_view(), name="token_obtain_pair"),
     path("api/token/refresh/", TokenRefreshView.as_view(), name="token_refresh"),
     path("api/token/verify/", TokenVerifyView.as_view(), name="token_verify"),
+    # SMART on FHIR OAuth2 endpoints
+    path("", include("hmis.apps.core.oauth.urls")),
+    # FHIR R4 Resource endpoints (for IPS testing)
+    path("fhir/", include("hmis.apps.core.fhir.urls", namespace="fhir")),
 ]

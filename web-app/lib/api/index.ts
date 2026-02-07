@@ -7,6 +7,7 @@ export { clinicsApi } from './clinics';
 export { consultationQueueApi } from './consultation-queue';
 export type { ConsultationQueueResponse } from './consultation-queue';
 export { encountersApi } from './encounters';
+export { imagingApi } from './imaging';
 export { inpatientApi } from './inpatient';
 export { laboratoryApi } from './laboratory';
 export { locationsApi } from './locations';

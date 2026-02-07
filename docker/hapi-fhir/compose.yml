@@ -1,0 +1,80 @@
+# HAPI FHIR R4 Server for Integration Testing
+# Used for validating FHIR resources against a real FHIR R4 server
+#
+# Usage:
+#   docker compose -f docker/hapi-fhir/compose.yml up -d
+#   # Wait for health check to pass (~60 seconds)
+#   docker compose -f docker/hapi-fhir/compose.yml logs -f
+#
+# Test server availability:
+#   curl http://localhost:8090/fhir/metadata
+#
+# Reference: https://hapifhir.io/hapi-fhir/docs/server_jpa/get_started.html
+# Phase 3: FHIR Validation Plan - docs/fhir-validation-plan.md
+
+services:
+  hapi-fhir:
+    image: hapiproject/hapi:v7.4.0
+    container_name: vitora-hapi-fhir
+    ports:
+      - "8090:8080"
+    environment:
+      # FHIR R4 configuration
+      - hapi.fhir.fhir_version=R4
+      - hapi.fhir.allow_external_references=true
+      - hapi.fhir.allow_multiple_delete=true
+      - hapi.fhir.allow_cascading_deletes=true
+      - hapi.fhir.expunge_enabled=true
+      - hapi.fhir.delete_expunge_enabled=true
+      - hapi.fhir.bulk_export_enabled=false
+      # Validation settings
+      - hapi.fhir.validation.enabled=true
+      - hapi.fhir.validation.requests_enabled=true
+      - hapi.fhir.validation.responses_enabled=false
+      # Performance tuning for tests
+      - hapi.fhir.reuse_cached_search_results_millis=60000
+      - hapi.fhir.default_page_size=20
+      - hapi.fhir.max_page_size=200
+      # Database - use HAPI's default H2 configuration
+      # HAPI v7.x uses embedded H2 by default with proper schema initialization
+      - spring.datasource.url=jdbc:h2:mem:hapi;DB_CLOSE_DELAY=-1
+      - spring.datasource.username=sa
+      - spring.datasource.password=
+    healthcheck:
+      test: ["CMD", "wget", "-q", "--spider", "http://localhost:8080/fhir/metadata"]
+      interval: 10s
+      timeout: 10s
+      retries: 12
+      start_period: 60s
+    restart: unless-stopped
+    networks:
+      - vitora-fhir-network
+
+  # Optional: PostgreSQL backend for production-like testing
+  # Uncomment to use PostgreSQL instead of H2
+  # hapi-fhir-postgres:
+  #   image: postgres:16-alpine
+  #   container_name: vitora-hapi-postgres
+  #   environment:
+  #     - POSTGRES_USER=hapi
+  #     - POSTGRES_PASSWORD=hapi_password
+  #     - POSTGRES_DB=hapi
+  #   volumes:
+  #     - hapi-postgres-data:/var/lib/postgresql/data
+  #   healthcheck:
+  #     test: ["CMD-SHELL", "pg_isready -U hapi"]
+  #     interval: 5s
+  #     timeout: 5s
+  #     retries: 5
+  #   networks:
+  #     - vitora-fhir-network
+
+networks:
+  vitora-fhir-network:
+    driver: bridge
+
+volumes:
+  hapi-fhir-data:
+    driver: local
+  # hapi-postgres-data:
+  #   driver: local
