@@ -384,7 +384,7 @@ describe('ConsultationQueue', () => {
       render(<ConsultationQueue {...defaultProps} />);
 
       // Check for filter by status select (button trigger)
-      const filterSelect = screen.getByRole('button', { name: /Filter by status/i });
+      const filterSelect = screen.getByRole('combobox', { name: /Filter by status/i });
       expect(filterSelect).toBeInTheDocument();
     });
 
@@ -392,7 +392,7 @@ describe('ConsultationQueue', () => {
       const user = userEvent.setup();
       render(<ConsultationQueue {...defaultProps} />);
 
-      const filterSelect = screen.getByRole('button', { name: /Filter by status/i });
+      const filterSelect = screen.getByRole('combobox', { name: /Filter by status/i });
       await user.click(filterSelect);
 
       // Wait for dropdown and select "Called"
