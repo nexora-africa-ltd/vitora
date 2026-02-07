@@ -32,9 +32,13 @@ export const SpecimenTypeSchema = z.enum([
   'SWAB',
   'TISSUE',
   'OTHER',
+  // Additional values from OpenAPI
+  'SERUM',
+  'PLASMA',
+  'ASPIRATE',
 ]);
 
-export const ResultTypeSchema = z.enum(['NUMERIC', 'TEXT', 'OPTION', 'PANEL']);
+export const ResultTypeSchema = z.enum(['NUMERIC', 'TEXT', 'OPTION', 'PANEL', 'OPTIONS']);
 
 export const OrderTypeSchema = z.enum(['IN_HOUSE', 'EXTERNAL']);
 
