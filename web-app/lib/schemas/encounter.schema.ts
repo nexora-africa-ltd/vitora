@@ -36,7 +36,7 @@ export { GenderSchema, EncounterStatusSchema };
 
 export const DiagnosisTypeSchema = z.enum(['PRIMARY', 'SECONDARY', 'DIFFERENTIAL', 'WORKING']);
 
-export const DiagnosisCertaintySchema = z.enum(['SUSPECTED', 'PROBABLE', 'CONFIRMED', 'RULED_OUT']);
+export const DiagnosisCertaintySchema = z.enum(['confirmed', 'provisional', 'ruled_out', 'suspected']);
 
 export const TreatmentPlanStatusSchema = z.enum(['DRAFT', 'ACTIVE', 'COMPLETED', 'DISCONTINUED']);
 
