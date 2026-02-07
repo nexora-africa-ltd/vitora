@@ -11,7 +11,9 @@ from django.conf import settings
 from django.db import models
 from django.http import FileResponse
 from django_filters import rest_framework as filters
-from rest_framework import status, viewsets
+from drf_spectacular.types import OpenApiTypes
+from drf_spectacular.utils import OpenApiParameter, extend_schema, inline_serializer
+from rest_framework import serializers, status, viewsets
 from rest_framework.decorators import action
 from rest_framework.parsers import FormParser, MultiPartParser
 from rest_framework.permissions import IsAuthenticated
@@ -63,6 +65,10 @@ class ImagingResourceViewSet(viewsets.ReadOnlyModelViewSet):
 
     def get_queryset(self):
         """Get imaging resources filtered by department and optional modality."""
+        # Check if this is a schema generation request
+        if getattr(self, 'swagger_fake_view', False):
+            return Resource.objects.none()
+        
         modality = self.request.query_params.get("modality", None)
         return ImagingSchedulingService.get_imaging_resources(modality)
 
@@ -226,6 +232,13 @@ class ImagingCalendarView(APIView):
 
     permission_classes = [IsAuthenticated]
 
+    @extend_schema(
+        parameters=[
+            OpenApiParameter("date", OpenApiTypes.DATE, description="Date to show (YYYY-MM-DD, defaults to today)", required=False),
+            OpenApiParameter("modality", OpenApiTypes.STR, description="Filter by modality (XR, CT, MRI, etc.)", required=False),
+        ],
+        responses={200: OpenApiTypes.OBJECT},
+    )
     def get(self, request):
         """
         Get department-wide imaging calendar.
@@ -748,6 +761,19 @@ class DICOMUploadView(APIView):
     permission_classes = [IsAuthenticated]
     parser_classes = [MultiPartParser, FormParser]
 
+    @extend_schema(
+        request={
+            'multipart/form-data': {
+                'type': 'object',
+                'properties': {
+                    'files': {'type': 'array', 'items': {'type': 'string', 'format': 'binary'}},
+                    'imaging_order': {'type': 'integer'},
+                    'patient': {'type': 'integer'},
+                }
+            }
+        },
+        responses={200: OpenApiTypes.OBJECT},
+    )
     def post(self, request):
         """Upload one or more DICOM files."""
         files = request.FILES.getlist("files")
@@ -988,6 +1014,15 @@ class DICOMRetrieveView(APIView):
 
     permission_classes = [IsAuthenticated]
 
+    @extend_schema(
+        responses={
+            200: {
+                'type': 'string',
+                'format': 'binary',
+                'description': 'DICOM file',
+            }
+        },
+    )
     def get(self, request, sop_instance_uid):
         """Retrieve a DICOM instance file by SOP Instance UID."""
         try:

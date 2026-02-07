@@ -26,6 +26,9 @@ from django.http import Http404
 from rest_framework import status
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
+from drf_spectacular.types import OpenApiTypes
+from drf_spectacular.utils import extend_schema
+
 from rest_framework.views import APIView
 
 logger = logging.getLogger(__name__)
