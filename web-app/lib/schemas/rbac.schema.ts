@@ -10,7 +10,7 @@ import { z } from 'zod';
 // ENUMS
 // =============================================================================
 
-export const DepartmentTypeSchema = z.enum(['CLINICAL', 'ANCILLARY', 'ADMINISTRATIVE', 'SUPPORT']);
+export const DepartmentTypeSchema = z.enum(['CLINICAL', 'ADMINISTRATIVE', 'SUPPORT', 'LABORATORY', 'PHARMACY', 'RADIOLOGY', 'RECORDS']);
 
 export const RoleCategorySchema = z.enum(['CLINICAL', 'ADMINISTRATIVE', 'TECHNICAL', 'MANAGEMENT', 'COMMUNITY']);
 
@@ -88,9 +88,11 @@ export type RoleSchemaType = z.infer<typeof RoleSchema>;
 // =============================================================================
 
 export const PermissionSchema = z.object({
+  id: z.number(),
   codename: z.string(),
   name: z.string(),
   app_label: z.string(),
+  model: z.string(),
 });
 
 export type PermissionSchemaType = z.infer<typeof PermissionSchema>;
@@ -181,14 +183,17 @@ export type UsernameSuggestionResponseSchemaType = z.infer<typeof UsernameSugges
 
 export const AuditLogEntrySchema = z.object({
   id: z.number(),
-  user: z.number(),
-  user_name: z.string(),
-  action: AuditActionSchema,
+  user: z.number().nullable(),
+  username: z.string(),
+  user_name: z.string().optional(), // Legacy field for backward compatibility
+  action: z.string(), // OpenAPI uses string, not enum
   resource_type: z.string(),
-  resource_id: z.number(),
-  resource_name: z.string(),
+  resource_id: z.number().nullable(),
+  resource_name: z.string().optional(), // Custom field, may not be in API
   details: z.record(z.unknown()),
-  ip_address: z.string(),
+  ip_address: z.string().nullable(),
+  user_agent: z.string(),
+  patient_id: z.number().nullable(),
   timestamp: z.string(),
 });
 
