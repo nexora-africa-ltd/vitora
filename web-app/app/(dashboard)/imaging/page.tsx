@@ -1,6 +1,6 @@
 /**
  * Imaging module main page.
- * Displays orders with tabs for orders, worklist, and procedures.
+ * Displays orders with tabs for orders, worklist, schedule, and procedures.
  */
 'use client';
 
@@ -8,9 +8,8 @@ import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Plus, ClipboardList, Activity, BookOpen } from 'lucide-react';
-import { ImagingOrderTable } from '@/components/imaging';
-import { ImagingWorklist } from '@/components/imaging';
+import { Plus, ClipboardList, Activity, BookOpen, CalendarDays } from 'lucide-react';
+import { ImagingOrderTable, ImagingWorklist, SchedulingCalendar } from '@/components/imaging';
 import { useImagingOrders, useImagingProcedures } from '@/lib/hooks/use-imaging';
 import { ImagingOrderStatus, ImagingPriority, ImagingProcedure, ImagingModality } from '@/lib/types/imaging';
 
@@ -58,6 +57,10 @@ export default function ImagingPage() {
             <Activity className="h-4 w-4" />
             Worklist
           </TabsTrigger>
+          <TabsTrigger value="schedule" className="gap-2">
+            <CalendarDays className="h-4 w-4" />
+            Schedule
+          </TabsTrigger>
           <TabsTrigger value="procedures" className="gap-2">
             <BookOpen className="h-4 w-4" />
             Procedure Catalog
@@ -81,6 +84,10 @@ export default function ImagingPage() {
 
         <TabsContent value="worklist">
           <ImagingWorklist />
+        </TabsContent>
+
+        <TabsContent value="schedule">
+          <SchedulingCalendar />
         </TabsContent>
 
         <TabsContent value="procedures">

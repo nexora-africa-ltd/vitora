@@ -17,3 +17,6 @@ export { ImagingOrderDetail } from './imaging-order-detail';
 
 // Worklist
 export { ImagingWorklist } from './imaging-worklist';
+
+// Scheduling
+export { SchedulingCalendar } from './scheduling-calendar';

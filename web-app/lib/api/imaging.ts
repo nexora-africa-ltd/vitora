@@ -13,6 +13,14 @@ import {
   CancelOrderData,
   ImagingProcedureListParams,
   ImagingOrderListParams,
+  ImagingResource,
+  ImagingCalendarResponse,
+  ImagingCalendarParams,
+  ResourceAvailabilityParams,
+  WeeklyAvailabilityParams,
+  ImagingCalendarSlot,
+  ImagingWeeklyDay,
+  SlotAvailabilityCheckResponse,
 } from '@/lib/types/imaging';
 import { PaginatedResponse } from '@/lib/types';
 import { parseResponse } from '@/lib/schemas/validation';
@@ -25,6 +33,13 @@ import {
   PaginatedImagingOrderSchema,
   ImagingProcedureArraySchema,
   ImagingOrderArraySchema,
+  ImagingResourceSchema,
+  ImagingResourcesListResponseSchema,
+  ImagingCalendarResponseSchema,
+  ImagingResourceAvailabilityResponseSchema,
+  ImagingWeeklyAvailabilityResponseSchema,
+  SlotAvailabilityCheckResponseSchema,
+  ImagingCalendarSlotSchema,
 } from '@/lib/schemas/imaging.schema';
 
 export const imagingApi = {
@@ -312,6 +327,99 @@ export const imagingApi = {
       stat_orders: statOrders.data.count || 0,
       urgent_orders: urgentOrders.data.count || 0,
     };
+  },
+
+  // ============ Scheduling / Calendar ============
+
+  /**
+   * Get list of imaging resources (rooms, scanners).
+   */
+  async listResources(modality?: string): Promise<ImagingResource[]> {
+    const response = await apiClient.get('/api/imaging/resources/', {
+      params: modality ? { modality } : undefined,
+    });
+    const data = parseResponse(ImagingResourcesListResponseSchema, response.data, {
+      context: 'imagingApi.listResources',
+    });
+    return data.results;
+  },
+
+  /**
+   * Get a single imaging resource.
+   */
+  async getResource(resourceId: number): Promise<ImagingResource> {
+    const response = await apiClient.get(`/api/imaging/resources/${resourceId}/`);
+    return parseResponse(ImagingResourceSchema, response.data, {
+      context: 'imagingApi.getResource',
+    }) as ImagingResource;
+  },
+
+  /**
+   * Get availability slots for a specific resource on a date.
+   */
+  async getResourceAvailability(
+    resourceId: number,
+    params?: ResourceAvailabilityParams
+  ): Promise<ImagingCalendarSlot[]> {
+    const response = await apiClient.get(
+      `/api/imaging/resources/${resourceId}/availability/`,
+      { params }
+    );
+    const data = parseResponse(ImagingResourceAvailabilityResponseSchema, response.data, {
+      context: 'imagingApi.getResourceAvailability',
+    });
+    return data.slots;
+  },
+
+  /**
+   * Get weekly availability for a resource.
+   */
+  async getResourceWeeklyAvailability(
+    resourceId: number,
+    params?: WeeklyAvailabilityParams
+  ): Promise<ImagingWeeklyDay[]> {
+    const response = await apiClient.get(
+      `/api/imaging/resources/${resourceId}/availability/weekly/`,
+      { params }
+    );
+    const data = parseResponse(ImagingWeeklyAvailabilityResponseSchema, response.data, {
+      context: 'imagingApi.getResourceWeeklyAvailability',
+    });
+    return data.days;
+  },
+
+  /**
+   * Check if a specific slot is available.
+   */
+  async checkSlotAvailability(
+    resourceId: number,
+    date: string,
+    startTime: string,
+    endTime: string
+  ): Promise<SlotAvailabilityCheckResponse> {
+    const response = await apiClient.get(
+      `/api/imaging/resources/${resourceId}/availability/check/`,
+      {
+        params: {
+          date,
+          start_time: startTime,
+          end_time: endTime,
+        },
+      }
+    );
+    return parseResponse(SlotAvailabilityCheckResponseSchema, response.data, {
+      context: 'imagingApi.checkSlotAvailability',
+    }) as SlotAvailabilityCheckResponse;
+  },
+
+  /**
+   * Get department-wide imaging calendar for a date.
+   */
+  async getCalendar(params?: ImagingCalendarParams): Promise<ImagingCalendarResponse> {
+    const response = await apiClient.get('/api/imaging/calendar/', { params });
+    return parseResponse(ImagingCalendarResponseSchema, response.data, {
+      context: 'imagingApi.getCalendar',
+    }) as ImagingCalendarResponse;
   },
 };
 
