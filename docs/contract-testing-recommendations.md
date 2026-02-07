@@ -87,6 +87,130 @@ The frontend validates API responses with Zod at runtime via `parseResponse()`. 
 
 **Note**: Document schemas (`invoice.schema.ts`, `prescription.schema.ts`, etc.) are frontend-only and do not require contract tests.
 
+#### How to Add a New Contract Test
+
+Follow this approach when adding contract tests for a new module:
+
+**1. Create the test file:**
+```bash
+touch web-app/__tests__/contracts/{module}.contract.test.ts
+```
+
+**2. Use this template structure:**
+
+```typescript
+import * as fs from 'fs';
+import * as path from 'path';
+import * as yaml from 'js-yaml';
+import { zodToJsonSchema } from 'zod-to-json-schema';
+import { MySchema, MyEnumSchema } from '@/lib/schemas/{module}.schema';
+
+// OpenAPI schema loader (YAML format despite .json extension)
+function loadOpenAPISchema() {
+  const schemaPath = path.resolve(__dirname, '../../../backend/schema.json');
+  return yaml.load(fs.readFileSync(schemaPath, 'utf-8'));
+}
+
+// Helper: Get schema properties
+function getSchemaProperties(openapi, schemaName) {
+  const schema = openapi.components.schemas[schemaName];
+  return schema?.properties ?? null;
+}
+
+// Helper: Get enum values
+function getSchemaEnumValues(openapi, schemaName) {
+  const schema = openapi.components.schemas[schemaName];
+  return schema?.enum ?? null;
+}
+
+// Helper: Extract Zod schema field names
+function getZodSchemaFields(zodSchema) {
+  const jsonSchema = zodToJsonSchema(zodSchema, { target: 'openApi3' });
+  return jsonSchema.properties ? Object.keys(jsonSchema.properties) : [];
+}
+
+// Helper: Extract Zod enum values
+function getZodEnumValues(zodSchema) {
+  const jsonSchema = zodToJsonSchema(zodSchema, { target: 'openApi3' });
+  return jsonSchema.enum ?? [];
+}
+```
+
+**3. Test pattern for object schemas:**
+
+```typescript
+describe('MySchema', () => {
+  it('should have all fields from the OpenAPI MyModel schema', () => {
+    const zodFields = getZodSchemaFields(MySchema);
+    const apiProperties = getSchemaProperties(openapi, 'MyModel');
+    
+    if (!apiProperties) {
+      console.warn('MyModel schema not found in OpenAPI');
+      return;
+    }
+
+    const apiFields = Object.keys(apiProperties);
+    const missingInZod = apiFields.filter(f => !zodFields.includes(f));
+    
+    // Log missing fields for debugging (helps identify drift)
+    if (missingInZod.length > 0) {
+      console.warn(`⚠️  MySchema: API fields missing:\n  ${missingInZod.join(', ')}`);
+    }
+
+    // Only fail on critical fields (core identifiers)
+    const criticalMissing = missingInZod.filter(f => 
+      ['id', 'name', 'status'].includes(f)
+    );
+    expect(criticalMissing).toEqual([]);
+  });
+});
+```
+
+**4. Test pattern for enum schemas:**
+
+```typescript
+describe('MyStatusSchema (enum)', () => {
+  it('should match OpenAPI StatusEnum values', () => {
+    const zodValues = getZodEnumValues(MyStatusSchema);
+    const apiValues = getSchemaEnumValues(openapi, 'StatusEnum');
+    // OpenAPI may use hashed names like 'Status145Enum' - check schema.json
+
+    if (!apiValues) {
+      console.warn('StatusEnum not found in OpenAPI');
+      return;
+    }
+
+    const missingInZod = apiValues.filter(v => !zodValues.includes(v));
+    
+    if (missingInZod.length > 0) {
+      console.warn(`MyStatusSchema: Missing values: ${missingInZod.join(', ')}`);
+    }
+
+    expect(missingInZod).toEqual([]);  // Enums must match exactly
+  });
+});
+```
+
+**5. Finding OpenAPI enum names:**
+
+OpenAPI uses hashed enum names (e.g., `Status145Enum`, `Priority0b7Enum`). To find the correct name:
+```bash
+grep -n "your_enum_value" backend/schema.json | head -5
+```
+
+**6. When a test fails:**
+
+The contract test catching a mismatch is **success** — it means the test is working! Fix by:
+
+1. **Missing enum values**: Add the missing values to the Zod schema
+2. **Missing object fields**: Either add to Zod (if needed on frontend) or verify it's intentionally skipped
+3. **Update the doc**: Run tests again to confirm, then commit
+
+**7. Run and verify:**
+```bash
+cd web-app && npm test -- --testPathPattern=contracts/{module} --no-coverage
+```
+
 ```typescript
 // web-app/__tests__/contracts/patient.contract.test.ts
 import { zodToJsonSchema } from "zod-to-json-schema";
