@@ -38,7 +38,7 @@ export const ClinicVisitSourceSchema = z.enum([
 export const ClinicSessionStatusSchema = z.enum(['SCHEDULED', 'OPEN', 'CLOSED', 'CANCELLED']);
 
 export const EnrollmentStatusSchema = z.enum([
-  'ACTIVE', 'INACTIVE', 'TRANSFERRED', 'LOST_TO_FOLLOW_UP', 'DECEASED', 'COMPLETED',
+  'ACTIVE', 'INACTIVE', 'TRANSFERRED', 'LOST_TO_FOLLOW_UP', 'DECEASED', 'COMPLETED', 'TRANSFERRED_OUT', 'SUSPENDED',
 ]);
 
 export const ClinicStaffRoleSchema = z.enum(['LEAD', 'DOCTOR', 'NURSE', 'COUNSELOR', 'NUTRITIONIST', 'CLERK', 'OTHER']);
