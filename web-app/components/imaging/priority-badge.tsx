@@ -18,24 +18,29 @@ interface PriorityBadgeProps {
 const PRIORITY_CONFIG: Record<
   ImagingPriority,
   {
-    variant: 'default' | 'secondary' | 'destructive' | 'outline';
+    variant:
+      | 'default'
+      | 'secondary'
+      | 'destructive'
+      | 'outline'
+      | 'warning';
     className: string;
     icon: React.ElementType;
   }
 > = {
   ROUTINE: {
     variant: 'outline',
-    className: 'border-gray-300 text-gray-600',
+    className: 'border-border text-muted-foreground',
     icon: Clock,
   },
   URGENT: {
-    variant: 'secondary',
-    className: 'border-orange-200 text-orange-700 bg-orange-50',
+    variant: 'warning',
+    className: 'font-medium',
     icon: AlertTriangle,
   },
   STAT: {
     variant: 'destructive',
-    className: 'border-red-300 text-red-700 bg-red-50 font-bold',
+    className: 'font-bold',
     icon: Zap,
   },
 };

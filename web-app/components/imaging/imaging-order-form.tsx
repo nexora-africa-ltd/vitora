@@ -347,13 +347,13 @@ export function ImagingOrderForm({
                   {items.map((item) => (
                     <div
                       key={item.id}
-                      className="flex items-center justify-between p-3 border rounded-lg"
+                      className="flex flex-col gap-3 p-3 border rounded-lg sm:flex-row sm:items-center sm:justify-between"
                     >
-                      <div className="flex items-center gap-3">
+                      <div className="flex items-start gap-3 min-w-0">
                         <ModalityBadge modality={item.procedure.modality} />
-                        <div>
-                          <p className="font-medium">{item.procedure.name}</p>
-                          <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                        <div className="min-w-0">
+                          <p className="font-medium truncate">{item.procedure.name}</p>
+                          <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-sm text-muted-foreground">
                             <span>{item.procedure.code}</span>
                             {item.laterality !== 'NA' && (
                               <>
@@ -372,8 +372,8 @@ export function ImagingOrderForm({
                           </div>
                         </div>
                       </div>
-                      <div className="flex items-center gap-4">
-                        <div className="text-right">
+                      <div className="flex items-center justify-between gap-4 sm:justify-end">
+                        <div className="text-left sm:text-right">
                           <p className="font-medium">
                             KES {item.procedure.cost.toLocaleString()}
                           </p>
@@ -416,11 +416,11 @@ export function ImagingOrderForm({
         </Card>
 
         {/* Actions */}
-        <div className="flex justify-end gap-3">
-          <Button type="button" variant="outline" onClick={onCancel}>
+        <div className="flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
+          <Button type="button" variant="outline" onClick={onCancel} className="w-full sm:w-auto">
             Cancel
           </Button>
-          <Button type="submit" disabled={isSubmitting || items.length === 0}>
+          <Button type="submit" disabled={isSubmitting || items.length === 0} className="w-full sm:w-auto">
             {isSubmitting && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
             Create & Submit Order
           </Button>

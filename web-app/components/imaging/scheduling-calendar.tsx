@@ -192,28 +192,34 @@ export function SchedulingCalendar({
   return (
     <Card>
       <CardHeader className="pb-4">
-        <div className="flex items-center justify-between flex-wrap gap-4">
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
           <div>
             <CardTitle className="flex items-center gap-2">
               <Calendar className="h-5 w-5" />
               Imaging Schedule
             </CardTitle>
-            <CardDescription>
+            <CardDescription className="hidden sm:block">
               View and manage imaging resource availability
             </CardDescription>
           </div>
 
           {/* Stats Pills */}
-          <div className="flex items-center gap-2">
+          <div className="flex flex-wrap items-center gap-2">
             <Badge variant="outline" className="bg-background">
               <span className="text-muted-foreground mr-1">Total:</span>
               {stats.totalSlots}
             </Badge>
-            <Badge variant="outline" className="bg-green-50 text-green-700 border-green-200">
+            <Badge
+              variant="success"
+              className="border border-emerald-500/20"
+            >
               <CheckCircle2 className="h-3 w-3 mr-1" />
               {stats.availableSlots}
             </Badge>
-            <Badge variant="outline" className="bg-red-50 text-red-700 border-red-200">
+            <Badge
+              variant="destructive"
+              className="bg-destructive/10 text-destructive border-destructive/30"
+            >
               <Clock className="h-3 w-3 mr-1" />
               {stats.bookedSlots}
             </Badge>
@@ -221,7 +227,7 @@ export function SchedulingCalendar({
         </div>
 
         {/* Controls */}
-        <div className="flex items-center justify-between gap-4 mt-4 flex-wrap">
+        <div className="flex flex-col gap-4 mt-4 sm:flex-row sm:items-center sm:justify-between">
           {/* Date Navigation */}
           <div className="flex items-center gap-2">
             <Button
@@ -285,7 +291,7 @@ export function SchedulingCalendar({
                 setModalityFilter(value as ImagingModality | '')
               }
             >
-              <SelectTrigger className="w-[150px]">
+              <SelectTrigger className="w-full sm:w-[150px]">
                 <SelectValue placeholder="All Modalities" />
               </SelectTrigger>
               <SelectContent>
@@ -362,17 +368,17 @@ export function SchedulingCalendar({
 
         {/* Legend */}
         {filteredResources.length > 0 && (
-          <div className="flex items-center gap-4 mt-4 pt-4 border-t text-sm text-muted-foreground">
+          <div className="flex flex-wrap items-center gap-4 mt-4 pt-4 border-t text-sm text-muted-foreground">
             <span className="flex items-center gap-1">
-              <div className="w-4 h-4 rounded bg-green-100 border border-green-300" />
+              <div className="w-4 h-4 rounded bg-emerald-500/15 border border-emerald-500/30 dark:bg-emerald-500/20 dark:border-emerald-500/40" />
               Available
             </span>
             <span className="flex items-center gap-1">
-              <div className="w-4 h-4 rounded bg-red-100 border border-red-300" />
+              <div className="w-4 h-4 rounded bg-destructive/10 border border-destructive/30" />
               Booked
             </span>
             {onSlotSelect && (
-              <span className="ml-auto text-xs">
+              <span className="sm:ml-auto text-xs">
                 Click on an available slot to schedule
               </span>
             )}
@@ -483,8 +489,8 @@ function SlotCell({ slot, resourceId, onSlotClick, compact }: SlotCellProps) {
       className={cn(
         'w-full h-12 rounded border transition-all flex items-center justify-center text-xs',
         isAvailable
-          ? 'bg-green-50 border-green-200 hover:bg-green-100 hover:border-green-300'
-          : 'bg-red-50 border-red-200 cursor-default',
+          ? 'bg-emerald-500/10 border-emerald-500/25 hover:bg-emerald-500/15 hover:border-emerald-500/35 dark:bg-emerald-500/20 dark:border-emerald-500/40 dark:hover:bg-emerald-500/25'
+          : 'bg-destructive/10 border-destructive/30 cursor-default',
         canClick && 'cursor-pointer hover:shadow-sm',
         !canClick && isAvailable && 'cursor-default'
       )}
@@ -495,9 +501,9 @@ function SlotCell({ slot, resourceId, onSlotClick, compact }: SlotCellProps) {
       }
     >
       {isAvailable ? (
-        <CheckCircle2 className="h-4 w-4 text-green-600" />
+        <CheckCircle2 className="h-4 w-4 text-emerald-700 dark:text-emerald-400" />
       ) : (
-        <User className="h-4 w-4 text-red-600" />
+        <User className="h-4 w-4 text-destructive" />
       )}
       {slot.appointment && (
         <span id={appointmentId} className="sr-only">
