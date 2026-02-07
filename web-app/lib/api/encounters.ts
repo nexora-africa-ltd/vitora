@@ -31,6 +31,9 @@ import {
   MyClaimedEncountersResponse,
   AllClaimedEncountersParams,
   AllClaimedEncountersResponse,
+  EncounterTransitionRequest,
+  EncounterTransitionResponse,
+  RelatedEncounter,
 } from '@/lib/types/encounter';
 import { PaginatedResponse } from '@/lib/types';
 
@@ -107,6 +110,45 @@ export const encountersApi = {
       }
     );
     return parseResponse(EncounterSchema, response.data, { context: 'encountersApi.quickConsultation' });
+  },
+
+  // ===========================================================================
+  // State Machine Transition (Sprint 2 - Phase 2A)
+  // ===========================================================================
+
+  /**
+   * Transition encounter to a new status.
+   *
+   * Validates the transition and creates an audit trail entry.
+   *
+   * @param id - The encounter ID to transition
+   * @param data - The target status and optional reason
+   * @returns Transition details including previous status and timestamp
+   * @throws 400 Bad Request if the transition is invalid
+   */
+  async transition(id: number, data: EncounterTransitionRequest): Promise<EncounterTransitionResponse> {
+    const response = await apiClient.post<EncounterTransitionResponse>(
+      `/api/encounters/${id}/transition/`,
+      data
+    );
+    return response.data;
+  },
+
+  // ===========================================================================
+  // Related Encounters (Sprint 2 - Phase 2B)
+  // ===========================================================================
+
+  /**
+   * Get encounters linked to this encounter (follow-up visits).
+   *
+   * @param id - The encounter ID
+   * @returns List of related encounters
+   */
+  async getRelated(id: number): Promise<RelatedEncounter[]> {
+    const response = await apiClient.get<RelatedEncounter[]>(
+      `/api/encounters/${id}/related/`
+    );
+    return response.data;
   },
 
   // ===========================================================================

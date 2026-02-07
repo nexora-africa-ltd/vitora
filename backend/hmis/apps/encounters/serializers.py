@@ -382,6 +382,10 @@ class EncounterSerializer(serializers.ModelSerializer):
             "clinic_visit_id",
             "clinic_name",
             "clinic_type",
+            # Encounter Linking (Sprint 2 - Phase 2B)
+            "linked_encounter",
+            # Visit Reason (Sprint 2 - Phase 2D)
+            "visit_reason",
             "created_at",
             "updated_at",
         ]
@@ -593,6 +597,8 @@ class EncounterListSerializer(serializers.ModelSerializer):
             "clinic_visit_id",
             "clinic_name",
             "clinic_type",
+            # Visit Reason (Sprint 2 - Phase 2D)
+            "visit_reason",
             "created_at",
         ]
         read_only_fields = fields

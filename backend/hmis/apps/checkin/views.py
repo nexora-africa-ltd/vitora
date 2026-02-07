@@ -135,6 +135,17 @@ class PatientLookupView(views.APIView):
         response_data["suggested_visit_type"] = context.visit_type
         response_data["suggested_visit_reason"] = context.visit_reason
 
+        # Add linkable encounter for follow-up visits
+        from hmis.apps.encounters.models import Encounter
+
+        linkable = Encounter.objects.filter(
+            patient=patient,
+        ).exclude(
+            status__in=["CANCELLED"],
+        ).order_by("-encounter_date", "-created_at").first()
+
+        response_data["linkable_encounter_id"] = linkable.id if linkable else None
+
         # Log the lookup
         AuditLog.log(
             action="patient_lookup",

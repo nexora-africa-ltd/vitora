@@ -208,10 +208,10 @@ describe('Encounter Detail Page - Context Integration', () => {
       });
     });
 
-    it('should disable order buttons when encounter is completed', async () => {
+    it('should disable order buttons when encounter is closed', async () => {
       mockEncountersApi.get.mockResolvedValue({
         ...mockEncounter,
-        status: 'COMPLETED',
+        status: 'CLOSED',
       });
 
       const EncounterDetailPage = (await import('@/app/(dashboard)/encounters/[id]/page')).default;

@@ -265,7 +265,7 @@ class EncounterViewSet(viewsets.ModelViewSet):
     serializer_class = EncounterSerializer
     permission_classes = [IsAuthenticated]
     filter_backends = [DjangoFilterBackend, filters.SearchFilter, filters.OrderingFilter]
-    filterset_fields = ["patient", "encounter_type", "encounter_date"]
+    filterset_fields = ["patient", "encounter_type", "encounter_date", "status", "visit_reason"]
     search_fields = ["chief_complaint", "notes", "patient__first_name", "patient__last_name"]
     ordering_fields = ["encounter_date", "created_at", "encounter_type"]
     ordering = ["-encounter_date", "-created_at"]
@@ -406,7 +406,7 @@ class EncounterViewSet(viewsets.ModelViewSet):
         """
         Finalize/complete an encounter.
 
-        Transitions encounter to COMPLETED status.
+        Transitions encounter to CLOSED status.
         Records the user who finalized and timestamp.
 
         POST /api/encounters/{id}/finalize/
@@ -446,6 +446,66 @@ class EncounterViewSet(viewsets.ModelViewSet):
                 {"detail": str(e.message if hasattr(e, "message") else e)},
                 status=status.HTTP_400_BAD_REQUEST,
             )
+
+    # =========================================================================
+    # State Machine Transition (Sprint 2 - Phase 2A)
+    # =========================================================================
+
+    @action(detail=True, methods=["post"])
+    def transition(self, request, pk=None):
+        """
+        Transition encounter to a new status.
+
+        Validates the transition and creates audit trail.
+
+        POST /api/encounters/{id}/transition/
+        Body: {"to_status": "CHECKED_IN", "reason": "Patient verified"}
+        """
+        from hmis.apps.core.permissions import get_client_ip
+
+        from .services import EncounterStateMachine
+
+        encounter = self.get_object()
+        to_status = request.data.get("to_status")
+
+        if not to_status:
+            return Response(
+                {"detail": "to_status is required."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        reason = request.data.get("reason", "")
+
+        try:
+            result = EncounterStateMachine.transition(
+                encounter=encounter,
+                to_status=to_status,
+                user=request.user,
+                reason=reason,
+                ip_address=get_client_ip(request),
+            )
+            return Response(result, status=status.HTTP_200_OK)
+        except ValidationError as e:
+            return Response(
+                {"detail": str(e.message if hasattr(e, "message") else e)},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+    # =========================================================================
+    # Related Encounters (Sprint 2 - Phase 2B)
+    # =========================================================================
+
+    @action(detail=True, methods=["get"])
+    def related(self, request, pk=None):
+        """
+        Get encounters linked to this encounter (follow-up visits).
+
+        GET /api/encounters/{id}/related/
+        """
+        encounter = self.get_object()
+        related_encounters = encounter.follow_up_encounters.all().order_by("-encounter_date")
+        serializer = EncounterListSerializer(related_encounters, many=True)
+        return Response(serializer.data, status=status.HTTP_200_OK)
 
     # =========================================================================
     # Consultation Queue Actions (Phase 2)
@@ -994,23 +1054,16 @@ class EncounterViewSet(viewsets.ModelViewSet):
                 )
 
             # Check if encounter is in valid status for claiming
-            if encounter.status not in ("DRAFT", "IN_PROGRESS"):
+            if encounter.status in ("CLOSED", "CANCELLED"):
                 return Response(
                     {"error": f"Cannot claim encounter with status '{encounter.status}'."},
-                    status=status.HTTP_400_BAD_REQUEST,
-                )
-
-            # Check if encounter is already completed
-            if encounter.status == "COMPLETED":
-                return Response(
-                    {"error": "Cannot claim a completed encounter."},
                     status=status.HTTP_400_BAD_REQUEST,
                 )
 
             # Claim the encounter
             encounter.assigned_clinician = request.user
             encounter.claimed_at = timezone.now()
-            if encounter.status == "DRAFT":
+            if encounter.status in ("CREATED", "CHECKED_IN", "TRIAGED"):
                 encounter.status = "IN_PROGRESS"
             encounter.save()
 
@@ -1071,8 +1124,8 @@ class EncounterViewSet(viewsets.ModelViewSet):
                         status=status.HTTP_400_BAD_REQUEST,
                     )
 
-            # Cannot release completed or cancelled encounters
-            if encounter.status in ("COMPLETED", "CANCELLED"):
+            # Cannot release closed or cancelled encounters
+            if encounter.status in ("CLOSED", "CANCELLED"):
                 return Response(
                     {"error": f"Cannot release an encounter with status '{encounter.status}'."},
                     status=status.HTTP_400_BAD_REQUEST,
@@ -1116,20 +1169,20 @@ class EncounterViewSet(viewsets.ModelViewSet):
         Get list of encounters claimed by the current user.
 
         Returns all encounters where the current user is the assigned clinician
-        and the encounter is not yet completed.
+        and the encounter is not yet closed.
 
         GET /api/encounters/my_claimed/
 
         Query params:
-        - status: Filter by encounter status (DRAFT, IN_PROGRESS)
-        - include_completed: Include completed encounters (default: false)
+        - status: Filter by encounter status
+        - include_completed: Include closed encounters (default: false)
         """
         queryset = self.get_queryset().filter(assigned_clinician=request.user)
 
-        # By default, exclude completed encounters
+        # By default, exclude closed encounters
         include_completed = request.query_params.get("include_completed", "false").lower() == "true"
         if not include_completed:
-            queryset = queryset.exclude(status__in=["COMPLETED", "CANCELLED"])
+            queryset = queryset.exclude(status__in=["CLOSED", "CANCELLED"])
 
         # Optional status filter
         status_filter = request.query_params.get("status")
@@ -1156,8 +1209,8 @@ class EncounterViewSet(viewsets.ModelViewSet):
         GET /api/encounters/all_claimed/
 
         Query params:
-        - status: Filter by encounter status (DRAFT, IN_PROGRESS)
-        - include_completed: Include completed encounters (default: false)
+        - status: Filter by encounter status
+        - include_completed: Include closed encounters (default: false)
         - clinician: Filter by clinician ID
         - department: Filter by department ID
         """
@@ -1184,10 +1237,10 @@ class EncounterViewSet(viewsets.ModelViewSet):
         # Get all claimed encounters (where assigned_clinician is set)
         queryset = self.get_queryset().filter(assigned_clinician__isnull=False)
 
-        # By default, exclude completed encounters
+        # By default, exclude closed encounters
         include_completed = request.query_params.get("include_completed", "false").lower() == "true"
         if not include_completed:
-            queryset = queryset.exclude(status__in=["COMPLETED", "CANCELLED"])
+            queryset = queryset.exclude(status__in=["CLOSED", "CANCELLED"])
 
         # Optional filters
         status_filter = request.query_params.get("status")

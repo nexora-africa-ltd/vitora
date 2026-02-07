@@ -212,9 +212,9 @@ describe('Encounter Shell Layout', () => {
       });
     });
 
-    it('should provide canPlaceOrders = false for COMPLETED encounters', async () => {
-      const completedEncounter = { ...mockEncounter, status: 'COMPLETED' as const };
-      mockEncountersApi.get.mockResolvedValueOnce(completedEncounter);
+    it('should provide canPlaceOrders = false for CLOSED encounters', async () => {
+      const closedEncounter = { ...mockEncounter, status: 'CLOSED' as const };
+      mockEncountersApi.get.mockResolvedValueOnce(closedEncounter);
 
       function ChildCheckingPermissions() {
         const { useEncounterContext } = require('@/lib/context/encounter-context');

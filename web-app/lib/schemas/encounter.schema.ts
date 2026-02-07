@@ -48,6 +48,17 @@ export const ConsultationStatusSchema = z.enum(['WAITING', 'CALLED', 'IN_PROGRES
 
 export const VitalsSourceSchema = z.enum(['TRIAGE', 'CONSULTATION', 'DIRECT']);
 
+export const VisitReasonSchema = z.enum([
+  'NEW_COMPLAINT',
+  'FOLLOW_UP',
+  'CHRONIC_CARE',
+  'PROCEDURE_REVIEW',
+  'REFILL_ONLY',
+  'LAB_REVIEW',
+  'REFERRAL_VISIT',
+  'OTHER',
+]);
+
 export const TriageBypassReasonSchema = z.enum([
   'STABLE_FOLLOW_UP',
   'CONSULTANT_DECISION',
@@ -175,6 +186,12 @@ export const EncounterSchema = z.object({
   encounter_date: z.string(),
   chief_complaint: z.string(),
   status: EncounterStatusSchema,
+
+  // Encounter Linking (Sprint 2 - Phase 2B)
+  linked_encounter: z.number().optional().nullable(),
+
+  // Visit Reason (Sprint 2 - Phase 2D)
+  visit_reason: VisitReasonSchema.optional(),
 
   // Vitals
   temperature: z.number().nullable(),
