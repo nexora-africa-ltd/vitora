@@ -368,7 +368,7 @@ backend/
 - [x] Implement `determineVisitContext()` utility (in backend services)
 - [x] Visit reason detection with skip-triage for LAB_REVIEW and REFILL_ONLY
 - [x] Add to navigation for Reception role
-- [ ] E2E tests for check-in flow (Sprint 2)
+- [x] E2E tests for check-in flow (43 tests passing)
 
 ---
 
