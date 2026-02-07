@@ -218,10 +218,10 @@ export default function EncounterDetailPage() {
               diagnoses={diagnosisFormData}
               labOrders={labOrders || []}
               prescriptions={prescriptions || []}
-              patientName={encounter.patient_name}
-              patientMrn={encounter.patient_mrn}
+              patientName={encounter.patient_name ?? undefined}
+              patientMrn={encounter.patient_mrn ?? undefined}
               encounterDate={encounter.encounter_date}
-              providerName={encounter.created_by_name}
+              providerName={encounter.created_by_name ?? undefined}
               disabled={true}
             />
           )}
