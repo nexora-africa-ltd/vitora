@@ -65,6 +65,7 @@
     "@tanstack/react-query": "^5.17.0",
     "@tanstack/react-query-devtools": "^5.91.2",
     "@types/node": "^20.11.0",
+    "@types/qrcode": "^1.5.6",
     "@types/react": "^18.2.48",
     "@types/react-dom": "^18.2.18",
     "autoprefixer": "^10.4.17",
@@ -92,7 +93,6 @@
     "tailwind-merge": "^2.6.0",
     "tailwindcss": "^3.4.1",
     "tailwindcss-animate": "^1.0.7",
-    "@types/qrcode": "^1.5.6",
     "typescript": "^5.3.3",
     "use-debounce": "^10.1.0",
     "zod": "^3.22.4",
@@ -106,6 +106,7 @@
     "@testing-library/react": "^16.3.1",
     "@testing-library/user-event": "^14.5.2",
     "@types/jest": "^29.5.11",
+    "@types/js-yaml": "^4.0.9",
     "@typescript-eslint/eslint-plugin": "^7.2.0",
     "@typescript-eslint/parser": "^7.2.0",
     "eslint": "^8.56.0",
@@ -114,13 +115,15 @@
     "jest-cucumber": "^4.5.0",
     "jest-environment-jsdom": "^29.7.0",
     "jest-junit": "^16.0.0",
+    "js-yaml": "^4.1.1",
     "jscpd": "^4.0.7",
     "msw": "^2.0.14",
     "playwright-bdd": "^8.4.2",
     "prettier": "^3.2.4",
     "prettier-plugin-tailwindcss": "^0.5.11",
     "ts-node": "^10.9.2",
-    "undici": "^7.16.0"
+    "undici": "^7.16.0",
+    "zod-to-json-schema": "^3.25.1"
   },
   "overrides": {
     "react-is": "^19.0.0-rc-69d4b800-20241021"

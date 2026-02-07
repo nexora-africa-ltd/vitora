@@ -12,7 +12,7 @@
 | **Frontend Zod schemas** | 16 schema files, `parseResponse()` validation on every API call |
 | **OpenAPI schema** | ✅ `drf-spectacular` configured (`/api/schema/`, `/api/docs/`) |
 | **Backend contract tests** | ✅ 67 serializer snapshot tests in `tests/test_contracts.py` |
-| **Frontend contract tests** | 📋 Planned (Layer 3) |
+| **Frontend contract tests** | ✅ Started — 1/13 modules (Encounter: 15 tests) |
 
 The frontend validates API responses with Zod at runtime via `parseResponse()`. Backend serializer snapshot tests now catch field changes **before deployment**. When a serializer field is added, renamed, or removed, the contract test fails with a clear message directing the developer to update the frontend Zod schema.
 
@@ -65,6 +65,28 @@ The frontend validates API responses with Zod at runtime via `parseResponse()`. 
 
 **Catches**: Frontend schema drift — when the Zod schema doesn't match the actual API.
 
+**Run**: `npm test -- --testPathPattern=contracts`
+
+#### Planned Contract Tests
+
+| Schema File | Test File | Status | Key Schemas |
+|-------------|-----------|--------|-------------|
+| `encounter.schema.ts` | `encounter.contract.test.ts` | ✅ Done (15 tests) | Encounter, Diagnosis, TreatmentPlan, ICD10Code + 10 enums |
+| `patient.schema.ts` | `patient.contract.test.ts` | 📋 TODO | Patient, EmergencyContact, Gender, EncounterStatus |
+| `clinic.schema.ts` | `clinic.contract.test.ts` | 📋 TODO | Clinic, ClinicVisit, Staff, Schedule |
+| `pharmacy.schema.ts` | `pharmacy.contract.test.ts` | 📋 TODO | Medication, Prescription, Dispensing, Stock |
+| `laboratory.schema.ts` | `laboratory.contract.test.ts` | 📋 TODO | LabTest, LabOrder, LabResult, Specimen |
+| `imaging.schema.ts` | `imaging.contract.test.ts` | 📋 TODO | ImagingOrder, ImagingProcedure, ImagingResult |
+| `billing.schema.ts` | `billing.contract.test.ts` | 📋 TODO | Invoice, Payment, BillingItem, InsuranceClaim |
+| `triage.schema.ts` | `triage.contract.test.ts` | 📋 TODO | TriageAssessment, TriageCategory, VitalSigns |
+| `inpatient.schema.ts` | `inpatient.contract.test.ts` | 📋 TODO | Admission, Bed, Ward, Discharge |
+| `sha.schema.ts` | `sha.contract.test.ts` | 📋 TODO | SHAClaim, SHAPreauth, SHAMember |
+| `rbac.schema.ts` | `rbac.contract.test.ts` | 📋 TODO | User, Role, Permission, Group |
+| `core.schema.ts` | `core.contract.test.ts` | 📋 TODO | County, SubCounty, Ward, AuditLog |
+| `checkin.schema.ts` | `checkin.contract.test.ts` | 📋 TODO | CheckIn, Queue, WaitTime |
+
+**Note**: Document schemas (`invoice.schema.ts`, `prescription.schema.ts`, etc.) are frontend-only and do not require contract tests.
+
 ```typescript
 // web-app/__tests__/contracts/patient.contract.test.ts
 import { zodToJsonSchema } from "zod-to-json-schema";
@@ -103,7 +125,7 @@ it("GET /api/patients/ response matches Zod schema", async () => {
 | **1** | `drf-spectacular` + settings | ✅ Done | Enables everything else |
 | **2** | Backend serializer snapshot tests | ✅ Done (67 tests) | Catches 80% of breakages |
 | **3** | CI: export schema on every push | 📋 TODO | Keeps schema.json current |
-| **4** | Frontend schema comparison tests | 📋 TODO | Catches frontend drift |
+| **4** | Frontend schema comparison tests | ✅ Started (Encounter) | Catches frontend drift |
 | **5** | Live contract tests | 📋 TODO | Full E2E validation |
 
 ---
@@ -138,4 +160,4 @@ jobs:
 
 ---
 
-*Generated: 2026-02-07 | Updated: 2026-02-08 (Layers 1 & 2 implemented)*
+*Generated: 2026-02-07 | Updated: 2026-02-08 (Layers 1, 2 & 3 encounter tests implemented)*
