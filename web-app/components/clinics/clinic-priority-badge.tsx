@@ -44,7 +44,7 @@ const priorityEmoji = {
 export function ClinicPriorityBadge({
   priority,
   showLabel = true,
-  size = 'md',
+  size = 'sm',
 }: ClinicPriorityBadgeProps) {
   const config = CLINIC_PRIORITY_CONFIG[priority];
   const Icon = priorityIcons[priority];

@@ -541,7 +541,8 @@ class TestClinicQueueEndpoints:
         response = authenticated_client.post(url, data, format="json")
 
         assert response.status_code == status.HTTP_201_CREATED
-        assert response.data["patient"] == sample_patient.pk
+        assert response.data["patient"]["id"] == sample_patient.pk
+        assert response.data["patient"]["mrn"] == sample_patient.mrn
         assert response.data["queue_number"] is not None
 
     def test_get_queue_stats(
@@ -633,7 +634,8 @@ class TestClinicVisitViewSet:
         response = authenticated_client.post(url, data, format="json")
 
         assert response.status_code == status.HTTP_201_CREATED
-        assert response.data["patient"] == sample_patient.pk
+        assert response.data["patient"]["id"] == sample_patient.pk
+        assert response.data["patient"]["full_name"] is not None
         assert response.data["queue_number"] is not None
 
     # -------------------------------------------------------------------------

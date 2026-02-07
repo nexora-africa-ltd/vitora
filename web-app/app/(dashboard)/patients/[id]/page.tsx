@@ -15,7 +15,8 @@ import {
   FileText,
   TestTube2,
   History,
-  Shield
+  Shield,
+  UserCheck
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -28,6 +29,7 @@ import { usePermissions } from '@/lib/hooks/use-permissions';
 import { calculateAge, formatDate, formatPhoneNumber } from '@/lib/utils/format';
 import { PatientEncounters } from '@/components/patients/patient-encounters';
 import { EmergencyContactsList } from '@/components/patients/emergency-contacts-list';
+import { QuickCheckinDialog } from '@/components/patients/quick-checkin-dialog';
 import { EligibilityBanner, DependentsView } from '@/components/billing/sha';
 import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
@@ -103,6 +105,11 @@ export default function PatientDetailPage() {
         </div>
 
         <div className="flex gap-2">
+          <QuickCheckinDialog
+            patientId={patient.id}
+            patientName={`${patient.first_name} ${patient.last_name}`}
+            patientMrn={patient.mrn}
+          />
           <Button variant="outline" asChild>
             <Link href={`/admissions/new?patient=${patient.id}`}>
               Admit

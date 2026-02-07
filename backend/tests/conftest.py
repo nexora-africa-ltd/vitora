@@ -7,6 +7,7 @@ This file contains shared fixtures and configuration for all tests.
 import os
 import tempfile
 from collections.abc import Generator
+from datetime import date
 
 import django
 import pytest  # type: ignore
@@ -721,3 +722,371 @@ def sample_template_with_sections(db):
         is_active=True,
         is_system=True,
     )
+
+
+# ============================================================================
+# Check-in Module Test Fixtures
+# ============================================================================
+
+
+@pytest.fixture
+def sample_patient_with_phone(db, test_user, sample_county, sample_sub_county):
+    """Create a sample patient with phone number for testing."""
+    from hmis.apps.patients.models import Patient
+
+    return Patient.objects.create(
+        first_name="John",
+        last_name="Doe",
+        date_of_birth="1980-03-15",
+        gender="M",
+        county=sample_county,
+        sub_county=sample_sub_county,
+        phone_number="0712345678",
+    )
+
+
+@pytest.fixture
+def sample_patient_with_national_id(db, test_user, sample_county, sample_sub_county):
+    """Create a sample patient with national ID for testing."""
+    from hmis.apps.patients.models import Patient
+
+    return Patient.objects.create(
+        first_name="Mary",
+        last_name="Wanjiku",
+        date_of_birth="1975-07-22",
+        gender="F",
+        county=sample_county,
+        sub_county=sample_sub_county,
+        identification_type="national_id",
+        identification_number="12345678",
+    )
+
+
+@pytest.fixture
+def sample_patient_no_history(db, sample_county, sample_sub_county):
+    """Create a sample patient with no encounter history."""
+    from hmis.apps.patients.models import Patient
+
+    return Patient.objects.create(
+        first_name="New",
+        last_name="Patient",
+        date_of_birth="2000-01-01",
+        gender="M",
+        county=sample_county,
+        sub_county=sample_sub_county,
+    )
+
+
+@pytest.fixture
+def sample_patient_with_encounters(db, sample_county, sample_sub_county):
+    """Create a sample patient with multiple encounters."""
+    from datetime import timedelta
+
+    from hmis.apps.encounters.models import Encounter
+    from hmis.apps.patients.models import Patient
+
+    patient = Patient.objects.create(
+        first_name="Alice",
+        last_name="Kamau",
+        date_of_birth="1990-06-15",
+        gender="F",
+        county=sample_county,
+        sub_county=sample_sub_county,
+    )
+
+    # Create multiple encounters
+    for i in range(3):
+        Encounter.objects.create(
+            patient=patient,
+            encounter_type="OPD",
+            chief_complaint=f"Visit {i + 1}",
+            encounter_date=date.today() - timedelta(days=(30 * (i + 1))),
+        )
+
+    return patient
+
+
+@pytest.fixture
+def sample_patient_with_recent_visit(db, sample_county, sample_sub_county):
+    """Create a sample patient with a recent encounter."""
+    from datetime import timedelta
+
+    from hmis.apps.encounters.models import Encounter
+    from hmis.apps.patients.models import Patient
+
+    patient = Patient.objects.create(
+        first_name="Recent",
+        last_name="Visitor",
+        date_of_birth="1985-11-20",
+        gender="M",
+        county=sample_county,
+        sub_county=sample_sub_county,
+    )
+
+    encounter = Encounter.objects.create(
+        patient=patient,
+        encounter_type="OPD",
+        chief_complaint="Previous visit complaint",
+        encounter_date=date.today() - timedelta(days=7),
+    )
+
+    return patient, encounter
+
+
+@pytest.fixture
+def sample_patient_with_allergies(db, sample_county, sample_sub_county):
+    """Create a sample patient with known allergies."""
+    from hmis.apps.encounters.models import Encounter
+    from hmis.apps.patients.models import Patient
+
+    patient = Patient.objects.create(
+        first_name="Allergy",
+        last_name="Patient",
+        date_of_birth="1992-04-10",
+        gender="F",
+        county=sample_county,
+        sub_county=sample_sub_county,
+    )
+
+    # Create encounter with allergy information
+    Encounter.objects.create(
+        patient=patient,
+        encounter_type="OPD",
+        chief_complaint="Routine checkup",
+        allergies="Penicillin (severe - anaphylaxis), Sulfa drugs (moderate - rash)",
+    )
+
+    return patient
+
+
+@pytest.fixture
+def sample_patient_with_chronic_conditions(db, sample_county, sample_sub_county):
+    """Create a sample patient with chronic conditions."""
+    from hmis.apps.encounters.models import Encounter
+    from hmis.apps.patients.models import Patient
+
+    patient = Patient.objects.create(
+        first_name="Chronic",
+        last_name="Care",
+        date_of_birth="1965-02-28",
+        gender="M",
+        county=sample_county,
+        sub_county=sample_sub_county,
+    )
+
+    # Create encounter with chronic conditions
+    Encounter.objects.create(
+        patient=patient,
+        encounter_type="OPD",
+        chief_complaint="Routine follow-up",
+        chronic_conditions="Type 2 Diabetes Mellitus, Hypertension",
+        current_medications="Metformin 500mg BD, Lisinopril 10mg OD",
+    )
+
+    return patient
+
+
+@pytest.fixture
+def sample_patient_with_pending_labs(
+    db, sample_county, sample_sub_county, test_user, sample_test_catalog
+):
+    """Create a sample patient with pending lab results."""
+    from hmis.apps.encounters.models import Encounter
+    from hmis.apps.laboratory.models import LabOrder, LabOrderItem
+    from hmis.apps.patients.models import Patient
+
+    patient = Patient.objects.create(
+        first_name="Pending",
+        last_name="Labs",
+        date_of_birth="1978-09-05",
+        gender="F",
+        county=sample_county,
+        sub_county=sample_sub_county,
+    )
+
+    encounter = Encounter.objects.create(
+        patient=patient,
+        encounter_type="OPD",
+        chief_complaint="Lab review",
+    )
+
+    # Create pending lab order
+    lab_order = LabOrder.objects.create(
+        patient=patient,
+        encounter=encounter,
+        ordered_by=test_user,
+        order_type="IN_HOUSE",
+        status="COLLECTED",  # Collected but no results yet
+        priority="ROUTINE",
+    )
+
+    LabOrderItem.objects.create(
+        lab_order=lab_order,
+        test=sample_test_catalog,
+        unit_cost=sample_test_catalog.cost,
+    )
+
+    return patient
+
+
+@pytest.fixture
+def sample_clinic(db):
+    """Create a sample clinic for testing."""
+    from hmis.apps.clinics.models import Clinic
+
+    return Clinic.objects.create(
+        name="General OPD",
+        clinic_type="GENERAL_OPD",
+        code="GOPD-001",
+        status="ACTIVE",
+        accepts_walk_ins=True,
+        triage_required=True,
+    )
+
+
+@pytest.fixture
+def sample_pharmacy_clinic(db):
+    """Create a pharmacy clinic for refill testing."""
+    from hmis.apps.clinics.models import Clinic
+
+    return Clinic.objects.create(
+        name="Pharmacy Refill",
+        clinic_type="OTHER",
+        code="PHARM-001",
+        status="ACTIVE",
+        accepts_walk_ins=True,
+        triage_required=False,
+    )
+
+
+@pytest.fixture
+def sample_lab_clinic(db):
+    """Create a lab clinic for lab review testing."""
+    from hmis.apps.clinics.models import Clinic
+
+    return Clinic.objects.create(
+        name="Lab Review Clinic",
+        clinic_type="OTHER",
+        code="LAB-001",
+        status="ACTIVE",
+        accepts_walk_ins=True,
+        triage_required=False,
+    )
+
+
+@pytest.fixture
+def sample_patient_checked_in_today(db, sample_county, sample_sub_county, test_user):
+    """Create a patient that's already checked in today."""
+    from django.utils import timezone
+
+    from hmis.apps.checkin.models import CheckIn
+    from hmis.apps.encounters.models import Encounter
+    from hmis.apps.patients.models import Patient
+
+    patient = Patient.objects.create(
+        first_name="Already",
+        last_name="CheckedIn",
+        date_of_birth="1988-12-01",
+        gender="M",
+        county=sample_county,
+        sub_county=sample_sub_county,
+    )
+
+    encounter = Encounter.objects.create(
+        patient=patient,
+        encounter_type="OPD",
+        chief_complaint="Earlier visit today",
+    )
+
+    CheckIn.objects.create(
+        patient=patient,
+        encounter=encounter,
+        destination_type="TRIAGE",
+        checked_in_by=test_user,
+        checked_in_at=timezone.now(),
+    )
+
+    return patient
+
+
+@pytest.fixture
+def sample_checkins_today(db, sample_county, sample_sub_county, test_user, sample_clinic):
+    """Create multiple check-ins for today."""
+    from datetime import timedelta
+
+    from django.utils import timezone
+
+    from hmis.apps.checkin.models import CheckIn
+    from hmis.apps.encounters.models import Encounter
+    from hmis.apps.patients.models import Patient
+
+    checkins = []
+    now = timezone.now()
+
+    for i in range(5):
+        patient = Patient.objects.create(
+            first_name=f"Patient{i}",
+            last_name=f"Today{i}",
+            date_of_birth=f"199{i}-01-01",
+            gender="M" if i % 2 == 0 else "F",
+            county=sample_county,
+            sub_county=sample_sub_county,
+        )
+
+        encounter = Encounter.objects.create(
+            patient=patient,
+            encounter_type="OPD",
+            chief_complaint=f"Complaint {i}",
+        )
+
+        checkin = CheckIn.objects.create(
+            patient=patient,
+            encounter=encounter,
+            destination_type="TRIAGE" if i % 2 == 0 else "CLINIC",
+            destination_clinic=sample_clinic if i % 2 != 0 else None,
+            checked_in_by=test_user,
+            checked_in_at=now - timedelta(minutes=i * 15),
+            visit_type="NEW" if i == 0 else "RETURN",
+        )
+
+        checkins.append(checkin)
+
+    return checkins
+
+
+@pytest.fixture
+def sample_checkin_yesterday(db, sample_county, sample_sub_county, test_user):
+    """Create a check-in from yesterday."""
+    from datetime import timedelta
+
+    from django.utils import timezone
+
+    from hmis.apps.checkin.models import CheckIn
+    from hmis.apps.encounters.models import Encounter
+    from hmis.apps.patients.models import Patient
+
+    patient = Patient.objects.create(
+        first_name="Yesterday",
+        last_name="Patient",
+        date_of_birth="1970-05-15",
+        gender="F",
+        county=sample_county,
+        sub_county=sample_sub_county,
+    )
+
+    encounter = Encounter.objects.create(
+        patient=patient,
+        encounter_type="OPD",
+        chief_complaint="Yesterday's complaint",
+        encounter_date=date.today() - timedelta(days=1),
+    )
+
+    checkin = CheckIn.objects.create(
+        patient=patient,
+        encounter=encounter,
+        destination_type="TRIAGE",
+        checked_in_by=test_user,
+        checked_in_at=timezone.now() - timedelta(days=1),
+    )
+
+    return checkin
