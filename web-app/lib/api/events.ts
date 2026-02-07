@@ -6,6 +6,12 @@
  */
 
 import { apiClient } from './client';
+import { parseResponse } from '@/lib/schemas/validation';
+import {
+  LogEventResponseSchema,
+  BatchLogResponseSchema,
+  PaginatedEventsResponseSchema,
+} from '@/lib/schemas/events.schema';
 
 /**
  * Event types that can be logged
@@ -101,7 +107,9 @@ export const eventsApi = {
    */
   async logEvent(event: Omit<FrontendEvent, 'id' | 'server_timestamp'>): Promise<LogEventResponse> {
     const response = await apiClient.post<LogEventResponse>('/api/core/events/', event);
-    return response.data;
+    return parseResponse(LogEventResponseSchema, response.data, {
+      context: 'eventsApi.logEvent',
+    }) as LogEventResponse;
   },
 
   /**
@@ -109,7 +117,9 @@ export const eventsApi = {
    */
   async logBatch(events: Omit<FrontendEvent, 'id' | 'server_timestamp'>[]): Promise<BatchLogResponse> {
     const response = await apiClient.post<BatchLogResponse>('/api/core/events/batch/', { events });
-    return response.data;
+    return parseResponse(BatchLogResponseSchema, response.data, {
+      context: 'eventsApi.logBatch',
+    }) as BatchLogResponse;
   },
 
   /**
@@ -127,7 +137,9 @@ export const eventsApi = {
       '/api/core/events/',
       { params }
     );
-    return response.data;
+    return parseResponse(PaginatedEventsResponseSchema, response.data, {
+      context: 'eventsApi.getEvents',
+    }) as { count: number; results: LogEventResponse[] };
   },
 };
 

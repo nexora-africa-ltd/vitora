@@ -11,6 +11,11 @@
  */
 
 import { apiClient } from './client';
+import { parseResponse } from '@/lib/schemas/validation';
+import {
+  EncounterSchema,
+  PaginatedConsultationQueueSchema,
+} from '@/lib/schemas/encounter.schema';
 import type {
   ConsultationQueueItem,
   ConsultationQueueFilters,
@@ -44,7 +49,9 @@ export const consultationQueueApi = {
       '/api/encounters/consultation_queue/',
       { params: filters }
     );
-    return response.data;
+    return parseResponse(PaginatedConsultationQueueSchema, response.data, {
+      context: 'consultationQueueApi.getQueue',
+    }) as ConsultationQueueResponse;
   },
 
   /**
@@ -60,7 +67,9 @@ export const consultationQueueApi = {
     const response = await apiClient.post<Encounter>(
       `/api/encounters/${encounterId}/call/`
     );
-    return response.data;
+    return parseResponse(EncounterSchema, response.data, {
+      context: 'consultationQueueApi.callPatient',
+    }) as Encounter;
   },
 
   /**
@@ -76,7 +85,9 @@ export const consultationQueueApi = {
     const response = await apiClient.post<Encounter>(
       `/api/encounters/${encounterId}/start_consultation/`
     );
-    return response.data;
+    return parseResponse(EncounterSchema, response.data, {
+      context: 'consultationQueueApi.startConsultation',
+    }) as Encounter;
   },
 
   /**
@@ -99,6 +110,8 @@ export const consultationQueueApi = {
       `/api/encounters/${encounterId}/bypass_triage/`,
       { reason, notes }
     );
-    return response.data;
+    return parseResponse(EncounterSchema, response.data, {
+      context: 'consultationQueueApi.bypassTriage',
+    }) as Encounter;
   },
 };

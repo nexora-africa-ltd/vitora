@@ -105,36 +105,68 @@ export type MarkAllReadResponseSchemaType = z.infer<typeof MarkAllReadResponseSc
 // CLINICAL TEMPLATE SCHEMAS
 // =============================================================================
 
-export const ClinicalTemplateFieldSchema = z.object({
+export const TemplateTypeSchema = z.enum(['encounter', 'note', 'assessment', 'procedure']);
+
+export const FieldTypeSchema = z.enum([
+  'text',
+  'textarea',
+  'number',
+  'date',
+  'boolean',
+  'select',
+  'multiselect',
+]);
+
+export const AutoGenerateTypeSchema = z.enum(['prc', 'case', 'ob']);
+
+export const TemplateFieldSchema = z.object({
   name: z.string(),
+  type: FieldTypeSchema,
   label: z.string(),
-  field_type: z.string(),
-  required: z.boolean().optional(),
+  required: z.boolean(),
   options: z.array(z.string()).optional(),
-  default_value: z.unknown().optional(),
-  unit: z.string().optional(),
-  min_value: z.number().optional(),
-  max_value: z.number().optional(),
+  min: z.number().optional(),
+  max: z.number().optional(),
+  placeholder: z.string().optional(),
   help_text: z.string().optional(),
+  auto_generate: AutoGenerateTypeSchema.optional(),
 });
 
-export const ClinicalTemplateSectionSchema = z.object({
+export const TemplateSectionSchema = z.object({
+  id: z.number(),
   name: z.string(),
-  label: z.string(),
-  fields: z.array(ClinicalTemplateFieldSchema),
-  order: z.number().optional(),
+  order: z.number(),
+  is_required: z.boolean(),
+  fields: z.array(TemplateFieldSchema),
+});
+
+export const TemplateContentSectionSchema = z.object({
+  name: z.string(),
+  order: z.number(),
+  fields: z.array(TemplateFieldSchema),
+});
+
+export const TemplateContentSchema = z.object({
+  title: z.string(),
+  version: z.string(),
+  sections: z.array(TemplateContentSectionSchema),
 });
 
 export const ClinicalTemplateSchema = z.object({
   id: z.number(),
   name: z.string(),
-  description: z.string().optional(),
-  encounter_type: z.string().optional(),
-  specialty: z.string().optional(),
-  sections: z.array(ClinicalTemplateSectionSchema),
+  template_type: TemplateTypeSchema,
+  specialty: z.string(),
+  description: z.string(),
+  content: TemplateContentSchema,
+  is_system: z.boolean(),
   is_active: z.boolean(),
+  usage_count: z.number(),
+  created_by: z.number().nullable(),
+  created_by_username: z.string().nullable(),
   created_at: z.string(),
   updated_at: z.string(),
+  sections: z.array(TemplateSectionSchema),
 });
 
 export type ClinicalTemplateSchemaType = z.infer<typeof ClinicalTemplateSchema>;
@@ -180,3 +212,19 @@ export const SubCountyArrayResponseSchema = z.object({
 export const LocationWardArrayResponseSchema = z.object({
   results: LocationWardArraySchema,
 });
+
+// =============================================================================
+// CASE NUMBER GENERATION SCHEMAS
+// =============================================================================
+
+export const PRCNumberResponseSchema = z.object({
+  prc_number: z.string(),
+});
+
+export type PRCNumberResponseSchemaType = z.infer<typeof PRCNumberResponseSchema>;
+
+export const CaseNumberResponseSchema = z.object({
+  case_number: z.string(),
+});
+
+export type CaseNumberResponseSchemaType = z.infer<typeof CaseNumberResponseSchema>;

@@ -4,6 +4,11 @@
  */
 
 import { apiClient } from './client';
+import { parseResponse } from '@/lib/schemas/validation';
+import {
+  PRCNumberResponseSchema,
+  CaseNumberResponseSchema,
+} from '@/lib/schemas/core.schema';
 
 export interface PRCNumberResponse {
   prc_number: string;
@@ -25,7 +30,10 @@ export const coreApi = {
       '/api/core/generate/prc-number/',
       { params }
     );
-    return response.data.prc_number;
+    const validated = parseResponse(PRCNumberResponseSchema, response.data, {
+      context: 'coreApi.generatePRCNumber',
+    });
+    return validated.prc_number;
   },
 
   /**
@@ -42,7 +50,10 @@ export const coreApi = {
       '/api/core/generate/case-number/',
       { params }
     );
-    return response.data.case_number;
+    const validated = parseResponse(CaseNumberResponseSchema, response.data, {
+      context: 'coreApi.generateCaseNumber',
+    });
+    return validated.case_number;
   },
 };
 
