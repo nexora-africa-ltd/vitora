@@ -48,6 +48,7 @@ INSTALLED_APPS = [
     "django_filters",
     "channels",  # Django Channels for WebSocket support
     "oauth2_provider",  # SMART on FHIR OAuth2 server
+    "drf_spectacular",  # OpenAPI schema generation
     # Local apps
     "hmis.apps.core",
     "hmis.apps.patients",
@@ -168,6 +169,16 @@ REST_FRAMEWORK = {
         "rest_framework.renderers.JSONRenderer",
     ],
     "TEST_REQUEST_DEFAULT_FORMAT": "json",
+    "DEFAULT_SCHEMA_CLASS": "drf_spectacular.openapi.AutoSchema",
+}
+
+# drf-spectacular settings
+SPECTACULAR_SETTINGS = {
+    "TITLE": "Vitora HMIS API",
+    "DESCRIPTION": "Hospital Management Information System for Kenya",
+    "VERSION": "0.1.0",
+    "SERVE_INCLUDE_SCHEMA": False,
+    "COMPONENT_SPLIT_REQUEST": True,
 }
 
 # Simple JWT settings

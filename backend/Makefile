@@ -80,6 +80,9 @@ test-unit:
 test-integration:
 	poetry run pytest -m integration
 
+test-contracts:
+	poetry run pytest tests/test_contracts.py -v --no-cov
+
 test-fhir:
 	poetry run pytest tests/core/test_fhir_validator.py tests/billing/test_shr_compliance/ -v --cov=hmis.apps.core.services.fhir_validator --cov-report=term-missing
 
@@ -170,6 +173,10 @@ runserver:
 
 shell:
 	poetry run python manage.py shell
+
+schema:
+	poetry run python manage.py spectacular --file schema.json
+	@echo "OpenAPI schema generated at schema.json"
 
 # ============================================================================
 # Data Import Commands
