@@ -368,3 +368,381 @@ class ImagingOrderItem(models.Model):
 
     def __str__(self):
         return f"{self.order.order_number} - {self.procedure.name}"
+
+
+# ============================================================================
+# DICOM Models (Phase C)
+# ============================================================================
+
+
+class DICOMStudy(models.Model):
+    """
+    Represents a DICOM Study - the top-level container in the DICOM hierarchy.
+
+    A study corresponds to a single imaging examination (e.g., a chest X-ray session).
+    It may contain multiple series (e.g., PA and lateral views), each containing
+    multiple instances (individual image files).
+
+    DICOM Hierarchy: Study → Series → Instance
+
+    Attributes:
+        study_instance_uid: Globally unique DICOM Study Instance UID (0020,000D)
+        patient: The patient who underwent the imaging study
+        imaging_order: The imaging order that requested this study (nullable for external uploads)
+        study_date: Date the study was performed (0008,0020)
+        study_time: Time the study was performed (0008,0030)
+        study_description: Description of the study (0008,1030)
+        accession_number: PACS/RIS accession number (0008,0050)
+        referring_physician_name: Name of referring physician (0008,0090)
+        modality: Primary modality of the study
+        institution_name: Institution where study was performed (0008,0080)
+    """
+
+    MODALITY_CHOICES = ImagingProcedure.MODALITY_CHOICES
+
+    # DICOM UIDs
+    study_instance_uid = models.CharField(
+        max_length=128,
+        unique=True,
+        db_index=True,
+        help_text="DICOM Study Instance UID (0020,000D)",
+    )
+
+    # Relationships
+    patient = models.ForeignKey(
+        "patients.Patient",
+        on_delete=models.PROTECT,
+        related_name="dicom_studies",
+        help_text="Patient associated with this study",
+    )
+    imaging_order = models.ForeignKey(
+        ImagingOrder,
+        on_delete=models.PROTECT,
+        related_name="dicom_studies",
+        null=True,
+        blank=True,
+        help_text="Imaging order that initiated this study (null for external uploads)",
+    )
+
+    # DICOM metadata
+    study_date = models.DateField(
+        help_text="Date the study was performed (0008,0020)",
+    )
+    study_time = models.TimeField(
+        null=True,
+        blank=True,
+        help_text="Time the study was performed (0008,0030)",
+    )
+    study_description = models.CharField(
+        max_length=255,
+        blank=True,
+        default="",
+        help_text="Study description (0008,1030)",
+    )
+    accession_number = models.CharField(
+        max_length=64,
+        blank=True,
+        default="",
+        db_index=True,
+        help_text="Accession number for PACS/RIS (0008,0050)",
+    )
+    referring_physician_name = models.CharField(
+        max_length=255,
+        blank=True,
+        default="",
+        help_text="Referring physician name (0008,0090)",
+    )
+    modality = models.CharField(
+        max_length=20,
+        choices=MODALITY_CHOICES,
+        help_text="Primary modality of the study",
+    )
+    institution_name = models.CharField(
+        max_length=255,
+        blank=True,
+        default="",
+        help_text="Institution name (0008,0080)",
+    )
+
+    # Study statistics
+    number_of_series = models.PositiveIntegerField(
+        default=0,
+        help_text="Number of series in this study",
+    )
+    number_of_instances = models.PositiveIntegerField(
+        default=0,
+        help_text="Total number of instances across all series",
+    )
+    total_file_size = models.BigIntegerField(
+        default=0,
+        help_text="Total file size of all instances in bytes",
+    )
+
+    # Thumbnail
+    thumbnail_path = models.CharField(
+        max_length=500,
+        blank=True,
+        default="",
+        help_text="Relative path to study thumbnail image",
+    )
+
+    # Tracking
+    uploaded_by = models.ForeignKey(
+        User,
+        on_delete=models.PROTECT,
+        related_name="uploaded_dicom_studies",
+        help_text="User who uploaded/imported this study",
+    )
+
+    # Timestamps
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        verbose_name = "DICOM Study"
+        verbose_name_plural = "DICOM Studies"
+        ordering = ["-study_date", "-created_at"]
+        indexes = [
+            models.Index(fields=["study_instance_uid"]),
+            models.Index(fields=["patient"]),
+            models.Index(fields=["accession_number"]),
+            models.Index(fields=["modality"]),
+            models.Index(fields=["study_date"]),
+        ]
+
+    def __str__(self):
+        desc = self.study_description or "No description"
+        return f"{self.modality} - {desc} ({self.study_date})"
+
+    @property
+    def storage_path(self) -> str:
+        """
+        Get the PACS storage directory path for this study.
+
+        Returns:
+            str: Path in format 'dicom/{study_instance_uid}/'
+        """
+        return f"dicom/{self.study_instance_uid}/"
+
+
+class DICOMSeries(models.Model):
+    """
+    Represents a DICOM Series within a study.
+
+    A series groups images acquired under the same conditions - same modality,
+    same orientation, same contrast phase, etc. For example, a CT study might
+    have an axial series, a coronal reconstruction series, etc.
+
+    DICOM Hierarchy: Study → Series → Instance
+
+    Attributes:
+        series_instance_uid: Globally unique DICOM Series Instance UID (0020,000E)
+        study: Parent DICOMStudy
+        series_number: Series number within the study (0020,0011)
+        series_description: Description of the series (0008,103E)
+        modality: Modality of this series (0008,0060)
+        body_part_examined: Body part examined (0018,0015)
+    """
+
+    MODALITY_CHOICES = ImagingProcedure.MODALITY_CHOICES
+
+    # DICOM UIDs
+    series_instance_uid = models.CharField(
+        max_length=128,
+        unique=True,
+        db_index=True,
+        help_text="DICOM Series Instance UID (0020,000E)",
+    )
+
+    # Relationships
+    study = models.ForeignKey(
+        DICOMStudy,
+        on_delete=models.CASCADE,
+        related_name="series_set",
+        help_text="Parent DICOM study",
+    )
+
+    # DICOM metadata
+    series_number = models.PositiveIntegerField(
+        null=True,
+        blank=True,
+        help_text="Series number within study (0020,0011)",
+    )
+    series_description = models.CharField(
+        max_length=255,
+        blank=True,
+        default="",
+        help_text="Series description (0008,103E)",
+    )
+    modality = models.CharField(
+        max_length=20,
+        choices=MODALITY_CHOICES,
+        help_text="Modality of this series (0008,0060)",
+    )
+    body_part_examined = models.CharField(
+        max_length=100,
+        blank=True,
+        default="",
+        help_text="Body part examined (0018,0015)",
+    )
+
+    # Series statistics
+    number_of_instances = models.PositiveIntegerField(
+        default=0,
+        help_text="Number of instances in this series",
+    )
+    total_file_size = models.BigIntegerField(
+        default=0,
+        help_text="Total file size of all instances in bytes",
+    )
+
+    # Thumbnail
+    thumbnail_path = models.CharField(
+        max_length=500,
+        blank=True,
+        default="",
+        help_text="Relative path to series thumbnail image",
+    )
+
+    # Timestamps
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        verbose_name = "DICOM Series"
+        verbose_name_plural = "DICOM Series"
+        ordering = ["series_number"]
+        indexes = [
+            models.Index(fields=["series_instance_uid"]),
+            models.Index(fields=["study"]),
+            models.Index(fields=["modality"]),
+        ]
+
+    def __str__(self):
+        desc = self.series_description or self.modality
+        num = self.series_number or "?"
+        return f"Series {num}: {desc}"
+
+    @property
+    def storage_path(self) -> str:
+        """
+        Get the PACS storage directory path for this series.
+
+        Returns:
+            str: Path in format 'dicom/{study_uid}/{series_uid}/'
+        """
+        return f"dicom/{self.study.study_instance_uid}/{self.series_instance_uid}/"
+
+
+class DICOMInstance(models.Model):
+    """
+    Represents a single DICOM instance (image/file) within a series.
+
+    This is the leaf level of the DICOM hierarchy — each instance corresponds
+    to a single .dcm file stored on disk.
+
+    DICOM Hierarchy: Study → Series → Instance
+
+    Attributes:
+        sop_instance_uid: Globally unique DICOM SOP Instance UID (0008,0018)
+        series: Parent DICOMSeries
+        sop_class_uid: SOP Class UID identifying the type of object (0008,0016)
+        instance_number: Instance number within the series (0020,0013)
+        file_path: Relative path to the DICOM file in PACS storage
+        file_size: File size in bytes
+    """
+
+    # DICOM UIDs
+    sop_instance_uid = models.CharField(
+        max_length=128,
+        unique=True,
+        db_index=True,
+        help_text="DICOM SOP Instance UID (0008,0018)",
+    )
+    sop_class_uid = models.CharField(
+        max_length=128,
+        blank=True,
+        default="",
+        help_text="SOP Class UID (0008,0016) — identifies the type of DICOM object",
+    )
+
+    # Relationships
+    series = models.ForeignKey(
+        DICOMSeries,
+        on_delete=models.CASCADE,
+        related_name="instances",
+        help_text="Parent DICOM series",
+    )
+
+    # Instance metadata
+    instance_number = models.PositiveIntegerField(
+        null=True,
+        blank=True,
+        help_text="Instance number within series (0020,0013)",
+    )
+
+    # File storage
+    file_path = models.CharField(
+        max_length=500,
+        help_text="Relative path to DICOM file in media/dicom/ storage",
+    )
+    file_size = models.BigIntegerField(
+        default=0,
+        help_text="File size in bytes",
+    )
+
+    # Transfer syntax
+    transfer_syntax_uid = models.CharField(
+        max_length=128,
+        blank=True,
+        default="",
+        help_text="Transfer Syntax UID (0002,0010) — encoding of pixel data",
+    )
+
+    # Image dimensions (for image-type instances)
+    rows = models.PositiveIntegerField(
+        null=True,
+        blank=True,
+        help_text="Number of rows (image height) (0028,0010)",
+    )
+    columns = models.PositiveIntegerField(
+        null=True,
+        blank=True,
+        help_text="Number of columns (image width) (0028,0011)",
+    )
+    bits_allocated = models.PositiveIntegerField(
+        null=True,
+        blank=True,
+        help_text="Bits allocated per pixel (0028,0100)",
+    )
+    photometric_interpretation = models.CharField(
+        max_length=50,
+        blank=True,
+        default="",
+        help_text="Photometric interpretation (0028,0004) e.g., MONOCHROME1, MONOCHROME2, RGB",
+    )
+
+    # Thumbnail
+    thumbnail_path = models.CharField(
+        max_length=500,
+        blank=True,
+        default="",
+        help_text="Relative path to instance thumbnail image",
+    )
+
+    # Timestamps
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        verbose_name = "DICOM Instance"
+        verbose_name_plural = "DICOM Instances"
+        ordering = ["instance_number"]
+        indexes = [
+            models.Index(fields=["sop_instance_uid"]),
+            models.Index(fields=["series"]),
+        ]
+
+    def __str__(self):
+        num = self.instance_number or "?"
+        return f"Instance {num} ({self.sop_instance_uid[:30]}...)"

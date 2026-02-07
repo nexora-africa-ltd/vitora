@@ -4,7 +4,14 @@ Django admin configuration for imaging models.
 
 from django.contrib import admin
 
-from .models import ImagingOrder, ImagingOrderItem, ImagingProcedure
+from .models import (
+    DICOMInstance,
+    DICOMSeries,
+    DICOMStudy,
+    ImagingOrder,
+    ImagingOrderItem,
+    ImagingProcedure,
+)
 
 
 class ImagingOrderItemInline(admin.TabularInline):
@@ -145,3 +152,133 @@ class ImagingOrderItemAdmin(admin.ModelAdmin):
         "procedure__code",
     )
     readonly_fields = ("completed_at",)
+
+
+# ============================================================================
+# DICOM Admin
+# ============================================================================
+
+
+class DICOMSeriesInline(admin.TabularInline):
+    """Inline admin for DICOM series within a study."""
+
+    model = DICOMSeries
+    extra = 0
+    readonly_fields = (
+        "series_instance_uid",
+        "series_number",
+        "series_description",
+        "modality",
+        "body_part_examined",
+        "number_of_instances",
+        "total_file_size",
+    )
+    show_change_link = True
+
+
+class DICOMInstanceInline(admin.TabularInline):
+    """Inline admin for DICOM instances within a series."""
+
+    model = DICOMInstance
+    extra = 0
+    readonly_fields = (
+        "sop_instance_uid",
+        "instance_number",
+        "file_path",
+        "file_size",
+        "rows",
+        "columns",
+    )
+
+
+@admin.register(DICOMStudy)
+class DICOMStudyAdmin(admin.ModelAdmin):
+    """Admin interface for DICOM Studies."""
+
+    list_display = (
+        "study_instance_uid",
+        "patient",
+        "modality",
+        "study_date",
+        "study_description",
+        "number_of_series",
+        "number_of_instances",
+        "uploaded_by",
+    )
+    list_filter = ("modality", "study_date")
+    search_fields = (
+        "study_instance_uid",
+        "accession_number",
+        "study_description",
+        "patient__first_name",
+        "patient__last_name",
+        "patient__mrn",
+    )
+    readonly_fields = ("created_at", "updated_at")
+    date_hierarchy = "study_date"
+    inlines = [DICOMSeriesInline]
+    fieldsets = (
+        (None, {
+            "fields": (
+                "study_instance_uid",
+                "patient",
+                "imaging_order",
+                "modality",
+            ),
+        }),
+        ("Study Details", {
+            "fields": (
+                "study_date",
+                "study_time",
+                "study_description",
+                "accession_number",
+                "referring_physician_name",
+                "institution_name",
+            ),
+        }),
+        ("Statistics", {
+            "fields": (
+                "number_of_series",
+                "number_of_instances",
+                "total_file_size",
+                "thumbnail_path",
+            ),
+        }),
+        ("Metadata", {
+            "fields": ("uploaded_by", "created_at", "updated_at"),
+            "classes": ("collapse",),
+        }),
+    )
+
+
+@admin.register(DICOMSeries)
+class DICOMSeriesAdmin(admin.ModelAdmin):
+    """Admin interface for DICOM Series."""
+
+    list_display = (
+        "series_instance_uid",
+        "study",
+        "series_number",
+        "modality",
+        "body_part_examined",
+        "number_of_instances",
+    )
+    list_filter = ("modality",)
+    search_fields = ("series_instance_uid", "series_description")
+    inlines = [DICOMInstanceInline]
+
+
+@admin.register(DICOMInstance)
+class DICOMInstanceAdmin(admin.ModelAdmin):
+    """Admin interface for DICOM Instances."""
+
+    list_display = (
+        "sop_instance_uid",
+        "series",
+        "instance_number",
+        "file_size",
+        "rows",
+        "columns",
+    )
+    search_fields = ("sop_instance_uid",)
+    readonly_fields = ("created_at",)

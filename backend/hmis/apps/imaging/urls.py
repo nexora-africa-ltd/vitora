@@ -2,10 +2,13 @@
 URL configuration for imaging app.
 """
 
-from django.urls import include, path
+from django.urls import include, path, re_path
 from rest_framework.routers import DefaultRouter
 
 from .views import (
+    DICOMRetrieveView,
+    DICOMStudyViewSet,
+    DICOMUploadView,
     ImagingCalendarView,
     ImagingOrderViewSet,
     ImagingProcedureViewSet,
@@ -16,8 +19,16 @@ router = DefaultRouter()
 router.register(r"procedures", ImagingProcedureViewSet, basename="imaging-procedure")
 router.register(r"orders", ImagingOrderViewSet, basename="imaging-order")
 router.register(r"resources", ImagingResourceViewSet, basename="imaging-resource")
+router.register(r"studies", DICOMStudyViewSet, basename="dicom-study")
 
 urlpatterns = [
-    path("", include(router.urls)),
+    # DICOM-specific endpoints (must be before router to avoid conflicts)
+    path("studies/upload/", DICOMUploadView.as_view(), name="dicom-upload"),
+    re_path(
+        r"^dicom/(?P<sop_instance_uid>[\d.]+)/$",
+        DICOMRetrieveView.as_view(),
+        name="dicom-retrieve",
+    ),
     path("calendar/", ImagingCalendarView.as_view(), name="imaging-calendar"),
+    path("", include(router.urls)),
 ]
