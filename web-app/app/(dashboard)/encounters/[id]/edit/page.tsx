@@ -894,7 +894,7 @@ export default function EditEncounterPage() {
           open={isChiefComplaintDialogOpen}
           onOpenChange={setIsChiefComplaintDialogOpen}
           currentComplaint={formData.chief_complaint}
-          originalComplaint={encounter?.chief_complaint_original}
+          originalComplaint={encounter?.chief_complaint_original ?? undefined}
           onConfirm={async (data) => {
             try {
               await editChiefComplaint.mutateAsync({
@@ -958,9 +958,9 @@ export default function EditEncounterPage() {
                 diagnoses={diagnoses}
                 labOrders={labOrders || []}
                 prescriptions={prescriptions || []}
-                patientName={encounter?.patient_name}
-                patientMrn={encounter?.patient_mrn}
-                encounterDate={encounter?.encounter_date}
+                patientName={encounter?.patient_name ?? undefined}
+                patientMrn={encounter?.patient_mrn ?? undefined}
+                encounterDate={encounter?.encounter_date ?? undefined}
                 providerName={providerName}
                 disabled={!isEditable}
               />

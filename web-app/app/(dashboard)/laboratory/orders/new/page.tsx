@@ -154,13 +154,13 @@ export default function NewLabOrderPage() {
       <LabOrderForm
         patientId={resolvedPatientId}
         encounterId={resolvedEncounterId}
-        patientName={effectivePatient ? `${effectivePatient.first_name} ${effectivePatient.last_name}` : encounter?.patient_name}
-        patientMrn={effectivePatient?.mrn || encounter?.patient_mrn}
-        patientGender={effectivePatient?.gender || encounter?.patient_gender}
-        patientDateOfBirth={effectivePatient?.date_of_birth || encounter?.patient_date_of_birth}
-        encounterType={contextEncounter?.encounter_type || encounter?.encounter_type}
-        encounterDate={contextEncounter?.encounter_date || encounter?.encounter_date}
-        chiefComplaint={contextEncounter?.chief_complaint || encounter?.chief_complaint}
+        patientName={effectivePatient ? `${effectivePatient.first_name} ${effectivePatient.last_name}` : (encounter?.patient_name ?? undefined)}
+        patientMrn={(effectivePatient?.mrn || encounter?.patient_mrn) ?? undefined}
+        patientGender={(effectivePatient?.gender || encounter?.patient_gender) ?? undefined}
+        patientDateOfBirth={(effectivePatient?.date_of_birth || encounter?.patient_date_of_birth) ?? undefined}
+        encounterType={(contextEncounter?.encounter_type || encounter?.encounter_type) ?? undefined}
+        encounterDate={(contextEncounter?.encounter_date || encounter?.encounter_date) ?? undefined}
+        chiefComplaint={(contextEncounter?.chief_complaint || encounter?.chief_complaint) ?? undefined}
         onSuccess={handleSuccess}
         onCancel={() => router.back()}
       />
