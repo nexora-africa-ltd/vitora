@@ -264,8 +264,8 @@ describe('InvoiceList', () => {
       { wrapper: createWrapper() }
     );
 
-    // Find and click status filter - Radix Select uses button role
-    const statusFilter = screen.getByRole('button', { name: /status/i });
+    // Find and click status filter - Select component renders as combobox
+    const statusFilter = screen.getByRole('combobox', { name: /status/i });
     await userEvent.click(statusFilter);
 
     // Radix Select items have data-radix-collection-item attribute
