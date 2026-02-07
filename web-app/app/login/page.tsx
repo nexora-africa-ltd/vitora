@@ -29,6 +29,16 @@ export default function LoginPage() {
     setMounted(true);
   }, []);
 
+  // Security: Strip credentials from URL if someone navigates with them in query params
+  useEffect(() => {
+    const url = new URL(window.location.href);
+    if (url.searchParams.has('username') || url.searchParams.has('password')) {
+      url.searchParams.delete('username');
+      url.searchParams.delete('password');
+      window.history.replaceState({}, '', url.toString());
+    }
+  }, []);
+
   const isDark = mounted && resolvedTheme === 'dark';
 
   const handleSubmit = async (e: React.FormEvent) => {
