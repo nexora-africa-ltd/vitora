@@ -17,7 +17,9 @@ from django.http import HttpResponse
 from django.shortcuts import get_object_or_404
 from django.utils import timezone
 from django_filters.rest_framework import DjangoFilterBackend
-from rest_framework import filters, status, viewsets
+from drf_spectacular.types import OpenApiTypes
+from drf_spectacular.utils import OpenApiParameter, extend_schema, inline_serializer
+from rest_framework import filters, serializers, status, viewsets
 from rest_framework.decorators import action
 from rest_framework.pagination import PageNumberPagination
 from rest_framework.permissions import IsAuthenticated
@@ -794,6 +796,22 @@ class TerminologySearchView(APIView):
 
     permission_classes = [IsAuthenticated]
 
+    @extend_schema(
+        parameters=[
+            OpenApiParameter("search", OpenApiTypes.STR, description="Search query (min 2 characters)"),
+            OpenApiParameter("limit", OpenApiTypes.INT, description="Max results (default 50)"),
+        ],
+        responses={
+            200: inline_serializer(
+                name="TerminologySearchResponse",
+                fields={
+                    "results": serializers.ListField(child=serializers.DictField()),
+                    "count": serializers.IntegerField(),
+                    "source": serializers.CharField(),
+                },
+            )
+        },
+    )
     def get(self, request, terminology_type):
         """
         Search terminology codes.
@@ -1044,6 +1062,25 @@ class ClientRegistryView(APIView):
 
     permission_classes = [IsAuthenticated]
 
+    @extend_schema(
+        parameters=[
+            OpenApiParameter("national_id", OpenApiTypes.STR, description="Kenya National ID number"),
+            OpenApiParameter("client_number", OpenApiTypes.STR, description="CR client number"),
+            OpenApiParameter("huduma_number", OpenApiTypes.STR, description="Huduma Namba"),
+            OpenApiParameter("passport_number", OpenApiTypes.STR, description="Passport number"),
+            OpenApiParameter("identification_type", OpenApiTypes.STR, description="Generic ID type"),
+            OpenApiParameter("identification_number", OpenApiTypes.STR, description="ID value"),
+        ],
+        responses={
+            200: inline_serializer(
+                name="ClientRegistryResponse",
+                fields={
+                    "found": serializers.BooleanField(),
+                    "client": serializers.DictField(),
+                },
+            )
+        },
+    )
     def get(self, request):
         """
         Fetch client from Client Registry.
@@ -1310,6 +1347,21 @@ class FacilitySearchView(APIView):
 
     permission_classes = [IsAuthenticated]
 
+    @extend_schema(
+        parameters=[
+            OpenApiParameter("facility_code", OpenApiTypes.STR, description="Facility code"),
+            OpenApiParameter("fid", OpenApiTypes.STR, description="Facility ID"),
+        ],
+        responses={
+            200: inline_serializer(
+                name="FacilitySearchResponse",
+                fields={
+                    "found": serializers.BooleanField(),
+                    "facility": serializers.DictField(required=False),
+                },
+            )
+        },
+    )
     def get(self, request):
         """
         Search/validate facility in Master Facility List.
@@ -1378,6 +1430,22 @@ class PractitionerSearchView(APIView):
 
     permission_classes = [IsAuthenticated]
 
+    @extend_schema(
+        parameters=[
+            OpenApiParameter("identification_number", OpenApiTypes.STR, description="National ID or Passport number"),
+            OpenApiParameter("identification_type", OpenApiTypes.STR, description="'National ID' or 'passport'"),
+            OpenApiParameter("registration_number", OpenApiTypes.STR, description="Registration number (PUID)"),
+            OpenApiParameter("license_number", OpenApiTypes.STR, description="License number (alias for registration_number)"),
+        ],
+        responses={
+            200: inline_serializer(
+                name="PractitionerSearchResponse",
+                fields={
+                    "message": serializers.DictField(),
+                },
+            )
+        },
+    )
     def get(self, request):
         """
         Search practitioner in Health Worker Registry.
@@ -1502,6 +1570,29 @@ class EligibilityCheckView(APIView):
 
     permission_classes = [IsAuthenticated]
 
+    @extend_schema(
+        request=inline_serializer(
+            name="EligibilityCheckRequest",
+            fields={
+                "patient_id": serializers.IntegerField(required=False),
+                "sha_number": serializers.CharField(required=False),
+            },
+        ),
+        responses={
+            200: inline_serializer(
+                name="EligibilityCheckResponse",
+                fields={
+                    "is_eligible": serializers.BooleanField(),
+                    "result": serializers.CharField(),
+                    "eligible_until": serializers.CharField(required=False),
+                    "benefit_balance": serializers.FloatField(required=False),
+                    "ineligibility_reason": serializers.CharField(required=False),
+                    "sha_number": serializers.CharField(),
+                    "membership_type": serializers.CharField(),
+                },
+            )
+        },
+    )
     def post(self, request):
         """
         Check eligibility for a patient or SHA member.
@@ -1580,6 +1671,29 @@ class DirectEligibilityCheckView(APIView):
 
     permission_classes = [IsAuthenticated]
 
+    @extend_schema(
+        parameters=[
+            OpenApiParameter("national_id", OpenApiTypes.STR, description="Kenya National ID number"),
+            OpenApiParameter("sha_number", OpenApiTypes.STR, description="SHA/CR number"),
+            OpenApiParameter("identification_type", OpenApiTypes.STR, description="Custom ID type"),
+            OpenApiParameter("identification_number", OpenApiTypes.STR, description="ID value"),
+        ],
+        responses={
+            200: inline_serializer(
+                name="DirectEligibilityResponse",
+                fields={
+                    "is_eligible": serializers.BooleanField(),
+                    "sha_number": serializers.CharField(required=False),
+                    "full_name": serializers.CharField(required=False),
+                    "coverage_end_date": serializers.CharField(required=False),
+                    "copay_percentage": serializers.IntegerField(required=False),
+                    "reason": serializers.CharField(required=False),
+                    "is_employed": serializers.BooleanField(required=False),
+                    "error": serializers.CharField(required=False),
+                },
+            )
+        },
+    )
     def get(self, request):
         """
         Check SHA eligibility by identification.
@@ -1673,6 +1787,19 @@ class SHAWebhookView(APIView):
     # Use signature verification instead
     permission_classes = []
 
+    @extend_schema(
+        request=OpenApiTypes.OBJECT,
+        responses={
+            200: inline_serializer(
+                name="WebhookResponse",
+                fields={
+                    "status": serializers.CharField(),
+                    "message": serializers.CharField(),
+                    "claim_reference": serializers.CharField(required=False),
+                },
+            )
+        },
+    )
     def post(self, request):
         """
         Receive ClaimResponse from DHA.
@@ -1880,6 +2007,21 @@ class SHAValidateView(APIView):
 
     permission_classes = []  # Allow unauthenticated for health checks
 
+    @extend_schema(
+        responses={
+            200: inline_serializer(
+                name="SHAValidateGetResponse",
+                fields={
+                    "status": serializers.CharField(),
+                    "system": serializers.CharField(),
+                    "version": serializers.CharField(),
+                    "sha_integration": serializers.DictField(),
+                    "timestamp": serializers.CharField(),
+                    "ready": serializers.BooleanField(),
+                },
+            )
+        },
+    )
     def get(self, request):
         """
         Health check endpoint for DHA validation.
@@ -1903,6 +2045,19 @@ class SHAValidateView(APIView):
             }
         )
 
+    @extend_schema(
+        request=OpenApiTypes.OBJECT,
+        responses={
+            200: inline_serializer(
+                name="SHAValidatePostResponse",
+                fields={
+                    "status": serializers.CharField(),
+                    "result": serializers.DictField(),
+                    "timestamp": serializers.CharField(),
+                },
+            )
+        },
+    )
     def post(self, request):
         """
         Validate a test payload from DHA.
