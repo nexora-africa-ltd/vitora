@@ -94,7 +94,11 @@ function PatientCheckinCard({
               </div>
             </div>
           </div>
-          <Badge variant={patient.suggested_visit_type === 'NEW' ? 'default' : 'secondary'}>
+          <Badge
+            variant={patient.suggested_visit_type === 'NEW' ? 'default' : 'secondary'}
+            aria-label={`Visit type: ${patient.suggested_visit_type}`}
+            data-testid="visit-type-badge"
+          >
             {patient.suggested_visit_type}
           </Badge>
         </div>
@@ -242,7 +246,7 @@ function PatientCheckinCard({
               value={selectedClinic?.toString() ?? ''}
               onValueChange={(value) => setSelectedClinic(parseInt(value, 10))}
             >
-              <SelectTrigger className="flex-1">
+              <SelectTrigger className="flex-1" aria-label="Select clinic">
                 <SelectValue placeholder="Select clinic" />
               </SelectTrigger>
               <SelectContent className="max-h-60 overflow-y-auto">
@@ -257,8 +261,10 @@ function PatientCheckinCard({
               variant="secondary"
               onClick={handleDirectCheckin}
               disabled={isLoading || !selectedClinic}
+              aria-label="Direct to clinic"
             >
               <ArrowRight className="h-4 w-4" />
+              <span className="sr-only">Direct to clinic</span>
             </Button>
           </div>
         </div>
