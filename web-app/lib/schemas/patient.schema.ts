@@ -30,7 +30,7 @@ export const ReferralSourceSchema = z.enum(['self', 'clinic', 'other_facility'])
 
 export const PaymentModeSchema = z.enum(['cash', 'sha', 'insurance_private', 'insurance_corporate']);
 
-export const EncounterStatusSchema = z.enum(['DRAFT', 'IN_PROGRESS', 'COMPLETED', 'CANCELLED']);
+export const EncounterStatusSchema = z.enum(['CREATED', 'CHECKED_IN', 'TRIAGED', 'IN_PROGRESS', 'ON_HOLD', 'ORDERS_PLACED', 'RESULTS_PENDING', 'READY_TO_CLOSE', 'CLOSED', 'CANCELLED']);
 
 // =============================================================================
 // EMERGENCY CONTACT SCHEMA

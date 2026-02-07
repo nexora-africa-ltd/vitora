@@ -372,35 +372,35 @@ backend/
 
 ---
 
-### Sprint 2: Advanced Features (3-5 days)
+### Sprint 2: Advanced Features (3-5 days) ✅ COMPLETED
 
-#### Phase 2A: Encounter State Machine (1-2 days)
+#### Phase 2A: Encounter State Machine (1-2 days) ✅
 
-- [ ] Add `status` field with choices to Encounter model
-- [ ] Create `EncounterStateMachine` service with transition validation
-- [ ] Add `/api/encounters/{id}/transition/` endpoint
-- [ ] Add state history audit table (`encounter_states`)
-- [ ] Update encounter list views to show current status
+- [x] Add `status` field with choices to Encounter model
+- [x] Create `EncounterStateMachine` service with transition validation
+- [x] Add `/api/encounters/{id}/transition/` endpoint
+- [x] Add state history audit table (`encounter_states`)
+- [x] Update encounter list views to show current status
 
-#### Phase 2B: Encounter Linking (1 day)
+#### Phase 2B: Encounter Linking (1 day) ✅
 
-- [ ] Add `linked_encounter_id` FK to Encounter model
-- [ ] Update check-in to auto-suggest linkable encounters
-- [ ] Display encounter timeline with linked visits
-- [ ] Add "Related Visits" section to encounter detail
+- [x] Add `linked_encounter_id` FK to Encounter model
+- [x] Update check-in to auto-suggest linkable encounters
+- [x] Display encounter timeline with linked visits
+- [x] Add "Related Visits" section to encounter detail
 
-#### Phase 2C: Skip-Triage Logic (0.5 days)
+#### Phase 2C: Skip-Triage Logic (0.5 days) ✅
 
-- [ ] Add `require_triage` field to visit reason config
-- [ ] Implement skip-triage routing in check-in
-- [ ] Update UI to show triage-skip badge
+- [x] Add `require_triage` field to visit reason config
+- [x] Implement skip-triage routing in check-in
+- [x] Update UI to show triage-skip badge
 
-#### Phase 2D: Visit Reason Taxonomy (0.5 days)
+#### Phase 2D: Visit Reason Taxonomy (0.5 days) ✅
 
-- [ ] Create `VisitReason` model/choices
-- [ ] Add `visit_reason` field to Encounter
-- [ ] Update check-in form with reason dropdown
-- [ ] Add reason to reporting filters
+- [x] Create `VisitReason` model/choices
+- [x] Add `visit_reason` field to Encounter
+- [x] Update check-in form with reason dropdown
+- [x] Add reason to reporting filters
 
 ---
 
