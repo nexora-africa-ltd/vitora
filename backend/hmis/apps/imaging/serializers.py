@@ -115,10 +115,10 @@ class ImagingOrderSerializer(serializers.ModelSerializer):
         ]
         read_only_fields = ["order_number", "ordered_at", "ordered_by"]
 
-    def get_patient_name(self, obj):
+    def get_patient_name(self, obj) -> str:
         return f"{obj.patient.first_name} {obj.patient.last_name}"
 
-    def get_ordered_by_name(self, obj):
+    def get_ordered_by_name(self, obj) -> str:
         return obj.ordered_by.get_full_name() or obj.ordered_by.username
 
 
@@ -349,10 +349,10 @@ class DICOMStudySerializer(serializers.ModelSerializer):
         ]
         read_only_fields = fields
 
-    def get_patient_name(self, obj):
+    def get_patient_name(self, obj) -> str:
         return f"{obj.patient.first_name} {obj.patient.last_name}"
 
-    def get_uploaded_by_name(self, obj):
+    def get_uploaded_by_name(self, obj) -> str:
         return obj.uploaded_by.get_full_name() or obj.uploaded_by.username
 
 

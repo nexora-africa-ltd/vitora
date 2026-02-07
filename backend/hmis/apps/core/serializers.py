@@ -2,6 +2,8 @@
 Serializers for core app.
 """
 
+
+from typing import Optional
 from django.contrib.auth.models import Permission
 from rest_framework import serializers
 
@@ -186,13 +188,13 @@ class DepartmentSerializer(serializers.ModelSerializer):
         ]
         read_only_fields = ["created_at", "updated_at", "staff_count"]
 
-    def get_head_name(self, obj):
+    def get_head_name(self, obj) -> Optional[str]:
         """Get department head name."""
         if obj.head:
             return obj.head.get_full_name()
         return None
 
-    def get_staff_count(self, obj):
+    def get_staff_count(self, obj) -> int:
         """Get active staff count."""
         return obj.get_staff_count()
 
@@ -283,11 +285,11 @@ class StaffProfileSerializer(serializers.ModelSerializer):
         ]
         read_only_fields = ["created_at", "updated_at", "is_license_valid"]
 
-    def get_full_name(self, obj):
+    def get_full_name(self, obj) -> str:
         """Get full name with title."""
         return obj.get_full_name()
 
-    def get_is_license_valid(self, obj):
+    def get_is_license_valid(self, obj) -> bool:
         """Check if license is valid."""
         return obj.is_license_valid()
 

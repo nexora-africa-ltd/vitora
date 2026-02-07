@@ -4,6 +4,8 @@ Serializers for the billing app.
 Following TDD - implemented to pass API tests.
 """
 
+
+from decimal import Decimal
 from rest_framework import serializers
 
 from hmis.apps.billing.models import (
@@ -78,7 +80,7 @@ class ServiceSerializer(serializers.ModelSerializer):
             "updated_at",
         ]
 
-    def get_is_available(self, obj):
+    def get_is_available(self, obj) -> bool:
         """Return is_available status from method."""
         return obj.is_available()
 
@@ -202,7 +204,7 @@ class InvoiceSerializer(serializers.ModelSerializer):
         ]
         extra_kwargs = {"due_date": {"required": False}, "invoice_date": {"required": False}}
 
-    def get_balance(self, obj):
+    def get_balance(self, obj) -> Decimal:
         """Calculate balance dynamically."""
         return obj.total_amount - obj.amount_paid
 

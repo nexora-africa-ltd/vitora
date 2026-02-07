@@ -4,6 +4,8 @@ Serializers for the check-in app.
 Sprint: Returning Patient Workflow - Sprint 1
 """
 
+
+from typing import Optional
 from rest_framework import serializers
 
 from hmis.apps.clinics.models import Clinic
@@ -70,7 +72,7 @@ class PatientLookupSerializer(serializers.ModelSerializer):
         ]
         read_only_fields = fields
 
-    def get_full_name(self, obj):
+    def get_full_name(self, obj) -> str:
         """Get patient's full name."""
         parts = [obj.first_name]
         if obj.middle_name:
@@ -78,7 +80,7 @@ class PatientLookupSerializer(serializers.ModelSerializer):
         parts.append(obj.last_name)
         return " ".join(parts)
 
-    def get_age(self, obj):
+    def get_age(self, obj) -> int:
         """Get patient's age in years."""
         from datetime import date
 
@@ -86,7 +88,7 @@ class PatientLookupSerializer(serializers.ModelSerializer):
         born = obj.date_of_birth
         return today.year - born.year - ((today.month, today.day) < (born.month, born.day))
 
-    def get_last_encounter_date(self, obj):
+    def get_last_encounter_date(self, obj) -> Optional[str]:
         """Get date of most recent encounter."""
         last_encounter = obj.encounters.order_by("-encounter_date").first()
         if last_encounter:
@@ -223,11 +225,11 @@ class CheckInResponseSerializer(serializers.ModelSerializer):
             "warning",
         ]
 
-    def get_patient_name(self, obj):
+    def get_patient_name(self, obj) -> str:
         """Get patient's full name."""
         return f"{obj.patient.first_name} {obj.patient.last_name}"
 
-    def get_destination(self, obj):
+    def get_destination(self, obj) -> str:
         """Get human-readable destination."""
         if obj.destination_type == "TRIAGE":
             return "TRIAGE"
@@ -235,7 +237,7 @@ class CheckInResponseSerializer(serializers.ModelSerializer):
             return obj.destination_clinic.name
         return obj.destination_type
 
-    def get_queue_position(self, obj):
+    def get_queue_position(self, obj) -> str:
         """Get current queue position."""
         # Calculate based on waiting queue or clinic visit
         if obj.waiting_queue_entry:
@@ -255,7 +257,7 @@ class CheckInResponseSerializer(serializers.ModelSerializer):
             ).count() + 1
         return 1
 
-    def get_estimated_wait_minutes(self, obj):
+    def get_estimated_wait_minutes(self, obj) -> int:
         """Estimate wait time based on queue position."""
         position = self.get_queue_position(obj)
         # Simple estimate: 10 minutes per person ahead
@@ -294,11 +296,11 @@ class TodayCheckinSerializer(serializers.ModelSerializer):
             "skip_triage",
         ]
 
-    def get_patient_name(self, obj):
+    def get_patient_name(self, obj) -> str:
         """Get patient's full name."""
         return f"{obj.patient.first_name} {obj.patient.last_name}"
 
-    def get_destination(self, obj):
+    def get_destination(self, obj) -> str:
         """Get human-readable destination."""
         if obj.destination_type == "TRIAGE":
             return "Triage"
@@ -306,7 +308,7 @@ class TodayCheckinSerializer(serializers.ModelSerializer):
             return obj.destination_clinic.name
         return obj.destination_type
 
-    def get_checked_in_by_name(self, obj):
+    def get_checked_in_by_name(self, obj) -> str:
         """Get name of staff who performed check-in."""
         if obj.checked_in_by:
             return obj.checked_in_by.get_full_name() or obj.checked_in_by.username

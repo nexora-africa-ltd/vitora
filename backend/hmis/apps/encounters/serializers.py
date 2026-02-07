@@ -198,7 +198,7 @@ class TreatmentPlanTemplateSerializer(serializers.ModelSerializer):
         ]
         read_only_fields = ["id", "created_at", "updated_at"]
 
-    def get_diagnosis_codes_display(self, obj):
+    def get_diagnosis_codes_display(self, obj) -> str:
         """Return diagnosis codes as list of code strings."""
         return [code.code for code in obj.diagnosis_codes.all()]
 

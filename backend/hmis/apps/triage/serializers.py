@@ -4,6 +4,8 @@ Serializers for triage app.
 Sprint 1.5-1.6 Track E: Triage Module MVP
 """
 
+
+from typing import Optional
 from decimal import Decimal
 
 from django.utils import timezone
@@ -49,15 +51,15 @@ class WaitingQueueSerializer(serializers.ModelSerializer):
         ]
         read_only_fields = ["created_at"]
 
-    def get_patient_name(self, obj):
+    def get_patient_name(self, obj) -> str:
         return f"{obj.patient.first_name} {obj.patient.last_name}"
 
-    def get_patient_age(self, obj):
+    def get_patient_age(self, obj) -> Optional[int]:
         if hasattr(obj.patient, "age"):
             return obj.patient.age
         return None
 
-    def get_wait_time_minutes(self, obj):
+    def get_wait_time_minutes(self, obj) -> int:
         delta = timezone.now() - obj.check_in_time
         return int(delta.total_seconds() / 60)
 
@@ -186,7 +188,7 @@ class TriageAssessmentSerializer(serializers.ModelSerializer):
         ]
         read_only_fields = ["auto_calculated_category", "alerts", "triaged_by"]
 
-    def get_vitals(self, obj):
+    def get_vitals(self, obj) -> dict:
         """Get vitals captured at triage (fallback to encounter vitals if needed)."""
         vitals = {}
 
@@ -223,11 +225,11 @@ class TriageAssessmentSerializer(serializers.ModelSerializer):
 
         return vitals
 
-    def get_wait_time_minutes(self, obj):
+    def get_wait_time_minutes(self, obj) -> int:
         """Get calculated wait time in minutes."""
         return obj.get_wait_time_minutes()
 
-    def get_is_wait_time_exceeded(self, obj):
+    def get_is_wait_time_exceeded(self, obj) -> bool:
         """Check if wait time exceeded target."""
         return obj.is_wait_time_exceeded()
 
@@ -555,12 +557,12 @@ class TriageQueueSerializer(serializers.ModelSerializer):
         ]
         read_only_fields = ["position", "created_at", "updated_at"]
 
-    def get_patient_name(self, obj):
+    def get_patient_name(self, obj) -> str:
         """Get patient full name."""
         patient = obj.triage_assessment.encounter.patient
         return f"{patient.first_name} {patient.last_name}"
 
-    def get_patient_age(self, obj):
+    def get_patient_age(self, obj) -> int:
         """Get patient age in years."""
         patient = obj.triage_assessment.encounter.patient
         if hasattr(patient, "age"):
@@ -579,7 +581,7 @@ class TriageQueueSerializer(serializers.ModelSerializer):
             return None
         return today.year - dob.year - ((today.month, today.day) < (dob.month, dob.day))
 
-    def get_assigned_area_display(self, obj):
+    def get_assigned_area_display(self, obj) -> str:
         """Get human-readable area name."""
         area = obj.triage_assessment.assigned_area
         area_labels = {
@@ -595,7 +597,7 @@ class TriageQueueSerializer(serializers.ModelSerializer):
         }
         return area_labels.get(area, area)
 
-    def get_wait_time_minutes(self, obj):
+    def get_wait_time_minutes(self, obj) -> int:
         """Calculate wait time in minutes since arrival."""
         arrival_time = obj.triage_assessment.arrival_time
         if not arrival_time:
@@ -606,7 +608,7 @@ class TriageQueueSerializer(serializers.ModelSerializer):
         diff = now - arrival_time
         return int(diff.total_seconds() / 60)
 
-    def get_alerts_count(self, obj):
+    def get_alerts_count(self, obj) -> int:
         """Get count of active alerts."""
         alerts = obj.triage_assessment.alerts or []
         return len(alerts) if isinstance(alerts, list) else 0
