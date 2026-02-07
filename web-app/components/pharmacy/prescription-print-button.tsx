@@ -79,13 +79,13 @@ export function PrescriptionPrintButton({
         prescription,
         patient: patient || {
           full_name: prescription.patient_name || 'Patient',
-          mrn: prescription.patient_mrn,
+          mrn: prescription.patient_mrn ?? undefined,
         },
         facility,
         clinician: clinician || {
           name: prescription.prescriber_name || 'Prescriber',
         },
-        encounterId: encounterId || prescription.encounter,
+        encounterId: encounterId ?? prescription.encounter ?? undefined,
         layout,
         theme,
       };
@@ -171,13 +171,13 @@ export function usePrintPrescription() {
       prescription,
       patient: options?.patient || {
         full_name: prescription.patient_name || 'Patient',
-        mrn: prescription.patient_mrn,
+        mrn: prescription.patient_mrn ?? undefined,
       },
       facility: options?.facility,
       clinician: options?.clinician || {
         name: prescription.prescriber_name || 'Prescriber',
       },
-      encounterId: options?.encounterId || prescription.encounter,
+      encounterId: options?.encounterId ?? prescription.encounter ?? undefined,
       layout: options?.layout || 'a4',
       theme: options?.theme || 'default',
     });

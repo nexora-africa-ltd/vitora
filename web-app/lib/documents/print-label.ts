@@ -301,7 +301,7 @@ export async function printLabel(options: PrintLabelOptions): Promise<Window | n
   const qrContent = getDispensingQRContent({
     id: dispensing.id,
     verification_url: verificationUrl || (dispensing as Dispensing & { verification_url?: string }).verification_url,
-    batch_number: dispensing.batch_number,
+    batch_number: dispensing.batch_number ?? undefined,
   });
 
   // Build render context
@@ -377,7 +377,7 @@ export async function previewLabel(options: PrintLabelOptions): Promise<string> 
   const qrContent = getDispensingQRContent({
     id: dispensing.id,
     verification_url: verificationUrl || (dispensing as Dispensing & { verification_url?: string }).verification_url,
-    batch_number: dispensing.batch_number,
+    batch_number: dispensing.batch_number ?? undefined,
   });
 
   const context: RenderContext = {
@@ -440,7 +440,7 @@ export async function printMultipleLabels(
     const qrContent = getDispensingQRContent({
       id: dispensing.id,
       verification_url: (dispensing as Dispensing & { verification_url?: string }).verification_url,
-      batch_number: dispensing.batch_number,
+      batch_number: dispensing.batch_number ?? undefined,
     });
 
     const context: RenderContext = {
