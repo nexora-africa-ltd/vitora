@@ -10,6 +10,14 @@ import {
   ClinicalTemplateListParams,
   ClinicalTemplateCreateData,
 } from '@/lib/types/clinical-template';
+import { parseResponse } from '@/lib/schemas/validation';
+import {
+  ClinicalTemplateSchema,
+  PaginatedClinicalTemplateSchema,
+} from '@/lib/schemas/core.schema';
+import { z } from 'zod';
+
+const ClinicalTemplateArraySchema = z.array(ClinicalTemplateSchema);
 
 export const clinicalTemplatesApi = {
   /**
@@ -20,7 +28,9 @@ export const clinicalTemplatesApi = {
       '/api/clinical-templates/',
       { params }
     );
-    return response.data;
+    return parseResponse(PaginatedClinicalTemplateSchema, response.data, {
+      context: 'clinicalTemplatesApi.list',
+    }) as PaginatedResponse<ClinicalTemplate>;
   },
 
   /**
@@ -30,7 +40,9 @@ export const clinicalTemplatesApi = {
     const response = await apiClient.get<ClinicalTemplate>(
       `/api/clinical-templates/${id}/`
     );
-    return response.data;
+    return parseResponse(ClinicalTemplateSchema, response.data, {
+      context: 'clinicalTemplatesApi.get',
+    }) as ClinicalTemplate;
   },
 
   /**
@@ -41,7 +53,10 @@ export const clinicalTemplatesApi = {
       '/api/clinical-templates/',
       { params: { search: query, template_type: templateType, is_active: true } }
     );
-    return response.data.results;
+    const validated = parseResponse(PaginatedClinicalTemplateSchema, response.data, {
+      context: 'clinicalTemplatesApi.search',
+    });
+    return validated.results as ClinicalTemplate[];
   },
 
   /**
@@ -52,7 +67,10 @@ export const clinicalTemplatesApi = {
       '/api/clinical-templates/',
       { params: { specialty, is_active: true } }
     );
-    return response.data.results;
+    const validated = parseResponse(PaginatedClinicalTemplateSchema, response.data, {
+      context: 'clinicalTemplatesApi.getBySpecialty',
+    });
+    return validated.results as ClinicalTemplate[];
   },
 
   /**
@@ -74,7 +92,10 @@ export const clinicalTemplatesApi = {
         },
       }
     );
-    return response.data.results;
+    const validated = parseResponse(PaginatedClinicalTemplateSchema, response.data, {
+      context: 'clinicalTemplatesApi.getSuggested',
+    });
+    return validated.results as ClinicalTemplate[];
   },
 
   /**
@@ -85,7 +106,9 @@ export const clinicalTemplatesApi = {
       '/api/clinical-templates/',
       data
     );
-    return response.data;
+    return parseResponse(ClinicalTemplateSchema, response.data, {
+      context: 'clinicalTemplatesApi.create',
+    }) as ClinicalTemplate;
   },
 
   /**
@@ -99,7 +122,9 @@ export const clinicalTemplatesApi = {
       `/api/clinical-templates/${id}/`,
       data
     );
-    return response.data;
+    return parseResponse(ClinicalTemplateSchema, response.data, {
+      context: 'clinicalTemplatesApi.update',
+    }) as ClinicalTemplate;
   },
 
   /**
