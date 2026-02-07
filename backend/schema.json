@@ -793,13 +793,48 @@ paths:
             passport_number: Passport number
             identification_type: Generic ID type (e.g., 'National ID', 'Passport', 'SHA Number')
             identification_number: ID value (used with identification_type)
+      parameters:
+      - in: query
+        name: client_number
+        schema:
+          type: string
+        description: CR client number
+      - in: query
+        name: huduma_number
+        schema:
+          type: string
+        description: Huduma Namba
+      - in: query
+        name: identification_number
+        schema:
+          type: string
+        description: ID value
+      - in: query
+        name: identification_type
+        schema:
+          type: string
+        description: Generic ID type
+      - in: query
+        name: national_id
+        schema:
+          type: string
+        description: Kenya National ID number
+      - in: query
+        name: passport_number
+        schema:
+          type: string
+        description: Passport number
       tags:
       - api
       security:
       - jwtAuth: []
       responses:
         '200':
-          description: No response body
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ClientRegistryResponse'
+          description: ''
     post:
       operationId: api_billing_client_registry_fetch_create
       description: |-
@@ -859,13 +894,48 @@ paths:
             passport_number: Passport number
             identification_type: Generic ID type (e.g., 'National ID', 'Passport', 'SHA Number')
             identification_number: ID value (used with identification_type)
+      parameters:
+      - in: query
+        name: client_number
+        schema:
+          type: string
+        description: CR client number
+      - in: query
+        name: huduma_number
+        schema:
+          type: string
+        description: Huduma Namba
+      - in: query
+        name: identification_number
+        schema:
+          type: string
+        description: ID value
+      - in: query
+        name: identification_type
+        schema:
+          type: string
+        description: Generic ID type
+      - in: query
+        name: national_id
+        schema:
+          type: string
+        description: Kenya National ID number
+      - in: query
+        name: passport_number
+        schema:
+          type: string
+        description: Passport number
       tags:
       - api
       security:
       - jwtAuth: []
       responses:
         '200':
-          description: No response body
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ClientRegistryResponse'
+          description: ''
     post:
       operationId: api_billing_client_registry_register_create
       description: |-
@@ -925,13 +995,48 @@ paths:
             passport_number: Passport number
             identification_type: Generic ID type (e.g., 'National ID', 'Passport', 'SHA Number')
             identification_number: ID value (used with identification_type)
+      parameters:
+      - in: query
+        name: client_number
+        schema:
+          type: string
+        description: CR client number
+      - in: query
+        name: huduma_number
+        schema:
+          type: string
+        description: Huduma Namba
+      - in: query
+        name: identification_number
+        schema:
+          type: string
+        description: ID value
+      - in: query
+        name: identification_type
+        schema:
+          type: string
+        description: Generic ID type
+      - in: query
+        name: national_id
+        schema:
+          type: string
+        description: Kenya National ID number
+      - in: query
+        name: passport_number
+        schema:
+          type: string
+        description: Passport number
       tags:
       - api
       security:
       - jwtAuth: []
       responses:
         '200':
-          description: No response body
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ClientRegistryResponse'
+          description: ''
     post:
       operationId: api_billing_client_registry_update_create
       description: |-
@@ -1265,13 +1370,38 @@ paths:
         Note:
             The DHA API requires 'National ID' as the identification_type value,
             not just 'ID'. Using 'ID' may cause timeouts or errors.
+      parameters:
+      - in: query
+        name: identification_number
+        schema:
+          type: string
+        description: National ID or Passport number
+      - in: query
+        name: identification_type
+        schema:
+          type: string
+        description: '''National ID'' or ''passport'''
+      - in: query
+        name: license_number
+        schema:
+          type: string
+        description: License number (alias for registration_number)
+      - in: query
+        name: registration_number
+        schema:
+          type: string
+        description: Registration number (PUID)
       tags:
       - api
       security:
       - jwtAuth: []
       responses:
         '200':
-          description: No response body
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PractitionerSearchResponse'
+          description: ''
   /api/billing/eligibility/check/:
     post:
       operationId: api_billing_eligibility_check_create
@@ -1285,11 +1415,26 @@ paths:
         }
       tags:
       - api
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/EligibilityCheckRequestRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/EligibilityCheckRequestRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/EligibilityCheckRequestRequest'
       security:
       - jwtAuth: []
       responses:
         '200':
-          description: No response body
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EligibilityCheckResponse'
+          description: ''
   /api/billing/eligibility/direct/:
     get:
       operationId: api_billing_eligibility_direct_retrieve
@@ -1316,13 +1461,38 @@ paths:
                 "is_employed": true,
                 "error": null
             }
+      parameters:
+      - in: query
+        name: identification_number
+        schema:
+          type: string
+        description: ID value
+      - in: query
+        name: identification_type
+        schema:
+          type: string
+        description: Custom ID type
+      - in: query
+        name: national_id
+        schema:
+          type: string
+        description: Kenya National ID number
+      - in: query
+        name: sha_number
+        schema:
+          type: string
+        description: SHA/CR number
       tags:
       - api
       security:
       - jwtAuth: []
       responses:
         '200':
-          description: No response body
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DirectEligibilityResponse'
+          description: ''
   /api/billing/facility/validate/:
     get:
       operationId: api_billing_facility_validate_retrieve
@@ -1330,13 +1500,28 @@ paths:
         Search/validate facility in Master Facility List.
 
         GET /api/billing/facility/validate/?facility_code=XXXXX
+      parameters:
+      - in: query
+        name: facility_code
+        schema:
+          type: string
+        description: Facility code
+      - in: query
+        name: fid
+        schema:
+          type: string
+        description: Facility ID
       tags:
       - api
       security:
       - jwtAuth: []
       responses:
         '200':
-          description: No response body
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FacilitySearchResponse'
+          description: ''
   /api/billing/invoices/:
     get:
       operationId: api_billing_invoices_list
@@ -1852,11 +2037,27 @@ paths:
         }
       tags:
       - api
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/MpesaInitiateRequestRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/MpesaInitiateRequestRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/MpesaInitiateRequestRequest'
+        required: true
       security:
       - jwtAuth: []
       responses:
         '200':
-          description: No response body
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MpesaInitiateResponse'
+          description: ''
   /api/billing/mpesa/query/{checkout_request_id}/:
     get:
       operationId: api_billing_mpesa_query_retrieve
@@ -2313,13 +2514,38 @@ paths:
         Note:
             The DHA API requires 'National ID' as the identification_type value,
             not just 'ID'. Using 'ID' may cause timeouts or errors.
+      parameters:
+      - in: query
+        name: identification_number
+        schema:
+          type: string
+        description: National ID or Passport number
+      - in: query
+        name: identification_type
+        schema:
+          type: string
+        description: '''National ID'' or ''passport'''
+      - in: query
+        name: license_number
+        schema:
+          type: string
+        description: License number (alias for registration_number)
+      - in: query
+        name: registration_number
+        schema:
+          type: string
+        description: Registration number (PUID)
       tags:
       - api
       security:
       - jwtAuth: []
       responses:
         '200':
-          description: No response body
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PractitionerSearchResponse'
+          description: ''
   /api/billing/reports/daily-closure/:
     get:
       operationId: api_billing_reports_daily_closure_retrieve
@@ -2335,13 +2561,26 @@ paths:
     get:
       operationId: api_billing_reports_daily_collection_retrieve
       description: Get daily collection report.
+      parameters:
+      - in: query
+        name: date
+        schema:
+          type: string
+          format: date
+        description: Report date (YYYY-MM-DD)
+        required: true
       tags:
       - api
       security:
       - jwtAuth: []
       responses:
         '200':
-          description: No response body
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: {}
+          description: ''
   /api/billing/reports/discrepancies/:
     get:
       operationId: api_billing_reports_discrepancies_retrieve
@@ -2363,40 +2602,105 @@ paths:
       - jwtAuth: []
       responses:
         '200':
-          description: No response body
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: {}
+          description: ''
   /api/billing/reports/payment-analysis/:
     get:
       operationId: api_billing_reports_payment_analysis_retrieve
       description: Get payment method analysis.
+      parameters:
+      - in: query
+        name: end_date
+        schema:
+          type: string
+          format: date
+        description: End date (YYYY-MM-DD)
+        required: true
+      - in: query
+        name: start_date
+        schema:
+          type: string
+          format: date
+        description: Start date (YYYY-MM-DD)
+        required: true
       tags:
       - api
       security:
       - jwtAuth: []
       responses:
         '200':
-          description: No response body
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: {}
+          description: ''
   /api/billing/reports/revenue-summary/:
     get:
       operationId: api_billing_reports_revenue_summary_retrieve
       description: Get revenue summary for date range.
+      parameters:
+      - in: query
+        name: end_date
+        schema:
+          type: string
+          format: date
+        description: End date (YYYY-MM-DD)
+        required: true
+      - in: query
+        name: start_date
+        schema:
+          type: string
+          format: date
+        description: Start date (YYYY-MM-DD)
+        required: true
       tags:
       - api
       security:
       - jwtAuth: []
       responses:
         '200':
-          description: No response body
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: {}
+          description: ''
   /api/billing/reports/service-utilization/:
     get:
       operationId: api_billing_reports_service_utilization_retrieve
       description: Get service utilization report.
+      parameters:
+      - in: query
+        name: end_date
+        schema:
+          type: string
+          format: date
+        description: End date (YYYY-MM-DD)
+        required: true
+      - in: query
+        name: start_date
+        schema:
+          type: string
+          format: date
+        description: Start date (YYYY-MM-DD)
+        required: true
       tags:
       - api
       security:
       - jwtAuth: []
       responses:
         '200':
-          description: No response body
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: {}
+          description: ''
   /api/billing/reports/unbilled-services/:
     get:
       operationId: api_billing_reports_unbilled_services_retrieve
@@ -3256,6 +3560,16 @@ paths:
 
         Types: icd11, loinc, ichi, interventions, drugs, active-components
       parameters:
+      - in: query
+        name: limit
+        schema:
+          type: integer
+        description: Max results (default 50)
+      - in: query
+        name: search
+        schema:
+          type: string
+        description: Search query (min 2 characters)
       - in: path
         name: terminology_type
         schema:
@@ -3267,18 +3581,33 @@ paths:
       - jwtAuth: []
       responses:
         '200':
-          description: No response body
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TerminologySearchResponse'
+          description: ''
   /api/checkin/lookup/:
     get:
       operationId: api_checkin_lookup_retrieve
       description: Look up a patient by MRN, ID, phone, or name.
+      parameters:
+      - in: query
+        name: q
+        schema:
+          type: string
+        description: Search query (MRN, ID, phone, or name)
+        required: true
       tags:
       - api
       security:
       - jwtAuth: []
       responses:
         '200':
-          description: No response body
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PatientLookup'
+          description: ''
   /api/checkin/patients/{patient_id}/checkin/:
     post:
       operationId: api_checkin_patients_checkin_create
@@ -3291,11 +3620,27 @@ paths:
         required: true
       tags:
       - api
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CheckInRequestRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/CheckInRequestRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/CheckInRequestRequest'
+        required: true
       security:
       - jwtAuth: []
       responses:
         '200':
-          description: No response body
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CheckInResponse'
+          description: ''
   /api/checkin/today/:
     get:
       operationId: api_checkin_today_list
@@ -5760,13 +6105,44 @@ paths:
             types (str): Comma-separated list of activity types to filter
             actions (str): Comma-separated list of actions to filter
             refresh (bool): Bypass cache and fetch fresh data
+      parameters:
+      - in: query
+        name: actions
+        schema:
+          type: string
+        description: Comma-separated list of actions to filter
+      - in: query
+        name: limit
+        schema:
+          type: integer
+        description: 'Number of items to return (default: 20, max: 100)'
+      - in: query
+        name: offset
+        schema:
+          type: integer
+        description: 'Pagination offset (default: 0)'
+      - in: query
+        name: refresh
+        schema:
+          type: boolean
+        description: Bypass cache
+      - in: query
+        name: types
+        schema:
+          type: string
+        description: Comma-separated list of activity types to filter
       tags:
       - api
       security:
       - jwtAuth: []
       responses:
         '200':
-          description: No response body
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: {}
+          description: ''
   /api/core/dashboard/patient-volume/:
     get:
       operationId: api_core_dashboard_patient_volume_retrieve
@@ -5798,13 +6174,43 @@ paths:
                     ...
                 ]
             }
+      parameters:
+      - in: query
+        name: end_date
+        schema:
+          type: string
+          format: date
+        description: End date (YYYY-MM-DD)
+        required: true
+      - in: query
+        name: granularity
+        schema:
+          type: string
+        description: '''day'', ''week'', or ''month'''
+      - in: query
+        name: refresh
+        schema:
+          type: boolean
+        description: Bypass cache
+      - in: query
+        name: start_date
+        schema:
+          type: string
+          format: date
+        description: Start date (YYYY-MM-DD)
+        required: true
       tags:
       - api
       security:
       - jwtAuth: []
       responses:
         '200':
-          description: No response body
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: {}
+          description: ''
   /api/core/dashboard/revenue-breakdown/:
     get:
       operationId: api_core_dashboard_revenue_breakdown_retrieve
@@ -5836,13 +6242,43 @@ paths:
                     ...
                 ]
             }
+      parameters:
+      - in: query
+        name: end_date
+        schema:
+          type: string
+          format: date
+        description: End date (YYYY-MM-DD)
+        required: true
+      - in: query
+        name: group_by
+        schema:
+          type: string
+        description: '''category'', ''item_type'', or ''payment_method'''
+      - in: query
+        name: refresh
+        schema:
+          type: boolean
+        description: Bypass cache
+      - in: query
+        name: start_date
+        schema:
+          type: string
+          format: date
+        description: Start date (YYYY-MM-DD)
+        required: true
       tags:
       - api
       security:
       - jwtAuth: []
       responses:
         '200':
-          description: No response body
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: {}
+          description: ''
   /api/core/dashboard/stats/:
     get:
       operationId: api_core_dashboard_stats_retrieve
@@ -5860,13 +6296,24 @@ paths:
 
         Query Parameters:
             refresh (bool): Bypass cache and compute fresh stats
+      parameters:
+      - in: query
+        name: refresh
+        schema:
+          type: boolean
+        description: Bypass cache and compute fresh stats
       tags:
       - api
       security:
       - jwtAuth: []
       responses:
         '200':
-          description: No response body
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: {}
+          description: ''
   /api/core/departments/:
     get:
       operationId: api_core_departments_list
@@ -6275,13 +6722,28 @@ paths:
 
         Returns:
             JSON: {"case_number": "FAC-RTA-0001/2026"}
+      parameters:
+      - in: query
+        name: facility_code
+        schema:
+          type: string
+        description: Optional facility code override
+      - in: query
+        name: prefix
+        schema:
+          type: string
+        description: Case type prefix (e.g., 'GBV', 'RTA', 'TRAUMA')
       tags:
       - api
       security:
       - jwtAuth: []
       responses:
         '200':
-          description: No response body
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CaseNumberResponse'
+          description: ''
   /api/core/generate/prc-number/:
     get:
       operationId: api_core_generate_prc_number_retrieve
@@ -6296,13 +6758,23 @@ paths:
 
         Returns:
             JSON: {"prc_number": "FAC-PRC-0001/2026"}
+      parameters:
+      - in: query
+        name: facility_code
+        schema:
+          type: string
+        description: Optional facility code override
       tags:
       - api
       security:
       - jwtAuth: []
       responses:
         '200':
-          description: No response body
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PRCNumberResponse'
+          description: ''
   /api/core/notifications/:
     get:
       operationId: api_core_notifications_list
@@ -7017,13 +7489,49 @@ paths:
                 "date": "2026-01-22",
                 "message": "Document is valid and authentic"
             }
+      parameters:
+      - in: query
+        name: amount
+        schema:
+          type: string
+        description: Amount as string
+      - in: query
+        name: date
+        schema:
+          type: string
+          format: date
+        description: Date (YYYY-MM-DD)
+      - in: query
+        name: number
+        schema:
+          type: string
+        description: Document number
+      - in: query
+        name: qr_data
+        schema:
+          type: string
+        description: Full QR code string
+      - in: query
+        name: signature
+        schema:
+          type: string
+        description: 8-character hex signature
+      - in: query
+        name: type
+        schema:
+          type: string
+        description: Document type ('RECEIPT' or 'INVOICE')
       tags:
       - api
       security:
       - jwtAuth: []
       responses:
         '200':
-          description: No response body
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/VerifyDocumentResponse'
+          description: ''
     post:
       operationId: api_core_verify_create
       description: |-
@@ -7054,13 +7562,60 @@ paths:
                 "date": "2026-01-22",
                 "message": "Document is valid and authentic"
             }
+      parameters:
+      - in: query
+        name: amount
+        schema:
+          type: string
+        description: Amount as string
+      - in: query
+        name: date
+        schema:
+          type: string
+          format: date
+        description: Date (YYYY-MM-DD)
+      - in: query
+        name: number
+        schema:
+          type: string
+        description: Document number
+      - in: query
+        name: qr_data
+        schema:
+          type: string
+        description: Full QR code string
+      - in: query
+        name: signature
+        schema:
+          type: string
+        description: 8-character hex signature
+      - in: query
+        name: type
+        schema:
+          type: string
+        description: Document type ('RECEIPT' or 'INVOICE')
       tags:
       - api
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/VerifyDocumentRequestRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/VerifyDocumentRequestRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/VerifyDocumentRequestRequest'
       security:
       - jwtAuth: []
       responses:
         '200':
-          description: No response body
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/VerifyDocumentResponse'
+          description: ''
   /api/departments/:
     get:
       operationId: api_departments_list
@@ -7750,7 +8305,11 @@ paths:
       - jwtAuth: []
       responses:
         '200':
-          description: No response body
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TreatmentPlan'
+          description: ''
     post:
       operationId: api_encounters_treatment_plan_create
       description: Create treatment plan for encounter.
@@ -7762,11 +8321,27 @@ paths:
         required: true
       tags:
       - api
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TreatmentPlanRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/TreatmentPlanRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/TreatmentPlanRequest'
+        required: true
       security:
       - jwtAuth: []
       responses:
-        '200':
-          description: No response body
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TreatmentPlan'
+          description: ''
     put:
       operationId: api_encounters_treatment_plan_update
       description: Full update of treatment plan.
@@ -7778,11 +8353,27 @@ paths:
         required: true
       tags:
       - api
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TreatmentPlanRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/TreatmentPlanRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/TreatmentPlanRequest'
+        required: true
       security:
       - jwtAuth: []
       responses:
         '200':
-          description: No response body
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TreatmentPlan'
+          description: ''
     patch:
       operationId: api_encounters_treatment_plan_partial_update
       description: Partially update treatment plan.
@@ -7794,11 +8385,26 @@ paths:
         required: true
       tags:
       - api
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PatchedTreatmentPlanRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/PatchedTreatmentPlanRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/PatchedTreatmentPlanRequest'
       security:
       - jwtAuth: []
       responses:
         '200':
-          description: No response body
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TreatmentPlan'
+          description: ''
   /api/encounters/{encounter_pk}/treatment-plan/apply-template/:
     post:
       operationId: api_encounters_treatment_plan_apply_template_create
@@ -7811,11 +8417,27 @@ paths:
         required: true
       tags:
       - api
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ApplyTemplateRequestRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/ApplyTemplateRequestRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/ApplyTemplateRequestRequest'
+        required: true
       security:
       - jwtAuth: []
       responses:
         '200':
-          description: No response body
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TreatmentPlan'
+          description: ''
   /api/encounters/{encounter_pk}/treatment-plan/medications/:
     get:
       operationId: api_encounters_treatment_plan_medications_list
@@ -9043,13 +9665,30 @@ paths:
         Query params:
             date: Date to show (YYYY-MM-DD, defaults to today)
             modality: Optional filter by modality (XR, CT, MRI, etc.)
+      parameters:
+      - in: query
+        name: date
+        schema:
+          type: string
+          format: date
+        description: Date to show (YYYY-MM-DD, defaults to today)
+      - in: query
+        name: modality
+        schema:
+          type: string
+        description: Filter by modality (XR, CT, MRI, etc.)
       tags:
       - api
       security:
       - jwtAuth: []
       responses:
         '200':
-          description: No response body
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: {}
+          description: ''
   /api/imaging/dicom/{sop_instance_uid}/:
     get:
       operationId: api_imaging_dicom_retrieve
@@ -9067,7 +9706,13 @@ paths:
       - jwtAuth: []
       responses:
         '200':
-          description: No response body
+          content:
+            application/json:
+              schema:
+                type: string
+                format: binary
+                description: DICOM file
+          description: ''
   /api/imaging/orders/:
     get:
       operationId: api_imaging_orders_list
@@ -9553,7 +10198,8 @@ paths:
       - in: path
         name: id
         schema:
-          type: string
+          type: integer
+        description: A unique integer value identifying this Scheduling Resource.
         required: true
       tags:
       - api
@@ -9578,7 +10224,8 @@ paths:
       - in: path
         name: id
         schema:
-          type: string
+          type: integer
+        description: A unique integer value identifying this Scheduling Resource.
         required: true
       tags:
       - api
@@ -9605,7 +10252,8 @@ paths:
       - in: path
         name: id
         schema:
-          type: string
+          type: integer
+        description: A unique integer value identifying this Scheduling Resource.
         required: true
       tags:
       - api
@@ -9630,7 +10278,8 @@ paths:
       - in: path
         name: id
         schema:
-          type: string
+          type: integer
+        description: A unique integer value identifying this Scheduling Resource.
         required: true
       tags:
       - api
@@ -9800,11 +10449,31 @@ paths:
       description: Upload one or more DICOM files.
       tags:
       - api
+      requestBody:
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              properties:
+                files:
+                  type: array
+                  items:
+                    type: string
+                    format: binary
+                imaging_order:
+                  type: integer
+                patient:
+                  type: integer
       security:
       - jwtAuth: []
       responses:
         '200':
-          description: No response body
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: {}
+          description: ''
   /api/inpatient/admission-recommendations/:
     get:
       operationId: api_inpatient_admission_recommendations_list
@@ -15015,27 +15684,70 @@ paths:
       - jwtAuth: []
       responses:
         '200':
-          description: No response body
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: {}
+          description: ''
     put:
       operationId: api_pharmacy_alert_settings_update
       description: Update alert settings (full update).
       tags:
       - api
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: {}
+          application/x-www-form-urlencoded:
+            schema:
+              type: object
+              additionalProperties: {}
+          multipart/form-data:
+            schema:
+              type: object
+              additionalProperties: {}
       security:
       - jwtAuth: []
       responses:
         '200':
-          description: No response body
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: {}
+          description: ''
     patch:
       operationId: api_pharmacy_alert_settings_partial_update
       description: Update alert settings (partial update).
       tags:
       - api
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: {}
+          application/x-www-form-urlencoded:
+            schema:
+              type: object
+              additionalProperties: {}
+          multipart/form-data:
+            schema:
+              type: object
+              additionalProperties: {}
       security:
       - jwtAuth: []
       responses:
         '200':
-          description: No response body
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: {}
+          description: ''
   /api/pharmacy/alerts/:
     get:
       operationId: api_pharmacy_alerts_list
@@ -16357,35 +17069,82 @@ paths:
     get:
       operationId: api_pharmacy_reports_dispensing_retrieve
       description: Get dispensing records with optional date range filtering.
+      parameters:
+      - in: query
+        name: end_date
+        schema:
+          type: string
+          format: date
+        description: End date (YYYY-MM-DD)
+      - in: query
+        name: start_date
+        schema:
+          type: string
+          format: date
+        description: Start date (YYYY-MM-DD)
       tags:
       - api
       security:
       - jwtAuth: []
       responses:
         '200':
-          description: No response body
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: {}
+          description: ''
   /api/pharmacy/reports/expiry-report/:
     get:
       operationId: api_pharmacy_reports_expiry_report_retrieve
       description: Get batches expiring within specified days (default 90).
+      parameters:
+      - in: query
+        name: days
+        schema:
+          type: integer
+        description: Days threshold (default 90)
       tags:
       - api
       security:
       - jwtAuth: []
       responses:
         '200':
-          description: No response body
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: {}
+          description: ''
   /api/pharmacy/reports/movement/:
     get:
       operationId: api_pharmacy_reports_movement_retrieve
       description: Get stock movements (received, dispensed, adjusted).
+      parameters:
+      - in: query
+        name: end_date
+        schema:
+          type: string
+          format: date
+        description: End date (YYYY-MM-DD)
+      - in: query
+        name: start_date
+        schema:
+          type: string
+          format: date
+        description: Start date (YYYY-MM-DD)
       tags:
       - api
       security:
       - jwtAuth: []
       responses:
         '200':
-          description: No response body
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: {}
+          description: ''
   /api/pharmacy/reports/stock-summary/:
     get:
       operationId: api_pharmacy_reports_stock_summary_retrieve
@@ -16396,7 +17155,12 @@ paths:
       - jwtAuth: []
       responses:
         '200':
-          description: No response body
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: {}
+          description: ''
   /api/pharmacy/stock/:
     get:
       operationId: api_pharmacy_stock_list
@@ -17985,11 +18749,28 @@ paths:
         }
       tags:
       - api
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AutoAssignRequestRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/AutoAssignRequestRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/AutoAssignRequestRequest'
+        required: true
       security:
       - jwtAuth: []
       responses:
         '200':
-          description: No response body
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: {}
+          description: ''
   /api/scheduling/assignments/manual-override/:
     post:
       operationId: api_scheduling_assignments_manual_override_create
@@ -18699,11 +19480,29 @@ paths:
         }
       tags:
       - api
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: {}
+          application/x-www-form-urlencoded:
+            schema:
+              type: object
+              additionalProperties: {}
+          multipart/form-data:
+            schema:
+              type: object
+              additionalProperties: {}
       security:
       - jwtAuth: []
       responses:
         '200':
-          description: No response body
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/WebhookResponse'
+          description: ''
   /api/sha/claims/:
     get:
       operationId: api_sha_claims_list
@@ -19413,13 +20212,48 @@ paths:
             passport_number: Passport number
             identification_type: Generic ID type (e.g., 'National ID', 'Passport', 'SHA Number')
             identification_number: ID value (used with identification_type)
+      parameters:
+      - in: query
+        name: client_number
+        schema:
+          type: string
+        description: CR client number
+      - in: query
+        name: huduma_number
+        schema:
+          type: string
+        description: Huduma Namba
+      - in: query
+        name: identification_number
+        schema:
+          type: string
+        description: ID value
+      - in: query
+        name: identification_type
+        schema:
+          type: string
+        description: Generic ID type
+      - in: query
+        name: national_id
+        schema:
+          type: string
+        description: Kenya National ID number
+      - in: query
+        name: passport_number
+        schema:
+          type: string
+        description: Passport number
       tags:
       - api
       security:
       - jwtAuth: []
       responses:
         '200':
-          description: No response body
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ClientRegistryResponse'
+          description: ''
     post:
       operationId: api_sha_client_registry_fetch_create
       description: |-
@@ -19479,13 +20313,48 @@ paths:
             passport_number: Passport number
             identification_type: Generic ID type (e.g., 'National ID', 'Passport', 'SHA Number')
             identification_number: ID value (used with identification_type)
+      parameters:
+      - in: query
+        name: client_number
+        schema:
+          type: string
+        description: CR client number
+      - in: query
+        name: huduma_number
+        schema:
+          type: string
+        description: Huduma Namba
+      - in: query
+        name: identification_number
+        schema:
+          type: string
+        description: ID value
+      - in: query
+        name: identification_type
+        schema:
+          type: string
+        description: Generic ID type
+      - in: query
+        name: national_id
+        schema:
+          type: string
+        description: Kenya National ID number
+      - in: query
+        name: passport_number
+        schema:
+          type: string
+        description: Passport number
       tags:
       - api
       security:
       - jwtAuth: []
       responses:
         '200':
-          description: No response body
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ClientRegistryResponse'
+          description: ''
     post:
       operationId: api_sha_client_registry_register_create
       description: |-
@@ -19540,11 +20409,26 @@ paths:
         }
       tags:
       - api
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/EligibilityCheckRequestRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/EligibilityCheckRequestRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/EligibilityCheckRequestRequest'
       security:
       - jwtAuth: []
       responses:
         '200':
-          description: No response body
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EligibilityCheckResponse'
+          description: ''
   /api/sha/facility/validate/:
     get:
       operationId: api_sha_facility_validate_retrieve
@@ -19552,13 +20436,28 @@ paths:
         Search/validate facility in Master Facility List.
 
         GET /api/billing/facility/validate/?facility_code=XXXXX
+      parameters:
+      - in: query
+        name: facility_code
+        schema:
+          type: string
+        description: Facility code
+      - in: query
+        name: fid
+        schema:
+          type: string
+        description: Facility ID
       tags:
       - api
       security:
       - jwtAuth: []
       responses:
         '200':
-          description: No response body
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FacilitySearchResponse'
+          description: ''
   /api/sha/members/:
     get:
       operationId: api_sha_members_list
@@ -19863,13 +20762,38 @@ paths:
         Note:
             The DHA API requires 'National ID' as the identification_type value,
             not just 'ID'. Using 'ID' may cause timeouts or errors.
+      parameters:
+      - in: query
+        name: identification_number
+        schema:
+          type: string
+        description: National ID or Passport number
+      - in: query
+        name: identification_type
+        schema:
+          type: string
+        description: '''National ID'' or ''passport'''
+      - in: query
+        name: license_number
+        schema:
+          type: string
+        description: License number (alias for registration_number)
+      - in: query
+        name: registration_number
+        schema:
+          type: string
+        description: Registration number (PUID)
       tags:
       - api
       security:
       - jwtAuth: []
       responses:
         '200':
-          description: No response body
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PractitionerSearchResponse'
+          description: ''
   /api/sha/tariffs/:
     get:
       operationId: api_sha_tariffs_list
@@ -20042,6 +20966,16 @@ paths:
 
         Types: icd11, loinc, ichi, interventions, drugs, active-components
       parameters:
+      - in: query
+        name: limit
+        schema:
+          type: integer
+        description: Max results (default 50)
+      - in: query
+        name: search
+        schema:
+          type: string
+        description: Search query (min 2 characters)
       - in: path
         name: terminology_type
         schema:
@@ -20053,7 +20987,11 @@ paths:
       - jwtAuth: []
       responses:
         '200':
-          description: No response body
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TerminologySearchResponse'
+          description: ''
   /api/sha/validate/:
     get:
       operationId: api_sha_validate_retrieve
@@ -20067,7 +21005,11 @@ paths:
       - jwtAuth: []
       responses:
         '200':
-          description: No response body
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SHAValidateGetResponse'
+          description: ''
     post:
       operationId: api_sha_validate_create
       description: |-
@@ -20076,11 +21018,29 @@ paths:
         DHA may send test claims to verify integration.
       tags:
       - api
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: {}
+          application/x-www-form-urlencoded:
+            schema:
+              type: object
+              additionalProperties: {}
+          multipart/form-data:
+            schema:
+              type: object
+              additionalProperties: {}
       security:
       - jwtAuth: []
       responses:
         '200':
-          description: No response body
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SHAValidatePostResponse'
+          description: ''
   /api/sha/webhook/:
     post:
       operationId: api_sha_webhook_create
@@ -20115,11 +21075,29 @@ paths:
         }
       tags:
       - api
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: {}
+          application/x-www-form-urlencoded:
+            schema:
+              type: object
+              additionalProperties: {}
+          multipart/form-data:
+            schema:
+              type: object
+              additionalProperties: {}
       security:
       - jwtAuth: []
       responses:
         '200':
-          description: No response body
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/WebhookResponse'
+          description: ''
   /api/staff/:
     get:
       operationId: api_staff_list
@@ -21368,7 +22346,12 @@ paths:
       - jwtAuth: []
       responses:
         '200':
-          description: No response body
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: {}
+          description: ''
   /api/triage/reports/wait-times/:
     get:
       operationId: api_triage_reports_wait_times_retrieve
@@ -21379,7 +22362,12 @@ paths:
       - jwtAuth: []
       responses:
         '200':
-          description: No response body
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: {}
+          description: ''
   /api/triage/vital-thresholds/:
     get:
       operationId: api_triage_vital_thresholds_list
@@ -21910,7 +22898,12 @@ paths:
       - {}
       responses:
         '200':
-          description: No response body
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: {}
+          description: ''
   /smart/introspect:
     post:
       operationId: smart_introspect_create
@@ -21921,11 +22914,30 @@ paths:
         - token: The access token to introspect
       tags:
       - smart
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: {}
+          application/x-www-form-urlencoded:
+            schema:
+              type: object
+              additionalProperties: {}
+          multipart/form-data:
+            schema:
+              type: object
+              additionalProperties: {}
       security:
       - jwtAuth: []
       responses:
         '200':
-          description: No response body
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: {}
+          description: ''
   /smart/launch:
     get:
       operationId: smart_launch_retrieve
@@ -21942,7 +22954,12 @@ paths:
       - {}
       responses:
         '200':
-          description: No response body
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: {}
+          description: ''
   /smart/launch-context:
     post:
       operationId: smart_launch_context_create
@@ -21955,11 +22972,30 @@ paths:
         - app_client_id: Target app's client ID
       tags:
       - smart
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: {}
+          application/x-www-form-urlencoded:
+            schema:
+              type: object
+              additionalProperties: {}
+          multipart/form-data:
+            schema:
+              type: object
+              additionalProperties: {}
       security:
       - jwtAuth: []
       responses:
         '200':
-          description: No response body
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: {}
+          description: ''
 components:
   schemas:
     AdjustmentTypeEnum:
@@ -22389,6 +23425,13 @@ components:
         * `BED_ASSIGNMENT` - Bed to Admission
         * `LAB_BATCH` - Lab Technician to Test Batch
         * `THEATRE_SLOT` - Theatre to Procedure
+    ApplyTemplateRequestRequest:
+      type: object
+      properties:
+        template_id:
+          type: integer
+      required:
+      - template_id
     Appointment:
       type: object
       description: Serializer for Appointment model.
@@ -23480,6 +24523,31 @@ components:
       - user
       - user_agent
       - username
+    AutoAssignRequestRequest:
+      type: object
+      properties:
+        assignment_type:
+          type: string
+          minLength: 1
+        patient_id:
+          type: integer
+        scheduled_start:
+          type: string
+          format: date-time
+        scheduled_end:
+          type: string
+          format: date-time
+        reason:
+          type: string
+          minLength: 1
+        candidate_ids:
+          type: array
+          items:
+            type: integer
+      required:
+      - assignment_type
+      - scheduled_end
+      - scheduled_start
     AutoCalculatedCategoryEnum:
       enum:
       - RED
@@ -23649,6 +24717,13 @@ components:
         * `LOWER_EXTREMITY` - Lower Extremity
         * `WHOLE_BODY` - Whole Body
         * `OTHER` - Other
+    CaseNumberResponse:
+      type: object
+      properties:
+        case_number:
+          type: string
+      required:
+      - case_number
     Category6daEnum:
       enum:
       - HEMATOLOGY
@@ -23687,6 +24762,152 @@ components:
         * `provisional` - Provisional
         * `ruled_out` - Ruled Out
         * `suspected` - Suspected
+    CheckInRequestRequest:
+      type: object
+      description: |-
+        Serializer for patient check-in request.
+
+        Validates the check-in request data and handles
+        destination routing.
+      properties:
+        destination:
+          type: string
+          minLength: 1
+          description: TRIAGE or clinic ID
+        visit_type:
+          nullable: true
+          description: |-
+            Visit type (auto-detected if not provided)
+
+            * `NEW` - New Patient
+            * `RETURN` - Returning Patient
+            * `FOLLOW_UP` - Follow-up Visit
+            * `EMERGENCY` - Emergency
+            * `SCHEDULED` - Scheduled Appointment
+          oneOf:
+          - $ref: '#/components/schemas/VisitTypeAbeEnum'
+          - $ref: '#/components/schemas/NullEnum'
+        visit_reason:
+          allOf:
+          - $ref: '#/components/schemas/VisitReasonEnum'
+          default: NEW_COMPLAINT
+        skip_triage:
+          type: boolean
+          default: false
+        chief_complaint:
+          type: string
+          default: ''
+        notes:
+          type: string
+          default: ''
+        linked_encounter_id:
+          type: integer
+          nullable: true
+          description: ID of previous encounter for follow-up
+        identity_method:
+          allOf:
+          - $ref: '#/components/schemas/IdentityMethodEnum'
+          default: MRN
+      required:
+      - destination
+    CheckInResponse:
+      type: object
+      description: |-
+        Serializer for check-in response.
+
+        Returns details of the created check-in.
+      properties:
+        checkin_id:
+          type: integer
+        patient_name:
+          type: string
+          readOnly: true
+        patient_mrn:
+          type: string
+        destination:
+          type: string
+          readOnly: true
+        destination_clinic_id:
+          type: integer
+          nullable: true
+        destination_clinic_name:
+          type: string
+          nullable: true
+        visit_type:
+          allOf:
+          - $ref: '#/components/schemas/VisitTypeAbeEnum'
+          description: |-
+            Type of visit (auto-detected or specified)
+
+            * `NEW` - New Patient
+            * `RETURN` - Returning Patient
+            * `FOLLOW_UP` - Follow-up Visit
+            * `EMERGENCY` - Emergency
+            * `SCHEDULED` - Scheduled Appointment
+        visit_reason:
+          allOf:
+          - $ref: '#/components/schemas/VisitReasonEnum'
+          description: |-
+            Reason for visit
+
+            * `NEW_COMPLAINT` - New Complaint
+            * `FOLLOW_UP` - Follow-up
+            * `CHRONIC_CARE` - Chronic Care Review
+            * `PROCEDURE_REVIEW` - Post-Procedure Review
+            * `REFILL_ONLY` - Medication Refill Only
+            * `LAB_REVIEW` - Lab Results Review
+            * `REFERRAL_VISIT` - Referral from Another Facility
+            * `OTHER` - Other
+        skip_triage:
+          type: boolean
+          description: Whether triage was bypassed
+        status:
+          allOf:
+          - $ref: '#/components/schemas/Status2f9Enum'
+          description: |-
+            Current check-in status
+
+            * `WAITING` - Waiting
+            * `IN_TRIAGE` - In Triage
+            * `TRIAGED` - Triaged
+            * `IN_CONSULTATION` - In Consultation
+            * `COMPLETED` - Completed
+            * `CANCELLED` - Cancelled
+            * `NO_SHOW` - No Show
+        queue_position:
+          type: string
+          readOnly: true
+        estimated_wait_minutes:
+          type: string
+          readOnly: true
+        checked_in_at:
+          type: string
+          format: date-time
+          description: When patient checked in
+        encounter_id:
+          type: integer
+          nullable: true
+        linked_encounter_id:
+          type: integer
+          nullable: true
+        clinic_visit_id:
+          type: integer
+          nullable: true
+        warning:
+          type: string
+          nullable: true
+      required:
+      - checkin_id
+      - clinic_visit_id
+      - destination
+      - destination_clinic_id
+      - destination_clinic_name
+      - encounter_id
+      - estimated_wait_minutes
+      - linked_encounter_id
+      - patient_mrn
+      - patient_name
+      - queue_position
     ChiefComplaintCategoryEnum:
       enum:
       - CHEST_PAIN
@@ -23753,6 +24974,17 @@ components:
         * `dental` - Dental
         * `optical` - Optical
         * `dialysis` - Dialysis
+    ClientRegistryResponse:
+      type: object
+      properties:
+        found:
+          type: boolean
+        client:
+          type: object
+          additionalProperties: {}
+      required:
+      - client
+      - found
     Clinic:
       type: object
       description: Serializer for Clinic model.
@@ -25531,6 +26763,57 @@ components:
         * `REFERRED` - Referred to another clinic
         * `NO_SHOW` - No Show
         * `CANCELLED` - Cancelled
+    ClinicalSnapshot:
+      type: object
+      description: |-
+        Read-only serializer for clinical snapshot data.
+
+        Provides a summary of patient's clinical information
+        for display at check-in.
+      properties:
+        allergies:
+          type: array
+          items:
+            type: string
+          readOnly: true
+        active_conditions:
+          type: array
+          items:
+            type: string
+          readOnly: true
+        current_medications:
+          type: array
+          items:
+            type: string
+          readOnly: true
+        last_visit_date:
+          type: string
+          format: date
+          readOnly: true
+          nullable: true
+        last_visit_clinic:
+          type: string
+          readOnly: true
+          nullable: true
+        pending_results:
+          type: array
+          items:
+            type: object
+            additionalProperties: {}
+          readOnly: true
+        alerts:
+          type: array
+          items:
+            type: string
+          readOnly: true
+      required:
+      - active_conditions
+      - alerts
+      - allergies
+      - current_medications
+      - last_visit_clinic
+      - last_visit_date
+      - pending_results
     ClinicalTemplate:
       type: object
       description: Full serializer for ClinicalTemplate model with nested sections.
@@ -26547,6 +27830,27 @@ components:
         * `SECONDARY` - Secondary Diagnosis
         * `DIFFERENTIAL` - Differential Diagnosis
         * `WORKING` - Working Diagnosis
+    DirectEligibilityResponse:
+      type: object
+      properties:
+        is_eligible:
+          type: boolean
+        sha_number:
+          type: string
+        full_name:
+          type: string
+        coverage_end_date:
+          type: string
+        copay_percentage:
+          type: integer
+        reason:
+          type: string
+        is_employed:
+          type: boolean
+        error:
+          type: string
+      required:
+      - is_eligible
     Discharge:
       type: object
       description: Serializer for Discharge model.
@@ -27128,6 +28432,37 @@ components:
       - generic_name
       - strength
       - unit
+    EligibilityCheckRequestRequest:
+      type: object
+      properties:
+        patient_id:
+          type: integer
+        sha_number:
+          type: string
+          minLength: 1
+    EligibilityCheckResponse:
+      type: object
+      properties:
+        is_eligible:
+          type: boolean
+        result:
+          type: string
+        eligible_until:
+          type: string
+        benefit_balance:
+          type: number
+          format: double
+        ineligibility_reason:
+          type: string
+        sha_number:
+          type: string
+        membership_type:
+          type: string
+      required:
+      - is_eligible
+      - membership_type
+      - result
+      - sha_number
     EmergencyContact:
       type: object
       description: Serializer for the EmergencyContact model.
@@ -28047,6 +29382,16 @@ components:
         * `L4` - Level 4 (County Hospital)
         * `L5` - Level 5 (National Referral)
         * `L6` - Level 6 (Tertiary/Specialized)
+    FacilitySearchResponse:
+      type: object
+      properties:
+        found:
+          type: boolean
+        facility:
+          type: object
+          additionalProperties: {}
+      required:
+      - found
     FallRiskEnum:
       enum:
       - LOW
@@ -28329,6 +29674,20 @@ components:
         * `kra_pin` - KRA PIN
         * `temporary_id` - Temporary ID
         * `passport` - Passport Number
+    IdentityMethodEnum:
+      enum:
+      - MRN
+      - NATIONAL_ID
+      - PHONE
+      - BIOMETRIC
+      - MANUAL
+      type: string
+      description: |-
+        * `MRN` - Medical Record Number
+        * `NATIONAL_ID` - National ID
+        * `PHONE` - Phone Number
+        * `BIOMETRIC` - Biometric Scan
+        * `MANUAL` - Manual Verification
     ImagingOrder:
       type: object
       description: Order with status and items.
@@ -30265,6 +31624,122 @@ components:
       - name
       - treatment_plan
       - updated_at
+    MedicationNested:
+      type: object
+      description: Nested serializer for medications in treatment plan.
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        name:
+          type: string
+          description: Medication name
+          maxLength: 200
+        dosage:
+          type: string
+          description: Dosage (e.g., 500mg)
+          maxLength: 100
+        frequency:
+          type: string
+          description: Frequency (e.g., Three times daily, TDS, BD)
+          maxLength: 100
+        duration:
+          type: string
+          description: Duration (e.g., 7 days)
+          maxLength: 100
+        route:
+          allOf:
+          - $ref: '#/components/schemas/RouteEnum'
+          description: |-
+            Route of administration
+
+            * `ORAL` - Oral
+            * `IV` - Intravenous
+            * `IM` - Intramuscular
+            * `SC` - Subcutaneous
+            * `TOPICAL` - Topical
+            * `INHALED` - Inhaled
+            * `RECTAL` - Rectal
+            * `OPHTHALMIC` - Ophthalmic
+            * `OTIC` - Otic
+            * `NASAL` - Nasal
+            * `OTHER` - Other
+        quantity:
+          type: integer
+          maximum: 9223372036854775807
+          minimum: 0
+          format: int64
+          nullable: true
+          description: Quantity to dispense
+        instructions:
+          type: string
+          description: Special instructions (e.g., Take with food)
+        is_active:
+          type: boolean
+          description: |-
+            Check if medication is currently active.
+
+            A medication is active if:
+            - No end date is set, OR
+            - End date is today or in the future
+          readOnly: true
+      required:
+      - dosage
+      - id
+      - is_active
+      - name
+    MedicationNestedRequest:
+      type: object
+      description: Nested serializer for medications in treatment plan.
+      properties:
+        name:
+          type: string
+          minLength: 1
+          description: Medication name
+          maxLength: 200
+        dosage:
+          type: string
+          minLength: 1
+          description: Dosage (e.g., 500mg)
+          maxLength: 100
+        frequency:
+          type: string
+          description: Frequency (e.g., Three times daily, TDS, BD)
+          maxLength: 100
+        duration:
+          type: string
+          description: Duration (e.g., 7 days)
+          maxLength: 100
+        route:
+          allOf:
+          - $ref: '#/components/schemas/RouteEnum'
+          description: |-
+            Route of administration
+
+            * `ORAL` - Oral
+            * `IV` - Intravenous
+            * `IM` - Intramuscular
+            * `SC` - Subcutaneous
+            * `TOPICAL` - Topical
+            * `INHALED` - Inhaled
+            * `RECTAL` - Rectal
+            * `OPHTHALMIC` - Ophthalmic
+            * `OTIC` - Otic
+            * `NASAL` - Nasal
+            * `OTHER` - Other
+        quantity:
+          type: integer
+          maximum: 9223372036854775807
+          minimum: 0
+          format: int64
+          nullable: true
+          description: Quantity to dispense
+        instructions:
+          type: string
+          description: Special instructions (e.g., Take with food)
+      required:
+      - dosage
+      - name
     MedicationRequest:
       type: object
       description: Serializer for Medication.
@@ -30407,6 +31882,38 @@ components:
         * `MG` - Mammography
         * `FL` - Fluoroscopy
         * `OTHER` - Other
+    MpesaInitiateRequestRequest:
+      type: object
+      properties:
+        invoice_id:
+          type: integer
+        phone_number:
+          type: string
+          minLength: 1
+        amount:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,8}(?:\.\d{0,2})?$
+        payment_point:
+          type: integer
+      required:
+      - amount
+      - invoice_id
+      - payment_point
+      - phone_number
+    MpesaInitiateResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+        checkout_request_id:
+          type: string
+        merchant_request_id:
+          type: string
+        message:
+          type: string
+      required:
+      - success
     Notification:
       type: object
       description: Serializer for Notification model.
@@ -30694,6 +32201,13 @@ components:
         * `LOAD_BALANCING` - Load Balancing
         * `ADMINISTRATIVE` - Administrative Decision
         * `OTHER` - Other
+    PRCNumberResponse:
+      type: object
+      properties:
+        prc_number:
+          type: string
+      required:
+      - prc_number
     PaginatedAdmissionList:
       type: object
       required:
@@ -34727,6 +36241,68 @@ components:
           type: string
           minLength: 1
           description: Clinical information for receiving team
+    PatchedTreatmentPlanRequest:
+      type: object
+      description: Serializer for TreatmentPlan.
+      properties:
+        encounter:
+          type: integer
+          description: Encounter this treatment plan belongs to
+        template:
+          type: integer
+          nullable: true
+          description: Template used to create this plan
+        clinical_notes:
+          type: string
+          description: Clinical notes and assessment
+        medications_json:
+          type: string
+          description: Prescribed medications (JSON format for template imports)
+        procedures_json:
+          type: string
+          description: Planned procedures (JSON format)
+        follow_up_instructions:
+          type: string
+          description: Follow-up instructions for patient
+        follow_up_date:
+          type: string
+          format: date
+          nullable: true
+          description: Scheduled follow-up date
+        diet_recommendations:
+          type: string
+          description: Dietary recommendations for the patient
+        activity_restrictions:
+          type: string
+          description: Activity restrictions and limitations
+        referral_needed:
+          type: boolean
+          description: Whether a referral is needed
+        referral_specialty:
+          type: string
+          description: Specialty for referral
+          maxLength: 100
+        referral_notes:
+          type: string
+          description: Notes for the referral
+        status:
+          allOf:
+          - $ref: '#/components/schemas/TreatmentPlanStatusEnum'
+          description: |-
+            Status of the treatment plan
+
+            * `DRAFT` - Draft
+            * `ACTIVE` - Active
+            * `COMPLETED` - Completed
+            * `CANCELLED` - Cancelled
+        created_by:
+          type: integer
+          nullable: true
+          description: User who created this plan
+        approved_by:
+          type: integer
+          nullable: true
+          description: User who approved this plan
     PatchedTreatmentPlanTemplateRequest:
       type: object
       description: Serializer for TreatmentPlanTemplate.
@@ -35218,6 +36794,127 @@ components:
       - sub_county_name
       - updated_at
       - ward_name
+    PatientLookup:
+      type: object
+      description: |-
+        Serializer for patient lookup response.
+
+        Includes patient details plus clinical snapshot
+        and suggested visit context.
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        mrn:
+          type: string
+          readOnly: true
+          description: Medical Record Number (auto-generated)
+        first_name:
+          type: string
+          readOnly: true
+          description: Patient's first name
+        middle_name:
+          type: string
+          readOnly: true
+          description: Patient's middle name
+        last_name:
+          type: string
+          readOnly: true
+          description: Patient's last name
+        full_name:
+          type: string
+          readOnly: true
+        date_of_birth:
+          type: string
+          format: date
+          readOnly: true
+          description: Patient's date of birth
+        age:
+          type: string
+          readOnly: true
+        gender:
+          allOf:
+          - $ref: '#/components/schemas/GenderEnum'
+          readOnly: true
+          description: |-
+            Patient's gender
+
+            * `M` - Male
+            * `F` - Female
+            * `O` - Other
+        phone_number:
+          type: string
+          readOnly: true
+          nullable: true
+          description: Patient's phone number
+        identification_type:
+          allOf:
+          - $ref: '#/components/schemas/IdentificationTypeEnum'
+          readOnly: true
+          default: national_id
+          description: |-
+            Type of identification document
+
+            * `national_id` - National ID
+            * `cr_number` - HIE Patient ID
+            * `mandate_number` - Mandate Number
+            * `alien_id` - Alien ID
+            * `kra_pin` - KRA PIN
+            * `temporary_id` - Temporary ID
+            * `passport` - Passport Number
+        identification_number:
+          type: string
+          readOnly: true
+          nullable: true
+          description: Identification document number
+        county:
+          type: integer
+          readOnly: true
+          nullable: true
+          description: Patient's county of residence
+        sub_county:
+          type: integer
+          readOnly: true
+          nullable: true
+          description: Patient's sub-county of residence
+        ward:
+          type: integer
+          readOnly: true
+          nullable: true
+          description: Patient's ward of residence (optional)
+        clinical_snapshot:
+          allOf:
+          - $ref: '#/components/schemas/ClinicalSnapshot'
+          readOnly: true
+        suggested_visit_type:
+          type: string
+          readOnly: true
+        suggested_visit_reason:
+          type: string
+          readOnly: true
+        last_encounter_date:
+          type: string
+          readOnly: true
+      required:
+      - age
+      - clinical_snapshot
+      - county
+      - date_of_birth
+      - first_name
+      - full_name
+      - gender
+      - id
+      - identification_number
+      - identification_type
+      - last_encounter_date
+      - last_name
+      - middle_name
+      - mrn
+      - phone_number
+      - sub_county
+      - suggested_visit_reason
+      - suggested_visit_type
+      - ward
     PatientRequest:
       type: object
       description: Serializer for the Patient model.
@@ -35665,6 +37362,14 @@ components:
         * `disabled` - Persons with Disability
         * `orphan` - Orphan/Vulnerable Child
         * `indigent` - Indigent
+    PractitionerSearchResponse:
+      type: object
+      properties:
+        message:
+          type: object
+          additionalProperties: {}
+      required:
+      - message
     Prescription:
       type: object
       description: Serializer for Prescription model.
@@ -37561,6 +39266,43 @@ components:
         * `dialysis` - Dialysis
         * `oncology` - Oncology
         * `other` - Other Services
+    SHAValidateGetResponse:
+      type: object
+      properties:
+        status:
+          type: string
+        system:
+          type: string
+        version:
+          type: string
+        sha_integration:
+          type: object
+          additionalProperties: {}
+        timestamp:
+          type: string
+        ready:
+          type: boolean
+      required:
+      - ready
+      - sha_integration
+      - status
+      - system
+      - timestamp
+      - version
+    SHAValidatePostResponse:
+      type: object
+      properties:
+        status:
+          type: string
+        result:
+          type: object
+          additionalProperties: {}
+        timestamp:
+          type: string
+      required:
+      - result
+      - status
+      - timestamp
     Schedule:
       type: object
       description: Serializer for Schedule model.
@@ -38809,6 +40551,24 @@ components:
         * `ACTIVE` - Active
         * `INACTIVE` - Inactive
         * `TEMPORARILY_CLOSED` - Temporarily Closed
+    Status2f9Enum:
+      enum:
+      - WAITING
+      - IN_TRIAGE
+      - TRIAGED
+      - IN_CONSULTATION
+      - COMPLETED
+      - CANCELLED
+      - NO_SHOW
+      type: string
+      description: |-
+        * `WAITING` - Waiting
+        * `IN_TRIAGE` - In Triage
+        * `TRIAGED` - Triaged
+        * `IN_CONSULTATION` - In Consultation
+        * `COMPLETED` - Completed
+        * `CANCELLED` - Cancelled
+        * `NO_SHOW` - No Show
     Status753Enum:
       enum:
       - CREATED
@@ -39341,6 +41101,22 @@ components:
         * `note` - Clinical Note
         * `assessment` - Assessment
         * `procedure` - Procedure
+    TerminologySearchResponse:
+      type: object
+      properties:
+        results:
+          type: array
+          items:
+            type: object
+            additionalProperties: {}
+        count:
+          type: integer
+        source:
+          type: string
+      required:
+      - count
+      - results
+      - source
     TestCatalog:
       type: object
       description: Serializer for test catalog listing.
@@ -39522,7 +41298,7 @@ components:
           nullable: true
         visit_type:
           allOf:
-          - $ref: '#/components/schemas/TodayCheckinVisitTypeEnum'
+          - $ref: '#/components/schemas/VisitTypeAbeEnum'
           description: |-
             Type of visit (auto-detected or specified)
 
@@ -39547,7 +41323,7 @@ components:
             * `OTHER` - Other
         status:
           allOf:
-          - $ref: '#/components/schemas/TodayCheckinStatusEnum'
+          - $ref: '#/components/schemas/Status2f9Enum'
           description: |-
             Current check-in status
 
@@ -39575,38 +41351,6 @@ components:
       - id
       - patient_mrn
       - patient_name
-    TodayCheckinStatusEnum:
-      enum:
-      - WAITING
-      - IN_TRIAGE
-      - TRIAGED
-      - IN_CONSULTATION
-      - COMPLETED
-      - CANCELLED
-      - NO_SHOW
-      type: string
-      description: |-
-        * `WAITING` - Waiting
-        * `IN_TRIAGE` - In Triage
-        * `TRIAGED` - Triaged
-        * `IN_CONSULTATION` - In Consultation
-        * `COMPLETED` - Completed
-        * `CANCELLED` - Cancelled
-        * `NO_SHOW` - No Show
-    TodayCheckinVisitTypeEnum:
-      enum:
-      - NEW
-      - RETURN
-      - FOLLOW_UP
-      - EMERGENCY
-      - SCHEDULED
-      type: string
-      description: |-
-        * `NEW` - New Patient
-        * `RETURN` - Returning Patient
-        * `FOLLOW_UP` - Follow-up Visit
-        * `EMERGENCY` - Emergency
-        * `SCHEDULED` - Scheduled Appointment
     TokenObtainPair:
       type: object
       properties:
@@ -39830,6 +41574,188 @@ components:
       - source_ward
       - transfer_date
       - transferred_by
+    TreatmentPlan:
+      type: object
+      description: Serializer for TreatmentPlan.
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        encounter:
+          type: integer
+          description: Encounter this treatment plan belongs to
+        template:
+          type: integer
+          nullable: true
+          description: Template used to create this plan
+        template_name:
+          type: string
+          readOnly: true
+        clinical_notes:
+          type: string
+          description: Clinical notes and assessment
+        medications_json:
+          type: string
+          description: Prescribed medications (JSON format for template imports)
+        procedures_json:
+          type: string
+          description: Planned procedures (JSON format)
+        follow_up_instructions:
+          type: string
+          description: Follow-up instructions for patient
+        follow_up_date:
+          type: string
+          format: date
+          nullable: true
+          description: Scheduled follow-up date
+        diet_recommendations:
+          type: string
+          description: Dietary recommendations for the patient
+        activity_restrictions:
+          type: string
+          description: Activity restrictions and limitations
+        referral_needed:
+          type: boolean
+          description: Whether a referral is needed
+        referral_specialty:
+          type: string
+          description: Specialty for referral
+          maxLength: 100
+        referral_notes:
+          type: string
+          description: Notes for the referral
+        status:
+          allOf:
+          - $ref: '#/components/schemas/TreatmentPlanStatusEnum'
+          description: |-
+            Status of the treatment plan
+
+            * `DRAFT` - Draft
+            * `ACTIVE` - Active
+            * `COMPLETED` - Completed
+            * `CANCELLED` - Cancelled
+        has_follow_up:
+          type: boolean
+          description: Check if treatment plan has a follow-up scheduled.
+          readOnly: true
+        has_referral:
+          type: boolean
+          description: Check if treatment plan has a referral.
+          readOnly: true
+        medications:
+          type: array
+          items:
+            $ref: '#/components/schemas/MedicationNested'
+          readOnly: true
+        created_by:
+          type: integer
+          nullable: true
+          description: User who created this plan
+        created_by_name:
+          type: string
+          readOnly: true
+        approved_by:
+          type: integer
+          nullable: true
+          description: User who approved this plan
+        approved_by_name:
+          type: string
+          readOnly: true
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+        updated_at:
+          type: string
+          format: date-time
+          readOnly: true
+      required:
+      - approved_by_name
+      - created_at
+      - created_by_name
+      - encounter
+      - has_follow_up
+      - has_referral
+      - id
+      - medications
+      - template_name
+      - updated_at
+    TreatmentPlanRequest:
+      type: object
+      description: Serializer for TreatmentPlan.
+      properties:
+        encounter:
+          type: integer
+          description: Encounter this treatment plan belongs to
+        template:
+          type: integer
+          nullable: true
+          description: Template used to create this plan
+        clinical_notes:
+          type: string
+          description: Clinical notes and assessment
+        medications_json:
+          type: string
+          description: Prescribed medications (JSON format for template imports)
+        procedures_json:
+          type: string
+          description: Planned procedures (JSON format)
+        follow_up_instructions:
+          type: string
+          description: Follow-up instructions for patient
+        follow_up_date:
+          type: string
+          format: date
+          nullable: true
+          description: Scheduled follow-up date
+        diet_recommendations:
+          type: string
+          description: Dietary recommendations for the patient
+        activity_restrictions:
+          type: string
+          description: Activity restrictions and limitations
+        referral_needed:
+          type: boolean
+          description: Whether a referral is needed
+        referral_specialty:
+          type: string
+          description: Specialty for referral
+          maxLength: 100
+        referral_notes:
+          type: string
+          description: Notes for the referral
+        status:
+          allOf:
+          - $ref: '#/components/schemas/TreatmentPlanStatusEnum'
+          description: |-
+            Status of the treatment plan
+
+            * `DRAFT` - Draft
+            * `ACTIVE` - Active
+            * `COMPLETED` - Completed
+            * `CANCELLED` - Cancelled
+        created_by:
+          type: integer
+          nullable: true
+          description: User who created this plan
+        approved_by:
+          type: integer
+          nullable: true
+          description: User who approved this plan
+      required:
+      - encounter
+    TreatmentPlanStatusEnum:
+      enum:
+      - DRAFT
+      - ACTIVE
+      - COMPLETED
+      - CANCELLED
+      type: string
+      description: |-
+        * `DRAFT` - Draft
+        * `ACTIVE` - Active
+        * `COMPLETED` - Completed
+        * `CANCELLED` - Cancelled
     TreatmentPlanTemplate:
       type: object
       description: Serializer for TreatmentPlanTemplate.
@@ -40907,6 +42833,45 @@ components:
         * `UNVERIFIED` - Unverified
         * `VERIFIED` - Verified
         * `REJECTED` - Rejected
+    VerifyDocumentRequestRequest:
+      type: object
+      properties:
+        qr_data:
+          type: string
+          minLength: 1
+        type:
+          type: string
+          minLength: 1
+        number:
+          type: string
+          minLength: 1
+        amount:
+          type: string
+          minLength: 1
+        date:
+          type: string
+          format: date
+        signature:
+          type: string
+          minLength: 1
+    VerifyDocumentResponse:
+      type: object
+      properties:
+        valid:
+          type: boolean
+        document_type:
+          type: string
+        document_number:
+          type: string
+        amount:
+          type: string
+        date:
+          type: string
+          format: date
+        error:
+          type: string
+      required:
+      - valid
     VisitReasonEnum:
       enum:
       - NEW_COMPLAINT
@@ -40943,6 +42908,20 @@ components:
         * `REFERRAL` - Referral from another clinic
         * `SCHEDULED` - Scheduled Appointment
         * `EMERGENCY` - Emergency
+    VisitTypeAbeEnum:
+      enum:
+      - NEW
+      - RETURN
+      - FOLLOW_UP
+      - EMERGENCY
+      - SCHEDULED
+      type: string
+      description: |-
+        * `NEW` - New Patient
+        * `RETURN` - Returning Patient
+        * `FOLLOW_UP` - Follow-up Visit
+        * `EMERGENCY` - Emergency
+        * `SCHEDULED` - Scheduled Appointment
     VitalTypeEnum:
       enum:
       - SPO2
@@ -41250,6 +43229,18 @@ components:
         * `MATERNITY` - Maternity Ward
         * `ICU` - Intensive Care Unit
         * `ISOLATION` - Isolation Ward
+    WebhookResponse:
+      type: object
+      properties:
+        status:
+          type: string
+        message:
+          type: string
+        claim_reference:
+          type: string
+      required:
+      - message
+      - status
     WhoClinicalStageEnum:
       enum:
       - 1

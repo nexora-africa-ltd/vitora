@@ -4,7 +4,9 @@ Views for core app.
 
 from django.contrib.auth.models import Permission
 from django.contrib.auth.signals import user_logged_in, user_login_failed
-from rest_framework import filters, status, viewsets
+from drf_spectacular.types import OpenApiTypes
+from drf_spectacular.utils import OpenApiParameter, extend_schema, inline_serializer
+from rest_framework import filters, serializers, status, viewsets
 from rest_framework.decorators import action, api_view, permission_classes
 from rest_framework.mixins import ListModelMixin, RetrieveModelMixin
 from rest_framework.permissions import IsAdminUser, IsAuthenticated
@@ -672,6 +674,17 @@ from rest_framework.decorators import permission_classes as perm_classes
 from rest_framework.permissions import IsAuthenticated as IsAuth
 
 
+@extend_schema(
+    parameters=[
+        OpenApiParameter("facility_code", OpenApiTypes.STR, description="Optional facility code override", required=False),
+    ],
+    responses={
+        200: inline_serializer(
+            name="PRCNumberResponse",
+            fields={"prc_number": serializers.CharField()},
+        )
+    },
+)
 @api_view(["GET"])
 @perm_classes([IsAuth])
 def generate_prc_number_view(request):
@@ -695,6 +708,18 @@ def generate_prc_number_view(request):
     return Response({"prc_number": prc_number})
 
 
+@extend_schema(
+    parameters=[
+        OpenApiParameter("prefix", OpenApiTypes.STR, description="Case type prefix (e.g., 'GBV', 'RTA', 'TRAUMA')", required=False),
+        OpenApiParameter("facility_code", OpenApiTypes.STR, description="Optional facility code override", required=False),
+    ],
+    responses={
+        200: inline_serializer(
+            name="CaseNumberResponse",
+            fields={"case_number": serializers.CharField()},
+        )
+    },
+)
 @api_view(["GET"])
 @perm_classes([IsAuth])
 def generate_case_number_view(request):
@@ -725,6 +750,40 @@ def generate_case_number_view(request):
 # ============================================================================
 
 
+@extend_schema(
+    parameters=[
+        OpenApiParameter("qr_data", OpenApiTypes.STR, description="Full QR code string", required=False),
+        OpenApiParameter("type", OpenApiTypes.STR, description="Document type ('RECEIPT' or 'INVOICE')", required=False),
+        OpenApiParameter("number", OpenApiTypes.STR, description="Document number", required=False),
+        OpenApiParameter("amount", OpenApiTypes.STR, description="Amount as string", required=False),
+        OpenApiParameter("date", OpenApiTypes.DATE, description="Date (YYYY-MM-DD)", required=False),
+        OpenApiParameter("signature", OpenApiTypes.STR, description="8-character hex signature", required=False),
+    ],
+    request=inline_serializer(
+        name="VerifyDocumentRequest",
+        fields={
+            "qr_data": serializers.CharField(required=False),
+            "type": serializers.CharField(required=False),
+            "number": serializers.CharField(required=False),
+            "amount": serializers.CharField(required=False),
+            "date": serializers.DateField(required=False),
+            "signature": serializers.CharField(required=False),
+        },
+    ),
+    responses={
+        200: inline_serializer(
+            name="VerifyDocumentResponse",
+            fields={
+                "valid": serializers.BooleanField(),
+                "document_type": serializers.CharField(required=False),
+                "document_number": serializers.CharField(required=False),
+                "amount": serializers.CharField(required=False),
+                "date": serializers.DateField(required=False),
+                "error": serializers.CharField(required=False),
+            },
+        )
+    },
+)
 @api_view(["GET", "POST"])
 @permission_classes([])  # No authentication required
 def verify_document(request):
