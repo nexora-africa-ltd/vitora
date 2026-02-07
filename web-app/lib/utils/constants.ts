@@ -93,9 +93,15 @@ export const ENCOUNTER_TRIAGE_REQUIREMENT: Record<string, 'MANDATORY' | 'OPTIONA
 
 // Encounter status
 export const ENCOUNTER_STATUS = [
-  { value: 'DRAFT', label: 'Draft', color: 'bg-gray-100 text-gray-800' },
+  { value: 'CREATED', label: 'Created', color: 'bg-gray-100 text-gray-800' },
+  { value: 'CHECKED_IN', label: 'Checked In', color: 'bg-sky-100 text-sky-800' },
+  { value: 'TRIAGED', label: 'Triaged', color: 'bg-cyan-100 text-cyan-800' },
   { value: 'IN_PROGRESS', label: 'In Progress', color: 'bg-blue-100 text-blue-800' },
-  { value: 'COMPLETED', label: 'Completed', color: 'bg-green-100 text-green-800' },
+  { value: 'ON_HOLD', label: 'On Hold', color: 'bg-amber-100 text-amber-800' },
+  { value: 'ORDERS_PLACED', label: 'Orders Placed', color: 'bg-purple-100 text-purple-800' },
+  { value: 'RESULTS_PENDING', label: 'Results Pending', color: 'bg-orange-100 text-orange-800' },
+  { value: 'READY_TO_CLOSE', label: 'Ready to Close', color: 'bg-emerald-100 text-emerald-800' },
+  { value: 'CLOSED', label: 'Closed', color: 'bg-green-100 text-green-800' },
   { value: 'CANCELLED', label: 'Cancelled', color: 'bg-red-100 text-red-800' },
 ] as const;
 

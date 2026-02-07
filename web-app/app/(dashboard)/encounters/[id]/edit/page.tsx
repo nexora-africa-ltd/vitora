@@ -130,7 +130,7 @@ export default function EditEncounterPage() {
     history_of_present_illness: '',
     physical_examination: '',
     assessment: '',
-    status: 'DRAFT',
+    status: 'CREATED',
     clinical_template: null,
     clinical_template_data: null,
   });
@@ -175,7 +175,7 @@ export default function EditEncounterPage() {
         history_of_present_illness: encounter.history_of_present_illness || '',
         physical_examination: encounter.physical_examination || '',
         assessment: encounter.assessment || '',
-        status: encounter.status === 'CANCELLED' ? 'DRAFT' : encounter.status,
+        status: encounter.status === 'CANCELLED' ? 'CREATED' : encounter.status,
         clinical_template: encounter.clinical_template || null,
         clinical_template_data: encounter.clinical_template_data || null,
       });
@@ -251,7 +251,7 @@ export default function EditEncounterPage() {
   }, [formData]);
 
   // Check if encounter is editable for auto-save
-  const isEncounterEditable = encounter?.status !== 'COMPLETED' && encounter?.status !== 'CANCELLED';
+  const isEncounterEditable = encounter?.status !== 'CLOSED' && encounter?.status !== 'CANCELLED';
 
   // Auto-save hook - automatically saves changes when user is online
   const autoSave = useAutoSave({
@@ -690,7 +690,7 @@ export default function EditEncounterPage() {
   }
 
   const status = ENCOUNTER_STATUS.find((s) => s.value === encounter.status);
-  const isEditable = encounter.status !== 'COMPLETED' && encounter.status !== 'CANCELLED';
+  const isEditable = encounter.status !== 'CLOSED' && encounter.status !== 'CANCELLED';
 
   return (
     <div className="container mx-auto px-3 py-4 sm:px-4 sm:py-6 max-w-5xl">
@@ -1027,7 +1027,7 @@ export default function EditEncounterPage() {
         </Button>
 
         {/* Finalize Button - Icon only on mobile, full on desktop */}
-        {isEditable && encounter.status !== 'COMPLETED' && (
+        {isEditable && encounter.status !== 'CLOSED' && (
           <Button
             onClick={handleFinalize}
             disabled={updateEncounter.isPending}
