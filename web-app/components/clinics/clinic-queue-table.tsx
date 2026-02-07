@@ -237,7 +237,7 @@ export function ClinicQueueTable({
                 {showActions && (
                   <TableCell className="text-right">
                     <div className="flex items-center justify-end gap-2">
-                      {visit.status === 'WAITING' && (
+                      {(visit.status === 'REGISTERED' || visit.status === 'WAITING') && (
                         <Button
                           size="sm"
                           variant="outline"

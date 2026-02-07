@@ -169,9 +169,35 @@ class ClinicSessionSerializer(serializers.ModelSerializer):
 # =============================================================================
 
 
+class ClinicVisitPatientSerializer(serializers.Serializer):
+    """Nested patient serializer for ClinicVisit responses.
+
+    Provides the patient object shape expected by the frontend:
+    { id, mrn, first_name, last_name, full_name, date_of_birth, age, gender, phone_number }
+    """
+
+    id = serializers.IntegerField()
+    mrn = serializers.CharField()
+    first_name = serializers.CharField()
+    last_name = serializers.CharField()
+    full_name = serializers.CharField()
+    date_of_birth = serializers.DateField()
+    age = serializers.IntegerField()
+    gender = serializers.CharField()
+    phone_number = serializers.SerializerMethodField()
+
+    def get_phone_number(self, obj):
+        """Get phone number, returning empty string if encrypted/unavailable."""
+        try:
+            return obj.phone_number or ""
+        except Exception:
+            return ""
+
+
 class ClinicVisitSerializer(serializers.ModelSerializer):
     """Serializer for ClinicVisit model."""
 
+    patient = ClinicVisitPatientSerializer(read_only=True)
     patient_name = serializers.SerializerMethodField()
     patient_mrn = serializers.CharField(source="patient.mrn", read_only=True)
     clinic_name = serializers.CharField(source="session.clinic.name", read_only=True)
@@ -183,6 +209,7 @@ class ClinicVisitSerializer(serializers.ModelSerializer):
     assigned_clinician_name = serializers.CharField(
         source="assigned_clinician.get_full_name", read_only=True
     )
+    registered_by_name = serializers.SerializerMethodField()
 
     class Meta:
         """Meta options for ClinicVisitSerializer."""
@@ -216,6 +243,7 @@ class ClinicVisitSerializer(serializers.ModelSerializer):
             "assigned_clinician",
             "assigned_clinician_name",
             "registered_by",
+            "registered_by_name",
             "chief_complaint",
             "notes",
             "consultation_fee_charged",
@@ -240,6 +268,12 @@ class ClinicVisitSerializer(serializers.ModelSerializer):
     def get_patient_name(self, obj):
         """Get patient full name."""
         return f"{obj.patient.first_name} {obj.patient.last_name}"
+
+    def get_registered_by_name(self, obj):
+        """Get the name of the user who registered this visit."""
+        if obj.registered_by:
+            return obj.registered_by.get_full_name() or obj.registered_by.username
+        return ""
 
 
 class ClinicVisitCreateSerializer(serializers.ModelSerializer):
