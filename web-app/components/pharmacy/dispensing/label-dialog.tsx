@@ -76,7 +76,7 @@ export function LabelDialog({
           name: facilityName,
         },
         drug: {
-          name: dispensing.drug_name,
+          name: dispensing.drug_name ?? undefined,
           dosage: extendedDispensing.dosage,
           frequency: extendedDispensing.frequency,
           duration: extendedDispensing.duration,

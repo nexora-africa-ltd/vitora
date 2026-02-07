@@ -111,7 +111,7 @@ export function InvoiceForm({
       invoice_type: invoice?.status === 'PROFORMA' ? 'proforma' : defaultType,
       valid_until: invoice?.valid_until ? new Date(invoice.valid_until) : addDays(new Date(), 30),
       items: invoice?.items?.map((item) => ({
-        service_id: item.service,
+        service_id: item.service ?? undefined,
         quantity: item.quantity,
         unit_price: parseFloat(item.unit_price),
         description: item.description || '',
