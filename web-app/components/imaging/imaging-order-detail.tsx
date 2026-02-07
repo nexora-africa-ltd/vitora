@@ -225,21 +225,21 @@ export function ImagingOrderDetail({ orderNumber }: ImagingOrderDetailProps) {
   const isDraft = order.status === 'DRAFT';
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4 sm:space-y-6">
       {/* Header */}
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-        <div className="flex items-center gap-4">
-          <Button variant="ghost" size="icon" onClick={() => router.back()}>
+      <div className="flex flex-col gap-3">
+        <div className="flex items-start gap-3">
+          <Button variant="ghost" size="icon" className="shrink-0 mt-0.5" onClick={() => router.back()}>
             <ArrowLeft className="h-4 w-4" />
           </Button>
-          <div>
-            <h1 className="text-xl sm:text-2xl font-bold">{order.order_number}</h1>
-            <p className="text-sm text-muted-foreground">
+          <div className="min-w-0 flex-1">
+            <h1 className="text-lg sm:text-xl md:text-2xl font-bold break-all">{order.order_number}</h1>
+            <p className="text-xs sm:text-sm text-muted-foreground">
               Ordered on {formatDateTime(order.ordered_at)}
             </p>
           </div>
         </div>
-        <div className="flex items-center gap-2 ml-12 sm:ml-0">
+        <div className="flex items-center flex-wrap gap-2 pl-10 sm:pl-0">
           <PriorityBadge priority={order.priority} />
           <OrderStatusBadge status={order.status} />
         </div>
@@ -248,11 +248,11 @@ export function ImagingOrderDetail({ orderNumber }: ImagingOrderDetailProps) {
       {/* Status Timeline */}
       {!isCancelled && !isDraft && (
         <Card>
-          <CardHeader className="pb-3">
-            <CardTitle className="text-lg">Order Progress</CardTitle>
+          <CardHeader className="pb-2 sm:pb-3">
+            <CardTitle className="text-base sm:text-lg">Order Progress</CardTitle>
           </CardHeader>
-          <CardContent>
-            <div className="flex items-center justify-between overflow-x-auto pb-2">
+          <CardContent className="px-3 sm:px-6">
+            <div className="flex items-center justify-between gap-0.5 sm:gap-1 overflow-x-auto pb-2 -mx-1 px-1">
               {STATUS_STEPS.map((step, index) => {
                 const isCompleted = index <= statusIndex;
                 const isCurrent = index === statusIndex;
@@ -260,39 +260,39 @@ export function ImagingOrderDetail({ orderNumber }: ImagingOrderDetailProps) {
                 return (
                   <div
                     key={step.status}
-                    className="flex flex-col items-center flex-1 min-w-[60px]"
+                    className="flex flex-col items-center flex-1 min-w-[48px] sm:min-w-[60px]"
                   >
                     <div className="flex items-center w-full">
                       {index > 0 && (
                         <div
-                          className={`flex-1 h-1 ${
+                          className={`flex-1 h-0.5 sm:h-1 ${
                             index <= statusIndex ? 'bg-primary' : 'bg-muted'
                           }`}
                         />
                       )}
                       <div
-                        className={`w-6 h-6 sm:w-8 sm:h-8 rounded-full flex items-center justify-center shrink-0 ${
+                        className={`w-5 h-5 sm:w-7 sm:h-7 md:w-8 md:h-8 rounded-full flex items-center justify-center shrink-0 text-[10px] sm:text-xs ${
                           isCompleted
                             ? 'bg-primary text-primary-foreground'
                             : 'bg-muted text-muted-foreground'
-                        } ${isCurrent ? 'ring-2 ring-primary ring-offset-2' : ''}`}
+                        } ${isCurrent ? 'ring-2 ring-primary ring-offset-1 sm:ring-offset-2' : ''}`}
                       >
                         {isCompleted ? (
-                          <CheckCircle2 className="h-3 w-3 sm:h-4 sm:w-4" />
+                          <CheckCircle2 className="h-2.5 w-2.5 sm:h-3.5 sm:w-3.5" />
                         ) : (
-                          <span className="text-[10px] sm:text-xs">{index + 1}</span>
+                          <span>{index + 1}</span>
                         )}
                       </div>
                       {index < STATUS_STEPS.length - 1 && (
                         <div
-                          className={`flex-1 h-1 ${
+                          className={`flex-1 h-0.5 sm:h-1 ${
                             index < statusIndex ? 'bg-primary' : 'bg-muted'
                           }`}
                         />
                       )}
                     </div>
                     <span
-                      className={`text-[10px] sm:text-xs mt-2 text-center ${
+                      className={`text-[9px] sm:text-[10px] md:text-xs mt-1.5 sm:mt-2 text-center leading-tight ${
                         isCurrent ? 'font-medium text-primary' : 'text-muted-foreground'
                       }`}
                     >
@@ -306,56 +306,56 @@ export function ImagingOrderDetail({ orderNumber }: ImagingOrderDetailProps) {
         </Card>
       )}
 
-      <div className="grid gap-6 md:grid-cols-2">
+      <div className="grid gap-4 sm:gap-6 md:grid-cols-2">
         {/* Patient & Order Info */}
         <Card>
-          <CardHeader className="pb-3">
-            <CardTitle className="text-lg">Order Information</CardTitle>
+          <CardHeader className="pb-2 sm:pb-3">
+            <CardTitle className="text-base sm:text-lg">Order Information</CardTitle>
           </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="flex items-center gap-3">
-              <User className="h-4 w-4 text-muted-foreground" />
-              <div>
-                <p className="text-sm text-muted-foreground">Patient</p>
-                <p className="font-medium">
+          <CardContent className="space-y-3 sm:space-y-4 px-4 sm:px-6">
+            <div className="flex items-start gap-2.5 sm:gap-3">
+              <User className="h-4 w-4 text-muted-foreground shrink-0 mt-0.5" />
+              <div className="min-w-0">
+                <p className="text-xs sm:text-sm text-muted-foreground">Patient</p>
+                <p className="font-medium text-sm sm:text-base truncate">
                   {order.patient_name || `Patient #${order.patient}`}
                 </p>
               </div>
             </div>
-            <div className="flex items-center gap-3">
-              <FileText className="h-4 w-4 text-muted-foreground" />
-              <div>
-                <p className="text-sm text-muted-foreground">Ordered By</p>
-                <p className="font-medium">
+            <div className="flex items-start gap-2.5 sm:gap-3">
+              <FileText className="h-4 w-4 text-muted-foreground shrink-0 mt-0.5" />
+              <div className="min-w-0">
+                <p className="text-xs sm:text-sm text-muted-foreground">Ordered By</p>
+                <p className="font-medium text-sm sm:text-base truncate">
                   {order.ordered_by_name || `User #${order.ordered_by}`}
                 </p>
               </div>
             </div>
             {order.scheduled_datetime && (
-              <div className="flex items-center gap-3">
-                <Calendar className="h-4 w-4 text-muted-foreground" />
-                <div>
-                  <p className="text-sm text-muted-foreground">Scheduled</p>
-                  <p className="font-medium">
+              <div className="flex items-start gap-2.5 sm:gap-3">
+                <Calendar className="h-4 w-4 text-muted-foreground shrink-0 mt-0.5" />
+                <div className="min-w-0">
+                  <p className="text-xs sm:text-sm text-muted-foreground">Scheduled</p>
+                  <p className="font-medium text-sm sm:text-base">
                     {formatDateTime(order.scheduled_datetime)}
-                    {order.scheduled_room && ` • ${order.scheduled_room}`}
+                    {order.scheduled_room && <span className="block sm:inline"> • {order.scheduled_room}</span>}
                   </p>
                 </div>
               </div>
             )}
             <Separator />
             <div>
-              <p className="text-sm text-muted-foreground mb-1">
+              <p className="text-xs sm:text-sm text-muted-foreground mb-1">
                 Clinical Indication
               </p>
-              <p className="text-sm">{order.clinical_indication}</p>
+              <p className="text-xs sm:text-sm leading-relaxed">{order.clinical_indication}</p>
             </div>
             {order.relevant_clinical_history && (
               <div>
-                <p className="text-sm text-muted-foreground mb-1">
+                <p className="text-xs sm:text-sm text-muted-foreground mb-1">
                   Relevant Clinical History
                 </p>
-                <p className="text-sm">{order.relevant_clinical_history}</p>
+                <p className="text-xs sm:text-sm leading-relaxed">{order.relevant_clinical_history}</p>
               </div>
             )}
           </CardContent>
@@ -363,26 +363,26 @@ export function ImagingOrderDetail({ orderNumber }: ImagingOrderDetailProps) {
 
         {/* Billing Info */}
         <Card>
-          <CardHeader className="pb-3">
-            <CardTitle className="text-lg">Billing</CardTitle>
+          <CardHeader className="pb-2 sm:pb-3">
+            <CardTitle className="text-base sm:text-lg">Billing</CardTitle>
           </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="flex items-center justify-between">
-              <span className="text-muted-foreground">Total Cost</span>
-              <span className="text-2xl font-bold">
+          <CardContent className="space-y-3 sm:space-y-4 px-4 sm:px-6">
+            <div className="flex items-center justify-between gap-2">
+              <span className="text-sm text-muted-foreground">Total Cost</span>
+              <span className="text-xl sm:text-2xl font-bold">
                 KES {order.total_cost.toLocaleString()}
               </span>
             </div>
-            <div className="flex items-center justify-between">
-              <span className="text-muted-foreground">Payment Status</span>
-              <Badge variant={order.is_paid ? 'default' : 'secondary'}>
+            <div className="flex items-center justify-between gap-2">
+              <span className="text-sm text-muted-foreground">Payment Status</span>
+              <Badge variant={order.is_paid ? 'default' : 'secondary'} className="text-xs sm:text-sm">
                 {order.is_paid ? 'Paid' : 'Unpaid'}
               </Badge>
             </div>
             {order.items.some((item) => item.procedure_code) && (
               <div className="pt-2">
-                <p className="text-sm text-muted-foreground mb-2">SHA Coverage</p>
-                <Badge variant="outline" className="gap-1">
+                <p className="text-xs sm:text-sm text-muted-foreground mb-2">SHA Coverage</p>
+                <Badge variant="outline" className="gap-1 text-xs">
                   <DollarSign className="h-3 w-3" />
                   Check Patient Eligibility
                 </Badge>
@@ -394,23 +394,23 @@ export function ImagingOrderDetail({ orderNumber }: ImagingOrderDetailProps) {
 
       {/* Procedures */}
       <Card>
-        <CardHeader className="pb-3">
-          <CardTitle className="text-lg">
+        <CardHeader className="pb-2 sm:pb-3">
+          <CardTitle className="text-base sm:text-lg">
             Imaging Procedures ({order.items.length})
           </CardTitle>
         </CardHeader>
-        <CardContent>
-          <div className="space-y-3">
+        <CardContent className="px-3 sm:px-6">
+          <div className="space-y-2 sm:space-y-3">
             {order.items.map((item) => (
               <div
                 key={item.id}
-                className="flex flex-col gap-3 p-3 border rounded-lg sm:flex-row sm:items-center sm:justify-between"
+                className="flex flex-col gap-2 sm:gap-3 p-2.5 sm:p-3 border rounded-lg"
               >
-                <div className="flex items-start gap-3">
+                <div className="flex items-start gap-2 sm:gap-3">
                   <ModalityBadge modality={item.modality} />
-                  <div className="min-w-0">
-                    <p className="font-medium truncate">{item.procedure_name}</p>
-                    <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-sm text-muted-foreground">
+                  <div className="min-w-0 flex-1">
+                    <p className="font-medium text-sm sm:text-base truncate">{item.procedure_name}</p>
+                    <div className="flex flex-wrap items-center gap-x-1.5 sm:gap-x-2 gap-y-0.5 text-xs sm:text-sm text-muted-foreground">
                       <span>{item.procedure_code}</span>
                       {item.laterality !== 'NA' && (
                         <>
@@ -420,17 +420,17 @@ export function ImagingOrderDetail({ orderNumber }: ImagingOrderDetailProps) {
                       )}
                     </div>
                     {item.specific_instructions && (
-                      <p className="text-sm text-muted-foreground mt-1 line-clamp-2">
+                      <p className="text-xs sm:text-sm text-muted-foreground mt-1 line-clamp-2">
                         {item.specific_instructions}
                       </p>
                     )}
                   </div>
                 </div>
-                <div className="flex items-center justify-between gap-3 sm:justify-end">
-                  <Badge variant={item.is_completed ? 'default' : 'outline'}>
+                <div className="flex items-center justify-between gap-2 pt-1 border-t sm:border-t-0 sm:pt-0">
+                  <Badge variant={item.is_completed ? 'default' : 'outline'} className="text-xs">
                     {item.is_completed ? 'Completed' : 'Pending'}
                   </Badge>
-                  <span className="font-medium whitespace-nowrap">
+                  <span className="font-medium text-sm sm:text-base whitespace-nowrap">
                     KES {item.unit_cost.toLocaleString()}
                   </span>
                 </div>
@@ -443,11 +443,11 @@ export function ImagingOrderDetail({ orderNumber }: ImagingOrderDetailProps) {
       {/* Actions */}
       {!isCancelled && order.status !== 'REPORTED' && (
         <Card>
-          <CardHeader className="pb-3">
-            <CardTitle className="text-lg">Actions</CardTitle>
+          <CardHeader className="pb-2 sm:pb-3">
+            <CardTitle className="text-base sm:text-lg">Actions</CardTitle>
           </CardHeader>
-          <CardContent>
-            <div className="flex flex-wrap gap-3">
+          <CardContent className="px-3 sm:px-6">
+            <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:gap-3">
               {/* Submit (DRAFT -> ORDERED) */}
               {isDraft && (
                 <Button onClick={handleSubmit} disabled={isActionLoading}>

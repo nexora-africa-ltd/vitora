@@ -104,21 +104,21 @@ export function ImagingWorklist({ onOrderSelect }: ImagingWorklistProps) {
   };
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4 sm:space-y-6">
       {/* Stats Cards */}
-      <div className="grid gap-4 md:grid-cols-4">
+      <div className="grid gap-3 sm:gap-4 grid-cols-2 md:grid-cols-4">
         <Card>
-          <CardContent className="pt-4">
-            <div className="flex items-center gap-3">
-              <div className="p-2 rounded-lg bg-sky-500/15">
-                <Clock className="h-5 w-5 text-sky-700 dark:text-sky-400" />
+          <CardContent className="pt-3 sm:pt-4 px-3 sm:px-6">
+            <div className="flex items-center gap-2 sm:gap-3">
+              <div className="p-1.5 sm:p-2 rounded-lg bg-sky-500/15">
+                <Clock className="h-4 w-4 sm:h-5 sm:w-5 text-sky-700 dark:text-sky-400" />
               </div>
-              <div>
-                <p className="text-sm text-muted-foreground">Pending</p>
+              <div className="min-w-0">
+                <p className="text-xs sm:text-sm text-muted-foreground truncate">Pending</p>
                 {statsLoading ? (
-                  <Skeleton className="h-7 w-12" />
+                  <Skeleton className="h-6 sm:h-7 w-10 sm:w-12" />
                 ) : (
-                  <p className="text-2xl font-bold">{stats?.total_pending || 0}</p>
+                  <p className="text-xl sm:text-2xl font-bold">{stats?.total_pending || 0}</p>
                 )}
               </div>
             </div>
@@ -126,17 +126,17 @@ export function ImagingWorklist({ onOrderSelect }: ImagingWorklistProps) {
         </Card>
 
         <Card>
-          <CardContent className="pt-4">
-            <div className="flex items-center gap-3">
-              <div className="p-2 rounded-lg bg-amber-500/15">
-                <Loader2 className="h-5 w-5 text-amber-700 dark:text-amber-400" />
+          <CardContent className="pt-3 sm:pt-4 px-3 sm:px-6">
+            <div className="flex items-center gap-2 sm:gap-3">
+              <div className="p-1.5 sm:p-2 rounded-lg bg-amber-500/15">
+                <Loader2 className="h-4 w-4 sm:h-5 sm:w-5 text-amber-700 dark:text-amber-400" />
               </div>
-              <div>
-                <p className="text-sm text-muted-foreground">In Progress</p>
+              <div className="min-w-0">
+                <p className="text-xs sm:text-sm text-muted-foreground truncate">In Progress</p>
                 {statsLoading ? (
-                  <Skeleton className="h-7 w-12" />
+                  <Skeleton className="h-6 sm:h-7 w-10 sm:w-12" />
                 ) : (
-                  <p className="text-2xl font-bold">{stats?.total_in_progress || 0}</p>
+                  <p className="text-xl sm:text-2xl font-bold">{stats?.total_in_progress || 0}</p>
                 )}
               </div>
             </div>
@@ -144,17 +144,17 @@ export function ImagingWorklist({ onOrderSelect }: ImagingWorklistProps) {
         </Card>
 
         <Card>
-          <CardContent className="pt-4">
-            <div className="flex items-center gap-3">
-              <div className="p-2 rounded-lg bg-destructive/15">
-                <Zap className="h-5 w-5 text-destructive" />
+          <CardContent className="pt-3 sm:pt-4 px-3 sm:px-6">
+            <div className="flex items-center gap-2 sm:gap-3">
+              <div className="p-1.5 sm:p-2 rounded-lg bg-destructive/15">
+                <Zap className="h-4 w-4 sm:h-5 sm:w-5 text-destructive" />
               </div>
-              <div>
-                <p className="text-sm text-muted-foreground">STAT Orders</p>
+              <div className="min-w-0">
+                <p className="text-xs sm:text-sm text-muted-foreground truncate">STAT</p>
                 {statsLoading ? (
-                  <Skeleton className="h-7 w-12" />
+                  <Skeleton className="h-6 sm:h-7 w-10 sm:w-12" />
                 ) : (
-                  <p className="text-2xl font-bold">{stats?.stat_orders || 0}</p>
+                  <p className="text-xl sm:text-2xl font-bold">{stats?.stat_orders || 0}</p>
                 )}
               </div>
             </div>
@@ -162,17 +162,17 @@ export function ImagingWorklist({ onOrderSelect }: ImagingWorklistProps) {
         </Card>
 
         <Card>
-          <CardContent className="pt-4">
-            <div className="flex items-center gap-3">
-              <div className="p-2 rounded-lg bg-emerald-500/15">
-                <CheckCircle2 className="h-5 w-5 text-emerald-700 dark:text-emerald-400" />
+          <CardContent className="pt-3 sm:pt-4 px-3 sm:px-6">
+            <div className="flex items-center gap-2 sm:gap-3">
+              <div className="p-1.5 sm:p-2 rounded-lg bg-emerald-500/15">
+                <CheckCircle2 className="h-4 w-4 sm:h-5 sm:w-5 text-emerald-700 dark:text-emerald-400" />
               </div>
-              <div>
-                <p className="text-sm text-muted-foreground">Completed Today</p>
+              <div className="min-w-0">
+                <p className="text-xs sm:text-sm text-muted-foreground truncate">Today</p>
                 {statsLoading ? (
-                  <Skeleton className="h-7 w-12" />
+                  <Skeleton className="h-6 sm:h-7 w-10 sm:w-12" />
                 ) : (
-                  <p className="text-2xl font-bold">
+                  <p className="text-xl sm:text-2xl font-bold">
                     {stats?.total_completed_today || 0}
                   </p>
                 )}
@@ -184,28 +184,28 @@ export function ImagingWorklist({ onOrderSelect }: ImagingWorklistProps) {
 
       {/* Worklist */}
       <Card>
-        <CardHeader className="pb-3">
-          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-            <div>
-              <CardTitle>Orders Worklist</CardTitle>
-              <CardDescription>
+        <CardHeader className="pb-2 sm:pb-3">
+          <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+            <div className="min-w-0">
+              <CardTitle className="text-base sm:text-lg">Orders Worklist</CardTitle>
+              <CardDescription className="text-xs sm:text-sm">
                 Orders pending imaging - sorted by priority and order time
               </CardDescription>
             </div>
-            <Button variant="outline" size="sm" onClick={() => refetch()}>
+            <Button variant="outline" size="sm" onClick={() => refetch()} className="shrink-0 w-full sm:w-auto">
               <RefreshCw className="h-4 w-4 mr-2" />
               Refresh
             </Button>
           </div>
         </CardHeader>
-        <CardContent>
+        <CardContent className="px-3 sm:px-6">
           {/* Filters */}
-          <div className="flex flex-col gap-3 mb-4 sm:flex-row">
+          <div className="flex flex-col gap-2 mb-3 sm:flex-row sm:mb-4">
             <Select
               value={modalityFilter}
               onValueChange={(v) => setModalityFilter(v as ImagingModality | '')}
             >
-              <SelectTrigger className="w-full sm:w-[180px]">
+              <SelectTrigger className="w-full sm:w-[160px]">
                 <SelectValue placeholder="All Modalities" />
               </SelectTrigger>
               <SelectContent>
@@ -222,7 +222,7 @@ export function ImagingWorklist({ onOrderSelect }: ImagingWorklistProps) {
               value={priorityFilter}
               onValueChange={(v) => setPriorityFilter(v as ImagingPriority | '')}
             >
-              <SelectTrigger className="w-full sm:w-[140px]">
+              <SelectTrigger className="w-full sm:w-[130px]">
                 <SelectValue placeholder="All Priority" />
               </SelectTrigger>
               <SelectContent>
@@ -238,27 +238,27 @@ export function ImagingWorklist({ onOrderSelect }: ImagingWorklistProps) {
 
           {/* Order List */}
           {isLoading ? (
-            <div className="space-y-3">
+            <div className="space-y-2 sm:space-y-3">
               {Array.from({ length: 5 }).map((_, i) => (
-                <Skeleton key={i} className="h-24 w-full" />
+                <Skeleton key={i} className="h-20 sm:h-24 w-full" />
               ))}
             </div>
           ) : error ? (
-            <div className="text-center py-8">
-              <AlertTriangle className="h-8 w-8 mx-auto text-destructive mb-2" />
-              <p className="text-destructive">Failed to load worklist</p>
-              <Button variant="outline" className="mt-2" onClick={() => refetch()}>
+            <div className="text-center py-6 sm:py-8">
+              <AlertTriangle className="h-7 w-7 sm:h-8 sm:w-8 mx-auto text-destructive mb-2" />
+              <p className="text-sm sm:text-base text-destructive">Failed to load worklist</p>
+              <Button variant="outline" className="mt-2" size="sm" onClick={() => refetch()}>
                 Try Again
               </Button>
             </div>
           ) : filteredOrders.length === 0 ? (
-            <div className="text-center py-12 text-muted-foreground">
-              <Clock className="h-12 w-12 mx-auto mb-4 opacity-50" />
-              <p className="font-medium">No pending orders</p>
-              <p className="text-sm">All caught up! Check back later.</p>
+            <div className="text-center py-8 sm:py-12 text-muted-foreground">
+              <Clock className="h-10 w-10 sm:h-12 sm:w-12 mx-auto mb-3 sm:mb-4 opacity-50" />
+              <p className="font-medium text-sm sm:text-base">No pending orders</p>
+              <p className="text-xs sm:text-sm">All caught up! Check back later.</p>
             </div>
           ) : (
-            <div className="space-y-3">
+            <div className="space-y-2 sm:space-y-3">
               {filteredOrders.map((order) => (
                 <WorklistOrderCard
                   key={order.id}
@@ -294,58 +294,62 @@ function WorklistOrderCard({
   return (
     <div
       className={cn(
-        'p-4 border rounded-lg cursor-pointer transition-colors hover:bg-muted/50',
+        'p-3 sm:p-4 border rounded-lg cursor-pointer transition-colors hover:bg-muted/50',
         order.priority === 'STAT' && 'border-destructive/30 bg-destructive/5 hover:bg-destructive/10',
         order.priority === 'URGENT' && 'border-amber-500/30 bg-amber-500/10 hover:bg-amber-500/15'
       )}
       onClick={onClick}
     >
-      <div className="flex items-start justify-between">
-        <div className="space-y-2">
-          <div className="flex items-center gap-2">
-            <span className="font-mono font-medium">{order.order_number}</span>
+      <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
+        <div className="space-y-1.5 sm:space-y-2 flex-1 min-w-0">
+          <div className="flex items-center flex-wrap gap-1.5 sm:gap-2">
+            <span className="font-mono font-medium text-sm sm:text-base">{order.order_number}</span>
             <PriorityBadge priority={order.priority} />
             <OrderStatusBadge status={order.status} />
           </div>
 
-          <div className="flex items-center gap-2 text-sm">
-            <User className="h-3.5 w-3.5 text-muted-foreground" />
-            <span>{order.patient_name || `Patient #${order.patient}`}</span>
+          <div className="flex items-center gap-1.5 sm:gap-2 text-xs sm:text-sm">
+            <User className="h-3 w-3 sm:h-3.5 sm:w-3.5 text-muted-foreground shrink-0" />
+            <span className="truncate">{order.patient_name || `Patient #${order.patient}`}</span>
           </div>
 
-          <div className="flex flex-wrap gap-2">
+          <div className="flex flex-wrap gap-1.5 sm:gap-2">
             {order.items.map((item) => (
               <div
                 key={item.id}
-                className="flex items-center gap-1 text-sm bg-muted rounded px-2 py-1"
+                className="flex items-center gap-1 text-xs sm:text-sm bg-muted rounded px-1.5 sm:px-2 py-0.5 sm:py-1"
               >
                 <ModalityBadge modality={item.modality} size="sm" showIcon={false} />
-                <span className="text-muted-foreground">{item.procedure_name}</span>
+                <span className="text-muted-foreground truncate max-w-[120px] sm:max-w-none">{item.procedure_name}</span>
               </div>
             ))}
           </div>
 
-          <div className="flex items-center gap-4 text-sm text-muted-foreground">
+          <div className="flex flex-wrap items-center gap-2 sm:gap-4 text-xs sm:text-sm text-muted-foreground">
             <div className="flex items-center gap-1">
-              <Clock className="h-3.5 w-3.5" />
-              Ordered {formatRelativeTime(order.ordered_at)}
+              <Clock className="h-3 w-3 sm:h-3.5 sm:w-3.5" />
+              <span>Ordered {formatRelativeTime(order.ordered_at)}</span>
             </div>
             {order.scheduled_datetime && (
               <div className="flex items-center gap-1">
-                <Calendar className="h-3.5 w-3.5" />
-                Scheduled {formatDateTime(order.scheduled_datetime)}
+                <Calendar className="h-3 w-3 sm:h-3.5 sm:w-3.5" />
+                <span className="hidden sm:inline">Scheduled {formatDateTime(order.scheduled_datetime)}</span>
+                <span className="sm:hidden">Scheduled</span>
               </div>
             )}
           </div>
         </div>
 
-        <div className="flex items-center gap-2">
+        <div className="flex items-center justify-between gap-2 pt-2 border-t sm:border-t-0 sm:pt-0 sm:flex-col sm:items-end">
           {(order.status === 'ORDERED' || order.status === 'SCHEDULED') && (
             <Button
               size="sm"
               onClick={onStart}
               disabled={isStarting}
-              className={cn(order.priority === 'STAT' && 'bg-destructive hover:bg-destructive/90')}
+              className={cn(
+                'w-full sm:w-auto',
+                order.priority === 'STAT' && 'bg-destructive hover:bg-destructive/90'
+              )}
             >
               {isStarting ? (
                 <Loader2 className="h-4 w-4 animate-spin" />
@@ -357,7 +361,7 @@ function WorklistOrderCard({
               )}
             </Button>
           )}
-          <ChevronRight className="h-5 w-5 text-muted-foreground" />
+          <ChevronRight className="h-5 w-5 text-muted-foreground hidden sm:block" />
         </div>
       </div>
     </div>

@@ -99,21 +99,21 @@ export function ProcedureSelector({
           </div>
         </Button>
       </PopoverTrigger>
-      <PopoverContent className="w-[400px] p-0" align="start">
+      <PopoverContent className="w-[calc(100vw-2rem)] sm:w-[400px] p-0" align="start">
         <Command shouldFilter={false}>
-          <div className="flex items-center border-b px-3">
-            <Search className="mr-2 h-4 w-4 shrink-0 opacity-50" />
+          <div className="flex items-center border-b px-2 sm:px-3">
+            <Search className="mr-1.5 sm:mr-2 h-4 w-4 shrink-0 opacity-50" />
             <input
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               placeholder="Search procedures..."
-              className="flex h-10 w-full rounded-md bg-transparent py-3 text-sm outline-none placeholder:text-muted-foreground disabled:cursor-not-allowed disabled:opacity-50"
+              className="flex h-9 sm:h-10 w-full rounded-md bg-transparent py-2 sm:py-3 text-sm outline-none placeholder:text-muted-foreground disabled:cursor-not-allowed disabled:opacity-50"
             />
             {isLoading && <Loader2 className="h-4 w-4 animate-spin" />}
           </div>
-          <CommandList>
+          <CommandList className="max-h-[250px] sm:max-h-[300px]">
             {!isLoading && (!procedures || procedures.length === 0) && (
-              <CommandEmpty>
+              <CommandEmpty className="text-xs sm:text-sm py-4 sm:py-6">
                 {searchQuery.length < 2
                   ? 'Type at least 2 characters to search...'
                   : 'No procedures found.'}
@@ -126,26 +126,27 @@ export function ProcedureSelector({
                     key={procedure.id}
                     value={procedure.code}
                     onSelect={() => handleSelect(procedure)}
+                    className="px-2 sm:px-3 py-1.5 sm:py-2"
                   >
                     <Check
                       className={cn(
-                        'mr-2 h-4 w-4',
+                        'mr-1.5 sm:mr-2 h-3.5 w-3.5 sm:h-4 sm:w-4 shrink-0',
                         value?.id === procedure.id ? 'opacity-100' : 'opacity-0'
                       )}
                     />
                     <div className="flex flex-col flex-1 min-w-0">
-                      <div className="flex items-center gap-2">
+                      <div className="flex items-center gap-1.5 sm:gap-2">
                         <ModalityBadge modality={procedure.modality} size="sm" />
-                        <span className="font-medium truncate">{procedure.name}</span>
+                        <span className="font-medium text-xs sm:text-sm truncate">{procedure.name}</span>
                       </div>
-                      <div className="flex items-center gap-2 text-xs text-muted-foreground mt-0.5">
+                      <div className="flex items-center flex-wrap gap-x-1.5 sm:gap-x-2 gap-y-0.5 text-[10px] sm:text-xs text-muted-foreground mt-0.5">
                         <span>{procedure.code}</span>
                         <span>•</span>
                         <span>KES {procedure.cost.toLocaleString()}</span>
                         {procedure.sha_claimable && (
                           <>
                             <span>•</span>
-                            <Badge variant="outline" className="h-4 text-[10px] px-1">
+                            <Badge variant="outline" className="h-3.5 sm:h-4 text-[8px] sm:text-[10px] px-1">
                               SHA
                             </Badge>
                           </>
