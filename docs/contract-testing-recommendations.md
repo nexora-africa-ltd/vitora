@@ -12,7 +12,7 @@
 | **Frontend Zod schemas** | 16 schema files, `parseResponse()` validation on every API call |
 | **OpenAPI schema** | ✅ `drf-spectacular` configured (`/api/schema/`, `/api/docs/`) |
 | **Backend contract tests** | ✅ 67 serializer snapshot tests in `tests/test_contracts.py` |
-| **Frontend contract tests** | ✅ Started — 5/13 modules (78 tests) |
+| **Frontend contract tests** | ✅ Started — 6/13 modules (98 tests) |
 
 The frontend validates API responses with Zod at runtime via `parseResponse()`. Backend serializer snapshot tests now catch field changes **before deployment**. When a serializer field is added, renamed, or removed, the contract test fails with a clear message directing the developer to update the frontend Zod schema.
 
@@ -76,7 +76,7 @@ The frontend validates API responses with Zod at runtime via `parseResponse()`. 
 | `clinic.schema.ts` | `clinic.contract.test.ts` | ✅ Done (17 tests) | Clinic, Session, Visit, Staff, Schedule, Enrollment + 10 enums |
 | `pharmacy.schema.ts` | `pharmacy.contract.test.ts` | ✅ Done (18 tests) | Drug, StockBatch, Prescription, Dispensing, Adjustment + 9 enums |
 | `laboratory.schema.ts` | `laboratory.contract.test.ts` | ✅ Done (16 tests) | LabOrder, LabOrderItem, LabResult, LabQueue + 10 enums |
-| `imaging.schema.ts` | `imaging.contract.test.ts` | 📋 TODO | ImagingOrder, ImagingProcedure, ImagingResult |
+| `imaging.schema.ts` | `imaging.contract.test.ts` | ✅ Done (20 tests) | ImagingOrder, ImagingOrderItem, ImagingProcedure, ImagingResource + 5 enums |
 | `billing.schema.ts` | `billing.contract.test.ts` | 📋 TODO | Invoice, Payment, BillingItem, InsuranceClaim |
 | `triage.schema.ts` | `triage.contract.test.ts` | 📋 TODO | TriageAssessment, TriageCategory, VitalSigns |
 | `inpatient.schema.ts` | `inpatient.contract.test.ts` | 📋 TODO | Admission, Bed, Ward, Discharge |
@@ -160,4 +160,4 @@ jobs:
 
 ---
 
-*Generated: 2026-02-07 | Updated: 2026-02-08 (Layers 1, 2 & 3: 5 modules done)*
+*Generated: 2026-02-07 | Updated: 2026-02-08 (Layers 1, 2 & 3: 6 modules done)*
