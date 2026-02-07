@@ -16,6 +16,7 @@
  * ✅ pharmacy.schema.ts - Fully implemented with parseResponse validation
  * ✅ laboratory.schema.ts - Fully implemented with parseResponse validation
  * ✅ billing.schema.ts - Fully implemented with parseResponse validation
+ * ✅ imaging.schema.ts - Fully implemented with parseResponse validation
  *
  * Note: Some schemas define the same enum (e.g., GenderSchema, QueueStatusSchema).
  * We export from the "primary" schema to avoid conflicts:
@@ -193,3 +194,21 @@ export {
 } from './sha.schema';
 
 export * from './core.schema';
+
+// Imaging schemas
+export {
+  ImagingModalitySchema,
+  ImagingBodyRegionSchema,
+  ImagingOrderStatusSchema,
+  ImagingPrioritySchema,
+  LateralitySchema,
+  ImagingProcedureSchema,
+  ImagingProcedureDetailSchema,
+  ImagingOrderItemSchema,
+  ImagingOrderSchema,
+  PaginatedImagingProcedureSchema,
+  PaginatedImagingOrderSchema,
+  ImagingProcedureArraySchema,
+  ImagingOrderArraySchema,
+  WorklistStatsSchema,
+} from './imaging.schema';

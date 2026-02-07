@@ -20,6 +20,7 @@ import {
   LayoutTemplate,
   Stethoscope,
   Beaker,
+  ScanLine,
   Pill,
 } from 'lucide-react';
 import { FormAccordion, type FormAccordionSection } from '@/components/ui/form-accordion';
@@ -27,11 +28,13 @@ import { MedicalHistoryFormContent } from '@/components/encounters/medical-histo
 import { ClinicalNotesFormContent } from '@/components/encounters/clinical-notes-form';
 import { DiagnosisFormContent } from '@/components/encounters/diagnosis-form';
 import { EncounterLabOrdersContent } from '@/components/encounters/encounter-lab-orders';
+import { EncounterImagingOrdersContent } from '@/components/encounters/encounter-imaging-orders';
 import { EncounterPrescriptionsContent } from '@/components/encounters/encounter-prescriptions';
 import { ClinicalTemplateFormContent } from '@/components/encounters/clinical-template-section';
 import type { EncounterFormData, DiagnosisFormData } from '@/lib/types/encounter-form';
 import type { ClinicalTemplate } from '@/lib/types/clinical-template';
 import type { LabOrder } from '@/lib/types/laboratory';
+import type { ImagingOrder } from '@/lib/types/imaging';
 import type { Prescription } from '@/lib/types/pharmacy';
 
 // Helper functions to check if sections have data
@@ -80,8 +83,12 @@ interface ClinicalFlowAccordionProps {
   encounterId: number;
   /** Patient ID for lab orders and prescriptions */
   patientId: number;
+  /** Patient name for imaging orders */
+  patientName?: string;
   /** Lab orders for this encounter */
   labOrders?: LabOrder[];
+  /** Imaging orders for this encounter */
+  imagingOrders?: ImagingOrder[];
   /** Prescriptions for this encounter */
   prescriptions?: Prescription[];
   /** Whether the form is editable */
@@ -107,7 +114,9 @@ export function ClinicalFlowAccordion({
   onSaveTemplateSnapshot,
   encounterId,
   patientId,
+  patientName,
   labOrders = [],
+  imagingOrders = [],
   prescriptions = [],
   disabled = false,
   onBeforeNavigate,
@@ -208,6 +217,25 @@ export function ClinicalFlowAccordion({
       ),
     },
     {
+      id: 'imaging',
+      title: 'Imaging Orders',
+      abbreviation: 'Img',
+      icon: <ScanLine className="h-4 w-4" />,
+      isComplete: imagingOrders.length > 0,
+      badge: imagingOrders.length > 0 ? imagingOrders.length : undefined,
+      tooltipTitle: 'Imaging Orders (Img)',
+      tooltipDescription: 'X-ray, ultrasound, CT, MRI and other imaging',
+      children: (
+        <EncounterImagingOrdersContent
+          encounterId={encounterId}
+          patientId={patientId}
+          patientName={patientName}
+          disabled={disabled}
+          onBeforeNavigate={onBeforeNavigate}
+        />
+      ),
+    },
+    {
       id: 'rx',
       title: 'Prescriptions',
       abbreviation: 'Rx',
@@ -238,7 +266,9 @@ export function ClinicalFlowAccordion({
     onSaveTemplateSnapshot,
     encounterId,
     patientId,
+    patientName,
     labOrders,
+    imagingOrders,
     prescriptions,
     disabled,
     onBeforeNavigate,

@@ -1,0 +1,111 @@
+# Inferno Testing Suite for FHIR Compliance Validation
+# Official HL7 Inferno framework for testing FHIR implementations
+#
+# Phase 6: FHIR Validation Plan - docs/fhir-validation-plan.md
+#
+# Usage:
+#   # Start Inferno test suite
+#   docker compose -f docker/inferno/compose.yml up -d
+#
+#   # Access Inferno web UI
+#   open http://localhost:4567
+#
+#   # View logs
+#   docker compose -f docker/inferno/compose.yml logs -f
+#
+# Test Suites Available:
+#   - Inferno Core (general FHIR testing)
+#   - SMART App Launch v2.0.0 (via ONC Program)
+#
+# NOTE: IPS and US Core test kits must be run from source.
+#       See run-tests.sh --ips or --us-core for instructions.
+#
+# Reference: https://inferno-framework.github.io/
+
+services:
+  # Main Inferno application
+  inferno:
+    image: infernocommunity/inferno-core:latest
+    container_name: vitora-inferno
+    ports:
+      - "4567:4567"  # Inferno Web UI
+    environment:
+      # Base configuration
+      - REDIS_URL=redis://redis:6379
+      - DATABASE_URL=postgres://postgres:postgres@postgres:5432/inferno
+      - EXTERNAL_HOST=http://localhost:4567
+      # Session configuration
+      - SESSION_SECRET=${INFERNO_SESSION_SECRET:-vitora-inferno-secret-key-change-in-production}
+      # Logging
+      - LOG_LEVEL=info
+    volumes:
+      - inferno-data:/opt/inferno/data
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "wget", "-q", "--spider", "http://localhost:4567"]
+      interval: 15s
+      timeout: 10s
+      retries: 10
+      start_period: 30s
+    restart: unless-stopped
+    networks:
+      - inferno-network
+
+  # PostgreSQL database for Inferno test results
+  postgres:
+    image: postgres:16-alpine
+    container_name: vitora-inferno-postgres
+    environment:
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=postgres
+      - POSTGRES_DB=inferno
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    restart: unless-stopped
+    networks:
+      - inferno-network
+
+  # Redis for Inferno session management
+  redis:
+    image: redis:7-alpine
+    container_name: vitora-inferno-redis
+    volumes:
+      - redis-data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    restart: unless-stopped
+    networks:
+      - inferno-network
+
+  # NOTE: ONC Inferno Program v1.9 is DEPRECATED (retired June 2022)
+  # For SMART App Launch and US Core testing, use:
+  #   1. Inferno Core (http://localhost:4567) - Modern framework
+  #   2. IPS Test Kit (run from source) - ./run-tests.sh --ips
+  #
+  # The deprecated ONC Program has been removed from this compose file.
+  # For reference: https://inferno.healthit.gov/
+
+volumes:
+  inferno-data:
+    name: vitora-inferno-data
+  postgres-data:
+    name: vitora-inferno-postgres
+  redis-data:
+    name: vitora-inferno-redis
+
+networks:
+  inferno-network:
+    name: vitora-inferno-network
+    driver: bridge

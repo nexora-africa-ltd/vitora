@@ -47,6 +47,7 @@ INSTALLED_APPS = [
     "corsheaders",
     "django_filters",
     "channels",  # Django Channels for WebSocket support
+    "oauth2_provider",  # SMART on FHIR OAuth2 server
     # Local apps
     "hmis.apps.core",
     "hmis.apps.patients",
@@ -58,6 +59,8 @@ INSTALLED_APPS = [
     "hmis.apps.inpatient",
     "hmis.apps.triage",
     "hmis.apps.clinics",
+    "hmis.apps.imaging.apps.ImagingConfig",
+    "hmis.apps.scheduling.apps.SchedulingConfig",
 ]
 
 MIDDLEWARE = [
@@ -436,3 +439,31 @@ CHANNEL_LAYERS = {
 }
 
 FACILITY_LEVEL = os.getenv("FACILITY_LEVEL", "L3")  # Default to Level 3
+
+# ============================================================================
+# SMART on FHIR OAuth2 Configuration (Phase 5)
+# ============================================================================
+
+# django-oauth-toolkit configuration
+OAUTH2_PROVIDER = {
+    # SMART on FHIR scopes backend
+    "SCOPES_BACKEND_CLASS": "hmis.apps.core.oauth.scopes.SMARTScopes",
+    # Custom validator for SMART-specific behavior
+    "OAUTH2_VALIDATOR_CLASS": "hmis.apps.core.oauth.validators.SMARTOAuth2Validator",
+    # Token settings
+    "ACCESS_TOKEN_EXPIRE_SECONDS": 3600,  # 1 hour (SMART recommendation)
+    "REFRESH_TOKEN_EXPIRE_SECONDS": 86400 * 30,  # 30 days
+    "ROTATE_REFRESH_TOKEN": True,
+    # OIDC settings
+    "OIDC_ENABLED": True,
+    "OIDC_ISS_ENDPOINT": os.getenv("FHIR_BASE_URL", ""),
+    # PKCE required for public clients (SMART requirement)
+    "PKCE_REQUIRED": True,
+    # Allowed grant types
+    "ALLOWED_REDIRECT_URI_SCHEMES": ["http", "https", "urn"],  # urn for SMART native apps
+    # Response types
+    "AUTHORIZATION_CODE_EXPIRE_SECONDS": 600,  # 10 minutes
+}
+
+# FHIR server base URL (used in SMART configuration)
+FHIR_BASE_URL = os.getenv("FHIR_BASE_URL", "http://localhost:9088")
