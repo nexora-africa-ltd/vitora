@@ -16,7 +16,9 @@ This module contains ViewSets for:
 """
 
 from django_filters import rest_framework as filters
-from rest_framework import permissions, status, viewsets
+from drf_spectacular.types import OpenApiTypes
+from drf_spectacular.utils import extend_schema, inline_serializer
+from rest_framework import permissions, serializers, status, viewsets
 from rest_framework.decorators import action
 from rest_framework.response import Response
 
@@ -609,6 +611,20 @@ class AssignmentViewSet(viewsets.ViewSet):
 
     permission_classes = [permissions.IsAuthenticated]
 
+    @extend_schema(
+        request=inline_serializer(
+            name="AutoAssignRequest",
+            fields={
+                "assignment_type": serializers.CharField(),
+                "patient_id": serializers.IntegerField(required=False),
+                "scheduled_start": serializers.DateTimeField(),
+                "scheduled_end": serializers.DateTimeField(),
+                "reason": serializers.CharField(required=False),
+                "candidate_ids": serializers.ListField(child=serializers.IntegerField(), required=False),
+            },
+        ),
+        responses={200: OpenApiTypes.OBJECT},
+    )
     @action(detail=False, methods=["post"], url_path="auto-assign")
     def auto_assign(self, request):
         """

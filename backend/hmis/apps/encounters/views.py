@@ -5,7 +5,9 @@ Views for the encounters app.
 from django.core.exceptions import ValidationError
 from django.db.models import ProtectedError
 from django_filters.rest_framework import DjangoFilterBackend
-from rest_framework import filters, status, viewsets
+from drf_spectacular.types import OpenApiTypes
+from drf_spectacular.utils import extend_schema, inline_serializer
+from rest_framework import filters, serializers, status, viewsets
 from rest_framework.decorators import action
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
@@ -1551,6 +1553,9 @@ class TreatmentPlanView(APIView):
         except Encounter.DoesNotExist:
             return None
 
+    @extend_schema(
+        responses={200: TreatmentPlanSerializer},
+    )
     def get(self, request, encounter_pk):
         """Get treatment plan for encounter."""
         encounter = self._get_encounter(encounter_pk)
@@ -1570,6 +1575,10 @@ class TreatmentPlanView(APIView):
                 status=status.HTTP_404_NOT_FOUND,
             )
 
+    @extend_schema(
+        request=TreatmentPlanSerializer,
+        responses={201: TreatmentPlanSerializer},
+    )
     def post(self, request, encounter_pk):
         """Create treatment plan for encounter."""
         encounter = self._get_encounter(encounter_pk)
@@ -1606,6 +1615,10 @@ class TreatmentPlanView(APIView):
 
         return Response(serializer.data, status=status.HTTP_201_CREATED)
 
+    @extend_schema(
+        request=TreatmentPlanSerializer,
+        responses={200: TreatmentPlanSerializer},
+    )
     def patch(self, request, encounter_pk):
         """Partially update treatment plan."""
         encounter = self._get_encounter(encounter_pk)
@@ -1640,6 +1653,10 @@ class TreatmentPlanView(APIView):
 
         return Response(serializer.data)
 
+    @extend_schema(
+        request=TreatmentPlanSerializer,
+        responses={200: TreatmentPlanSerializer},
+    )
     def put(self, request, encounter_pk):
         """Full update of treatment plan."""
         return self.patch(request, encounter_pk)
@@ -1655,6 +1672,15 @@ class ApplyTemplateView(APIView):
 
     permission_classes = [IsAuthenticated]
 
+    @extend_schema(
+        request=inline_serializer(
+            name="ApplyTemplateRequest",
+            fields={
+                "template_id": serializers.IntegerField(),
+            },
+        ),
+        responses={200: TreatmentPlanSerializer},
+    )
     def post(self, request, encounter_pk):
         """Apply template to treatment plan."""
         # Get encounter
