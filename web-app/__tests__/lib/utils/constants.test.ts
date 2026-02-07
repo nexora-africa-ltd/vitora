@@ -94,9 +94,15 @@ describe('constants', () => {
   describe('ENCOUNTER_STATUS', () => {
     it('should have all encounter statuses', () => {
       const statuses = ENCOUNTER_STATUS.map((s) => s.value);
-      expect(statuses).toContain('DRAFT');
+      expect(statuses).toContain('CREATED');
+      expect(statuses).toContain('CHECKED_IN');
+      expect(statuses).toContain('TRIAGED');
       expect(statuses).toContain('IN_PROGRESS');
-      expect(statuses).toContain('COMPLETED');
+      expect(statuses).toContain('ON_HOLD');
+      expect(statuses).toContain('ORDERS_PLACED');
+      expect(statuses).toContain('RESULTS_PENDING');
+      expect(statuses).toContain('READY_TO_CLOSE');
+      expect(statuses).toContain('CLOSED');
       expect(statuses).toContain('CANCELLED');
     });
 
