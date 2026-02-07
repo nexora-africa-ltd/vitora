@@ -39,10 +39,10 @@ describe('Encounters API', () => {
       const mockResponse = { data: { count: 0, results: [] } };
       mockApiClient.get.mockResolvedValue(mockResponse);
 
-      await encountersApi.list({ patient: 123, status: 'COMPLETED' });
+      await encountersApi.list({ patient: 123, status: 'CLOSED' });
 
       expect(mockApiClient.get).toHaveBeenCalledWith('/api/encounters/', {
-        params: { patient: 123, status: 'COMPLETED' },
+        params: { patient: 123, status: 'CLOSED' },
       });
     });
   });

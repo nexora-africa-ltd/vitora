@@ -312,7 +312,8 @@ def process_checkin(
         skip_triage = should_skip_triage(visit_reason, destination_clinic) or skip_triage
     elif destination == "TRIAGE":
         destination_type = "TRIAGE"
-        skip_triage = False
+        # Auto-detect skip triage based on visit reason even for TRIAGE destination
+        skip_triage = should_skip_triage(visit_reason) or skip_triage
 
     # Get linked encounter
     linked_encounter = None
@@ -328,7 +329,9 @@ def process_checkin(
         patient=patient,
         encounter_type=encounter_type,
         chief_complaint=chief_complaint or "Check-in",
-        status="DRAFT",
+        status="CREATED",
+        visit_reason=visit_reason,
+        linked_encounter=linked_encounter,
     )
 
     # Create check-in record

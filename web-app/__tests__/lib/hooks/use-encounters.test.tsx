@@ -61,13 +61,13 @@ describe('useEncounters', () => {
     mockEncountersApi.list.mockResolvedValue({ count: 0, results: [], next: null, previous: null });
 
     renderHook(
-      () => useEncounters({ patient: 123, status: 'COMPLETED' }),
+      () => useEncounters({ patient: 123, status: 'CLOSED' }),
       { wrapper: createWrapper() }
     );
 
     await waitFor(() => expect(mockEncountersApi.list).toHaveBeenCalled());
 
-    expect(mockEncountersApi.list).toHaveBeenCalledWith({ patient: 123, status: 'COMPLETED' });
+    expect(mockEncountersApi.list).toHaveBeenCalledWith({ patient: 123, status: 'CLOSED' });
   });
 });
 

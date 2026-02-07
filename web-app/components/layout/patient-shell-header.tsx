@@ -207,8 +207,15 @@ export function PatientShellHeader({ className, compact = false }: PatientShellH
                     className="text-xs"
                   >
                     {encounterContext.encounter.status === 'IN_PROGRESS' ? 'In Progress' :
-                     encounterContext.encounter.status === 'DRAFT' ? 'Draft' :
-                     encounterContext.encounter.status === 'COMPLETED' ? 'Completed' :
+                     encounterContext.encounter.status === 'CREATED' ? 'Created' :
+                     encounterContext.encounter.status === 'CHECKED_IN' ? 'Checked In' :
+                     encounterContext.encounter.status === 'TRIAGED' ? 'Triaged' :
+                     encounterContext.encounter.status === 'ON_HOLD' ? 'On Hold' :
+                     encounterContext.encounter.status === 'ORDERS_PLACED' ? 'Orders Placed' :
+                     encounterContext.encounter.status === 'RESULTS_PENDING' ? 'Results Pending' :
+                     encounterContext.encounter.status === 'READY_TO_CLOSE' ? 'Ready to Close' :
+                     encounterContext.encounter.status === 'CLOSED' ? 'Closed' :
+                     encounterContext.encounter.status === 'CANCELLED' ? 'Cancelled' :
                      encounterContext.encounter.status}
                   </Badge>
                 </div>

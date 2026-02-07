@@ -409,12 +409,12 @@ class TestEncounterConstraints:
         """Should allow DRAFT but not multiple IN_PROGRESS encounters."""
         from hmis.apps.encounters.models import Encounter
 
-        # Create DRAFT encounter (allowed)
+        # Create CREATED encounter (allowed)
         enc1 = Encounter.objects.create(
             patient=sample_patient,
             encounter_type="OPD",
             chief_complaint="Cough",
-            status="DRAFT",
+            status="CREATED",
         )
 
         # Create IN_PROGRESS encounter (allowed)
@@ -425,7 +425,7 @@ class TestEncounterConstraints:
             status="IN_PROGRESS",
         )
 
-        assert enc1.status == "DRAFT"
+        assert enc1.status == "CREATED"
         assert enc2.status == "IN_PROGRESS"
 
         # Attempting to create another IN_PROGRESS should fail
@@ -452,7 +452,7 @@ class TestEncounterClinicianAssignment:
             patient=sample_patient,
             encounter_type="OPD",
             chief_complaint="Headache",
-            status="DRAFT",
+            status="CREATED",
         )
 
         # Clinician claims the encounter
@@ -511,12 +511,12 @@ class TestEncounterClinicianAssignment:
         # Clinician releases
         encounter.assigned_clinician = None
         encounter.claimed_at = None
-        encounter.status = "DRAFT"
+        encounter.status = "CREATED"
         encounter.save()
 
         encounter.refresh_from_db()
         assert encounter.assigned_clinician is None
-        assert encounter.status == "DRAFT"
+        assert encounter.status == "CREATED"
 
 
 # ============================================================================

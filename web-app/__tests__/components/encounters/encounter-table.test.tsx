@@ -34,7 +34,7 @@ const mockEncounter: Encounter = {
   encounter_type: 'OPD',
   encounter_date: '2025-01-01',
   chief_complaint: 'Headache and fever',
-  status: 'COMPLETED',
+  status: 'CLOSED',
   temperature: 37.5,
   pulse: 80,
   blood_pressure: '120/80',

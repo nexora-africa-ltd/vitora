@@ -15,7 +15,13 @@ export interface Encounter {
   encounter_type: EncounterType;
   encounter_date: string;
   chief_complaint: string;
-  status: 'DRAFT' | 'IN_PROGRESS' | 'COMPLETED' | 'CANCELLED';
+  status: EncounterStatus;
+
+  // Encounter Linking (Sprint 2 - Phase 2B)
+  linked_encounter?: number | null;
+
+  // Visit Reason (Sprint 2 - Phase 2D)
+  visit_reason?: VisitReason;
 
   // Vitals
   temperature: number | null;
@@ -170,7 +176,104 @@ export interface EncounterListParams {
   patient?: number;
   status?: string;
   encounter_type?: string;
+  visit_reason?: string;
   ordering?: string;
+}
+
+// =============================================================================
+// Encounter Status (Sprint 2 - Enhanced State Machine)
+// =============================================================================
+
+export type EncounterStatus =
+  | 'CREATED'
+  | 'CHECKED_IN'
+  | 'TRIAGED'
+  | 'IN_PROGRESS'
+  | 'ON_HOLD'
+  | 'ORDERS_PLACED'
+  | 'RESULTS_PENDING'
+  | 'READY_TO_CLOSE'
+  | 'CLOSED'
+  | 'CANCELLED';
+
+export const ENCOUNTER_STATUS_DISPLAY: Record<EncounterStatus, string> = {
+  CREATED: 'Created',
+  CHECKED_IN: 'Checked In',
+  TRIAGED: 'Triaged',
+  IN_PROGRESS: 'In Progress',
+  ON_HOLD: 'On Hold',
+  ORDERS_PLACED: 'Orders Placed',
+  RESULTS_PENDING: 'Results Pending',
+  READY_TO_CLOSE: 'Ready to Close',
+  CLOSED: 'Closed',
+  CANCELLED: 'Cancelled',
+};
+
+// Valid state transitions
+export const VALID_ENCOUNTER_TRANSITIONS: Record<EncounterStatus, EncounterStatus[]> = {
+  CREATED: ['CHECKED_IN', 'CANCELLED'],
+  CHECKED_IN: ['TRIAGED', 'IN_PROGRESS', 'CANCELLED'],
+  TRIAGED: ['IN_PROGRESS', 'CANCELLED'],
+  IN_PROGRESS: ['ON_HOLD', 'ORDERS_PLACED', 'READY_TO_CLOSE', 'CANCELLED'],
+  ON_HOLD: ['IN_PROGRESS', 'CANCELLED'],
+  ORDERS_PLACED: ['RESULTS_PENDING', 'READY_TO_CLOSE'],
+  RESULTS_PENDING: ['READY_TO_CLOSE'],
+  READY_TO_CLOSE: ['CLOSED'],
+  CLOSED: [],
+  CANCELLED: [],
+};
+
+// Visit Reason (Sprint 2 - Phase 2D)
+export type VisitReason =
+  | 'NEW_COMPLAINT'
+  | 'FOLLOW_UP'
+  | 'CHRONIC_CARE'
+  | 'PROCEDURE_REVIEW'
+  | 'REFILL_ONLY'
+  | 'LAB_REVIEW'
+  | 'REFERRAL_VISIT'
+  | 'OTHER';
+
+export const VISIT_REASON_DISPLAY: Record<VisitReason, string> = {
+  NEW_COMPLAINT: 'New Complaint',
+  FOLLOW_UP: 'Follow-up',
+  CHRONIC_CARE: 'Chronic Care Review',
+  PROCEDURE_REVIEW: 'Post-Procedure Review',
+  REFILL_ONLY: 'Medication Refill Only',
+  LAB_REVIEW: 'Lab Results Review',
+  REFERRAL_VISIT: 'Referral from Another Facility',
+  OTHER: 'Other',
+};
+
+// Visit reasons that can skip triage
+export const SKIP_TRIAGE_REASONS: VisitReason[] = ['LAB_REVIEW', 'REFILL_ONLY'];
+
+// Encounter state transition request/response
+export interface EncounterTransitionRequest {
+  to_status: EncounterStatus;
+  reason?: string;
+}
+
+export interface EncounterTransitionResponse {
+  id: number;
+  status: EncounterStatus;
+  previous_status: EncounterStatus;
+  transitioned_at: string;
+  transitioned_by: string;
+}
+
+// Related encounters response
+export interface RelatedEncounter {
+  id: number;
+  patient: number;
+  patient_mrn: string;
+  patient_name: string;
+  encounter_type: EncounterType;
+  encounter_date: string;
+  chief_complaint: string;
+  status: EncounterStatus;
+  visit_reason?: VisitReason;
+  created_at: string;
 }
 
 // =============================================================================

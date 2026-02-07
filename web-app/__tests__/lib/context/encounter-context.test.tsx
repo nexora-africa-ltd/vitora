@@ -297,9 +297,9 @@ describe('EncounterContext', () => {
       });
     });
 
-    it('should NOT allow orders when encounter is COMPLETED', async () => {
-      const completedEncounter = { ...mockEncounter, status: 'COMPLETED' as const };
-      mockEncountersApi.get.mockResolvedValueOnce(completedEncounter);
+    it('should NOT allow orders when encounter is CLOSED', async () => {
+      const closedEncounter = { ...mockEncounter, status: 'CLOSED' as const };
+      mockEncountersApi.get.mockResolvedValueOnce(closedEncounter);
 
       const Wrapper = createWrapper();
       render(

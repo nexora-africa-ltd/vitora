@@ -4,6 +4,11 @@
  * Sprint: Returning Patient Workflow - Sprint 1
  */
 
+import type { VisitReason } from './encounter';
+
+// Re-export for backward compatibility
+export type { VisitReason } from './encounter';
+
 /**
  * Clinical snapshot containing summary of patient's clinical information
  */
@@ -57,17 +62,8 @@ export interface PatientLookupResponse {
 export type VisitType = 'NEW' | 'RETURN' | 'FOLLOW_UP' | 'EMERGENCY' | 'SCHEDULED';
 
 /**
- * Visit reason options
+ * Visit reason options - re-exported from encounter.ts
  */
-export type VisitReason =
-  | 'NEW_COMPLAINT'
-  | 'FOLLOW_UP'
-  | 'CHRONIC_CARE'
-  | 'PROCEDURE_REVIEW'
-  | 'REFILL_ONLY'
-  | 'LAB_REVIEW'
-  | 'REFERRAL_VISIT'
-  | 'OTHER';
 
 /**
  * Check-in request data

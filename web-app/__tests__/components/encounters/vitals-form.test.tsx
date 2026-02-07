@@ -30,7 +30,7 @@ const mockFormData: EncounterFormData = {
   physical_examination: '',
   assessment: '',
   plan: '',
-  status: 'DRAFT',
+  status: 'CREATED',
 };
 
 describe('VitalsForm', () => {
