@@ -33,14 +33,17 @@ export default function ImagingPage() {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <h1 className="text-2xl font-bold">Imaging</h1>
-          <p className="text-muted-foreground">
+          <p className="text-muted-foreground hidden sm:block">
             Manage imaging orders, view worklist, and track procedures
           </p>
         </div>
-        <Button onClick={() => router.push('/imaging/orders/new')}>
+        <Button
+          onClick={() => router.push('/imaging/orders/new')}
+          className="w-full sm:w-auto"
+        >
           <Plus className="h-4 w-4 mr-2" />
           New Imaging Order
         </Button>
@@ -48,22 +51,22 @@ export default function ImagingPage() {
 
       {/* Tabs */}
       <Tabs defaultValue="orders" className="space-y-4">
-        <TabsList>
-          <TabsTrigger value="orders" className="gap-2">
-            <ClipboardList className="h-4 w-4" />
-            Orders
+        <TabsList className="w-full grid grid-cols-4">
+          <TabsTrigger value="orders" className="gap-1.5 px-2 sm:px-4">
+            <ClipboardList className="h-5 w-5 sm:h-4 sm:w-4" />
+            <span className="hidden sm:inline">Orders</span>
           </TabsTrigger>
-          <TabsTrigger value="worklist" className="gap-2">
-            <Activity className="h-4 w-4" />
-            Worklist
+          <TabsTrigger value="worklist" className="gap-1.5 px-2 sm:px-4">
+            <Activity className="h-5 w-5 sm:h-4 sm:w-4" />
+            <span className="hidden sm:inline">Worklist</span>
           </TabsTrigger>
-          <TabsTrigger value="schedule" className="gap-2">
-            <CalendarDays className="h-4 w-4" />
-            Schedule
+          <TabsTrigger value="schedule" className="gap-1.5 px-2 sm:px-4">
+            <CalendarDays className="h-5 w-5 sm:h-4 sm:w-4" />
+            <span className="hidden sm:inline">Schedule</span>
           </TabsTrigger>
-          <TabsTrigger value="procedures" className="gap-2">
-            <BookOpen className="h-4 w-4" />
-            Procedure Catalog
+          <TabsTrigger value="procedures" className="gap-1.5 px-2 sm:px-4">
+            <BookOpen className="h-5 w-5 sm:h-4 sm:w-4" />
+            <span className="hidden sm:inline">Catalog</span>
           </TabsTrigger>
         </TabsList>
 
@@ -113,7 +116,7 @@ function ProcedureCatalogView() {
 
   return (
     <div className="space-y-4">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
         <h3 className="text-lg font-semibold">
           Procedure Catalog ({data?.count || 0} procedures)
         </h3>
@@ -145,7 +148,9 @@ function ProcedureCatalogView() {
               <div className="flex items-center justify-between mt-2 text-sm">
                 <span>KES {procedure.cost.toLocaleString()}</span>
                 {procedure.sha_claimable && (
-                  <span className="text-xs text-green-600">SHA Covered</span>
+                  <span className="text-xs text-emerald-700 dark:text-emerald-400">
+                    SHA Covered
+                  </span>
                 )}
               </div>
             </div>

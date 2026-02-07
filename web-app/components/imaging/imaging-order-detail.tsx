@@ -227,19 +227,19 @@ export function ImagingOrderDetail({ orderNumber }: ImagingOrderDetailProps) {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div className="flex items-center gap-4">
           <Button variant="ghost" size="icon" onClick={() => router.back()}>
             <ArrowLeft className="h-4 w-4" />
           </Button>
           <div>
-            <h1 className="text-2xl font-bold">{order.order_number}</h1>
-            <p className="text-muted-foreground">
+            <h1 className="text-xl sm:text-2xl font-bold">{order.order_number}</h1>
+            <p className="text-sm text-muted-foreground">
               Ordered on {formatDateTime(order.ordered_at)}
             </p>
           </div>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 ml-12 sm:ml-0">
           <PriorityBadge priority={order.priority} />
           <OrderStatusBadge status={order.status} />
         </div>
@@ -252,7 +252,7 @@ export function ImagingOrderDetail({ orderNumber }: ImagingOrderDetailProps) {
             <CardTitle className="text-lg">Order Progress</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="flex items-center justify-between">
+            <div className="flex items-center justify-between overflow-x-auto pb-2">
               {STATUS_STEPS.map((step, index) => {
                 const isCompleted = index <= statusIndex;
                 const isCurrent = index === statusIndex;
@@ -260,7 +260,7 @@ export function ImagingOrderDetail({ orderNumber }: ImagingOrderDetailProps) {
                 return (
                   <div
                     key={step.status}
-                    className="flex flex-col items-center flex-1"
+                    className="flex flex-col items-center flex-1 min-w-[60px]"
                   >
                     <div className="flex items-center w-full">
                       {index > 0 && (
@@ -271,16 +271,16 @@ export function ImagingOrderDetail({ orderNumber }: ImagingOrderDetailProps) {
                         />
                       )}
                       <div
-                        className={`w-8 h-8 rounded-full flex items-center justify-center shrink-0 ${
+                        className={`w-6 h-6 sm:w-8 sm:h-8 rounded-full flex items-center justify-center shrink-0 ${
                           isCompleted
                             ? 'bg-primary text-primary-foreground'
                             : 'bg-muted text-muted-foreground'
                         } ${isCurrent ? 'ring-2 ring-primary ring-offset-2' : ''}`}
                       >
                         {isCompleted ? (
-                          <CheckCircle2 className="h-4 w-4" />
+                          <CheckCircle2 className="h-3 w-3 sm:h-4 sm:w-4" />
                         ) : (
-                          <span className="text-xs">{index + 1}</span>
+                          <span className="text-[10px] sm:text-xs">{index + 1}</span>
                         )}
                       </div>
                       {index < STATUS_STEPS.length - 1 && (
@@ -292,7 +292,7 @@ export function ImagingOrderDetail({ orderNumber }: ImagingOrderDetailProps) {
                       )}
                     </div>
                     <span
-                      className={`text-xs mt-2 ${
+                      className={`text-[10px] sm:text-xs mt-2 text-center ${
                         isCurrent ? 'font-medium text-primary' : 'text-muted-foreground'
                       }`}
                     >
@@ -404,13 +404,13 @@ export function ImagingOrderDetail({ orderNumber }: ImagingOrderDetailProps) {
             {order.items.map((item) => (
               <div
                 key={item.id}
-                className="flex items-center justify-between p-3 border rounded-lg"
+                className="flex flex-col gap-3 p-3 border rounded-lg sm:flex-row sm:items-center sm:justify-between"
               >
-                <div className="flex items-center gap-3">
+                <div className="flex items-start gap-3">
                   <ModalityBadge modality={item.modality} />
-                  <div>
-                    <p className="font-medium">{item.procedure_name}</p>
-                    <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                  <div className="min-w-0">
+                    <p className="font-medium truncate">{item.procedure_name}</p>
+                    <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-sm text-muted-foreground">
                       <span>{item.procedure_code}</span>
                       {item.laterality !== 'NA' && (
                         <>
@@ -420,17 +420,17 @@ export function ImagingOrderDetail({ orderNumber }: ImagingOrderDetailProps) {
                       )}
                     </div>
                     {item.specific_instructions && (
-                      <p className="text-sm text-muted-foreground mt-1">
+                      <p className="text-sm text-muted-foreground mt-1 line-clamp-2">
                         {item.specific_instructions}
                       </p>
                     )}
                   </div>
                 </div>
-                <div className="flex items-center gap-3">
+                <div className="flex items-center justify-between gap-3 sm:justify-end">
                   <Badge variant={item.is_completed ? 'default' : 'outline'}>
                     {item.is_completed ? 'Completed' : 'Pending'}
                   </Badge>
-                  <span className="font-medium">
+                  <span className="font-medium whitespace-nowrap">
                     KES {item.unit_cost.toLocaleString()}
                   </span>
                 </div>

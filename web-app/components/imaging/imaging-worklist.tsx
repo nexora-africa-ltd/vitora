@@ -110,8 +110,8 @@ export function ImagingWorklist({ onOrderSelect }: ImagingWorklistProps) {
         <Card>
           <CardContent className="pt-4">
             <div className="flex items-center gap-3">
-              <div className="p-2 bg-blue-100 rounded-lg">
-                <Clock className="h-5 w-5 text-blue-600" />
+              <div className="p-2 rounded-lg bg-sky-500/15">
+                <Clock className="h-5 w-5 text-sky-700 dark:text-sky-400" />
               </div>
               <div>
                 <p className="text-sm text-muted-foreground">Pending</p>
@@ -128,8 +128,8 @@ export function ImagingWorklist({ onOrderSelect }: ImagingWorklistProps) {
         <Card>
           <CardContent className="pt-4">
             <div className="flex items-center gap-3">
-              <div className="p-2 bg-amber-100 rounded-lg">
-                <Loader2 className="h-5 w-5 text-amber-600" />
+              <div className="p-2 rounded-lg bg-amber-500/15">
+                <Loader2 className="h-5 w-5 text-amber-700 dark:text-amber-400" />
               </div>
               <div>
                 <p className="text-sm text-muted-foreground">In Progress</p>
@@ -146,8 +146,8 @@ export function ImagingWorklist({ onOrderSelect }: ImagingWorklistProps) {
         <Card>
           <CardContent className="pt-4">
             <div className="flex items-center gap-3">
-              <div className="p-2 bg-red-100 rounded-lg">
-                <Zap className="h-5 w-5 text-red-600" />
+              <div className="p-2 rounded-lg bg-destructive/15">
+                <Zap className="h-5 w-5 text-destructive" />
               </div>
               <div>
                 <p className="text-sm text-muted-foreground">STAT Orders</p>
@@ -164,8 +164,8 @@ export function ImagingWorklist({ onOrderSelect }: ImagingWorklistProps) {
         <Card>
           <CardContent className="pt-4">
             <div className="flex items-center gap-3">
-              <div className="p-2 bg-green-100 rounded-lg">
-                <CheckCircle2 className="h-5 w-5 text-green-600" />
+              <div className="p-2 rounded-lg bg-emerald-500/15">
+                <CheckCircle2 className="h-5 w-5 text-emerald-700 dark:text-emerald-400" />
               </div>
               <div>
                 <p className="text-sm text-muted-foreground">Completed Today</p>
@@ -185,7 +185,7 @@ export function ImagingWorklist({ onOrderSelect }: ImagingWorklistProps) {
       {/* Worklist */}
       <Card>
         <CardHeader className="pb-3">
-          <div className="flex items-center justify-between">
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
             <div>
               <CardTitle>Orders Worklist</CardTitle>
               <CardDescription>
@@ -200,12 +200,12 @@ export function ImagingWorklist({ onOrderSelect }: ImagingWorklistProps) {
         </CardHeader>
         <CardContent>
           {/* Filters */}
-          <div className="flex gap-3 mb-4">
+          <div className="flex flex-col gap-3 mb-4 sm:flex-row">
             <Select
               value={modalityFilter}
               onValueChange={(v) => setModalityFilter(v as ImagingModality | '')}
             >
-              <SelectTrigger className="w-[180px]">
+              <SelectTrigger className="w-full sm:w-[180px]">
                 <SelectValue placeholder="All Modalities" />
               </SelectTrigger>
               <SelectContent>
@@ -222,7 +222,7 @@ export function ImagingWorklist({ onOrderSelect }: ImagingWorklistProps) {
               value={priorityFilter}
               onValueChange={(v) => setPriorityFilter(v as ImagingPriority | '')}
             >
-              <SelectTrigger className="w-[140px]">
+              <SelectTrigger className="w-full sm:w-[140px]">
                 <SelectValue placeholder="All Priority" />
               </SelectTrigger>
               <SelectContent>
@@ -295,8 +295,8 @@ function WorklistOrderCard({
     <div
       className={cn(
         'p-4 border rounded-lg cursor-pointer transition-colors hover:bg-muted/50',
-        order.priority === 'STAT' && 'border-red-300 bg-red-50/50',
-        order.priority === 'URGENT' && 'border-orange-300 bg-orange-50/50'
+        order.priority === 'STAT' && 'border-destructive/30 bg-destructive/5 hover:bg-destructive/10',
+        order.priority === 'URGENT' && 'border-amber-500/30 bg-amber-500/10 hover:bg-amber-500/15'
       )}
       onClick={onClick}
     >
@@ -345,7 +345,7 @@ function WorklistOrderCard({
               size="sm"
               onClick={onStart}
               disabled={isStarting}
-              className={cn(isStatOrUrgent && 'bg-red-600 hover:bg-red-700')}
+              className={cn(order.priority === 'STAT' && 'bg-destructive hover:bg-destructive/90')}
             >
               {isStarting ? (
                 <Loader2 className="h-4 w-4 animate-spin" />

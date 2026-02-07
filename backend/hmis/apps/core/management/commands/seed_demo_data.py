@@ -323,6 +323,57 @@ class Command(BaseCommand):
                 "license_number": "NCK-RN-2019-54321",
                 "licensing_body": "Nursing Council of Kenya",
             },
+            {
+                "username": "demo_radiographer",
+                "email": "radiology@demo.vitora.health",
+                "password": "DemoRadiology2026!",
+                "first_name": "Evans",
+                "last_name": "Maina",
+                "is_staff": False,
+                "is_superuser": False,
+                "role_code": "RADIOGRAPHER",
+                "department_code": "RAD",
+                "employee_id": "VH-2026-011",
+                "title": "",
+                "phone": "0722000011",
+                "license_number": "KRCHRRD-2020-33333",
+                "licensing_body": "Kenya Radiographers and Clinical Health Records Registration Board",
+                "specialization": "Diagnostic Radiography",
+            },
+            {
+                "username": "demo_radiologist",
+                "email": "radiologist@demo.vitora.health",
+                "password": "DemoRadiologist2026!",
+                "first_name": "Dr. Beatrice",
+                "last_name": "Nyokabi",
+                "is_staff": False,
+                "is_superuser": False,
+                "role_code": "RADIOLOGIST",
+                "department_code": "RAD",
+                "employee_id": "VH-2026-012",
+                "title": "Dr.",
+                "phone": "0722000012",
+                "license_number": "KMPDB-2015-RAD-001",
+                "licensing_body": "Kenya Medical Practitioners and Dentists Board",
+                "specialization": "Diagnostic Radiology",
+            },
+            {
+                "username": "demo_sonographer",
+                "email": "ultrasound@demo.vitora.health",
+                "password": "DemoSonographer2026!",
+                "first_name": "Lucy",
+                "last_name": "Wangari",
+                "is_staff": False,
+                "is_superuser": False,
+                "role_code": "SONOGRAPHER",
+                "department_code": "RAD",
+                "employee_id": "VH-2026-013",
+                "title": "",
+                "phone": "0722000013",
+                "license_number": "KRCHRRD-2019-44444",
+                "licensing_body": "Kenya Radiographers and Clinical Health Records Registration Board",
+                "specialization": "Obstetric and Abdominal Ultrasound",
+            },
         ]
 
         # Kenyan names for sample patients
@@ -777,6 +828,12 @@ class Command(BaseCommand):
             # =============================================================
             self.stdout.write(self.style.MIGRATE_HEADING("\n6. Creating Clinics Demo Data..."))
             self._seed_clinics_data(options)
+
+            # =============================================================
+            # Step 7: Create Imaging Demo Data (procedures, orders, items)
+            # =============================================================
+            self.stdout.write(self.style.MIGRATE_HEADING("\n7. Creating Imaging Demo Data..."))
+            self._seed_imaging_data(options)
 
         # =============================================================
         # Summary
@@ -1496,7 +1553,7 @@ class Command(BaseCommand):
 
     def _seed_clinics_data(self, options):
         """Seed clinics demo data: clinics, schedules, sessions, staff assignments, enrollments, and queue visits."""
-        from datetime import date, time, timedelta
+        from datetime import time, timedelta
         from decimal import Decimal
         from random import choice, randint
 
@@ -2177,9 +2234,346 @@ class Command(BaseCommand):
                     assigned=clinical_officer,
                 )
                 src_visit.refer_to_clinic(target_clinic, "Referred for clinician review", clinical_officer)
-        except Exception:
+        except Exception as e:
             # Do not fail demo seeding because referral creation is best-effort
-            pass
+            self.stdout.write(self.style.WARNING(f"    Referral creation skipped: {e}"))
 
         self.stdout.write(f"  Clinic visits: {visits_created} created, {visits_updated} updated")
         self.stdout.write(self.style.SUCCESS("  ✅ Clinics demo data created successfully!"))
+
+    def _seed_imaging_data(self, options):
+        """Seed imaging demo data: procedures (via catalog command), orders, and order items."""
+        from datetime import date, timedelta
+        from random import choice, randint
+
+        from django.contrib.auth import get_user_model
+        from django.core.management import call_command
+        from django.utils import timezone
+
+        from hmis.apps.encounters.models import Encounter
+        from hmis.apps.imaging.models import ImagingOrder, ImagingOrderItem, ImagingProcedure
+        from hmis.apps.patients.models import Patient
+
+        User = get_user_model()
+
+        # =================================================================
+        # Step 1: Seed the imaging procedure catalog (delegates to existing command)
+        # =================================================================
+        self.stdout.write("  Seeding imaging procedure catalog...")
+        try:
+            call_command("seed_imaging_catalog", verbosity=0)
+            procedure_count = ImagingProcedure.objects.filter(is_active=True).count()
+            self.stdout.write(f"    Imaging catalog ready: {procedure_count} procedures")
+        except Exception as e:
+            self.stdout.write(
+                self.style.WARNING(f"    Could not seed imaging catalog: {e}")
+            )
+
+        # =================================================================
+        # Step 2: Get required users and patients
+        # =================================================================
+        demo_doctor = User.objects.filter(username="demo_doctor").first()
+
+        if not demo_doctor:
+            demo_doctor = User.objects.filter(is_superuser=True).first()
+
+        if not demo_doctor:
+            self.stdout.write(
+                self.style.WARNING("  No ordering user found. Skipping imaging orders.")
+            )
+            return
+
+        # Get patients (prefer deterministic demo patients)
+        patients = list(
+            Patient.objects.filter(
+                identification_type="temporary_id",
+                identification_number__startswith="DEMO-PT-",
+            )[:10]
+        )
+        if not patients:
+            patients = list(Patient.objects.all()[:10])
+
+        if not patients:
+            self.stdout.write(
+                self.style.WARNING("  No patients found. Skipping imaging orders.")
+            )
+            return
+
+        # Get procedures grouped by modality for realistic ordering patterns
+        procedures = list(ImagingProcedure.objects.filter(is_active=True))
+        if not procedures:
+            self.stdout.write(
+                self.style.WARNING("  No imaging procedures found. Skipping orders.")
+            )
+            return
+
+        xray_procedures = [p for p in procedures if p.modality == "XR"]
+        us_procedures = [p for p in procedures if p.modality == "US"]
+        ct_procedures = [p for p in procedures if p.modality == "CT"]
+        mri_procedures = [p for p in procedures if p.modality == "MRI"]
+
+        # =================================================================
+        # Step 3: Ensure encounters exist for orders (create if needed)
+        # =================================================================
+        self.stdout.write("  Ensuring encounters exist for imaging orders...")
+        encounters_created = 0
+
+        for patient in patients:
+            existing_encounter = Encounter.objects.filter(patient=patient).first()
+            if not existing_encounter:
+                # Create a basic encounter for this patient
+                Encounter.objects.create(
+                    patient=patient,
+                    encounter_type="OPD",
+                    encounter_date=date.today() - timedelta(days=randint(0, 30)),
+                    chief_complaint="Routine checkup / imaging referral",
+                    assigned_clinician=demo_doctor,
+                    status="COMPLETED",
+                )
+                encounters_created += 1
+
+        if encounters_created:
+            self.stdout.write(f"    Created {encounters_created} encounters for imaging")
+
+        # =================================================================
+        # Step 4: Clinical indication templates (realistic Kenya context)
+        # =================================================================
+        CLINICAL_INDICATIONS = {
+            "XR": [
+                "Chronic cough for 3 weeks, rule out pulmonary TB",
+                "Productive cough with night sweats, ? PTB",
+                "Road traffic accident, rule out fractures",
+                "Fall from height, assess for bony injury",
+                "Chronic low back pain, r/o degenerative changes",
+                "Post-operative follow-up chest",
+                "Suspected pneumonia with fever and dyspnea",
+                "Trauma to right knee, exclude fracture",
+                "Recurrent shoulder pain, assess joint space",
+                "Known hypertensive, pre-operative cardiac assessment",
+                "Motorcycle accident with wrist injury",
+                "Suspected foreign body ingestion",
+            ],
+            "US": [
+                "Right upper quadrant pain, r/o cholelithiasis",
+                "Amenorrhea 8 weeks, confirm intrauterine pregnancy",
+                "ANC - routine obstetric ultrasound at 20 weeks",
+                "Lower abdominal pain, rule out ovarian pathology",
+                "Pelvic pain with irregular menses, assess uterus and adnexa",
+                "Abdominal distension, r/o ascites",
+                "Known hepatitis B, assess liver parenchyma",
+                "Flank pain with hematuria, rule out renal calculi",
+                "Scrotal swelling, r/o hydrocele vs varicocele",
+                "Breast lump on self-examination, characterize",
+                "Known diabetic, assess kidneys for nephropathy",
+                "Post-partum fever, r/o retained products",
+            ],
+            "CT": [
+                "Severe headache with altered consciousness, r/o stroke",
+                "Road traffic accident with head injury, r/o intracranial hemorrhage",
+                "Chronic headache with visual disturbance, r/o SOL",
+                "Abdominal pain with peritonitis, r/o perforation",
+                "Staging workup for known malignancy",
+                "Persistent cough, CXR inconclusive, r/o lung mass",
+                "Suspected pulmonary embolism with dyspnea",
+                "Trauma with suspected splenic injury",
+            ],
+            "MRI": [
+                "Chronic knee pain, assess menisci and ligaments",
+                "Lower back pain with radiculopathy, r/o disc herniation",
+                "Seizure disorder, rule out structural lesion",
+                "Shoulder pain with limited ROM, assess rotator cuff",
+                "Recurrent headache, characterize brain parenchyma",
+                "Known breast mass for staging",
+            ],
+        }
+
+        RELEVANT_HISTORY = [
+            "No known allergies. No previous similar imaging.",
+            "Allergic to penicillin. No contrast allergy known.",
+            "Hypertensive on amlodipine 10mg OD. Diabetic on metformin.",
+            "Previous appendectomy 2019. No other surgical history.",
+            "Known asthmatic. On salbutamol inhaler PRN.",
+            "Smoker, 10 pack-years. Social alcohol use.",
+            "Previous CT scan 6 months ago showed mild hepatomegaly.",
+            "G3P2, previous SVDs. No pregnancy complications.",
+            "Known sickle cell disease, on hydroxyurea.",
+            "HIV positive on ART (TDF/3TC/DTG), CD4 450, VL undetectable.",
+            "",
+        ]
+
+        # =================================================================
+        # Step 5: Create imaging orders with various statuses
+        # =================================================================
+        self.stdout.write("  Creating imaging orders...")
+
+        ORDER_STATUS_DISTRIBUTION = [
+            ("ORDERED", 3),
+            ("SCHEDULED", 2),
+            ("IN_PROGRESS", 2),
+            ("COMPLETED", 4),
+            ("REPORTED", 5),
+            ("CANCELLED", 1),
+        ]
+
+        orders_created = 0
+        items_created = 0
+        today = date.today()
+
+        for patient in patients:
+            encounter = Encounter.objects.filter(patient=patient).first()
+            if not encounter:
+                continue
+
+            # Create 1-3 imaging orders per patient
+            num_orders = randint(1, 3)
+            for _ in range(num_orders):
+                # Pick status based on distribution
+                status = choice(
+                    [s for s, weight in ORDER_STATUS_DISTRIBUTION for _ in range(weight)]
+                )
+
+                # Pick modality with realistic distribution (X-ray most common)
+                modality_weights = [
+                    (xray_procedures, 5),
+                    (us_procedures, 3),
+                    (ct_procedures, 1),
+                    (mri_procedures, 1),
+                ]
+                available_pools = [(pool, w) for pool, w in modality_weights if pool]
+                if not available_pools:
+                    continue
+
+                procedure_pool = choice(
+                    [p for pool, weight in available_pools for p in [pool] * weight]
+                )
+                if not procedure_pool:
+                    continue
+
+                # Pick random procedure from the pool
+                procedure = choice(procedure_pool)
+                modality = procedure.modality
+
+                # Get appropriate clinical indication
+                indications = CLINICAL_INDICATIONS.get(modality, CLINICAL_INDICATIONS["XR"])
+                clinical_indication = choice(indications)
+                relevant_history = choice(RELEVANT_HISTORY)
+
+                # Determine priority based on indication keywords
+                priority = "ROUTINE"
+                if any(
+                    kw in clinical_indication.lower()
+                    for kw in ["accident", "trauma", "stroke", "emergency", "stat"]
+                ):
+                    priority = choice(["URGENT", "STAT"])
+                elif any(
+                    kw in clinical_indication.lower()
+                    for kw in ["severe", "altered", "hemorrhage"]
+                ):
+                    priority = "URGENT"
+
+                # Calculate dates based on status
+                days_ago = randint(0, 30)
+                ordered_at = timezone.now() - timedelta(days=days_ago)
+
+                # Create the order
+                order = ImagingOrder(
+                    patient=patient,
+                    encounter=encounter,
+                    ordered_by=demo_doctor,
+                    priority=priority,
+                    clinical_indication=clinical_indication,
+                    relevant_clinical_history=relevant_history,
+                    status="DRAFT",
+                )
+                order.save()  # This auto-generates order_number
+                orders_created += 1
+
+                # Transition status appropriately
+                if status != "DRAFT":
+                    order.status = "ORDERED"
+                    order.save(update_fields=["status"])
+
+                if status in ["SCHEDULED", "IN_PROGRESS", "COMPLETED", "REPORTED"]:
+                    order.status = "SCHEDULED"
+                    order.scheduled_datetime = ordered_at + timedelta(hours=randint(2, 48))
+                    order.scheduled_room = choice(["X-Ray Room 1", "X-Ray Room 2", "US Room A", "CT Suite", "MRI Suite"])
+                    order.save(update_fields=["status", "scheduled_datetime", "scheduled_room"])
+
+                if status in ["IN_PROGRESS", "COMPLETED", "REPORTED"]:
+                    order.status = "IN_PROGRESS"
+                    # Generate PACS accession number
+                    order.accession_number = f"ACC-{today.strftime('%Y%m%d')}-{randint(1000, 9999)}"
+                    order.save(update_fields=["status", "accession_number"])
+
+                if status in ["COMPLETED", "REPORTED"]:
+                    order.status = "COMPLETED"
+                    order.completed_at = ordered_at + timedelta(hours=randint(1, 24))
+                    order.save(update_fields=["status", "completed_at"])
+
+                if status == "REPORTED":
+                    order.status = "REPORTED"
+                    order.save(update_fields=["status"])
+
+                if status == "CANCELLED":
+                    order.status = "CANCELLED"
+                    order.save(update_fields=["status"])
+
+                # =============================================================
+                # Step 6: Create order items (1-3 procedures per order)
+                # =============================================================
+                num_items = randint(1, 2) if modality in ["XR", "US"] else 1
+
+                for _ in range(num_items):
+                    # Pick procedure from same modality pool
+                    item_procedure = choice(procedure_pool)
+
+                    # Determine laterality based on body region
+                    laterality = "NA"
+                    if item_procedure.body_region in ["UPPER_EXTREMITY", "LOWER_EXTREMITY"]:
+                        laterality = choice(["LEFT", "RIGHT", "BILATERAL"])
+                    elif item_procedure.body_region == "CHEST" and "lateral" in item_procedure.name.lower():
+                        laterality = "NA"
+
+                    # Create order item
+                    ImagingOrderItem.objects.create(
+                        order=order,
+                        procedure=item_procedure,
+                        laterality=laterality,
+                        specific_instructions="" if randint(0, 3) else choice([
+                            "Use small focal spot",
+                            "Include comparison with previous study",
+                            "Full bladder required",
+                            "Patient anxious, may need reassurance",
+                            "Portable study if patient unstable",
+                        ]),
+                        unit_cost=item_procedure.cost,
+                        is_completed=status in ["COMPLETED", "REPORTED"],
+                        completed_at=order.completed_at if status in ["COMPLETED", "REPORTED"] else None,
+                    )
+                    items_created += 1
+
+                # Recalculate total cost
+                order.calculate_total_cost()
+
+                # Mark as paid for completed/reported orders (80% of the time)
+                if status in ["COMPLETED", "REPORTED"] and randint(1, 10) <= 8:
+                    order.is_paid = True
+                    order.save(update_fields=["is_paid"])
+
+        self.stdout.write(f"    Created {orders_created} imaging orders")
+        self.stdout.write(f"    Created {items_created} imaging order items")
+
+        # =================================================================
+        # Summary by status
+        # =================================================================
+        status_counts = {}
+        for status, _ in ImagingOrder.ORDER_STATUS:
+            count = ImagingOrder.objects.filter(status=status).count()
+            if count > 0:
+                status_counts[status] = count
+
+        self.stdout.write("    Order status distribution:")
+        for status, count in status_counts.items():
+            self.stdout.write(f"      {status}: {count}")
+
+        self.stdout.write(self.style.SUCCESS("  ✅ Imaging demo data created successfully!"))

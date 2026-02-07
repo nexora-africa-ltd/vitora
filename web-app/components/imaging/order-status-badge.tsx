@@ -26,44 +26,51 @@ interface OrderStatusBadgeProps {
 const STATUS_CONFIG: Record<
   ImagingOrderStatus,
   {
-    variant: 'default' | 'secondary' | 'destructive' | 'outline';
+    variant:
+      | 'default'
+      | 'secondary'
+      | 'destructive'
+      | 'outline'
+      | 'success'
+      | 'warning'
+      | 'info';
     className: string;
     icon: React.ElementType;
   }
 > = {
   DRAFT: {
     variant: 'outline',
-    className: 'border-gray-300 text-gray-600 bg-gray-50',
+    className: 'border-border text-muted-foreground',
     icon: FileText,
   },
   ORDERED: {
-    variant: 'secondary',
-    className: 'border-blue-200 text-blue-700 bg-blue-50',
+    variant: 'info',
+    className: 'font-medium',
     icon: Send,
   },
   SCHEDULED: {
     variant: 'secondary',
-    className: 'border-purple-200 text-purple-700 bg-purple-50',
+    className: 'font-medium',
     icon: Calendar,
   },
   IN_PROGRESS: {
-    variant: 'default',
-    className: 'border-amber-200 text-amber-700 bg-amber-50',
+    variant: 'warning',
+    className: 'font-medium',
     icon: Loader2,
   },
   COMPLETED: {
-    variant: 'default',
-    className: 'border-teal-200 text-teal-700 bg-teal-50',
+    variant: 'info',
+    className: 'font-medium',
     icon: Clock,
   },
   REPORTED: {
-    variant: 'default',
-    className: 'border-green-200 text-green-700 bg-green-50',
+    variant: 'success',
+    className: 'font-medium',
     icon: CheckCircle2,
   },
   CANCELLED: {
     variant: 'destructive',
-    className: 'border-red-200 text-red-700 bg-red-50',
+    className: 'font-medium',
     icon: XCircle,
   },
 };

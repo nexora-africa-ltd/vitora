@@ -132,7 +132,7 @@ export function ImagingOrderTable({
         </form>
 
         <Select onValueChange={(v) => onStatusFilter?.(v as ImagingOrderStatus | '')}>
-          <SelectTrigger className="w-[160px]">
+          <SelectTrigger className="w-full sm:w-[160px]">
             <SelectValue placeholder="All Status" />
           </SelectTrigger>
           <SelectContent>
@@ -146,7 +146,7 @@ export function ImagingOrderTable({
         </Select>
 
         <Select onValueChange={(v) => onPriorityFilter?.(v as ImagingPriority | '')}>
-          <SelectTrigger className="w-[140px]">
+          <SelectTrigger className="w-full sm:w-[140px]">
             <SelectValue placeholder="All Priority" />
           </SelectTrigger>
           <SelectContent>
