@@ -78,11 +78,11 @@ from hmis.apps.inpatient.serializers import (
     AdmissionSerializer,
     BedSerializer,
     DischargeSerializer,
+    InpatientWardSerializer,
     NursingKardexSerializer,
     ShiftHandoverSerializer,
     TransferSerializer,
     WardRoundSerializer,
-    WardSerializer as InpatientWardSerializer,
 )
 from hmis.apps.laboratory.serializers import (
     LabOrderSerializer,

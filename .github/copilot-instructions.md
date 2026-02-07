@@ -60,11 +60,12 @@ Only after the web app implementation is complete should we shift focus to offli
 └─────────────────────────────────────────────────────────────────────────────┘
 ```
 
-### Current Status (December 2025)
+### Current Status (February 2026)
 
 | Component | Status | Tests | Coverage |
 |-----------|--------|-------|----------|
 | **Backend (Django)** | ✅ Phase 0 Complete | 467+ | 82.21% |
+| **Backend Contract Tests** | ✅ Implemented | 67 serializer tests | - |
 | **Desktop App (Electron)** | ✅ Phase 0 Complete | 66+ unit, 6 E2E | 70%+ |
 | **Mobile App (React Native)** | 📋 Planned Phase 1 | - | - |
 | **Web Frontend (Next.js)** | 📋 Planned Phase 2 | - | - |
@@ -609,6 +610,24 @@ Backend (Django):  http://127.0.0.1:9088  (dev) or http://127.0.0.1:9088 (Electr
 Electron spawns backend on port 9088 when running via `npm run dev`
 ```
 
+### 9. Serializer Naming — Avoid Duplicates
+
+Some models exist in multiple apps (e.g., `Ward` in both `core` and `inpatient`). Their serializers MUST have unique names to avoid OpenAPI schema conflicts:
+
+| Model | Core App | Inpatient App |
+|-------|----------|---------------|
+| Ward | `WardSerializer` (location hierarchy) | `InpatientWardSerializer` (beds, occupancy) |
+
+```python
+# ❌ WRONG - Causes OpenAPI schema corruption
+class WardSerializer(...)  # in core/serializers.py
+class WardSerializer(...)  # in inpatient/serializers.py
+
+# ✅ CORRECT - Unique names
+class WardSerializer(...)           # in core/serializers.py
+class InpatientWardSerializer(...)  # in inpatient/serializers.py
+```
+
 ---
 
 ## 🔐 Security & Compliance
@@ -691,6 +710,7 @@ See `ROADMAP.md` for complete sprint breakdown.
 | `docs/coding-standards.md` | Code style, naming conventions |
 | `docs/dpia.md` | Data Protection Impact Assessment |
 | `docs/sprint-*.md` | Sprint deliverables with implementation details |
+| `docs/contract-testing-recommendations.md` | API contract testing strategy (Layer 1-4) |
 
 ---
 
@@ -757,6 +777,7 @@ Before submitting a PR, verify:
 - [ ] API endpoints require authentication
 - [ ] **API responses validated with Zod schemas** (see below)
 - [ ] Documentation updated (docstrings, README if needed)
+- [ ] Contract tests pass: `make test-contracts` (if serializer changed)
 
 ---
 
@@ -828,6 +849,6 @@ Every commit must follow these rules:
 
 ---
 
-**Last Updated**: December 30, 2025
+**Last Updated**: February 8, 2026
 **Maintainer**: Engineering Lead
-**Version**: 2.0 (Comprehensive AI Agent Onboarding)
+**Version**: 2.1 (Added contract testing, serializer naming conventions)

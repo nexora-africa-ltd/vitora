@@ -36,7 +36,7 @@ from .serializers import (
     ShiftHandoverSerializer,
     TransferSerializer,
     WardRoundSerializer,
-    WardSerializer,
+    InpatientWardSerializer,
 )
 
 User = get_user_model()
@@ -59,7 +59,7 @@ class WardViewSet(viewsets.ReadOnlyModelViewSet):
     """
 
     queryset = Ward.objects.filter(is_active=True)
-    serializer_class = WardSerializer
+    serializer_class = InpatientWardSerializer
     permission_classes = [IsAuthenticated]
     filter_backends = [DjangoFilterBackend, filters.SearchFilter, filters.OrderingFilter]
     filterset_fields = ["ward_type", "is_active"]
