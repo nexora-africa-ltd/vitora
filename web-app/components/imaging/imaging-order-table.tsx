@@ -116,73 +116,76 @@ export function ImagingOrderTable({
   }
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-3 sm:space-y-4">
       {/* Filters */}
-      <div className="flex flex-col sm:flex-row gap-3">
+      <div className="flex flex-col gap-2 sm:flex-row sm:gap-3">
         <form onSubmit={handleSearch} className="flex-1">
           <div className="relative">
             <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
             <Input
-              placeholder="Search by order number or patient..."
+              placeholder="Search by order # or patient..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="pl-9"
+              className="pl-9 text-sm"
             />
           </div>
         </form>
 
-        <Select onValueChange={(v) => onStatusFilter?.(v as ImagingOrderStatus | '')}>
-          <SelectTrigger className="w-full sm:w-[160px]">
-            <SelectValue placeholder="All Status" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="">All Status</SelectItem>
-            {Object.entries(STATUS_LABELS).map(([value, label]) => (
-              <SelectItem key={value} value={value}>
-                {label}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
+        <div className="flex gap-2">
+          <Select onValueChange={(v) => onStatusFilter?.(v as ImagingOrderStatus | '')}>
+            <SelectTrigger className="flex-1 sm:w-[140px]">
+              <SelectValue placeholder="All Status" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="">All Status</SelectItem>
+              {Object.entries(STATUS_LABELS).map(([value, label]) => (
+                <SelectItem key={value} value={value}>
+                  {label}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
 
-        <Select onValueChange={(v) => onPriorityFilter?.(v as ImagingPriority | '')}>
-          <SelectTrigger className="w-full sm:w-[140px]">
-            <SelectValue placeholder="All Priority" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="">All Priority</SelectItem>
-            {Object.entries(PRIORITY_LABELS).map(([value, label]) => (
-              <SelectItem key={value} value={value}>
-                {label}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
+          <Select onValueChange={(v) => onPriorityFilter?.(v as ImagingPriority | '')}>
+            <SelectTrigger className="flex-1 sm:w-[130px]">
+              <SelectValue placeholder="Priority" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="">All Priority</SelectItem>
+              {Object.entries(PRIORITY_LABELS).map(([value, label]) => (
+                <SelectItem key={value} value={value}>
+                  {label}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
 
-        <Button
-          variant="outline"
-          size="icon"
-          onClick={handleRefresh}
-          disabled={isRefreshing}
-        >
-          <RefreshCw
-            className={cn('h-4 w-4', isRefreshing && 'animate-spin')}
-          />
-        </Button>
+          <Button
+            variant="outline"
+            size="icon"
+            onClick={handleRefresh}
+            disabled={isRefreshing}
+            className="shrink-0"
+          >
+            <RefreshCw
+              className={cn('h-4 w-4', isRefreshing && 'animate-spin')}
+            />
+          </Button>
+        </div>
       </div>
 
-      {/* Table */}
-      <div className="border rounded-lg">
+      {/* Table - Scrollable on mobile */}
+      <div className="border rounded-lg overflow-x-auto">
         <Table>
           <TableHeader>
             <TableRow>
-              <TableHead>Order #</TableHead>
-              <TableHead>Patient</TableHead>
-              <TableHead>Procedures</TableHead>
-              <TableHead>Priority</TableHead>
-              <TableHead>Status</TableHead>
-              <TableHead>Ordered</TableHead>
-              <TableHead>Scheduled</TableHead>
+              <TableHead className="min-w-[130px]">Order #</TableHead>
+              <TableHead className="min-w-[120px]">Patient</TableHead>
+              <TableHead className="min-w-[100px]">Procedures</TableHead>
+              <TableHead className="min-w-[80px]">Priority</TableHead>
+              <TableHead className="min-w-[90px]">Status</TableHead>
+              <TableHead className="min-w-[100px]">Ordered</TableHead>
+              <TableHead className="min-w-[100px]">Scheduled</TableHead>
               <TableHead className="w-[50px]"></TableHead>
             </TableRow>
           </TableHeader>
@@ -208,13 +211,13 @@ export function ImagingOrderTable({
                   className="cursor-pointer hover:bg-muted/50"
                   onClick={() => router.push(`/imaging/orders/${order.order_number}`)}
                 >
-                  <TableCell className="font-mono text-sm">
+                  <TableCell className="font-mono text-xs sm:text-sm">
                     {order.order_number}
                   </TableCell>
                   <TableCell>
-                    <div className="flex items-center gap-2">
-                      <User className="h-4 w-4 text-muted-foreground" />
-                      <span>{order.patient_name || `Patient #${order.patient}`}</span>
+                    <div className="flex items-center gap-1.5 sm:gap-2">
+                      <User className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-muted-foreground shrink-0" />
+                      <span className="text-xs sm:text-sm truncate max-w-[100px] sm:max-w-none">{order.patient_name || `Patient #${order.patient}`}</span>
                     </div>
                   </TableCell>
                   <TableCell>
@@ -227,8 +230,8 @@ export function ImagingOrderTable({
                         />
                       ))}
                       {order.items.length > 2 && (
-                        <span className="text-xs text-muted-foreground">
-                          +{order.items.length - 2} more
+                        <span className="text-[10px] sm:text-xs text-muted-foreground">
+                          +{order.items.length - 2}
                         </span>
                       )}
                     </div>
@@ -239,17 +242,17 @@ export function ImagingOrderTable({
                   <TableCell>
                     <OrderStatusBadge status={order.status} />
                   </TableCell>
-                  <TableCell className="text-sm text-muted-foreground">
+                  <TableCell className="text-xs sm:text-sm text-muted-foreground whitespace-nowrap">
                     {formatDateTime(order.ordered_at)}
                   </TableCell>
                   <TableCell>
                     {order.scheduled_datetime ? (
-                      <div className="flex items-center gap-1 text-sm">
+                      <div className="flex items-center gap-1 text-xs sm:text-sm whitespace-nowrap">
                         <Calendar className="h-3 w-3" />
                         {formatDateTime(order.scheduled_datetime)}
                       </div>
                     ) : (
-                      <span className="text-muted-foreground text-sm">-</span>
+                      <span className="text-muted-foreground text-xs sm:text-sm">-</span>
                     )}
                   </TableCell>
                   <TableCell>
@@ -273,27 +276,29 @@ export function ImagingOrderTable({
 
       {/* Pagination */}
       {totalPages > 1 && (
-        <div className="flex items-center justify-between">
-          <p className="text-sm text-muted-foreground">
+        <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+          <p className="text-xs sm:text-sm text-muted-foreground text-center sm:text-left">
             Page {page} of {totalPages}
           </p>
-          <div className="flex items-center gap-2">
+          <div className="flex items-center justify-center gap-2">
             <Button
               variant="outline"
               size="sm"
               onClick={() => onPageChange(page - 1)}
               disabled={page <= 1}
+              className="flex-1 sm:flex-none"
             >
               <ChevronLeft className="h-4 w-4" />
-              Previous
+              <span className="hidden sm:inline ml-1">Previous</span>
             </Button>
             <Button
               variant="outline"
               size="sm"
               onClick={() => onPageChange(page + 1)}
               disabled={page >= totalPages}
+              className="flex-1 sm:flex-none"
             >
-              Next
+              <span className="hidden sm:inline mr-1">Next</span>
               <ChevronRight className="h-4 w-4" />
             </Button>
           </div>

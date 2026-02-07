@@ -191,34 +191,34 @@ export function SchedulingCalendar({
 
   return (
     <Card>
-      <CardHeader className="pb-4">
-        <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-          <div>
-            <CardTitle className="flex items-center gap-2">
-              <Calendar className="h-5 w-5" />
+      <CardHeader className="pb-3 sm:pb-4">
+        <div className="flex flex-col gap-3 sm:gap-4 sm:flex-row sm:items-center sm:justify-between">
+          <div className="min-w-0">
+            <CardTitle className="flex items-center gap-2 text-base sm:text-lg">
+              <Calendar className="h-4 w-4 sm:h-5 sm:w-5" />
               Imaging Schedule
             </CardTitle>
-            <CardDescription className="hidden sm:block">
+            <CardDescription className="text-xs sm:text-sm mt-1">
               View and manage imaging resource availability
             </CardDescription>
           </div>
 
           {/* Stats Pills */}
-          <div className="flex flex-wrap items-center gap-2">
-            <Badge variant="outline" className="bg-background">
+          <div className="flex flex-wrap items-center gap-1.5 sm:gap-2">
+            <Badge variant="outline" className="bg-background text-xs">
               <span className="text-muted-foreground mr-1">Total:</span>
               {stats.totalSlots}
             </Badge>
             <Badge
               variant="success"
-              className="border border-emerald-500/20"
+              className="border border-emerald-500/20 text-xs"
             >
               <CheckCircle2 className="h-3 w-3 mr-1" />
               {stats.availableSlots}
             </Badge>
             <Badge
               variant="destructive"
-              className="bg-destructive/10 text-destructive border-destructive/30"
+              className="bg-destructive/10 text-destructive border-destructive/30 text-xs"
             >
               <Clock className="h-3 w-3 mr-1" />
               {stats.bookedSlots}
@@ -227,14 +227,15 @@ export function SchedulingCalendar({
         </div>
 
         {/* Controls */}
-        <div className="flex flex-col gap-4 mt-4 sm:flex-row sm:items-center sm:justify-between">
+        <div className="flex flex-col gap-3 mt-3 sm:mt-4 sm:flex-row sm:items-center sm:justify-between">
           {/* Date Navigation */}
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-1.5 sm:gap-2">
             <Button
               variant="outline"
               size="icon"
               onClick={handlePreviousDay}
               aria-label="Previous day"
+              className="h-8 w-8 sm:h-9 sm:w-9"
             >
               <ChevronLeft className="h-4 w-4" />
             </Button>
@@ -244,12 +245,13 @@ export function SchedulingCalendar({
                 <Button
                   variant="outline"
                   className={cn(
-                    'w-[200px] justify-start text-left font-normal',
+                    'flex-1 sm:flex-none sm:w-[200px] justify-start text-left font-normal text-sm',
                     !selectedDate && 'text-muted-foreground'
                   )}
+                  size="sm"
                 >
-                  <CalendarIcon className="mr-2 h-4 w-4" />
-                  {format(selectedDate, 'EEE, MMM d, yyyy')}
+                  <CalendarIcon className="mr-1.5 sm:mr-2 h-4 w-4" />
+                  <span className="truncate">{format(selectedDate, 'EEE, MMM d, yyyy')}</span>
                 </Button>
               </PopoverTrigger>
               <PopoverContent className="w-auto p-0" align="start">
@@ -272,12 +274,13 @@ export function SchedulingCalendar({
               size="icon"
               onClick={handleNextDay}
               aria-label="Next day"
+              className="h-8 w-8 sm:h-9 sm:w-9"
             >
               <ChevronRight className="h-4 w-4" />
             </Button>
 
             {!isToday(selectedDate) && (
-              <Button variant="ghost" size="sm" onClick={handleToday}>
+              <Button variant="ghost" size="sm" onClick={handleToday} className="text-xs sm:text-sm">
                 Today
               </Button>
             )}
@@ -291,7 +294,7 @@ export function SchedulingCalendar({
                 setModalityFilter(value as ImagingModality | '')
               }
             >
-              <SelectTrigger className="w-full sm:w-[150px]">
+              <SelectTrigger className="flex-1 sm:flex-none sm:w-[140px] text-sm">
                 <SelectValue placeholder="All Modalities" />
               </SelectTrigger>
               <SelectContent>
@@ -310,6 +313,7 @@ export function SchedulingCalendar({
               onClick={() => refetch()}
               disabled={isFetching}
               aria-label="Refresh calendar"
+              className="h-8 w-8 sm:h-9 sm:w-9 shrink-0"
             >
               <RefreshCw className={cn('h-4 w-4', isFetching && 'animate-spin')} />
             </Button>
@@ -317,32 +321,32 @@ export function SchedulingCalendar({
         </div>
       </CardHeader>
 
-      <CardContent>
+      <CardContent className="px-3 sm:px-6">
         {isLoading ? (
           <CalendarSkeleton />
         ) : filteredResources.length === 0 ? (
-          <div className="flex flex-col items-center justify-center py-12 text-center">
-            <Calendar className="h-12 w-12 text-muted-foreground mb-4" />
-            <h3 className="text-lg font-semibold">No resources found</h3>
-            <p className="text-muted-foreground">
+          <div className="flex flex-col items-center justify-center py-8 sm:py-12 text-center">
+            <Calendar className="h-10 w-10 sm:h-12 sm:w-12 text-muted-foreground mb-3 sm:mb-4" />
+            <h3 className="text-base sm:text-lg font-semibold">No resources found</h3>
+            <p className="text-xs sm:text-sm text-muted-foreground">
               {modalityFilter
                 ? `No imaging resources available for ${MODALITY_LABELS[modalityFilter]}`
                 : 'No imaging resources configured yet'}
             </p>
           </div>
         ) : (
-          <div className="overflow-x-auto">
+          <div className="overflow-x-auto -mx-3 sm:mx-0 px-3 sm:px-0">
             <TooltipProvider delayDuration={0}>
-              <table className="w-full border-collapse">
+              <table className="w-full border-collapse min-w-[600px]">
                 <thead>
                   <tr>
-                    <th className="text-left p-2 border-b bg-muted/50 sticky left-0 min-w-[180px]">
+                    <th className="text-left p-1.5 sm:p-2 border-b bg-muted/50 sticky left-0 min-w-[140px] sm:min-w-[180px] text-xs sm:text-sm">
                       Resource
                     </th>
                     {timeSlots.map((time) => (
                       <th
                         key={time}
-                        className="p-2 border-b bg-muted/50 text-center text-xs font-medium min-w-[80px]"
+                        className="p-1 sm:p-2 border-b bg-muted/50 text-center text-[10px] sm:text-xs font-medium min-w-[60px] sm:min-w-[80px]"
                       >
                         {formatTime(time)}
                       </th>
@@ -368,17 +372,17 @@ export function SchedulingCalendar({
 
         {/* Legend */}
         {filteredResources.length > 0 && (
-          <div className="flex flex-wrap items-center gap-4 mt-4 pt-4 border-t text-sm text-muted-foreground">
+          <div className="flex flex-wrap items-center gap-2 sm:gap-4 mt-3 sm:mt-4 pt-3 sm:pt-4 border-t text-xs sm:text-sm text-muted-foreground">
             <span className="flex items-center gap-1">
-              <div className="w-4 h-4 rounded bg-emerald-500/15 border border-emerald-500/30 dark:bg-emerald-500/20 dark:border-emerald-500/40" />
+              <div className="w-3 h-3 sm:w-4 sm:h-4 rounded bg-emerald-500/15 border border-emerald-500/30 dark:bg-emerald-500/20 dark:border-emerald-500/40" />
               Available
             </span>
             <span className="flex items-center gap-1">
-              <div className="w-4 h-4 rounded bg-destructive/10 border border-destructive/30" />
+              <div className="w-3 h-3 sm:w-4 sm:h-4 rounded bg-destructive/10 border border-destructive/30" />
               Booked
             </span>
             {onSlotSelect && (
-              <span className="sm:ml-auto text-xs">
+              <span className="sm:ml-auto text-[10px] sm:text-xs">
                 Click on an available slot to schedule
               </span>
             )}
@@ -417,20 +421,20 @@ function ResourceRow({
 
   return (
     <tr className="hover:bg-muted/30 transition-colors">
-      <td className="p-2 border-b sticky left-0 bg-background">
-        <div className="flex flex-col gap-1">
-          <div className="font-medium text-sm">{resource.resource.name}</div>
-          <div className="flex items-center gap-1 flex-wrap">
+      <td className="p-1.5 sm:p-2 border-b sticky left-0 bg-background">
+        <div className="flex flex-col gap-0.5 sm:gap-1">
+          <div className="font-medium text-xs sm:text-sm">{resource.resource.name}</div>
+          <div className="flex items-center gap-0.5 sm:gap-1 flex-wrap">
             {modalities.slice(0, 3).map((mod) => (
               <ModalityBadge key={mod} modality={mod} size="sm" />
             ))}
             {modalities.length > 3 && (
-              <Badge variant="outline" className="text-xs">
+              <Badge variant="outline" className="text-[10px] sm:text-xs">
                 +{modalities.length - 3}
               </Badge>
             )}
           </div>
-          <div className="text-xs text-muted-foreground">
+          <div className="text-[10px] sm:text-xs text-muted-foreground">
             {resource.available_slots}/{resource.total_slots} available
           </div>
         </div>
@@ -485,7 +489,7 @@ function SlotCell({ slot, resourceId, onSlotClick, compact }: SlotCellProps) {
       type="button"
       onClick={() => canClick && onSlotClick(resourceId, slot)}
       aria-describedby={slot.appointment ? appointmentId : undefined}
-      aria-disabled={!canClick}
+        disabled={!canClick}
       className={cn(
         'w-full h-12 rounded border transition-all flex items-center justify-center text-xs',
         isAvailable

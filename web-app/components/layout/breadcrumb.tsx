@@ -16,8 +16,11 @@ const routeLabels: Record<string, string> = {
   encounters: 'Encounters',
   pharmacy: 'Pharmacy',
   laboratory: 'Laboratory',
+  imaging: 'Imaging',
   reports: 'Reports',
   settings: 'Settings',
+  orders: 'Orders',
+  worklist: 'Worklist',
 };
 
 export function Breadcrumb() {
@@ -44,34 +47,46 @@ export function Breadcrumb() {
     );
   }
 
-  return (
-    <nav aria-label="Breadcrumb" className="flex items-center text-sm">
-      <Link
-        href="/"
-        className="text-muted-foreground hover:text-foreground transition-colors"
-      >
-        <Home className="h-4 w-4" />
-        <span className="sr-only">Dashboard</span>
-      </Link>
+  const currentLabel = items[items.length - 1]?.label ?? 'Dashboard';
 
-      {items.map((item, index) => (
-        <div key={item.href} className="flex items-center">
-          <ChevronRight className="h-4 w-4 mx-2 text-muted-foreground" />
-          {index === items.length - 1 ? (
-            <span className="font-medium text-foreground">{item.label}</span>
-          ) : (
-            <Link
-              href={item.href}
-              className={cn(
-                'text-muted-foreground hover:text-foreground transition-colors',
-                'hover:underline underline-offset-4'
-              )}
-            >
-              {item.label}
-            </Link>
-          )}
-        </div>
-      ))}
+  return (
+    <nav aria-label="Breadcrumb" className="min-w-0 max-w-full">
+      {/* Mobile: show only the current page */}
+      <div className="sm:hidden text-sm font-medium text-foreground truncate">
+        {currentLabel}
+      </div>
+
+      {/* Desktop: show full breadcrumb */}
+      <div className="hidden sm:flex items-center text-sm min-w-0 max-w-full overflow-x-auto whitespace-nowrap">
+        <Link
+          href="/"
+          className="shrink-0 text-muted-foreground hover:text-foreground transition-colors"
+        >
+          <Home className="h-4 w-4" />
+          <span className="sr-only">Dashboard</span>
+        </Link>
+
+        {items.map((item, index) => (
+          <div key={item.href} className="flex items-center shrink-0">
+            <ChevronRight className="h-4 w-4 mx-2 text-muted-foreground shrink-0" />
+            {index === items.length - 1 ? (
+              <span className="font-medium text-foreground" title={item.label}>
+                {item.label}
+              </span>
+            ) : (
+              <Link
+                href={item.href}
+                className={cn(
+                  'text-muted-foreground hover:text-foreground transition-colors',
+                  'hover:underline underline-offset-4'
+                )}
+              >
+                {item.label}
+              </Link>
+            )}
+          </div>
+        ))}
+      </div>
     </nav>
   );
 }
