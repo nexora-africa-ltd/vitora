@@ -4,6 +4,12 @@
 
 export { useDebounce } from './use-debounce';
 export { useAutoSave, type AutoSaveStatus } from './use-auto-save';
+export {
+  usePatientLookup,
+  useTodayCheckins,
+  useCheckinPatient,
+  checkinKeys,
+} from './use-checkin';
 export { useDraftSave } from './use-draft-save';
 export { useEventLogger } from './use-event-logger';
 export {
