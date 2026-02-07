@@ -12,6 +12,10 @@ import {
   ImagingOrder,
   ScheduleOrderData,
   CancelOrderData,
+  ImagingCalendarParams,
+  ResourceAvailabilityParams,
+  WeeklyAvailabilityParams,
+  ImagingModality,
 } from '@/lib/types/imaging';
 
 // ============ Query Keys ============
@@ -37,6 +41,18 @@ export const imagingKeys = {
   worklist: (params?: Omit<ImagingOrderListParams, 'status'>) =>
     [...imagingKeys.orders(), 'worklist', params] as const,
   worklistStats: () => [...imagingKeys.orders(), 'worklist-stats'] as const,
+  // Calendar keys
+  resources: () => [...imagingKeys.all, 'resources'] as const,
+  resourcesList: (modality?: ImagingModality) =>
+    [...imagingKeys.resources(), 'list', modality] as const,
+  resourceDetail: (resourceId: number) =>
+    [...imagingKeys.resources(), 'detail', resourceId] as const,
+  resourceAvailability: (resourceId: number, params?: ResourceAvailabilityParams) =>
+    [...imagingKeys.resources(), 'availability', resourceId, params] as const,
+  resourceWeeklyAvailability: (resourceId: number, params?: WeeklyAvailabilityParams) =>
+    [...imagingKeys.resources(), 'weekly', resourceId, params] as const,
+  calendar: (params?: ImagingCalendarParams) =>
+    [...imagingKeys.all, 'calendar', params] as const,
 };
 
 // ============ Procedure Catalog Hooks ============
@@ -304,5 +320,89 @@ export function useCancelImagingOrder() {
         queryKey: imagingKeys.orderDetail(updatedOrder.order_number),
       });
     },
+  });
+}
+
+// ============ Calendar / Scheduling Hooks ============
+
+/**
+ * Hook for fetching imaging resources.
+ */
+export function useImagingResources(modality?: ImagingModality) {
+  return useQuery({
+    queryKey: imagingKeys.resourcesList(modality),
+    queryFn: () => imagingApi.listResources(modality),
+  });
+}
+
+/**
+ * Hook for fetching a single imaging resource.
+ */
+export function useImagingResource(resourceId: number) {
+  return useQuery({
+    queryKey: imagingKeys.resourceDetail(resourceId),
+    queryFn: () => imagingApi.getResource(resourceId),
+    enabled: !!resourceId,
+  });
+}
+
+/**
+ * Hook for fetching resource availability for a date.
+ */
+export function useResourceAvailability(
+  resourceId: number,
+  params?: ResourceAvailabilityParams
+) {
+  return useQuery({
+    queryKey: imagingKeys.resourceAvailability(resourceId, params),
+    queryFn: () => imagingApi.getResourceAvailability(resourceId, params),
+    enabled: !!resourceId,
+    refetchInterval: 60000, // Refresh every minute
+  });
+}
+
+/**
+ * Hook for fetching weekly availability for a resource.
+ */
+export function useResourceWeeklyAvailability(
+  resourceId: number,
+  params?: WeeklyAvailabilityParams
+) {
+  return useQuery({
+    queryKey: imagingKeys.resourceWeeklyAvailability(resourceId, params),
+    queryFn: () => imagingApi.getResourceWeeklyAvailability(resourceId, params),
+    enabled: !!resourceId,
+    refetchInterval: 60000,
+  });
+}
+
+/**
+ * Hook for fetching department-wide imaging calendar.
+ * Polls every 30 seconds to detect schedule updates.
+ */
+export function useImagingCalendar(params?: ImagingCalendarParams) {
+  return useQuery({
+    queryKey: imagingKeys.calendar(params),
+    queryFn: () => imagingApi.getCalendar(params),
+    refetchInterval: 30000,
+  });
+}
+
+/**
+ * Hook for checking slot availability.
+ */
+export function useCheckSlotAvailability() {
+  return useMutation({
+    mutationFn: ({
+      resourceId,
+      date,
+      startTime,
+      endTime,
+    }: {
+      resourceId: number;
+      date: string;
+      startTime: string;
+      endTime: string;
+    }) => imagingApi.checkSlotAvailability(resourceId, date, startTime, endTime),
   });
 }

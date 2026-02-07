@@ -278,3 +278,132 @@ export interface WorklistStats {
   stat_orders: number;
   urgent_orders: number;
 }
+
+// =============================================================================
+// SCHEDULING / CALENDAR TYPES
+// =============================================================================
+
+/**
+ * Imaging resource (room, scanner, etc.).
+ */
+export interface ImagingResource {
+  id: number;
+  name: string;
+  code: string;
+  resource_type: string;
+  is_active: boolean;
+  metadata: ImagingResourceMetadata;
+}
+
+/**
+ * Metadata for imaging resources.
+ */
+export interface ImagingResourceMetadata {
+  department?: string;
+  modalities?: ImagingModality[];
+  room_number?: string;
+  equipment_type?: string;
+  capacity?: number;
+  [key: string]: unknown;
+}
+
+/**
+ * Appointment summary for calendar slots.
+ */
+export interface CalendarAppointment {
+  id: number;
+  patient_name: string | null;
+  appointment_number: string;
+  status: string;
+}
+
+/**
+ * Time slot in the scheduling calendar.
+ */
+export interface ImagingCalendarSlot {
+  date: string;
+  start_time: string;
+  end_time: string;
+  is_available: boolean;
+  appointment: CalendarAppointment | null;
+}
+
+/**
+ * Resource with its availability slots for a given date.
+ */
+export interface ImagingResourceAvailability {
+  resource: ImagingResource;
+  slots: ImagingCalendarSlot[];
+  total_slots: number;
+  available_slots: number;
+  booked_slots: number;
+}
+
+/**
+ * Department calendar response.
+ */
+export interface ImagingCalendarResponse {
+  date: string | null;
+  resources: ImagingResourceAvailability[];
+}
+
+/**
+ * Weekly availability for a resource.
+ */
+export interface ImagingWeeklyDay {
+  date: string;
+  day_name: string;
+  slots: ImagingCalendarSlot[];
+  total_slots: number;
+  available_slots: number;
+}
+
+/**
+ * Resource availability response.
+ */
+export interface ImagingResourceAvailabilityResponse {
+  resource_id: number;
+  date: string | null;
+  slots: ImagingCalendarSlot[];
+}
+
+/**
+ * Weekly availability response.
+ */
+export interface ImagingWeeklyAvailabilityResponse {
+  resource_id: number;
+  days: ImagingWeeklyDay[];
+}
+
+/**
+ * Slot availability check response.
+ */
+export interface SlotAvailabilityCheckResponse {
+  is_available: boolean;
+  resource_id: number;
+  date: string;
+  start_time: string;
+  end_time: string;
+}
+
+/**
+ * Params for calendar API.
+ */
+export interface ImagingCalendarParams {
+  date?: string;
+  modality?: ImagingModality;
+}
+
+/**
+ * Params for resource availability.
+ */
+export interface ResourceAvailabilityParams {
+  date?: string;
+}
+
+/**
+ * Params for weekly availability.
+ */
+export interface WeeklyAvailabilityParams {
+  start_date?: string;
+}

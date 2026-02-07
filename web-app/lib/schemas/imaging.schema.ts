@@ -182,3 +182,139 @@ export const WorklistStatsSchema = z.object({
 });
 
 export type WorklistStatsSchemaType = z.infer<typeof WorklistStatsSchema>;
+
+// =============================================================================
+// SCHEDULING / CALENDAR SCHEMAS
+// =============================================================================
+
+/**
+ * Schema for imaging resource metadata.
+ */
+export const ImagingResourceMetadataSchema = z.object({
+  department: z.string().optional(),
+  modalities: z.array(ImagingModalitySchema).optional(),
+  room_number: z.string().optional(),
+  equipment_type: z.string().optional(),
+  capacity: z.number().optional(),
+}).passthrough();
+
+export type ImagingResourceMetadataSchemaType = z.infer<typeof ImagingResourceMetadataSchema>;
+
+/**
+ * Schema for imaging resource (room, scanner, etc.).
+ */
+export const ImagingResourceSchema = z.object({
+  id: z.number(),
+  name: z.string(),
+  code: z.string(),
+  resource_type: z.string(),
+  is_active: z.boolean(),
+  metadata: ImagingResourceMetadataSchema,
+});
+
+export type ImagingResourceSchemaType = z.infer<typeof ImagingResourceSchema>;
+
+/**
+ * Schema for calendar appointment summary.
+ */
+export const CalendarAppointmentSchema = z.object({
+  id: z.number(),
+  patient_name: z.string().nullable(),
+  appointment_number: z.string(),
+  status: z.string(),
+});
+
+export type CalendarAppointmentSchemaType = z.infer<typeof CalendarAppointmentSchema>;
+
+/**
+ * Schema for imaging calendar slot.
+ */
+export const ImagingCalendarSlotSchema = z.object({
+  date: z.string(),
+  start_time: z.string(),
+  end_time: z.string(),
+  is_available: z.boolean(),
+  appointment: CalendarAppointmentSchema.nullable(),
+});
+
+export type ImagingCalendarSlotSchemaType = z.infer<typeof ImagingCalendarSlotSchema>;
+
+/**
+ * Schema for resource availability.
+ */
+export const ImagingResourceAvailabilitySchema = z.object({
+  resource: ImagingResourceSchema,
+  slots: z.array(ImagingCalendarSlotSchema),
+  total_slots: z.number(),
+  available_slots: z.number(),
+  booked_slots: z.number(),
+});
+
+export type ImagingResourceAvailabilitySchemaType = z.infer<typeof ImagingResourceAvailabilitySchema>;
+
+/**
+ * Schema for department calendar response.
+ */
+export const ImagingCalendarResponseSchema = z.object({
+  date: z.string().nullable(),
+  resources: z.array(ImagingResourceAvailabilitySchema),
+});
+
+export type ImagingCalendarResponseSchemaType = z.infer<typeof ImagingCalendarResponseSchema>;
+
+/**
+ * Schema for weekly availability day.
+ */
+export const ImagingWeeklyDaySchema = z.object({
+  date: z.string(),
+  day_name: z.string(),
+  slots: z.array(ImagingCalendarSlotSchema),
+  total_slots: z.number(),
+  available_slots: z.number(),
+});
+
+export type ImagingWeeklyDaySchemaType = z.infer<typeof ImagingWeeklyDaySchema>;
+
+/**
+ * Schema for resource availability response.
+ */
+export const ImagingResourceAvailabilityResponseSchema = z.object({
+  resource_id: z.number(),
+  date: z.string().nullable(),
+  slots: z.array(ImagingCalendarSlotSchema),
+});
+
+export type ImagingResourceAvailabilityResponseSchemaType = z.infer<typeof ImagingResourceAvailabilityResponseSchema>;
+
+/**
+ * Schema for weekly availability response.
+ */
+export const ImagingWeeklyAvailabilityResponseSchema = z.object({
+  resource_id: z.number(),
+  days: z.array(ImagingWeeklyDaySchema),
+});
+
+export type ImagingWeeklyAvailabilityResponseSchemaType = z.infer<typeof ImagingWeeklyAvailabilityResponseSchema>;
+
+/**
+ * Schema for slot availability check response.
+ */
+export const SlotAvailabilityCheckResponseSchema = z.object({
+  is_available: z.boolean(),
+  resource_id: z.number(),
+  date: z.string(),
+  start_time: z.string(),
+  end_time: z.string(),
+});
+
+export type SlotAvailabilityCheckResponseSchemaType = z.infer<typeof SlotAvailabilityCheckResponseSchema>;
+
+/**
+ * Schema for resources list response.
+ */
+export const ImagingResourcesListResponseSchema = z.object({
+  count: z.number(),
+  results: z.array(ImagingResourceSchema),
+});
+
+export type ImagingResourcesListResponseSchemaType = z.infer<typeof ImagingResourcesListResponseSchema>;

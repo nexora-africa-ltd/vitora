@@ -717,7 +717,7 @@ class RadiologyReport(models.Model):
   - [x] ImagingOrderForm with validation
   - [x] OrderStatusBadge with colors
   - [x] ProcedureCombobox with search
-  - [x] SchedulingCalendar backend API (frontend view deferred)
+  - [x] SchedulingCalendar frontend view with resource availability, date navigation, and modality filtering
 
 - [x] **Integration**
   - [x] Order button in encounter view
@@ -730,8 +730,9 @@ class RadiologyReport(models.Model):
   - [x] Error handling with toast notifications
 
 - [x] **Tests**
-  - [x] Jest unit tests for components (136 tests passing)
+  - [x] Jest unit tests for components (166 tests passing - includes 30 SchedulingCalendar tests)
   - [x] Playwright E2E tests for order workflow
+  - [x] Playwright E2E tests for scheduling calendar (17 tests)
 
 ---
 
@@ -1038,8 +1039,8 @@ Following TDD principles established in the project:
 │                                                                            │
 │  ════════════════════════════════════════════════════════════════════════ │
 │  Total Duration: 9-12 weeks                                                │
-│  Completed: Phase A (backend), Phase B (frontend)                          │
-│  Tests Passing: 260+ (backend 124 + frontend 136)                          │
+│  Completed: Phase A (backend), Phase B (frontend + scheduling calendar)    │
+│  Tests Passing: 307+ (backend 124 + frontend 166 + E2E 17)                 │
 │  Target Coverage: ≥80%                                                     │
 │                                                                            │
 └─────────────────────────────────────────────────────────────────────────────┘
@@ -1090,3 +1091,4 @@ Following TDD principles established in the project:
 | 1.0 | 2026-02-06 | Engineering Team | Initial plan |
 | 1.1 | 2026-02-06 | Engineering Team | Phase A backend completed (124 tests) |
 | 1.2 | 2026-02-06 | Engineering Team | Phase B frontend completed (136 tests) |
+| 1.3 | 2026-02-07 | Engineering Team | SchedulingCalendar frontend view completed (30 unit + 17 E2E tests) |
