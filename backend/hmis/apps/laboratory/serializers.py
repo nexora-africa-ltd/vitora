@@ -2,6 +2,8 @@
 Serializers for laboratory models.
 """
 
+
+from typing import Optional
 from rest_framework import serializers
 
 from .models import LabOrder, LabOrderItem, LabQueue, LabResult, LOINCCode, TestCatalog
@@ -61,10 +63,10 @@ class LabOrderItemSerializer(serializers.ModelSerializer):
             "result",
         ]
 
-    def get_has_result(self, obj):
+    def get_has_result(self, obj) -> bool:
         return hasattr(obj, "result")
 
-    def get_result(self, obj):
+    def get_result(self, obj) -> Optional[dict]:
         if not hasattr(obj, "result"):
             return None
         result = obj.result
@@ -115,10 +117,10 @@ class LabOrderSerializer(serializers.ModelSerializer):
         ]
         read_only_fields = ["order_number", "ordered_at"]
 
-    def get_patient_name(self, obj):
+    def get_patient_name(self, obj) -> str:
         return f"{obj.patient.first_name} {obj.patient.last_name}"
 
-    def get_ordered_by_name(self, obj):
+    def get_ordered_by_name(self, obj) -> str:
         return obj.ordered_by.get_full_name() or obj.ordered_by.username
 
 
@@ -321,52 +323,52 @@ class LabQueueSerializer(serializers.ModelSerializer):
             "updated_at",
         ]
 
-    def get_patient_name(self, obj):
+    def get_patient_name(self, obj) -> str:
         patient = obj.lab_order.patient
         return f"{patient.first_name} {patient.last_name}"
 
-    def get_tests(self, obj):
+    def get_tests(self, obj) -> list:
         return [
             {"code": item.test.code, "name": item.test.name} for item in obj.lab_order.items.all()
         ]
 
-    def get_assigned_technician_name(self, obj):
+    def get_assigned_technician_name(self, obj) -> str:
         if obj.assigned_technician:
             return obj.assigned_technician.get_full_name() or obj.assigned_technician.username
         return None
 
-    def get_collected_by_name(self, obj):
+    def get_collected_by_name(self, obj) -> Optional[str]:
         if obj.collected_by:
             return obj.collected_by.get_full_name() or obj.collected_by.username
         return None
 
-    def get_reviewed_by_name(self, obj):
+    def get_reviewed_by_name(self, obj) -> Optional[str]:
         if obj.reviewed_by:
             return obj.reviewed_by.get_full_name() or obj.reviewed_by.username
         return None
 
-    def get_expected_tat_hours(self, obj):
+    def get_expected_tat_hours(self, obj) -> Optional[int]:
         """Get expected TAT from first test in order."""
         first_item = obj.lab_order.items.first()
         if first_item and first_item.test:
             return first_item.test.turnaround_hours
         return 24  # Default 24 hours
 
-    def get_elapsed_hours(self, obj):
+    def get_elapsed_hours(self, obj) -> int:
         """Calculate hours since queue entry was created."""
         from django.utils import timezone
 
         delta = timezone.now() - obj.created_at
         return round(delta.total_seconds() / 3600, 1)
 
-    def get_actual_tat_hours(self, obj):
+    def get_actual_tat_hours(self, obj) -> int:
         """Calculate actual TAT for released samples."""
         if obj.released_at:
             delta = obj.released_at - obj.created_at
             return round(delta.total_seconds() / 3600, 1)
         return None
 
-    def get_is_overdue(self, obj):
+    def get_is_overdue(self, obj) -> bool:
         """Check if sample is overdue based on expected TAT."""
         if obj.queue_status == "RELEASED":
             return False
@@ -407,5 +409,5 @@ class TechnicianSerializer(serializers.Serializer):
     username = serializers.CharField()
     full_name = serializers.SerializerMethodField()
 
-    def get_full_name(self, obj):
+    def get_full_name(self, obj) -> str:
         return obj.get_full_name() or obj.username

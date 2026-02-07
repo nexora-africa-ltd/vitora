@@ -23034,6 +23034,7 @@ components:
           description: Patient being admitted
         patient_name:
           type: string
+          description: Get patient full name.
           readOnly: true
         opd_encounter:
           type: integer
@@ -23232,7 +23233,7 @@ components:
           type: string
           description: Reason if recommendation was declined
         is_expired:
-          type: string
+          type: boolean
           readOnly: true
         created_at:
           type: string
@@ -24821,11 +24822,13 @@ components:
           type: integer
         patient_name:
           type: string
+          description: Get patient's full name.
           readOnly: true
         patient_mrn:
           type: string
         destination:
           type: string
+          description: Get human-readable destination.
           readOnly: true
         destination_clinic_id:
           type: integer
@@ -24876,9 +24879,11 @@ components:
             * `NO_SHOW` - No Show
         queue_position:
           type: string
+          description: Get current queue position.
           readOnly: true
         estimated_wait_minutes:
-          type: string
+          type: integer
+          description: Estimate wait time based on queue position.
           readOnly: true
         checked_in_at:
           type: string
@@ -25106,7 +25111,8 @@ components:
           description: Permission required to access this clinic's data
           maxLength: 100
         is_open_today:
-          type: string
+          type: boolean
+          description: Check if clinic is open today.
           readOnly: true
         created_at:
           type: string
@@ -25145,6 +25151,7 @@ components:
           type: integer
         patient_name:
           type: string
+          description: Get patient full name.
           readOnly: true
         patient_mrn:
           type: string
@@ -25213,22 +25220,28 @@ components:
           description: Facility transferred to (if applicable)
           maxLength: 200
         is_overdue:
-          type: string
+          type: boolean
+          description: Check if patient is overdue.
           readOnly: true
         is_defaulter:
-          type: string
+          type: boolean
+          description: Check if patient is a defaulter.
           readOnly: true
         days_since_last_visit:
           type: string
+          description: Get days since last visit.
           readOnly: true
         days_overdue:
           type: string
+          description: Get days overdue for appointment.
           readOnly: true
         enrollment_type:
           type: string
+          description: Get enrollment type based on clinic.
           readOnly: true
         clinic_specific_summary:
           type: string
+          description: Get clinic-specific data summary.
           readOnly: true
         art_start_date:
           type: string
@@ -25300,15 +25313,19 @@ components:
           description: Is viral load suppressed (<1000 copies/mL)?
         days_on_art:
           type: string
+          description: Get days on ART.
           readOnly: true
         viral_load_due:
           type: string
+          description: Check if viral load test is due.
           readOnly: true
         cd4_due:
           type: string
+          description: Check if CD4 count is due.
           readOnly: true
         is_virally_suppressed:
-          type: string
+          type: boolean
+          description: Check if patient is virally suppressed.
           readOnly: true
         gravida:
           type: integer
@@ -25396,15 +25413,19 @@ components:
           description: List of high-risk factors if applicable
         gestation_weeks:
           type: string
+          description: Get gestation in weeks.
           readOnly: true
         gestation_display:
           type: string
+          description: Get gestation display string.
           readOnly: true
         trimester:
           type: string
+          description: Get current trimester.
           readOnly: true
         days_to_edd:
           type: string
+          description: Get days remaining to EDD.
           readOnly: true
         diabetes_type:
           description: |-
@@ -25452,9 +25473,11 @@ components:
           description: Known diabetes complications (retinopathy, nephropathy, etc.)
         hba1c_controlled:
           type: string
+          description: Check if HbA1c is controlled.
           readOnly: true
         hba1c_due:
           type: string
+          description: Check if HbA1c test is due.
           readOnly: true
         last_reminder_sent:
           type: string
@@ -25527,6 +25550,7 @@ components:
           type: integer
         patient_name:
           type: string
+          description: Get patient full name.
           readOnly: true
         patient_mrn:
           type: string
@@ -25547,16 +25571,20 @@ components:
           nullable: true
           description: Next scheduled visit
         is_overdue:
-          type: string
+          type: boolean
+          description: Check if patient is overdue.
           readOnly: true
         is_defaulter:
-          type: string
+          type: boolean
+          description: Check if patient is a defaulter.
           readOnly: true
         days_overdue:
           type: string
+          description: Get days overdue.
           readOnly: true
         enrollment_type:
           type: string
+          description: Get enrollment type.
           readOnly: true
         last_visit_date:
           type: string
@@ -25894,7 +25922,8 @@ components:
           description: Whether this clinic handles sensitive data (HIV, GBV, Mental
             Health)
         is_open_today:
-          type: string
+          type: boolean
+          description: Check if clinic is open today.
           readOnly: true
       required:
       - clinic_type
@@ -26403,6 +26432,7 @@ components:
           readOnly: true
         patient_name:
           type: string
+          description: Get patient full name.
           readOnly: true
         patient_mrn:
           type: string
@@ -26491,6 +26521,7 @@ components:
           description: Staff who registered the visit
         registered_by_name:
           type: string
+          description: Get the name of the user who registered this visit.
           readOnly: true
         chief_complaint:
           type: string
@@ -26620,6 +26651,7 @@ components:
           type: string
         phone_number:
           type: string
+          description: Get phone number, returning empty string if encrypted/unavailable.
           readOnly: true
       required:
       - age
@@ -27577,9 +27609,12 @@ components:
           description: Department head
         head_name:
           type: string
+          nullable: true
+          description: Get department head name.
           readOnly: true
         staff_count:
-          type: string
+          type: integer
+          description: Get active staff count.
           readOnly: true
         is_active:
           type: boolean
@@ -27866,6 +27901,7 @@ components:
           readOnly: true
         patient_name:
           type: string
+          description: Get patient full name.
           readOnly: true
         discharge_type:
           allOf:
@@ -28087,6 +28123,7 @@ components:
           type: integer
         patient_name:
           type: string
+          description: Get patient full name.
           readOnly: true
         drug:
           type: integer
@@ -28126,6 +28163,7 @@ components:
           type: integer
         dispensed_by_name:
           type: string
+          description: Get dispenser full name.
           readOnly: true
         dispensed_at:
           type: string
@@ -28136,6 +28174,7 @@ components:
           nullable: true
         verified_by_name:
           type: string
+          description: Get verifier full name.
           readOnly: true
         verified_at:
           type: string
@@ -28236,6 +28275,7 @@ components:
           $ref: '#/components/schemas/FormEnum'
         category:
           type: string
+          description: Return primary (first) category for backward compatibility.
           readOnly: true
         categories:
           description: List of drug categories (e.g., ['ANALGESIC', 'ANTIBIOTIC'])
@@ -30264,7 +30304,9 @@ components:
           pattern: ^-?\d{0,10}(?:\.\d{0,2})?$
           readOnly: true
         balance:
-          type: string
+          type: number
+          format: double
+          description: Calculate balance dynamically.
           readOnly: true
         balance_due:
           type: string
@@ -30877,10 +30919,12 @@ components:
         special_instructions:
           type: string
         has_result:
-          type: string
+          type: boolean
           readOnly: true
         result:
-          type: string
+          type: object
+          additionalProperties: {}
+          nullable: true
           readOnly: true
       required:
       - has_result
@@ -31014,7 +31058,8 @@ components:
           type: string
           readOnly: true
         tests:
-          type: string
+          type: array
+          items: {}
           readOnly: true
         priority:
           $ref: '#/components/schemas/LabQueuePriorityEnum'
@@ -31037,6 +31082,7 @@ components:
           nullable: true
         collected_by_name:
           type: string
+          nullable: true
           readOnly: true
         collected_at:
           type: string
@@ -31055,6 +31101,7 @@ components:
           nullable: true
         reviewed_by_name:
           type: string
+          nullable: true
           readOnly: true
         reviewed_at:
           type: string
@@ -31077,16 +31124,21 @@ components:
           format: date-time
           readOnly: true
         expected_tat_hours:
-          type: string
+          type: integer
+          nullable: true
+          description: Get expected TAT from first test in order.
           readOnly: true
         elapsed_hours:
-          type: string
+          type: integer
+          description: Calculate hours since queue entry was created.
           readOnly: true
         actual_tat_hours:
-          type: string
+          type: integer
+          description: Calculate actual TAT for released samples.
           readOnly: true
         is_overdue:
-          type: string
+          type: boolean
+          description: Check if sample is overdue based on expected TAT.
           readOnly: true
       required:
       - actual_tat_hours
@@ -32023,6 +32075,7 @@ components:
           readOnly: true
         patient_name:
           type: string
+          description: Get patient full name.
           readOnly: true
         ward_name:
           type: string
@@ -36738,12 +36791,15 @@ components:
           readOnly: true
         emergency_contact_name:
           type: string
+          description: Get the primary emergency contact's name.
           readOnly: true
         emergency_contact_phone:
           type: string
+          description: Get the primary emergency contact's phone number.
           readOnly: true
         emergency_contact_relationship:
           type: string
+          description: Get the primary emergency contact's relationship.
           readOnly: true
         referral_source:
           allOf:
@@ -36823,6 +36879,7 @@ components:
           description: Patient's last name
         full_name:
           type: string
+          description: Get patient's full name.
           readOnly: true
         date_of_birth:
           type: string
@@ -36830,7 +36887,8 @@ components:
           readOnly: true
           description: Patient's date of birth
         age:
-          type: string
+          type: integer
+          description: Get patient's age in years.
           readOnly: true
         gender:
           allOf:
@@ -36894,6 +36952,8 @@ components:
           readOnly: true
         last_encounter_date:
           type: string
+          nullable: true
+          description: Get date of most recent encounter.
           readOnly: true
       required:
       - age
@@ -37389,6 +37449,7 @@ components:
           type: integer
         patient_name:
           type: string
+          description: Get patient full name.
           readOnly: true
         patient_mrn:
           type: string
@@ -37398,6 +37459,7 @@ components:
           readOnly: true
         prescriber_name:
           type: string
+          description: Get prescriber full name.
           readOnly: true
         prescribed_at:
           type: string
@@ -37405,6 +37467,8 @@ components:
           readOnly: true
         prescribed_date:
           type: string
+          nullable: true
+          description: Get prescription date (date only, not datetime).
           readOnly: true
         valid_until:
           type: string
@@ -37416,10 +37480,12 @@ components:
         clinical_notes:
           type: string
         is_valid:
-          type: string
+          type: boolean
+          description: Alias for is_valid_prescription.
           readOnly: true
         is_valid_prescription:
-          type: string
+          type: boolean
+          description: Get prescription validity status.
           readOnly: true
         is_fully_dispensed:
           type: boolean
@@ -37434,6 +37500,7 @@ components:
           readOnly: true
         verification_url:
           type: string
+          description: Generate verification URL for QR code.
           readOnly: true
         created_at:
           type: string
@@ -38273,6 +38340,7 @@ components:
           type: integer
         patient_name:
           type: string
+          description: Return patient's full name.
           readOnly: true
         sha_member:
           type: integer
@@ -38402,10 +38470,13 @@ components:
           nullable: true
           description: Original claim if this is a resubmission
         items_count:
-          type: string
+          type: integer
+          nullable: true
+          description: Return count of claim items.
           readOnly: true
         attachments_count:
-          type: string
+          type: integer
+          description: Return count of attachments.
           readOnly: true
         created_at:
           type: string
@@ -38531,6 +38602,7 @@ components:
           type: integer
         patient_name:
           type: string
+          description: Return patient's full name.
           readOnly: true
         sha_member:
           type: integer
@@ -38660,10 +38732,13 @@ components:
           nullable: true
           description: Original claim if this is a resubmission
         items_count:
-          type: string
+          type: integer
+          nullable: true
+          description: Return count of claim items.
           readOnly: true
         attachments_count:
-          type: string
+          type: integer
+          description: Return count of attachments.
           readOnly: true
         created_at:
           type: string
@@ -38781,6 +38856,7 @@ components:
             * `both` - Split Between SHA and PFMS
         coverage_type_display:
           type: string
+          description: Return human-readable coverage type.
           readOnly: true
         status:
           allOf:
@@ -38918,6 +38994,8 @@ components:
           type: integer
         patient_name:
           type: string
+          nullable: true
+          description: Return patient's full name.
           readOnly: true
         sha_number:
           type: string
@@ -38939,6 +39017,7 @@ components:
           readOnly: true
         eligibility_display:
           type: string
+          description: Return human-readable eligibility status.
           readOnly: true
         coverage_start_date:
           type: string
@@ -38975,6 +39054,8 @@ components:
           - $ref: '#/components/schemas/BlankEnum'
         pfms_category_display:
           type: string
+          nullable: true
+          description: Return human-readable PFMS category.
           readOnly: true
         pfms_verified:
           type: boolean
@@ -39016,9 +39097,12 @@ components:
           readOnly: true
         patient:
           type: string
+          description: Return nested patient details.
           readOnly: true
         patient_name:
           type: string
+          nullable: true
+          description: Return patient's full name.
           readOnly: true
         sha_number:
           type: string
@@ -39040,6 +39124,7 @@ components:
           readOnly: true
         eligibility_display:
           type: string
+          description: Return human-readable eligibility status.
           readOnly: true
         coverage_start_date:
           type: string
@@ -39076,6 +39161,8 @@ components:
           - $ref: '#/components/schemas/BlankEnum'
         pfms_category_display:
           type: string
+          nullable: true
+          description: Return human-readable PFMS category.
           readOnly: true
         pfms_verified:
           type: boolean
@@ -39202,7 +39289,8 @@ components:
         is_active:
           type: boolean
         is_valid:
-          type: string
+          type: boolean
+          description: Check if tariff is currently valid.
           readOnly: true
         max_quantity_per_claim:
           type: integer
@@ -39773,7 +39861,8 @@ components:
         is_active:
           type: boolean
         is_available:
-          type: string
+          type: boolean
+          description: Return is_available status from method.
           readOnly: true
         created_by:
           type: integer
@@ -40154,6 +40243,7 @@ components:
           readOnly: true
         full_name:
           type: string
+          description: Get full name with title.
           readOnly: true
         employee_id:
           type: string
@@ -40211,7 +40301,8 @@ components:
           description: Regulatory body (e.g., Clinical Officers Council, NCK)
           maxLength: 100
         is_license_valid:
-          type: string
+          type: boolean
+          description: Check if license is valid.
           readOnly: true
         specialization:
           type: string
@@ -40688,6 +40779,7 @@ components:
           type: integer
         adjusted_by_name:
           type: string
+          description: Get adjuster full name.
           readOnly: true
         adjusted_at:
           type: string
@@ -40700,6 +40792,7 @@ components:
           nullable: true
         approved_by_name:
           type: string
+          description: Get approver full name.
           readOnly: true
         approved_at:
           type: string
@@ -41287,11 +41380,13 @@ components:
           readOnly: true
         patient_name:
           type: string
+          description: Get patient's full name.
           readOnly: true
         patient_mrn:
           type: string
         destination:
           type: string
+          description: Get human-readable destination.
           readOnly: true
         destination_clinic_id:
           type: integer
@@ -41340,6 +41435,7 @@ components:
           description: When patient checked in
         checked_in_by_name:
           type: string
+          description: Get name of staff who performed check-in.
           readOnly: true
         skip_triage:
           type: boolean
@@ -41418,6 +41514,7 @@ components:
           readOnly: true
         patient_name:
           type: string
+          description: Get patient full name.
           readOnly: true
         source_ward:
           type: integer
@@ -41777,6 +41874,7 @@ components:
           description: Suggested diagnoses for this template
         diagnosis_codes_display:
           type: string
+          description: Return diagnosis codes as list of code strings.
           readOnly: true
         default_medications:
           type: string
@@ -42051,13 +42149,18 @@ components:
           readOnly: true
           description: List of critical alerts generated
         vitals:
-          type: string
+          type: object
+          additionalProperties: {}
+          description: Get vitals captured at triage (fallback to encounter vitals
+            if needed).
           readOnly: true
         wait_time_minutes:
-          type: string
+          type: integer
+          description: Get calculated wait time in minutes.
           readOnly: true
         is_wait_time_exceeded:
-          type: string
+          type: boolean
+          description: Check if wait time exceeded target.
           readOnly: true
         triaged_by:
           type: integer
@@ -42620,12 +42723,14 @@ components:
           readOnly: true
         patient_name:
           type: string
+          description: Get patient full name.
           readOnly: true
         patient_mrn:
           type: string
           readOnly: true
         patient_age:
-          type: string
+          type: integer
+          description: Get patient age in years.
           readOnly: true
         patient_gender:
           type: string
@@ -42644,6 +42749,7 @@ components:
           readOnly: true
         assigned_area_display:
           type: string
+          description: Get human-readable area name.
           readOnly: true
         arrival_time:
           type: string
@@ -42654,10 +42760,12 @@ components:
           format: date-time
           readOnly: true
         wait_time_minutes:
-          type: string
+          type: integer
+          description: Calculate wait time in minutes since arrival.
           readOnly: true
         alerts_count:
-          type: string
+          type: integer
+          description: Get count of active alerts.
           readOnly: true
         status:
           $ref: '#/components/schemas/TriageQueueStatusEnum'
@@ -42955,7 +43063,8 @@ components:
           type: string
           readOnly: true
         patient_age:
-          type: string
+          type: integer
+          nullable: true
           readOnly: true
         patient_gender:
           type: string
@@ -42980,7 +43089,7 @@ components:
         notes:
           type: string
         wait_time_minutes:
-          type: string
+          type: integer
           readOnly: true
         created_at:
           type: string
@@ -43107,6 +43216,7 @@ components:
           readOnly: true
         patient_name:
           type: string
+          description: Get patient full name.
           readOnly: true
         round_date:
           type: string
