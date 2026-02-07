@@ -12,7 +12,7 @@
 | **Frontend Zod schemas** | 16 schema files, `parseResponse()` validation on every API call |
 | **OpenAPI schema** | ✅ `drf-spectacular` configured (`/api/schema/`, `/api/docs/`) |
 | **Backend contract tests** | ✅ 67 serializer snapshot tests in `tests/test_contracts.py` |
-| **Frontend contract tests** | ✅ Started — 3/13 modules (44 tests) |
+| **Frontend contract tests** | ✅ Started — 4/13 modules (62 tests) |
 
 The frontend validates API responses with Zod at runtime via `parseResponse()`. Backend serializer snapshot tests now catch field changes **before deployment**. When a serializer field is added, renamed, or removed, the contract test fails with a clear message directing the developer to update the frontend Zod schema.
 
@@ -74,7 +74,7 @@ The frontend validates API responses with Zod at runtime via `parseResponse()`. 
 | `encounter.schema.ts` | `encounter.contract.test.ts` | ✅ Done (15 tests) | Encounter, Diagnosis, TreatmentPlan, ICD10Code + 10 enums |
 | `patient.schema.ts` | `patient.contract.test.ts` | ✅ Done (12 tests) | Patient, EmergencyContact, PatientListItem + 6 enums |
 | `clinic.schema.ts` | `clinic.contract.test.ts` | ✅ Done (17 tests) | Clinic, Session, Visit, Staff, Schedule, Enrollment + 10 enums |
-| `pharmacy.schema.ts` | `pharmacy.contract.test.ts` | 📋 TODO | Medication, Prescription, Dispensing, Stock |
+| `pharmacy.schema.ts` | `pharmacy.contract.test.ts` | ✅ Done (18 tests) | Drug, StockBatch, Prescription, Dispensing, Adjustment + 9 enums |
 | `laboratory.schema.ts` | `laboratory.contract.test.ts` | 📋 TODO | LabTest, LabOrder, LabResult, Specimen |
 | `imaging.schema.ts` | `imaging.contract.test.ts` | 📋 TODO | ImagingOrder, ImagingProcedure, ImagingResult |
 | `billing.schema.ts` | `billing.contract.test.ts` | 📋 TODO | Invoice, Payment, BillingItem, InsuranceClaim |
@@ -160,4 +160,4 @@ jobs:
 
 ---
 
-*Generated: 2026-02-07 | Updated: 2026-02-08 (Layers 1, 2 & 3 encounter+patient+clinic tests implemented)*
+*Generated: 2026-02-07 | Updated: 2026-02-08 (Layers 1, 2 & 3: encounter+patient+clinic+pharmacy tests)*

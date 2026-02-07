@@ -89,6 +89,12 @@ export const AdjustmentTypeSchema = z.enum([
   'TRANSFER_OUT',
   'TRANSFER_IN',
   'OTHER',
+  // Additional values from OpenAPI
+  'DAMAGE',
+  'LOSS',
+  'RETURN_SUPPLIER',
+  'COUNT_CORRECTION',
+  'SAMPLE',
 ]);
 
 // =============================================================================
