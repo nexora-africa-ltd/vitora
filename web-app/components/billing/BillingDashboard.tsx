@@ -17,6 +17,7 @@ import {
   AlertCircle,
   Clock,
   FileText,
+  Receipt,
 } from 'lucide-react';
 import { format } from 'date-fns';
 import { cn } from '@/lib/utils';
@@ -45,6 +46,8 @@ const methodConfig: Record<PaymentMethod, { icon: React.ReactNode; label: string
   CARD: { icon: <CreditCard className="h-4 w-4" />, label: 'Card', color: 'text-blue-600' },
   BANK_TRANSFER: { icon: <Building className="h-4 w-4" />, label: 'Bank Transfer', color: 'text-purple-600' },
   INSURANCE: { icon: <Building className="h-4 w-4" />, label: 'Insurance', color: 'text-orange-600' },
+  CORPORATE: { icon: <Building className="h-4 w-4" />, label: 'Corporate', color: 'text-indigo-600' },
+  CHEQUE: { icon: <Receipt className="h-4 w-4" />, label: 'Cheque', color: 'text-gray-600' },
 };
 
 // ============================================================================

@@ -52,9 +52,12 @@ export type SpecimenType =
   | 'CSF'
   | 'SWAB'
   | 'TISSUE'
+  | 'SERUM'
+  | 'PLASMA'
+  | 'ASPIRATE'
   | 'OTHER';
 
-export type ResultType = 'NUMERIC' | 'TEXT' | 'OPTION' | 'PANEL';
+export type ResultType = 'NUMERIC' | 'TEXT' | 'OPTION' | 'OPTIONS' | 'PANEL';
 
 // Lab order types
 export interface LabOrder {

@@ -139,7 +139,7 @@ export interface SHAMember {
   // Membership type (for dependents tracking)
   membership_type?: 'PRINCIPAL' | 'SPOUSE' | 'CHILD' | 'PARENT' | 'OTHER';
   principal_sha_number?: string;
-  status?: 'ACTIVE' | 'INACTIVE' | 'PENDING_VERIFICATION' | 'SUSPENDED';
+  status?: 'ACTIVE' | 'INACTIVE' | 'PENDING_VERIFICATION' | 'SUSPENDED' | 'EXPIRED' | 'active' | 'inactive' | 'pending_verification' | 'suspended' | 'expired';
   // PFMS fields (SHA Integration Checklist #13)
   is_pfms_eligible: boolean;
   pfms_category?: PFMSCategory;

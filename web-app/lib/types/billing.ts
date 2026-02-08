@@ -82,7 +82,7 @@ export interface Invoice {
   patient_mrn?: string | null;
   encounter?: number | null;
   status: InvoiceStatus;
-  payment_type?: InvoicePaymentType;
+  payment_type?: string | null;  // API returns string, not enum
   invoice_date: string;
   due_date: string;
 
@@ -223,7 +223,9 @@ export type PaymentMethod =
   | 'MPESA'
   | 'CARD'
   | 'INSURANCE'
-  | 'BANK_TRANSFER';
+  | 'CORPORATE'
+  | 'BANK_TRANSFER'
+  | 'CHEQUE';
 
 // ============================================================================
 // Payment Point Types
@@ -441,9 +443,13 @@ export type CreditNoteReason =
   | 'SERVICE_NOT_RENDERED'
   | 'DUPLICATE_BILLING'
   | 'PRICING_ERROR'
+  | 'INSURANCE'
+  | 'DUPLICATE'
+  | 'GOODWILL'
   | 'OTHER';
 
 export type CreditNoteStatus =
+  | 'DRAFT'
   | 'PENDING'
   | 'APPROVED'
   | 'REJECTED'

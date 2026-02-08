@@ -323,7 +323,7 @@ export default function ClaimDetailPage() {
             <div className="space-y-4">
               <div className="flex justify-between">
                 <span className="text-muted-foreground">Total Claimed</span>
-                <span className="font-bold text-lg">{formatCurrency(parseFloat(claim.total_amount))}</span>
+                <span className="font-bold text-lg">{formatCurrency(parseFloat(claim.total_amount ?? '0'))}</span>
               </div>
               {claim.approved_amount && (
                 <>

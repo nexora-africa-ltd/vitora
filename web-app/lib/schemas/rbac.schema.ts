@@ -10,7 +10,7 @@ import { z } from 'zod';
 // ENUMS
 // =============================================================================
 
-export const DepartmentTypeSchema = z.enum(['CLINICAL', 'ADMINISTRATIVE', 'SUPPORT', 'LABORATORY', 'PHARMACY', 'RADIOLOGY', 'RECORDS']);
+export const DepartmentTypeSchema = z.enum(['CLINICAL', 'ADMINISTRATIVE', 'SUPPORT', 'ANCILLARY', 'LABORATORY', 'PHARMACY', 'RADIOLOGY', 'RECORDS']);
 
 export const RoleCategorySchema = z.enum(['CLINICAL', 'ADMINISTRATIVE', 'TECHNICAL', 'MANAGEMENT', 'COMMUNITY']);
 

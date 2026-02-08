@@ -167,7 +167,7 @@ export function SOAPNoteSummary({
     return diagnoses.map((d, i) => {
       const type = d.diagnosis_type === 'PRIMARY' ? '[PRIMARY]' : d.diagnosis_type === 'SECONDARY' ? '[SECONDARY]' : '[DDx]';
       const code = d.icd10_display || d.free_text_diagnosis || 'Unspecified';
-      const certainty = d.certainty !== 'CONFIRMED' ? ` (${d.certainty.toLowerCase()})` : '';
+      const certainty = d.certainty !== 'confirmed' ? ` (${d.certainty})` : '';
       return `${i + 1}. ${type} ${code}${certainty}`;
     });
   }, [diagnoses]);

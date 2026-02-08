@@ -56,6 +56,8 @@ const methodIcons: Record<PaymentMethod, React.ReactNode> = {
   CARD: <CreditCard className="h-4 w-4" />,
   BANK_TRANSFER: <Building className="h-4 w-4" />,
   INSURANCE: <Building className="h-4 w-4" />,
+  CORPORATE: <Building className="h-4 w-4" />,
+  CHEQUE: <Receipt className="h-4 w-4" />,
 };
 
 // ============================================================================

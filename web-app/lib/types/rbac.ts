@@ -14,6 +14,7 @@ export type DepartmentType =
   | 'CLINICAL'
   | 'ADMINISTRATIVE'
   | 'SUPPORT'
+  | 'ANCILLARY'
   | 'LABORATORY'
   | 'PHARMACY'
   | 'RADIOLOGY'
@@ -216,14 +217,17 @@ export type AuditAction =
 
 export interface AuditLogEntry {
   id: number;
-  user: number;
-  user_name: string;
-  action: AuditAction;
+  user: number | null;
+  username: string;
+  user_name?: string;
+  action: string;
   resource_type: string;
-  resource_id: number;
-  resource_name: string;
+  resource_id: number | null;
+  resource_name?: string;
   details: Record<string, unknown>;
-  ip_address: string;
+  ip_address: string | null;
+  user_agent: string;
+  patient_id: number | null;
   timestamp: string;
 }
 

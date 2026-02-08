@@ -58,9 +58,11 @@ const statusColors: Record<EnrollmentStatus, string> = {
   ACTIVE: 'bg-green-500',
   INACTIVE: 'bg-gray-500',
   TRANSFERRED: 'bg-blue-500',
+  TRANSFERRED_OUT: 'bg-blue-500',
   LOST_TO_FOLLOW_UP: 'bg-orange-500',
   DECEASED: 'bg-red-500',
   COMPLETED: 'bg-purple-500',
+  SUSPENDED: 'bg-yellow-500',
 };
 
 export default function EnrollmentsPage() {

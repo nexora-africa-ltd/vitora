@@ -24,13 +24,13 @@ export interface Encounter {
   visit_reason?: VisitReason;
 
   // Vitals
-  temperature: number | null;
-  pulse: number | null;
-  blood_pressure: string | null;
-  respiratory_rate: number | null;
-  spo2: number | null;
-  weight: number | null;
-  height: number | null;
+  temperature?: number | null;
+  pulse?: number | null;
+  blood_pressure?: string | null;
+  respiratory_rate?: number | null;
+  spo2?: number | null;
+  weight?: number | null;
+  height?: number | null;
 
   // Computed vitals
   bmi?: number | null;
@@ -51,15 +51,15 @@ export interface Encounter {
   clinical_template_data?: Record<string, Record<string, unknown>> | null;
 
   // Medical history
-  allergies: string;
-  chronic_conditions: string;
-  current_medications: string;
-  past_surgeries: string;
-  family_history: string;
-  social_history: string;
+  allergies?: string | null;
+  chronic_conditions?: string | null;
+  current_medications?: string | null;
+  past_surgeries?: string | null;
+  family_history?: string | null;
+  social_history?: string | null;
 
   // Clinical notes
-  notes: string;
+  notes?: string | null;
   history_of_present_illness?: string | null;
   physical_examination?: string | null;
   assessment?: string | null;
@@ -93,7 +93,7 @@ export interface Encounter {
   created_by?: number | null;
   created_by_name?: string | null;
   created_at: string;
-  updated_at: string;
+  updated_at?: string;
 }
 
 export interface Diagnosis {
@@ -109,7 +109,7 @@ export interface Diagnosis {
   free_text_diagnosis?: string | null;
   notes: string;
   is_confirmed: boolean;
-  certainty: 'SUSPECTED' | 'PROBABLE' | 'CONFIRMED' | 'RULED_OUT';
+  certainty: 'suspected' | 'probable' | 'confirmed' | 'ruled_out' | 'provisional';
   diagnosed_by?: number | null;
   diagnosed_by_name?: string | null;
   diagnosed_at?: string | null;
@@ -163,7 +163,7 @@ export interface Medication {
 
 export interface VitalSign {
   name: string;
-  value: number | string | null;
+  value: number | string | null | undefined;
   unit: string;
   normalRange: string;
   isAbnormal: boolean;
