@@ -333,41 +333,104 @@ export type ClaimStatus =
   | 'paid'
   | 'partial_approved';
 
+/**
+ * SHA Claim interface - matches backend SHAClaimSerializer.
+ *
+ * Note: Some fields have aliases for backward compatibility:
+ * - total_amount (frontend) ↔ claimed_amount (backend)
+ * - copay_amount (frontend) ↔ patient_copay (backend)
+ * - sha_reference (frontend) ↔ sha_claim_reference (backend)
+ * - invoice_id/encounter_id/patient_id (frontend) ↔ invoice/encounter/patient (backend)
+ */
 export interface Claim {
+  // Primary identifiers
   id: number;
   claim_number?: string;
-  invoice_id: number;
-  invoice_number?: string;
-  encounter_id: number;
-  patient_id?: number;
-  patient_name?: string;
-  patient_mrn?: string;
 
+  // Backend uses 'sha_claim_reference', frontend alias 'sha_reference'
+  sha_claim_reference?: string | null;
+  sha_reference?: string | null; // Backward compatibility alias
+
+  // Foreign keys - backend uses plain names, frontend uses _id suffix
+  patient?: number | null;
+  patient_id?: number | null; // Backward compatibility alias
+  sha_member?: number | null;
+  sha_member_number?: string | null;
+  encounter?: number | null;
+  encounter_id?: number | null; // Backward compatibility alias
+  invoice?: number | null;
+  invoice_id?: number | null; // Backward compatibility alias
+
+  // Display fields
+  patient_name?: string | null;
+  patient_mrn?: string | null;
+  invoice_number?: string | null;
+  submitted_by_username?: string | null;
+
+  // Claim details
+  claim_type?: string | null;
   status: ClaimStatus;
-  sha_reference?: string;
 
-  // Amounts
-  total_amount: string;
-  approved_amount?: string;
-  rejected_amount?: string;
-  copay_amount?: string;
+  // Clinical dates
+  service_date?: string | null;
+  admission_date?: string | null;
+  discharge_date?: string | null;
 
-  // Dates
-  submitted_at?: string;
-  processed_at?: string;
+  // Diagnosis
+  primary_diagnosis_code?: string | null;
+  primary_diagnosis_description?: string | null;
+  secondary_diagnosis_codes?: string[] | Record<string, unknown> | null;
+
+  // Amounts - backend uses claimed_amount, frontend alias total_amount
+  claimed_amount?: string | null;
+  total_amount?: string; // Backward compatibility alias
+  approved_amount?: string | null;
+  paid_amount?: string | null;
+  rejected_amount?: string | null; // Frontend-specific, may not be in backend
+  patient_copay?: string | null;
+  copay_amount?: string | null; // Backward compatibility alias
+
+  // Submission
+  submission_method?: string | null;
+  submitted_at?: string | null;
+  submitted_by?: number | null;
+
+  // Adjudication
+  adjudication_date?: string | null;
+  adjudication_notes?: string | null;
+  rejection_reason?: string | null;
+  rejection_code?: string | null;
+  rejection_codes?: string[] | null; // Frontend-specific array
+
+  // Payment
+  payment_date?: string | null;
+  payment_reference?: string | null;
+
+  // Preauthorization
+  preauth_number?: string | null;
+  preauth_date?: string | null;
+  preauth_valid_until?: string | null;
+
+  // Facility
+  facility_code?: string | null;
+  facility_level?: string | null;
+
+  // Versioning
+  version?: number | null;
+  parent_claim?: number | null;
+
+  // Computed counts
+  items_count?: number | null;
+  attachments_count?: number | null;
+
+  // Timestamps
   created_at: string;
   updated_at: string;
+  processed_at?: string | null; // Frontend-specific
 
-  // Rejection details
-  rejection_reason?: string;
-  rejection_codes?: string[];
-
-  // FHIR bundle reference
-  fhir_bundle_id?: string;
-
-  // Metadata
-  created_by?: number;
-  submitted_by?: number;
+  // FHIR reference
+  fhir_bundle_id?: string | null;
+  created_by?: number | null;
 }
 
 // Claim Item with coverage type (SHA Integration Checklist #13)
