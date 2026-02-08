@@ -10,7 +10,7 @@
 
 import { useCallback, useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { Plus, RefreshCw, Clock, UserPlus, HelpCircle } from 'lucide-react';
+import { Plus, Clock, UserPlus, HelpCircle } from 'lucide-react';
 import { PatientStageBadge } from '@/components/shared/patient-stage-badge';
 import { PullToRefresh } from '@/components/shared/pull-to-refresh';
 import { Button } from '@/components/ui/button';
@@ -154,20 +154,9 @@ export default function TriageQueuePage() {
         <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
           <div className="flex items-center gap-2">
             <h1 className="text-2xl sm:text-3xl font-bold tracking-tight">Triage Queue</h1>
-            <HelpPopover content="Assess and prioritize patients for clinical care. Pull down to refresh on mobile, or use the refresh button on desktop." />
+            <HelpPopover content="Assess and prioritize patients for clinical care. Pull down to refresh on mobile, or use the refresh button in the header." />
           </div>
           <div className="flex items-center gap-2">
-            {/* Refresh button - hidden on mobile (use pull-to-refresh instead) */}
-            <Button 
-              variant="outline" 
-              size="sm"
-              onClick={() => refetchWaiting()} 
-              disabled={isWaitingLoading}
-              className="hidden sm:flex h-10"
-            >
-              <RefreshCw className={`h-4 w-4 mr-2 ${isWaitingLoading ? 'animate-spin' : ''}`} />
-              Refresh
-            </Button>
             <Button size="sm" onClick={handleNewTriage} className="h-9 sm:h-10">
               <Plus className="h-4 w-4 sm:mr-2" />
               <span className="hidden sm:inline">New Triage</span>
