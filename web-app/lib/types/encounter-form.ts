@@ -12,14 +12,14 @@ export interface EncounterFormData {
   chief_complaint: string;
 
   // Vital signs
-  temperature: number | null;
-  pulse: number | null;
-  blood_pressure_systolic: number | null;
-  blood_pressure_diastolic: number | null;
-  respiratory_rate: number | null;
-  spo2: number | null;
-  weight: number | null;
-  height: number | null;
+  temperature?: number | null;
+  pulse?: number | null;
+  blood_pressure_systolic?: number | null;
+  blood_pressure_diastolic?: number | null;
+  respiratory_rate?: number | null;
+  spo2?: number | null;
+  weight?: number | null;
+  height?: number | null;
 
   // Medical history
   allergies: string;
@@ -101,7 +101,7 @@ export interface DiagnosisFormData {
   free_text_diagnosis: string;
   notes: string;
   is_confirmed: boolean;
-  certainty: 'SUSPECTED' | 'PROBABLE' | 'CONFIRMED' | 'RULED_OUT';
+  certainty: 'suspected' | 'probable' | 'confirmed' | 'ruled_out' | 'provisional';
 }
 
 export const defaultDiagnosisFormData: DiagnosisFormData = {
@@ -110,5 +110,5 @@ export const defaultDiagnosisFormData: DiagnosisFormData = {
   free_text_diagnosis: '',
   notes: '',
   is_confirmed: false,
-  certainty: 'SUSPECTED',
+  certainty: 'suspected',
 };

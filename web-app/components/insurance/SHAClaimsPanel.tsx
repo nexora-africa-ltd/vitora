@@ -221,7 +221,7 @@ function ClaimsTable({ claims, isLoading, onClaimClick }: ClaimsTableProps) {
               <ClaimStatusBadge status={claim.status} />
             </TableCell>
             <TableCell className="text-right">
-              <p className="font-medium">{formatCurrency(parseFloat(claim.total_amount))}</p>
+              <p className="font-medium">{formatCurrency(parseFloat(claim.total_amount ?? '0'))}</p>
               {claim.approved_amount && claim.status === 'approved' && (
                 <p className="text-xs text-green-600">
                   Approved: {formatCurrency(parseFloat(claim.approved_amount))}
@@ -268,7 +268,7 @@ export function SHAClaimsPanel({ basePath = '/transactions/sha-claims', showHead
     pending: claims.filter((c) => ['pending', 'submitted', 'processing'].includes(c.status)).length,
     approved: claims.filter((c) => c.status === 'approved').length,
     rejected: claims.filter((c) => c.status === 'rejected').length,
-    totalAmount: claims.reduce((sum, c) => sum + parseFloat(c.total_amount), 0),
+    totalAmount: claims.reduce((sum, c) => sum + parseFloat(c.total_amount ?? '0'), 0),
     approvedAmount: claims
       .filter((c) => c.approved_amount)
       .reduce((sum, c) => sum + parseFloat(c.approved_amount || '0'), 0),
@@ -280,7 +280,7 @@ export function SHAClaimsPanel({ basePath = '/transactions/sha-claims', showHead
       const existing = statusCounts.get(claim.status) || { count: 0, amount: 0 };
       statusCounts.set(claim.status, {
         count: existing.count + 1,
-        amount: existing.amount + parseFloat(claim.total_amount),
+        amount: existing.amount + parseFloat(claim.total_amount ?? '0'),
       });
     });
 

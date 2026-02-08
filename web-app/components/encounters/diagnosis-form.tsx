@@ -46,7 +46,7 @@ export function DiagnosisEntry({
     free_text_diagnosis: '',
     notes: '',
     is_confirmed: false,
-    certainty: 'SUSPECTED',
+    certainty: 'suspected',
   });
 
   const { data: searchResults, isLoading: isSearching } = useICD10Search(searchQuery);
@@ -84,7 +84,7 @@ export function DiagnosisEntry({
         free_text_diagnosis: '',
         notes: '',
         is_confirmed: false,
-        certainty: 'SUSPECTED',
+        certainty: 'suspected',
       });
     }
   }, [editingDiagnosis, existingDiagnoses]);
@@ -158,7 +158,7 @@ export function DiagnosisEntry({
       free_text_diagnosis: '',
       notes: '',
       is_confirmed: false,
-      certainty: 'SUSPECTED',
+      certainty: 'suspected',
     });
   }, [formData, selectedCode, icd11Value, onAdd, onUpdate, editingDiagnosis]);
 
@@ -333,25 +333,25 @@ export function DiagnosisEntry({
             value={formData.certainty}
             onValueChange={(value) => setFormData(prev => ({
               ...prev,
-              certainty: value as 'SUSPECTED' | 'PROBABLE' | 'CONFIRMED' | 'RULED_OUT'
+              certainty: value as 'suspected' | 'probable' | 'confirmed' | 'ruled_out'
             }))}
             disabled={disabled}
             className="flex flex-wrap gap-3"
           >
             <div className="flex items-center space-x-2">
-              <RadioGroupItem value="SUSPECTED" id="certainty-suspected" />
+              <RadioGroupItem value="suspected" id="certainty-suspected" />
               <Label htmlFor="certainty-suspected" className="cursor-pointer font-normal">Suspected</Label>
             </div>
             <div className="flex items-center space-x-2">
-              <RadioGroupItem value="PROBABLE" id="certainty-probable" />
+              <RadioGroupItem value="probable" id="certainty-probable" />
               <Label htmlFor="certainty-probable" className="cursor-pointer font-normal">Probable</Label>
             </div>
             <div className="flex items-center space-x-2">
-              <RadioGroupItem value="CONFIRMED" id="certainty-confirmed" />
+              <RadioGroupItem value="confirmed" id="certainty-confirmed" />
               <Label htmlFor="certainty-confirmed" className="cursor-pointer font-normal">Confirmed</Label>
             </div>
             <div className="flex items-center space-x-2">
-              <RadioGroupItem value="RULED_OUT" id="certainty-ruled-out" />
+              <RadioGroupItem value="ruled_out" id="certainty-ruled-out" />
               <Label htmlFor="certainty-ruled-out" className="cursor-pointer font-normal text-muted-foreground">Ruled Out</Label>
             </div>
           </RadioGroup>
@@ -365,7 +365,7 @@ export function DiagnosisEntry({
           onCheckedChange={(checked) => setFormData(prev => ({
             ...prev,
             is_confirmed: checked === true,
-            certainty: checked === true ? 'CONFIRMED' : prev.certainty,
+            certainty: checked === true ? 'confirmed' : prev.certainty,
           }))}
           disabled={disabled}
         />
@@ -459,10 +459,11 @@ export function DiagnosisListDisplay({
   };
 
   const certaintyColors = {
-    SUSPECTED: 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-400',
-    PROBABLE: 'bg-orange-100 text-orange-800 dark:bg-orange-900/30 dark:text-orange-400',
-    CONFIRMED: 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400',
-    RULED_OUT: 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400 line-through',
+    suspected: 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-400',
+    probable: 'bg-orange-100 text-orange-800 dark:bg-orange-900/30 dark:text-orange-400',
+    confirmed: 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400',
+    ruled_out: 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400 line-through',
+    provisional: 'bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400',
   };
 
   return (
@@ -475,7 +476,7 @@ export function DiagnosisListDisplay({
             className={cn(
               "flex items-start gap-3 p-3 rounded-lg border bg-card transition-colors",
               editingIndex === index && "ring-2 ring-primary border-primary",
-              diagnosis.certainty === 'RULED_OUT' && "opacity-60"
+              diagnosis.certainty === 'ruled_out' && "opacity-60"
             )}
           >
             <div className="flex-1 min-w-0">
@@ -484,7 +485,7 @@ export function DiagnosisListDisplay({
                   {diagnosis.diagnosis_type}
                 </Badge>
                 <Badge className={certaintyColors[diagnosis.certainty]}>
-                  {diagnosis.certainty === 'RULED_OUT' ? 'RULED OUT' : diagnosis.certainty}
+                  {diagnosis.certainty === 'ruled_out' ? 'RULED OUT' : diagnosis.certainty}
                 </Badge>
                 {diagnosis.is_confirmed && (
                   <Badge variant="outline" className="gap-1">
@@ -495,7 +496,7 @@ export function DiagnosisListDisplay({
               </div>
               <p className={cn(
                 "font-medium text-sm",
-                diagnosis.certainty === 'RULED_OUT' && "line-through text-muted-foreground"
+                diagnosis.certainty === 'ruled_out' && "line-through text-muted-foreground"
               )}>
                 {diagnosis.icd11_display || diagnosis.icd10_display || diagnosis.free_text_diagnosis}
               </p>

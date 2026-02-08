@@ -22,7 +22,7 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { Loader2, CreditCard, Smartphone, Banknote, Building } from 'lucide-react';
+import { Loader2, CreditCard, Smartphone, Banknote, Building, Receipt } from 'lucide-react';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import {
   Select,
@@ -77,7 +77,8 @@ const paymentMethodIcons: Record<PaymentMethod, React.ReactNode> = {
   CARD: <CreditCard className="h-4 w-4" />,
   BANK_TRANSFER: <Building className="h-4 w-4" />,
   INSURANCE: <Building className="h-4 w-4" />,
-
+  CORPORATE: <Building className="h-4 w-4" />,
+  CHEQUE: <Receipt className="h-4 w-4" />,
 };
 
 function formatKES(amount: number): string {

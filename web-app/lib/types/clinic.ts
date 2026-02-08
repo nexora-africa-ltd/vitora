@@ -100,7 +100,9 @@ export type ClinicSessionStatus = 'SCHEDULED' | 'OPEN' | 'CLOSED' | 'CANCELLED';
  */
 export type EnrollmentStatus =
   | 'ACTIVE'
+  | 'INACTIVE'
   | 'COMPLETED'
+  | 'TRANSFERRED'
   | 'TRANSFERRED_OUT'
   | 'LOST_TO_FOLLOW_UP'
   | 'DECEASED'

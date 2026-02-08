@@ -145,7 +145,7 @@ export function getVitalAlerts(data: EncounterFormData): VitalAlert[] {
   const alerts: VitalAlert[] = [];
 
   // Temperature alerts
-  if (data.temperature !== null) {
+  if (data.temperature != null) {
     if (data.temperature < 35 || data.temperature > 39) {
       alerts.push({
         field: 'temperature',
@@ -162,7 +162,7 @@ export function getVitalAlerts(data: EncounterFormData): VitalAlert[] {
   }
 
   // Pulse alerts
-  if (data.pulse !== null) {
+  if (data.pulse != null) {
     if (data.pulse < 50 || data.pulse > 120) {
       alerts.push({
         field: 'pulse',
@@ -179,7 +179,7 @@ export function getVitalAlerts(data: EncounterFormData): VitalAlert[] {
   }
 
   // SpO2 alerts - spectrum-based ranges (using rounded integer values)
-  if (data.spo2 !== null) {
+  if (data.spo2 != null) {
     const spo2Rounded = Math.round(data.spo2);
     if (spo2Rounded < 85) {
       alerts.push({
@@ -210,7 +210,7 @@ export function getVitalAlerts(data: EncounterFormData): VitalAlert[] {
   }
 
   // Respiratory rate alerts
-  if (data.respiratory_rate !== null) {
+  if (data.respiratory_rate != null) {
     if (data.respiratory_rate < 8 || data.respiratory_rate > 30) {
       alerts.push({
         field: 'respiratory_rate',
@@ -227,7 +227,7 @@ export function getVitalAlerts(data: EncounterFormData): VitalAlert[] {
   }
 
   // Blood pressure alerts
-  if (data.blood_pressure_systolic !== null && data.blood_pressure_diastolic !== null) {
+  if (data.blood_pressure_systolic != null && data.blood_pressure_diastolic != null) {
     const sys = data.blood_pressure_systolic;
     const dia = data.blood_pressure_diastolic;
 

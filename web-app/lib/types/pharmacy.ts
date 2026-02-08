@@ -85,6 +85,11 @@ export type AdjustmentType =
   | 'DONATION'
   | 'TRANSFER_OUT'
   | 'TRANSFER_IN'
+  | 'DAMAGE'
+  | 'LOSS'
+  | 'RETURN_SUPPLIER'
+  | 'COUNT_CORRECTION'
+  | 'SAMPLE'
   | 'OTHER';
 
 /**

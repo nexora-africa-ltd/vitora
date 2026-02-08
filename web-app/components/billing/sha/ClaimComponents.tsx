@@ -376,7 +376,7 @@ export function ClaimStatusCard({
           <div>
             <p className="text-muted-foreground">Total</p>
             <p className="font-semibold">
-              {formatCurrency(parseFloat(claim.total_amount))}
+              {formatCurrency(parseFloat(claim.total_amount ?? '0'))}
             </p>
           </div>
           {claim.approved_amount && (
@@ -586,7 +586,7 @@ export function ClaimListItem({ claim, onClick }: ClaimListItemProps) {
       </div>
       <div className="text-right">
         <p className="font-semibold">
-          {formatCurrency(parseFloat(claim.total_amount))}
+          {formatCurrency(parseFloat(claim.total_amount ?? '0'))}
         </p>
         <p className="text-xs text-muted-foreground">
           {claim.submitted_at

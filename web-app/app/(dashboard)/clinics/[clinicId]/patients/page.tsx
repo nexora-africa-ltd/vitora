@@ -74,12 +74,14 @@ const STATUS_COLORS: Record<EnrollmentStatus, string> = {
   ACTIVE: 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400',
   INACTIVE: 'bg-gray-100 text-gray-800 dark:bg-gray-900/30 dark:text-gray-400',
   TRANSFERRED: 'bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400',
+  TRANSFERRED_OUT: 'bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400',
   LOST_TO_FOLLOW_UP: 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400',
   DECEASED: 'bg-gray-100 text-gray-600 dark:bg-gray-900/30 dark:text-gray-500',
   COMPLETED: 'bg-purple-100 text-purple-800 dark:bg-purple-900/30 dark:text-purple-400',
+  SUSPENDED: 'bg-orange-100 text-orange-800 dark:bg-orange-900/30 dark:text-orange-400',
 };
 
-function formatDate(dateString: string | null): string {
+function formatDate(dateString: string | null | undefined): string {
   if (!dateString) return 'N/A';
   return new Date(dateString).toLocaleDateString('en-US', {
     year: 'numeric',
@@ -88,7 +90,7 @@ function formatDate(dateString: string | null): string {
   });
 }
 
-function isOverdue(nextAppointment: string | null): boolean {
+function isOverdue(nextAppointment: string | null | undefined): boolean {
   if (!nextAppointment) return false;
   return new Date(nextAppointment) < new Date();
 }

@@ -39,7 +39,7 @@ export function EncounterTable({
   const router = useRouter();
 
   const hasCriticalVitals = (encounter: Encounter) => {
-    return encounter.spo2 !== null && encounter.spo2 < 95;
+    return encounter.spo2 != null && encounter.spo2 < 95;
   };
 
   if (error) {
