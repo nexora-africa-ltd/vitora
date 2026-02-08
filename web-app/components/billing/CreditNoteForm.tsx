@@ -87,7 +87,6 @@ export function CreditNoteForm({
       invoice: invoice.id,
       reason: values.reason as CreditNoteReason,
       amount: values.amount.toString(),
-      description: values.description,
       reason_detail: values.description,
     };
     onSubmit(data);

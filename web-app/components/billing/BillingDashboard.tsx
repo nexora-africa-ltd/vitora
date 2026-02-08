@@ -183,7 +183,9 @@ export function BillingDashboard({
           <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-5">
             {(Object.keys(methodConfig) as PaymentMethod[]).map((method) => {
               const config = methodConfig[method];
-              const amount = parseFloat(byMethod[method] || '0');
+              if (!config) return null;
+              const rawAmount = byMethod[method];
+              const amount = typeof rawAmount === 'number' ? rawAmount : parseFloat(String(rawAmount || '0'));
 
               return (
                 <div

@@ -112,7 +112,7 @@ export function InvoiceForm({
       valid_until: invoice?.valid_until ? new Date(invoice.valid_until) : addDays(new Date(), 30),
       items: invoice?.items?.map((item) => ({
         service_id: item.service ?? undefined,
-        quantity: item.quantity,
+        quantity: parseInt(item.quantity, 10) || 1,
         unit_price: parseFloat(item.unit_price),
         description: item.description || '',
       })) || [{ service_id: 0, quantity: 1, unit_price: 0 }],

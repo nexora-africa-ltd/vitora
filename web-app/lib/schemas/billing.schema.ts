@@ -7,77 +7,45 @@
 import { z } from 'zod';
 
 // =============================================================================
+// ENUM VALUE CONSTANTS
+// Used to define both Zod schemas and TypeScript types consistently
+// =============================================================================
+
+export const INVOICE_STATUSES = ['PROFORMA', 'DRAFT', 'PENDING', 'PARTIAL', 'PAID', 'CANCELLED', 'OVERDUE', 'WRITTEN_OFF'] as const;
+export const PAYMENT_METHODS = ['CASH', 'MPESA', 'CARD', 'INSURANCE', 'BANK_TRANSFER', 'CORPORATE', 'CHEQUE'] as const;
+export const PAYMENT_STATUSES = ['PENDING', 'COMPLETED', 'FAILED', 'REFUNDED', 'REVERSED'] as const;
+export const CREDIT_NOTE_REASONS = ['OVERCHARGE', 'SERVICE_NOT_RENDERED', 'DUPLICATE_BILLING', 'DUPLICATE', 'PRICING_ERROR', 'OTHER', 'INSURANCE', 'GOODWILL'] as const;
+export const CREDIT_NOTE_STATUSES = ['PENDING', 'DRAFT', 'APPROVED', 'REJECTED', 'REFUNDED'] as const;
+export const DISCOUNT_TYPES = ['PERCENTAGE', 'FIXED'] as const;
+
+// =============================================================================
 // HELPERS
 // =============================================================================
 
 /**
  * Create a case-insensitive enum schema that accepts lowercase backend values
  * and transforms them to uppercase for frontend code.
- * Backend Django TextChoices use lowercase; frontend uses UPPERCASE.
  *
- * Uses z.preprocess to convert case BEFORE validation, preserving proper
- * type inference from z.enum().
+ * The schema accepts any case input but outputs uppercase values.
+ * Type inference correctly provides the enum literal union type.
  */
-function caseInsensitiveEnum<T extends readonly [string, ...string[]]>(values: T) {
-  return z.preprocess(
-    (v) => (typeof v === 'string' ? v.toUpperCase() : v),
-    z.enum(values)
-  );
+function caseInsensitiveEnum<const T extends readonly [string, ...string[]]>(values: T) {
+  // Use transform + pipe pattern. Output type is inferred from z.enum(values)
+  return z.string()
+    .transform((v) => v.toUpperCase())
+    .pipe(z.enum(values));
 }
 
 // =============================================================================
-// ENUMS
+// ENUMS (with proper type inference)
 // =============================================================================
 
-export const InvoiceStatusSchema = caseInsensitiveEnum([
-  'PROFORMA',
-  'DRAFT',
-  'PENDING',
-  'PARTIAL',
-  'PAID',
-  'CANCELLED',
-  'OVERDUE',
-  'WRITTEN_OFF',
-]);
-
-export const PaymentMethodSchema = caseInsensitiveEnum([
-  'CASH',
-  'MPESA',
-  'CARD',
-  'INSURANCE',
-  'BANK_TRANSFER',
-  'CORPORATE',
-  'CHEQUE',
-]);
-
-export const PaymentStatusSchema = caseInsensitiveEnum([
-  'PENDING',
-  'COMPLETED',
-  'FAILED',
-  'REFUNDED',
-  'REVERSED',
-]);
-
-export const CreditNoteReasonSchema = caseInsensitiveEnum([
-  'OVERCHARGE',
-  'SERVICE_NOT_RENDERED',
-  'DUPLICATE_BILLING',
-  'DUPLICATE',
-  'PRICING_ERROR',
-  'OTHER',
-  'INSURANCE',
-  'GOODWILL',
-]);
-
-export const CreditNoteStatusSchema = caseInsensitiveEnum([
-  'PENDING',
-  'DRAFT',
-  'APPROVED',
-  'REJECTED',
-  'REFUNDED',
-]);
-
-export const DiscountTypeSchema = caseInsensitiveEnum(['PERCENTAGE', 'FIXED']);
+export const InvoiceStatusSchema = caseInsensitiveEnum(INVOICE_STATUSES);
+export const PaymentMethodSchema = caseInsensitiveEnum(PAYMENT_METHODS);
+export const PaymentStatusSchema = caseInsensitiveEnum(PAYMENT_STATUSES);
+export const CreditNoteReasonSchema = caseInsensitiveEnum(CREDIT_NOTE_REASONS);
+export const CreditNoteStatusSchema = caseInsensitiveEnum(CREDIT_NOTE_STATUSES);
+export const DiscountTypeSchema = caseInsensitiveEnum(DISCOUNT_TYPES);
 
 // =============================================================================
 // SERVICE CATEGORY SCHEMA
