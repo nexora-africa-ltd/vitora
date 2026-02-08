@@ -306,7 +306,6 @@ export const PaymentSchema = z.object({
   notes: z.string(),
   created_at: z.string(),
   updated_at: z.string(),
-  created_by: z.number(),
 });
 
 export type PaymentSchemaType = z.infer<typeof PaymentSchema>;

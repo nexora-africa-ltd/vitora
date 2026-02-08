@@ -60,6 +60,7 @@ class ServiceSerializer(serializers.ModelSerializer):
             "category",
             "category_name",
             "unit_price",
+            "currency",
             "sha_code",
             "icd10_code",
             "is_taxable",

@@ -76,10 +76,10 @@ function ItemRow({ item, isSelected, onToggle, disabled }: ItemRowProps) {
     <div
       className={`flex items-center gap-3 p-3 rounded-lg border transition-colors ${
         isConverted
-          ? 'bg-gray-50 border-gray-200 opacity-60'
+          ? 'bg-muted/50 border-border opacity-60'
           : isSelected
-          ? 'bg-purple-50 border-purple-200'
-          : 'bg-white border-gray-200 hover:border-gray-300'
+          ? 'bg-primary/10 border-primary/30'
+          : 'bg-card border-border hover:border-primary/20'
       }`}
     >
       <Checkbox
@@ -92,12 +92,12 @@ function ItemRow({ item, isSelected, onToggle, disabled }: ItemRowProps) {
         <div className="flex items-center gap-2">
           <Label
             htmlFor={`item-${item.id}`}
-            className={`font-medium cursor-pointer ${isConverted ? 'line-through text-gray-400' : ''}`}
+            className={`font-medium cursor-pointer ${isConverted ? 'line-through text-muted-foreground' : ''}`}
           >
             {item.service_name || item.description}
           </Label>
           {isConverted && (
-            <Badge variant="outline" className="text-xs bg-gray-100 text-gray-500">
+            <Badge variant="outline" className="text-xs bg-muted text-muted-foreground">
               Already Converted
             </Badge>
           )}
@@ -244,8 +244,8 @@ export function ProformaConvertDialog({
 
         {/* Info Alert */}
         {mode === 'full' ? (
-          <Alert className="bg-purple-50 border-purple-200">
-            <Check className="h-4 w-4 text-purple-600" />
+          <Alert className="bg-primary/10 border-primary/30">
+            <Check className="h-4 w-4 text-primary" />
             <AlertDescription>
               All {convertibleItems.length} item(s) will be converted to a new invoice.
               {convertedItems.length > 0 && (
@@ -309,7 +309,7 @@ export function ProformaConvertDialog({
         )}
 
         {/* Summary */}
-        <div className="bg-gray-50 rounded-lg p-4 space-y-2">
+        <div className="bg-muted/50 rounded-lg p-4 space-y-2">
           <div className="flex justify-between text-sm">
             <span className="text-muted-foreground">Items to convert:</span>
             <span className="font-medium">{selectedItems.length}</span>
@@ -321,7 +321,7 @@ export function ProformaConvertDialog({
           <Separator className="my-2" />
           <div className="flex justify-between">
             <span className="font-medium">New Invoice Total:</span>
-            <span className="font-bold text-lg text-purple-700">
+            <span className="font-bold text-lg text-primary">
               {formatKES(mode === 'full' ? fullTotal : selectedTotal)}
             </span>
           </div>
