@@ -25,6 +25,7 @@ import { useAuth } from '@/lib/auth/context';
 import { useLogout } from '@/lib/auth/hooks';
 import { useNetworkStatus } from '@/lib/hooks/use-network-status';
 import { useSyncStatus, formatLastSync } from '@/lib/context/sync-context';
+import { usePageRefresh, formatLastFetch } from '@/lib/context/page-refresh-context';
 import { Breadcrumb } from '@/components/layout/breadcrumb';
 import { NotificationPanel } from '@/components/notifications/notification-panel';
 import { cn } from '@/lib/utils/cn';
@@ -39,10 +40,17 @@ export function Header({ onMenuClick, sidebarCollapsed }: HeaderProps) {
   const logout = useLogout();
   const { isOnline } = useNetworkStatus();
   const { lastSyncTime, isSyncing, pendingChanges, lastError, triggerSync } = useSyncStatus();
+  const { lastFetchTime, isRefreshing, refresh } = usePageRefresh();
 
   const handleSyncClick = async () => {
     if (!isSyncing && isOnline) {
       await triggerSync();
+    }
+  };
+
+  const handleRefreshClick = async () => {
+    if (!isRefreshing) {
+      await refresh();
     }
   };
 
@@ -94,7 +102,7 @@ export function Header({ onMenuClick, sidebarCollapsed }: HeaderProps) {
                     size="sm"
                   />
                   <span className="hidden sm:inline">
-                    {isSyncing ? 'Syncing...' : isOnline ? 'Online' : 'Offline'}
+                    {isSyncing ? 'Syncing...' : isOnline ? formatLastFetch(lastFetchTime) : 'Offline'}
                   </span>
                   {pendingChanges > 0 && (
                     <Badge
@@ -127,6 +135,10 @@ export function Header({ onMenuClick, sidebarCollapsed }: HeaderProps) {
                   </p>
                   <div className="pt-1.5 border-t border-border text-xs">
                     <div className="flex justify-between">
+                      <span className="text-muted-foreground">Last fetch:</span>
+                      <span className="font-medium">{formatLastFetch(lastFetchTime)}</span>
+                    </div>
+                    <div className="flex justify-between mt-1">
                       <span className="text-muted-foreground">Last sync:</span>
                       <span className="font-medium">{formatLastSync(lastSyncTime)}</span>
                     </div>
@@ -160,6 +172,34 @@ export function Header({ onMenuClick, sidebarCollapsed }: HeaderProps) {
                     </div>
                   )}
                 </div>
+              </TooltipContent>
+            </Tooltip>
+          </TooltipProvider>
+
+          {/* Refresh button (hidden on mobile - they have pull-to-refresh) */}
+          <TooltipProvider delayDuration={300}>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  onClick={handleRefreshClick}
+                  disabled={isRefreshing}
+                  className="hidden sm:flex h-9 w-9"
+                  aria-label="Refresh page data"
+                >
+                  <RefreshCw className={cn('h-4 w-4', isRefreshing && 'animate-spin')} />
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent side="bottom">
+                <p className="text-xs">
+                  {isRefreshing ? 'Refreshing...' : 'Refresh page data'}
+                </p>
+                {lastFetchTime && !isRefreshing && (
+                  <p className="text-xs text-muted-foreground">
+                    Last: {formatLastFetch(lastFetchTime)}
+                  </p>
+                )}
               </TooltipContent>
             </Tooltip>
           </TooltipProvider>

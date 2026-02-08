@@ -8,6 +8,7 @@ import { AuthProvider } from '@/lib/auth/context';
 import { Toaster } from '@/components/ui/toaster';
 import { NavigationProgress } from '@/components/layout/navigation-progress';
 import { DemoBanner, DemoWatermark } from '@/components/shared/demo-banner';
+import { PageRefreshProvider } from '@/lib/context/page-refresh-context';
 import { createQueryClient } from '@/lib/query-client';
 
 // Only load devtools in development - use dynamic import to avoid build errors
@@ -39,24 +40,26 @@ export function Providers({ children }: ProvidersProps) {
 
   return (
     <QueryClientProvider client={queryClient}>
-      <ThemeProvider
-        attribute="class"
-        defaultTheme="system"
-        enableSystem
-        disableTransitionOnChange
-      >
-        <AuthProvider>
-          {/* Demo mode banner - shows in staging environment */}
-          <DemoBanner />
-          <Suspense fallback={null}>
-            <NavigationProgress />
-          </Suspense>
-          {children}
-          <Toaster />
-          {/* Demo watermark - subtle indicator for screenshots */}
-          <DemoWatermark />
-        </AuthProvider>
-      </ThemeProvider>
+      <PageRefreshProvider>
+        <ThemeProvider
+          attribute="class"
+          defaultTheme="system"
+          enableSystem
+          disableTransitionOnChange
+        >
+          <AuthProvider>
+            {/* Demo mode banner - shows in staging environment */}
+            <DemoBanner />
+            <Suspense fallback={null}>
+              <NavigationProgress />
+            </Suspense>
+            {children}
+            <Toaster />
+            {/* Demo watermark - subtle indicator for screenshots */}
+            <DemoWatermark />
+          </AuthProvider>
+        </ThemeProvider>
+      </PageRefreshProvider>
       {isDev && <ReactQueryDevtools initialIsOpen={false} />}
     </QueryClientProvider>
   );
