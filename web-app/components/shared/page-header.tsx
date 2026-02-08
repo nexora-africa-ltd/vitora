@@ -1,20 +1,34 @@
+import { HelpPopover } from './help-popover';
+
 interface PageHeaderProps {
+  /** Page title */
   title: string;
+  /** Optional description shown below title */
   description?: string;
+  /** Optional help content shown in popover */
+  helpContent?: string;
+  /** Optional action buttons */
   actions?: React.ReactNode;
 }
 
-export function PageHeader({ title, description, actions }: PageHeaderProps) {
+/**
+ * Consistent page header with title, optional description, help, and actions.
+ * Responsive: stacks on mobile, horizontal on sm+ screens.
+ */
+export function PageHeader({ title, description, helpContent, actions }: PageHeaderProps) {
   return (
-    <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
-      <div>
-        <h1 className="text-3xl font-bold tracking-tight">{title}</h1>
+    <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+      <div className="min-w-0">
+        <div className="flex items-center gap-2">
+          <h1 className="text-2xl sm:text-3xl font-bold tracking-tight truncate">{title}</h1>
+          {helpContent && <HelpPopover content={helpContent} />}
+        </div>
         {description && (
-          <p className="text-muted-foreground">{description}</p>
+          <p className="text-sm sm:text-base text-muted-foreground mt-1">{description}</p>
         )}
       </div>
       {actions && (
-        <div className="flex flex-col gap-2 items-stretch sm:flex-row sm:flex-wrap sm:items-center">
+        <div className="flex flex-col gap-2 items-stretch sm:flex-row sm:flex-wrap sm:items-center shrink-0">
           {actions}
         </div>
       )}

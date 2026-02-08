@@ -10,9 +10,11 @@
 
 import { useCallback, useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { Plus, Clock, UserPlus, HelpCircle } from 'lucide-react';
+import { Plus, Clock, UserPlus } from 'lucide-react';
 import { PatientStageBadge } from '@/components/shared/patient-stage-badge';
 import { PullToRefresh } from '@/components/shared/pull-to-refresh';
+import { PageHeader } from '@/components/shared/page-header';
+import { HelpPopover } from '@/components/shared/help-popover';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -20,40 +22,12 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { NotificationBanner } from '@/components/shared/notification-banner';
 import { KPICard } from '@/components/reports/kpi-card';
 import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from '@/components/ui/popover';
-import {
   useTriageWaitTimeStats,
   useWaitingQueue,
   useStartTriage,
   useCancelWaitingEntry,
 } from '@/lib/hooks/use-triage';
 import { toast } from '@/lib/hooks/use-toast';
-
-// =============================================================================
-// Help Popover Component
-// =============================================================================
-
-function HelpPopover({ content }: { content: string }) {
-  return (
-    <Popover>
-      <PopoverTrigger asChild>
-        <button
-          type="button"
-          className="inline-flex items-center justify-center rounded-full p-1 hover:bg-muted transition-colors"
-          aria-label="Help"
-        >
-          <HelpCircle className="h-4 w-4 text-muted-foreground cursor-help" />
-        </button>
-      </PopoverTrigger>
-      <PopoverContent side="bottom" align="start" className="max-w-xs p-3">
-        <p className="text-sm text-muted-foreground">{content}</p>
-      </PopoverContent>
-    </Popover>
-  );
-}
 
 export default function TriageQueuePage() {
   const router = useRouter();
@@ -151,18 +125,16 @@ export default function TriageQueuePage() {
     >
       <div className="container mx-auto px-4 sm:px-6 lg:px-8 py-4 sm:py-6 space-y-4 sm:space-y-6">
         {/* Page Header */}
-        <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-          <div className="flex items-center gap-2">
-            <h1 className="text-2xl sm:text-3xl font-bold tracking-tight">Triage Queue</h1>
-            <HelpPopover content="Assess and prioritize patients for clinical care. Pull down to refresh on mobile, or use the refresh button in the header." />
-          </div>
-          <div className="flex items-center gap-2">
+        <PageHeader
+          title="Triage Queue"
+          helpContent="Assess and prioritize patients for clinical care. Pull down to refresh on mobile, or use the refresh button in the header."
+          actions={
             <Button size="sm" onClick={handleNewTriage} className="h-9 sm:h-10">
               <Plus className="h-4 w-4 sm:mr-2" />
               <span className="hidden sm:inline">New Triage</span>
             </Button>
-          </div>
-        </div>
+          }
+        />
 
         {/* Info: Consultation Queue moved to Encounters */}
         <NotificationBanner
