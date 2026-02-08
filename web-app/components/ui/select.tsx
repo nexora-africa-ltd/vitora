@@ -124,7 +124,7 @@ const SelectTrigger = React.forwardRef<
       ref={ref}
       type="button"
       role="combobox"
-      aria-expanded={context.open}
+      aria-expanded={context.open ? "true" : "false"}
       aria-haspopup="listbox"
       aria-controls={context.listboxId}
       className={cn(
@@ -228,7 +228,7 @@ const SelectItem = React.forwardRef<HTMLDivElement, SelectItemProps>(
       <div
         ref={ref}
         role="option"
-        aria-selected={isSelected}
+        aria-selected={isSelected ? "true" : "false"}
         className={cn(
           "relative flex w-full cursor-pointer select-none items-center rounded-sm py-1.5 px-2 text-sm outline-none hover:bg-accent hover:text-accent-foreground focus:bg-accent focus:text-accent-foreground",
           isSelected && "bg-accent text-accent-foreground",
