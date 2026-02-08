@@ -510,22 +510,36 @@ class WaitTimesReportView(APIView):
 
         assessments = TriageAssessment.objects.filter(arrival_time__gte=start_date)
 
-        # Calculate wait times
-        wait_times = []
+        # Calculate wait times and completion times
+        wait_times = []  # arrival → triage_start (time waiting)
+        completion_times = []  # arrival → triage_end (total time)
+        triage_durations = []  # triage_start → triage_end (assessment duration)
         met_target_count = 0
         total_with_category = 0
         
         for assessment in assessments:
-            wait_time = assessment.get_wait_time_minutes()
-            if wait_time is not None:
-                wait_times.append(wait_time)
+            # Wait time: arrival to triage start
+            if assessment.triage_start_time:
+                wait_delta = assessment.triage_start_time - assessment.arrival_time
+                wait_minutes = int(wait_delta.total_seconds() / 60)
+                wait_times.append(wait_minutes)
                 
                 # Check if wait time met KETA target for this category
                 if assessment.triage_category:
                     total_with_category += 1
                     target = self.KETA_TARGETS.get(assessment.triage_category, 240)
-                    if wait_time <= target:
+                    if wait_minutes <= target:
                         met_target_count += 1
+            
+            # Completion time: arrival to triage end (for completed assessments)
+            if assessment.triage_end_time:
+                completion_delta = assessment.triage_end_time - assessment.arrival_time
+                completion_times.append(int(completion_delta.total_seconds() / 60))
+                
+                # Triage duration: start to end
+                if assessment.triage_start_time:
+                    duration_delta = assessment.triage_end_time - assessment.triage_start_time
+                    triage_durations.append(int(duration_delta.total_seconds() / 60))
 
         if wait_times:
             avg_wait_time = sum(wait_times) / len(wait_times)
@@ -537,6 +551,19 @@ class WaitTimesReportView(APIView):
             median_wait_time = 0
             max_wait_time = 0
             min_wait_time = 0
+
+        # Completion stats (arrival to triage end)
+        completion_stats = {
+            "count": len(completion_times),
+            "avg_minutes": round(sum(completion_times) / len(completion_times), 1) if completion_times else 0,
+            "median_minutes": round(statistics.median(completion_times), 1) if completion_times else 0,
+        }
+        
+        # Triage duration stats (how long actual assessment takes)
+        triage_duration_stats = {
+            "count": len(triage_durations),
+            "avg_minutes": round(sum(triage_durations) / len(triage_durations), 1) if triage_durations else 0,
+        }
 
         # Calculate target met percentage
         target_met_percentage = (
@@ -583,6 +610,7 @@ class WaitTimesReportView(APIView):
         return Response(
             {
                 "total_assessments": assessments.count(),
+                # Historical wait times (arrival → triage start)
                 "avg_wait_minutes": round(avg_wait_time, 1),
                 "median_wait_minutes": round(median_wait_time, 1),
                 "max_wait_minutes": round(max_wait_time, 1),
@@ -591,6 +619,10 @@ class WaitTimesReportView(APIView):
                 "by_category": category_stats,
                 # Real-time queue stats
                 "current_queue": current_queue_stats,
+                # Completion time stats (arrival → triage end)
+                "completion_time": completion_stats,
+                # Triage duration stats (triage start → triage end)
+                "triage_duration": triage_duration_stats,
             }
         )
 

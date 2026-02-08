@@ -122,15 +122,32 @@ interface CurrentQueueStats {
   longest_waiting_patient: number;
 }
 
+interface CompletionTimeStats {
+  count: number;
+  avg_minutes: number;
+  median_minutes: number;
+}
+
+interface TriageDurationStats {
+  count: number;
+  avg_minutes: number;
+}
+
 interface WaitTimeStatsResponse {
   total_assessments: number;
+  // Historical wait times (arrival → triage start)
   avg_wait_minutes: number;
   median_wait_minutes: number;
   max_wait_minutes: number;
   min_wait_minutes: number;
   target_met_percentage: number;
   by_category: WaitTimeStats[];
+  // Real-time queue stats
   current_queue: CurrentQueueStats;
+  // Completion time stats (arrival → triage end)
+  completion_time: CompletionTimeStats;
+  // Triage duration stats (triage start → triage end)
+  triage_duration: TriageDurationStats;
 }
 
 // =============================================================================

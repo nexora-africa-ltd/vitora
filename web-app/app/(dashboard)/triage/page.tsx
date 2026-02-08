@@ -19,7 +19,6 @@ import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import { NotificationBanner } from '@/components/shared/notification-banner';
 import { KPICard } from '@/components/reports/kpi-card';
-import { TrendIndicator } from '@/components/charts';
 import {
   Popover,
   PopoverContent,
@@ -190,37 +189,49 @@ export default function TriageQueuePage() {
       />
 
       {/* KPI Stats Cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4">
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
         <KPICard
           id="waiting-triage"
-          title="Waiting for Triage"
+          title="In Queue"
           value={waitingCount}
-          description="Patients checked in, awaiting triage"
+          description="Awaiting triage"
           variant={waitingCount > 5 ? 'warning' : 'default'}
         />
         <KPICard
-          id="avg-wait-time"
+          id="current-wait"
           title="Current Wait"
           value={waitTimeStats?.current_queue?.avg_wait_minutes ?? 0}
           unit="min"
-          description={
-            <span className="flex items-center gap-2 flex-wrap">
-              <span>Avg wait in queue now</span>
-              {waitTimeStats?.current_queue && waitTimeStats.current_queue.avg_wait_minutes > 15 && (
-                <TrendIndicator
-                  value={waitTimeStats.current_queue.avg_wait_minutes}
-                  previousValue={15}
-                  invertColors
-                  showPercentage={false}
-                  size="sm"
-                />
-              )}
-            </span>
-          }
+          description="Avg queue wait now"
           variant={
             (waitTimeStats?.current_queue?.avg_wait_minutes ?? 0) > 30 
-              ? 'warning' 
-              : 'default'
+              ? 'destructive' 
+              : (waitTimeStats?.current_queue?.avg_wait_minutes ?? 0) > 15
+                ? 'warning'
+                : 'default'
+          }
+          valueClassName={
+            (waitTimeStats?.current_queue?.avg_wait_minutes ?? 0) > 30 
+              ? 'text-destructive' 
+              : (waitTimeStats?.current_queue?.avg_wait_minutes ?? 0) > 15
+                ? 'text-warning'
+                : undefined
+          }
+        />
+        <KPICard
+          id="completion-time"
+          title="Avg Completion"
+          value={waitTimeStats?.completion_time?.avg_minutes ?? 0}
+          unit="min"
+          description={
+            <span className="flex items-center gap-1.5 flex-wrap">
+              <span>Arrival → done</span>
+              {(waitTimeStats?.completion_time?.count ?? 0) > 0 && (
+                <span className="text-muted-foreground">
+                  ({waitTimeStats?.completion_time?.count} today)
+                </span>
+              )}
+            </span>
           }
         />
         <KPICard
@@ -232,17 +243,7 @@ export default function TriageQueuePage() {
           change={Math.abs(targetMetTrend.change)}
           changeType={targetMetTrend.direction === 'up' ? 'increase' : 'decrease'}
           variant={(waitTimeStats?.target_met_percentage ?? 100) >= 85 ? 'success' : 'warning'}
-          description={
-            <span className="flex items-center gap-2 flex-wrap">
-              <span>KETA targets</span>
-              <TrendIndicator
-                value={waitTimeStats?.target_met_percentage ?? 0}
-                previousValue={85}
-                size="sm"
-                suffix="vs target"
-              />
-            </span>
-          }
+          description="KETA compliance"
         />
       </div>
 
