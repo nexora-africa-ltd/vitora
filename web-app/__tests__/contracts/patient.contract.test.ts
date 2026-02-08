@@ -309,9 +309,9 @@ describe('Patient Contract Tests', () => {
   });
 
   describe('EncounterStatusSchema (enum)', () => {
-    it('should match OpenAPI StatusEabEnum values', () => {
+    it('should match OpenAPI EncounterStatusEnum values', () => {
       const zodValues = getZodEnumValues(EncounterStatusSchema);
-      const apiValues = getSchemaEnumValues(openapi, 'StatusEabEnum');
+      const apiValues = getSchemaEnumValues(openapi, 'EncounterStatusEnum');
 
       expect(apiValues).not.toBeNull();
       if (!apiValues) return;

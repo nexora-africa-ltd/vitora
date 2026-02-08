@@ -387,10 +387,10 @@ describe('Laboratory Contract Tests', () => {
   describe('LabPrioritySchema (enum)', () => {
     it('should match OpenAPI lab priority enum values', () => {
       const zodValues = getZodEnumValues(LabPrioritySchema);
-      const apiValues = getSchemaEnumValues(openapi, 'Priority0b7Enum');
+      const apiValues = getSchemaEnumValues(openapi, 'OrderPriorityEnum');
 
       if (!apiValues) {
-        console.warn('Priority0b7Enum not found in OpenAPI (lab priority)');
+        console.warn('OrderPriorityEnum not found in OpenAPI (lab priority)');
         return;
       }
 

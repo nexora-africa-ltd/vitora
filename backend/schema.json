@@ -29114,11 +29114,9 @@ components:
           type: string
           description: Patient's chief complaint
         temperature:
-          type: string
-          format: decimal
-          pattern: ^-?\d{0,3}(?:\.\d{0,1})?$
+          type: number
+          format: double
           nullable: true
-          description: Body temperature in Celsius
         pulse:
           type: integer
           maximum: 9223372036854775807
@@ -29148,11 +29146,9 @@ components:
           nullable: true
           description: Respiratory rate (breaths per minute)
         spo2:
-          type: string
-          format: decimal
-          pattern: ^-?\d{0,3}(?:\.\d{0,2})?$
+          type: number
+          format: double
           nullable: true
-          description: Oxygen saturation percentage (SpO2)
         vitals_source:
           allOf:
           - $ref: '#/components/schemas/VitalsSourceEnum'
@@ -29173,17 +29169,13 @@ components:
           nullable: true
           description: Timestamp when vitals were recorded
         weight:
-          type: string
-          format: decimal
-          pattern: ^-?\d{0,4}(?:\.\d{0,1})?$
+          type: number
+          format: double
           nullable: true
-          description: Patient weight in kg
         height:
-          type: string
-          format: decimal
-          pattern: ^-?\d{0,4}(?:\.\d{0,1})?$
+          type: number
+          format: double
           nullable: true
-          description: Patient height in cm
         bmi:
           type: number
           format: double
@@ -29716,11 +29708,9 @@ components:
           minLength: 1
           description: Patient's chief complaint
         temperature:
-          type: string
-          format: decimal
-          pattern: ^-?\d{0,3}(?:\.\d{0,1})?$
+          type: number
+          format: double
           nullable: true
-          description: Body temperature in Celsius
         pulse:
           type: integer
           maximum: 9223372036854775807
@@ -29740,11 +29730,9 @@ components:
           nullable: true
           description: Respiratory rate (breaths per minute)
         spo2:
-          type: string
-          format: decimal
-          pattern: ^-?\d{0,3}(?:\.\d{0,2})?$
+          type: number
+          format: double
           nullable: true
-          description: Oxygen saturation percentage (SpO2)
         vitals_source:
           allOf:
           - $ref: '#/components/schemas/VitalsSourceEnum'
@@ -29765,17 +29753,13 @@ components:
           nullable: true
           description: Timestamp when vitals were recorded
         weight:
-          type: string
-          format: decimal
-          pattern: ^-?\d{0,4}(?:\.\d{0,1})?$
+          type: number
+          format: double
           nullable: true
-          description: Patient weight in kg
         height:
-          type: string
-          format: decimal
-          pattern: ^-?\d{0,4}(?:\.\d{0,1})?$
+          type: number
+          format: double
           nullable: true
-          description: Patient height in cm
         allergies:
           type: string
           description: Known allergies (medications, food, environmental)
@@ -35567,11 +35551,9 @@ components:
           minLength: 1
           description: Patient's chief complaint
         temperature:
-          type: string
-          format: decimal
-          pattern: ^-?\d{0,3}(?:\.\d{0,1})?$
+          type: number
+          format: double
           nullable: true
-          description: Body temperature in Celsius
         pulse:
           type: integer
           maximum: 9223372036854775807
@@ -35591,11 +35573,9 @@ components:
           nullable: true
           description: Respiratory rate (breaths per minute)
         spo2:
-          type: string
-          format: decimal
-          pattern: ^-?\d{0,3}(?:\.\d{0,2})?$
+          type: number
+          format: double
           nullable: true
-          description: Oxygen saturation percentage (SpO2)
         vitals_source:
           allOf:
           - $ref: '#/components/schemas/VitalsSourceEnum'
@@ -35616,17 +35596,13 @@ components:
           nullable: true
           description: Timestamp when vitals were recorded
         weight:
-          type: string
-          format: decimal
-          pattern: ^-?\d{0,4}(?:\.\d{0,1})?$
+          type: number
+          format: double
           nullable: true
-          description: Patient weight in kg
         height:
-          type: string
-          format: decimal
-          pattern: ^-?\d{0,4}(?:\.\d{0,1})?$
+          type: number
+          format: double
           nullable: true
-          description: Patient height in cm
         allergies:
           type: string
           description: Known allergies (medications, food, environmental)
