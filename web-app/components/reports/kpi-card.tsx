@@ -8,6 +8,8 @@ import type { KPIMetric } from '@/lib/types/dashboard';
 
 interface KPICardProps extends KPIMetric {
   className?: string;
+  /** Custom class for the value number (e.g., color-coding) */
+  valueClassName?: string;
 }
 
 export function KPICard({
@@ -21,12 +23,21 @@ export function KPICard({
   href,
   description,
   className,
+  valueClassName,
 }: KPICardProps) {
   const variantStyles = {
     default: '',
     success: 'border-success/30 dark:border-success/20',
     warning: 'border-warning/30 dark:border-warning/20',
     destructive: 'border-destructive/30',
+  };
+
+  // Value color classes based on variant (for the number itself)
+  const valueColorStyles = {
+    default: '',
+    success: 'text-success',
+    warning: 'text-warning',
+    destructive: 'text-destructive',
   };
 
   // Determine if colors should be inverted (e.g., for costs where decrease is good)
@@ -38,7 +49,9 @@ export function KPICard({
         <div className="space-y-1">
           <p className="text-sm text-muted-foreground">{title}</p>
           <div className="flex items-baseline gap-1">
-            <span className="text-2xl font-bold">{value}</span>
+            <span className={cn("text-2xl font-bold", valueClassName || valueColorStyles[variant])}>
+              {value}
+            </span>
             {unit && <span className="text-sm text-muted-foreground">{unit}</span>}
           </div>
         </div>
