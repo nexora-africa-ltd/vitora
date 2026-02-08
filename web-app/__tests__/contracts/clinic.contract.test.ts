@@ -349,11 +349,11 @@ describe('Clinic Contract Tests', () => {
   describe('ClinicStatusSchema (enum)', () => {
     it('should match OpenAPI clinic status enum values', () => {
       const zodValues = getZodEnumValues(ClinicStatusSchema);
-      // OpenAPI may use Status145Enum for clinic status
-      const apiValues = getSchemaEnumValues(openapi, 'Status145Enum');
+      // OpenAPI may use ClinicStatusEnum for clinic status
+      const apiValues = getSchemaEnumValues(openapi, 'ClinicStatusEnum');
 
       if (!apiValues) {
-        console.warn('Status145Enum not found in OpenAPI (clinic status)');
+        console.warn('ClinicStatusEnum not found in OpenAPI (clinic status)');
         return;
       }
 
@@ -390,10 +390,10 @@ describe('Clinic Contract Tests', () => {
   describe('ClinicVisitPrioritySchema (enum)', () => {
     it('should match OpenAPI priority enum values', () => {
       const zodValues = getZodEnumValues(ClinicVisitPrioritySchema);
-        const apiValues = getSchemaEnumValues(openapi, 'Priority2eaEnum');
+        const apiValues = getSchemaEnumValues(openapi, 'ClinicVisitPriorityEnum');
 
       if (!apiValues) {
-          console.warn('Priority2eaEnum not found in OpenAPI');
+          console.warn('ClinicVisitPriorityEnum not found in OpenAPI');
         return;
       }
 
@@ -410,10 +410,10 @@ describe('Clinic Contract Tests', () => {
   describe('ClinicVisitTypeSchema (enum)', () => {
     it('should match OpenAPI visit type enum values', () => {
       const zodValues = getZodEnumValues(ClinicVisitTypeSchema);
-        const apiValues = getSchemaEnumValues(openapi, 'VisitType1dcEnum');
+        const apiValues = getSchemaEnumValues(openapi, 'ClinicVisitTypeEnum');
 
       if (!apiValues) {
-          console.warn('VisitType1dcEnum not found in OpenAPI');
+          console.warn('ClinicVisitTypeEnum not found in OpenAPI');
         return;
       }
 
@@ -470,10 +470,10 @@ describe('Clinic Contract Tests', () => {
   describe('EnrollmentStatusSchema (enum)', () => {
     it('should match OpenAPI enrollment status enum values', () => {
       const zodValues = getZodEnumValues(EnrollmentStatusSchema);
-      const apiValues = getSchemaEnumValues(openapi, 'Status7c2Enum');
+      const apiValues = getSchemaEnumValues(openapi, 'ClinicEnrollmentStatusEnum');
 
       if (!apiValues) {
-        console.warn('Status7c2Enum not found in OpenAPI (enrollment status)');
+        console.warn('ClinicEnrollmentStatusEnum not found in OpenAPI (enrollment status)');
         return;
       }
 
