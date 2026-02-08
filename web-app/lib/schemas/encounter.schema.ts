@@ -46,7 +46,7 @@ export const TriageRequirementSchema = z.enum(['MANDATORY', 'OPTIONAL', 'NOT_REQ
 
 export const ConsultationStatusSchema = z.enum(['WAITING', 'CALLED', 'IN_PROGRESS', 'COMPLETED']);
 
-export const VitalsSourceSchema = z.enum(['TRIAGE', 'CONSULTATION', 'DIRECT']);
+export const VitalsSourceSchema = z.enum(['TRIAGE', 'CONSULTATION', 'NURSING']);
 
 export const VisitReasonSchema = z.enum([
   'NEW_COMPLAINT',
@@ -233,7 +233,7 @@ export const EncounterSchema = z.object({
   history_of_present_illness: z.string().optional().nullable(),
   physical_examination: z.string().optional().nullable(),
   assessment: z.string().optional().nullable(),
-  plan: z.string().optional().nullable(),
+  // Note: SOAP 'P' (Plan) is TreatmentPlan-only (see TreatmentPlan.clinical_notes)
 
   // Status workflow
   finalized_by: z.number().optional().nullable(),

@@ -124,6 +124,31 @@ class TestEncounterAPIEndpoints:
         assert response.data["chief_complaint"] == "Headache and fever"
         assert response.data["id"] is not None
 
+    def test_create_encounter_sets_created_by(self, auth_client, auth_user, sample_encounter_data):
+        """POST /api/encounters/ should set created_by to request user and return it."""
+        response = auth_client.post("/api/encounters/", sample_encounter_data, format="json")
+
+        assert response.status_code == status.HTTP_201_CREATED
+        assert response.data["created_by"] == auth_user.id
+        assert response.data["created_by_name"] in [auth_user.get_full_name(), auth_user.username]
+
+    def test_create_encounter_with_vitals_source_tracking(self, auth_client, sample_patient):
+        """POST /api/encounters/ should accept and return vitals source metadata."""
+        payload = {
+            "patient": sample_patient.id,
+            "encounter_type": "OPD",
+            "encounter_date": "2025-12-28",
+            "chief_complaint": "Vitals source tracking",
+            "vitals_source": "NURSING",
+        }
+
+        response = auth_client.post("/api/encounters/", payload, format="json")
+
+        assert response.status_code == status.HTTP_201_CREATED
+        assert response.data["vitals_source"] == "NURSING"
+        assert "vitals_recorded_by" in response.data
+        assert "vitals_recorded_at" in response.data
+
     def test_create_encounter_with_vitals(self, auth_client, sample_encounter_with_vitals):
         """Test POST /api/encounters/ - Create encounter with vital signs."""
         response = auth_client.post("/api/encounters/", sample_encounter_with_vitals, format="json")

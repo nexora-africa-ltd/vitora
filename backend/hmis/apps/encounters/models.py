@@ -570,6 +570,15 @@ class Encounter(models.Model):
         help_text="Reason for visit",
     )
 
+    created_by = models.ForeignKey(
+        "auth.User",
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="created_encounters",
+        help_text="User who created this encounter",
+    )
+
     # Timestamps
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)

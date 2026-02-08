@@ -169,7 +169,7 @@ export function VitalsForm({
             </CardTitle>
             {fromTriage && vitalsSource && (
               <Badge variant="outline" className="text-xs">
-                From {vitalsSource === 'TRIAGE' ? 'Triage' : vitalsSource}
+                From {vitalsSource === 'TRIAGE' ? 'Triage' : vitalsSource === 'NURSING' ? 'Nursing' : vitalsSource}
               </Badge>
             )}
             {isUsingDefaults && (
