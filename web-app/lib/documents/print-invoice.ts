@@ -344,7 +344,7 @@ function buildLineItemsHtml(invoice: Invoice): string {
         <td>${escapeHtml(item.description || item.service_name || 'Service')}</td>
         <td>${item.quantity}</td>
         <td>${formatCurrency(item.unit_price)}</td>
-        <td>${formatCurrency(parseFloat(item.unit_price) * item.quantity)}</td>
+        <td>${formatCurrency(parseFloat(item.unit_price) * Number(item.quantity))}</td>
       </tr>
     `)
     .join('\n');
