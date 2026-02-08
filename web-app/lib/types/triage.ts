@@ -486,12 +486,10 @@ export interface TriageQueueListParams {
 
 export interface WaitTimeStats {
   category: TriageCategory;
+  count: number;
   target_minutes: number;
   avg_wait_minutes: number;
-  median_wait_minutes: number;
-  exceeded_count: number;
-  exceeded_percentage: number;
-  total_count: number;
+  target_met_percentage: number;
 }
 
 export interface VolumeByCategory {

@@ -427,7 +427,10 @@ class TestReportEndpoints:
 
         response = authenticated_client.get("/api/triage/reports/wait-times/")
         assert response.status_code == status.HTTP_200_OK
-        assert "average_wait_time" in response.data or "avg_wait_time" in response.data
+        assert "avg_wait_minutes" in response.data
+        assert "median_wait_minutes" in response.data
+        assert "target_met_percentage" in response.data
+        assert "by_category" in response.data
 
     def test_volume_report(self, authenticated_client, test_user, sample_patient):
         """Should return volume counts by category."""

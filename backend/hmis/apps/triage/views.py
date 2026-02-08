@@ -474,9 +474,19 @@ class TriageQueueViewSet(viewsets.ReadOnlyModelViewSet):
 class WaitTimesReportView(APIView):
     """
     Report endpoint for wait time statistics.
+    Returns real-time wait time metrics for the triage dashboard.
     """
 
     permission_classes = [IsAuthenticated]
+
+    # KETA target wait times by triage category (in minutes)
+    KETA_TARGETS = {
+        "RED": 0,       # Immediate
+        "ORANGE": 10,   # Very urgent - 10 min
+        "YELLOW": 60,   # Urgent - 1 hour
+        "GREEN": 240,   # Non-urgent - 4 hours
+        "BLUE": 240,    # Dead on arrival / administrative
+    }
 
     @extend_schema(
         responses={200: OpenApiTypes.OBJECT},
@@ -484,30 +494,59 @@ class WaitTimesReportView(APIView):
     def get(self, request):
         """Get wait time statistics."""
         from django.utils import timezone
+        import statistics
 
-        # Get assessments from today
-        today_start = timezone.now().replace(hour=0, minute=0, second=0, microsecond=0)
+        # Get date range from query params (default: today)
+        date_range = request.query_params.get("date_range", "today")
+        
+        if date_range == "today":
+            start_date = timezone.now().replace(hour=0, minute=0, second=0, microsecond=0)
+        elif date_range == "week":
+            start_date = timezone.now() - timezone.timedelta(days=7)
+        elif date_range == "month":
+            start_date = timezone.now() - timezone.timedelta(days=30)
+        else:
+            start_date = timezone.now().replace(hour=0, minute=0, second=0, microsecond=0)
 
-        assessments = TriageAssessment.objects.filter(arrival_time__gte=today_start)
+        assessments = TriageAssessment.objects.filter(arrival_time__gte=start_date)
 
         # Calculate wait times
         wait_times = []
+        met_target_count = 0
+        total_with_category = 0
+        
         for assessment in assessments:
             wait_time = assessment.get_wait_time_minutes()
             if wait_time is not None:
                 wait_times.append(wait_time)
+                
+                # Check if wait time met KETA target for this category
+                if assessment.triage_category:
+                    total_with_category += 1
+                    target = self.KETA_TARGETS.get(assessment.triage_category, 240)
+                    if wait_time <= target:
+                        met_target_count += 1
 
         if wait_times:
             avg_wait_time = sum(wait_times) / len(wait_times)
+            median_wait_time = statistics.median(wait_times)
             max_wait_time = max(wait_times)
             min_wait_time = min(wait_times)
         else:
             avg_wait_time = 0
+            median_wait_time = 0
             max_wait_time = 0
             min_wait_time = 0
 
-        # Count by category
-        category_stats = {}
+        # Calculate target met percentage
+        target_met_percentage = (
+            (met_target_count / total_with_category * 100) 
+            if total_with_category > 0 
+            else 100  # No assessments = 100% (no violations)
+        )
+
+        # Count by category with wait stats
+        category_stats = []
         for category in ["RED", "ORANGE", "YELLOW", "GREEN", "BLUE"]:
             category_assessments = [a for a in assessments if a.triage_category == category]
             category_wait_times = [
@@ -516,24 +555,42 @@ class WaitTimesReportView(APIView):
                 if a.get_wait_time_minutes() is not None
             ]
 
-            if category_wait_times:
-                category_stats[category] = {
-                    "count": len(category_assessments),
-                    "avg_wait_time": sum(category_wait_times) / len(category_wait_times),
-                }
-            else:
-                category_stats[category] = {
-                    "count": len(category_assessments),
-                    "avg_wait_time": 0,
-                }
+            target_time = self.KETA_TARGETS.get(category, 240)
+            met_count = sum(1 for wt in category_wait_times if wt <= target_time)
+
+            category_stats.append({
+                "category": category,
+                "count": len(category_assessments),
+                "avg_wait_minutes": round(sum(category_wait_times) / len(category_wait_times), 1) if category_wait_times else 0,
+                "target_minutes": target_time,
+                "target_met_percentage": round(met_count / len(category_wait_times) * 100, 1) if category_wait_times else 100,
+            })
+
+        # Calculate REAL-TIME queue wait times (patients currently waiting)
+        current_queue = WaitingQueue.objects.filter(status__in=["WAITING_TRIAGE", "IN_TRIAGE"])
+        current_wait_times = []
+        for entry in current_queue:
+            wait_minutes = int((timezone.now() - entry.check_in_time).total_seconds() / 60)
+            current_wait_times.append(wait_minutes)
+        
+        current_queue_stats = {
+            "count": len(current_wait_times),
+            "avg_wait_minutes": round(sum(current_wait_times) / len(current_wait_times), 1) if current_wait_times else 0,
+            "max_wait_minutes": max(current_wait_times) if current_wait_times else 0,
+            "longest_waiting_patient": max(current_wait_times) if current_wait_times else 0,
+        }
 
         return Response(
             {
                 "total_assessments": assessments.count(),
-                "average_wait_time": round(avg_wait_time, 2),
-                "max_wait_time": max_wait_time,
-                "min_wait_time": min_wait_time,
+                "avg_wait_minutes": round(avg_wait_time, 1),
+                "median_wait_minutes": round(median_wait_time, 1),
+                "max_wait_minutes": round(max_wait_time, 1),
+                "min_wait_minutes": round(min_wait_time, 1),
+                "target_met_percentage": round(target_met_percentage, 1),
                 "by_category": category_stats,
+                # Real-time queue stats
+                "current_queue": current_queue_stats,
             }
         )
 

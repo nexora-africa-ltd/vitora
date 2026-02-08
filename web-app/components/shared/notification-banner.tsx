@@ -98,29 +98,47 @@ export function NotificationBanner({
       )}
       role="alert"
     >
-      <div className="flex items-center justify-between p-4 gap-3">
-        <div className="flex items-center gap-3 min-w-0 flex-1">
-          {icon || <IconComponent className={cn('h-5 w-5 shrink-0', styles.icon)} />}
-          <div className="min-w-0">
-            <h4 className={cn('font-medium', styles.title)}>
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between p-3 sm:p-4 gap-2 sm:gap-3">
+        <div className="flex items-start sm:items-center gap-2 sm:gap-3 min-w-0 flex-1">
+          {icon || <IconComponent className={cn('h-4 w-4 sm:h-5 sm:w-5 shrink-0 mt-0.5 sm:mt-0', styles.icon)} />}
+          <div className="min-w-0 flex-1">
+            <h4 className={cn('font-medium text-sm sm:text-base', styles.title)}>
               {title}
             </h4>
             {description && (
-              <p className={cn('text-sm', styles.description)}>
+              <p className={cn('text-xs sm:text-sm mt-0.5', styles.description)}>
                 {description}
               </p>
             )}
           </div>
+          {/* Dismiss button - top right on mobile */}
+          {onDismiss && (
+            <Button
+              className="h-6 w-6 sm:hidden shrink-0"
+              size="icon"
+              variant="ghost"
+              onClick={onDismiss}
+              aria-label="Dismiss notification"
+            >
+              <X className="h-3.5 w-3.5" />
+            </Button>
+          )}
         </div>
-        <div className="flex items-center gap-2 shrink-0">
+        <div className="flex items-center gap-2 shrink-0 self-end sm:self-auto">
           {action && (
-            <Button size="sm" variant="outline" onClick={action.onClick}>
+            <Button 
+              size="sm" 
+              variant="outline" 
+              onClick={action.onClick}
+              className="h-8 text-xs sm:text-sm"
+            >
               {action.label}
             </Button>
           )}
+          {/* Dismiss button - right side on desktop */}
           {onDismiss && (
             <Button
-              className="h-8 w-8"
+              className="h-8 w-8 hidden sm:flex"
               size="icon"
               variant="ghost"
               onClick={onDismiss}
