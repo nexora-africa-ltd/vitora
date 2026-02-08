@@ -24,6 +24,7 @@ import {
   PaymentModeSchema,
   EncounterStatusSchema,
   PatientTitleSchema,
+  TitleEnumSchema,
 } from '@/lib/schemas/patient.schema';
 
 // =============================================================================
@@ -328,8 +329,8 @@ describe('Patient Contract Tests', () => {
 
   describe('PatientTitleSchema (enum)', () => {
     it('should match OpenAPI TitleEnum values', () => {
-      // PatientTitleSchema is optional, we need to extract the underlying enum
-      const zodValues = getZodEnumValues(PatientTitleSchema);
+      // Use TitleEnumSchema (base enum) instead of PatientTitleSchema (optional wrapper)
+      const zodValues = getZodEnumValues(TitleEnumSchema);
       const apiValues = getSchemaEnumValues(openapi, 'TitleEnum');
 
       if (!apiValues) {
@@ -343,7 +344,8 @@ describe('Patient Contract Tests', () => {
         console.warn(`PatientTitleSchema: Missing values: ${missingInZod.join(', ')}`);
       }
 
-      // Don't fail - TitleEnum may include BlankEnum which is handled separately
+      // All backend values should be present in Zod schema
+      expect(missingInZod).toEqual([]);
     });
   });
 

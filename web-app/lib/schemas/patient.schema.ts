@@ -22,7 +22,10 @@ export const IdentificationTypeSchema = z.enum([
   'passport',
 ]);
 
-export const PatientTitleSchema = z.enum(['Mr', 'Mrs', 'Miss', 'Ms', 'Dr', 'Prof', 'Hon', 'Rev', '']).optional();
+// Base title enum (for contract tests)
+export const TitleEnumSchema = z.enum(['Mr', 'Mrs', 'Miss', 'Ms', 'Dr', 'Prof', 'Hon', 'Rev', '']);
+// Optional wrapper (for use in patient schemas)
+export const PatientTitleSchema = TitleEnumSchema.optional();
 
 export const GenderSchema = z.enum(['M', 'F', 'O']);
 
