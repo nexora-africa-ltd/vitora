@@ -18,7 +18,7 @@ from django.shortcuts import get_object_or_404
 from django.utils import timezone
 from django_filters.rest_framework import DjangoFilterBackend
 from drf_spectacular.types import OpenApiTypes
-from drf_spectacular.utils import OpenApiParameter, extend_schema, inline_serializer
+from drf_spectacular.utils import OpenApiParameter, extend_schema, extend_schema_view, inline_serializer
 from rest_framework import filters, serializers, status, viewsets
 from rest_framework.decorators import action
 from rest_framework.pagination import PageNumberPagination
@@ -1055,6 +1055,7 @@ class TerminologySearchView(APIView):
             )
 
 
+@extend_schema_view()
 class ClientRegistryView(APIView):
     """
     API view for Kenya Client Registry operations.
@@ -1168,6 +1169,34 @@ class ClientRegistryView(APIView):
                 {"error": str(e), "found": False}, status=status.HTTP_500_INTERNAL_SERVER_ERROR
             )
 
+    @extend_schema(
+        request=inline_serializer(
+            name="ClientRegistryRegisterRequest",
+            fields={
+                "patient_id": serializers.IntegerField(required=False),
+                "first_name": serializers.CharField(required=False),
+                "last_name": serializers.CharField(required=False),
+                "middle_name": serializers.CharField(required=False),
+                "date_of_birth": serializers.DateField(required=False),
+                "gender": serializers.CharField(required=False),
+                "national_id": serializers.CharField(required=False),
+                "huduma_number": serializers.CharField(required=False),
+                "passport_number": serializers.CharField(required=False),
+                "phone_number": serializers.CharField(required=False),
+                "email": serializers.EmailField(required=False),
+            },
+        ),
+        responses={
+            201: inline_serializer(
+                name="ClientRegistryRegisterResponse",
+                fields={
+                    "success": serializers.BooleanField(),
+                    "client_number": serializers.CharField(required=False),
+                    "message": serializers.CharField(required=False),
+                },
+            )
+        },
+    )
     def post(self, request):
         """
         Register a new client in Client Registry.
@@ -1266,6 +1295,28 @@ class ClientRegistryView(APIView):
                 {"error": str(e), "success": False}, status=status.HTTP_500_INTERNAL_SERVER_ERROR
             )
 
+    @extend_schema(
+        request=inline_serializer(
+            name="ClientRegistryUpdateRequest",
+            fields={
+                "client_number": serializers.CharField(),
+                "phone_number": serializers.CharField(required=False),
+                "email": serializers.EmailField(required=False),
+                "county": serializers.CharField(required=False),
+                "sub_county": serializers.CharField(required=False),
+            },
+        ),
+        responses={
+            200: inline_serializer(
+                name="ClientRegistryUpdateResponse",
+                fields={
+                    "success": serializers.BooleanField(),
+                    "client": serializers.DictField(required=False),
+                    "message": serializers.CharField(required=False),
+                },
+            )
+        },
+    )
     def put(self, request):
         """
         Update an existing client in Client Registry.

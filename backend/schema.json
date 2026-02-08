@@ -847,11 +847,26 @@ paths:
         - Individual fields: first_name, last_name, date_of_birth, gender (required)
       tags:
       - api
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ClientRegistryRegisterRequestRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/ClientRegistryRegisterRequestRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/ClientRegistryRegisterRequestRequest'
       security:
       - jwtAuth: []
       responses:
-        '200':
-          description: No response body
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ClientRegistryRegisterResponse'
+          description: ''
     put:
       operationId: api_billing_client_registry_fetch_update
       description: |-
@@ -871,11 +886,27 @@ paths:
         Per DHA API: PUT /v3/update-client
       tags:
       - api
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ClientRegistryUpdateRequestRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/ClientRegistryUpdateRequestRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/ClientRegistryUpdateRequestRequest'
+        required: true
       security:
       - jwtAuth: []
       responses:
         '200':
-          description: No response body
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ClientRegistryUpdateResponse'
+          description: ''
   /api/billing/client-registry/register/:
     get:
       operationId: api_billing_client_registry_register_retrieve
@@ -948,11 +979,26 @@ paths:
         - Individual fields: first_name, last_name, date_of_birth, gender (required)
       tags:
       - api
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ClientRegistryRegisterRequestRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/ClientRegistryRegisterRequestRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/ClientRegistryRegisterRequestRequest'
       security:
       - jwtAuth: []
       responses:
-        '200':
-          description: No response body
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ClientRegistryRegisterResponse'
+          description: ''
     put:
       operationId: api_billing_client_registry_register_update
       description: |-
@@ -972,11 +1018,27 @@ paths:
         Per DHA API: PUT /v3/update-client
       tags:
       - api
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ClientRegistryUpdateRequestRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/ClientRegistryUpdateRequestRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/ClientRegistryUpdateRequestRequest'
+        required: true
       security:
       - jwtAuth: []
       responses:
         '200':
-          description: No response body
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ClientRegistryUpdateResponse'
+          description: ''
   /api/billing/client-registry/update/:
     get:
       operationId: api_billing_client_registry_update_retrieve
@@ -1049,11 +1111,26 @@ paths:
         - Individual fields: first_name, last_name, date_of_birth, gender (required)
       tags:
       - api
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ClientRegistryRegisterRequestRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/ClientRegistryRegisterRequestRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/ClientRegistryRegisterRequestRequest'
       security:
       - jwtAuth: []
       responses:
-        '200':
-          description: No response body
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ClientRegistryRegisterResponse'
+          description: ''
     put:
       operationId: api_billing_client_registry_update_update
       description: |-
@@ -1073,11 +1150,27 @@ paths:
         Per DHA API: PUT /v3/update-client
       tags:
       - api
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ClientRegistryUpdateRequestRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/ClientRegistryUpdateRequestRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/ClientRegistryUpdateRequestRequest'
+        required: true
       security:
       - jwtAuth: []
       responses:
         '200':
-          description: No response body
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ClientRegistryUpdateResponse'
+          description: ''
   /api/billing/credit-notes/:
     get:
       operationId: api_billing_credit_notes_list
@@ -1937,7 +2030,8 @@ paths:
       - in: path
         name: item_id
         schema:
-          type: string
+          type: integer
+        description: Invoice item ID to remove
         required: true
       tags:
       - api
@@ -2016,11 +2110,29 @@ paths:
         No authentication required for M-Pesa callbacks.
       tags:
       - api
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: {}
+          application/x-www-form-urlencoded:
+            schema:
+              type: object
+              additionalProperties: {}
+          multipart/form-data:
+            schema:
+              type: object
+              additionalProperties: {}
       security:
       - jwtAuth: []
       responses:
         '200':
-          description: No response body
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MpesaCallbackResponse'
+          description: ''
   /api/billing/mpesa/initiate/:
     post:
       operationId: api_billing_mpesa_initiate_create
@@ -2070,6 +2182,7 @@ paths:
         name: checkout_request_id
         schema:
           type: string
+        description: M-Pesa checkout request ID
         required: true
       tags:
       - api
@@ -2077,7 +2190,11 @@ paths:
       - jwtAuth: []
       responses:
         '200':
-          description: No response body
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MpesaQueryResponse'
+          description: ''
   /api/billing/payment-points/:
     get:
       operationId: api_billing_payment_points_list
@@ -5911,7 +6028,7 @@ paths:
           description: ''
   /api/clinics/{id}/reports/monthly/:
     get:
-      operationId: api_clinics_reports_monthly_retrieve
+      operationId: clinic_monthly_reports_list
       description: List monthly reports for a clinic.
       parameters:
       - in: path
@@ -5933,7 +6050,7 @@ paths:
           description: ''
   /api/clinics/{id}/reports/monthly/{year}/{month}/:
     get:
-      operationId: api_clinics_reports_monthly_retrieve_2
+      operationId: clinic_monthly_report_detail
       description: Get (or generate) a clinic report for a specific month.
       parameters:
       - in: path
@@ -6858,7 +6975,8 @@ paths:
       - in: path
         name: id
         schema:
-          type: string
+          type: integer
+        description: Notification ID
         required: true
       tags:
       - api
@@ -6879,7 +6997,8 @@ paths:
       - in: path
         name: id
         schema:
-          type: string
+          type: integer
+        description: A unique integer value identifying this Notification.
         required: true
       tags:
       - api
@@ -14679,7 +14798,8 @@ paths:
       - in: path
         name: id
         schema:
-          type: string
+          type: integer
+        description: Notification ID
         required: true
       tags:
       - api
@@ -14700,7 +14820,8 @@ paths:
       - in: path
         name: id
         schema:
-          type: string
+          type: integer
+        description: A unique integer value identifying this Notification.
         required: true
       tags:
       - api
@@ -18787,11 +18908,28 @@ paths:
         }
       tags:
       - api
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ManualOverrideRequestRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/ManualOverrideRequestRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/ManualOverrideRequestRequest'
+        required: true
       security:
       - jwtAuth: []
       responses:
         '200':
-          description: No response body
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: {}
+          description: ''
   /api/scheduling/resources/:
     get:
       operationId: api_scheduling_resources_list
@@ -20266,11 +20404,26 @@ paths:
         - Individual fields: first_name, last_name, date_of_birth, gender (required)
       tags:
       - api
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ClientRegistryRegisterRequestRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/ClientRegistryRegisterRequestRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/ClientRegistryRegisterRequestRequest'
       security:
       - jwtAuth: []
       responses:
-        '200':
-          description: No response body
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ClientRegistryRegisterResponse'
+          description: ''
     put:
       operationId: api_sha_client_registry_fetch_update
       description: |-
@@ -20290,11 +20443,27 @@ paths:
         Per DHA API: PUT /v3/update-client
       tags:
       - api
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ClientRegistryUpdateRequestRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/ClientRegistryUpdateRequestRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/ClientRegistryUpdateRequestRequest'
+        required: true
       security:
       - jwtAuth: []
       responses:
         '200':
-          description: No response body
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ClientRegistryUpdateResponse'
+          description: ''
   /api/sha/client-registry/register/:
     get:
       operationId: api_sha_client_registry_register_retrieve
@@ -20367,11 +20536,26 @@ paths:
         - Individual fields: first_name, last_name, date_of_birth, gender (required)
       tags:
       - api
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ClientRegistryRegisterRequestRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/ClientRegistryRegisterRequestRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/ClientRegistryRegisterRequestRequest'
       security:
       - jwtAuth: []
       responses:
-        '200':
-          description: No response body
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ClientRegistryRegisterResponse'
+          description: ''
     put:
       operationId: api_sha_client_registry_register_update
       description: |-
@@ -20391,11 +20575,27 @@ paths:
         Per DHA API: PUT /v3/update-client
       tags:
       - api
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ClientRegistryUpdateRequestRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/ClientRegistryUpdateRequestRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/ClientRegistryUpdateRequestRequest'
+        required: true
       security:
       - jwtAuth: []
       responses:
         '200':
-          description: No response body
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ClientRegistryUpdateResponse'
+          description: ''
   /api/sha/eligibility/check/:
     post:
       operationId: api_sha_eligibility_check_create
@@ -22720,7 +22920,7 @@ paths:
   /fhir/AllergyIntolerance/{id}:
     get:
       operationId: fhir_AllergyIntolerance_retrieve
-      description: Get an AllergyIntolerance resource by ID.
+      description: Get a FHIR R4 AllergyIntolerance resource by ID
       parameters:
       - in: path
         name: id
@@ -22733,11 +22933,23 @@ paths:
       - jwtAuth: []
       responses:
         '200':
-          description: No response body
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: {}
+          description: ''
+        '404':
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: {}
+          description: ''
   /fhir/Composition/{id}:
     get:
       operationId: fhir_Composition_retrieve
-      description: Get a Composition resource by ID (using patient ID as proxy).
+      description: Get a FHIR R4 Composition resource by ID
       parameters:
       - in: path
         name: id
@@ -22750,11 +22962,23 @@ paths:
       - jwtAuth: []
       responses:
         '200':
-          description: No response body
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: {}
+          description: ''
+        '404':
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: {}
+          description: ''
   /fhir/Condition/{id}:
     get:
       operationId: fhir_Condition_retrieve
-      description: Get a Condition resource by ID.
+      description: Get a FHIR R4 Condition resource by ID
       parameters:
       - in: path
         name: id
@@ -22767,11 +22991,23 @@ paths:
       - jwtAuth: []
       responses:
         '200':
-          description: No response body
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: {}
+          description: ''
+        '404':
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: {}
+          description: ''
   /fhir/Device/{id}:
     get:
       operationId: fhir_Device_retrieve
-      description: Get a Device resource by ID.
+      description: Get a FHIR R4 Device resource by ID
       parameters:
       - in: path
         name: id
@@ -22784,11 +23020,23 @@ paths:
       - jwtAuth: []
       responses:
         '200':
-          description: No response body
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: {}
+          description: ''
+        '404':
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: {}
+          description: ''
   /fhir/MedicationStatement/{id}:
     get:
       operationId: fhir_MedicationStatement_retrieve
-      description: Get a MedicationStatement resource by ID.
+      description: Get a FHIR R4 MedicationStatement resource by ID
       parameters:
       - in: path
         name: id
@@ -22801,11 +23049,23 @@ paths:
       - jwtAuth: []
       responses:
         '200':
-          description: No response body
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: {}
+          description: ''
+        '404':
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: {}
+          description: ''
   /fhir/Observation/{id}:
     get:
       operationId: fhir_Observation_retrieve
-      description: Get an Observation resource by ID.
+      description: Get a FHIR R4 Observation resource by ID
       parameters:
       - in: path
         name: id
@@ -22818,11 +23078,23 @@ paths:
       - jwtAuth: []
       responses:
         '200':
-          description: No response body
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: {}
+          description: ''
+        '404':
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: {}
+          description: ''
   /fhir/Organization/{id}:
     get:
       operationId: fhir_Organization_retrieve
-      description: Get an Organization resource by ID.
+      description: Get a FHIR R4 Organization resource by ID
       parameters:
       - in: path
         name: id
@@ -22835,11 +23107,23 @@ paths:
       - jwtAuth: []
       responses:
         '200':
-          description: No response body
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: {}
+          description: ''
+        '404':
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: {}
+          description: ''
   /fhir/Patient/{id}:
     get:
       operationId: fhir_Patient_retrieve
-      description: Get a Patient resource by ID.
+      description: Get a FHIR R4 Patient resource by ID
       parameters:
       - in: path
         name: id
@@ -22852,11 +23136,23 @@ paths:
       - jwtAuth: []
       responses:
         '200':
-          description: No response body
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: {}
+          description: ''
+        '404':
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: {}
+          description: ''
   /fhir/Patient/{id}/summary:
     get:
       operationId: fhir_Patient_summary_retrieve
-      description: Generate IPS Bundle for a patient.
+      description: Generate an IPS (International Patient Summary) Bundle for a patient
       parameters:
       - in: path
         name: id
@@ -22869,11 +23165,23 @@ paths:
       - jwtAuth: []
       responses:
         '200':
-          description: No response body
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: {}
+          description: ''
+        '404':
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: {}
+          description: ''
   /fhir/Practitioner/{id}:
     get:
       operationId: fhir_Practitioner_retrieve
-      description: Get a Practitioner resource by ID.
+      description: Get a FHIR R4 Practitioner resource by ID
       parameters:
       - in: path
         name: id
@@ -22886,7 +23194,19 @@ paths:
       - jwtAuth: []
       responses:
         '200':
-          description: No response body
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: {}
+          description: ''
+        '404':
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: {}
+          description: ''
   /fhir/metadata:
     get:
       operationId: fhir_metadata_retrieve
@@ -24671,9 +24991,6 @@ components:
         * `OCCUPIED` - Occupied
         * `MAINTENANCE` - Under Maintenance
         * `RESERVED` - Reserved
-    BlankEnum:
-      enum:
-      - ''
     BloodGroupEnum:
       enum:
       - A+
@@ -24776,6 +25093,8 @@ components:
           minLength: 1
           description: TRIAGE or clinic ID
         visit_type:
+          allOf:
+          - $ref: '#/components/schemas/VisitTypeAbeEnum'
           nullable: true
           description: |-
             Visit type (auto-detected if not provided)
@@ -24785,9 +25104,6 @@ components:
             * `FOLLOW_UP` - Follow-up Visit
             * `EMERGENCY` - Emergency
             * `SCHEDULED` - Scheduled Appointment
-          oneOf:
-          - $ref: '#/components/schemas/VisitTypeAbeEnum'
-          - $ref: '#/components/schemas/NullEnum'
         visit_reason:
           allOf:
           - $ref: '#/components/schemas/VisitReasonEnum'
@@ -24979,6 +25295,53 @@ components:
         * `dental` - Dental
         * `optical` - Optical
         * `dialysis` - Dialysis
+    ClientRegistryRegisterRequestRequest:
+      type: object
+      properties:
+        patient_id:
+          type: integer
+        first_name:
+          type: string
+          minLength: 1
+        last_name:
+          type: string
+          minLength: 1
+        middle_name:
+          type: string
+          minLength: 1
+        date_of_birth:
+          type: string
+          format: date
+        gender:
+          type: string
+          minLength: 1
+        national_id:
+          type: string
+          minLength: 1
+        huduma_number:
+          type: string
+          minLength: 1
+        passport_number:
+          type: string
+          minLength: 1
+        phone_number:
+          type: string
+          minLength: 1
+        email:
+          type: string
+          format: email
+          minLength: 1
+    ClientRegistryRegisterResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+        client_number:
+          type: string
+        message:
+          type: string
+      required:
+      - success
     ClientRegistryResponse:
       type: object
       properties:
@@ -24990,6 +25353,39 @@ components:
       required:
       - client
       - found
+    ClientRegistryUpdateRequestRequest:
+      type: object
+      properties:
+        client_number:
+          type: string
+          minLength: 1
+        phone_number:
+          type: string
+          minLength: 1
+        email:
+          type: string
+          format: email
+          minLength: 1
+        county:
+          type: string
+          minLength: 1
+        sub_county:
+          type: string
+          minLength: 1
+      required:
+      - client_number
+    ClientRegistryUpdateResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+        client:
+          type: object
+          additionalProperties: {}
+        message:
+          type: string
+      required:
+      - success
     Clinic:
       type: object
       description: Serializer for Clinic model.
@@ -25253,16 +25649,17 @@ components:
           description: Current ART regimen (e.g., TDF/3TC/DTG)
           maxLength: 100
         art_regimen_line:
+          allOf:
+          - $ref: '#/components/schemas/ArtRegimenLineEnum'
           description: |-
             ART regimen line
 
             * `FIRST_LINE` - First Line
             * `SECOND_LINE` - Second Line
             * `THIRD_LINE` - Third Line
-          oneOf:
-          - $ref: '#/components/schemas/ArtRegimenLineEnum'
-          - $ref: '#/components/schemas/BlankEnum'
         who_clinical_stage:
+          allOf:
+          - $ref: '#/components/schemas/WhoClinicalStageEnum'
           nullable: true
           description: |-
             WHO clinical stage at enrollment
@@ -25273,9 +25670,6 @@ components:
             * `4` - Stage 4
           minimum: 0
           maximum: 9223372036854775807
-          oneOf:
-          - $ref: '#/components/schemas/WhoClinicalStageEnum'
-          - $ref: '#/components/schemas/NullEnum'
         baseline_cd4_count:
           type: integer
           maximum: 9223372036854775807
@@ -25358,6 +25752,8 @@ components:
           nullable: true
           description: Mother's height in cm (for BMI calculation)
         blood_group:
+          allOf:
+          - $ref: '#/components/schemas/BloodGroupEnum'
           description: |-
             Mother's blood group
 
@@ -25369,29 +25765,26 @@ components:
             * `AB-` - AB-
             * `O+` - O+
             * `O-` - O-
-          oneOf:
-          - $ref: '#/components/schemas/BloodGroupEnum'
-          - $ref: '#/components/schemas/BlankEnum'
         rhesus_factor:
+          allOf:
+          - $ref: '#/components/schemas/RhesusFactorEnum'
           description: |-
             Rhesus factor
 
             * `POSITIVE` - Positive
             * `NEGATIVE` - Negative
-          oneOf:
-          - $ref: '#/components/schemas/RhesusFactorEnum'
-          - $ref: '#/components/schemas/BlankEnum'
         hiv_status:
+          allOf:
+          - $ref: '#/components/schemas/HivStatusEnum'
           description: |-
             HIV status for ANC
 
             * `POSITIVE` - Positive
             * `NEGATIVE` - Negative
             * `UNKNOWN` - Unknown
-          oneOf:
-          - $ref: '#/components/schemas/HivStatusEnum'
-          - $ref: '#/components/schemas/BlankEnum'
         partner_hiv_status:
+          allOf:
+          - $ref: '#/components/schemas/PartnerHivStatusEnum'
           description: |-
             Partner HIV status
 
@@ -25399,9 +25792,6 @@ components:
             * `NEGATIVE` - Negative
             * `UNKNOWN` - Unknown
             * `NOT_TESTED` - Not Tested
-          oneOf:
-          - $ref: '#/components/schemas/PartnerHivStatusEnum'
-          - $ref: '#/components/schemas/BlankEnum'
         previous_cesarean:
           type: boolean
           description: History of previous cesarean section
@@ -25428,6 +25818,8 @@ components:
           description: Get days remaining to EDD.
           readOnly: true
         diabetes_type:
+          allOf:
+          - $ref: '#/components/schemas/DiabetesTypeEnum'
           description: |-
             Type of diabetes
 
@@ -25435,9 +25827,6 @@ components:
             * `TYPE_2` - Type 2
             * `GESTATIONAL` - Gestational
             * `OTHER` - Other
-          oneOf:
-          - $ref: '#/components/schemas/DiabetesTypeEnum'
-          - $ref: '#/components/schemas/BlankEnum'
         diabetes_diagnosis_date:
           type: string
           format: date
@@ -25671,16 +26060,17 @@ components:
           description: Current ART regimen (e.g., TDF/3TC/DTG)
           maxLength: 100
         art_regimen_line:
+          allOf:
+          - $ref: '#/components/schemas/ArtRegimenLineEnum'
           description: |-
             ART regimen line
 
             * `FIRST_LINE` - First Line
             * `SECOND_LINE` - Second Line
             * `THIRD_LINE` - Third Line
-          oneOf:
-          - $ref: '#/components/schemas/ArtRegimenLineEnum'
-          - $ref: '#/components/schemas/BlankEnum'
         who_clinical_stage:
+          allOf:
+          - $ref: '#/components/schemas/WhoClinicalStageEnum'
           nullable: true
           description: |-
             WHO clinical stage at enrollment
@@ -25691,9 +26081,6 @@ components:
             * `4` - Stage 4
           minimum: 0
           maximum: 9223372036854775807
-          oneOf:
-          - $ref: '#/components/schemas/WhoClinicalStageEnum'
-          - $ref: '#/components/schemas/NullEnum'
         baseline_cd4_count:
           type: integer
           maximum: 9223372036854775807
@@ -25760,6 +26147,8 @@ components:
           nullable: true
           description: Mother's height in cm (for BMI calculation)
         blood_group:
+          allOf:
+          - $ref: '#/components/schemas/BloodGroupEnum'
           description: |-
             Mother's blood group
 
@@ -25771,29 +26160,26 @@ components:
             * `AB-` - AB-
             * `O+` - O+
             * `O-` - O-
-          oneOf:
-          - $ref: '#/components/schemas/BloodGroupEnum'
-          - $ref: '#/components/schemas/BlankEnum'
         rhesus_factor:
+          allOf:
+          - $ref: '#/components/schemas/RhesusFactorEnum'
           description: |-
             Rhesus factor
 
             * `POSITIVE` - Positive
             * `NEGATIVE` - Negative
-          oneOf:
-          - $ref: '#/components/schemas/RhesusFactorEnum'
-          - $ref: '#/components/schemas/BlankEnum'
         hiv_status:
+          allOf:
+          - $ref: '#/components/schemas/HivStatusEnum'
           description: |-
             HIV status for ANC
 
             * `POSITIVE` - Positive
             * `NEGATIVE` - Negative
             * `UNKNOWN` - Unknown
-          oneOf:
-          - $ref: '#/components/schemas/HivStatusEnum'
-          - $ref: '#/components/schemas/BlankEnum'
         partner_hiv_status:
+          allOf:
+          - $ref: '#/components/schemas/PartnerHivStatusEnum'
           description: |-
             Partner HIV status
 
@@ -25801,9 +26187,6 @@ components:
             * `NEGATIVE` - Negative
             * `UNKNOWN` - Unknown
             * `NOT_TESTED` - Not Tested
-          oneOf:
-          - $ref: '#/components/schemas/PartnerHivStatusEnum'
-          - $ref: '#/components/schemas/BlankEnum'
         previous_cesarean:
           type: boolean
           description: History of previous cesarean section
@@ -25814,6 +26197,8 @@ components:
           type: string
           description: List of high-risk factors if applicable
         diabetes_type:
+          allOf:
+          - $ref: '#/components/schemas/DiabetesTypeEnum'
           description: |-
             Type of diabetes
 
@@ -25821,9 +26206,6 @@ components:
             * `TYPE_2` - Type 2
             * `GESTATIONAL` - Gestational
             * `OTHER` - Other
-          oneOf:
-          - $ref: '#/components/schemas/DiabetesTypeEnum'
-          - $ref: '#/components/schemas/BlankEnum'
         diabetes_diagnosis_date:
           type: string
           format: date
@@ -26537,7 +26919,7 @@ components:
           nullable: true
           description: Associated billing line item
         wait_time_minutes:
-          type: string
+          type: integer
           readOnly: true
         created_at:
           type: string
@@ -31367,6 +31749,8 @@ components:
           description: For predefined options
           maxLength: 100
         result_unit:
+          allOf:
+          - $ref: '#/components/schemas/ResultUnitEnum'
           description: |-
             Unit of measurement
 
@@ -31401,9 +31785,6 @@ components:
             * `titer` - titer
             * `copies/mL` - copies/mL
             * `CFU/mL` - CFU/mL
-          oneOf:
-          - $ref: '#/components/schemas/ResultUnitEnum'
-          - $ref: '#/components/schemas/BlankEnum'
         reference_low:
           type: string
           format: decimal
@@ -31421,9 +31802,7 @@ components:
           description: Human-readable reference range
           maxLength: 100
         result_flag:
-          oneOf:
-          - $ref: '#/components/schemas/ResultFlagEnum'
-          - $ref: '#/components/schemas/BlankEnum'
+          $ref: '#/components/schemas/ResultFlagEnum'
         interpretation:
           type: string
           description: Pathologist notes
@@ -31464,6 +31843,8 @@ components:
           description: For predefined options
           maxLength: 100
         result_unit:
+          allOf:
+          - $ref: '#/components/schemas/ResultUnitEnum'
           description: |-
             Unit of measurement
 
@@ -31498,9 +31879,6 @@ components:
             * `titer` - titer
             * `copies/mL` - copies/mL
             * `CFU/mL` - CFU/mL
-          oneOf:
-          - $ref: '#/components/schemas/ResultUnitEnum'
-          - $ref: '#/components/schemas/BlankEnum'
         reference_low:
           type: string
           format: decimal
@@ -31518,9 +31896,7 @@ components:
           description: Human-readable reference range
           maxLength: 100
         result_flag:
-          oneOf:
-          - $ref: '#/components/schemas/ResultFlagEnum'
-          - $ref: '#/components/schemas/BlankEnum'
+          $ref: '#/components/schemas/ResultFlagEnum'
         interpretation:
           type: string
           description: Pathologist notes
@@ -31588,6 +31964,29 @@ components:
         * `LEFT` - Left
         * `RIGHT` - Right
         * `BILATERAL` - Bilateral
+    ManualOverrideRequestRequest:
+      type: object
+      properties:
+        target_type:
+          type: string
+          minLength: 1
+        target_id:
+          type: integer
+        new_resource_id:
+          type: integer
+        override_reason:
+          type: string
+          minLength: 1
+        justification:
+          type: string
+          minLength: 1
+        requires_approval:
+          type: boolean
+      required:
+      - new_resource_id
+      - override_reason
+      - target_id
+      - target_type
     Medication:
       type: object
       description: Serializer for Medication.
@@ -31934,6 +32333,16 @@ components:
         * `MG` - Mammography
         * `FL` - Fluoroscopy
         * `OTHER` - Other
+    MpesaCallbackResponse:
+      type: object
+      properties:
+        ResultCode:
+          type: integer
+        ResultDesc:
+          type: string
+      required:
+      - ResultCode
+      - ResultDesc
     MpesaInitiateRequestRequest:
       type: object
       properties:
@@ -31965,6 +32374,30 @@ components:
         message:
           type: string
       required:
+      - success
+    MpesaQueryResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+        result_code:
+          type: integer
+        result_description:
+          type: string
+        checkout_request_id:
+          type: string
+        amount:
+          type: string
+        mpesa_receipt_number:
+          type: string
+          nullable: true
+        phone_number:
+          type: string
+          nullable: true
+      required:
+      - checkout_request_id
+      - result_code
+      - result_description
       - success
     Notification:
       type: object
@@ -32056,9 +32489,6 @@ components:
           format: date-time
           nullable: true
           description: When notification was marked as read
-    NullEnum:
-      enum:
-      - null
     NursingKardex:
       type: object
       description: Serializer for NursingKardex model.
@@ -34112,16 +34542,17 @@ components:
           description: Current ART regimen (e.g., TDF/3TC/DTG)
           maxLength: 100
         art_regimen_line:
+          allOf:
+          - $ref: '#/components/schemas/ArtRegimenLineEnum'
           description: |-
             ART regimen line
 
             * `FIRST_LINE` - First Line
             * `SECOND_LINE` - Second Line
             * `THIRD_LINE` - Third Line
-          oneOf:
-          - $ref: '#/components/schemas/ArtRegimenLineEnum'
-          - $ref: '#/components/schemas/BlankEnum'
         who_clinical_stage:
+          allOf:
+          - $ref: '#/components/schemas/WhoClinicalStageEnum'
           nullable: true
           description: |-
             WHO clinical stage at enrollment
@@ -34132,9 +34563,6 @@ components:
             * `4` - Stage 4
           minimum: 0
           maximum: 9223372036854775807
-          oneOf:
-          - $ref: '#/components/schemas/WhoClinicalStageEnum'
-          - $ref: '#/components/schemas/NullEnum'
         baseline_cd4_count:
           type: integer
           maximum: 9223372036854775807
@@ -34201,6 +34629,8 @@ components:
           nullable: true
           description: Mother's height in cm (for BMI calculation)
         blood_group:
+          allOf:
+          - $ref: '#/components/schemas/BloodGroupEnum'
           description: |-
             Mother's blood group
 
@@ -34212,29 +34642,26 @@ components:
             * `AB-` - AB-
             * `O+` - O+
             * `O-` - O-
-          oneOf:
-          - $ref: '#/components/schemas/BloodGroupEnum'
-          - $ref: '#/components/schemas/BlankEnum'
         rhesus_factor:
+          allOf:
+          - $ref: '#/components/schemas/RhesusFactorEnum'
           description: |-
             Rhesus factor
 
             * `POSITIVE` - Positive
             * `NEGATIVE` - Negative
-          oneOf:
-          - $ref: '#/components/schemas/RhesusFactorEnum'
-          - $ref: '#/components/schemas/BlankEnum'
         hiv_status:
+          allOf:
+          - $ref: '#/components/schemas/HivStatusEnum'
           description: |-
             HIV status for ANC
 
             * `POSITIVE` - Positive
             * `NEGATIVE` - Negative
             * `UNKNOWN` - Unknown
-          oneOf:
-          - $ref: '#/components/schemas/HivStatusEnum'
-          - $ref: '#/components/schemas/BlankEnum'
         partner_hiv_status:
+          allOf:
+          - $ref: '#/components/schemas/PartnerHivStatusEnum'
           description: |-
             Partner HIV status
 
@@ -34242,9 +34669,6 @@ components:
             * `NEGATIVE` - Negative
             * `UNKNOWN` - Unknown
             * `NOT_TESTED` - Not Tested
-          oneOf:
-          - $ref: '#/components/schemas/PartnerHivStatusEnum'
-          - $ref: '#/components/schemas/BlankEnum'
         previous_cesarean:
           type: boolean
           description: History of previous cesarean section
@@ -34255,6 +34679,8 @@ components:
           type: string
           description: List of high-risk factors if applicable
         diabetes_type:
+          allOf:
+          - $ref: '#/components/schemas/DiabetesTypeEnum'
           description: |-
             Type of diabetes
 
@@ -34262,9 +34688,6 @@ components:
             * `TYPE_2` - Type 2
             * `GESTATIONAL` - Gestational
             * `OTHER` - Other
-          oneOf:
-          - $ref: '#/components/schemas/DiabetesTypeEnum'
-          - $ref: '#/components/schemas/BlankEnum'
         diabetes_diagnosis_date:
           type: string
           format: date
@@ -35229,6 +35652,8 @@ components:
           description: For predefined options
           maxLength: 100
         result_unit:
+          allOf:
+          - $ref: '#/components/schemas/ResultUnitEnum'
           description: |-
             Unit of measurement
 
@@ -35263,9 +35688,6 @@ components:
             * `titer` - titer
             * `copies/mL` - copies/mL
             * `CFU/mL` - CFU/mL
-          oneOf:
-          - $ref: '#/components/schemas/ResultUnitEnum'
-          - $ref: '#/components/schemas/BlankEnum'
         reference_low:
           type: string
           format: decimal
@@ -35283,9 +35705,7 @@ components:
           description: Human-readable reference range
           maxLength: 100
         result_flag:
-          oneOf:
-          - $ref: '#/components/schemas/ResultFlagEnum'
-          - $ref: '#/components/schemas/BlankEnum'
+          $ref: '#/components/schemas/ResultFlagEnum'
         interpretation:
           type: string
           description: Pathologist notes
@@ -35439,6 +35859,8 @@ components:
           description: SHA member number for Social Health Authority coverage
           maxLength: 50
         title:
+          allOf:
+          - $ref: '#/components/schemas/TitleEnum'
           description: |-
             Patient's title (Mr, Mrs, Miss, etc.)
 
@@ -35451,9 +35873,6 @@ components:
             * `Hon` - Hon
             * `Rev` - Rev
             * `` - None
-          oneOf:
-          - $ref: '#/components/schemas/TitleEnum'
-          - $ref: '#/components/schemas/BlankEnum'
         first_name:
           type: string
           minLength: 1
@@ -35848,6 +36267,8 @@ components:
           type: boolean
           description: Is this member eligible for PFMS (government subsidy)?
         pfms_category:
+          allOf:
+          - $ref: '#/components/schemas/PfmsCategoryEnum'
           description: |-
             PFMS category for government-subsidized coverage
 
@@ -35856,9 +36277,6 @@ components:
             * `disabled` - Persons with Disability
             * `orphan` - Orphan/Vulnerable Child
             * `indigent` - Indigent
-          oneOf:
-          - $ref: '#/components/schemas/PfmsCategoryEnum'
-          - $ref: '#/components/schemas/BlankEnum'
     PatchedScheduleRequest:
       type: object
       description: Serializer for Schedule model.
@@ -35876,6 +36294,8 @@ components:
             * `ONE_TIME` - One-Time
             * `BLOCK` - Blocked Time
         day_of_week:
+          allOf:
+          - $ref: '#/components/schemas/DayOfWeekEnum'
           nullable: true
           description: |-
             Day of week for recurring schedules (0=Monday)
@@ -35889,9 +36309,6 @@ components:
             * `6` - Sunday
           minimum: -9223372036854775808
           maximum: 9223372036854775807
-          oneOf:
-          - $ref: '#/components/schemas/DayOfWeekEnum'
-          - $ref: '#/components/schemas/NullEnum'
         specific_date:
           type: string
           format: date
@@ -36640,6 +37057,8 @@ components:
           description: SHA member number for Social Health Authority coverage
           maxLength: 50
         title:
+          allOf:
+          - $ref: '#/components/schemas/TitleEnum'
           description: |-
             Patient's title (Mr, Mrs, Miss, etc.)
 
@@ -36652,9 +37071,6 @@ components:
             * `Hon` - Hon
             * `Rev` - Rev
             * `` - None
-          oneOf:
-          - $ref: '#/components/schemas/TitleEnum'
-          - $ref: '#/components/schemas/BlankEnum'
         first_name:
           type: string
           description: Patient's first name
@@ -36990,6 +37406,8 @@ components:
           description: SHA member number for Social Health Authority coverage
           maxLength: 50
         title:
+          allOf:
+          - $ref: '#/components/schemas/TitleEnum'
           description: |-
             Patient's title (Mr, Mrs, Miss, etc.)
 
@@ -37002,9 +37420,6 @@ components:
             * `Hon` - Hon
             * `Rev` - Rev
             * `` - None
-          oneOf:
-          - $ref: '#/components/schemas/TitleEnum'
-          - $ref: '#/components/schemas/BlankEnum'
         first_name:
           type: string
           minLength: 1
@@ -39041,6 +39456,8 @@ components:
           type: boolean
           description: Is this member eligible for PFMS (government subsidy)?
         pfms_category:
+          allOf:
+          - $ref: '#/components/schemas/PfmsCategoryEnum'
           description: |-
             PFMS category for government-subsidized coverage
 
@@ -39049,9 +39466,6 @@ components:
             * `disabled` - Persons with Disability
             * `orphan` - Orphan/Vulnerable Child
             * `indigent` - Indigent
-          oneOf:
-          - $ref: '#/components/schemas/PfmsCategoryEnum'
-          - $ref: '#/components/schemas/BlankEnum'
         pfms_category_display:
           type: string
           nullable: true
@@ -39148,6 +39562,8 @@ components:
           type: boolean
           description: Is this member eligible for PFMS (government subsidy)?
         pfms_category:
+          allOf:
+          - $ref: '#/components/schemas/PfmsCategoryEnum'
           description: |-
             PFMS category for government-subsidized coverage
 
@@ -39156,9 +39572,6 @@ components:
             * `disabled` - Persons with Disability
             * `orphan` - Orphan/Vulnerable Child
             * `indigent` - Indigent
-          oneOf:
-          - $ref: '#/components/schemas/PfmsCategoryEnum'
-          - $ref: '#/components/schemas/BlankEnum'
         pfms_category_display:
           type: string
           nullable: true
@@ -39228,6 +39641,8 @@ components:
           type: boolean
           description: Is this member eligible for PFMS (government subsidy)?
         pfms_category:
+          allOf:
+          - $ref: '#/components/schemas/PfmsCategoryEnum'
           description: |-
             PFMS category for government-subsidized coverage
 
@@ -39236,9 +39651,6 @@ components:
             * `disabled` - Persons with Disability
             * `orphan` - Orphan/Vulnerable Child
             * `indigent` - Indigent
-          oneOf:
-          - $ref: '#/components/schemas/PfmsCategoryEnum'
-          - $ref: '#/components/schemas/BlankEnum'
       required:
       - patient
       - sha_number
@@ -39414,6 +39826,8 @@ components:
             * `ONE_TIME` - One-Time
             * `BLOCK` - Blocked Time
         day_of_week:
+          allOf:
+          - $ref: '#/components/schemas/DayOfWeekEnum'
           nullable: true
           description: |-
             Day of week for recurring schedules (0=Monday)
@@ -39427,9 +39841,6 @@ components:
             * `6` - Sunday
           minimum: -9223372036854775808
           maximum: 9223372036854775807
-          oneOf:
-          - $ref: '#/components/schemas/DayOfWeekEnum'
-          - $ref: '#/components/schemas/NullEnum'
         day_of_week_display:
           type: string
           readOnly: true
@@ -39567,6 +39978,8 @@ components:
             * `ONE_TIME` - One-Time
             * `BLOCK` - Blocked Time
         day_of_week:
+          allOf:
+          - $ref: '#/components/schemas/DayOfWeekEnum'
           nullable: true
           description: |-
             Day of week for recurring schedules (0=Monday)
@@ -39580,9 +39993,6 @@ components:
             * `6` - Sunday
           minimum: -9223372036854775808
           maximum: 9223372036854775807
-          oneOf:
-          - $ref: '#/components/schemas/DayOfWeekEnum'
-          - $ref: '#/components/schemas/NullEnum'
         specific_date:
           type: string
           format: date
@@ -39651,6 +40061,8 @@ components:
             * `ONE_TIME` - One-Time
             * `BLOCK` - Blocked Time
         day_of_week:
+          allOf:
+          - $ref: '#/components/schemas/DayOfWeekEnum'
           nullable: true
           description: |-
             Day of week for recurring schedules (0=Monday)
@@ -39664,9 +40076,6 @@ components:
             * `6` - Sunday
           minimum: -9223372036854775808
           maximum: 9223372036854775807
-          oneOf:
-          - $ref: '#/components/schemas/DayOfWeekEnum'
-          - $ref: '#/components/schemas/NullEnum'
         specific_date:
           type: string
           format: date
@@ -39747,6 +40156,8 @@ components:
             * `ONE_TIME` - One-Time
             * `BLOCK` - Blocked Time
         day_of_week:
+          allOf:
+          - $ref: '#/components/schemas/DayOfWeekEnum'
           nullable: true
           description: |-
             Day of week for recurring schedules (0=Monday)
@@ -39760,9 +40171,6 @@ components:
             * `6` - Sunday
           minimum: -9223372036854775808
           maximum: 9223372036854775807
-          oneOf:
-          - $ref: '#/components/schemas/DayOfWeekEnum'
-          - $ref: '#/components/schemas/NullEnum'
         specific_date:
           type: string
           format: date
@@ -42311,10 +42719,9 @@ components:
           pattern: ^-?\d{0,3}(?:\.\d{0,2})?$
           nullable: true
         triage_category:
-          nullable: true
-          oneOf:
+          allOf:
           - $ref: '#/components/schemas/TriageCategoryEnum'
-          - $ref: '#/components/schemas/NullEnum'
+          nullable: true
         category_override_reason:
           type: string
           description: Required if nurse overrides system suggestion
@@ -42471,16 +42878,14 @@ components:
           pattern: ^-?\d{0,3}(?:\.\d{0,2})?$
           nullable: true
         triage_category:
-          nullable: true
-          oneOf:
+          allOf:
           - $ref: '#/components/schemas/TriageCategoryEnum'
-          - $ref: '#/components/schemas/NullEnum'
+          nullable: true
         auto_calculated_category:
+          allOf:
+          - $ref: '#/components/schemas/AutoCalculatedCategoryEnum'
           writeOnly: true
           nullable: true
-          oneOf:
-          - $ref: '#/components/schemas/AutoCalculatedCategoryEnum'
-          - $ref: '#/components/schemas/NullEnum'
         category_override_reason:
           type: string
           description: Required if nurse overrides system suggestion

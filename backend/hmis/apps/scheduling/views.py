@@ -710,6 +710,20 @@ class AssignmentViewSet(viewsets.ViewSet):
 
         return Response(response_data)
 
+    @extend_schema(
+        request=inline_serializer(
+            name="ManualOverrideRequest",
+            fields={
+                "target_type": serializers.CharField(),
+                "target_id": serializers.IntegerField(),
+                "new_resource_id": serializers.IntegerField(),
+                "override_reason": serializers.CharField(),
+                "justification": serializers.CharField(required=False),
+                "requires_approval": serializers.BooleanField(required=False),
+            },
+        ),
+        responses={200: OpenApiTypes.OBJECT},
+    )
     @action(detail=False, methods=["post"], url_path="manual-override")
     def manual_override(self, request):
         """
@@ -722,8 +736,7 @@ class AssignmentViewSet(viewsets.ViewSet):
             "new_resource_id": 456,
             "override_reason": "PATIENT_REQUEST",
             "justification": "Patient requested different doctor"
-        }
-        """
+        }"""
         from hmis.apps.scheduling.models import Resource
         from hmis.apps.scheduling.serializers import (
             AssignmentOverrideSerializer,
