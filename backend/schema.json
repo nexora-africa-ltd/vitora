@@ -29083,6 +29083,25 @@ components:
           pattern: ^-?\d{0,3}(?:\.\d{0,2})?$
           nullable: true
           description: Oxygen saturation percentage (SpO2)
+        vitals_source:
+          allOf:
+          - $ref: '#/components/schemas/VitalsSourceEnum'
+          nullable: true
+          description: |-
+            Where the vitals were recorded (e.g., triage)
+
+            * `TRIAGE` - Triage
+            * `CONSULTATION` - Consultation
+            * `NURSING` - Nursing
+        vitals_recorded_by:
+          type: integer
+          nullable: true
+          description: User who recorded the vitals
+        vitals_recorded_at:
+          type: string
+          format: date-time
+          nullable: true
+          description: Timestamp when vitals were recorded
         weight:
           type: string
           format: decimal
@@ -29370,6 +29389,16 @@ components:
             * `LAB_REVIEW` - Lab Results Review
             * `REFERRAL_VISIT` - Referral from Another Facility
             * `OTHER` - Other
+        created_by:
+          type: integer
+          readOnly: true
+          nullable: true
+          description: User who created this encounter
+        created_by_name:
+          type: string
+          nullable: true
+          description: Get display name for encounter creator.
+          readOnly: true
         created_at:
           type: string
           format: date-time
@@ -29403,6 +29432,8 @@ components:
       - consultation_started_at
       - consultation_status
       - created_at
+      - created_by
+      - created_by_name
       - diastolic_bp
       - encounter_type
       - finalized_at
@@ -29632,6 +29663,25 @@ components:
           pattern: ^-?\d{0,3}(?:\.\d{0,2})?$
           nullable: true
           description: Oxygen saturation percentage (SpO2)
+        vitals_source:
+          allOf:
+          - $ref: '#/components/schemas/VitalsSourceEnum'
+          nullable: true
+          description: |-
+            Where the vitals were recorded (e.g., triage)
+
+            * `TRIAGE` - Triage
+            * `CONSULTATION` - Consultation
+            * `NURSING` - Nursing
+        vitals_recorded_by:
+          type: integer
+          nullable: true
+          description: User who recorded the vitals
+        vitals_recorded_at:
+          type: string
+          format: date-time
+          nullable: true
+          description: Timestamp when vitals were recorded
         weight:
           type: string
           format: decimal
@@ -35393,6 +35443,25 @@ components:
           pattern: ^-?\d{0,3}(?:\.\d{0,2})?$
           nullable: true
           description: Oxygen saturation percentage (SpO2)
+        vitals_source:
+          allOf:
+          - $ref: '#/components/schemas/VitalsSourceEnum'
+          nullable: true
+          description: |-
+            Where the vitals were recorded (e.g., triage)
+
+            * `TRIAGE` - Triage
+            * `CONSULTATION` - Consultation
+            * `NURSING` - Nursing
+        vitals_recorded_by:
+          type: integer
+          nullable: true
+          description: User who recorded the vitals
+        vitals_recorded_at:
+          type: string
+          format: date-time
+          nullable: true
+          description: Timestamp when vitals were recorded
         weight:
           type: string
           format: decimal
@@ -43451,6 +43520,16 @@ components:
         * `HEART_RATE` - Heart Rate (bpm)
         * `TEMPERATURE` - Temperature (°C)
         * `RESPIRATORY_RATE` - Respiratory Rate (breaths/min)
+    VitalsSourceEnum:
+      enum:
+      - TRIAGE
+      - CONSULTATION
+      - NURSING
+      type: string
+      description: |-
+        * `TRIAGE` - Triage
+        * `CONSULTATION` - Consultation
+        * `NURSING` - Nursing
     WaitingQueue:
       type: object
       description: Serializer for waiting queue entries (read).

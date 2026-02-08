@@ -254,18 +254,18 @@ export default function EncounterDetailPage() {
                   <p className="text-sm">{encounter.assessment}</p>
                 </div>
               )}
-              {encounter.plan && (
+              {treatmentPlan?.clinical_notes && (
                 <div>
                   <h4 className="font-medium text-sm text-muted-foreground mb-1">
                     Plan
                   </h4>
-                  <p className="text-sm">{encounter.plan}</p>
+                  <p className="text-sm">{treatmentPlan.clinical_notes}</p>
                 </div>
               )}
               {!encounter.history_of_present_illness &&
                 !encounter.physical_examination &&
                 !encounter.assessment &&
-                !encounter.plan && (
+                !treatmentPlan?.clinical_notes && (
                   <p className="text-center text-muted-foreground py-4">
                     No assessment details recorded.
                   </p>

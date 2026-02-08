@@ -318,6 +318,10 @@ class EncounterViewSet(viewsets.ModelViewSet):
 
         return response
 
+    def perform_create(self, serializer):
+        """Set created_by on creation."""
+        serializer.save(created_by=self.request.user)
+
     def update(self, request, *args, **kwargs):
         """Override update to check if encounter can be edited and add audit logging."""
         encounter = self.get_object()

@@ -42,7 +42,7 @@ export interface Encounter {
   vitals_summary?: string | null;
 
   // Vitals source tracking
-  vitals_source?: 'TRIAGE' | 'CONSULTATION' | 'DIRECT' | null;
+  vitals_source?: 'TRIAGE' | 'CONSULTATION' | 'NURSING' | null;
   vitals_recorded_by?: number | null;
   vitals_recorded_at?: string | null;
 
@@ -63,7 +63,7 @@ export interface Encounter {
   history_of_present_illness?: string | null;
   physical_examination?: string | null;
   assessment?: string | null;
-  plan?: string | null;  // SOAP 'P' (Plan) - can also use TreatmentPlan.clinical_notes
+  // Note: SOAP 'P' (Plan) is TreatmentPlan-only (see TreatmentPlan.clinical_notes)
 
   // Status workflow
   finalized_by?: number | null;

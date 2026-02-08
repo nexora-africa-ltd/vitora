@@ -27,6 +27,30 @@ let server;
 
 beforeAll(async () => {
   try {
+    const testPath = (global.expect && global.expect.getState && global.expect.getState().testPath) || '';
+    if (typeof testPath === 'string' && testPath.includes('__tests__/contracts/')) {
+      return;
+    }
+
+    // Polyfill Web Streams (needed by MSW/undici in some Node/jsdom environments)
+    if (
+      typeof ReadableStream === 'undefined' ||
+      typeof TransformStream === 'undefined' ||
+      typeof WritableStream === 'undefined'
+    ) {
+      const { ReadableStream, TransformStream, WritableStream } = await import('node:stream/web');
+      global.ReadableStream = ReadableStream;
+      global.TransformStream = TransformStream;
+      global.WritableStream = WritableStream;
+    }
+
+    // Polyfill MessagePort/MessageChannel (used by MSW for request interception)
+    if (typeof MessagePort === 'undefined' || typeof MessageChannel === 'undefined') {
+      const { MessagePort, MessageChannel } = await import('node:worker_threads');
+      global.MessagePort = MessagePort;
+      global.MessageChannel = MessageChannel;
+    }
+
     // Polyfill Response/Request if not available
     if (typeof Response === 'undefined') {
       const { Response, Request, Headers, fetch } = await import('undici');

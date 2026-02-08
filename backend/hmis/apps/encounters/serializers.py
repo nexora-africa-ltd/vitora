@@ -303,6 +303,8 @@ class EncounterSerializer(serializers.ModelSerializer):
     clinic_name = serializers.SerializerMethodField()
     clinic_type = serializers.SerializerMethodField()
 
+    created_by_name = serializers.SerializerMethodField()
+
     class Meta:
         model = Encounter
         fields = [
@@ -322,6 +324,9 @@ class EncounterSerializer(serializers.ModelSerializer):
             "diastolic_bp",
             "respiratory_rate",
             "spo2",
+            "vitals_source",
+            "vitals_recorded_by",
+            "vitals_recorded_at",
             "weight",
             "height",
             "bmi",
@@ -386,6 +391,8 @@ class EncounterSerializer(serializers.ModelSerializer):
             "linked_encounter",
             # Visit Reason (Sprint 2 - Phase 2D)
             "visit_reason",
+            "created_by",
+            "created_by_name",
             "created_at",
             "updated_at",
         ]
@@ -438,9 +445,17 @@ class EncounterSerializer(serializers.ModelSerializer):
             "clinic_visit_id",
             "clinic_name",
             "clinic_type",
+            "created_by",
+            "created_by_name",
             "created_at",
             "updated_at",
         ]
+
+    def get_created_by_name(self, obj: Encounter) -> str | None:
+        """Get display name for encounter creator."""
+        if not obj.created_by:
+            return None
+        return obj.created_by.get_full_name() or obj.created_by.username
 
     def get_assigned_clinician_name(self, obj: Encounter) -> str | None:
         """Get the full name of the assigned clinician."""
