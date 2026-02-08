@@ -2,7 +2,7 @@
  * Zod schemas for Billing API response validation
  *
  * Implements validation for all billing-related API responses.
- * See lib/types/billing.ts for corresponding TypeScript interfaces.
+ * Types are derived from these schemas using z.infer<> - see exports at bottom.
  */
 import { z } from 'zod';
 
@@ -14,9 +14,15 @@ import { z } from 'zod';
  * Create a case-insensitive enum schema that accepts lowercase backend values
  * and transforms them to uppercase for frontend code.
  * Backend Django TextChoices use lowercase; frontend uses UPPERCASE.
+ *
+ * Uses z.preprocess to convert case BEFORE validation, preserving proper
+ * type inference from z.enum().
  */
 function caseInsensitiveEnum<T extends readonly [string, ...string[]]>(values: T) {
-  return z.string().transform((v) => v.toUpperCase()).pipe(z.enum(values));
+  return z.preprocess(
+    (v) => (typeof v === 'string' ? v.toUpperCase() : v),
+    z.enum(values)
+  );
 }
 
 // =============================================================================
@@ -306,6 +312,7 @@ export const PaymentSchema = z.object({
   notes: z.string(),
   created_at: z.string(),
   updated_at: z.string(),
+  created_by: z.number(),
 });
 
 export type PaymentSchemaType = z.infer<typeof PaymentSchema>;
@@ -617,3 +624,47 @@ export const UnbilledServiceArraySchema = z.array(UnbilledServiceSchema);
 export const InvoiceItemArrayResponseSchema = z.object({
   results: z.array(InvoiceItemSchema),
 });
+
+// =============================================================================
+// DERIVED TYPE EXPORTS
+// These types are derived from schemas and should be used instead of manual
+// interface definitions to ensure runtime validation matches static types.
+// =============================================================================
+
+// Enum types
+export type InvoiceStatus = z.infer<typeof InvoiceStatusSchema>;
+export type PaymentMethod = z.infer<typeof PaymentMethodSchema>;
+export type PaymentStatus = z.infer<typeof PaymentStatusSchema>;
+export type CreditNoteReason = z.infer<typeof CreditNoteReasonSchema>;
+export type CreditNoteStatus = z.infer<typeof CreditNoteStatusSchema>;
+export type DiscountType = z.infer<typeof DiscountTypeSchema>;
+
+// Entity types
+export type ServiceCategory = z.infer<typeof ServiceCategorySchema>;
+export type Service = z.infer<typeof ServiceSchema>;
+export type InvoiceItem = z.infer<typeof InvoiceItemSchema>;
+export type Invoice = z.infer<typeof InvoiceSchema>;
+export type PaymentPoint = z.infer<typeof PaymentPointSchema>;
+export type Payment = z.infer<typeof PaymentSchema>;
+export type ReceiptLineItem = z.infer<typeof ReceiptLineItemSchema>;
+export type Receipt = z.infer<typeof ReceiptSchema>;
+export type CreditNote = z.infer<typeof CreditNoteSchema>;
+export type OutstandingBalance = z.infer<typeof OutstandingBalanceSchema>;
+export type ServiceUtilization = z.infer<typeof ServiceUtilizationSchema>;
+export type BillingDiscrepancy = z.infer<typeof BillingDiscrepancySchema>;
+export type UnbilledService = z.infer<typeof UnbilledServiceSchema>;
+export type MpesaSTKPushResponse = z.infer<typeof MpesaSTKPushResponseSchema>;
+export type MpesaQueryResponse = z.infer<typeof MpesaQueryResponseSchema>;
+export type DailyCollectionReport = z.infer<typeof DailyCollectionReportSchema>;
+export type RevenueSummary = z.infer<typeof RevenueSummarySchema>;
+export type PaymentMethodAnalysis = z.infer<typeof PaymentMethodAnalysisSchema>;
+export type DailyClosureReport = z.infer<typeof DailyClosureReportSchema>;
+
+// Paginated types
+export type PaginatedServiceCategories = z.infer<typeof PaginatedServiceCategorySchema>;
+export type PaginatedServices = z.infer<typeof PaginatedServiceSchema>;
+export type PaginatedInvoices = z.infer<typeof PaginatedInvoiceSchema>;
+export type PaginatedPayments = z.infer<typeof PaginatedPaymentSchema>;
+export type PaginatedPaymentPoints = z.infer<typeof PaginatedPaymentPointSchema>;
+export type PaginatedCreditNotes = z.infer<typeof PaginatedCreditNoteSchema>;
+export type PaginatedReceipts = z.infer<typeof PaginatedReceiptSchema>;
