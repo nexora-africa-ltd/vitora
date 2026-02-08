@@ -7,10 +7,23 @@
 import { z } from 'zod';
 
 // =============================================================================
+// HELPERS
+// =============================================================================
+
+/**
+ * Create a case-insensitive enum schema that accepts lowercase backend values
+ * and transforms them to uppercase for frontend code.
+ * Backend Django TextChoices use lowercase; frontend uses UPPERCASE.
+ */
+function caseInsensitiveEnum<T extends readonly [string, ...string[]]>(values: T) {
+  return z.string().transform((v) => v.toUpperCase()).pipe(z.enum(values));
+}
+
+// =============================================================================
 // ENUMS
 // =============================================================================
 
-export const InvoiceStatusSchema = z.enum([
+export const InvoiceStatusSchema = caseInsensitiveEnum([
   'PROFORMA',
   'DRAFT',
   'PENDING',
@@ -21,7 +34,7 @@ export const InvoiceStatusSchema = z.enum([
   'WRITTEN_OFF',
 ]);
 
-export const PaymentMethodSchema = z.enum([
+export const PaymentMethodSchema = caseInsensitiveEnum([
   'CASH',
   'MPESA',
   'CARD',
@@ -31,7 +44,7 @@ export const PaymentMethodSchema = z.enum([
   'CHEQUE',
 ]);
 
-export const PaymentStatusSchema = z.enum([
+export const PaymentStatusSchema = caseInsensitiveEnum([
   'PENDING',
   'COMPLETED',
   'FAILED',
@@ -39,18 +52,18 @@ export const PaymentStatusSchema = z.enum([
   'REVERSED',
 ]);
 
-export const CreditNoteReasonSchema = z.enum([
+export const CreditNoteReasonSchema = caseInsensitiveEnum([
   'OVERCHARGE',
   'SERVICE_NOT_RENDERED',
   'DUPLICATE_BILLING',
+  'DUPLICATE',
   'PRICING_ERROR',
   'OTHER',
-  'DUPLICATE',
   'INSURANCE',
   'GOODWILL',
 ]);
 
-export const CreditNoteStatusSchema = z.enum([
+export const CreditNoteStatusSchema = caseInsensitiveEnum([
   'PENDING',
   'DRAFT',
   'APPROVED',
@@ -58,7 +71,7 @@ export const CreditNoteStatusSchema = z.enum([
   'REFUNDED',
 ]);
 
-export const DiscountTypeSchema = z.enum(['PERCENTAGE', 'FIXED']);
+export const DiscountTypeSchema = caseInsensitiveEnum(['PERCENTAGE', 'FIXED']);
 
 // =============================================================================
 // SERVICE CATEGORY SCHEMA
@@ -159,8 +172,8 @@ export const InvoiceSchema = z.object({
 
   // Totals
   subtotal: z.string(),
-  discount_type: DiscountTypeSchema.nullable(),
-  discount_value: z.string(),
+  discount_type: DiscountTypeSchema.optional().nullable(),
+  discount_value: z.string().optional().nullable(),
   discount_amount: z.string(),
   tax_amount: z.string(),
   total_amount: z.string(),
@@ -170,7 +183,7 @@ export const InvoiceSchema = z.object({
 
   // Insurance/SHA
   sha_claim_number: z.string().optional().nullable(),
-  insurance_coverage: z.string(),
+  insurance_coverage: z.string().optional().nullable(),
   insurance_provider: z.string().optional().nullable(),
   insurance_member_no: z.string().optional().nullable(),
   insurance_amount: z.string().optional().nullable(),

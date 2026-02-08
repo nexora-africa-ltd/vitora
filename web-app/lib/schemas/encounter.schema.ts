@@ -66,7 +66,7 @@ export const TriageBypassReasonSchema = z.enum([
   'STAFF_SHORTAGE',
   'PATIENT_PREFERENCE',
   'OTHER',
-]);
+]).or(z.literal(''));
 
 // Re-export from triage.schema to avoid duplicates
 export { TriageCategorySchema };
