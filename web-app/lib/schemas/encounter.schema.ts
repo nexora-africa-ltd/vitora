@@ -176,14 +176,18 @@ export type TreatmentPlanSchemaType = z.infer<typeof TreatmentPlanSchema>;
 export const EncounterSchema = z.object({
   id: z.number(),
   patient: z.number(),
+  patient_id: z.number().optional().nullable(),
   patient_name: z.string().optional().nullable(),
   patient_mrn: z.string().optional().nullable(),
   patient_gender: GenderSchema.optional().nullable(),
   patient_date_of_birth: z.string().optional().nullable(),
+  patient_age: z.number().optional().nullable(),
 
   // Encounter details
   encounter_type: EncounterTypeSchema,
+  encounter_type_display: z.string().optional().nullable(),
   encounter_date: z.string(),
+  arrival_time: z.string().optional().nullable(),
   chief_complaint: z.string(),
   status: EncounterStatusSchema,
 
@@ -244,6 +248,8 @@ export const EncounterSchema = z.object({
   // Triage fields
   triage_status: TriageStatusSchema.optional(),
   triage_requirement: TriageRequirementSchema.optional().nullable(),
+  triage_category: TriageCategorySchema.optional().nullable(),
+  triage_completed_at: z.string().optional().nullable(),
   triage_bypass_reason: TriageBypassReasonSchema.optional().nullable(),
   triage_bypassed_by: z.number().optional().nullable(),
   triage_bypassed_by_username: z.string().optional().nullable(),
