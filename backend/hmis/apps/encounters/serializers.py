@@ -298,8 +298,13 @@ class EncounterSerializer(serializers.ModelSerializer):
     triage_category = serializers.SerializerMethodField()
     triage_completed_at = serializers.SerializerMethodField()
     arrival_time = serializers.SerializerMethodField()
-    # Override triage_bypass_reason to return null instead of empty string
-    triage_bypass_reason = serializers.SerializerMethodField()
+    # Use ChoiceField to expose enum to OpenAPI instead of SerializerMethodField
+    triage_bypass_reason = serializers.ChoiceField(
+        choices=Encounter.TRIAGE_BYPASS_REASON_CHOICES,
+        required=False,
+        allow_null=True,
+        allow_blank=True,
+    )
 
     # Chief complaint edit tracking
     chief_complaint_edited_by_username = serializers.CharField(

@@ -123,12 +123,13 @@ describe('Laboratory Contract Tests', () => {
   });
 
   describe('LabTestCatalogSchema', () => {
-    it('should have all fields from the OpenAPI LabTestCatalog schema', () => {
+    it('should have all fields from the OpenAPI TestCatalog schema', () => {
       const zodFields = getZodSchemaFields(LabTestCatalogSchema);
-      const apiProperties = getSchemaProperties(openapi, 'LabTestCatalog');
+      // Backend uses TestCatalog, not LabTestCatalog
+      const apiProperties = getSchemaProperties(openapi, 'TestCatalog');
 
       if (!apiProperties) {
-        console.warn('LabTestCatalog schema not found in OpenAPI');
+        console.warn('TestCatalog schema not found in OpenAPI');
         return;
       }
 
@@ -281,16 +282,17 @@ describe('Laboratory Contract Tests', () => {
   // =============================================================================
 
   describe('TestCategorySchema (enum)', () => {
-    it('should match OpenAPI TestCategoryEnum values', () => {
+    it('should match OpenAPI LabTestCategoryEnum values', () => {
       const zodValues = getZodEnumValues(TestCategorySchema);
-      const apiValues = getSchemaEnumValues(openapi, 'TestCategoryEnum');
+      // Backend uses LabTestCategoryEnum, not TestCategoryEnum
+      const apiValues = getSchemaEnumValues(openapi, 'LabTestCategoryEnum');
 
       if (!apiValues) {
-        const labCatalog = getSchemaProperties(openapi, 'LabTestCatalog');
+        const labCatalog = getSchemaProperties(openapi, 'TestCatalog');
         if (labCatalog) {
           return;
         }
-        console.warn('TestCategoryEnum not found in OpenAPI (test category)');
+        console.warn('LabTestCategoryEnum not found in OpenAPI (test category)');
         return;
       }
 
