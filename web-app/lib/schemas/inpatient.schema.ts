@@ -85,8 +85,12 @@ export const WardSchema = z.object({
   description: z.string().optional(),
   is_active: z.boolean(),
   daily_rate: z.string(),
+  total_beds: z.number().optional(),
+  occupied_beds: z.number().optional(),
   available_beds: z.number().optional(),
   occupancy_rate: z.number().optional(),
+  created_at: z.string().optional(),
+  updated_at: z.string().optional(),
 });
 
 export type WardSchemaType = z.infer<typeof WardSchema>;
@@ -106,6 +110,11 @@ export const BedSchema = z.object({
   status: BedStatusSchema,
   status_display: z.string().optional(),
   notes: z.string().optional(),
+  status_changed_by: z.number().optional().nullable(),
+  status_changed_by_username: z.string().optional().nullable(),
+  status_changed_at: z.string().optional().nullable(),
+  created_at: z.string().optional(),
+  updated_at: z.string().optional(),
 });
 
 export type BedSchemaType = z.infer<typeof BedSchema>;
@@ -123,10 +132,18 @@ export const AdmissionRecommendationSchema = z.object({
   provisional_diagnosis: z.string(),
   provisional_diagnosis_text: z.string(),
   urgency: AdmissionRecommendationUrgencySchema,
+  urgency_display: z.string().optional(),
   preferred_ward_type: InpatientWardTypeSchema,
   status: AdmissionRecommendationStatusSchema,
+  status_display: z.string().optional(),
   expires_at: z.string(),
   is_expired: z.boolean().optional(),
+  resolved_at: z.string().optional().nullable(),
+  resolved_by: z.number().optional().nullable(),
+  resolved_by_username: z.string().optional().nullable(),
+  decline_reason: z.string().optional().nullable(),
+  created_at: z.string().optional(),
+  updated_at: z.string().optional(),
 });
 
 export type AdmissionRecommendationSchemaType = z.infer<typeof AdmissionRecommendationSchema>;

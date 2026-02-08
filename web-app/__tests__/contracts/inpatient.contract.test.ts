@@ -579,12 +579,12 @@ describe('Inpatient Contract Tests', () => {
   });
 
   describe('AdmissionRecommendationStatusSchema (enum)', () => {
-    it('should match OpenAPI RecommendationStatusEnum values', () => {
+    it('should match OpenAPI AdmissionRecommendationStatusEnum values', () => {
       const zodValues = getZodEnumValues(AdmissionRecommendationStatusSchema);
-      const apiValues = getSchemaEnumValues(openapi, 'RecommendationStatusEnum');
+      const apiValues = getSchemaEnumValues(openapi, 'AdmissionRecommendationStatusEnum');
 
       if (!apiValues) {
-        console.warn('RecommendationStatusEnum not found in OpenAPI - may use different name');
+        console.warn('AdmissionRecommendationStatusEnum not found in OpenAPI');
         return;
       }
 

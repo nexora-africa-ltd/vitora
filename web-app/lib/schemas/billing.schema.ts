@@ -93,11 +93,13 @@ export const ServiceSchema = z.object({
   sha_code: z.string(),
   icd10_code: z.string(),
   is_active: z.boolean(),
+  is_available: z.boolean().optional(),
   requires_quantity: z.boolean(),
   is_taxable: z.boolean(),
   created_at: z.string(),
   updated_at: z.string(),
   created_by: z.number(),
+  created_by_username: z.string().optional().nullable(),
 });
 
 export type ServiceSchemaType = z.infer<typeof ServiceSchema>;
@@ -114,6 +116,7 @@ export const InvoiceItemSchema = z.object({
   unit_price: z.string(),
   discount_percentage: z.string(),
   line_total: z.string(),
+  discount_amount: z.string().optional().nullable(),
 
   // Linked entities
   service: z.number().optional().nullable(),
@@ -126,6 +129,7 @@ export const InvoiceItemSchema = z.object({
   // Insurance
   is_covered_by_insurance: z.boolean(),
   sha_code: z.string().optional().nullable(),
+  insurance_approved_amount: z.string().optional().nullable(),
 
   // Proforma conversion tracking
   is_converted: z.boolean(),
@@ -162,10 +166,16 @@ export const InvoiceSchema = z.object({
   total_amount: z.string(),
   amount_paid: z.string(),
   balance_due: z.string(),
+  balance: z.string().optional().nullable(),
 
   // Insurance/SHA
   sha_claim_number: z.string().optional().nullable(),
   insurance_coverage: z.string(),
+  insurance_provider: z.string().optional().nullable(),
+  insurance_member_no: z.string().optional().nullable(),
+  insurance_amount: z.string().optional().nullable(),
+  payment_type: z.string().optional().nullable(),
+  discount_reason: z.string().optional().nullable(),
 
   // Notes
   notes: z.string(),
@@ -174,6 +184,7 @@ export const InvoiceSchema = z.object({
   created_at: z.string(),
   updated_at: z.string(),
   created_by: z.number(),
+  created_by_username: z.string().optional().nullable(),
   finalized_at: z.string().optional().nullable(),
   finalized_by: z.number().optional().nullable(),
   cancelled_at: z.string().optional().nullable(),
@@ -225,6 +236,7 @@ export const PaymentPointSchema = z.object({
   created_at: z.string(),
   updated_at: z.string(),
   created_by: z.number(),
+  created_by_username: z.string().optional().nullable(),
 });
 
 export type PaymentPointSchemaType = z.infer<typeof PaymentPointSchema>;
@@ -259,11 +271,17 @@ export const PaymentSchema = z.object({
   // Insurance specific
   insurance_claim_number: z.string().optional().nullable(),
   insurance_approval_code: z.string().optional().nullable(),
+  payment_details: z.record(z.unknown()).optional(),
+  mpesa_transaction_id: z.string().optional().nullable(),
+  mpesa_phone: z.string().optional().nullable(),
+  received_by: z.number().optional().nullable(),
+  received_by_username: z.string().optional().nullable(),
 
   // Processing
   processed_at: z.string().optional().nullable(),
   processed_by: z.number().optional().nullable(),
   failure_reason: z.string().optional().nullable(),
+  payment_date: z.string().optional().nullable(),
 
   // Reversal/Refund
   reversed_at: z.string().optional().nullable(),
@@ -344,6 +362,7 @@ export const CreditNoteSchema = z.object({
   credit_note_number: z.string(),
   invoice: z.number(),
   invoice_number: z.string().optional().nullable(),
+  patient: z.number().optional().nullable(),
   patient_name: z.string().optional().nullable(),
 
   amount: z.string(),
@@ -354,10 +373,12 @@ export const CreditNoteSchema = z.object({
   // Workflow
   requested_by: z.number(),
   requested_by_name: z.string().optional().nullable(),
+  requested_by_username: z.string().optional().nullable(),
   created_at: z.string(),
 
   approved_by: z.number().optional().nullable(),
   approved_by_name: z.string().optional().nullable(),
+  approved_by_username: z.string().optional().nullable(),
   approved_at: z.string().optional().nullable(),
 
   rejected_by: z.number().optional().nullable(),
@@ -367,6 +388,7 @@ export const CreditNoteSchema = z.object({
   refunded_at: z.string().optional().nullable(),
   refund_reference: z.string().optional().nullable(),
   refund_method: PaymentMethodSchema.optional().nullable(),
+  updated_at: z.string().optional().nullable(),
 });
 
 export type CreditNoteSchemaType = z.infer<typeof CreditNoteSchema>;

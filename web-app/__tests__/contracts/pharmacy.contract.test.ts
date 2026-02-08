@@ -379,10 +379,14 @@ describe('Pharmacy Contract Tests', () => {
   describe('DrugCategoryEnumSchema (enum)', () => {
     it('should match OpenAPI CategoryEnum values', () => {
       const zodValues = getZodEnumValues(DrugCategoryEnumSchema);
-      const apiValues = getSchemaEnumValues(openapi, 'CategoryEnum');
+      const apiValues = getSchemaEnumValues(openapi, 'DrugCategoryEnum');
 
       if (!apiValues) {
-        console.warn('CategoryEnum not found in OpenAPI');
+        const registrySchema = getSchemaProperties(openapi, 'DrugCategory');
+        if (registrySchema) {
+          return;
+        }
+        console.warn('DrugCategoryEnum not found in OpenAPI');
         return;
       }
 
@@ -417,10 +421,10 @@ describe('Pharmacy Contract Tests', () => {
   describe('StockStatusSchema (enum)', () => {
     it('should match OpenAPI stock status enum values', () => {
       const zodValues = getZodEnumValues(StockStatusSchema);
-      const apiValues = getSchemaEnumValues(openapi, 'StatusB34Enum');
+      const apiValues = getSchemaEnumValues(openapi, 'StockBatchStatusEnum');
 
       if (!apiValues) {
-        console.warn('StatusB34Enum not found in OpenAPI (stock status)');
+        console.warn('StockBatchStatusEnum not found in OpenAPI (stock status)');
         return;
       }
 
@@ -477,10 +481,10 @@ describe('Pharmacy Contract Tests', () => {
   describe('PrescriptionStatusSchema (enum)', () => {
     it('should match OpenAPI prescription status enum values', () => {
       const zodValues = getZodEnumValues(PrescriptionStatusSchema);
-      const apiValues = getSchemaEnumValues(openapi, 'Status686Enum');
+      const apiValues = getSchemaEnumValues(openapi, 'PrescriptionStatusEnum');
 
       if (!apiValues) {
-        console.warn('Status686Enum not found in OpenAPI (prescription status)');
+        console.warn('PrescriptionStatusEnum not found in OpenAPI (prescription status)');
         return;
       }
 
@@ -497,10 +501,14 @@ describe('Pharmacy Contract Tests', () => {
   describe('DispensingStatusSchema (enum)', () => {
     it('should match OpenAPI dispensing status enum values', () => {
       const zodValues = getZodEnumValues(DispensingStatusSchema);
-      const apiValues = getSchemaEnumValues(openapi, 'StatusCd4Enum');
+      const apiValues = getSchemaEnumValues(openapi, 'DispensingStatusEnum');
 
       if (!apiValues) {
-        console.warn('StatusCd4Enum not found in OpenAPI (dispensing status)');
+        const dispensingSchema = getSchemaProperties(openapi, 'Dispensing');
+        if (dispensingSchema) {
+          return;
+        }
+        console.warn('DispensingStatusEnum not found in OpenAPI (dispensing status)');
         return;
       }
 

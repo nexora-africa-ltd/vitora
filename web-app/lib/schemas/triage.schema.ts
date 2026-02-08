@@ -118,6 +118,7 @@ export const TriageAssessmentSchema = z.object({
   id: z.number(),
   encounter: z.number(),
   encounter_mrn: z.string().optional().nullable(),
+  patient_mrn: z.string().optional().nullable(),
   patient_name: z.string().optional().nullable(),
   patient_age: z.number().optional().nullable(),
   patient_gender: z.string().optional().nullable(),
@@ -133,6 +134,13 @@ export const TriageAssessmentSchema = z.object({
   mental_status: AVPUStatusSchema,
   mobility: MobilityStatusSchema,
   allergies_noted: z.string(),
+  spo2: z.number().optional().nullable(),
+  heart_rate: z.number().optional().nullable(),
+  systolic_bp: z.number().optional().nullable(),
+  diastolic_bp: z.number().optional().nullable(),
+  temperature: z.number().optional().nullable(),
+  respiratory_rate: z.number().optional().nullable(),
+  vitals: z.record(z.unknown()).optional(),
 
   // Triage decision
   triage_category: TriageCategorySchema,
@@ -146,6 +154,8 @@ export const TriageAssessmentSchema = z.object({
   triage_start_time: z.string(),
   triage_end_time: z.string().nullable(),
   seen_by_clinician_time: z.string().nullable(),
+  wait_time_minutes: z.number().optional().nullable(),
+  is_wait_time_exceeded: z.boolean().optional(),
 
   // Generated data
   alerts: z.array(TriageAlertSchema),
@@ -179,6 +189,7 @@ export const TriageQueueEntrySchema = z.object({
   assigned_area_display: z.string(),
   arrival_time: z.string(),
   triage_time: z.string(),
+  notes: z.string().optional().nullable(),
   wait_time_minutes: z.number(),
   is_wait_exceeded: z.boolean(),
   status: QueueStatusSchema,
