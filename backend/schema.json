@@ -29303,10 +29303,9 @@ components:
             * `BYPASSED` - Bypassed - Triage skipped
             * `NOT_APPLICABLE` - Not Applicable - Triage not required
         triage_bypass_reason:
-          type: string
+          allOf:
+          - $ref: '#/components/schemas/TriageBypassReasonEnum'
           nullable: true
-          description: Get triage bypass reason (returns null instead of empty string).
-          readOnly: true
         triage_bypassed_by:
           type: integer
           readOnly: true
@@ -29520,7 +29519,6 @@ components:
       - patient_name
       - status
       - systolic_bp
-      - triage_bypass_reason
       - triage_bypassed_at
       - triage_bypassed_by
       - triage_bypassed_by_username
@@ -29798,6 +29796,10 @@ components:
         clinical_template_data:
           nullable: true
           description: Structured data collected using the clinical template (JSON)
+        triage_bypass_reason:
+          allOf:
+          - $ref: '#/components/schemas/TriageBypassReasonEnum'
+          nullable: true
         linked_encounter:
           type: integer
           nullable: true
@@ -35641,6 +35643,10 @@ components:
         clinical_template_data:
           nullable: true
           description: Structured data collected using the clinical template (JSON)
+        triage_bypass_reason:
+          allOf:
+          - $ref: '#/components/schemas/TriageBypassReasonEnum'
+          nullable: true
         linked_encounter:
           type: integer
           nullable: true
@@ -43167,6 +43173,22 @@ components:
       - mobility
       - triage_category
       - triage_start_time
+    TriageBypassReasonEnum:
+      enum:
+      - STABLE_FOLLOW_UP
+      - CONSULTANT_DECISION
+      - CHRONIC_CARE_REVIEW
+      - STAFF_SHORTAGE
+      - PATIENT_PREFERENCE
+      - OTHER
+      type: string
+      description: |-
+        * `STABLE_FOLLOW_UP` - Stable follow-up patient
+        * `CONSULTANT_DECISION` - Consultant/senior decision
+        * `CHRONIC_CARE_REVIEW` - Chronic care review
+        * `STAFF_SHORTAGE` - Staff shortage
+        * `PATIENT_PREFERENCE` - Patient preference
+        * `OTHER` - Other reason
     TriageCategoryEnum:
       enum:
       - RED

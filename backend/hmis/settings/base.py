@@ -299,6 +299,10 @@ SPECTACULAR_SETTINGS = {
         "NursingKardexRiskEnum": lambda: _model_attr(
             "hmis.apps.inpatient.models.NursingKardex", "RISK_CHOICES"
         ),
+        # Triage bypass reasons
+        "TriageBypassReasonEnum": lambda: _model_attr(
+            "hmis.apps.encounters.models.Encounter", "TRIAGE_BYPASS_REASON_CHOICES"
+        ),
     },
 }
 
