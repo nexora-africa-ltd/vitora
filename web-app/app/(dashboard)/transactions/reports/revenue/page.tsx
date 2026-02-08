@@ -62,12 +62,13 @@ export default function RevenueReportsPage() {
     // Generate CSV
     if (!report) return;
 
+    const categoryEntries = Object.entries(report.by_category);
     const rows = [
       ['Category', 'Revenue', 'Count'],
-      ...report.by_category.map((cat) => [
-        cat.category,
-        String(cat.revenue),
-        cat.count.toString(),
+      ...categoryEntries.map(([category, data]) => [
+        category,
+        String(data.revenue),
+        data.count.toString(),
       ]),
       ['', '', ''],
       ['Payment Method', 'Amount'],
@@ -91,8 +92,15 @@ export default function RevenueReportsPage() {
     return <LoadingSkeleton />;
   }
 
-  const totalRevenue = report ? parseFloat(report.total_revenue) : 0;
-  const categories = report?.by_category || [];
+  const totalRevenue = report?.total_revenue || 0;
+  // Convert object-based by_category to array format for rendering
+  const categories = report?.by_category
+    ? Object.entries(report.by_category).map(([category, data]) => ({
+        category,
+        revenue: data.revenue,
+        count: data.count,
+      }))
+    : [];
   const paymentMethods = (report?.by_payment_method ?? {}) as Record<
     string,
     string | number | null | undefined
@@ -240,8 +248,8 @@ export default function RevenueReportsPage() {
           <CardContent>
             <div className="text-2xl font-bold">
               {categories.length > 0
-                ? categories.sort(
-                    (a, b) => parseFloat(b.revenue) - parseFloat(a.revenue)
+                ? [...categories].sort(
+                    (a, b) => b.revenue - a.revenue
                   )[0]?.category || '-'
                 : '-'}
             </div>
@@ -272,7 +280,7 @@ export default function RevenueReportsPage() {
               </TableHeader>
               <TableBody>
                 {categories.map((cat) => {
-                  const revenue = parseFloat(cat.revenue);
+                  const revenue = cat.revenue;
                   const percentage =
                     totalRevenue > 0
                       ? ((revenue / totalRevenue) * 100).toFixed(1)

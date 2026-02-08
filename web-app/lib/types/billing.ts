@@ -530,15 +530,20 @@ export interface DailyCollectionReport {
 }
 
 export interface RevenueSummary {
-  start_date: string;
-  end_date: string;
-  total_revenue: string;
-  by_category: Array<{
-    category: string;
-    revenue: string;
+  period: {
+    start: string;
+    end: string;
+  };
+  total_revenue: number;
+  by_category: Record<string, {
+    revenue: number;
     count: number;
   }>;
-  by_payment_method: Record<PaymentMethod, string>;
+  by_payment_method: Record<string, number>;
+  previous_period?: {
+    revenue: number;
+    change_percent: number;
+  };
 }
 
 export interface OutstandingBalance {

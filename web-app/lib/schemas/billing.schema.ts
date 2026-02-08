@@ -453,15 +453,20 @@ export const DailyCollectionReportSchema = z.object({
 });
 
 export const RevenueSummarySchema = z.object({
-  start_date: z.string(),
-  end_date: z.string(),
-  total_revenue: z.string(),
-  by_category: z.array(z.object({
-    category: z.string(),
-    revenue: z.string(),
+  period: z.object({
+    start: z.string(),
+    end: z.string(),
+  }),
+  total_revenue: z.number(),
+  by_category: z.record(z.object({
+    revenue: z.number(),
     count: z.number(),
   })),
-  by_payment_method: z.record(z.string()),
+  by_payment_method: z.record(z.number()),
+  previous_period: z.object({
+    revenue: z.number(),
+    change_percent: z.number(),
+  }).optional(),
 });
 
 export const OutstandingBalanceSchema = z.object({

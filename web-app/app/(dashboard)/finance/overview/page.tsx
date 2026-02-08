@@ -404,14 +404,17 @@ export default function FinanceOverviewPage() {
   );
 
   // Payer mix - convert object to array for charting
-  const payerMix = payerMixData?.by_method
-    ? Object.entries(payerMixData.by_method).map(([method, data]) => ({
-        method: method.toUpperCase(),
-        count: data.count,
-        total: data.total,
-        average: data.average,
-      }))
-    : [];
+  const payerMix = (() => {
+    if (!payerMixData?.by_method) return [];
+    const entries = Object.entries(payerMixData.by_method);
+    const total = entries.reduce((sum, [, data]) => sum + (data.total || 0), 0);
+    return entries.map(([method, data]) => ({
+      method: method.toUpperCase(),
+      count: data.count,
+      amount: String(data.total || 0),
+      percentage: total > 0 ? ((data.total / total) * 100).toFixed(1) : '0',
+    }));
+  })();
 
   // Today's collection
   const todayCollection = dailyCollection?.total_collections || 0;
