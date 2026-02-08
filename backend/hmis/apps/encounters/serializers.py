@@ -259,6 +259,12 @@ class EncounterSerializer(serializers.ModelSerializer):
     and computed fields.
     """
 
+    # Vital sign fields - use FloatField to output numbers instead of strings
+    temperature = serializers.FloatField(allow_null=True, required=False)
+    spo2 = serializers.FloatField(allow_null=True, required=False)
+    weight = serializers.FloatField(allow_null=True, required=False)
+    height = serializers.FloatField(allow_null=True, required=False)
+
     # Read-only computed fields
     has_critical_vitals = serializers.ReadOnlyField()
     alerts = serializers.SerializerMethodField()

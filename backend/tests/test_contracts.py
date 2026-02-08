@@ -156,9 +156,10 @@ CONTRACTS: list[tuple[type, frozenset[str]]] = [
     (
         EncounterSerializer,
         frozenset({
-            "id", "patient", "patient_mrn", "patient_name",
-            "patient_gender", "patient_date_of_birth",
-            "encounter_type", "encounter_date", "chief_complaint",
+            "id", "patient", "patient_id", "patient_mrn", "patient_name",
+            "patient_gender", "patient_date_of_birth", "patient_age",
+            "encounter_type", "encounter_type_display",
+            "encounter_date", "arrival_time", "chief_complaint",
             "temperature", "pulse", "blood_pressure",
             "systolic_bp", "diastolic_bp",
             "respiratory_rate", "spo2", "weight", "height",
@@ -173,6 +174,7 @@ CONTRACTS: list[tuple[type, frozenset[str]]] = [
             "status", "finalized_by", "finalized_by_username", "finalized_at",
             "cancellation_reason",
             "triage_requirement", "triage_status",
+            "triage_category", "triage_completed_at",
             "triage_bypass_reason", "triage_bypassed_by",
             "triage_bypassed_by_username", "triage_bypassed_at",
             "consultation_status", "called_at", "consultation_started_at",
