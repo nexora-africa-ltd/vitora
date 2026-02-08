@@ -308,9 +308,9 @@ describe('SHA Contract Tests', () => {
   // ===========================================================================
 
   describe('ClaimStatusSchema (enum)', () => {
-    it('should match OpenAPI StatusEc5Enum values', () => {
+    it('should match OpenAPI ShaClaimStatusEnum values', () => {
       const zodValues = normalizeEnumValues(getZodEnumValues(ClaimStatusSchema));
-      const apiValues = getSchemaEnumValues(openapi, 'StatusEc5Enum');
+      const apiValues = getSchemaEnumValues(openapi, 'ShaClaimStatusEnum');
 
       expect(apiValues).not.toBeNull();
       if (!apiValues) return;
@@ -353,9 +353,9 @@ describe('SHA Contract Tests', () => {
   });
 
   describe('ClaimItemStatusSchema (enum)', () => {
-    it('should match OpenAPI SHAClaimItemStatusEnum values', () => {
+    it('should match OpenAPI ShaClaimItemStatusEnum values', () => {
       const zodValues = normalizeEnumValues(getZodEnumValues(ClaimItemStatusSchema));
-      const apiValues = getSchemaEnumValues(openapi, 'SHAClaimItemStatusEnum');
+      const apiValues = getSchemaEnumValues(openapi, 'ShaClaimItemStatusEnum');
 
       expect(apiValues).not.toBeNull();
       if (!apiValues) return;
@@ -417,9 +417,9 @@ describe('SHA Contract Tests', () => {
   });
 
   describe('MemberStatusSchema (enum)', () => {
-    it('should match OpenAPI Status05dEnum values', () => {
+    it('should match OpenAPI ShaMemberStatusEnum values', () => {
       const zodValues = normalizeEnumValues(getZodEnumValues(MemberStatusSchema));
-        const apiValues = getSchemaEnumValues(openapi, 'Status05dEnum');
+        const apiValues = getSchemaEnumValues(openapi, 'ShaMemberStatusEnum');
 
       expect(apiValues).not.toBeNull();
       if (!apiValues) return;

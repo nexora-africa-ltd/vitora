@@ -446,13 +446,13 @@ describe('Imaging Contract Tests', () => {
   });
 
   describe('ImagingPrioritySchema (enum)', () => {
-    it('should match OpenAPI Priority0b7Enum values', () => {
+    it('should match OpenAPI OrderPriorityEnum values', () => {
       const zodValues = getZodEnumValues(ImagingPrioritySchema);
-      const apiValues = getSchemaEnumValues(openapi, 'Priority0b7Enum');
+      const apiValues = getSchemaEnumValues(openapi, 'OrderPriorityEnum');
 
       expect(apiValues).not.toBeNull();
       if (!apiValues) {
-        console.warn('Priority0b7Enum not found in OpenAPI (imaging priority)');
+        console.warn('OrderPriorityEnum not found in OpenAPI (imaging priority)');
         return;
       }
 

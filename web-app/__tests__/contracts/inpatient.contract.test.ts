@@ -612,9 +612,9 @@ describe('Inpatient Contract Tests', () => {
   });
 
   describe('AdmissionRecommendationUrgencySchema (enum)', () => {
-    it('should match OpenAPI UrgencyEnum values', () => {
+    it('should match OpenAPI AdmissionUrgencyPriorityEnum values', () => {
       const zodValues = getZodEnumValues(AdmissionRecommendationUrgencySchema);
-      const apiValues = getSchemaEnumValues(openapi, 'UrgencyEnum');
+      const apiValues = getSchemaEnumValues(openapi, 'AdmissionUrgencyPriorityEnum');
 
       expect(apiValues).not.toBeNull();
       if (!apiValues) return;
@@ -800,7 +800,7 @@ describe('Inpatient Contract Tests', () => {
   describe('RiskLevelSchema (enum)', () => {
     it('should match OpenAPI RiskLevelEnum values', () => {
       const zodValues = getZodEnumValues(RiskLevelSchema);
-      const apiValues = getSchemaEnumValues(openapi, 'FallRiskEnum');
+      const apiValues = getSchemaEnumValues(openapi, 'NursingKardexRiskEnum');
 
       expect(apiValues).not.toBeNull();
       if (!apiValues) return;

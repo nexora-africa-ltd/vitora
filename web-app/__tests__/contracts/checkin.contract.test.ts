@@ -372,9 +372,9 @@ describe('Check-in Contract Tests', () => {
   // ===========================================================================
 
   describe('VisitTypeSchema (enum)', () => {
-    it('should match OpenAPI VisitTypeAbeEnum values', () => {
+    it('should match OpenAPI CheckInVisitTypeEnum values', () => {
       const zodValues = getZodEnumValues(VisitTypeSchema);
-      const apiValues = getSchemaEnumValues(openapi, 'VisitTypeAbeEnum');
+      const apiValues = getSchemaEnumValues(openapi, 'CheckInVisitTypeEnum');
 
       expect(apiValues).not.toBeNull();
       if (!apiValues) return;
