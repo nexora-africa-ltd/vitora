@@ -5,7 +5,7 @@ Views for core app.
 from django.contrib.auth.models import Permission
 from django.contrib.auth.signals import user_logged_in, user_login_failed
 from drf_spectacular.types import OpenApiTypes
-from drf_spectacular.utils import OpenApiParameter, extend_schema, inline_serializer
+from drf_spectacular.utils import OpenApiParameter, extend_schema, extend_schema_view, inline_serializer
 from rest_framework import filters, serializers, status, viewsets
 from rest_framework.decorators import action, api_view, permission_classes
 from rest_framework.mixins import ListModelMixin, RetrieveModelMixin
@@ -13,7 +13,7 @@ from rest_framework.permissions import IsAdminUser, IsAuthenticated
 from rest_framework.response import Response
 from rest_framework_simplejwt.views import TokenObtainPairView
 
-from .models import AuditLog, County, Department, FrontendEvent, Role, StaffProfile, SubCounty, Ward
+from .models import AuditLog, County, Department, FrontendEvent, Notification, Role, StaffProfile, SubCounty, Ward
 from .permissions import AuditLogPermission
 from .serializers import (
     AuditLogSerializer,
@@ -21,6 +21,7 @@ from .serializers import (
     DepartmentSerializer,
     FrontendEventBatchSerializer,
     FrontendEventSerializer,
+    NotificationSerializer,
     PermissionSerializer,
     RoleSerializer,
     StaffProfileSerializer,
@@ -563,6 +564,28 @@ class StaffProfileViewSet(viewsets.ModelViewSet):
 # ============================================================================
 
 
+@extend_schema_view(
+    retrieve=extend_schema(
+        parameters=[
+            OpenApiParameter("id", OpenApiTypes.INT, location="path", description="Notification ID"),
+        ],
+    ),
+    partial_update=extend_schema(
+        parameters=[
+            OpenApiParameter("id", OpenApiTypes.INT, location="path", description="Notification ID"),
+        ],
+    ),
+    update=extend_schema(
+        parameters=[
+            OpenApiParameter("id", OpenApiTypes.INT, location="path", description="Notification ID"),
+        ],
+    ),
+    destroy=extend_schema(
+        parameters=[
+            OpenApiParameter("id", OpenApiTypes.INT, location="path", description="Notification ID"),
+        ],
+    ),
+)
 class NotificationViewSet(viewsets.ModelViewSet):
     """
     ViewSet for managing user notifications.
@@ -575,9 +598,7 @@ class NotificationViewSet(viewsets.ModelViewSet):
     - Polling support with timestamp filtering
     """
 
-    from .models import Notification
-    from .serializers import NotificationSerializer
-
+    queryset = Notification.objects.all()
     serializer_class = NotificationSerializer
     permission_classes = [IsAuthenticated]
     filter_backends = [filters.OrderingFilter]
@@ -588,8 +609,6 @@ class NotificationViewSet(viewsets.ModelViewSet):
     def get_queryset(self):
         """Filter notifications to current user only."""
         from django.utils.dateparse import parse_datetime
-
-        from .models import Notification
 
         queryset = Notification.objects.filter(user=self.request.user)
 
@@ -643,8 +662,6 @@ class NotificationViewSet(viewsets.ModelViewSet):
         """Mark all unread notifications as read."""
         from django.utils import timezone
 
-        from .models import Notification
-
         count = Notification.objects.filter(
             user=request.user,
             is_read=False,
@@ -655,8 +672,6 @@ class NotificationViewSet(viewsets.ModelViewSet):
     @action(detail=False, methods=["get"])
     def unread_count(self, request):
         """Get count of unread notifications."""
-        from .models import Notification
-
         count = Notification.objects.filter(
             user=request.user,
             is_read=False,

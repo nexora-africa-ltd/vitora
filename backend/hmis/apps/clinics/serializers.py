@@ -211,7 +211,7 @@ class ClinicVisitSerializer(serializers.ModelSerializer):
     priority_display = serializers.CharField(source="get_priority_display", read_only=True)
     visit_type_display = serializers.CharField(source="get_visit_type_display", read_only=True)
     source_display = serializers.CharField(source="get_source_display", read_only=True)
-    wait_time_minutes = serializers.ReadOnlyField()
+    wait_time_minutes = serializers.IntegerField(read_only=True)
     assigned_clinician_name = serializers.CharField(
         source="assigned_clinician.get_full_name", read_only=True
     )

@@ -57,6 +57,10 @@ class FHIRPatientView(APIView):
     
     permission_classes = [IsAuthenticated]
     
+    @extend_schema(
+        responses={200: OpenApiTypes.OBJECT, 404: OpenApiTypes.OBJECT},
+        description="Get a FHIR R4 Patient resource by ID",
+    )
     def get(self, request, pk: int) -> Response:
         """Get a Patient resource by ID."""
         from hmis.apps.patients.models import Patient
@@ -215,6 +219,10 @@ class FHIRPractitionerView(APIView):
     
     permission_classes = [IsAuthenticated]
     
+    @extend_schema(
+        responses={200: OpenApiTypes.OBJECT, 404: OpenApiTypes.OBJECT},
+        description="Get a FHIR R4 Practitioner resource by ID",
+    )
     def get(self, request, pk: int) -> Response:
         """Get a Practitioner resource by ID."""
         from hmis.apps.core.models import StaffProfile
@@ -285,6 +293,10 @@ class FHIROrganizationView(APIView):
     
     permission_classes = [IsAuthenticated]
     
+    @extend_schema(
+        responses={200: OpenApiTypes.OBJECT, 404: OpenApiTypes.OBJECT},
+        description="Get a FHIR R4 Organization resource by ID",
+    )
     def get(self, request, pk: int) -> Response:
         """Get an Organization resource by ID."""
         from hmis.apps.clinics.models import Clinic
@@ -361,6 +373,10 @@ class FHIRObservationView(APIView):
     
     permission_classes = [IsAuthenticated]
     
+    @extend_schema(
+        responses={200: OpenApiTypes.OBJECT, 404: OpenApiTypes.OBJECT},
+        description="Get a FHIR R4 Observation resource by ID",
+    )
     def get(self, request, pk: int) -> Response:
         """Get an Observation resource by ID."""
         # Check lab results first
@@ -538,6 +554,10 @@ class FHIRConditionView(APIView):
     
     permission_classes = [IsAuthenticated]
     
+    @extend_schema(
+        responses={200: OpenApiTypes.OBJECT, 404: OpenApiTypes.OBJECT},
+        description="Get a FHIR R4 Condition resource by ID",
+    )
     def get(self, request, pk: int) -> Response:
         """Get a Condition resource by ID."""
         from hmis.apps.encounters.models import Diagnosis
@@ -634,6 +654,10 @@ class FHIRCompositionView(APIView):
     
     permission_classes = [IsAuthenticated]
     
+    @extend_schema(
+        responses={200: OpenApiTypes.OBJECT, 404: OpenApiTypes.OBJECT},
+        description="Get a FHIR R4 Composition resource by ID",
+    )
     def get(self, request, pk: int) -> Response:
         """Get a Composition resource by ID (using patient ID as proxy)."""
         from hmis.apps.patients.models import Patient
@@ -764,6 +788,10 @@ class FHIRAllergyIntoleranceView(APIView):
     
     permission_classes = [IsAuthenticated]
     
+    @extend_schema(
+        responses={200: OpenApiTypes.OBJECT, 404: OpenApiTypes.OBJECT},
+        description="Get a FHIR R4 AllergyIntolerance resource by ID",
+    )
     def get(self, request, pk: int) -> Response:
         """Get an AllergyIntolerance resource by ID."""
         # For now, return a placeholder since allergies may be stored differently
@@ -789,6 +817,10 @@ class FHIRMedicationStatementView(APIView):
     
     permission_classes = [IsAuthenticated]
     
+    @extend_schema(
+        responses={200: OpenApiTypes.OBJECT, 404: OpenApiTypes.OBJECT},
+        description="Get a FHIR R4 MedicationStatement resource by ID",
+    )
     def get(self, request, pk: int) -> Response:
         """Get a MedicationStatement resource by ID."""
         from hmis.apps.pharmacy.models import Prescription
@@ -845,6 +877,10 @@ class FHIRDeviceView(APIView):
     
     permission_classes = [IsAuthenticated]
     
+    @extend_schema(
+        responses={200: OpenApiTypes.OBJECT, 404: OpenApiTypes.OBJECT},
+        description="Get a FHIR R4 Device resource by ID",
+    )
     def get(self, request, pk: int) -> Response:
         """Get a Device resource by ID."""
         # Return placeholder - devices may not be tracked in the system
@@ -872,6 +908,10 @@ class FHIRPatientSummaryView(APIView):
     
     permission_classes = [IsAuthenticated]
     
+    @extend_schema(
+        responses={200: OpenApiTypes.OBJECT, 404: OpenApiTypes.OBJECT},
+        description="Generate an IPS (International Patient Summary) Bundle for a patient",
+    )
     def get(self, request, pk: int) -> Response:
         """Generate IPS Bundle for a patient."""
         from hmis.apps.patients.models import Patient

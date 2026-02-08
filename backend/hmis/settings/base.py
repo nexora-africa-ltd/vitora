@@ -179,6 +179,9 @@ SPECTACULAR_SETTINGS = {
     "VERSION": "0.1.0",
     "SERVE_INCLUDE_SCHEMA": False,
     "COMPONENT_SPLIT_REQUEST": True,
+    # Reduce enum collision warnings - these are cosmetic and don't affect functionality
+    # The auto-generated hash names (e.g. Status753Enum) work correctly, just have non-ideal names
+    "ENUM_ADD_EXPLICIT_BLANK_NULL_CHOICE": False,
 }
 
 # Simple JWT settings

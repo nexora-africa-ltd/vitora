@@ -12,7 +12,7 @@ from django.db.models import Q
 from django.shortcuts import get_object_or_404
 from django_filters.rest_framework import DjangoFilterBackend
 from drf_spectacular.types import OpenApiTypes
-from drf_spectacular.utils import OpenApiParameter, extend_schema, inline_serializer
+from drf_spectacular.utils import OpenApiParameter, extend_schema, extend_schema_view, inline_serializer
 from rest_framework import filters, serializers, status, viewsets
 from rest_framework.decorators import action
 from rest_framework.permissions import IsAuthenticated
@@ -288,6 +288,12 @@ class InvoiceViewSet(viewsets.ModelViewSet):
             return Response(serializer.data, status=status.HTTP_201_CREATED)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
+    @extend_schema(
+        parameters=[
+            OpenApiParameter("item_id", OpenApiTypes.INT, location="path", description="Invoice item ID to remove"),
+        ],
+        responses={204: None},
+    )
     @action(detail=True, methods=["delete"], url_path="items/(?P<item_id>[^/.]+)")
     def remove_item(self, request, pk=None, item_id=None):
         """Remove an invoice item."""
@@ -400,6 +406,7 @@ class CreditNoteViewSet(viewsets.ModelViewSet):
             return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
 
 
+@extend_schema_view()
 class MpesaViewSet(viewsets.ViewSet):
     """
     ViewSet for M-Pesa integration.
@@ -411,6 +418,7 @@ class MpesaViewSet(viewsets.ViewSet):
     """
 
     permission_classes = [IsAuthenticated]
+    serializer_class = None  # No model serializer - all actions use inline serializers
 
     @extend_schema(
         request=inline_serializer(
@@ -534,6 +542,18 @@ class MpesaViewSet(viewsets.ViewSet):
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR,
             )
 
+    @extend_schema(
+        request=OpenApiTypes.OBJECT,
+        responses={
+            200: inline_serializer(
+                name="MpesaCallbackResponse",
+                fields={
+                    "ResultCode": serializers.IntegerField(),
+                    "ResultDesc": serializers.CharField(),
+                },
+            )
+        },
+    )
     @action(detail=False, methods=["post"], permission_classes=[])
     def callback(self, request):
         """
@@ -619,6 +639,25 @@ class MpesaViewSet(viewsets.ViewSet):
                 status=status.HTTP_200_OK,
             )
 
+    @extend_schema(
+        parameters=[
+            OpenApiParameter("checkout_request_id", OpenApiTypes.STR, location="path", description="M-Pesa checkout request ID"),
+        ],
+        responses={
+            200: inline_serializer(
+                name="MpesaQueryResponse",
+                fields={
+                    "success": serializers.BooleanField(),
+                    "result_code": serializers.IntegerField(),
+                    "result_description": serializers.CharField(),
+                    "checkout_request_id": serializers.CharField(),
+                    "amount": serializers.CharField(required=False),
+                    "mpesa_receipt_number": serializers.CharField(required=False, allow_null=True),
+                    "phone_number": serializers.CharField(required=False, allow_null=True),
+                },
+            )
+        },
+    )
     @action(detail=False, methods=["get"], url_path="query/(?P<checkout_request_id>[^/.]+)")
     def query(self, request, checkout_request_id=None):
         """
@@ -692,6 +731,7 @@ class MpesaViewSet(viewsets.ViewSet):
             )
 
 
+@extend_schema_view()
 class ReportViewSet(viewsets.ViewSet):
     """
     ViewSet for billing reports.
@@ -700,6 +740,7 @@ class ReportViewSet(viewsets.ViewSet):
     """
 
     permission_classes = [IsAuthenticated]
+    serializer_class = None  # No model serializer - all actions return dict responses
 
     @extend_schema(
         parameters=[
