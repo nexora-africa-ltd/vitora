@@ -106,6 +106,45 @@ export type EnrollmentStatus =
   | 'DECEASED'
   | 'SUSPENDED';
 
+// =============================================================================
+// CHRONIC CARE TYPES
+// =============================================================================
+
+/**
+ * Blood group types
+ */
+export type BloodGroup = 'A+' | 'A-' | 'B+' | 'B-' | 'AB+' | 'AB-' | 'O+' | 'O-';
+
+/**
+ * Rhesus factor
+ */
+export type RhesusFactor = 'POSITIVE' | 'NEGATIVE';
+
+/**
+ * HIV status
+ */
+export type HivStatus = 'POSITIVE' | 'NEGATIVE' | 'UNKNOWN';
+
+/**
+ * Partner HIV status
+ */
+export type PartnerHivStatus = 'POSITIVE' | 'NEGATIVE' | 'UNKNOWN' | 'NOT_TESTED';
+
+/**
+ * Diabetes type
+ */
+export type DiabetesType = 'TYPE_1' | 'TYPE_2' | 'GESTATIONAL' | 'OTHER';
+
+/**
+ * ART regimen line (for CCC)
+ */
+export type ArtRegimenLine = 'FIRST_LINE' | 'SECOND_LINE' | 'THIRD_LINE';
+
+/**
+ * WHO clinical stage (HIV)
+ */
+export type WhoClinicalStage = 1 | 2 | 3 | 4;
+
 /**
  * Staff role in clinic
  * Matches backend ClinicStaff.ROLE_CHOICES
@@ -386,24 +425,132 @@ export interface ClinicScheduleCreateData {
 // CLINIC ENROLLMENT MODEL (Chronic Care)
 // =============================================================================
 
+/**
+ * Clinic Enrollment interface - matches backend ClinicEnrollmentSerializer.
+ *
+ * Includes all chronic care program fields:
+ * - CCC (HIV/AIDS): ART regimen, viral load, CD4 count
+ * - ANC (Antenatal): Gravida, para, LMP, EDD, pregnancy risk
+ * - Diabetic: HbA1c, FBS, insulin, complications
+ *
+ * Note: Some fields have aliases for backward compatibility:
+ * - program_data (frontend) ↔ enrollment_data (backend)
+ * - next_appointment_date (frontend) ↔ next_appointment (backend)
+ * - visit_count (frontend) ↔ total_visits (backend)
+ */
 export interface ClinicEnrollment {
+  // Primary identifiers
   id: number;
   clinic: number;
   clinic_name: string;
+  clinic_type?: ClinicType | null;
   patient: number;
   patient_mrn: string;
   patient_name: string;
   enrollment_number: string;
   enrollment_date: string;
+
+  // Status
   status: EnrollmentStatus;
   status_display: string;
-  program_data: Record<string, unknown>;
-  next_appointment_date: string | null;
+
+  // Program data - backend uses enrollment_data, frontend alias program_data
+  enrollment_data?: Record<string, unknown> | null;
+  program_data?: Record<string, unknown>; // Backward compatibility alias
+
+  // Appointments - backend uses next_appointment, frontend alias next_appointment_date
+  next_appointment?: string | null;
+  next_appointment_date?: string | null; // Backward compatibility alias
+  appointment_interval_days?: number | null;
   last_visit_date: string | null;
-  visit_count: number;
-  notes: string;
+
+  // Visit tracking - backend uses total_visits, frontend alias visit_count
+  total_visits?: number | null;
+  visit_count?: number; // Backward compatibility alias
+
+  // Enrollment metadata
   enrolled_by: number;
   enrolled_by_name: string;
+  notes?: string;
+
+  // Outcome
+  outcome_date?: string | null;
+  outcome_reason?: string | null;
+  transfer_facility?: string | null;
+
+  // Computed status fields
+  is_overdue?: boolean | null;
+  is_defaulter?: boolean | null;
+  days_since_last_visit?: number | string | null;
+  days_overdue?: number | string | null;
+  enrollment_type?: string | null;
+  clinic_specific_summary?: string | null;
+
+  // ===========================================
+  // CCC (HIV/AIDS) FIELDS
+  // ===========================================
+  art_start_date?: string | null;
+  current_art_regimen?: string | null;
+  art_regimen_line?: ArtRegimenLine | null;
+  who_clinical_stage?: WhoClinicalStage | number | string | null;
+  baseline_cd4_count?: number | null;
+  latest_cd4_count?: number | null;
+  latest_cd4_date?: string | null;
+  latest_viral_load?: number | null;
+  latest_viral_load_date?: string | null;
+  viral_load_suppressed?: boolean | null;
+
+  // CCC computed fields
+  days_on_art?: number | string | null;
+  viral_load_due?: boolean | string | null;
+  cd4_due?: boolean | string | null;
+  is_virally_suppressed?: boolean | null;
+
+  // ===========================================
+  // ANC (ANTENATAL) FIELDS
+  // ===========================================
+  gravida?: number | null;
+  para?: number | null;
+  lmp?: string | null;
+  edd?: string | null;
+  height_cm?: number | null;
+  blood_group?: BloodGroup | null;
+  rhesus_factor?: RhesusFactor | null;
+  hiv_status?: HivStatus | null;
+  partner_hiv_status?: PartnerHivStatus | null;
+  previous_cesarean?: boolean | null;
+  high_risk_pregnancy?: boolean | null;
+  high_risk_factors?: string | null;
+
+  // ANC computed fields
+  gestation_weeks?: number | null;
+  gestation_display?: string | null;
+  trimester?: number | string | null;
+  days_to_edd?: number | null;
+
+  // ===========================================
+  // DIABETIC CLINIC FIELDS
+  // ===========================================
+  diabetes_type?: DiabetesType | null;
+  diabetes_diagnosis_date?: string | null;
+  latest_hba1c?: number | null;
+  latest_hba1c_date?: string | null;
+  latest_fbs?: number | null;
+  latest_fbs_date?: string | null;
+  on_insulin?: boolean | null;
+  diabetes_complications?: string | null;
+
+  // Diabetic computed fields
+  hba1c_controlled?: boolean | null;
+  hba1c_due?: boolean | string | null;
+
+  // ===========================================
+  // ALERT TRACKING
+  // ===========================================
+  last_reminder_sent?: string | null;
+  missed_appointment_alerts?: number | null;
+
+  // Timestamps
   created_at: string;
   updated_at: string;
 }

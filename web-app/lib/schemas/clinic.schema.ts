@@ -43,6 +43,15 @@ export const EnrollmentStatusSchema = z.enum([
 
 export const ClinicStaffRoleSchema = z.enum(['LEAD', 'DOCTOR', 'NURSE', 'COUNSELOR', 'NUTRITIONIST', 'CLERK', 'OTHER']);
 
+// Chronic care enums
+export const BloodGroupSchema = z.enum(['A+', 'A-', 'B+', 'B-', 'AB+', 'AB-', 'O+', 'O-']);
+export const RhesusFactorSchema = z.enum(['POSITIVE', 'NEGATIVE']);
+export const HivStatusSchema = z.enum(['POSITIVE', 'NEGATIVE', 'UNKNOWN']);
+export const PartnerHivStatusSchema = z.enum(['POSITIVE', 'NEGATIVE', 'UNKNOWN', 'NOT_TESTED']);
+export const DiabetesTypeSchema = z.enum(['TYPE_1', 'TYPE_2', 'GESTATIONAL', 'OTHER']);
+export const ArtRegimenLineSchema = z.enum(['FIRST_LINE', 'SECOND_LINE', 'THIRD_LINE']);
+export const WhoClinicalStageSchema = z.enum(['1', '2', '3', '4']);
+
 // =============================================================================
 // CLINIC SCHEMAS
 // =============================================================================
@@ -237,24 +246,132 @@ export const ClinicScheduleSchema = z.object({
 // ENROLLMENT SCHEMAS
 // =============================================================================
 
+/**
+ * ClinicEnrollmentSchema - Validates clinic enrollment responses from the backend.
+ *
+ * Includes all chronic care program fields:
+ * - CCC (HIV/AIDS): ART regimen, viral load, CD4 count
+ * - ANC (Antenatal): Gravida, para, LMP, EDD, pregnancy risk
+ * - Diabetic: HbA1c, FBS, insulin, complications
+ *
+ * Note: Some fields have aliases for backward compatibility:
+ * - program_data (frontend) ↔ enrollment_data (backend)
+ * - next_appointment_date (frontend) ↔ next_appointment (backend)
+ * - visit_count (frontend) ↔ total_visits (backend)
+ */
 export const ClinicEnrollmentSchema = z.object({
+  // Primary identifiers
   id: z.number(),
   clinic: z.number(),
   clinic_name: z.string(),
+  clinic_type: ClinicTypeSchema.nullable().optional(),
   patient: z.number(),
   patient_mrn: z.string(),
   patient_name: z.string(),
   enrollment_number: z.string(),
   enrollment_date: z.string(),
+
+  // Status
   status: EnrollmentStatusSchema,
   status_display: z.string(),
-  program_data: z.record(z.unknown()),
-  next_appointment_date: z.string().nullable(),
+
+  // Program data - backend uses enrollment_data, frontend alias program_data
+  enrollment_data: z.record(z.unknown()).nullable().optional(),
+  program_data: z.record(z.unknown()).optional(), // Backward compatibility alias
+
+  // Appointments - backend uses next_appointment, frontend alias next_appointment_date
+  next_appointment: z.string().nullable().optional(),
+  next_appointment_date: z.string().nullable().optional(), // Backward compatibility alias
+  appointment_interval_days: z.number().nullable().optional(),
   last_visit_date: z.string().nullable(),
-  visit_count: z.number(),
-  notes: z.string(),
+
+  // Visit tracking - backend uses total_visits, frontend alias visit_count
+  total_visits: z.number().nullable().optional(),
+  visit_count: z.number().optional(), // Backward compatibility alias
+
+  // Enrollment metadata
   enrolled_by: z.number(),
   enrolled_by_name: z.string(),
+  notes: z.string().optional(),
+
+  // Outcome
+  outcome_date: z.string().nullable().optional(),
+  outcome_reason: z.string().nullable().optional(),
+  transfer_facility: z.string().nullable().optional(),
+
+  // Computed status fields
+  is_overdue: z.boolean().nullable().optional(),
+  is_defaulter: z.boolean().nullable().optional(),
+  days_since_last_visit: z.union([z.number(), z.string()]).nullable().optional(),
+  days_overdue: z.union([z.number(), z.string()]).nullable().optional(),
+  enrollment_type: z.string().nullable().optional(),
+  clinic_specific_summary: z.string().nullable().optional(),
+
+  // ===========================================
+  // CCC (HIV/AIDS) FIELDS
+  // ===========================================
+  art_start_date: z.string().nullable().optional(),
+  current_art_regimen: z.string().nullable().optional(),
+  art_regimen_line: ArtRegimenLineSchema.nullable().optional(),
+  who_clinical_stage: z.union([z.number(), z.string()]).nullable().optional(),
+  baseline_cd4_count: z.number().nullable().optional(),
+  latest_cd4_count: z.number().nullable().optional(),
+  latest_cd4_date: z.string().nullable().optional(),
+  latest_viral_load: z.number().nullable().optional(),
+  latest_viral_load_date: z.string().nullable().optional(),
+  viral_load_suppressed: z.boolean().nullable().optional(),
+
+  // CCC computed fields
+  days_on_art: z.union([z.number(), z.string()]).nullable().optional(),
+  viral_load_due: z.union([z.boolean(), z.string()]).nullable().optional(),
+  cd4_due: z.union([z.boolean(), z.string()]).nullable().optional(),
+  is_virally_suppressed: z.boolean().nullable().optional(),
+
+  // ===========================================
+  // ANC (ANTENATAL) FIELDS
+  // ===========================================
+  gravida: z.number().nullable().optional(),
+  para: z.number().nullable().optional(),
+  lmp: z.string().nullable().optional(),
+  edd: z.string().nullable().optional(),
+  height_cm: z.number().nullable().optional(),
+  blood_group: BloodGroupSchema.nullable().optional(),
+  rhesus_factor: RhesusFactorSchema.nullable().optional(),
+  hiv_status: HivStatusSchema.nullable().optional(),
+  partner_hiv_status: PartnerHivStatusSchema.nullable().optional(),
+  previous_cesarean: z.boolean().nullable().optional(),
+  high_risk_pregnancy: z.boolean().nullable().optional(),
+  high_risk_factors: z.string().nullable().optional(),
+
+  // ANC computed fields
+  gestation_weeks: z.number().nullable().optional(),
+  gestation_display: z.string().nullable().optional(),
+  trimester: z.union([z.number(), z.string()]).nullable().optional(),
+  days_to_edd: z.number().nullable().optional(),
+
+  // ===========================================
+  // DIABETIC CLINIC FIELDS
+  // ===========================================
+  diabetes_type: DiabetesTypeSchema.nullable().optional(),
+  diabetes_diagnosis_date: z.string().nullable().optional(),
+  latest_hba1c: z.number().nullable().optional(),
+  latest_hba1c_date: z.string().nullable().optional(),
+  latest_fbs: z.number().nullable().optional(),
+  latest_fbs_date: z.string().nullable().optional(),
+  on_insulin: z.boolean().nullable().optional(),
+  diabetes_complications: z.string().nullable().optional(),
+
+  // Diabetic computed fields
+  hba1c_controlled: z.boolean().nullable().optional(),
+  hba1c_due: z.union([z.boolean(), z.string()]).nullable().optional(),
+
+  // ===========================================
+  // ALERT TRACKING
+  // ===========================================
+  last_reminder_sent: z.string().nullable().optional(),
+  missed_appointment_alerts: z.number().nullable().optional(),
+
+  // Timestamps
   created_at: z.string(),
   updated_at: z.string(),
 });
