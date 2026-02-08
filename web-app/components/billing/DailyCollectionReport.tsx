@@ -141,10 +141,10 @@ export function DailyCollectionReportView({
               </CardHeader>
               <CardContent>
                 <div className="text-2xl font-bold" data-testid="total-collections">
-                  {formatCurrency(report.total_amount)}
+                  {formatCurrency(report.total_collections)}
                 </div>
                 <p className="text-xs text-muted-foreground">
-                  {report.total_transactions} transactions
+                  {report.invoice_count} invoice{report.invoice_count !== 1 ? 's' : ''} paid
                 </p>
               </CardContent>
             </Card>
@@ -157,11 +157,8 @@ export function DailyCollectionReportView({
               </CardHeader>
               <CardContent>
                 <div className="text-2xl font-bold">
-                  {formatCurrency(report.by_method?.CASH?.amount || 0)}
+                  {formatCurrency(parseFloat(String(report.by_payment_method?.cash || report.by_payment_method?.CASH || 0)))}
                 </div>
-                <p className="text-xs text-muted-foreground">
-                  {report.by_method?.CASH?.count || 0} transactions
-                </p>
               </CardContent>
             </Card>
 
@@ -173,11 +170,8 @@ export function DailyCollectionReportView({
               </CardHeader>
               <CardContent>
                 <div className="text-2xl font-bold">
-                  {formatCurrency(report.by_method?.MPESA?.amount || 0)}
+                  {formatCurrency(parseFloat(String(report.by_payment_method?.mpesa || report.by_payment_method?.MPESA || 0)))}
                 </div>
-                <p className="text-xs text-muted-foreground">
-                  {report.by_method?.MPESA?.count || 0} transactions
-                </p>
               </CardContent>
             </Card>
 
@@ -190,16 +184,11 @@ export function DailyCollectionReportView({
               <CardContent>
                 <div className="text-2xl font-bold">
                   {formatCurrency(
-                    (report.by_method?.CARD?.amount || 0) +
-                    (report.by_method?.BANK_TRANSFER?.amount || 0) +
-                    (report.by_method?.INSURANCE?.amount || 0)
+                    parseFloat(String(report.by_payment_method?.card || report.by_payment_method?.CARD || 0)) +
+                    parseFloat(String(report.by_payment_method?.bank_transfer || report.by_payment_method?.BANK_TRANSFER || 0)) +
+                    parseFloat(String(report.by_payment_method?.insurance || report.by_payment_method?.INSURANCE || 0))
                   )}
                 </div>
-                <p className="text-xs text-muted-foreground">
-                  {(report.by_method?.CARD?.count || 0) +
-                    (report.by_method?.BANK_TRANSFER?.count || 0) +
-                    (report.by_method?.INSURANCE?.count || 0)} transactions
-                </p>
               </CardContent>
             </Card>
           </div>
@@ -214,40 +203,38 @@ export function DailyCollectionReportView({
                 <TableHeader>
                   <TableRow>
                     <TableHead>Payment Method</TableHead>
-                    <TableHead className="text-right">Transactions</TableHead>
                     <TableHead className="text-right">Amount</TableHead>
                     <TableHead className="text-right">% of Total</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {report.by_method && Object.entries(report.by_method).map(([method, data]) => (
-                    <TableRow key={method}>
-                      <TableCell>
-                        <div className="flex items-center gap-2">
-                          {methodIcons[method]}
-                          <span className="capitalize">{method.replace('_', ' ')}</span>
-                        </div>
-                      </TableCell>
-                      <TableCell className="text-right">{data.count}</TableCell>
-                      <TableCell className="text-right font-medium">
-                        {formatCurrency(data.amount)}
-                      </TableCell>
-                      <TableCell className="text-right">
-                        {report.total_amount > 0
-                          ? ((data.amount / report.total_amount) * 100).toFixed(1)
-                          : 0}%
-                      </TableCell>
-                    </TableRow>
-                  ))}
+                  {report.by_payment_method && Object.entries(report.by_payment_method).map(([method, amount]) => {
+                    const methodAmount = parseFloat(String(amount));
+                    return (
+                      <TableRow key={method}>
+                        <TableCell>
+                          <div className="flex items-center gap-2">
+                            {methodIcons[method.toUpperCase()]}
+                            <span className="capitalize">{method.replace('_', ' ')}</span>
+                          </div>
+                        </TableCell>
+                        <TableCell className="text-right font-medium">
+                          {formatCurrency(methodAmount)}
+                        </TableCell>
+                        <TableCell className="text-right">
+                          {report.total_collections > 0
+                            ? ((methodAmount / report.total_collections) * 100).toFixed(1)
+                            : 0}%
+                        </TableCell>
+                      </TableRow>
+                    );
+                  })}
                 </TableBody>
                 <TableFooter>
                   <TableRow>
                     <TableCell className="font-bold">Total</TableCell>
                     <TableCell className="text-right font-bold">
-                      {report.total_transactions}
-                    </TableCell>
-                    <TableCell className="text-right font-bold">
-                      {formatCurrency(report.total_amount)}
+                      {formatCurrency(report.total_collections)}
                     </TableCell>
                     <TableCell className="text-right font-bold">100%</TableCell>
                   </TableRow>
@@ -256,41 +243,30 @@ export function DailyCollectionReportView({
             </CardContent>
           </Card>
 
-          {/* Recent Transactions */}
-          {report.recent_payments && report.recent_payments.length > 0 && (
+          {/* Top Services */}
+          {report.top_services && report.top_services.length > 0 && (
             <Card>
               <CardHeader>
-                <CardTitle>Recent Transactions</CardTitle>
+                <CardTitle>Top Services</CardTitle>
               </CardHeader>
               <CardContent>
                 <Table>
                   <TableHeader>
                     <TableRow>
-                      <TableHead>Reference #</TableHead>
-                      <TableHead>Time</TableHead>
-                      <TableHead>Method</TableHead>
-                      <TableHead className="text-right">Amount</TableHead>
+                      <TableHead>Service</TableHead>
+                      <TableHead className="text-right">Count</TableHead>
+                      <TableHead className="text-right">Revenue</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {report.recent_payments.map((payment) => (
-                      <TableRow key={payment.id}>
+                    {report.top_services.map((service, idx) => (
+                      <TableRow key={idx}>
                         <TableCell className="font-medium">
-                          {payment.payment_reference}
+                          {service.service__name || 'Unknown Service'}
                         </TableCell>
-                        <TableCell>
-                          {format(new Date(payment.created_at), 'HH:mm')}
-                        </TableCell>
-                        <TableCell>
-                          <div className="flex items-center gap-2">
-                            {methodIcons[payment.method]}
-                            <span className="capitalize">
-                              {payment.method.replace('_', ' ')}
-                            </span>
-                          </div>
-                        </TableCell>
+                        <TableCell className="text-right">{service.count}</TableCell>
                         <TableCell className="text-right font-medium">
-                          {formatCurrency(parseFloat(payment.amount))}
+                          {formatCurrency(parseFloat(String(service.total_revenue)))}
                         </TableCell>
                       </TableRow>
                     ))}

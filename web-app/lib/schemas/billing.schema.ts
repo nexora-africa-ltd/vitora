@@ -125,7 +125,7 @@ export const InvoiceItemSchema = z.object({
   id: z.number(),
   invoice: z.number(),
   description: z.string(),
-  quantity: z.number(),
+  quantity: z.string(), // DecimalField serialized as string
   unit_price: z.string(),
   discount_percentage: z.string(),
   line_total: z.string(),
@@ -441,19 +441,15 @@ export const PaymentMethodBreakdownSchema = z.object({
 
 export const DailyCollectionReportSchema = z.object({
   date: z.string(),
-  total_collected: z.string(),
-  total_amount: z.number(),
-  total_transactions: z.number(),
+  total_collections: z.union([z.number(), z.string()]).transform(v => typeof v === 'string' ? parseFloat(v) : v),
   invoice_count: z.number(),
-  by_payment_method: z.record(z.string()),
-  by_method: z.record(PaymentMethodBreakdownSchema).optional(),
-  recent_payments: z.array(z.object({
-    id: z.number(),
-    payment_reference: z.string(),
-    amount: z.string(),
-    method: PaymentMethodSchema,
-    created_at: z.string(),
-  })).optional(),
+  by_payment_method: z.record(z.union([z.number(), z.string()])),
+  top_services: z.array(z.object({
+    service__name: z.string().nullable(),
+    total_revenue: z.union([z.number(), z.string()]),
+    count: z.number(),
+  })),
+  outstanding_balance: z.union([z.number(), z.string()]).transform(v => typeof v === 'string' ? parseFloat(v) : v),
 });
 
 export const RevenueSummarySchema = z.object({
@@ -492,18 +488,24 @@ export const ServiceUtilizationSchema = z.object({
 });
 
 export const PaymentMethodAnalysisSchema = z.object({
-  start_date: z.string(),
-  end_date: z.string(),
-  total_payments: z.number(),
-  total_amount: z.string(),
-  by_method: z.array(z.object({
-    method: PaymentMethodSchema,
+  // Backend returns period as nested object
+  period: z.object({
+    start: z.string(),
+    end: z.string(),
+  }),
+  // Backend returns by_method as object keyed by method name
+  by_method: z.record(z.object({
+    total: z.number(),
     count: z.number(),
-    amount: z.string(),
-    percentage: z.string(),
+    average: z.number(),
   })),
-  mpesa_success_rate: z.string().optional(),
-  average_payment_amount: z.string(),
+  average_transaction: z.number(),
+  mpesa_metrics: z.object({
+    total_transactions: z.number(),
+    successful_transactions: z.number(),
+    failed_transactions: z.number(),
+    success_rate: z.number(),
+  }),
 });
 
 export const DailyClosureReportSchema = z.object({

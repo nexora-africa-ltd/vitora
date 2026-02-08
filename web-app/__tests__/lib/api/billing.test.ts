@@ -909,23 +909,23 @@ describe('Billing API - Reports', () => {
     it('should fetch daily collection report', async () => {
       const mockReport = {
         date: '2026-01-03',
-        total_collected: '15000.00',
+        total_collections: 15000,
         invoice_count: 10,
         by_payment_method: {
-          CASH: '8000.00',
-          MPESA: '5000.00',
-          CARD: '2000.00',
-          INSURANCE: '0.00',
-          BANK_TRANSFER: '0.00',
+          cash: 8000,
+          mpesa: 5000,
+          card: 2000,
         },
+        top_services: [],
+        outstanding_balance: 25000,
       };
       mockApiClient.get.mockResolvedValue({ data: mockReport });
 
       const result = await billingApi.getDailyCollectionReport('2026-01-03');
 
       expect(mockApiClient.get).toHaveBeenCalledWith('/api/billing/reports/daily-collection/?date=2026-01-03');
-      expect(result.total_collected).toBe('15000.00');
-      expect(result.by_payment_method.CASH).toBe('8000.00');
+      expect(result.total_collections).toBe(15000);
+      expect(result.by_payment_method.cash).toBe(8000);
     });
   });
 
@@ -1021,17 +1021,19 @@ describe('Billing API - Reports', () => {
   describe('getPaymentMethodAnalysis', () => {
     it('should fetch payment method analysis', async () => {
       const mockAnalysis = {
-        start_date: '2026-01-01',
-        end_date: '2026-01-31',
-        total_payments: 500,
-        total_amount: '500000.00',
-        by_method: [
-          { method: 'CASH' as const, count: 200, amount: '200000.00', percentage: '40.00' },
-          { method: 'MPESA' as const, count: 250, amount: '250000.00', percentage: '50.00' },
-          { method: 'CARD' as const, count: 50, amount: '50000.00', percentage: '10.00' },
-        ],
-        mpesa_success_rate: '95.00',
-        average_payment_amount: '1000.00',
+        period: { start: '2026-01-01', end: '2026-01-31' },
+        by_method: {
+          cash: { total: 200000, count: 200, average: 1000 },
+          mpesa: { total: 250000, count: 250, average: 1000 },
+          card: { total: 50000, count: 50, average: 1000 },
+        },
+        average_transaction: 1000,
+        mpesa_metrics: {
+          total_transactions: 250,
+          successful_transactions: 238,
+          failed_transactions: 12,
+          success_rate: 95.2,
+        },
       };
       mockApiClient.get.mockResolvedValue({ data: mockAnalysis });
 
@@ -1040,7 +1042,7 @@ describe('Billing API - Reports', () => {
       expect(mockApiClient.get).toHaveBeenCalledWith(
         '/api/billing/reports/payment-analysis/?start_date=2026-01-01&end_date=2026-01-31'
       );
-      expect(result.mpesa_success_rate).toBe('95.00');
+      expect(result.mpesa_metrics.success_rate).toBe(95.2);
     });
   });
 });

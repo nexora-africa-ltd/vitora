@@ -1130,17 +1130,15 @@ describe('CreditNoteForm', () => {
 describe('BillingDashboard', () => {
   const mockDailyReport = {
     date: '2026-01-03',
-    total_collected: '15000.00',
-    total_amount: 15000,
-    total_transactions: 10,
+    total_collections: 15000,
     invoice_count: 10,
     by_payment_method: {
-      CASH: '8000.00',
-      MPESA: '5000.00',
-      CARD: '2000.00',
-      INSURANCE: '0.00',
-      BANK_TRANSFER: '0.00',
+      cash: 8000,
+      mpesa: 5000,
+      card: 2000,
     },
+    top_services: [],
+    outstanding_balance: 25000,
   };
 
   beforeEach(() => {
