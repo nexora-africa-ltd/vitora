@@ -44,12 +44,12 @@ export const EnrollmentStatusSchema = z.enum([
 export const ClinicStaffRoleSchema = z.enum(['LEAD', 'DOCTOR', 'NURSE', 'COUNSELOR', 'NUTRITIONIST', 'CLERK', 'OTHER']);
 
 // Chronic care enums
-export const BloodGroupSchema = z.enum(['A+', 'A-', 'B+', 'B-', 'AB+', 'AB-', 'O+', 'O-']);
-export const RhesusFactorSchema = z.enum(['POSITIVE', 'NEGATIVE']);
-export const HivStatusSchema = z.enum(['POSITIVE', 'NEGATIVE', 'UNKNOWN']);
-export const PartnerHivStatusSchema = z.enum(['POSITIVE', 'NEGATIVE', 'UNKNOWN', 'NOT_TESTED']);
-export const DiabetesTypeSchema = z.enum(['TYPE_1', 'TYPE_2', 'GESTATIONAL', 'OTHER']);
-export const ArtRegimenLineSchema = z.enum(['FIRST_LINE', 'SECOND_LINE', 'THIRD_LINE']);
+export const BloodGroupSchema = z.enum(['A+', 'A-', 'B+', 'B-', 'AB+', 'AB-', 'O+', 'O-']).or(z.literal(''));
+export const RhesusFactorSchema = z.enum(['POSITIVE', 'NEGATIVE']).or(z.literal(''));
+export const HivStatusSchema = z.enum(['POSITIVE', 'NEGATIVE', 'UNKNOWN']).or(z.literal(''));
+export const PartnerHivStatusSchema = z.enum(['POSITIVE', 'NEGATIVE', 'UNKNOWN', 'NOT_TESTED']).or(z.literal(''));
+export const DiabetesTypeSchema = z.enum(['TYPE_1', 'TYPE_2', 'GESTATIONAL', 'OTHER']).or(z.literal(''));
+export const ArtRegimenLineSchema = z.enum(['FIRST_LINE', 'SECOND_LINE', 'THIRD_LINE']).or(z.literal(''));
 export const WhoClinicalStageSchema = z.enum(['1', '2', '3', '4']);
 
 // =============================================================================
